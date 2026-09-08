@@ -1,3 +1,4 @@
+// sagejs-test-tier: unit
 "use strict";
 const assert = require('node:assert/strict');
 const fs = require('node:fs'), os = require('node:os'), path = require('node:path');

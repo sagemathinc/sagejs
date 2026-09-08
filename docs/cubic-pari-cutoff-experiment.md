@@ -3,6 +3,51 @@
 This is a diagnostic experiment, not a public API change, production
 qualification, or PARI win. Production defaults remain unchanged.
 
+## Explicit non-default diagnostic option
+
+The build driver accepts `--cutoff N`. For example:
+
+```sh
+node bench/class-unit-groups/diagnose-cubic-cutoff-build.cjs "$PWD" /scratch/sagejs-runtime/my-cubic-cutoff-experiment --cutoff 768
+```
+
+Use a fresh output directory. This builds the unchanged 997 baseline and an
+isolated source-transparent candidate with initial analytic cutoff $N$. The
+driver permits integers $69\le N<1494$, excluding the baseline itself, and
+retains the existing refinement to 1494 and all resource limits. Omitting the
+option reproduces the original 768 experiment. The timing driver below reads
+the selected cutoff from the manifest and checks that the two retained sources
+differ only in this declaration before timing them.
+
+This is deliberately not named `pari=True`: 768 is a traced choice for the
+particular field below, not a reconstruction of PARI's input-dependent bound
+selection algorithm. The option changes neither the factor-base policy nor
+the relation-collection schedule. It does not claim that all permitted choices
+are efficient. In particular, small cutoffs may require refinement or decline.
+
+There is **no unchecked-success mode** here. A heuristic choice of where to
+start is compatible with an exact conditional certificate: if the certificate
+does not close, the code refines or declines. The manifest records that the
+acceptance rule is unchanged and that independent replay/public receipt
+qualification have not been performed. Thus this experiment does not add a
+conjecture beyond the existing documented GRH assumptions. Any future experiment
+that bypasses a completeness bound would need a separate, explicitly uncertified
+result contract; agreement with PARI alone could not qualify it for ordinary
+`proof=False` publication.
+
+`test/cubic-cutoff-experiment-policy.cjs` checks invalid arguments, theorem and
+resource envelope endpoints, source-declaration drift, and byte-for-byte
+preservation of the rest of the mathematical source. These are policy tests,
+not mathematical qualification of every possible cutoff.
+
+The configurable driver was also run at 768 against mathematical source
+SHA-256 `678630a3a68b436e71a34966576baa71a1fe6b645ec5f845cabb4f94cdef2447`.
+Both variants compiled, and each accepted the twelve frozen smoke fields and
+the three familiar polynomials $x^3+9x-55$, $x^3-x^2+3x-4$, and
+$x^3-x^2-11x-63$ with the expected class numbers and invariant factors (30
+native checks). These local checks were not timed, independently replayed, or
+used to update the historical performance measurements below.
+
 ## Question and construction
 
 For $f=x^3-x^2-11x-63$ (LMFDB `3.1.12716.2`, class group $C_3$),

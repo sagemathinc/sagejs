@@ -2,12 +2,24 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
+const crypto = require("node:crypto");
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const { performance } = require("node:perf_hooks");
 const directory = process.argv[2];
 const gp = process.argv[3];
 const builds = JSON.parse(fs.readFileSync(path.join(directory, "builds.json"))).records;
+const {sourceAtCutoff} = require("./diagnose-cubic-cutoff-build.cjs");
+assert.equal(builds.length, 2, "expected baseline and one experimental cutoff");
+assert.equal(builds[0].cutoff, 997);
+const sources = builds.map(b => {
+  const source = fs.readFileSync(path.join(directory, `cutoff-${b.cutoff}.py`), "utf8");
+  assert.equal(crypto.createHash("sha256").update(source).digest("hex"), b.sourceSha256,
+    "experimental source changed since compilation");
+  return source;
+});
+assert.equal(sourceAtCutoff(sources[0], builds[1].cutoff), sources[1],
+  "experiment must change only the initial analytic cutoff");
 const implementations = builds.map(b => {
   const m = require(path.join(directory, `cache-${b.cutoff}`, b.cacheKey, "index.cjs"));
   assert.equal(m.nativeAvailable, true);
@@ -41,4 +53,5 @@ console.log(JSON.stringify({schema:'sagejs.diagnostic/cubic-cutoff-opt-v1',
   public_call:false,independent_exact_replay:false,promotion:false,
   boundary:'native polynomial-to-result with preallocated external scratch versus PARI bnfinit(polynomial,0); not a public API parity claim',
   proof:'unchanged exact conditional-GRH acceptance; initial cutoff only changed; refinement 1494 retained',
+  experimental_initial_cutoff:builds[1].cutoff,acceptance_rule_changed:false,
   host:{hostname:os.hostname(),cpus:os.cpus().map(c=>c.model),node:process.version},builds,samples},null,2));
