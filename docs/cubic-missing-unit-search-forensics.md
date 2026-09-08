@@ -123,6 +123,11 @@ was collected and no source/resource allowance was raised.
 
 ## Next intervention
 
+The subsequent [content and search-order ablations](cubic-content-and-search-order-ablation.md)
+test two of the mechanisms below, including controlled `opt` timings. Content
+normalization alone improves first-attempt coverage without observed losses;
+the simple origin-centered ordering does not resolve the target speed gap.
+
 Preserve the successful small-radius prefix. When exact certification cannot
 obtain a unit witness, resume a larger search with the same resident exact
 state. Do not discard the small search's successful cases by globally replacing
