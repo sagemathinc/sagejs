@@ -1165,6 +1165,11 @@ function emitExactOperation(operation, context, indent) {
     return `${indent}mpz_abs(${target}, ` +
       `${exactValue(operation.source, context)});`;
   }
+  if (operation.kind === "integer.bit_length") {
+    const source = exactValue(operation.source, context);
+    return `${indent}set_mpz_uint64(${target}, mpz_sgn(${source}) == 0 ` +
+      `? UINT64_C(0) : (uint64_t) mpz_sizeinbase(${source}, 2));`;
+  }
   if (operation.kind === "integer.pow_uint") {
     return `${indent}mpz_pow_ui(${target}, ` +
       `${exactValue(operation.base, context)}, ` +

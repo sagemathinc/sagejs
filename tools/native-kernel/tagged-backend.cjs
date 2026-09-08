@@ -412,6 +412,10 @@ function emitTaggedOperation(operation, context, indent) {
     return `${indent}sagejs_tagged_${operation.kind.slice(8)}(${target}, ` +
       `${taggedValue(operation.source, context)});`;
   }
+  if (operation.kind === "integer.bit_length") {
+    return `${indent}sagejs_tagged_set_uint64(${target}, ` +
+      `sagejs_tagged_bit_length(${taggedValue(operation.source, context)}));`;
+  }
   if (operation.kind === "integer.pow_uint") {
     return `${indent}sagejs_tagged_pow_ui(${target}, ` +
       `${taggedValue(operation.base, context)}, ` +

@@ -179,6 +179,11 @@ observation, not a claim that their machine code or contents are identical.
 
 ## What this rules out; next compiler experiment
 
+The subsequent [native bit-length experiment](cubic-native-bit-length.md)
+implements and measures the operation described below. It also establishes
+that accepted shift syntax is fixed-width, so acceptance alone does not
+justify replacing the arbitrary-precision seed loop.
+
 The small gain rules out the ignored index as the dominant source of the
 remaining latency on this target. The previous instrumented cost ledger
 attributes about 0.080 ms to 27 exact ceiling-square-root calls. Inspection

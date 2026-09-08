@@ -918,6 +918,23 @@ static int sagejs_word_mul_int64(int64_t left, int64_t right, int64_t *result)
 #endif
 }
 
+/* Magnitude bit length, including INT64_MIN without signed negation.  The
+   fixed six-step decomposition is portable to native Windows and Wasm. */
+static uint64_t sagejs_word_bit_length(int64_t value)
+{
+    uint64_t magnitude = (uint64_t) value;
+    uint64_t bits = 0;
+    if (value < 0)
+        magnitude = UINT64_C(0) - magnitude;
+    if (magnitude >> 32) { magnitude >>= 32; bits += 32; }
+    if (magnitude >> 16) { magnitude >>= 16; bits += 16; }
+    if (magnitude >> 8) { magnitude >>= 8; bits += 8; }
+    if (magnitude >> 4) { magnitude >>= 4; bits += 4; }
+    if (magnitude >> 2) { magnitude >>= 2; bits += 2; }
+    if (magnitude >> 1) { magnitude >>= 1; bits += 1; }
+    return bits + magnitude;
+}
+
 static int sagejs_word_pow_int64(
     int64_t base, uint64_t exponent, int64_t *result)
 {
@@ -1164,6 +1181,14 @@ static void sagejs_tagged_abs(
     sagejs_tagged_make_big(source);
     sagejs_tagged_make_big(target);
     mpz_abs(target->big, source->big);
+}
+
+static uint64_t sagejs_tagged_bit_length(const sagejs_tagged_int *value)
+{
+    if (!value->is_big)
+        return sagejs_word_bit_length(value->small);
+    return mpz_sgn(value->big) == 0
+        ? UINT64_C(0) : (uint64_t) mpz_sizeinbase(value->big, 2);
 }
 
 static void sagejs_tagged_pow_ui(

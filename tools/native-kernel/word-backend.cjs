@@ -417,6 +417,10 @@ function emitWordOperation(operation, context, indent) {
       `${indent}${target} = ${expression};`,
     ].join("\n");
   }
+  if (operation.kind === "integer.bit_length") {
+    return `${indent}${target} = (int64_t) ` +
+      `sagejs_word_bit_length(${value(operation.source)});`;
+  }
   if (operation.kind === "integer.pow_uint") {
     return [
       `${indent}if (!sagejs_word_pow_int64(${value(operation.base)}, ` +

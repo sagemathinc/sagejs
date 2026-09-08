@@ -416,6 +416,11 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}${operation.target} = ${operation.source} < 0n ` +
       `? -${operation.source} : ${operation.source};`;
   }
+  if (operation.kind === "integer.bit_length") {
+    const value = operation.source;
+    return `${indent}${operation.target} = ${value} === 0n ? 0n : ` +
+      `BigInt((${value} < 0n ? -${value} : ${value}).toString(2).length);`;
+  }
   if (operation.kind === "integer.pow_uint") {
     return `${indent}${operation.target} = ${operation.base} ** ` +
       `${BigInt(operation.exponent)}n;`;

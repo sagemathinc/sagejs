@@ -133,7 +133,7 @@ function visit(operations, callback) {
 
 test("while transfers retain provenance and one resident lifetime in all emitters", async () => {
   const ir = await lowerSource(source, "native-while-control-transfer.py");
-  assert.equal(ir.version, 39);
+  assert.equal(ir.version, 40);
   const operations = [];
   for (const fn of ir.functions) visit(fn.body, op => operations.push(op));
   assert.ok(operations.some(op => op.kind === "loop.break"));

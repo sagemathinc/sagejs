@@ -435,6 +435,10 @@ function emitFmpzOperation(operation, context, indent) {
     return `${indent}fmpz_${operation.kind.slice("integer.".length)}(` +
       `${target}, ${fmpzValue(operation.source, context)});`;
   }
+  if (operation.kind === "integer.bit_length") {
+    return `${indent}fmpz_set_ui(${target}, ` +
+      `fmpz_bits(${fmpzValue(operation.source, context)}));`;
+  }
   if (operation.kind === "integer.pow_uint") {
     return `${indent}fmpz_pow_ui(${target}, ` +
       `${fmpzValue(operation.base, context)}, ${operation.exponent});`;

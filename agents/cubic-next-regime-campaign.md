@@ -117,10 +117,13 @@ Read these before repeating a proposed optimization:
   exact backends, reject malformed indices, and match all 64 output slots on
   all 1,012 fixed-effort fields. Current target gain is 0.84%; thirteen of
   fourteen familiar-field medians improve, with the small loss also reported.
-- `_cubic_ceil_sqrt` already uses Newton iteration. Native `int.bit_length()`
-  is a confirmed compiler obstruction; native shift IR lowering is supported.
-  Bit-length and seed loops are candidates for a general compiler improvement,
-  but the measured entire square-root phase is only about 0.080 ms here.
+- [Native bit length](../docs/cubic-native-bit-length.md): IR 40 removes the
+  compiler obstruction on all exact backends, replacing only the square-root
+  bit-count loop. The target native median improves 2.315%; all 1,012
+  fixed-effort outputs agree. Two familiar-field timing runs improve 13/14
+  medians but lose 3–7 microseconds on the smallest field. The remaining
+  seed loop cannot safely use current fixed-width shift lowering. Newton
+  iteration was already present; this is not a new square-root algorithm.
 
 Continue to distinguish a small native improvement from a public PARI win.
 The constructor's irreducibility path currently builds and decodes a full

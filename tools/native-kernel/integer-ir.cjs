@@ -1278,6 +1278,20 @@ function lowerForeignInvocation(
 function lowerCall(node, context, operations) {
   if (nodeType(node.expression) === "AST_Dot") {
     const owner = node.expression.expression;
+    if (node.expression.property === "bit_length") {
+      expect(context, node,
+        array(node.args).length === 0 &&
+          array(node.args?.kwarg_items).length === 0 &&
+          array(node.args?.kwargs).length === 0 && !node.args?.starargs,
+        "int.bit_length() takes no arguments");
+      const source = lowerExpression(owner, context, operations);
+      expect(context, owner, source.type === "Integer" || source.type === "uint64",
+        "int.bit_length() requires an integer receiver");
+      const integer = coerceInteger(source, context, owner, operations);
+      const target = temporary(context, node, "Integer");
+      operations.push({kind: "integer.bit_length", target, source: integer.name});
+      return {name: target, type: "Integer"};
+    }
     const ownerType = nodeType(owner) === "AST_SymbolRef"
       ? context.variables.get(owner.name)
       : undefined;

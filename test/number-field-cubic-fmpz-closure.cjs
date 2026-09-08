@@ -116,7 +116,7 @@ test("the complete cubic closure is one direct fmpz program", {
     callees.map((callee) => [caller, callee])
   );
 
-  assert.equal(ir.version, 39);
+  assert.equal(ir.version, 40);
   // Splitting adds three nodes; hoisting bound-independent constants adds
   // one private helper; proposal scaling adds one private implementation.
   // Every node remains reachable from the cubic root.

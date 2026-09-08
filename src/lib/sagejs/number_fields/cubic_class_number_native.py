@@ -1352,11 +1352,7 @@ def _cubic_ceil_sqrt(value: int) -> int:
         return -1
     if value < 2:
         return value
-    bits: uint64 = 0
-    probe = value
-    while probe > 0:
-        probe //= 2
-        bits += 1
+    bits: uint64 = checked_uint64(value.bit_length())
     current = 1
     shift: uint64 = 0
     while shift < (bits + 1) // 2:
