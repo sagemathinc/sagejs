@@ -2441,13 +2441,17 @@ test("native foreign identity tracks inline headers in external reused prefixes"
         include_dirs: ["include"], source_include_dirs: [],
       },
     }}]};
-    const before = foreignCompilationInputs(ir)[0];
-    assert.equal(before.transitiveHeaders.length, 1);
-    writeFileSync(leaf, "static inline int answer(void) { return 2; }\n");
-    const after = foreignCompilationInputs(ir)[0];
-    assert.notEqual(before.fingerprint, after.fingerprint);
-    assert.deepEqual(before.headers, after.headers);
-    assert.deepEqual(before.libraries, after.libraries);
+    for (const options of [{}, {cacheRoot: join(temporary, "digests")}]) {
+      for (let value = 0; value < 10; value++) {
+        const before = foreignCompilationInputs(ir, options)[0];
+        assert.equal(before.transitiveHeaders.length, 1);
+        writeFileSync(leaf, `static inline int answer(void) { return ${value}; }\n`);
+        const after = foreignCompilationInputs(ir, options)[0];
+        assert.notEqual(before.fingerprint, after.fingerprint);
+        assert.deepEqual(before.headers, after.headers);
+        assert.deepEqual(before.libraries, after.libraries);
+      }
+    }
   } finally {
     if (previous === undefined) delete process.env.SAGEJS_INLINE_TEST_PREFIX;
     else process.env.SAGEJS_INLINE_TEST_PREFIX = previous;
@@ -2471,7 +2475,7 @@ test("native foreign input identity hashes only selected platform links", () => 
       linux: ["selected.a"],
       darwin: ["selected.tbd"],
     };
-    const inputs = foreignCompilationInputs({
+    const ir = {
       foreignLibraries: [{
         id: "platform_link_test",
         native: {
@@ -2486,8 +2490,17 @@ test("native foreign input identity hashes only selected platform links", () => 
           },
         },
       }],
-    });
+    };
+    const inputs = foreignCompilationInputs(ir);
     assert.deepEqual(inputs[0].libraries.map(({ name }) => name), [selected]);
+    for (const options of [{}, {cacheRoot: join(temporary, "digests")}]) {
+      for (let value = 0; value < 10; value++) {
+        const before = foreignCompilationInputs(ir, options)[0];
+        writeFileSync(join(temporary, "lib", selected), `selected platform input${value}`);
+        const after = foreignCompilationInputs(ir, options)[0];
+        assert.notEqual(before.fingerprint, after.fingerprint);
+      }
+    }
   } finally {
     if (previous === undefined) {
       delete process.env.SAGEJS_PLATFORM_LINK_TEST_PREFIX;
