@@ -65,23 +65,20 @@ test("candidate qualification includes every tagged native producer and required
   assert.doesNotMatch(data.jobs["macos-sign"].steps.map((step) => step.run ?? "").join("\n"), /--publish/);
 });
 
-test("manual qualification cannot invoke publisher or publication recovery, even at a tag", () => {
-  const jobs = workflow("ci.yml").jobs;
-  for (const ref of ["refs/heads/candidate/release-080", "refs/tags/v0.8.0"]) {
-    for (const recovery_run_id of ["", "123"]) {
-      const context = candidateContext(); context.github.ref = ref; context.inputs.recovery_run_id = recovery_run_id;
-      assert.equal(enabled(jobs["publish-release"].if, context), false);
-      assert.equal(enabled(jobs["recover-publish"].if, context), false);
-      assert.equal(enabled(jobs.routine.if, context), true, "ambiguous input reaches early rejection");
-    }
+test("qualification cannot publish, and tag pushes launch no release workflow", () => {
+  const w = workflow("ci.yml"), jobs = w.jobs;
+  assert.equal(w.on.push.tags, undefined);
+  assert.equal(workflow("wasm-release.yml").on.push, undefined);
+  assert.equal(jobs["publish-release"], undefined);
+  assert.equal(jobs["recover-publish"], undefined);
+  for (const ref of ["refs/heads/release-candidate", "refs/tags/v0.8.0"]) {
+    const context = candidateContext(); context.github.ref = ref;
+    assert.equal(enabled(jobs["publish-prepared"].if, context), false);
   }
-  assert.equal(enabled(jobs["publish-release"].if, tagContext()), true);
-  const recovery = candidateContext(); recovery.inputs = { qualify_release: false, candidate_sha: "", recovery_run_id: "123" };
-  assert.equal(enabled(jobs["recover-publish"].if, recovery), true, "existing explicit recovery remains available");
+  assert.equal(enabled(jobs["publish-prepared"].if, tagContext()), false);
   const ordinary = candidateContext(); ordinary.inputs = { ...inputs, qualify_release: false, candidate_sha: "" };
-  assert.equal(enabled(jobs["native-product-acceptance"].if, ordinary), false, "ordinary partial manual runs do not qualify");
+  assert.equal(enabled(jobs["native-product-acceptance"].if, ordinary), false);
 });
-
 test("prepared consumption never schedules producers and verification has no publication credentials", () => {
   const w = workflow("ci.yml"), jobs = w.jobs;
   assert.equal(w.on.workflow_dispatch.inputs.publish_prepared.default, false);
@@ -100,7 +97,7 @@ test("prepared consumption never schedules producers and verification has no pub
   assert.deepEqual(jobs["verify-prepared"].permissions, { actions: "read", contents: "read" });
   assert.equal(jobs["publish-prepared"].environment, "sagejs-release");
   assert.equal(jobs["publish-prepared"].permissions["id-token"], "write");
-  assert.equal(jobs["publish-prepared"].concurrency.group, jobs["publish-release"].concurrency.group);
+  assert.equal(jobs["publish-prepared"].concurrency.group, "sagejs-production-publication");
   assert.match(w.concurrency.group, /inputs.publish_prepared.*publication.*validation/);
   for (const id of ["verify-prepared", "publish-prepared"]) {
     assert.equal(jobs[id].steps.find(step => step.uses?.startsWith("pnpm/action-setup@")).with.package_json_file, "control/package.json");

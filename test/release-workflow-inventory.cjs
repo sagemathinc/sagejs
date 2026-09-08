@@ -22,14 +22,14 @@ function fixture(t, files) {
 test("publisher and deployment require product checks without reporting ancestors", () => {
   const graph = workflowInventory(root);
   assert.deepEqual(graph.reviewErrors, []);
-  assert.deepEqual(graph.nodes.find((node) => node.key === "ci.yml#publish-release").concurrency, {
+  assert.deepEqual(graph.nodes.find((node) => node.key === "ci.yml#publish-prepared").concurrency, {
     group: "sagejs-production-publication", "cancel-in-progress": false, queue: "max",
   });
   assert.deepEqual(graph.nodes.find((node) => node.key === "protect-latest-release.yml#@success").concurrency, {
     group: "sagejs-production-publication", "cancel-in-progress": false, queue: "max",
   });
   const route = (from, to) => dependencyPath(graph.nodes, graph.edges, from, to);
-  for (const consumer of ["ci.yml#publish-release", "wasm-deploy-cloudflare.yml#deploy"]) {
+  for (const consumer of ["ci.yml#publish-prepared", "wasm-deploy-cloudflare.yml#deploy"]) {
     assert.equal(route(consumer, "wasm-release.yml#browser-performance"), null);
     for (const product of require("../scripts/release/product-prerequisites.cjs").browserPrerequisites) {
       assert.ok(route(consumer, `wasm-release.yml#${product}`), `missing required browser ancestor ${product}`);
@@ -44,7 +44,7 @@ test("publisher and deployment require product checks without reporting ancestor
     "the mixed native oracle still contains timing work; the split is not complete");
   assert.ok(route("wasm-deploy-cloudflare.yml#deploy", "ci.yml#numerical-release-gate"));
   assert.ok(route("wasm-deploy-cloudflare.yml#deploy", "wasm-release.yml#browser-security-chromium"));
-  assert.equal(route("wasm-release.yml#browser-performance", "ci.yml#publish-release"), null);
+  assert.equal(route("wasm-release.yml#browser-performance", "ci.yml#publish-prepared"), null);
   const perf = graph.nodes.find((n) => n.key === "wasm-release.yml#browser-performance");
   assert.deepEqual(perf.strategy.matrix.engine, ["chromium", "firefox", "webkit"]);
   assert.deepEqual(perf.strategy.matrix.shard, [1, 2, 3, 4]);
@@ -65,13 +65,12 @@ test("publisher and deployment require product checks without reporting ancestor
   for (const kind of ["release-assets", "npm-publication", "release-pointer"]) {
     assert.ok(graph.controlEffects.some(effect => effect.from === "ci.yml#publish-prepared" && effect.kind === kind));
   }
-  assert.equal(route("publish-validated-release.yml#request", "ci.yml#publish-release"), null,
+  assert.equal(route("publish-validated-release.yml#request", "ci.yml#publish-prepared"), null,
     "dispatch is not proof of publication completion");
-  assert.ok(graph.controlEffects.some((effect) => effect.from === "publish-validated-release.yml#request" && effect.target === "ci.yml#recover-publish" && effect.kind === "dispatch"));
-  assert.ok(graph.controlEffects.some((effect) => effect.from === "ci.yml#recover-publish" && effect.target === "ci.yml#publish-release" && effect.kind === "rerun-job"));
+  assert.ok(graph.controlEffects.some((effect) => effect.from === "publish-validated-release.yml#request" && effect.target === "ci.yml#publish-prepared" && effect.kind === "dispatch"));
   assert.ok(graph.controlEffects.some((effect) => effect.kind === "release-pointer" && effect.target === "github:releases/latest"));
-  assert.ok(graph.controlEffects.some((effect) => effect.from === "ci.yml#publish-release" && effect.kind === "release-assets" && effect.target === "github:release-assets"));
-  assert.ok(graph.controlEffects.some((effect) => effect.from === "ci.yml#publish-release" && effect.kind === "npm-publication" && effect.target === "npm:registry"));
+  assert.ok(graph.controlEffects.some((effect) => effect.from === "ci.yml#publish-prepared" && effect.kind === "release-assets" && effect.target === "github:release-assets"));
+  assert.ok(graph.controlEffects.some((effect) => effect.from === "ci.yml#publish-prepared" && effect.kind === "npm-publication" && effect.target === "npm:registry"));
   assert.ok(graph.edges.some((edge) => edge.kind === "reviewed-artifact-input" && edge.names.includes("sagejs-macos-arm64") && edge.to === "ci.yml#macos-sign"));
 });
 

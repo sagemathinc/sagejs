@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - "v*"
   pull_request:
   workflow_dispatch:
     inputs:
@@ -28,16 +26,6 @@ on:
         description: Comma-separated full native targets, or all
         required: false
         default: all
-        type: string
-      recovery_run_id:
-        description: Completed tagged CI run whose original publish job should be rerun
-        required: false
-        default: ""
-        type: string
-      recovery_tag:
-        description: Immutable release tag built by recovery_run_id
-        required: false
-        default: ""
         type: string
       prepared_request:
         description: Exact frozen artifact and native inspection request JSON; no producer builds
@@ -62,7 +50,7 @@ concurrency:
 jobs:
   routine:
     name: Routine gate (Linux x64)
-    if: ${{ !inputs.prepared_request && !inputs.publish_prepared && (github.event_name != 'workflow_dispatch' || inputs.recovery_run_id == '' || inputs.qualify_release || inputs.candidate_sha != '') }}
+    if: ${{ !inputs.prepared_request && !inputs.publish_prepared }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
@@ -1543,199 +1531,6 @@ jobs:
           SAGEJS_PRODUCT_NEEDS: ${{ toJSON(needs) }}
         run: node scripts/release/product-prerequisites.cjs native
 
-  publish-release:
-    name: Publish tagged GitHub and npm release
-    concurrency:
-      group: sagejs-production-publication
-      cancel-in-progress: false
-      queue: max
-    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
-    needs:
-      - numerical-release-gate
-      - native-product-acceptance
-    runs-on: ubuntu-24.04
-    environment: sagejs-release
-    permissions:
-      actions: read
-      contents: write
-      id-token: write
-
-    steps:
-      - name: Check out the tagged release metadata
-        uses: actions/checkout@v7
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 11.9.0
-
-      - name: Install Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 26.5.1
-          registry-url: https://registry.npmjs.org
-
-      - name: Require same-tag WebAssembly product acceptance
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          runs_file="$(mktemp)"
-          gh api --paginate \
-            "repos/${GITHUB_REPOSITORY}/actions/workflows/wasm-release.yml/runs?event=push&head_sha=${GITHUB_SHA}&per_page=100" \
-            | jq -s '.' > "$runs_file"
-          node scripts/release/require-wasm-release.cjs \
-            --sha "$GITHUB_SHA" --tag "$GITHUB_REF_NAME" < "$runs_file"
-
-      - name: Restore the mandatory numerical release gate
-        uses: actions/download-artifact@v8
-        with:
-          name: numerical-release-gate
-          path: build/validated-numerical-gate
-
-      - name: Restore the complete raw numerical evidence inventory
-        uses: actions/download-artifact@v8
-        with:
-          name: numerical-release-evidence
-          path: build/numerical-qualification
-
-      - name: Restore the canonical public npm root and browser distribution
-        uses: actions/download-artifact@v8
-        with:
-          name: sagejs-public-npm-root
-          path: .
-
-      - name: Download the validated release artifacts
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          mkdir -p release
-          for artifact in \
-            sagejs-linux-x64 \
-            sagejs-linux-arm64 \
-            sagejs-windows-x64 \
-            sagejs-macos-arm64
-          do
-            gh run download "$GITHUB_RUN_ID" --repo "$GH_REPO" \
-              --name "$artifact" --dir release
-          done
-          mkdir -p release/npm
-          cp build/release/npm/sagejs.tgz release/npm/sagejs.tgz
-
-      - name: Rebuild and authenticate the gate and exact public npm root
-        run: |
-          pnpm release:qualify:numerics:gate -- \
-            --candidate "$(git rev-parse HEAD)" \
-            --input build/numerical-qualification \
-            --output build/numerical-qualification/gate
-          pnpm release:qualify:numerics:authenticate -- \
-            --candidate "$(git rev-parse HEAD)" \
-            --gate build/validated-numerical-gate/release-gate.json \
-            --rebuilt-gate build/numerical-qualification/gate/release-gate.json \
-            --public-npm-root release/npm/sagejs.tgz \
-            --platform-npm-directory release/npm \
-            --browser-distribution packages/flint-wasm/dist
-
-      - name: Create or update the draft GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: node scripts/release/publish-github-assets.cjs
-
-      - name: Retain GitHub publication progress
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: sagejs-github-publication-attempt-${{ github.run_attempt }}
-          path: release-publication.json
-          if-no-files-found: ignore
-          retention-days: 90
-
-      - name: Publish the platform and public npm packages
-        env:
-          NPM_CONFIG_PROVENANCE: "true"
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/release/publish-npm-packages.cjs
-
-      - name: Retain npm publication progress
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: sagejs-npm-publication-attempt-${{ github.run_attempt }}
-          path: npm-publication.json
-          if-no-files-found: ignore
-          retention-days: 90
-
-      - name: Publish the immutable GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: node scripts/release/finalize-github-release.cjs
-
-      - name: Retain final promotion progress
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: sagejs-finalization-attempt-${{ github.run_attempt }}
-          path: release-finalization.json
-          if-no-files-found: ignore
-          retention-days: 90
-
-  recover-publish:
-    name: Re-run a validated release publication
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != '' && !inputs.qualify_release && inputs.candidate_sha == '' && !inputs.prepared_request && !inputs.publish_prepared }}
-    runs-on: ubuntu-24.04
-    permissions:
-      actions: write
-      contents: read
-
-    steps:
-      - name: Check out the immutable recovery tag
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.recovery_tag }}
-
-      - name: Authenticate the source run and rerun its original trusted publisher
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          RECOVERY_RUN_ID: ${{ inputs.recovery_run_id }}
-          RECOVERY_TAG: ${{ inputs.recovery_tag }}
-        run: |
-          set -euo pipefail
-          [[ "$RECOVERY_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
-            echo "recovery_run_id must be a positive Actions run ID" >&2
-            exit 1
-          }
-          [[ "$RECOVERY_TAG" == v* ]] || {
-            echo "recovery_tag must be a release tag" >&2
-            exit 1
-          }
-          [[ "$GITHUB_REF_NAME" == "$RECOVERY_TAG" ]] || {
-            echo "Dispatch this recovery at ref $RECOVERY_TAG, not $GITHUB_REF_NAME" >&2
-            exit 1
-          }
-          run_metadata="$(gh api "repos/${GH_REPO}/actions/runs/${RECOVERY_RUN_ID}")"
-          [[ "$(jq -r .name <<<"$run_metadata")" == "Sage.js CI" ]]
-          [[ "$(jq -r .path <<<"$run_metadata")" == ".github/workflows/ci.yml" ]]
-          [[ "$(jq -r .event <<<"$run_metadata")" == "push" ]]
-          [[ "$(jq -r .status <<<"$run_metadata")" == "completed" ]]
-          [[ "$(jq -r '.head_branch // ""' <<<"$run_metadata")" == "$RECOVERY_TAG" ]] || {
-            echo "Source run was not triggered by exact tag $RECOVERY_TAG" >&2
-            exit 1
-          }
-          source_sha="$(jq -r .head_sha <<<"$run_metadata")"
-          tag_sha="$(git rev-list -n 1 "$RECOVERY_TAG")"
-          [[ "$source_sha" == "$tag_sha" && "$tag_sha" == "$(git rev-parse HEAD)" ]] || {
-            echo "Recovery source/tag/checkout SHA mismatch" >&2
-            exit 1
-          }
-          jobs_file="$(mktemp)"
-          gh api --paginate \
-            "repos/${GH_REPO}/actions/runs/${RECOVERY_RUN_ID}/jobs?filter=all&per_page=100" \
-            | jq -s '.' > "$jobs_file"
-          publisher_id="$(node scripts/release/select-recovery-publisher.cjs < "$jobs_file")"
-          gh api --method POST "repos/${GH_REPO}/actions/jobs/${publisher_id}/rerun"
 
   verify-prepared:
     name: Verify exact prepared release artifacts

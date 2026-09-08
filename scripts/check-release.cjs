@@ -100,61 +100,32 @@ for (const name of names) {
 // inline implementation. Controller retry/integrity/ordering semantics are
 // exercised in release-finalization and publisher fixture tests.
 const ci = require("./release/workflow-inventory.cjs").parseWorkflow(releaseWorkflow, "ci.yml");
-const publisher = ci.jobs["publish-release"];
-assert.ok(publisher.needs.includes("numerical-release-gate"));
-assert.ok(publisher.needs.includes("native-product-acceptance"));
-const ordered = [
-  "Rebuild and authenticate the gate and exact public npm root",
-  "Create or update the draft GitHub release",
-  "Publish the platform and public npm packages",
-  "Publish the immutable GitHub release",
-].map(name => publisher.steps.findIndex(step => step.name === name));
-assert.ok(ordered.every((index, i) => index >= 0 && (i === 0 || ordered[i - 1] < index)),
-  "raw authentication must precede artifact upload, npm publication/availability and final promotion");
-for (const [i, command] of [
-  [1, "node scripts/release/publish-github-assets.cjs"],
-  [2, "node scripts/release/publish-npm-packages.cjs"],
-  [3, "node scripts/release/finalize-github-release.cjs"],
-]) assert.equal(publisher.steps[ordered[i]].run, command);
+const publisher = ci.jobs["publish-prepared"];
+assert.equal(ci.jobs["publish-release"], undefined, "legacy by-name publisher must stay retired");
+assert.equal(ci.jobs["recover-publish"], undefined, "recovery must consume the same frozen request");
+assert.equal(ci.on.push.tags, undefined, "tag creation must not launch a second producer build");
 assert.equal(publisher.permissions["id-token"], "write");
 assert.equal(publisher.environment, "sagejs-release");
+assert.equal(publisher.needs, undefined, "prepared publication does not schedule producers");
+assert.equal(publisher.concurrency.group, "sagejs-production-publication");
 assert.ok(!releaseWorkflow.includes("secrets.NPM_TOKEN"));
 assert.ok(!releaseWorkflow.includes("merge-multiple: true"));
-const wasm = publisher.steps.find(step => step.name === "Require same-tag WebAssembly product acceptance");
-assert.match(wasm.run, /require-wasm-release\.cjs[\s\S]*--sha "\$GITHUB_SHA" --tag "\$GITHUB_REF_NAME"/);
-assert.match(publisher.steps[ordered[0]].run, /--rebuilt-gate[\s\S]*--public-npm-root release\/npm\/sagejs\.tgz/);
-
-assert.match(
-  validatedPublishWorkflow,
-  /gh workflow run \.github\/workflows\/ci\.yml/,
-  "manual recovery must delegate to the one npm-trusted workflow identity",
-);
+const publisherCommands = publisher.steps.map(step => step.run ?? "").join("\n");
+assert.match(publisherCommands, /publish-prepared\.cjs admit/);
+assert.match(publisherCommands, /publish-prepared\.cjs "\$GITHUB_WORKSPACE\/candidate"/);
+assert.doesNotMatch(publisherCommands, /pnpm (?:build|test)|gh run rerun/);
+assert.match(validatedPublishWorkflow, /node scripts\/release\/request-prepared-publication\.cjs/);
 assert.ok(
   !validatedPublishWorkflow.includes("secrets.NPM_TOKEN") &&
     !validatedPublishWorkflow.includes("id-token: write") &&
     !validatedPublishWorkflow.includes("npm publish") &&
     !validatedPublishWorkflow.includes("pnpm publish"),
-  "manual recovery must not contain any npm publication authority or command",
-);
-assert.match(
-  releaseWorkflow,
-  /recover-publish:[\s\S]+actions:\s*write[\s\S]+actions\/jobs\/\$\{publisher_id\}\/rerun/,
-  "trusted CI recovery must authenticate and rerun its original publisher job",
-);
-assert.match(
-  releaseWorkflow,
-  /gh api --paginate[\s\S]+jobs\?filter=all&per_page=100[\s\S]+\| jq -s '\.' > "\$jobs_file"[\s\S]+select-recovery-publisher\.cjs/,
-  "recovery must authenticate the latest exact producer and publisher occurrences across all attempts",
-);
-assert.match(
-  releaseWorkflow,
-  /\.head_branch \/\/ ""[\s\S]+== "\$RECOVERY_TAG"/,
-  "recovery must bind the source run to the exact immutable tag, not only its commit",
+  "manual recovery must have dispatch authority only",
 );
 
 const numericalGateJob = releaseWorkflow.slice(
   releaseWorkflow.indexOf("numerical-release-gate:"),
-  releaseWorkflow.indexOf("publish-release:"),
+  releaseWorkflow.indexOf("verify-prepared:"),
 );
 assert.equal(
   [...numericalGateJob.matchAll(/release:qualify:numerics:gate --/g)].length,

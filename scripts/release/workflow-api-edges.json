@@ -2,114 +2,6 @@
   "schema": "sagejs.workflow-api-edges/v2",
   "entries": [
     {
-      "workflow": "ci.yml",
-      "job": "publish-release",
-      "step": "Publish the immutable GitHub release",
-      "runSha256": "c000680f57052e3f98db2ee30e382170eb4a113be4de23f3984be6875ab5b2a6",
-      "effects": [
-        {
-          "kind": "release-pointer",
-          "target": "github:releases/latest"
-        }
-      ],
-      "helpers": [
-        {
-          "filename": "scripts/release/finalize-github-release.cjs",
-          "sha256": "b0d3458001ae2a7f07cd774704ac8ce3c471d5ceb740e09a4faaba543234bf26"
-        },
-        {
-          "filename": "scripts/release/publish-github-assets.cjs",
-          "sha256": "46bdf44ea8eb170eb0829eb1b0a8da61f9554e72922438a79eccab47fa206b68"
-        },
-        {
-          "filename": "scripts/release/publish-npm-packages.cjs",
-          "sha256": "256c410efeb2bb3d338d0ce828a827d0c1164c9340686260f0bb4b4d6f96d4b7"
-        },
-        {
-          "filename": "scripts/release/runner.cjs",
-          "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3"
-        },
-        {
-          "filename": "scripts/release/directory-transaction.cjs",
-          "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284"
-        },
-        {
-          "filename": "scripts/release-latest-policy.cjs",
-          "sha256": "6d0aa87d78fe2b8b39d5f426ce92576cf9462558129d270f38af050eb8297a5b"
-        }
-      ],
-      "requiresWorkflowSuccess": [],
-      "semantics": "Final existing gated-publisher step rechecks local and remote eleven-asset SHA256/size identities, exact five npm SHA512 versions, root latest and source/tag. Refuses newer published products or Latest; only writes the selected release ID via PATCH draft=false/prerelease=false/make_latest=true, then rechecks all inputs and observes both publication and Latest. Already promoted state is read-only on retry, even after loss of the journal. Does not create a tag, upload/replace assets, mutate npm or deploy the website/app. The participating Latest-repair workflow shares the publisher concurrency group; manual/API writers remain outside that lock."
-    },
-    {
-      "workflow": "ci.yml",
-      "job": "publish-release",
-      "step": "Publish the platform and public npm packages",
-      "runSha256": "d36a0793620be899a6f189ecc4cb7fafc7ef6a0263e8cb8c9d6817690c9f941b",
-      "effects": [
-        {
-          "kind": "npm-publication",
-          "target": "npm:registry"
-        }
-      ],
-      "helpers": [
-        {
-          "filename": "scripts/release/publish-npm-packages.cjs",
-          "sha256": "256c410efeb2bb3d338d0ce828a827d0c1164c9340686260f0bb4b4d6f96d4b7"
-        },
-        {
-          "filename": "scripts/release/publish-github-assets.cjs",
-          "sha256": "46bdf44ea8eb170eb0829eb1b0a8da61f9554e72922438a79eccab47fa206b68"
-        },
-        {
-          "filename": "scripts/release/runner.cjs",
-          "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3"
-        },
-        {
-          "filename": "scripts/release/directory-transaction.cjs",
-          "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284"
-        },
-        {
-          "filename": "scripts/build-parallelism.cjs",
-          "sha256": "6a4a76edcf24c4413037c7497cbddb39a09a2078cd4d51a3ba0d689698cd7b26"
-        }
-      ],
-      "requiresWorkflowSuccess": [],
-      "semantics": "Consumes five already qualified tarballs without repacking/installing. Requires exact source/tag, names/versions, SHA512 registry integrity and exact four-platform root pins. Only version-endpoint 404 is absence. Publishes missing platform packages via the existing ci.yml OIDC identity, then waits for all four exact public versions before root/latest publication. Rechecks root channel to avoid stale promotion and refuses unsupported automatic dist-tag repair; per-platform convenience tags are not product qualification. Attempt journal records accepted commands but every success requires live public metadata. Does not dispatch workflows or promote GitHub/app/website pointers."
-    },
-    {
-      "workflow": "ci.yml",
-      "job": "publish-release",
-      "step": "Create or update the draft GitHub release",
-      "effects": [
-        {
-          "kind": "release-assets",
-          "target": "github:release-assets"
-        }
-      ],
-      "runSha256": "1a04f5da4ef35ce8b2bf47754e39c955ba7c02475f90905265740dd05af6e469",
-      "helpers": [
-        {
-          "filename": "scripts/release/publish-github-assets.cjs",
-          "sha256": "46bdf44ea8eb170eb0829eb1b0a8da61f9554e72922438a79eccab47fa206b68"
-        },
-        {
-          "filename": "scripts/release/runner.cjs",
-          "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3"
-        },
-        {
-          "filename": "scripts/release/directory-transaction.cjs",
-          "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284"
-        },
-        {
-          "filename": "scripts/release-latest-policy.cjs",
-          "sha256": "6d0aa87d78fe2b8b39d5f426ce92576cf9462558129d270f38af050eb8297a5b"
-        }
-      ],
-      "requiresWorkflowSuccess": [],
-      "semantics": "Uses already gated local product bytes. Resolves the existing product tag to the exact source, creates only a draft if GitHub returns 404, checks all eleven installer assets by exact size/SHA256, and uploads only missing assets without clobber or deletion. Retry rechecks remote state independently of the local progress journal. Conflicting/incomplete existing assets fail closed; a published release is read-only and must already be complete. Does not execute a build, advance Latest, publish npm or replace upstream product acceptance. No workflow-success lookup beyond existing job prerequisites."
-    },
-    {
       "workflow": "release-macos-inspection.yml",
       "job": "inspect",
       "step": "Inspect exact selected macOS artifact",
@@ -150,97 +42,6 @@
       "semantics": "Authenticates an explicit historical handoff workflow/source/attempt and immutable small artifact, then fetches only its selected macOS transport role using the complete nine-role manifest digest. Uses native trust/notarization and payload checks without signing, installation or publication. Final promotion must compare the authenticated observation to independently reconstructed product/qualified-executable identities; this job alone does not replace numerical qualification or authorize publication."
     },
     {
-      "workflow": "ci.yml",
-      "job": "publish-release",
-      "step": "Require same-tag WebAssembly product acceptance",
-      "runSha256": "29c4c9d1f52384a58e3c9a6f49a6de04610ab978d84c19dce5a85882be0ee2f6",
-      "helpers": [
-        {
-          "filename": "scripts/release/require-wasm-release.cjs",
-          "sha256": "73e88dc7b2525f19598559b1a31c4d796075533ba0eeda07b0f15d244feeb100"
-        },
-        {
-          "filename": "scripts/release/product-acceptance.cjs",
-          "sha256": "8e0418bdb1848420eb95ec79af4c128c22e2ffb153692bde54132593636d9461"
-        }
-      ],
-      "requiresWorkflowSuccess": [],
-      "semantics": "Selects the newest exact source/tag push run, then independently authenticates repository/workflow/source/ref, current attempt and successful browser product aggregate/assertion. Does not fall back to older successful campaigns or require reporting/whole-workflow success. Raw numerical evidence and exact packaged-byte authentication remain mandatory later publisher steps; job acceptance alone is not artifact qualification.",
-      "requiresJobSuccess": [
-        "wasm-release.yml#browser-product-acceptance"
-      ]
-    },
-    {
-      "workflow": "ci.yml",
-      "job": "publish-release",
-      "step": "Download the validated release artifacts",
-      "artifactInputs": [
-        {
-          "producer": "ci.yml#linux-x64",
-          "names": [
-            "sagejs-linux-x64"
-          ]
-        },
-        {
-          "producer": "ci.yml#linux-arm64",
-          "names": [
-            "sagejs-linux-arm64"
-          ]
-        },
-        {
-          "producer": "ci.yml#windows-x64",
-          "names": [
-            "sagejs-windows-x64"
-          ]
-        },
-        {
-          "producer": "ci.yml#macos-sign",
-          "names": [
-            "sagejs-macos-arm64"
-          ]
-        },
-        {
-          "producer": "ci.yml#public-npm-root",
-          "names": [
-            "sagejs-public-npm-root"
-          ]
-        }
-      ],
-      "semantics": "Downloads four native artifacts by name from the current run, then copies the already restored common npm root. Availability/data edges only; upstream native-product acceptance supplies required job success separately. Names do not pin immutable artifact IDs; migration to the authenticated artifact set remains required.",
-      "runSha256": "2dbdc39352c3e07d6541de8c9817282c9dcdfb1d7d3a03af50cc6f6f29866a58",
-      "helpers": [],
-      "requiresWorkflowSuccess": []
-    },
-    {
-      "workflow": "ci.yml",
-      "job": "recover-publish",
-      "step": "Authenticate the source run and rerun its original trusted publisher",
-      "helpers": [
-        {
-          "filename": "scripts/release/select-recovery-publisher.cjs",
-          "sha256": "ae7165c48bf13d23c5579d329d52504b7c27d5f55d3442ccdcd28c9735107f44"
-        }
-      ],
-      "requiresJobSuccess": [
-        "ci.yml#linux-x64",
-        "ci.yml#linux-arm64",
-        "ci.yml#macos-arm64",
-        "ci.yml#windows-x64",
-        "ci.yml#macos-sign",
-        "ci.yml#numerical-browser-qualification",
-        "ci.yml#numerical-release-gate"
-      ],
-      "effects": [
-        {
-          "kind": "rerun-job",
-          "target": "ci.yml#publish-release"
-        }
-      ],
-      "semantics": "Authenticates a completed tagged CI source run and matching source/tag/checkout SHA, selects each named producer latest exact occurrence and requires success, then POSTs the unsuccessful publisher job rerun. Does not require whole CI success and does not wait for or prove rerun success. Different source job attempts may be selected by this legacy helper.",
-      "runSha256": "a00dd44566e82e8ccd89e3dcda5af17c1f68b75cb572b89448dfdeba8626bd1b",
-      "requiresWorkflowSuccess": []
-    },
-    {
       "workflow": "protect-latest-release.yml",
       "job": "protect-latest-product-release",
       "step": "Keep infrastructure and evidence releases out of latest",
@@ -263,16 +64,25 @@
     {
       "workflow": "publish-validated-release.yml",
       "job": "request",
-      "step": "Dispatch the trusted CI workflow at the exact release tag",
+      "step": "Dispatch the exact prepared request to the trusted CI workflow",
       "effects": [
         {
           "kind": "dispatch",
-          "target": "ci.yml#recover-publish"
+          "target": "ci.yml#publish-prepared"
         }
       ],
-      "semantics": "Checks input shape then dispatches ci.yml at the requested release tag with recovery inputs. It does not authenticate that source run or await publication; the dispatched recover-publish job performs source authentication. Dispatch is an effect, not a completion dependency.",
-      "runSha256": "1ae87ee0378d4f360cdba09a4c73714ff5282411f9b7206a5d79a3937b3d8d05",
-      "helpers": [],
+      "semantics": "Validates the immutable prepared request and dispatches the npm-trusted CI workflow at its exact tag. Dispatch is not proof of completion; the consumer independently authenticates all artifact pins and product gates before publication.",
+      "runSha256": "fb1dc191f3c82315fdb2785afe3ef6d76d4bb68cc77f2a0f8e59f1e321c8eaf4",
+      "helpers": [
+        {
+          "filename": "scripts/release/request-prepared-publication.cjs",
+          "sha256": "6cb4d4dc979ba5acd3a6c5148e06484738a049c1d2ea09706711c665b0844a07"
+        },
+        {
+          "filename": "scripts/release/publish-prepared.cjs",
+          "sha256": "2e7fd0d9412bb274b1d4c82cdeb472002c92112edbd4a0000efa8c903345f243"
+        }
+      ],
       "requiresWorkflowSuccess": []
     },
     {

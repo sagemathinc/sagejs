@@ -121,10 +121,10 @@ test("native acceptance covers every release producer and never accepts a missin
   const jobs = parseWorkflow(fs.readFileSync(path.join(root, filename), "utf8"), filename).jobs;
   const gate = jobs["native-product-acceptance"];
   assert.equal(gate.name, boundaries.native.job);
-  assert.equal(gate.if, "${{ always() && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) }}");
+  assert.equal(gate.if, "${{ always() && !inputs.prepared_request && !inputs.publish_prepared && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) }}");
   assert.equal(gate["continue-on-error"] ?? false, false);
   assert.deepEqual([...gate.needs].sort(), [...nativePrerequisites].sort());
-  const excluded = ["platform-smoke", "publish-release", "recover-publish", "native-product-acceptance"];
+  const excluded = ["platform-smoke", "verify-prepared", "publish-prepared", "native-product-acceptance"];
   assert.deepEqual(Object.keys(jobs).filter((id) => !excluded.includes(id)).sort(), [...nativePrerequisites].sort());
   for (const id of nativePrerequisites) assert.equal(jobs[id]["continue-on-error"] ?? false, false, id);
   const steps = gate.steps.filter((step) => step.name === requiredStep);
@@ -153,6 +153,7 @@ test("native acceptance covers every release producer and never accepts a missin
   });
   assert.equal(cli.status, 0, cli.stderr);
   assert.equal(JSON.parse(cli.stdout).product, "native");
-  // Add the complete producer boundary without removing the old numerical gate.
-  assert.deepEqual(jobs["publish-release"].needs, ["numerical-release-gate", "native-product-acceptance"]);
+  // Publication now authenticates this aggregate through the frozen handoff.
+  assert.equal(jobs["publish-release"], undefined);
+  assert.equal(jobs["publish-prepared"].environment, "sagejs-release");
 });

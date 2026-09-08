@@ -25,9 +25,24 @@ qualification remains meaningful.
    persistent `bench-1` (Linux x64), `bench-arm` (Linux ARM64), `m1` (macOS
    ARM64), and `windows` (native Windows x64) hosts. Reuse their native and
    compiler caches. Iterate here until all four hosts pass.
-3. **Clean release CI** rebuilds from authenticated sources on GitHub-hosted
-   runners, checks reproducibility, signs artifacts, and publishes them. Run it
-   once for a candidate which already passed cached qualification.
+3. **Clean qualification CI** rebuilds from authenticated sources on GitHub-hosted
+   runners, checks reproducibility, and signs artifacts before tagging.
+   Capture the successful product artifacts in an immutable handoff. Publication
+   consumes that handoff; it does not rebuild it.
+
+### Publication and recovery entry point
+
+Tag pushes no longer start native or Wasm release producers. After qualification,
+use the prepared-artifact verification and publication instructions below.
+The only CI publisher is `publish-prepared`, protected by `sagejs-release`
+and the shared publication lock. It authenticates the complete frozen handoff,
+independent macOS inspection, and numerical evidence before any publication.
+
+`publish-validated-release.yml` is a dispatch-only convenience wrapper accepting
+the same `prepared_request` JSON. Recovery submits that exact request again:
+the consumer reauthenticates its inputs and reconciles public state. It must not
+select a newer run, download artifacts by name, or rerun a producer job.
+The legacy `publish-release` and `recover-publish` jobs are retired.
 
 Do not use immutable tags as the edit/test loop. A late failure in a clean
 four-platform build can otherwise cost an hour and require another tag even
@@ -88,7 +103,7 @@ declared producer artifact names require review.
 For example, inspect the potential dependency path without running any jobs:
 
 ```sh
-pnpm release:inventory --path 'ci.yml#publish-release' 'wasm-release.yml#browser-performance'
+pnpm release:inventory --path 'ci.yml#publish-prepared' 'wasm-release.yml#browser-performance'
 ```
 
 This is a conservative potential graph, not a GitHub expression interpreter.
@@ -161,23 +176,24 @@ trusted source selection, exact artifact/signature checks and raw numerical
 evidence reconstruction remain mandatory. Consumer tests require every product
 ancestor while proving reporting is no longer a publication/deployment ancestor.
 
-The native v1 aggregate runs on tags and explicit full pre-tag candidates even
+The native v1 aggregate runs on explicit full pre-tag candidates even
 if prerequisites fail. It
 asserts all ten release producer jobs explicitly: routine validation, numerical
 runtime, shared npm/browser root, four native builds, macOS signing, browser
 numerical evidence and the final reconstructed numerical gate. The publisher
-requires this aggregate in addition to its existing numerical gate. A partial
+authenticates this aggregate through the frozen handoff, alongside the numerical gate. A partial
 manual campaign cannot produce release acceptance. Smoke-only, publication and
 recovery jobs are deliberately outside the producer aggregate. Both native and
 browser prerequisite assertions require an explicit product kind; tests bind
 their exact workflow dependencies and reject missing/skipped/failed producers.
 External publisher/deployer job inspection now uses these aggregates. The
-publisher checks the newest exact-tag browser run, not an older successful run.
+publisher authenticates the exact browser run pinned in the handoff, not the newest run.
 App admission now consumes their frozen artifact handoff; immediately before
 activation it reauthenticates that historical handoff and checks selected input
 bytes. A newer producer/publisher attempt does not replace pinned evidence.
 Legacy successful runs without the v1 aggregates cannot create this handoff.
-Legacy publisher migration and a real candidate trial remain.
+The legacy publisher is retired. A real candidate trial remains required to
+prove publication and interrupted recovery end to end.
 
 ### Prepared-artifact verification and publication
 

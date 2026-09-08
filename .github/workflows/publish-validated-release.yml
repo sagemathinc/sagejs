@@ -1,14 +1,10 @@
-name: Request validated release publication recovery
+name: Request prepared release publication or recovery
 
 on:
   workflow_dispatch:
     inputs:
-      source_run_id:
-        description: Completed tagged Sage.js CI run whose publisher should be rerun
-        required: true
-        type: string
-      release_tag:
-        description: Immutable release tag built by source_run_id
+      prepared_request:
+        description: Exact frozen artifact and macOS inspection request JSON
         required: true
         type: string
 
@@ -18,28 +14,21 @@ permissions:
 
 jobs:
   request:
-    name: Request recovery through the npm-trusted CI workflow
+    name: Request prepared publication through the npm-trusted CI workflow
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - name: Dispatch the trusted CI workflow at the exact release tag
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+      - name: Install request validation dependencies without building products
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Dispatch the exact prepared request to the trusted CI workflow
         env:
           GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
-          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
-        run: |
-          [[ "$SOURCE_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
-            echo "source_run_id must be a positive Actions run ID" >&2
-            exit 1
-          }
-          [[ "$RELEASE_TAG" == v* ]] || {
-            echo "release_tag must be a release tag" >&2
-            exit 1
-          }
-          gh workflow run .github/workflows/ci.yml \
-            --repo "$GH_REPO" \
-            --ref "$RELEASE_TAG" \
-            -f recovery_run_id="$SOURCE_RUN_ID" \
-            -f recovery_tag="$RELEASE_TAG" \
-            -f platform_smoke=false \
-            -f native_targets=all
+          PREPARED_REQUEST: ${{ inputs.prepared_request }}
+        run: node scripts/release/request-prepared-publication.cjs
