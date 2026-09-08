@@ -46,6 +46,13 @@ presentation is full rank, with index 8, but that alone does not establish
 completeness. The accepted effort retains twelve factor-base ideals and twenty
 proof relations.
 
+There is also a precise implementation boundary: the current internal staged
+certification guard requires at most eleven factor-base ideals. This field has
+twelve, so effort five follows the one-shot route and recovery occurs in a
+second host-dispatched native call. Extending the resident staged regime is a
+candidate investigation, not yet a justified change to that guard or its
+resource envelope.
+
 A separate local instrumented PARI 2.17.4 trace, with `setrand(1)` and debug
 level 4, reports twelve ideals, a final $12\times18$ relation matrix, and
 regulator approximately $14.16281816524754$. Its small-norm summary is 15
