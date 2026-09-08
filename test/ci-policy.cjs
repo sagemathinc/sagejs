@@ -12,7 +12,23 @@ const workflow = readFileSync(
 );
 
 test("routine CI cancels superseded runs and fails the platform matrix fast", () => {
-  assert.match(workflow, /cancel-in-progress: true/);
+  const { parseWorkflow } = require("../scripts/release/workflow-inventory.cjs");
+  const parsed = parseWorkflow(workflow, "ci.yml");
+  const expression = parsed.concurrency["cancel-in-progress"];
+  assert.equal(typeof expression, "string");
+  const evaluate = Function("github", "inputs", "startsWith",
+    `return (${expression.slice(3, -2)});`);
+  for (const [ref, publish_prepared, expected] of [
+    ["refs/heads/main", false, true],
+    ["refs/pull/123/merge", false, true],
+    ["refs/tags/v0.8.0", false, false],
+    ["refs/heads/release-candidate", true, false],
+    ["refs/tags/v0.8.0", true, false],
+  ]) {
+    assert.equal(evaluate({ ref }, { publish_prepared }, (s, prefix) => s.startsWith(prefix)),
+      expected, `cancellation policy for ${ref}, publication=${publish_prepared}`);
+  }
+  assert.equal(parsed.jobs["publish-prepared"].concurrency["cancel-in-progress"], false);
   assert.match(workflow, /^  routine:/m);
   assert.match(workflow, /^  platform-smoke:/m);
   assert.match(workflow, /fail-fast: true/);
