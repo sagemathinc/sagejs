@@ -77,6 +77,137 @@ return class groups of orders 5, 2 and 3 for $x^3+9x-55$,
 $x^3-x^2+3x-4$ and $x^3-x^2-11x-63$, respectively, with authenticated receipts
 and successful independent exact replay.
 
-Controlled performance measurements are pending. Local timings overlapping
-other validation jobs are not performance evidence. This is not a new
-1,000-field corpus or browser qualification.
+## Controlled constructor measurement
+
+On the dedicated `opt` VM, commit `8fa831438` uses Node 26.8.1, CPU-0
+affinity and one-thread numerical-library limits. The retained
+`diagnose-number-field-construction.py` driver prepares the polynomial
+$x^3-x^2-11x-63$, warms each operation 30 times, and measures eleven rounds
+of 128 calls, alternating forward/reverse operation order. Startup is outside
+the timers. No class number is computed in this experiment.
+
+| Boundary | Previous median ms | New median ms | New range of batch means |
+| --- | ---: | ---: | ---: |
+| `p.factor()` | 0.764686 | 0.893122 | 0.709664–1.277754 |
+| `p.is_irreducible()` | 2.995336 | 0.088120 | 0.082360–0.266534 |
+| `NumberField(p, "a")` | 3.710720 | 0.660816 | 0.535496–0.978938 |
+| `str(p)` | 0.105460 | 0.093490 | 0.084960–0.172014 |
+
+The previous measurements are the separate `ca2e588b5` run recorded in the
+[constructor diagnosis](cubic-constructor-costs.md), whose constructor and
+polynomial implementations remained unchanged through `35af5d123`.
+This is not a paired, randomized two-revision experiment. The unchanged
+factorization boundary also shows run-to-run variation; do not attribute
+every difference to the new predicate. The large irreducibility and
+constructor improvements agree with the removed work and the earlier profile.
+These boundaries are not disjoint phases and their medians must not be
+subtracted as an exact cost decomposition.
+
+Local timings overlapping validation jobs are excluded. This is not a new
+1,000-field corpus or browser qualification, nor by itself a public
+class-number performance claim.
+
+## Whole-public-path measurement
+
+The retained five-boundary driver also completes eleven rounds on opt at
+`8fa831438`, alternating Sage.js and PARI 2.17.4 process order. All 7,040
+timed Sage.js results authenticate after timing; 66 sampled receipts replay
+independently, including warmups. The mathematical target remains
+$x^3-x^2-11x-63$ with class group $C_3$. The source and production-pack hashes
+are checked before and after the run.
+
+| Boundary | Previous `ca2e588b5` median ms | Current median ms | Current range |
+| --- | ---: | ---: | ---: |
+| Sage.js prepared field | 3.236846 | 3.497362 | 3.355848–3.593428 |
+| Sage.js expression + field + public order + class number | 24.347214 | 21.454488 | 21.199512–21.724606 |
+| Sage.js expression + field + class number | 19.514130 | 16.037290 | 15.870908–16.664338 |
+| Sage.js coefficient vector + field + public order + class number | 11.490664 | 8.442392 | 8.047538–8.835352 |
+| Sage.js coefficient vector + field + class number | 8.260848 | 5.165022 | 4.126332–5.804804 |
+| PARI prepared `nf` + `bnfinit` | 0.765625 | 0.773438 | 0.757813–0.804688 |
+| PARI coefficient vector + `bnfinit` | 1.210938 | 1.210938 | 1.195313–1.250000 |
+
+See [the original boundary definitions](cubic-public-target-boundaries.md).
+These are separate-revision runs, not an isolated test of the predicate:
+native analytic-index and bit-length changes also intervene. In particular,
+the prepared-field median is **8.0% slower**, despite the fresh-path gains.
+Do not hide that regression or attribute it without a same-runtime control.
+The fresh coefficient-vector path is about 4.27 times PARI here, not a PARI
+win. Its appreciable within-run variation also limits small speed claims.
+
+## Same-runtime control
+
+`diagnose-irreducibility-public-ab.py` restores the old reconstruction
+formula by replacing the new module-level predicate **only in a diagnostic
+process**. It does not change production dispatch or mathematical bounds.
+The `metadata` mode uses the unmodified production predicate. The companion
+runner alternates these modes over eleven paired rounds on CPU 0, using
+the same `8fa831438` runtime and native pack. Each process checks one warmup
+and two batches of 128 fields, authenticating every timed result and
+independently replaying the warmup and last receipt of each batch.
+
+| Boundary | Reconstruction median ms | Metadata median ms | Geometric mean paired metadata/reconstruction ratio |
+| --- | ---: | ---: | ---: |
+| Prepared field | 3.270580 | 3.413950 | 1.037694 |
+| Coefficient vector + field + class number | 7.745978 | 4.653040 | 0.602494 |
+
+All 5,632 timed results authenticate and all 66 sampled replays pass. The
+fresh path improves in all eleven pairs. The prepared path is slower in ten
+of eleven pairs, so the regression cannot simply be dismissed as unrelated
+revision drift. This control has two boundaries, not the five-boundary
+driver's entire process history; their absolute timings are not interchangeable.
+
+The original protocol has only one class-number warmup. Extra arithmetic in
+the old constructor might have warmed shared runtime code before the prepared
+timer. The driver therefore also supports a separately reported experiment
+with equal additional class-number warmups. This tests a hypothesis; it does
+not retroactively replace the original timings or redefine their acceptance.
+
+With 128 additional class-number warmups **in each mode**, the full eleven
+paired rounds give:
+
+| Boundary | Reconstruction median ms | Metadata median ms | Geometric mean paired ratio |
+| --- | ---: | ---: | ---: |
+| Prepared field | 2.972450 | 3.070240 | 1.027789 |
+| Coefficient vector + field + class number | 7.813640 | 4.534810 | 0.584223 |
+
+All 5,632 timed results authenticate; all 88 sampled independent replays pass,
+including the last additional warmup in each process. Fresh computation is
+faster in all eleven pairs, but prepared computation remains slower in nine.
+The first pair was almost equal; it would have been misleading to conclude
+from that pair that warmup resolved the regression. Equal warmup improves
+both modes' prepared medians but does **not** eliminate the loss.
+
+This is therefore a measured tradeoff, not a regression-free qualification:
+about 40–42% less fresh-path time, with about 3–4% more prepared-path time in
+the paired controls. The remaining prepared-path cause is unresolved. Native
+mathematics is unchanged between these modes, but construction can influence
+resource-cache, allocation and runtime-optimization state. Those are possible
+mechanisms to profile, not established explanations. PR190 remains draft;
+the broader current-source corpus and unseen-neighbor gates remain outstanding.
+
+## Reproducible evidence
+
+The production revision is `8fa8314380bfd36d14498264160d7733f8cbe7b0`.
+The native cubic source SHA-256 is
+`678630a3a68b436e71a34966576baa71a1fe6b645ec5f845cabb4f94cdef2447`
+and the production pack SHA-256 is
+`9b8c2f7d3ac1529fd11d44a31104ed3599796aea566c9dcddadb53e1561d6262`;
+both are unchanged by the predicate implementation. The optimizer evidence
+is published in its
+[content-addressed auxiliary release](https://github.com/sagemathinc/sagejs/releases/tag/optimizer-evidence-campaign-1-d887ac313c36b7209f58b0e8e095b23f303c1cbd072f44d46557516e869d4a4b-d9877c4a348bccd5).
+
+For the same-runtime control, copy
+`bench/class-unit-groups/diagnose-irreducibility-public-ab.py` into a fresh
+output directory. Run the companion `.cjs` through the pinned Node binary
+with arguments `BUILT_ROOT OUTPUT_DIRECTORY EXTRA_WARMUPS`, under CPU-0
+affinity. Use `0` for the original control and `128` for the separate
+equal-warmup experiment. The runner records source, pack and Python-driver
+hashes, retains stdout/stderr, and rejects failed assertions or changed
+source identity. Its baseline override is not a supported production API.
+
+Raw per-process output, the exact diagnostic scripts used in both runs,
+environment hashes, aggregate timings, build and test logs are retained in
+the [auxiliary measurement release](https://github.com/sagemathinc/sagejs/releases/tag/cubic-irreducibility-8fa831438-20260908).
+The initial zero-extra-warmup run used the script before the optional warmup
+parameter was added; that original script is included in the raw archive.
+This release is evidence, not a product release or a performance promotion.

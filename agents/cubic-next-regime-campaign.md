@@ -130,7 +130,20 @@ The [constructor profile](../docs/cubic-constructor-costs.md) now measures
 factorization at 0.765 ms, irreducibility at 2.995 ms and field construction
 at 3.711 ms on opt. Local sampling attributes 84% of constructor samples to
 irreducibility, with substantial reconstruction and resource-cache costs.
-Implement a direct rational irreducibility predicate from existing exact
-factor metadata next; investigate identity-indexed resource-cache LRU
-separately. The twenty preregistered neighbors remain outside these
-development experiments.
+The [metadata-only rational predicate](../docs/rational-irreducibility-metadata.md)
+is now implemented in `8fa831438`, with scoped factor ownership and the
+resource-unavailable fallback retained. On opt, the same constructor driver
+measures irreducibility at 0.088 ms and field construction at 0.661 ms.
+These are separate-run medians, not a paired experiment or a native-kernel
+speedup. Public order-5, order-2 and order-3 receipts independently replay;
+current-source whole-public-path timing and same-runtime controls are recorded
+in that document. Fresh computation improves about 40–42% in paired controls,
+but the prepared path loses 3–4%, including after equal additional warmup.
+Profile that remaining regression before claiming no speed loss. Resource-cache,
+allocation and runtime-optimization state are hypotheses, not established causes.
+Investigate identity-indexed resource-cache LRU separately if current profiling
+supports it, preserving eviction and exception semantics and the existing
+64-resource bound. Owned
+FFI `with` lowering is an explicit compiler limitation, not a feature of the
+current ordinary-Python predicate. The twenty preregistered neighbors remain
+outside these development experiments.
