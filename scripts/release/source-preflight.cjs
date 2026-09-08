@@ -69,7 +69,9 @@ function inspectSourcePreflight({ root, stages = [] }) {
       record.expectedCommit = match[1];
       requireRegularPath(root, name, true);
       const moduleRoot = path.join(root, name);
-      if (fs.realpathSync(git(moduleRoot, ["rev-parse", "--show-toplevel"])) !== fs.realpathSync(moduleRoot)) {
+      // Windows' JS realpath preserves caller casing (and may retain DOS path
+      // aliases). Compare native canonical paths, not their input spellings.
+      if (fs.realpathSync.native(git(moduleRoot, ["rev-parse", "--show-toplevel"])) !== fs.realpathSync.native(moduleRoot)) {
         throw new Error("submodule is not initialized");
       }
       record.actualCommit = git(moduleRoot, ["rev-parse", "HEAD"]);

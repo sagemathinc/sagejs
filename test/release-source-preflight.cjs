@@ -63,6 +63,19 @@ test("an empty uninitialized module cannot masquerade as the parent repository",
   assert.throws(() => requireSourcePreflight({ root, stages }), { code: "RELEASE_SOURCE_PREFLIGHT" });
 });
 
+test("Windows path spelling does not make an initialized module look missing", {
+  skip: process.platform !== "win32",
+}, (t) => {
+  const { root, moduleRoot } = fixture(t);
+  const alternateRoot = root.toUpperCase();
+  assert.equal(fs.realpathSync.native(alternateRoot), fs.realpathSync.native(root));
+  const report = requireSourcePreflight({ root: alternateRoot, stages });
+  assert.equal(report.submodules[0].actualCommit, report.submodules[0].expectedCommit);
+  // Canonicalization must not weaken the tracked-source check.
+  fs.writeFileSync(path.join(moduleRoot, "grammar.js"), "modified\n");
+  assert.match(inspectSourcePreflight({ root: alternateRoot, stages }).failures[0], /modified tracked source/);
+});
+
 test("modified, missing and different-revision parser source fails inspection", (t) => {
   const { root, moduleRoot } = fixture(t);
   const filename = path.join(moduleRoot, "grammar.js");
