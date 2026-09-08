@@ -147,3 +147,11 @@ supports it, preserving eviction and exception semantics and the existing
 FFI `with` lowering is an explicit compiler limitation, not a feature of the
 current ordinary-Python predicate. The twenty preregistered neighbors remain
 outside these development experiments.
+
+The [prepared-path follow-up](../docs/cubic-prepared-regression-investigation.md)
+repeats the warmed loss at 2.5% in all eleven uninstrumented pairs, but does
+not reliably localize it with instrumentation. The host square-root loop is
+only about 0.5% of prepared samples. Native time remains about 2.24 ms for the
+known target, so host cleanup alone cannot match its roughly 1.21 ms PARI
+fresh boundary. Keep the small regression open, and return the main campaign
+to current-source frozen-corpus structural slowdowns and multi-stage declines.

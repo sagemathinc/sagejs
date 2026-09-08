@@ -185,6 +185,10 @@ resource-cache, allocation and runtime-optimization state. Those are possible
 mechanisms to profile, not established explanations. PR190 remains draft;
 the broader current-source corpus and unseen-neighbor gates remain outstanding.
 
+The [follow-up investigation](cubic-prepared-regression-investigation.md)
+repeats the uninstrumented warmed loss at 2.5% in all eleven pairs. Instrumented
+phase ledgers do not localize it consistently; the cause remains unresolved.
+
 ## Reproducible evidence
 
 The production revision is `8fa8314380bfd36d14498264160d7733f8cbe7b0`.
