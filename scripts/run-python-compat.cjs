@@ -40,6 +40,10 @@ function isolatedEnvironment(scratch, ambient = process.env) {
     APPDATA: scratch, LOCALAPPDATA: scratch, XDG_CACHE_HOME: scratch,
     TMPDIR: scratch, TEMP: scratch, TMP: scratch,
     LANG: "C.UTF-8", LC_ALL: "C.UTF-8", TZ: "UTC", PYTHONHASHSEED: "0",
+    // Assertion fixtures promise no subprocesses. Advisory cache maintenance
+    // would otherwise spawn a detached janitor after two seconds, retaining
+    // the fixture CWD on Windows after the asserted process has exited.
+    SAGEJS_MODULE_CACHE_AUTO_CLEANUP: "0",
     PYTHONDONTWRITEBYTECODE: "1" };
 }
 

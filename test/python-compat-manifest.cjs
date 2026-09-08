@@ -111,9 +111,12 @@ test("isolated environments omit credentials, user import paths, and preload hoo
     PATH: "executable-path", SystemRoot: "windows-root", HOME: "real-home",
     NPM_TOKEN: "fake-secret", PYTHONPATH: "poison", NODE_OPTIONS: "--require poison",
     LD_PRELOAD: "poison", SAGEJS_EXECUTABLE_NAME: "sagejs",
+    SAGEJS_MODULE_CACHE_AUTO_CLEANUP: "1",
   });
   assert.equal(environment.PATH, "executable-path");
   assert.equal(environment.HOME, "scratch");
+  assert.equal(environment.SAGEJS_MODULE_CACHE_AUTO_CLEANUP, "0",
+    "no-subprocess assertions must not launch detached cache maintenance");
   for (const name of ["NPM_TOKEN", "PYTHONPATH", "NODE_OPTIONS", "LD_PRELOAD", "SAGEJS_EXECUTABLE_NAME"]) {
     assert.equal(environment[name], undefined);
   }

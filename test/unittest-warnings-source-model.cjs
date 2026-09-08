@@ -20,7 +20,8 @@ function python(args) {
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(result.stderr, "");
-  assert.equal(result.stdout, expected);
+  // CPython text stdout uses CRLF on native Windows.
+  assert.equal(result.stdout.replace(/\r\n/g, "\n"), expected);
 }
 
 test("warning assertion fixture agrees with CPython unittest", () => {
