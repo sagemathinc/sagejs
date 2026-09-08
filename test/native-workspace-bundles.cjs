@@ -10,6 +10,7 @@ const { spawnSync } = require("node:child_process");
 const { readFileSync } = require("node:fs");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const { removeLoadedNativeCache } = require("./helpers/native-cache-cleanup.cjs");
 
 const prefix = `
 from sagejs.native import native, NativeWorkspace, NativeExactArena, NativeIntegerVector
@@ -25,7 +26,7 @@ def update(scratch: Scratch, value: int) -> int:
 
 test("workspace parameters erase into identity-preserving native borrows", async t => {
   const directory = mkdtempSync(join(tmpdir(), "native-workspace-"));
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  t.after(() => removeLoadedNativeCache(directory));
   const sourcePath = join(directory, "workspace.py");
   writeFileSync(sourcePath, prefix + `
 @native
@@ -213,7 +214,7 @@ def witness(value: int) -> int:
 
 test("workspace bundles combine FFI matrices and arena vectors", async t => {
   const directory = mkdtempSync(join(tmpdir(), "native-workspace-ffi-"));
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  t.after(() => removeLoadedNativeCache(directory));
   const sourcePath = join(directory, "workspace.py");
   writeFileSync(sourcePath, `
 from sagejs.native import native, NativeWorkspace, NativeExactArena, NativeIntegerVector

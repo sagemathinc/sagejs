@@ -9,6 +9,7 @@ const { mkdtempSync, readFileSync, writeFileSync, rmSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const { removeLoadedNativeCache } = require("./helpers/native-cache-cleanup.cjs");
 
 test("ordinary Sage.js execution uses the current slice fallback", { timeout: 120000 }, t => {
   const source = readFileSync(resolve(__dirname, "../src/lib/sagejs/native.py"), "utf8") + `
@@ -38,7 +39,7 @@ print("sagejs-slice-fallback-ok")
 
 test("compiled fixed slices snapshot overlapping exact values", async t => {
   const directory = mkdtempSync(resolve(tmpdir(), "native-slice-"));
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  t.after(() => removeLoadedNativeCache(directory));
   const sourcePath = resolve(directory, "slice.py");
   writeFileSync(sourcePath, `
 from sagejs.native import native, NativeExactArena, NativeIntegerVector, uint64
