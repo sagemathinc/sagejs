@@ -117,8 +117,8 @@ Strict Python checks pass for all 382 configured modules. The complete
 architecture check passes after regenerating the source-bound optimizer
 dashboard through its canonical analysis pipeline. The focused suite
 passes 23 tests, including address/undefined-behavior sanitizer coverage for
-word magnitudes, promoted tagged values and in-place replacement. The native compiler
-end-to-end suite `node test/native-kernel.cjs` also passes. The native compiler
+word magnitudes, promoted tagged values and in-place replacement. The native
+compiler end-to-end suite `node test/native-kernel.cjs` also passes. The native compiler
 test-directory run has 68 passes, three failures and one skipped Wasm test
 (toolchain unavailable). The three failures reproduce with the baseline
 compiler and baseline mathematical source: the old 59-child checkpoint
@@ -140,6 +140,13 @@ this rebuild. Full public/corpus performance qualification and the reserved
 unseen holdout remain outstanding.
 
 ## Evidence identities
+
+The raw measurements and replay evidence are published in the
+[immutable cubic evidence release](https://github.com/sagemathinc/sagejs/releases/tag/cubic-bit-length-3e60b3117-20260908).
+Regenerated source-bound query artifacts are published in the separate
+[optimizer evidence release](https://github.com/sagemathinc/sagejs/releases/tag/optimizer-evidence-campaign-1-7cbb18ea6f7d30afd91d2cf0e7c0f1c1d21f80754e19e39635d0837ad6352aec-8a3f350085367388).
+Both are auxiliary research releases, not product releases or performance
+promotions. They target implementation commit `3e60b3117`.
 
 Candidate Python SHA-256:
 `678630a3a68b436e71a34966576baa71a1fe6b645ec5f845cabb4f94cdef2447`.
