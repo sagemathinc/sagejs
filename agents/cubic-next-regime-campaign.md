@@ -155,3 +155,12 @@ only about 0.5% of prepared samples. Native time remains about 2.24 ms for the
 known target, so host cleanup alone cannot match its roughly 1.21 ms PARI
 fresh boundary. Keep the small regression open, and return the main campaign
 to current-source frozen-corpus structural slowdowns and multi-stage declines.
+
+The [full staged diagnostic](../docs/cubic-full-staged-discovery.md) now accepts
+all 1,012 frozen records with correct class numbers and invariants. All 64
+fixed-effort-five declines recover under the existing retry policy. The first
+retry by discriminant, $x^3-x^2-7x+122$, lacks a unit witness in its initial
+native attempt; PARI finds one and actually uses a larger residue cutoff. Focus
+next on the retained relation/unit information, not on reducing an analytic
+bound that the failing attempt has not yet reached. Repeat controlled timings
+before quoting a speed ratio. This diagnostic is not a new public replay gate.
