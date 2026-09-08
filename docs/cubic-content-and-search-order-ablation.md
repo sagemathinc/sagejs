@@ -1,8 +1,8 @@
 # Cubic generator content and search-order ablations
 
 These experiments follow the [missing-unit forensics](cubic-missing-unit-search-forensics.md).
-They change source copies, not production mathematics, certification rules, or
-resource limits. All corpus runs are fixed-effort-five development diagnostics;
+The measurements below used isolated source copies, without changing
+certification rules or resource limits. All corpus runs are fixed-effort-five development diagnostics;
 the twenty reserved unseen neighbors remain unexecuted.
 
 ## Content normalization
@@ -33,6 +33,80 @@ prefix is retained, so no unconditional claim of identical coverage or
 performance follows. Exact class-group completeness and unit certification
 remain necessary and unchanged. The experiment does not prove its own
 performance benefit from this algebraic identity.
+
+### Production-source integration
+
+The production candidate now applies only content normalization, before the
+first norm computation in `_cubic_append_smooth_principal_relation`. It does
+not adopt the radius or ordering experiments below. A generator need not
+remain in the originally searched ideal after division: the collector uses
+that ideal only to propose elements and authenticates the resulting principal
+ideal afresh. No ideal-membership assumption from the search is reused.
+
+`test/number-field-cubic-content-normalization.cjs` extracts the actual
+production functions and checks 5,332 coordinate cases in ordinary CPython,
+including alternative coordinates for the identity and integers exceeding
+machine-word size. It also checks normalized unit publication, rejected
+admission, and full-capacity behavior. Its norm stub deliberately tests the
+authentication boundary; it is not an independent ideal-arithmetic proof.
+
+The historical ablation builder rejects already normalized source, preventing
+accidental double application. Reproduce the tables from the pre-integration
+commit `7106b4d3a5b30e842b10aac455badee8ef99856a` and its archived source copies.
+The formatted production candidate has a different source identity; the
+historical timings must not be presented as timings of its rebuilt artifact.
+
+The integrated source SHA-256 is
+`36207abd693f4736f3cbb64e41418aea8e0a3a2c7243bb21fd6ebd588c53e8fa`.
+Its freshly compiled native function reproduces **every output slot** of the
+isolated content experiment on all 1,012 development fields: 957 first-attempt
+acceptances, 55 declines, and zero exceptions. Every accepted class number and
+invariant list agrees with the frozen corpus. This is still a fixed-effort
+native diagnostic, not public receipt/replay qualification.
+
+A separate controlled `opt` run of this integrated artifact uses the same
+seven-round protocol below, with only baseline and integrated content as the
+native implementations. Median milliseconds are:
+
+| Polynomial | Baseline | Integrated content | PARI | Paired candidate/baseline |
+| --- | ---: | ---: | ---: | ---: |
+| $x^3-x^2-7x+122$ | 9.3136 | 9.2148 | 1.5391 | 0.9888 |
+| $x^3+9x-55$ | 1.7770 | 1.8040 | 1.1836 | 1.0152 |
+| $x^3-x^2+3x-4$ | 1.3052 | 1.3059 | 1.0117 | 1.0048 |
+| $x^3-x^2-11x-63$ | 2.2174 | 2.2338 | 1.2188 | 1.0076 |
+
+This shows small mixed timing changes, not a universal no-regression result
+or a PARI win. Public construction and certificate replay remain excluded.
+
+The nine development fields newly accepting on the first attempt were then
+timed separately with the same protocol and existing retry sequence. This is
+an explicitly selected gain cohort, not an unbiased corpus timing sample or
+an unseen holdout. All class numbers and invariants were checked for both
+native implementations and PARI in each timing sample.
+
+| LMFDB label | Baseline ms | Integrated content ms | PARI ms | Paired candidate/baseline |
+| --- | ---: | ---: | ---: | ---: |
+| `3.1.891027.1` | 10.3658 | 4.3440 | 1.6875 | 0.4191 |
+| `3.1.1682879.4` | 12.0089 | 5.7920 | 2.2188 | 0.4808 |
+| `3.1.2461516.2` | 11.8591 | 5.3762 | 1.6875 | 0.4518 |
+| `3.1.2481388.1` | 8.9354 | 2.6212 | 1.5234 | 0.2927 |
+| `3.1.2518408.1` | 14.2109 | 6.0514 | 1.7422 | 0.4268 |
+| `3.1.3312571.1` | 13.8138 | 5.7322 | 1.6797 | 0.4124 |
+| `3.1.13725963.1` | 13.0008 | 6.4254 | 1.5039 | 0.4932 |
+| `3.1.25528932.3` | 16.6647 | 6.8388 | 1.7500 | 0.4104 |
+| `3.1.55754163.2` | 13.4285 | 5.1386 | 1.7344 | 0.3827 |
+
+Avoiding the later attempt gives about 2.0–3.4 times speedup on this selected
+cohort. PARI remains faster on every member.
+
+The package occupies 484,680 of its unchanged 485,000 source-byte allowance.
+The generated core contains 192,428 lines versus 192,192 in the isolated
+baseline. Raw byte counts are misleading across these differently located
+source files: source provenance repeats the absolute path over 65,000 times.
+For comparison only, replacing each source path by the same `SOURCE.py` token
+gives 11,278,598 versus 11,266,169 bytes (about 0.11% growth); actual artifacts
+retain full provenance. Both Linux addons occupy 20,390,672 bytes, with
+different content hashes. No arena or search-resource limit was increased.
 
 The ordinary-Python source-fragment test covers 1,333 signed, zero, scalar,
 primitive, nonprimitive, and large-integer cases. Native development calls
@@ -167,6 +241,50 @@ manifests, and the exact timing driver used on `opt`. Archive SHA-256:
 `0abeb9c7e3ca56bc56d7a6c02cbaa6bbb4ef615e606485ff18b2958e4561c1ca`.
 
 Focused tests and `pnpm architecture:check` pass. The inherited 395-live-task
-ambiguity still prevents `pnpm parallel:check` from passing. No current-source
-public receipts, independent replay, holdout run, or cross-platform release
-qualification is claimed.
+ambiguity still prevents `pnpm parallel:check` from passing.
+
+## Integrated public qualification
+
+The rebuilt production pack has key
+`dfcc3519db9a6f7271f95a2ba276af32c7b496c6bda0fefb9f29b5f4f3067df2`
+and selects native cache key
+`9237060753265bc73ac3e5b7789bcbf66ca5c37da9fedec5d15ced02238b0310`.
+Both authenticate the integrated source hash recorded above.
+
+All **1,000 tune fields** pass public `class_number(proof=False)`, agreement
+with the frozen class numbers and invariants, receipt authentication, and
+independent ordinary-object exact replay. The run uses four serial batches
+and checks the canonical runtime-file fingerprint before and after each.
+It is a local correctness diagnostic with inherited environment and forced
+production native execution, **not** the hermetic `opt` census or retained
+public timing protocol. No fallback result is counted as a pass. Report SHA-256:
+`eacbd95908c3f98e8d4c57b3eff1e36e721400b449e9cb6f9ef648d2204298c3`.
+
+Reproduce this diagnostic on a fully built, otherwise idle checkout:
+
+```sh
+node bench/class-unit-groups/diagnose-cubic-local-public-replay.cjs FROZEN_CORPUS_GZ NEW_OUTPUT_DIRECTORY
+```
+
+All four groups in `test/number-field-cubic-native-class-number.cjs` also
+pass, including the independently replayed effort-one normalization regression,
+nontrivial LMFDB corpus, and large-regulator cases. Strict Python, generated
+documentation, and architecture checks pass. Optional Wasm numerical reactors
+were not prepared and are not part of this Linux-only qualification.
+
+Earlier failed attempts are retained separately. The first full build failed
+during module precompilation; subsequent complete builds passed. Starting the
+rebuilding `test:changed` aggregate during replay interrupted the runtime and
+invalidated that run; it was repeated from scratch. A stale 144 KiB benchmark
+cache at the runner's required-absent path was moved aside recoverably, without
+weakening the guard. The broad `test:changed` aggregate was not completed.
+After fixing that environment obstruction, `test:unit` stops on the pre-existing
+`test/modular-qexp-source-freeze.cjs` mismatch: its frozen
+`architecture/package-graph.json` digest differs from the current file, which
+is byte-identical to HEAD. The runner cancels siblings and leaves 120 later
+files unexecuted. That unrelated evidence was not refreshed to make this
+integration appear green.
+
+The reserved unseen neighbors remain unexecuted. No new `opt` public timing,
+holdout result, cross-platform release qualification, or PARI-win claim follows
+from this integration. PR190 remains draft.

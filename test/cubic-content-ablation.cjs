@@ -4,11 +4,13 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {spawnSync}=require('node:child_process');
 const {contentSource,normalization}=require('../bench/class-unit-groups/diagnose-cubic-content-build.cjs');
 test('content ablation changes only candidate coordinates before exact authentication',()=>{
-  const source=fs.readFileSync(path.join(__dirname,'../src/lib/sagejs/number_fields/cubic_class_number_native.py'),'utf8');
+  const source='def _cubic_append_smooth_principal_relation():\n    norm = _cubic_norm_form_value(\n        workspace, coordinate_zero, coordinate_one, coordinate_two)\n    return norm\n\ndef sentinel():\n    return 0\n';
   const candidate=contentSource(source);
   assert.equal(candidate.replace(normalization,''),source);
   assert.throws(()=>contentSource(candidate));
   assert.throws(()=>contentSource(''));
+  const production=fs.readFileSync(path.join(__dirname,'../src/lib/sagejs/number_fields/cubic_class_number_native.py'),'utf8');
+  assert.throws(()=>contentSource(production),/already normalized/);
 });
 test('ordinary Python content reduction preserves scalars and produces primitive nonscalars',()=>{
   const program=`import math, itertools

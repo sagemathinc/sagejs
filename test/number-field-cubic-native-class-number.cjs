@@ -114,7 +114,10 @@ test("closed native cubic receipts survive declines and authenticate targets", {
   assert.ok(trivialPresentation.slice(36, 50).every((value) => value === 0));
   const normBoundedPresentation = directReceipt([-1, 2, 0, 1]);
   assert.deepEqual(normBoundedPresentation.slice(0, 3), [2, 1, 0]);
-  assert.deepEqual(normBoundedPresentation.slice(20, 24), [3, 1, 1, 3]);
+  // Primitive generator normalization changes this tiny search's retained
+  // relation count, not its presentation. The effort-one receipt is replayed
+  // through the independent engine below.
+  assert.deepEqual(normBoundedPresentation.slice(20, 24), [3, 1, 1, 4]);
   assert.equal(normBoundedPresentation[35], 2);
   const determinantalPresentation = directReceipt([-2, -2, 0, 1]);
   assert.deepEqual(determinantalPresentation.slice(0, 3), [2, 1, 0]);
@@ -242,6 +245,20 @@ assert bounded.class_number == 5
 assert bounded.invariants == (5,)
 assert bounded.relation_effort == 3
 assert bounded.verify_conditional_grh()
+
+try:
+    cubic_runtime._CUBIC_RELATION_EFFORTS = (1,)
+    normalized = certified_complex_cubic_class_number(
+        field((-1, 2, 0, 1), "normalized_norm_bounded")
+    )
+finally:
+    cubic_runtime._CUBIC_RELATION_EFFORTS = saved_efforts
+assert normalized is not None
+assert normalized.class_number == 1
+assert normalized.invariants == ()
+assert normalized.relation_count == 4
+assert normalized.relation_effort == 1
+assert normalized.verify_conditional_grh()
 
 print("cubic-native-receipts-ok")
 `);

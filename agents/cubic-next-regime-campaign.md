@@ -2,6 +2,38 @@
 
 Status: active; no new PARI win claimed.
 
+## Content-integration checkpoint, 2026-09-08
+
+The content-only production candidate reproduces all output slots of the
+isolated 1,012-field experiment: 957 first-attempt acceptances, nine gains,
+no lost baseline acceptance, and no exception. Controlled opt measurements
+on those nine selected gain fields show 2.0–3.4 times improvement under the
+existing retry sequence, but PARI remains faster. Four familiar fields show
+small mixed changes (roughly -1.1% to +1.5% paired median time). See the
+[complete qualification record](../docs/cubic-content-and-search-order-ablation.md).
+Do not conflate these native measurements with public API timing.
+
+Only primitive generator-content normalization is integrated. Larger radius
+and origin-centered ordering remain isolated because their corpus experiments
+lost existing first-attempt acceptances. Source and arena allowances are
+unchanged. The stable rebuilt runtime now passes all 1,000 tune-field public
+authenticated receipts and independent exact replays, with no runtime-content
+drift. The earlier interrupted local run is not that evidence. This is local
+correctness qualification, not controlled public timing or a holdout result.
+Run `pnpm test:changed -- --list` before scheduling it: the selected plan can
+include an unconditional `pnpm build`. Never overlap it with public replay or
+other consumers of `dist`. The local replay driver now checks the canonical
+runtime-content closure before and after every batch, not merely source hashes.
+
+The next structural experiment should preserve the cheap prefix and expand
+the search only after the exact checker reports insufficient unit evidence.
+The existing adjacent collector explicitly permits changing only target and
+budget during resumption; changing an ellipsoid in place would violate that
+contract. Introduce a separately specified expansion phase, retaining original
+plans and relation information, with tests for cursor coverage, duplicate
+handling, and unchanged fatal/resource exits. Do not silently reinterpret the
+current cursor or enlarge every successful field's initial search.
+
 ## Starting point
 
 Start from integrated main `ea2027439`, including staged certification and

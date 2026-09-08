@@ -1165,6 +1165,20 @@ def _cubic_append_smooth_principal_relation(
     result above the capacity is a resource or resident-FFI failure and must fail the caller
     closed.
     """
+    # Remove rational content; authenticate the new principal ideal from scratch.
+    if not _cubic_coordinates_are_scalar(
+        workspace, coordinate_zero, coordinate_one, coordinate_two
+    ):
+        content, content_left, content_right = _cubic_extended_gcd(
+            abs(coordinate_zero), abs(coordinate_one)
+        )
+        content, content_left, content_right = _cubic_extended_gcd(
+            content, abs(coordinate_two)
+        )
+        if content > 1:
+            coordinate_zero //= content
+            coordinate_one //= content
+            coordinate_two //= content
     norm = _cubic_norm_form_value(
         workspace,
         coordinate_zero,
@@ -2833,7 +2847,7 @@ def _cubic_prepare_reduced_ideal_ellipsoid(
     parameters: FmpzMatrix,
     parameter_row: uint64,
 ) -> bool:
-    """Store an exact coefficient box containing PARI's reduced ellipsoid."""
+    """Store an exact coefficient box for our bounded reduced-ideal search."""
     # Private fail-closed diagnostics.  The caller copies this row only when
     # preparation declines; successful publication clears the result buffer.
     parameters[parameter_row, 10] = 1

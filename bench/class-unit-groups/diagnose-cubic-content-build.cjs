@@ -19,7 +19,7 @@ function contentSource(source) {
   const body=source.slice(start,stop);
   const marker='    norm = _cubic_norm_form_value(\n';
   assert.equal(body.split(marker).length,2,'relation norm boundary drift');
-  assert.ok(!body.includes(normalization),'already normalized');
+  assert.ok(!body.includes('content, content_left, content_right ='),'already normalized; use the pre-integration source checkout');
   return source.slice(0,start)+body.replace(marker,normalization+marker)+source.slice(stop);
 }
 async function main(){
