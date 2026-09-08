@@ -70,6 +70,11 @@ algorithmic explanation or an out-of-sample improvement.
 
 ## Provenance and metadata caution
 
+Follow-up [raw-relation and radius forensics](cubic-missing-unit-search-forensics.md)
+rules out simply raising the eleven-ideal guards and identifies a missing
+generator outside the native search ellipsoid. A broader search fixes the
+example but introduces corpus regressions; it is not promoted.
+
 - Runtime checkout: `8fa8314380bfd36d14498264160d7733f8cbe7b0`.
 - Mathematical source SHA-256:
   `678630a3a68b436e71a34966576baa71a1fe6b645ec5f845cabb4f94cdef2447`.
