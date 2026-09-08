@@ -76,6 +76,7 @@ const {
 );
 const {
   browserArtifactReportBinding,
+  GATES,
 } = require(
   "../../../scripts/numerical-computing/qualification/run-structural-performance.cjs",
 );
@@ -360,6 +361,20 @@ function structuralEvidence() {
     scope: { claim: "source-current-authoritative-structural-and-performance-gates" },
   });
 }
+
+test("structural gallery qualification serializes both browser test files", () => {
+  const gate = GATES.find(({ id }) => id === "numerical-trace-presentation-payload");
+  const files = [
+    "test/numerics/gallery/root-gallery.test.cjs",
+    "test/numerics/gallery/cross-domain-gallery.test.cjs",
+  ];
+  assert.deepEqual(gate.arguments, ["--test", "--test-concurrency=1", ...files]);
+  assert.deepEqual(gate.bindings, [
+    ...files,
+    "website/numerical-computing/gallery-manifest.json",
+    "docs/numerical-computing/gallery/evidence.json",
+  ]);
+});
 
 test("structural evidence binds the browser report's artifact identity", (context) => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-structural-report-"));
