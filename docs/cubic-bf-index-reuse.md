@@ -125,6 +125,12 @@ small cleanup, not universal speedup or competitive-frontier qualification.
 
 ## Reproduction and identities
 
+The raw diagnostics, focused test log, and public replay driver/output are
+published in the [immutable cubic evidence release](https://github.com/sagemathinc/sagejs/releases/tag/cubic-bf-index-d184f8761-20260908).
+The refreshed source-bound query artifacts are in the separate
+[optimizer evidence release](https://github.com/sagemathinc/sagejs/releases/tag/optimizer-evidence-campaign-1-1e6aef6913cd5645d8d3490624b132e870c9667a6e2fb605547b318e61af1e06-0733c0a033907e58).
+Neither auxiliary release is a product release or performance promotion.
+
 Build isolated copies with the current source and the recorded baseline:
 
 ```sh
