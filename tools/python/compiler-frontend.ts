@@ -13,19 +13,29 @@ import { PythonModuleResolver } from "./module-resolver";
  */
 export async function createPythonCompilerFrontend(compiler, mode: PythonSyntaxMode) {
   const syntax = await createPythonSyntaxFrontend(mode);
-  const moduleSyntax = mode === "python"
-    ? syntax
-    : await createPythonSyntaxFrontend("python");
+  let moduleSyntax = syntax;
+  try {
+    if (mode !== "python") moduleSyntax = await createPythonSyntaxFrontend("python");
+  } catch (error) {
+    syntax.close();
+    throw error;
+  }
 
   return {
     mode,
     syntax,
     parse(source: string, options: Record<string, any> = {}) {
       const parsed = syntax.assertValid(source, options.filename ?? "<input>");
-      return new PythonModuleResolver(compiler, moduleSyntax, {
-        ...options,
-        jsage: mode === "sage",
-      }).lowerMain(parsed);
+      try {
+        return new PythonModuleResolver(compiler, moduleSyntax, {
+          ...options,
+          jsage: mode === "sage",
+        }).lowerMain(parsed);
+      } finally {
+        // Semantic AST tokens copy text and positions; they do not borrow CST
+        // nodes. Raw syntax clients retain ownership of their own trees.
+        parsed.tree.delete();
+      }
     },
     close(): void {
       syntax.close();

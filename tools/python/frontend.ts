@@ -161,14 +161,31 @@ export async function createPythonSyntaxFrontend(mode: PythonSyntaxMode) {
         ? normalizedSource
         : `${normalizedSource}\n`,
     );
-    const diagnostics: PythonSyntaxDiagnostic[] = [];
-    const nodeTypes = new Set<string>();
-    collect(tree.rootNode, diagnostics, nodeTypes);
-    return { mode, source: normalizedSource, tree, diagnostics, nodeTypes };
+    if (!tree) throw new Error("Python parser returned no syntax tree");
+    try {
+      const diagnostics: PythonSyntaxDiagnostic[] = [];
+      const nodeTypes = new Set<string>();
+      collect(tree.rootNode, diagnostics, nodeTypes);
+      return { mode, source: normalizedSource, tree, diagnostics, nodeTypes };
+    } catch (error) {
+      tree.delete();
+      throw error;
+    }
   }
 
   function assertValid(source: string, filename = "<input>"): PythonSyntaxTree {
     const result = parse(source);
+    try {
+      return validateResult(result, filename);
+    } catch (error) {
+      // Invalid trees are never handed to the caller. In contrast, parse()
+      // returns recovery trees intentionally and their caller owns them.
+      result.tree.delete();
+      throw error;
+    }
+  }
+
+  function validateResult(result: PythonSyntaxTree, filename: string): PythonSyntaxTree {
     const error = firstSyntaxError(result.tree.rootNode);
     if (error) {
       const diagnostic = result.diagnostics.find(

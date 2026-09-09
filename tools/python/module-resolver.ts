@@ -436,22 +436,26 @@ export class PythonModuleResolver {
     }
 
     const parsed = this.moduleSyntax.assertValid(found.source, found.filename);
-    this.lowerModule(parsed, {
-      ...moduleOptions,
-      filename: found.filename,
-      basedir: dirname(found.filename),
-      module_id: key,
-      jsage: false,
-      exact_integer_literals: true,
-      // Imported Python modules inherit the caller's semantic defaults.
-      // Module-local ``from __python__ import ...`` directives are applied by
-      // scopedFlags() on top of this copy, including explicit ``no_*`` flags.
-      scoped_flags: Object.assign(
-        nullObject(),
-        moduleOptions.scoped_flags ?? {},
-      ),
-      classes: undefined,
-    }, sourceHash);
+    try {
+      this.lowerModule(parsed, {
+        ...moduleOptions,
+        filename: found.filename,
+        basedir: dirname(found.filename),
+        module_id: key,
+        jsage: false,
+        exact_integer_literals: true,
+        // Imported Python modules inherit the caller's semantic defaults.
+        // Module-local ``from __python__ import ...`` directives are applied by
+        // scopedFlags() on top of this copy, including explicit ``no_*`` flags.
+        scoped_flags: Object.assign(
+          nullObject(),
+          moduleOptions.scoped_flags ?? {},
+        ),
+        classes: undefined,
+      }, sourceHash);
+    } finally {
+      parsed.tree.delete();
+    }
   }
 
   private findSource(key: string): {

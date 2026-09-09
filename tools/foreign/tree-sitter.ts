@@ -23,6 +23,10 @@ const CORE_WASM = "web-tree-sitter.wasm";
 const TREE_SITTER_INITIAL_MEMORY_PAGES = 512;
 const TREE_SITTER_MAXIMUM_MEMORY_PAGES = 6144;
 let initialization: Promise<void> | undefined;
+// Bundled assets are immutable within this initialized runtime. Loading the
+// same grammar again allocates another Wasm side module; deleting a Parser
+// does not release that module. Share even concurrent loads by resource path.
+const languages = new Map<string, Promise<Language>>();
 
 export async function createTreeSitterParser(
   languageAsset: string,
@@ -39,11 +43,24 @@ export async function createTreeSitterParser(
     }),
   });
   await initialization;
-  const language = await Language.load(
-    readResourceBytes(vendorResourcePath(languageAsset)),
-  );
+  const languagePath = vendorResourcePath(languageAsset);
+  let loading = languages.get(languagePath);
+  if (!loading) {
+    const pending = Language.load(readResourceBytes(languagePath));
+    languages.set(languagePath, pending);
+    pending.catch(() => {
+      if (languages.get(languagePath) === pending) languages.delete(languagePath);
+    });
+    loading = pending;
+  }
+  const language = await loading;
   const parser = new Parser();
-  parser.setLanguage(language);
+  try {
+    parser.setLanguage(language);
+  } catch (error) {
+    parser.delete();
+    throw error;
+  }
   return parser;
 }
 
