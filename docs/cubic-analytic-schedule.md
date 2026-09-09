@@ -4870,8 +4870,175 @@ after an 8m30s build; the architecture rerun still stops at the unchanged
 stale optimizer inventory. Final report edits receive a separate documentation
 check rather than being represented as part of the earlier wrapper run.
 
+## Extending coordinated resident scheduling through 32 ideals
+
+The next smallest-discriminant initial decline is `3.1.23984479.2`,
+$f=x^3-x^2+184x+8367$, with $h=6$, cyclic class group, and 31 factor-base
+ideals. Read-only generated-JavaScript snapshots reproduce every output word
+of the uninstrumented FLINT and GMP executions. Independent PARI replay
+checks the maximal-order basis, every principal ideal relation, relation-kernel
+units, and `bnfcertify`. The old effort-five attempt collects **56 raw rows**,
+not 37: 37 is its reduced presentation size. Its exact quotient has order 12
+and its kernel units already generate the full unit group modulo torsion.
+The effort-one retry collects 87 raw rows, although its quotient first reaches
+6, with unit index one, at row 61.
+
+Adding retry row 61 alone to the failed effort-five lattice lowers its index
+from 12 to 6. Its independently factored generator is
+
+$$
+\alpha=\frac{-a^2+11a+291}{9},\qquad N(\alpha)=-137381.
+$$
+
+Its principal ideal factors over the existing ideals of norms 37, 47, and 79.
+The actual call trace places it in the ordinary four-vector shell, not an
+ellipsoid callback. The initial diagnostic script's ellipsoid-only assertion
+therefore failed; the corrected checker records shell provenance rather than
+inventing an ellipsoid certificate. This element is diagnostic evidence,
+never an input, lookup entry, or special case in the algorithm.
+
+PARI 2.17.4's seeded debug trace uses the same 31-ideal factor base through
+107. Nine rational relations and 28 small-norm relations from seven ideals
+give tentative order 12 and regulator approximately 61.4571. It then requests
+two targeted relations and obtains order 6 without changing the regulator.
+The `small_norm` implementation forms a powered multiplier: here an ideal
+above 3 has exponent $\lfloor\log_3(107^2)\rfloor=8$, and the next search
+multiplies it by an ideal above 79. The full-rank targeting branch temporarily
+marks surviving class-group generators as missing to guide relation admission.
+These are search heuristics, not substitutes for the final index test.
+Debug timestamps are not controlled performance measurements.
+
+### Coordinated eligibility experiment
+
+A frozen source-copy experiment changes nine comparisons from
+`factor_count <= 24` to `factor_count <= 32`. They jointly govern the stable
+norm ordering, per-ideal visitation storage, initial-volume dispatch, staged
+presentation allocation, and subsequent bounded recovery. AST normalization
+proves that these nine constants are the only syntax-tree changes. No exact
+acceptance rule, allocator limit, global factor/relation limit, or owner
+declaration changes. Existing formulas can allocate larger matrices in the
+newly admitted regime: the largest staged presentation there is $86\times32$.
+That dimension check is not a proof of peak arena consumption.
+
+An existing presentation-allocation comment says that rows beyond the target
+must increase modular rank. That comment is not a valid argument for these
+research copies: admission deliberately retains dependent rows while rank
+is deficient. Safety relies on actual capacity checks and fail-closed exits,
+not that obsolete counting claim; source consolidation must correct it.
+
+All 1,012 development fields now certify on effort five, with no errors or
+coverage losses. Exactly ten fields change output/checkpoint traces; the other
+1,002 retain all 64 output words and their checkpoint sequences. The two
+fields with 34 and 36 ideals remain outside the extension and unchanged.
+Complete FLINT/GMP/generated-JavaScript comparisons pass both with the normal
+linkage and with the experimental one-page FLINT linkage used for timing.
+Independent replay validates the ten changed fields, totaling 426 principal
+rows. This is exact oracle replay, not full public Sage.js receipt replay.
+
+The selected field now certifies once at 68 raw rows. Its first full rational
+rank occurs there, so simply inserting an earlier proof checkpoint would not
+help this execution. At row 37 its rank is 26, with the norm-47, norm-59 and
+norm-61 columns entirely absent. At row 67 its rank is 30 and only the norm-47
+column is absent; row 68 fills it. The traversal visits eight large ideals,
+two locally redundant ideals, then revisits large ideals. This identifies a
+concrete next question: use missing factor support to direct discovery rather
+than waiting for an incidental factor in another large-ideal search. Such
+guidance must remain separate from exact certification.
+
+There is also a more precise admission-policy difference. In PARI's
+`Fincke_Pohst_ideal`, `relid` advances only when `add_rel` returns positive.
+While rank is missing, `add_rel_i` admits independent rows and a limited
+supplementary tail; other dependent nonzero rows can be rejected. A pure-unit
+zero relation may be stored while returning zero and therefore does not consume
+the per-ideal quota. Our volume traversal increments `visit_rows` by every
+newly retained row. Retaining dependent exact witnesses is deliberate and must
+not be removed merely to imitate PARI. Instead, a follow-up can test separating
+witness retention from the per-ideal progress quota, using modular rank and/or
+exact lattice progress as scheduling signals. That experiment has not yet
+been implemented or timed; the frozen 32-ideal results above do not include it.
+
+### Fresh neighboring fields
+
+After freezing the candidate, the panel fixes
+$x^3-x^2+184x+8367+81k$ for $k=-12,\ldots,-1,1,\ldots,12$.
+All 24 polynomials are irreducible and complex, and canonical `polredabs`
+comparisons show distinct fields not represented in the 1,012-field corpus.
+No input is excluded or selected by Sage.js success or speed. Each PARI result
+passes `bnfcertify`; both implementations succeed on effort five, and all
+three backends agree on every output word. Independent candidate replay checks
+another 515 principal rows. Only three of these fresh fields have 25–32 ideals;
+the panel does **not** establish 24 fresh activation cases for the new regime.
+
+### Controlled timing
+
+Serial CPU-zero runs on `opt` use matched one-page FLINT linkage and the same
+preallocated-scratch, retry-inclusive protocol as the preceding experiment.
+Across all 1,012 fields, sums of per-field medians are 2,785.844 ms for the
+power-aware parent, 2,677.978 ms for this candidate, and 1,443.250 ms for PARI.
+Every computation completes. The candidate remains **1.86 times PARI**, not
+an overall PARI win. Of the 107.866-ms aggregate difference, 97.576 ms comes
+from the ten changed executions; the other 10.290 ms occurs on unchanged
+traces and should not be attributed wholesale to this scheduling change.
+
+| Field | Parent ms | Candidate ms | PARI ms | Paired candidate/parent |
+| --- | ---: | ---: | ---: | ---: |
+| `23984479.2` | 25.847 | 12.082 | 2.750 | 0.46907 |
+| `47391719.2` | 20.327 | 7.157 | 2.250 | 0.34937 |
+| `54759159.1` | 17.056 | 4.088 | 1.750 | 0.23838 |
+| `93074700.2` | 40.800 | 6.442 | 1.750 | 0.15811 |
+| `96582828.1` | 17.757 | 3.488 | 1.750 | 0.19494 |
+
+The paired panel contains all ten changed fields, the two above-range fields,
+and four earlier controls. It uses 21 alternating ABBA/BAAB rounds, ten calls
+per sample, and 200 warmups per implementation and field. All ten changed
+fields have empirical tenth–ninetieth ratio ranges below one; all six unchanged
+controls have ranges spanning one. For the selected field the range is
+0.46678–0.47251. These are empirical ranges, not confidence intervals or a
+universal no-regression guarantee.
+
+The fresh 24-field totals are 81.353/71.720/39.625 ms for parent/candidate/PARI.
+Exactly the three newly admitted-regime fields change output words; all others
+remain identical. The rotated samples exposed a possible fresh regression,
+so a separate completed paired run measures all three changed neighbors.
+For $k=-8,6,12$, paired ratios are respectively 0.35186, 1.03941 and 0.62795;
+the empirical tenth–ninetieth ranges are 0.35005–0.35418,
+1.03611–1.04377 and 0.62447–0.62972. Thus the roughly **3.9% regression at
+$k=6$ is real in these measurements**, not hidden by the panel's aggregate gain.
+That field changes from 48 to 50 raw rows and publishes the opposite sign of
+the same fundamental unit. An additional exact replay checks the parent's
+48 principal rows. It is a retained regression witness for the next scheduling
+experiment, not grounds for a polynomial-specific dispatch rule.
+None of these numbers includes public wrapper allocation,
+startup, or a full public certificate replay. All timing processes are terminal;
+the preserved remote directory is `/tmp/cubic-staged32-V7iTop` on `opt`.
+
+The frozen candidate has SHA-256
+`14844519b1d825edd744f5a602acc0a681118757abfa446749805197ae4f035a`,
+511,196 source bytes, and raw generated-core SHA-256
+`5ac51c8bdefe8b8dc39d5545fbd5788f28f000406efc58e548eb53fa4414b492`.
+Source size is unchanged from the parent and still above the unchanged 485,000
+production allowance. Source, preparation and checker scripts, exact GP
+programs, traces, manifests and raw observations are retained in
+`/scratch/sagejs-runtime/cubic-large-base-forensics-WF5td7`.
+The smaller hashed archive is
+`build/cubic-analytic-schedule-evidence/staged32`; it excludes generated build
+caches and addon binaries while retaining their identities and reproduction
+scripts. `summarize.cjs` authenticates the candidate/core identities, complete
+backend/linkage observations, exact replays, and finished timing artifacts.
+The subsequent fresh paired check and parent replay have their own hashed
+supplement at `build/cubic-analytic-schedule-evidence/staged32-fresh-paired`.
+This is a research candidate, not production promotion or platform qualification.
+
 ## Validation status
 
+- The coordinated 32-ideal research report passes changed-file merge checks,
+  all 192 unit-test files and documentation checking after a fresh 8m31s build
+  (621.08s for the complete recorded changed-file command). Six focused tests,
+  the nine-guard AST/dimension check, artifact-summary authentication and the
+  separate fresh paired-regression checker also pass. The architecture gate
+  still stops at the known stale optimizer inventory; neither that inventory
+  nor the production source allowance was changed. These worktree gates do not
+  substitute for the separate research-artifact replay/linkage checks above.
 - The current unit-budget and small-ideal research follow-up passes the
   changed-file merge checks, all 192 unit-test files and documentation checking
   after a fresh 8m36s build. Its explicitly identified source-copy/backend and

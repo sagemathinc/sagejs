@@ -786,11 +786,83 @@
       "commit": "9ed3085df144b9256300493b9252b371254992bb",
       "workspace_fingerprint": "4ba40f26607ca9510e74f6b57f7a86d6a35e3b57adebc1f7ba45a101c1008486",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python /scratch/sagejs-runtime/cubic-large-base-forensics-WF5td7/check32.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.38,
+      "started_at": "2026-09-09T23:01:52.705Z",
+      "commit": "cffb57a4a06b5496055dbd1258ec75c05780f6eb",
+      "workspace_fingerprint": "dc8db706fcf79c8e64fb718d06e3938a1a8758b3546b2508669f12445108c72b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node /scratch/sagejs-runtime/cubic-large-base-forensics-WF5td7/summarize.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.116,
+      "started_at": "2026-09-09T23:01:53.757Z",
+      "commit": "cffb57a4a06b5496055dbd1258ec75c05780f6eb",
+      "workspace_fingerprint": "dc8db706fcf79c8e64fb718d06e3938a1a8758b3546b2508669f12445108c72b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node /scratch/sagejs-runtime/cubic-large-base-forensics-WF5td7/check-fresh-paired.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.046,
+      "started_at": "2026-09-09T23:07:04.259Z",
+      "commit": "cffb57a4a06b5496055dbd1258ec75c05780f6eb",
+      "workspace_fingerprint": "1b666792cb859605b9053898848630bc3f793a9f2245103193f4471df14652ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.041,
+      "started_at": "2026-09-09T23:07:37.455Z",
+      "commit": "cffb57a4a06b5496055dbd1258ec75c05780f6eb",
+      "workspace_fingerprint": "1b666792cb859605b9053898848630bc3f793a9f2245103193f4471df14652ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.054,
+      "started_at": "2026-09-09T23:07:45.136Z",
+      "commit": "cffb57a4a06b5496055dbd1258ec75c05780f6eb",
+      "workspace_fingerprint": "1b666792cb859605b9053898848630bc3f793a9f2245103193f4471df14652ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.357,
+      "started_at": "2026-09-09T23:07:47.840Z",
+      "commit": "cffb57a4a06b5496055dbd1258ec75c05780f6eb",
+      "workspace_fingerprint": "1b666792cb859605b9053898848630bc3f793a9f2245103193f4471df14652ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base HEAD",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 621.076,
+      "started_at": "2026-09-09T23:08:14.242Z",
+      "commit": "cffb57a4a06b5496055dbd1258ec75c05780f6eb",
+      "workspace_fingerprint": "1b666792cb859605b9053898848630bc3f793a9f2245103193f4471df14652ea",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Completed four source-copy recovery policies with controlled opt evidence. Latest power-aware source5d007de348effb7e86acf3c984f420aa7903306d97c7a53ca0de90a918903239 uses existing exact 2/3/5 residue obstructions only to choose post-prefix versus late discovery. Missing obstructions remain inconclusive, proof authority unchanged. All1000 frozen fields with<=24 factors certify first attempt;1007/1012 total,no coverage losses/errors. Full1012 FLINT/GMP/JS/linkage parity,6-field259-row exact replay,18432 actual-body policy cases and71 reused control/neighbor cases pass. Restores97410060 original28/44/45 unit-progress checkpoints while retaining3 gains. Controlled parent2841.992/candidate2770.868/PARI1442.750ms,still1.92x. Target37.584->8.192ms paired.21876;3229112 17.272->9.781 paired.56577;65734851 10.302->7.019 paired.68913. Prior8.8% regression97410060 nowpaired.99834,range spans1. Allother12-panel controls span1. Only40.166ms of71.124 aggregate movement is on changed checkpoints; no blanket2.5% causality claim. Source511196/core13233368 bytes stillover485000 sourceallowance,no new owners/caps. Production unchanged,PR203draft. Latest reports/sources/checks preserved in build/cubic-analytic-schedule-evidence/small-ideal-power-aware. Changed-file gates/all192unit/docs pass after8m30build; knownstaleoptimizerinventory remains architecture failure. Public integration/fullreceipt replay/source consolidation/platform qualification and wider unseen recovery coverage remain open.",
+    "summary": "Coordinated 25–32-factor eligibility source copy 14844519b1d825edd744f5a602acc0a681118757abfa446749805197ae4f035a now certifies all1012 development fields on effort5, five gains/no losses/errors. Nine comparison constants are the only AST changes; source511196 bytes unchanged and still above485000 allowance. Full1012 FLINT/GMP/JS checks under normal and one-page linkage pass; ten changed executions independently replay426 principal rows. Fresh fixed24-field coefficient panel is canonically disjoint from development, all bnfcertify and three-backend checks pass,515 rows independently replayed; only three fresh fields exercise25–32. Controlled opt parent2785.844/candidate2677.978/PARI1443.250ms, still1.86x;97.576ms of107.866 movement is on ten changed traces. Allten changed fields have paired ratio ranges below1; six unchanged controls span1. Target23984479.2 improves25.847->12.082ms, paired.46907. Other former declines47391719.2 20.327->7.157,54759159.1 17.056->4.088,93074700.2 40.800->6.442,96582828.1 17.757->3.488. Fresh totals81.353/71.720/39.625ms. Target old56raw rows (37reduced) has quotient12/unitindex1; retry87rows is already correct at61. Its shell generator(-a^2+11a+291)/9 alone repairs old lattice. PARI37rows order12 then two powered-targeted relations give6. New candidate68rows first full rank at68: norm47 column is still entirely absent at67. Next missing-factor-support-directed discovery, not extra certification attempts at deficient rank. Scripts/sources/evidence in /scratch/sagejs-runtime/cubic-large-base-forensics-WF5td7, archive build/cubic-analytic-schedule-evidence/staged32. Controlled opt /tmp/cubic-staged32-V7iTop alltimings terminal. Production unchanged; public integration, source consolidation, wider regime holdout and platform/resource qualification open; PR203 stays draft.",
     "risks": [
+      "Fresh staged32 neighbor k=6, x^3-x^2+184x+8853, has paired3.9% regression (ratio1.03941, p10/p90 1.03611/1.04377):48->50 raw rows, same fundamental unit up to sign. Two other fresh activation cases improve ratios.35186/.62795. Do not claim no regression or hide this behind aggregate gains. Separate check-fresh-paired.cjs and fresh-parent replay48rows preserve it.",
+      "Research presentation-allocation comment about at most n extra rank-increasing rows is obsolete: dependent rows are retained while rank deficient. Actual capacity guards fail closed; do not rely on the comment as a bound. Correct during consolidation.",
       "Optimizer-opportunity inventory is already stale at the baseline; architecture gate not passing.",
       "Final broad test:changed run is terminal failure: 74 full-tier files passed, then five FFI failures from missing FFLAS manifest/igraph addon/static library; 509 files not started. Fresh build and all192 unit files passed. Do not restart an old handle or claim the full585 tier passed.",
       "Full-corpus independent replay and four-platform release qualification remain outstanding; PR remains draft.",
@@ -798,6 +870,8 @@
       "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
     ],
     "next_steps": [
+      "Additional PARI source finding: Fincke_Pohst_ideal increments relid only for positive add_rel results. add_rel_i can retain pure-unit zero rows with return0; while rank missing, independent rows and limited relsup count, later dependent nonzero rows are rejected. Sage volume visit_rows counts every retained exact row. Next candidate should separate retained witness count from per-ideal progress quota (modular rank and/or exact lattice change), preserving dependent witnesses and bounded storage rather than copying PARI's discard policy. Missing norm47 support at target row67 gives a concrete test. Frozen staged32 timings do not include this future change.",
+      "Latest staged32 source and evidence: /scratch/sagejs-runtime/cubic-large-base-forensics-WF5td7, SHA14844519b1d825edd744f5a602acc0a681118757abfa446749805197ae4f035a. All1012 first attempts now succeed. Target rank-gap.log proves norm47 support missing through row67; candidate-admissions.json shows initial eight large ideals, two local redundancies, then more large-ideal visits. Test resident missing-factor-support-driven search before recycling large ideals. Preserve exact proof, cursor ownership, original resource caps, and all existing successes. Do not infer earlier proof checks can solve missing rational rank. Only three of24 fresh neighbors activated this new range; broader independently selected25–32-factor holdout remains needed. All timing handles terminal, opt directory /tmp/cubic-staged32-V7iTop. Normal/linkage1012 parity, exact10+24 field replay and16-fieldpaired completed. Production source/caps untouched; retain PR draft pending consolidation/public and platform qualification.",
       "Latest candidate /scratch/sagejs-runtime/cubic-small-ideal-power-aware-peWQpb/aware.py SHA5d007de348effb7e86acf3c984f420aa7903306d97c7a53ca0de90a918903239; archive build/cubic-analytic-schedule-evidence/small-ideal-power-aware, final-checks.cjs authenticates all evidence. opt /tmp/cubic-small-ideal-power-aware-iOS99j alltimings terminal: full1012,12-fieldpaired plus separate97410060paired,24 reusedcontrol.47 neighboringfields fromearlierthisturn panels are reused, not freshforaware. Checkpointauditall1012 changes only3229112,45285240,65734851; fulloutputs equal after-prefixparent. Actualpowerscreen trace in after-prefix-HFF822/power-signals.json: class-gap452/657 exclude2/3/5; unit-gap974 lacks2;322 lacksnontorsionunit. Newguard usescachevalid+sameanalyticscale; beforefinalstage deferif anyobstructionmissing; originalfinalstage stillpermitsone latepass. This heuristic doesnotproveunitprimitivity andmaymisclassify largerprimeunitindices; exactproofunchanged. No wideractivationholdout yet. All1000<=24firstsuccess isdevelopmentcorpusonly. Next choose evidence-led largerfactor regime (smallest remainingdecline23984479.2,n31,phase8) orprofileunit-only bottleneck97410060now18.6ms vsPARI1.875. Four otherinitialdeclines47391719.2(n30),54759159.1(n25),93074700.2(n25,rank24),96582828.1(n25). Do not simply widen24guards withoutshape/resource/ordering/independentreplay review. Source511196stillneedsconsolidationbeforepromotion; production480379/485000 unchanged. Do not markPR203ready. Fullreport preservesallthreeearliernegative/tradeoffpolicies and48newpolynomialinputs(one reducible) with exactGP results. Finaltests pendingonlyifnewturnfindsnewchanges; inspect taskreceiptsandlivehandlesratherthanrerunningfinishedwork.",
       "Post-prefix source63fc5b19e5f611099edafe13dcaf031e92517c2520af3be78a838a6f353cdaaa is in /scratch/sagejs-runtime/cubic-small-ideal-after-prefix-HFF822 and preserved build/cubic-analytic-schedule-evidence/small-ideal-after-prefix. Other new roots: cubic-small-ideal-events-nnuarw and cubic-small-ideal-late-x9eENx; archives similarly named. All current process/timing handles terminal. Controlled opt /tmp/cubic-small-ideal-after-prefix-4EiHwg and /tmp/cubic-small-ideal-late-CHlGkN. Current source copies are not promoted. The main remaining scheduling defect is unit-only progress:97410060(x^3+552*x-35742,h27,n22) has correct class quotient27 fromrow28, unit indices20 at28,2 at44,1 at45(parent) or52(candidate); candidate only checks66. Parentcheckpoints28/44/45 versuscandidate28/44/66, identical64 outputs but8.8% slowdown. Full1012 checkpoint audit also finds3229112 26/42/43/46/50->26/42/44;45285240 23/39/40/43/47->23/39/46;65734851 23/39/40/43/47->23/39/50, the last31% faster despite more rows. Exact prefix replay proves unit facts. Early target and two protected losses all initially have class-index2/unitindex1, so that condition cannot select the good early schedule. Do not overfit by h/poly. Investigate cheap unit-progress signals as requests for unchanged exact proof, or bounded periodic requests with original cursor retention. Source509436 andnormalizedcore13199993 unchangedowner/caps exceptusingexistinglastpresentationrow; fullmodularrank protectsrowstop. Fresh panels23/24 show regression stability but do not exercise new recovery. Documentation includes explicit1.77% corpus improvement, one genuine regression and incomplete release qualification.",
       "Latest experiments are terminal and evidence preserved under build/cubic-analytic-schedule-evidence/initial24 and volume-skip. Candidate c1f8251ba3e6180b9b725b3dd11888f41c762a597e6cd6a272e0c0154e603619 is504393 source bytes,13053433 normalized C bytes. Scratch /scratch/sagejs-runtime/cubic-volume-skip-h5KaCx, controlled opt /tmp/cubic-volume-skip-oHPhgb. Full corpus and nine-field paired runs complete; initial uncorrected paired run intentionally failed on incomplete fields and is not a passing measurement. Typed skip adds628 source/5229 C bytes, no owners. Next study remaining first-effort misses20636980(total dependency exponent16404>16384),87899928(single exponent4444>4096),45285240(class quotient12 vs true6 with unitindex1). The first two need explicit bounded-construction status and/or compact unit machinery; do not blindly convert every materialization error to insufficiency. The third needs a class relation, not more unit precision. Current target944919 uses29 raw rows vsPARI26 and2.685ms vs2.0; compare real discovery/planning work if addressing it further. Volume-first is not universally better. Preserve all severe regressions and retain draft status until consolidation/public replay/fresh holdouts/platform qualification. Read report for exact mathematical and resource contracts.",
