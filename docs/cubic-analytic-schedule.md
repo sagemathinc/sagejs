@@ -5029,6 +5029,144 @@ The subsequent fresh paired check and parent replay have their own hashed
 supplement at `build/cubic-analytic-schedule-evidence/staged32-fresh-paired`.
 This is a research candidate, not production promotion or platform qualification.
 
+## Progress quotas: a negative experiment and a powered-ideal witness
+
+The next experiment separates retained witnesses from the per-ideal quota.
+For $25\leq n\leq32$, while modular rank is deficient, each newly retained
+row advances that quota only if the existing exact online HNF transcript
+records a lattice change. Every admitted dependent witness remains stored.
+Once full rank is known, the original raw-row quota remains in force.
+No mathematical acceptance rule, owner, helper ABI or resource allowance changes.
+Source `quota.py` has SHA-256
+`f6de7b705c7156cff865bb06225d454f2ddf9c3eb7b0515658d3ff1cd920fcac`
+and 511,803 bytes; generated core SHA-256 is
+`9fc1bd9e77f0c4c640d6d9e97c73a808ac080c17c794214e170472db191baef2`.
+It remains an over-budget research source copy, not production code.
+
+All 1,012 first attempts still succeed, with no errors or coverage losses.
+Normal and one-page FLINT linkage each pass complete FLINT/GMP/JavaScript
+64-word comparisons. The actual quota-selection/update blocks pass 240,240
+control cases. Exact GP replay checks 446 principal rows across all ten fields
+in the potentially affected larger regime, plus 94 rows on the three changed
+members of the previous 24-field holdout. That panel is **reused**, not newly
+unseen evidence for this successor. These checks are not full public Sage.js
+certificate replay or a Lean formalization.
+
+Final-output comparison alone misses two changed executions. A complete
+1,012-field scalar call/return trace of presentation, volume-leaf and ideal-plan
+operations identifies nine changed fields, versus seven changed final outputs.
+In particular, `3.1.54759159.1` still publishes the same 64 words and attempts
+certification at 31 rows, but its last two rows now come from continuing ideal
+20 rather than planning ideal 19. Its paired runtime increases by about 48%.
+An identical answer and checkpoint count do not establish identical work.
+
+Controlled serial `opt` timing uses the same one-page allocator on both sides,
+the previous rotated full-corpus protocol, and 21 alternating ABBA/BAAB rounds
+for paired panels (10 calls per sample, 200 warmups, 84 samples per field).
+Ratios below are candidate/parent; the displayed ranges are empirical p10/p90,
+not confidence intervals.
+
+| Field | Parent ms | Quota ms | PARI ms | Paired ratio [p10, p90] |
+| --- | ---: | ---: | ---: | --- |
+| `3.1.23984479.2` | 12.065 | 14.420 | 2.625 | 1.2054 [1.2019, 1.2083] |
+| `3.1.25195212.7` | 6.171 | 8.694 | 1.625 | 1.4047 [1.3961, 1.4140] |
+| `3.1.47391719.2` | 7.159 | 6.779 | 2.250 | 0.9568 [0.9529, 0.9621] |
+| `3.1.57663252.3` | 7.022 | 5.269 | 2.000 | 0.7636 [0.7596, 0.7709] |
+| `3.1.93074700.2` | 6.453 | 10.901 | 1.750 | 1.7079 [1.6995, 1.7232] |
+| `3.1.95903148.1` | 9.429 | 6.798 | 2.125 | 0.7340 [0.7303, 0.7362] |
+
+Full-corpus summed medians move from 2717.448 to 2685.157 ms, versus PARI
+1443.750 ms. **This is not evidence for promoting the quota policy:** the nine
+changed traces collectively become 6.466 ms slower; the apparent aggregate
+gain comes from 38.757 ms of movement elsewhere. Small paired shifts also
+occur on unchanged controls, so do not attribute those globally to scheduling.
+The reused 24-field panel moves 72.096 to 69.243 ms versus PARI 39.625 ms.
+Its three changed cases have paired ratios 0.9393, 0.6951 and 0.9385, including
+an improvement on the prior fresh regression. Those gains do not erase the
+development-panel regressions.
+
+The trace explains one failure mode: dependent rows do not advance the quota,
+so a visit can linger on an ideal that adds little lattice information. A
+second source copy, `responsive.py`, rotates after a batch with no exact HNF
+change. Its SHA-256 is
+`8bc51a168776b9875f98936ea617134fdd0445e8ade6d9519a0a502d8f8fe059`
+(512,104 bytes). Its actual control blocks pass another 240,240 cases. A
+finite-state check bounds retained rows in a rank-deficient progress visit
+by $4+3+2+1=10$, conditional on the leaf respecting its remaining raw-row
+quota; this is not a global presentation-capacity or arena bound.
+
+This variant has 1,011/1,012 first-attempt successes across all three backends:
+the selected field `3.1.23984479.2` declines again. No controlled speed claim is
+made for it. Exact replay of its 70-row failed prefix proves full rank, a
+relation quotient of order 12, and unit subgroup index one. Its 87-row retry
+has quotient 6 and unit index one; both prefixes' 157 principal rows replay.
+Thus this failure is neither missing rational rank nor a missing fundamental
+unit. It is an unsaturated class-relation lattice.
+
+### A concrete powered-ideal search to implement next
+
+The failed 70-row HNF has nontrivial diagonal entries at factor ideals of norms
+3 and 79, with diagonals 6 and 2. This identifies quotient generators; it does
+not assert that their orders in the true class group equal those diagonals.
+The old retry witness
+$(-a^2+11a+291)/9$ independently reduces this new failed quotient from 12 to 6
+as well. Its principal ideal and the enlarged lattice determinant are checked
+again, not inferred from its usefulness for the earlier failed prefix.
+
+PARI's `buch2.c` provides a more systematic route. After full class/unit rank,
+the `LIE` branch directs search toward the primes generating the remaining
+quotient. `small_norm` multiplies a target ideal by a power of a small ideal,
+with exponent chosen by exact integer logarithm of the largest factor-ideal
+norm squared. On this trace it searches $\mathfrak p_3^8\mathfrak p_{79}$,
+since $e=\lfloor\log_3(107^2)\rfloor=8$, and records relations supported on
+norms $(3,79,107)$ and $(3,67,79)$.
+
+An independent exploratory GP probe derives the targets from the failed HNF
+and the exponent from the factor norms, constructs the powered product, and
+uses its $T_2$ geometry with PARI's volume policy. Its bound is approximately
+$113676084.61$, agreeing with the debug trace's rounded $1.137\cdot10^8$.
+The first returned primitive candidate is
+
+$$\alpha=\frac{4a^2+172a+123}{9},\qquad
+N(\alpha)=-55460133=-3^8\cdot79\cdot107.$$
+
+Exact ideal factorization verifies its complete relation vector, not merely
+its norm, and adjoining that row changes the failed quotient from 12 to 6.
+It matches PARI's first printed factor-support pattern. The probe uses
+floating geometry for discovery and GP's `qflll`/`qfminim`; it does **not**
+establish identical private PARI reduction/enumeration order. It also uses the
+oracle class number to stop the diagnostic search, which must not become an
+implementation stopping rule. Native implementation must use the unchanged
+independent exact certification. The probe's first run failed because `I` is
+a reserved GP constant; that failed log is retained beside the corrected run.
+
+This is the next structural opportunity: preserve successful prefixes, then
+use the remaining quotient to choose powered-ideal discovery. Neither quota
+experiment is promoted. Existing ideal-product/power primitives should be
+reused with explicit bounds and resident scratch, not a second hidden CAS.
+The source already has `_cubic_prime_ideal_power_basis` and
+`_cubic_compound_prime_ideal_basis`, including a bounded integer-power schedule.
+However, compound search is enabled only for efforts 6--8, requires incomplete
+relation collection and no discovered unit, plans broad products, and uses
+reduced four-direction shells. That is not the demonstrated regime: a
+full-rank, unit-complete but uncertified quotient needs a **targeted powered
+ellipsoid after failed certification, in the same resident call**. Merely
+enabling the old broad compound loop earlier would not implement this contract.
+No polynomial, witness, exponent or answer from this diagnostic may become a
+special-case dispatch rule.
+
+Sources and raw evidence are retained under
+`/scratch/sagejs-runtime/cubic-rank-progress-quota-OpYkuY` and
+`/scratch/sagejs-runtime/cubic-responsive-quota-xDvPqB`.
+The checked 109-file, 12,299,559-byte archive at
+`build/cubic-analytic-schedule-evidence/progress-quota-campaign` preserves
+sources, scripts, manifests, exact GP programs/logs, call traces and all timing
+observations, excluding generated caches and addon binaries. `summarize.cjs`
+authenticates the source, backend/linkage scope, replay inputs, timing drivers
+and changed-execution attribution. Source consolidation, public replay,
+platform qualification and the existing architecture-inventory failure remain
+open.
+
 ## Validation status
 
 - The coordinated 32-ideal research report passes changed-file merge checks,

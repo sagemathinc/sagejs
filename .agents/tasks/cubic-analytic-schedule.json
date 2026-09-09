@@ -856,10 +856,60 @@
       "commit": "cffb57a4a06b5496055dbd1258ec75c05780f6eb",
       "workspace_fingerprint": "1b666792cb859605b9053898848630bc3f793a9f2245103193f4471df14652ea",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node /scratch/sagejs-runtime/cubic-rank-progress-quota-OpYkuY/summarize.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.098,
+      "started_at": "2026-09-09T23:38:54.013Z",
+      "commit": "d177a3b66eb9f81209726669117b8b484f8834c1",
+      "workspace_fingerprint": "c2dbdcdecf548810a63508f0c863548e836f6561083dc53afd7221f2e183589f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-responsive-quota-xDvPqB/check-responsive.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.464,
+      "started_at": "2026-09-09T23:38:54.748Z",
+      "commit": "d177a3b66eb9f81209726669117b8b484f8834c1",
+      "workspace_fingerprint": "c2dbdcdecf548810a63508f0c863548e836f6561083dc53afd7221f2e183589f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.053,
+      "started_at": "2026-09-09T23:38:56.858Z",
+      "commit": "d177a3b66eb9f81209726669117b8b484f8834c1",
+      "workspace_fingerprint": "c2dbdcdecf548810a63508f0c863548e836f6561083dc53afd7221f2e183589f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.074,
+      "started_at": "2026-09-09T23:39:04.588Z",
+      "commit": "d177a3b66eb9f81209726669117b8b484f8834c1",
+      "workspace_fingerprint": "c2dbdcdecf548810a63508f0c863548e836f6561083dc53afd7221f2e183589f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.082,
+      "started_at": "2026-09-09T23:39:36.557Z",
+      "commit": "d177a3b66eb9f81209726669117b8b484f8834c1",
+      "workspace_fingerprint": "4450d663cda0f9813113f20fbe13997060bf56475ec3e3fc7740ea9ca653c138",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Coordinated 25–32-factor eligibility source copy 14844519b1d825edd744f5a602acc0a681118757abfa446749805197ae4f035a now certifies all1012 development fields on effort5, five gains/no losses/errors. Nine comparison constants are the only AST changes; source511196 bytes unchanged and still above485000 allowance. Full1012 FLINT/GMP/JS checks under normal and one-page linkage pass; ten changed executions independently replay426 principal rows. Fresh fixed24-field coefficient panel is canonically disjoint from development, all bnfcertify and three-backend checks pass,515 rows independently replayed; only three fresh fields exercise25–32. Controlled opt parent2785.844/candidate2677.978/PARI1443.250ms, still1.86x;97.576ms of107.866 movement is on ten changed traces. Allten changed fields have paired ratio ranges below1; six unchanged controls span1. Target23984479.2 improves25.847->12.082ms, paired.46907. Other former declines47391719.2 20.327->7.157,54759159.1 17.056->4.088,93074700.2 40.800->6.442,96582828.1 17.757->3.488. Fresh totals81.353/71.720/39.625ms. Target old56raw rows (37reduced) has quotient12/unitindex1; retry87rows is already correct at61. Its shell generator(-a^2+11a+291)/9 alone repairs old lattice. PARI37rows order12 then two powered-targeted relations give6. New candidate68rows first full rank at68: norm47 column is still entirely absent at67. Next missing-factor-support-directed discovery, not extra certification attempts at deficient rank. Scripts/sources/evidence in /scratch/sagejs-runtime/cubic-large-base-forensics-WF5td7, archive build/cubic-analytic-schedule-evidence/staged32. Controlled opt /tmp/cubic-staged32-V7iTop alltimings terminal. Production unchanged; public integration, source consolidation, wider regime holdout and platform/resource qualification open; PR203 stays draft.",
+    "summary": "Progress-quota campaign completed without promotion. quota.py SHA f6de7b705c7156cff865bb06225d454f2ddf9c3eb7b0515658d3ff1cd920fcac retains all1012 first attempts and complete normal/one-page FLINT/GMP/JS parity. Actual control240240 cases pass, exact10-field446-row plus reused3-field94-row replay passes. All1012 call/return trace identifies nine changed executions versus seven changed outputs; identical-output54759159 slows48%. Controlled serial opt totals2717.448->2685.157ms vsPARI1443.750, but changed traces worsen6.466ms; other38.757ms movement is not a scheduling win. Target12.065->14.420ms, paired1.2054; other regressions1.4047/1.7079. Reused24-field panel improves72.096->69.243ms, three paired ratios.9393/.6951/.9385, not unseen validation. Bounded no-progress-rotation source8bc51a168776b9875f98936ea617134fdd0445e8ade6d9519a0a502d8f8fe059 passes240240 control cases and1012 backend parity but loses target first attempt. Its70-row failed prefix is fullrank/quotient12/unitindex1;87-rowretry gives6/unit1,157rows replay. HNF nontrivial diagonals at norm3 and79 motivate powered discovery. Independent exploratory GP probe derives e=floor(log_3(107^2))=8 and searches P3^8*P79. First returned primitive candidate alpha=(4a^2+172a+123)/9, norm -55460133, exactly verifies relation exponents3^8*79*107 and reduces12->6. Matches PARI printed support and bound, not proof of identical enumeration order; diagnostic oracle stopping must not enter production. Preserve staged32 baseline. Next implement general quotient-directed powered ideal search in resident source-transparent machinery using existing primitives, exact closure and unchanged limits. Reports in docs/cubic-analytic-schedule.md; authenticated109file12.3MB archive build/cubic-analytic-schedule-evidence/progress-quota-campaign. All opt timing terminal in /tmp/cubic-progress-quota-J9cx7h. Production/caps unchanged, PR203 remains draft; public replay/consolidation/platform qualification and stale architecture inventory open.",
     "risks": [
       "Fresh staged32 neighbor k=6, x^3-x^2+184x+8853, has paired3.9% regression (ratio1.03941, p10/p90 1.03611/1.04377):48->50 raw rows, same fundamental unit up to sign. Two other fresh activation cases improve ratios.35186/.62795. Do not claim no regression or hide this behind aggregate gains. Separate check-fresh-paired.cjs and fresh-parent replay48rows preserve it.",
       "Research presentation-allocation comment about at most n extra rank-increasing rows is obsolete: dependent rows are retained while rank deficient. Actual capacity guards fail closed; do not rely on the comment as a bound. Correct during consolidation.",
@@ -870,6 +920,7 @@
       "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
     ],
     "next_steps": [
+      "Do not promote either quota policy: controlled paired regressions and the bounded policy's exact first-attempt failure are preserved. Implement the structural powered-ideal regime next. The failed target HNF exposes norm3 and norm79 generators; general integer-log exponent8 and product P3^8*P79 yield an exact missing relation on the exploratory probe's first candidate. Reuse _cubic_ideal_product/_cubic_prime_ideal_power_basis, prove bounds/ownership, preserve successful prefixes, and certify with the existing exact checker rather than oracle h. Native implementation and fresh-regime measurements remain undone. Full evidence and negative variants live under cubic-rank-progress-quota-OpYkuY/cubic-responsive-quota-xDvPqB; all timing and validation processes from this campaign are terminal.",
       "Additional PARI source finding: Fincke_Pohst_ideal increments relid only for positive add_rel results. add_rel_i can retain pure-unit zero rows with return0; while rank missing, independent rows and limited relsup count, later dependent nonzero rows are rejected. Sage volume visit_rows counts every retained exact row. Next candidate should separate retained witness count from per-ideal progress quota (modular rank and/or exact lattice change), preserving dependent witnesses and bounded storage rather than copying PARI's discard policy. Missing norm47 support at target row67 gives a concrete test. Frozen staged32 timings do not include this future change.",
       "Latest staged32 source and evidence: /scratch/sagejs-runtime/cubic-large-base-forensics-WF5td7, SHA14844519b1d825edd744f5a602acc0a681118757abfa446749805197ae4f035a. All1012 first attempts now succeed. Target rank-gap.log proves norm47 support missing through row67; candidate-admissions.json shows initial eight large ideals, two local redundancies, then more large-ideal visits. Test resident missing-factor-support-driven search before recycling large ideals. Preserve exact proof, cursor ownership, original resource caps, and all existing successes. Do not infer earlier proof checks can solve missing rational rank. Only three of24 fresh neighbors activated this new range; broader independently selected25–32-factor holdout remains needed. All timing handles terminal, opt directory /tmp/cubic-staged32-V7iTop. Normal/linkage1012 parity, exact10+24 field replay and16-fieldpaired completed. Production source/caps untouched; retain PR draft pending consolidation/public and platform qualification.",
       "Latest candidate /scratch/sagejs-runtime/cubic-small-ideal-power-aware-peWQpb/aware.py SHA5d007de348effb7e86acf3c984f420aa7903306d97c7a53ca0de90a918903239; archive build/cubic-analytic-schedule-evidence/small-ideal-power-aware, final-checks.cjs authenticates all evidence. opt /tmp/cubic-small-ideal-power-aware-iOS99j alltimings terminal: full1012,12-fieldpaired plus separate97410060paired,24 reusedcontrol.47 neighboringfields fromearlierthisturn panels are reused, not freshforaware. Checkpointauditall1012 changes only3229112,45285240,65734851; fulloutputs equal after-prefixparent. Actualpowerscreen trace in after-prefix-HFF822/power-signals.json: class-gap452/657 exclude2/3/5; unit-gap974 lacks2;322 lacksnontorsionunit. Newguard usescachevalid+sameanalyticscale; beforefinalstage deferif anyobstructionmissing; originalfinalstage stillpermitsone latepass. This heuristic doesnotproveunitprimitivity andmaymisclassify largerprimeunitindices; exactproofunchanged. No wideractivationholdout yet. All1000<=24firstsuccess isdevelopmentcorpusonly. Next choose evidence-led largerfactor regime (smallest remainingdecline23984479.2,n31,phase8) orprofileunit-only bottleneck97410060now18.6ms vsPARI1.875. Four otherinitialdeclines47391719.2(n30),54759159.1(n25),93074700.2(n25,rank24),96582828.1(n25). Do not simply widen24guards withoutshape/resource/ordering/independentreplay review. Source511196stillneedsconsolidationbeforepromotion; production480379/485000 unchanged. Do not markPR203ready. Fullreport preservesallthreeearliernegative/tradeoffpolicies and48newpolynomialinputs(one reducible) with exactGP results. Finaltests pendingonlyifnewturnfindsnewchanges; inspect taskreceiptsandlivehandlesratherthanrerunningfinishedwork.",
