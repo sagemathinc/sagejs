@@ -922,6 +922,140 @@ Allocator instrumentation, traces, exact unit-oracle correction, generated-core
 ablation, and source/compiler build identities are retained under
 `build/cubic-analytic-schedule-evidence/arena-pressure/`.
 
+## Hybrid search: complete-corpus timing, not just first-attempt coverage
+
+Two diagnostic source copies now combine the retained staged prefix with a
+one-way transition to the broader volume traversal. Early transition after
+the first admissible insufficiency gives 966 first-attempt successes: three
+gains but five losses against staged16. Waiting until the staged schedule
+would otherwise decline gives 971 successes, three gains and no losses against
+staged16's 968. Both copies agree on all 64 output words across fmpz, GMP,
+and JavaScript on all 1,012 fields. Accepted class numbers and invariants
+match the frozen corpus. This is same-source differential evidence, not
+independent mathematical replay.
+
+The late hybrid changes only the root orchestration and the two collection
+helpers relative to volume16. Proof helpers are byte-identical. Its traversal
+flag is stored in an unused visit-header cell. Prepared LLL transforms and Gram
+data are reused; the enlarged region has its own initially empty cursor.
+Relations, element witnesses, online exact HNF/support, and modular admission
+state remain resident. Overlapping regions can revisit proposals; exact
+element deduplication prevents admitting the same element twice. This is not
+a claim that no proposal is repeated.
+
+Post-certification recovery requires `_cubic_can_resume_bounded_search`:
+status zero with phase 43/reason 434, or phase 8 with a positive denominator
+and an unresolved exact analytic-index classification. Other statuses do not
+permit that transition. The mode changes only once, so resetting the bounded
+attempt counter does not create an unbounded retry loop. The no-new-row
+transition currently rechecks the unchanged proof once; this is retained as
+an explicit experimental inefficiency, not a production recommendation.
+
+Controlled CPU-0 `opt` timing now includes native retries `[5, 1, 7, 8]`, not
+just successful first attempts. All three native variants use the same
+recycling allocator. Each field has three rotated rounds, two native calls
+per sample, and eight fresh GP `bnfinit(f,0)` calls per sample, with one warmup
+per participant. Polynomial packing and external scratch allocation are
+outside timing; failed-attempt diagnostic decoding needed to select retries
+is inside. GP uses millisecond wall-clock ticks divided by eight. Host:
+AMD EPYC 7B13, Node v26.7.0. Every implementation completes all 1,012 fields
+with matching class numbers and invariants and no exceptions.
+
+| Implementation | Fields needing native retries | Sum of per-field median times |
+| --- | ---: | ---: |
+| Staged | 44 | 4,935.339 ms |
+| Volume-first | 33 | 4,877.343 ms |
+| Late hybrid | 41 | 4,876.519 ms |
+| PARI | n/a | 1,501.125 ms |
+
+Late hybrid is 1.19% faster than staged in this run, effectively tied with
+volume-first (0.017% difference), and still 3.25 times PARI. There is no
+general PARI-win or durable/no-regression claim. These are preallocated
+diagnostic kernel calls, not public API latency, independent replay, or a
+new holdout set.
+
+The fourteen-factor target `3.1.606879.2` takes 3.317 / 7.971 / 3.386 ms
+for staged / volume / late, versus PARI 1.375 ms. The two earlier volume
+memory-pressure fields now complete without exceptions but need a retry in
+volume-first: `3.1.16355768.1` takes 50.073 ms there versus late 3.006 ms;
+`3.1.16912280.1` takes 49.468 versus 4.077 ms. The hybrid's savings on these
+fields are largely spent elsewhere.
+
+The next missing transition is before certification: nine of the ten
+volume-first successes missed by late hybrid exit at exact rank deficiency
+(phase 42), and one at too few rows (phase 41). The smallest is
+`3.1.315279.1`, $x^3-51x-177$: late takes 15.691 ms with a retry, volume
+3.556 ms, PARI 1.625 ms. The hybrid's post-certification transition cannot
+help a field that never reaches certification. The exact presentation helper
+already distinguishes genuine insufficiency (status zero) from inconsistent
+rank evidence (negative status); this provides the appropriate gate for
+testing resident pre-certification recovery without weakening acceptance.
+
+That pre-certification recovery is now implemented in a diagnostic source
+copy. Only exact presentation status zero, staged mode, 13--16 factors,
+and the as-yet-unused broader traversal permit it. A single bounded collection
+call reuses the original target, candidates, element witnesses, modular state,
+online HNF, prepared ideal data, and already allocated presentation capacity.
+Negative collector status, row-count decrease/overflow, or desynchronized
+online rows fail closed. The exact rank check is rerun with fresh independent
+rank witnesses; only full rank proceeds to the unchanged Smith and certificate
+pipeline. The uncompressed logical relation count is updated as well.
+
+The resulting first-effort survey accepts 981/1,012 with zero exceptions and
+correct accepted class numbers/invariants. It gains all ten missing fields
+above, retains every staged and volume-first success, and therefore avoids
+the first-attempt losses of both parents on this corpus. All 64 words agree
+across fmpz, GMP, and JavaScript on all 1,012 fields. The new copy's source hash
+is `c05b35224ecd3ed383e60bb193a19e89824c0a34d84a6701cfbfb74dffde5a46`;
+generated core hash is
+`bf43a2af7bece50286e6018ea4488afb951b716e4134718272572ded79bd0216`.
+All pre-root helper source remains byte-identical to late hybrid. Thirteen
+CPython tests execute the extracted recovery branch with controlled helper
+outcomes: negative/full initial status, disabled staging, used traversal,
+out-of-regime counts, collector errors, row decrease/overflow/desynchronization,
+and all three recheck statuses. These are orchestration fault tests, not
+independent proofs of the mocked helpers.
+The separate controlled full-retry run is now complete under the same protocol:
+
+| Implementation | Fields needing native retries | Sum of per-field median times |
+| --- | ---: | ---: |
+| Rank-recovery hybrid | 31 | 4,809.432 ms |
+| Volume-first | 33 | 4,828.203 ms |
+| Late hybrid | 41 | 4,864.191 ms |
+| PARI | n/a | 1,488.125 ms |
+
+All 1,012 computations complete with matching class numbers and invariants,
+no exceptions, and no excluded failures. Rank recovery is 1.13% faster than
+late hybrid and 0.39% faster than volume-first in this run, still 3.23 times
+PARI. Those small aggregate differences do not establish a durable speedup.
+The selected $x^3-51x-177$ improves from late 14.915 ms (efforts 5, 1, 7)
+to rank recovery 4.132 ms (effort 5); volume takes 3.411 and PARI 1.500 ms.
+The familiar $x^3+9x-55$ takes 1.839 ms in rank recovery versus GP 1.000 ms,
+under this diagnostic, already-compiled, preallocated-kernel protocol.
+
+There remain successful but expensive staged prefixes: `3.1.744076.3`
+takes 9.254 ms with rank recovery, 9.275 with late hybrid, and 3.092 with
+volume-first (PARI 1.500 ms), all native variants succeeding at effort 5.
+`3.1.10194660.1` similarly takes 8.853 / 7.949 / 2.500 ms, PARI 1.500 ms.
+Next investigate their exact relation/closure-attempt traces rather than
+optimizing only first-attempt success counts or fitting field-specific rules.
+The new full timing JSON hash is
+`1832f122ec5951d76b24d000822f56b41fb0dc5972ddb4bfe2d5ea44825ac907`.
+This remains diagnostic evidence, not public receipt replay, formal
+verification, release qualification, or an aggregate PARI win.
+
+Late source SHA-256:
+`61ea143558b4ea22c1e7a0cd132ed893d4e97a934fca0a96470a9948b67de63b`.
+Early source SHA-256:
+`61762242b8ecd172fbfb97c903115bb25b99b2ab7a1f7133f391874e2ec72262`.
+Full timing JSON SHA-256:
+`ff72a72e48c677c42c270846692e4893981d08b7ad6a77ec8f516e4d9a3e4de6`.
+Scripts, sources, manifests, surveys, backend comparisons, and timing evidence
+are retained under `build/cubic-analytic-schedule-evidence/hybrid-prefix/`.
+Production code, the 485,000-byte source allowance, 1 MiB resident limit, and
+3 MiB temporary limit remain unchanged; source-budget and platform/public
+qualification remain open.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused

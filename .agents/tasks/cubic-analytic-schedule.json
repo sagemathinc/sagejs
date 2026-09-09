@@ -105,6 +105,36 @@
       "commit": "b2e36fa792893ee7b1f3411e1d5bb7050730d33b",
       "workspace_fingerprint": "939ecda91053df704778fc5b17e50cd2e7fe37cb4ce8207a000bf6b3581f6099",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.684,
+      "started_at": "2026-09-09T12:27:35.230Z",
+      "commit": "766fffbf818c9e845a5996a6b4dd333de31c12c7",
+      "workspace_fingerprint": "aaa932f6182b2ca63ea85f06d953506327446d6e990af2ba82d5a658d6079629",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.675,
+      "started_at": "2026-09-09T12:31:00.680Z",
+      "commit": "766fffbf818c9e845a5996a6b4dd333de31c12c7",
+      "workspace_fingerprint": "85a2f73026d5fc9aa6792477f8fdcbe9e9158667c82d1bcbb07b6204e643ae1b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.663,
+      "started_at": "2026-09-09T12:32:14.150Z",
+      "commit": "766fffbf818c9e845a5996a6b4dd333de31c12c7",
+      "workspace_fingerprint": "fb23673f8e48a670165786e0ae7eefada5f722ee7c28cb2bedeb329e690460fd",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -126,7 +156,9 @@
       "Fourteen-factor forensics completed: exact principal-ideal replay and bnfcertify show effort5 raw36-row quotient has order6 and unit index1; effort1 raw46-row quotient has order3 and unit index1. Retry row36, generator(a^2-9a-106)/7, closes the missing relation index. This witness is diagnostic only, never a hardcoded production rule. PARI trace starts at tentative h12 then uses ideal-product searches to reach6,6,3.",
       "Ordering16 ablation has8 gains/8 losses on1012; staged16 has10 gains/5 losses. All64 output words agree fmpz/GMP/JavaScript on256 affected-regime fields. Controlled18-field opt panel: target9.637ms baseline to3.339ms staged versusPARI1.406; panel aggregate improves but several regressions. Not a general performance or public-replay qualification.",
       "Round-robin volume16 source d3e32776889299c5a89125007414eedb410ed08a91e4c6090dda3ba86711a16d accepts979/1012,18 gains and2 losses. Instrumentation attributes two memory exceptions to6.0/9.6MB accumulated allocation with only303/371KB peak live blocks. Generic native-arena-recycling compiler prototype removes exceptions under unchanged3MiB: canonical1012-case survey and256-case three-backend full-output agreement pass. Both fields still mathematically decline with class-index2; second also has unit-index7 outside2/3/5 saturation probes. Corrected exact GP oracle uses dedicated basis buffer: earlier nonunit claim was an output-slot-overlay interpretation error, not partially written unit coordinates. Cross-platform/performance qualification remains open; evidence retained under build/cubic-analytic-schedule-evidence/arena-pressure.",
-      "New source-copy trace isolates the fourteen-factor stopping-policy regression: staged16 certifies at raw23 relations after40 proposals/5 ideals; volume16 attempts at raw24,25,28 relations, succeeding after80 proposals/6 ideals. First60 output words agree with each parent survey, including the identical fundamental unit and analytic endpoints. Instrumented outputs are diagnostic only, never timed or published certificates. Preserve the cheap staged prefix before broader-volume recovery, with explicit visitation-state reconciliation and deduplication; do not switch incompatible cursor semantics blindly. Evidence under build/cubic-analytic-schedule-evidence/staging-trace."
+      "New source-copy trace isolates the fourteen-factor stopping-policy regression: staged16 certifies at raw23 relations after40 proposals/5 ideals; volume16 attempts at raw24,25,28 relations, succeeding after80 proposals/6 ideals. First60 output words agree with each parent survey, including the identical fundamental unit and analytic endpoints. Instrumented outputs are diagnostic only, never timed or published certificates. Preserve the cheap staged prefix before broader-volume recovery, with explicit visitation-state reconciliation and deduplication; do not switch incompatible cursor semantics blindly. Evidence under build/cubic-analytic-schedule-evidence/staging-trace.",
+      "Hybrid recovery now implemented diagnostically with separate resident traversal cursor and exact element deduplication. Early transition loses five staged successes; late transition retains all and adds three (971/1012). All 1012 full outputs agree across fmpz/GMP/JavaScript. Controlled full-retry timing completes all 1012 with no mismatches: staged 4935.339 ms, volume 4877.343 ms, late 4876.519 ms, PARI 1501.125 ms, sums of per-field medians. Late is effectively tied with volume and still 3.25x PARI; not a public-path or durable speed claim.",
+      "Next transition implemented in source copy c05b35224ecd3ed383e60bb193a19e89824c0a34d84a6701cfbfb74dffde5a46: a single retained broader-volume search after exact initial rank insufficiency (status zero), never after inconsistent rank. This solves all ten late-hybrid misses: 981/1012 first attempts, no losses against either staged or volume, no errors/wrong accepted answers. All 1012 full-output three-backend comparisons and 13 extracted control-flow fault checks pass. Full-retry timing completes 1012/1012 correctly: rank 4809.432 ms, volume 4828.203 ms, late 4864.191 ms, PARI 1488.125 ms. Only 0.39% over volume, not a durable improvement; still 3.23x PARI. Selected x^3-51x-177 falls from late 14.915 ms to rank 4.132 ms, PARI 1.500 ms. Next trace expensive successful staged prefixes such as 3.1.744076.3 (rank 9.254 ms, volume 3.092 ms); coverage alone does not optimize certification cost. Production source/caps unchanged. Scripts, sources, manifests and evidence under build/cubic-analytic-schedule-evidence/hybrid-prefix."
     ]
   }
 }
