@@ -6,6 +6,14 @@ Production mathematical source and its acceptance/resource allowances are
 unchanged. This is not public-API, independent-replay, holdout, or platform
 qualification, and no new PARI win is claimed.
 
+Immutable [research evidence archive](https://github.com/sagemathinc/sagejs/releases/tag/cubic-resumable-shell-experiment-20260909),
+bound to source commit `0bab0d2df7489d8d1a0b4e525380d29345c0e4f3`:
+`cubic-resumable-shell-experiment-20260909.tar.gz`, SHA-256
+`2af6c14f2bb6b39b390831051eb22bb5956d72626fdf6665311d9b06b361812f`.
+The published asset digest was checked against the local archive. It includes
+raw surveys/timings, portable diagnostic modules, source/IR/generated C, and
+validation logs. This prerelease is not the product's Latest release.
+
 ## Mechanism and correctness boundary
 
 The additional search region is still
