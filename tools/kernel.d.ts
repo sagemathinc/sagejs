@@ -232,6 +232,10 @@ export class SageSession extends EventEmitter {
   ): Promise<SageCompleteness>;
   interrupt(): Promise<void>;
   reset(): Promise<void>;
+  /** Reject pending work and await worker exit. Requests evaluator cleanup first;
+   * an unresponsive worker is forcibly terminated after a one-second grace period.
+   * Repeated calls share the same shutdown completion.
+   */
   close(): Promise<void>;
 }
 

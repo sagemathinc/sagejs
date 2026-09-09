@@ -557,13 +557,18 @@ export class SageSession extends EventEmitter {
   private async replaceWorker(error: Error): Promise<void> {
     if (this.closed) throw new SageSessionClosedError();
     const worker = this.worker;
+    const hasPendingWork = this.pending.size !== 0;
     this.worker = undefined;
     this.interruptState = undefined;
     // Publish the replacement's readiness before rejecting the interrupted
     // evaluation. Its caller may immediately submit another evaluation.
     this.prepareReadyPromise();
     this.rejectPending(error);
-    if (worker) await worker.terminate();
+    if (worker) {
+      // Resetting an idle session deserves the same evaluator cleanup as close.
+      // Timeouts and interrupts still stop active work without another grace wait.
+      await (hasPendingWork ? worker.terminate() : closeKernelWorker(worker));
+    }
     if (this.closed) return;
     this.spawnWorker(true);
     await this.readyPromise;

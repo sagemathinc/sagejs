@@ -13,9 +13,10 @@ test("session close awaits natural worker exit and is shared by concurrent calle
     const worker = session.worker;
     const exit = once(worker, "exit");
     const closing = session.close();
-    assert.equal(session.close(), closing);
+    const alsoClosing = session.close();
     await closing;
     assert.deepEqual(await exit, [0], "idle workers must not be forcibly terminated");
+    assert.equal(alsoClosing, closing);
     assert.equal(worker.threadId, -1);
     await assert.rejects(session.evaluate("2+2"), SageSessionClosedError);
   } finally {
@@ -34,6 +35,23 @@ test("session close rejects a busy evaluation and still finishes", { timeout: 15
     await session.close();
     await rejected;
     assert.equal(worker.threadId, -1);
+  } finally {
+    await session.close();
+  }
+});
+
+test("idle reset cleans up the old worker before starting a fresh session", async () => {
+  const session = await createSage();
+  try {
+    await session.evaluate("old_value = 42");
+    const worker = session.worker;
+    const exit = once(worker, "exit");
+    await session.reset();
+    assert.deepEqual(await exit, [0]);
+    assert.equal(worker.threadId, -1);
+    assert.notEqual(session.worker, worker);
+    await assert.rejects(session.evaluate("old_value"), /not defined/);
+    assert.equal((await session.evaluate("2+2")).repr, "4");
   } finally {
     await session.close();
   }
