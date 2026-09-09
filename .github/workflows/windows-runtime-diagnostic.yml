@@ -1,0 +1,84 @@
+name: Windows runtime diagnosis (not release qualification)
+on:
+  push:
+    branches: [fix/release-evidence-hardening]
+    paths:
+      - .github/workflows/windows-runtime-diagnostic.yml
+      - scripts/release/windows-diagnostic.cjs
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnose:
+    runs-on: windows-2025
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: control
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          ref: d3a5973b417e7e6aab1223a25ecb585dcf524acb
+          path: candidate
+          submodules: recursive
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Record runner facts before any expensive build
+        shell: pwsh
+        run: node control/scripts/release/windows-diagnostic.cjs candidate diagnostic-environment --inventory-only
+      - uses: actions/cache@v6
+        with:
+          path: |
+            candidate/packages/flint/.native/vcpkg
+            candidate/packages/flint/.native/vcpkg-installed
+          key: windows-diagnostic-vcpkg-d3a5973b4
+          restore-keys: windows-x64-flint-
+      - uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: 34261507488
+          artifact-ids: 10070568291
+          path: candidate/build/authenticated-numerical-product
+      - uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: 34261507488
+          artifact-ids: 10071713855
+          path: candidate
+      - name: Build exact diagnostic subject, without changing frozen source
+        working-directory: candidate
+        shell: pwsh
+        env:
+          SAGEJS_NATIVE_PREBUILT_REQUIRED: '1'
+          SAGEJS_NUMERICAL_RUNTIME_REQUIRED: '1'
+          SAGEJS_BUILD_JOBS: '4'
+        run: |
+          $env:GITHUB_SHA = 'd3a5973b417e7e6aab1223a25ecb585dcf524acb'
+          $env:SAGEJS_NUMERICAL_PRODUCT_ROOT = Join-Path $pwd 'build/authenticated-numerical-product'
+          pnpm install --frozen-lockfile
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm release:run --candidate $env:GITHUB_SHA --stage bootstrap
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Bounded reproduction and environment comparison
+        shell: pwsh
+        run: node control/scripts/release/windows-diagnostic.cjs candidate diagnostic-output
+      - name: Retain only reviewed diagnostic output, never raw process reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-runtime-diagnostic-${{ github.run_attempt }}
+          path: |
+            diagnostic-output
+            diagnostic-environment
+          if-no-files-found: warn
+          retention-days: 14
