@@ -2,6 +2,30 @@
 
 Status: active; no new PARI win claimed.
 
+## Analytic resumption and twelve-factor ordering, 2026-09-09
+
+The [next source-copy experiment](../docs/cubic-analytic-resume-experiment.md)
+permits valid phase-8 analytic insufficiency to resume collection without
+changing acceptance. Native entry-by-entry audits preserve retained discovery
+state across 38 selected closure calls. Plain resumption recovers twelve of
+the previous thirteen lost fields but is slower on the target.
+
+The remaining structural discrepancy is that our existing PARI-style
+permutation and prefix selection stop at eleven factors. Extending this
+policy through twelve at efforts 3–5 recovers the last loss: 963 versus 961
+effort-5 acceptances on the 1,012-field development corpus, two gains/no
+losses/zero exceptions. Fourteen closure calls in the permuted audit preserve
+all inspected state. Accepted class numbers/invariants agree throughout.
+
+Two controlled opt runs with reversed load order show roughly 17–33%
+improvement on all thirteen previously lost fields and 4.5–6.2% on the
+target (about 4.05 ms versus 4.28 ms baseline). PARI is still about 1.54 ms
+on the target and faster on all seventeen measured fields. No holdout,
+public receipt/replay, resource non-regression, or platform qualification is
+claimed for these copies. Source still exceeds the unchanged allowance.
+PR190 remains draft. Next audit initial volume/per-ideal planning, rather
+than confusing post-prefix shell recovery with PARI's initial search.
+
 ## Volume recovery and shorter checkpoints rejected, 2026-09-09
 
 The [volume-batch experiment](../docs/cubic-volume-batch-experiment.md)
