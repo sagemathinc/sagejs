@@ -245,6 +245,26 @@
       "commit": "4c03168687e2deae2e368ff3740264b73e23d4d8",
       "workspace_fingerprint": "c8b266c3b6d026dffb2d9b4da84c1a01f4d98e8efc9cb7785eaafefc0cadcdca",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-index-event-M0Mrzs/check-admission.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.136,
+      "started_at": "2026-09-09T17:48:34.167Z",
+      "commit": "b36f4093d1c54f0db99003afacaa3e5cf154f6d4",
+      "workspace_fingerprint": "452f94182db7fb4d7c52aecb0db7e9cae4212494f030646962a81f89852bb7d7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.041,
+      "started_at": "2026-09-09T17:48:34.942Z",
+      "commit": "b36f4093d1c54f0db99003afacaa3e5cf154f6d4",
+      "workspace_fingerprint": "452f94182db7fb4d7c52aecb0db7e9cae4212494f030646962a81f89852bb7d7",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

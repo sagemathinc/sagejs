@@ -2794,6 +2794,163 @@ and must never turn invalid intervals or resource errors into permission
 to resume. The two discovered row numbers are diagnostic witnesses only,
 not inputs to the proposed scheduling rule.
 
+## Quotient events after analytic insufficiency
+
+The next source-copy experiment generalizes event admission to the existing
+`_cubic_can_resume_bounded_search` predicate. It starts from corrected
+quotient-event source `ad363e00797b312614898cce13b449e2dfab11601a4368360dd101984cd99c95`,
+**without** the preceding torsion-screen ablation. Only the root function's
+AST changes: remove the redundant missing-unit-only restriction from the
+event gate and retain the existing resume predicate, factor-count envelope
+and periodic-checkpoint exclusion. No certifier, collector, interval,
+resource limit or mathematical acceptance condition changes.
+
+The predicate admits phase 43/reason 434 missing-unit evidence, or phase 8
+with positive scale and an explicitly revalidated, insufficient analytic
+index enclosure. Nonzero statuses, invalid or contradictory analytic
+intervals and resource failures do not authorize resumption. The phase-8
+reason word may refer to an earlier unit operation and is not an exit tag.
+Exact quotient changes request another proof, never confer acceptance.
+Periodic checks remain because a better unit can appear without a quotient
+change. Proposal budgets, advanced cursors, and the previously corrected
+event-exhaustion transition are unchanged. Within a fixed full-rank
+relation stream, each strict lattice enlargement strictly decreases its
+positive integer index; there cannot be infinitely many such event pauses.
+Existing row/proposal limits continue to bound work between them.
+
+**Checks.** The actual classifier, resume predicate and gate pass 7,290
+combinations, including exact endpoint boundaries, missing-unit exits,
+contradictory index-one enclosures, zero/negative scales, error/success
+statuses, and factor counts inside/outside the admitted envelope. The
+inherited actual-body collector tests still pass 1,296 cursor/budget cases,
+96 stage cases and 48 exhaustion cases. These control-flow tests use
+explicit arithmetic stubs and do not prove the ideal arithmetic.
+
+The frozen 1,012-field survey retains 981 first-effort successes with no
+errors, gains or losses. All 64 output words match across native FLINT,
+GMP, generated JavaScript, and original/one-page FLINT linkage. Twenty
+successful presentations change: only the compact row count and sometimes
+the sign of the unit coordinates differ. Independent GP replay checks
+the maximal-order basis, every retained principal-ideal equality and
+integer-kernel units on all twenty; `bnfcertify` passes and the final
+kernel-unit exponent gcd is one in every case. This is exact diagnostic
+replay, not full-corpus public Sage.js certificate replay or Lean verification.
+
+Read-only generated-JavaScript traces agree with all 64 native output words.
+On 30772, the actual general collector now pauses at raw row 14 after the
+failed row-13 closure; on 41912 it pauses at 10 after 9. There are no
+field-specific row targets. Thirty-two fields have changed call traces,
+but in these first-effort traces every field has the same number of closure calls as its parent:
+the useful calls happen sooner, rather than adding more proof attempts.
+The trace count includes changed event flags that do not change a result.
+
+**Controlled `opt` measurements.** The same CPU-0 EPYC 7B13 protocol runs
+three rotated rounds, two native calls per sample with `[5,1,7,8]` retries
+inside the clock, eight fresh PARI `bnfinit(f,0)` calls per sample, and one
+warmup. External packing/scratch and successful-result checks stay outside
+the clock. Both variants complete all 1,012 correctly, with the same 31
+fields requiring retries. Sums of per-field medians:
+
+| Cohort | Parent ms | Generalized event ms | PARI ms |
+| --- | ---: | ---: | ---: |
+| All 1,012 fields | 3806.8593705 | 3795.6300305 | 1457.000 |
+| Twenty changed presentations | 68.484737 | 50.9960095 | 24.000 |
+| Other 992 fields | 3738.3746335 | 3744.634021 | 1433.000 |
+
+This is **25.54% faster on the changed cohort**, but only **0.295% overall**;
+the latter is too small to establish a broad speedup. The full candidate
+remains about 2.61 times PARI. Selected full-run times are 3.275 to 2.383 ms
+on 30772 (PARI 1.250 ms), and 2.765 to 1.871 ms on 41912 (PARI 1.000 ms).
+Neither is a PARI win yet.
+
+A separate 21-round ABBA/BAAB comparison, 200 warmups per field/implementation
+and ten calls per sample, gives candidate/parent median within-round wall
+ratios 0.7464 (30772), 0.6807 (41912), and 0.8352 (46983). Their 10th–90th
+percentile ratios are 0.7314–0.7580, 0.6716–0.6873, and 0.8220–0.8517;
+these are not confidence intervals. The nine other controls have median
+ratios approximately 0.995–1.007, with ranges crossing one. In particular
+the h=5 seed is neutral at 0.9987, despite its noisier full-run sample.
+
+**Fresh neighboring holdout.** Before Sage.js execution, PARI selects the
+first 24 irreducible complex cubics $x^3-x^2+ax+c$, scanning
+$a=0,\ldots,15$ and $c=-100,\ldots,-40$, with nontrivial class number and
+$|D|\leq250000$. Require distinct field discriminants absent from the frozen
+1,012 and prior 24-field holdout; do not filter by Sage.js speed or success.
+All 24 complete on the first effort for both variants and pass three-backend
+agreement and certified PARI comparison. Three changed presentations also
+pass exact principal-row/kernel-unit replay. The identical timing protocol
+gives 46.108962 to 43.9109205 ms, versus PARI 27.875 ms: **4.77% improvement**
+on this new cohort. The affected fields are 29447 (3.011 to 2.312 ms),
+57224 (3.514 to 2.477 ms), and 136391 (2.850 to 2.517 ms). This holdout
+supports a narrow general scheduling improvement, not a claim that every
+neighbor improves or that the corpus-wide frontier is competitive.
+
+**Resources and provenance.** Candidate source is 490,170 bytes (+139,
+including explanatory comments), SHA
+`efcb69dfdf83f3381654162b4834375219fa1b5b122b21258176b4c3b09f7dc7`.
+Core SHA is `513e368cc36a7e8dceb55b449068e8a6d6e67db38aab8bfcbb700aaa83f6d415`.
+After normalizing only embedded source paths, generated C falls by 7,020
+bytes to 12,683,788; raw path-dependent lengths are not a code-size saving.
+No compiler/FFI implementation or source allowance changes. The experimental
+source still exceeds the unchanged production allowance, so this is not
+promoted and PR203 remains draft.
+
+Evidence is retained under `build/cubic-analytic-schedule-evidence/index-event/`;
+large reproducible builds remain in
+`/scratch/sagejs-runtime/cubic-index-event-M0Mrzs/`. `prepare.py` authenticates
+the parent and verifies the one-function AST delta. `check-admission.py`
+and the inherited `check-control.py` reproduce control checks. Harness,
+survey, backend, linkage, replay and holdout generators are retained with
+the raw outputs. `package.cjs` produces the authenticated timing bundle;
+its historical variant name `event` denotes this index-event candidate,
+and `parent` denotes corrected missing-unit-only quotient events. The
+remote bundle is `/tmp/cubic-index-event-8URvpT/`. Raw full timing SHA is
+`e09a5a3378b0180f2b488c3b5ce601322d7693e9eebe04d94f2e4ac029b681ca`;
+paired timing SHA is
+`71be55c82d1ff32c262639ee4faa677291178a6964a018ecab7c938e467e0429`;
+holdout timing SHA is
+`027449826f306126f1d7f7fa811f98735b0eb318c120d3b8f38145091814b4bb`.
+
+**Next cost: retain certification work, not just collection state.** Local
+native profiles use diagnostic-only generated-C instrumentation, exclusive
+clock accounting and 1,100 calls per field (100 discarded warmups), with
+all 64 output words checked throughout. They are not controlled timing.
+The 30772 and 41912 computations each build/evaluate the BF plan twice,
+materialize a dependency unit twice, and saturate twice. BF plan preparation
+totals about 0.314/0.299 ms respectively; evaluation totals 0.221/0.216 ms
+inclusive of its finite-sum and interval helpers. Root isolation is called
+ten times in each computation. The final h=5 control needs only one BF pass.
+This identifies repeated certification work after the collection gap closes.
+
+Reusing that work needs a representation change, not merely a cache flag.
+The BF value table currently stores the changing class-number candidate
+at header index 4, and `_cubic_bf_value_index` deliberately deduplicates
+prime-power norms against all five header values. Thus a term can share
+the candidate's slot. Eleven actual-source lookup tests in
+`check-plan-alias.py` demonstrate that overwriting slot 4 can invalidate
+an existing norm reference. The derived log-class endpoints also change
+when the quotient changes. Separate immutable field/threshold/precision
+residue data from the changing log-class contribution before reusing it.
+Likewise, retain only authenticated unit data, and allow discovery/saturation
+to improve the unit when reusing it does not certify index one. These are
+next implementation obligations, not claims of an implemented cache.
+
+An additional first-effort trace records 915 BF evaluations over the 1,012
+fields. Eighty-seven fields evaluate more than once, accounting for 98
+evaluations after a field's first. Fifty-six of these repeat exactly the
+first residue/tail outputs at the same scale. The remaining evaluations
+require inspection of threshold/refinement transitions; equal field identity
+alone is not a sufficient cache key. The two targets repeat identical
+residue bounds while their class candidates change from 36 to 18 and
+12 to 6 respectively. All 64 output words still agree with the native
+survey. `analytic-trace.cjs` and `analytic-trace.json` retain this diagnostic.
+
+Five focused analytic-schedule tests pass. The architecture rerun still
+stops at the previously recorded stale optimizer-opportunity inventory;
+it is not refreshed by this experiment. Full public replay and platform
+qualification remain open. The changed-files merge/documentation gate passes
+after its fresh local build completes in 8m30s.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
