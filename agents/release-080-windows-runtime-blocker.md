@@ -21,7 +21,13 @@ Environment comparison so far:
 | OS | Server 2025, 10.0.26100 | Server 2022, 10.0.20348 |
 | Image | windows-2025-vs2026, 20260824.214.3 | Persistent project VM |
 | Node | 26.5.1 | 26.5.1, V8 14.6.202.34-node.24 |
-| CPU/RAM | Focused diagnostic collecting | AMD EPYC 7B13, 4 logical CPUs, 32 GiB |
+| CPU/RAM | Intel Xeon Platinum 8573C, 4 logical CPUs, 16 GiB | AMD EPYC 7B13, 4 logical CPUs, 32 GiB |
+
+The focused GitHub run confirms **byte-identical Node executables and V8
+versions** on both hosts. It reports Visual Studio installation version
+`18.9.12112.369`; the VM's `vswhere` probe returned no version, so compiler
+equivalence has not been established. The memory values are provisioned host
+capacity, not measured test peaks. These differences do not establish causation.
 
 The Node executable SHA-256 is
 `b48b0224081224cda1f49374e2fc63d143041ade51754f0cc6608fe8510ba29e`.
@@ -57,6 +63,21 @@ unchanged D3 subject, not a new release attempt. It has read-only permissions,
 no signing/publication, fixed input artifact IDs, and bounded execution. Uploads
 exclude raw process reports and retain only allowlisted report fields. Diagnostic
 passes cannot satisfy the release product aggregate.
+
+After reproducing and symbolizing the failure locally, the diagnostic CI build
+was deliberately cancelled to avoid unnecessary further rebuilding. Its
+always-run retention step succeeded: artifact `10085005698` contains the
+pre-build environment snapshot. No GitHub reproduction-test pass is claimed.
+The local copy is
+`build/windows-diagnostic-evidence/github-34300362135/diagnostic-environment/environment.json`.
+All diagnostic processes and this CI run are terminal. No release run was
+restarted or cancelled during this investigation.
+
+Next: isolate the allocation/worker-teardown sequence and distinguish an
+upstream runtime defect from a native-boundary interaction. A passing simpler
+worker probe or a timing delay before termination is not a fix. The local
+reproducer and exact symbols eliminate the need to use full release CI as that
+debugging loop.
 
 Frozen product source: `d3a5973b417e7e6aab1223a25ecb585dcf524acb`.
 Native qualification run: `34261507488`, attempt 2, Windows job `102241900698`.
