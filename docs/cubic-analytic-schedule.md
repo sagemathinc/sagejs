@@ -807,14 +807,16 @@ control call in the same process correctly computes class number 3. No limit
 is increased. This variant is **not release-ready**, and the two-candidate
 backend comparisons and timing table above do not qualify `volume16`.
 
-An exceptional exit may leave partially updated diagnostic coordinates. Exact
-GP checking shows that one saved triple represents a fundamental unit, whereas
-the other does not even have unit norm. Neither is a published certificate;
-it would be incorrect to interpret both as recovered units or infer a wrong
-accepted class group. The first field has regulator approximately 3620.9413
-and a saved unit with roughly 1575-digit coordinates. Further work must locate
-the temporary allocation pressure during repeated exact certification and
-retain the better search without relaxing the memory contract.
+An exceptional exit is not a certificate. A previous version of this report
+incorrectly said that the second saved triple did not even have unit norm:
+the GP diagnostic had reconstructed its integral basis from output slots
+subsequently reused by analytic diagnostics. For this field, slot 40 is both
+the initial basis's final diagonal and the later regulator lower bound. Using
+the dedicated `verification_numerator` buffer instead, both triples are exact
+units. The first is fundamental and the second has unit index seven. This
+correction concerns the forensic oracle input, not a wrong accepted result.
+The first field has regulator approximately 3620.9413 and a saved unit with
+roughly 1575-digit coordinates.
 
 Source SHA-256 identities for these isolated ablations:
 
@@ -824,6 +826,78 @@ Source SHA-256 identities for these isolated ablations:
 
 The retained `variants.cjs` authenticates the parent source and asserts the
 number of each replacement before generating these experiments.
+
+### Temporary allocation traffic, rather than live storage
+
+Disposable generated-core instrumentation distinguishes accumulated checkpoint
+storage from live GMP blocks, accounting for malloc, realloc, and free. The
+instrumented core is not used for timing or public certification.
+
+| Field | Final accumulated bytes | Peak live block bytes | First overflowing operation |
+| --- | ---: | ---: | --- |
+| `3.1.16355768.1` | 6,011,392 | 303,264 | Fifth-root unit saturation |
+| `3.1.16912280.1` | 9,585,440 | 370,960 | Dependency-unit coordinate multiplication |
+
+The existing GMP checkpoint allocator's `free` hook only increments a counter;
+it does not recycle storage until the entire checkpoint ends. Hence a modest
+live set can exceed the unchanged 3 MiB limit through accumulated allocation
+traffic. Repeated certification is not the only possible source of this
+traffic: the backtraces identify unit arithmetic inside the attempts.
+
+An experimental power-of-two free-block pool removes both exceptions without
+changing mathematical source or limits. All 1,012 first-effort cases have
+matching accepted answers; all 64 output words match the previous `volume16`
+run on its 1,010 nonexceptional cases. Acceptance stays **979**, not 981:
+the two former exceptions become ordinary phase-8 mathematical declines.
+Their native provisional group orders are two and ten; the exact PARI oracle
+gives true class numbers one and five, and unit indices one and seven,
+respectively. Together these diagnose class-index two in each presentation,
+with an additional unit-index seven obstruction in the second.
+The existing saturation routine only probes roots of orders 2, 3, and 5;
+none removes the latter unit's index seven.
+
+The final canonical compiler build repeats this 1,012-field result with the
+corrected allocator fingerprint. Additionally, all 256 affected-regime fields
+agree on acceptance and all 64 output words across fmpz, GMP, and JavaScript.
+These checks are same-source differential evidence, not independent certificate
+replay or public-path qualification. The generated core SHA-256 is
+`4ddb949ec0c84adfd10843de62c634f39e03569f97b3aae8875ad858ff6dcd36`.
+
+The allocator implementation is being qualified separately on branch
+`agent/native-arena-recycling`; this is a generic compiler/runtime change,
+not handwritten class-group mathematics. Its randomized ASan/UBSan stress
+test processes over 150 MB of requested storage below 1 MB high water, and
+the existing allocator ownership/nesting/thread-local test passes. Size-class
+rounding and per-allocation overhead still require representative performance
+and cross-platform review.
+
+Controlled CPU-0 `opt` timing of the identical mathematical source on 1,010
+nonexceptional fields gives sums of first-effort medians 4,106.122 ms before
+recycling and 4,113.093 ms after (0.17% slower; three rotated rounds, four calls
+per sample). A nine-round, 32-call repeat on four controls and the ten largest
+pilot regressions shows a worst regression of 5.02%; the familiar h=5 and h=2
+fields regress 1.19% and 2.94%. This is not a no-regression qualification.
+PARI completes every field, whereas 31 native first attempts decline, so these
+first-effort totals must not be presented as an equal-completion comparison.
+
+The fourteen-factor target takes roughly 7.6 ms with this broader initial-volume
+search. The earlier staged16 measurement was roughly 3.3 ms (a separate run,
+not a paired timing). Higher first-effort coverage is therefore not synonymous
+with a better stopping schedule: preserve the earlier opportunity to certify
+before paying for a larger initial relation batch. No production search policy
+is changed by these diagnostic measurements.
+
+The investigation also found that `backendFingerprint()` omitted
+`gmp-checkpoint-allocator.cjs`: fresh builds with different allocator bodies
+could receive the same cache key. The compiler branch now includes this
+dependency and tests that changing only the allocator changes the actual
+fingerprint calculation. Earlier experimental builds used fresh isolated
+cache directories; their source/core hashes remain the authority rather than
+the colliding cache key.
+
+Allocator instrumentation, traces, exact unit-oracle correction, generated-core
+ablation, and source/compiler build identities are retained under
+`build/cubic-analytic-schedule-evidence/arena-pressure/`.
 
 ## Validation status
 
