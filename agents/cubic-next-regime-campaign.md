@@ -2,6 +2,36 @@
 
 Status: active; no new PARI win claimed.
 
+## Recovery-conditioning checkpoint, 2026-09-09
+
+The small root-enclosure reuse is integrated and rebuilt; Python source
+shrinks 393 bytes, with no allowance or arena-limit change. Its proof and
+generated-resource evidence are in
+[the recovery-conditioning record](../docs/cubic-recovery-conditioning.md).
+The larger resumable scheduler remains isolated.
+
+All 1,000 tune-field public receipts authenticate and pass independent exact
+replay on the integrated root-reuse runtime, with stable runtime fingerprints.
+Seven native/public regression groups, three focused diagnostics, architecture,
+docs, and strict Python pass. Parallel metadata still reports 395 live tasks;
+the other broad/holdout/platform gates remain outstanding. PR190 stays draft.
+
+Detailed opt profiling attributes about 0.812 ms of target recovery to LLL,
+versus 0.066 ms to HNF. Presentation refresh is only about 0.010 ms. An isolated
+source-copy experiment uses the exact HNF kernel basis directly while retaining
+all coefficient, interval, reconstruction, and analytic certification checks.
+It preserves all 961 first-effort acceptances on the frozen 1,012-field survey,
+with no losses or exceptions. Three transcripts differ only by negating the
+unit. No unseen holdout fields were used.
+
+Paired controlled opt timings reduce the target from 5.125 to 4.313 ms; PARI is
+1.539 ms. The other three recovery-heavy fields improve 7--9%, while controls
+show small regressions (0.3--1.4% paired). This is diagnostic native timing,
+not a public performance claim or permission to remove LLL universally.
+Next: staged conditioning with explicit resource/failure behavior, then the
+remaining adjacent-search cost. Do not optimize presentation refresh merely
+because it is easier to retain.
+
 ## Resumable-shell diagnostic checkpoint, 2026-09-09
 
 The [resumable experiment](../docs/cubic-resumable-shell-experiment.md) reuses

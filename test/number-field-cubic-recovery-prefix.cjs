@@ -53,6 +53,12 @@ test("actual production recovery remains in the full closed fmpz call graph", {
   const fn = ir.functions.find((f) => f.name === "_cubic_relation_prefix_has_archimedean_unit");
   assert.ok(fn);
   assert.equal(fn.analysis.backend.kind, "fmpz");
+  assert.ok(ir.callGraph._cubic_relation_prefix_has_archimedean_unit.includes(
+    "_cubic_fill_dependency_logs",
+  ));
+  assert.ok(!ir.callGraph._cubic_relation_prefix_has_archimedean_unit.includes(
+    "_cubic_real_log_bounds",
+  ));
   assert.equal(fn.analysis.liveExactWorkspace?.scopes.length || 0, 0);
   assert.equal(ir.functions.find((f) => f.name === "certified_complex_cubic_class_group_v1")
     .analysis.liveExactWorkspace.scopes.length, 1);

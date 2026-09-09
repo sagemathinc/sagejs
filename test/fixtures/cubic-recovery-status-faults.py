@@ -47,6 +47,13 @@ def helper_cases(tree):
         and item.name == "_cubic_relation_prefix_has_archimedean_unit"
     )
     function, namespace = compile_function(node)
+    log_node = next(
+        item
+        for item in tree.body
+        if isinstance(item, ast.FunctionDef)
+        and item.name == "_cubic_fill_dependency_logs"
+    )
+    fill_logs, log_namespace = compile_function(log_node)
     parameters = inspect.signature(function).parameters
 
     def run(mode, expected, rows=2, factors=1, bounds=(100, 100), reconstruction=1):
@@ -118,11 +125,23 @@ def helper_cases(tree):
             calls.append("regulator")
             return bounds
 
+        # Execute the actual batch helper, injecting only its arithmetic
+        # leaves. Removing the two root endpoints restores real_log's
+        # final element/scale/precision argument layout.
+        log_namespace.update(
+            _cubic_real_root_interval=lambda *_: (
+                (1, 0) if mode == "invalid-root" else (1, 1)
+            ),
+            _cubic_real_log_bounds_from_root_interval=lambda *values: real_log(
+                *values[:13], *values[-2:]
+            ),
+        )
+
         namespace.update(
             fmpz_matrix_hnf_transform_prefix=hnf,
             fmpz_matrix_lll_transform_prefix=lll,
             _cubic_bounded_bit_length=lambda *_: 513 if mode == "exponent-bound" else 1,
-            _cubic_real_log_bounds=real_log,
+            _cubic_fill_dependency_logs=fill_logs,
             _cubic_reconstruct_archimedean_unit=reconstruct,
             _cubic_regulator_bounds=regulator,
         )
@@ -158,6 +177,7 @@ def helper_cases(tree):
         "hnf-failure",
         "lll-failure",
         "invalid-log",
+        "invalid-root",
         "exponent-bound",
     ):
         run(mode, -1)

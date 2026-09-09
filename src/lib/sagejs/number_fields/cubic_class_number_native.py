@@ -3412,31 +3412,27 @@ def _cubic_relation_prefix_has_archimedean_unit(
         precision_index += 1
     dependency_precision: uint64 = analytic_precision + precision_extra
 
+    if not _cubic_fill_dependency_logs(
+        coefficients,
+        log_numerators,
+        log_denominators,
+        log_endpoints,
+        relation_elements,
+        prefix_logs,
+        denominator,
+        basis_zero_zero,
+        basis_zero_one,
+        basis_zero_two,
+        basis_one_one,
+        basis_one_two,
+        basis_two_two,
+        relation_count,
+        True,
+        dependency_scale,
+        dependency_precision,
+    ):
+        return -1
     relation_index: uint64 = 0
-    while relation_index < relation_count:
-        witness_log_lower, witness_log_upper = _cubic_real_log_bounds(
-            log_numerators,
-            log_denominators,
-            log_endpoints,
-            coefficients,
-            denominator,
-            basis_zero_zero,
-            basis_zero_one,
-            basis_zero_two,
-            basis_one_one,
-            basis_one_two,
-            basis_two_two,
-            relation_elements[relation_index, 0],
-            relation_elements[relation_index, 1],
-            relation_elements[relation_index, 2],
-            dependency_scale,
-            dependency_precision,
-        )
-        if witness_log_upper < witness_log_lower:
-            return -1
-        prefix_logs[relation_index, 0] = witness_log_lower
-        prefix_logs[relation_index, 1] = witness_log_upper
-        relation_index += 1
 
     unit_candidate_found = False
     best_regulator_lower = 0

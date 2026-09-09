@@ -484,6 +484,18 @@ isolated rigorous logarithm and square-root balls through a declared resource;
 the source-transparent program consumes only certified endpoints. Any failed
 sign, containment, precision, shape, or capacity check causes a decline.
 
+Dependency and recovery logarithms use one real-root enclosure per batch.
+Within that batch the polynomial coefficients and dyadic scale are fixed, so
+`_cubic_real_root_interval` returns the same endpoints that separate calls for
+each generator would produce. `_cubic_fill_dependency_logs` passes those
+endpoints, the unchanged integral basis and denominator, and each exact
+generator to `_cubic_real_log_bounds_from_root_interval` at the same precision.
+Thus sharing this enclosure changes neither the log endpoints nor their
+mathematical justification. Invalid enclosures still cause failure. No interval
+is retained across batches: dependency reduction may change the required
+scale/precision, which must be established anew. This is reuse of a pure
+calculation, not a weaker error bound or an additional GRH assumption.
+
 The final host check deliberately repeats a weaker rational consequence,
 $\mathrm{upper}<842/1215<\log 2$, before it gives the native output authority.
 The second strict inequality follows from the first three positive terms in

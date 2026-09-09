@@ -2,8 +2,9 @@
 
 This is an isolated source-copy diagnostic following the
 [one-shot shell experiment](cubic-resident-expanded-shell-experiment.md).
-Production mathematical source and its acceptance/resource allowances are
-unchanged. This is not public-API, independent-replay, holdout, or platform
+At the archived experimental checkpoint, production mathematical source and
+its acceptance/resource allowances were unchanged. This is not public-API,
+independent-replay, holdout, or platform
 qualification, and no new PARI win is claimed.
 
 Immutable [research evidence archive](https://github.com/sagemathinc/sagejs/releases/tag/cubic-resumable-shell-experiment-20260909),
@@ -246,6 +247,12 @@ node bench/class-unit-groups/diagnose-cubic-recovery-log-build.cjs ROOT SOURCE_P
 node bench/class-unit-groups/diagnose-cubic-ablation-run.cjs NEW_DIRECTORY/builds.json CORPUS_GZ
 node --test test/cubic-recovery-batch-logs.cjs
 ```
+
+The batch-log helper reuse was subsequently selected for production-source
+integration. Its diagnostic transformer requires the archived pre-integration
+source and deliberately rejects reapplication to an already-batched source.
+The larger resumable scheduler remains an isolated experiment. Later
+integration qualification must not be inferred from these archived results.
 
 ## Reproduction
 
