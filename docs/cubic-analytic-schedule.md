@@ -2021,6 +2021,148 @@ instrumented counts, and reproduction instructions are retained under
 is also retained as `native-builds.json`. Large reproducible builds remain
 in `/scratch/sagejs-runtime/cubic-root-cache-NadCCI/`.
 
+## BF arithmetic ablations: early composite exit and exact scale cancellation
+
+The next campaign isolates two changes against the uncached
+`checkpoint-guard.py` parent, using the same one-page FLINT library for all
+timed native variants. It does not stack the noisy root-cache experiment.
+Neither change selects a different analytic bound, changes the stopping rule,
+adds a cache, or raises a resource allowance.
+
+### Mathematical scope
+
+The planner tests candidate primes by trial division. Once a divisor is
+found, its primality flag is false and no subsequent divisor can change the
+answer. Adding `break` after that assignment therefore preserves the complete
+prime sequence; the private divisor variable is unused after the loop.
+Executing the actual extracted before/after loop bodies agrees with an
+independent sieve for every integer from 2 through 20,000. For the two live
+cutoffs, the number of trial divisions falls from 12,961 to 3,699 below 765,
+and from 36,260 to 9,079 below 1494. These operation counts are not timing
+claims.
+
+The finite-bound evaluator's first term divides a dyadic interval by an
+exact positive integer $D=kN^k$, with $N\ge2$ and $k\ge1$ checked before use.
+Its existing generic interval division receives denominator endpoints
+$DS,DS$, where the native entry constructs $S=2^{64}>0$. For every signed
+integer endpoint $A$ or $B$,
+
+$$
+\left\lfloor\frac{AS}{DS}\right\rfloor
+=\left\lfloor\frac{A}{D}\right\rfloor,
+\qquad
+\left\lceil\frac{BS}{DS}\right\rceil
+=\left\lceil\frac{B}{D}\right\rceil.
+$$
+
+The replacement computes those two quotients directly, preserving the
+rounded endpoints exactly, rather than merely producing another valid
+enclosure. It applies to both analytic scales. The second term, signed
+multiplicities, final multiplier, and tail calculation remain unchanged.
+This is an optimization under the existing positive-scale private contract,
+not a claim about zero or negative scales.
+
+The source-extracted CPython checks cover 7,000 signed quotient comparisons
+up to 1,024-bit scales, 3,000 complete finite-bound evaluations, and 22,016
+malformed-term comparisons. Synthetic finite-bound inputs use arbitrary
+positive ordered intervals to test the algebraic identity; they are not
+claimed to enclose actual logarithms or square roots. Malformed terms cover
+zero multiplicity, invalid scale selectors, norm/exponent constraints, and
+bad stored value indices. Source generation checks that every other
+top-level function body is AST-identical to the parent.
+
+Both native source copies, with both the original and one-page FLINT
+libraries, preserve acceptance and all 64 output words on the frozen 1,012
+fields: 981 first-effort acceptances and no exceptions. GMP and JavaScript
+also agree on all 1,012 outputs for each source copy. These comparisons
+are not independent mathematical certificate replay or public-path release
+qualification.
+
+### Generated source and resources
+
+| Variant | Python bytes | Path-normalized core bytes |
+| --- | ---: | ---: |
+| Parent | 486,563 | 12,621,840 |
+| Composite early exit | 486,585 | 12,622,102 |
+| Cancel common scale | 486,417 | 12,619,980 |
+
+Normalization replaces only the respective root source path with
+`<source.py>`; these lengths are diagnostics, not artifact identities.
+The sources still exceed the unchanged 485,000-byte release allowance
+before counting runtime source. Small source reductions do not resolve
+that outstanding qualification issue.
+
+Source hashes are
+`70a01b91a0254db9698c872dbd633a8276802cd5fedbb22ed2645343da655b4a`
+(early exit) and
+`17a01d6588f4b3543c8d68c40ed05194bfafc16d4e261321eea7c859fac115db`
+(scale cancellation). Generated core hashes are
+`b965e500084aee95501063062fc98a9f3311d2239289bb15799d34739c248f1e`
+and `28ddda06ae9c01963d1000f8d86ad20cb7a48392b2079367a3ced4cc7631bee2`,
+respectively. Compilation succeeds without compiler changes.
+
+### Controlled timing and decision
+
+The uninstrumented CPU-0-pinned `opt` run compares all three source copies
+with the same one-page FLINT library. All 1,012 fields complete with correct
+class numbers and invariants; the same 31 fields require retries. There are
+three rotated rounds, two native calls per sample (retries inside the clock),
+eight fresh PARI `bnfinit(f,0)` calls per sample, and one warmup. External
+argument packing and scratch allocation are excluded. Sums of per-field
+medians in milliseconds:
+
+| Parent | Composite early exit | Cancel common scale | PARI |
+| ---: | ---: | ---: | ---: |
+| 4380.313 | 4348.451 | 4343.501 | 1457.625 |
+
+Observed aggregate reductions are 0.73% and 0.84%. Median per-field ratios
+are 0.9912 and 0.9900, with 90th percentiles 1.0100 and 1.0103. These are
+small effects, not a uniform no-regression qualification. The full-run raw
+SHA-256 is `3b4ba6da4c862016509e735705f417b6c62dfc02f9d631a99006f3f49c7dff9b`.
+The host reports AMD EPYC 7B13 and Node v26.7.0.
+
+Two additional native-only comparisons each use 21 alternating ABBA/BAAB
+rounds, ten calls per sample, and 200 warmups per implementation and field.
+Median within-round wall-time ratios to the parent are:
+
+| Field | Early exit / parent | Cancellation / parent |
+| --- | ---: | ---: |
+| `3.1.283.1` | 0.9823 | 0.9755 |
+| `3.1.331.1` | 0.9783 | 0.9818 |
+| $x^3+9x-55$ | 0.9815 | 0.9727 |
+| `3.1.23567.1` | 0.9941 | 0.9838 |
+| `3.1.46983.1` | 0.9979 | 0.9831 |
+
+CPU-time ratios are similar. All sample-ratio 10th–90th percentile intervals
+cross one except scale cancellation on the class-number-five example
+(wall 0.9535–0.9972, CPU 0.9535–0.9957). These are sample quantiles, not
+confidence intervals. Paired raw hashes are
+`d1c55ac83dc40ff12520c09a097f45a83874415a74a218c3508252bd1251f795`
+(early exit) and
+`17fb1aa77b0c565370117ec5ed0c3d6121bcedadac72c52cbce786a7e0980a52`
+(cancellation).
+
+These are small, general exact simplifications worth retaining for eventual
+integration, but they do not explain or close the approximately threefold
+aggregate PARI gap. No combined performance claim has been tested, and
+neither experiment is promoted here. The next investigation should target
+the cost of the full analytic representation and precision policy, rather
+than extrapolating trial-division savings into a large end-to-end win.
+In particular, determine whether a cheaper initial outward-rounded precision
+can certify the same cases, with resident precision escalation when it
+cannot. That is a hypothesis, not a measured result: all scale-dependent
+data, unit-reconstruction precision, exported precision metadata, and
+inconclusive-versus-invalid statuses need auditing before such a change.
+The mathematical bound and acceptance inequality must remain unchanged.
+
+Source generators, extracted-body checks, resource records, four complete
+native surveys, backend comparisons, raw timings, and reproduction instructions
+are retained under `build/cubic-analytic-schedule-evidence/bf-cancel/`.
+Large reproducible builds remain in
+`/scratch/sagejs-runtime/cubic-bf-cancel-2VLZDI/`. These artifacts do not
+replace public authenticated receipts, independent exact replay, source-budget
+resolution, or four-platform qualification; those gates remain open.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
