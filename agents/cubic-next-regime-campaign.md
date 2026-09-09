@@ -2,6 +2,45 @@
 
 Status: active; no new PARI win claimed.
 
+## Native conditional prefix measured, 2026-09-09
+
+The [native conditional-prefix experiment](../docs/cubic-conditional-prefix-experiment.md)
+implements the exact pruned traversal in the closed source-copy program.
+Its ordinal cursor preserves the existing flattened proposal-budget contract;
+16,044 pause splits and CPython/JavaScript/GMP/fmpz witnesses pass, including
+300-bit scaling and explicit smaller-slab failure/reuse. The original
+admission, cap, online/fatal, and return blocks are preserved. The compiled
+closure has 110 functions and zero host callbacks. No production source or
+limit changed.
+
+On the paired 1,012-field development corpus, baseline accepts 961 and the
+candidate 963 at effort 5, with no exceptions. There are three gains and one
+lost first-attempt acceptance (`3.1.3005300.1`, phase 8/reason 436). Two
+serialized `opt` runs with reversed load order show roughly 5–6% target
+improvement (about 4.26 to 4.03 ms), but about 5% regression on the
+class-number-three control; PARI remains about 1.54 ms on the target.
+The candidate also exceeds the existing source allowance by 3,763 bytes.
+**Do not promote this variant alone.** It tests pruning/order on the old
+regions, not the larger volume-guided regions with per-ideal quotas that
+produced the earlier 39-proposal forensic prefix.
+
+The post-parser-repair public replay is now **complete**: all 1,000 frozen tune
+fields have matching class numbers/invariants/discriminants, authenticated
+receipts, and independent ordinary-object exact replay. The report is
+`build/cubic-next-evidence/parser-fix-public-replay/report.json`, SHA-256
+`222c24c184915687b371cd18aaa36f169ff2b267342b930d5214b06275dc9d7a`.
+Its runtime fingerprint is
+`1d16f65daf7290c3e2f8828a6b86660b6610c41a10d7b7df43a75b6c0414bdbd`,
+also checked against the current runtime after the diagnostic builds. This
+qualifies the existing production candidate, **not** the conditional prototype.
+The replay process terminated successfully; there is no remaining replay wait.
+The broad Wasm toolchain/platform gates remain unfinished, and PR190 is draft.
+
+Next combine conditional enumeration with retained per-ideal batches and
+early exact certification, preserving cheap successful prefixes and saved
+ideal cursors. Keep radius, batching, and certification policy distinct in
+experiments; do not merely tune this prototype's inner loop or raise budgets.
+
 ## Exact conditional search and serialized qualification, 2026-09-09
 
 The [conditional-center diagnostic](../docs/cubic-exact-conditional-search.md)
