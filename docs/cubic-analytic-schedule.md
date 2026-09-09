@@ -1485,7 +1485,7 @@ plan, while a broader phase profile must establish where the first successful
 closure spends its time. Improvements limited to 44 reported-hit fields cannot
 by themselves establish competitiveness over the complete corpus.
 
-## First-evaluation phase profile and redundant primality work
+## First-evaluation phase profile and apparent primality cost
 
 The next local diagnostic instruments the authenticated checkpoint-plus-guard
 core, first at coarse phase boundaries and then at direct root/helper calls.
@@ -1522,6 +1522,9 @@ does not support a single remaining dominant analytic bottleneck. It does
 identify a particularly avoidable cost for the smallest field: proving the
 discriminant factor 283 prime invokes all seven deterministic Miller–Rabin
 bases after trial divisions that have already established primality.
+The initial attribution of that time to Miller–Rabin is corrected by the
+primitive-level investigation below: virtually all of it is first-promotion
+allocation, not primality arithmetic.
 
 The general proposed correction is to return true in the existing ascending
 small-prime loop when `small * small > number`, after the existing domain
@@ -1565,6 +1568,86 @@ The replacement bundle is in `/tmp/cubic-prime-trial-timing-5v2Z9N` on `opt`,
 but the subsequent execution connection also timed out before startup could
 be confirmed. Recheck that exact directory and process before launching
 another attempt. No performance improvement is claimed for this ablation yet.
+
+### Controlled rejection and first-promotion allocation
+
+A subsequent read-only check found another reboot, no benchmark process, and
+the replacement directory gone. A fresh run in
+`/tmp/cubic-prime-trial-timing-R0Crgz` then completed normally on the idle `opt`
+host. The frozen corpus, three-round rotated sampling, exact result checks,
+and full native retry policy are unchanged. All 1012 fields finish correctly;
+each native variant retries 31. Sums of per-field medians are:
+
+| Variant | Total |
+| --- | ---: |
+| Checkpoint-plus-guard parent | 4406.870 ms |
+| Relocation-only primality control | 4414.310 ms |
+| Trial-division early exit | 4460.442 ms |
+| PARI | 1448.625 ms |
+
+The candidate is 1.22% slower than the parent, not an improvement. Among the
+423 defining polynomials whose discriminant has a prime factor between 47 and
+2209 exclusively, candidate/parent totals are 1909.160/1890.807 ms; among the
+other 589 they are 2551.282/2516.063 ms. This cohort classification describes
+arithmetic applicability, not a measured call-count claim on every retry.
+The timing SHA-256 is
+`627b66706da62172e539e76c2239e2eb1db015adba010c8d0228c51751ea6881`.
+
+The generated IR and C do contain the candidate's early return. A separate
+private native call trace for `3.1.283.1` confirms the helper receives 283
+and makes **zero** Miller–Rabin calls. A controlled standalone microbenchmark
+on `opt` (five rotated rounds, 10,000 calls per sample) measures median times
+of approximately 0.454 microseconds for the candidate versus 2.164 for the
+parent at 283. Thus the local arithmetic shortcut works; it does not explain
+the much larger time attributed to this helper inside the closed computation.
+Longer 300-call class-group samples likewise do not establish a broad gain:
+283 varies modestly while 331 is essentially unchanged. Production is not
+modified on the strength of the standalone microbenchmark.
+
+Instrumenting the actual `fmpz_set_str` primitive identifies the discrepancy.
+The range guard constructs the literal $2^{64}$ before testing small primes.
+Within the closed computation, this one call takes 0.216 ms, while the
+primality helper exclusive of it takes about 0.001 ms. A second diagnostic
+reads the active GMP checkpoint's counters around that call: **4,064
+allocations requesting 65,024 bytes** for this single integer literal.
+Requested payload is not total memory consumption; allocator headers and
+FLINT's other allocations are not included in that figure. Each diagnostic
+again retains all 64 output words for 1,100 accepted runs; printed first-call
+details precede the 100-call warmup cutoff.
+
+The installed headers disable `FLINT_REENTRANT`. FLINT 3.6's ordinary
+[promotion-pool implementation](https://github.com/flintlib/flint/blob/v3.6.0/src/fmpz/link/fmpz_single.c)
+initializes a 16-page batch when its free pool is empty, including minimum
+limb allocations for every slot. Its cleanup drains the free slots. Our
+`sagejs_flint_exact_checkpoint_cleanup` calls `flint_cleanup` at the ownership
+boundary so caches cannot retain limbs in released arena storage. The source
+mechanism explains the observed first-promotion burst; the counter measurement,
+not the source citation alone, establishes its size in this kernel.
+
+The next systems experiment should compare smaller promotion batches and/or
+FLINT's existing
+[reentrant allocation implementation](https://github.com/flintlib/flint/blob/v3.6.0/src/fmpz/link/fmpz_reentrant.c)
+under the same mathematical source and resource limits. Reentrant allocation
+creates and destroys individual promoted objects rather than maintaining that
+pool, so it can trade startup savings for more allocation during arithmetic;
+it is not assumed faster. **Do not remove cleanup or retain arena-backed
+pointers across calls.** Avoiding the literal would merely move initialization
+to the next necessary large-integer operation.
+
+Dependency provenance needs care before that experiment: the installed
+`libflint.a` member `fmpz_merged.o` does not hash-match the retained source
+build's member. Do not silently replace one object from that older build or
+claim an allocator-only comparison. Reconstruct an authenticated paired
+control/candidate build and record the original-library comparison separately.
+
+The root-interval investigation also now records actual scales. For 283 and
+the user class-number-five example the exponent sequences are respectively
+`[64,130,64,64]` and `[64,132,64,64]`; for `3.1.23567.1` they are
+`[64,132,64,132,64,64]`. Reuse could avoid repeated isolation, but must bind
+the immutable polynomial and requested precision. A finer adjacent dyadic
+bracket may be rounded outward to a coarser dyadic scale; a coarser bracket
+cannot simply be reused as a finer one. This remains a separate, unimplemented
+opportunity, secondary to quantifying the promotion/cleanup cost.
 
 Scripts, manifests, raw clock logs, and source copies are retained under
 `build/cubic-analytic-schedule-evidence/hybrid-prefix/`, including
