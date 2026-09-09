@@ -1765,6 +1765,138 @@ FLINT workloads. This one-page experiment alone does not justify changing
 the global production dependency policy. Repeated root isolation and the
 larger certification cost remain separate algorithm/compiler opportunities.
 
+## Reentrant allocation: cheaper first promotion, worse overall computation
+
+The upstream `--enable-reentrant` allocator is now tested rather than assumed
+faster. It avoids batch initialization, but allocates a FLINT object and GMP
+payload for each promoted integer and frees them at demotion/destruction.
+This is the upstream implementation, not a new mathematical backend or a
+handwritten cubic shortcut.
+
+The experiment uses another fresh extraction of the same authenticated
+FLINT 3.6.0 archive and the same compiler/profile, adding only
+`--enable-reentrant` to configure. Relevant upstream source files hash-match
+the tarball. Installed `config.h` and `flint-config.h` differ from the
+default headers only in the definition of `FLINT_REENTRANT`; TLS stays
+enabled. This separately configured build is not claimed to differ in
+exactly one archive member. The cubic core, acceptance checks, scratch
+dimensions, resource caps, and arena cleanup remain unchanged.
+
+- Reentrant archive: `7e230e4a9a4cf1433e05fb23e530a60e45e3bc06b84b2cfd5a255400c026d114`.
+- Reentrant addon: `45b4eff941f1bbf2195bac46d16588998ff54fb36542dbe190a8b273b830f249`.
+- Full timing output: `264db1ec005bf8120663458dabc5c038e751fd9c2a9a67df5c93efacdd421d57`.
+
+The 1,012-field first-attempt survey agrees in acceptance and every output
+word with the unchanged parent (981 acceptances, zero exceptions); both GMP
+and JavaScript differential passes also agree on every word. Upstream
+`make -j4 check MOD=fmpz` passes. The prior lifecycle harness, including
+cross-thread destruction after creator cleanup, passes under ASan/UBSan
+with leak detection. As before, the dependency archives are not themselves
+sanitizer-instrumented. First promotion is just **one GMP allocation of 16
+payload bytes**, excluding the separate FLINT object allocation.
+
+### Controlled rejection
+
+All timing is uninstrumented, serial, CPU-0-pinned on `opt`. The full-corpus
+protocol is unchanged from the preceding experiment and includes the same
+31 retrying fields, with all 1,012 computations accepted correctly:
+
+| Variant | Sum of per-field medians, ms |
+| --- | ---: |
+| Sixteen-page control | 4682.524 |
+| One-page pool | 4457.166 |
+| Reentrant | 5073.191 |
+| PARI | 1479.250 |
+
+Reentrant is **13.82% slower than one-page** on this aggregate. Its median
+per-field ratio to one-page is 1.1385; the 10th and 90th percentile ratios
+are 1.0869 and 1.1856. The result rules out reentrant allocation as the
+preferred policy for this corpus, despite its cheaper first promotion.
+
+The longer five-field run (five rotated rounds, 100 computations per sample
+for native and PARI) confirms the penalty. Medians in milliseconds:
+
+| Field | Sixteen-page | One-page | Reentrant | PARI |
+| --- | ---: | ---: | ---: | ---: |
+| `3.1.283.1` | 1.3262 | 1.0995 | 1.1874 | 0.7800 |
+| `3.1.331.1` | 1.2678 | 1.0772 | 1.1809 | 0.8600 |
+| $x^3+9x-55$ | 1.8061 | 1.5689 | 1.8000 | 1.0400 |
+| `3.1.23567.1` | 2.4253 | 2.1895 | 2.5079 | 1.0900 |
+| `3.1.46983.1` | 4.1653 | 3.9867 | 4.5571 | 1.1400 |
+
+Do not infer a general win from the noisy short-batch result for 283, where
+reentrant happened to time below one-page; the longer run reverses it.
+No production dependency policy changes. The one-page experiment remains
+the stronger candidate, still requiring broader workloads and platforms.
+
+### Allocation traffic explains the rejection
+
+Private instrumented copies print the existing GMP checkpoint counters just
+before checkpoint release. All three use the same instrumented core hash
+`73deb1b6f7f89cc5037cdb25e6d2a316b34f859b6041c925dc9f826b5b9296ee`
+and the explicitly recorded dependency variants. They run locally, not on
+the timing VM; all five fields reproduce all 64 reference output words.
+These counters are not additional timing evidence.
+
+For $x^3+9x-55$:
+
+| Policy | Allocation calls | Reallocation calls | Requested bytes | Checkpoint high-water bytes |
+| --- | ---: | ---: | ---: | ---: |
+| Sixteen-page | 4130 | 255 | 77312 | 268992 |
+| One-page | 828 | 255 | 24480 | 53440 |
+| Reentrant | 9630 | 5887 | 355456 | 36992 |
+
+Reentrant has the smallest high-water mark but vastly more allocation
+traffic. On `3.1.46983.1`, one-page records 877 allocations and 393
+reallocations; reentrant records 24,418 and 18,036. The pooled implementations
+retain promoted objects and their reusable limb capacity; reentrant clears
+each object, so later promotions must allocate and grow again. Recycling
+raw arena blocks alone does not preserve that object capacity. This source
+mechanism and the measured traffic explain why minimizing first-allocation
+work or peak memory is not the same as minimizing computation time.
+
+For all five fields, the one-page trace records 762 frees at cleanup,
+consistent with three 254-entry promotion batches rather than one 4,064-entry
+batch. Recorded GMP checkpoint statistics exclude separate FLINT object
+allocations and are not total process memory. The raw logs and strict parser
+are `traffic-*.log`, `allocation-traffic.cjs`, and `summarize-traffic.cjs`.
+
+### Next mathematical reuse invariant
+
+A separate probe executes the actual CPython-parsable root isolator and
+tests 25,728 integer-rounding cases plus 6,072 projected-versus-fresh root
+intervals on all 1,012 fields. Starting at scale $2^{132}$, projection to
+$2^0,2^1,2^{16},2^{64},2^{128},2^{132}$ gives exactly the same endpoints
+as fresh isolation, with exact polynomial signs checked at every endpoint.
+This is not a formal proof or an implemented native cache.
+
+The underlying argument is small: if $S=qs$ with integer $q\ge1$ and
+$L\le S\alpha\le U$, where $L,U$ are integers and $0\le U-L\le1$, then
+
+$$
+\left\lfloor\frac Lq\right\rfloor
+\le s\alpha\le
+\left\lceil\frac Uq\right\rceil.
+$$
+
+The projected integer endpoints still differ by at most one. For an
+irreducible complex cubic the unique real root is irrational, so its
+adjacent enclosing integer endpoints at each rational scale are unique.
+Consequently the projected bracket agrees with fresh exact isolation.
+This is one-way reuse: it provides no extra precision from a coarse bracket.
+An implementation must bind the polynomial and scale, retain only valid
+intervals, and keep the cache private to the arena. The static source call
+graph identifies 16 functions, including the root helper and public entry,
+through which that private borrow must pass. Exact sign validation can
+remain the authority even on a cache hit.
+
+Reproduction scripts, manifests, raw correctness/timing outputs, lifecycle
+checks, and root-projection probe are retained under
+`build/cubic-analytic-schedule-evidence/flint-reentrant/`; large rebuildable
+dependencies remain in `/scratch/sagejs-runtime/cubic-flint-reentrant-V8c1dM/`.
+These experiments remain direct-kernel, frozen-corpus diagnostics, not
+public-call benchmarks, new holdouts, or independent mathematical replay.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
