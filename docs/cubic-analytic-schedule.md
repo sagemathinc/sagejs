@@ -2343,6 +2343,134 @@ and Wasm checks, then stops at the previously documented stale optimizer
 opportunity manifest (recorded `ce64558...`, current expected `d870e205...`).
 It is not reported green and the unrelated inventory is not regenerated.
 
+### Allocation attribution and the next missing-unit prefix
+
+Read-only instrumentation of the generated native cores now measures the
+checkpoint's existing allocation counters for the parent and split32 sources.
+The instrumented addons use the same one-page FLINT library, run locally, and
+are never used for timing. Each of the eight calls agrees on acceptance and
+all 64 output words with its own uninstrumented survey. Wrappers around six
+helpers measure inclusive counter deltas; nested helper counts must not be
+added as if they were exclusive costs.
+
+| Field | Allocations, parent → split | Reallocations, parent → split | Peak used arena bytes, parent → split |
+| --- | ---: | ---: | ---: |
+| 283 | 811 → 269 | 184 → 67 | 52096 → 18432 |
+| 331 | 814 → 268 | 183 → 66 | 52352 → 18368 |
+| 9399 ($x^3+9x-55$) | 828 → 272 | 255 → 94 | 53440 → 19008 |
+| 23567 | 844 → 282 | 299 → 111 | 54528 → 20544 |
+| 41300 | 850 → 296 | 338 → 151 | 56448 → 21952 |
+| 46983 | 877 → 316 | 393 → 197 | 59712 → 24640 |
+| 97492 | 1118 → 307 | 374 → 168 | 73728 → 23744 |
+| 3209035 | 1656 → 320 | 448 → 228 | 108544 → 25664 |
+
+For the class-number-five field, cumulative requested bytes fall from 24,480
+to 8,376. The BF evaluator's inclusive allocation/reallocation counts fall
+from 508/42 to 0/0, with unchanged call count. All eight split cases record
+zero allocation and reallocation deltas in the BF evaluator, including both
+evaluations on 46983. Dependency-prefix reduction still allocates, and
+saturation retains its higher-precision exact-root proposal work. These are
+checkpoint-accounted GMP operations, not all process allocations. Peak used
+arena space is not RSS or a reduction in the configured arena capacity.
+Zero new allocations also does not prove that every intermediate stays in
+an inline machine word: existing FLINT pool entries may be reused.
+
+This supplies concrete representation/allocation evidence behind the earlier
+12.34% measured improvement. It does **not** apportion that time saving
+between allocation, shorter arithmetic, and reduced precision-dependent
+iteration. No new speedup is claimed from these instrumented runs.
+Raw counter log hashes:
+
+- Parent: `8de90e94174540dd48681ae245f7ff271097cf22b0fa570d4a1424da9f6bd97f`.
+- Split32: `76603f465e5f79dc8e867db6ee70a3e56bff28baef880c679963e3c5fb2c8040`.
+
+The retained controlled timing identifies the next field by an explicit
+selection rule: first-effort accepted, native/PARI ratio above two, excess
+above 0.5 ms, then increasing absolute field discriminant. This selects
+**3.1.24364.3, $x^3-32x-92$**, with class number three, seven factor-base
+ideals, and 2.570115 ms versus PARI's 1.125 ms. The 981 first-effort successes
+account for 3119.988 ms native versus 1395.500 ms PARI; the 31 completed
+retry cases account for 675.430 ms versus 59.750 ms. Thus first-effort
+successes still contain most of the absolute remaining gap.
+
+Read-only generated-JavaScript traces, each checked against all 64 native
+survey words, show the same stopping sequence at parent64 and split32:
+closures at raw relation counts 9 and 13 report missing units; the closure
+at 22 succeeds. Its published compact relation count is 13, **not** the raw
+22 relations collected. Comparing those two different counts would conceal
+the overshoot.
+
+The trace also snapshots the complete raw principal rows at each closure,
+without mutating discovery state. An independent GP replay verifies the
+maximal-order basis, every principal-ideal identity, and every raw-prefix
+integer kernel. After `bnfcertify`, it expresses each kernel unit in the
+certified fundamental-unit basis and takes the gcd of its exponents. Unit
+index zero below means all such exponents are zero, i.e. only torsion; it
+is not a finite index or a conclusion from a failed numerical root probe.
+
+| Field | Raw prefix | Relation quotient order | Unit exponent gcd |
+| --- | ---: | ---: | ---: |
+| 24364 | 7 through 18 | 6 | 0 |
+| 24364 | 19 through 22 | 3 | 1 |
+| 42552 ($x^3+30x-48$) | 11 through 14 | 15 | 0 |
+| 42552 | 15 through 24 | 5 | 1 |
+
+For 42552, the current closures are at 11, 14, and 24. Both fields therefore
+have an exact quotient change coincident with acquisition of the missing
+fundamental unit, before the next scheduled closure. These GP checks audit
+the captured mathematical data; they are not a formal proof, a native
+internal trace, or the full independent Sage.js public certificate replay.
+Snapshot hash: `333a3efc7ccf144d937a4e6909d67807fb85f7200c5c681c8d0add63fa1db511`.
+Replay result hash: `0c1a1004c173c17cac79616abd4cb9ff592bcc7789767a2834bfe7a1ca7dec2b`.
+
+The local PARI 2.17.4 trace on 24364 starts with 13 relations over seven
+ideals, then requests one additional relation at a time. It uses successive
+ideal-product searches and obtains its regulator at relation 16. Replaying
+the 16 printed exponent vectors gives full rank at row 8, quotient order six
+through row 15, and order three at row 16. This matrix replay does not check
+the generators of PARI's printed relations, which that debug log does not
+contain. The separate completed `bnfcertify` call confirms its final result.
+
+The matching upstream `buch2.c` explains the adaptive search:
+`small_norm` raises a multiplier prime ideal to an exponent determined by
+the factor-base norm bound, multiplies it by each selected ideal, and runs
+Fincke–Pohst enumeration there. The regulator-rank check includes an extra
+archimedean direction, so the log's `1 < 2` is not a claim that a complex
+cubic has unit rank two. Failed unit-rank or index checks lead back to
+relation collection. Source SHA-256:
+`904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac`;
+local GP binary SHA-256:
+`10e2be10a4a64080a9eaab516db95459e71acc8f70b67aabbfcbf60fcbb18952`;
+trace SHA-256:
+`5456d5f679ceec4d19512cb02b881e336b4ab647080ea76a04218565062850ed`.
+
+**Next experiment:** add an early certification opportunity on a strict
+change of the resident exact full-rank relation lattice after a missing-unit
+exit. Such a change is only a scheduling hint, never a correctness test:
+the ordinary unit and analytic checks must still pass. Conversely, a new
+unit can arise without a quotient change, so the original periodic checks
+must remain. Preserve the proposal cursor and total budget, and do not let
+an unsuccessful extra checkpoint consume a later recovery stage.
+
+A caller-selected checkpoint ablation answers the prerequisite question:
+the unchanged same-source certifier **does** accept the earlier prefixes.
+`probe-earlier-closure.cjs LABEL COUNT` wraps the generated-JavaScript
+collector, caps one requested target at the caller's count, and otherwise
+executes the unchanged search and proof bodies. With targets 19 and 15,
+respectively, both computations certify the correct class number and
+invariants. On 24364 only the three unit-coordinate output words change,
+by a simultaneous sign; on 42552 only the compact relation count changes,
+from 16 to 14. This is an untimed diagnostic with externally selected
+checkpoints, **not a general algorithm or source-native optimization**.
+No field-specific checkpoint is proposed for production. Next implement the
+resident event trigger and test coverage, resource usage, and performance
+beyond these examples. No new production claim is made in this follow-up.
+
+The new allocation instrumentation, strict log summarizer, ranking rule,
+snapshot/replay programs, PARI debug trace, and outputs are retained beside
+the precision campaign's existing evidence. No `opt` instrumentation or
+additional controlled timing was used in this follow-up.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
