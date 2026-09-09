@@ -3459,6 +3459,96 @@ SHA-256 identities are
 `4e394a97e6fc1de7bda0e1aa47658fd4c4977651a74d57f6931b78f66c9701ea`
 (PARI traces). These diagnostics are not public certificate qualification.
 
+### Retained volume recovery for smaller factor bases
+
+The five-gate generalization has now been implemented, checked and timed as
+another unpromoted source copy. The two allocation/collector lower bounds of
+12 and three recovery-transition lower bounds of 13 become 1; the upper
+bound 16 remains. There is no polynomial-specific dispatch. Existing small
+factor bases still start with their cheap traversal: volume recovery becomes
+available only through the existing exact rank or authorized proof-insufficiency
+and exhaustion transitions. Errors do not authorize recovery. The collector,
+unit search, prime bounds and acceptance inequalities are unchanged.
+
+`check-gates.py` first verifies that these five substitutions are the complete
+source diff. It then executes 63,360 comparisons of the actual old/new Python
+dispatch predicates over factor counts 0 through 65, boolean state combinations
+and negative/zero/positive rank statuses. Old admissions are retained; zero
+and oversized shapes, inconsistent rank, and missing recovery authority remain
+excluded. The existing traversal-state matrix gains six entries per factor
+for newly admitted small shapes, at most 66 additional entries. There is no
+new owner, arena or enlarged memory limit, but this allocation change still
+needs timing and platform qualification rather than a zero-overhead assumption.
+
+The frozen first-effort corpus improves from 981 to 982 successes: 908491 is
+the sole gain, with no losses or errors. All 1,011 other outputs remain exactly
+identical in all 64 words. FLINT/GMP/JavaScript and original/one-page linkage
+checks cover all 1,012 inputs. All 24 reused holdout fields retain first-effort
+acceptance and identical outputs across the three backends and both variants.
+
+For 908491 the exact bounded certifier now succeeds at **16 raw relations**.
+Its observed checkpoints are $(12,40,\mathrm{insufficient})$ twice,
+$(13,40,\mathrm{insufficient})$, then $(16,5,\mathrm{accepted})$, where the
+middle entry is the class-lattice index. Independent GP replay of every
+principal row and prefix kernel confirms torsion-only units through row 15,
+then class quotient five and unit index one at row 16. The published unit is
+fundamental, and its analytic enclosure matches the previously successful
+effort-seven result up to unit sign. The two earlier targets also replay
+unchanged. Matching PARI's relation count does not claim identical relation
+selection, work or performance. This is not public certificate qualification.
+
+Controlled timing ran alone on the same `opt` host and CPU 0 under
+`/tmp/cubic-narrow-volume-V3G7Xk`. Full-corpus and reused-holdout sampling are
+unchanged. The paired panel adds 908491 to the previous twelve fields and
+includes the full $[5,1,7,8]$ retry sequence inside the clock for both variants.
+
+| Workload | Local-screen parent ms | Smaller-base recovery ms | PARI ms |
+| --- | ---: | ---: | ---: |
+| 908491 | 9.08522 | 3.95467 | 1.50000 |
+| Frozen 1,012, sum of field medians | 3793.80516 | 3763.81767 | 1474.12500 |
+| Reused 24, sum of field medians | 43.17593 | 42.57175 | 27.87500 |
+
+The paired target median ratio is 0.43412, with empirical 10th–90th percentile
+range 0.42448–0.45165: about 56.6% less time including avoided retries. Every
+other paired field's range includes one. All full computations finish correctly,
+with 30 retrying fields instead of 31. The aggregate difference is only 0.79%;
+the target itself accounts for about 5.13 ms of the 29.99 ms difference, so do
+not interpret the whole aggregate movement as a demonstrated algorithmic gain.
+Likewise the reused holdout's 1.40% difference is not a resolved broad speedup.
+The target still takes about 2.64 times PARI, and the corpus about 2.55 times.
+
+Local diagnostic profiling (1,100 calls, 100 discarded, full-output parity)
+shows why matching relation counts has not closed the timing gap. The root
+takes about 4.117 ms with instrumentation: four adjacent-collector calls cost
+1.765 ms inclusive, of which two volume calls cost 0.498 ms. There are four
+dependency LLL-prefix calls, eleven real-root isolations, 91 real-log-bound
+calls and twelve generator-bound checks. Some of this is repeated failed-prefix
+certification, including the identical 12-row prefix. These inclusive costs
+cannot be summed, and this profile is not a controlled speed comparison.
+The next investigation should distinguish repeated prefix proof work from
+the expense of entering the broader traversal late. The twenty-factor retry
+944919 remains outside this generalization and needs a separate measured
+extension, not an unreviewed upper-bound increase.
+
+Source and reproduction evidence are retained under
+`build/cubic-analytic-schedule-evidence/narrow-volume/` and
+`/scratch/sagejs-runtime/cubic-narrow-volume-khwO41`. `prepare.py` authenticates
+the parent and applies only the five gate changes. `summary.json` validates
+all unchanged outputs, the sole gain, three-backend/linkage and holdout checks,
+replay outcomes, and controlled timing files. The source shrinks by five bytes
+to 502,784, SHA-256
+`d7fce6c863655de1ab50dfa23fbda68cde54c8e29a4d802a56ee594ed17b2020`.
+Path-normalized C shrinks by ten bytes to 13,057,812; the larger raw file
+reflects longer source provenance paths, not added algorithmic code. Raw core
+SHA-256 is `b4369ce46ebeb1324fccb6e5d5caf0bc40b0a6c1a4ed1dbf3485f06e6b44f921`.
+Full timing SHA-256 is
+`65de1f7ab90451dc8b2e0e0463d892bb122e476a53203cb973efd5861906146f`;
+reused-holdout timing SHA-256 is
+`83598ddf25e9f5357bc0937b26f9b993468cba81003ad4f2a7c1944f8e9f4bc3`.
+Source allowance, production source and PR203 draft status remain unchanged.
+Focused tests and actual-gate checks pass; the existing architecture-inventory,
+public replay, consolidation and cross-platform qualification gaps remain.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
