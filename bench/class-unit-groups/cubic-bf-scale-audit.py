@@ -159,6 +159,79 @@ def audit(coefficients, discriminant, threshold):
     }
 
 
+def audit_corollary_specialization():
+    """Audit printed Theorem-7 constants at sigma=3/2 with exact fractions.
+
+    This is not a counterexample to Corollary 8: a separate stronger estimate
+    could justify it. It checks whether direct substitution and outward
+    rounding produce its printed constants. No numerical CAS is required.
+    """
+
+    def atan_inverse(n):
+        # An even alternating-series prefix ends below arctan(1/n).
+        terms = 32
+        lower = sum(
+            (Q((-1) ** k, (2 * k + 1) * n ** (2 * k + 1)) for k in range(terms)),
+            Q(0),
+        )
+        return lower, lower + Q(1, (2 * terms + 1) * n ** (2 * terms + 1))
+
+    # Machin's formula, with signed interval multiplication.
+    pi = sub(mul(point(16), atan_inverse(5)), mul(point(4), atan_inverse(239)))
+    log_pi = log_bounds(pi[0])[0], log_bounds(pi[1])[1]
+    log_two = log_bounds(2)
+    count = 1000
+    harmonic = sum((Q(1, k) for k in range(1, count + 1)), Q(0))
+    # 1/(2(n+1)) < H_n-log(n)-gamma < 1/(2n).
+    euler = sub(
+        sub(point(harmonic), log_bounds(count)),
+        (Q(1, 2 * (count + 1)), Q(1, 2 * count)),
+    )
+    constant = add(
+        point(Q(35, 6)),
+        div(sub(euler, add(mul(point(2), log_two), log_pi)), point(4)),
+    )
+    # psi(3/2)=2-gamma-2log(2), by recurrence and duplication.
+    degree = add(sub(euler, point(2)), add(mul(point(3), log_two), log_pi))
+    # (psi(5/4)-psi(3/4))/2=2-pi/2, by recurrence and reflection.
+    real_place = sub(point(2), div(pi, point(2)))
+    assert constant[0] > Q(5344, 1000) > Q(335, 100)
+    assert degree[0] > Q(1801, 1000)
+    assert real_place[1] < Q(430, 1000) < Q(619, 1000)
+    assert constant[1] < Q(535, 100) and real_place[0] > Q(429, 1000)
+
+    def report(interval):
+        # Short rational outward endpoints avoid multi-thousand-digit output.
+        scale = 10**12
+        lo, hi = interval
+        lower = Q(lo.numerator * scale // lo.denominator, scale)
+        upper = Q(-((-hi.numerator * scale) // hi.denominator), scale)
+        assert lower <= lo <= hi <= upper
+        return {
+            "lower": str(lower),
+            "upper": str(upper),
+            "approximate_display_only": [float(lo), float(hi)],
+        }
+
+    return {
+        "exact_rational_audit": True,
+        "corollary_counterexample": False,
+        "certifies_class_groups": False,
+        "sigma": "3/2",
+        "constant": report(constant),
+        "degree_coefficient": report(degree),
+        "real_place_coefficient": report(real_place),
+        "complex_cubic_constant": report(
+            sub(sub(constant, mul(point(3), degree)), real_place)
+        ),
+        "conservative_roundings": ["5.35", "1.801", "0.429"],
+        "printed_corollary": ["3.35", "1.801", "0.619"],
+    }
+
+
 if __name__ == "__main__":
-    coefficients = [int(x) for x in sys.argv[1].split(",")]
-    print(json.dumps(audit(coefficients, int(sys.argv[2]), int(sys.argv[3]))))
+    if sys.argv[1:] == ["--corollary-specialization"]:
+        print(json.dumps(audit_corollary_specialization()))
+    else:
+        coefficients = [int(x) for x in sys.argv[1].split(",")]
+        print(json.dumps(audit(coefficients, int(sys.argv[2]), int(sys.argv[3]))))

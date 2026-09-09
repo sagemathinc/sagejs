@@ -85,6 +85,27 @@ for x in [0,69,512,513,765,768,997,998,999,1493,1494,1495]:
   assert.equal(run.status, 0, run.stderr);
 });
 
+test("exact Theorem-7 specialization does not silently bless printed Corollary-8 constants", () => {
+  const run = spawnSync(pythonExecutable(), ["-c", `
+import importlib.util
+from fractions import Fraction as Q
+spec = importlib.util.spec_from_file_location("audit", "bench/class-unit-groups/cubic-bf-scale-audit.py")
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+r = m.audit_corollary_specialization()
+assert r["exact_rational_audit"] and not r["certifies_class_groups"]
+assert not r["corollary_counterexample"]
+assert Q(r["constant"]["lower"]) > Q("3.35")
+assert Q(r["real_place_coefficient"]["upper"]) < Q("0.619")
+for key in ["constant", "degree_coefficient", "real_place_coefficient", "complex_cubic_constant"]:
+    assert Q(r[key]["lower"]) <= Q(r[key]["upper"])
+assert Q(r["constant"]["upper"]) < Q("5.35")
+assert Q(r["degree_coefficient"]["lower"]) > Q("1.801")
+assert Q(r["real_place_coefficient"]["lower"]) > Q("0.429")
+`], { cwd: require("node:path").resolve(__dirname, ".."), encoding: "utf8" });
+  assert.equal(run.status, 0, run.stderr);
+});
+
 function report() {
   const output = Array(64).fill("0");
   output[1] = "3"; output[2] = "1"; output[3] = "3";

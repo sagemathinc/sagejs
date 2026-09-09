@@ -45,21 +45,45 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.653,
+      "started_at": "2026-09-09T10:29:56.274Z",
+      "commit": "8d37c8a2e96c0da86baa967084c2d5b91ca65d18",
+      "workspace_fingerprint": "16d7fb5678e4764265053a83cf6ef243ef48059a5afe43c7d37ef223b3919dc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.685,
+      "started_at": "2026-09-09T10:51:01.083Z",
+      "commit": "8d37c8a2e96c0da86baa967084c2d5b91ca65d18",
+      "workspace_fingerprint": "849a92413e5b606788947fd1f1ec40ac5911a02b73571996ee6cf97fbb20315b",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "PR203 fixes the 997/floor(X/9) mismatch using 999 and a divisibility guard. Native production corpus preserves 940/1012 acceptances; final serial nine-test native/public/replay suite, 192 unit files, strict Python, and direct docs check pass. Separate combined stronger-search/Corollary-8/765 source-copy experiment preserves 963/1012 acceptances with full fmpz/GMP/JavaScript agreement. Two controlled opt runs improve the stronger-search 17-field aggregate by 2.28%/2.66%, reaching 1.68/1.67 times PARI. Not production promoted; source allowance and public replay qualification remain outstanding.",
+    "summary": "PR203 production BF-999 scale correction remains unchanged. Separate partial-prime native helper passes 800 rational cases, 20 faults, 818 compiled cases per backend, and complete 1012-field three-backend agreement. Controlled full-corpus timing rejects cutoff513: 2.60% aggregate regression despite small-panel gain. More importantly, exact specialization audit finds the printed Theorem7 constants at sigma=3/2 do not yield printed Corollary8 coefficients 3.35 and 0.619. Both preprint and published version checked. Suspend certification/promotion claims for all Corollary8 experiments pending derivation; use stronger-search Theorem1/BF999 as supported baseline. Not a counterexample to the corollary or an observed wrong class group.",
     "risks": [
       "Optimizer-opportunity inventory is already stale at the baseline; architecture gate not passing.",
       "Broad test:changed/docs wrapper runs hit overlapping builds and initially unprovisioned local native prefix; only the final individual checks are qualified.",
       "Full-corpus independent replay and four-platform release qualification remain outstanding; PR remains draft.",
-      "Corollary-8 source copies are experiments, not production changes or public receipt qualification. Sources and evidence are retained under ignored build/cubic-analytic-schedule-evidence."
+      "Corollary-8 source copies are experiments, not production changes or public receipt qualification. Sources and evidence are retained under ignored build/cubic-analytic-schedule-evidence.",
+      "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
     ],
     "next_steps": [
       "Finish integration/release review of the narrow scale fix separately from new residue-bound work.",
-      "Turn the coarse Corollary-8 prototype into a separately reviewed native change with backend and boundary regression tests.",
+      "Resolve the Corollary8 specialization gap before any new bound promotion. Exact rational audit and both paper versions retained; a published theorem citation plus matching formula tests is not sufficient to explain the discovered coefficient discrepancy.",
       "Retained raw-relation forensics rechecked: the original failed search kernel yields only torsion units. Existing initial-volume/BF-lookup source already fixes this missing-relation regime; do not reimplement it from the older production baseline.",
-      "Qualify the combined stronger-search/Corollary-8 experiment: 963/1012 first-attempt successes, no losses against 940 production successes, complete fmpz/GMP/JavaScript agreement. Resolve the 38,737-byte source-allowance excess by real consolidation; do not raise the cap or treat source-copy timing as public replay qualification.",
-      "Consider a certified partial Corollary-8 prime sum using positive existing K-minus-Q norm coefficients and already computed log/sqrt endpoints. An exact-rational pilot confirms narrower bounds; native implementation, boundary tests, and timing remain future work."
+      "Preserve stronger-search BF999 gains while consolidating duplicated proof orchestration; keep the 485000 source allowance unchanged. Corollary8 source-copy measurements remain historical unqualified diagnostics, not public replay qualification.",
+      "Partial-prime implementation and tests now exist in retained experiments. Do not promote cutoff513 based on the 17-field gain: all1012 controlled timing is 2.60% slower, with 180 final refinements. Refinement rebuilds prime splitting and transcendental endpoints; correct reuse must admit higher-degree norms of old small primes and reweight all finite terms.",
+      "Direct Theorem7 replacement at765 is implemented in source copy 6fa3fe31efdbb01e9c147fbc98e930cfefdf04698067eb9d344ab9fd01e2475e: 800 exact formula checks, 20 faults, complete1012-field fmpz/GMP/JavaScript agreement, 963 first-effort successes. Full computation timing completes1012/1012 with no mismatches and 0.63% aggregate improvement over stronger-search BF999, still2.86x PARI. Not a durable speedup or release qualification; source+runtime526816 exceeds unchanged485000 cap.",
+      "Next structural target is fourteen-factor field3.1.606879.2 (x^3-117x-1157): first-effort joint index exactly2 under the validated interval assumptions, provisional class number6 versus corpus3, outside the existing <=12 staged guard. All29 phase8 failures exclude index1; sharper bounds cannot certify their unchanged presentations/units. Reconstruct the missing relation/unit and generalize existing staged state rather than rebuilding it. Retry49-field cohort consumes20.1% of native time."
     ]
   }
 }

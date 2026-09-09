@@ -5,6 +5,11 @@ performance or release qualification. Historical timing reports at $X=997$
 remain historical measurements, not evidence that their analytic enclosure
 satisfied the theorem contract.
 
+Subsequent audit also leaves the **experimental Corollary-8 variants
+unqualified**: the printed specialization constants require an explanation
+not supplied by direct substitution into Theorem 7. See the specialization
+audit below. The production Theorem-1/BF-999 correction is unchanged.
+
 ## Formula contract
 
 [Belabas--Friedman, Theorem 1](https://www.math.u-bordeaux.fr/~kbelabas/research/residue-arxiv.pdf)
@@ -242,6 +247,15 @@ time spent on an attempt that fails before residue certification.
 
 ### Combined search and analytic-bound experiment
 
+**Qualification warning (subsequent audit):** all Corollary-8 source-copy
+results below are historical diagnostic observations, not qualified GRH
+certification. The later specialization audit at the end of this section
+finds a gap between the printed Theorem 7 and Corollary 8 constants. Until
+that gap is explained, retain the stronger-search **Theorem-1/BF-999** source
+as the supported comparison baseline; do not promote either coarse or
+partial-prime Corollary-8 bounds. The production scale correction does not
+use Corollary 8 and is unaffected by this qualification issue.
+
 The retained `agent/cubic-frontier-next` forensics already answered the
 missing-unit question. A fresh execution of its exact PARI oracle against the
 saved precompaction transcripts confirms 34 rows of rank 12 and index 8 in
@@ -367,10 +381,328 @@ maximal defining orders and four cutoffs checks this inequality. For the
 noncyclic field, the coarse upper bound at 765 is about 0.419895, reduced to
 0.381734 by this partial sum. For $x^3-x^2+3x-4$, the values are 0.132648 and
 0.104320. These are bound widths, not timings or new native acceptance results.
-No native implementation of this additional tightening is claimed here.
+That pilot was followed by the isolated native experiment below; the production
+source is still unchanged.
+
+### Native partial-prime bound: small-panel gain, full-corpus regression
+
+The source-copy implementation adds `_cubic_bf_positive_prime_sum_lower`,
+changes the tail helper to accept its result, and calls it from the finite
+evaluator. An AST comparison authenticates that these are the only function
+changes relative to combined Corollary-8/765; three variants change only the
+initial cutoff to 765, 513, or 333. They retain the 1494 refinement and the
+existing exact index-one acceptance rule.
+
+For dyadic scale $s$, the helper computes
+
+$$
+L=\sum_{c(n)>0}
+\left\lfloor\frac{c(n)\,\operatorname{logLower}(n)\,s}
+{n\,\operatorname{sqrtUpper}(n)}\right\rfloor.
+$$
+
+Thus $L/s\leq S_+(X)$, using nonnegative log lower endpoints and positive
+square-root upper endpoints. Only first-scale, exponent-one terms contribute.
+Their selected norms must be strictly increasing; live value indices, norm
+values, coefficient slots, and endpoint ordering are checked before use.
+Higher powers and the second finite-sum scale cannot duplicate contributions.
+Omitting favorable terms weakens this lower bound rather than invalidating it.
+The helper is not an independent validator of prime decomposition: that remains
+the authenticated planner's responsibility.
+
+Under the hypotheses of [Belabas–Friedman, Corollary 8 and Remark 6](https://www.math.u-bordeaux.fr/~kbelabas/research/residue-arxiv.pdf),
+specializing to degree three with one real place and replacing $\beta$ by one
+for $X\geq69$ gives the conservative bound
+
+$$
+|\log\kappa_K-f_K(X)|\leq
+\frac{4.65}{\sqrt X\log(3X)}
+\left[
+\frac{6.69}{\sqrt X}+
+\left(1+\frac{3.88}{\log(X/9)}\right)
+\left(\log|D_K|-2.672-\frac{2L}{s}\right)
+\right].
+$$
+
+The decimal constants are exact rationals in the implementation. Every
+operation rounds outward. A negative supplied $L$, nonpositive remaining
+bracket, or malformed interval fails closed. This changes a certified residue
+enclosure, not the theorem identifying the joint relation/unit index with a
+positive integer. No empirical bound is promoted to a GRH theorem.
+
+The actual helpers pass 800 independent rational cases (four precisions,
+four cutoffs, 50 coefficient fixtures each) and 20 invalid-input cases.
+An isolated compiled probe additionally passes 818 cases per backend on fmpz,
+GMP, and JavaScript, with exact CPython outputs, input immutability, and poisoned
+output preservation on rejected cases. These synthetic coefficient fixtures
+test arithmetic and validation, not prime-decomposition correctness.
+
+| Source-copy variant | First-effort successes | Initial analytic | Refined analytic | Nonanalytic | Errors / mismatches |
+|---|---:|---:|---:|---:|---:|
+| Coarse 765 baseline | 963 | 771 | 0 | 192 | 0 / 0 |
+| Partial-prime 765 | 963 | 771 | 0 | 192 | 0 / 0 |
+| Partial-prime 513 | 963 | 616 | 155 | 192 | 0 / 0 |
+| Partial-prime 333 | 963 | 260 | 511 | 192 | 0 / 0 |
+
+Acceptance sets and accepted relation counts are unchanged. The 513 source
+also agrees across fmpz/GMP/JavaScript on all 64 output words for all 1,012
+fields, including declines. An initial standalone native-availability check
+failed and is retained as an unqualified run; it did not reproduce on fresh
+loads. The qualified complete rerun requires native loading explicitly. The
+cause of that initial failure is not established.
+
+One serialized controlled run on the existing 17-field panel gave sums of
+per-field medians 43.750 / 43.874 / 42.171 / 49.510 ms for coarse 765,
+partial-prime 765, partial-prime 513, and partial-prime 333; PARI was 26.199 ms.
+The apparent 3.61% gain from 513 did **not** generalize to the full corpus.
+
+The full-corpus run on `opt` used explicit fmpz calls, authenticated source,
+module and addon hashes, three alternating implementation-order rounds per
+field, four native computations per sample, and 16 fresh PARI `bnfinit(f,0)`
+computations per sample. Both used warmups outside samples; the native side
+used preallocated external buffers and the unchanged effort sequence
+`[5, 1, 7, 8]`. PARI's internal millisecond clock gives 1/16 ms per-call
+quantization. Host: `cocalc-vm-8d993f531c1249b28aff31a2`, AMD EPYC 7B13,
+Node 26.8.1, CPU 0 affinity; no competing controlled timing job.
+
+Both native variants complete all 1,012 fields with no exceptions or class
+number/invariant mismatches. Their effort counts are identical: 963 finish
+in effort 5, 32 require efforts 5 and 1, and 17 require 5, 1, and 7.
+
+| Final certification stratum | Fields | Coarse 765 | Partial-prime 513 | PARI |
+|---|---:|---:|---:|---:|
+| Nonanalytic | 202 | 644.946 ms | 647.265 ms | 331.375 ms |
+| Candidate closes initially | 630 | 2339.289 ms | 2292.037 ms | 1006.688 ms |
+| Candidate refines to 1494 | 180 | 1848.978 ms | 2019.580 ms | 371.250 ms |
+| Sum of per-field medians | 1012 | 4833.213 ms | 4958.882 ms | 1709.313 ms |
+
+The candidate is 2.60% slower by this aggregate, despite being faster on 658
+fields and having a median per-field ratio of 0.9893. Its geometric mean
+ratio is 1.0059 and 95th-percentile ratio 1.1308. The 180 refined fields cost
+170.602 ms extra, outweighing the 47.253 ms saved on initial analytic
+successes. The worst observed ratio is 1.555 for label `3.1.61718551.1`,
+polynomial $x^3+1411x-5644$: 7.740 versus 12.036 ms, with PARI at 1.938 ms.
+For $x^3+9x-55$, 513 does improve 1.700 to 1.613 ms, versus PARI 1.188 ms.
+This familiar success is not evidence of a broad improvement.
+
+**Timing decision: 513 does not replace coarse 765.** The later mathematical
+audit below additionally suspends certification claims for **both** variants.
+The
+full corpus is the same frozen development/control corpus, not an unseen
+holdout. These measurements are not public-call timings, receipt
+authentication, independent class-group certificate replay, or release
+qualification. They do not establish a PARI win: the full-corpus aggregate
+is about 2.83 times PARI for the baseline and 2.90 times for the candidate.
+
+Source inspection explains a concrete refinement inefficiency:
+`_cubic_prepare_bf_plan` clears the coefficient prefix and recomputes prime
+splitting, and `_cubic_evaluate_bf_plan` recomputes log/square-root endpoints
+for the entire live value prefix. Refinement retains owners but not those
+computed values. A future reuse change must preserve first-match header
+indices, include newly admitted degree-two/three norms from previously visited
+small primes, and reweight **all** finite terms when $X$ changes. Appending
+only new terms to the old finite sum would be mathematically wrong. No such
+reuse optimization is implemented or timed in this report.
+
+The partial-prime source is 479,997 bytes plus the 46,619-byte runtime:
+526,616 total, or 41,616 over the unchanged source allowance. The generated
+765 core is 16,387,211 bytes. Source consolidation and resource/platform
+qualification remain necessary; no source or arena limits were increased.
+
+Source hashes for partial-prime 765, 513, and 333 respectively:
+
+- `6ba3b522136aa3f67e6e801b8084c04664d50f095cb0b6e6d0c58d2ba57b2242`
+- `75a104d985c3928a1606f614bb55d32e11abe30f1c489dd0f42f1998e45fa2ff`
+- `118d01c67d11fb392248ad7bef09a04ac7df34da956eb7f8c4fa1102226e019d`
+
+Sources, composition/audit/probe/timing scripts, build identities, and full
+reports are retained under
+`build/cubic-analytic-schedule-evidence/partial-prime`, excluding disposable
+compiled caches. The full timing report SHA-256 is
+`1e9b4e3137ca1c6539b45e3d78f5342a26598909e673532fa462f51cbbd4085d`.
+
+### Specialization audit: an unresolved Corollary-8 proof dependency
+
+A numerical feasibility check of the free parameter in Theorem 7 exposed a
+more important issue than cutoff selection. Its direct specialization at
+$\sigma=3/2$ has constant coefficients
+
+$$
+A=\frac{\gamma/2+1-\log(4\pi)/2}{2}+4+\frac43,
+\qquad B=\log(2\pi)-\psi(3/2),
+\qquad C=\frac{\psi(5/4)-\psi(3/4)}2=2-\frac\pi2.
+$$
+
+Here $\gamma$ is Euler's constant and $\psi$ the digamma function. Exact
+rational enclosures give
+
+| Coefficient | Direct Theorem-7 specialization | Printed Corollary 8 |
+|---|---:|---:|
+| $A$ | $(5.344881166983,\ 5.344881291859)$ | 3.35 |
+| $B$ (subtracted per degree) | $(1.801387009097,\ 1.801387508598)$ | 1.801 |
+| $C$ (subtracted per real place) | $(0.429203673205,\ 0.429203673206)$ | 0.619 |
+
+Thus 3.35 is not an upper rounding of $A$, and 0.619 is not a lower rounding
+of $C$. The digamma values were also independently checked with local PARI
+at high precision. Both the linked preprint and the author's
+[published offprint, pages 366–367](https://www.math.u-bordeaux.fr/~kbelabas/research/residue-mcom2843.pdf)
+display these formulas. This is not an OCR-only discrepancy: the pages were
+visually inspected.
+
+The committed audit is reproducible without Sage.js or PARI:
+
+```sh
+python3 bench/class-unit-groups/cubic-bf-scale-audit.py --corollary-specialization
+```
+
+It uses exact fractions,
+Machin's formula with alternating-series remainder bounds for $\pi$, the
+positive atanh series for logarithms, and
+
+$$
+\frac1{2(N+1)}<H_N-\log N-\gamma<\frac1{2N},\qquad N=1000.
+$$
+
+Digamma recurrence/reflection reduce the required special values to these
+constants. Its assertions establish the separation from the printed decimal
+coefficients without floating-point comparisons. Decimal values in the
+report are display-only; rational endpoints are retained.
+
+**This is not a counterexample to Corollary 8.** A separate stronger estimate
+might justify it. It does show that substituting $3/2$ into the displayed
+Theorem 7 and rounding outward is not that justification. The exact helper
+tests establish faithful evaluation of the chosen formula, and corpus
+agreement establishes observed answers; neither closes this theorem-level
+gap. Treat it as a blocking proof dependency for promoting this experimental
+bound, rather than silently relying on the citation.
+
+For orientation, direct safe coefficient roundings from Theorem 7 are
+5.35, 1.801, and 0.429, giving a complex-cubic constant $-0.482$, not
+$-2.672$. Its prime sum has denominator $(N\mathfrak p)^{3/2}-1$;
+replacing that by the larger $(N\mathfrak p)^{3/2}$ loses favorable terms
+and is conservative. These observations identify the replacement implemented
+in the subsequent source-copy experiment below; they do not by themselves
+qualify its public implementation or runtime.
+
+The 45-digit `theorem7-pilot.py` evaluates five rational parameter choices
+against exact PARI prime decompositions of all 1,012 fields. It is explicitly
+numerical, not an interval certificate, and its Corollary-8 columns inherit
+the issue above. Its unexpected comparison triggered this audit; no compiler
+or default algorithm was changed in response to the numerical pilot.
+
+Next steps are to reconstruct the bound directly from the explicit formula
+or explain the missing estimate, then repeat the native/corpus timing with
+the justified formula. In parallel with that mathematical question, source
+consolidation and recomputation-free refinement remain engineering targets.
+The existing stronger-search BF-999 comparison retains the major measured
+search improvement without relying on this Corollary-8 dependency.
+
+### Direct Theorem-7 replacement experiment
+
+An isolated source copy changes only the tail helper, with its AST and source
+hash authenticated against partial-prime 765. Specializing the printed
+Theorem 7 at $\sigma=3/2$, using the outward coefficient bounds above,
+replacing $\beta$ by one, and retaining the same conservative partial sum
+gives
+
+$$
+E_7(X)=\frac{4.648}{\sqrt X\log(3X)}
+\left[
+\frac{4.26}{\sqrt X}+
+\left(1+\frac{3.88}{\log(X/9)}\right)
+\left(\log|D_K|-0.482-\frac{2L}{s}\right)
+\right].
+$$
+
+Here $4.648=2.324(2\sigma-1)$ and
+$4.26=4.26(n_K-1)/(2\sigma-1)$ for $n_K=3$; these are not the coefficients
+of Corollary 8. All positivity guards, first/refined cutoffs (765/1494),
+relation collection, index-one acceptance, and arena limits are unchanged.
+
+The actual helper passes 800 independent rational formula checks and 20
+invalid-input checks. The frozen first-effort screen preserves exactly the
+963 successes of stronger-search BF-999, with zero losses, gains, exceptions,
+answer mismatches, or accepted relation-count changes. Of those successes,
+192 are nonanalytic, 749 close at 765, and 22 refine to 1494. All 64 output
+words agree across fmpz/GMP/JavaScript for every one of the 1,012 inputs,
+including declines. This is not full independent certificate replay.
+
+The source hash is
+`6fa3fe31efdbb01e9c147fbc98e930cfefdf04698067eb9d344ab9fd01e2475e`;
+the generated core hash is
+`6c639e7b04daaace275407100af128d2bf242fabb9a6d8999140d22747c66a5d`
+(16,459,920 bytes). The module is 480,197 bytes; with the runtime it totals
+526,816 bytes, still 41,816 above the unchanged allowance. No production
+source change or release qualification is implied.
+
+The controlled full-corpus comparison uses the same three-round protocol as
+above, now against **stronger-search Theorem-1/BF-999**, not the unqualified
+Corollary-8 source. All 1,012 inputs complete under the existing retry policy
+with no exceptions or class number/invariant mismatches.
+
+| Final certification stratum | Fields | BF-999 baseline | Direct Theorem 7 at 765 | PARI |
+|---|---:|---:|---:|---:|
+| Nonanalytic | 202 | 644.005 ms | 645.813 ms | 329.938 ms |
+| Candidate closes initially | 783 | 3877.535 ms | 3823.805 ms | 1317.438 ms |
+| Candidate refines to 1494 | 27 | 393.613 ms | 414.436 ms | 59.313 ms |
+| Sum of per-field medians | 1012 | 4915.153 ms | 4884.054 ms | 1706.688 ms |
+
+The aggregate improves by 0.63%; the geometric mean per-field ratio is
+0.9894, median ratio 0.9880, and 95th-percentile ratio 1.0257. There are 763
+faster fields relative to BF-999, and 34 faster than PARI. This is a single
+run with some unrelated-path noise, not a demonstrated uniform or durable
+speedup. The candidate remains about 2.86 times PARI in aggregate.
+$x^3+9x-55$ takes 1.779 ms versus baseline 1.826 and PARI 1.188;
+$x^3-x^2-7x+122$ takes 2.469 versus 2.500 and 1.563 ms.
+
+The report is `theorem7-timing.json` in the retained evidence directory,
+SHA-256 `60d878cee25da098002d65a8ea64c3fb5a237ce6b6ceceb5178e490c664bf4c0`.
+All earlier public-call, holdout, independent-replay, source-size, and platform
+qualification exclusions still apply. This small change does not justify
+abandoning the larger search/representation work.
+
+### Next structural target: genuine nontrivial joint indices
+
+Joining the first-effort diagnostics to the full computation timings gives
+49 retry fields consuming 982.725 ms, about 20.1% of the candidate's total
+sum of medians, versus 102.938 ms in PARI. Of these, 29 stop at phase 8.
+Every one of those 29 has a **strictly positive lower bound** for the log of
+the joint relation/unit index. Thus a sharper valid enclosure for the same
+retained presentation and unit cannot establish index one. Twenty-six also
+have a provisional class number strictly above the corpus class number.
+Reason markers 435/436 are stale unit-materialization markers, not the
+phase-8 failure cause.
+
+The first such field in the frozen ordering is label `3.1.606879.2`,
+$x^3-117x-1157$. Its first attempt has fourteen factor-base ideals and a
+provisional class number 6 versus the corpus class number 3. Its log-index
+interval is approximately $(0.392853,0.995395)$: exact rational comparison
+against the logarithm bounds shows that the only possible positive integral
+joint index is **two**. The complete retry computation takes 9.321 ms versus
+PARI's 3.688 ms in this run. These are diagnostic states, not independently
+replayed public certificates.
+
+The existing resident staged-certification guard stops at twelve factors;
+this fourteen-factor case is outside it. The next experiment should audit
+and generalize the existing state machine to this regime, not recreate
+resumption that already exists for smaller cases. Capture the deficient
+presentation, determine whether PARI obtains the missing relation or unit
+through another adjacent-ideal visit, and preserve the exact acceptance and
+arena-capacity contracts. `retry-frontier.cjs` records the cohort join;
+the bounded-search and analytic-resumption source contracts still govern
+which statuses permit collecting more rows.
 
 ## Validation status
 
+- The specialization-audit follow-up passes formatting, all five focused
+  analytic-schedule tests, strict Python (382 modules), direct documentation
+  checking, and the complete 192-file unit tier after a fresh 10m09s build.
+  The broader 585-file test tier is not claimed passing here. The final
+  serial architecture rerun passes FFI and preceding gates but stops at the
+  stale optimizer inventory (current expected input
+  `d870e205dd95ae3434ca8df34610b4a0c323107fd722e3b8faea0d336414adea`).
+  An earlier architecture invocation overlapped the compiler build and is
+  explicitly unqualified; its transient FFI failure is not a new source bug.
 - Initial full local build, strict CPython/Ruff/Pyright gate, all 192 unit-test
   files, five focused unit tests, and the extracted analytic-suffix
   fault-injection fixture pass.
