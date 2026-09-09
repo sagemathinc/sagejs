@@ -6,7 +6,7 @@
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Measure general initial analytic-cutoff schedules on the current BF candidate while preserving exact certification and all resource limits",
+  "objective": "Correct the native BF ninth-scale proof contract and measure general analytic-cutoff schedules without weakening certification or resource limits",
   "base_commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
   "claims": [
     "src/lib/sagejs/number_fields/cubic_class_number_native.py",
@@ -21,7 +21,10 @@
     "test/fixtures/cubic-analytic-suffix.py"
   ],
   "dependencies": [],
-  "references": [],
+  "references": [
+    "https://www.math.u-bordeaux.fr/~kbelabas/research/residue-arxiv.pdf",
+    "https://github.com/sagemathinc/sagejs/pull/203"
+  ],
   "architecture": {
     "strategy": "source-transparent-native",
     "fallback": "same-source",
@@ -44,8 +47,17 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "PR203 fixes the 997/floor(X/9) mismatch using 999 and a divisibility guard. Native production corpus preserves 940/1012 acceptances; final serial nine-test native/public/replay suite, 192 unit files, strict Python, and direct docs check pass. Separate unpromoted Corollary-8/765 source-copy pilot preserves coverage and improves the 17-field diagnostic aggregate by about 4% in two controlled opt runs.",
+    "risks": [
+      "Optimizer-opportunity inventory is already stale at the baseline; architecture gate not passing.",
+      "Broad test:changed/docs wrapper runs hit overlapping builds and initially unprovisioned local native prefix; only the final individual checks are qualified.",
+      "Full-corpus independent replay and four-platform release qualification remain outstanding; PR remains draft.",
+      "Corollary-8 source copies are experiments, not production changes or public receipt qualification. Sources and evidence are retained under ignored build/cubic-analytic-schedule-evidence."
+    ],
+    "next_steps": [
+      "Finish integration/release review of the narrow scale fix separately from new residue-bound work.",
+      "Turn the coarse Corollary-8 prototype into a separately reviewed native change with backend and boundary regression tests.",
+      "Inspect phase-43/reason-434 unit-stage decline for x^3-x^2-7x+122: effort five costs about 6.75 ms before an additional successful effort-one call. Distinguish absent unit relations from information lost in compaction, and compare existing experimental branch and PARI before implementing."
+    ]
   }
 }

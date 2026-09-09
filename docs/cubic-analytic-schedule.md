@@ -158,14 +158,102 @@ smoothed-prime computation: matching a numeric cutoff alone does not make two
 different analytic formulas equivalent. Do not weaken certification to obtain
 a favorable timing comparison.
 
-## Validation status at initial handoff
+One concrete lead is the same paper's Corollary 8. For signature $(1,1)$,
+dropping its nonpositive prime sum and using $\beta\leq1$ at $X\geq69$
+gives the simpler upper bound
 
-- Full local build, strict CPython/Ruff/Pyright gate, five focused unit tests,
-  and the extracted analytic-suffix fault-injection fixture pass.
+$$
+\frac{4.65}{\sqrt X\log(3X)}
+\left[\frac{6.69}{\sqrt X}
++\left(1+\frac{3.88}{\log(X/9)}\right)
+\bigl(\log|D_K|-2.672\bigr)\right].
+$$
+
+It needs no additional splitting data. A floating-point screen on the 771
+experimental analytic acceptances gives ratios to the current tail bound at
+$X=999$ of $0.32034$ minimum, $0.68339$ median, and $0.79884$ maximum.
+This is candidate-selection evidence only: no acceptance uses these floats,
+no native implementation of this bound is included, and no speedup follows
+without exact lowering, certificate replay, and controlled timings. The
+screen is retained as `corollary8-screen.json` with its diagnostic markers.
+
+### Separate source-copy prototype
+
+A subsequent unpromoted prototype implements that coarse Corollary-8 formula
+in the actual native tail helper. It is deliberately **not** part of the
+production correction in this PR. Its extracted actual helper encloses an
+independent rational formula in 90 combinations of discriminant, cutoff, and
+dyadic precision. Full native development-corpus checks give:
+
+| Initial cutoff | Accepted | Initial analytic successes | Refined successes | Mismatches / errors |
+|---|---:|---:|---:|---:|
+| 999 | 940 | 754 | 0 | 0 / 0 |
+| 513 | 940 | 562 | 192 | 0 / 0 |
+| 765 | 940 | 754 | 0 | 0 / 0 |
+
+All also retain 186 nonanalytic successes and exactly the baseline's 72
+declines. This makes 765 preferable to 513 for the next controlled comparison,
+without assuming that corpus behavior proves correctness or generality.
+Source hashes at 999 and 765 respectively are
+`337ff3981f2beff289dfe75e53b7ee454c9dd17fc68daa7fa345bc76e117acbd` and
+`ab8191135418002fd4ecd431e77566c44b66083c361edd3cf2d44c7cf4071076`.
+Sources, audit script, manifests, corpus reports, and timing reports are
+retained under `build/cubic-analytic-schedule-evidence/corollary8-pilot`.
+
+Two serial controlled runs on `opt`, with opposite implementation order,
+used the existing 17-field diagnostic panel. Each has seven alternating
+rounds, 20 warmups, 64 native calls per sample, and 256 fresh PARI
+`bnfinit(f,0)` calls. External native scratch is preallocated and the existing
+effort retry policy is included. This is not public-call timing, compilation
+time, an unseen holdout, or full-corpus replay qualification.
+
+The sums of per-field median milliseconds were:
+
+| Run | Corrected production, 999 | Corollary 8, 999 | Corollary 8, 765 | PARI |
+|---|---:|---:|---:|---:|
+| Forward | 88.856 | 88.882 | 85.276 | 26.492 |
+| Reverse | 89.338 | 89.188 | 85.643 | 26.578 |
+
+The 765 prototype improves this aggregate by 4.03% and 4.14%; merely changing
+the tail formula at 999 is essentially flat. For $x^3+9x-55$, its medians
+are 2.962 and 2.865 ms versus corrected production's 3.118 and 3.209 ms and
+PARI's 1.223 and 1.207 ms. This field's discriminant is $-9399$, not the
+defining polynomial's $-84591$. These are modest improvements, not a PARI win.
+
+### Next dominant cost: unsuccessful unit-stage work
+
+The panel's $x^3-x^2-7x+122$ case still takes about 12.4 ms versus PARI's
+1.58 ms. A separate individual-effort diagnostic on the same timing host
+measures the existing individual effort modes (seven samples of 64 calls):
+
+- Corrected production's effort five spends a median 6.747 ms before declining
+  at phase 43, reason 434: no authenticated unit after bounded support/recovery.
+- Effort one then succeeds in 5.835 ms. The ordinary retry driver pays both.
+- Globally swapping these modes is not justified: for $x^3+9x-55$, effort one
+  costs 3.850 ms while effort five succeeds in 3.195 ms.
+
+The next forensic question is whether unit information is lost during
+compaction or absent from the collected relations altogether. The marker
+alone does not distinguish those causes. Inspect the full relation kernel
+and PARI's corresponding unit/archimedean state before changing retention or
+collection policy; first check whether the existing experimental branch has
+already addressed this regime. A smaller residue cutoff cannot recover the
+time spent on an attempt that fails before residue certification.
+
+## Validation status
+
+- Initial full local build, strict CPython/Ruff/Pyright gate, all 192 unit-test
+  files, five focused unit tests, and the extracted analytic-suffix
+  fault-injection fixture pass.
+- The direct documentation generator check also passes with the final build.
 - Native corpus checks above pass with explicitly identified artifacts.
-- Compiled helper/public-path regression reruns are pending local addon
-  provisioning. The first run failed for a missing FLINT addon; public-path
-  tests also overlapped a compiler rebuild and are not counted as evidence.
+- The final serial native run passes all nine tests in the BF-prefix,
+  analytic-suffix, and native-class-number suites, including public receipt
+  authentication, independent exact replay, pinned nontrivial fields, and
+  large-regulator units. This is not full-corpus independent replay. Earlier
+  runs failed for missing local addons or overlapped compiler builds and are
+  not counted as evidence. Provisioning now uses the standard local prefix
+  path linked to the existing dependency prefix; addons were rebuilt locally.
 - `architecture:check` stops at a stale optimizer-opportunity manifest. Its
   recorded input hash is
   `ce64558cecbdc639cd6eeb9a6b3ad0de5d968c6523248d11401556004dc3bcde`;
@@ -173,5 +261,9 @@ a favorable timing comparison.
   gives `941e6567b32bb52ecd4835b97f67b6a66453dac61cc143c50cf4a9cb1d3fd7c1`.
   The mismatch therefore predates this correction. The inventory is not
   refreshed merely to obtain a passing gate.
-- `test:changed` is running; four-platform release qualification, public
-  receipts, and independent exact replay are not established by this handoff.
+- The `test:changed` wrapper failed during an overlapping compiler rebuild;
+  the `docs:check` wrapper then failed during addon reconciliation before the
+  local prefix was provisioned. Neither wrapper is claimed passing. Individual
+  unit/native checks above ran successfully with the final environment.
+  Four-platform release qualification and full-corpus public receipt/replay
+  qualification remain outstanding.
