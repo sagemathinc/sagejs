@@ -2471,6 +2471,160 @@ snapshot/replay programs, PARI debug trace, and outputs are retained beside
 the precision campaign's existing evidence. No `opt` instrumentation or
 additional controlled timing was used in this follow-up.
 
+### Resident quotient-event checkpoint experiment
+
+The next source-copy experiment implements that scheduling hint in ordinary
+Python and compiles the complete program through the same canonical native
+builder. It changes four bodies: the reduced-ideal ellipsoid collector, the
+adjacent collector, the volume collector's returned budget, and the root
+controller. No proof helper, analytic inequality, imported arithmetic,
+public signature, owner allocation, or runtime capacity changes.
+
+After a genuine missing-unit exit in the original adjacent-search regime
+with at most eleven factor-base ideals, the collector may pause on a newly
+admitted row whose existing exact online-HNF support flag is one. That flag
+means the canonical relation lattice changed. The caller has already
+established full rank, so a strict change lowers its positive integer index.
+Consequently these extra event pauses cannot occur indefinitely: each proper
+decrease divides the previous index and reduces it by at least a factor two.
+This is a termination argument for extra checkpoints, **not** a proof of a
+class number or of unit completeness. Ordinary certification remains the
+only acceptance authority. Periodic checks stay in place because a new unit
+need not change the relation quotient.
+
+The leaf advances its proposal cursor before pausing. The adjacent and
+volume collectors return their remaining proposal budget explicitly; the
+root carries that budget across extra pauses instead of resetting it.
+An unsuccessful extra checkpoint does not consume a recovery stage. The
+larger initial-volume and expanded-shell regimes retain their existing
+schedules; this experiment does not claim event scheduling there.
+
+Control-flow review found and corrected one additional exhaustion edge:
+if an event checkpoint fails and the adjacent traversal subsequently
+exhausts, expanded-shell recovery must remain available even when no earlier
+intermediate periodic checkpoint was inserted. The corrected source records
+that an event checkpoint occurred and uses it in the existing exhaustion
+transition. A negative-control test fails on the first candidate and passes
+with this correction. Fatal computations still fail closed; their returned
+cursor/budget is not resumable state.
+
+Validation now includes:
+
+- 1,296 cases executing the actual collector bodies with explicit arithmetic
+  stubs, covering ellipsoid/shell cursors, zero/exhausted budgets, periodic
+  targets, event positions, disabled events, and fatal online updates.
+- 96 cases executing the actual root budget/pause statements, plus 48
+  exhaustion-transition cases. These are control-flow tests, not mathematical
+  ideal-arithmetic oracles.
+- All 1,012 first-effort cases across native, GMP, JavaScript, and alternate
+  FLINT linkage: 981 successes, zero errors, no gains or losses. The corrected
+  candidate retains every output word and every recorded generated-JavaScript
+  helper event from the first candidate on this corpus.
+- All 20 fields whose published output differs from split32 have read-only
+  relation snapshots, exact principal-ideal checks, every-prefix integer
+  kernel replay, and certified GP fundamental-unit exponent checks. Their
+  final kernel-unit exponent gcd is one. This is independent GP arithmetic
+  on captured data, not full public Sage.js certificate replay.
+
+The completed controlled runs use the same one-page FLINT, `opt` CPU zero,
+three rotated rounds, two native calls per sample with retries inside the
+clock, and eight fresh PARI `bnfinit` calls per sample. External scratch and
+input packing are outside the clock. Both source variants finish all 1,012
+fields correctly, with the same 31 retrying fields. Sums of per-field medians
+in milliseconds:
+
+| Run | Split32 parent | Event candidate | PARI |
+| --- | ---: | ---: | ---: |
+| Initial event experiment | 3856.760 | 3823.293 | 1459.625 |
+| Corrected exhaustion transition | 3789.770 | 3753.545 | 1455.500 |
+
+The corrected run's reduction is **0.96% overall**, and **17.95%** in the
+20-field changed-output cohort (68.016 to 55.807 ms). That cohort is defined
+by observed output changes, not a predeclared random performance sample.
+This is a useful narrow improvement, not a broad PARI win: aggregate native
+time remains about 2.58 times PARI.
+
+| Field | Parent ms | Corrected event ms | PARI ms |
+| --- | ---: | ---: | ---: |
+| $x^3-32x-92$ | 2.662 | 2.431 | 1.125 |
+| $x^3+30x-48$ | 3.249 | 2.306 | 1.125 |
+| $x^3+9x-55$ | 1.266 | 1.308 | 1.000 |
+
+A separate twelve-field paired run uses 21 alternating ABBA/BAAB rounds,
+ten calls per sample, and 200 warmups per implementation and field. Its
+median ratios of within-round mean wall times are **0.9179** and **0.6953**
+for the two targeted fields; their 10th–90th percentile ranges lie below one.
+The class-number-five ratio is 1.0028 (CPU 1.0003), with both ranges crossing
+one. Thus this change does not improve that field; its noisy full-corpus
+sample is not evidence of a systematic regression either. Quantiles are not
+confidence intervals, and this panel is not a universal no-regression proof.
+
+The holdout consists of 24 distinct field discriminants absent from the
+frozen 1,012: scan $x^3+ax+c$ for $-42\leq a\leq-20$ and
+$-130\leq c\leq-60$, retain the first irreducible complex fields with
+nontrivial class number and $|D|\leq250000$, skipping repeated/existing
+discriminants. PARI selects and certifies the fields **before** Sage.js is
+run; no speed or Sage.js-success filter is applied. All 24 complete on their
+first attempt in both variants, with all-output GMP/JavaScript agreement.
+Controlled totals are parent 45.318 ms, corrected event 43.691 ms, and
+PARI 26.000 ms, a **3.59%** aggregate reduction on this small neighboring
+holdout. Only two published outputs change; both have independent exact GP
+principal-row and kernel-unit replay:
+
+| New field | Parent ms | Event ms | PARI ms |
+| --- | ---: | ---: | ---: |
+| $x^3-41x-124$, $D=-34867$ | 2.771 | 2.019 | 1.125 |
+| $x^3-41x-122$, $D=-126184$ | 2.919 | 2.228 | 1.000 |
+
+This is evidence of generalization, not a stratified large-discriminant
+benchmark or proof that all neighboring inputs improve.
+
+Corrected Python SHA-256:
+`ad363e00797b312614898cce13b449e2dfab11601a4368360dd101984cd99c95`;
+generated core SHA-256:
+`7302024143fff53fc3caa9796f11f8a9da8dded53d961575fe4c5918ca8f90c8`.
+Source is 490,031 bytes, +3,119 over its experimental parent. Path-normalized
+generated core is 12,690,808 bytes, +65,229. Neither source-budget resolution
+nor cross-platform/public-replay qualification is claimed. No allowance is
+raised; PR203 remains draft and production source remains unchanged.
+
+Raw timing hashes:
+
+- Initial corpus: `93b569d1b2fb0f1497cae031b244bcf9b30ef282097480c2f9e3b6c6b7eea9d8`.
+- Corrected corpus: `8ab5298d5c820a3f160b265064eff13e207438dad37dabfa2a06669c4bf73e05`.
+- Corrected paired panel: `1bfd9da12057b30d808623d631ab63f6d1fee94efa32d777eef27d9370954063`.
+- New neighboring fields: `4e8ae1ad3cacb543c4b0d0948a41c4648e5ea4a9dbbef373ca0de70babbf8454`.
+
+All sources, generators, checks, manifests, snapshots, GP scripts and logs,
+and raw timing outputs are retained under
+`build/cubic-analytic-schedule-evidence/quotient-event/`; large reproducible
+builds remain in `/scratch/sagejs-runtime/cubic-quotient-event-9hh9Nk/`.
+The five focused tests, direct documentation check, diff check and parallel
+contract check pass. The architecture rerun passes through native/Wasm
+audits, then fails at the same stale optimizer-opportunity manifest recorded
+above. That inventory is not refreshed to manufacture a passing gate.
+
+**Remaining cost and next experiment.** Local diagnostic native profiles
+use exclusive-clock accounting, 100 warmups and 1,000 measured calls, with
+all 64 output words checked on all 1,100 calls. These are instrumented local
+measurements, not `opt` timings. On 24364, three dependency LLL calls account
+for about 0.291 ms; real-root isolation is called eight times (0.142 ms),
+and 58 real-log evaluations take 0.154 ms. On 42552, the corresponding LLL
+cost is 0.287 ms. Both cases compute dependency logs five times across
+three closures. The main closure reduces dependencies before computing
+high-precision logs, while the fallback raw-prefix helper already tries an
+outward-rounded torsion certificate before LLL.
+
+The next concrete opportunity is to test that cheap torsion screen earlier
+when the compact prefix retains all raw relations. A successful screen could
+avoid high-precision unit work on prefixes known to contain only torsion.
+It must authenticate the kernel and log enclosures; a failed screen remains
+inconclusive. When compaction drops raw rows, torsion of the compact subset
+alone cannot justify skipping the raw-prefix unit recovery. Reuse the
+existing mathematical criterion and measure the added work on successful
+prefixes before claiming an improvement. This targets measured repeated
+unit work rather than extrapolating more gains from the small event cohort.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
