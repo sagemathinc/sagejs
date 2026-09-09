@@ -4195,6 +4195,154 @@ enabled 17–24-factor cohort, keeping the 13–16 schedule unchanged. Any
 resumable recovery from materialization exhaustion separately requires a
 typed distinction between bounded inability and invalid proof state.
 
+## Volume-first ablation and bounded-region exhaustion
+
+The next source copy changes only the initial traversal selection for
+$17\le n\le24$; the 13–16 schedule and all certification criteria remain
+unchanged. Its actual predicate is compared on 132 combinations of staged
+status and factor count, with only the eight intended staged cases changing.
+It restores both previous losses, but loses five other first-effort successes.
+First-effort coverage is 1,002, with all three execution backends agreeing.
+For $x^3-39x-569$, the new prefix has unit index one before row 29, and row 29
+supplies the last missing rank/class evidence. The former 33-row staged prefix
+and this 29-row volume prefix are different searches, not interchangeable
+certificates or a claim of identical work to PARI's 26-row trace.
+
+Full timing of this first ablation exposes two unrecovered failures. Its
+attempt-time sum is **not** a completed-corpus performance result. The paired
+driver correctly aborts when it cannot complete a requested field. A separate
+paired run explicitly excludes those two fields, retaining the exclusion list;
+it does not silently turn the failed full panel into a pass.
+
+Read-only generated-body tracing resolves the fatal cases:
+
+- `3.1.65734851.3` has relation quotient order 24 rather than true class
+  number 12, but already has unit index one. Its next proposed ideal region
+  needs coordinate limits $(72,3,3)$.
+- `3.1.73693327.1` has quotient order 560 rather than class number 56 and
+  only torsion dependency units in its initial 29-row prefix. A later
+  proposed ideal region needs coordinate limits $(65,5,2)$.
+
+Both exceed the retained coordinate limit of 64. The exact plan matrices
+were captured without altering any of the 64 result words; an independent
+integer formula reproduces these limits and distinguishes them from malformed
+quadratic forms. The existing planner returned `-1` for both malformed geometry
+and a valid region outside the discovery envelope. The collector consequently
+treated these two optional search regions as fatal proof-state errors.
+
+### An explicit, limited skip status
+
+A second source copy changes only `_cubic_initial_volume_parameters` and
+`_cubic_collect_initial_volume_prefix`. The planner contract becomes:
+
+| Status | Meaning | Collector action |
+| --- | --- | --- |
+| $-1$ | Malformed positive plan or failed exact planning computation | Fatal decline |
+| $0$ | Unprepared plan | Fatal here: this caller requires a prepared plan |
+| $1$ | Prepared region within the coordinate limit | Enumerate normally |
+| $2$ | Valid proposed region exceeds the coordinate limit | Mark this discovery region exhausted and visit the next ideal |
+
+The new status is returned before writing any plan output. The coordinate
+limit stays 64. Exhausting all eligible regions returns insufficiency, not
+success; the existing full-rank, ideal-relation, unit, generator-bound, and
+analytic-index checks still exclusively authorize publication. Search-region
+exhaustion is not a completeness proof, and this change does not pretend that
+the skipped region contains no useful relations. Malformed plans, invalid
+rank/support state, reconstruction failures, and inconsistent intervals
+remain fatal. No new owner, workspace capacity, or unbounded retry is added.
+
+The actual old/new planner bodies pass 6,007 integer cases under both aliasing
+and separate-output schedules. Independent integer square/cube-root formulas
+check the geometry, including limits 64/65, malformed forms and unprepared
+plans. Of these inputs, 1,573 are oversized; only their status changes, and
+every output remains identical. The actual collector body passes 408
+state-machine cases with the planner and completeness predicate stubbed:
+oversized regions advance once, all-skipped exhaustion terminates, repeated
+exhaustion does not repropose work, zero budget is inert, and malformed or
+unprepared plans remain fatal. This is a state-machine test, not an arithmetic
+or native execution oracle. A first test assertion used the wrong tuple slot
+for the cursor; correcting that assertion does not change the implementation.
+
+On the entire corpus, this second change restores exactly the two fatal
+fields and preserves every output of the other 1,010. All FLINT/GMP/generated
+JavaScript and linkage checks pass. First-effort coverage is 1,004, with eight
+declines that the existing diagnostic retry schedule resolves. Relative to
+the earlier coordinated staged candidate, there are two gains and three
+losses. All 809 fields outside the targeted cohort are still unchanged.
+Independent exact replay of the two restored fields proves the missing class
+relation appears at row 47 for `65734851`, while `73693327` has class and unit
+indices one by row 44 and publishes after row 45. Both published units are
+checked as fundamental; three unchanged controls also replay exactly.
+
+The first volume-first copy additionally passes exact replay of 183 selected
+successful fields and 5,245 principal relations. One initial replay exceeded
+GP's default eight-MB stack; its failure log is retained. Rerunning with an
+explicit 256-MB GP stack passes. This increases the **independent checker**'s
+budget, not Sage.js's arena or mathematical limits. Combined with the two
+changed-field replays and all-word parity, this covers the changed successful
+prefixes, not all public corpus certificates. The reused 24-field holdout is
+unchanged and is not relabeled as fresh evidence.
+
+### Completed-corpus timing, with the regressions retained
+
+The corrected candidate uses the same controlled `opt` protocol and matched
+one-page FLINT linkage as above. Every sample completes, including authorized
+effort retries inside the timed region. The immediately preceding staged
+candidate is rebuilt neither mathematically nor with a different allocator.
+
+| Workload | Staged parent ms | Volume-first with skip ms | PARI ms |
+| --- | ---: | ---: | ---: |
+| All 1,012 fields, summed medians | 2971.098 | 2834.008 | 1444.875 |
+| $x^3-39x-569$ | 5.030 | 2.685 | 2.000 |
+| `3.1.20636980.1` | 5.885 | 7.591 | 1.625 |
+| `3.1.25637479.1` | 7.255 | 6.002 | 1.625 |
+| `3.1.45285240.1` | 12.095 | 38.072 | 1.750 |
+| `3.1.65734851.3` | 4.869 | 10.297 | 2.000 |
+| `3.1.69019020.3` | 16.722 | 4.601 | 1.750 |
+| `3.1.73693327.1` | 6.736 | 8.537 | 2.500 |
+| `3.1.87899928.1` | 2.057 | 9.001 | 1.750 |
+
+The completed total is 4.6% lower than the paired staged parent and 1.96 times
+PARI. This is still not a broad PARI win. It must not be conflated with the
+earlier uncompleted volume-first attempt sum. The remaining new declines are
+two bounded unit-product constructions and one incomplete class-relation
+lattice; changing their diagnostic labels is not an optimization. The
+regressions favor investigating evidence-responsive search and compact unit
+construction rather than selecting a traversal by polynomial coefficients.
+
+The completed nine-field paired run confirms target ratio 0.53924
+(10th–90th percentiles 0.53522–0.54291), while `69019020` improves to ratio
+0.27909. The worst regressions remain resolved: `45285240` is 3.17088 times
+the parent and `87899928` is 4.39934 times the parent. The original 9399
+control has ratio 0.99302 with a range spanning one. All fields in this
+corrected paired panel complete; none are excluded. These are empirical
+quantiles, not confidence intervals. The repeated 24-field holdout totals
+39.354/39.018 ms for parent/candidate, with identical outputs; that small
+movement is not evidence of changed mathematical work.
+
+The initial-volume copy has SHA-256
+`95cffc96d5e3e53e062c02680c2c2ce258d981ce2ce9bd2dc8d6b65e32e872d4`.
+The typed-skip copy has SHA-256
+`c1f8251ba3e6180b9b725b3dd11888f41c762a597e6cd6a272e0c0154e603619`;
+raw core SHA-256
+`005f2b1527683c31ef84645050b267eec87c654605be42293daca6dfabdf03ef`.
+The initial-volume copy is 503,765 bytes with 13,048,204 normalized C bytes;
+the typed-skip copy is 504,393 bytes with 13,053,433 normalized C bytes.
+The latter adds 628 source bytes and 5,229 normalized C bytes, with no
+additional owner or matrix allocation. Its compile time is 49.66 seconds.
+Final scripts, source copies, small manifests, source/plan/state checks,
+native surveys and replay evidence are retained under
+`build/cubic-analytic-schedule-evidence/initial24/` and
+`build/cubic-analytic-schedule-evidence/volume-skip/`. Scratch originals are
+`/scratch/sagejs-runtime/cubic-initial24-r4rDSu` and
+`/scratch/sagejs-runtime/cubic-volume-skip-h5KaCx`; controlled remote runs are
+`/tmp/cubic-initial24-My9gGo` and `/tmp/cubic-volume-skip-oHPhgb` on `opt`.
+Production source and allowance are unchanged. Both copies remain
+experimental and require consolidation, fresh holdouts, public receipt
+qualification and four-platform/resource review. The serial architecture
+rerun again fails only at the already-recorded stale optimizer inventory;
+that failed gate is not refreshed away or claimed passing.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
