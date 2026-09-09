@@ -2,6 +2,48 @@
 
 Status: active; no new PARI win claimed.
 
+## Volume recovery and shorter checkpoints rejected, 2026-09-09
+
+The [volume-batch experiment](../docs/cubic-volume-batch-experiment.md)
+implements exact T=478 recovery regions, four-new-row visits, and retained
+per-ideal cursors in a closed native source copy. Cheap production search and
+final certificate checks remain unchanged. Recovery-only gains one effort-5
+acceptance on the paired 1,012-field development corpus (962 vs 961, no losses
+or exceptions) but slows the target from 4.26 to 4.94 ms. Moving the twelve-
+factor initial target to n+6 is worse: 949 acceptances, 13 losses/one gain,
+and 5.32 ms vs 4.29 ms baseline / 1.55 ms PARI. Neither variant is promoted;
+both exceed the source allowance, which remains unchanged.
+
+Untimed native checkpoint traces explain an important structural failure.
+The target's early variant closes at 26 rows only after four full certificate
+attempts, compared with baseline's two attempts at 26/27 rows. On the first
+lost field x^3-x^2-8x-159 (3.1.78223.1), the 18-row upper group has order 12,
+while baseline certifies class number 6. The analytic closure correctly returns
+status 0 at phase 8; the current scheduler refuses resumption there because
+it admits only phase43/reason434 missing-unit recovery. Reason435 is a stale
+materialization marker, not the final cause. Next distinguish this valid
+analytic-index insufficiency from fatal evidence, audit state reuse, and
+test continued collection. Volume-guided search from the first ideal remains
+different from the measured cheap-prefix-plus-volume-recovery variants.
+PARI's source explicitly requests more relations on its relation-index check
+failure, separately from precision problems. A fresh local trace on the first
+lost field reaches class number 6 with 18 rows from four ideals and 32 small-
+norm candidates. All thirteen new early declines end at phase 8; only the
+first has the detailed checkpoint audit so far.
+
+All 808 scheduler pause splits, 200 large/exact volume cases and boundary
+tests pass, as do the existing conditional iterator's CPython/JS/GMP/fmpz
+tests. Full kernels compile with zero host callbacks. Timed sources reproduce
+from the builder; corpus/timing/trace digests and resource costs are recorded
+in the document. No unseen holdout, authenticated public candidate receipts,
+or independent full candidate replay is claimed. Production source is
+unchanged and PR190 remains draft.
+The complete local rebuild finished successfully in 8m24s, reusing all 42
+production kernel families. All four focused tests pass again afterward;
+docs reuse the completed build. Optional Wasm numerical reactors are absent,
+and the inherited parallel-task-record check still fails. No runtime-consuming
+job remains running from this experiment.
+
 ## Native conditional prefix measured, 2026-09-09
 
 The [native conditional-prefix experiment](../docs/cubic-conditional-prefix-experiment.md)

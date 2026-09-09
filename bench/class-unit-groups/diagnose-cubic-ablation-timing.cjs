@@ -15,7 +15,7 @@ const fields=validateFields(fieldsPath ? JSON.parse(fs.readFileSync(fieldsPath))
   {coefficients:['-63','-11','-1','1'],h:'3',cyc:'[3]'},
 ]);
 const implementations=builds.records.map(r=>{
-  assert.match(r.name,/^[a-z0-9_]+$/);
+  assert.match(r.name,/^[a-z0-9_-]+$/);
   const root=path.join(directory,r.name);
   assert.equal(hash(fs.readFileSync(path.join(root,'source.py'))),r.sourceSha256);
   assert.equal(hash(fs.readFileSync(path.join(root,'index.cjs'))),r.moduleSha256);

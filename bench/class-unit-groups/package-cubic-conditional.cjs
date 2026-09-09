@@ -8,14 +8,15 @@ assert.ok(baselineDirectory && candidateManifest && destination && !extra.length
 assert.ok(order === undefined || order === "reverse");
 const baseline = JSON.parse(fs.readFileSync(path.join(baselineDirectory,"manifest.json")));
 const candidate = JSON.parse(fs.readFileSync(candidateManifest));
-assert.equal(candidate.schema,"sagejs.diagnostic/cubic-conditional-ablation-v1");
+assert.ok(["sagejs.diagnostic/cubic-conditional-ablation-v1", "sagejs.diagnostic/cubic-volume-batch-ablation-v1"].includes(candidate.schema));
+assert.notEqual(candidate.checkpoint_trace,true,"instrumented checkpoints are not timing artifacts");
 assert.equal(candidate.production_source_sha256,baseline.sourceHash);
 const sourceRecords = [{name:"baseline",sourcePath:baseline.sourcePath,
   sourceSha256:baseline.sourceHash,cacheKey:baseline.cacheKey,modulePath:path.resolve(baselineDirectory,"index.cjs")}, ...candidate.records];
 if (order === "reverse") sourceRecords.reverse();
 fs.mkdirSync(destination); // Explicitly refuse an existing destination.
 const records = sourceRecords.map(r=>{
-  assert.match(r.name,/^[a-z0-9_]+$/);
+  assert.match(r.name,/^[a-z0-9_-]+$/);
   const directory = path.dirname(r.modulePath);
   const manifest = JSON.parse(fs.readFileSync(path.join(directory,"manifest.json")));
   assert.equal(manifest.cacheKey,r.cacheKey);
