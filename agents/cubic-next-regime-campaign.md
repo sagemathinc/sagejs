@@ -2,6 +2,34 @@
 
 Status: active; no new PARI win claimed.
 
+## Exact torsion-probe checkpoint, 2026-09-09
+
+The [torsion-probe experiment](../docs/cubic-torsion-probe-experiment.md)
+implements the elementary norm-based log gap as an isolated pre-LLL test.
+Authenticated outward log intervals for an exact kernel basis certify that
+all dependencies of the current relation set produce only torsion units.
+Only a successful certificate returns the existing insufficient-unit status;
+otherwise the original LLL and certification tail runs unchanged.
+
+Every observation and all output slots match the resumable-plus-log baseline
+on all 1,012 development fields, including the 51 declines: 961 acceptances,
+no losses, gains, or exceptions. CPython interval/control-flow tests and a
+185-case JavaScript/GMP/fmpz witness with poisoned inactive tails pass.
+This is not public authentication or independent replay of the new source.
+
+Controlled opt target time is 5.084 -> 4.276 ms, versus PARI 1.543 ms. The
+other three recovery-heavy fields improve 7.5--10%; controls show small paired
+regressions. Instrumentation confirms zero recovery LLL calls on the target
+and the class-number-six field. Target recovery falls to 0.202 ms; the exact
+predicate itself costs 0.021 ms. The proof, rather than a global removal of
+conditioning, explains which work is avoided.
+
+Production is unchanged. This prototype adds 2,139 source bytes to the still
+isolated scheduler; do not increase the source allowance to land it. Next
+refactor shared orchestration and qualify inconclusive-probe/resource behavior.
+The next large measured component is adjacent relation collection, not the
+now-small recovery or presentation refresh. No unseen neighbors were run.
+
 ## Recovery-conditioning checkpoint, 2026-09-09
 
 The small root-enclosure reuse is integrated and rebuilt; Python source
