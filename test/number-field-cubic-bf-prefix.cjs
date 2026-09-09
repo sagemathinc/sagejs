@@ -62,10 +62,15 @@ const assert = require("node:assert/strict");
 const module = require(process.argv[1]);
 const exact = module.bf_exact_snapshot;
 const reused = module.bf_prefix_schedule;
-const parameters = [[997, 1n], [1494, 2n], [997, 3n], [997, 1n]];
+const parameters = [[999, 1n], [1494, 2n], [999, 3n], [999, 1n]];
 let reference;
 for (const backend of ["javascript", "gmp", "fmpz"]) {
   const polynomial = exact.packIntegerBuffer([-1n, -1n, 0n, 1n], 8);
+  for (const threshold of [997, 998, 1000]) {
+    const rejected = exact.packIntegerBuffer(Array(4096).fill(-911n), 8);
+    assert.equal(exact[backend](polynomial, rejected, threshold, 1n), false);
+    assert.deepEqual(rejected.toArray(), Array(4096).fill(-911n));
+  }
   const full = reused.createIntegerBuffer(4 * 4096, 8);
   assert.equal(reused[backend](polynomial, full), true);
   const observations = full.toArray();

@@ -1,0 +1,250 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-analytic-schedule",
+  "title": "Cubic Analytic Schedule",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Correct the native BF ninth-scale proof contract and measure general analytic-cutoff schedules without weakening certification or resource limits",
+  "base_commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+    "bench/class-unit-groups/cubic-analytic-schedule.cjs",
+    "bench/class-unit-groups/cubic-bf-scale-audit.py",
+    "test/cubic-analytic-schedule.cjs",
+    "docs/cubic-analytic-schedule.md",
+    "docs/complex-cubic-native-class-group-proof.md",
+    "test/number-field-cubic-bf-prefix.cjs",
+    "test/number-field-cubic-native-class-number.cjs",
+    "test/fixtures/cubic-reconstructed-regulator-guard.py",
+    "test/fixtures/cubic-analytic-suffix.py"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://www.math.u-bordeaux.fr/~kbelabas/research/residue-arxiv.pdf",
+    "https://github.com/sagemathinc/sagejs/pull/203"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "pari",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.653,
+      "started_at": "2026-09-09T10:29:56.274Z",
+      "commit": "8d37c8a2e96c0da86baa967084c2d5b91ca65d18",
+      "workspace_fingerprint": "16d7fb5678e4764265053a83cf6ef243ef48059a5afe43c7d37ef223b3919dc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.685,
+      "started_at": "2026-09-09T10:51:01.083Z",
+      "commit": "8d37c8a2e96c0da86baa967084c2d5b91ca65d18",
+      "workspace_fingerprint": "849a92413e5b606788947fd1f1ec40ac5911a02b73571996ee6cf97fbb20315b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.687,
+      "started_at": "2026-09-09T11:11:54.471Z",
+      "commit": "ef27002bbc0e42b7b769658f30b06085487d7690",
+      "workspace_fingerprint": "5234842d019730c6da6a24f849358561f4f5f14720e5d21a6e725c6f2344497f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.702,
+      "started_at": "2026-09-09T11:43:29.800Z",
+      "commit": "f15bc6e0e6da6495edcb0dab76092d9f15cd651b",
+      "workspace_fingerprint": "695efd4f80160bf3d53e144f3c8719be5626b235913f58481256f8976bfe70a6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.686,
+      "started_at": "2026-09-09T11:47:32.772Z",
+      "commit": "f15bc6e0e6da6495edcb0dab76092d9f15cd651b",
+      "workspace_fingerprint": "b58badddc488f90a568e205e55bb00b19a5a774cca210c5a6bdfb7d18f24f7d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.723,
+      "started_at": "2026-09-09T12:06:32.300Z",
+      "commit": "b2e36fa792893ee7b1f3411e1d5bb7050730d33b",
+      "workspace_fingerprint": "939ecda91053df704778fc5b17e50cd2e7fe37cb4ce8207a000bf6b3581f6099",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.684,
+      "started_at": "2026-09-09T12:27:35.230Z",
+      "commit": "766fffbf818c9e845a5996a6b4dd333de31c12c7",
+      "workspace_fingerprint": "aaa932f6182b2ca63ea85f06d953506327446d6e990af2ba82d5a658d6079629",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.675,
+      "started_at": "2026-09-09T12:31:00.680Z",
+      "commit": "766fffbf818c9e845a5996a6b4dd333de31c12c7",
+      "workspace_fingerprint": "85a2f73026d5fc9aa6792477f8fdcbe9e9158667c82d1bcbb07b6204e643ae1b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.663,
+      "started_at": "2026-09-09T12:32:14.150Z",
+      "commit": "766fffbf818c9e845a5996a6b4dd333de31c12c7",
+      "workspace_fingerprint": "fb23673f8e48a670165786e0ae7eefada5f722ee7c28cb2bedeb329e690460fd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.671,
+      "started_at": "2026-09-09T12:51:41.185Z",
+      "commit": "7e0ebbb266745ef083af6237ec06165358822c71",
+      "workspace_fingerprint": "aed60938907496436c4b77568ab0a0455fff019fd1e6d9142621891908677c09",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.659,
+      "started_at": "2026-09-09T12:58:38.278Z",
+      "commit": "7e0ebbb266745ef083af6237ec06165358822c71",
+      "workspace_fingerprint": "ef4373b9977931e8a32f34b6750a60bca5e2efd162a1c3c790076fe8b24a6e88",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.677,
+      "started_at": "2026-09-09T13:16:34.042Z",
+      "commit": "84e88b0742b70e6c8cafc394566fd5587baa63be",
+      "workspace_fingerprint": "3b46e17344e641fcbc3fc2693367b9f5e1c8456f40d181d5b6dccb57a4ce2d5e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.672,
+      "started_at": "2026-09-09T13:18:24.017Z",
+      "commit": "84e88b0742b70e6c8cafc394566fd5587baa63be",
+      "workspace_fingerprint": "5e2b2b85cbee4a53d4ddf80b785b2902a67c74113ca60001ac09f03d21c299af",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.671,
+      "started_at": "2026-09-09T13:20:13.136Z",
+      "commit": "84e88b0742b70e6c8cafc394566fd5587baa63be",
+      "workspace_fingerprint": "e3caeb1901adebeb40d2c90a3e075cfebd89d118db37fba46774119bc667952f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.671,
+      "started_at": "2026-09-09T13:37:19.559Z",
+      "commit": "2423d0a6e3ce5d47c6b79e45216e08a23d1821da",
+      "workspace_fingerprint": "2404b419c705af640ae0d227c3e8a373f9c967c14d9ce37ea533a5c13a622441",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.78,
+      "started_at": "2026-09-09T14:03:46.818Z",
+      "commit": "a0000de407f867cb023e7cf4262e778b8e4f6b33",
+      "workspace_fingerprint": "bcd388bb715e12b7bd1b17e6cb7e2a297aeb26ce8fda6ef3d6ab7e73339d274b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.661,
+      "started_at": "2026-09-09T14:24:05.417Z",
+      "commit": "35bb40168daac05596d44ff295f771e21781fd85",
+      "workspace_fingerprint": "8269ceedbcb3c9f22a94056c2329a560e5dca3c13c338751df4ab8e30b8a117a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "PR203 production BF-999 scale correction remains unchanged. Separate partial-prime native helper passes 800 rational cases, 20 faults, 818 compiled cases per backend, and complete 1012-field three-backend agreement. Controlled full-corpus timing rejects cutoff513: 2.60% aggregate regression despite small-panel gain. More importantly, exact specialization audit finds the printed Theorem7 constants at sigma=3/2 do not yield printed Corollary8 coefficients 3.35 and 0.619. Both preprint and published version checked. Suspend certification/promotion claims for all Corollary8 experiments pending derivation; use stronger-search Theorem1/BF999 as supported baseline. Not a counterexample to the corollary or an observed wrong class group.",
+    "risks": [
+      "Optimizer-opportunity inventory is already stale at the baseline; architecture gate not passing.",
+      "Final broad test:changed run is terminal failure: 74 full-tier files passed, then five FFI failures from missing FFLAS manifest/igraph addon/static library; 509 files not started. Fresh build and all192 unit files passed. Do not restart an old handle or claim the full585 tier passed.",
+      "Full-corpus independent replay and four-platform release qualification remain outstanding; PR remains draft.",
+      "Corollary-8 source copies are experiments, not production changes or public receipt qualification. Sources and evidence are retained under ignored build/cubic-analytic-schedule-evidence.",
+      "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
+    ],
+    "next_steps": [
+      "Controlled primality ablation completed after opt reboot recovery in /tmp/cubic-prime-trial-timing-R0Crgz: parent4406.870ms/control4414.310ms/candidate4460.442ms/PARI1448.625ms, all1012 correct,31 native retries. Reject broad speed claim (candidate1.22% slower). IR/C and native call trace confirm283 early exit and zero MR calls; standalone opt median0.454us vsparent2.164us. Primitive-level profile corrects earlier cost attribution: fmpz_set_str constructing2^64 costs0.216ms, rest of prime helper0.001ms. Active checkpoint counters show4064 GMP allocations/65024 requested bytes for that one literal. FLINT's cold16-page promotion batch is repeatedly drained at lexical arena cleanup; do not skip cleanup or retain stale arena pointers. Next authenticate paired FLINT smaller-pool/reentrant allocation experiments under unchanged cubic source/caps; compare rebuilt control and original library separately. Installed libflint.a:fmpz_merged.o hash differs from retained source build, so do not silently swap older objects and call it allocator-only. Root scale traces283[64,130,64,64],23567[64,132,64,132,64,64],userh5[64,132,64,64] separately motivate polynomial/precision-bound bracket reuse, not yet implemented. All new diagnostic1100-run output checks pass, raw timing hash627b66706da62172e539e76c2239e2eb1db015adba010c8d0228c51751ea6881. Evidence/docs retained; production unchanged, PR203 remains draft.",
+      "Local first-evaluation profiles now isolate avoidable shared primality work: 3.1.283.1 spends0.218ms/18% instrumented time proving283 prime with7 Miller-Rabin bases despite sufficient trial divisions. Small-unit probe is absent from bounded first attempts; BF is only17% on23567, not a sole bottleneck. General strict small*small>number early-return ablation source0afb13d5fc8ff32d3484cbf64f042318d9f75e3a32aa8e91b34138ef7cdc0c6f plus relocation-only control61c36e3946b2b8f40d37c01029e9c38fdad4f97ea13324b71582cbc5dcdcaea5 retain981/1012 and all64 parent words, no errors; candidate all1012 three-backend checks pass. Extracted Python and direct compiled fmpz/GMP/JS helper each pass100011 independent-sieve cases, with large-domain/composite tests and unchanged cubic AST. Shared source and production unchanged. First opt timing interrupted by verified VM restart; temporary directory/process gone. Replacement bundle /tmp/cubic-prime-trial-timing-5v2Z9N uploaded, but execution SSH timed out before startup confirmation. Recheck exact remote state before restarting; no timing win claimed. Evidence under build/cubic-analytic-schedule-evidence/hybrid-prefix, docs record proof and instrumentation scope. Next complete controlled parent/control/candidate/PARI comparison, then assess a focused change to shared field_analysis_resource rather than duplicating its helper in production. Also inspect repeated real-root isolation and generator-bound tests; no weakened mathematical checks.",
+      "Checkpoint plus refinement guard and field-only residue cache now implemented as separate source copies. Guard bd254ba726b182add49ccbf4836c420f4f6cefd38aae6963c911cda410b2577b and cache e435e7e092725c05b3f939394b872a4c356eafbd0310e17070e84e654afe4191 both preserve981/1012 first attempts and every parent64-word output; complete three-backend checks pass. On class-order change cache rebuilds the full indexed BF plan/endpoints because header collisions change term indices and value counts; only field residue is reused.54 exact planner collision cases,12 cache controls,289 guard boundaries pass. Separate native diagnostic freshly recomputes every cache hit on all1012 fields and all3 backends: same first60 words,54 reported hits in44 nontrivial successful fields,41 changed-class hits, all lower/upper/tail endpoints bit-identical. Controlled full-retry timing completes1012 correctly: checkpoint4487.424ms/guard4445.852ms/cache4472.268ms/PARI1448.625ms. Guard0.93% faster than checkpoint; cache0.59% slower than guard overall despite selected46983 improving4.676->4.057->3.868ms. Do not promote cache as a broad win. Next measure first-analytic-evaluation cost and separate immutable field prime splitting from class-indexed value tables; do not assume another narrow cache will close the gap. Sources486563/490611 bytes exceed unchanged production cap before runtime. Qualification remains open; sources/scripts/raw evidence retained locally, production unchanged.",
+      "Intermediate missing-unit checkpoint now tested: selected 3.1.23567.1 initially has a full-rank 10x8 quotient of order51 and torsion-only kernel units; effort3 fourteen-row exact GP replay gives order17/unit index1, and PARI also uses14 relations. Resident n+6 checkpoint source41550326694a0e28a56c1c8cb8a731b95f98db4e531ea52083e3d563c307eba8 certifies at14 rather than29 rows. First candidate lost3 successes because an exhausted adjacent request returned before shell recovery; corrected one-way exhaustion transition restores all981/1012, no gains/losses/errors, full1012 all64-word fmpz/GMP/JavaScript agreement,120 checkpoint and24 exhaustion checks. Non-root helpers/schemas unchanged. Controlled opt full retry completes1012 correctly: intermediate4550.247ms/rank4583.535ms/guard4551.734ms/PARI1452.875ms. Target3.283->2.451ms, PARI1.125;152-field cohort8% faster, corpus0.73%, not a broad win. Next smallest significant regression3.1.46983.1 x^3-x^2+22x+240: added12-row attempt finds unit but fails analytic check, then same28-row/61-proposal success as parent;3.261->4.876ms. Examine rigorously reusable field-level analytic data across changed class index and the existing refinement guard, never stale class-dependent thresholds. Production/caps unchanged, source486319 bytes before runtime remains over budget; public replay/platform qualification open. All raw evidence retained under build/cubic-analytic-schedule-evidence/hybrid-prefix.",
+      "Corpus-wide untimed closure trace now distinguishes 440 single staged successes, 152 multiple-attempt successes with only pre-analytic preceding failures, 41 with analytic insufficiency, 348 no captured staged-success trace, and 31 first-effort declines. No trace is not no work: later trivial publication and failed returns do not publish these diagnostics. Full-call guard timing for the 152-field pre-analytic cohort is 658.645 ms versus PARI 211.750 ms. Next reconstruct smallest cohort field 3.1.23567.1, x^3-x^2+26x-40 (3.304 ms versus 1.125 ms), to identify its missing unit/relation evidence and PARI's strategy. Do not spend another campaign tuning analytic caching without a wider workload justification.",
+      "Latest successful-prefix forensics: x^3+4x-332 has 19x13 staged/volume presentations of order 36/18, both unit index one by exact principal-ideal and relation-kernel GP replay with bnfcertify. Volume row generated by 5a-22 closes the class-index gap. Staged repeats identical failed joint-index bounds at 19/27/28 rows, then reaches 18 at 31 rows. PARI uses 19 rows from four ideals. Resident BF cache and mathematically justified skip-refinement-when-lower-log-index-positive ablations both retain 981/1012 and pass all 1012 three-backend comparisons; guard retains all parent output words. Nine cache-control and 289 classifier-boundary tests pass. Full-retry runs complete all 1012 correctly, but cache/guard improvements are only 0.11%/0.14%, not meaningful broad wins. Guard/cache/rank/PARI totals in the latest run: 4850.342/4855.710/4857.071/1505.000 ms. Next quantify which successful prefixes actually repeat analytic work versus failing before it; do not infer unit fundamentality from unsuccessful bounded root probes. Source copies, raw evidence and GP programs remain diagnostic and unpromoted.",
+      "Finish integration/release review of the narrow scale fix separately from new residue-bound work.",
+      "Resolve the Corollary8 specialization gap before any new bound promotion. Exact rational audit and both paper versions retained; a published theorem citation plus matching formula tests is not sufficient to explain the discovered coefficient discrepancy.",
+      "Retained raw-relation forensics rechecked: the original failed search kernel yields only torsion units. Existing initial-volume/BF-lookup source already fixes this missing-relation regime; do not reimplement it from the older production baseline.",
+      "Preserve stronger-search BF999 gains while consolidating duplicated proof orchestration; keep the 485000 source allowance unchanged. Corollary8 source-copy measurements remain historical unqualified diagnostics, not public replay qualification.",
+      "Partial-prime implementation and tests now exist in retained experiments. Do not promote cutoff513 based on the 17-field gain: all1012 controlled timing is 2.60% slower, with 180 final refinements. Refinement rebuilds prime splitting and transcendental endpoints; correct reuse must admit higher-degree norms of old small primes and reweight all finite terms.",
+      "Direct Theorem7 replacement at765 is implemented in source copy 6fa3fe31efdbb01e9c147fbc98e930cfefdf04698067eb9d344ab9fd01e2475e: 800 exact formula checks, 20 faults, complete1012-field fmpz/GMP/JavaScript agreement, 963 first-effort successes. Full computation timing completes1012/1012 with no mismatches and 0.63% aggregate improvement over stronger-search BF999, still2.86x PARI. Not a durable speedup or release qualification; source+runtime526816 exceeds unchanged485000 cap.",
+      "Fourteen-factor forensics completed: exact principal-ideal replay and bnfcertify show effort5 raw36-row quotient has order6 and unit index1; effort1 raw46-row quotient has order3 and unit index1. Retry row36, generator(a^2-9a-106)/7, closes the missing relation index. This witness is diagnostic only, never a hardcoded production rule. PARI trace starts at tentative h12 then uses ideal-product searches to reach6,6,3.",
+      "Ordering16 ablation has8 gains/8 losses on1012; staged16 has10 gains/5 losses. All64 output words agree fmpz/GMP/JavaScript on256 affected-regime fields. Controlled18-field opt panel: target9.637ms baseline to3.339ms staged versusPARI1.406; panel aggregate improves but several regressions. Not a general performance or public-replay qualification.",
+      "Round-robin volume16 source d3e32776889299c5a89125007414eedb410ed08a91e4c6090dda3ba86711a16d accepts979/1012,18 gains and2 losses. Instrumentation attributes two memory exceptions to6.0/9.6MB accumulated allocation with only303/371KB peak live blocks. Generic native-arena-recycling compiler prototype removes exceptions under unchanged3MiB: canonical1012-case survey and256-case three-backend full-output agreement pass. Both fields still mathematically decline with class-index2; second also has unit-index7 outside2/3/5 saturation probes. Corrected exact GP oracle uses dedicated basis buffer: earlier nonunit claim was an output-slot-overlay interpretation error, not partially written unit coordinates. Cross-platform/performance qualification remains open; evidence retained under build/cubic-analytic-schedule-evidence/arena-pressure.",
+      "New source-copy trace isolates the fourteen-factor stopping-policy regression: staged16 certifies at raw23 relations after40 proposals/5 ideals; volume16 attempts at raw24,25,28 relations, succeeding after80 proposals/6 ideals. First60 output words agree with each parent survey, including the identical fundamental unit and analytic endpoints. Instrumented outputs are diagnostic only, never timed or published certificates. Preserve the cheap staged prefix before broader-volume recovery, with explicit visitation-state reconciliation and deduplication; do not switch incompatible cursor semantics blindly. Evidence under build/cubic-analytic-schedule-evidence/staging-trace.",
+      "Hybrid recovery now implemented diagnostically with separate resident traversal cursor and exact element deduplication. Early transition loses five staged successes; late transition retains all and adds three (971/1012). All 1012 full outputs agree across fmpz/GMP/JavaScript. Controlled full-retry timing completes all 1012 with no mismatches: staged 4935.339 ms, volume 4877.343 ms, late 4876.519 ms, PARI 1501.125 ms, sums of per-field medians. Late is effectively tied with volume and still 3.25x PARI; not a public-path or durable speed claim.",
+      "Next transition implemented in source copy c05b35224ecd3ed383e60bb193a19e89824c0a34d84a6701cfbfb74dffde5a46: a single retained broader-volume search after exact initial rank insufficiency (status zero), never after inconsistent rank. This solves all ten late-hybrid misses: 981/1012 first attempts, no losses against either staged or volume, no errors/wrong accepted answers. All 1012 full-output three-backend comparisons and 13 extracted control-flow fault checks pass. Full-retry timing completes 1012/1012 correctly: rank 4809.432 ms, volume 4828.203 ms, late 4864.191 ms, PARI 1488.125 ms. Only 0.39% over volume, not a durable improvement; still 3.23x PARI. Selected x^3-51x-177 falls from late 14.915 ms to rank 4.132 ms, PARI 1.500 ms. Next trace expensive successful staged prefixes such as 3.1.744076.3 (rank 9.254 ms, volume 3.092 ms); coverage alone does not optimize certification cost. Production source/caps unchanged. Scripts, sources, manifests and evidence under build/cubic-analytic-schedule-evidence/hybrid-prefix."
+    ]
+  }
+}

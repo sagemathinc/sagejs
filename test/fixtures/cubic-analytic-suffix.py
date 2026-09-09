@@ -247,7 +247,7 @@ def run_suffix(
         proof_relation_count=3,
         relation_rank=2,
         transcript_mode=1 if publication_failure else 0,
-        _CUBIC_ANALYTIC_THRESHOLD=997,
+        _CUBIC_ANALYTIC_THRESHOLD=999,
         _CUBIC_ANALYTIC_REFINED_THRESHOLD=1494,
         _CUBIC_ANALYTIC_PRECISION=64,
         uint64=int,
@@ -291,7 +291,7 @@ def run_suffix(
 result, events, output, calls = run_suffix()
 assert result and output[0] == 2 and calls == []
 assert events == [
-    ("plan", 997),
+    ("plan", 999),
     ("allocate", 5, 1),
     ("allocate", 20, 1),
     ("evaluate", 5),
@@ -315,7 +315,7 @@ for options in (
     result, events, output, calls = run_suffix(**options)
     assert not result and output[0] != 2
     if options.get("initial_plan") is False:
-        assert events == [("plan", 997)]
+        assert events == [("plan", 999)]
     if options.get("refined_plan") is False:
         assert sum(event[0] == "allocate" for event in events) == 2
 

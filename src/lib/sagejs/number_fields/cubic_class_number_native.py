@@ -106,7 +106,9 @@ _ROW_SCRATCH_OFFSET = 7880
 _NORM_FORM_OFFSET = 7944
 _COMPOUND_MULTIPLIER_POWER_OFFSET = 7954
 
-_CUBIC_ANALYTIC_THRESHOLD = 997
+# The BF finite expression uses X/9 in its continuous weights. The resident
+# integer plan is theorem-aligned only when this quotient is exact.
+_CUBIC_ANALYTIC_THRESHOLD = 999
 _CUBIC_ANALYTIC_REFINED_THRESHOLD = 1494
 _CUBIC_ANALYTIC_COEFFICIENT_OFFSET = 0
 _CUBIC_ANALYTIC_TERM_OFFSET = 1494
@@ -5488,7 +5490,7 @@ def _cubic_prepare_bf_plan(
 ) -> tuple[bool, uint64, uint64]:
     """Build one bounded exact Belabas--Friedman prime-power plan."""
     zero: uint64 = 0
-    if (
+    if analytic_threshold % 9 != 0 or (
         analytic_threshold != _CUBIC_ANALYTIC_THRESHOLD
         and analytic_threshold != _CUBIC_ANALYTIC_REFINED_THRESHOLD
     ):
@@ -8167,7 +8169,7 @@ def _cubic_try_bounded_exact_closure(
     if not saturation_ready:
         return -1
 
-    # Most fields close at the established X=997 boundary.  If all exact
+    # Start at the theorem-aligned X=999 boundary. If all exact
     # algebraic and interval checks succeeded but the resulting upper
     # endpoint still cannot distinguish the positive integral index from
     # two, make one bounded resident refinement.  This is a schedule, not
@@ -11549,7 +11551,7 @@ def certified_complex_cubic_class_group_v1(
         if not saturation_ready:
             return False
 
-        # Most fields close at the established X=997 boundary.  If all exact
+        # Start at the theorem-aligned X=999 boundary. If all exact
         # algebraic and interval checks succeeded but the resulting upper
         # endpoint still cannot distinguish the positive integral index from
         # two, make one bounded resident refinement.  This is a schedule, not
