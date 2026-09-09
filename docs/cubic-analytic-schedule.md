@@ -3084,6 +3084,158 @@ these are not 24 proved unit improvements. This distinction must be resolved
 before caching units: unlike the field residue, the available unit evidence
 can legitimately change as relations arrive.
 
+## Retained-unit-first certification experiment
+
+The next source copy adds a bounded two-pass unit policy to the resident
+BF-cache parent. Every invocation first checks the current exact class
+presentation as before. If a unit was authenticated earlier in this same
+root call at the same scale, try that unit with the current class quotient.
+If its certification is valid but insufficient, perform the original fresh
+dependency/unit discovery on the **same prefix**, then certify again.
+Invalid evidence returns an error immediately. At most one retained pass
+and one fresh pass are possible; an insufficient retained unit alone never
+requests more relations or establishes primitivity.
+
+An additional zero-initialized, arena-owned $1\times7$ exact matrix retains
+readiness, scale, three order coordinates and regulator endpoints. The
+state is published only after exact unit construction/root replay and a
+valid analytic classification. It is private to the immutable field/order
+and cannot survive the root. A unit need not belong to the dependency
+lattice of the latest compact rows: the mathematical index argument needs
+an actual non-torsion unit of the maximal order. The existing detached
+certificate publishes order coordinates, and its independent verifier
+checks unit norm directly. No mathematical acceptance inequality changes.
+
+The first two source drafts expose useful compiler boundaries. A borrowed
+resource alias cannot be defined conditionally; its binding is invariant
+and is now outside the loop. The definite-assignment check also rejects
+publishing loop-local analytic values after a potentially empty loop.
+Publication now belongs to the successful pass, with a fail-closed return
+after the loop. No dummy initialization, compiler exception, host callback
+or shared compiler change was introduced. Failed drafts/build logs remain
+as diagnostics; only `unit-reuse-closed.py` is measured.
+
+**Correctness and recovery evidence.** Seventy-two actual-loop control
+cases cover readiness/scale selection, retained/fresh statuses and failed
+publication. The mathematical operations are explicit stubs in this test;
+it proves the bounded control transitions, not unit arithmetic. The full
+first-effort survey retains 981 successes on 1,012 fields with no errors,
+gains or losses. Native FLINT, GMP, generated JavaScript and both linkages
+agree on all 64 words. Relative to the parent, only the signs of all three
+unit coordinates change on 17 fields. All class-group, relation-count,
+regulator and analytic-interval outputs are otherwise identical. The reused
+24-field holdout passes both variants on their first efforts in all three
+backends.
+
+Independent GP replay checks the actual principal rows and all prefix
+kernel units for those 17 fields plus the two targets. It additionally
+checks each published unit's exact norm and its exponent relative to a
+`bnfcertify`-certified fundamental unit; all 19 have absolute exponent one.
+This is independent diagnostic replay, not full public Sage.js replay.
+
+The same-source trace keeps 859 BF evaluations and 954 closure calls, but
+adds 15 saturation calls on 11 fields where retained evidence is
+insufficient. Four of those calls need genuinely better units on the
+fresh pass. Exact independent replay authenticates the maximal-order basis,
+both units, their unit indices, and $u=\pm v^e$:
+
+| Field label | Raw prefix | Class number | Retained unit index $e$ | Fresh unit index |
+| --- | ---: | ---: | ---: | ---: |
+| 3.1.750412.1 | 37 | 4 | 2 | 1 |
+| 3.1.3294660.1 | 26 | 17 | 2 | 1 |
+| 3.1.4689300.1 | 33 | 3 | 2 | 1 |
+| 3.1.23088780.1 | 38 | 9 | 4 | 1 |
+
+The retained pass cannot certify these prefixes; fresh discovery does.
+Thus a failed bounded root proposal cannot justify treating the retained
+unit as fundamental or permanently skipping new unit discovery.
+
+**Controlled measurements.** The same CPU-0 `opt` host and one-page FLINT
+archive run paired and full comparisons serially, with the previously
+specified warmups, rotated rounds and timed retry policy. All 1,012
+complete for both variants with the same 31 retry fields. Sums of medians
+are 3738.3631035 ms (residue-cache parent), 3721.9543185 ms (unit reuse),
+and 1454.875 ms (PARI). This is only 0.44% overall and still about 2.56
+times PARI, not a broad competitive-frontier win.
+
+The 30772 target improves from 2.053 to 1.777 ms (PARI 1.250), and 41912
+from 1.655 to 1.514 ms (PARI 1.000). Paired candidate/parent median
+within-round ratios are 0.8526 and 0.9067, with 10th–90th percentiles
+0.8375–0.8705 and 0.8871–0.9394. Field 46983 improves to ratio 0.8156.
+Other controls' ranges cross one, including the h=5 seed; these quantiles
+are not confidence intervals. The reused holdout totals improve from
+43.428890 to 41.9296325 ms, versus PARI 28.250 ms, a 3.45% difference.
+
+**Resources and reproducibility.** Measured source SHA is
+`73130c1212f7a1900e24fa600f07a957588798084b0b3c5982b811fc2811886d`
+(497,242 bytes, +4,266 including reindentation). Path-normalized generated
+C increases by 72,491 bytes to 12,875,805; core SHA is
+`37c66121d333d1d17663c3e61048bd4c176b64f9ebe839263df72c52d17b1af2`.
+One-page addon SHA is
+`a7882aa69d23122cb839b1e48749478854fa80546a6fea84ce09e1bb00537eeb`.
+No resource, precision or source allowance is increased. Extra live unit
+coordinates consume the existing arena budget; universal unchanged resource
+coverage is not claimed from this corpus.
+
+Small evidence is retained under
+`build/cubic-analytic-schedule-evidence/unit-reuse/`, with large builds in
+`/scratch/sagejs-runtime/cubic-unit-reuse-1GQ8OG/`. Source generation,
+actual-loop checks, backend/linkage comparisons, trace, prefix/public-unit
+replay, recovery-case selection/replay, holdout, profiles and summaries are
+retained. `prepare.py` authenticates the parent. The controlled bundle is
+`/tmp/cubic-unit-reuse-6UBmyk/` on `opt`; historical `event` means retained
+unit and `parent` means residue cache. Raw timing hashes are
+`5e9d355a06d0b80103bdb65999e388330beaeb4420ecb9f71a21a74863ddf995`
+(full), `e6ec2ed3866d1ae2dbea244bfa7e12ea4d0e0992023034a717a94e3e37ab0e42`
+(paired), and `b31c9c3500c53e97e94846670ed3ec7580e4a6726cba86f66a054cd028eef7b4`
+(holdout). These are private-entry, not public-API measurements.
+
+Focused tests and control checks pass; architecture still stops at the
+known stale optimizer inventory. Source consolidation, full public replay
+and platform qualification remain open. PR203 remains draft and neither
+cache experiment is promoted.
+
+### Next root-search opportunity: exact local power obstructions
+
+Diagnostic-only local native profiles (1,100 calls, 100 discarded, all
+64 words checked) now show only one dependency reduction, log-fill and
+materialization per target. Seven root-isolation calls and two saturation
+calls remain. Saturation costs about 0.129/0.118 ms inclusive on 30772/41912;
+these instrumented numbers are not controlled timings. Initial BF
+preparation still costs about 0.158/0.151 ms, field analysis 0.164/0.156 ms,
+and generator-bound tests make eight calls. Inclusive costs must not be
+summed with their children.
+
+Exact GP forensics identifies a potentially cheaper way to avoid impossible
+root searches. If $\phi:\mathcal O_K\to\mathbf F_q$ is a unital ring map,
+$p\mid q-1$, and a unit satisfies $u=v^p$, then
+$\phi(u)^{(q-1)/p}=1$. A non-one result therefore excludes a $p$th root.
+For odd $p$, $-1=(-1)^p$ also excludes a root of $-u$. For $p=2$, taking
+$q\equiv1\pmod4$ makes $-1$ a square in the residue field, so the same
+obstruction excludes both torsion translates. This is an unconditional
+necessary-condition argument, not a GRH bound or a proof of primitivity.
+
+The published target units have the following exact degree-one residue
+obstructions, independently computed after maximal-order basis and unit
+norm checks:
+
+| Field | Root exponent $p$ | Residue prime $q$ | $\phi(u)$ | $\phi(u)^{(q-1)/p}$ |
+| --- | ---: | ---: | ---: | ---: |
+| 30772 | 2 | 5 | 3 | 4 |
+| 30772 | 3 | 13 | 11 | 3 |
+| 30772 | 5 | 11 | 6 | 3 |
+| 41912 | 2 | 5 | 2 | 4 |
+| 41912 | 3 | 19 | 3 | 7 |
+| 41912 | 5 | 31 | 28 | 16 |
+
+All final-column entries differ from one, excluding the corresponding
+searches. `local-power-forensics.cjs` and generated GP files retain these
+witnesses. No native power screen or speed claim is made yet. A general
+implementation must authenticate its residue maps, treat absence of an
+obstruction as inconclusive, preserve exact replay for roots it does find,
+and retain fresh-unit recovery. These conditions let a cheap finite-field
+calculation remove work without interpreting a failed proposal as a theorem.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused

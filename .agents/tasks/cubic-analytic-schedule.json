@@ -305,6 +305,36 @@
       "commit": "d271a7f5edf63499fda428272e84faedb2a8bdc9",
       "workspace_fingerprint": "c5538d00730497deeef00b068853f4ed08df40df83627d7c5b8f5ddd980caace",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-unit-reuse-1GQ8OG/check-control.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.171,
+      "started_at": "2026-09-09T18:08:27.553Z",
+      "commit": "8cab881f01cce1abbd78c9c7d8319d20ced5f185",
+      "workspace_fingerprint": "6afbcadfd5cd458ab05966469429c9030a2871004e90096af84c85d169d5b62c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.696,
+      "started_at": "2026-09-09T18:08:28.362Z",
+      "commit": "8cab881f01cce1abbd78c9c7d8319d20ced5f185",
+      "workspace_fingerprint": "6afbcadfd5cd458ab05966469429c9030a2871004e90096af84c85d169d5b62c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.079,
+      "started_at": "2026-09-09T18:14:55.965Z",
+      "commit": "8cab881f01cce1abbd78c9c7d8319d20ced5f185",
+      "workspace_fingerprint": "693f7f5fd09be19c24a7bb56eca0f5ca5b1e1d5db82cc98a7609869527e3dffc",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
