@@ -1,0 +1,53 @@
+# 0.8.0 numerical evidence transport repair
+
+Product source remains `722b1f49e72e6383a12144929e2253a57bfe348b`.
+Control branch: `fix/release-evidence-closure`. No product has been rebuilt or
+published by this change.
+
+Native qualification run `34385761734`, attempt 2, passed all platform producers,
+macOS signing and signed-package numerical checks. Its final numerical gate
+failed because the browser/supplemental upload omitted the NLopt build report.
+The aggregate native acceptance correctly failed as a consequence.
+
+Reconstructing the original candidate's gate with its original CI observations
+and hash-matching local NLopt generated inputs passed all 16 required rows and
+supplemental checks. This is a diagnosis, **not CI acceptance or publication
+authority**. Full-runtime report identity:
+`f999368de344fe550bd7723afd79b13f05380f2cebc8570fb00c4cf6c0e27b92`.
+Supplemental report identity:
+`1225268c3735da72e4f037c7795656f08f152bd33a9975dfb765ad049bc5ae45`.
+
+## Corrected boundary
+
+Retain NLopt generated inputs in the producer upload. After final gate
+authentication, retain the complete generated support inputs in the raw evidence
+artifact: SEA binding, numerical adapter output, CMINPACK build and NLopt build.
+The publisher projects only these allowlisted support roots into a source-only
+consumer and includes them in reconstruction checkpoint inputs. It still runs
+the candidate's numerical verifier; it never builds missing bytes. An initialized
+consumer permits only `dist/numerical`, not unrelated producer output in `dist`.
+Symlinks, hardlinks, traversal and arbitrary source-file projections are rejected.
+
+These changes increase evidence retention, not SEA/npm/browser payload sizes or
+runtime startup cost. All support roots are required; incomplete evidence fails.
+The workflow API review hashes cover the new helper and changed consumers.
+
+Focused validation: 50 transport, extraction, handoff, preparation, retry and
+support tests pass. The inventory check passes. These fixture tests do not
+qualify mathematical products or grant publication authority.
+
+## Remaining current-candidate recovery
+
+The original failed aggregate cannot be called successful, and a retry executes
+its original workflow, which still omits the inputs. The current artifact-set
+contract requires that aggregate and same-run evidence artifacts. This commit
+does not relax that contract.
+
+To reuse the already signed products, a separately authenticated control recovery
+must bind the original successful producer jobs and immutable artifact IDs,
+reconstruct with the original candidate verifier, preserve the complete support
+closure, and explicitly bind the recovered evidence's new run/source in the
+handoff. It must not forge old-run artifacts, substitute mathematical observations,
+or accept a local passing report as CI authority. No new tag should be created
+until that recovery is implemented and validated, or a fresh complete candidate
+qualification passes under the corrected workflow.

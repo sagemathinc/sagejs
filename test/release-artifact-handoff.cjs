@@ -178,7 +178,7 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "sagejs-consumer-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, "scripts/numerical-computing/qualification"), { recursive: true });
-  fs.writeFileSync(path.join(root, ".gitignore"), "build/\npackages/flint-wasm/dist/\n");
+  fs.writeFileSync(path.join(root, ".gitignore"), "build/\npackages/flint-wasm/dist/\ndist/numerical/\npackages/flint-wasm/numerical/build/\nsrc/lib/sagejs/numerics/optimization/backends/nlopt/build/\n");
   fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "source-only-consumer-fixture", version: "0.8.0" }));
   fs.mkdirSync(path.join(root, "bench"));
   fs.writeFileSync(path.join(root, "bench/browser-wasm-budget.json"), JSON.stringify(budget));

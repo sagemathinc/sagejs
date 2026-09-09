@@ -10,6 +10,7 @@ const { finished } = require("node:stream/promises");
 const { zipEntries, zipMemberData } = require("../numerical-computing/qualification/scipy-oracle-provisioner.cjs");
 const { validateArtifactSet, verifyDownloadedArchive } = require("./artifact-set.cjs");
 const { replaceDirectory, realDirectory } = require("./directory-transaction.cjs");
+const { supportPaths } = require("./numerical-support.cjs");
 const limits = Object.freeze({ entries: 20000, member_bytes: 2 * 1024 ** 3, expanded_bytes: 4 * 1024 ** 3 });
 const gateFiles = ["full-runtime.policy.json", "full-runtime.report.json", "full-runtime.report.md", "supplemental.report.json", "release-gate.json"];
 const reproductionFiles = ["sagejs-wasm.tar.gz", "sagejs-wasm.tar.gz.sha256", "reproducible-artifact.json", "reproducible-linux-arm64.json", "reproducible-darwin-arm64.json", "reproducible-toolchains.json"];
@@ -25,7 +26,11 @@ function layout(key) {
   switch (key) {
     case "native/sagejs-public-npm-root": return { required: ["build/release/npm/sagejs.tgz", "packages/flint-wasm/dist/production-manifest.json"], prefixes: ["packages/flint-wasm/dist/"] };
     case "native/numerical-release-gate": return { required: gateFiles, prefixes: [] };
-    case "native/numerical-release-evidence": return { required: [], prefixes: ["platform/", "browser/rows/", "browser/supplemental/"] };
+    case "native/numerical-release-evidence": return {
+      required: ["support/build/sea/sagejs"],
+      prefixes: ["platform/", "browser/rows/", "browser/supplemental/",
+        ...supportPaths.slice(1).map((name) => `support/${name}/`)],
+    };
     case "browser/wasm-clean-build-a": return { required: ["build/wasm-artifact-a.json", "build/toolchain-a.json", "packages/flint-wasm/dist/production-manifest.json"], prefixes: ["packages/flint-wasm/dist/", "build/authenticated-numerical-product/"] };
     case "browser/sagejs-wasm-reproducible": return { required: reproductionFiles, prefixes: [] };
     default: throw new Error("unknown release transport layout");

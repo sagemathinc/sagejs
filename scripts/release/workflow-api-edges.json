@@ -173,7 +173,7 @@
         },
         {
           "filename": "scripts/release/prepare-publication.cjs",
-          "sha256": "3b65032a97a01789fe363792ec75056d5ed6e395f15d07bb7a950c5a34f9cdbf"
+          "sha256": "a82caa968436b0dc4b5dad72c4eb86f478cd2ff425ec47e171a3e829f9e54eca"
         },
         {
           "filename": "scripts/release/artifact-handoff.cjs",
@@ -189,7 +189,11 @@
         },
         {
           "filename": "scripts/release/extract-artifact.cjs",
-          "sha256": "0e9c120d1e47afff7ee6de53e2498837524360f46930ed118ed6209f34febeed"
+          "sha256": "05522fc6b9da9b6f5a71bb274b1b71eed449fbe430754cbb717f214f289c90df"
+        },
+        {
+          "filename": "scripts/release/numerical-support.cjs",
+          "sha256": "03fe7098a053371b67cfe24e01ffbd4010361a63790b6612314b721656031d50"
         },
         {
           "filename": "scripts/release/macos-observation.cjs",
@@ -238,7 +242,7 @@
         },
         {
           "filename": "scripts/release/prepare-publication.cjs",
-          "sha256": "3b65032a97a01789fe363792ec75056d5ed6e395f15d07bb7a950c5a34f9cdbf"
+          "sha256": "a82caa968436b0dc4b5dad72c4eb86f478cd2ff425ec47e171a3e829f9e54eca"
         },
         {
           "filename": "scripts/release/artifact-handoff.cjs",
@@ -254,7 +258,11 @@
         },
         {
           "filename": "scripts/release/extract-artifact.cjs",
-          "sha256": "0e9c120d1e47afff7ee6de53e2498837524360f46930ed118ed6209f34febeed"
+          "sha256": "05522fc6b9da9b6f5a71bb274b1b71eed449fbe430754cbb717f214f289c90df"
+        },
+        {
+          "filename": "scripts/release/numerical-support.cjs",
+          "sha256": "03fe7098a053371b67cfe24e01ffbd4010361a63790b6612314b721656031d50"
         },
         {
           "filename": "scripts/release/macos-observation.cjs",
@@ -321,7 +329,7 @@
         },
         {
           "filename": "scripts/release/prepare-publication.cjs",
-          "sha256": "3b65032a97a01789fe363792ec75056d5ed6e395f15d07bb7a950c5a34f9cdbf"
+          "sha256": "a82caa968436b0dc4b5dad72c4eb86f478cd2ff425ec47e171a3e829f9e54eca"
         },
         {
           "filename": "scripts/release/artifact-handoff.cjs",
@@ -337,7 +345,11 @@
         },
         {
           "filename": "scripts/release/extract-artifact.cjs",
-          "sha256": "0e9c120d1e47afff7ee6de53e2498837524360f46930ed118ed6209f34febeed"
+          "sha256": "05522fc6b9da9b6f5a71bb274b1b71eed449fbe430754cbb717f214f289c90df"
+        },
+        {
+          "filename": "scripts/release/numerical-support.cjs",
+          "sha256": "03fe7098a053371b67cfe24e01ffbd4010361a63790b6612314b721656031d50"
         },
         {
           "filename": "scripts/release/browser-inputs.cjs",
@@ -377,7 +389,7 @@
         },
         {
           "filename": "scripts/release/prepare-publication.cjs",
-          "sha256": "3b65032a97a01789fe363792ec75056d5ed6e395f15d07bb7a950c5a34f9cdbf"
+          "sha256": "a82caa968436b0dc4b5dad72c4eb86f478cd2ff425ec47e171a3e829f9e54eca"
         },
         {
           "filename": "scripts/release/artifact-handoff.cjs",
@@ -393,7 +405,11 @@
         },
         {
           "filename": "scripts/release/extract-artifact.cjs",
-          "sha256": "0e9c120d1e47afff7ee6de53e2498837524360f46930ed118ed6209f34febeed"
+          "sha256": "05522fc6b9da9b6f5a71bb274b1b71eed449fbe430754cbb717f214f289c90df"
+        },
+        {
+          "filename": "scripts/release/numerical-support.cjs",
+          "sha256": "03fe7098a053371b67cfe24e01ffbd4010361a63790b6612314b721656031d50"
         },
         {
           "filename": "scripts/release/browser-inputs.cjs",
