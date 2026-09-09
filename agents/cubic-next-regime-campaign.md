@@ -2,6 +2,24 @@
 
 Status: active; no new PARI win claimed.
 
+## Recovery-discovery sharing checkpoint, 2026-09-09
+
+The [shared recovery experiment](../docs/cubic-recovery-sharing-experiment.md)
+reuses the existing interval/Euclidean discovery helper, removing 5,992 Python
+bytes without changing mathematical checks. All 1,012 development observations
+and every output slot match the torsion-probe baseline. Exact differential
+write-trace tests and recovery fault injection pass, including a genuine
+1,024-step reduction-limit case. Controlled opt timings are essentially flat
+with small mixed changes; no new PARI win or public qualification is claimed.
+
+Raw generated C grows because the experimental source path is longer;
+normalizing just that path reveals 109,913 fewer bytes. The addon shrinks
+8,192 bytes. Peak-memory equivalence is not established by file-size evidence.
+Another 3,645 Python bytes must be removed to fit the unchanged aggregate
+allowance. Next consider borrowed adjacent/expanded search bundles, then
+qualify the combined candidate. Production is unchanged; PR190 stays draft.
+No unseen holdout fields were executed.
+
 ## Exact torsion-probe checkpoint, 2026-09-09
 
 The [torsion-probe experiment](../docs/cubic-torsion-probe-experiment.md)
