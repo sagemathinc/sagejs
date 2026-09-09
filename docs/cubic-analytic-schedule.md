@@ -1655,6 +1655,116 @@ Scripts, manifests, raw clock logs, and source copies are retained under
 `summarize-coarse-profile.cjs`, `run-coarse-profiles.cjs`,
 `prepare-prime-trial.cjs`, and `check-prime-trial.py`.
 
+## Paired FLINT promotion pools: measured removal of a fixed cost
+
+The first-promotion diagnosis now has an authenticated dependency ablation.
+This is a **diagnostic dependency experiment**, not a production dependency
+change or a new mathematical regime. The generated checkpoint-guard core,
+mathematical acceptance conditions, resource caps, and arena cleanup are
+identical in both variants.
+
+Rebuild FLINT 3.6.0 locally from the authenticated source archive
+`b95e2c7792f5eea4a1c8d2d42c4098434756832e57a094b295eb5dfdc9b4c36b`,
+using the installed portable profile (`-O3 -fPIC`, static, GMP/MPFR/OpenBLAS).
+Save that fresh default control, then change only `PAGES_PER_BLOCK` from
+16 to 1 in `src/fmpz/link/fmpz_single.c` and rebuild. Among all 134 archive
+members, exactly `fmpz_merged.o` changes. Private installed FLINT headers
+are byte-identical to the original prefix headers. The original installed
+archive is retained as a separate third control, rather than silently
+substituting an object from an older build.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Fresh default archive | `e317176b97f16a4a5657e273bdb5e6c463293177b30de135fd5457adc0d42030` |
+| One-page archive | `2c1e5d9eb2e918640a08b8e22e2084bb495cdc0d5ab0c77ad4408da90930bca1` |
+| Identical generated core | `d80e81b82053f5cc59159581f6a3ff7ae31564f25a699f073f22910ce1c55e0f` |
+| Default-linked addon | `b805688df2fed1a66345a5fdb0c78c26209edd37041da856ccd2d8ddc72d5216` |
+| One-page-linked addon | `3bfe2aa7a5bca7182f5866a7e97192ad722cd447f2328f516eb370d7e24933ab` |
+| Full timing output | `1e9453e6f257c22d6f8fb1051ad11bc57a77c5e46e0a3b3b212caf690550c654` |
+
+The new artifact manifests explicitly identify the changed dependency; the
+parent's cache key is not claimed as the identity of the relinked addon.
+Compilation and instrumentation run locally. Only uninstrumented timing
+runs on the idle dedicated `opt` VM, pinned to CPU 0 (AMD EPYC 7B13,
+Node v26.7.0).
+
+### Correctness and ownership evidence
+
+Both variants produce identical acceptance and all 64 output words on all
+1,012 frozen fields: 981 first-attempt acceptances and zero exceptions.
+The one-page variant also agrees with the generated GMP and JavaScript
+backends on all 1,012 complete outputs. An initial JavaScript check failed
+because the new scratch directory could not resolve the FLINT package;
+the complete rerun with the compiler worktree's `NODE_PATH` passes.
+These are differential checks, **not independent mathematical replay**.
+
+Upstream `make -j4 check MOD=fmpz` passes against the one-page library.
+A separate lifecycle harness verifies exact arithmetic, promotion/demotion,
+and repeated cleanup at 1, 253, 254, 255, 4,064, 4,065, and 8,193 live
+integers. It also checks 8,193 worker-created integers surviving that
+worker's FLINT cleanup and then being destroyed by the main thread. This
+is general FLINT ownership testing, not permission for Sage.js arena objects
+to survive their arena. Hooks run sequentially across the thread join;
+this is not concurrent stress testing.
+
+The harness reports first-promotion GMP allocations falling from **4,064
+to 254**, and requested payload from **65,024 to 4,064 bytes**. Every
+completed lifecycle has zero outstanding GMP payload. An ASan/UBSan build
+of the harness also passes with leak detection, but the linked dependency
+archives are not sanitizer-built: full-library sanitizer qualification is
+not claimed. Page layout, freed-slot accounting, and cleanup code are
+unchanged. Arena children and FLINT's cached arena-backed allocations must
+still be cleared before releasing each arena.
+
+### Controlled timing
+
+The existing frozen-corpus protocol uses three rotated rounds, two native
+computations per sample, one warmup, and eight fresh PARI `bnfinit(f,0)`
+computations per sample. Native retry efforts `[5,1,7,8]` are inside the
+clock; external input/scratch allocation is outside it. All 1,012 fields
+finish correctly, with the same 31 retrying fields for every native variant.
+
+| Variant | Sum of per-field medians, ms |
+| --- | ---: |
+| Fresh sixteen-page control | 4635.954 |
+| One-page pool | 4421.122 |
+| Original installed library | 4632.753 |
+| PARI | 1475.125 |
+
+The smaller pool reduces the total by **4.63%** against its matched control.
+The median per-field time ratio is **0.9316** (6.84% reduction); the 90th
+percentile ratio is 0.9867, while the 99th percentile is 1.0389. It is not
+a claim that every workload improves. The two default-library controls
+differ by under 0.1% in this run. The one-page corpus total remains **3.00
+times PARI's**: this fixes a real representation cost, not the whole gap.
+
+A separate five-field run uses five rotated rounds and 100 computations
+per sample for both native and PARI, with ten native warmups and one PARI
+warmup. Medians in milliseconds:
+
+| Field | Fresh control | One-page | Installed | PARI |
+| --- | ---: | ---: | ---: | ---: |
+| `3.1.283.1` | 1.2932 | 1.0691 | 1.3040 | 0.7700 |
+| `3.1.331.1` | 1.2633 | 1.0237 | 1.2850 | 0.8600 |
+| $x^3+9x-55$ | 1.7825 | 1.5684 | 1.8047 | 1.0300 |
+| `3.1.23567.1` | 2.4149 | 2.2020 | 2.4672 | 1.1000 |
+| `3.1.46983.1` | 4.2478 | 3.9714 | 4.2361 | 1.1500 |
+
+The roughly 0.2 ms savings agree with the earlier first-promotion trace.
+Do not compare absolute values from separate timing rounds as though host
+variation were absent. Neither experiment measures the public API or a new
+holdout; public receipts/replay and four-platform qualification remain open.
+
+Reproduction instructions, source-delta audit, lifecycle harness, build logs,
+artifact manifests, full differential outputs, and raw timings are retained
+under `build/cubic-analytic-schedule-evidence/flint-pool/`. Large reproducible
+dependency builds stay in `/scratch/sagejs-runtime/cubic-flint-pool-Vqpqjn/`.
+The next dependency question is whether upstream's reentrant allocator or
+another pool policy improves this further without hurting high-throughput
+FLINT workloads. This one-page experiment alone does not justify changing
+the global production dependency policy. Repeated root isolation and the
+larger certification cost remain separate algorithm/compiler opportunities.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
