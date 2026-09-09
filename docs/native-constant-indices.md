@@ -158,3 +158,42 @@ Raw reports are retained locally in `build/native-constant-indices-evidence/`:
 
 Release qualification remains incomplete; this evidence does not authorize
 promoting a production artifact or weakening any existing acceptance/resource gate.
+
+## Next analytic-scheduling diagnostic
+
+The faster, separate BF-lookup experiment's retained corpus report has SHA-256
+`25bb9a2a0cbd920a2672d1513776c2c24e8aa513a8f645bd166aaa89b62953a3`.
+Of its 963 accepted development observations, 771 use analytic certification;
+all 771 publish final threshold 997. Their published index-log upper endpoint
+is output slot 45 divided by the scale in slot 47. The final threshold is
+slot 36, not slot 50; publication clears the transient log-two slots 48/49.
+
+An exact rational margin census finds 92 of those 771 upper endpoints less
+than $1/20$ below $\log 2$, and five less than $1/100$ below it. All 771 are
+strictly below $\log 2$. This checks only the saved scalar stopping margin,
+not the mathematical validity of the underlying certificates.
+
+The census uses $S=2^{256}$ and $N=128$, with
+
+$$
+L=2\sum_{k=0}^{N-1}\left\lfloor
+\frac{S}{(2k+1)3^{2k+1}}\right\rfloor,
+\qquad
+U=L+2N+\left\lceil\frac{9S}{4(2N+1)3^{2N+1}}\right\rceil.
+$$
+
+The identity $\log 2=2\operatorname{atanh}(1/3)$ gives
+$L/S\le\log 2\le U/S$: the term-rounding error is less than $2N/S$,
+and the remaining positive series is bounded by its first denominator times
+the geometric sum with ratio $1/9$. For a saved upper endpoint $v/s$, compare
+$Ls-vS$ and $Us-vS$ against $Ss/20$ or $Ss/100$ by integer cross-products.
+None of these comparisons is ambiguous. No floating-point logarithm is used
+to decide membership in either margin band.
+
+This supplies a concrete constraint on the next experiment. Smaller initial
+cutoffs may save prime-sum work, but many currently successful fields have
+little certification margin. The earlier uniform 768 experiment already
+caused 276 extra refinements. An adaptive policy must measure its additional
+certification attempts, not just its smaller initial plan, and must retain
+the existing exact acceptance theorem. These observations do not yet select
+or validate a new policy.
