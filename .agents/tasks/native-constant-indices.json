@@ -1,0 +1,137 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-constant-indices",
+  "title": "Native Constant Indices",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Preserve Python signed constant semantics and fold pure constant exact workspace indices without changing mathematical source",
+  "base_commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+  "claims": [
+    "tools/native-kernel/ir.cjs",
+    "tools/native-kernel/integer-ir.cjs",
+    "tools/native-kernel/integer-constants.cjs",
+    "tools/native-kernel/compiler.cjs",
+    "tools/native-kernel/test/constant-indices.cjs",
+    "test/native-constant-indices.cjs",
+    "tools/native-kernel/bench/constant-indices.cjs",
+    "docs/native-constant-indices.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "cpython",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 51.371,
+      "started_at": "2026-09-09T08:04:00.491Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "c6818edde3a2fd8a61920ba948742c20ae4fd19dc9cac8d4d75f87fc0cc1f5f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/cubic-frontier-next/packages/flint/.native/prefix node --test test/native-constant-indices.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.749,
+      "started_at": "2026-09-09T08:10:43.243Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "82f9d98e4688f5da9d789dbeb62769ba6d1f87e6ec71772ecc5547e29178559e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 50.731,
+      "started_at": "2026-09-09T08:15:46.357Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "2e769dbb958a17d4a3c388aab7aaad1331b93285f220b132a3e36b7cabacf653",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-constant-indices.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.103,
+      "started_at": "2026-09-09T08:17:33.727Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "2e769dbb958a17d4a3c388aab7aaad1331b93285f220b132a3e36b7cabacf653",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 24.243,
+      "started_at": "2026-09-09T08:23:29.360Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "d2ee03b9662b2981b15b65dba4d10d6395c4a5b1f4d4b7f0688f61b0dcf51060",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.98,
+      "started_at": "2026-09-09T08:24:06.668Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "d2ee03b9662b2981b15b65dba4d10d6395c4a5b1f4d4b7f0688f61b0dcf51060",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native:source-compression",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.52,
+      "started_at": "2026-09-09T08:24:57.793Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "d2ee03b9662b2981b15b65dba4d10d6395c4a5b1f4d4b7f0688f61b0dcf51060",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-constant-indices.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.715,
+      "started_at": "2026-09-09T08:25:50.679Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "81da8824bfa2b1c1a971b4eda3b94cb0f89a34a431748902c6596ef92831a597",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Correct signed module-constant floor/modulo and fold exact constant workspace indices through existing checked word-index lowering. Identical-source cubic comparison preserves all 1012 complete observations; two controlled runs show approximately 0.8% aggregate improvement, not a PARI win. Keep draft pending broad qualification.",
+    "risks": [
+      "Full architecture gate fails on the unchanged base's stale optimizer dashboard; the existing identifier-hygiene emission assertion also fails on that base.",
+      "Linux x64 focused native tests and 191 unit files pass; full native and other-platform qualification remain incomplete. WASI owner tests skip without the prepared toolchain.",
+      "Compiler benchmark uses production main source, not the faster experimental cubic algorithm; one neighbor is slightly slower in both runs."
+    ],
+    "next_steps": [
+      "Complete broader native/platform qualification before ready-for-review promotion; do not weaken resource or acceptance gates.",
+      "Return the cubic campaign to mathematical scheduling and certification, where measured remaining costs are much larger."
+    ]
+  }
+}

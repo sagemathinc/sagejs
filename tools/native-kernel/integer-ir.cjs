@@ -1,5 +1,7 @@
 "use strict";
 
+const { evaluateIntegerConstant } = require("./integer-constants.cjs");
+
 const {
   annotateOperations,
   sourceSpan,
@@ -386,6 +388,7 @@ function createContext(
     functionName: signature.name,
     initialized: new Set(signature.params.map((param) => param.name)),
     integerConstants,
+    lexicalLocals: new Set(array(fn.localvars).map((symbol) => symbol.name)),
     controlDepth: 0,
     loopDepth: 0,
     loopTargets: [],
@@ -534,7 +537,19 @@ function liveIntegerMatrixName(node, context) {
 }
 
 function lowerLiveVectorIndex(node, context, operations) {
-  const literal = integerLiteral(node);
+  const literal = evaluateIntegerConstant(
+    node,
+    // Sage's frontend represents integer tokens as Integer("digits") calls.
+    // Reuse the literal policy of normal lowering, not general call evaluation.
+    integerLiteral,
+    (rawName) => {
+      const name = resolvedSymbol(context, rawName);
+      if (context.variables.has(name) || context.lexicalLocals.has(name)) {
+        return undefined;
+      }
+      return context.integerConstants.get(name);
+    },
+  );
   const value = literal !== undefined && literal >= 0n &&
       literal <= 18446744073709551615n
     ? emitUint64Constant(context, node, operations, literal)
@@ -1685,7 +1700,8 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
   if (nodeType(node) === "AST_SymbolRef") {
     const name = resolvedSymbol(context, node.name);
     const type = context.variables.get(name);
-    if (type === undefined && context.integerConstants.has(name)) {
+    if (type === undefined && !context.lexicalLocals.has(name) &&
+        context.integerConstants.has(name)) {
       const value = context.integerConstants.get(name);
       return expectedType === "uint64"
         ? emitUint64Constant(context, node, operations, value)
