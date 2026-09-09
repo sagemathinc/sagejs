@@ -47,7 +47,7 @@
   ],
   "runs": [],
   "handoff": {
-    "summary": "PR203 fixes the 997/floor(X/9) mismatch using 999 and a divisibility guard. Native production corpus preserves 940/1012 acceptances; final serial nine-test native/public/replay suite, 192 unit files, strict Python, and direct docs check pass. Separate unpromoted Corollary-8/765 source-copy pilot preserves coverage and improves the 17-field diagnostic aggregate by about 4% in two controlled opt runs.",
+    "summary": "PR203 fixes the 997/floor(X/9) mismatch using 999 and a divisibility guard. Native production corpus preserves 940/1012 acceptances; final serial nine-test native/public/replay suite, 192 unit files, strict Python, and direct docs check pass. Separate combined stronger-search/Corollary-8/765 source-copy experiment preserves 963/1012 acceptances with full fmpz/GMP/JavaScript agreement. Two controlled opt runs improve the stronger-search 17-field aggregate by 2.28%/2.66%, reaching 1.68/1.67 times PARI. Not production promoted; source allowance and public replay qualification remain outstanding.",
     "risks": [
       "Optimizer-opportunity inventory is already stale at the baseline; architecture gate not passing.",
       "Broad test:changed/docs wrapper runs hit overlapping builds and initially unprovisioned local native prefix; only the final individual checks are qualified.",
@@ -57,7 +57,9 @@
     "next_steps": [
       "Finish integration/release review of the narrow scale fix separately from new residue-bound work.",
       "Turn the coarse Corollary-8 prototype into a separately reviewed native change with backend and boundary regression tests.",
-      "Inspect phase-43/reason-434 unit-stage decline for x^3-x^2-7x+122: effort five costs about 6.75 ms before an additional successful effort-one call. Distinguish absent unit relations from information lost in compaction, and compare existing experimental branch and PARI before implementing."
+      "Retained raw-relation forensics rechecked: the original failed search kernel yields only torsion units. Existing initial-volume/BF-lookup source already fixes this missing-relation regime; do not reimplement it from the older production baseline.",
+      "Qualify the combined stronger-search/Corollary-8 experiment: 963/1012 first-attempt successes, no losses against 940 production successes, complete fmpz/GMP/JavaScript agreement. Resolve the 38,737-byte source-allowance excess by real consolidation; do not raise the cap or treat source-copy timing as public replay qualification.",
+      "Consider a certified partial Corollary-8 prime sum using positive existing K-minus-Q norm coefficients and already computed log/sqrt endpoints. An exact-rational pilot confirms narrower bounds; native implementation, boundary tests, and timing remain future work."
     ]
   }
 }

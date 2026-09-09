@@ -240,6 +240,135 @@ collection policy; first check whether the existing experimental branch has
 already addressed this regime. A smaller residue cutoff cannot recover the
 time spent on an attempt that fails before residue certification.
 
+### Combined search and analytic-bound experiment
+
+The retained `agent/cubic-frontier-next` forensics already answered the
+missing-unit question. A fresh execution of its exact PARI oracle against the
+saved precompaction transcripts confirms 34 rows of rank 12 and index 8 in
+the original ordering, and 33 rows of the same rank/index in the reordered
+search. All 22 or 21 integer-kernel basis products are exactly $1$ or $-1$.
+Thus those captured rows cannot yield a nontrivial unit, irrespective of
+compaction. These are historical captured search states, not a new capture
+of the current production artifact.
+
+The extra principal relation for $-11-4a$ gives the exact dependency product
+$-17506a^2+106579a-419747$, of norm $-1$. The oracle checks the principal
+ideal equalities, not only norms. This generator is a forensic witness, not
+a production special case. The existing experimental initial-volume search
+already addresses this missing-relation regime; repeating that implementation
+would not be new progress.
+
+We therefore compose the previously audited initial-volume/BF-lookup source
+with the corrected ninth-scale guard and the coarse Corollary-8 tail. The
+composition script authenticates both input hashes and checks that no function
+AST changes except the planner guard and the tail helper; the initial cutoff
+is the only additional constant change. All use the same stable compiler
+checkout `07e61837cdbd4f967f537a1762369d59e35d4cc5`.
+
+| Source-copy variant | First-effort acceptances | Analytic / nonanalytic | Refined successes | Errors / mismatches |
+|---|---:|---:|---:|---:|
+| Corrected production, 999 | 940 | 754 / 186 | 0 | 0 / 0 |
+| Stronger search + BF lookup, 999 | 963 | 771 / 192 | 0 | 0 / 0 |
+| Stronger search + Corollary 8, 999 | 963 | 771 / 192 | 0 | 0 / 0 |
+| Stronger search + Corollary 8, 765 | 963 | 771 / 192 | 0 | 0 / 0 |
+
+These are the same frozen 1,012 development/control fields, not an unseen
+holdout. There are 23 gains and no losses relative to corrected production.
+The three search variants have identical acceptance sets and accepted output
+entries 20–35 (relation/unit and field data). For the combined 765 source,
+fmpz, GMP, and JavaScript additionally agree on all 64 output entries for
+every field, including declines. The actual tail helper also passes the 90
+independent rational enclosure checks. None of these replaces independent
+certificate replay or public receipt authentication.
+
+The first controlled `opt` run uses the same 17 fields and sampling protocol
+as above, now with all four implementations in one comparison:
+
+| Polynomial | Corrected production | Stronger search, BF 999 | Stronger search, Corollary 8 at 765 | PARI |
+|---|---:|---:|---:|---:|
+| $x^3-x^2-7x+122$ | 12.553 ms | 2.535 ms | 2.498 ms | 1.574 ms |
+| $x^3+9x-55$ | 3.149 ms | 1.807 ms | 1.732 ms | 1.215 ms |
+| $x^3-x^2+3x-4$ | 2.272 ms | 1.285 ms | 1.204 ms | 1.027 ms |
+| Sum of all 17 per-field medians | 87.552 ms | 45.414 ms | 44.377 ms | 26.418 ms |
+
+Most of the improvement over production comes from the existing stronger
+search source, not the new analytic formula. The latter's 765 variant reduces
+this aggregate by 2.28% relative to the stronger-search BF baseline. Changing
+only the tail at 999 gives 45.169 ms. This is not uniform non-regression:
+$x^3-x^2+28x-447$ is 1.759 ms with BF versus 1.789 ms with Corollary 8 at 765.
+The principal targets remain slower than PARI.
+
+A second serial run, reversing implementation load order, gives aggregate
+sums 87.192 / 45.080 / 45.138 / 43.879 / 26.320 ms for production, stronger
+search with BF 999, Corollary 8 at 999, Corollary 8 at 765, and PARI.
+The 765 change improves the stronger-search aggregate by 2.66% in this run,
+versus 2.28% in the first. The corresponding medians are:
+
+| Polynomial | Combined 765, first / second | PARI, first / second |
+|---|---:|---:|
+| $x^3-x^2-7x+122$ | 2.498 / 2.437 ms | 1.574 / 1.563 ms |
+| $x^3+9x-55$ | 1.732 / 1.734 ms | 1.215 / 1.207 ms |
+| $x^3-x^2+3x-4$ | 1.204 / 1.192 ms | 1.027 / 1.027 ms |
+
+The combined aggregate is 1.680 and 1.667 times PARI's, versus about 3.31
+times for this corrected production baseline. These are ratios of sums of
+per-field medians, not geometric means, public-call measurements, or a claim
+about the distribution of all complex cubic fields. The two small per-field
+regressions relative to stronger-search BF in the first run do not repeat in
+the second; uniform non-regression remains unproved.
+
+The stronger source is **not qualified for release**. The combined mathematical
+module is 477,118 bytes and its runtime module is 46,619 bytes, totaling
+523,737: 38,737 over the unchanged 485,000-byte allowance. A simple root-name
+reachability audit finds only one unused function, 1,248 bytes, so deleting
+dead helpers alone cannot resolve this. The generated core also grows from
+16,005,276 to 16,187,845 bytes when replacing the tail, despite the shorter
+Python source. Source length is not a proxy for generated-code cost.
+Consolidation, generated-code/resource review, public replay, and platform
+qualification remain required; no allowance was increased.
+
+Source identities, respectively stronger-search BF 999, Corollary 8 at 999,
+and Corollary 8 at 765:
+
+- `fb1b003609d37a51a47534f01508ea81a7a585d7c6dc203acafd14e48c517cc6`
+- `52de9ce9977d999e54107d41b88d47c0d312fe2f2acace647789571b2eab07b0`
+- `e9fa679cd2a61f56f61332ad86f6b3a37de16103415c75325594c40c9b9f54ac`
+
+Composition/audit scripts, sources, build identities, full corpus/backend
+observations, and timing reports are retained under
+`build/cubic-analytic-schedule-evidence/combined-search`.
+
+### A further bound improvement available from existing data
+
+There is a general way to retain part of Corollary 8's favorable prime-ideal
+sum without adding any transcendental inputs. Before forming its prime-power
+terms, our planner stores $c(n)=a_K(n)-a_{\mathbb Q}(n)$, where $a_K(n)$ counts
+prime ideals of norm $n$, not their higher powers. Consequently
+
+$$
+0\leq\max(c(n),0)\leq a_K(n).
+$$
+
+Every positive coefficient already has a log/square-root entry in the finite
+plan. Thus outward-rounded evaluation of
+
+$$
+S_+(X)=\sum_{2\leq n<X}\max(c(n),0)\frac{\log n}{n\sqrt n}
+$$
+
+gives a lower bound for the prime-ideal sum in Corollary 8. Subtracting twice
+a rational lower endpoint for $S_+(X)$ from the coarse bracket gives a safe
+tighter bound. A native implementation must count each norm once, not once
+per prime-power term or again for the second scale, and authenticate live
+indices as the finite evaluator does.
+
+An independent exact-rational experiment on three separately PARI-checked
+maximal defining orders and four cutoffs checks this inequality. For the
+noncyclic field, the coarse upper bound at 765 is about 0.419895, reduced to
+0.381734 by this partial sum. For $x^3-x^2+3x-4$, the values are 0.132648 and
+0.104320. These are bound widths, not timings or new native acceptance results.
+No native implementation of this additional tightening is claimed here.
+
 ## Validation status
 
 - Initial full local build, strict CPython/Ruff/Pyright gate, all 192 unit-test
