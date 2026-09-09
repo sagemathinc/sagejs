@@ -2,6 +2,30 @@
 
 Status: active; no regime-wide PARI win claimed.
 
+## Bounded BF word indices, 2026-09-09
+
+The [word-index experiment](../docs/cubic-word-index-experiment.md) introduces
+local typed layout aliases in four BF helpers without changing operations,
+layouts, acceptance, or limits. Generated IR moves 24 vector accesses from
+exact to unsigned indexing. All 1,012 complete outputs match BF lookup;
+JavaScript/GMP/fmpz agree, with 963 acceptances and zero exceptions. Fourteen
+post-build focused tests, full build/docs, formatting, architecture and merge
+inventories pass. The unavailable optional FFLAS backend still fails its
+isolated test; the broad suite is not green. PR190 remains draft.
+
+Two controlled opt comparisons show only 1.00% / 0.78% aggregate runtime
+reduction across seventeen development fields. The target changes sign:
+2.489 vs 2.504 ms, then 2.533 vs 2.521 ms; PARI is 1.547 ms. One neighboring
+field is slower in both runs. Retain this as a diagnostic, not a preferred
+replacement for BF lookup or a target speedup claim.
+
+Next: generic compiler constant-index folding. A conservative read-only
+def-use audit finds 164 of the preceding candidate's 327 exact-index vector
+operations already have compile-time nonnegative word-sized values. No loop
+range inference is needed for those sites. Preserve source/provenance,
+shadowing and range errors; correct signed module-constant floor/modulo
+semantics. Avoid spreading source aliases for the small measured benefit.
+
 ## BF lookup and compiler attribution, 2026-09-09
 
 The [BF lookup experiment](../docs/cubic-bf-lookup-experiment.md) replaces
