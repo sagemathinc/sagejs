@@ -2,6 +2,41 @@
 
 Status: active; no new PARI win claimed.
 
+## Parser ownership repair, 2026-09-09
+
+Commit `d53dfb1781a27d973c6f6ba4246a5296f8e74275` installs the production
+[parser-lifetime repair](../docs/cubic-parser-lifetime-diagnostic.md). Grammar
+loads share a cached promise; compiler-owned trees close on every exit, while
+raw syntax callers retain ownership. No mathematical source or memory limit
+changed. Two 128-iteration production compiler probes each delete all 256
+success/error trees with two grammar loads and 32 MiB Wasm linear memory.
+The full cubic serialized IR and generated core/header/adapter remain identical,
+also after a full rebuild. The previously crashing Wasm inventory test completes
+with six passes and three existing toolchain skips. Full build, architecture,
+strict Python, docs, 80 focused frontend tests, module cache, and the enabled
+compiler suite pass. The compiler-bound optimizer snapshot is published with
+all four uploaded digests verified. PR190 remains draft.
+
+Broad qualification is still unfinished. **Wait for the entire mutating
+`test:changed` process to terminate, not merely its first build.** Its Wasm
+step starts another full build. A separate public cubic suite overlapped that
+nested build and failed against incomplete exports/cache entries; the failures
+are retained in `build/cubic-next-evidence/parser-fix-public-native.log` and
+must be replaced by a valid serialized rerun, not excused as passes. The active
+plan log is `parser-fix-test-changed.log`. Do not start a second plan, public
+replay, or opt deployment while that process or its descendants are live.
+The prior 1,000-field replay still belongs to its recorded runtime.
+
+Next: complete serialized qualification and current public timing. Then target
+adjacent-ideal search, not the now-small recovery cost. The saved PARI trace
+`pari-first-staged-retry.trace` reaches its initial regulator check on the
+$-384587$ field after four searched ideals and 43 primitive nonscalar
+small-norm candidates. These are not bounding-box proposal counts. Current
+factor-count-12 scheduling retains its conservative initial dependency margin;
+do not remove it without an out-of-sample comparison and explicit failure/
+resume evidence. Investigate useful relations per searched ideal as well as
+the cost of evaluating each candidate.
+
 ## Combined staged-shell integration, 2026-09-09
 
 The [integration record](../docs/cubic-staged-shell-integration.md) tracks the
