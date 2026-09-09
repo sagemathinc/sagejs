@@ -887,6 +887,29 @@ with a better stopping schedule: preserve the earlier opportunity to certify
 before paying for a larger initial relation batch. No production search policy
 is changed by these diagnostic measurements.
 
+An instrumented source-copy trace now isolates the fourteen-factor difference.
+It records each staged closure call's raw relation count in a bounded scalar,
+and writes that trace plus final proposal counters to otherwise unused output
+words only after success. These modified outputs are diagnostic data, not
+public certificates, and the instrumented kernels are not timed. The first
+60 output words agree exactly with the uninstrumented parent surveys.
+
+| Search | Raw relation counts at certification attempts | Proposals examined | Ideals planned |
+| --- | --- | ---: | ---: |
+| `staged16` | 23 (success) | 40 | 5 |
+| `volume16` | 24, 25, 28 (success on third check) | 80 | 6 |
+
+Both publish the same fundamental unit and analytic endpoints; their compact
+published relation counts are 20 and 22, distinct from the raw counts above.
+Thus the broader search changes the usefulness of the initial relation prefix
+and incurs additional certification attempts, not just a different allocator
+cost. A promising next policy is to preserve the cheap staged prefix and admit
+broader-volume continuation only after a valid insufficiency result. That
+requires a correctly preserved/deduplicated resident visitation state; simply
+switching collectors without reconciling their cursor meanings is not justified.
+Trace source hashes and scripts are retained in
+`build/cubic-analytic-schedule-evidence/staging-trace/`.
+
 The investigation also found that `backendFingerprint()` omitted
 `gmp-checkpoint-allocator.cjs`: fresh builds with different allocator bodies
 could receive the same cache key. The compiler branch now includes this
