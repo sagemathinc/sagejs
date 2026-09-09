@@ -4056,6 +4056,145 @@ architecture rerun again stops at the
 already recorded stale optimizer inventory; it is not reported as a pass and
 the manifest is not refreshed to hide that failure.
 
+## Separating ordering from staged recovery at 17–24 factors
+
+Two further source-copy experiments isolate the dispatch boundary identified
+above. They are diagnostic candidates, not production promotion or public
+certificate qualification. Both use the gcd-only parent and preserve all
+mathematical acceptance tests, exact-product limits, arena budgets, and the
+maximum factor/relation capacities. The experimental scheduling envelope
+itself **does** change and requires explicit resource review.
+
+The ordering-only control changes the upper bound in `use_pari_permutation`
+from 16 to 24, leaving the six staged/volume guards unchanged. An actual-source
+predicate check covers 660 factor-count/effort combinations; exactly 24 change
+(17–24 factors, efforts 3–5). It reduces first-effort coverage from 982 to
+957: 14 gains and 39 losses. The selected field $x^3-39x-569$ still has no
+usable unit witness. Ordering alone is therefore not an adequate extension.
+
+The coordinated candidate also widens the remaining six guards: volume
+dispatch, staged certification, initial visits allocation, and three retained
+volume-recovery paths. AST normalization confirms these are the only changes
+relative to the ordering control. It retains the $n+6$ initial staged target
+and existing exact insufficiency/exhaustion authority for continued search.
+New 17–24-factor cases initially use the cheap traversal, not immediate volume
+search; the earlier initial-volume policy remains confined to at most 12.
+
+Across the frozen 1,012 fields, coordinated staging gives **1,005 first-effort
+successes**, 25 gains and two losses relative to the gcd parent, with no
+execution errors. FLINT, GMP, and generated JavaScript agree on all 64 output
+words; default and one-page FLINT linkage also agree. All 809 fields outside
+the 17–24 cohort retain every status and output word. The reused 24-field
+holdout retains every word as well; it is not fresh out-of-sample evidence.
+
+### Exact explanation and regressions
+
+For $x^3-39x-569$, maximal-order index three is retained and the field
+discriminant is $-944919$. Through raw row 32 the relation lattice has full
+rank but quotient order three, and its dependency kernel generates only
+torsion units. Row 33 gives quotient order one and unit index one. Thus the
+new stop is explained by additional mathematical evidence, not by a looser
+bound or a smaller precision. The trivial-class receipt correctly publishes
+the identity rather than claiming to publish a fundamental unit.
+
+The independently recorded PARI trace uses bound 89, 20 factor-base ideals,
+and 26 relations: five rational relations and 21 small-norm relations from
+six searched ideals of norms $89,79,79,73,71,71$. Its HNF is $20\times26$;
+its regulator is approximately $49.1824419226$. This identifies further
+discovery-work differences; it does not assert identical enumeration or
+candidate order between implementations.
+
+The two losses are retained as explicit negative controls:
+
+- `3.1.25637479.1`, $x^3-x^2+720x-2596$, has class number one and 18
+  factors. The new prefix has 24 raw rows, relation quotient order two, and
+  unit index two. A dependency exponent of 4,280 exceeds the unchanged 4,096
+  materialization limit. The parent certifies from 20 rows with both indices
+  one. This is a bounded construction failure, not a mathematical
+  contradiction or permission to suppress all errors.
+- `3.1.69019020.3`, $x^3+372x-15748$, has class number nine and 19 factors.
+  The new 33-row prefix has relation quotient order 18 and unit index one;
+  the parent 41-row prefix has quotient order nine and unit index one.
+  The new prefix needs another class relation. More precision or unit
+  saturation cannot repair this missing class-group evidence.
+
+Independent certified-GP replay passes for 194 selected successful fields,
+checking 5,857 principal relations, the maximal-order basis, dependency-unit
+subgroups, and published units where the receipt claims a fundamental unit.
+Separate selected and parent-loss replays establish the failed-prefix facts
+above. This is broader than agreement of final class numbers, but remains
+diagnostic exact replay, not full-corpus public receipt replay or Lean proof.
+An initial diagnostic capture omitted the expected class number and GP
+rejected the resulting undefined symbol. The failed log is preserved; the
+capture now includes class number/invariants and replay checks them explicitly.
+No failed diagnostic run is counted as passing evidence.
+
+### Controlled timing and resource scope
+
+Timing uses `opt`, CPU 0, serial uninstrumented runs with matched one-page
+FLINT linkage. The full corpus uses three rotated rounds, two native calls
+per sample, and eight fresh `bnfinit(f,0)` computations per PARI sample.
+Native retries through efforts 5, 1, 7, and 8 are inside the clock. Input and
+scratch preparation are outside it. Every field completes with the expected
+class number and invariants after retries.
+
+| Workload | Gcd parent ms | Ordering only ms | Coordinated staging ms | PARI ms |
+| --- | ---: | ---: | ---: | ---: |
+| All 1,012 fields, sum | 3512.396 | 3347.766 | 3014.298 | 1453.000 |
+| 203 fields with 17–24 factors, sum | 1580.901 | 1427.674 | 1093.848 | 353.500 |
+| $x^3-39x-569$ | 20.416 | 18.184 | 5.197 | 2.000 |
+| `3.1.529679.1` | 3.534 | 4.310 | 2.340 | 1.500 |
+| `3.1.2231623.1` | 11.168 | 4.123 | 4.035 | 1.625 |
+| `3.1.25637479.1` | 1.946 | 2.460 | 7.272 | 1.625 |
+| `3.1.69019020.3` | 6.342 | 11.244 | 16.611 | 1.750 |
+
+Coordinated staging reduces the full total by 14.2% and the targeted cohort
+by 30.8%, but remains 2.07 times PARI overall. Ordering alone improves the
+aggregate timing despite losing first-effort coverage, so it is a negative
+coverage control, not evidence that ordering never helps performance. The
+roughly 11 ms change outside the affected cohort is not attributable to
+different mathematical work.
+
+A separate 21-round alternating ABBA/BAAB comparison, after 200 warmups and
+with ten calls per sample, confirms target staged/parent ratio 0.25494
+(empirical 10th–90th percentiles 0.25343–0.25698). The two regression ratios
+are 3.78865 and 2.62565; the original discriminant-9399 control ratio is
+0.99535 with its percentile range straddling one. These are empirical
+quantiles, not confidence intervals. Retry counts are 30, 55, and seven for
+parent, ordering, and staging respectively.
+
+All three source copies have 503,719 bytes and normalized generated C has
+13,044,888 bytes. This does not imply unchanged dynamic workspace usage:
+ordering may add 23 exact entries; staged visits now use up to
+$(24+1)\times6=150$ entries, and staged presentation capacity reaches
+$(2\cdot24+22)\times24=70\times24$, versus $54\times16$ at the old boundary.
+The existing one-MiB/three-MiB budgets, 64-factor/1,024-relation ceilings,
+ownership model, and allocation-failure behavior remain unchanged. No
+production source allowance is raised; the copies still exceed that allowance
+and require consolidation and platform/resource qualification before promotion.
+
+Ordering source SHA-256:
+`a256fcf0212410de69e3c61499f8db2150da73ddd0839e263e427c0deb456ef6`;
+raw core:
+`9d72f0d6e4e6036026d9eb579f55c320ee7af6e13f1cbd45627fbff2d00c1a6d`.
+Coordinated source SHA-256:
+`ecce12c5175f919c15126c4eb1829954c7db60f5091bff22b58b8542d0bbfc5a`;
+raw core:
+`8ba076ea8d1f19366f175bb5ec2d18631eeeff0afc197e06564b23de8fd0bf09`.
+Compilation took 51.11 and 49.50 seconds respectively.
+
+Evidence, final replay scripts, source copies, and small build manifests are
+preserved under `build/cubic-analytic-schedule-evidence/ordering24/` and
+`build/cubic-analytic-schedule-evidence/staged24/`. Working originals are
+`/scratch/sagejs-runtime/cubic-ordering24-eouquO` and
+`/scratch/sagejs-runtime/cubic-staged24-ieStHC`; controlled timing ran in
+`/tmp/cubic-staged24-wBmafY` on `opt`. `summary.json` authenticates timing
+inputs and records all per-field results. This candidate remains unpromoted
+on draft PR203. The next ablation is immediate volume search for the newly
+enabled 17–24-factor cohort, keeping the 13–16 schedule unchanged. Any
+resumable recovery from materialization exhaustion separately requires a
+typed distinction between bounded inability and invalid proof state.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused

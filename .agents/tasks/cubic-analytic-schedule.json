@@ -606,10 +606,40 @@
       "commit": "93809d4babc7c4459ece4b6d20a96cec7b0ffdd3",
       "workspace_fingerprint": "276e5ce82ff21c754301050a15a01e9738c07d3a98f76b448d6936ace2540c09",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.143,
+      "started_at": "2026-09-09T20:44:54.632Z",
+      "commit": "bf6b4e05bebe77439e35f85cf0c86b4ebf5c9e03",
+      "workspace_fingerprint": "1dabcff70aa3659e8f5caaa5226fc7bcd2fdbf609d6eed157e9a830664bff451",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.103,
+      "started_at": "2026-09-09T20:45:33.456Z",
+      "commit": "bf6b4e05bebe77439e35f85cf0c86b4ebf5c9e03",
+      "workspace_fingerprint": "1dabcff70aa3659e8f5caaa5226fc7bcd2fdbf609d6eed157e9a830664bff451",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base HEAD",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 660.914,
+      "started_at": "2026-09-09T20:46:10.475Z",
+      "commit": "bf6b4e05bebe77439e35f85cf0c86b4ebf5c9e03",
+      "workspace_fingerprint": "1dabcff70aa3659e8f5caaa5226fc7bcd2fdbf609d6eed157e9a830664bff451",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "PR203 production BF999 correction remains unchanged and draft. Latest unpromoted direct-Theorem7 pipeline replaces six extended-gcd calls with a gcd-only helper after proving both Bezout coefficients are unused. Source shrinks840 bytes and normalized C49646. Actual-source79649 arithmetic checks and8817 closed-arena primitive cases per FLINT/GMP/JS backend pass, including signed multi-limb inputs. All1012 first-effort full outputs match parent across backends/linkage:982 successes,30 declines,no errors. Ordered inputs/gcd results of1088272 calls and every closure/BF/unit event are identical. Independent certified GP principal/published-unit replay passes3 controls; reused24 agrees. Controlled target pairedratio.97081; full corpus3592.528 to3512.296ms versusPARI1458.375, still2.41x. No broad-win or public/platform qualification claim. Tracked source transformer/test and full evidence report supplied. Historical Corollary8 experiments remain unqualified; direct Theorem7 derivation is documented separately and does not bless the printed coefficients.",
+    "summary": "PR203 production BF999 correction remains unchanged and draft. Two unpromoted source-copy ablations separate ordering-only from coordinated staged/volume recovery at17..24 factors. Ordering loses coverage982->957 despite aggregate timing improvement. Coordinated staging gives1005 first-effort successes,25 gains,2 losses,no errors; all1012 FLINT/GMP/JS/linkage outputs agree, all809 outside cohort unchanged. Exact certified GP replay checks194 selected successes and5857 principal rows, plus selected failed/parent prefixes. Target944919 closes class and unit gaps at rawrow33:20.416->5.197ms versusPARI2.0, pairedratio.25494. Full corpus3512.396->3014.298ms versusPARI1453,14.2% improvement but still2.07x. Two severe regressions retained:25637479 bounded unit-product exhaustion,69019020 missing class relation index2; paired3.79x/2.63x slower. Source/core bytes unchanged but actual dynamic matrix shapes grow; hard budgets/capacities/acceptance unchanged. Public full-corpus replay, source consolidation, platform/resource qualification remain open. Historical Corollary8 experiments remain unqualified; direct Theorem7 derivation does not bless printed coefficients.",
     "risks": [
       "Optimizer-opportunity inventory is already stale at the baseline; architecture gate not passing.",
       "Final broad test:changed run is terminal failure: 74 full-tier files passed, then five FFI failures from missing FFLAS manifest/igraph addon/static library; 509 files not started. Fresh build and all192 unit files passed. Do not restart an old handle or claim the full585 tier passed.",
@@ -618,6 +648,7 @@
       "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
     ],
     "next_steps": [
+      "Ordering24 and staged24 evidence is preserved under build/cubic-analytic-schedule-evidence/ordering24 and staged24, including authenticated source copies, final scripts, timings, replay and small manifests. Source hashes a256fcf0212410de69e3c61499f8db2150da73ddd0839e263e427c0deb456ef6 and ecce12c5175f919c15126c4eb1829954c7db60f5091bff22b58b8542d0bbfc5a; each503719 bytes, normalized core13044888. New visits up to25x6 and presentation70x24 require qualification; no production allowance increase. Next source-copy ablation starts volume search immediately for17..24 only, leaving13..16 unchanged. Scratch /scratch/sagejs-runtime/cubic-initial24-r4rDSu; inspect live build/output before continuing. Bounded reconstruction exhaustion must be distinguished from invalid proof state before authorizing resident resume. Do not treat phase8 reason436 as a reconstruction failure. Reused24 is not a fresh holdout, selected194 replay is not full public-certificate qualification. Keep PR203 draft.",
       "Gcd-only candidate81a28cf7f14e114a27bce57cd63cf67671c57e1007459fd8fb5b9b94fd3be785 is recorded under build/cubic-analytic-schedule-evidence/gcd-only and /scratch/sagejs-runtime/cubic-gcd-only-NNIReO. New tracked bench/class-unit-groups/cubic-gcd-only.py reproduces the authenticated transformation and edge checks without editing production. Keep PR203 draft: source still503719 bytes, limits unchanged, public replay/platform qualification and known stale architecture inventory remain open. Next higher-leverage regime:20-factor944919, still20.500ms versusPARI2.0 after gcd-only, and known to lack nontorsion units in early attempts. Audit the coordinated16-factor volume/staging guards and resident capacity before generalizing. Retry cohort is only30/1012 but accounts for roughly27% of the prior corpus excess. All1088272 traced gcd inputs are nonnegative signed-word-sized, independently motivating a generic exact compiler/runtime primitive; do not confuse that observation with a mathematical word-only restriction. Frozen cohort audit:797 fields at<=16 factors have no first-effort declines;203 at17..24 contain25 declines and60% of total excess;12 above24 contain5 declines. All20 analytic-insufficiency failures have strictly positive lower log-index, so this is not merely inadequate analytic precision. Other failures:6 rank insufficiencies,3 missing dependency-unit witnesses,1 exact-product exponent-budget exhaustion. Evidence in frontier-cohorts.json; do not interpret phase8's retained435/436 reason as reconstruction failure.",
       "Follow-up retry forensics and smaller-base volume recovery are implemented and measured in source copy d7fce6c863655de1ab50dfa23fbda68cde54c8e29a4d802a56ee594ed17b2020. Five lower shape bounds become1; upper16 and all proof/authority/resource limits remain unchanged. Actual-gate63360 checks pass. All1012 three-backend/linkage checks give982 first-effort successes, one gain908491, no losses/errors and1011 identical full outputs. Certified GP raw-prefix replay proves the prior early attempts genuinely lack units; effort7 had evidence at49 but collected90. New resident recovery certifies at16 rows and passes exact prefix/published-unit replay. Controlled target9.085 to3.955ms versusPARI1.5; pairedratio.43412, other12 panel ranges include1. Full corpus3793.805 to3763.818ms versusPARI1474.125 (only.79%, do not attribute all movement to target). Reused24 identical outputs; unresolved1.40% timing movement. No promotion. Source -5 bytes, normalized core -10; small-shape traversal matrix allocates up to66 extra entries. Evidence under build/cubic-analytic-schedule-evidence/narrow-volume and retry-forensics. Next separate repeated identical-prefix certification (12-row prefix retried) and late traversal switching from actual discovery cost; twenty-factor944919 is still outside this gate change. Keep PR203 draft until consolidation/public replay/platform qualification.",
       "Local-power screen experiment 812c2da3f7be7354c2014ddbfad531f7c5cacdc560608d1052d56ccce5fe7d17 is implemented and measured, not promoted. Exact residue maps skip impossible roots of either sign, retaining inconclusive searches and fresh-unit recovery. All 1012 full outputs match retained-unit parent across FLINT/GMP/JS/linkage; 981 first-effort successes, no changes/errors. Root proposals 134/125/125 become 19/2/0 with all nine successful roots preserved. Actual-body modular/proper-power/retention tests, two independent target replays, four necessary fresh-unit recoveries and reused24 checks pass. Controlled paired targets improve 7.35%/8.96%; full corpus 3838.913 to 3771.233 ms versus PARI1476.125, only1.76% and still2.55x PARI. Source +5547 bytes, normalized core +182017; caps unchanged. Evidence under build/cubic-analytic-schedule-evidence/local-powers. Next inspect the retry cohort:31 fields consume673.929ms versusPARI60.375, about27% of overall excess. Smallest D is908491, x^3-x^2-7x+186, h5, initial phase43/reason434, efforts5/1/7,8.808ms versus1.5ms. Reconstruct missing evidence and repeated work, not coefficient-specific effort selection. Public replay, consolidation and platform qualification remain open; PR203 stays draft.",
