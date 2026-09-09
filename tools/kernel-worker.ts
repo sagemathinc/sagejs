@@ -104,9 +104,13 @@ async function main(): Promise<void> {
       evaluationId = undefined;
     }
   } else if (message.type === "close") {
-    evaluator.close();
+    port.removeAllListeners("message");
+    try {
+      evaluator.close();
+    } finally {
       port.close();
     }
+  }
   });
 
   port.postMessage({

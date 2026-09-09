@@ -9,6 +9,7 @@ export interface SageDiagnosticError extends Error {
 import { EventEmitter } from "events";
 import { join } from "path";
 import { Worker } from "worker_threads";
+import { closeKernelWorker } from "./kernel-worker-lifecycle";
 
 import {
   createForeignFrontend,
@@ -175,6 +176,7 @@ export class SageSession extends EventEmitter {
   >();
   private nextId = 0;
   private closed = false;
+  private closePromise?: Promise<void>;
 
   constructor({ mode = "sage" }: SageSessionOptions = {}) {
     super();
@@ -636,8 +638,8 @@ export class SageSession extends EventEmitter {
     );
   }
 
-  async close(): Promise<void> {
-    if (this.closed) return;
+  close(): Promise<void> {
+    if (this.closePromise) return this.closePromise;
     this.closed = true;
     const error = new SageSessionClosedError();
     this.readyReject(error);
@@ -645,8 +647,9 @@ export class SageSession extends EventEmitter {
     this.worker = undefined;
     this.interruptState = undefined;
     this.rejectPending(error);
-    if (worker) await worker.terminate();
-    this.removeAllListeners();
+    this.closePromise = (worker ? closeKernelWorker(worker) : Promise.resolve())
+      .finally(() => this.removeAllListeners());
+    return this.closePromise;
   }
 }
 
