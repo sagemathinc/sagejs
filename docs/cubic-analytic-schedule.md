@@ -1348,6 +1348,143 @@ remain unpromoted: this is neither full-corpus public receipt/independent
 Sage.js replay qualification nor Lean verification. The production source and
 source/resource allowances remain unchanged.
 
+## Field-only residue reuse after an intermediate checkpoint
+
+The next ablations start from the corrected intermediate-checkpoint source
+`41550326694a0e28a56c1c8cb8a731b95f98db4e531ea52083e3d563c307eba8`.
+First, source
+`bd254ba726b182add49ccbf4836c420f4f6cefd38aae6963c911cda410b2577b`
+combines that schedule with the previously justified post-saturation guard:
+if the rigorous lower logarithmic joint-index bound is positive, refining
+the enclosure cannot certify that unchanged index as one. The exact
+classifier, unit authentication, and resumption rules remain unchanged.
+The actual guard/classifier passes 289 integer boundary checks.
+
+Second, source
+`e435e7e092725c05b3f939394b872a4c356eafbd0310e17070e84e654afe4191`
+adds a field-only BF residue cache on top of that combination. Both sources
+retain 981/1012 first-attempt successes and reproduce **all 64 parent output
+words on all 1012 fields**, including declines. Complete GMP and JavaScript
+comparisons with each source's fmpz results also pass. These observations are
+not yet public receipt, independent replay, or cross-platform qualification.
+
+### The value-table collision matters
+
+`_cubic_prepare_bf_plan` seeds five special values: the cutoff, its ninth,
+three times the cutoff, the absolute field discriminant, and the current
+class-order upper bound. `_cubic_bf_value_index` deliberately reuses the first
+matching header entry when a prime norm equals one of those values. Therefore
+changing the class-order header can change term indices and even the number
+of stored values. Updating only endpoint rows 16/17 would not leave a coherent
+BF plan for subsequent evaluation.
+
+An extracted execution of the actual planner covers 54 small-cutoff cases,
+with 51 term references to the class header and value-count changes in all six
+field/cutoff groups. The ordered mathematical term tuples (multiplicity,
+scale, norm, exponent) are unchanged across class orders, and every stored
+index is checked against the value it names. These tests use small allowed
+test cutoffs 27 and 81 and an exact elementary modular-root oracle; they are
+planner tests, not additional class-group certificates.
+
+### Cache invariant and limits of this implementation
+
+The BF finite sum and its tail bound depend on the fixed field, maximal-order
+prime splitting, cutoff, signature, and analytic precision, not on the
+relation presentation's current order or on the discovered unit. The class
+estimate enters the separate algebraic side of the joint-index inequality.
+Header deduplication changes storage indices, not the prime-norm values in
+the finite sum. Thus an already established residue enclosure remains valid
+when the relation subgroup changes within this fixed-field root invocation.
+This is a mathematical invariance argument under the same BF hypotheses,
+not a newly assumed estimate or a Lean-checked proof.
+
+The cache retains the latest successfully evaluated cutoff and residue/tail
+endpoints in a private eight-entry exact matrix. No cached value crosses a
+root invocation. If the class order changes, the implementation deliberately
+rebuilds the **complete** current-class plan and all log/square-root endpoints
+before reusing the field-only residue. Counts and class endpoints therefore
+match the live plan. If the class order is unchanged, the existing private
+plan/endpoints can also be reused. Unit discovery, materialization,
+saturation, and final classification still run. A refined enclosure is
+reused on its own merits; no nesting assumption about different cutoff
+enclosures is made.
+
+This first ablation still pays for prime splitting and transcendental
+endpoints on class-order changes. It isolates the benefit of avoiding the
+BF finite-sum and tail reevaluation while preserving indexed-plan semantics.
+It does not yet implement a class-independent prime plan or value-keyed
+transcendental cache. Twelve extracted control/fault cases verify cold fills,
+same-class hits, changed-class rebuilds at both cutoffs, malformed cached
+intervals, and invalidation on planner or endpoint failure.
+
+The additional diagnostic source `field-cache-check.py` recomputes BF bounds
+from the complete current plan on every cache hit and requires exact equality
+of lower, upper, and tail endpoints with the cached values. Its enlarged
+private matrix records hit counts; those counters are not production output
+and are only reported when a nontrivial successful publisher preserves them.
+This diagnostic is never timed. An initial build rejected augmented indexed
+assignment on `FmpzMatrix`; explicit read/add/store expressions compile. That
+diagnostic syntax limitation is not a mathematical cache failure and does not
+justify an unrelated compiler change in this arithmetic experiment.
+
+The diagnostic completes all 1012 fields on fmpz, GMP, and JavaScript with
+identical acceptance and first 60 output words to the uninstrumented cache
+source. Preserved counters report 54 cache hits in 44 nontrivial successful
+fields, including 41 changed-class hits in 41 fields. Every hit recomputes
+and matches all three cached endpoints exactly; this is stronger evidence
+for the reuse than final class-group agreement alone. Counts are lower bounds
+for all executed work because other publishers and failure paths can overwrite
+the diagnostic slots. Each of `3.1.46983.1`, `3.1.385480.1`, and
+`3.1.94276.1` has one reported changed-class hit; `3.1.23567.1` has none.
+Diagnostic source SHA-256:
+`5f17819debe096dbf0e9eae61d15951a8c54e17ca567ad9e28285877be44879a`.
+
+### Timing result: correct cache, limited reach
+
+The controlled `opt` run uses the same complete-call sampling protocol as the
+previous section. All implementations complete all 1012 fields with correct
+class numbers/invariants, 31 native retries, and no final failures.
+
+| Workload | Checkpoint alone | With refinement guard | With guard and field cache | PARI |
+| --- | ---: | ---: | ---: | ---: |
+| `3.1.23567.1` | 2.377 ms | 2.444 ms | 2.385 ms | 1.125 ms |
+| `3.1.46983.1` | 4.676 ms | 4.057 ms | 3.868 ms | 1.125 ms |
+| `3.1.94276.1` | 5.040 ms | 4.342 ms | 4.236 ms | 1.375 ms |
+| `3.1.385480.1` | 5.373 ms | 4.649 ms | 4.545 ms | 1.250 ms |
+| `3.1.744076.3` | 9.303 ms | 7.409 ms | 6.638 ms | 1.500 ms |
+| All 1012, sum of medians | 4487.424 ms | 4445.852 ms | 4472.268 ms | 1448.625 ms |
+
+The guard improves the checkpoint parent by 0.93% in aggregate in this run.
+The field cache improves the selected regressions further, but totals 0.59%
+**slower** than the guard without caching. For the 44 fields with reported
+cache hits, cache versus guard totals 228.416 versus 237.847 ms; the other
+968 total 4243.851 versus 4208.005 ms. The latter group means no **reported**
+hit, not necessarily no executed hit. These paired observations do not
+establish the cause of the aggregate overhead, and single-run sub-percent
+differences should not be treated as durable wins. The cache is not promoted
+as a general speedup. Even the fastest aggregate remains about 3.07 times
+PARI. Raw timing SHA-256:
+`c4913cf3d62a0ccba8a282dcbc552bff4b1bdb5a51a3233c98a9d6a85dfdbfe3`.
+
+The guard/cache generated core hashes are respectively
+`d80e81b82053f5cc59159581f6a3ff7ae31564f25a699f073f22910ce1c55e0f`
+and `4809d5b0aef60b6a804f68d7f3ccebba1a16326d610d4ceb29d58b18c3d03fe8`.
+Python source sizes are 486,563 and 490,611 bytes; normalized-path core sizes
+are 12,401,325 and 12,535,002 bytes. Both remain above the unchanged production
+source allowance even before runtime source is included. Generated diagnostic
+artifacts, controls, fresh-recomputation results, and timings are retained in
+the same local evidence directory; production code remains unchanged.
+
+The next investigation should measure first-evaluation cost rather than assume
+that another cache layer will close the gap. A possible reusable decomposition
+is field-dependent prime splitting, a class-dependent indexed value plan, and
+evaluation of the field-only residue. The current cache still repeats the first
+two and all transcendental endpoints when the class estimate changes. Any
+further reuse must preserve those dependencies and be tested against a fresh
+plan, while a broader phase profile must establish where the first successful
+closure spends its time. Improvements limited to 44 reported-hit fields cannot
+by themselves establish competitiveness over the complete corpus.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
