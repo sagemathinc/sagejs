@@ -4343,8 +4343,256 @@ qualification and four-platform/resource review. The serial architecture
 rerun again fails only at the already-recorded stale optimizer inventory;
 that failed gate is not refreshed away or claimed passing.
 
+## Unit-product budget exhaustion can permit resident discovery
+
+The next source-copy experiment separates a missing affordable witness from an
+invalid exact computation. `_cubic_materialize_dependency_unit` now returns
+$1$ only for an authenticated unit, $0$ only at its two pre-exponentiation
+budget exits, and $-1$ for invalid scales, exact operations, norms or
+reconstructed-regulator authentication. The individual exponent limit 4,096
+and total limit 16,384 are unchanged. A zero status carries no unit coordinates
+that may be published or cached. The staged caller additionally authenticates
+the reason and exceeded limit before returning resumable insufficiency;
+the nonstaged caller still declines unless the status is exactly one.
+
+This permits more relation discovery, not acceptance on weaker evidence.
+The previously collected principal relations remain valid, and the existing
+bounded resident schedule may produce a cheaper unit witness or a trivial
+class-group presentation. Every eventual result must still pass its original
+certificate. No new owner, matrix capacity, arena limit or proof assumption is
+introduced. The source has four changed functions. Actual-body tests cover
+19 materializer fault/boundary cases, 800 resumption-predicate cases and 150
+caller-gate combinations. Stubbed arithmetic in these control tests does not
+constitute an independent mathematical oracle.
+
+Across all 1,012 fields, exactly two first-attempt declines become successes;
+the other 1,010 complete result records remain identical. First-attempt
+coverage becomes 1,006, with no execution errors or new declines. All 64
+words agree across FLINT, GMP, generated JavaScript and the one-page FLINT
+linkage. Independent certified GP replay checks five fields and 91 principal
+relations, including both changed prefixes and three unchanged controls:
+
+- `3.1.20636980.1` previously exceeded the total exponent budget by 20.
+  Its class quotient has order two through row 25; row 26 establishes a
+  trivial class group. The dependency-unit subgroup also becomes full.
+- `3.1.87899928.1` previously requested an individual exponent 4,444.
+  Its quotient orders at rows 25, 26 and 27 are four, two and one.
+  The unit subgroup still has index two at row 27. This does **not** invalidate
+  the trivial-class certificate: a generating factor base with an exact
+  determinant-one relation presentation proves class number one without a
+  fundamental-unit certificate. No fundamental-unit claim is made here.
+
+The completed controlled `opt` run uses the same serial, retry-inclusive
+protocol, matched one-page linkage, and uninstrumented source bodies:
+
+| Workload | Typed-skip parent ms | Unit-budget resume ms | PARI ms |
+| --- | ---: | ---: | ---: |
+| All 1,012 fields, summed per-field medians | 2846.911 | 2817.370 | 1442.875 |
+| `3.1.20636980.1` | 7.590 | 3.857 | 1.500 |
+| `3.1.87899928.1` | 8.990 | 3.890 | 1.750 |
+| `3.1.45285240.1`, unchanged | 37.443 | 37.333 | 1.625 |
+
+The two restored fields no longer need the host's second effort. The
+21-round paired panel resolves their candidate/parent ratios as 0.51534
+(empirical 10th–90th percentiles 0.51242–0.51965) and 0.43501
+(0.43299–0.43758). The seven unchanged controls have ranges spanning one.
+The full total is about 1.95 times PARI; only 8.83 ms of its 29.54-ms reduction
+is explained by the two changed fields. Movement on unchanged workloads must
+not be attributed to eliminated mathematical work. Reused 24-field outputs
+remain identical; totals 38.641/38.376 ms do not establish a new speedup or
+constitute fresh holdout evidence.
+
+Candidate source SHA-256 is
+`776c3665ecb4950c08e8fe2017fcf78a397dacbaafb69335d6d9f35abd11b1c1`;
+raw core SHA-256 is
+`46cde49c6e7c49c18b63973916ee5709382f9f96e1c90846e52b5b1572cf75e8`.
+Source is 505,382 bytes, normalized C 13,085,018 bytes: increases of 989 and
+31,585 respectively. Compilation takes 50.17 seconds. These remain
+experimental source copies, above the unchanged 485,000 production source
+allowance. Consolidation, public receipts, full independent public replay,
+fresh holdouts and platform/resource qualification remain open.
+
+### The next slow field: do not confuse two different index-two gaps
+
+For $f=x^3-x^2+230x-37610$ (`3.1.45285240.1`), exact replay of efforts
+5, 1 and 7 checks respectively 47, 45 and 268 principal rows. Effort 5
+has quotient order 12 and a full unit subgroup from row 21 onward; it never
+closes the remaining class index two. Effort 1 has quotient order 2,460
+and only torsion dependency units. Effort 7 has quotient order six and a
+full unit subgroup by row 44, but postpones its first proof attempt until
+row 268. These are independently checked lattice/unit statements, not a
+claim that the native analytic suffix was executed at every earlier row.
+
+Read-only generated-JavaScript admission tracing preserves every result word.
+It shows that effort 7's row 44 comes from an ordinary reduced-ideal
+ellipsoid at a norm-three ideal, **before compound-product discovery**.
+The first effort, by contrast, visits its eight selected ideals, of norms
+31, 29, 17, 13 and 11; its eligibility mask excludes the small ideals even
+when its resident volume traversal resumes.
+
+One must not infer that row 44 repairs effort 5 just because both preceding
+quotients have order 12. An explicit cross-prefix check disproves that
+inference: adjoining row 44 leaves effort 5's quotient order 12. Instead,
+effort 7's row 17, found at a norm-two ideal, already suffices to reduce
+effort 5's quotient order to six. Its element is
+$\alpha=(a^2+7a+924)/29$, with norm 47,328. This is a diagnostic witness,
+never a special-case input or production search rule. Exact factor bases and
+integral bases match between the compared captures. The initial quotient's
+nontrivial HNF diagonal entries are six and two; the equality of quotient
+orders between two runs did not establish equality of their relation lattices.
+
+PARI 2.17.4, seed one and `bnfinit(f,0)`, starts with 17 factor-base ideals
+and 23 relations, then reaches tentative class numbers 24, 12, 12 and six
+at relation counts 23, 26, 27 and 29. Its `buch2.c` `small_norm` routine
+searches $P_0^{e_0}P_j$, choosing $e_0$ from the squared largest factor-base
+norm; here it uses exponents nine for norm two and six for norm three.
+After full rank, its relation-admission heuristic targets surviving quotient
+generators. This does not modify the mathematical certificate. The debug
+trace also warns that fundamental units are not supplied at its current
+precision; class-group-only timing must not be described as producing the
+same explicit unit certificate as Sage.js. Debug trace timings are excluded.
+
+PARI's targeted products remain useful algorithmic evidence, but the native
+trace makes a smaller structural experiment possible first: after typed
+certificate insufficiency, admit previously excluded small ideals to the
+same resident traversal, preserving all exact certification and resource
+limits. Separately, the exhaustive retry needs an earlier proof opportunity.
+Neither hardcoded witnesses nor unlimited additional search are justified.
+
+Final source copies, scripts, manifests, corpus checks, paired timings and
+exact replays are retained under
+`build/cubic-analytic-schedule-evidence/unit-budget-resume/`.
+Scratch originals are in
+`/scratch/sagejs-runtime/cubic-unit-budget-resume-iY466J`; the completed
+remote timing directory is `/tmp/cubic-unit-budget-resume-x1Q1aE` on `opt`.
+Multi-effort replay filenames now include the effort: the original script
+overwrote per-field GP files between efforts even though its JSON retained
+each result. The corrected replay was rerun and retains all three scripts.
+
+## Small-ideal recovery: a useful search, not yet the right schedule
+
+Three further source-copy experiments test the preceding forensic hypothesis.
+They preserve the initial prefix and activate previously excluded ideals only
+after the existing typed resumption predicate accepts an insufficient proof.
+The activation is limited to the 17–24-factor cohort, uses unused cells in the
+existing visit-state header, and happens at most once. It preserves each
+active region's basis and cursor and begins with the least-norm newly enabled
+ideal. Previously excluded slots must have no admitted rows, candidates or
+prepared parameters; contradictory state fails closed. No polynomial, label,
+known class number or captured witness is consulted.
+
+| Experiment | First-attempt successes | Gains versus unit-budget parent | Losses |
+| --- | ---: | ---: | ---: |
+| Activate small ideals with expanded volume regions | 1003 | 0 | 3 |
+| Use their original bounded ellipsoids | 1003 | 0 | 3 |
+| Keep the first small region active across dependent rows | 1005 | 1 | 2 |
+
+All three complete the 1,012-field first-attempt native survey without
+execution errors or wrong accepted answers, and all 64 words agree with GMP
+and generated JavaScript. The first two are negative controls, not proposed
+defaults. Their changed structural-record counts are 28 and 25. Independent
+GP replay checks the first experiment's target and three lost fields,
+200 principal rows; all four still have incomplete relation lattices.
+
+The second experiment's read-only trace identifies the additional problem.
+It does reach the new norm-two ideal, with bounded coordinate limits
+$(24,2,2)$, but the four-admitted-row visit quota immediately sends the
+cursor back to the large ideals. Admitted dependent relations consume this
+quota even when they do not improve the class quotient. Merely enabling the
+correct ideal therefore does not execute the useful part of its search.
+
+The third experiment retains that first small ideal until its region is
+exhausted, the global relation target requests a proof, or the original
+proposal/storage budget stops it. This is not an unbounded visit. The global
+staged proof checkpoints and maximum presentation shape are unchanged, and
+all successful results still pass the original exact certificate. The
+activation body passes 648 deterministic state cases, their 648 repeated-call
+idempotence checks, and four contradictory-state faults. These extracted
+control-flow tests do not substitute for arithmetic or backend verification.
+
+On `3.1.45285240.1`, the unchanged initial 23 rows give quotient order 12
+and a full unit subgroup. The norm-two visit discovers
+$(a^2+7a+924)/29$ as row 32, reducing the quotient order to six. This is the
+same diagnostic witness identified independently in the older retry, but
+it is rediscovered by general native source, not injected. The unchanged
+checkpoint policy requests the next proof at row 39, which succeeds and
+publishes an independently verified fundamental unit. Thus no host retry,
+compound-product search or 268-row presentation is needed for this field.
+
+The third candidate passes certified GP replay of 24 successful fields and
+777 principal rows, including all its changed successful records plus three
+controls. Separate replay of the two new declines checks 98 principal rows:
+`3.1.11856684.1` retains quotient order six although the true order is three;
+`3.1.27142115.1` retains order two although the true class group is trivial.
+Both have full unit subgroups. These are unresolved class relations, not
+insufficient floating-point precision. All 809 fields outside the cohort are
+unchanged. Reused 24-field checks and complete one-page linkage parity pass.
+
+The controlled serial `opt` run completes every field, with retries inside
+the timed region and matching one-page FLINT linkage:
+
+| Workload | Unit-budget parent ms | Focused small-ideal visit ms | PARI ms |
+| --- | ---: | ---: | ---: |
+| All 1,012 fields, summed per-field medians | 2828.561 | 2813.116 | 1444.625 |
+| `3.1.45285240.1` | 37.548 | 5.724 | 1.750 |
+| `3.1.11856684.1` | 4.601 | 18.040 | 2.000 |
+| `3.1.27142115.1` | 7.090 | 23.874 | 1.750 |
+
+The target is about 6.56 times faster, but remains 3.27 times PARI. The two
+new retries almost cancel its absolute saving. A 0.55% movement in the full
+total is not a durable overall speed claim or grounds to promote this
+schedule. Preserve the successful earlier policy and investigate a later
+bounded recovery transition; also forward strict lattice-change events so
+the target can request certification at row 32 rather than waiting to 39.
+That earlier certificate opportunity still needs actual native execution,
+not merely the retrospective exact lattice/unit oracle.
+
+Of the aggregate 15.44-ms movement, 10.16 ms occurs on the 989 structurally
+unchanged records. The target plus its two regressions save only 1.60 ms
+in total; the other 20 changed records save 3.68 ms. Do not attribute the
+whole aggregate difference to the newly discovered relation.
+
+The completed 11-field paired run confirms target ratio 0.15185
+(empirical 10th–90th percentiles 0.15120–0.15320). It also confirms the
+two regressions at ratios 3.94798 and 3.40570. Another existing success,
+`3.1.65734851.3`, improves to ratio 0.47906; the recently recovered
+`20636980` and `87899928` become 3.6% and 12.0% slower respectively.
+The original 9399 control spans one. Reused 24-field totals are
+39.285/39.254 ms with unchanged outputs. These mixed results support
+preserving the earlier schedule, not blanket early activation. The first
+paired invocation omitted its required `event` argument and failed before
+collecting samples; the corrected invocation completed all 11 fields.
+
+The three source hashes are respectively
+`9ea91ba398637fbaaacd4362b6a86bcc210200a9e62111ffb5aeed2a0cf08e6a`,
+`8dd8718626149a507fb15e6f9d8db8a7854c9730d6c7fec6983135dab56a1c5a`,
+and `3d55c604511f5890eec55cfea49c0706ed99d877a045887617232564b5e125c9`.
+Their source/normalized-C byte counts are 507,837/13,159,646,
+508,281/13,171,129, and 508,774/13,185,105. The third raw core hash is
+`fe53307a43a088be78741ac43df9556e29db3a4f2e51a03459770711f3120927`.
+No additional owner or matrix allocation is introduced. These counts are
+resource-review inputs, not completed resource qualification; none raises
+the production source allowance.
+
+Sources, preparation scripts, checks, manifests and exact traces are retained
+under `build/cubic-analytic-schedule-evidence/small-ideal-recovery/`,
+`small-ideal-bounded/`, and `small-ideal-visit/`. Scratch roots are
+`/scratch/sagejs-runtime/cubic-small-ideal-recovery-QVFyZR`,
+`/scratch/sagejs-runtime/cubic-small-ideal-bounded-H6MdjR`, and
+`/scratch/sagejs-runtime/cubic-small-ideal-visit-rlbEkf`; the last experiment's
+controlled timing directory is `/tmp/cubic-small-ideal-visit-eBNVFM` on `opt`.
+All remain unpromoted research copies. The first two are retained precisely
+because their coverage failures narrow the next algorithmic decision.
+
 ## Validation status
 
+- The current unit-budget and small-ideal research follow-up passes the
+  changed-file merge checks, all 192 unit-test files and documentation checking
+  after a fresh 8m36s build. Its explicitly identified source-copy/backend and
+  exact-oracle checks are separate from those production-worktree gates.
+  The serial architecture rerun still fails at the known stale optimizer
+  inventory after preceding FFI/native/Wasm/resource checks pass; no manifest
+  was refreshed to hide that failure.
 - The specialization-audit follow-up passes formatting, all five focused
   analytic-schedule tests, strict Python (382 modules), direct documentation
   checking, and the complete 192-file unit tier after a fresh 10m09s build.

@@ -666,10 +666,80 @@
       "commit": "66a4c5f733e16547ae83d14be7ab42c0176c6a1c",
       "workspace_fingerprint": "2af23b5a7f6b54099c70e16a483135b633b042dc9b67d098f33029d42ea30ad8",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.089,
+      "started_at": "2026-09-09T21:29:46.017Z",
+      "commit": "65f4bfaee4144a552f3e6f90b72a6dc9c1adfaab",
+      "workspace_fingerprint": "a5d54f8ff78ed30f09aedab3df9181e08a4a670579e714e53657bc6a2898ff58",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-unit-budget-resume-iY466J/check-status.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.216,
+      "started_at": "2026-09-09T21:30:27.434Z",
+      "commit": "65f4bfaee4144a552f3e6f90b72a6dc9c1adfaab",
+      "workspace_fingerprint": "a5d54f8ff78ed30f09aedab3df9181e08a4a670579e714e53657bc6a2898ff58",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base HEAD",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 630.177,
+      "started_at": "2026-09-09T21:30:28.341Z",
+      "commit": "65f4bfaee4144a552f3e6f90b72a6dc9c1adfaab",
+      "workspace_fingerprint": "a5d54f8ff78ed30f09aedab3df9181e08a4a670579e714e53657bc6a2898ff58",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.498,
+      "started_at": "2026-09-09T21:42:08.061Z",
+      "commit": "65f4bfaee4144a552f3e6f90b72a6dc9c1adfaab",
+      "workspace_fingerprint": "c57f0731decaa96b782458d86ced7c21cef417e32de27df940283942e68270ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-small-ideal-visit-rlbEkf/check-activation.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.274,
+      "started_at": "2026-09-09T21:43:22.685Z",
+      "commit": "65f4bfaee4144a552f3e6f90b72a6dc9c1adfaab",
+      "workspace_fingerprint": "335e90b011b5209ebba6621a89251d6a3af4a17b7eedd6dbd4786c0fe1592ea8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.071,
+      "started_at": "2026-09-09T21:43:23.619Z",
+      "commit": "65f4bfaee4144a552f3e6f90b72a6dc9c1adfaab",
+      "workspace_fingerprint": "335e90b011b5209ebba6621a89251d6a3af4a17b7eedd6dbd4786c0fe1592ea8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.073,
+      "started_at": "2026-09-09T21:44:44.025Z",
+      "commit": "65f4bfaee4144a552f3e6f90b72a6dc9c1adfaab",
+      "workspace_fingerprint": "81cfdfb01fce71bf77f9bd76eab317567c7cc0fc44600cf7174d896b116eb047",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "PR203 remains draft and production BF999 correction unchanged. Follow-up66a4c5f73 records coordinated17..24 staged gains. New immediate-volume source copy restores its two losses but introduces five. Two fatal cases are independently traced to valid region coordinate limits72/65 beyond unchanged64. A typed oversized status skips only those optional discovery regions, keeping malformed plans fatal and certification unchanged. This restores exactly those two fields, all other1010 words unchanged. Corrected candidate1004 first-effort successes,8 retries; all1012 FLINT/GMP/JS/linkage checks agree and every timed field completes. Compared with coordinated staging:2971.098->2834.008ms versusPARI1444.875,4.6% improvement,1.96x PARI. Target9449195.030->2.685ms, pairedratio.53924. Severe regressions45285240(3.17x)/87899928(4.40x) remain. Initial-volume exact replay183 fields/5245 rows passes with explicit256MiB GP checker stack; corrected changed fields plus3controls replay5fields/130rows. Planner6007cases/twoalias schedules and actual collector408stubbed-state cases pass. No production source allowance, coordinate bound, arena limit or acceptance relaxation. Source consolidation, fresh holdouts, full public receipt replay and platform/resource qualification remain open; architecture inventory still stale.",
+    "summary": "PR203 remains draft; production source and 485000 allowance unchanged. Unit-product budget status experiment preserves fatal exact errors and permits bounded resident search only after explicit pre-exponentiation insufficiency. It restores two first attempts:1006/1012, every other1010 output unchanged; FLINT/GMP/JS/linkage agree. Paired gains20636980 ratio0.51534 and87899928 ratio0.43501; full2817.370ms versusPARI1442.875, still1.95x. Exact replay5fields/91rows passes, including h1 with unit subgroup index2 where no fundamental-unit proof is needed. Forensics on45285240 shows first effort47rows h12/unitindex1, exhaustive retry correct by44 but waits268. Its retry row17 from a norm2 ideal closes the first-prefix class gap; row44 does not, despite equal prior quotient orders. Three source-copy small-ideal recovery experiments isolate eligibility, ellipsoid size and dependent-row visit quota. Focused bounded small-ideal visit discovers missing relation at32 and certifies39 in first effort, improving37.548->5.724ms versusPARI1.750. But two new retries11856684/27142115 rise4.601->18.040 and7.090->23.874ms. Whole corpus2828.561->2813.116 is not durable overall gain; do not promote. All1012 backends/linkage agree, outside809 unchanged, exact24successful fields/777rows plus2declines/98rows replay passes. Next preserve existing successes with a later recovery transition and request proof on row32 lattice event. No budgets or acceptance relaxations. Changed-file merge/unit192/docs gates pass after8m36 build; architecture still fails known stale optimizer inventory. Public qualification/consolidation/fresh holdouts/platform-resource review remain open.",
     "risks": [
       "Optimizer-opportunity inventory is already stale at the baseline; architecture gate not passing.",
       "Final broad test:changed run is terminal failure: 74 full-tier files passed, then five FFI failures from missing FFLAS manifest/igraph addon/static library; 509 files not started. Fresh build and all192 unit files passed. Do not restart an old handle or claim the full585 tier passed.",
