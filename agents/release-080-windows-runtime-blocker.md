@@ -2,6 +2,82 @@
 
 Status as of 2026-09-08: **not cleared; do not publish or blindly retry**.
 
+## September 9 follow-up: cooperative shutdown fix
+
+Implementation commits: `bc5f4efa8` (close) and `9f54cbd54` (idle reset), on
+`fix/release-evidence-hardening`. The cleanup bug is fixed and the observed
+teardown path has a tested mitigation. **The release blocker is not waived:**
+the patched product still needs qualification; these are focused diagnostics.
+
+`SageSession.close()` previously always called `Worker.terminate()`, bypassing
+the worker's existing close-message handler and `evaluator.close()`. Repeated
+close calls could also resolve before the first shutdown finished. The fix:
+
+- Sends the close message and awaits natural worker exit.
+- Runs evaluator cleanup and closes the message port even if cleanup throws.
+- Shares the shutdown promise between repeated callers.
+- Uses the same cleanup for idle resets.
+- Retains a one-second termination watchdog for unresponsive close requests.
+  Interrupts/timeouts with pending work retain immediate forced replacement.
+
+There is no arbitrary pre-termination sleep, forced GC, disabled GC flag,
+Node upgrade, new native dependency, or weakened mathematical assertion.
+The helper is Node-only; no mathematical algorithm or Wasm reactor changed.
+Startup and artifact-size acceptance have not been rerun, so no fresh budget
+claim is made. A contended timing probe is deliberately not release evidence.
+
+The new natural-exit regression fails on D3: its worker exits with code `1`
+instead of `0`. It passes on the fix, as do concurrent close, stuck evaluation,
+idle reset/state clearing, already-exited worker, and failed message delivery
+regressions. This establishes the cleanup defect independently of the rare
+V8 assertion.
+
+Validation and limits:
+
+- `9f54cbd54`: TypeScript compilation passes; ten focused Linux tests pass.
+- `9f54cbd54`: sixteen Windows tests pass across `kernel.cjs`, `kernel-close.cjs`,
+  `kernel-worker-lifecycle.cjs`, `kernel-diagnostics.cjs`, and the complete
+  `hyperelliptic-rforest.cjs`. Includes interrupts, resets, and polyglot state.
+- `bc5f4efa8`: six consecutive diagnostic harness batches pass on Windows
+  Node 26.5.1: **120 rforest files / 600 mathematical sessions, plus 600 simple
+  create/evaluate/close sessions; 1,200 shutdowns, no crash**. Every retained
+  rforest log reports all five assertions passing. The later idle-reset-only
+  follow-up is covered separately by the sixteen-test run, not relabeled as
+  the source of these stress results.
+- The unchanged D3 harness failed again at `rforest-9-1` in
+  `sagejs-windows-diagnostic-20260909-baseline-2`. This failure retained only a
+  whole-file failure, **not** a native backtrace; it is not a second symbolized
+  `SweepingDone` observation. The earlier symbolized observation below remains
+  the direct evidence for that assertion.
+- Forty additional direct-file baseline runs and forty cooperative diagnostic
+  runs all passed. Twenty TAP baseline runs also passed. Passing stretches on
+  the old code are why the new stress results are not a proof of elimination.
+- Native-addon-disabled compiler-only worker cycles (100), synthetic compiled
+  JavaScript worker cycles (100), and a synthetic incremental-marking stress
+  probe (40) passed. These did **not** produce an upstream-only reproducer.
+
+Windows diagnostics used a separate worktree,
+`C:/Users/user/sagejs-worker-close-bc5f4efa8`, now at `9f54cbd54`. Unchanged D3
+generated math products were copied and the changed TypeScript runtime rebuilt;
+this is explicitly not a new full-build receipt. The original D3 checkout and
+release artifacts were not edited. Linux focused tests likewise reused unchanged
+generated products. A Linux rforest attempt could not load the absent local
+`sagejs_flint.node`; its five environment failures are not reported as passes.
+
+The six retained stress directories are
+`build/windows-diagnostic-evidence/sagejs-windows-diagnostic-20260909-cooperative`
+and its `-extended-0` through `-extended-4` siblings in the local hardening
+worktree. Each includes environment, per-file logs, results, and a successful
+21-trial summary. No raw process reports or secrets were published.
+
+Remaining risk: forced termination is still necessary for uncooperative code,
+and the underlying V8/native interaction has not been proven. The patch removes
+unnecessary forced teardown from normal close and idle reset; it does not
+justify claiming that all forced-termination crashes are impossible. Next
+qualify the patched candidate on the persistent hosts, including full Windows
+integration, before any release retry. No CI run or release tag was created
+during this follow-up. The separate CIM sampling race remains distinct.
+
 ## September 9 update: locally reproduced and symbolized
 
 The focused harness at `scripts/release/windows-diagnostic.cjs` reproduced the
