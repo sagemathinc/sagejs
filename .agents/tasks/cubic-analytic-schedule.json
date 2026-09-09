@@ -405,6 +405,56 @@
       "commit": "39570e9933b24a101334c4a0e1c2c4441b8db3c1",
       "workspace_fingerprint": "3722afdf9bb5f649c2006ee88b4db29dd7839b8ee7610645811fe997e5a9d15c",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-unchanged-prefix-BZLpWG/check-control.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.22,
+      "started_at": "2026-09-09T19:06:56.686Z",
+      "commit": "b416453f4d1520acf130bf88745e7f6dd889e313",
+      "workspace_fingerprint": "306642efadecfb9e9865b3ea251fa7de1f124187a4ea8329537f4b58fa70044a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.727,
+      "started_at": "2026-09-09T19:18:21.233Z",
+      "commit": "b416453f4d1520acf130bf88745e7f6dd889e313",
+      "workspace_fingerprint": "48cc10efe823e46b4d423c9f6aac799b0338483ff9469d17f94cdbf3d4b5748d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.131,
+      "started_at": "2026-09-09T19:18:24.657Z",
+      "commit": "b416453f4d1520acf130bf88745e7f6dd889e313",
+      "workspace_fingerprint": "48cc10efe823e46b4d423c9f6aac799b0338483ff9469d17f94cdbf3d4b5748d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-small-initial-volume-8rV85F/check-gate.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.218,
+      "started_at": "2026-09-09T19:22:16.983Z",
+      "commit": "b416453f4d1520acf130bf88745e7f6dd889e313",
+      "workspace_fingerprint": "80c8bef54e0a42adc5062eae4a2cb2f23957ce9618508d167b9a2b730b47cc22",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.203,
+      "started_at": "2026-09-09T19:22:17.906Z",
+      "commit": "b416453f4d1520acf130bf88745e7f6dd889e313",
+      "workspace_fingerprint": "80c8bef54e0a42adc5062eae4a2cb2f23957ce9618508d167b9a2b730b47cc22",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

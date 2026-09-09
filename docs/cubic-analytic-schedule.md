@@ -3549,6 +3549,144 @@ Source allowance, production source and PR203 draft status remain unchanged.
 Focused tests and actual-gate checks pass; the existing architecture-inventory,
 public replay, consolidation and cross-platform qualification gaps remain.
 
+## Unchanged-prefix insufficiency reuse: measured, narrow benefit
+
+A separate unpromoted source-copy experiment reuses an explicit insufficient
+closure result across exactly two already-authorized no-append transitions:
+advancing the exhausted intermediate traversal, and entering the retained
+volume traversal. It does not memoize successful certificates or infer failure
+from a search timeout. The field, maximal-order basis, logical append-only
+relation prefix, class quotient and analytic precision remain fixed across
+these transitions. New relations force a fresh closure attempt; an error or a
+changed row count cannot enter the reuse branch.
+
+The six output diagnostics in slots 58 through 63 require special care:
+collection can overwrite them without appending a relation. The experiment
+saves and restores the previous proof diagnostics before recomputing the
+existing resume predicate. A row-count-only cache without this restoration
+would not preserve the authority for continuing the search. No acceptance,
+analytic, precision, allocation or iteration limit changes. This is a local
+control-flow argument, not a claim of Lean verification.
+
+Actual-source tests cover 36 proof/reuse/error cases and 1,536 cases of the
+two transition predicates. All 1,012 first-effort outputs are identical in
+every word to narrow-volume recovery, with 982 successes and no errors or
+coverage changes, across FLINT, GMP, generated JavaScript and the timing
+linkage. The reused 24-field panel also preserves every output. Independent
+certified-GP principal-row, integer-kernel-unit and published-unit replay
+passes for 30772, 41912 and 908491; this is not public receipt qualification.
+
+The full first-effort trace removes exactly seven duplicate closure calls,
+957 to 950, on fields 761319.2, 908491.1, 1063351.3, 1954455.1, 21147075.4,
+25748531.3 and 38041259.1 (all labels have prefix `3.1.`). Every other logged
+event, including all analytic and root-search calls, is identical. For
+908491 the closure row counts become 12, 13, 16 instead of 12, 12, 13, 16.
+
+Controlled serial `opt` measurements use the same experimental one-page
+FLINT linkage for both candidates, CPU 0, and the previously documented
+warmup, retries and sampling rules. The 21-round paired panel finds a median
+target ratio of 0.96232 for 908491, with empirical p10/p90 0.90857/0.99061.
+The other twelve fields' ranges include one. These are sample quantiles, not
+confidence intervals. The full-corpus sums are 3960.169 ms parent,
+3925.025 ms reuse, and 1506.875 ms PARI, with 30 retrying fields on either
+Sage.js variant. The reused-24 sums are 45.959, 44.606 and 28.375 ms.
+Neither aggregate difference establishes a broad speedup from seven removed
+calls. In particular, the full-run target's 4.657 to 3.918 ms change is much
+larger than the paired estimate and must not be presented as a stable 16%
+improvement. The candidate remains substantially slower than PARI overall.
+
+Evidence lives in `build/cubic-analytic-schedule-evidence/unchanged-prefix/`
+and `/scratch/sagejs-runtime/cubic-unchanged-prefix-BZLpWG`.
+`prepare.py` authenticates the parent; `check-control.py`, `compare-trace.cjs`
+and `summarize.cjs` check actual control flow, unchanged events, output parity,
+resources, replay and timing evidence. Source grows 1,920 bytes to 504,704,
+SHA-256 `e185960807e365d1f4c0b8954957b9bee3790ca0ee384bd1e22c432d253914b8`;
+path-normalized core grows 39,941 bytes to 13,097,753. Raw core SHA-256 is
+`67412a8c76340676a921716574c2d4d229c12ca872d08d7dd4e18a53761d0df4`.
+This is not stacked into the next initial-volume search-order ablation:
+the small benefit and added state merit comparison before consolidation.
+Production source, allowance and PR203 draft status remain unchanged.
+
+## Initial volume for small factor bases: mixed ablation, not a default
+
+The next experiment changes exactly one scheduling predicate, from
+`not staged_certification or factor_count == 12` to
+`not staged_certification or factor_count <= 12`. Small staged factor bases
+therefore start in the existing volume traversal rather than reaching it only
+through authorized recovery. This source copy is based on narrow-volume
+recovery, not the unchanged-prefix experiment. Acceptance, generator bounds,
+analytic precision, resource limits, and the upper volume shape limit remain
+unchanged. Actual-source comparison and 130 extracted-predicate cases verify
+the single change. Source and normalized generated-C sizes are unchanged.
+
+All 1,012 first-effort fields retain the same success status: 982 accepted,
+30 declined, no errors, gains or losses. There are 383 changed outputs, all
+on accepted fields, reflecting different relations, unit representatives and
+search diagnostics. Every accepted class number and invariant list agrees
+with the frozen oracle. All 64 words agree across FLINT, GMP, generated
+JavaScript and the timing linkage. All reused 24-field checks pass too, but
+this is neither a fresh holdout nor a full public receipt/replay qualification.
+
+Independent certified-GP replay covers all 383 changed fields and 5,995
+principal rows. It checks the maximal-order basis, every principal equality,
+every full-rank-candidate prefix and its integer-kernel unit subgroup. Analytic
+receipts additionally have their published fundamental unit checked; trivial
+class receipts instead require a full-rank determinant-one relation lattice
+and independently certified class number one. Initially the older harness
+incorrectly required a fundamental unit on a trivial receipt, and its staged
+closure snapshots missed the final trivial-class presentation. Both diagnostic
+errors are preserved in the evidence. `capture-raw.cjs` now observes the actual
+raw presentation immediately before reduction, including the final path, and
+preserves all output words. The corrected complete replay passes. These checks
+do not formalize or independently replay the Sage.js analytic inequalities.
+
+The controlled paired panel demonstrates real tradeoffs:
+
+| Field (prefix `3.1.`) | Parent ms | Initial-volume ms | PARI ms | Paired median ratio |
+| --- | ---: | ---: | ---: | ---: |
+| 42552.1 | 2.592 | 1.554 | 1.125 | 0.602 |
+| 97492.1 | — | — | — | 0.866 |
+| 30772.1 | 1.855 | 2.320 | 1.375 | 1.261 |
+| 46983.1 | 2.215 | 3.273 | 1.250 | 1.472 |
+| 908491.1 | 3.986 | 4.567 | 1.375 | 1.152 |
+
+The 42552 gain and the three displayed regressions have paired empirical
+p10/p90 ranges entirely on their respective sides of one. Full-corpus sums
+are 3969.229 ms parent, 3941.233 ms initial volume and 1488.125 ms PARI;
+reused-24 sums are 48.803, 48.162 and 29.000 ms. Thirty fields retry on either
+implementation, with no incomplete final timing samples. The small aggregate
+difference does not justify selecting volume first universally, especially
+given the substantial target regressions. This is an unpromoted ablation.
+
+Trace counts explain why fewer closures are not sufficient: closure calls
+fall 957 to 902, but saturation calls rise 889 to 914, BF evaluations 860 to
+864, and square/cube/fifth-root proposals 19/2/0 to 37/3/1. For 908491,
+the first volume prefix has class quotient 10 and a fundamental unit at row
+12; row 13 already has quotient 5 and the same unit subgroup. Nevertheless,
+the next certification occurs at row 32. For 46983, adequate class/unit
+evidence exists at row 10 but the collector reaches row 28. These are exact
+prefix-oracle observations, not claims that Sage.js certified those earlier
+prefixes.
+
+Inspection identifies a specific interface gap: the adjacent collector's
+`stop_on_lattice_change` request is honored by its ordinary traversal but
+not forwarded into `_cubic_collect_initial_volume_prefix`. The next experiment
+should propagate that existing request through the volume enumerator, commit
+cursor/quota/budget state before returning, and invoke the unchanged exact
+certifier at the event. A lattice change requests a proof; it is not itself
+proof of completeness, nor a reason to remove periodic unit checks.
+
+Evidence is retained in
+`build/cubic-analytic-schedule-evidence/small-initial-volume/` and
+`/scratch/sagejs-runtime/cubic-small-initial-volume-8rV85F`.
+The source is 502,784 bytes, SHA-256
+`ae99b7c9a226e75abee11fcc6c286ad930772d8effe2383331c4517992cb9e33`.
+Normalized C is 13,057,812 bytes; raw core SHA-256 is
+`66e742c574f243a0155d0f56f4e378fb6836778c29093b293fb1032d3cd6b8c8`.
+`summary.json` records artifact identities, replay and backend checks, paired
+quantiles and all timing samples. Production source, caps and draft status
+are unchanged.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
