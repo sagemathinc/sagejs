@@ -3792,6 +3792,114 @@ refreshed merely to pass. Production source, allowances and PR203 draft status
 remain unchanged; consolidation, public certificate replay and platform
 qualification are still required.
 
+## Cache exact prime-power contributions during generator-bound search
+
+The next source-copy optimization preserves the search policy rather than
+choosing another heuristic. `_cubic_grh_generator_bound` probes neighboring
+bounds using fixed authenticated endpoints and scale. For a prime-ideal norm
+$n=p^f$, its `SA` and `SB` contributions depend on the bound $B$ only through
+$m=\max\{j\geq 1:n^j\leq B\}$. When $n>B$ the contribution is zero. Once $m$
+is fixed, the original reciprocal-square-root interval, geometric and weighted
+power sums, and final rounded products are identical. Cache those two final
+rounded integers, not an approximate formula or a reordered sum.
+
+A root-owned matrix has one row per possible norm and three columns:
+the ready exponent $m$, `SA` lower endpoint, and `SB` upper endpoint. A hit
+requires the same positive exponent. On a miss the original arithmetic runs,
+and the exponent is published last, after the two values. Different trial
+bounds can move either upward or downward; equality of exponents, not
+monotonic traversal, governs reuse. Readiness is never published on a failed
+computation. Distinct prime powers of primes identify distinct $(p,f)$ pairs,
+so indexing by norm is sufficient: primality is authenticated by the existing
+splitting-plan producer before this helper is called. This argument would
+not justify calling the private helper with arbitrary composite "primes".
+Multiplicity remains outside the cache, exactly as before.
+
+The owner exists only during one root call, with one immutable endpoint batch
+and scale. It is neither a cross-field cache nor valid after changing those
+inputs. The existing prime splitting table remains separate and unchanged.
+The extra allocation is at most $258\cdot3=774$ exact-integer entries under
+the existing factor-search limit 257. Source, arena and generator bounds are
+not raised; the larger resident footprint must still fit the original limits.
+There is no new GRH hypothesis or weaker analytic acceptance condition.
+
+Actual old/new Python contribution bodies agree in 310,800 comparisons at
+four scales, including increasing/decreasing bounds and prime-power boundary
+transitions. The checks exercise 131,724 cache hits without endpoint reads,
+fresh owners for different scales, and a failed exponent change followed by
+successful retry. A same-source JavaScript trace additionally hashes every
+contribution's inputs and returned endpoints across all 1,012 fields: all
+137,429 calls have exactly identical arithmetic transcripts. Positive
+recomputations fall from 81,116 to 21,017, with 60,099 hits; interval-product
+calls inside those contributions fall from 285,975 to 80,702. The 56,313 zero
+contributions remain zero without ready entries. Every recorded subsequent
+closure, saturation, BF and root-search event is identical to the parent.
+
+All 1,012 complete first-effort output buffers are identical: 982 successes,
+30 declines, no errors or changed bounds, units, intervals or diagnostics.
+FLINT, GMP, generated JavaScript and timing linkage agree in every word.
+The reused 24-field panel also retains identical outputs. Independent
+certified-GP principal-prefix and published-unit replay passes the three
+selected controls 30772, 41912 and 908491. This is not full-corpus public
+certificate replay and does not formalize the analytic theorem.
+
+Controlled `opt` timings with matched one-page FLINT linkage are:
+
+| Workload | Parent ms | Contribution cache ms | PARI ms |
+| --- | ---: | ---: | ---: |
+| 908491 | 2.659 | 2.597 | 1.375 |
+| Original 9399 target | 1.374 | 1.336 | 1.125 |
+| 30772 | 2.190 | 2.153 | 1.375 |
+| Full 1,012-field sum | 3713.767 | 3630.309 | 1469.875 |
+| Reused 24-field sum | 41.914 | 40.528 | 27.625 |
+
+The paired target ratio for 908491 is 0.96621, with empirical p10/p90
+0.95574/0.97713. Ratios for 24364.3 and 3209035 are 0.97840 and 0.97541,
+also with ranges below one; the other ten panel ranges include one. These
+are sample quantiles, not confidence intervals. Full-run aggregate differences
+are about 2.25% and 3.30% respectively; do not interpret all aggregate
+movement as measured causal improvement on every individual field. Thirty
+fields retry on both variants, and every final timing sample completes.
+The corpus still costs about 2.47 times PARI. No broad competitiveness claim
+or production promotion follows from this result.
+
+Additional local diagnostic profiling of the parent identifies why the
+remaining gap cannot be attributed just to too many relations. For 908491,
+the detailed instrumented root is 2.886 ms. There are 415 reduced-candidate
+checks, 254 smooth-principal append attempts and 1,347 extended-gcd calls.
+Candidate checks cost 0.414 ms inclusive, append attempts 0.428 ms, and
+extended gcd 0.135 ms. Seventy-seven ceiling square roots cost 0.119 ms.
+The generator-bound checks cost 0.282 ms inclusive. Nested times must not be
+summed, and wrapper overhead is included. The existing PARI trace for this
+field reports 324 small-norm candidates and 16 relations; Sage.js's factor
+attempt count is already lower, though the counters are not identical
+instruction-level workloads. Exact per-candidate representation/arithmetic
+cost is therefore a serious remaining hypothesis, alongside search order.
+
+This is a useful compiler-motivation case too: the source computes Bezout
+coefficients for some gcd calls whose callers discard them, and constructs
+the square-root initial power of two by repeated multiplication. The inspected
+compiler accepts exact powers only with constant exponents; its documented
+word shifts are not arbitrary-precision shifts. These are identified
+opportunities, not implemented compiler improvements or measured standalone
+speedups. The existing dirty `mixed-exact-float-sidecar` worktree was inspected
+read-only and left untouched; floating discovery with exact authentication
+would require explicit compiler and mathematical qualification, not a silent
+replacement of exact certification.
+
+Evidence lives in `build/cubic-analytic-schedule-evidence/bound-contribution-cache/`
+and `/scratch/sagejs-runtime/cubic-bound-contribution-cache-YZcmlz`.
+`prepare.py`, `check-cache.py`, `trace-contributions.cjs` and
+`summarize-contributions.cjs` retain the source transformation, arithmetic
+comparisons and call-transcript evidence. Source grows 1,007 bytes to 504,559,
+SHA-256 `52c39cbada600b83258a108b439806312753bcf0868e04d446db3a6e12c29345`.
+Normalized generated C grows 18,816 bytes to 13,094,534; raw core SHA-256 is
+`3c29e83714303f7480e141918c670c71425e07081ff185f419d031fd272a218f`.
+The parent detailed profiles are retained with the volume-quotient-event
+evidence. Existing source allowance and physical resource limits are unchanged.
+The candidate remains unpromoted on draft PR203, with consolidation, public
+replay, architecture-inventory reconciliation and platform qualification open.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused

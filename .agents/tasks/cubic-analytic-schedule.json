@@ -505,6 +505,36 @@
       "commit": "430db42c01788a85a345cdceb6829dd28397a090",
       "workspace_fingerprint": "aa584ff33f8e6f7f8fb6c1d876535f7cc23b77c96327812d99302106c0c2fe07",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-bound-contribution-cache-YZcmlz/check-cache.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.26,
+      "started_at": "2026-09-09T19:42:00.355Z",
+      "commit": "78cc6dd3764b60aa28365674e1bcfa6cc28e52dc",
+      "workspace_fingerprint": "a652d8855d622852963f1317262cbb01a29972c2751a7ef1e2c1f5a2a30a82f8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.723,
+      "started_at": "2026-09-09T19:48:30.572Z",
+      "commit": "78cc6dd3764b60aa28365674e1bcfa6cc28e52dc",
+      "workspace_fingerprint": "e8e65ea1318787134971db3e0ce822c7447490f63a427776591703f58c8835e0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.102,
+      "started_at": "2026-09-09T19:48:33.984Z",
+      "commit": "78cc6dd3764b60aa28365674e1bcfa6cc28e52dc",
+      "workspace_fingerprint": "e8e65ea1318787134971db3e0ce822c7447490f63a427776591703f58c8835e0",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
