@@ -4584,6 +4584,292 @@ controlled timing directory is `/tmp/cubic-small-ideal-visit-eBNVFM` on `opt`.
 All remain unpromoted research copies. The first two are retained precisely
 because their coverage failures narrow the next algorithmic decision.
 
+## Preserve the full prefix before small-ideal recovery
+
+Three further source-copy experiments separate event-driven certification from
+the time at which excluded small ideals become eligible. Their common parent
+is the focused-visit copy above; corpus comparisons use the unit-budget parent.
+None changes production source, proof authority, or the 485,000-byte allowance.
+
+1. **Early activation with exact lattice events:** forward the already existing
+   strict-lattice-change stop flag when the small-ideal recovery marker is set.
+   The retained proposal budget survives each inserted proof attempt. This
+   actually certifies `3.1.45285240.1` at row 32, rather than only establishing
+   that possibility with the retrospective oracle. It still loses both
+   `11856684` and `27142115`: earlier checks do not repair the search-order
+   regression. First-attempt coverage remains 1,005/1,012, with 37 structurally
+   changed records. No controlled timing improvement is claimed for this copy.
+2. **Late recovery:** admit previously excluded ideals only after the original
+   final staged insufficiency. Preserve all earlier prefixes and use one
+   additional bounded resident pass. This gives 1,007/1,012 first-attempt
+   successes, no losses, no errors, and exactly identical full outputs on the
+   other 1,011 inputs. Target checkpoints are 23, 39, 40, 43, 47, 54; the new
+   class relation and certificate arrive at row 54.
+3. **Recovery after the original full prefix:** the protected fields actually
+   finish at checkpoints 24/40 and 26/34 respectively. Instead of waiting for
+   every incremental extension, preserve the original full-prefix collection
+   and permit the one-time transition after its insufficient proof. This
+   retains 1,007/1,012 first-attempt successes with no losses or errors. Target
+   checkpoints become 23, 39, 46. Only one other full output changes:
+   `3.1.3229112.1` publishes the negative of the parent's fundamental unit;
+   its class group and all other output words are unchanged. Its captured
+   checkpoints are 26, 42, 44. This is a scheduling rule, not polynomial,
+   discriminant, class-number, or known-witness dispatch.
+
+All three candidates pass complete 1,012-field FLINT/GMP/generated-JavaScript
+64-word comparisons and matched one-page linkage checks. For the latter two,
+all 797 fields in the frozen at-most-16-factor cohort and all 203 in the
+17-through-24 cohort now succeed on the first native attempt. The remaining
+five initial declines are above 24 factors: `23984479.2` (31), `47391719.2`
+(30), `54759159.1` (25), `93074700.2` (25), and `96582828.1` (25), with the
+common `3.1.` label prefix. Four report analytic insufficiency; `93074700.2`
+has rank 24 in 25 columns. Retained phase-eight reason words are not evidence
+of a unit-reconstruction failure.
+
+### Boundedness and mathematical authority
+
+Activation still requires the exact proof helper's typed insufficiency,
+17 through 24 factors, active volume traversal, and an unused activation
+marker. The two delayed variants additionally require full modular rank.
+Previously prepared plans, live cursors, exact rows and units remain resident;
+contradictory state remains fatal. The marker is set once even if no excluded
+ideal is available. Only finding an eligible ideal resets the staged counter.
+It therefore cannot restart this extra pass repeatedly.
+
+The delayed pass may use the final row of the **already allocated**
+$2n+22$-row presentation workspace, instead of the previous $2n+21$ checkpoint
+ceiling. This is an explicit increase in usable rows, not in allocation or
+the hard capacity. Full modular rank is required because the collector stops
+before another admission once both that rank and the target count are reached.
+Raw admission storage is larger; all downstream presentation and dependency
+arrays were already allocated for $2n+22$. The post-collection shape and
+online-count checks remain unchanged. Strict lattice events request a proof
+only; they preserve the remaining proposal budget and do not establish
+completeness themselves. Exhausted searches still decline, and invalid exact
+operations are not reclassified as insufficiency.
+
+Actual-source activation tests exercise 8,640 states, 8,640 repeated-activation
+checks, and four contradictory-state failures for each variant. AST comparison
+confirms that only the top-level native orchestration function differs from
+the focused-visit parent. These are control-flow checks, not a mathematical
+certificate proof. Independent GP replay checks 38 successful early-event
+fields/1,153 principal rows, its two declines separately, four late-recovery
+fields/92 rows, and five post-prefix fields/128 rows. The checker verifies
+principal ideal identities, prefix lattices, relation-kernel units, and the
+published unit or trivial-class proof as applicable; it does not replace
+full public Sage.js receipt qualification.
+
+### Controlled late-recovery measurement and new neighbors
+
+The serial `opt` late-recovery run completes all 1,012 fields, with the existing
+retry sequence inside the clock. Parent/candidate/PARI totals are
+2,893.976/2,864.792/1,454.875 ms. Target `45285240` improves
+38.531 to 15.117 ms versus PARI 1.750 ms. The two protected fields remain
+4.772/4.768 ms and 7.111/7.088 ms respectively. Paired target ratio is
+0.39288 (empirical tenth–ninetieth percentiles 0.38917–0.39705); both protected
+fields' ranges span one. One unchanged control, `20636980`, has a 0.67% paired
+increase, so do not claim literally zero timing movement outside the target.
+Of the 29.184-ms aggregate saving, 23.414 ms comes from the target; the rest
+is movement on unchanged outputs. This is about a 1% corpus improvement,
+still 1.97 times PARI, not a broad PARI win. Reused 24-field totals are
+39.052/39.025/27.250 ms with unchanged outputs.
+
+After freezing the late candidate, a new deterministic coefficient panel uses
+$x^3-x^2+230x-37610+29^2k$ for $k=-12,\ldots,-1,1,\ldots,12$.
+All 24 polynomials are irreducible complex cubics, absent from the development
+corpus, and independently checked using `bnfcertify`. Every field completes
+with identical parent/candidate attempts and three-backend outputs. Exact
+replay checks all 686 principal rows. Controlled totals are
+113.168/112.998/41.750 ms: regression evidence, not a demonstrated new-regime
+speedup. The source was fixed before checking these answers.
+
+For the later post-prefix candidate, a separately frozen panel takes
+$k=-24,\ldots,-13,13,\ldots,24$. The initial validation correctly stops on
+$k=-24$, whose polynomial is reducible. Its failed log is retained; the
+qualified panel records that exclusion explicitly and keeps all other 23
+fields without filtering by class group, Sage.js success, or speed. All 23
+pass certified PARI checks, complete with unchanged parent/candidate attempts,
+and agree across three backends. Exact replay checks 697 principal rows.
+These panels are coefficient neighborhoods, not new LMFDB stratified samples,
+and neither is evidence that the new recovery branch itself was exercised
+on unseen fields.
+
+### Post-prefix timing and the cost of repeated certification
+
+The post-prefix candidate also completes the full controlled corpus. Its
+parent/candidate/PARI totals are 2,903.141/2,851.796/1,457.500 ms, about a
+1.77% aggregate improvement and still 1.96 times PARI. First-attempt declines
+fall from six to five; every field completes with the existing retry policy.
+
+| Field | Parent ms | Post-prefix recovery ms | PARI ms |
+| --- | ---: | ---: | ---: |
+| `3.1.45285240.1` | 38.907 | 8.582 | 1.750 |
+| `3.1.3229112.1` | 17.458 | 9.845 | 1.750 |
+| `3.1.65734851.3` | 10.439 | 7.189 | 2.000 |
+| `3.1.11856684.1` | 4.610 | 4.613 | 2.000 |
+| `3.1.27142115.1` | 7.279 | 7.272 | 1.750 |
+| `3.1.97410060.2` | 19.068 | 20.440 | 1.875 |
+
+The 12-field paired run confirms ratios 0.22022, 0.57174 and 0.68753 for
+the first three fields (empirical tenth–ninetieth ranges
+0.21774–0.22193, 0.56649–0.57889, and 0.68278–0.69095). Every other panel
+range spans one, including both protected fields. This isolates useful
+improvements without claiming that all fields become faster.
+
+The `65734851` result is instructive: its entire final output is unchanged,
+but its checkpoints change from 23/39/40/43/47 to 23/39/50. It collects
+**more** rows, yet avoids two failed certification attempts and is faster.
+Exact replay of its 50-row prefix and published unit passes. Likewise,
+`3229112` changes 26/42/43/46/50 to 26/42/44. Final output equality alone
+is not an adequate proxy for equal work, and minimizing relation count alone
+does not minimize time. In the three `45285240` scheduling traces, the norm-two region
+rediscovers the same diagnostic element $(a^2+7a+924)/29$ at row 32, 54,
+or 46 according to scheduling; the element is never supplied to the algorithm.
+
+The two protected fields and the target initially all have class-quotient
+index two and full unit subgroups, as checked by exact prefix replay.
+Consequently, that mathematical condition alone does **not** distinguish
+which field benefits from early small-ideal activation. A class-number or
+polynomial-specific dispatch would hide this scheduling problem rather than
+solve it. Preserving the original full prefix before a one-time transition
+is the tested general policy here, not a claimed optimal policy.
+
+The complete 1,012-field checkpoint audit finds exactly four changed traces,
+while verifying all 64 output words against each implementation's survey.
+The fourth, `3.1.97410060.2`, is a genuine regression despite identical final
+output. Its paired ratio is 1.08794 (1.08092–1.09444), measured in a separate
+21-round single-field continuation of the same controlled run. It changes
+28/44/45 checkpoints to 28/44/66. Exact parent/candidate replay checks 45/66
+principal rows and establishes the distinction: the class quotient already
+has the correct order 27 at row 28; the unit subgroup index falls from 20 at
+28 to two at 44. The old traversal reaches unit index one at 45, the new
+traversal at 52, but the new program waits until 66 for certification. No
+class-lattice event occurs when those last missing units arrive.
+
+This narrows the next experiment to unit-progress-aware checkpoint requests,
+or a better bounded periodic policy, while preserving the original traversal
+state. A heuristic can request an exact check; only the unchanged exact proof
+may accept. Do not promote the post-prefix schedule as regression-free or
+infer a unit-progress event from final class-number equality. These are still
+research copies, and none of the three improving fields beats PARI here.
+
+The three tabulated improvements account for 41.188 ms of the 51.345-ms
+aggregate movement; the fourth changed trace loses 1.372 ms. The remaining
+11.529-ms movement is on the other 1,008 unchanged checkpoint/output records.
+Do not credit that entire remainder to the new relation.
+The reused 24-field totals are 40.038/40.196/27.625 ms; the fresh qualified
+23-field totals are 107.527/107.115/40.750 ms. Outputs and attempt sequences
+are unchanged on both panels. Timing uses the same serial `opt` CPU-zero
+protocol, matching one-page FLINT linkage, rotated full-corpus samples, and
+21-round alternating paired samples described above. Inputs and external
+scratch are preallocated: these are not public-API timings.
+
+Sources and preparation scripts are retained in
+`/scratch/sagejs-runtime/cubic-small-ideal-events-nnuarw`,
+`/scratch/sagejs-runtime/cubic-small-ideal-late-x9eENx`, and
+`/scratch/sagejs-runtime/cubic-small-ideal-after-prefix-HFF822`.
+Their respective source hashes are
+`6725ac412d0dedc696ee420ef2a82686293ff23520bdb23a7eb09fc0c57b74f4`,
+`d2ffeedc44e95e5020e24d458ddaff1d3184faa84969f772617b9eb4f9d5af2f`, and
+`63fc5b19e5f611099edafe13dcaf031e92517c2520af3be78a838a6f353cdaaa`.
+Source byte counts are 508,804, 509,431, and 509,436, all above the unchanged
+production allowance. No new owner or matrix is introduced. Exact source
+and generated-core identities, raw checks and timing protocols remain
+experimental resource-review inputs, not completed release qualification.
+Both delayed variants have 13,199,993 normalized generated-core bytes.
+The post-prefix raw core hash is
+`bd10a22d41f9512b887aff993623af5ae70d101fb480c75228b6420be5b9be75`.
+Controlled timing directories on `opt` are
+`/tmp/cubic-small-ideal-late-CHlGkN` and
+`/tmp/cubic-small-ideal-after-prefix-4EiHwg`; all runs are terminal.
+Sources, preparation/checker scripts, manifests, exact traces and timing data
+are also preserved under `build/cubic-analytic-schedule-evidence/` in the
+`small-ideal-events`, `small-ideal-late`, and `small-ideal-after-prefix`
+directories. Each has a file-hash archive manifest. Generated build caches
+and copied addon binaries are deliberately excluded from these smaller
+evidence archives; original build/linkage manifests retain their identities.
+
+### Power-aware recovery policy
+
+A fourth source-copy experiment uses an existing exact observation to choose
+between post-prefix and late recovery. On `45285240` and `65734851`, the
+existing residue screen already excludes square, cube and fifth roots of
+either signed retained unit. On `97410060`, the square obstruction is absent.
+The read-only actual-call trace records these results and checks all final
+output words. `3229112` has no retained nontorsion unit at its failed prefix,
+so there is no unit to screen there.
+
+Within the existing recovery eligibility guard, inspect only an authenticated
+unit-cache entry at the current analytic scale. Before the last staged
+attempt, retain the original incremental checks unless all three exact local
+obstructions are present. With no such cached unit, allow the post-prefix
+discovery pass; after final staged exhaustion, retain the one-time late pass
+regardless. Invalid residue-map premises remain fatal. A missing obstruction
+is **inconclusive**, not evidence that the unit is a power. Even the presence
+of all three obstructions is not a claim of primitivity: larger prime indices
+remain possible. This is solely a general, mathematics-informed scheduling
+heuristic; the full exact acceptance rule is untouched.
+
+This fourth copy retains 1,007/1,012 initial successes, no losses or errors,
+and complete 1,012-field FLINT/GMP/JavaScript/linkage agreement. All final
+outputs equal the post-prefix candidate's. The complete checkpoint trace now
+has only the three improving executions: `97410060` returns to 28/44/45,
+while 26/42/44, 23/39/46 and 23/39/50 are retained for the other three.
+Exact six-field replay checks 259 principal rows, including all three
+previously regressing fields. Actual policy/activation-body tests cover
+18,432 states, 96 screen calls and 48 fatal invalid-map cases; the residue
+arithmetic is explicitly stubbed in this control test, with actual residue
+execution covered separately. AST comparison confines the change to the
+native orchestration function. The reused 24-field control and both earlier
+neighbor panels (47 fields total, now reused) retain identical attempts and
+all three-backend outputs.
+
+Controlled parent/candidate/PARI totals are
+2,841.992/2,770.868/1,442.750 ms, with every field completing. Selected times
+are 37.584/8.192/1.750 for `45285240`, 17.272/9.781/1.750 for `3229112`,
+10.302/7.019/1.875 for `65734851`, and 18.840/18.623/1.875 for `97410060`.
+The three improving fields' paired ratios are 0.21876, 0.56577 and 0.68913;
+their empirical tenth–ninetieth ranges are respectively 0.21773–0.21980,
+0.56243–0.57061 and 0.68588–0.69373. Every other field in the original
+12-field paired panel spans one. The fourth regression field is measured
+separately because the timing bundle was generated before that label was
+added to its preparation script; the preserved actual driver and results
+identify the real panel, not the intended one.
+That separate completed run gives `97410060` ratio 0.99834, with empirical
+tenth–ninetieth range 0.99501–1.00236. It no longer exhibits the preceding
+8.8% regression. These measurements support retaining the screened policy
+for further qualification, not a universal no-regression guarantee.
+
+The aggregate movement is about 2.50%, still 1.92 times PARI. Only 40.166 ms
+of the 71.124-ms difference comes from the three changed checkpoint traces;
+do not attribute the remaining 30.958 ms on unchanged traces to this policy.
+The reused 24-field totals are 39.020/38.661/27.500 ms. The original
+$x^3+9x-55$ anchor remains 1.266 ms versus PARI 1.000 ms, and
+$x^3-x^2+3x-4$ is 0.851 ms versus PARI 0.875 ms; the latter difference is
+too small for a meaningful speed-win claim with this sampling resolution.
+All are resident-kernel measurements with preallocated external scratch,
+not end-to-end public API or startup timings.
+
+The source is `/scratch/sagejs-runtime/cubic-small-ideal-power-aware-peWQpb/aware.py`,
+SHA-256 `5d007de348effb7e86acf3c984f420aa7903306d97c7a53ca0de90a918903239`.
+It has 511,196 source bytes and 13,233,368 normalized generated-core bytes;
+raw core SHA-256 is
+`ff5059deac8a1c9d5fb48593eb34d65a36dd792018db97118aa9e533cbd9abdb`.
+There is no new owner or matrix, and no production allowance is raised.
+The controlled directory is `/tmp/cubic-small-ideal-power-aware-iOS99j` on
+`opt`. This is an improved research candidate, not a production promotion:
+public-certificate integration, source consolidation, wider unseen regime
+coverage and platform/resource qualification remain necessary.
+The smaller source/script/data archive is
+`build/cubic-analytic-schedule-evidence/small-ideal-power-aware`, with file
+hashes in `archive.json`; `final-checks.cjs` checks the authenticated artifacts,
+all backend/linkage observations, control cases, exact replay and timing
+completion. The current controlled runs and local diagnostic checks are all
+terminal. Merge checks, all 192 unit files and documentation checking pass
+after an 8m30s build; the architecture rerun still stops at the unchanged
+stale optimizer inventory. Final report edits receive a separate documentation
+check rather than being represented as part of the earlier wrapper run.
+
 ## Validation status
 
 - The current unit-budget and small-ideal research follow-up passes the

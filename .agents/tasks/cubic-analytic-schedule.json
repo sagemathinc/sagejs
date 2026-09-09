@@ -736,10 +736,60 @@
       "commit": "65f4bfaee4144a552f3e6f90b72a6dc9c1adfaab",
       "workspace_fingerprint": "81cfdfb01fce71bf77f9bd76eab317567c7cc0fc44600cf7174d896b116eb047",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base HEAD",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 618.697,
+      "started_at": "2026-09-09T22:18:45.807Z",
+      "commit": "9ed3085df144b9256300493b9252b371254992bb",
+      "workspace_fingerprint": "eb96924713431ce4d8a9f71a9a69d723d06ddca78b48b5c7f87dea796422860c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-small-ideal-events-nnuarw/check-scheduling.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.384,
+      "started_at": "2026-09-09T22:37:36.332Z",
+      "commit": "9ed3085df144b9256300493b9252b371254992bb",
+      "workspace_fingerprint": "4ba40f26607ca9510e74f6b57f7a86d6a35e3b57adebc1f7ba45a101c1008486",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-small-ideal-power-aware-peWQpb/check-policy.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.66,
+      "started_at": "2026-09-09T22:37:40.362Z",
+      "commit": "9ed3085df144b9256300493b9252b371254992bb",
+      "workspace_fingerprint": "4ba40f26607ca9510e74f6b57f7a86d6a35e3b57adebc1f7ba45a101c1008486",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node /scratch/sagejs-runtime/cubic-small-ideal-power-aware-peWQpb/final-checks.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.106,
+      "started_at": "2026-09-09T22:37:41.682Z",
+      "commit": "9ed3085df144b9256300493b9252b371254992bb",
+      "workspace_fingerprint": "4ba40f26607ca9510e74f6b57f7a86d6a35e3b57adebc1f7ba45a101c1008486",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.078,
+      "started_at": "2026-09-09T22:37:42.450Z",
+      "commit": "9ed3085df144b9256300493b9252b371254992bb",
+      "workspace_fingerprint": "4ba40f26607ca9510e74f6b57f7a86d6a35e3b57adebc1f7ba45a101c1008486",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "PR203 remains draft; production source and 485000 allowance unchanged. Unit-product budget status experiment preserves fatal exact errors and permits bounded resident search only after explicit pre-exponentiation insufficiency. It restores two first attempts:1006/1012, every other1010 output unchanged; FLINT/GMP/JS/linkage agree. Paired gains20636980 ratio0.51534 and87899928 ratio0.43501; full2817.370ms versusPARI1442.875, still1.95x. Exact replay5fields/91rows passes, including h1 with unit subgroup index2 where no fundamental-unit proof is needed. Forensics on45285240 shows first effort47rows h12/unitindex1, exhaustive retry correct by44 but waits268. Its retry row17 from a norm2 ideal closes the first-prefix class gap; row44 does not, despite equal prior quotient orders. Three source-copy small-ideal recovery experiments isolate eligibility, ellipsoid size and dependent-row visit quota. Focused bounded small-ideal visit discovers missing relation at32 and certifies39 in first effort, improving37.548->5.724ms versusPARI1.750. But two new retries11856684/27142115 rise4.601->18.040 and7.090->23.874ms. Whole corpus2828.561->2813.116 is not durable overall gain; do not promote. All1012 backends/linkage agree, outside809 unchanged, exact24successful fields/777rows plus2declines/98rows replay passes. Next preserve existing successes with a later recovery transition and request proof on row32 lattice event. No budgets or acceptance relaxations. Changed-file merge/unit192/docs gates pass after8m36 build; architecture still fails known stale optimizer inventory. Public qualification/consolidation/fresh holdouts/platform-resource review remain open.",
+    "summary": "Completed four source-copy recovery policies with controlled opt evidence. Latest power-aware source5d007de348effb7e86acf3c984f420aa7903306d97c7a53ca0de90a918903239 uses existing exact 2/3/5 residue obstructions only to choose post-prefix versus late discovery. Missing obstructions remain inconclusive, proof authority unchanged. All1000 frozen fields with<=24 factors certify first attempt;1007/1012 total,no coverage losses/errors. Full1012 FLINT/GMP/JS/linkage parity,6-field259-row exact replay,18432 actual-body policy cases and71 reused control/neighbor cases pass. Restores97410060 original28/44/45 unit-progress checkpoints while retaining3 gains. Controlled parent2841.992/candidate2770.868/PARI1442.750ms,still1.92x. Target37.584->8.192ms paired.21876;3229112 17.272->9.781 paired.56577;65734851 10.302->7.019 paired.68913. Prior8.8% regression97410060 nowpaired.99834,range spans1. Allother12-panel controls span1. Only40.166ms of71.124 aggregate movement is on changed checkpoints; no blanket2.5% causality claim. Source511196/core13233368 bytes stillover485000 sourceallowance,no new owners/caps. Production unchanged,PR203draft. Latest reports/sources/checks preserved in build/cubic-analytic-schedule-evidence/small-ideal-power-aware. Changed-file gates/all192unit/docs pass after8m30build; knownstaleoptimizerinventory remains architecture failure. Public integration/fullreceipt replay/source consolidation/platform qualification and wider unseen recovery coverage remain open.",
     "risks": [
       "Optimizer-opportunity inventory is already stale at the baseline; architecture gate not passing.",
       "Final broad test:changed run is terminal failure: 74 full-tier files passed, then five FFI failures from missing FFLAS manifest/igraph addon/static library; 509 files not started. Fresh build and all192 unit files passed. Do not restart an old handle or claim the full585 tier passed.",
@@ -748,6 +798,8 @@
       "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
     ],
     "next_steps": [
+      "Latest candidate /scratch/sagejs-runtime/cubic-small-ideal-power-aware-peWQpb/aware.py SHA5d007de348effb7e86acf3c984f420aa7903306d97c7a53ca0de90a918903239; archive build/cubic-analytic-schedule-evidence/small-ideal-power-aware, final-checks.cjs authenticates all evidence. opt /tmp/cubic-small-ideal-power-aware-iOS99j alltimings terminal: full1012,12-fieldpaired plus separate97410060paired,24 reusedcontrol.47 neighboringfields fromearlierthisturn panels are reused, not freshforaware. Checkpointauditall1012 changes only3229112,45285240,65734851; fulloutputs equal after-prefixparent. Actualpowerscreen trace in after-prefix-HFF822/power-signals.json: class-gap452/657 exclude2/3/5; unit-gap974 lacks2;322 lacksnontorsionunit. Newguard usescachevalid+sameanalyticscale; beforefinalstage deferif anyobstructionmissing; originalfinalstage stillpermitsone latepass. This heuristic doesnotproveunitprimitivity andmaymisclassify largerprimeunitindices; exactproofunchanged. No wideractivationholdout yet. All1000<=24firstsuccess isdevelopmentcorpusonly. Next choose evidence-led largerfactor regime (smallest remainingdecline23984479.2,n31,phase8) orprofileunit-only bottleneck97410060now18.6ms vsPARI1.875. Four otherinitialdeclines47391719.2(n30),54759159.1(n25),93074700.2(n25,rank24),96582828.1(n25). Do not simply widen24guards withoutshape/resource/ordering/independentreplay review. Source511196stillneedsconsolidationbeforepromotion; production480379/485000 unchanged. Do not markPR203ready. Fullreport preservesallthreeearliernegative/tradeoffpolicies and48newpolynomialinputs(one reducible) with exactGP results. Finaltests pendingonlyifnewturnfindsnewchanges; inspect taskreceiptsandlivehandlesratherthanrerunningfinishedwork.",
+      "Post-prefix source63fc5b19e5f611099edafe13dcaf031e92517c2520af3be78a838a6f353cdaaa is in /scratch/sagejs-runtime/cubic-small-ideal-after-prefix-HFF822 and preserved build/cubic-analytic-schedule-evidence/small-ideal-after-prefix. Other new roots: cubic-small-ideal-events-nnuarw and cubic-small-ideal-late-x9eENx; archives similarly named. All current process/timing handles terminal. Controlled opt /tmp/cubic-small-ideal-after-prefix-4EiHwg and /tmp/cubic-small-ideal-late-CHlGkN. Current source copies are not promoted. The main remaining scheduling defect is unit-only progress:97410060(x^3+552*x-35742,h27,n22) has correct class quotient27 fromrow28, unit indices20 at28,2 at44,1 at45(parent) or52(candidate); candidate only checks66. Parentcheckpoints28/44/45 versuscandidate28/44/66, identical64 outputs but8.8% slowdown. Full1012 checkpoint audit also finds3229112 26/42/43/46/50->26/42/44;45285240 23/39/40/43/47->23/39/46;65734851 23/39/40/43/47->23/39/50, the last31% faster despite more rows. Exact prefix replay proves unit facts. Early target and two protected losses all initially have class-index2/unitindex1, so that condition cannot select the good early schedule. Do not overfit by h/poly. Investigate cheap unit-progress signals as requests for unchanged exact proof, or bounded periodic requests with original cursor retention. Source509436 andnormalizedcore13199993 unchangedowner/caps exceptusingexistinglastpresentationrow; fullmodularrank protectsrowstop. Fresh panels23/24 show regression stability but do not exercise new recovery. Documentation includes explicit1.77% corpus improvement, one genuine regression and incomplete release qualification.",
       "Latest experiments are terminal and evidence preserved under build/cubic-analytic-schedule-evidence/initial24 and volume-skip. Candidate c1f8251ba3e6180b9b725b3dd11888f41c762a597e6cd6a272e0c0154e603619 is504393 source bytes,13053433 normalized C bytes. Scratch /scratch/sagejs-runtime/cubic-volume-skip-h5KaCx, controlled opt /tmp/cubic-volume-skip-oHPhgb. Full corpus and nine-field paired runs complete; initial uncorrected paired run intentionally failed on incomplete fields and is not a passing measurement. Typed skip adds628 source/5229 C bytes, no owners. Next study remaining first-effort misses20636980(total dependency exponent16404>16384),87899928(single exponent4444>4096),45285240(class quotient12 vs true6 with unitindex1). The first two need explicit bounded-construction status and/or compact unit machinery; do not blindly convert every materialization error to insufficiency. The third needs a class relation, not more unit precision. Current target944919 uses29 raw rows vsPARI26 and2.685ms vs2.0; compare real discovery/planning work if addressing it further. Volume-first is not universally better. Preserve all severe regressions and retain draft status until consolidation/public replay/fresh holdouts/platform qualification. Read report for exact mathematical and resource contracts.",
       "Ordering24 and staged24 evidence is preserved under build/cubic-analytic-schedule-evidence/ordering24 and staged24, including authenticated source copies, final scripts, timings, replay and small manifests. Source hashes a256fcf0212410de69e3c61499f8db2150da73ddd0839e263e427c0deb456ef6 and ecce12c5175f919c15126c4eb1829954c7db60f5091bff22b58b8542d0bbfc5a; each503719 bytes, normalized core13044888. New visits up to25x6 and presentation70x24 require qualification; no production allowance increase. Next source-copy ablation starts volume search immediately for17..24 only, leaving13..16 unchanged. Scratch /scratch/sagejs-runtime/cubic-initial24-r4rDSu; inspect live build/output before continuing. Bounded reconstruction exhaustion must be distinguished from invalid proof state before authorizing resident resume. Do not treat phase8 reason436 as a reconstruction failure. Reused24 is not a fresh holdout, selected194 replay is not full public-certificate qualification. Keep PR203 draft.",
       "Gcd-only candidate81a28cf7f14e114a27bce57cd63cf67671c57e1007459fd8fb5b9b94fd3be785 is recorded under build/cubic-analytic-schedule-evidence/gcd-only and /scratch/sagejs-runtime/cubic-gcd-only-NNIReO. New tracked bench/class-unit-groups/cubic-gcd-only.py reproduces the authenticated transformation and edge checks without editing production. Keep PR203 draft: source still503719 bytes, limits unchanged, public replay/platform qualification and known stale architecture inventory remain open. Next higher-leverage regime:20-factor944919, still20.500ms versusPARI2.0 after gcd-only, and known to lack nontorsion units in early attempts. Audit the coordinated16-factor volume/staging guards and resident capacity before generalizing. Retry cohort is only30/1012 but accounts for roughly27% of the prior corpus excess. All1088272 traced gcd inputs are nonnegative signed-word-sized, independently motivating a generic exact compiler/runtime primitive; do not confuse that observation with a mathematical word-only restriction. Frozen cohort audit:797 fields at<=16 factors have no first-effort declines;203 at17..24 contain25 declines and60% of total excess;12 above24 contain5 declines. All20 analytic-insufficiency failures have strictly positive lower log-index, so this is not merely inadequate analytic precision. Other failures:6 rank insufficiencies,3 missing dependency-unit witnesses,1 exact-product exponent-budget exhaustion. Evidence in frontier-cohorts.json; do not interpret phase8's retained435/436 reason as reconstruction failure.",
