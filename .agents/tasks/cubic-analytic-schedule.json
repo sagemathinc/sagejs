@@ -335,6 +335,36 @@
       "commit": "8cab881f01cce1abbd78c9c7d8319d20ced5f185",
       "workspace_fingerprint": "693f7f5fd09be19c24a7bb56eca0f5ca5b1e1d5db82cc98a7609869527e3dffc",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-local-powers-Nwtc5Y/check-screen.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.839,
+      "started_at": "2026-09-09T18:36:12.503Z",
+      "commit": "266ccde28068c9f1f87950e447b6aa60cbe149fa",
+      "workspace_fingerprint": "843b39df8122cd975afe9f78085f01f615e2f1605a06692176caa77bed93d059",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.729,
+      "started_at": "2026-09-09T18:36:32.951Z",
+      "commit": "266ccde28068c9f1f87950e447b6aa60cbe149fa",
+      "workspace_fingerprint": "843b39df8122cd975afe9f78085f01f615e2f1605a06692176caa77bed93d059",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.14,
+      "started_at": "2026-09-09T18:39:32.994Z",
+      "commit": "266ccde28068c9f1f87950e447b6aa60cbe149fa",
+      "workspace_fingerprint": "5eb5c450cd514d7b71c76ea8dfb957e61165f6ad0f39f468313892462236df31",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -347,6 +377,7 @@
       "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
     ],
     "next_steps": [
+      "Local-power screen experiment 812c2da3f7be7354c2014ddbfad531f7c5cacdc560608d1052d56ccce5fe7d17 is implemented and measured, not promoted. Exact residue maps skip impossible roots of either sign, retaining inconclusive searches and fresh-unit recovery. All 1012 full outputs match retained-unit parent across FLINT/GMP/JS/linkage; 981 first-effort successes, no changes/errors. Root proposals 134/125/125 become 19/2/0 with all nine successful roots preserved. Actual-body modular/proper-power/retention tests, two independent target replays, four necessary fresh-unit recoveries and reused24 checks pass. Controlled paired targets improve 7.35%/8.96%; full corpus 3838.913 to 3771.233 ms versus PARI1476.125, only1.76% and still2.55x PARI. Source +5547 bytes, normalized core +182017; caps unchanged. Evidence under build/cubic-analytic-schedule-evidence/local-powers. Next inspect the retry cohort:31 fields consume673.929ms versusPARI60.375, about27% of overall excess. Smallest D is908491, x^3-x^2-7x+186, h5, initial phase43/reason434, efforts5/1/7,8.808ms versus1.5ms. Reconstruct missing evidence and repeated work, not coefficient-specific effort selection. Public replay, consolidation and platform qualification remain open; PR203 stays draft.",
       "Controlled primality ablation completed after opt reboot recovery in /tmp/cubic-prime-trial-timing-R0Crgz: parent4406.870ms/control4414.310ms/candidate4460.442ms/PARI1448.625ms, all1012 correct,31 native retries. Reject broad speed claim (candidate1.22% slower). IR/C and native call trace confirm283 early exit and zero MR calls; standalone opt median0.454us vsparent2.164us. Primitive-level profile corrects earlier cost attribution: fmpz_set_str constructing2^64 costs0.216ms, rest of prime helper0.001ms. Active checkpoint counters show4064 GMP allocations/65024 requested bytes for that one literal. FLINT's cold16-page promotion batch is repeatedly drained at lexical arena cleanup; do not skip cleanup or retain stale arena pointers. Next authenticate paired FLINT smaller-pool/reentrant allocation experiments under unchanged cubic source/caps; compare rebuilt control and original library separately. Installed libflint.a:fmpz_merged.o hash differs from retained source build, so do not silently swap older objects and call it allocator-only. Root scale traces283[64,130,64,64],23567[64,132,64,132,64,64],userh5[64,132,64,64] separately motivate polynomial/precision-bound bracket reuse, not yet implemented. All new diagnostic1100-run output checks pass, raw timing hash627b66706da62172e539e76c2239e2eb1db015adba010c8d0228c51751ea6881. Evidence/docs retained; production unchanged, PR203 remains draft.",
       "Local first-evaluation profiles now isolate avoidable shared primality work: 3.1.283.1 spends0.218ms/18% instrumented time proving283 prime with7 Miller-Rabin bases despite sufficient trial divisions. Small-unit probe is absent from bounded first attempts; BF is only17% on23567, not a sole bottleneck. General strict small*small>number early-return ablation source0afb13d5fc8ff32d3484cbf64f042318d9f75e3a32aa8e91b34138ef7cdc0c6f plus relocation-only control61c36e3946b2b8f40d37c01029e9c38fdad4f97ea13324b71582cbc5dcdcaea5 retain981/1012 and all64 parent words, no errors; candidate all1012 three-backend checks pass. Extracted Python and direct compiled fmpz/GMP/JS helper each pass100011 independent-sieve cases, with large-domain/composite tests and unchanged cubic AST. Shared source and production unchanged. First opt timing interrupted by verified VM restart; temporary directory/process gone. Replacement bundle /tmp/cubic-prime-trial-timing-5v2Z9N uploaded, but execution SSH timed out before startup confirmation. Recheck exact remote state before restarting; no timing win claimed. Evidence under build/cubic-analytic-schedule-evidence/hybrid-prefix, docs record proof and instrumentation scope. Next complete controlled parent/control/candidate/PARI comparison, then assess a focused change to shared field_analysis_resource rather than duplicating its helper in production. Also inspect repeated real-root isolation and generator-bound tests; no weakened mathematical checks.",
       "Checkpoint plus refinement guard and field-only residue cache now implemented as separate source copies. Guard bd254ba726b182add49ccbf4836c420f4f6cefd38aae6963c911cda410b2577b and cache e435e7e092725c05b3f939394b872a4c356eafbd0310e17070e84e654afe4191 both preserve981/1012 first attempts and every parent64-word output; complete three-backend checks pass. On class-order change cache rebuilds the full indexed BF plan/endpoints because header collisions change term indices and value counts; only field residue is reused.54 exact planner collision cases,12 cache controls,289 guard boundaries pass. Separate native diagnostic freshly recomputes every cache hit on all1012 fields and all3 backends: same first60 words,54 reported hits in44 nontrivial successful fields,41 changed-class hits, all lower/upper/tail endpoints bit-identical. Controlled full-retry timing completes1012 correctly: checkpoint4487.424ms/guard4445.852ms/cache4472.268ms/PARI1448.625ms. Guard0.93% faster than checkpoint; cache0.59% slower than guard overall despite selected46983 improving4.676->4.057->3.868ms. Do not promote cache as a broad win. Next measure first-analytic-evaluation cost and separate immutable field prime splitting from class-indexed value tables; do not assume another narrow cache will close the gap. Sources486563/490611 bytes exceed unchanged production cap before runtime. Qualification remains open; sources/scripts/raw evidence retained locally, production unchanged.",

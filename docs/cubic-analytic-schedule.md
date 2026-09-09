@@ -3236,6 +3236,151 @@ obstruction as inconclusive, preserve exact replay for roots it does find,
 and retain fresh-unit recovery. These conditions let a cheap finite-field
 calculation remove work without interpreting a failed proposal as a theorem.
 
+### Implemented local-power screen: exact exclusions before root proposals
+
+The next unpromoted source copy implements the preceding residue-map argument
+in ordinary typed Python. It does not dispatch on field names, coefficients,
+discriminants or expected answers. Evidence is retained under
+`build/cubic-analytic-schedule-evidence/local-powers/`; build/cache objects remain
+at `/scratch/sagejs-runtime/cubic-local-powers-Nwtc5Y`. The parent is the
+retained-unit-first source above, not the separate early-torsion ablation.
+
+The screen runs only when the existing analytic index check is valid but
+insufficient. It tries proven odd primes $q\leq97$, skipping primes dividing
+the certified basis denominator $d$. It enumerates roots of the defining
+monic cubic modulo $q$ and evaluates the already authenticated unit there.
+All residue arithmetic is bounded machine-integer arithmetic; reductions of
+the input coefficients and unit coordinates remain exact. Primality is checked
+by trial division, not assumed from a candidate list. The bound 97 limits
+optional work and is not a mathematical acceptance bound.
+
+Here is the map justification, including the nonmonogenic case. If $\alpha$
+is the defining root and the certified integral basis has coordinates with
+common denominator $d$, then
+$\mathcal O_K\subseteq\mathbb Z[\alpha,1/d]$. For $q\nmid d$ and
+$f(r)=0\pmod q$, evaluation $\alpha\mapsto r$, $1/d\mapsto d^{-1}$ gives
+a unital homomorphism on the localization, hence on $\mathcal O_K$.
+Consequently a unit has nonzero image. A zero image is reported as a failure
+of the authenticated premises, never as evidence that the unit is not a power.
+No unramifiedness assumption is needed for this implication. The preceding
+Fermat-power test then excludes $p$th roots of both signs, with the stated
+$q\equiv1\pmod4$ restriction for $p=2$.
+
+One set of exclusions is retained through the bounded saturation loop. This
+is valid: if an exact root replacement gives $u=\pm v^k$, and
+$v=\pm w^p$, then $u$ is itself a $p$th power up to sign, contradicting any
+previous obstruction. Thus a proven exclusion cannot become invalid after
+an authenticated replacement. Absence of an obstruction remains inconclusive.
+The original numerical proposals, exact root replay, replacement limit,
+analytic inequalities, and fresh-unit recovery remain in force.
+This screen does **not** certify a fundamental unit or replace the joint
+class/unit-index argument. It introduces no GRH assumption of its own.
+
+The actual-source CPython checks cover 66,850 modular powers against `pow`,
+2,916 signed proper-power examples in cubic quotient rings, and 1,296 signed
+root replacements preserving exclusions. A redundant denominator and a
+nontrivial triangular basis exercise modular evaluation in basis coordinates.
+Both target units and both signs are excluded for $p=2,3,5$.
+Invalid denominators and zero images fail; torsion units are inconclusive.
+A negative control deliberately removes the torsion-safe square restriction:
+it incorrectly excludes $-1$, and the test detects that error. These are
+actual-body tests, not a formal verification of the helper or compiler.
+
+All 1,012 first-effort outputs match the parent in **every one of the 64
+words**: 981 successes, no errors, gains, losses or changed outputs. FLINT,
+GMP, JavaScript and the experimental one-page FLINT linkage agree. All 24
+reused holdout fields also agree in every word and accept at first effort;
+this is not a newly selected holdout. Independent certified GP replay checks
+the principal rows, prefix kernel units and published fundamental units for
+the two targets. The four necessary fresh-unit recoveries from the preceding
+section replay exactly, with retained indices $2,2,2,4$ becoming $1$.
+This is not full-corpus independent public Sage.js certificate replay.
+
+Read-only same-source JavaScript tracing, checked against native output,
+finds 134 screen calls across 108 fields. It returns exclusions for all three
+powers 113 times, only cube/fifth exclusions 19 times, and only square/fifth
+exclusions twice. The resulting proposal counts are:
+
+| Operation | Retained-unit parent | Local screen |
+| --- | ---: | ---: |
+| Square-root proposals | 134 | 19 |
+| Cube-root proposals | 125 | 2 |
+| Fifth-root proposals | 125 | 0 |
+| Successful exact root extractions | 9 | 9 |
+| Analytic saturation calls | 888 | 888 |
+| BF evaluations | 859 | 859 |
+| Closure calls | 954 | 954 |
+
+All nine successful roots have identical field, operation and coordinates.
+Both targets replace their three unsuccessful root proposals with one screen.
+Diagnostic local native profiles show screen costs of approximately 0.00164
+and 0.00234 ms, with four real-root-isolation calls instead of seven. Inclusive
+saturation costs are about 0.0122/0.0134 ms. These instrumented profiles are
+not controlled performance evidence, and inclusive parent/child costs must
+not be added. A missing `node-gyp` lookup and then missing dynamic FLINT
+module path initially prevented profiling; the unchanged instrumented source
+was built with the explicit local node-gyp path and run with the compiler
+worktree's `NODE_PATH`. The final three profile runs pass full-output parity.
+
+Controlled uninstrumented timing ran serially on `opt`, CPU 0, AMD EPYC 7B13,
+host `cocalc-vm-8d993f531c1249b28aff31a2`, under
+`/tmp/cubic-local-powers-FqrvPX`. Both implementations use the same experimental
+one-page FLINT archive. The full corpus uses three rotated rounds, two native
+calls per sample with retries $[5,1,7,8]$ inside the clock, eight fresh
+`bnfinit(f,0)` calls per PARI sample, and one warmup. External argument packing,
+scratch preparation and result checking are outside the clock.
+
+| Workload | Parent ms | Local-screen ms | PARI ms |
+| --- | ---: | ---: | ---: |
+| 30772 | 1.85105 | 1.70163 | 1.25000 |
+| 41912 | 1.53083 | 1.41102 | 1.00000 |
+| $x^3+9x-55$ | 1.33792 | 1.36358 | 1.12500 |
+| Frozen 1,012, sum of field medians | 3838.91265 | 3771.23305 | 1476.12500 |
+| Reused 24, sum of field medians | 44.05865 | 43.32511 | 28.12500 |
+
+All full computations finish correctly; the same 31 fields need retries.
+Aggregate differences are 1.76% on the frozen corpus and 1.66% on the reused
+holdout, still about 2.55 times PARI on the full corpus. The separately paired
+21-round ABBA/BAAB run (200 warmups per implementation/field, ten calls per
+sample) gives median local/parent ratios 0.92647 for 30772, 0.91036 for 41912,
+and 0.93114 for 46983. Their empirical 10th–90th percentile ranges are
+0.90368–0.94149, 0.87875–0.93143 and 0.89606–0.95747. The other nine paired
+fields' ranges include one; in particular the class-number-five example has
+no resolved speed change. Quantiles are not confidence intervals. The 108
+screened fields' full-run sum falls 839.56305 to 796.80362 ms, but unscreened
+fields also move by 0.83%, so do not attribute every aggregate difference to
+the screen. These are private-entry measurements, not public API timings.
+
+`prepare.py`, `prepare-harness.cjs`, `check-screen.py`, `survey.cjs`,
+`check-backends.cjs`, `trace.cjs`, `trace-parent.cjs`, `capture-prefix.cjs`,
+`replay-prefix.cjs`, the recovery scripts, `relink.cjs`, `package.cjs`, and
+the timing/summary drivers retain the reproduction path. `summary.json`
+asserts full parent parity, preservation of all successful roots and holdout
+parity; it records the exact sources, cores, checks and raw timing hashes.
+The generated source is 502,789 bytes, SHA-256
+`812c2da3f7be7354c2014ddbfad531f7c5cacdc560608d1052d56ccce5fe7d17`,
+an increase of 5,547 bytes. Path-normalized generated C grows from 12,875,805
+to 13,057,822 bytes; the raw core SHA-256 is
+`f277563f7f6990254f3a3400f7852da540277cc5ed99ee7d1983fc47a7259e53`.
+The source allowance remains unchanged; this experiment is not promoted.
+Timing SHA-256 hashes are
+`aaf4e2ae44c2333ebb88cd6444ee9c6b7a6378300ec527ad7e0c04e1dc6418ce`
+(full), `47285ffb813510178ff9c98e5d175c114aca48bba472d6e176420abfbf1ba6d3`
+(paired), and `e8dcd7d142602e35f56680f37ed1c1d9092ee43ac4d8957ca7bbe13fbfc340c6`
+(holdout).
+
+The next higher-impact scheduling question is the retry cohort: 31 fields
+consume 673.92950 ms versus PARI's 60.375 ms, nearly 18% of Sage.js time and
+about 27% of the total excess over PARI. The smallest-discriminant member is
+`3.1.908491.1`, $x^3-x^2-7x+186$, with class number five: 8.80834 ms versus
+1.5 ms, taking efforts $5,1,7$. Its initial exit is phase 43/reason 434.
+Reconstruct the missing unit/relation evidence and work repeated across those
+attempts before changing the retry policy. This is a measured next target,
+not permission to select effort seven by field identity. Source consolidation,
+public replay and cross-platform qualification still remain open. Focused
+tests pass; architecture again stops at the known stale optimizer inventory.
+PR203 remains draft.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
