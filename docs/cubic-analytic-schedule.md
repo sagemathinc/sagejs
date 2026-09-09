@@ -1211,6 +1211,143 @@ This normalization is a resource audit, not a cache-identity replacement.
 All artifacts and exact GP programs are retained in the existing
 `build/cubic-analytic-schedule-evidence/hybrid-prefix/` evidence directory.
 
+## Missing-unit prefix: an intermediate checkpoint must preserve exhaustion recovery
+
+The smallest-discriminant member of the 152-field pre-analytic-failure cohort
+is `3.1.23567.1`, defined by $x^3-x^2+26x-40$. Exact GP forensics, including
+`bnfcertify`, confirm class group $C_{17}$, regulator approximately
+$4.7786294054$, discriminant $-23567$, and equation-order index two.
+The captured maximal-order basis is checked by a unimodular change of basis,
+and every relation is replayed as an exact principal-ideal identity.
+
+The initial ten-row, eight-column presentation has full rank and quotient
+order 51, but its relation-kernel generators produce only torsion units.
+The diagnostic unit-exponent gcd zero means no non-torsion unit was generated;
+it is **not** a finite unit index. The existing effort-three fourteen-row
+prefix has quotient order 17 and unit index one. Its twelfth or thirteenth
+row, generated respectively by $-(a^2+a)/2-11$ or $a-3$, already reduces the
+ten-row quotient order from 51 to 17. These are explanatory witnesses, never
+field-specific implementation rules.
+
+PARI's seed-one debug trace uses eight factor-base ideals, two rational
+relations, and four additional relations from each of ideals numbered eight,
+seven, and six (norms 11, 7, and 7). It reaches fourteen relations, tentative
+class number 17 and the correct regulator on its first analytic check.
+Its reported small-norm statistic is 13/27. This reconstructs the relevant
+work schedule; it does not claim identical candidate order between systems.
+
+The rank-hybrid parent instead attempts exact closure at ten rows, fails with
+the explicit missing-unit reason 434, and next succeeds at 29 rows. A general
+source-copy experiment inserts one $n+6$ relation checkpoint between the
+initial $n+2$ and later $n+22$ targets for at most eleven factor-base ideals,
+only after that explicit resumable insufficiency. Here $n$ is the number of
+factor-base ideals. It keeps the resident relation state, ideal plans, online
+HNF, and adjacent enumeration cursor. The native trace for the selected field
+now succeeds at fourteen rows after 21 proposals, instead of the parent's
+29 rows after 71 proposals. The first fourteen-row oracle above is captured
+from effort three; the staged trace independently establishes its own quotient
+and closure result, not byte identity of those raw prefixes.
+
+### Negative result and corrected state transition
+
+The first candidate, source SHA-256
+`51605b1e3eef3584bf9753250d31a70731d6e495d0f3ca36db1bf504547115dc`,
+lost three of the parent's 981 first-attempt successes: `3.1.761319.2`,
+`3.1.1063351.3`, and `3.1.1954455.1`. It accepted 978/1012, with no exceptions
+or incorrect accepted groups; all 64 output words agreed across fmpz, GMP,
+and JavaScript on every field. Backend agreement did not detect this loss of
+search coverage.
+
+The traces identify a control-flow defect: the inserted checkpoint can consume
+the last available adjacent relations. The subsequent larger adjacent request
+then adds no rows, triggering an existing return before the original
+expanded-shell stages. Keeping the numeric stage budget unchanged did **not**
+preserve the old search opportunities.
+
+The corrected source
+`41550326694a0e28a56c1c8cb8a731b95f98db4e531ea52083e3d563c307eba8`
+advances this exhausted adjacent traversal to the original shell stages only
+after an inserted checkpoint, at stage zero, and with an explicitly resumable
+proof result. The transition is one-way and cannot repeat at stage one.
+It currently repeats the unchanged closure once on that transition; avoiding
+that redundant attempt would require a separate state-validity argument.
+Inconsistent relation counts or negative online status still fail before the
+transition. No mathematical acceptance predicate or resource limit changes.
+
+All 981 parent first-attempt successes are restored, with no new gains or
+losses, no exceptions, and exact agreement of accepted class numbers and
+invariants on all 1012 fields. Complete fmpz/GMP/JavaScript comparison again
+agrees in all 64 output words. Extracted tests exercise 120 checkpoint-boundary
+cases and 24 exhaustion-transition cases; AST comparison establishes that
+every non-root function and workspace schema is unchanged from the rank
+parent. This is scheduling evidence, not a formal proof of the compiler.
+
+For the first two restored fields, the native diagnostic trace reaches shell
+closure at 23 rows with quotient order 6 and 20 rows with quotient order 9,
+respectively. The third returns class number one through the trivial
+presentation publisher, which overwrites the diagnostic trace slots; no
+complete staged trace is claimed for that field. Diagnostic instrumentation
+preserves each candidate's first 60 output words and is never used for timing.
+
+The corrected build's core SHA-256 is
+`89e194b36ba53512197dbaa0f77210ffbdfcc4938ebc6dc2598f98cc59daca3a`.
+Raw generated core size is 17,176,935 bytes; normalizing only its diagnostic
+source-path strings gives 12,399,890 bytes, versus the rank parent's
+12,374,215. The experimental Python source is 486,319 bytes before adding the
+runtime source, and therefore does not qualify under the unchanged 485,000-byte
+production allowance. Source compression/integration remains required.
+
+### Controlled full-retry timing and the next structural cost
+
+The isolated `opt` run completed all 1012 fields correctly for every
+implementation, with 31 native retries and no final failures. It used the
+same recycling allocator, CPU-zero affinity, three rotated rounds, two native
+calls per sample, eight fresh GP `bnfinit` calls per sample, and one warmup.
+Native retries at efforts 5/1/7/8 are inside the measured call; external input
+packing and reusable scratch allocation are outside. Results are checked
+outside timing. This is diagnostic native computation, not public API timing.
+
+| Workload | Intermediate checkpoint | Rank parent | PARI |
+| --- | ---: | ---: | ---: |
+| Selected $x^3-x^2+26x-40$ | 2.451 ms | 3.283 ms | 1.125 ms |
+| 152-field pre-analytic cohort, sum of medians | 561.939 ms | 610.803 ms | 204.125 ms |
+| All 1012 fields, sum of medians | 4550.247 ms | 4583.535 ms | 1452.875 ms |
+
+The selected field improves about 25.3%, the targeted cohort about 8.0%, and
+the full corpus only 0.73%. The separate skip-hopeless-refinement guard totals
+4551.734 ms in the same run, essentially tied with the new checkpoint.
+The new candidate remains about 3.13 times PARI in aggregate. This single run
+does not establish a durable broad win, and 82 first-attempt output records
+differ from the parent because the successful proof prefixes can differ.
+Raw timing SHA-256:
+`ec0e72299b1ece73ac1308f1ef3daf8ed7e6c6beeb7a66b70da9408ec527f5b1`.
+
+The largest absolute regressions are `3.1.385480.1` (3.868 to 5.771 ms),
+`3.1.46983.1` (3.261 to 4.876 ms), and `3.1.94276.1`
+(3.521 to 5.107 ms). Untimed native traces identify the common new work:
+the intermediate prefix finds a unit but still fails analytic certification,
+then proceeds to the same successful final relation count and proposal count
+as the parent. Respectively, quotient orders progress as
+$70\to70\to35$, $40\to10\to5$, and $54\to54\to18$.
+This is an extra unsuccessful analytic attempt, not evidence that the
+collector lost its cursor or recomputed the complete field.
+
+The next smallest-discriminant target is therefore `3.1.46983.1`,
+$x^3-x^2+22x+240$. It attempts closure at 8/12/28 rows, whereas the parent
+uses 8/28; both finish after 61 adjacent proposals. Investigate which analytic
+quantities can be retained when the class-index estimate changes, and whether
+the already justified refinement guard removes the added work. Do not reuse a
+class-dependent threshold merely because the field is unchanged. Mathematical
+acceptance and the distinction between explicit insufficiency and invalid
+evidence remain unchanged.
+
+Sources, builders, extracted checks, GP programs, raw traces, and backend
+reports are retained under
+`build/cubic-analytic-schedule-evidence/hybrid-prefix/`. These source copies
+remain unpromoted: this is neither full-corpus public receipt/independent
+Sage.js replay qualification nor Lean verification. The production source and
+source/resource allowances remain unchanged.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
