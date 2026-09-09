@@ -3,6 +3,22 @@
 Research checkpoint, 2026-09-09. This is an isolated source-copy experiment,
 not a production shortcut, a public timing result, or a new PARI win.
 
+Implementation: `7e805fc4df200fa3b8fe87014e039ccd282ce037`; test-lifetime
+follow-up: `df1c9b1c602a915f9b2669cacca5d141494ec645`.
+[Immutable evidence](https://github.com/sagemathinc/sagejs/releases/tag/cubic-torsion-probe-20260909):
+`cubic-torsion-probe-20260909.tar.gz`, SHA-256
+`5321b1d9cca0b2c2b75ddf8f703f34eff1ef8dc97e88e5b27861b5ce0f737f75`.
+The inventory binds 70 files to source, generated cores, portable timing
+artifacts, raw observations, and validation logs, including failed attempts.
+The witness executes in a child process to unload its addon before temporary
+cleanup; that portability change is not a claim of a Windows qualification run.
+
+Focused CPython/control-flow and native differential tests, architecture,
+documentation, formatting, and strict Python checks pass (382 strict modules,
+zero errors). The inherited parallel gate still reports 395 live tasks. No
+new full-unit, public-replay, unseen-holdout, or platform qualification is
+claimed. PR #190 remains draft.
+
 ## Mathematical rule and placement
 
 The [elementary norm argument](cubic-recovery-conditioning.md#an-elementary-exact-negative-certificate)
