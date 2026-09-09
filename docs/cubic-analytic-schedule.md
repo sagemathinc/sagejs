@@ -692,12 +692,149 @@ arena-capacity contracts. `retry-frontier.cjs` records the cohort join;
 the bounded-search and analytic-resumption source contracts still govern
 which statuses permit collecting more rows.
 
+## Fourteen-factor deficient-presentation forensics
+
+The next field is now understood more precisely. A diagnostic source-copy
+exit captures the unmodified, **uncompacted** principal relations before
+certification. For $f=x^3-117x-1157$, the captured integral basis is
+
+$$
+\left(\frac{1+2a+6a^2}{7},\ a,\ a^2\right).
+$$
+
+An exact GP oracle changes this basis into PARI's integral basis, verifies
+that the change matrix is integral and unimodular, reconstructs every
+factor-base ideal, and checks every principal equality as an ideal equality.
+It also computes the integer relation kernel and expresses its unit products
+in PARI's fundamental unit. `bnfcertify` succeeds for the reference field.
+These are PARI forensic checks, not independent Sage.js certificate replay.
+
+| Captured search | Raw rows | Rank | Relation quotient order | Unit subgroup index |
+| --- | ---: | ---: | ---: | ---: |
+| First effort, 5 | 36 | 14 | 6 | 1 |
+| Existing retry, 1 | 46 | 14 | 3 | 1 |
+
+The first attempt already has a fundamental unit. Its obstruction is entirely
+the relation lattice. Of the retry's individual rows, row 36 (one-based) alone
+reduces the first lattice's index from 6 to 3. Its generator is
+
+$$
+\alpha=\frac{a^2-9a-106}{7},\qquad N_{K/\mathbb Q}(\alpha)=-1767.
+$$
+
+The corresponding row has exponent 1 at factor-base positions 1, 9, and 12,
+and zero elsewhere. This witness is forensic evidence, **not a production
+special case or proposed hardcoded relation**. The earlier 22-row diagnostic
+describes compacted proof state; it must not be confused with these 36 raw rows.
+
+A fresh PARI 2.17.4 `bnfinit(f,1)` trace uses the same fourteen-factor base at
+bound 35. It collects twenty rows, obtains tentative class number 12 and
+regulator $28.9750511241\ldots$, then performs further small-norm searches in
+products of ideals. Its subsequent tentative class numbers are 6, 6, and 3.
+The trace is retained separately from timing, which uses `bnfinit(f,0)`.
+The Sage.js ablations below do not claim to reproduce that trajectory.
+
+### General scheduling ablations, not promotion
+
+Starting with the authenticated direct-Theorem-7 source, `permutation16`
+extends only the existing PARI-style ordering guard from twelve to sixteen
+factors. `staged16` additionally extends the existing staged-certification
+guard. Neither changes the acceptance criterion, arena limits, or answers.
+Both run the same source-transparent native program; no new handwritten
+mathematical primitive or lookup table is involved.
+
+| First-effort frozen corpus | Accepts / 1012 | Gains | Losses | Exceptions / wrong accepted answers |
+| --- | ---: | ---: | ---: | ---: |
+| Direct-Theorem-7 baseline | 963 | — | — | 0 / 0 |
+| Ordering through 16 factors | 963 | 8 | 8 | 0 / 0 |
+| Ordering and staging through 16 factors | 968 | 10 | 5 | 0 / 0 |
+
+For each candidate, all 64 output words, including declined results, agree
+across explicit fmpz, GMP, and JavaScript execution on the 256 corpus fields
+with 13–16 factors. This is backend differential evidence, not a proof of
+the certificate verifier. Three remaining staged losses are genuinely
+rank-deficient presentations; two lack a recovered unit. The current root
+declines before staged certification on rank deficiency, even though its
+presentation helper distinguishes insufficiency from fatal errors.
+
+A controlled `opt` run compares the baseline, both candidates, and PARI on
+the fifteen fields whose first-effort acceptance changes under `staged16`,
+plus the familiar class-number 5, 8, and 2 controls. This is a deliberately
+selected **18-field diagnostic panel, not a representative corpus or holdout**.
+Five rounds rotate implementation order; each native sample contains sixteen
+calls with preallocated external scratch and the existing `[5,1,7,8]` retry
+policy, each PARI sample thirty-two fresh `bnfinit(f,0)` calls. Each sample
+has an untimed warmup and output checks outside the timed batch. CPU affinity
+is fixed to CPU 0; source/module/addon hashes are checked before execution.
+
+| Workload, median milliseconds | Baseline | Ordering16 | Staged16 | PARI |
+| --- | ---: | ---: | ---: | ---: |
+| $x^3-117x-1157$ | 9.637 | 4.078 | 3.339 | 1.406 |
+| Sum of eighteen per-field medians | 166.034 | 118.973 | 116.707 | 27.219 |
+
+The selected field no longer needs a fresh retry, but it is still slower than
+PARI. Some fields regress severely: label `3.1.315279.1` rises from 4.589 to
+15.271 ms. First-effort gains are not sufficient to establish a general speed
+improvement. Timing values from earlier runs, including earlier PARI timings,
+are not substituted into this paired comparison.
+
+Sources, authenticated build identities, exact GP programs, detached captures,
+surveys, backend results, and timing data are retained under
+`build/cubic-analytic-schedule-evidence/fourteen-factor/`. The follow-up below
+tests whether the existing round-robin initial-volume search recovers the
+lost fields while retaining these gains. All source copies remain above the unchanged source allowance;
+none is a qualified production artifact.
+
+### Round-robin follow-up and resource obstruction
+
+`volume16` additionally extends the existing initial-volume round-robin
+search to 12–16 factors. Its four coupled guards are changed together:
+collector dispatch, visit-matrix allocation, first resumption eligibility,
+and subsequent collector dispatch. The visit matrix remains explicitly
+sized to `factor_count + 1`; it is not left at its one-row inactive size.
+
+This experiment accepts 979/1012 on first effort: eighteen gains, two losses,
+and no wrong accepted answers. It recovers **all five** `staged16` losses.
+However, the two new losses throw
+`RangeError: NativeExactArena temporary capacity exhausted` at the unchanged
+3 MiB temporary limit:
+
+- `3.1.16355768.1`, polynomial $x^3-x^2+793x+10803$;
+- `3.1.16912280.1`, polynomial $x^3-493x-11118$.
+
+Each exception reproduces twice in explicit fmpz execution, and a subsequent
+control call in the same process correctly computes class number 3. No limit
+is increased. This variant is **not release-ready**, and the two-candidate
+backend comparisons and timing table above do not qualify `volume16`.
+
+An exceptional exit may leave partially updated diagnostic coordinates. Exact
+GP checking shows that one saved triple represents a fundamental unit, whereas
+the other does not even have unit norm. Neither is a published certificate;
+it would be incorrect to interpret both as recovered units or infer a wrong
+accepted class group. The first field has regulator approximately 3620.9413
+and a saved unit with roughly 1575-digit coordinates. Further work must locate
+the temporary allocation pressure during repeated exact certification and
+retain the better search without relaxing the memory contract.
+
+Source SHA-256 identities for these isolated ablations:
+
+- `permutation16`: `6a37a50b924d91739a828e22b5adc84dbc4749e7d5a72033554390193001c8b8`;
+- `staged16`: `fc6e085fe1f41b536474cc314ea4d2807be401f83cfee66c0fe0aeb9b7f9a396`;
+- `volume16`: `d3e32776889299c5a89125007414eedb410ed08a91e4c6090dda3ba86711a16d`.
+
+The retained `variants.cjs` authenticates the parent source and asserts the
+number of each replacement before generating these experiments.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
   analytic-schedule tests, strict Python (382 modules), direct documentation
   checking, and the complete 192-file unit tier after a fresh 10m09s build.
-  The broader 585-file test tier is not claimed passing here. The final
+  The broader 585-file test tier subsequently stopped at `test/ffi.cjs`:
+  five failures involve the missing FFLAS generated manifest and missing
+  igraph addon/static library. It had reported 74 completed passing files;
+  active siblings were cancelled and 509 remaining files were not started.
+  This is a failed broad run, not a pass or a still-running process. The final
   serial architecture rerun passes FFI and preceding gates but stops at the
   stale optimizer inventory (current expected input
   `d870e205dd95ae3434ca8df34610b4a0c323107fd722e3b8faea0d336414adea`).
