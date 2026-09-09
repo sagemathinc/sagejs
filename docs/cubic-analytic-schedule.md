@@ -1897,6 +1897,130 @@ dependencies remain in `/scratch/sagejs-runtime/cubic-flint-reentrant-V8c1dM/`.
 These experiments remain direct-kernel, frozen-corpus diagnostics, not
 public-call benchmarks, new holdouts, or independent mathematical replay.
 
+## Private real-root reuse: source-transparent implementation
+
+The root-projection invariant now has a diagnostic native implementation,
+not just a proposed cache. It preserves the original isolator body under
+`_cubic_real_root_interval_uncached` and routes its callers through a small
+exact wrapper. The public kernel signature does not change. Sixteen
+functions carry one additional private borrow; eight zero-initialized
+integer slots are allocated inside the existing exact arena, binding the
+four polynomial coefficients, scale, bracket endpoints, and validity flag.
+
+A hit requires identical coefficients and a positive requested scale dividing
+the cached scale. The wrapper projects outward, checks endpoint ordering
+and width at most one, then checks both polynomial signs exactly. Any
+failed condition uses the original isolator. Nonpositive requested scales
+decline without modifying the cache; only successful fresh isolation is
+stored. There is no global state, cross-call persistence, finer-precision
+claim from a coarser interval, or changed mathematical acceptance test.
+
+An AST reversal check removes just the documented borrow/allocation/wrapper
+changes and recovers the parent's AST exactly. Executing the actual Python
+helpers passes 14,168 exact comparisons across the 1,012 fields, including
+mixed precision order, corrupted endpoints and flags, mismatched coefficients,
+invalid cached scales, nondividing requested scales, and reuse across different
+polynomials. Another 6,000 comparisons pass on 1,000 seeded cubics of negative
+discriminant outside that field corpus; these polynomials are not asserted
+irreducible, and this is a root-isolation test rather than a class-group
+holdout. This is a same-source diagnostic test, not a Lean formalization.
+
+The existing compiler accepts the implementation without compiler changes.
+Both native artifacts (default FLINT and the previously tested one-page pool)
+agree with the unchanged parent on acceptance and all 64 words for every
+frozen field: 981 first-attempt acceptances, zero exceptions. GMP and
+JavaScript also agree with the compiled source on all 1,012 outputs. These
+checks do not substitute for independent mathematical replay.
+
+Separate locally instrumented native runs count root-wrapper requests and
+actual executions of the original isolator, while checking all 64 result
+words. Counts are 4 requests / 2 isolations for 283, 331, and $x^3+9x-55$;
+6 / 2 for 23567; and 12 / 3 for 46983. These instrumented copies are not
+used in the timing experiments.
+
+The earlier local instrumented profiles put the opportunity in perspective:
+all root isolation together cost about 0.059 ms for 283, 0.070 ms for the
+class-number-five example, and 0.115 ms for 23567 (roughly 4–5% of those
+profiled computations). The cache still performs some isolation and checks
+hits exactly, so a large end-to-end gain should not be expected. In the
+same profiles, BF plan preparation plus finite-bound evaluation together
+cost about 0.30–0.32 ms per example. These are instrumentation-inclusive
+diagnostics, not controlled cross-host timings, but they identify a larger
+remaining target than further tuning this cache.
+
+### Provenance and resource review
+
+- Candidate source: `2deecbbb0521fa868b500fa66f7c89f92e6b106e89946973eade7cbc746c409b`.
+- Generated core: `2ece5ae0b053902a9fe8980cb1d4660114f1cb1bdd3492342ca92c12e0523b11`.
+- Same source-transparent builder: `7e0940180b32e5d4b067639d381131e08d7e2b0a4eeb6700017f32856c8e633e`.
+
+The source grows from 486,563 to 488,799 bytes (+2,236). The eight private
+slots increase storage within unchanged memory/temporary-work caps. Both
+experimental sources already exceed the 485,000-byte release allowance
+before runtime source is counted: **no allowance is raised and no release
+eligibility is implied**. Raw C falls from 16,958,635 to 16,414,642 bytes
+because the source path is shorter, not because the implementation shrank.
+Replacing each root source path by the same `<source.py>` marker instead
+gives 12,621,840 versus 12,711,792 bytes (+89,952). Normalized lengths are
+resource diagnostics, never artifact identities.
+
+### Timing: a small opportunity, not a no-regression qualification
+
+The CPU-0-pinned uninstrumented comparison isolates reuse by comparing the
+parent and cache with the same one-page FLINT library. A third artifact
+uses the cache with the default pool. Both full-corpus runs finish all
+1,012 fields correctly, including the same 31 retrying fields. Sums of
+per-field medians in milliseconds:
+
+| Native calls per sample | Parent, one-page | Cache, one-page | Cache, default | PARI |
+| --- | ---: | ---: | ---: | ---: |
+| 2 | 4638.472 | 4544.829 | 4748.967 | 1526.000 |
+| 10 | 4620.033 | 4568.823 | 4780.118 | 1533.125 |
+
+Each run uses three rotated rounds, one warmup, and eight fresh PARI
+`bnfinit(f,0)` computations per sample; native retries remain inside the
+clock. The observed reductions are **2.02% and 1.11%**, respectively.
+The longer run's median per-field ratio is 0.9887, with 90th percentile
+1.0495: no per-field no-regression claim is justified. Raw outputs are
+`timing.json` (`a9ce9bc4611e62e5bf23f5b0915c494f80d6a98c94726bc8c9bb6847c16abc30`)
+and `timing-longer.json`
+(`724a9bf0eede5810bb9b37f204fba26a883dc3df19a43dbfb679386f63bf2578`).
+
+The separate five-field, 100-computation batches were mixed and showed
+substantial timing variation for both native and PARI. They are retained
+as `focused-timing.json`, not silently discarded or described as confirming
+a uniform gain. A health snapshot found no other competing compute process
+inside `opt` and reported zero guest steal time; it does not establish the
+cause of the timing variation or prove an uncontended physical host.
+
+An additional native-only diagnostic interleaves 21 alternating ABBA/BAAB
+rounds, ten computations per sample, after 200 warmups per implementation
+and field. It records wall and process CPU time. Median within-round
+cached/parent ratios are:
+
+| Field | Wall ratio | CPU ratio |
+| --- | ---: | ---: |
+| `3.1.283.1` | 0.9603 | 0.9588 |
+| `3.1.331.1` | 0.9654 | 0.9659 |
+| $x^3+9x-55$ | 1.0009 | 0.9972 |
+| `3.1.23567.1` | 0.9819 | 0.9841 |
+| `3.1.46983.1` | 0.9652 | 0.9657 |
+
+This supports modest savings on several selected cases, but essentially
+neutral performance on the user's class-number-five example. Sample-ratio
+10th–90th percentile ranges still cross one; these are not confidence
+intervals. The correct conclusion is **a working exact cache with limited
+performance leverage**, not a new PARI win or release qualification. Keep
+the implementation experimental and prioritize the larger BF planning and
+finite-bound costs. Public-call timing, independent replay, source allowance,
+four-platform qualification, and broader no-regression evidence remain open.
+
+Source preparation, exact/fault-injection checks, manifests, corpus outputs,
+instrumented counts, and reproduction instructions are retained under
+`build/cubic-analytic-schedule-evidence/root-cache/`; the native build manifest
+is also retained as `native-builds.json`. Large reproducible builds remain
+in `/scratch/sagejs-runtime/cubic-root-cache-NadCCI/`.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
