@@ -4,15 +4,16 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const {spawnSync}=require('node:child_process');
 const {performance}=require('node:perf_hooks');
 const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
-const [directory,gp,...extra]=process.argv.slice(2);assert.ok(directory&&gp&&!extra.length);
+const {validateFields}=require('./cubic-ablation-fields.cjs');
+const [directory,gp,fieldsPath,...extra]=process.argv.slice(2);assert.ok(directory&&gp&&!extra.length);
 const builds=JSON.parse(fs.readFileSync(path.join(directory,'builds.json')));
 assert.equal(builds.schema,'sagejs.diagnostic/portable-cubic-ablation-v1');
-const fields=[
+const fields=validateFields(fieldsPath ? JSON.parse(fs.readFileSync(fieldsPath)) : [
   {coefficients:['122','-7','-1','1'],h:'8',cyc:'[4, 2]'},
   {coefficients:['-55','9','0','1'],h:'5',cyc:'[5]'},
   {coefficients:['-4','3','-1','1'],h:'2',cyc:'[2]'},
   {coefficients:['-63','-11','-1','1'],h:'3',cyc:'[3]'},
-];
+]);
 const implementations=builds.records.map(r=>{
   assert.match(r.name,/^[a-z0-9_]+$/);
   const root=path.join(directory,r.name);
@@ -67,4 +68,4 @@ console.log(JSON.stringify({schema:'sagejs.diagnostic/cubic-ablation-timing-v1',
   boundary:'polynomial-to-native-result with preallocated external scratch and existing retry policy versus fresh PARI bnfinit(f,0)',
   sampling:'7 alternating forward/reverse rounds; 64 native calls per sample; 256 PARI calls; 20 warmups',
   host:require('node:os').hostname(),cpus:require('node:os').cpus().map(c=>c.model),node:process.version,
-  gpSha256:hash(fs.readFileSync(gp)),builds,samples},null,2));
+  gpSha256:hash(fs.readFileSync(gp)),fields,builds,samples},null,2));

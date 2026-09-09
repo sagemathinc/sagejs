@@ -2,6 +2,41 @@
 
 Status: active; no new PARI win claimed.
 
+## Resumable-shell diagnostic checkpoint, 2026-09-09
+
+The [resumable experiment](../docs/cubic-resumable-shell-experiment.md) reuses
+the existing ellipsoid/admission loop, with a separate persistent plan/cursor
+and one/four/eight additional-row targets. It preserves all 957 baseline
+acceptances and recovers the same four fields as the four-row experiment on
+the frozen 1,012 development fields, with zero exceptions and exact final
+output-slot agreement. Production mathematics remains unchanged.
+
+Controlled opt timings retain the target speedup (9.23 to 5.63 ms, PARI 1.54).
+On all four recovered fields, resumable staging improves on the baseline, but
+the two needing more relations cost 0.65/0.81 ms more than a direct four-row
+batch. Failed certification and subsequent presentation preparation now need
+separate cost attribution and carefully validated intermediate-state reuse.
+Do not universally select one or four rows from these four observations.
+
+The source-copy still adds 8,211 bytes and is not within the aggregate source
+allowance. Shared orchestration needs refactoring before production integration;
+no allowance was raised. Focused tests, architecture and formatting pass;
+parallel metadata still reports 395 live tasks. Public replay, holdout and
+platform qualification remain pending. No unseen neighbors were run.
+
+A follow-up source inspection found repeated identical real-root isolation
+inside recovery logarithms. Reusing the existing batch-log helper removes
+393 Python bytes. On both baseline and resumable variants, every output slot
+and decline agrees across all 1,012 development fields. Controlled opt timings
+show a further 9–15% reduction on the four gains for the resumable version:
+the target is 5.12 ms versus baseline 9.16 and PARI 1.55 in the same run.
+Controls show small mixed changes. This is still isolated source-copy evidence,
+not production/public qualification. The small root-reuse change is a candidate
+for separate integration; the larger scheduler still needs source compression.
+Missing-unit failure occurs before the analytic BF stage, so the next detailed
+cost attribution belongs to support/HNF/dependencies/logs/recovery and the
+subsequent presentation refresh, not BF work on that failed path.
+
 ## Resident-shell diagnostic checkpoint, 2026-09-08
 
 The [outer-shell experiment](../docs/cubic-resident-expanded-shell-experiment.md)
