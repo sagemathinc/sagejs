@@ -3,6 +3,8 @@
 
 const { spawn, spawnSync } = require("node:child_process");
 const { readFileSync, writeFileSync } = require("node:fs");
+const memoryBarrier = process.env.SAGEJS_PACKAGE_MEMORY_BARRIER
+  ? require("./memory-barrier.cjs").validate(JSON.parse(process.env.SAGEJS_PACKAGE_MEMORY_BARRIER)) : null;
 
 const [, , metadataPath, timeoutText, maxOutputText, executable, ...args] =
   process.argv;
@@ -54,6 +56,10 @@ function finish() {
   clearTimeout(timeout);
   clearTimeout(hardKill);
   clearTimeout(closeFallback);
+  if (memoryBarrier && child?.pid && !spawnError) {
+    try { require("./memory-barrier.cjs").verifyChildObservation(memoryBarrier, child.pid); }
+    catch (error) { spawnError = error; }
+  }
   writeFileSync(
     metadataPath,
     `${JSON.stringify({
@@ -168,9 +174,16 @@ function cleanPosixGroupAfterNormalExit() {
 }
 
 try {
+  const childEnvironment = { ...process.env };
+  delete childEnvironment.SAGEJS_PACKAGE_MEMORY_BARRIER;
+  if (memoryBarrier) {
+    childEnvironment.SAGEJS_SUBJECT_MEMORY_BARRIER = JSON.stringify(memoryBarrier);
+    const preload = require.resolve("./memory-barrier.cjs");
+    childEnvironment.NODE_OPTIONS = `${childEnvironment.NODE_OPTIONS || ""} --require ${JSON.stringify(preload)}`;
+  }
   child = spawn(executable, args, {
     detached: process.platform !== "win32",
-    env: process.env,
+    env: childEnvironment,
     stdio: ["pipe", "pipe", "pipe"],
     windowsHide: true,
   });

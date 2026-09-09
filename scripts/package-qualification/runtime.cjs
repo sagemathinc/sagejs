@@ -311,7 +311,9 @@ function runProcess(executable, args, options = {}) {
         cwd: options.cwd,
         input: options.input,
         encoding: "utf8",
-        env: options.env || process.env,
+        env: { ...(options.env || process.env), ...(options.memoryBarrier ? {
+          SAGEJS_PACKAGE_MEMORY_BARRIER: JSON.stringify(options.memoryBarrier),
+        } : {}) },
         // The supervisor captures bounded child output in metadata, so its own
         // stdout/stderr remain diagnostic-only and cannot trigger ENOBUFS while
         // leaving the supervised process group alive.
@@ -592,6 +594,7 @@ function runInstalledSourceLanguage(context, source, language, options = {}) {
       args,
       {
         cwd: context.directory,
+        memoryBarrier: context.memoryBarrier,
         timeout: options.timeout,
         env: {
           ...process.env,
@@ -614,6 +617,7 @@ function runInstalledNode(context, source, options = {}) {
   try {
     return runProcess(process.execPath, [program, ...(options.args || [])], {
       cwd: context.directory,
+      memoryBarrier: context.memoryBarrier,
       input: options.input,
       timeout: options.timeout,
       env: {
@@ -655,6 +659,7 @@ function runInstalledKernelPython(context, source, options = {}) {
   }
   return runProcess(process.execPath, [runner], {
     cwd: context.directory,
+    memoryBarrier: context.memoryBarrier,
     input: source,
     timeout: options.timeout,
     env: { ...process.env, ...(options.env || {}) },
@@ -727,6 +732,7 @@ function runRelocatedSeaLanguage(context, source, language, options = {}) {
     args.push(program);
     return runProcess(context.executable, args, {
       cwd: context.directory,
+      memoryBarrier: context.memoryBarrier,
       timeout: options.timeout,
       env: { ...process.env, ...(options.env || {}) },
     });

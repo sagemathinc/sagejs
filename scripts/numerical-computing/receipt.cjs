@@ -4,6 +4,7 @@ const { randomUUID } = require("node:crypto");
 const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const { createExitBarrier } = require("../package-qualification/memory-barrier.cjs");
 
 const {
   PLATFORM_IDS,
@@ -315,7 +316,7 @@ function processTreeSnapshot(rows, rootPid = process.pid) {
       found = true;
     }
   }
-  return found ? { bytes, descendants: descendants.size - 1 } : null;
+  return found ? { bytes, descendants: descendants.size - 1, pids: [...descendants] } : null;
 }
 
 function linuxProcessRows() {
@@ -375,6 +376,8 @@ function processTreeRssSnapshot() {
 
 function memoryMeasurement(subject) {
   const processTree = PROCESS_TREE_SUBJECTS.has(subject.kind);
+  const barrier = process.platform === "win32" && ["npm", "sea"].includes(subject.kind)
+    ? createExitBarrier() : null;
   const measurement_scope = processTree ? "process_tree" : "collector_process";
   const measurement_method = processTree
     ? {
@@ -399,7 +402,11 @@ function memoryMeasurement(subject) {
   let descendantObserved = false;
   const sample = () => {
     try {
+      // Freeze the ready set before sampling, so acknowledgement proves a
+      // process-table observation after the subject reached its exit boundary.
+      const ready = barrier?.ready();
       const observation = read();
+      if (barrier && observation) barrier.acknowledge(ready, observation.pids);
       if (processTree && observation?.descendants >= 1) descendantObserved = true;
       const value = processTree ? observation?.bytes : observation;
       if (!Number.isSafeInteger(value) || value < 0) {
@@ -411,10 +418,14 @@ function memoryMeasurement(subject) {
     }
   };
   sample();
-  if (error !== null) fail("memory measurement", error.message);
+  if (error !== null) {
+    barrier?.dispose();
+    fail("memory measurement", error.message);
+  }
   const timer = setInterval(sample, sample_interval_ms);
   timer.unref();
   return {
+    barrier: barrier?.options,
     executionStarted() {
       // The initial boundary sample necessarily runs before an adapter has
       // launched its subject.  Give a genuinely asynchronous adapter one turn
@@ -435,6 +446,7 @@ function memoryMeasurement(subject) {
     finish() {
       clearInterval(timer);
       sample();
+      barrier?.dispose();
       if (error !== null) fail("memory measurement", error.message);
       if (processTree && !descendantObserved) {
         fail(
@@ -474,6 +486,7 @@ async function measuredSample(adapter, caseContract, kind, index, subject) {
       input: caseContract.input,
       sample_kind: kind,
       sample_index: index,
+      memory_barrier: authenticatedMemory.barrier,
     });
     await authenticatedMemory.executionStarted();
     observation = await execution;
