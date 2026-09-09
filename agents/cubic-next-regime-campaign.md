@@ -2,6 +2,43 @@
 
 Status: active; no new PARI win claimed.
 
+## Exact conditional search and serialized qualification, 2026-09-09
+
+The [conditional-center diagnostic](../docs/cubic-exact-conditional-search.md)
+now separates PARI's large volume-guided search radius from its pruned,
+early-stopping enumeration. An exact rational oracle and a distinct
+integer-only completed-square traversal agree in point order and counters;
+both agree with exhaustive boxes on 82 test matrices and all 36 captured
+regions. The integer formulas require square roots/division and coordinate
+cursors, not rational objects. They are not yet a native resumable iterator.
+
+On the historical $-384587$ capture, a trace-ordered, four-relations-per-ideal
+forensic search with volume parameter $T=478$ gets rank 12, index 8, and a
+nontrivial unit after three ideals / 36 proposals, and reaches 18 rows after
+four ideals / 39 proposals. The saved PARI trace uses 43 small-norm candidates.
+The initial-radius diagnostic reaches 18 rows without a nontrivial unit.
+The new unit is exactly the inverse of the earlier recovered unit. This is
+exact search evidence, not the actual production admission policy, a complete
+class-group certificate, a new timing result, or an unseen-field experiment.
+The mathematical source and all production limits remain unchanged.
+
+The earlier mutating `test:changed` plan is now **terminal exit 1**. Its two
+Node builds completed; the Wasm stage fails because the configured v2 numerical
+toolchain is absent, not because of another parser crash. No toolchain build
+was started. With all build descendants gone, the six-file public/native cubic
+suite was rerun serially: **14 passes, zero failures, zero skips** in
+`parser-fix-public-native-serialized.log`. A complete lazy-cache preparation
+then finished before starting the new 1,000-field public replay. Its first
+500 fields pass authentication and independent exact replay; do not claim
+the complete run until `parser-fix-public-replay/report.json` is present and
+checked. Runtime-mutating builds must remain serialized until it finishes.
+
+Next: implement a source-copy native conditional iterator, preserving exact
+region membership and checkpoint/cursor semantics. Compare scheduling/radius
+policies separately with unchanged final certification. Do not copy a larger
+radius alone, remove the factor-count-12 safety margin without evidence, or
+count a nontrivial unit as a successful certificate. PR190 remains draft.
+
 ## Parser ownership repair, 2026-09-09
 
 Commit `d53dfb1781a27d973c6f6ba4246a5296f8e74275` installs the production
