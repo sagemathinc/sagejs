@@ -1,6 +1,30 @@
 # Next complex-cubic optimization campaign
 
-Status: active; no new PARI win claimed.
+Status: active; no regime-wide PARI win claimed.
+
+## Initial volume visits, 2026-09-09
+
+The [initial-volume experiment](../docs/cubic-initial-volume-experiment.md)
+now uses full volume-guided regions from the first search, with independent
+four-row ideal quotas before full modular rank and retained per-ideal cursors
+across certification. The target closes on its first 18-row attempt, after
+four planned ideals and 39 recorded candidates. Two controlled opt runs give
+2.596/2.600 ms versus baseline 4.280/4.258 ms and PARI 1.543 ms: roughly 39%
+improvement, still not a target PARI win.
+
+Omitting the unused four-direction scoring then gives 2.535/2.536 ms in two
+further controlled runs, versus baseline 4.260/4.247 ms and PARI 1.543/1.547 ms.
+The class-number-one field x^3+180x-1484 is about 2% faster than PARI in both
+runs, a narrow field-specific observation rather than a regime-wide win.
+
+The paired development corpus retains 963/1,012 acceptances, two gains/no
+losses against baseline and zero exceptions. A second variant omits unused
+four-direction scoring and has identical output buffers on the full corpus.
+Native state auditing covers all 78 twelve-factor fields and 72 closure calls,
+including five fields requiring resumed certification. All inspected retained
+state, including visit cursors, survives unchanged. Diagnostic duplication
+exceeds the unchanged source allowance; source consolidation and public,
+holdout, platform, and resource qualification remain required. PR190 stays draft.
 
 ## Analytic resumption and twelve-factor ordering, 2026-09-09
 
