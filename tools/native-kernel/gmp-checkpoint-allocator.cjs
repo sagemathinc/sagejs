@@ -48,6 +48,7 @@ typedef struct sagejs_native_gmp_checkpoint
     size_t activated;
     size_t page_size;
     size_t used;
+    size_t free_bins[sizeof(size_t) * 8];
     size_t high_water;
     uint64_t allocation_calls;
     uint64_t reallocation_calls;
@@ -119,17 +120,6 @@ static void *(*sagejs_native_gmp_upstream_allocate)(size_t) = NULL;
 static void *(*sagejs_native_gmp_upstream_reallocate)(
     void *, size_t, size_t) = NULL;
 static void (*sagejs_native_gmp_upstream_free)(void *, size_t) = NULL;
-
-static size_t sagejs_native_gmp_align(size_t value)
-{
-    const size_t alignment = SAGEJS_NATIVE_ALIGNOF(max_align_t);
-    const size_t remainder = value % alignment;
-    if (remainder == 0)
-        return value;
-    if (value > SIZE_MAX - (alignment - remainder))
-        return SIZE_MAX;
-    return value + alignment - remainder;
-}
 
 static size_t sagejs_native_gmp_page_size(void)
 {
@@ -278,13 +268,69 @@ static sagejs_native_gmp_checkpoint *sagejs_native_gmp_owner(
     return NULL;
 }
 
+/* Size classes recycle only blocks explicitly released by GMP. Live blocks
+ * never move except through GMP realloc, and the checkpoint address range
+ * and its soft-limit/retry authority remain unchanged. */
+static size_t sagejs_native_gmp_reuse_span(size_t raw)
+{
+    size_t span = 1;
+    while (span < raw)
+    {
+        if (span > SIZE_MAX / 2)
+            return SIZE_MAX;
+        span *= 2;
+    }
+    return span;
+}
+
+static unsigned sagejs_native_gmp_reuse_bin(size_t span)
+{
+    unsigned bin = 0;
+    while (span > 1)
+    {
+        span >>= 1;
+        bin += 1;
+    }
+    return bin;
+}
+
+static void sagejs_native_gmp_checkpoint_recycle(
+    sagejs_native_gmp_checkpoint *checkpoint, void *pointer)
+{
+    sagejs_native_gmp_arena_header *header =
+        ((sagejs_native_gmp_arena_header *) pointer) - 1;
+    const unsigned bin = sagejs_native_gmp_reuse_bin(header->value.span);
+    const size_t offset =
+        (size_t) ((unsigned char *) header - checkpoint->storage);
+    /* requested is no longer live metadata after GMP releases the block.
+     * Reuse it for a one-based next offset without enlarging each header. */
+    header->value.requested = checkpoint->free_bins[bin];
+    checkpoint->free_bins[bin] = offset + 1;
+}
+
 static void *sagejs_native_gmp_checkpoint_allocate(
     sagejs_native_gmp_checkpoint *checkpoint, size_t requested)
 {
     const size_t payload = requested == 0 ? 1 : requested;
-    const size_t raw = sizeof(sagejs_native_gmp_arena_header) + payload;
-    const size_t span = sagejs_native_gmp_align(raw);
+    const size_t raw =
+        payload > SIZE_MAX - sizeof(sagejs_native_gmp_arena_header)
+            ? SIZE_MAX : sizeof(sagejs_native_gmp_arena_header) + payload;
+    const size_t span = sagejs_native_gmp_reuse_span(raw);
     sagejs_native_gmp_arena_header *header;
+    if (span != SIZE_MAX)
+    {
+        const unsigned bin = sagejs_native_gmp_reuse_bin(span);
+        if (checkpoint->free_bins[bin] != 0)
+        {
+            header = (sagejs_native_gmp_arena_header *)
+                (checkpoint->storage + checkpoint->free_bins[bin] - 1);
+            checkpoint->free_bins[bin] = header->value.requested;
+            header->value.requested = requested;
+            checkpoint->allocation_calls += 1;
+            checkpoint->requested_bytes += (uint64_t) requested;
+            return (void *) (header + 1);
+        }
+    }
     if (span == SIZE_MAX ||
         checkpoint->used > checkpoint->reservation_size ||
         span > checkpoint->reservation_size - checkpoint->used ||
@@ -346,11 +392,17 @@ static void *sagejs_native_gmp_realloc(
     }
     header = ((sagejs_native_gmp_arena_header *) pointer) - 1;
     payload = requested == 0 ? 1 : requested;
-    raw = sizeof(*header) + payload;
-    span = sagejs_native_gmp_align(raw);
+    raw = payload > SIZE_MAX - sizeof(*header)
+        ? SIZE_MAX : sizeof(*header) + payload;
+    span = sagejs_native_gmp_reuse_span(raw);
     offset = (size_t) ((unsigned char *) header - checkpoint->storage);
     checkpoint->reallocation_calls += 1;
     checkpoint->requested_bytes += (uint64_t) requested;
+    if (span != SIZE_MAX && span <= header->value.span)
+    {
+        header->value.requested = requested;
+        return pointer;
+    }
     if (span != SIZE_MAX && offset + header->value.span == checkpoint->used &&
         span <= checkpoint->reservation_size - offset &&
         sagejs_native_gmp_checkpoint_activate(checkpoint, offset + span))
@@ -376,6 +428,7 @@ static void *sagejs_native_gmp_realloc(
     memcpy(result, pointer,
         header->value.requested < requested
             ? header->value.requested : requested);
+    sagejs_native_gmp_checkpoint_recycle(checkpoint, pointer);
     return result;
 }
 
@@ -390,6 +443,7 @@ static void sagejs_native_gmp_free(void *pointer, size_t old_size)
         return;
     }
     checkpoint->free_calls += 1;
+    sagejs_native_gmp_checkpoint_recycle(checkpoint, pointer);
 }
 
 SAGEJS_NATIVE_GMP_ALLOCATOR_API int sagejs_native_gmp_allocator_install(void)

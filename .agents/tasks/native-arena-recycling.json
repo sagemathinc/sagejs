@@ -1,0 +1,98 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-arena-recycling",
+  "title": "Native Arena Recycling",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Qualify reuse of GMP-freed checkpoint blocks without relaxing exact arena limits or allocator provenance",
+  "base_commit": "07e61837cdbd4f967f537a1762369d59e35d4cc5",
+  "claims": [
+    "tools/native-kernel/gmp-checkpoint-allocator.cjs",
+    "tools/native-kernel/compiler.cjs",
+    "tools/native-kernel/test/gmp-checkpoint-recycling.cjs",
+    "docs/native-arena-recycling.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/sagemathinc/sagejs/pull/204"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "gmp",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/gmp-checkpoint-recycling.cjs test/native-gmp-checkpoint.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.724,
+      "started_at": "2026-09-09T11:42:15.405Z",
+      "commit": "07e61837cdbd4f967f537a1762369d59e35d4cc5",
+      "workspace_fingerprint": "47bb859c520ae320e57d897d982fae043493bd01dc19f485d24c8739f668cc92",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/gmp-checkpoint-recycling.cjs test/native-gmp-checkpoint-allocator.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.727,
+      "started_at": "2026-09-09T11:42:45.689Z",
+      "commit": "07e61837cdbd4f967f537a1762369d59e35d4cc5",
+      "workspace_fingerprint": "3f63744feae0c6eaed59a54b1048b547669999d3dd1715c74b31a87a5111baf9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/gmp-checkpoint-recycling.cjs test/native-gmp-checkpoint-allocator.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.705,
+      "started_at": "2026-09-09T11:47:31.629Z",
+      "commit": "07e61837cdbd4f967f537a1762369d59e35d4cc5",
+      "workspace_fingerprint": "b6540064cca0db8e086d9047bca9d9bed8a76871c247ee2d035f81c2470bf845",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/gmp-checkpoint-recycling.cjs test/native-gmp-checkpoint-allocator.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.737,
+      "started_at": "2026-09-09T12:04:19.594Z",
+      "commit": "5be9662999d6c31d82d3f71536f4d53edea24e34",
+      "workspace_fingerprint": "14e7940e17bfd16f7289d2aa926d2e0a1d939c1dda613cb2ff23f5e6594f70e8",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Prototype recycling of GMP-freed checkpoint blocks with unchanged exact arena limits and source-transparent mathematics. Final canonical volume16 artifact completes 1012 first-effort cases: 979 accepts, zero exceptions or accepted-answer mismatches; all64 words unchanged on1010 formerly nonexceptional cases. All256 affected-regime fields agree across fmpz/GMP/JavaScript. Includes allocator cache-fingerprint dependency fix and four passing focused allocator/provenance tests. Not release-ready.",
+    "risks": [
+      "Controlled1010-field first-effort opt pilot is0.17% slower overall. Selected9-round/32-call repeat shows up to5.02% regression, h5+1.19%, h2+2.94%. No zero-regression claim; optimize generic size-class overhead and remeasure.",
+      "Four-platform native/WASI qualification and normative architecture review remain outstanding. Sanitizer executable is Unix-only.",
+      "Mathematical volume16 source remains experimental and exceeds unchanged source allowance; allocator success does not qualify it for production.",
+      "Initial focused command misspelled the existing allocator test path; Node ignored that nonexistent pattern. The subsequent correctly named command explicitly ran all4 tests successfully."
+    ],
+    "next_steps": [
+      "Controlled1010-field comparison and14-field longer repeat are complete, preserving identical mathematical source/outputs and excluding two old memory exceptions explicitly. Resolve small-field overhead, add non-cubic workloads, and repeat before promotion.",
+      "Broad test:changed is terminal failed: all8 build stages and architecture pass,143 unit files pass before modular-qexp-source-freeze rejects the package-graph hash;34 files unstarted. Failure reproduced on unchanged parent. Follow-up lifecycle suite10 passes plus known91-versus59 stale child-count failure. No broad qualification claim.",
+      "Fixed-shift size-class experiment was reverted after canonical correctness checks but no measured performance benefit in a direct14-field three-way comparison. Keep new exhaustive-small/boundary/random size-class oracle tests and preserved rejected-source evidence; optimize from measured profiles rather than loop counts.",
+      "Coordinate integration of the normative reusable-pool allocation contract and cross-platform resource evidence before release."
+    ]
+  }
+}
