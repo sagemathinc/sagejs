@@ -2951,6 +2951,139 @@ it is not refreshed by this experiment. Full public replay and platform
 qualification remain open. The changed-files merge/documentation gate passes
 after its fresh local build completes in 8m30s.
 
+## Resident field-residue experiment
+
+The next source-copy candidate separates the changing class candidate from
+the immutable BF norm table and retains one successful BF enclosure in the
+existing root-owned proof workspace. This experiment starts from the
+index-event source above, not from the early torsion-screen ablation.
+
+**Mathematical and storage argument.** For fixed field $K$, threshold $X$
+and precision, the computed enclosure $Z_K$ of
+$\log\operatorname{Res}_{s=1}\zeta_K(s)$ does not depend on the current
+relation quotient order $H$ or unit-subgroup regulator $R'$. The certification
+formula remains
+
+$$
+\log H+\log R'+\log(2\pi)-\tfrac12\log|D_K|-Z_K.
+$$
+
+Under the previously stated hypotheses, this encloses the logarithm of the
+positive integral joint index. Reusing $Z_K$ changes neither that identity
+nor its acceptance test. It does not justify retaining an obsolete
+$\log H$, assuming a unit is fundamental, or weakening the analytic bound.
+
+The root authenticates the field/order before constructing the proof
+workspace, and does not change that field during its lifetime. A new
+zero-initialized, arena-owned $1\times9$ exact matrix stores readiness,
+threshold, scale, term/value counts, residue endpoints, tail bound and last
+class candidate. A successful initial evaluation publishes readiness last.
+A changed threshold or scale clears readiness and rebuilds; failed
+preparation/evaluation never publishes a new cache. This is a single-entry
+cache, so refinement can evict the initial-threshold plan. Nothing survives
+the root call or escapes its arena.
+
+`_cubic_bf_value_index` now excludes header slot 4 from norm lookup. The
+sorted norm tail and every finite-sum reference therefore remain independent
+of the class candidate. A cache hit updates the class value and obtains new
+outward log-class endpoints when $H$ changes; all field endpoints stay live.
+The unused square-root endpoints of slot 4 are not refreshed: no norm term
+can reference that slot, and the index formula reads only its logarithm.
+The private workspace contract is essential: no other operation may mutate
+the retained plan/endpoints. Unit discovery, saturation, checkpoint scheduling,
+publication and final classification remain unchanged.
+
+**Checks and observed work.** The actual-source lookup passes 22,350 norm
+queries, including header collisions, followed by mutation of the class
+slot without invalidating any norm reference. Actual cache-body tests cover
+hits, misses, class changes, threshold/scale changes, failed preparation,
+failed evaluation, failed log updates, retries, invalid scalar inputs and
+a fresh root. Those transition tests stub arithmetic and are not a proof
+of the interval or ideal calculations.
+
+All 1,012 first-effort fields agree across native FLINT, GMP and generated
+JavaScript, including all 64 output words and original/one-page linkage.
+The candidate retains 981 successes, with no errors, gains or losses.
+Relative to its parent, 216 fields increase only output word 38 (value
+count) by one, reflecting the removed alias. Every other output word,
+including all unit coordinates and analytic endpoints, is identical.
+The existing 24-field holdout also passes three-backend agreement and
+certified PARI answer comparison; it is a reused regression cohort here,
+not another newly selected holdout.
+
+Read-only same-source traces count 859 BF preparations/evaluations instead
+of 915: 56 evaluations disappear across 45 fields. The 954 closure calls
+and 873 saturation calls are unchanged. Both target fields use one BF
+evaluation instead of two. Independent GP replay on their actual retained
+prefixes again checks the principal equalities and integer-kernel units;
+the final quotient orders are 18 and 6 with unit exponent gcd one. This
+is not full public Sage.js certificate replay or formal verification.
+
+**Controlled `opt` timings.** Use the same one-page FLINT archive, CPU-0
+host, three rotated rounds, fresh PARI calls and `[5,1,7,8]` timed retry
+schedule as above. The full corpus completes for both variants, with the
+same 31 retry fields. Sums of per-field medians:
+
+| Cohort | Index-event parent ms | Residue cache ms | PARI ms |
+| --- | ---: | ---: | ---: |
+| All 1,012 | 3732.189699 | 3701.215377 | 1445.875 |
+| 45 fields with fewer BF evaluations | 186.598773 | 170.718968 | 62.125 |
+| Reused 24-field holdout | 43.3303655 | 42.2271825 | 27.750 |
+
+The full difference is only 0.83%; the candidate remains about 2.56 times
+PARI overall. The affected cohort improves 8.51% and the reused holdout
+2.55%. The two target times are 2.356 to 2.069 ms (30772, PARI 1.250 ms)
+and 1.874 to 1.606 ms (41912, PARI 1.000 ms). A separate 21-round ABBA/BAAB
+comparison corroborates the gains: candidate/parent median within-round
+ratios 0.8785 and 0.8562, with 10th–90th percentiles 0.8699–0.8912 and
+0.8420–0.8657. These quantiles are not confidence intervals. The 46983
+ratio is 0.9006; the other nine controls have ranges crossing one. The
+original h=5 seed is neutral at 0.9993. No new PARI-win claim follows.
+
+**Resources and reproduction.** Source is 492,976 bytes, SHA
+`17fa66c5ed80c37cd17c775ee2358d4a96ff9409d59f3cac6443179ee33f3f5e`.
+Relative to its parent this adds 2,806 source bytes and 119,526 path-normalized
+generated-C bytes (total 12,803,314). Core SHA is
+`80c89b6c8529926f71963dd983a5415cf8884b92cb3f55335e25de73266fb661`;
+one-page addon SHA is
+`f994debd67ce0b0d5d7a5aede6da9a8afac345551acc1a9f3d201f1ebc31faaf`.
+The extra matrix and possible extra norm value consume existing budgets;
+no capacity, precision or source allowance is increased. The possible extra
+norm value could cause a guarded decline outside the tested corpus, so
+coverage is not claimed universally unchanged.
+
+Small evidence and generation scripts are retained under
+`build/cubic-analytic-schedule-evidence/residue-cache/`; large builds remain
+at `/scratch/sagejs-runtime/cubic-residue-cache-C7Kcw3/`. `prepare.py`
+authenticates and transforms the parent source; `check-cache.py` exercises
+the actual helper bodies. `prepare-harness.cjs`, survey/backend/linkage
+checks, trace, GP replay, holdout checks, packaging and summaries reproduce
+the experiments. The controlled bundle is `/tmp/cubic-residue-cache-pKZLGj/`
+on `opt`; its historical `event` name denotes this cache candidate and
+`parent` denotes index-event. Raw timing hashes are
+`38edbcfc07e68aed70c31fc0115d3d259aba43e80322e4012e34f60851bec7f5`
+(full), `455252a28a34119f4a82ac8649dd577729b934d147502adfbc0df4e4e3f1d9a9`
+(paired), and `b17dd409c9a420b77bab3b757229385cdbcd6d890218f12b2016afb88ccc614e`
+(holdout). These are private-entry measurements, not public API timings.
+
+This remains unpromoted. Architecture checking still stops at the known
+stale optimizer inventory. Source consolidation, full public receipts/replay
+and platform qualification remain necessary; PR203 stays draft. Five focused
+analytic-schedule tests, the cache-transition check, direct documentation
+checking, diff checking and parallel-contract checking pass. These checks
+do not substitute for the missing release qualification. The next
+remaining repeated work is unit certification: retain authenticated unit
+evidence without preventing discovery/saturation of a better unit when the
+joint index remains insufficient. Single-closure cases need a separate
+optimization; caching cannot remove their first computation.
+
+The same trace contains 56 saturation calls after a field's first. Thirty-two
+repeat the unit-coordinate, regulator and auxiliary-log result prefix exactly;
+24 differ. A difference may be presentation rather than a better unit, so
+these are not 24 proved unit improvements. This distinction must be resolved
+before caching units: unlike the field residue, the available unit evidence
+can legitimately change as relations arrive.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused

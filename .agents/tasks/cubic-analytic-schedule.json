@@ -265,6 +265,46 @@
       "commit": "b36f4093d1c54f0db99003afacaa3e5cf154f6d4",
       "workspace_fingerprint": "452f94182db7fb4d7c52aecb0db7e9cae4212494f030646962a81f89852bb7d7",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-residue-cache-C7Kcw3/check-cache.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.224,
+      "started_at": "2026-09-09T17:51:13.545Z",
+      "commit": "d271a7f5edf63499fda428272e84faedb2a8bdc9",
+      "workspace_fingerprint": "5f1bd235f70c74c12fa92076606b8dd9ea98b2263d59dbc9669b8530c606e6e9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.688,
+      "started_at": "2026-09-09T17:55:00.851Z",
+      "commit": "d271a7f5edf63499fda428272e84faedb2a8bdc9",
+      "workspace_fingerprint": "b047fa776f5e3fd2cbfb469556dc193b7640873796e8526ba761cb73620ff61e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.005,
+      "started_at": "2026-09-09T17:55:04.173Z",
+      "commit": "d271a7f5edf63499fda428272e84faedb2a8bdc9",
+      "workspace_fingerprint": "b047fa776f5e3fd2cbfb469556dc193b7640873796e8526ba761cb73620ff61e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.052,
+      "started_at": "2026-09-09T17:56:12.112Z",
+      "commit": "d271a7f5edf63499fda428272e84faedb2a8bdc9",
+      "workspace_fingerprint": "c5538d00730497deeef00b068853f4ed08df40df83627d7c5b8f5ddd980caace",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
