@@ -5,6 +5,14 @@ claimed. This separates a small production refactoring from a larger isolated
 experiment. The [preceding experiment](cubic-resumable-shell-experiment.md)
 contains the initial paired timings and frozen-corpus evidence.
 
+Implementation/diagnostic commit: `91df1656b1299d400eaa1cd10d7a6170b3fe4e24`.
+[Immutable evidence archive](https://github.com/sagemathinc/sagejs/releases/tag/cubic-recovery-conditioning-20260909):
+`cubic-recovery-conditioning-20260909.tar.gz`, SHA-256
+`842bc82736660b47caf6a86f02873d91bdeee3c3d39fa18dca83acc0b9c9c220`.
+The inventory authenticates 120 files: raw surveys and replay, generated cores,
+source variants, portable timing artifacts, drivers, and validation logs.
+The archive is research evidence, not a Sage.js product release.
+
 ## Integrated root reuse
 
 `_cubic_relation_prefix_has_archimedean_unit` now calls the existing
