@@ -17,7 +17,7 @@ function main(){
     workloads=raw.toString().trim().split('\n').map(JSON.parse).map(r=>({label:r.label,coefficients:r.coefficients,h:r.class_number,invariants:[...r.class_group].sort()}));
   }
   const manifest=JSON.parse(fs.readFileSync(manifestPath));
-  assert.ok(['sagejs.diagnostic/twelve-ideal-ablation-build-v1','sagejs.diagnostic/cubic-radius-ablation-v1','sagejs.diagnostic/cubic-content-ablation-v1','sagejs.diagnostic/cubic-centered-ablation-v1','sagejs.diagnostic/cubic-expansion-ablation-v1','sagejs.diagnostic/cubic-recovery-log-ablation-v1','sagejs.diagnostic/cubic-unreduced-recovery-ablation-v1','sagejs.diagnostic/cubic-torsion-probe-ablation-v1','sagejs.diagnostic/cubic-recovery-sharing-ablation-v1','sagejs.diagnostic/cubic-search-workspace-ablation-v1'].includes(manifest.schema));
+  assert.ok(['sagejs.diagnostic/twelve-ideal-ablation-build-v1','sagejs.diagnostic/cubic-radius-ablation-v1','sagejs.diagnostic/cubic-content-ablation-v1','sagejs.diagnostic/cubic-centered-ablation-v1','sagejs.diagnostic/cubic-expansion-ablation-v1','sagejs.diagnostic/cubic-recovery-log-ablation-v1','sagejs.diagnostic/cubic-unreduced-recovery-ablation-v1','sagejs.diagnostic/cubic-torsion-probe-ablation-v1','sagejs.diagnostic/cubic-recovery-sharing-ablation-v1','sagejs.diagnostic/cubic-search-workspace-ablation-v1','sagejs.diagnostic/cubic-absolute-value-ablation-v1'].includes(manifest.schema));
   const records=manifest.records.map(record=>{
     assert.equal(crypto.createHash('sha256').update(fs.readFileSync(record.sourcePath)).digest('hex'),record.sourceSha256);
     const module=require(record.modulePath);assert.equal(module.nativeAvailable,true);

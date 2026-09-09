@@ -2,6 +2,29 @@
 
 Status: active; no new PARI win claimed.
 
+## Formatted candidate fits source allowance, 2026-09-09
+
+The [absolute-value experiment](../docs/cubic-absolute-value-experiment.md)
+replaces 24 exact sign-normalization branches and folds redundant coordinate
+copies using existing Python/native `abs` support. The complete formatted
+scheduler/probe candidate is 438,378 bytes; with its runtime companion, the
+aggregate is 484,997/485,000 bytes. No allowance, arena budget, mathematical
+bound, or documentation was weakened. The unrelated LLL-sharing prototype
+saved only 224 bytes and was not selected.
+
+All 1,012 development observations and output slots agree. Whole-module AST
+checks modulo the integer absolute-value identity, single-evaluation tests,
+and a 595-value JavaScript/GMP/fmpz arena witness pass. Two controlled opt
+timing orders show essentially flat performance with small mixed changes;
+the target is still roughly three times PARI. No public timing, independent
+replay of the candidate, or strict non-regression is claimed.
+
+Next review/integrate the complete formatted candidate and regenerate its
+production evidence, including authenticated public receipts and independent
+exact replay. Existing prototype tests require a pinned baseline strategy at
+integration. Production is unchanged, PR190 stays draft, and no unseen
+holdout fields were executed.
+
 ## Borrowed search-workspace checkpoint, 2026-09-09
 
 The [search-bundle experiment](../docs/cubic-search-workspace-experiment.md)
