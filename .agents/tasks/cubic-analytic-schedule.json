@@ -365,6 +365,16 @@
       "commit": "266ccde28068c9f1f87950e447b6aa60cbe149fa",
       "workspace_fingerprint": "5eb5c450cd514d7b71c76ea8dfb957e61165f6ad0f39f468313892462236df31",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.183,
+      "started_at": "2026-09-09T18:50:53.903Z",
+      "commit": "3b63737af19094a385c81cf6a6f2c8d2eed5367e",
+      "workspace_fingerprint": "407dc171a7338ac65b9da2766b5f2bdedb8ebf8353bffaa1b2b8a2e96cb4ceb5",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
