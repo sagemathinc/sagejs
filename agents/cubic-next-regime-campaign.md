@@ -2,6 +2,32 @@
 
 Status: active; no regime-wide PARI win claimed.
 
+## BF lookup and compiler attribution, 2026-09-09
+
+The [BF lookup experiment](../docs/cubic-bf-lookup-experiment.md) replaces
+linear value-table scans with a first-match header search and binary search
+over the provably sorted tail. Two direct opt comparisons show only
+1.25–1.5% geometric-mean runtime reduction over initial-volume lean across
+the same seventeen development fields. The target is 2.506/2.509 ms versus
+PARI 1.547/1.555 ms: still not a target win. Tiny neighboring-field changes
+are mixed and must not be presented as uniform non-regression.
+
+All 1,012 complete output buffers agree with the preceding candidate;
+fmpz/GMP/JavaScript all agree, with 963 acceptances and zero exceptions.
+The exact planner tests preserve full partial workspaces on capacity failure.
+Production source and allowances remain unchanged; the diagnostic still
+requires consolidation. Full build/docs, architecture, merge inventories,
+and twelve post-build focused tests pass. The broader 575-file CLI suite is
+still running at this checkpoint; PR190 remains draft.
+
+Profiles and generated code suggest bounded unsigned workspace indexing as
+the next experiment. Local typed aliases already select unsigned lowering;
+annotated module constants are currently unsupported. Separately, the module
+constant folder incorrectly uses truncating division/remainder for signed
+Python constants. A minimal reproducer was posted to Discussion104 for the
+compiler lane; no shared compiler files were edited. Preserve range and
+Python arithmetic semantics before widening this optimization.
+
 ## Initial volume visits, 2026-09-09
 
 The [initial-volume experiment](../docs/cubic-initial-volume-experiment.md)
