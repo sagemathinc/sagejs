@@ -1485,6 +1485,93 @@ plan, while a broader phase profile must establish where the first successful
 closure spends its time. Improvements limited to 44 reported-hit fields cannot
 by themselves establish competitiveness over the complete corpus.
 
+## First-evaluation phase profile and redundant primality work
+
+The next local diagnostic instruments the authenticated checkpoint-plus-guard
+core, first at coarse phase boundaries and then at direct root/helper calls.
+The original Python/core hashes remain
+`bd254ba726b182add49ccbf4836c420f4f6cefd38aae6963c911cda410b2577b` /
+`d80e81b82053f5cc59159581f6a3ff7ae31564f25a699f073f22910ce1c55e0f`.
+Separate `DIAGNOSTIC-ONLY.json` manifests identify the modified cores; their
+inherited build cache keys are not identities for the instrumented artifacts.
+Nested `CLOCK_MONOTONIC_RAW` wrappers account for inclusive and exclusive time.
+Every run checks 1,100 accepted full 64-word outputs against the uninstrumented
+parent, whose result is also checked on GMP and JavaScript. The summaries
+subtract the first 100 warmup calls. Exclusive categories sum to the measured
+root duration. These are single-threaded **local instrumented profiles**, not
+controlled `opt` timings or speed claims; wrapper overhead is included.
+
+Seven coarse profiles show that the first BF preparation/evaluation is important
+but not the whole gap: about 31% of instrumented root time for `3.1.283.1`,
+versus 17% for `3.1.23567.1`. Direct-root profiling then attributes much of the
+previously unassigned time to mathematical helpers, rather than establishing
+an allocation bottleneck. The early small-unit probe is not called on these
+effort-5 bounded searches. It therefore cannot explain their cost.
+
+Further direct-callee instrumentation gives:
+
+| Field | Instrumented root | Word primality check | Exact maximal-order fixed-point replay | Real-root isolation, all calls |
+| --- | ---: | ---: | ---: | ---: |
+| `3.1.283.1` | 1.200 ms | 0.218 ms / 1 call | 0.021 ms | 0.059 ms / 4 calls |
+| `3.1.23567.1` | 2.353 ms | 0.005 ms / 2 calls | 0.042 ms | 0.117 ms / 6 calls |
+| $x^3+9x-55$ | 1.733 ms | 0.005 ms / 3 calls | 0.051 ms | 0.070 ms / 4 calls |
+
+For `3.1.23567.1`, eight generator-bound tests take 0.099 ms inclusive;
+34 real-log evaluations from known root intervals take 0.114 ms. The profile
+does not support a single remaining dominant analytic bottleneck. It does
+identify a particularly avoidable cost for the smallest field: proving the
+discriminant factor 283 prime invokes all seven deterministic Miller–Rabin
+bases after trial divisions that have already established primality.
+
+The general proposed correction is to return true in the existing ascending
+small-prime loop when `small * small > number`, after the existing domain
+and equality checks. All smaller primes have already been excluded. If the
+number were composite, its least prime divisor would be at most its square
+root, contradicting those exclusions. The comparison must be strict: at
+equality a prime square must reach the divisibility test. Larger inputs retain
+the existing seven-base test and unsigned-64-bit domain guard. This is a
+deterministic proof, not a new probable-prime assumption or a field-specific
+answer shortcut.
+
+The source-copy ablation embeds the actual shared checker in the cubic module;
+a separate relocation-only control embeds it without changing its body.
+The candidate source hash is
+`0afb13d5fc8ff32d3484cbf64f042318d9f75e3a32aa8e91b34138ef7cdc0c6f`,
+and the control hash is
+`61c36e3946b2b8f40d37c01029e9c38fdad4f97ea13324b71582cbc5dcdcaea5`.
+AST comparison verifies that every pre-existing cubic function, constant, and
+workspace remains unchanged. Extracted actual Python bodies agree with an
+independent sieve on all 100,011 integers from -10 through 100,000; ten larger
+boundary/pseudoprime cases preserve the original result. A call-count check
+verifies zero Miller–Rabin calls for 283 and all seven for 2213. The original
+shared module and production cubic source have not been edited.
+
+Both candidate and relocation-only control retain 981/1012 first-effort
+successes, with no errors and all 64 output words identical to the checkpoint
+parent on every field, including declines. The candidate additionally passes
+all 1012 full-output comparisons on GMP and JavaScript. Direct calls to the
+compiled exported primality helper agree with the independent sieve on all
+100,011 inputs on each of FLINT, GMP, and JavaScript, and reject six large
+domain-boundary/composite cases on each backend. Explicit nontrivial factors
+are checked for the three pseudoprime examples. This differential evidence
+does not constitute Lean verification or independent replay of the complete
+class-group certificates.
+
+The first controlled timing attempt lost its SSH connection when `opt`
+restarted. A subsequent read-only check found uptime below one minute, no
+benchmark process, and no temporary benchmark directory. That attempt supplies
+no timing evidence; it is not combined with a replacement run.
+The replacement bundle is in `/tmp/cubic-prime-trial-timing-5v2Z9N` on `opt`,
+but the subsequent execution connection also timed out before startup could
+be confirmed. Recheck that exact directory and process before launching
+another attempt. No performance improvement is claimed for this ablation yet.
+
+Scripts, manifests, raw clock logs, and source copies are retained under
+`build/cubic-analytic-schedule-evidence/hybrid-prefix/`, including
+`build-coarse-profile.cjs`, `run-coarse-profile.cjs`,
+`summarize-coarse-profile.cjs`, `run-coarse-profiles.cjs`,
+`prepare-prime-trial.cjs`, and `check-prime-trial.py`.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
