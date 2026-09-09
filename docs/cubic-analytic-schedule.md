@@ -3900,6 +3900,162 @@ evidence. Existing source allowance and physical resource limits are unchanged.
 The candidate remains unpromoted on draft PR203, with consolidation, public
 replay, architecture-inventory reconciliation and platform qualification open.
 
+## Gcd-only arithmetic: remove unused Bezout work
+
+The next ablation replaces `_cubic_extended_gcd` with a nonnegative Euclidean
+gcd at all six call sites in the contribution-cache source copy. They occur
+in maximal-order fixed-point validation, rational-content removal and
+primitive ellipsoid-point authentication. Actual AST inspection checks that
+neither returned Bezout coefficient is ever read by any of those callers.
+The remaining functions are structurally identical. The production source
+currently has four such calls; its transformation is separately exercised by
+the focused test but is not installed as the production implementation.
+
+The mathematical argument is elementary and independent of GRH. Normalize
+the inputs to $a=|\mathtt{left}|$, $b=|\mathtt{right}|$. For $b>0$,
+$\gcd(a,b)=\gcd(b,a\bmod b)$, and $0\le a\bmod b<b$ proves termination.
+The terminal $a$ is nonnegative, with the same $\gcd(0,0)=0$ convention as
+the old routine. Every caller consumes only that gcd. This changes no ideal,
+relation, unit, analytic bound, stopping rule or acceptance condition.
+
+The tracked reproducer
+`bench/class-unit-groups/cubic-gcd-only.py` authenticates its source hash,
+rejects calls that read a Bezout coefficient or use unsupported assignment
+shapes, and creates a new output file exclusively when requested. It includes
+79,649 comparisons of the actual old and new Python bodies against
+`math.gcd`: signed small integers, zeros, shared factors, consecutive Fibonacci
+numbers and random multi-limb inputs through 4,096 input bits (including
+larger products). Four deliberately unsafe transformations are rejected.
+Reproducing the measured candidate without changing the production source:
+
+```sh
+python3 bench/class-unit-groups/cubic-gcd-only.py \
+  /scratch/sagejs-runtime/cubic-bound-contribution-cache-YZcmlz/bound-cache.py \
+  --expected-sha256 52c39cbada600b83258a108b439806312753bcf0868e04d446db3a6e12c29345
+```
+
+An optional `--output` path creates the source copy; an existing destination
+is refused. The reproducer's output hash matches the compiled experiment.
+This is a scalar arithmetic/source-transformation test, not a substitute for
+full-kernel differential execution or certificate replay.
+
+An additional closed-arena primitive witness extracts the actual candidate
+helper without rewriting its body. It passes 8,817 `math.gcd`-oracle cases
+on each of compiled FLINT, compiled GMP and generated JavaScript, including
+negative/zero arguments, boundaries around powers of two and random inputs
+through 4,096 bits. This supplies native promotion/sign coverage beyond the
+small inputs seen in the class-group corpus. Its source, generated core and
+input corpus identities are retained in `primitive-checks.json`.
+
+All 1,012 first-effort outputs retain all 64 words across the parent,
+candidate, FLINT, GMP, generated JavaScript and timing linkage: 982 successes,
+the same 30 declines, no errors. The reused 24-field panel likewise retains
+identical outputs. Independent certified-GP principal-prefix and published-unit
+replay passes the three controls 30772, 41912 and 908491. Every captured
+closure, saturation, BF and root-search event agrees exactly with the parent.
+
+A read-only generated-JavaScript trace authenticates the ordered inputs and
+gcd result of all 1,088,272 calls across the corpus. Of these, 804,354 return
+one and 5,221 return zero. Every observed input is nonnegative and smaller
+than $2^{63}$; this workload is not a benchmark of large-integer gcd.
+Field 908491 makes 1,347 calls, of which 1,025 are coprime. Thus the measured
+gain removes unused exact arithmetic and tuple-return work, not mathematical
+search or large-integer asymptotic cost. The ordinary Python helper remains
+unbounded; observed small inputs are not a new validity restriction.
+
+Controlled `opt` timings, with matched one-page FLINT linkage, are:
+
+| Workload | Contribution-cache parent ms | Gcd-only ms | PARI ms |
+| --- | ---: | ---: | ---: |
+| 908491 | 2.583 | 2.468 | 1.375 |
+| Original 9399 target | 1.282 | 1.289 | 1.125 |
+| 30772 | 2.150 | 2.068 | 1.250 |
+| Retrying 944919 | 20.877 | 20.500 | 2.000 |
+| Full 1,012-field sum | 3592.528 | 3512.296 | 1458.375 |
+| Reused 24-field sum | 40.155 | 39.651 | 27.875 |
+
+The separate 21-round alternating ABBA/BAAB comparison resolves a target
+908491 median ratio of 0.97081, with empirical p10/p90 0.96260/0.98174.
+The 3209035 ratio is 0.98689, with p90 only just below one at 0.99959;
+the other eleven panel ranges include one. These quantiles are not confidence
+intervals. Do not advertise the noisier full-run target difference as a
+4.45% paired win, or attribute every aggregate difference to this change.
+The full-run aggregate difference is 2.23%; the corpus still takes about
+2.41 times PARI. Both variants retry 30 fields and every final timing sample
+completes. No broad competitiveness or universal no-regression claim follows.
+
+This experiment also sharpens the next priority. In the preceding cache run,
+the 30 retrying fields cost 651.729 ms versus PARI's 58.125 ms, accounting
+for about 27% of the total excess time despite being only 3% of the corpus.
+The new gcd helper does not change any retry. Field 944919, already known by
+independent replay to lack a nontorsion unit in its early attempts, still
+costs about ten times PARI. The existing volume/staging dispatch has several
+16-factor upper guards, while this field uses 20 factors. Reconstructing and
+qualifying that larger resident search regime is a higher-leverage next step
+than assuming more scalar cleanup alone will close the gap. Separately, the
+million word-sized gcd calls motivate a generic compiler/runtime primitive
+investigation, not coefficient-specific dispatch or a word-only algorithm.
+
+Read-only dispatch inspection makes that next experiment precise: above 16
+factors, effort five disables `use_pari_permutation` as well as
+`staged_certification`, and requests $n+22$ relations instead of the staged
+$n+6$. It also loses the retained volume-recovery path. For the 20-factor
+field, PARI's recorded initial target is 26, exactly $n+6$. These coupled
+policy differences should be separated by ablation, not treated as a mere
+buffer-size increase. An ordering-only extension and then staged volume
+recovery require their own shape/resource checks and out-of-sample replay;
+neither extension is implemented or qualified by this gcd experiment.
+
+The frozen corpus partition makes this more than a single-field observation:
+
+| First-effort factor-base size | Fields | Retrying fields | Gcd-only total ms | PARI total ms |
+| --- | ---: | ---: | ---: | ---: |
+| At most 16 | 797 | 0 | 1722.329 | 1079.000 |
+| 17 through 24 | 203 | 25 | 1581.222 | 354.500 |
+| Above 24 | 12 | 5 | 208.744 | 24.875 |
+
+All 30 first-effort declines are beyond the existing 16-factor dispatch
+boundary. The 203-field intermediate cohort alone accounts for about 60% of
+the total excess time. `frontier-cohorts.json` records every cohort member,
+failure phase/reason and source/timing identity. Its extractor distinguishes
+canonical successful factor counts from the retained failed-presentation
+diagnostic slot. This is evidence for where to investigate, not proof that
+widening the guard is correct or will produce a speedup.
+
+The failure phases also distinguish missing mathematics from interval width:
+20 declines reach the analytic test with a strictly positive lower logarithm
+of the joint relation/unit index. Under the stated hypotheses their index is
+therefore greater than one; a tighter enclosure of that same evidence cannot
+certify index one. Six failures have insufficient relation rank, three have
+no authenticated dependency-unit witness, and one exhausts the exact-product
+exponent budget. Absence of a unit witness is not itself a proof that all
+kernel units are torsion. Likewise, at analytic phase eight the retained
+435/436 diagnostic codes describe the preceding materialization route, not a
+failed reconstruction. Independent prefix replay remains necessary to
+separate missing class relations from an incomplete unit subgroup.
+
+Evidence is retained in
+`build/cubic-analytic-schedule-evidence/gcd-only/` and
+`/scratch/sagejs-runtime/cubic-gcd-only-NNIReO`. `prepare.py`,
+`check-gcd.py`, `trace-gcd.cjs`, `gcd-trace.json`, the build manifests,
+paired/full timings and replay programs identify the exact experiment.
+The source shrinks 840 bytes to 503,719, SHA-256
+`81a28cf7f14e114a27bce57cd63cf67671c57e1007459fd8fb5b9b94fd3be785`.
+Normalized generated C shrinks 49,646 bytes to 13,044,888; raw core SHA-256
+is `9cfd8b750d580a18988ffc9000bfdb5bd1cba748922ee9b0957c3d7eff88680e`.
+Compilation took 49.73 seconds. No production source allowance, arena limit,
+dependency policy or mathematical bound is raised. This remains an
+unpromoted source copy on draft PR203, not four-platform release evidence.
+The six focused analytic-schedule tests, formatting, direct documentation and
+task-contract checks pass. The changed-file wrapper passes merge checks, all
+192 unit-test files, and documentation checking after an 8m36s fresh build.
+A separate documentation invocation overlapped that rebuild and failed on
+the intermediate compiler interface; its failed receipt is retained, not
+counted as validation. Final documentation checking is serial. The serial
+architecture rerun again stops at the
+already recorded stale optimizer inventory; it is not reported as a pass and
+the manifest is not refreshed to hide that failure.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused

@@ -12,6 +12,23 @@ def certificate(x):
     return x < 2
 `;
 
+test("gcd-only source ablation rejects used coefficients and preserves scalar arithmetic", () => {
+  const run = spawnSync(pythonExecutable(), ["-c", `
+import importlib.util
+from pathlib import Path
+spec = importlib.util.spec_from_file_location("audit", "bench/class-unit-groups/cubic-gcd-only.py")
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+source = Path("src/lib/sagejs/number_fields/cubic_class_number_native.py").read_text()
+candidate, calls = m.transform(source)
+assert calls == 4
+assert len(candidate.encode()) < len(source.encode())
+assert m.check_arithmetic(source, candidate) == 79649
+assert m.check_rejections() == 4
+`], { cwd: require("node:path").resolve(__dirname, ".."), encoding: "utf8" });
+  assert.equal(run.status, 0, run.stderr);
+});
+
 test("cutoff copies change one declaration and remain CPython-parseable", () => {
   for (const cutoff of [72, 513, 765, 999, 1485]) {
     const changed = atCutoff(source, cutoff);
