@@ -45,9 +45,26 @@ static uint64_t seed = UINT64_C(0x7193);
 static uint64_t random_word(void) {
     seed ^= seed << 13; seed ^= seed >> 7; seed ^= seed << 17; return seed;
 }
+static void check_size_class(size_t raw) {
+    size_t span = 1;
+    unsigned bin = 0;
+    while (span < raw && span <= SIZE_MAX / 2) { span *= 2; bin++; }
+    if (span < raw) span = SIZE_MAX;
+    assert(sagejs_native_gmp_reuse_span(raw) == span);
+    if (span != SIZE_MAX) assert(sagejs_native_gmp_reuse_bin(span) == bin);
+}
 int main(void) {
     assert(sagejs_native_gmp_allocator_install());
-    assert(sagejs_native_gmp_reuse_span(SIZE_MAX) == SIZE_MAX);
+    // Independent slow reference covers every small request and both sides
+    // of every representable power-of-two boundary, including overflow.
+    for(size_t raw=0;raw<65536;raw++)check_size_class(raw);
+    for(unsigned bit=0;bit<sizeof(size_t)*8;bit++) {
+        const size_t power=((size_t)1)<<bit;
+        check_size_class(power-1);check_size_class(power);check_size_class(power+1);
+    }
+    check_size_class(SIZE_MAX);
+    for(unsigned i=0;i<100000;i++)check_size_class((size_t)random_word());
+    seed = UINT64_C(0x7193);
     sagejs_native_gmp_checkpoint arena = {0};
     assert(sagejs_native_gmp_checkpoint_begin(&arena, 3 * 1024 * 1024));
     unsigned char *first = sagejs_native_gmp_malloc(8192);

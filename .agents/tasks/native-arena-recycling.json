@@ -15,7 +15,9 @@
     "docs/native-arena-recycling.md"
   ],
   "dependencies": [],
-  "references": [],
+  "references": [
+    "https://github.com/sagemathinc/sagejs/pull/204"
+  ],
   "architecture": {
     "strategy": "compiler-infrastructure",
     "fallback": "same-source",
@@ -66,6 +68,16 @@
       "commit": "07e61837cdbd4f967f537a1762369d59e35d4cc5",
       "workspace_fingerprint": "b6540064cca0db8e086d9047bca9d9bed8a76871c247ee2d035f81c2470bf845",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/gmp-checkpoint-recycling.cjs test/native-gmp-checkpoint-allocator.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.737,
+      "started_at": "2026-09-09T12:04:19.594Z",
+      "commit": "5be9662999d6c31d82d3f71536f4d53edea24e34",
+      "workspace_fingerprint": "14e7940e17bfd16f7289d2aa926d2e0a1d939c1dda613cb2ff23f5e6594f70e8",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -78,7 +90,8 @@
     ],
     "next_steps": [
       "Controlled1010-field comparison and14-field longer repeat are complete, preserving identical mathematical source/outputs and excluding two old memory exceptions explicitly. Resolve small-field overhead, add non-cubic workloads, and repeat before promotion.",
-      "Review broad test:changed result and independent public replay; do not promote a draft based only on narrow sanitizer/corpus agreement.",
+      "Broad test:changed is terminal failed: all8 build stages and architecture pass,143 unit files pass before modular-qexp-source-freeze rejects the package-graph hash;34 files unstarted. Failure reproduced on unchanged parent. Follow-up lifecycle suite10 passes plus known91-versus59 stale child-count failure. No broad qualification claim.",
+      "Fixed-shift size-class experiment was reverted after canonical correctness checks but no measured performance benefit in a direct14-field three-way comparison. Keep new exhaustive-small/boundary/random size-class oracle tests and preserved rejected-source evidence; optimize from measured profiles rather than loop counts.",
       "Coordinate integration of the normative reusable-pool allocation contract and cross-platform resource evidence before release."
     ]
   }

@@ -121,6 +121,24 @@ fourteen-factor field improves 1.09%. This selected diagnostic is not a holdout
 or a broad performance guarantee. Size-class calculation and free-list cost
 remain optimization targets before claiming no speed loss.
 
+### Rejected fixed-shift size-class experiment
+
+A follow-up replaced the span-rounding and bin-index loops with fixed unsigned
+shifts and a binary search. The canonical generated core outside the allocator
+was byte-identical to the first recycling build. The 1,012-field survey and
+256-field three-backend output comparisons still passed. The experimental
+core hash is `e825d231d5a476584c83ceca0783e4612c265013421e885fa2a6d446853424cd`.
+
+It did not improve the same 14-field panel. A direct three-way run, with nine
+rotated rounds and 32 calls per sample, measured sums of per-field medians
+40.089 ms for the original bump allocator, 40.526 ms for recycling with loops,
+and 40.650 ms for fixed-shift recycling. This is a selected diagnostic, not a
+universal ordering or statistical significance claim. There is no measured
+benefit justifying the replacement, so it was reverted. The independent slow
+reference tests remain: all requests below 65,536, both sides of every
+power-of-two boundary, overflow, and 100,000 random machine-word requests.
+The rejected source and measurements remain in the local evidence bundle.
+
 The new sanitizer witness exercises ten thousand same-size recycle operations,
 twenty thousand mixed allocate/reallocate/free operations with content checks,
 ten thousand GMP powers, allocator nesting, suspended allocation, sticky
@@ -134,6 +152,15 @@ the unchanged parent branch. The other is a missing local FLINT host addon;
 after provisioning the matching parent addon, its exact-fallback comparison
 passes. Neither issue is concealed by altering the tests. The early-checkpoint
 ASan lifecycle witness and nested-arena rejection cases pass.
+
+The fresh broad `test:changed` run completed all eight build stages and the
+architecture gate, then failed in the unit tier: 143 files passed before
+`test/modular-qexp-source-freeze.cjs` detected a package-graph hash mismatch;
+34 files were not started and active siblings were cancelled. The same frozen
+hash failure reproduces on the unchanged parent branch. This is a terminal
+failed run, not a still-running test or a passing broad qualification.
+The follow-up early-checkpoint/nested-arena run has ten passing tests and the
+known 91-versus-59 child-count failure, also reproduced on the parent.
 
 Still required before promotion:
 
