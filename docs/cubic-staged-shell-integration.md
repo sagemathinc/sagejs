@@ -130,10 +130,100 @@ unchanged. The dashboard is source-analysis evidence, not a correctness or
 timing certificate. Its tag anchors the preceding research commit; the
 manifest binds the integrated input source bundle explicitly.
 
-The 1,000-field authenticated public receipt and independent exact replay is
-running in `build/cubic-next-evidence/staged-shell-public-replay` after full
-cache preparation. No completed-corpus claim is made yet. The inherited
-parallel metadata gate still fails; it is not evidence of running agents.
+The 1,000-field authenticated public receipt and independent exact replay
+completed successfully after full cache preparation. All 1,000 distinct tune
+fields agree with the frozen corpus in class number, invariants, and field
+discriminant; every receipt authenticates and passes the ordinary-object exact
+replay that bypasses closed-native proof authority. A separate saved-report
+audit also checks every receipt digest, polynomial binding, invariant product,
+and equality of the four batch payloads with the final report.
+
+The report is
+`build/cubic-next-evidence/staged-shell-public-replay/report.json`, 3,922,076
+bytes, SHA-256
+`327d530141ea8c5a7a21abd9b886583a300f6035b8ae49d895359a108c0114cf`.
+The runtime fingerprint remained unchanged before and after every batch:
+`75c34dfe5452a55df08eac568b20b1abd2616f61009c5d6789c00d261016aae8`.
+The production index SHA-256 is
+`4c24f6034eb9e028c762a45c0e39faee6a96e441377d563d46cb0ab1da6649ab`.
+The run started before the integration commit: its identity truthfully records
+parent `4dfecba5579c5a234db0b60ad4a766cc29ad9738` plus tracked-diff SHA-256
+`60888995a7f83d3417fc7018184e6503fa80d36d3971d70d2046bb3be021cf4d`.
+The mathematical source hash is the integrated hash above; this is not
+relabeled as a clean-commit or hermetic-launch receipt.
+
+The [public evidence archive](https://github.com/sagemathinc/sagejs/releases/tag/cubic-staged-shell-public-replay-20260909)
+preserves 44 hash-inventoried files, including all raw batches, report, corpus,
+source, generated core, resource inventory, drivers, and validation logs.
+Archive `cubic-staged-shell-public-replay-20260909.tar.gz` is 6,135,411 bytes,
+SHA-256 `2c839344e15edb43705e8034f4217c5a8471efaced93f89e82b9d962fe6d2753`.
+The archive inventory was checked against every archived file. This is a
+non-latest research prerelease, not a Sage.js product release.
+
+There are 949 effort-5 successes, 32 effort-1 successes, and 19 effort-7
+successes. Effort labels describe the existing retry order **5, 1, 7, 8**,
+not increasing amounts of work. Exactly four fields move from a host retry to
+the initial effort-5 computation relative to the preceding public replay:
+
+| LMFDB label | Previous successful effort | Integrated successful effort |
+| --- | ---: | ---: |
+| 3.1.384587.1 | 1 | 5 |
+| 3.1.761319.2 | 7 | 5 |
+| 3.1.1063351.3 | 1 | 5 |
+| 3.1.3276404.1 | 1 | 5 |
+
+Of these 1,000 receipts, 200 use the trivial-presentation proof and its explicit
+class-group-character GRH assumption; 800 use the nontrivial exact-relations
+proof with the additional stated zeta-function GRH assumptions. None is an
+unconditional or Lean-checked class-group claim. These are the development
+tune fields, not the reserved unseen neighbors. Local inherited-environment
+correctness replay is not controlled timing on `opt` or a promotion receipt.
+
+The broader compiler suite also completes with zero failures: 21 tests pass
+and 28 are skipped by existing stage-zero/in-file fixture markers. This does
+not convert those skipped fixtures into qualification.
+
+The first full unit-tier run stopped at a stale reconstructed-regulator fault
+fixture after 52 files passed. It still mocked the old one-shot reconstruction
+helper, whereas the actual proof suffix already calls the two-stage
+`_cubic_reconstruct_archimedean_unit_at_scale` helper. The production helper
+already had this form before the combined integration. The fixture now
+executes the unchanged current suffix and helper bodies, checking both proposal
+scales, unchanged authentication precision, five first-proposal successes,
+seven double-rejection cases, seven successful refinements, and one subsequent
+analytic failure. Rejected cheap proposals use distinct coordinates so stale
+coordinate publication cannot accidentally pass. The focused regression passes.
+The full unit rerun passes 158 files, including the repaired fixture, then
+stops at the inherited modular q-expansion source-freeze mismatch. Its only
+mismatching file is `architecture/package-graph.json`, whose current bytes are
+identical to HEAD; the unrelated modular freeze still records its older hash.
+That manifest was not refreshed. Checking the 21 remaining/cancelled unit files
+separately yields 55 passing tests, three skips, and one failure in the Wasm
+production inventory. That failure reproduces when its file runs alone; the
+[parser-lifetime diagnostic](cubic-parser-lifetime-diagnostic.md) separates
+repeated grammar loading from unreleased syntax trees. No full-unit success
+is claimed.
+This is a test repair, not a mathematical
+source or runtime change. The initial failure log is `integration-unit.log`;
+the rerun log is `integration-unit-after-guard.log`.
+
+The wider cubic native/public run passes eleven tests but also finds a stale
+materializer extraction test. Its helper boundary assumed the next declaration
+was the root entry point and its comparison assumed one-shot reconstruction.
+The repair extracts only the intended helper, retains the historical exact
+product-tail AST comparison modulo explicit fatal guards and the exact `abs`
+identity, and checks the actual two-stage proposal separately. The actual
+materializer passes 15 cases with three reused steps each across dynamic,
+GMP, and fmpz; the original full-body equivalence claim is not applicable to
+the deliberately changed two-stage proposal. The fresh combined native/public
+run passes all 14 tests without skips, including independent receipt replay,
+the pinned nontrivial LMFDB corpus, large-regulator units, actual analytic
+saturation, native materialization, retry classifications, and proof-support
+checkpoint exhaustion under sanitizers. Its log is
+`integration-public-native-current.log`; source and runtime remain unchanged.
+
+The inherited parallel
+metadata gate still fails; it is not evidence of running agents.
 The full changed-test plan also includes broad compiler, Wasm, integration,
 unit, and CLI gates not covered by the focused 42-test run.
 

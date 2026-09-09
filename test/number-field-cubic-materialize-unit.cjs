@@ -35,24 +35,24 @@ function expandedFixture() {
   const name = "_cubic_materialize_dependency_unit";
   const start = source.indexOf("def " + name + "(");
   assert(start >= 0, "production source must contain the extracted materializer");
-  const end = source.indexOf("\n\n@native\n", start);
-  assert(end > start);
-  const helper = source.slice(start, end);
-  const reconstructionStart = source.indexOf("def _cubic_reconstruct_archimedean_unit(");
+  const next = /\n(?:def |class |@native\b)/.exec(source.slice(start + 1));
+  assert(next, "materializer must have a following top-level declaration");
+  const helper = source.slice(start, start + 1 + next.index);
+  const reconstructionStart = source.indexOf("def _cubic_reconstruct_archimedean_unit_at_scale(");
   const signatureEnd = source.indexOf(") -> tuple[int, int, int, int]:", reconstructionStart);
   assert(signatureEnd > reconstructionStart);
   const unavailable = source.slice(reconstructionStart,
     signatureEnd + ") -> tuple[int, int, int, int]:".length)
-    .replace("def _cubic_reconstruct_archimedean_unit(", "def _materialize_reconstruction_unavailable(") +
+    .replace("def _cubic_reconstruct_archimedean_unit_at_scale(", "def _materialize_reconstruction_unavailable(") +
     "\n    return (0, 0, 0, 0)\n";
-  assert.equal(helper.split("_cubic_reconstruct_archimedean_unit(").length, 2);
+  assert.equal(helper.split("_cubic_reconstruct_archimedean_unit_at_scale(").length, 2);
   const forcedProduct = helper.replace("def " + name + "(", "def _materialize_product_only(")
-    .replace("_cubic_reconstruct_archimedean_unit(", "_materialize_reconstruction_unavailable(");
+    .replace("_cubic_reconstruct_archimedean_unit_at_scale(", "_materialize_reconstruction_unavailable(");
   return source + "\n" + unavailable + "\n" + forcedProduct + "\n" +
     readFileSync(fixturePath, "utf8").replace(/^from sagejs\.(?:ffi\.flint|native) import .*\n/gm, "");
 }
 
-test("unit materialization extraction preserves arithmetic modulo explicit fatal guards", (t) => {
+test("unit materialization fallback preserves reviewed arithmetic modulo fatal guards and abs", (t) => {
   const command = pythonCommand();
   if (!command) return t.skip("CPython is needed for AST review and Decimal oracle");
   const [exe, ...args] = command;
@@ -74,6 +74,7 @@ assert [ast.unparse(v) for v in helper.body[-1].value.elts] == [
     "True", "proof_unit_zero", "proof_unit_one", "proof_unit_two",
     "proof_regulator_lower", "proof_regulator_upper"]
 class Normalize(ast.NodeTransformer):
+    absolute_values = 0
     def visit_Return(self, node):
         if isinstance(node.value, ast.Tuple):
             assert [ast.literal_eval(v) for v in node.value.elts] == [False,0,0,0,0,0]
@@ -85,6 +86,15 @@ class Normalize(ast.NodeTransformer):
             return ast.Assign(targets=[node.target], value=node.value)
         return node
     def visit_Assign(self, node):
+        if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and node.value.func.id == "abs":
+            assert len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+            assert len(node.value.args) == 1 and not node.value.keywords
+            name = node.targets[0].id
+            assert name in ("dependency_exponent", "absolute_exponent")
+            self.absolute_values += 1
+            assigned = ast.Assign(targets=node.targets, value=node.value.args[0])
+            sign = ast.parse(f"if {name} < 0:\n    {name} = -{name}").body[0]
+            return [assigned, sign]
         if isinstance(node.targets[0], ast.Subscript) and ast.unparse(node.targets[0]) == "output[63]":
             assert ast.literal_eval(node.value) == 44
             node.value = ast.Constant(value=43)
@@ -94,7 +104,9 @@ assert isinstance(local_index, ast.AnnAssign)
 assert ast.unparse(local_index.target) == "relation_index"
 assert ast.unparse(local_index.annotation) == "uint64"
 assert ast.literal_eval(local_index.value) == 0
-normalized = Normalize().visit(ast.Module(body=copy.deepcopy(helper.body[3:-1]), type_ignores=[]))
+normalizer = Normalize()
+normalized = normalizer.visit(ast.Module(body=copy.deepcopy(helper.body[3:-1]), type_ignores=[]))
+assert normalizer.absolute_values == 2
 # Pin the reviewed original body without requiring historical objects in a
 # shallow CI checkout. Canonical fields avoid version-specific ast.dump layout.
 def canonical(n):
@@ -106,7 +118,13 @@ def canonical(n):
 def digest(n):
     return hashlib.sha256(json.dumps(canonical(n), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 expected_digest = "e2671c84ef24424f483fb9a518447a285d9a075738043912ab7f62da83bd4358"
-assert digest(normalized) == expected_digest
+# The two-stage proposal is deliberately not equivalent to the old one-shot
+# proposal. The actual precision/publication state machine has its own fault
+# witness; here retain exact AST equivalence for the untouched product tail.
+tail = ast.Module(body=normalized.body[-2:], type_ignores=[])
+assert [ast.unparse(n.test) for n in tail.body] == ["dependency_materialization_active", "regulator_at_dependency_scale"]
+expected_tail_digest = "621407b1687590092033c9f57e2f7e6b79b986a940db49cb5b1bb043f623b29d"
+assert digest(tail) == expected_tail_digest, digest(tail)
 if original.returncode == 0:
     old = ast.parse(original.stdout)
     old_root = next(n for n in old.body if isinstance(n, ast.FunctionDef)
@@ -118,17 +136,18 @@ if original.returncode == 0:
               and n.body[0].targets[0].id == "dependency_scale_quotient"]
     assert len(blocks) == 1
     assert digest(ast.Module(body=blocks[0].body, type_ignores=[])) == expected_digest
+    assert digest(ast.Module(body=blocks[0].body[-2:], type_ignores=[])) == expected_tail_digest
 # Independent high precision scalar oracle, unrelated to Arb or native helpers.
 decimal.getcontext().prec = 110
 a = decimal.Decimal("1.3")
 for _ in range(20):
     a -= (a*a*a-a-1)/(3*a*a-1)
 scaled_log = a.ln() * decimal.Decimal(2)**64
-print(json.dumps({"ast_equivalent_except_guards": True,
+print(json.dumps({"fallback_ast_equivalent_except_guards_and_abs": True,
                  "log_alpha_floor_scale64": str(int(scaled_log))}))
 `;
   const result = JSON.parse(run(exe, [...args, "-c", program, productionPath]));
-  assert.equal(result.ast_equivalent_except_guards, true);
+  assert.equal(result.fallback_ast_equivalent_except_guards_and_abs, true);
   assert.equal(result.log_alpha_floor_scale64, "5187216581171745042");
 });
 
@@ -230,7 +249,7 @@ test("actual dependency unit materialization agrees in dynamic GMP and fmpz", {
   const compiled = await compileKernel({ sourcePath,
     functions: ["materialize_unit_schedule"], cacheRoot: join(temporary, "cache") });
   for (const name of ["_cubic_materialize_dependency_unit", "_cubic_regulator_bounds",
-    "_cubic_reconstruct_archimedean_unit", "_cubic_matrix_power_coordinates",
+    "_cubic_reconstruct_archimedean_unit_at_scale", "_cubic_matrix_power_coordinates",
     "_cubic_matrix_exact_quotient_coordinates", "_cubic_norm_form_value"]) {
     assert(compiled.ir.functions.some((fn) => fn.name === name));
   }

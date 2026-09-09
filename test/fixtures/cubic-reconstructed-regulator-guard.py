@@ -106,8 +106,11 @@ class Arena:
         return Endpoints()
 
 
-def run_case(function, names, bounds, accepted, analytic_ready=True):
+def run_case(
+    function, names, bounds, accepted, analytic_ready=True, initial_bounds=None
+):
     calls = []
+    proposal_scales = []
 
     def result(name, value):
         def stub(*args):
@@ -121,6 +124,29 @@ def run_case(function, names, bounds, accepted, analytic_ready=True):
 
     state = {name: forbidden if name.startswith("_cubic_") else 0 for name in names}
     output = [-991] * 64
+
+    def reconstruct(*args):
+        # A cheap proposal must not leak into public result slots before the
+        # subsequent full-precision regulator authentication accepts it.
+        assert output[0] == -991 and output[25:28] == [-991] * 3
+        calls.append("reconstruct")
+        proposal_scales.append(args[-2])
+        assert args[-1] == 10
+        if initial_bounds is not None and len(proposal_scales) == 1:
+            return (1, 4, 5, 6)
+        return (1, 7, 8, 9)
+
+    def authenticate(*args):
+        calls.append("authenticate")
+        assert args[-2:] == (1, 64), (
+            "authentication precision must not follow proposal precision"
+        )
+        if initial_bounds is not None and len(proposal_scales) == 1:
+            assert args[-5:-2] == (4, 5, 6)
+            return initial_bounds
+        assert args[-5:-2] == (7, 8, 9)
+        return bounds
+
     workspace = [0] * 8000
     workspace[7880] = 3
     state.update(
@@ -155,8 +181,8 @@ def run_case(function, names, bounds, accepted, analytic_ready=True):
         _CUBIC_ANALYTIC_THRESHOLD=997,
         _CUBIC_ANALYTIC_REFINED_THRESHOLD=1494,
         _CUBIC_PROOF_ANALYTIC_GRH=1,
-        _cubic_reconstruct_archimedean_unit=result("reconstruct", (1, 7, 8, 9)),
-        _cubic_regulator_bounds=result("authenticate", bounds),
+        _cubic_reconstruct_archimedean_unit_at_scale=reconstruct,
+        _cubic_regulator_bounds=authenticate,
         _cubic_prepare_bf_plan=result("bf_plan", (analytic_ready, 1, 5)),
         _cubic_evaluate_bf_plan=result("bf_enclosure", (True, 350, 352, 1)),
         _cubic_log_interval_bounds=result("regulator_log", (100, 101)),
@@ -175,16 +201,19 @@ def run_case(function, names, bounds, accepted, analytic_ready=True):
     function.__globals__.update({name: state[name] for name in names})
     actual = function(**{name: state[name] for name in names})
     assert actual is accepted, (bounds, actual, output[25:28], calls)
+    attempts = (
+        2 if initial_bounds is not None or (analytic_ready and not accepted) else 1
+    )
+    assert proposal_scales == [1, 10][:attempts], proposal_scales
+    reconstruction_calls = ["reconstruct", "authenticate"] * attempts
     if not analytic_ready:
         assert output[0] == -991 and output[25:28] == [-991] * 3, output
-        assert calls == ["reconstruct", "authenticate", "bf_plan"], calls
+        assert calls == reconstruction_calls + ["bf_plan"], calls
     elif accepted:
         assert output[25:28] == [7, 8, 9], output
         assert output[40:42] == list(bounds), output
         assert output[35] == 1 and output[44:46] == [-3, 3], output
-        assert calls == [
-            "reconstruct",
-            "authenticate",
+        assert calls == reconstruction_calls + [
             "bf_plan",
             "bf_enclosure",
             "regulator_log",
@@ -194,7 +223,7 @@ def run_case(function, names, bounds, accepted, analytic_ready=True):
     else:
         assert output[59] == 44, output
         assert output[0] == -991 and output[25:28] == [-991] * 3, output
-        assert calls == ["reconstruct", "authenticate"], calls
+        assert calls == reconstruction_calls, calls
 
 
 def main():
@@ -207,12 +236,14 @@ def main():
         run_case(function, names, bounds, True)
     for bounds in invalid:
         run_case(function, names, bounds, False)
+        run_case(function, names, (10, 11), True, initial_bounds=bounds)
     run_case(function, names, (10, 11), False, analytic_ready=False)
     print(
         json.dumps(
             {
                 "accepted": len(valid),
                 "rejected_before_publication": len(invalid),
+                "accepted_after_precision_refinement": len(invalid),
                 "analytic_failure_before_publication": 1,
             }
         )

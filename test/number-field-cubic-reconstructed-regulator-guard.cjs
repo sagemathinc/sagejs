@@ -23,6 +23,7 @@ test("cubic reconstruction authenticates regulator before any publication", (t) 
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.deepEqual(JSON.parse(result.stdout), {
     accepted: 5, rejected_before_publication: 7,
+    accepted_after_precision_refinement: 7,
     analytic_failure_before_publication: 1,
   });
 });

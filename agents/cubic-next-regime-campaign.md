@@ -16,10 +16,34 @@ diagnostic/native tests pass. Production collectors and scheduler tests now
 exercise bundled signatures and all expansion checkpoints directly; historical
 comparisons reconstruct a hash-checked baseline using a readable delta, without
 depending on Git history in shallow CI. The optimizer snapshot is refreshed,
-published, and hash-verified. The 1,000-field public replay is running in
-`build/cubic-next-evidence/staged-shell-public-replay`; remaining broad and
-release gates are outstanding. PR190 remains draft and unseen neighbors remain
-untouched. Next finish the replay before any performance or promotion claim.
+published, and hash-verified. The 1,000-field public replay completed: all class
+numbers/invariants agree, all native receipts authenticate, and all independent
+exact replays pass with an unchanged runtime fingerprint. The report SHA-256 is
+`327d530141ea8c5a7a21abd9b886583a300f6035b8ae49d895359a108c0114cf`.
+Exactly four fields move from host retry to initial effort 5; there are now
+949/32/19 successes at efforts 5/1/7. All assumptions remain explicit.
+This is local development-corpus correctness evidence, not controlled timing,
+an unseen holdout, or a hermetic promotion receipt. Remaining broad and release
+gates are outstanding. PR190 remains draft and unseen neighbors remain
+untouched. Next complete broader validation and measure the integrated public
+path before selecting another adjacent-search change.
+
+The broader compiler suite passes its 21 enabled tests (28 existing skips).
+Full unit validation exposed a stale reconstructed-regulator test boundary;
+the repaired fixture now covers both proposal precisions and seven distinct
+coordinate refinements without changing mathematics. The rerun passes 158
+files before the inherited modular q-expansion/package-graph freeze mismatch;
+the unrelated manifest remains untouched. The remaining unit files expose a
+reproducible Tree-sitter inventory crash; the
+[lifetime diagnostic](../docs/cubic-parser-lifetime-diagnostic.md) isolates
+repeated grammar loads and undisposed large syntax trees. Caching grammars
+alone is insufficient; both lifetime interventions permit 128 full cubic
+parses at 32 MiB Wasm memory, versus failure near the existing memory ceiling.
+This is not yet a production compiler fix. All 14 broader cubic public/native
+regressions pass after repairing the materializer test's stale extraction
+boundary and preserving its exact-product fallback comparison. The complete
+replay evidence is published as the non-latest research prerelease
+`cubic-staged-shell-public-replay-20260909`, with its uploaded digest verified.
 
 ## Formatted candidate fits source allowance, 2026-09-09
 
