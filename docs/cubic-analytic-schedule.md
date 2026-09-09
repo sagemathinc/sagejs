@@ -2163,6 +2163,186 @@ Large reproducible builds remain in
 replace public authenticated receipts, independent exact replay, source-budget
 resolution, or four-platform qualification; those gates remain open.
 
+## Analytic precision: a larger gain and a saturation-proposal boundary
+
+Two source copies change only `_CUBIC_ANALYTIC_PRECISION`, from 64 to 32
+or 48. All theorem constants, exact arithmetic, acceptance inequalities,
+and resource caps remain unchanged. The underlying Arb adapters accept
+16–4096 bits, compute at the requested precision plus 32 guard bits, and
+round scaled lower/upper endpoints outward. Lower precision widens the
+enclosures; it does not authorize replacing an interval test by an approximate
+comparison. The native entry constructs the corresponding scale $2^p$ and
+the analytic publisher records both $p$ and that scale.
+
+The joint-index decision still requires a well-formed enclosure containing
+zero with upper endpoint strictly below a lower bound for $\log 2$.
+Because the certified subgroup index is a positive integer, those conditions
+force index one at any valid precision. Reversed or contradictory intervals
+remain invalid. An extracted-source test exercises this unchanged classifier
+against 16,000 independently constructed rational enclosures of
+$\log j$, $1\le j\le32$, at 16, 32, 48, 64, and 128 bits, plus 25 boundary
+checks. This is a targeted exact-arithmetic test, not a formal proof or an
+end-to-end certificate replay.
+
+Both variants preserve the same 981 first-effort acceptances on the frozen
+1,012 fields, with no exceptions or wrong accepted class numbers/invariants.
+Each agrees on all 64 words across original/one-page FLINT linkages, GMP,
+and JavaScript. Comparisons with the 64-bit parent deliberately do **not**
+require identical dyadic integers: scales and rounded endpoints changed.
+For comparable analytic publications, 785 zeta enclosures overlap the parent;
+770/778 regulator and joint-index enclosures overlap for unchanged unit
+coordinates at 32/48 bits, respectively.
+
+There are 15 changed-unit cases at 32 bits and seven at 48 bits. A separate
+exact GP audit reconstructs the maximal-order row-HNF basis from `nf.zk`,
+checks the field discriminant and class number, runs `bnfcertify`, verifies
+unit norm and fundamental-unit exponent, and compares the units exactly.
+All 22 cases differ only by sign from the parent unit. This is an independent
+unit audit, not complete replay of every class-group relation transcript.
+
+### Timing
+
+The same uninstrumented CPU-0-pinned `opt` protocol uses the same one-page
+FLINT library for all variants, three rotated rounds, two native calls per
+sample with retries inside the clock, eight fresh PARI `bnfinit` calls per
+sample, and one warmup. Every field completes correctly; 31 require retries.
+Sums of per-field medians (ms):
+
+| 64-bit parent | 32 bits | 48 bits | PARI |
+| ---: | ---: | ---: | ---: |
+| 4342.587 | 3777.102 | 3824.245 | 1455.000 |
+
+The observed aggregate gains are **13.02% and 11.94%**, appreciably larger
+than the preceding BF loop/arithmetic rewrites. The class-number-five example
+changes from 1.565 ms to 1.244/1.249 ms, versus PARI's 1.000 ms. Raw timing
+SHA-256: `b7a9ebfe883dca328a0c55b5f68426b8b9f4957af5886267a7a8b855900d17ea`.
+These remain private-entry measurements on a reused corpus, not a new
+holdout or public-call qualification.
+
+Eight-field paired runs use 21 alternating ABBA/BAAB rounds, ten calls per
+sample, and 200 warmups per implementation and field. Median wall-time ratios:
+
+| Field | 32 / 64 bits | 48 / 64 bits |
+| --- | ---: | ---: |
+| `3.1.283.1` | 0.7860 | 0.8076 |
+| `3.1.331.1` | 0.7605 | 0.7859 |
+| $x^3+9x-55$ | 0.7831 | 0.8060 |
+| `3.1.23567.1` | 0.8344 | 0.8392 |
+| `3.1.41300.1` | **1.8250** | 0.8132 |
+| `3.1.46983.1` | 0.9166 | 0.9484 |
+| `3.1.97492.1` | **1.5329** | 0.8032 |
+| `3.1.3209035.1` | **1.3033** | 0.8413 |
+
+Sample-ratio 10th–90th percentile ranges stay on the same side of one for
+each entry, but are not confidence intervals. Paired raw hashes are
+`1a6acb6f431ec9a31f947b541b85c2ae3d74d393e42b9538735efa77ed086103`
+and `7436d0fbc22a92f86cdae153b26ae88e41843aeaa795f21d0fefed8dd1878ece`.
+
+### Why the three 32-bit cases regress
+
+The three fields publish 16 rather than 10, 16 rather than 12, and 20
+rather than 17 compact relations. A read-only call/return trace of the
+generated JavaScript bodies preserves every output word of its corresponding
+uninstrumented backend. It shows that the first unit is reconstructed
+correctly at all three precisions. At 32 bits, however, the opportunistic
+square-root proposal returns zero; cube/fifth-root probes also find nothing.
+The joint-index enclosure remains insufficient, and later relations provide
+the missing smaller unit. At 48 and 64 bits the square-root proposal returns
+the exact square root immediately, passes exact power verification, and
+certifies the original prefix. This trace is not a native timing profile.
+
+The engineering consequence is to separate **analytic enclosure precision**
+from **numerical proposal precision**. A failed low-precision root proposal
+is not proof that a root is absent. The follow-up below implements that
+separation instead of blindly lowering every use of a shared constant.
+
+The two source hashes are
+`21a31a0476e9dea6456d20e778509b1be6f4926dfe3a339a2ccb9c80549ef39a`
+and `7a231a91b888700e8b09530e413cae6a147f2884688e36db48fe6fda03602985`.
+Both retain the parent's 486,563 source bytes and 12,621,840 path-normalized
+generated-core bytes. No compiler change or source-cap increase is made.
+The experimental source remains over the release allowance, and public
+receipts, complete independent replay, and platform qualification remain open.
+
+### Implemented split: analytic32, saturation proposals at least 64 bits
+
+The third source copy retains 32-bit analytic arithmetic and changes only
+`_cubic_saturate_analytic_unit`: it constructs a separate proposal scale,
+doubling the analytic scale until its corresponding precision reaches at
+least 64, and passes that scale to the square/cube/fifth-root probes.
+For an analytic scale $2^p$, the proposal scale is $2^{\max(p,64)}$.
+No root is accepted without the existing exact power replay. The recovered
+root's regulator is still recomputed at the analytic scale and checked against
+the retained unit's regulator before the unchanged final index test.
+All state remains in the same native arena; no owner or callback is added.
+
+The actual-controller plumbing test covers 36 cases: precision below, at,
+and above 64, failed opportunistic proposals, invalid probe statuses, and
+invalid analytic scales. Those tests explicitly stub mathematical operations
+and make no independent root-correctness claim. The generated-JavaScript
+trace confirms that all three regression fields now propose at $2^{64}$,
+recover the same exact square roots as the parent, and certify the original
+prefix with analytic scale $2^{32}$.
+
+The full native survey retains all 981 first-attempt successes, with zero
+exceptions and **all parent relation counts restored**. Original/one-page
+FLINT, GMP, and JavaScript agree on all 64 words for each of the 1,012
+fields. Every published unit equals either its previously audited 32-bit
+candidate or its parent unit. Comparable interval overlaps cover 785 zeta
+and 772 regulator/index publications. These are still diagnostic checks,
+not full independent class-group transcript replay.
+
+The second controlled full-corpus run uses the same protocol and library:
+
+| Parent64 | Split32 | Analytic48 | PARI |
+| ---: | ---: | ---: | ---: |
+| 4329.807 | 3795.418 | 3837.643 | 1455.250 |
+
+All 1,012 computations finish correctly with the same 31 retrying fields.
+Split32 reduces the sum of medians by **12.34%**. Its median per-field ratio
+is 0.8486 and its 90th percentile is 0.9093. For $x^3+9x-55$, the observed
+times are 1.560 ms parent, 1.223 ms split, and 1.000 ms PARI. Raw hash:
+`03f84124890786ffb441d2bb3d9d0022dc4665151f9d2e6a476cee68154f1629`.
+This does not compare split32 directly against unsplit32 in the same run;
+do not infer their precise relative aggregate speed from separate runs.
+
+The same eight-field paired protocol gives split/parent median wall ratios
+0.8042, 0.7724, 0.7886, 0.8343, 0.7841, 0.9365, 0.7963, and 0.8234 in the
+table's field order above. All corresponding wall/CPU sample-ratio
+10th–90th percentile ranges are below one. In particular, the three large
+unsplit32 regressions become approximately 18–22% improvements. Paired raw
+hash: `e01f7bd18592661eb9e3d8bdb5137ef9e9bad87700cdd326c0253671f3725eaa`.
+This is encouraging selected-panel evidence, not universal no-regression proof.
+
+Split source hash:
+`4478b0f9bd9d1bb7d5674f48a6e76c7e35bb22ef1c7541f6c44dded751583c0a`;
+core hash: `ced8caf205baa8d985c0d6c36c86949d658fda890572ddc898e2467bcbb6373f`.
+Source grows to 486,912 bytes (+349); path-normalized core grows to
+12,625,579 bytes (+3,739). The unchanged source allowance remains unresolved.
+
+**Decision:** retain split precision as the preferred next candidate, not a
+production promotion. It provides a materially larger measured improvement
+than the preceding micro-optimizations and explains a genuine mathematical
+search regression. It does not yet implement general resident precision
+escalation for inconclusive analytic intervals or difficult root proposals.
+The corpus aggregate remains about 2.61 times PARI. Next separate the cost
+of shorter integer representations from fewer precision-dependent operations,
+then qualify this policy on fresh fields and the public replay path. Do not
+attribute the observed gain entirely to allocation without measuring it.
+
+Source generators, extracted-body tests, GP unit audits, backend surveys,
+in-memory diagnostic traces, resource records, raw controlled timings, and
+reproduction instructions are retained in
+`build/cubic-analytic-schedule-evidence/precision/`. Large reproducible builds
+remain under `/scratch/sagejs-runtime/cubic-precision-jxDdsr/`.
+
+This campaign reruns the five focused analytic-schedule tests, direct
+documentation checking, diff checking, and parallel-contract checking
+successfully. The architecture gate passes FFI, package, numerical, native,
+and Wasm checks, then stops at the previously documented stale optimizer
+opportunity manifest (recorded `ce64558...`, current expected `d870e205...`).
+It is not reported green and the unrelated inventory is not regenerated.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
