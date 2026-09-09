@@ -23,6 +23,7 @@ test("ellipsoid pauses preserve every proposal and cumulative admission state", 
     input: String.raw`
 import ast
 import sys
+from types import SimpleNamespace
 
 with open(sys.argv[1]) as stream:
     module = ast.parse(stream.read())
@@ -52,7 +53,8 @@ class Scenario:
                            for index, limit in enumerate(limits)}
 
     def candidate(self, *args):
-        point = tuple(args[-3:])
+        assert args[-1] == 0
+        point = tuple(args[-4:-1])
         self.trace.append(point)
         zero, one, two = point
         status = int(self.accept_all or (zero + 3 * one + 7 * two) % 4 != 1)
@@ -82,11 +84,14 @@ class Scenario:
                 lambda workspace, count, target, factors: count >= target,
         })
         count, candidates, online_count, status, zero, one, two = self.state
+        search = SimpleNamespace(**dict.fromkeys(("integers", "transforms",
+            "relations", "elements", "hnf_source", "hnf_result", "online_basis",
+            "online_source", "online_hnf", "support", "membership")))
         self.state = namespace[collector.name](
-            None, None, 0, None, 0, self.parameters, 0, None, None,
-            count, self.capacity, 1, 1, self.target, None, None,
-            self.streaming, self.online, None, None, None, None, None,
-            online_count, status, zero, one, two, candidates, budget,
+            search, None, 0, 0, self.parameters, 0,
+            count, self.capacity, 1, 1, self.target,
+            self.streaming, self.online,
+            online_count, status, zero, one, two, candidates, budget, 0,
         )
 
     def snapshot(self):
@@ -170,8 +175,12 @@ test("the actual collector resumes in compiled GMP and fmpz execution", {
   assert.ok(end > start);
   // Preserve the production collector verbatim. Only its arithmetic callees
   // are replaced with observable, deterministic admission doubles.
-  const fixture = `from sagejs.native import native, uint64, UInt64Buffer, NativeIntegerVector, NativeExactArena
+  const schemaStart = source.indexOf('class CubicSearchWorkspace(');
+  assert(schemaStart >= 0 && schemaStart < start);
+  const fixture = `from sagejs.native import native, uint64, UInt64Buffer, NativeIntegerVector, NativeExactArena, NativeWorkspace
 from sagejs.ffi.flint import FmpzMatrix, fmpz_matrix
+
+${source.slice(schemaStart, start)}
 
 _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES = 500
 
@@ -201,6 +210,8 @@ def cursor_witness(modular: UInt64Buffer, limit: int, budget: uint64, initial_ca
     with NativeExactArena(1048576, 1048576) as arena:
         workspace = arena.integer_vector(2, 0)
         matrix = arena.foreign_resource(fmpz_matrix, 1, 11)
+        search = CubicSearchWorkspace(workspace, matrix, matrix, matrix, matrix,
+            matrix, matrix, matrix, matrix, matrix, matrix, matrix, matrix)
         matrix[0, 7] = limit
         matrix[0, 8] = limit
         matrix[0, 9] = limit
@@ -217,11 +228,10 @@ def cursor_witness(modular: UInt64Buffer, limit: int, budget: uint64, initial_ca
         active_budget: uint64 = 0
         while two <= limit and count <= capacity:
             count, candidates, online_count, online_status, zero, one, two = _cubic_append_reduced_ideal_ellipsoid(
-                workspace, modular, offset, matrix, offset, matrix, offset,
-                matrix, matrix, count, capacity, factors, factors, target,
-                matrix, matrix, True, True, matrix, matrix, matrix, matrix,
-                matrix, online_count, online_status, zero, one, two,
-                candidates, active_budget,
+                search, modular, offset, offset, matrix, offset,
+                count, capacity, factors, factors, target,
+                True, True, online_count, online_status, zero, one, two,
+                candidates, active_budget, 0,
             )
             active_budget = budget
             if count >= target:

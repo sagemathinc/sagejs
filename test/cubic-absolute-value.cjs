@@ -5,6 +5,17 @@ const {spawnSync}=require('node:child_process');
 const {pythonExecutable}=require('../tools/python-executable.cjs');
 const {absoluteValueSource}=require('../bench/class-unit-groups/diagnose-cubic-absolute-value-build.cjs');
 const root=path.resolve(__dirname,'..');
+test('historical cubic baseline reconstruction rejects source and delta corruption',()=>{
+  const {restoreCubicBaseline}=require('./fixtures/cubic-source-baseline.cjs');
+  const source=fs.readFileSync(path.join(root,'src/lib/sagejs/number_fields/cubic_class_number_native.py'),'utf8');
+  const delta=fs.readFileSync(path.join(__dirname,'fixtures/cubic-source-baseline.patch'),'utf8');
+  const baseline=restoreCubicBaseline(source,delta);
+  assert.equal(restoreCubicBaseline(source.replaceAll('\n','\r\n'),delta.replaceAll('\n','\r\n')),baseline);
+  assert.throws(()=>restoreCubicBaseline(source+'# unreviewed\n',delta));
+  assert.throws(()=>restoreCubicBaseline(source.replace('absolute_discriminant = abs(projection[7])','absolute_discriminant = abs(projection[6])'),delta));
+  assert.throws(()=>restoreCubicBaseline(source,delta.replace('@@ -257,9 +257,7 @@','@@ -257,8 +257,7 @@')));
+  assert.throws(()=>restoreCubicBaseline(source,delta.replace('-    absolute_discriminant = projection[7]','-    absolute_discriminant = projection[6]')));
+});
 test('the fully formatted combined cubic candidate fits the unchanged package allowance',()=>{
   const {resumableSource}=require('../bench/class-unit-groups/diagnose-cubic-resumable-expansion-build.cjs');
   const {torsionProbeSource}=require('../bench/class-unit-groups/diagnose-cubic-torsion-probe-build.cjs');
@@ -12,16 +23,26 @@ test('the fully formatted combined cubic candidate fits the unchanged package al
   const {searchWorkspaceSource}=require('../bench/class-unit-groups/diagnose-cubic-search-workspace-build.cjs');
   const {formatPythonSource}=require('../tools/python-format.cjs');
   const read=p=>fs.readFileSync(path.join(root,p),'utf8');
-  const source=read('src/lib/sagejs/number_fields/cubic_class_number_native.py');
+  const source=require('./fixtures/cubic-source-baseline.cjs').cubicSourceBaseline();
   const candidate=absoluteValueSource(searchWorkspaceSource(shareRecoverySource(torsionProbeSource(resumableSource(source,read('bench/class-unit-groups/cubic-expanded-shell-experiment.py'),read('bench/class-unit-groups/cubic-expanded-prefix-experiment.py'))))));
   assert.equal(formatPythonSource(candidate),candidate);
+  // Integration removes only the two source-copy diagnostic banners. The
+  // reviewed transformations remain bound to their original input, not to
+  // an already-transformed production module.
+  const banners=[
+    '"""Private source-copy experiment; these helpers are not a production module.\n\nThe builder injects this ordinary Python into the existing closed native program.\nSearch bounds are scheduling only; accepted results still require exact closure.\n"""\n\n\n',
+    '"""Resumable diagnostic shell traversal using the existing admission loop."""\n\n\n',
+  ];
+  let integrated=candidate;
+  for(const banner of banners){assert.equal(integrated.split(banner).length,2);integrated=integrated.replace(banner,'');}
+  assert.equal(read('src/lib/sagejs/number_fields/cubic_class_number_native.py'),integrated);
   const component=JSON.parse(read('architecture/package-graph.json')).packages.find(p=>p.id==='complex-cubic-native-program');
   assert.equal(component.max_source_bytes,485000);
   const bytes=component.files.reduce((total,p)=>total+Buffer.byteLength(p.endsWith('/cubic_class_number_native.py')?candidate:read(p).replaceAll('\r\n','\n')),0);
   assert(bytes<=component.max_source_bytes,`${bytes} exceeds ${component.max_source_bytes}`);
 });
 test('exact cubic absolute-value rewrites preserve evaluation and surrounding mathematics',()=>{
-  const before=fs.readFileSync(path.join(root,'src/lib/sagejs/number_fields/cubic_class_number_native.py'),'utf8');
+  const before=require('./fixtures/cubic-source-baseline.cjs').cubicSourceBaseline();
   const after=absoluteValueSource(before);
   assert(Buffer.byteLength(after)<Buffer.byteLength(before));
   assert.throws(()=>absoluteValueSource(after));

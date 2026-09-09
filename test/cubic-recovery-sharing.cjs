@@ -9,7 +9,7 @@ const {pythonExecutable} = require('../tools/python-executable.cjs');
 const {shareRecoverySource} = require('../bench/class-unit-groups/diagnose-cubic-recovery-sharing-build.cjs');
 const {torsionProbeSource} = require('../bench/class-unit-groups/diagnose-cubic-torsion-probe-build.cjs');
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'src/lib/sagejs/number_fields/cubic_class_number_native.py'), 'utf8');
+const source = require('./fixtures/cubic-source-baseline.cjs').cubicSourceBaseline();
 test('shared recovery preserves exact discovery, owner writes, and fatal statuses', () => {
   const shared = shareRecoverySource(source);
   assert(Buffer.byteLength(shared) < Buffer.byteLength(source));

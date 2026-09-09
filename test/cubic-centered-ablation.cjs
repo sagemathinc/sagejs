@@ -4,7 +4,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {spawnSync}=require('node:child_process');
 const {centeredSource,mapping}=require('../bench/class-unit-groups/diagnose-cubic-centered-build.cjs');
 test('centered source preserves cursor advancement and all acceptance checks',()=>{
-  const source=fs.readFileSync(path.join(__dirname,'../src/lib/sagejs/number_fields/cubic_class_number_native.py'),'utf8');
+  const source=require('./fixtures/cubic-source-baseline.cjs').cubicSourceBaseline();
   const candidate=centeredSource(source);
   assert.equal(candidate.replace(mapping,'').replace('                centered_zero,\n                centered_one,\n                centered_two,\n',
     '                coefficient_zero,\n                coefficient_one,\n                coefficient_two,\n'),source);

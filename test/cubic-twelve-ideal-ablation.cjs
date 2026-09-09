@@ -4,7 +4,7 @@ const test=require('node:test'), assert=require('node:assert/strict');
 const fs=require('node:fs'), path=require('node:path');
 const {variants}=require('../bench/class-unit-groups/diagnose-cubic-twelve-ideal-build.cjs');
 test('twelve-ideal ablation varies scheduling guards independently and nothing else',()=>{
-  const source=fs.readFileSync(path.join(__dirname,'../src/lib/sagejs/number_fields/cubic_class_number_native.py'),'utf8');
+  const source=require('./fixtures/cubic-source-baseline.cjs').cubicSourceBaseline();
   const candidates=variants(source);
   assert.deepEqual(candidates.map(c=>[c.staging_limit,c.ordering_limit]),[[11,11],[12,11],[11,12],[12,12]]);
   assert.equal(candidates[0].source,source);

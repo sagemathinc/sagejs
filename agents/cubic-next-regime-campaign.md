@@ -2,6 +2,25 @@
 
 Status: active; no new PARI win claimed.
 
+## Combined staged-shell integration, 2026-09-09
+
+The [integration record](../docs/cubic-staged-shell-integration.md) tracks the
+reviewed combined candidate now installed in production source on this branch.
+It differs from the source-copy candidate only by removal of two diagnostic
+banners. The source hash is
+`93a41e20e4c7916bb00957ae0322b5378bf16491c317f5eeea2ef3f011a29e2c`;
+aggregate source is 484,669/485,000 bytes, without a limit increase.
+
+The full local build, strict Python, architecture, docs, and all 42 focused
+diagnostic/native tests pass. Production collectors and scheduler tests now
+exercise bundled signatures and all expansion checkpoints directly; historical
+comparisons reconstruct a hash-checked baseline using a readable delta, without
+depending on Git history in shallow CI. The optimizer snapshot is refreshed,
+published, and hash-verified. The 1,000-field public replay is running in
+`build/cubic-next-evidence/staged-shell-public-replay`; remaining broad and
+release gates are outstanding. PR190 remains draft and unseen neighbors remain
+untouched. Next finish the replay before any performance or promotion claim.
+
 ## Formatted candidate fits source allowance, 2026-09-09
 
 The [absolute-value experiment](../docs/cubic-absolute-value-experiment.md)

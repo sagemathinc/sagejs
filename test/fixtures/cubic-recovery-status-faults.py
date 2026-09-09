@@ -47,6 +47,16 @@ def helper_cases(tree):
         and item.name == "_cubic_relation_prefix_has_archimedean_unit"
     )
     function, namespace = compile_function(node)
+    # Use the actual shared discovery and torsion predicate when present in
+    # the source under test. Historical pre-integration variants lack one or
+    # both; their original inline bodies remain the differential baseline.
+    for item in tree.body:
+        if isinstance(item, ast.FunctionDef) and item.name in {
+            "_cubic_discover_dependency_unit",
+            "_cubic_dependency_logs_certify_torsion",
+        }:
+            actual_helper, _ = compile_function(item)
+            namespace[item.name] = actual_helper
     log_node = next(
         item
         for item in tree.body

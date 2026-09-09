@@ -9,7 +9,7 @@ const sourcePath = path.resolve(__dirname, "../src/lib/sagejs/number_fields/cubi
 const helpersPath = path.resolve(__dirname, "../bench/class-unit-groups/cubic-expanded-shell-experiment.py");
 
 test("expanded-shell source copy preserves the exact closure and original collector", () => {
-  const source = fs.readFileSync(sourcePath, "utf8"), helpers = fs.readFileSync(helpersPath, "utf8");
+  const source = require('./fixtures/cubic-source-baseline.cjs').cubicSourceBaseline(), helpers = fs.readFileSync(helpersPath, "utf8");
   const candidate = expansionSource(source, helpers);
   for (const name of ["_cubic_try_bounded_exact_closure", "_cubic_collect_adjacent_relation_prefix", "_cubic_append_smooth_principal_relation"]) {
     const extract = text => {

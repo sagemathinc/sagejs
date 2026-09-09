@@ -11,7 +11,9 @@ test("recovery logarithms reuse the existing batch helper and preserve scalar se
   assert.throws(() => recoveryLogSource(source));
   const start = source.indexOf('def _cubic_relation_prefix_has_archimedean_unit(');
   const recovery = source.slice(start, source.indexOf('\ndef ', start + 1));
-  assert.equal((recovery.match(/_cubic_fill_dependency_logs\(/g) || []).length, 1);
+  // One speculative analytic-scale probe and one conditioned recovery batch;
+  // each batch isolates the root once, rather than once per relation.
+  assert.equal((recovery.match(/_cubic_fill_dependency_logs\(/g) || []).length, 2);
   assert(!recovery.includes('_cubic_real_log_bounds('));
   const result = spawnSync(pythonExecutable(), ["-c", String.raw`
 import ast,collections,json,sys

@@ -25,7 +25,7 @@ const rootFunction = "certified_complex_cubic_class_group_v1";
 const publicArenaMemoryLimit = 1_048_576;
 const publicArenaCheckpointLimit = 3_145_728;
 const expectedNameDigest =
-  "1ae4388f13b217c7a7a5aaf26265addfe90888b4ff6f9db0366f1054194ad3b4";
+  "0b3da8b4e9afea4b944aa24123e606a85cdfef87069ce70ca9cae3e1d15a9da9";
 const expectedHostFunctions = Object.freeze([
   "_cubic_arctan_reciprocal_bounds",
   "_cubic_atanh_log_bounds",
@@ -117,12 +117,17 @@ test("the complete cubic closure is one direct fmpz program", {
   );
 
   assert.equal(ir.version, 40);
-  // Splitting adds three nodes; hoisting bound-independent constants adds
-  // one private helper; proposal scaling adds one private implementation.
-  // Every node remains reachable from the cubic root.
-  assert.equal(functions.size, 106);
-  // Direct quotient extrema remove the reciprocal/product helper edge.
-  assert.equal(edges.length, 245);
+  // The integrated shell collector, shell planner, and torsion predicate add
+  // three private nodes. Recovery now calls the existing shared discovery
+  // helper. Every node remains reachable through the isolated fmpz ABI.
+  assert.equal(functions.size, 109);
+  assert.equal(edges.length, 254);
+  assert.deepEqual(ir.callGraph._cubic_collect_expanded_shell_prefix.toSorted(),
+    ['_cubic_append_reduced_ideal_ellipsoid', '_cubic_expansion_parameters'].sort());
+  assert.deepEqual(ir.callGraph._cubic_expansion_parameters.toSorted(),
+    ['_cubic_ceil_sqrt', '_cubic_dyadic_ceiling_quotient'].sort());
+  for(const name of ['_cubic_dependency_logs_certify_torsion', '_cubic_discover_dependency_unit'])
+    assert(ir.callGraph._cubic_relation_prefix_has_archimedean_unit.includes(name));
   assert.deepEqual(ir.callGraph._cubic_dyadic_divide_positive,
     ["_cubic_dyadic_ceiling_quotient"]);
   for (const caller of ["_cubic_complex_root_approximations", "_cubic_reconstruct_archimedean_unit_at_scale"]) {
@@ -166,7 +171,7 @@ test("the complete cubic closure is one direct fmpz program", {
   );
   assert.deepEqual(hostFunctions, expectedHostFunctions);
   assert.equal(hostFunctions.length, 22);
-  assert.equal(privateFunctions.length, 84);
+  assert.equal(privateFunctions.length, 87);
   assert.equal(functions.get(rootFunction).hostCallable, true);
   assert.equal((header.match(/\bint sagejs_kernel_/g) || []).length, 22);
   assert.equal((core.match(/\nint sagejs_kernel_/g) || []).length, 22);
@@ -256,7 +261,7 @@ test("one unsupported operation atomically removes fmpz from the closure", {
   assert.notEqual(unsupported, withImport);
 
   const ir = await lowerClosure(unsupported);
-  assert.equal(ir.functions.length, 106);
+  assert.equal(ir.functions.length, 109);
   assert.deepEqual(
     ir.functions.filter((fn) => fn.analysis.backend.kind === "fmpz"),
     [],
@@ -310,6 +315,10 @@ test("the authenticated production pack executes cubic regimes including resumed
     ["x^3+9*x-55", [-55, 9, 0, 1], 5n, [5n]],
     ["x^3-32*x-92 (resumed certification)", [-92, -32, 0, 1], 3n, [3n]],
     ["x^3+30*x-48 (resumed certification)", [-48, 30, 0, 1], 5n, [5n]],
+    ["3.1.384587.1 (expanded prefix)", [122, -7, -1, 1], 8n, [2n, 4n]],
+    ["3.1.761319.2 (expanded prefix)", [-159, 27, 0, 1], 6n, [6n]],
+    ["3.1.1063351.3 (expanded prefix)", [99, 56, -1, 1], 9n, [9n]],
+    ["3.1.3276404.1 (expanded prefix)", [-156, 146, 0, 1], 4n, [2n, 2n]],
     ["3.1.12763.1", [-22, 1, -1, 1], 8n, [2n, 4n]],
     ["3.1.93074700.2", [-5570, 0, 0, 1], 42n, [42n]],
     ["3.1.69305231.3", [48016, 134, -1, 1], 3n, [3n]],
@@ -368,6 +377,7 @@ test("the authenticated production pack executes cubic regimes including resumed
       label,
     );
     assert.equal(values[63], 0n, label);
+    if (label.endsWith('(expanded prefix)')) assert.equal(acceptedEffort, 5, label);
     if (label === "3.1.93074700.2") {
       assert.equal(acceptedEffort, 7);
       assert.equal(values[36], 1494n);

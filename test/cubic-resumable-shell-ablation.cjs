@@ -6,7 +6,7 @@ const {pythonExecutable}=require("../tools/python-executable.cjs");
 const {shellAdmissionSource,resumableSource}=require("../bench/class-unit-groups/diagnose-cubic-resumable-expansion-build.cjs");
 const root=path.resolve(__dirname,"..");
 const read=p=>fs.readFileSync(path.join(root,p),"utf8");
-const source=read("src/lib/sagejs/number_fields/cubic_class_number_native.py");
+const source=require('./fixtures/cubic-source-baseline.cjs').cubicSourceBaseline();
 const geometry=read("bench/class-unit-groups/cubic-expanded-shell-experiment.py");
 const prefix=read("bench/class-unit-groups/cubic-expanded-prefix-experiment.py");
 test("resumable shell retains certification and shares the original admission loop",()=>{
@@ -22,13 +22,14 @@ test("resumable shell retains certification and shares the original admission lo
 test("split shell prefixes equal one-shot proposals and preserve cumulative limits",()=>{
   const p=spawnSync(pythonExecutable(),["-c",String.raw`
 import ast,collections,copy,json,math,sys
+from types import SimpleNamespace
 data=json.load(sys.stdin)
 names={'_cubic_reduced_ellipsoid_candidate','_cubic_append_reduced_ideal_ellipsoid'}
 def functions(text,selected):
     tree=ast.parse(text);tree.body=[f for f in tree.body if isinstance(f,ast.FunctionDef) and f.name in selected]
     assert len(tree.body)==len(selected)
     return compile(tree,'actual-typed-source','exec')
-def create(cap=500,original=False):
+def create(cap=500,original=False,production=False):
     proposed=[];admitted=[]
     def admission(workspace,modular,rows,elements,count,capacity,n,groups,a,b,c,*rest):
         v=(a,b,c)
@@ -49,14 +50,30 @@ def create(cap=500,original=False):
        _cubic_modular_relation_collection_complete=lambda w,c,t,n:c>=t,
        _cubic_append_smooth_principal_relation=admission,
        _cubic_online_relation_lattice_update=lambda *args:1)
-    exec(functions(data['original' if original else 'admission'],names),ns)
+    ns['CubicSearchWorkspace']=SimpleNamespace
+    exec(functions(data['production' if production else 'original' if original else 'admission'],names),ns)
     exact=ns['_cubic_reduced_ellipsoid_candidate']
     def candidate(*args):
         # Base and all coordinates distinguish repeated calls from repeated ideals.
         proposed.append((args[1],*args[6:9]));return exact(*args)
     ns['_cubic_reduced_ellipsoid_candidate']=candidate
-    exec(functions(data['geometry'],{'_cubic_expansion_parameters'}),ns)
-    exec(functions(data['prefix'],{'_cubic_collect_expanded_shell_prefix'}),ns)
+    exec(functions(data['production' if production else 'geometry'],{'_cubic_expansion_parameters'}),ns)
+    exec(functions(data['production' if production else 'prefix'],{'_cubic_collect_expanded_shell_prefix'}),ns)
+    if production:
+        # Adapt the witness call boundary only. The production functions call
+        # each other through their actual bundled signatures and unchanged bodies.
+        owners=('integers','order','transforms','parameters','relations','elements',
+                'hnf_source','hnf_result','online_basis','online_source','online_hnf','support','membership')
+        actual_outer=ns['_cubic_collect_expanded_shell_prefix']
+        actual_inner=ns['_cubic_append_reduced_ideal_ellipsoid']
+        def outer(*a):
+            search=SimpleNamespace(**dict(zip(owners,[a[i] for i in (0,2,3,4,6,7,8,9,10,11,12,13,14)])))
+            return actual_outer(search,a[1],a[5],*a[15:])
+        def inner(*a):
+            search=SimpleNamespace(**dict(zip(owners,(a[0],None,a[3],None,a[7],a[8],a[14],a[15],*a[18:23]))))
+            return actual_inner(search,a[1],a[2],a[4],a[5],a[6],*a[9:14],*a[16:18],*a[23:])
+        ns=dict(ns,_cubic_collect_expanded_shell_prefix=outer,
+                _cubic_append_reduced_ideal_ellipsoid=inner)
     return ns,proposed,admitted
 def matrix():return collections.defaultdict(int)
 def setup(permuted=False):
@@ -69,8 +86,8 @@ def setup(permuted=False):
     order=matrix();order[0,0]=1;order[1,0]=2
     args=([1,0,0],[],order,matrix(),plans,expanded,matrix(),matrix(),matrix(),matrix(),matrix(),matrix(),matrix(),matrix(),matrix(),2,1,permuted)
     return args,state
-def run(budget,cap=500,permuted=False):
-    ns,proposed,admitted=create(cap);args,state=setup(permuted);before=dict(args[4])
+def run(budget,cap=500,permuted=False,production=False):
+    ns,proposed,admitted=create(cap,production=production);args,state=setup(permuted);before=dict(args[4])
     result=(0,0,1);target=1;calls=0
     while state[0,0]<2 and result[2]>=0:
         snapshot=(copy.deepcopy(state),copy.deepcopy(args[5]),list(proposed),list(admitted))
@@ -94,6 +111,10 @@ for budget in (1,2,7):
 reverse=run(100000,permuted=True)
 assert reverse[1][0][0]!=baseline[1][0][0]
 for budget in (1,2,7,31,100):assert run(budget,permuted=True)==reverse
+for permuted in (False,True):
+    for cap in (3,500):
+        for budget in (1,2,7,31,100,100000):
+            assert run(budget,cap,permuted,True)==run(budget,cap,permuted,False)
 
 # With lower_bound zero the modified inner loop is exactly the old traversal.
 results=[]
@@ -105,7 +126,7 @@ for original in (True,False):
     results.append((result,proposed,admitted))
 assert results[0]==results[1]
 print('split/one-shot, zero budget, rejection, duplicates, fatal status, candidate cap and zero-bound parity passed')
-`],{input:JSON.stringify({original:source,admission:shellAdmissionSource(source),geometry,prefix}),encoding:"utf8",timeout:30000});
+`],{input:JSON.stringify({original:source,admission:shellAdmissionSource(source),geometry,prefix,production:read('src/lib/sagejs/number_fields/cubic_class_number_native.py')}),encoding:"utf8",timeout:30000});
   assert.equal(p.status,0,`${p.stdout}\n${p.stderr}`);
   assert.match(p.stdout,/zero-bound parity passed/);
 });

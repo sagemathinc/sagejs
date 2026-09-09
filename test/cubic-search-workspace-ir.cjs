@@ -17,7 +17,7 @@ const maps={
 test('actual cubic bundle lowering preserves executable IR modulo borrowed parameter names and order',async t=>{
   const read=p=>fs.readFileSync(path.join(root,p),'utf8');
   const sourcePath=path.join(root,'src/lib/sagejs/number_fields/cubic_class_number_native.py');
-  const beforeSource=shareRecoverySource(torsionProbeSource(resumableSource(fs.readFileSync(sourcePath,'utf8'),read('bench/class-unit-groups/cubic-expanded-shell-experiment.py'),read('bench/class-unit-groups/cubic-expanded-prefix-experiment.py'))));
+  const beforeSource=shareRecoverySource(torsionProbeSource(resumableSource(require('./fixtures/cubic-source-baseline.cjs').cubicSourceBaseline(),read('bench/class-unit-groups/cubic-expanded-shell-experiment.py'),read('bench/class-unit-groups/cubic-expanded-prefix-experiment.py'))));
   const afterSource=searchWorkspaceSource(beforeSource);
   const lower=source=>lowerSource(source,sourcePath,{resolveNativeImport:createNativeImportResolver({root,lowerSource,initialSourcePath:sourcePath})});
   const before=await lower(beforeSource),after=await lower(afterSource);

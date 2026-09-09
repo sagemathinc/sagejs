@@ -24,6 +24,7 @@ import ast
 import inspect
 import sys
 from collections import defaultdict
+from types import SimpleNamespace
 
 with open(sys.argv[1]) as stream:
     module = ast.parse(stream.read())
@@ -87,7 +88,8 @@ class Scenario:
 
     def candidate(self, *args):
         i = args[5]
-        z, o, t = args[-3:]
+        assert args[-1] == 0
+        z, o, t = args[-4:-1]
         self.trace.append(("ellipsoid", i, z, o, t))
         return int(self.eligible(z, o, t)), 100 * (i + 1) + z, o, t
 
@@ -124,10 +126,13 @@ class Scenario:
             "_cubic_modular_relation_collection_complete":
                 lambda workspace, count, target, factors: count >= target,
         })
+        search = SimpleNamespace(integers=self.workspace, order=self.order,
+            parameters=self.parameters, transforms=None, relations=None,
+            elements=None, hnf_source=None, hnf_result=None, online_basis=None,
+            online_source=None, online_hnf=None, support=None, membership=None)
         self.state = namespace["_cubic_collect_adjacent_relation_prefix"](
-            self.workspace, None, self.order, None, None, None, None,
-            self.parameters, None, None, None, None, None, None, None,
-            None, None, self.output, 1, 0, 0, 1, 0, 1, 2, 3, 4, 1024,
+            search, None, None, None, None,
+            self.output, 1, 0, 0, 1, 0, 1, 2, 3, 4, 1024,
             6, 1, 5, self.bounded, self.use_permutation, self.streaming,
             self.online, self.target, self.capacity, *self.state, budget)
 
@@ -268,8 +273,13 @@ test("the full adjacent cursor continues in compiled GMP and fmpz", {
     assert.ok(start >= 0 && end > start);
     return source.slice(start, end);
   }
-  const fixture = `from sagejs.native import native, uint64, checked_uint64, UInt64Buffer, IntegerBuffer, NativeIntegerVector, NativeExactArena
+  const schemaStart = source.indexOf('class CubicSearchWorkspace(');
+  const schemaEnd = source.indexOf('def _cubic_append_reduced_ideal_ellipsoid(');
+  assert(schemaStart >= 0 && schemaEnd > schemaStart);
+  const fixture = `from sagejs.native import native, uint64, checked_uint64, UInt64Buffer, IntegerBuffer, NativeIntegerVector, NativeExactArena, NativeWorkspace
 from sagejs.ffi.flint import FmpzMatrix, fmpz_matrix
+
+${source.slice(schemaStart, schemaEnd)}
 
 _FACTOR_OFFSET = 100
 _FACTOR_STRIDE = 16
@@ -329,6 +339,8 @@ def adjacent_cursor_witness(modular: UInt64Buffer, output: IntegerBuffer, budget
         plans = arena.foreign_resource(fmpz_matrix, 6, 11)
         rows = arena.foreign_resource(fmpz_matrix, 128, 3)
         scratch = arena.foreign_resource(fmpz_matrix, 11, 11)
+        search = CubicSearchWorkspace(workspace, plans, plans, plans, rows, rows,
+            scratch, scratch, scratch, scratch, scratch, scratch, scratch)
         scratch[0, 1] = bad_update
         index: uint64 = 0
         while index < 6:
@@ -371,9 +383,8 @@ def adjacent_cursor_witness(modular: UInt64Buffer, output: IntegerBuffer, budget
         capacity: uint64 = 128
         while cursor < factors and status >= 0:
             count, online_count, status, planned, enumerated, cursor, phase, direction, zero, one, two, candidates = _cubic_collect_adjacent_relation_prefix(
-                workspace, modular, plans, scratch, scratch, scratch, plans,
-                plans, rows, rows, scratch, scratch, scratch, scratch, scratch,
-                scratch, scratch, output, 1, 0, 0, 1, 0, 1, 2, 3, 4, 1024,
+                search, modular, scratch, scratch, scratch,
+                output, 1, 0, 0, 1, 0, 1, 2, 3, 4, 1024,
                 factors, groups, effort, True, True, True, True, target, capacity,
                 count, online_count, status, planned, enumerated, cursor, phase,
                 direction, zero, one, two, candidates, active_budget,

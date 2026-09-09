@@ -10,7 +10,9 @@ test('content ablation changes only candidate coordinates before exact authentic
   assert.throws(()=>contentSource(candidate));
   assert.throws(()=>contentSource(''));
   const production=fs.readFileSync(path.join(__dirname,'../src/lib/sagejs/number_fields/cubic_class_number_native.py'),'utf8');
-  assert.throws(()=>contentSource(production),/already normalized/);
+  // The old experiment also predates abs(norm(...)); it must reject the
+  // integrated spelling rather than silently modifying a different block.
+  assert.throws(()=>contentSource(production));
 });
 test('ordinary Python content reduction preserves scalars and produces primitive nonscalars',()=>{
   const program=`import math, itertools

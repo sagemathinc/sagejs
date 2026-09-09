@@ -10,7 +10,7 @@ const {shareRecoverySource}=require('../bench/class-unit-groups/diagnose-cubic-r
 const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 test('search bundles preserve the whole mathematical AST and exact owner bindings',()=>{
-  const original=read('src/lib/sagejs/number_fields/cubic_class_number_native.py');
+  const original=require('./fixtures/cubic-source-baseline.cjs').cubicSourceBaseline();
   const before=shareRecoverySource(torsionProbeSource(resumableSource(original,read('bench/class-unit-groups/cubic-expanded-shell-experiment.py'),read('bench/class-unit-groups/cubic-expanded-prefix-experiment.py'))));
   const after=searchWorkspaceSource(before);
   assert(Buffer.byteLength(after)<Buffer.byteLength(before));
