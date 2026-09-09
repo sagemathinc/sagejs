@@ -215,6 +215,36 @@
       "commit": "35bb40168daac05596d44ff295f771e21781fd85",
       "workspace_fingerprint": "8269ceedbcb3c9f22a94056c2329a560e5dca3c13c338751df4ab8e30b8a117a",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-early-torsion-Ry6XLn/check-screen.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.469,
+      "started_at": "2026-09-09T17:10:25.838Z",
+      "commit": "4c03168687e2deae2e368ff3740264b73e23d4d8",
+      "workspace_fingerprint": "3927480138358b22ceb68cf5aa13d9b963949d5354b00bff3cab979c14b69e03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-early-torsion-Ry6XLn/check-screen.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.471,
+      "started_at": "2026-09-09T17:15:52.490Z",
+      "commit": "4c03168687e2deae2e368ff3740264b73e23d4d8",
+      "workspace_fingerprint": "9cf891cc21b91bf451832256ce25016d528c584c249bf38c70b022e9b1f880e8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.039,
+      "started_at": "2026-09-09T17:17:34.928Z",
+      "commit": "4c03168687e2deae2e368ff3740264b73e23d4d8",
+      "workspace_fingerprint": "c8b266c3b6d026dffb2d9b4da84c1a01f4d98e8efc9cb7785eaafefc0cadcdca",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

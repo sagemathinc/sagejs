@@ -642,6 +642,69 @@ research result while preserving the fast native producer. It would also make
 the remaining analytic assumption impossible to hide behind an implementation
 label.
 
+## An elementary torsion screen for relation kernels
+
+The following unconditional lemma justifies the one-fifth logarithm screen
+in the experimental resident certification schedule. It is a mathematical
+argument, not yet a Lean-checked proof or a verification of the implementation.
+
+**Lemma.** Let $K$ be a cubic field of signature $(1,1)$, let $\sigma$ be its
+real embedding, and let $\epsilon\in\mathcal O_K^\times$. If
+$|\log|\sigma(\epsilon)||\leq 1/5$, then $\epsilon=\pm1$.
+
+**Proof.** Otherwise, replacing $\epsilon$ by its negative and/or inverse,
+we obtain a unit $\eta$ with $u=\sigma(\eta)>1$. Indeed, a real embedding
+of a nontrivial unit cannot equal $1$ or $-1$, since the embedding is
+injective. The unit $\eta$ generates $K$: its degree divides $3$, and a
+rational algebraic-integer unit is $\pm1$. Its conjugates are $u,z,\bar z$,
+and its positive norm is $u|z|^2=1$. Write its monic minimal polynomial as
+
+$$
+X^3-sX^2+tX-1,\qquad s,t\in\mathbb Z.
+$$
+
+Suppose $1<u\leq5/4$. Since $|z|=u^{-1/2}$, the trace satisfies
+
+$$
+-1<u-2u^{-1/2}\leq s\leq u+2u^{-1/2}<4,
+$$
+
+so $s\in\{0,1,2,3\}$. The second symmetric coefficient gives
+
+$$
+t=u(s-u)+u^{-1},\qquad
+t-s=(u-1)(s-u-1-u^{-1}).
+$$
+
+Because $u+u^{-1}>2$, the latter expression is negative. On the other hand,
+using $s\geq0$, $u-1\leq1/4$, and $u+1+u^{-1}<13/4$, it is greater than
+$-13/16$. Thus $-1<t-s<0$, contradicting integrality. Consequently $u>5/4$.
+Finally, the exponential series gives
+$e^{1/5}<\sum_{n\geq0}(1/5)^n=5/4$, contradicting the assumed logarithm
+bound. This proves the lemma without GRH or an optimal regulator bound.
+
+**Application to a complete relation prefix.** Suppose the principal-ideal
+equalities $(\alpha_i)=\prod_j\mathfrak p_j^{M_{ij}}$ are authenticated,
+and $v^{(k)}$ form a full $\mathbb Z$-basis of the left kernel of $M$.
+Then $\epsilon_k=\prod_i\alpha_i^{v_i^{(k)}}$ are units. Outward-rounded
+intervals for $\log|\sigma(\alpha_i)|$, combined with sign-aware exact
+integer arithmetic, enclose $\log|\sigma(\epsilon_k)|$. If every resulting
+interval lies inside $[-1/5,1/5]$, the lemma shows that all these units are
+torsion. Every integer kernel combination therefore also produces torsion.
+No dependency-basis reduction or higher-precision unit search can extract
+a non-torsion unit from this same prefix.
+
+This permits an early **missing-unit** result, never class-group acceptance.
+It says nothing about units arising from additional relations. A compact
+subset is insufficient for this conclusion about the full raw prefix: rows
+discarded by compaction may carry the needed unit. The experimental early
+screen therefore requires equal compact/raw counts; the support-and-tail
+copy visits each retained source row exactly once, so equality means no row
+was omitted. Inconclusive or invalid coarse intervals fall through to the
+existing reduction/recovery path. The screen itself does not authenticate
+principal equalities, kernel completeness, or interval construction; those
+remain explicit obligations of its caller and any future independent checker.
+
 ## References
 
 - Karim Belabas and Eduardo Friedman, “Computing the residue of the Dedekind

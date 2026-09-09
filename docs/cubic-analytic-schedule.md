@@ -2625,6 +2625,175 @@ existing mathematical criterion and measure the added work on successful
 prefixes before claiming an improvement. This targets measured repeated
 unit work rather than extrapolating more gains from the small event cohort.
 
+## Early complete-prefix torsion screening: targeted gain, neutral aggregate
+
+The next ablation implements the preceding proposal, based on corrected
+quotient-event source `ad363e00797b312614898cce13b449e2dfab11601a4368360dd101984cd99c95`.
+Only `_cubic_try_bounded_exact_closure` changes. Before dependency LLL it
+copies the exact HNF kernel, computes coarse outward log intervals, and
+tries the existing one-fifth torsion predicate. This is admitted only when
+the compact prefix retains every raw relation and there is a nonempty
+kernel. Success returns missing-unit phase 43/reason 434; no class-group
+acceptance condition changes. Failed interval construction or an
+inconclusive predicate falls through to the original work. Compacted
+prefixes still have access to raw-prefix recovery.
+
+The proof document now gives an elementary, unconditional derivation of
+the [one-fifth torsion criterion](complex-cubic-native-class-group-proof.md#an-elementary-torsion-screen-for-relation-kernels).
+It also states the caller's principal-equality, complete-kernel and interval
+obligations. This is a written proof, **not** a Lean formalization or
+independent verification of the complete implementation.
+
+**Correctness and coverage.** Actual-source CPython tests cover 198
+predicate/guard combinations and three invalid-domain cases. Another 20,481
+actual-compactor cases check both payload matrices, row uniqueness and the
+implication from count equality to complete retention (all support masks
+and tail starts for zero through ten rows). The frozen
+1,012-field first-effort survey retains 981 successes, zero errors and no
+gains/losses. All 64 words match across native FLINT, GMP and generated
+JavaScript, and across original/one-page FLINT linkage. Against the parent,
+all successful outputs are identical. The only differing output is word 60
+on the declined field `3.1.908491.1`: the shortcut no longer computes the
+dependency coefficient-bit diagnostic for that failed attempt. Both
+implementations also complete all 24 previously selected holdout fields
+with three-backend agreement. Those fields are reused, not a fresh holdout.
+The first-effort checks are not full-corpus independent certificate replay.
+
+Read-only generated-JavaScript call traces preserve all 64 native output
+words. Calls to `_cubic_reduce_dependency_prefix` fall from 1,130 to 975,
+with fewer calls on 144 fields. These are helper-call counts, not a native
+time profile or necessarily 155 LLL calls: the helper can return before
+LLL when no dependency exists. On each of 24364 and 42552, three calls
+with nonempty kernels become one. The new coarse checks certify torsion
+at raw prefixes 9/13 and 11/14 respectively. The old exact GP prefix replay
+already established torsion-only kernels at these prefixes. Across the new
+trace, the predicate is called 590 times and succeeds 241 times, including
+calls in the existing recovery helper; those totals must not be labeled
+as new early exits.
+
+**Controlled timing.** On the same isolated `opt` EPYC 7B13 VM, CPU 0,
+using the same experimental one-page FLINT archive, the unchanged timing
+driver runs three rotated rounds, two native calls per sample, eight fresh
+PARI `bnfinit(f,0)` calls per sample, and retries `[5,1,7,8]` inside the native
+clock. External packing/scratch and result checks are outside that clock.
+All 1,012 results complete correctly; both native variants require retries
+on the same 31 fields. Sums of per-field medians are:
+
+| Implementation | Total ms |
+| --- | ---: |
+| Corrected quotient-event parent | 3826.253403 |
+| Early torsion screen | 3815.6139965 |
+| PARI | 1459.875 |
+
+The aggregate difference is only **0.28%**, not persuasive evidence of a
+broad speedup. Grouping by fewer dependency-helper calls in the first-effort
+trace, the affected 144 fields total 342.513 to 321.655 ms (6.09% lower),
+while the other 868 total 3483.740 to 3493.959 ms (0.29% higher). These are
+whole-computation timings grouped by a trace property, not exclusive
+attribution of time to that helper. The candidate remains about 2.61 times
+PARI on this corpus.
+Selected times are 2.542 to 2.100 ms on 24364 and 2.334 to 1.903 ms on 42552,
+with PARI at 1.125 ms on each. A separate 21-round ABBA/BAAB test, 200 warmups
+per implementation/field and ten calls per sample, gives median within-round
+candidate/parent wall-time ratios 0.8550 and 0.7911 respectively. Their
+10th–90th percentile ratios are 0.8425–0.8653 and 0.7763–0.8013 (not confidence
+intervals). Several easy controls regress by roughly 1–3%; the h=5 seed's
+paired median ratio is 1.0172, with range 0.9964–1.0468. Its full-corpus
+sample happens to improve, illustrating why that isolated sample is not
+the basis for a claim. The additional screen is not free on successful
+prefixes. **Keep this unpromoted rather than roll it out unconditionally.**
+
+**Identity, resources and reproduction.** Candidate Python is 491,684 bytes,
+SHA `f2ad20f9f79113210b75ec3f97f530a279f1e28994408ef403041dc8982e9c41`.
+Generated core SHA is
+`5f1e83d230878fba2780458d874678b7f79a8dad2fef5345ab5e12f81f279a40`;
+normalizing only the embedded source path gives 12,712,675 bytes, up 21,867
+from the parent. Raw C byte lengths decrease because source-path strings
+are shorter, not because generated mathematical code became smaller.
+No resource or source cap is raised. The experimental source still exceeds
+the unchanged production allowance before runtime dependencies are counted.
+
+Sources, generators, raw surveys, backend/guard checks, traces, timing data,
+manifests and summaries are retained under
+`build/cubic-analytic-schedule-evidence/early-torsion/`. Reproducible large
+builds are in `/scratch/sagejs-runtime/cubic-early-torsion-Ry6XLn/`.
+`prepare.py` authenticates the parent and asserts that only the closure
+function's AST changes; `check-screen.py` executes the actual new guard.
+The canonical constant-indices builder and compiler lane are unchanged.
+`prepare-harness.cjs`, `survey.cjs`, `relink.cjs`, `check-backends.cjs`,
+`prepare-audits.cjs`, and `summarize-evidence.cjs` reproduce local checks.
+`package.cjs` packages authenticated artifacts for the unchanged paired and
+full timing drivers. On `opt`, `/tmp/cubic-early-torsion-PLo9T3/` retains
+the timing bundle. The manifest's variant name `event` denotes the new
+early-torsion candidate, and `parent` denotes the corrected quotient-event
+implementation. Raw full timing SHA is
+`c4e74e440ba6c9ec3def34eb098538cc89cee439e234e0122ac3d40013affb01`.
+Five focused tests, direct docs check, diff check and parallel check pass.
+`pnpm test:changed --base HEAD` also passes the merge and documentation gates
+after a fresh 8m40s local build. That build reuses 41 production kernel
+families; three native adapters and optional numerical Wasm reactors remain
+absent, so it is not full runtime/platform qualification.
+Architecture still stops at the previously recorded stale optimizer inventory;
+neither that inventory nor release qualification is refreshed by this report.
+
+**What this changes next.** The mathematical shortcut works, but paying for
+another coarse log pass everywhere largely cancels its aggregate saving.
+Investigate reuse of interval work or a general, measured admission rule,
+without interpreting an inconclusive screen as proof of anything. Also
+audit repeated presentation work: compact preparation computes HNF,
+index verification computes SNF, and dependency extraction computes HNF
+with a transform again. Sharing an authenticated HNF/transform, and using
+its determinant for the index where justified, may remove work without
+adding a speculative check to every easy field. This is a next experiment,
+not an implemented or measured improvement.
+
+**Next structural scheduling gap, independently replayed.** Applying the
+previous selection rule (first-effort success, more than twice PARI and
+over 0.5 ms slower, ordered by absolute discriminant) to this candidate's
+frozen run selects `3.1.30772.1`, $x^3-x^2+5x-69$: 3.246 ms versus PARI
+1.250 ms. The next is `3.1.41912.1`, $x^3-x^2+22x-14$: 2.862 versus 1.000 ms.
+Read-only snapshots of every closure, with all 64 words matching the native
+survey, were replayed using the same local PARI 2.17.4 executable as above.
+`bnfcertify` succeeds, the maximal-order basis and every principal-ideal
+row equality check exactly, and integer-kernel products are tested with
+`bnfisunit` against the certified unit group at every prefix.
+
+| Field | Actual closure rows | First decisive raw row | Exact prefix change |
+| --- | --- | ---: | --- |
+| 30772 | 13, then 32 | 14 | Quotient order 36 to 18; unit index already 1 |
+| 41912 | 9, then 19 | 10 | Quotient order 12 to 6; unit index already 1 |
+
+This is **missing class-relation evidence, not missing unit evidence**.
+The event trigger's current missing-unit admission condition therefore
+does not apply. A caller-selected generated-JavaScript checkpoint at 14/10
+makes the unchanged certifier accept immediately, with only the compact
+row count and the sign of the unit coordinates changing. These probes
+are not a general algorithm or native performance evidence. Their source,
+snapshots, GP scripts/logs and full outputs are in `prepare-next.cjs`,
+`capture-next.cjs`, `replay-next.cjs`, `next-prefix.json`, `next-replay.json`,
+`probe-next.cjs`, `probe-30772.json` and `probe-41912.json` in the evidence
+directory. Snapshot SHA is
+`621a6e8cf197ab62703ce9bd6736f4d9aef5bcfb2772d58d5b5728a432846024`.
+
+Seeded PARI 2.17.4 `bnf` debug-level-5 forensics on 30772 use ten factor-base
+ideals and close at the initial batch of sixteen relations, with class
+number 18 and regulator approximately 3.812061594. Exact HNF replay of the
+printed exponent matrices gives quotient order 36 at prefixes 10 through
+15, then 18 at 16. This is matrix replay only: the PARI log does not publish
+the principal generators. Its relation stream is not Sage.js's stream.
+The local instrumented/debug run is not timing evidence. `pari-next.gp`,
+`pari-next.log`, `replay-pari-matrix.cjs`, and `pari-matrix.json` retain the
+experiment; the log SHA is
+`99c3251c15a351cb7a0db0d44a1d7725f8d8da2f3bc351d4d7c39730ce34fd37`.
+
+The higher-priority next mathematical experiment is to generalize the
+resident quotient-change trigger to explicitly valid but insufficient
+analytic-index exits, not only missing-unit exits. It must preserve exact
+acceptance, periodic checkpoints, remaining budgets and expanded recovery,
+and must never turn invalid intervals or resource errors into permission
+to resume. The two discovered row numbers are diagnostic witnesses only,
+not inputs to the proposed scheduling rule.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
