@@ -2,6 +2,24 @@
 
 Status: active; no new PARI win claimed.
 
+## Borrowed search-workspace checkpoint, 2026-09-09
+
+The [search-bundle experiment](../docs/cubic-search-workspace-experiment.md)
+passes thirteen resident owners through adjacent/expanded collection and
+ellipsoid admission. Active expanded parameters remain separate. The entire
+original mathematical AST is recoverable by unbundling; executable native IR
+matches across the full graph modulo borrow names/order and two unused
+parameters. All 1,012 observations and output slots match; thirteen compiler
+workspace tests and the new AST/IR checks pass.
+
+The change saves 2,028 raw Python bytes, or 2,522 under pinned formatting.
+Another 1,660 bytes must be removed from the formatted candidate to fit the
+unchanged aggregate allowance. Generated addon and text-section sizes match
+but binary hashes differ. A first apparent timing gain did not reproduce
+under reversed module-load/measurement order; no speedup is claimed. Reversed
+results show small mixed changes, including roughly 1% slower target timing.
+Production remains unchanged and PR190 stays draft. No unseen fields were run.
+
 ## Recovery-discovery sharing checkpoint, 2026-09-09
 
 The [shared recovery experiment](../docs/cubic-recovery-sharing-experiment.md)
