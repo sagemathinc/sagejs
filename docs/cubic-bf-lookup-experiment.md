@@ -229,8 +229,16 @@ because their reproducible toolchain is not prepared. `parallel:check` still
 fails on 395 inherited live task records; these are metadata records, not
 running agents. No unrelated task metadata was altered.
 
-At this checkpoint, `test:changed -- --base HEAD` has passed its merge/docs
-stages and is running the full 575-file CLI suite. Its final result is not yet
-claimed; see `bf-lookup-changed.log`. PR190 remains draft. Public receipt and
+`test:changed -- --base HEAD` passes its merge/docs stages but fails the full
+575-file CLI suite at `test/fflas-dense-prime.cjs`: explicitly requested FFLAS
+RREF reports an unavailable backend in both normal and disabled-native tests.
+The runner records 99 preceding file passes, cancels active siblings, and
+does not start 474 remaining files. A standalone rerun reproduces the same
+two failures. `packages/fflas/.native` is absent in this worktree; this change
+does not edit the matrix implementation or FFLAS package. No broad-suite pass
+or fresh-baseline comparison of that failure is claimed. See
+`bf-lookup-changed.log` and `bf-lookup-fflas-recheck.log`.
+
+PR190 remains draft. Public receipt and
 independent replay, unseen holdout, source-budget consolidation, peak-resource
 review, and cross-platform qualification remain open.

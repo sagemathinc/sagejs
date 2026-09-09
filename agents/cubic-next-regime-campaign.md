@@ -17,8 +17,10 @@ fmpz/GMP/JavaScript all agree, with 963 acceptances and zero exceptions.
 The exact planner tests preserve full partial workspaces on capacity failure.
 Production source and allowances remain unchanged; the diagnostic still
 requires consolidation. Full build/docs, architecture, merge inventories,
-and twelve post-build focused tests pass. The broader 575-file CLI suite is
-still running at this checkpoint; PR190 remains draft.
+and twelve post-build focused tests pass. The broader 575-file CLI suite
+stops at an unavailable optional FFLAS RREF backend after 99 file passes;
+the same two failures reproduce in isolation and its native prefix is absent.
+The remaining suite was not completed; PR190 remains draft.
 
 Profiles and generated code suggest bounded unsigned workspace indexing as
 the next experiment. Local typed aliases already select unsigned lowering;
