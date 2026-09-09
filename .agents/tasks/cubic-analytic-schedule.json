@@ -455,6 +455,56 @@
       "commit": "b416453f4d1520acf130bf88745e7f6dd889e313",
       "workspace_fingerprint": "80c8bef54e0a42adc5062eae4a2cb2f23957ce9618508d167b9a2b730b47cc22",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-volume-quotient-event-TXKmyA/check-resume.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.817,
+      "started_at": "2026-09-09T19:24:41.009Z",
+      "commit": "430db42c01788a85a345cdceb6829dd28397a090",
+      "workspace_fingerprint": "aad231f6dccdc80eee9f5eb6f203b14a50a45ffc2721663fa5004e5ac7f4ed22",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-volume-quotient-event-TXKmyA/check-resume.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.821,
+      "started_at": "2026-09-09T19:28:41.557Z",
+      "commit": "430db42c01788a85a345cdceb6829dd28397a090",
+      "workspace_fingerprint": "aad231f6dccdc80eee9f5eb6f203b14a50a45ffc2721663fa5004e5ac7f4ed22",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.716,
+      "started_at": "2026-09-09T19:28:43.098Z",
+      "commit": "430db42c01788a85a345cdceb6829dd28397a090",
+      "workspace_fingerprint": "aad231f6dccdc80eee9f5eb6f203b14a50a45ffc2721663fa5004e5ac7f4ed22",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.165,
+      "started_at": "2026-09-09T19:30:17.201Z",
+      "commit": "430db42c01788a85a345cdceb6829dd28397a090",
+      "workspace_fingerprint": "aa584ff33f8e6f7f8fb6c1d876535f7cc23b77c96327812d99302106c0c2fe07",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /scratch/sagejs-runtime/cubic-volume-quotient-event-TXKmyA/check-resume.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.167,
+      "started_at": "2026-09-09T19:30:38.440Z",
+      "commit": "430db42c01788a85a345cdceb6829dd28397a090",
+      "workspace_fingerprint": "aa584ff33f8e6f7f8fb6c1d876535f7cc23b77c96327812d99302106c0c2fe07",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

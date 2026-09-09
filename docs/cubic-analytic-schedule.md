@@ -3687,6 +3687,111 @@ Normalized C is 13,057,812 bytes; raw core SHA-256 is
 quantiles and all timing samples. Production source, caps and draft status
 are unchanged.
 
+## Forward exact quotient events through the volume traversal
+
+The missing checkpoint is now implemented in another unpromoted source copy.
+The existing `stop_on_lattice_change` Boolean passes through the adjacent
+dispatcher into the initial-volume collector and its inner ellipsoid
+enumerator. After the exact online update, a newly appended row with support
+flag one can return to the caller. This uses the same event predicate as the
+ordinary traversal. It neither declares the class group complete nor changes
+which resume statuses are admissible. The original exact presentation,
+unit reconstruction and analytic acceptance run at the requested checkpoint;
+periodic checks remain necessary because units can improve without changing
+the class quotient.
+
+An event occurs after advancing the proposal cursor. Before returning, the
+outer volume collector accounts for consumed virtual slots, records the new
+cursor and cumulative candidate count, and updates the per-ideal four-row
+quota and cyclic ideal cursor. Thus a pause does not repeat a candidate,
+reset its budget, or discard the remainder of a visit. The actual volume and
+inner-enumerator Python bodies pass 324 scheduling cases with explicit
+candidate/admission/lattice stubs: varying factor counts, budget chunk sizes,
+rejected candidates and event frequencies preserves the complete proposal
+sequence, accepted rows, final cursor/quota state and total consumed slots.
+Zero budget and terminal online statuses leave traversal state untouched.
+These are control-flow tests, not substitutes for mathematical verification.
+
+Relative to initial-volume-first, all 1,012 first-effort success statuses
+remain identical: 982 successes, 30 declines and no errors. Fifty-three
+successful outputs change. Every accepted class number and invariant list
+matches the frozen oracle, and all 64 words match across FLINT, GMP,
+generated JavaScript and timing linkage. The reused 24-field panel also
+passes all three backends; four transcripts change. Independent certified-GP
+replay passes all 53 changed fields plus two controls, checking 822 principal
+rows, prefix kernel units, maximal-order bases, and the appropriate analytic
+unit or trivial-class presentation. Comparing raw snapshots with the parent
+proves that the common prefix is exactly the same in all 55 cases: 53 finish
+earlier and none later (parent total 1,704 rows). This is still not a
+full-corpus independent replay of Sage.js public certificates.
+
+For 908491 the first 12 rows have quotient 10 and a fundamental unit; row 13
+has quotient 5. Sage.js now actually certifies that 13-row prefix, instead of
+collecting 32 rows. For 46983 the corresponding successful prefix shrinks
+from 28 rows to 10. Both independently replay exactly. The first-effort
+aggregate trace has 906 closures, 922 saturation calls, and 864 BF evaluations
+versus 902/914/864 in initial-volume-first. More checks can be profitable
+when they avoid expensive subsequent relation work; counting calls alone
+would incorrectly reject this change.
+
+Controlled serial `opt` timing with identical one-page FLINT linkage gives:
+
+| Workload | Initial volume ms | With quotient events ms | PARI ms |
+| --- | ---: | ---: | ---: |
+| 908491 | 4.526 | 2.701 | 1.375 |
+| 46983 | 3.249 | 1.833 | 1.125 |
+| Full 1,012-field sum | 3736.498 | 3663.541 | 1460.000 |
+| Reused 24-field sum | 44.255 | 40.481 | 27.250 |
+
+The paired 21-round median ratios are 0.58556 for 908491 (p10/p90
+0.57016/0.59631), 0.55619 for 46983 (0.54314/0.57410), and 0.84434 for
+24364.3 (0.82657/0.86101). The other ten panel ranges include one. These
+quantiles are descriptive, not confidence intervals. The 53 changed fields
+account for 168.658 to 117.171 ms; the other 959 also move by about 21 ms,
+which should not all be attributed to the optimization. Thirty fields retry
+in both variants, and every final timing sample completes.
+
+A separate controlled paired run compares the combined candidate directly
+against the earlier **cheap-first narrow-volume recovery**, not merely
+against the regressing initial-volume ablation. For 908491 the median ratio
+is 0.67640 (0.66425/0.68923); per-sample medians are 3.847 and 2.603 ms.
+For 46983 the ratio is 0.82632 (0.82158/0.85924), with medians 2.102 and
+1.742 ms. Other improvements include 42552 (ratio 0.61219) and 97492
+(0.86119). However, 30772 still regresses by about 27.8%, 41300 by 10.0%,
+283 by 8.5%, and the original `x^3+9*x-55` target by 4.2%. The latter's
+relation output is unchanged, so an added traversal-dispatch cost need not
+show up as a different transcript. These direct comparisons preclude
+claiming a universal win or multiplying ratios from separate experiments.
+The full candidate remains about 2.51 times PARI on this corpus; 908491 is
+closer, but not yet competitive with PARI's roughly 1.4 ms.
+
+A local coarse native profile, explicitly not controlled timing, preserves
+all outputs across 1,100 calls (100 warmups) and reports a 2.550 ms root.
+Two initial-volume calls cost 1.171 ms inclusive; unit materialization costs
+0.224 ms and BF planning 0.167 ms. These nested costs must not be added to
+their parents. This shifts the next target toward relation planning/search
+cost and a principled choice between cheap-first and volume-first schedules,
+while retaining the now-working event forwarding. No field labels or known
+answers enter dispatch. A future choice must be based on general mathematical
+or measured workload structure, with regression controls, rather than selecting
+the best observed strategy separately for each benchmark field.
+
+Reproduction artifacts are in
+`build/cubic-analytic-schedule-evidence/volume-quotient-event/` and
+`/scratch/sagejs-runtime/cubic-volume-quotient-event-TXKmyA`.
+`prepare.py` authenticates initial-volume-first and changes only the three
+traversal functions. Source grows 768 bytes to 503,552, SHA-256
+`e66e054188ecb8fa1cf01c7fb1111a2043536861159c9a439f197e10dcab53ed`.
+Normalized C grows 17,906 bytes to 13,075,718; raw core SHA-256 is
+`887fe43537bb91dd939bb0a96e0b79dd417ca580616ab2057bfb49ab58b7e585`.
+`check-resume.py`, `compare-prefix.cjs`, `summary.json` and the two paired
+summaries record the control, exact-prefix, linkage, resource and timing
+checks. The serial architecture rerun still stops at the known stale
+optimizer manifest (`d870e205…` expected, `ce64558c…` recorded); it is not
+refreshed merely to pass. Production source, allowances and PR203 draft status
+remain unchanged; consolidation, public certificate replay and platform
+qualification are still required.
+
 ## Validation status
 
 - The specialization-audit follow-up passes formatting, all five focused
