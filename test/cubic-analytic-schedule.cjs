@@ -12,6 +12,61 @@ def certificate(x):
     return x < 2
 `;
 
+test("online HNF full-rank test reads only the diagonal without counting deficient rank", () => {
+  const run = spawnSync(pythonExecutable(), ["-c", `
+import ast
+from pathlib import Path
+import random
+
+tree = ast.parse(Path("src/lib/sagejs/number_fields/cubic_class_number_native.py").read_text())
+fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_cubic_online_relation_lattice_update")
+index = next(i for i, n in enumerate(fn.body) if isinstance(n, ast.If) and "_cubic_relation_row_in_hnf" in ast.unparse(n.test))
+fn.body = fn.body[:index] + [ast.Return(fn.body[index].test)]
+namespace = {"FmpzMatrix": object, "uint64": int}
+exec(compile(ast.fix_missing_locations(ast.Module(body=[fn], type_ignores=[])), "actual-hnf-predicate", "exec"), namespace)
+predicate = namespace[fn.name]
+
+class Matrix:
+    def __init__(self, rows):
+        self.rows = rows
+        self.reads = []
+    def __getitem__(self, key):
+        self.reads.append(key)
+        return self.rows[key[0]][key[1]]
+    def __setitem__(self, key, value):
+        self.rows[key[0]][key[1]] = value
+
+rng = random.Random(20260910)
+for n in [0, 1, 2, 3, 8, 16, 32, 36, 64]:
+    for rank in range(n + 1):
+        pivots = sorted(rng.sample(range(n), rank))
+        rows = [[0] * n for _ in range(n)]
+        for i, pivot in enumerate(pivots):
+            rows[i][pivot] = rng.choice([1, 2, 7, 2**80 + 7])
+            for j in range(pivot + 1, n):
+                rows[i][j] = rng.randrange(-2**90, 2**90)
+        for i, pivot in enumerate(pivots):
+            for above in range(i):
+                rows[above][pivot] %= rows[i][pivot]
+        for contained in [False, True]:
+            calls = []
+            def member(*args):
+                calls.append(args)
+                return contained
+            namespace["_cubic_relation_row_in_hnf"] = member
+            basis, support = Matrix(rows), Matrix([[99]])
+            assert predicate(basis, None, None, support, None, None, 0, n) == (rank == n and contained)
+            assert bool(calls) == (rank == n)
+            assert support.rows == [[0]]
+            assert basis.reads == [(i, i) for i in range(n)]
+
+# A non-diagonal pivot gives positive rank despite an entirely zero diagonal.
+namespace["_cubic_relation_row_in_hnf"] = lambda *args: (_ for _ in ()).throw(AssertionError("rank-deficient membership"))
+assert not predicate(Matrix([[0, 1], [0, 0]]), None, None, Matrix([[9]]), None, None, 0, 2)
+`], { cwd: require("node:path").resolve(__dirname, ".."), encoding: "utf8" });
+  assert.equal(run.status, 0, run.stderr);
+});
+
 test("gcd-only source ablation rejects used coefficients and preserves scalar arithmetic", () => {
   const run = spawnSync(pythonExecutable(), ["-c", `
 import importlib.util

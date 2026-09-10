@@ -5701,10 +5701,173 @@ for example, $\left(\begin{smallmatrix}0&1\\0&0\end{smallmatrix}\right)$ has
 rank one but zero diagonal. The source comment rejecting all diagonal
 shortcuts conflates these two claims.
 
-This is a proposed source-level optimization, not yet an implemented or timed
-candidate. It must preserve the exact membership test, support transcript,
-dependent unit witnesses and final publication rule. Test the actual predicate
-on canonical rank-deficient and full-rank HNFs, then compare all complete
-outputs and controlled timings before claiming any benefit. Wider matrix-copy
-or prefix-equality primitives are separate compiler/FFI questions, not license
-to replace this algorithm with handwritten mathematics.
+### Diagonal full-rank predicate: implementation and measured ablation
+
+The predicate is now implemented in the research source and backported as the
+same narrow change to this branch's production Python source. It changes only
+the initial full-rank question in `_cubic_online_relation_lattice_update`.
+The membership branch and the rest of the updater are AST-identical to the
+parent. In particular, rank-deficient prefixes still receive a full HNF
+update; support bits, dependent unit witnesses and publication are unchanged.
+The `column: uint64` declaration remains explicit for later copy loops.
+
+The proof requires the maintained canonical row-HNF invariant, not an
+arbitrary matrix assumption. Nonzero rows have strictly increasing pivot
+columns, so pivot column $j_i\geq i$; padded zero rows follow them. Consequently
+$H$ is upper triangular and $\det H=\prod_i H_{ii}$. Nonzero determinant is
+equivalent to full rank. This proves equivalence of the old and new branch
+conditions, including deficient prefixes, without claiming that diagonal
+entries count deficient rank. The initial zero basis has the invariant, and
+each full exact HNF update preserves it; the membership shortcut leaves it
+unchanged.
+
+Validation of the actual extracted old/new predicates covers 6,435 canonical
+HNFs, dimensions zero through 64 and every rank, including large integer
+entries. A separate read-only audit checks canonical HNF at all **19,522**
+actual updater entries across 1,012 fields, including dimensions 34 and 36.
+All predicates agree, and all final 64-word outputs are unchanged. The scan
+reads fall from **4,595,897 to 283,929** across that corpus. These finite tests
+support implementation fidelity; they are not a formal proof of the theorem.
+
+Full-output differential checks pass for all 1,012 fields on FLINT, GMP and
+generated JavaScript, under both normal and experimental one-page FLINT
+linkages. Another **85** fields pass all three backends under one-page linkage.
+Those 85 are the earlier unit-index successor panel, reused here, not newly
+unseen HNF holdouts. Exact principal-relation replay from the parent remains
+separate evidence; no new public certificate or Lean qualification is claimed.
+
+Controlled `opt` totals (sums of per-field medians) are **2696.393 → 2658.960
+ms**, versus PARI **1438.125 ms**: a 1.39% aggregate improvement, still **1.849×**
+PARI. The frozen 21-field development panel has paired median ratios between
+0.97176 and 0.99683. Every median favors the candidate, but several empirical
+10th–90th percentile ranges cross one. This supports a modest common-work
+improvement, not a universal no-regression claim. The protocol is three rotated
+full-corpus rounds, two native calls or eight fresh GP computations per sample;
+paired measurements use 21 ABBA/BAAB rounds and ten calls per sample after 200
+warmups. Packed input buffers are prepared outside the clock, bounded retries
+inside; all these fields accept at the first effort. PARI is the timed 2.15.4
+binary on `opt`, not the local 2.17.4 replay binary.
+
+The measured advanced research source has SHA-256
+`10e17e9d8f726100bc88462f080cb4ac2642f7e10d5aefe9408aabcf0cc662a4`
+and 527,190 bytes, versus its certified-unit parent at 527,328 bytes. Its core
+hash is `91a7d2255633f1860cd4fab036dbfd067a955bf469b1ada5f13f567ccaae3ff8`.
+Raw generated-C size comparisons contain differing repeated provenance paths
+and are not machine-code size evidence. This remains an over-budget research
+program, not a release candidate. The **separate tracked production source**
+shrinks by the same 138 bytes, and its package including runtime passes at
+**480,241 / 485,000 bytes**. No source allowance or resource capacity changes.
+Research timings must not be presented as timings of that production program.
+
+Sources, authentication scripts, backend reports, prefix audit and timing
+records are in `/scratch/sagejs-runtime/cubic-hnf-diagonal-uS0GUY`; the remote
+timing directory is `/tmp/cubic-hnf-diagonal-UnX1A9`. The focused tracked test
+executes the actual Python predicate and spies on diagonal reads, membership
+eligibility and support reset, including the deficient off-diagonal example.
+
+The next isolated experiment replaces only the basis-to-source copy with the
+existing declared `fmpz_matrix_set_block(source, 0, 0, basis)`. Its preconditions
+hold for the distinct resident $n\times n$ basis and $(n+1)\times n$ source;
+the final source row is still explicitly overwritten by the incoming relation.
+This needs no new owner, shape, capacity or handwritten mathematics. The other
+comparison/copy-back loops remain unchanged. The experiment compiles and all
+1,012 outputs agree on GMP and JavaScript, but the compiler's
+`FMPZ_FFI_DECLARATIONS` allowlist excludes `flint:fmpz_matrix_set_block`, removing
+the root's `fmpz` entry point. The initial three-backend harness therefore
+fails before computing its first field. It is not a three-backend pass or a
+comparable timing. IR inspection confirms a resource/resource call with two
+`uint64` offsets and Boolean status; the adapter checks distinct owners and
+complete block bounds, copies exact entries, then recomputes allocated bytes.
+Admitting it needs compiler-lane review of arena allocation/failure cleanup,
+alias/bounds tests and generated targets, not just a refreshed manifest or
+timing the GMP replacement. No compiler or FFI policy is changed here.
+
+A separate **fused comparison/copy-back** source experiment uses only the
+existing operations: compare each old basis entry immediately before replacing
+that same cell with the corresponding reduced entry. The accumulated Boolean
+is exactly the disjunction of the old entrywise comparisons; every read of an
+old basis cell precedes its overwrite. The final support mark and basis are
+therefore identical on successful completion. Distinct resident owners and
+the unchanged HNF output provide the necessary state invariant. Allocation
+failure may leave a different private partial state, but it cannot publish a
+certificate and must follow the existing arena failure cleanup.
+
+This second candidate leaves the first copy, rank calculation, HNF operation,
+owner shapes and capacities unchanged. Actual Python bodies agree in 1,360
+injected-HNF control cases on return values and all matrix state. All 1,012
+complete outputs agree on FLINT/GMP/JavaScript under normal and one-page
+linkages, as do the reused 85 fields under one-page linkage. Its source hash
+is `89f0e18703f9fa1b75cfdfa196c95822d42a9e0363cc379afe495c41d2e1f553`.
+Both follow-up experiments and scripts are retained under
+`/scratch/sagejs-runtime/cubic-hnf-block-rwQI42`. Neither is backported to
+production at this point. Broader copy/equality work needs its own invariant
+and resource review rather than an unexamined increase in basis dimensions.
+
+The fused-copy controlled run completes with totals **2690.766 → 2665.557 ms**
+against PARI **1437.875 ms**, a 0.94% reduction. The same frozen 21-field
+paired panel has 20 median ratios below one, from 0.98441 to 0.99976, and one
+essentially tied at 1.00032. Several ranges cross one. Thus it is a small
+common-work benefit, not a new PARI win; do not compound percentages from
+separate runs into an unmeasured end-to-end claim. The remote directory is
+`/tmp/cubic-hnf-fused-vS6hv5`. An initial paired invocation omitted its required
+`event` argument and failed before timing; the corrected `paired-event.json`
+is the authenticated evidence. The completed full run was not restarted.
+
+### Rank-deficient membership opportunity
+
+A read-only exact-membership screen of the same 19,522 updater entries finds
+**2,278 contained rows among 15,822 rank-deficient prefixes**. It checks each
+canonical HNF as before and reduces the incoming vector over its nonzero
+pivots using exact integers, without altering the native algorithm's decisions.
+All 1,012 final outputs remain unchanged. This suggests avoiding entire HNF
+computations, not just entry scans; membership cost on noncontained rows still
+needs measurement.
+
+A separate source copy extends `_cubic_relation_row_in_hnf` to skipped pivot
+columns. At each column, subtract the contributions of already determined
+integer row weights. If the next basis row has a pivot there, positive-pivot
+divisibility uniquely determines its weight. Otherwise the residual must be
+zero, since every later basis row vanishes in that column. Induction over
+columns proves that success is equivalent to an integral combination of the
+nonzero HNF rows. The pivot-row cursor is at most the column cursor, hence is
+in bounds whenever a column is visited. For full-rank HNF this reduces to the
+original triangular solve. The updater returns the proper-sublattice status
+for a contained deficient row, leaving support zero and all principal/unit
+witnesses in the original ledger.
+
+The actual new helper agrees with independent rational Gaussian elimination
+on **5,808** tests through dimension 16, covering every rank, large pivots,
+known integral combinations and perturbed/arbitrary vectors. The generic
+rational solver tests consistency of $H^Tc=v$ and integrality of its unique
+weights, rather than reimplementing the same pivot traversal. All 1,012 outputs
+also agree on FLINT/GMP/JavaScript with normal linkage. Source hash:
+`919b6a5faa159d0e0c6faeece024b8a86513e259302818cc25a1dda0add8b536`.
+This is separate from the fused-copy candidate, has not been backported, and
+is not yet a performance claim. Its inherited updater comment saying all
+deficient prefixes undergo HNF is stale in this research copy; correct it
+before consolidation. The mathematical rule and executable branch, not that
+old comment, are what the current experiment tests.
+
+### Production backport validation
+
+The tracked diagonal-only source passes a fresh production build, all seven
+focused analytic-schedule tests and strict CPython syntax/Ruff/Pyright checks
+for 382 modules (zero errors). `pnpm test:changed -- --base HEAD`, run against
+the two code/test changes before documentation updates, completes merge checks,
+the build, Python precompilation and **all 192 unit-test files**. The separate
+specialized `test/number-field-cubic-native-class-number.cjs` recheck passes
+all four tests: authenticated native receipts/declines, independent exact
+receipt replay, pinned nontrivial LMFDB cases and large-regulator exact units.
+This is narrower than public qualification of the advanced research sources.
+
+The first specialized run was contaminated by an overlapping changed-file
+compiler rebuild and failed during REPL loading (`get_compiler_version` was
+not a function). It is retained as a failed run, not mathematical evidence.
+The successful rerun started only after compiler rebuilding completed.
+`pnpm architecture:check` passes FFI, package/source budgets, native boundaries
+and Wasm audits, then still fails the pre-existing stale optimizer-opportunity
+inventory (now expecting input `be4a3d5670ff2fd5a90fae1a77199eb7fae207d3fe7a43dc26e24fd7ae94bf63`,
+finding `ce64558cecbdc639cd6eeb9a6b3ad0de5d968c6523248d11401556004dc3bcde`).
+Do not refresh that inventory merely to turn the gate green. The proof and
+campaign documents pass generated-doc checks. Nonbinary source/scripts/reports
+are preserved under `build/cubic-analytic-schedule-evidence/hnf-diagonal`.

@@ -300,6 +300,24 @@ an HNF computation for a contained row. Before full rank, the update computes
 the HNF even when pivots skip columns. A same-rank decrease in lattice index
 still sets the support bit.
 
+The full-rank predicate itself needs only the diagonal. In this padded row
+HNF, the pivot of nonzero row $i$ has column at least $i$, because pivot
+columns strictly increase. Thus $B_i$ is upper triangular, and
+
+$$
+\operatorname{rank}(B_i)=n
+\iff \det(B_i)\ne0
+\iff \prod_{j=1}^n(B_i)_{jj}\ne0
+\iff (B_i)_{jj}\ne0\quad\text{for every }j.
+$$
+
+This replaces the previous all-entry nonzero-row count only where its result
+was used to ask full rank. It does not compute deficient rank from diagonal
+entries: $\begin{pmatrix}0&1\\0&0\end{pmatrix}$ has rank one and zero diagonal.
+The exact membership test and rank-deficient update are unchanged. This
+argument depends on the maintained HNF invariant, not merely on the matrix
+being square; it introduces no additional analytic or GRH assumption.
+
 Reuse requires every admitted row to have been processed online and no
 small-unit shortcut to be active. The small-unit branch keeps its original
 tall HNF, because it retains all principal rows. The reused square HNF

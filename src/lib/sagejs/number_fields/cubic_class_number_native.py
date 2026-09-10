@@ -964,23 +964,18 @@ def _cubic_online_relation_lattice_update(
     """
     support[relation_row, 0] = 0
 
-    # Once the prefix has full rank, exact triangular membership proves that a
-    # contained row cannot change the canonical HNF.  Before full rank we still
-    # reduce the padded basis: rank-deficient pivots need not lie on the main
-    # diagonal, so no diagonal shortcut is sound there.
-    previous_rank: uint64 = 0
+    # A padded canonical row HNF is upper triangular. Full rank is equivalent
+    # to a nonzero diagonal product; this is NOT a way to count deficient rank.
+    # Contained rows still use exact triangular membership, while deficient
+    # prefixes still go through the same full HNF update and support ledger.
+    previous_full_rank = True
     row: uint64 = 0
+    column: uint64 = 0
     while row < dimension:
-        row_nonzero = False
-        column: uint64 = 0
-        while column < dimension:
-            if basis[row, column] != 0:
-                row_nonzero = True
-            column += 1
-        if row_nonzero:
-            previous_rank += 1
+        if basis[row, row] == 0:
+            previous_full_rank = False
         row += 1
-    if previous_rank == dimension and _cubic_relation_row_in_hnf(
+    if previous_full_rank and _cubic_relation_row_in_hnf(
         membership_coordinates,
         basis,
         relations,
