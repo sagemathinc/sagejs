@@ -107,3 +107,94 @@ def _cubic_insert_row_hnf(
             pivot_row += 1
         column += 1
     return True
+
+
+def _cubic_insert_row_hnf_inplace(
+    basis: FmpzMatrix,
+    residual: FmpzMatrix,
+    dimension: uint64,
+) -> bool:
+    """Insert one residual row into the canonical padded row HNF in place.
+
+    Basis is dimension-by-dimension; residual is a distinct one-row owner.
+    This is the same unimodular pivot sequence as the copying helper. The
+    caller provides the incoming row in residual. No snapshots or full-matrix
+    comparisons are needed: exact nonmembership already proves a change.
+    Failure leaves private state unusable; no caller may publish it.
+    """
+    row: uint64 = 0
+    column: uint64 = 0
+    pivot_row: uint64 = 0
+    column = 0
+    while column < dimension:
+        a = basis[pivot_row, column]
+        b = residual[0, column]
+        if a != 0 or b != 0:
+            if a == 0:
+                # A new earlier pivot displaces the old row into the residual.
+                j: uint64 = column
+                while j < dimension:
+                    old = basis[pivot_row, j]
+                    basis[pivot_row, j] = residual[0, j]
+                    residual[0, j] = old
+                    j += 1
+            elif b != 0:
+                if b % a == 0:
+                    quotient = b // a
+                    j: uint64 = column
+                    while j < dimension:
+                        residual[0, j] = residual[0, j] - quotient * basis[pivot_row, j]
+                        j += 1
+                else:
+                    # Bezout pair: determinant of [[s,t],[-b/g,a/g]] is one.
+                    old_r = a
+                    r = b
+                    old_s = 1
+                    s = 0
+                    old_t = 0
+                    t = 1
+                    while r != 0:
+                        quotient = old_r // r
+                        next_r = old_r - quotient * r
+                        old_r = r
+                        r = next_r
+                        next_s = old_s - quotient * s
+                        old_s = s
+                        s = next_s
+                        next_t = old_t - quotient * t
+                        old_t = t
+                        t = next_t
+                    if old_r < 0:
+                        old_r = -old_r
+                        old_s = -old_s
+                        old_t = -old_t
+                    left = -(b // old_r)
+                    right = a // old_r
+                    j: uint64 = column
+                    while j < dimension:
+                        old = basis[pivot_row, j]
+                        extra = residual[0, j]
+                        basis[pivot_row, j] = old_s * old + old_t * extra
+                        residual[0, j] = left * old + right * extra
+                        j += 1
+            pivot = basis[pivot_row, column]
+            if pivot < 0:
+                j: uint64 = column
+                while j < dimension:
+                    basis[pivot_row, j] = -basis[pivot_row, j]
+                    j += 1
+                pivot = -pivot
+            if pivot == 0:
+                return False
+            row = 0
+            while row < pivot_row:
+                quotient = basis[row, column] // pivot
+                if quotient != 0:
+                    j: uint64 = column
+                    while j < dimension:
+                        basis[row, j] = basis[row, j] - quotient * basis[pivot_row, j]
+                        j += 1
+                row += 1
+            pivot_row += 1
+        column += 1
+    return True

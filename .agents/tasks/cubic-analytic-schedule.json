@@ -1809,6 +1809,36 @@
       "commit": "aba2550a4416879ec0a8b13effe0ced07df3121c",
       "workspace_fingerprint": "aa1103a64fff4b84440bd50e243daa7b4c5575f170edf777df7bfa2e76120c0f",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-incremental-hnf.cjs test/cubic-two-primary.cjs test/cubic-dimensioned-workspace.cjs test/cubic-compact-unit.cjs test/cubic-dependent-witness-tail.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.427,
+      "started_at": "2026-09-10T15:58:08.585Z",
+      "commit": "0f47cfcba52e59dc7646e7c1ce65b93d734d728e",
+      "workspace_fingerprint": "01438179881a70e79b209bbc21b7220a94d161a6ddde6379c6acc5ffe9ed999a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base HEAD",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 804.194,
+      "started_at": "2026-09-10T15:59:49.391Z",
+      "commit": "0f47cfcba52e59dc7646e7c1ce65b93d734d728e",
+      "workspace_fingerprint": "e75c358aef3a51441534557af6f1887fc8f95cb5badaa0c094ffb85676fce871",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-incremental-hnf.cjs test/cubic-two-primary.cjs test/cubic-dimensioned-workspace.cjs test/cubic-compact-unit.cjs test/cubic-dependent-witness-tail.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.422,
+      "started_at": "2026-09-10T16:13:43.071Z",
+      "commit": "0f47cfcba52e59dc7646e7c1ce65b93d734d728e",
+      "workspace_fingerprint": "2c8d82eb505c8a048fdea83a3291e44fb9c6648ad0070a8778812f1680ce0302",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

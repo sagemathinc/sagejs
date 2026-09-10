@@ -9276,3 +9276,174 @@ hashes, and the exact runner are in `opt-timing.json`, `fields.json`,
 handoff. The next performance priority is the larger-field phase breakdown,
 alongside holdout testing and eventual public-certificate integration, rather
 than declaring this 27-field development panel generally competitive.
+
+## Larger-field phase costs and in-place online HNF
+
+The next campaign measures the whole closed native program at checked early
+return boundaries. Its baseline is parity source
+`5b20a10fdabace9b758117657976ed8dd2467523bc3e9456180d535d8c45ede9`.
+The instrumented source is
+`a7eddc3c089ccbbb4c5d27df39f6412f07bb804c23365eee51f720a2f8259433`,
+compiled with unchanged compiler commit `8cd09c4484cddfcf7024b5169a4c18fa0b07d3f0`.
+Parameter `phase_stop=0` performs the entire original computation; values
+1 through 11 return false at explicit boundaries with markers 201 through
+211. Larger values decline before execution. There is no internal host clock
+or callback. Each prefix includes its own generated all-exit cleanup, so
+differences estimate phase costs rather than recording isolated phase clocks.
+The no-stop controls agree with every frozen detached output on all four
+measured fields, as do the separately loaded uninstrumented controls.
+
+On idle `opt`, pinned to CPU 2 under the exclusive timing lock, one prefix
+warmup and three rotated samples give these cumulative medians in milliseconds:
+
+| Label suffix after `3.1.` | Before collection | After initial collection | Entire diagnostic |
+| --- | ---: | ---: | ---: |
+| `1086061775432017340256300.596` | 620.22 | 13156.66 | 13347.77 |
+| `1086061775432017340256300.387` | 572.40 | 15353.66 | 17159.72 |
+| `341970033803678280.6` | 52.45 | 441.64 | 5325.28 |
+| `1086061775432017340256300.1013` | 599.03 | 15445.00 | 15610.08 |
+
+The first field's broader one-sample sweep reaches field analysis at 1.28 ms,
+the integer kernel at 13269.91 ms, dependency LLL/precision at 13311.01 ms,
+principal logs at 13327.74 ms, authenticated compact unit at 13270.27 ms,
+and final closure at 13310.37 ms. Small nonmonotone differences are noise and
+different cleanup costs, not negative phase times. The substantial cost
+precedes compact-unit work.
+
+For `341970033803678280.6`, a separate one-sample sweep reaches the compact
+unit at 442.37 ms and the first analytic attempt at 443.79 ms, but final
+analytic closure at 5321.19 ms. It has no algebraic retry. Its cutoffs are
+765, 1530, and 3060; the last crosses the order-index prime 2819. The present
+index-prime code enumerates $2819^2=7{,}946{,}761$ potential unital maps from
+the exact maximal-order algebra. This identifies a different structural
+target from online HNF: authenticate a cyclic basis $1,t,t^2$ modulo $p$ and
+count roots of its cubic relation, falling back when that basis test fails.
+This proposed finite-algebra optimization is not implemented by the HNF change
+below, and the phase evidence alone does not measure that one call in isolation.
+
+PARI 2.17.4's local debug trace for the first field reports discriminant
+factorization at 0 ms, field initialization at 1 ms, initial `small_norm` at
+115 ms, and `hnfspec [414 x 420]` at 669 ms. It then adds 10 relations and
+reduces the tentative order from 157464 to 78732. Debug timings are local
+diagnostics, not a substitute for the prior controlled `opt` comparisons.
+In particular, PARI's final nine-dimensional block does not mean it never
+processed the larger matrix.
+
+### An exact HNF change with unchanged search and proof work
+
+The research in-place variant preserves the pivot sequence of the existing
+incremental HNF helper. The old online update copies the basis to an augmented
+matrix, copies that matrix to its reduction buffer, scans for a change, then
+copies the result back. The replacement borrows the already available
+one-row membership workspace as the residual and mutates the retained basis
+directly. Exact nonmembership, or a previously authenticated nonmembership
+hint, already proves that the canonical lattice changes; a full comparison
+is unnecessary. A contained row leaves the basis unchanged. The unused old
+source/reduction owners remain allocated in this ablation, so neither allocation
+policy nor any memory limit is weakened to obtain the result.
+
+The ordinary Python helper is in `cubic-incremental-hnf.py`. All 4845 tested
+prefixes agree with both the copying implementation and an independent SymPy
+HNF, including skipped pivots, deficient rank, duplicates, signs, and 300-bit
+coefficients. The residual ends at zero on every prefix. The unchanged
+unimodular swap, Bezout, sign, and quotient operations preserve the lattice;
+positive reduced pivots give the same unique HNF. Partial failure invalidates
+private state and must never publish a result.
+
+Research source
+`19d7d1d543d5fec23836bf0369adf2c0d593f58d436d46f65d69cac40cfe80ac`
+has 586407 bytes, versus 588740 for the parity baseline. All 27 complete
+detached outputs and parity counters agree exactly with that baseline on both
+GMP and tagged backends. Production source, source allowance, admission policy,
+relation order, selected units, analytic bounds, and publication are unchanged.
+This is still a research diagnostic, not a newly released certified API.
+
+Working scripts, frozen inputs, generated-code provenance, timings and exact
+lattice certificates are in
+`/scratch/sagejs-runtime/cubic-phase-costs-SJsWGz`. The independent HNF check
+authenticates both lattice inclusions: PARI proposes $H,C$, Python checks
+$AC=H$ exactly and solves every column of $A$ integrally in the triangular
+basis $H$. It also checks canonical form. No assumed class number or guessed
+determinant bound enters these inclusions. The native replay's basis is checked
+by inclusion in this authenticated lattice and equal finite index.
+
+The initial naive SymPy HNF attempts exhibited severe coefficient growth and
+were terminated deliberately; PARI's naive transformation mode also exhausted
+its 512 MiB stack on one matrix. LLL-assisted `mathnf(A,4)` supplied proposals
+for all four independently checked certificates. These are checker-algorithm
+issues, not waived failures of a mathematical equality.
+
+### Paired costs and remaining work
+
+The separately compiled, unchanged online-HNF replay on the frozen ledgers
+takes median 5262.32, 3732.32, 130.93 and 5197.17 ms in the table's order.
+Copying its inputs alone takes 5.64, 5.03, 0.65 and 5.75 ms. The replay does
+not receive the collector's known-nonmembership hints, so it can perform more
+membership work; its cost must not simply be subtracted as an exact phase
+clock. It nevertheless establishes that online exact lattice maintenance is
+a substantial, separately reproducible cost, not just relation discovery.
+
+Paired whole-computation measurements use unchanged inputs, one warmup, three
+alternating samples, CPU 2 and full-output checks outside timing:
+
+| Label suffix after `3.1.` | Copying HNF (ms) | In-place HNF (ms) | Baseline / in-place |
+| --- | ---: | ---: | ---: |
+| `1086061775432017340256300.596` | 13234.84 | 9779.59 | 1.353 |
+| `1086061775432017340256300.387` | 16992.54 | 15190.21 | 1.119 |
+| `341970033803678280.6` | 5334.85 | 5393.37 | 0.989 |
+| `1086061775432017340256300.1013` | 15883.90 | 12567.62 | 1.264 |
+
+The three large fields improve, but the analytic-heavy field is about 1.1%
+slower, with nonoverlapping sample ranges in this run. This is not a blanket
+no-regression result and does not justify production promotion. It also does
+not close the gap with PARI. A five-pair repeat on that smaller field gives
+5322.43 versus 5398.29 ms, again favoring the baseline. The full observed ranges
+are 5315.97--5341.78 and 5385.70--6703.19 ms; the slow final in-place sample is
+retained, not excluded. The median regression is about 1.4%. Its cause has not
+been isolated, and no no-regression claim is made. Two smaller outputs agree with the
+generated JavaScript backend; all 27 were checked on GMP and tagged.
+
+The finite-algebra feasibility probe checks all 12 index-prime algebras arising
+from these four recorded order bases. At $p=2819$, the first order-basis element
+$t$ has $\det(1,t,t^2)=2530\ne0$ in $\mathbf F_{2819}$, and
+
+$$
+g(T)=T^3+2542T^2+1936T+1275
+$$
+
+has the three roots $1113,2021,2781$. The probe derives the multiplication
+table from the polynomial and rational order basis, checks the power-basis
+identity, and independently verifies all products under the three proposed
+unital maps. Once $1,t,t^2$ is a basis, $\mathbf F_p[T]/(g)\to A$ is an
+isomorphism: it is a surjection between vector spaces of dimension three.
+Thus the roots count precisely the maps $A\to\mathbf F_p$, including when
+$g$ has repeated roots. No heuristic bound or assumption that the original
+defining generator remains primitive modulo an index prime is involved.
+
+The candidate search must choose a complement to the actual identity vector,
+not blindly use the last two order coordinates. In this example the identity's
+first coordinate vanishes modulo 2819. A failed cyclic-basis test must retain
+the exact general fallback. This finite-algebra path is the next implementation
+target; it is only a feasibility/proof probe in this checkpoint.
+
+All controlled `opt` jobs have ended and the exclusive lock was confirmed free.
+The generated in-place core has 17053595 bytes versus baseline 17186531;
+production's effective source remains 480241/485000. The scratch evidence is
+also gzip-archived with original SHA-256 hashes and round-trip checks under
+`build/cubic-analytic-schedule-evidence/phase-costs/`. This includes the
+baseline, instrumented and in-place source, generated cores/headers, exact
+input ledgers, all raw timings, independent certificates, and failed attempts.
+The archive contains 95 files: 186005889 original bytes and 17982915 compressed
+bytes. The formatted tracked helper has the same AST as the measured native
+source helper.
+
+Validation for this checkpoint: Python formatting, nine focused checks,
+all 196 unit files, merge checks, docs checks and the complete 8m47s build
+pass. The broader CLI run stops in `test/ffi.cjs` on the existing missing
+FFLAS generated manifest and igraph native dependencies: five failing cases,
+with 583 files unstarted after cancellation. Full architecture likewise stops
+at the previously recorded stale optimizer manifest, after its native, FFI
+and resource checks pass. Neither failure is waived or represented as a green
+full-suite receipt. The task stays active and PR #203 stays draft. Final
+validation-receipt metadata is written after the build; this checkpoint does
+not claim release qualification of that exact final metadata snapshot.

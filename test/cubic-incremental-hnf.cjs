@@ -18,8 +18,10 @@ from sympy.matrices.normalforms import hermite_normal_form
 tree = ast.parse(Path("bench/class-unit-groups/cubic-incremental-hnf.py").read_text())
 fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef))
 scope = {"FmpzMatrix": object, "uint64": int}
-exec(compile(ast.Module(body=[fn], type_ignores=[]), "incremental-hnf.py", "exec"), scope)
+functions = [n for n in tree.body if isinstance(n, ast.FunctionDef)]
+exec(compile(ast.Module(body=functions, type_ignores=[]), "incremental-hnf.py", "exec"), scope)
 insert = scope[fn.name]
+inplace = scope["_cubic_insert_row_hnf_inplace"]
 class Storage:
     def __init__(self, rows): self.rows = [r[:] for r in rows]
     def __getitem__(self, key): return self.rows[key[0]][key[1]]
@@ -42,6 +44,11 @@ def replay(rows,n):
         result = Storage([[999]*n for _ in range(n+1)])
         assert insert(result,incoming,n)
         assert incoming.rows == before
+        live_basis = Storage(basis)
+        residual = Storage([row])
+        assert inplace(live_basis,residual,n)
+        assert live_basis.rows == result.rows[:n]
+        assert residual.rows == [[0]*n]
         prefix.append(row)
         assert result.rows == oracle(prefix,n), (prefix,result.rows)
         basis = result.rows[:n]
