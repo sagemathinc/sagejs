@@ -9,6 +9,9 @@
   "objective": "Understand deeply how to improve cubic class number computation to be competitive with PARI overall, preserving exact certification and resource contracts",
   "base_commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
   "claims": [
+    "bench/class-unit-groups/cubic-incremental-hnf.py",
+    "bench/class-unit-groups/cubic-incremental-hnf-ablation.py",
+    "test/cubic-incremental-hnf.cjs",
     "bench/class-unit-groups/cubic-dimensioned-workspace.py",
     "test/cubic-dimensioned-workspace.cjs",
     "bench/class-unit-groups/cubic-broad-report.cjs",
@@ -1477,10 +1480,40 @@
       "commit": "12e1fc3329a0e865bdd1e20006f8715be070661e",
       "workspace_fingerprint": "09dc56c977a0ddb588e59a8ae8a753e7f18a2cf4c9567d81ec4f0e1738749b30",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-incremental-hnf.cjs test/cubic-dimensioned-workspace.cjs test/cubic-broad-corpus.cjs test/cubic-compact-unit.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.22,
+      "started_at": "2026-09-10T07:59:24.891Z",
+      "commit": "3594fa36a9204c6af8d338ab47a71b2c17f472da",
+      "workspace_fingerprint": "b5631dd574642f321f968c5e5a7ef4754724712d6ae1237df79f414728e5b8f7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.785,
+      "started_at": "2026-09-10T08:02:40.748Z",
+      "commit": "3594fa36a9204c6af8d338ab47a71b2c17f472da",
+      "workspace_fingerprint": "fbcf004f36000b29f2b3ff03b78b2a6a8e05b884148cb948e2a2c474ef1f35b9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-incremental-hnf.cjs test/cubic-dimensioned-workspace.cjs test/cubic-broad-corpus.cjs test/cubic-compact-unit.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.251,
+      "started_at": "2026-09-10T08:09:49.993Z",
+      "commit": "3594fa36a9204c6af8d338ab47a71b2c17f472da",
+      "workspace_fingerprint": "c38b820f4c2d3a09700e21e1238c631d6cc155b1fc1b9ac6adfe59de295e5b5f",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Dimensioned research workspace and private scalar-record compiler prerequisite now implemented. Frozen 21-field measured-cost frontier (PARI >=10ms): layout-only 0 accepted/21 declined; staged 0/19/2 timeouts; volume-box 0/13/8; augmented compact HNF 2 accepted/19 declined/no timeouts. Target x^3-93477150 reaches cutoff458/74ideals/56groups and certifies h405,[3,3,3,15]; second field1428754729688.2 certifiesh393. Direct HNF-transform stalls on captured84x74 entries<=3; ordinary HNF of[A|I] recovers unimodular transform in73ms diagnostic and independently verifies UA=H,detU=+-1,index405. Initial SNF suspicion disproved; redundant SNF removal alone does not fix timeout. Final native source536701/core20433494bytes, unchanged production source and arena limits; two compact matrices widened, not constant-memory. All64 parity JS/GMP/fmpz for2 successes; independent PARI bnfcertify/maximal-basis/308principal-row/final-unit-lattice/published-fundamental-unit replay passes. Controlled opt medians369.567/14.000ms and153.463/11.750ms native/PARI, still26.4x/13.1x slower. Layout-only41controls208.426->207.264ms aggregate, worst1.024ratio. No overall competitiveness claim or pristine holdout claim;19declines andseconds-scale work remain. Compiler patch isolated in agent/native-exact-layout-records based on arena prototype; release/platform/full-suite qualification open. Correction: old CLI65056 terminated for missing optional FFI prerequisites includinglibigraph.a, not a full586-suite pass or live job. KeepPR203draft. Goal active.",
+    "summary": "Dimensioned research workspace and private scalar-record compiler prerequisite now implemented. Frozen 21-field measured-cost frontier (PARI >=10ms): layout-only 0 accepted/21 declined; staged 0/19/2 timeouts; volume-box 0/13/8; augmented compact HNF 2 accepted/19 declined/no timeouts. Target x^3-93477150 reaches cutoff458/74ideals/56groups and certifies h405,[3,3,3,15]; second field1428754729688.2 certifiesh393. Direct HNF-transform stalls on captured84x74 entries<=3; ordinary HNF of[A|I] recovers unimodular transform in73ms diagnostic and independently verifies UA=H,detU=+-1,index405. Initial SNF suspicion disproved; redundant SNF removal alone does not fix timeout. Final native source536701/core20433494bytes, unchanged production source and arena limits; two compact matrices widened, not constant-memory. All64 parity JS/GMP/fmpz for2 successes; independent PARI bnfcertify/maximal-basis/308principal-row/final-unit-lattice/published-fundamental-unit replay passes. Controlled opt medians369.567/14.000ms and153.463/11.750ms native/PARI, still26.4x/13.1x slower. Layout-only41controls208.426->207.264ms aggregate, worst1.024ratio. No overall competitiveness claim or pristine holdout claim;19declines andseconds-scale work remain. Compiler patch isolated in agent/native-exact-layout-records based on arena prototype; release/platform/full-suite qualification open. Correction: old CLI65056 terminated for missing optional FFI prerequisites includinglibigraph.a, not a full586-suite pass or live job. KeepPR203draft. Goal active. Follow-up incremental canonical HNF replaces one online full reduction without changing allocation, support or certification. Controlled opt: 351.891 to123.166ms and152.861 to71.102ms (2.857x/2.150x), still8.798x/6.051x PARI. All64 JavaScript/GMP/fmpz words unchanged; 4845 independent small/wide prefixes, 612 probe checks and392 PARI-verified captured prefixes. Original21 panel unchanged; next20 selected costlier neighbors all decline. Research helper, single-site transformer and tests tracked; goal and draft qualification remain open.",
     "risks": [
       "Current overall-goal priority supersedes small-field tuning. Independent compact-unit prototype is a CPython/SymPy research oracle, not native integration or a class-group certificate. Unit membership does not prove nontorsion/fundamentality. PARI versions produce different compact witnesses; do not conflate382/34-bit with412/260-bit. Existing development distribution cannot support claims about overall cubic workloads.",
       "Magnitude-first is research-only: same1042 outputs and58 fresh neighbors do not establish universal no-regression or public/platform/resource qualification. Temporary slots rise17->18 despite smaller generated C. Seconds-panel Sage.js exceptions/declines are not fallback-success or speed evidence. PARI flag0 versus flag1 changes retained exact evidence; align output/certificate contracts before claiming competitiveness at large regulator.",

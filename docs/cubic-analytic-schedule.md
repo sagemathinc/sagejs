@@ -7386,3 +7386,146 @@ and the seconds-scale panel—not further optimization of tiny controls.
 Correction to the previous handoff: CLI session 65056 terminated in FFI tests
 with missing optional native prerequisites, including `libigraph.a`. It did
 not pass the full 586-file suite and is not still running.
+
+### Incremental canonical HNF: a measured larger-field improvement
+
+The next diagnostic profile changes the immediate optimization target.
+Instrumenting every generated cubic helper, while retaining the unmodified
+mathematical body and checking all 64 output words, attributes 244 of 369 ms
+to `_cubic_online_relation_lattice_update` on the class-number-405 field.
+For the class-number-393 field it attributes 115 of 194 ms to that helper.
+These are local instrumented exclusive times, not controlled comparisons.
+The augmented compact transformation itself accounts for only 17.5 and 8.3 ms.
+The online path was recomputing HNF after each nonmember relation even though
+the previous canonical HNF was already resident.
+
+`bench/class-unit-groups/cubic-incremental-hnf.py` supplies an ordinary typed
+Python row-insertion algorithm. The companion `cubic-incremental-hnf-ablation.py`
+adds that helper and replaces exactly one online HNF call in a source copy.
+An AST regression reverses those two edits and requires the entire remaining
+module to equal the input. Allocation, relation selection, membership tests,
+support-ledger updates, certification and publication are unchanged. No field
+coefficients, expected class numbers or discriminants occur in the helper.
+
+#### Correctness invariant
+
+Let $B$ be the current canonical row HNF of the admitted relations, padded
+with zero rows to $n$ rows, and let $v$ be the incoming row. The helper copies
+$[B;v]$ into the existing $(n+1)\times n$ output scratch. At each column it
+combines the next basis row and the extra residual row; rows already assigned
+pivots are never swapped with later rows. Both active rows are zero in all
+earlier columns. Missing pivots are handled by exchanging the active row and
+the residual, so deficient rank and skipped pivot columns are supported.
+
+If their current entries are $a,b$ and $b$ is divisible by $a\ne0$, subtraction
+eliminates $b$. Otherwise extended Euclid supplies $s,t$ and $g>0$ with
+$sa+tb=g$. The two-row transformation is
+
+$$
+\begin{pmatrix}s&t\\-b/g&a/g\end{pmatrix},
+\qquad \det=\frac{sa+tb}{g}=1.
+$$
+
+Swaps, sign changes and these determinant-one transformations preserve the
+integer row lattice. After making the pivot positive, Euclidean division
+reduces every entry above it into $[0,g)$. Later operations do not change
+earlier pivot columns. Induction over columns gives increasing positive
+pivots, reduced entries above each pivot and trailing zero rows: the canonical
+row HNF of $[B;v]$. By uniqueness it is the same matrix as the replaced full
+HNF call. Consequently the existing comparison with $B$ records exactly the
+same support bit, and the same rank/index-one logic remains valid. Induction
+over incoming rows preserves the complete support transcript, not just the
+eventual determinant. Initial zero $B$ establishes the induction base.
+
+The routine is private and assumes the stated padded-HNF input and distinct
+correctly dimensioned matrices. It is not an unchecked public arbitrary-matrix
+HNF API. Scalar arithmetic remains arbitrary-precision exact. It adds no
+owned resources and retains the existing arena ceilings; this does not assert
+a new worst-case bound on coefficient growth or qualify arbitrary capacities.
+The compiler currently rejects augmented indexed matrix assignment (`-=`);
+this experiment uses the equivalent explicit indexed assignment. That syntax
+gap is recorded rather than changing the compiler during the arithmetic test.
+
+#### Independent checks and controlled measurements
+
+The checked-in dynamic test compares all 4,845 prefixes (including explicit
+zero, skipped-pivot, negative, duplicate and 300-bit cases) against SymPy HNF,
+with the orientation conversion explicit. A standalone native probe matches
+306 final matrices across JavaScript and GMP (612 checks). That probe has no
+qualified `fmpz` root; it is not described as a three-backend probe.
+Separate prefix replay verifies JavaScript/GMP agreement, canonical HNF shape,
+and independent PARI lattice equality for all 84 compact-matrix prefixes and
+all 308 original principal-relation prefixes of the two successful fields.
+An initially attempted large-matrix SymPy replay was deliberately stopped
+after exceeding 2 GB; the PARI replay replaces that diagnostic, not the small
+independent test or any mathematical acceptance condition.
+
+The complete incremental cubic program agrees in all 64 publication words
+with the independently replayed augmented parent in JavaScript, GMP and
+`fmpz`. Controlled idle-`opt` timing compares the parent and incremental
+artifacts afresh, with five warmups and seven rotating-order rounds of four
+calls. PARI uses `bnfinit(polynomial,0)` with seed 1 and checks the same class
+number and invariants. Startup, loading and input-buffer construction are
+excluded; native exact certification remains included.
+
+| Field label | Augmented parent | Incremental HNF | PARI | Native speedup | Remaining PARI ratio |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `3.1.1246798226700.1` | 351.891 ms | 123.166 ms | 14.00 ms | 2.857× | 8.798× |
+| `3.1.1428754729688.2` | 152.861 ms | 71.102 ms | 11.75 ms | 2.150× | 6.051× |
+
+This is a real improvement on costlier inputs, not yet PARI competitiveness.
+The 21 reused frontier fields retain identical accept/decline decisions and
+all 64 words on every attempted effort. The next 20 discriminant-ordered
+PARI-at-least-10-ms neighbors were selected before running this candidate;
+all 20 decline, without timeout or exception. They had earlier baseline
+measurements, so they are not a globally untouched holdout. The full 41-field
+panel has two successes and 39 declines. This does **not** establish successful
+generalization to 20 unseen neighbors. The next declined field is
+$x^3-86126810$, label `3.1.4860135888300.8`, with PARI $h=486$, invariants
+$[3,3,3,3,6]$, $R\approx685.815$ and a 12-ms frozen class-group phase;
+the current initial-ideal planning path declines. Its structural diagnosis,
+and the seconds-scale/high-regulator cases, remain required work.
+
+Evidence under the same scratch root and backed-up ignored archive includes
+`augmented-profile-results.json`, `incremental-hnf-dynamic-results.json`,
+`insertion-probe-results.json`, the three `insertion-*-replay.gp/json` pairs,
+`incremental-target-results.json`, `incremental-opt-timing.json/log`,
+`incremental-neighbors-manifest.json` and `incremental-panel.json`.
+The timed research source is 540,492 bytes, SHA-256
+`b747e9291b2d3c464e53a078e0eb3394844fccca5f6b8731a29eacc76c4fa43e`;
+cache key `7bd0f436e3bb6e7186e32f514e20d509adaed58e48959a761eefe005c1ef9fec`.
+Generated core: 20,757,173 bytes, SHA-256
+`ea01e9415c3eadb7f4a041391250dfd9bb4f2a0716451c3cb2dc0adc9b098400`.
+These are research artifacts, not a source-allowance increase or production
+pack qualification. The checked-in helper has been formatted; AST equality
+with the timed helper must be maintained rather than relabeling its hashes.
+
+The subsequent full frozen-corpus comparison isolates the HNF change: both
+the augmented parent and incremental candidate produce 273 acceptances,
+245 declines and six exceptions on the 524 complex fields, with no timeout.
+Every attempted effort has identical status, all 64 output words and error
+text. All 273 accepted class numbers and invariant lists agree with PARI.
+The 711 real fields are outside this kernel, not attempted failures. See
+`incremental-isolated-report.json`, `augmented-full-native` and
+`incremental-full-native` for protocols, source identities and every result.
+
+Relative to the earlier 241-success wide-bound variant, the combined layout,
+collection and transformation experiments add 32 successes and lose none.
+Twenty-eight older successful publications change non-class-group words;
+they must not be called byte-identical across that combined experiment.
+Of the current successes, 271 take PARI under 10 ms and two take 10–99 ms.
+None of the 57 PARI 100–999-ms fields is accepted. Six exceptions remain:
+three temporary-arena exhaustions, one invalid number-field analysis
+projection and two output integer-buffer capacity errors. These are reported
+research failures, not silent fallback successes or qualified public behavior.
+
+Further read-only tracing corrects the apparent cause of the next decline.
+For $x^3-86126810$, the initial plans succeed, including a $(173,3,1)$
+coefficient box. The collector later attempts its 501st candidate in one
+ideal, hits the existing 500-candidate cap and encodes failure as a relation
+count of 258 against capacity 257. Phase 34 was simply the last planning
+marker. `next-decline-trace.json` retains the actual return-local trace and
+checks parity with unmodified native output. The next experiment retires a
+discovery region at the existing cap and continues with other ideals; it
+must not raise the cap or confuse a partially explored region with a complete
+enumeration. Final exact certification remains the sole publication authority.
