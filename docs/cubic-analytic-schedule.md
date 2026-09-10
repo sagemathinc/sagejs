@@ -5902,3 +5902,346 @@ finding `ce64558cecbdc639cd6eeb9a6b3ad0de5d968c6523248d11401556004dc3bcde`).
 Do not refresh that inventory merely to turn the gate green. The proof and
 campaign documents pass generated-doc checks. Nonbinary source/scripts/reports
 are preserved under `build/cubic-analytic-schedule-evidence/hnf-diagonal`.
+
+### Per-row modular hints and the residue-normalization prerequisite
+
+The next research copy implements the per-row filter without another owner,
+buffer, capacity or global counter. `_cubic_modular_admit_relation` clears the
+current proposal's support slot, marking it one only on modular independence.
+The append helper borrows the existing support matrix (already a search
+workspace member), and initial rational-prime admission writes the same
+per-row slots. The exact updater consumes that row's hint, resets the slot,
+and skips only the membership test when marked. It still computes the full
+exact HNF and the final support bit by comparing canonical bases. Other
+pending rows' slots are untouched. The existing processed-prefix guards remain
+necessary before reuse of the support transcript.
+
+An adversarial test exposed a prerequisite that ordinary cubic tests missed:
+the old modular scheduler copied exponents with `checked_uint64` but did not
+first reduce them modulo $p=27449$. A nonzero multiple of $p$ could be treated
+as a pivot. For the four rows
+
+$$
+(p,0),\quad(1,0),\quad(1,1),\quad(0,1),
+$$
+
+the unnormalized candidate marks modular independence as $(1,0,0,1)$, even
+though the last row is the difference of the preceding two ordinary rows.
+Explicit residue normalization produces the correct marks $(0,1,1,0)$.
+This is a modular-scheduler invariant failure, **not an observed false class
+group certificate**: even an incorrect hint only causes an additional exact
+HNF here, whose final support decision remains authoritative. The failing
+initial experiment and a minimal actual-body reproducer are retained.
+
+The normalized candidate reduces each exponent modulo $p$ before conversion
+to the word workspace. Inductively its echelon rows span exactly the reductions
+of previously admitted relations. Independence modulo $p$ then excludes
+integer-lattice membership, since reduction preserves every integral linear
+combination. A duplicate rejection and reuse of a candidate slot reset its
+hint. An admitted modularly dependent row remains in the original relation
+and unit-witness ledger; this filter never discards one.
+
+Actual-body controls cover **8,000** admissions against independent modular
+Gaussian elimination, including prime-multiple inputs and reused/rejected
+slots. The 4,000 ordinary cases preserve the parent's decisions and complete
+modular workspace. All 720 generated independence hints are independently
+checked by integer column-HNF lattice equality. Another **4,024** updater
+controls preserve return status, final basis and support, including 1,011
+deliberately conservative stale hints; they also check neighboring pending
+marks and rejection of failed HNF. Private scratch on failure is not a
+published certificate.
+
+A read-only audit consumes **13,103 hints** at the 19,522 actual corpus update
+points. Every consumed hint agrees with the subsequent exact HNF support bit;
+all final 64-word outputs remain unchanged. The normalized candidate passes
+all 1,012 FLINT/GMP/JavaScript comparisons with normal and one-page linkages,
+and the reused 85 fields with one-page linkage. This is not public receipt
+qualification. Source SHA-256:
+`dd6ebde6b846c7aad2af5b1e2fb07058612184ba897f21032676bf21d14ec566`;
+the preceding unnormalized copy is
+`0c06c13023c23a1efa4de208b47698bf2d921118594b10574b69ae61f79e975b`.
+The source remains over the unchanged production allowance. No tracked
+production mathematical source or compiler policy changes in this campaign.
+
+The controlled experiment compares the normalized filter (`event`), unfiltered
+generalized membership (`parent`), the diagonal-only source (`baseline`) and
+PARI, with the same allocator and frozen 21-field paired panel. The full run
+completes all 1,012 fields: **2707.215 ms** filtered, **2747.982 ms** unfiltered,
+**2739.545 ms** diagonal-only, **1460.375 ms** PARI. These are 1.48% and 1.18%
+reductions against the two native controls, respectively. All 21 paired
+filter-versus-unfiltered empirical 10th–90th percentile ranges cross one:
+the incremental filter benefit is not clearly resolved on this panel.
+Against diagonal-only, the larger generalized-membership gains persist
+(ratios 0.83729, 0.87761 and 0.90672 on the three previously identified fields).
+The previous regression sites are consistent with ties in this run, not proof
+that the filter causally eliminated their regressions. The remote
+directory is `/tmp/cubic-modular-hnf-filter-043BFx`; local scripts, frozen
+sources, controls and reports are in
+`/scratch/sagejs-runtime/cubic-modular-hnf-filter-mkOKgG`.
+
+Fresh coverage freezes 42 proposals before any candidate execution: the
+existing 21 development timing anchors with constant shifts
+$\pm[\mathcal O_K:\mathbb Z[\alpha]]^2$. One reducible and eleven canonically
+represented fields are excluded, leaving **30** complex cubics canonically
+disjoint from 1,169 prior fields. PARI independently certifies the reference
+class groups. All three implementations and three backends agree on all
+output words: **28** accept at effort five, **two** decline, with no exceptions.
+The declines are the $+1$ neighbors of `3.1.61822200.1` and `3.1.83062751.1`;
+they remain in the report. This is local structural coverage, not a random
+population sample or a claim of 30 successful certifications.
+
+Independent replay checks **720 principal-relation rows across 29 fields**,
+including all 28 first-effort successes and one declined prefix. The other
+decline never supplies a raw prefix; it is explicitly excluded, not counted as
+replayed. This uses independent PARI ideal arithmetic and `bnfcertify` on
+captured same-source data, not a public Sage.js certificate or Lean proof.
+
+Fresh timing completes **29 of 30** with the existing bounded retry policy.
+For those 29 completed computations, sums of per-field medians are **121.756 ms**
+filtered, **123.407 ms** unfiltered, **124.653 ms** diagonal-only and **44.250 ms**
+PARI: still **2.752 times PARI**. The remaining native decline takes about
+5.17 ms; that time is not counted as a completed class-group computation.
+All 28 fields accepted at first effort were selected for pairing before timing.
+Ten have empirical 90th-percentile filtered/diagonal ratios below one; one has
+its 10th percentile above one. The strongest gain is the $+1$ neighbor of
+`3.1.95903148.1`, ratio **0.80701** (0.80126–0.81178); the $-1$ neighbor of
+`3.1.93074700.2` regresses slightly, **1.00814** (1.00015–1.01614).
+These are descriptive empirical ranges, not confidence intervals or a
+universal improvement claim. The reused full driver retains `holdout:false`
+metadata; freshness is separately established by the frozen-input and canonical
+deduplication manifest. Raw reports are unchanged. The authentication/summary
+script checks source, driver, fields, manifests and the pre-timing selection.
+
+### Fresh retry frontier: powered quotient target order
+
+The largest completed holdout excess is
+$x^3-x^2+1632x+21496$, discriminant $-62999288$, class group $C_3$:
+**26.175 ms** including efforts five and one, versus PARI **2.000 ms**.
+This one field accounts for about 31% of that cohort's total excess.
+It is now a development input, not a fresh test for changes motivated by it.
+
+Exact principal-relation and unit replay distinguishes the obstruction:
+effort five ends with a 66-row, 22-factor presentation of order **6** and
+unit index **1**; effort one reaches order **3**, unit index **1**, with
+84 rows. Thus the first effort lacks a class relation, not a fundamental unit.
+Read-only traces show it materializes the same fundamental unit up to sign
+three times. Its class-index-six enclosure has upper log-index
+$6010141979/2^{32}$, slightly above $\log(4)$, so the existing strict
+$J<4$ shortcut does not apply. No oracle unit-index information may be used
+to authorize a native stopping decision.
+
+PARI 2.17.4 debug/source forensics (`buch2.c`, `small_norm` and its caller)
+shows an initial 28-relation quotient of order six, regulator approximately
+659.0758245, followed by a quotient-generator-directed powered search with
+multiplier norm two and target norm 41. Two further relations close the
+quotient to three. Native tracing instead chooses $P_2^{12}P_{67}$ and stays
+on that target for two batches, adding eight rows without changing its HNF.
+Before those batches the active HNF pivots are at indices 14, 17 and 21,
+then 14 and 21. This is not a claim of identical PARI and native bases,
+enumeration order, or private relation lists. PARI's default-precision debug
+run also warns that it does not supply expanded fundamental units; exact
+replay separately verifies the native unit. Timings use the previously
+recorded opt PARI 2.15.4, not this local forensic binary.
+
+A source-only ablation visits active quotient pivots in ascending factor-base
+order instead of descending. It preserves the multiplier, exact products,
+enumeration, retained cursor, admission, certification and all capacities.
+Only `_cubic_resume_powered_quotient_search` changes. Target ordering schedules
+optional discovery; it is not a theorem that ascending order is optimal or
+that exhausting a target certifies anything. Source SHA-256:
+`a5d9bbf17e705aaa49df0716d7c4057cea1af23c6293b03d3e7f7c217ef575c3`.
+
+The ablation certifies the target at first effort with raw checkpoints
+29, 30 and **34** rows. Independent exact replay checks all 34 principal rows,
+the order-three quotient and the published fundamental unit. Normal-linkage
+FLINT/GMP/JavaScript comparisons pass all **1,042** development-plus-neighbor
+inputs: **1,041** first-effort successes, one gain and no losses, with 63 changed
+outputs. Both normal and one-page linkages agree on all outputs. The selected
+call/return trace changes on **84** fields, including 21 whose final outputs
+are identical; output comparison alone would undercount affected executions.
+Actual-body control tests cover 26 lifecycle/failure cases and 574
+ascending-cursor/subset cases through 32 factors; arithmetic stubs are not
+arithmetic oracles. Independent exact replay now checks **1,729 principal rows
+across all 84 changed traces**, with no exclusions. Initial target pairing (21 alternating
+ABBA/BAAB rounds, ten calls per sample, 200 warmups per implementation) gives
+**26.180 → 9.783 ms**, ratio **0.37339**, empirical range 0.37238–0.37795.
+Retries remain inside the timed boundary. The full 1,042-field run completes
+1,041 fields with both implementations; the same one native decline remains.
+Completed-cohort totals are **2769.046 → 2720.567 ms**, PARI **1484.125 ms**.
+On the original 1,012 alone they are **2648.567 → 2617.516 ms**, PARI
+**1440.125 ms**. Changed traces account for **30.199 ms** of the 48.479 ms
+overall decrease; unchanged selected traces account for the other 18.280 ms.
+Do not attribute the entire aggregate movement to the changed search policy.
+
+Follow-up pairing confirms the three largest changed-trace regressions:
+`3.1.19203756.1` **1.20057** (1.19121–1.20835), `3.1.67151700.2`
+**1.17132** (1.16193–1.17781), and `3.1.16261112.1` **1.08816**
+(1.08094–1.09758). The three largest non-target gains also repeat:
+`3.1.11943311.2` **0.76849**, `3.1.67139800.1` **0.81673**, and
+`3.1.76586796.4` **0.82513**, with each empirical range below one.
+The largest unchanged-trace apparent regression, `3.1.1328459.1`, becomes
+a tie under pairing (0.99847, 0.98740–1.00779). This is post-survey
+adjudication, not fresh holdout selection. All timing jobs are terminal;
+remote bundle `/tmp/cubic-ascending-timing-2y3QVC` and authenticated
+`ascending-summary.json` retain the complete comparison and declined field.
+
+The regression traces make a universal order switch inappropriate. For
+$x^3-456x-4522$ (`3.1.19203756.1`), descending order closes quotient six to
+three with one powered relation at row 25. Ascending starts at target index
+12 instead of 13, adds four rows without closing, and ordinary search later
+certifies at row 40. The other two regressions similarly postpone the decisive
+relation: 29 versus 40 rows, and 24 versus 32 rows. Conversely, the new target
+was starved on the high-index target despite a useful low-index one.
+Next investigate bounded, resumable allocation of work among active quotient
+targets using exact progress. Merely replacing one universal order with the
+other is not the conclusion of this experiment; all dependent unit witnesses
+must remain retained and exhaustion must not be interpreted as completeness.
+
+The first target replay invocation included effort eight, which produced no
+raw prefix, and its harness failed by dereferencing the missing snapshot.
+The corrected replay explicitly covers the actual timed efforts five and one
+(66 and 84 rows); effort eight remains a reported decline, not a replayed
+success. Generated GP programs/logs and the failed-run explanation are retained.
+The initial timing-summary assertion also assumed selection-list ordering;
+the paired runner actually traverses the frozen field list. The corrected
+assertion checks precisely that traversal, without altering measurements.
+
+The nonbinary source, scripts, manifests, failed experiments, timings, controls,
+and independent GP programs are preserved under
+`build/cubic-analytic-schedule-evidence/modular-hnf-filter`.
+No production mathematical source changed in these two campaigns.
+The unchanged production source budget and
+public/platform qualification still exclude these larger research copies.
+
+### Opposite triangular presentation for quotient-generator selection
+
+The next ablation tests the presentation itself rather than another universal
+visit order. Let $L\subseteq\mathbb Z^n$ be the full-rank relation lattice,
+$H$ its authoritative upper row HNF, and $J$ the coordinate-reversal permutation.
+Then
+
+$$
+H'=\operatorname{rowHNF}(JHJ),\qquad B=JH'J
+$$
+
+is a lower triangular basis of the **same** lattice $L$. Multiplication by
+$J$ on the left only changes the order of basis rows; multiplication on the
+right reverses ambient coordinates. Mapping back therefore changes no
+relation or quotient. In a lower triangular presentation, a diagonal-one
+relation expresses that coordinate generator in terms of preceding ones.
+Induction shows that the indices with diagonal greater than one generate
+$\mathbb Z^n/L$. These diagonal entries are relative presentation indices,
+**not** independently known orders of the corresponding ideal classes.
+
+The research source computes $H'$ in the existing $(n+1)\times n$ HNF source
+and result scratch, padding the last source row with zeros. It scans the mapped
+diagonal in descending original index order. The authoritative online basis
+is read-only during this preparation; ordinary exact updates subsequently
+reuse that scratch. No owner, capacity, multiplier, enumeration rule, relation
+discard or stopping test is added. This is optional target selection, never
+publication authority. It is not an assertion that this reproduces PARI's
+complete permutation/elimination strategy.
+
+For the fresh retry target's initial 29-row lattice, opposite-presentation
+pivots are $(0,3),(13,2),(14,2)$ rather than the authoritative upper
+presentation's $(14,2),(17,2),(21,3)$: the first descending target becomes
+norm 41, not norm 67. For the largest ascending-order regression, the opposite
+pivots are $(0,3),(13,2)$, recovering the useful norm-31 target rather than
+norm 29. This explains both successes without consulting the true class
+number. For `3.1.67151700.2`, targeting a pivot of value 48 in the original
+presentation eliminated earlier value-two pivots; it would be incorrect to
+assume that a target can improve only its own diagonal entry.
+
+Source `dual-hnf-v2.py`, SHA-256
+`28c71ac9c3720ec506dcbbe6bc971c89557c408ff1fec02d6e1dc6d9ba59e3f5`,
+is **529,458 bytes** and changes only the powered-search helper. All 1,042
+normal/one-page FLINT/GMP/JavaScript comparisons agree, retaining 1,041
+first-effort successes, the one gain and no losses. There are 65 changed
+outputs, 96 changed selected call/return traces, and **113** fields invoking
+the modified helper. Identical selected traces do not imply identical work:
+the new HNF may run even when it selects the same target. Independent replay
+checks **1,845 principal rows across all 96 changed traces**, without exclusions.
+Actual-body tests cover 65 independent column-HNF selector/control cases
+through 32 factors, including unchanged authoritative bases and failed HNF
+before any target product. Other arithmetic in that unit harness is stubbed.
+
+The first source used an unimported, nonexistent `fmpz_matrix_hnf` spelling and
+failed compilation. The corrected source uses the existing declared
+`fmpz_matrix_hnf_into`; this was an experiment error, not a compiler obstacle.
+An initial independent Sympy test grew to approximately 3.5 GB with its
+unbounded HNF algorithm and was explicitly terminated. Giving that oracle
+the exact determinant of the full-rank triangular input enables its bounded
+modular HNF algorithm; the corrected tests pass. Neither failure is native
+class-group success evidence, and neither changes runtime resource limits.
+
+Initial seven-field pairing against the descending-order parent retains the
+new target's **26.317 → 9.794 ms** improvement (ratio 0.37218). The three
+ascending regressions become **1.00295**, **0.96332**, and **0.99682** on
+`3.1.19203756.1`, `3.1.67151700.2`, and `3.1.16261112.1`, respectively;
+the first and last empirical ranges cross one, while the middle improves.
+The earlier three non-target gains remain at ratios **0.77346**, **0.82229**,
+and **0.82304**. These fields were selected from the preceding experiment
+before opposite-presentation timing.
+
+The completed 1,042-field run has 1,041 completed fields and the same bounded
+decline, `membership-holdout-3.1.83062751.1-1`. Sums of per-field median
+milliseconds are **2,800.295 descending**, **2,742.510 ascending**,
+**2,739.189 opposite presentation**, and **1,485.375 PARI**. The candidate
+remains about **1.844 times PARI**, not a general win. Among the 113 fields
+invoking the changed helper, descending/opposite totals are
+**402.412/368.375 ms**: 34.037 ms of the aggregate 61.106 ms movement lies
+on that cohort. The remaining 27.069 ms occurs on fields not invoking the
+helper and must not be attributed to the new selection policy. Compared with
+ascending order, opposite presentation saves only 3.321 ms in the full run;
+its stronger result is avoiding the three large paired ordering penalties.
+
+After that full run, the three largest absolute regressions among previously
+unpaired helper-invoking fields were selected for 21 alternating ABBA/BAAB
+rounds, with ten calls per sample and 200 warmups per implementation. All
+three persist:
+
+| Field | Descending / opposite ms | Paired ratio | Empirical p10–p90 |
+| --- | ---: | ---: | ---: |
+| `3.1.29147.1` | 1.540 / 1.593 | 1.03422 | 1.02341–1.04650 |
+| `3.1.462360.1` | 1.516 / 1.573 | 1.04136 | 1.02446–1.05434 |
+| `membership-holdout-3.1.3229112.1-1` | 3.465 / 3.508 | 1.01167 | 1.00486–1.02233 |
+
+These are post-selection adjudications, not fresh holdout results; empirical
+ranges are not confidence intervals. The authenticated driver checks
+acceptance for every timed call and class number/invariants after each
+ten-call sample. The first summary incorrectly treated optional `accepted`
+input metadata as universal: fresh neighbor fixtures omit it. The corrected
+summary checks driver identity and full-run acceptance, without changing raw
+measurements. `dual-hnf-followup-summary.json` records the correction.
+
+Existing selected traces show that all three regressions actually choose a
+different target. The first uses index 3 rather than 8 and needs three added
+relations instead of two (14 rather than 13 rows at certification). The other
+two use indices 2 rather than 7, and 6 rather than 12, respectively, retaining
+the same one-row completion. Thus the 0.04–0.06 ms penalties cannot all be
+assumed to be pure HNF conversion overhead; enumeration and target-construction
+work can differ too. A future cost attribution must measure those components
+separately. In particular, the evidence does not justify selecting presentation
+from the known class number or inserting field-specific thresholds.
+
+The next experiment should test a general work-allocation rule, such as giving
+the existing target a small bounded opportunity before paying for another
+presentation. Any new rule must reconcile its resident cursors, preserve all
+unit witnesses, retain the unchanged exact certification boundary, and be
+tested against both the rescued slow field and these regressions. The 30-field
+neighbor panel has now informed development; a further untouched panel is
+required before making new out-of-sample claims. Source consolidation,
+public receipts, resource review and platform qualification remain outstanding.
+
+The campaign's nonbinary archive contains 729 files (35,965,324 bytes) with
+per-file SHA-256 identities, including failed experiments and independent GP
+programs. It is retained in the backed-up worktree's ignored
+`build/cubic-analytic-schedule-evidence/modular-hnf-filter` directory rather
+than relying only on unbacked scratch. No production mathematical source or
+compiler source changed in this campaign. The changed-file validation completed
+merge checks, a fresh full build and documentation checks; final focused tests
+pass all seven cases, and direct documentation generation/check and task scope
+checks pass. Those repository checks do not qualify the larger experimental
+kernels for release. PR 203 stays draft; the earlier architecture inventory
+failure and broader platform/public qualification requirements are not cleared
+by these measurements.

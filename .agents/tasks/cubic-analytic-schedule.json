@@ -996,11 +996,42 @@
       "commit": "362eaa66f7660e227576e16241e88a63e0ce7aa1",
       "workspace_fingerprint": "a20a0b7065084da5ae11461b6e57162c19bbead4709770174bccec3a91da1f71",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.03,
+      "started_at": "2026-09-10T03:23:32.197Z",
+      "commit": "ae7c19e621254307dd4edd0e175b381313b54337",
+      "workspace_fingerprint": "a3bdbddf267b363beb56f37142543877e26e47ca143e6992cc195ecf29683c5b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.082,
+      "started_at": "2026-09-10T03:24:07.185Z",
+      "commit": "ae7c19e621254307dd4edd0e175b381313b54337",
+      "workspace_fingerprint": "8a9654871811db08357c9bbf6641568cc8d79f198e28730ac3c31c175cf54134",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.238,
+      "started_at": "2026-09-10T03:24:09.901Z",
+      "commit": "ae7c19e621254307dd4edd0e175b381313b54337",
+      "workspace_fingerprint": "8a9654871811db08357c9bbf6641568cc8d79f198e28730ac3c31c175cf54134",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Diagonal-only full-rank HNF predicate now in tracked production source. Canonical padded row-HNF triangularity proves predicate equivalence, not deficient rank counting. Membership branch and HNF/support tail unchanged; source shrinks138bytes to433622, package480241/485000, no cap/owner changes. Actual6435 controls and19522-prefix invariant audit pass; scan reads4595897->283929. Research source10e17e9d8f726100bc88462f080cb4ac2642f7e10d5aefe9408aabcf0cc662a4 preserves1012 normal/onepage FLINT/GMP/JS full outputs and reused85 onepage. Controlled2696.393->2658.960ms vsPARI1438.125;1.39% gain,1.849xPARI;21 paired medians favorable but some ranges cross1. Research source527190 remains over budget; these are NOT production-path timings. Production fresh build,7 focusedtests,382 strictmodules zeroerrors, changed-file merge/build/precompile/all192unitfiles pass. Specialized4 publicreceipt/exactreplay/corpus/large-regulator tests pass; first run contaminated by concurrent compiler rebuild. Architecture still fails stale optimizer inventory, not refreshed. Separate fused-copy experiment passes1360 controls,1012 allbackend/linkage and85 reused; full2690.766->2665.557ms vs1437.875,20/21paired favorable,one1.00032. Not backported. Existing set_block passes1012 GMP/JS but lacks fmpz eligibility due compiler allowlist; requires compiler-lane qualification, no backend-switch timing claim. Readonly screen finds2278 contained rows among15822 deficient updates. General membership experiment passes5808 independent rational-solver cases and1012 allbackend/linkage plus85; opt timing complete at /tmp/cubic-hnf-deficient-RWDS4b:2736.187->2714.411ms vsPARI1439,only0.80% aggregate. Paired23984479 gains16%,83062751 gains12%,28159543 gains9%,but50086188 regresses1.65% and97410060 1.56%. Do not promote unconditional generalized membership. Zero-screen finds0 zero-vectors among2278 contained deficient rows. Next investigate per-row modular independence as exact nonmembership filter; never infer it from a global counter after catch-up batches. All opt jobs terminal. Evidence roots cubic-hnf-diagonal-uS0GUY and cubic-hnf-block-rwQI42; hnf-diagonal41files4.4MB and hnf-followups82files8.1MB nonbinary archives preserved. PR203 remains draft pending larger consolidation/resource/platform/public qualification; persistent goal active.",
+    "summary": "Completed modular-filter, fresh-neighbor and quotient-presentation research campaign. Production source and 485000 allowance unchanged. Per-row modular hints require normalized residues; actual controls and 1042-field backend/linkage comparisons retain correctness, but filter-specific paired gain unresolved. Fresh30 panel has29 completions and1 bounded decline; exact replay covers720 principal rows. Fresh retry polynomial x^3-x^2+1632*x+21496 takes26.3ms: exact replay separates missing class relation from already fundamental unit. Opposite triangular HNF exposes norm41 target instead of norm67, gives9.794ms paired, preserves18-23% gains and avoids earlier ascending-order penalties. All1042 normal/onepage FLINT/GMP/JS full64 outputs agree:1041 first-effort successes,1 gain,0 losses; independent exact replay1845 rows across96 changed selected traces. Full completed1041 totals2800.295->2739.189ms vsPARI1485.375,still1.844x; only34.037ms of61.106ms movement lies on113 helper-invoking fields. Final paired followup confirms1.17%,3.42%,4.14% regressions; all change targets and one adds an extra relation, so not pure conversion-overhead evidence. Sources529458bytes remain unpromoted research diagnostics, not public-path timings. Evidence729 nonbinary files35965324bytes archived under build/cubic-analytic-schedule-evidence/modular-hnf-filter. PR203 remains draft; goal active.",
     "risks": [
+      "Current campaign: opposite-presentation source exceeds unchanged production allowance; no source/limit promotion. Small paired regressions remain, one bounded decline, no new platform/public qualification. Exact selected-trace replay is not full-corpus formal verification. Historical next-step entries are superseded by current first entry.",
       "Powered-v3 is not promoted: paired 31.9% and49.5% regressions;97 final-output changes conceal122 changed executions. Fresh eligibility ablation still has5 bounded declines and2 FLINT arena exceptions even with one-page linkage. Do not remove caps or claim all-backend parity on exceptional fields. Historical next-step entries below are superseded by the current summary.",
       "Fresh staged32 neighbor k=6, x^3-x^2+184x+8853, has paired3.9% regression (ratio1.03941, p10/p90 1.03611/1.04377):48->50 raw rows, same fundamental unit up to sign. Two other fresh activation cases improve ratios.35186/.62795. Do not claim no regression or hide this behind aggregate gains. Separate check-fresh-paired.cjs and fresh-parent replay48rows preserve it.",
       "Research presentation-allocation comment about at most n extra rank-increasing rows is obsolete: dependent rows are retained while rank deficient. Actual capacity guards fail closed; do not rely on the comment as a bound. Correct during consolidation.",
@@ -1011,6 +1042,7 @@
       "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
     ],
     "next_steps": [
+      "Test general bounded work allocation between original and opposite quotient presentations, with resident cursor reconciliation and retained unit witnesses. First distinguish target/enumeration cost from conversion on three confirmed regressions. Preserve26.3->9.8ms fresh retry gain. Current30 neighbors are now development; freeze new untouched neighbors before candidate execution. Consolidate research source under unchanged allowance and qualify public/resource/platform path before promotion. No opt timing jobs remain live.",
       "Next implement/test diagonal-only FULL-RANK predicate in _cubic_online_relation_lattice_update on frozen certified-unit source. Current full matrix scan only tests previous_rank==dimension. Canonical padded row HNF is upper triangular, so nonzero diagonal product iff fullrank; deficient rank cannot be counted from diagonal. Preserve membership, support transcript and unit witnesses; compare actual predicate on rank-deficient/full-rank canonical HNFs, all1012 outputs, exact replay and opt timings. Profile root /scratch/sagejs-runtime/cubic-certified-common-profile-96vVXy, completed3036 native diagnostic calls. Current85-field holdout and all opt jobs terminal. Do not expand J<7 guard: no added eligibility. Consolidation/public receipts/platform/resource gates and prior regressions remain open; PR203 draft. Avoid rebuilding solely to record another receipt: .agents/tasks is mistakenly an artifact input in this branch; final direct docs validation may use the already fresh built parser.",
       "Current frontier: use exact unit-saturation evidence to schedule powered class-relation recovery, then measure full corpus and preselected pairs on opt. New powered-unit-aware.py ablation is separate from frozen powered-v3 timing. Inspect its build/survey artifacts before continuing; never infer completion from a source file. Eligibility prototype powered-eligibility.py admits17/24 fresh fields, with exact924-row replay, but investigate2 allocator exceptions and5 bounded declines before promotion. Keep production source and485000 cap unchanged pending consolidation/resource review.",
       "Do not promote either quota policy: controlled paired regressions and the bounded policy's exact first-attempt failure are preserved. Implement the structural powered-ideal regime next. The failed target HNF exposes norm3 and norm79 generators; general integer-log exponent8 and product P3^8*P79 yield an exact missing relation on the exploratory probe's first candidate. Reuse _cubic_ideal_product/_cubic_prime_ideal_power_basis, prove bounds/ownership, preserve successful prefixes, and certify with the existing exact checker rather than oracle h. Native implementation and fresh-regime measurements remain undone. Full evidence and negative variants live under cubic-rank-progress-quota-OpYkuY/cubic-responsive-quota-xDvPqB; all timing and validation processes from this campaign are terminal.",
