@@ -9,6 +9,9 @@
   "objective": "Correct the native BF ninth-scale proof contract and measure general analytic-cutoff schedules without weakening certification or resource limits",
   "base_commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
   "claims": [
+    "bench/class-unit-groups/cubic-compact-unit.py",
+    "bench/class-unit-groups/cubic-compact-unit-export.gp",
+    "test/cubic-compact-unit.cjs",
     "src/lib/sagejs/number_fields/cubic_class_number_native.py",
     "bench/class-unit-groups/cubic-analytic-schedule.cjs",
     "bench/class-unit-groups/cubic-bf-scale-audit.py",
@@ -1236,11 +1239,122 @@
       "commit": "2bc15fba4fb6a1ccc2213b874fe2c0f561f43466",
       "workspace_fingerprint": "9080166aa2eadffb4305a785d3815841ab7577eb388bf90d62e544ee686e437f",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-compact-unit.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.608,
+      "started_at": "2026-09-10T05:01:22.090Z",
+      "commit": "6d0557cae62bb769616e3e824e141e2910b31c3c",
+      "workspace_fingerprint": "d0a7821a815715e7f678c694be67b1770f4357d5ce3012fbf89fa7115f93e0d5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-compact-unit.cjs test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.295,
+      "started_at": "2026-09-10T05:03:18.853Z",
+      "commit": "6d0557cae62bb769616e3e824e141e2910b31c3c",
+      "workspace_fingerprint": "69e4ee061c301509a911b82c27dfd45854237b4a92e230204daf98444ac7fbea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.504,
+      "started_at": "2026-09-10T05:03:26.794Z",
+      "commit": "6d0557cae62bb769616e3e824e141e2910b31c3c",
+      "workspace_fingerprint": "69e4ee061c301509a911b82c27dfd45854237b4a92e230204daf98444ac7fbea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.031,
+      "started_at": "2026-09-10T05:03:30.938Z",
+      "commit": "6d0557cae62bb769616e3e824e141e2910b31c3c",
+      "workspace_fingerprint": "69e4ee061c301509a911b82c27dfd45854237b4a92e230204daf98444ac7fbea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 100.532,
+      "started_at": "2026-09-10T05:05:18.666Z",
+      "commit": "6d0557cae62bb769616e3e824e141e2910b31c3c",
+      "workspace_fingerprint": "adcb3f89a7a145380912475039eff5a4bacac32754b866900979583c635ca3dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-compact-unit.cjs test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.654,
+      "started_at": "2026-09-10T05:05:19.985Z",
+      "commit": "6d0557cae62bb769616e3e824e141e2910b31c3c",
+      "workspace_fingerprint": "adcb3f89a7a145380912475039eff5a4bacac32754b866900979583c635ca3dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.646,
+      "started_at": "2026-09-10T05:05:28.304Z",
+      "commit": "6d0557cae62bb769616e3e824e141e2910b31c3c",
+      "workspace_fingerprint": "adcb3f89a7a145380912475039eff5a4bacac32754b866900979583c635ca3dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.165,
+      "started_at": "2026-09-10T05:05:32.594Z",
+      "commit": "6d0557cae62bb769616e3e824e141e2910b31c3c",
+      "workspace_fingerprint": "adcb3f89a7a145380912475039eff5a4bacac32754b866900979583c635ca3dd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-compact-unit.cjs test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.293,
+      "started_at": "2026-09-10T05:12:29.791Z",
+      "commit": "6d0557cae62bb769616e3e824e141e2910b31c3c",
+      "workspace_fingerprint": "34b2863513be5b9aa6a18ef4b4984afe7fa30b8272ed5022a943ae8d9cc51055",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.581,
+      "started_at": "2026-09-10T05:12:59.550Z",
+      "commit": "6d0557cae62bb769616e3e824e141e2910b31c3c",
+      "workspace_fingerprint": "34b2863513be5b9aa6a18ef4b4984afe7fa30b8272ed5022a943ae8d9cc51055",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.045,
+      "started_at": "2026-09-10T05:13:09.771Z",
+      "commit": "6d0557cae62bb769616e3e824e141e2910b31c3c",
+      "workspace_fingerprint": "34b2863513be5b9aa6a18ef4b4984afe7fa30b8272ed5022a943ae8d9cc51055",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Magnitude-before-phase source c6b54bdb is implemented and measured in a research copy, not promoted. Pure statement permutation preserves successful proposals/exact authentication; 47 actual-body controls cover underflow and intentional private failure precedence. All1042 full64 outputs agree across FLINT/GMP/JS and normal/onepage linkages:1041 accepted,same1decline. Phase multiplications99438->29554 with1411 reconstruction attempts unchanged. Independent replay390 changed prefixes/8813 principal rows. Controlled parent2832.774->candidate2737.375ms (3.37%), PARI1498.625; target paired9.306->8.587ms, still~2ms PARI. Frozen58 canonical fresh neighbors all accept/all64 identical; independent replay1220rows. Fresh totals180.815->172.267ms (4.73%), PARI85.625; only1 of10 paired descriptive ranges excludes1. Core shrinks18.8526->18.7728MB but exact temporary slots17->18. Source531849 exceeds unchanged production allowance. Native diagnostic200calls reveals materialization/HNF work remains. New five-field seconds-scale PARI panel x^3-x+10^k+7 shows k12 nf2ms/bnf961ms and k18 nf7ms/bnf19822ms; no initialization bottleneck on these inputs. k12 flag0 trace HNF494ms/small_norm243ms; exact-data flag1 costs~2.45s vs~.85s flag0 and stores a412-factor unit with260-bit-scale exponents. Research Sage.js declines k6 at Minkowski guard and raises analysis-projection exceptions for k9..18: no accepted timings. Compact unit ideal/kernel proof route documented, not implemented. All timing jobs terminal. All192 unit files passed before final documentation additions; final focused7/merge/docs/scope checks pass. Known stale architecture inventory remains unresolved. PR203 OPEN DRAFT, goal active; consolidation and public/platform/resource qualification remain open. Compact exact-ideal demonstration replays412 small factors/1993 entries across410 primes with zero summed valuations; no expanded unit, no fundamentality claim. Initial GP syntax/reserved-name harness errors retained; corrected nonempty replay log checked for errors. Verified backed-up ignored archive3472files132694515bytes. All jobs terminal.",
+    "summary": "User explicitly broadened goal to competitiveness for cubic fields overall, not tiny cases. Further small-field microtuning paused pending frozen stratified frontier across both signatures, discriminant/regulator bands, equation indices and factorization difficulty; report declines/timeouts per stratum, no tiny-field dominated aggregate. Existing dynamic factored-element/logarithm/live-kernel authority found and should be reused; generic norm/principal_ideal can still expand large intermediate powers. New tracked research prototype bench/class-unit-groups/cubic-compact-unit.py independently replays compact unit membership with CPython/SymPy, no PARI calls or expanded dependency powers. Checks irreducible complex cubic, canonical ideal HNFs, order stability, explicit ideal invertibility via dual multiplication-row lattice, each rational principal relation, and zero sparse dependency residual. Does not prove nontorsion/fundamentality/regulator/class group. Local PARI2.17.4 exporter on x^3-x+10^12+7 produces382factors/376ideals/1840entries/max34-bit exponents, not the prior2.15.4 witness412/max260. Independent replay passes~6.47s locally; not a speed claim. First export basis mismatch was correctly rejected; fixed by actual nf.zk-to-power basis conversion. Tests cover261-bit exponents, rational factors, tampering, missing relations, noninvertible/nonideal lattices and100 signed-interval vertex oracles. Initial noninvertible test had wrong scaled polynomial; corrected x^3-4x-8 and exact error reason required. All production/compiler/caps unchanged. Known architecture stale optimizer inventory remains. Broader benchmark design and mathematical derivation documented. All192 unit files plus8 focused cases, merge checks and direct docs generation pass. LMFDB read-only bulk survey records913287 complex/266650 real cubics, missing h69393/12; examples h202393728/R36.31 and h1/R367081, real R96396300. Frozen broad timing corpus still next; mirror is family-biased and misses known synthetic huge-regulator stress. Archive3480files/132927039bytes hash-verified.  PR203 remains draft, goal active.",
     "risks": [
+      "Current overall-goal priority supersedes small-field tuning. Independent compact-unit prototype is a CPython/SymPy research oracle, not native integration or a class-group certificate. Unit membership does not prove nontorsion/fundamentality. PARI versions produce different compact witnesses; do not conflate382/34-bit with412/260-bit. Existing development distribution cannot support claims about overall cubic workloads.",
       "Magnitude-first is research-only: same1042 outputs and58 fresh neighbors do not establish universal no-regression or public/platform/resource qualification. Temporary slots rise17->18 despite smaller generated C. Seconds-panel Sage.js exceptions/declines are not fallback-success or speed evidence. PARI flag0 versus flag1 changes retained exact evidence; align output/certificate contracts before claiming competitiveness at large regulator.",
       "Adaptive precision is a measured regression despite correct reconstruction. Binary square-root seed is separately promising but five of ten staged paired ranges cross one; no universal or production speedup claim. Native code grows and public/platform/resource qualification remains open. Full corpus is reused development data. Preserve failed vector/import/word-shift probes; they do not establish an exact-shift implementation.",
       "Current staged campaign: cannot infer no regressions from old three ties; new1824155 and88587 penalties confirmed. More rows and faster target do not prove unit reconstruction caused the speedup. All staged sources diagnostic/unpromoted and above production allowance. These results supersede prior first next-step hypothesis.",
@@ -1255,6 +1369,7 @@
       "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
     ],
     "next_steps": [
+      "User chose LMFDB as primary source. Read lmfdb-broad-survey.cjs/json in modular-hnf-filter archive (query/raw hashes in docs). Coverage survey complete, not a timed or frozen corpus. Freeze deterministic samples by both signatures, discriminant bands, class-group shape and regulator strata; include extremes and missing-answer fields separately. Start bounded pilot per stratum; preserve synthetic huge-regulator panel because mirror complex maxR367081 misses that bottleneck. Record unknown database answers, declines/timeouts and PARI version/output-contract distinctions. Existing small1042 corpus is development only. Reuse existing factored-unit authority/logarithm contracts for later native and detached integration; prototype now independently checks membership only. All unit/focused/merge/docs checks passed, public/resource/platform qualification remains open; keep PR203 draft.",
       "Current first next step supersedes historical entries: retain magnitude-first gains while investigating compact exact unit certificates from authenticated principal-ideal relations and an integer kernel vector. Certified signed logarithm accumulation and joint class/unit index-one proof remain necessary; do not expand huge units or weaken certification. Native profile still attributes materialization1.209ms inclusive and online HNF0.900ms on target. Seconds-scale panel finds broader analysis and factor-base/storage boundaries: k6 hits4096 Minkowski guard, k9..18 analysis-projection exceptions, while PARI k18 spends19.8s after7ms initialization. Diagnose these boundaries separately before generalizing; never treat rejection as a speedup. Artifacts under modular-hnf-filter-mkOKgG, scripts seconds-pari*, seconds-native-check, summarize-seconds-and-profile. No controlled jobs live; production/compiler/caps untouched. KeepPR203 draft pending consolidation/public/platform/resource qualification.",
       "Current priority supersedes historical entries below: adaptive-unit and sqrt-seed campaigns are complete; inspect /scratch/sagejs-runtime/cubic-modular-hnf-filter-mkOKgG and backed-up build/cubic-analytic-schedule-evidence/modular-hnf-filter. Reject adaptive policy as a speedup. Test identical exponential-magnitude calculation before phase/root work in _cubic_reconstruct_archimedean_unit_at_scale, explicitly reviewing failed-status precedence and resource behavior. Preserve successful proposals and exact authentication. Square-root binary seed alone gives2.97% staged aggregate improvement and target2.27% paired improvement, not PARI competitiveness. Qualify bit_length/compiler prerequisites before any production backport. A generic exact-int left shift would simplify seed construction; the current exact probe rejects, while literal1<<uint64 means bounded word arithmetic. Do not edit shared compiler from this lane. All timing/replay jobs terminal; final summary and docs contain identities, raw protocols, negative results and pending qualification. Keep PR203 draft.",
       "Next investigate adaptive archimedean reconstruction proposal precision using actual regulator/embedding scale. Current target numerical attempts all underflow before exact-product fallback; fixed low scales demonstrably inadequate. Preserve exact norm/regulator authentication and bounded resources. Measure native stage costs and differential/independent replay on fresh fields; do not assume operand maxima alone explain6.7% paired gain. Source root modular-hnf-filter-mkOKgG, structural trace staged-unit-work-v2.json. All jobs terminal; PR203 remains draft.",

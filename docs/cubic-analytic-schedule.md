@@ -6815,3 +6815,142 @@ corrected, error-free rerun with nonempty counts supports the statement above.
 The corrected script explicitly rejects an empty replay. This is another
 reason not to infer success solely from GP's process exit code or a printed
 success label.
+
+### Independent compact-unit prototype and broader research priority
+
+The goal is competitiveness for cubic fields **overall**, not only the small
+complex cubics in the existing corpus. The 1,042-field development distribution
+cannot establish how often that regime occurs in research workloads. There is
+no distribution-free notion of a "large proportion of fields" across an
+unbounded family. Further small-field tuning is paused pending a broader
+stratified frontier. This includes both signatures, logarithmic discriminant
+bands, regulator size, nontrivial class groups, equation-index effects and
+hard polynomial-discriminant factorization. Failures and resource declines are
+part of the frontier, never omitted from speed comparisons. Report per-stratum
+coverage, timeouts, ratios and total CPU cost separately rather than letting
+many tiny fields conceal a missing large-field algorithm.
+
+The next measurement campaign should freeze input families and seeds before
+selection by Sage.js outcomes, use explicit per-input time/memory ceilings,
+and retain censored cases. It must separate polynomial-to-order initialization,
+class-group discovery, compact exact evidence, and optional expanded unit
+output. Include fresh input calls and report setup/cache effects separately.
+PARI 2.15.4 and 2.17.4 differ even in compact dependency representations, so
+record versions and use the newer available comparator as well as the retained
+historical baseline. Real cubics are an explicit coverage question; this
+complex-cubic research kernel is not a solution for them.
+
+The independent prototype is now reproducible from tracked sources:
+
+```sh
+gp -q -f bench/class-unit-groups/cubic-compact-unit-export.gp > compact-unit.log
+python3 bench/class-unit-groups/cubic-compact-unit.py compact-unit.log
+node --test test/cubic-compact-unit.cjs
+```
+
+CPython with SymPy is required for this research-only exact lattice oracle.
+The verifier itself never invokes PARI. On the same large-regulator field,
+the local PARI 2.17.4 export has **382 factors, 376 distinct ideals and 1,840
+relation entries**, with maximum dependency exponent size **34 bits**. These
+are not the earlier 2.15.4 witness's 412 factors and 260-bit-scale exponents.
+The independent replay passes in about 6.31 seconds locally; this is a
+correctness prototype, not a competitive implementation or an `opt` timing.
+The verifier never expands a dependency power. It does not prove
+fundamentality, nontorsion, a regulator enclosure or a class-group result.
+
+Each ideal is checked as a canonical full-rank integer column HNF, stable under
+multiplication by the defining root. Invertibility is independently checked,
+so the verifier does not assume the power order is maximal. For an ideal basis
+$b_1,b_2,b_3$, let $S$ be the integer lattice spanned by all rows of their
+multiplication matrices. Then
+$I^{-1}=\{x:xI\subseteq\mathbb Z[a]\}=S^*$, the integral dual lattice.
+The prototype constructs this rational lattice via a denominator and adjugate,
+and checks $II^{-1}=\mathbb Z[a]$ by exact ideal multiplication and HNF.
+It rejects noninvertible ideals, including a tested ideal in the nonmaximal
+order $\mathbb Z[2a]$ for $a^3-a-1=0$.
+
+For each rational factor $\alpha=v/d$ and signed ideal exponents, it verifies
+$vI_-=dI_+$ before accepting that principal-ideal relation. Only afterward
+does it accumulate the large signed dependency exponents columnwise. A zero
+residual proves the formal product's ideal is the unit ideal, hence the
+product is a unit of the power order. The principal-ideal powers in this
+verification are the small per-factor valuations, never the large dependency
+exponents. The test checks rational factors, duplicate sparse entries,
+261-bit exponents, malformed dimensions, altered/missing relations,
+nonideals, noninvertible ideals, and 100 exact interval vertex oracles for
+signed logarithm accumulation. Input logarithm authenticity is explicitly
+outside the latter arithmetic helper.
+
+The first export mixed power-basis element coordinates with PARI's reduced
+integral-basis ideal coordinates even though the order index was one. The
+independent verifier rejected those lattices. Correcting the exporter to
+multiply by the actual integral-basis change matrix and recanonicalize by HNF
+fixes the mismatch. This failed export is retained; index one does not mean
+the two bases are identical.
+
+Existing dynamic Sage.js machinery already provides `FactoredNumberFieldElement`,
+certified factor logarithms, and live relation-kernel unit authority in
+`class_unit_context.py`. Reuse those contracts instead of inventing another
+factored-element API. The missing native/detached path must avoid generic
+`norm()` and `principal_ideal()` implementations that raise individual factors
+to huge exponents before cancellation. The new prototype establishes a
+replay route for that gap; it is not yet native integration. Broader measured
+bottlenecks, rather than another small-field microbenchmark, should determine
+which representation, relation-search or linear-algebra work is done next.
+
+During test review, the initial noninvertible-ideal case was found to use the
+wrong scaled polynomial and was rejecting at the signature check instead.
+The corrected polynomial is $x^3-4x-8$, and the regression now requires the
+specific noninvertibility error. A negative test that fails for the wrong
+reason does not qualify the intended mathematical guard.
+
+### LMFDB broad-cubic coverage reconnaissance
+
+The user selected [LMFDB cubic tables](https://www.lmfdb.org/NumberField/?degree=3)
+as the primary source of interesting workloads. The repository already has a
+read-only PostgreSQL bulk exporter, so there is no need to scrape individual
+search pages. A repeatable-read, read-only mirror query on 2026-09-10 returned
+913,287 complex and 266,650 totally real cubic records. Of these, 69,393 complex
+and 12 real records have no recorded class number. Largest absolute
+discriminants are approximately $1.263\times10^{25}$ and $1.963\times10^{34}$,
+respectively; neither extreme has a recorded class number or regulator.
+
+The [completeness statement](https://www.lmfdb.org/NumberField/Completeness)
+covers both cubic signatures through $|D|=3{,}375{,}000$, with additional
+specialized collections beyond that. These counts describe the database, not
+a representative distribution of all research inputs. In particular, the
+large-discriminant records are highly concentrated in particular families.
+
+Three contrasting examples from the bulk query are:
+
+| LMFDB field | Defining polynomial | Recorded class number | Recorded regulator |
+| --- | --- | ---: | ---: |
+| [3.1.2053046834465061134700.275](https://www.lmfdb.org/NumberField/3.1.2053046834465061134700.275) | $x^3-44602909000650$ | 202,393,728 | 36.3097542072 |
+| [3.1.232227935940.1](https://www.lmfdb.org/NumberField/3.1.232227935940.1) | $x^3-x^2-55216x+24733810$ | 1 | 367,081.475446 |
+| [3.3.22337757618922610865.26](https://www.lmfdb.org/NumberField/3.3.22337757618922610865.26) | $x^3-173252583x-604189507782$ | 81 | 96,396,300.7753 |
+
+The first recorded group is $C_3^5\times C_6\times C_{12}\times C_{11568}$;
+the third is $C_3^4$. These are database values, not newly verified Sage.js
+results or timings. The first and third records set `used_grh=true`; the
+second sets it false. Record that provenance separately from the assumptions
+of each timed computation.
+
+The query groups coverage into three-decade discriminant bands and captures
+two extremes per signature for discriminant, class number, and regulator.
+It preserves missing values, decimal strings for large integers, the exact SQL,
+capture time, and raw-result hash. Reproduction script and report are
+`lmfdb-broad-survey.cjs` and `lmfdb-broad-survey.json` in the existing
+`modular-hnf-filter` evidence archive. Query SHA-256:
+`773dfa3e138b45501c8baee2ed53aa2613df61bfa68727f707f2139d46386bfc`;
+raw result SHA-256:
+`842fc472a3c5c0da3a95a3e803fd77ae894cc6c219011c76abd7fc2f2b47b9d1`.
+
+This is reconnaissance, not the frozen timing corpus. Next freeze a
+deterministic sample within signature, discriminant, class-group, and regulator
+strata, plus a separately reported extreme/missing-answer panel. Start with
+bounded pilot measurements per stratum before scaling the timed sample.
+Keep the synthetic large-regulator panel as a supplement: the largest recorded
+complex regulator in this mirror is only about $3.67\times10^5$, far below the
+earlier synthetic examples. LMFDB alone would therefore miss an already
+demonstrated representation bottleneck. No new performance conclusion follows
+from the bulk query itself.
