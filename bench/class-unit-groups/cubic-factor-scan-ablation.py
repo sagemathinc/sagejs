@@ -80,9 +80,11 @@ def ranges(source):
     return result
 
 
-def indices(source):
-    """Make the ten bounded group/factor offsets explicitly machine-sized."""
+def indices(source, *, include_group_ranges=False):
+    """Make bounded offsets word-sized, optionally including two range loads."""
     tree, fn = target(source)
+    if include_group_ranges and RANGE_SETUP not in ast.get_source_segment(source, fn):
+        raise ValueError("expected the checked group-range setup before composition")
     if any(
         isinstance(n, ast.Name) and n.id.startswith("workspace_offset_")
         for n in ast.walk(fn)
@@ -120,8 +122,9 @@ def indices(source):
                 f"workspace_offset_{value}".encode(),
             )
         )
-    if len(edits) != 10:
-        raise ValueError("expected exactly ten workspace offsets")
+    expected_offsets = 12 if include_group_ranges else 10
+    if len(edits) != expected_offsets:
+        raise ValueError(f"expected exactly {expected_offsets} workspace offsets")
     insertion = offsets[fn.body[0].end_lineno]
     declarations = "".join(
         f"    workspace_offset_{k}: uint64 = {k}\n" for k in sorted(constants)
@@ -156,14 +159,21 @@ def indices(source):
     return candidate
 
 
+def combined(source):
+    """Compose range-limited scans with word indices; do not assume additivity."""
+    return indices(ranges(source), include_group_ranges=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["ranges", "indices"])
+    parser.add_argument("mode", choices=["ranges", "indices", "combined"])
     parser.add_argument("source", type=Path)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
     source = args.source.read_text()
-    result = {"ranges": ranges, "indices": indices}[args.mode](source)
+    result = {"ranges": ranges, "indices": indices, "combined": combined}[args.mode](
+        source
+    )
     with args.output.open("x") as stream:
         stream.write(result)
     print(

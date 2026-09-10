@@ -29,9 +29,11 @@ source = BASE.read_text()
 uses_cached_powers = "_cubic_cached_ideal_power" in source
 candidate = ablation.ranges(source)
 word_indices = ablation.indices(source)
+composed_source = ablation.combined(source)
 for transform, transformed in [
     (ablation.ranges, candidate),
     (ablation.indices, word_indices),
+    (ablation.combined, composed_source),
 ]:
     try:
         transform(transformed)
@@ -49,6 +51,7 @@ for transform, transformed in [
         raise AssertionError("accepted duplicate helper")
 # A Unicode prefix must not corrupt AST byte-column addressing.
 assert ablation.indices("# π\n" + source) == "# π\n" + word_indices
+assert ablation.combined("# π\n" + source) == "# π\n" + composed_source
 
 NAME = "_cubic_append_smooth_principal_relation"
 
@@ -72,7 +75,14 @@ def extract(source):
     loop = copy.deepcopy(loops[0])
     wrapper = ast.parse("def run():\n    pass\n").body[0]
     wrapper.body = (
-        ast.parse("valid_relation = True\ngroup_index = 0\n").body
+        [
+            copy.deepcopy(n)
+            for n in fn.body
+            if isinstance(n, ast.AnnAssign)
+            and isinstance(n.target, ast.Name)
+            and n.target.id.startswith("workspace_offset_")
+        ]
+        + ast.parse("valid_relation = True\ngroup_index = 0\n").body
         + [loop]
         + ast.parse("return valid_relation\n").body
     )
@@ -93,7 +103,7 @@ class Workspace(list):
         return super().__getitem__(index)
 
 
-old, new = extract(source), extract(candidate)
+old, new, composed = extract(source), extract(candidate), extract(composed_source)
 rng = random.Random(921643)
 cases = 2500
 read_totals = [0, 0]
@@ -194,6 +204,7 @@ for case in range(cases):
 
     before, after = execute(old, initial), execute(new, initial)
     assert before[:3] == after[:3], case
+    assert before[:3] == execute(composed, initial)[:3], case
     accepted += before[0] is True
     read_totals[0] += before[3]
     read_totals[1] += after[3]
@@ -203,6 +214,8 @@ for case in range(cases):
             broken[layout.group + 1 : layout.group + 3] = [start_bad, count_bad]
             failed = execute(new, broken)
             assert failed[0] == 513 and not failed[2]
+            failed_composed = execute(composed, broken)
+            assert failed_composed[0] == 513 and not failed_composed[2]
 
 record = dict(
     cases=cases,
@@ -213,6 +226,8 @@ record = dict(
     workspace_reads=dict(baseline=read_totals[0], candidate=read_totals[1]),
     baseline_sha256=hashlib.sha256(BASE.read_bytes()).hexdigest(),
     candidate_sha256=hashlib.sha256(candidate.encode()).hexdigest(),
+    composed_sha256=hashlib.sha256(composed_source.encode()).hexdigest(),
+    composed_cases=cases,
     scope="Actual group loop, identical full workspace mutations and cached-power/membership call sequence under the contiguous-group invariant; ideal arithmetic modeled, not proved by this test.",
 )
 print(json.dumps(record))

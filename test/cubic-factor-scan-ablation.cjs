@@ -12,6 +12,7 @@ test("factor-group scans preserve exact mutations and helper-call order", () => 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const record = JSON.parse(result.stdout);
   assert.equal(record.cases, 2500);
+  assert.equal(record.composed_cases, 2500);
   assert.equal(record.invalid_range_cases, 250);
   assert(record.accepted > 0 && record.rejected > 0);
   assert(record.workspace_reads.candidate < record.workspace_reads.baseline);

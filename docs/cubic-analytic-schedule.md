@@ -9955,3 +9955,87 @@ round-trip verified. The archive manifest SHA-256 is
 `6ce70f31bb28277259e7933e53125ff90972f44ebd12b1029c5025643ae79bb6`.
 The duplicate Node executable and unusable `gprofng` experiment directories
 are excluded; their limitations are recorded rather than treated as evidence.
+
+## Composed factor scans and wider-field extension (2026-09-10)
+
+The `combined` mode of `cubic-factor-scan-ablation.py` now applies checked
+group ranges and then types the twelve relevant offsets, including the two
+new group-range reads. Its source SHA-256 is
+`7774843b367034cf4a76764f140fcb5797136ec1c4ee6f68e038aaa0c44c495c`
+(592,374 bytes), with native build key
+`dee64aa1c0e24b921e89f5600203852ae6e7dd601e817194da6fa6b97c3d1242`.
+This remains a generated research closure, not the registered production
+source or permission to increase its source allowance. No bounds, candidate
+order, relation policy, or acceptance predicate changes.
+
+The actual-loop oracle additionally checks the composition on all 2,500 cases
+and 250 invalid ranges. Complete comparison passes on all 27 frozen GMP and
+tagged development ledgers and two JavaScript controls. Five focused
+scan/valuation/HNF/residue tests pass after formatting.
+
+A completed controlled run on exclusive `opt`, CPU 2, uses one warmup and
+six balanced-order rounds per field, with the same preallocated-input,
+complete-call/cleanup timing and outside-timing full-ledger/parity checks as
+the preceding experiment. Node is 26.7.0 on AMD EPYC 7B13. Every comparison
+passes. Median milliseconds, with field prefix `3.1.` omitted:
+
+| Field suffix | Baseline | Group ranges | Ranges plus word offsets |
+| --- | ---: | ---: | ---: |
+| `341970033803678280.6` | 349.315 | 234.234 | 206.912 |
+| `1086061775432017340256300.1013` | 11346.800 | 3471.834 | 3018.972 |
+| `1086061775432017340256300.387` | 14273.237 | 7107.563 | 5986.413 |
+| `1086061775432017340256300.596` | 9256.416 | 4120.400 | 3603.082 |
+
+The composition improves on group ranges alone on every measured field;
+their observed sample intervals are disjoint. These are measured combined
+gains, not products of isolated speedups. PARI was not freshly interleaved
+in this run; its earlier timings remain substantially faster. Raw timing
+report SHA-256:
+`d13e03f6deb6fdd303e496d15834e32d6b6c7b7a8ef63af597049e7957dcf158`.
+
+### Frozen extension beyond the native development panel
+
+Before running either variant, freeze 20 additional complex cubics from the
+existing LMFDB corpus, excluding all 27 native-development fields. Select by
+SHA-256 of `factor-scan-extension-v1:LABEL` within prior PARI runtime bands:
+six at 10–99 ms, ten at 100–499 ms, and four at 500 ms or above. This is an
+extension beyond that native panel, **not** a claim that no prior Sage.js
+survey ever touched these fields. Missing LMFDB answers remain missing;
+hashed PARI records are comparison references, not certificates. Panel hash:
+`fb46c2bd475b824eeb05f9b303f6821b56ad34e7008ddd0c8ab7c41f031da9ba`.
+
+The local serial run retains every field and enforces a 90-second subprocess
+timeout per variant. It uses factor capacity 512, search limit 4096, effort
+5, and shape-probes before allocating the exact logical transcript shapes.
+It is correctness/coverage evidence, not controlled performance evidence.
+All 20 baseline/composed full observations agree; there are no subprocess
+timeouts. Sixteen reach research phase 96 with classifier 1 and agree with
+PARI's class number. The other four are retained explicitly:
+
+- `3.1.15898963521669228.17`: classifier 0, relation index 52,488,
+  whereas PARI reports class number 26,244. No success is claimed.
+- `3.1.1086061775432017340256300.428` and `.163`: phase 44,
+  output slot 62 equal to 11. This slot is reused for both ideal indices
+  and reconstruction statuses, so the value alone does not identify the
+  failure. Pinpointing the failing branch requires a fresh trace; it is not
+  permission to certify or silently retry with weaker checks.
+- `3.1.12627147759764869116703083.1`: matching `RangeError`,
+  `number-field analysis projection is invalid`, before a result is produced.
+
+Independent exact replay of the new detached relations, compact unit logs,
+and presentation Smith invariants is underway separately. It is not included
+as a completed qualification claim in this checkpoint. That checker proves
+principal equalities and unit/log facts in the supplied order; it does not
+by itself prove maximality, unit fundamentality, or the full class group.
+Public acceptance remains false throughout this research harness.
+
+The completed experiment's sources, drivers, ledgers, generated native core,
+binary, manifests and timing are round-trip hash-archived in
+`build/cubic-analytic-schedule-evidence/combined-factor-group-scans`:
+68 files, 173,527,571 raw bytes and 15,991,097 compressed bytes. Archive
+manifest SHA-256 is
+`a07d16a8579328bbb816c3cb03e3ccb6d4c92d9986dd782ed801dda9c5c6ace8`.
+The live partial replay report is deliberately excluded; its driver is
+included. Production/public/platform qualification and residual profiling
+remain open. Generic constant folding in PR #202 is separate from the
+runtime-base-plus-offset issue isolated here.
