@@ -51,6 +51,26 @@ function fixture(expected = options) {
 }
 function reseal(value) { const { manifestDigest, ...payload } = value; return { ...payload, manifestDigest: identity(payload) }; }
 
+test("recovery pins original products separately from new evidence without accepting the failed aggregate", () => {
+  const recovery = { runId: 30, runAttempt: 1, controlRevision: "c".repeat(40), ref: "release-control" };
+  const o = { ...options, recovery }, f = fixture(o);
+  const p = require("./helpers/release-recovery.cjs").producerFixture(o), request = f.api;
+  for (const artifact of f.artifacts.filter((a) => a.name.startsWith("numerical-release-"))) {
+    Object.assign(artifact.workflow_run, { id: 30, head_sha: recovery.controlRevision, head_branch: recovery.ref });
+  }
+  f.api = (endpoint) => endpoint.includes("/attempts/") || endpoint.endsWith("/runs/10") ? p.api(endpoint) : request(endpoint);
+  const manifest = captureArtifactSet(o, f);
+  assert.equal(manifest.schema, "sagejs.release-artifact-set/v2");
+  assert.equal(manifest.recovery.producerJobs.length, 9);
+  assert.equal(verifyPinnedArtifacts(manifest, manifest.manifestDigest, f.api).status, "transport-verified");
+  for (const mutate of [
+    (m) => { m.recovery.runId = 10; }, (m) => m.recovery.producerJobs.pop(),
+    (m) => { m.recovery.producerJobs[0].name = "unknown"; },
+  ]) { const m = structuredClone(manifest); mutate(m); assert.throws(() => validateArtifactSet(reseal(m))); }
+  f.artifacts.find((a) => a.name === "numerical-release-gate").workflow_run.head_sha = options.sha;
+  assert.throws(() => verifyPinnedArtifacts(manifest, manifest.manifestDigest, f.api), /mismatch/);
+});
+
 test("capture freezes every product/evidence artifact and reinspects both qualification attempts", () => {
   const f = fixture(), manifest = captureArtifactSet(options, f);
   assert.equal(manifest.artifacts.length, 9);

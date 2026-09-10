@@ -86,12 +86,18 @@ function captureArtifactSet(options, dependencies = {}) {
     const runId = options[`${kind}RunId`];
     if (!positive(runId)) throw new Error("artifact set requires both producer run IDs");
     const expectation = { kind, runId, sha: options.sha, ref: options.ref, event: options.event, purpose: options.purpose };
-    qualification[kind] = observationRecord(inspect(expectation));
+    qualification[kind] = observationRecord(kind === "native" && options.recovery
+      ? require("./numerical-recovery.cjs").inspectProducers(options, request)
+      : inspect(expectation));
     const available = readArtifacts(runId, request);
     for (const name of roles[kind]) {
-      const selected = available.filter((item) => item.name === name);
+      const recovered = options.recovery && kind === "native" && name.startsWith("numerical-release-");
+      const inventory = recovered ? readArtifacts(options.recovery.runId, request) : available;
+      const selected = inventory.filter((item) => item.name === name);
       if (selected.length !== 1) throw new Error(`expected one artifact for ${kind}/${name}`);
-      const context = { runId, sourceRevision: options.sha, ref: options.ref, repositoryId: repo.id };
+      const context = { runId: recovered ? options.recovery.runId : runId,
+        sourceRevision: recovered ? options.recovery.controlRevision : options.sha,
+        ref: recovered ? options.recovery.ref : options.ref, repositoryId: repo.id };
       const record = artifactRecord(selected[0], kind, name, context);
       // Re-read immutable IDs, not names, so an overwrite cannot redirect us.
       const current = artifactRecord(request(`repos/${repository}/actions/artifacts/${record.id}`), kind, name, context);
@@ -102,17 +108,34 @@ function captureArtifactSet(options, dependencies = {}) {
   // Re-check BOTH producer boundaries after all artifact reads; an intervening
   // retry must not silently change which qualification attempt we freeze.
   for (const kind of Object.keys(roles)) {
-    const current = inspect({ kind, runId: qualification[kind].runId, sha: options.sha,
-      ref: options.ref, event: options.event, purpose: options.purpose });
+    const current = kind === "native" && options.recovery
+      ? require("./numerical-recovery.cjs").inspectProducers(options, request)
+      : inspect({ kind, runId: qualification[kind].runId, sha: options.sha,
+        ref: options.ref, event: options.event, purpose: options.purpose });
     if (identity(observationRecord(current)) !== identity(qualification[kind])) throw new Error("qualification attempt changed during artifact capture");
   }
   const payload = { schema, repository, repositoryId: repo.id, sourceRevision: options.sha,
     ref: options.ref, event: options.event, purpose: options.purpose, qualification, artifacts };
+  if (options.recovery) {
+    payload.schema = "sagejs.release-artifact-set/v2";
+    payload.recovery = { ...options.recovery,
+      producerJobs: require("./numerical-recovery.cjs").inspectProducers(options, request).producerJobs };
+  }
   return validateArtifactSet({ ...payload, manifestDigest: identity(payload) });
 }
 function validateArtifactSet(value, expectedDigest) {
-  if (!exactKeys(value, ["schema", "repository", "repositoryId", "sourceRevision", "ref", "event", "purpose", "qualification", "artifacts", "manifestDigest"]) ||
-      value.schema !== schema || value.repository !== repository || !positive(value.repositoryId)) throw new Error("invalid artifact-set schema or repository");
+  const recovered = value?.schema === "sagejs.release-artifact-set/v2";
+  if (!exactKeys(value, ["schema", "repository", "repositoryId", "sourceRevision", "ref", "event", "purpose", "qualification", "artifacts", "manifestDigest", ...(recovered ? ["recovery"] : [])]) ||
+      (!recovered && value.schema !== schema) || value.repository !== repository || !positive(value.repositoryId)) throw new Error("invalid artifact-set schema or repository");
+  if (recovered) {
+    const r = value.recovery, names = require("./numerical-recovery.cjs").producerNames;
+    if (!exactKeys(r, ["runId", "runAttempt", "controlRevision", "ref", "producerJobs"]) ||
+        !positive(r.runId) || !positive(r.runAttempt) || !/^[a-f0-9]{40}$/.test(r.controlRevision ?? "") ||
+        typeof r.ref !== "string" || !r.ref || /[\s\x00-\x1f]/.test(r.ref) ||
+        !Array.isArray(r.producerJobs) || r.producerJobs.length !== names.length ||
+        r.producerJobs.some((job, i) => !exactKeys(job, ["name", "id"]) || job.name !== names[i] || !positive(job.id)) ||
+        new Set(r.producerJobs.map((job) => job.id)).size !== names.length) throw new Error("invalid recovery producer closure");
+  }
   requireSource(value.sourceRevision, value.ref, value.event, value.purpose);
   const { manifestDigest, ...payload } = value;
   if (!digestPattern.test(manifestDigest ?? "") || identity(payload) !== manifestDigest ||
@@ -125,6 +148,7 @@ function validateArtifactSet(value, expectedDigest) {
     if (!exactKeys(q, ["runId", "runAttempt", "jobId"]) || !positive(q.runId) || !positive(q.runAttempt) || !positive(q.jobId)) throw new Error("invalid qualification identity");
   }
   if (value.qualification.native.runId === value.qualification.browser.runId) throw new Error("native and browser runs must be distinct");
+  if (recovered && Object.values(value.qualification).some((q) => q.runId === value.recovery.runId)) throw new Error("recovery must have a distinct control run");
   for (const item of value.artifacts) {
     if (!exactKeys(item, ["key", "kind", "name", "id", "archiveDigest", "sizeInBytes", "createdAt"]) ||
         !Object.hasOwn(roles, item.kind) || !roles[item.kind].includes(item.name) || item.key !== `${item.kind}/${item.name}` ||
@@ -149,8 +173,11 @@ function verifyPinnedArtifact(value, expectedDigest, key, request = api) {
   const manifest = validateArtifactSet(value, expectedDigest);
   const record = manifest.artifacts.find((item) => item.key === key);
   if (!record) throw new Error("unknown artifact key");
+  const recovered = manifest.recovery && record.kind === "native" && record.name.startsWith("numerical-release-");
   const current = artifactRecord(request(`repos/${repository}/actions/artifacts/${record.id}`), record.kind, record.name,
-    { ...manifest, runId: manifest.qualification[record.kind].runId });
+    { ...manifest, runId: recovered ? manifest.recovery.runId : manifest.qualification[record.kind].runId,
+      sourceRevision: recovered ? manifest.recovery.controlRevision : manifest.sourceRevision,
+      ref: recovered ? manifest.recovery.ref : manifest.ref });
   if (identity(current) !== identity(record)) throw new Error(`pinned artifact changed: ${record.key}`);
   return { key, status: "transport-verified" };
 }

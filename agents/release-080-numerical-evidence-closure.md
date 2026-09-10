@@ -51,3 +51,22 @@ handoff. It must not forge old-run artifacts, substitute mathematical observatio
 or accept a local passing report as CI authority. No new tag should be created
 until that recovery is implemented and validated, or a fresh complete candidate
 qualification passes under the corrected workflow.
+
+## Bounded recovery implementation
+
+The handoff workflow now has an explicit `recover_numerical_evidence` input.
+It verifies all nine original producer jobs in one terminal native attempt,
+downloads and hashes the six original numerical/root inputs, and restores only
+their checked ZIP layouts in a separate frozen candidate checkout. It regenerates
+only omitted NLopt support, whose bytes must match the original observations;
+it does not rebuild distribution products. The original candidate verifier runs
+twice and authenticates the reconstructed gate against the public products.
+
+The v2 artifact-set manifest binds original product artifacts to the original
+producer runs and recovered gate/raw artifacts to the handoff control run.
+Consumers authenticate that same successful handoff attempt, all four recovery
+steps and the original producer identities. The original failed aggregate remains
+explicitly failed; no failed gate is relabeled. Normal v1 capture remains available
+and continues requiring successful aggregate jobs. Recovery uploads never overwrite
+artifacts; if retention succeeded but a later step fails, use a new control run.
+The signed products remain unchanged. No tag or publication is implied by capture.

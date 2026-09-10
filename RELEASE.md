@@ -44,6 +44,16 @@ the consumer reauthenticates its inputs and reconciles public state. It must not
 select a newer run, download artifacts by name, or rerun a producer job.
 The legacy `publish-release` and `recover-publish` jobs are retired.
 
+If every native producer passed but the final numerical gate failed because an
+evidence upload omitted generated support, the artifact-handoff workflow offers
+explicit `recover_numerical_evidence`. It checks the original nine producer jobs,
+restores hash-pinned inputs and runs the frozen candidate verifier twice. Only
+hash-matching omitted NLopt support is regenerated; distribution products are not
+rebuilt. The v2 handoff records separate original-product and recovered-evidence
+provenance. Consumers require the successful recovery steps and still perform
+numerical, package and signature verification. This is not a waiver for numerical
+failure. See [the 0.8.0 evidence closure](agents/release-080-numerical-evidence-closure.md).
+
 Do not use immutable tags as the edit/test loop. A late failure in a clean
 four-platform build can otherwise cost an hour and require another tag even
 when the fix is a one-line test-portability correction.

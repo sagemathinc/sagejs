@@ -59,6 +59,34 @@ test("authenticate one frozen handoff attempt, independently of newer control or
   assert.ok(f.calls.every((endpoint) => endpoint.includes("/attempts/2") || endpoint.endsWith("/artifacts/500")), "never asks for a latest producer/control attempt or selects by artifact name");
 });
 
+test("recovered handoff requires its own successful reconstruction steps and original producers", (t) => {
+  const f = fixture(t), original = require("./helpers/release-recovery.cjs").producerFixture({
+    nativeRunId: f.manifest.qualification.native.runId, sha: f.options.sha, ref: f.options.ref, event: f.options.event });
+  const proof = require("../scripts/release/numerical-recovery.cjs").inspectProducers({
+    nativeRunId: original.run.id, sha: f.options.sha, ref: f.options.ref, event: f.options.event }, original.api);
+  const { producerJobs, ...q } = proof;
+  f.manifest.schema = "sagejs.release-artifact-set/v2";
+  f.manifest.qualification.native = q;
+  f.manifest.recovery = { runId: f.run.id, runAttempt: f.run.run_attempt, controlRevision: f.run.head_sha,
+    ref: f.run.head_branch, producerJobs };
+  const seal = () => {
+    const { manifestDigest, ...payload } = f.manifest;
+    f.manifest.manifestDigest = identity(payload);
+    const archive = Buffer.from(zipSync({ "artifact-set.json": Buffer.from(JSON.stringify(f.manifest)) }));
+    fs.writeFileSync(f.options.filename, archive); f.artifact.digest = checksum(archive); f.artifact.size_in_bytes = archive.length;
+  };
+  const request = f.api;
+  f.api = (endpoint, paginate) => endpoint.includes(`/runs/${original.run.id}`) ? original.api(endpoint) : request(endpoint, paginate);
+  seal();
+  assert.throws(() => verifyHandoffArchive(f.options, f.api), /incomplete numerical recovery/);
+  for (const name of ["Restore pinned recovery inputs", "Reconstruct and authenticate recovered evidence", "Retain recovered gate", "Retain recovered raw evidence"]) {
+    f.job.steps.push({ name, conclusion: "success", status: "completed" });
+  }
+  assert.equal(verifyHandoffArchive(f.options, f.api).manifest.schema, "sagejs.release-artifact-set/v2");
+  f.manifest.recovery.controlRevision = "d".repeat(40); seal();
+  assert.throws(() => verifyHandoffArchive(f.options, f.api), /this authenticated handoff/);
+});
+
 test("wrong source, workflow, attempt, trigger, repository or incomplete capture cannot authenticate", (t) => {
   for (const mutate of [
     (f) => { f.run.head_sha = "b".repeat(40); }, (f) => { f.run.path = ".github/workflows/ci.yml"; },
@@ -132,7 +160,7 @@ test("capture workflow is non-publishing, bounded, one-job and retains an immuta
   assert.deepEqual(doc.permissions, { actions: "read", contents: "read" });
   assert.deepEqual(Object.keys(doc.jobs), ["capture"]);
   const job = doc.jobs.capture;
-  assert.equal(job.name, jobName); assert.equal(job["timeout-minutes"], 10);
+  assert.equal(job.name, jobName); assert.equal(job["timeout-minutes"], 30);
   assert.equal(job.environment, undefined);
   const capture = job.steps.find((step) => step.name === requiredSteps[0]);
   assert.match(capture.run, /node scripts\/release\/artifact-set.cjs capture/);
@@ -145,7 +173,10 @@ test("capture workflow is non-publishing, bounded, one-job and retains an immuta
   assert.equal(upload.with.overwrite, false);
   assert.equal(upload.with["if-no-files-found"], "error");
   assert.equal(upload.with["compression-level"], 0);
-  assert.equal(job.steps.filter((step) => step.run).length, 1);
+  assert.equal(job.steps.filter((step) => step.run).length, 4);
+  for (const step of job.steps.filter((step) => step.run && step.name !== requiredSteps[0])) {
+    assert.equal(step.if, "inputs.recover_numerical_evidence");
+  }
 });
 
 test("prepare authenticates, stages and expands all roles, repairing corruption without new downloads", async (t) => {

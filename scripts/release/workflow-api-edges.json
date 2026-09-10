@@ -17,7 +17,7 @@
         },
         {
           "filename": "scripts/release/artifact-handoff.cjs",
-          "sha256": "7a28bcf5ac7787aa2f8d573a0f3fa0e9ac3a6847a4c6c98b101d292585b47966"
+          "sha256": "bfbaf04361d3c5e1a9218c9924fd0f832dfdd7ba66035ced2f1d863c8d62e23b"
         },
         {
           "filename": "scripts/release/stage-artifacts.cjs",
@@ -26,6 +26,10 @@
         {
           "filename": "scripts/release/macos-installer.cjs",
           "sha256": "a0ecb9a0796a8783612b36195b00fecc0083fa0ff524cce623ffa26b0ebb3cda"
+        },
+        {
+          "filename": "scripts/release/numerical-recovery.cjs",
+          "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
         }
       ],
       "requiresWorkflowSuccess": [
@@ -92,11 +96,19 @@
       "helpers": [
         {
           "filename": "scripts/release/artifact-set.cjs",
-          "sha256": "4f4661823cd06ffdee07c1f85c0792a6d15ba1869d7c3556d16c959e7db94297"
+          "sha256": "a2538e84cc338bcaf7cbce9dd194f557ae0bd53a0dffa43cf992c5fd866fb1bf"
         },
         {
           "filename": "scripts/release/product-acceptance.cjs",
           "sha256": "8e0418bdb1848420eb95ec79af4c128c22e2ffb153692bde54132593636d9461"
+        },
+        {
+          "filename": "scripts/release/numerical-recovery.cjs",
+          "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
+        },
+        {
+          "filename": "scripts/release/recover-handoff.cjs",
+          "sha256": "4913e6438b323f2225967a09d2aaca57619ceb00c8129be4da1936b7116dc6ef"
         }
       ],
       "requiresJobSuccess": [
@@ -157,8 +169,8 @@
           ]
         }
       ],
-      "semantics": "Requires attempt-scoped successful native/browser product aggregates at the explicit same product SHA/ref/event/purpose, then captures nine immutable artifact IDs/digests and rechecks producer attempts. It deliberately does not require whole-workflow success. This handoff neither authenticates inner contents/signatures nor authorizes publication.",
-      "runSha256": "18cc3c6c60f36e1abd888388b8e7071219f5575f6504f26d8b7a370c54d7a2f2",
+      "semantics": "Normal capture requires both successful product aggregates. Explicit numerical recovery instead verifies all nine original native producers, reconstructs and authenticates the unchanged candidate gate, and binds recovered evidence to this distinct successful handoff job. Original failed aggregate remains failed. Consumers require recovery steps and original job identities, and still authenticate all product contents and signatures.",
+      "runSha256": "96bd64bb4503d634e2be97e31585959382945ada0539d1a7b205053ca1c63049",
       "requiresWorkflowSuccess": []
     },
     {
@@ -177,7 +189,7 @@
         },
         {
           "filename": "scripts/release/artifact-handoff.cjs",
-          "sha256": "7a28bcf5ac7787aa2f8d573a0f3fa0e9ac3a6847a4c6c98b101d292585b47966"
+          "sha256": "bfbaf04361d3c5e1a9218c9924fd0f832dfdd7ba66035ced2f1d863c8d62e23b"
         },
         {
           "filename": "scripts/release/control-artifact.cjs",
@@ -222,6 +234,10 @@
         {
           "filename": "scripts/release/finalize-github-release.cjs",
           "sha256": "b0d3458001ae2a7f07cd774704ac8ce3c471d5ceb740e09a4faaba543234bf26"
+        },
+        {
+          "filename": "scripts/release/numerical-recovery.cjs",
+          "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
         }
       ],
       "requiresWorkflowSuccess": [
@@ -246,7 +262,7 @@
         },
         {
           "filename": "scripts/release/artifact-handoff.cjs",
-          "sha256": "7a28bcf5ac7787aa2f8d573a0f3fa0e9ac3a6847a4c6c98b101d292585b47966"
+          "sha256": "bfbaf04361d3c5e1a9218c9924fd0f832dfdd7ba66035ced2f1d863c8d62e23b"
         },
         {
           "filename": "scripts/release/control-artifact.cjs",
@@ -291,6 +307,10 @@
         {
           "filename": "scripts/release/finalize-github-release.cjs",
           "sha256": "b0d3458001ae2a7f07cd774704ac8ce3c471d5ceb740e09a4faaba543234bf26"
+        },
+        {
+          "filename": "scripts/release/numerical-recovery.cjs",
+          "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
         }
       ],
       "requiresWorkflowSuccess": [
@@ -333,7 +353,7 @@
         },
         {
           "filename": "scripts/release/artifact-handoff.cjs",
-          "sha256": "7a28bcf5ac7787aa2f8d573a0f3fa0e9ac3a6847a4c6c98b101d292585b47966"
+          "sha256": "bfbaf04361d3c5e1a9218c9924fd0f832dfdd7ba66035ced2f1d863c8d62e23b"
         },
         {
           "filename": "scripts/release/control-artifact.cjs",
@@ -366,6 +386,10 @@
         {
           "filename": "scripts/release/directory-transaction.cjs",
           "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284"
+        },
+        {
+          "filename": "scripts/release/numerical-recovery.cjs",
+          "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
         }
       ],
       "requiresWorkflowSuccess": [
@@ -393,7 +417,7 @@
         },
         {
           "filename": "scripts/release/artifact-handoff.cjs",
-          "sha256": "7a28bcf5ac7787aa2f8d573a0f3fa0e9ac3a6847a4c6c98b101d292585b47966"
+          "sha256": "bfbaf04361d3c5e1a9218c9924fd0f832dfdd7ba66035ced2f1d863c8d62e23b"
         },
         {
           "filename": "scripts/release/control-artifact.cjs",
@@ -426,6 +450,10 @@
         {
           "filename": "scripts/release/directory-transaction.cjs",
           "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284"
+        },
+        {
+          "filename": "scripts/release/numerical-recovery.cjs",
+          "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
         }
       ],
       "requiresWorkflowSuccess": [
