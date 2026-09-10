@@ -11,6 +11,50 @@ import sys
 from fractions import Fraction as Q
 
 
+def next_analytic_cutoff(
+    current: int,
+    maximum: int,
+    remaining: int,
+    status: int,
+    index_lower: int,
+    index_upper: int,
+) -> int:
+    """Choose a bounded refinement, never assert analytic sufficiency.
+
+    Inputs are exact integers. Status zero denotes a validated but
+    inconclusive joint-index log interval. Refine only if that interval
+    still contains zero: a strictly positive lower bound already excludes
+    index one and calls for better algebraic data, not a larger cutoff.
+    Invalid evidence, success, exhausted space, or exhausted work return zero.
+
+    Doubling preserves exact ninth scales, clamped to the caller's storage
+    envelope. Charge the returned cutoff against remaining planning work
+    before executing it. This measures cutoff work, not elapsed time or an
+    upper bound on arithmetic operations. All plan-entry and arena limits
+    remain independently enforced. No field-specific bound is asserted.
+    """
+    if (
+        current < 72
+        or maximum < current
+        or current % 9 != 0
+        or maximum % 9 != 0
+        or remaining < 0
+        or status != 0
+        or index_lower > 0
+        or index_upper < 0
+        or index_lower > index_upper
+        or current == maximum
+    ):
+        return 0
+    increment = current
+    if maximum - current < increment:
+        increment = maximum - current
+    candidate = current + increment
+    if candidate > remaining:
+        return 0
+    return candidate
+
+
 def add(a, b):
     return a[0] + b[0], a[1] + b[1]
 

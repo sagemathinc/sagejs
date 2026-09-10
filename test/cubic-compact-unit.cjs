@@ -88,6 +88,18 @@ def rational_columns(B):
     return [[[int(B[i,j].p), int(B[i,j].q)] for i in range(3)] for j in range(3)]
 B = Matrix.diag(1, Fraction(1,2), Fraction(1,4))
 maximal_basis = rational_columns(B)
+native_basis = m.native_order_basis_columns([4,4,0,0,2,0,1])
+assert m.CubicIdealReplay(g,native_basis).basis == B
+# Off-diagonal diagnostic basis from a cubic of equation-order index 146.
+# A transpose passes diagonal examples but does not even define an order here.
+off_diagonal = [146,1,6,27,146,0,146]
+off_polynomial = [10422535,190117,-1,1]
+off_oracle = m.CubicIdealReplay(off_polynomial,m.native_order_basis_columns(off_diagonal))
+assert off_oracle.identity == [146,-6,-27]
+rejected(lambda: m.CubicIdealReplay(off_polynomial,rational_columns(off_oracle.basis.T)), "closed")
+for invalid in [[],off_diagonal[:-1],[0,1,6,27,146,0,146],
+                [146,0,6,27,146,0,146],[True,1,6,27,146,0,146]]:
+    rejected(lambda: m.native_order_basis_columns(invalid))
 oracle = m.CubicIdealReplay(g, maximal_basis)
 assert oracle.identity == [1,0,0]
 assert oracle.multiply([0,1,0], [0,0,1]) == [1,1,0]

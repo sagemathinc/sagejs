@@ -8611,3 +8611,155 @@ gate passes its FFI/native/resource checks but again stops at the stale
 optimizer-opportunity manifest. These remain failed full gates, not release
 qualification. No full build was needed for the CPython research-checker and
 documentation changes; the experimental native source was compiled afresh.
+
+### Bounded refinement distinguishes analytic uncertainty from algebraic defects
+
+Research source
+`662b82d3bbd0a8808e9000f35ce4dee425b3576e337a9e1c9a579113665e1f12`
+replaces the single cutoff-5400 diagnostic with a resident refinement loop.
+The source-transparent `next_analytic_cutoff` helper is maintained in
+`bench/class-unit-groups/cubic-bf-scale-audit.py` and extracted into the native
+source without replacing its body. It doubles a cutoff, clamped to the
+storage envelope, while preserving exact multiples of nine. The planner now
+accepts intermediate multiples of nine in $[72,5400]$, rather than just two
+named cutoffs. All live term/value and arena bounds remain separate guards;
+5,400 is a research storage extent, not a theorem of sufficient accuracy.
+
+Refinement is authorized only by a validated, inconclusive joint-index
+interval that still contains zero. Success stops immediately. Invalid or
+contradictory evidence stops with failure. A strictly positive lower bound
+already proves that the current relation/unit data have joint index greater
+than one: more precise analysis of the **same** algebraic data cannot make
+that index one. That outcome therefore stops refinement and identifies the
+need for further algebraic work. It does not silently accept the quotient.
+
+The cutoff is charged before each plan against a budget of three times the
+storage extent. This is a bounded sum-of-cutoffs planning budget, not a bound
+on wall time or every arithmetic operation. The step uses
+$X+\min(X,M-X)$ instead of an unchecked $2X$ when selecting the next cutoff.
+Strict growth and the finite envelope prove termination. The coefficient
+table and finite prime-power plan are rebuilt for each cutoff: newly admitted
+higher-degree norms of previously visited primes must not be lost. The
+selected compact unit, its rigorously enclosed logarithm, and the two foreign
+analytic matrix owners are retained across attempts; no new foreign resource
+is constructed inside the loop. Reusing more of the finite plan is future
+work and requires its own correctness argument.
+
+On the motivating 443-ideal field the actual native sequence is
+
+$$
+765\;(0)\ \longrightarrow\ 1530\;(0)\ \longrightarrow\
+3060\;(0)\ \longrightarrow\ 5400\;(1),
+$$
+
+where parentheses give the analytic classifier. The total cutoff charge is
+10,755. Every exported relation, ideal, generator, order-basis parameter and
+selected unit exponent agrees with the fixed-cutoff parent, as do the final
+analytic endpoints. No external unit is supplied. This is a general bounded
+schedule, **not a speed improvement on that field**: the staged sequence adds
+analytic work relative to starting at 5,400.
+
+The helper passes 2,000 exact scheduling tests and termination checks through
+the unsigned-64-bit scale. Its actual compiled body agrees with an independent
+integer oracle on 2,016 cases using both the GMP and same-source JavaScript
+entries, including values above $2^{64}$. The helper artifact has no `fmpz`
+entry; absence is reported, not counted as a pass. Thirteen extracted actual
+suffix control-flow cases cover early/late success, envelope exhaustion,
+proved algebraic insufficiency, contradictory intervals and failed foreign
+operations. The numerical operations are mocked in these tests, so they
+prove scheduling behavior and owner reuse, not the analytic formula.
+
+The next local panel consists of seven reused controls and 20 frozen-corpus
+complex holdouts with $|D|\geq 10^{12}$, ordered by SHA256 of
+`adaptive-analytic-20260910/` followed by the label. Selection was written
+before execution. These are not claimed to be previously unseen across all
+earlier campaigns or population-weighted. All 27 fixed/adaptive native pairs
+complete and export identical algebraic data. Both schedules give 16
+index-one classifications and 11 inconclusive classifications. Every one of
+the latter now has a strictly positive joint-index lower bound; none merely
+runs out of analytic resolution at 5,400.
+
+| Native diagnostic outcome | Fields | Final cutoff distribution |
+| --- | ---: | --- |
+| Index-one classifier | 16 | 2 at 1,530; 10 at 3,060; 4 at 5,400 |
+| Index one excluded by a positive lower bound | 11 | 6 at 765; 4 at 1,530; 1 at 3,060 |
+
+Cutoff charges sum to 101,160 for the 16 index-one cases versus 86,400 for
+fixed 5,400, and 19,125 for the 11 insufficient cases versus 59,400. These
+counts expose the tradeoff, not a comparative timing result. All diagnostic
+roots still return false; public invariant publication, full certificates and
+controlled end-to-end timing remain outstanding. The first seven scalar
+control calls used placeholder transcript buffers and stopped at marker 105:
+their equality alone was not analytic qualification. The subsequent
+dimensioned exports are the actual 27-case analytic comparison. Only the
+first `output[30]` history slots are live; remaining diagnostic words may
+contain older phase data.
+
+#### The panel caught a detached basis-orientation error
+
+Independent replay initially failed on `3.1.1428754729688.2`, whose defining
+polynomial is $x^3-x^2+190117x+10422535$. The diagnostic tuple
+$(146,1,6,27,146,0,146)$ was incorrectly decoded as an upper-triangular basis.
+The native convention names the basis vector first: the correct power-basis
+columns are $(1,6,27)/146$, $(0,1,0)$ and $(0,0,1)$. Thus the identity has
+coordinates $(146,-6,-27)$. The accidental transpose does not define an order
+for this polynomial. It happened to agree on the earlier diagonal-basis large
+field, which is why testing only that field missed the issue.
+
+The independent checker now provides `native_order_basis_columns`, with a
+focused off-diagonal regression and rejection of the accidental transpose.
+The native source, input polynomial and exported bytes were not changed to
+fix this verifier-side error. Initial replay files are preserved and corrected
+results use `unit-replay-v2` names; a completed old replay is not relabeled as
+having exercised the corrected decoder.
+
+All 27 corrected replays pass: 3,712 principal-ideal equalities, exact compact
+dependencies, and independent rational-log enclosures contained in the native
+intervals. All selected units are non-torsion. For the 16 index-one
+classifications, the native presentation order agrees with the saved PARI
+class number; this comparison does not replace independent invariant or
+analytic-premise verification.
+
+One concrete next algebraic case is `3.1.2545362165060.5`, defined by
+$x^3-7803x-1557948$. Its native presentation index is 18, equal to PARI's
+conditional class number, while its selected unit log is near 97,947.0295,
+approximately twice PARI's regulator. At cutoff 1,530 the rigorous native
+joint-index log interval is approximately $[0.0333,1.3569]$: it already excludes
+index one. The fixed-5,400 interval is approximately $[0.4102,0.9703]$ and still
+excludes it. The PARI regulator ratio is a diagnostic hint, not a proof of unit
+index or fundamentality. This is a concrete target for resuming relation/unit
+collection with the existing resident state, rather than increasing analytic
+cutoffs indefinitely.
+
+For that next field, independent CPython/SymPy HNF and Smith computations
+confirm the 53-by-47 ledger has rank 47 and cyclic presentation of order 18.
+Independent rational bounds for $\log 2$ and $\log 3$ show that the existing
+fixed-cutoff joint-index interval admits exactly the integer index two,
+conditional on that native analytic enclosure and its generation premises.
+This does not independently distinguish a missing class relation from a
+missing unit generator.
+
+A fresh PARI 2.17.4 debug trace, seed one and `bnfinit(nf,0)`, uses the same
+47-ideal/53-relation dimensions: 15 initial rational-prime relations, then
+38 small-norm relations from 797 trials (59 factorizations reported), followed
+by its first HNF. It immediately obtains tentative class number 18 and
+regulator 48,973.5147, with check ratio approximately 1.00904. No extra HNF
+update is reported. Therefore row count alone does not explain our missing
+unit information; which principal relations we retain matters. PARI warns
+that precision is insufficient to provide expanded fundamental units, but
+returns the class number and regulator. That warning is retained and is not
+mistaken for an expanded-unit certificate or a computation failure. This
+debug trace is not a controlled competitive timing.
+
+All scripts, source/build identities, selected labels, detached data and
+replay outcomes are archived under
+`build/cubic-analytic-schedule-evidence/adaptive-analytic/`. Production source
+and resource allowances remain unchanged; this is an unpromoted experiment.
+
+Final focused tests, formatting, merge checks, documentation checks and all
+195 unit-test files pass. The full CLI attempt then fails the same five
+FFLAS/igraph prerequisite checks in `test/ffi.cjs`, with 582 files unstarted;
+the architecture gate still stops at stale optimizer artifacts after passing
+its native/FFI/resource audits. Neither gate is reported green. The research
+native source and helper were freshly compiled; no production build inputs
+or dispatch were changed.

@@ -171,6 +171,28 @@ def kernel_residual(exponents, rows, width):
     return result
 
 
+def native_order_basis_columns(parameters):
+    """Decode the diagnostic triangular basis as rational power columns.
+
+    The native tuple is `(d, b00, b01, b02, b11, b12, b22)` where the first
+    subscript names the **basis vector**, not the power-basis row. Its columns
+    are `(b00,b01,b02)/d`, `(0,b11,b12)/d`, `(0,0,b22)/d`. Transposing this
+    convention accidentally passes diagonal-order examples but generally
+    describes a different lattice. Order closure is checked by the oracle,
+    not established by this format decoder.
+    """
+    if len(parameters) != 7 or any(type(v) is not int for v in parameters):
+        raise ValueError("seven integer native basis parameters required")
+    d, b00, b01, b02, b11, b12, b22 = parameters
+    if min(d, b00, b11, b22) <= 0:
+        raise ValueError("positive denominator and basis diagonal required")
+    return [
+        [[b00, d], [b01, d], [b02, d]],
+        [[0, 1], [b11, d], [b12, d]],
+        [[0, 1], [0, 1], [b22, d]],
+    ]
+
+
 class CubicIdealReplay:
     """Small exact lattice oracle, independent of PARI's ideal arithmetic."""
 

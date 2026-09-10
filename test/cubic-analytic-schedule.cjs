@@ -12,6 +12,56 @@ def certificate(x):
     return x < 2
 `;
 
+test("adaptive analytic refinement preserves ninth scales and charges bounded work", () => {
+  const run = spawnSync(pythonExecutable(), ["-c", `
+import importlib.util
+import random
+spec = importlib.util.spec_from_file_location("audit", "bench/class-unit-groups/cubic-bf-scale-audit.py")
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+step = m.next_analytic_cutoff
+assert step(765,5400,5400,0,-1,1) == 1530
+assert step(3060,5400,5400,0,-1,1) == 5400
+assert step(3060,5400,5399,0,-1,1) == 0
+for status in [-3,-1,1,2,3]:
+    assert step(765,5400,20000,status,-1,1) == 0
+for lo,hi in [(1,2),(-2,-1),(1,-1)]:
+    assert step(765,5400,20000,0,lo,hi) == 0
+for current,maximum,remaining in [(69,5400,20000),(766,5400,20000),
+                                (765,5401,20000),(765,72,20000),
+                                (5400,5400,20000),(765,5400,-1)]:
+    assert step(current,maximum,remaining,0,-1,1) == 0
+rng = random.Random(20260910)
+for _ in range(2000):
+    maximum = 9*rng.randrange(8,100000)
+    current = 9*rng.randrange(8,maximum//9+1)
+    remaining = rng.randrange(3*maximum+1)
+    candidate = step(current,maximum,remaining,0,-1,1)
+    expected = min(2*current,maximum)
+    if expected == current or expected > remaining:
+        expected = 0
+    assert candidate == expected
+    if candidate:
+        assert current < candidate <= maximum and candidate <= remaining
+        assert candidate % 9 == 0
+for maximum in [72,81,765,1494,1800,5400,90000,9*((2**64-1)//9)]:
+    current = 72
+    initial_budget = remaining = 3*maximum
+    history = []
+    while current:
+        assert current <= remaining
+        remaining -= current
+        history.append(current)
+        current = step(current,maximum,remaining,0,0,1)
+    assert history[-1] == maximum
+    assert sum(history) == initial_budget-remaining
+    assert len(history) == len(set(history))
+    assert all(a < b for a,b in zip(history,history[1:]))
+print("2000 exact schedule cases and uint64-scale termination pass")
+`], { cwd: require("node:path").resolve(__dirname, ".."), encoding: "utf8" });
+  assert.equal(run.status, 0, run.stderr);
+});
+
 test("online HNF full-rank test reads only the diagonal without counting deficient rank", () => {
   const run = spawnSync(pythonExecutable(), ["-c", `
 import ast
