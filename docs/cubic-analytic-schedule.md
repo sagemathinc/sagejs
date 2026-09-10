@@ -6954,3 +6954,92 @@ complex regulator in this mirror is only about $3.67\times10^5$, far below the
 earlier synthetic examples. LMFDB alone would therefore miss an already
 demonstrated representation bottleneck. No new performance conclusion follows
 from the bulk query itself.
+
+### Frozen broad panel and first bounded phase pilot
+
+`bench/class-unit-groups/cubic-broad-corpus.cjs` now downloads and validates a
+prospectively stratified panel from the same read-only mirror. The seed is
+`sagejs-cubic-overall-20260910-v1`. Strata combine signature, transitive Galois
+group, three-decade discriminant and regulator bands, and trivial/cyclic/
+noncyclic/unknown class data. Select at most 16 fields per stratum by a fixed
+hash of the label, and retain the top two discriminant/class-number/regulator
+extremes per signature separately. Selection never consults Sage.js results.
+Derived polynomial discriminants and equation-order indices use exact integer
+arithmetic, independently of the database's index metadata. Class-group
+invariant products must match recorded orders. These are data consistency
+checks, not a proof of the supplied field or class-group claims.
+
+The frozen panel has **1,235 fields in 90 strata**: 524 complex and 711 real,
+with 110 missing class numbers. Roles are 331 development, 892 holdout, and
+12 stress fields. These role names are prospective: overlap with previous
+development corpora must be audited before calling the holdout unseen.
+Corpus payload SHA-256:
+`65d445813d42a18d6d9e6debe231a620a05d900c805064448d0e0358a93ce219`.
+The raw corpus and per-stratum populations are retained as
+`lmfdb-broad-corpus.json` and `lmfdb-broad-corpus-summary.json` in the
+`modular-hnf-filter` archive. No timed aggregate across these unequal strata
+would represent the prevalence of research workloads.
+
+`bench/class-unit-groups/cubic-broad-pari.cjs` freezes a 29-field stress pilot:
+the 12 explicit extremes plus the largest recorded regulator among development
+fields in each signature/discriminant band. It times `nfinit(f)` separately
+from `bnfinit(nf,0)`, with one fresh process per field, seed 1, a ten-second
+process timeout and a 512 MiB PARI stack ceiling. The ceiling is not a total
+process RSS limit. These are GRH-conditional discovery timings without
+`bnfcertify`, expanded-unit output, repeated samples or native Sage.js timings.
+Startup wall time is retained separately; the small phase timings have only
+millisecond resolution. The generated GP program receives coefficients, not
+the database's answers, integral basis or factorization.
+
+Both serial runs completed on the otherwise idle `opt` VM. PARI 2.17.4
+completed all 29 fields: 26 agreed with database class numbers and invariant
+factors, and three had no database answers to compare. PARI 2.15.4 completed
+28 with identical class numbers and invariant factors; the remaining real
+extreme hit the ten-second timeout. Different versions/builds and single
+samples do not establish a general version-speedup claim.
+
+| Missing-answer field | PARI result $h$ | 2.17.4 class-group phase | 2.15.4 class-group phase |
+| --- | ---: | ---: | ---: |
+| `3.1.1086061775432017340256300.1` | 314,928 | 545 ms | 644 ms |
+| `3.1.12627147759764869116703083.1` | 162 | 1,075 ms | 1,104 ms |
+| `3.3.19627909893848232377256843521369709.1` | 3 | 3,557 ms | process timed out at 10 s |
+
+The first two defining polynomials are $x^3-89660767673106630$ and
+$x^3-429667960411287811$. Their resulting invariant factors are respectively
+$[3,3,3,3,3,3,3,12,12]$ and $[3,3,18]$. Their regulators are approximately
+$471990.99$ and $7.0053933504\times10^9$. The real extreme returns $[3]$ and
+regulator approximately $5.0388\times10^{16}$. These are PARI results, not
+independently certified new mathematics. Merely filtering on *recorded*
+regulator would exclude these large-regulator workloads from LMFDB itself.
+
+In all three cases, 2.17.4's order initialization took one millisecond.
+The class-number-202,393,728 example took 104 ms in discovery; the complex
+class-number-one example with recorded regulator 367,081 took only 4 ms.
+Large class number or regulator alone is not an adequate proxy for measured
+cost. Missing database answers are also not evidence of intractability:
+two of the largest complex examples finish in about a second in both tested
+PARI versions. LMFDB's documentation does not establish why these particular
+records lack answers. Keep “not recorded”, “timed out”, and “proved hard” as
+distinct claims. No native/public Sage.js coverage or timing claim follows
+from this pilot yet.
+
+The exact per-field GP inputs, stdout/stderr, status, phase timings, host and
+binary identities are archived under `broad-pari217` and `broad-pari215`.
+The 2.17.4 executable hash is
+`c87bdfb1fa3192bd1281c9975ff2da0783f8e6f747a8304e550bf0288fb81e1d`,
+with explicitly selected `libpari-gmp.so.9` hash
+`b7856e5e6ed098f816c122fc8116f1b1cb27776da77d6fe3eba66a901c1515eb`.
+The system 2.15.4 executable hash is
+`c9673623cad2eaa7cfe402e7b7d833f1f703689a09837026b6386aaafba6deec`.
+Its real-field timeout is retained with the completed initialization marker;
+it must not be replaced by a zero time or omitted from the denominator.
+
+The initial local GP smoke test failed because `apply(Str, b.cyc)` is not a
+valid conversion closure. Error detection rejected the run despite GP's zero
+process exit status. The exporter now uses explicit `vector` construction;
+the corrected local smoke test and both complete remote pilots use that form.
+Offline tests cover exact index derivation, huge integer square roots, corrupt
+metadata and result hashes, missing answers, invariant consistency, GP errors,
+timeouts and mismatches. All 193 repository unit-test files passed. The full
+1,235-field timed baseline, historical-overlap audit and Sage.js coverage
+measurements remain next steps; this pilot does not replace them.
