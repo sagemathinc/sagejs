@@ -377,6 +377,44 @@ def replay(polynomial, factors, basis=None):
     }
 
 
+def replay_with_log(polynomial, factors, lower, upper, scale, basis=None, bits=256):
+    """Authenticate a compact unit and a proposed real-log enclosure.
+
+    Recompute principal ideal equalities and the dependency residual first.
+    Then isolate the real root and evaluate a fresh rational-arithmetic log
+    enclosure. Acceptance requires this independent enclosure to be contained
+    in the proposed interval, using exact cross multiplication across scales.
+    Failure of containment is inconclusive, not proof that the proposal is
+    false: the independent precision may be insufficient. No native or PARI
+    logarithm, kernel, or expanded dependency product is trusted here.
+    """
+    if any(type(v) is not int for v in (lower, upper, scale)):
+        raise ValueError("integer logarithm endpoints and scale required")
+    if scale <= 0 or lower > upper:
+        raise ValueError("invalid logarithm interval")
+    result = replay(polynomial, factors, basis)
+    oracle = CubicIdealReplay(polynomial, basis)
+    independent_lower, independent_upper = compact_real_log_bounds(
+        oracle, [f[0] for f in factors], [f[1] for f in factors], bits
+    )
+    independent_scale = 1 << bits
+    if (
+        lower * independent_scale > independent_lower * scale
+        or independent_upper * scale > upper * independent_scale
+    ):
+        raise ValueError("proposed log enclosure not established at replay precision")
+    result.update(
+        log_enclosure_proven=True,
+        log_lower=str(independent_lower),
+        log_upper=str(independent_upper),
+        log_scale=str(independent_scale),
+        unit_classification=classify_unit_log_interval(
+            independent_lower, independent_upper, independent_scale
+        ),
+    )
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("gp_log", type=Path)

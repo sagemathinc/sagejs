@@ -8517,3 +8517,97 @@ including unavailable igraph native-library prerequisites, cancelled its
 active sibling and left 582 files unstarted. The full suite is not green;
 these environment failures are separate from the passing focused compact-unit
 test and diagnostic mathematical replays.
+
+### Native compact dependency discovery and independent log authentication
+
+The next research source removes the externally supplied unit interval. Source
+`09d2af8ba60248e36415f98892aed9aaa0ec2338dfab1bf27fb5597734fde358`
+uses the actual resident 462-by-443 relation ledger on
+`3.1.1086061775432017340256300.1`. It transposes that ledger, calls the existing
+declared integer right-kernel operation, reduces its 19 dependency rows using
+the declared LLL operation, and runs the existing interval-guided compact-unit
+selection. The selected row is then multiplied against every column of the
+**original** relation ledger with exact integers; a nonzero residual declines.
+Kernel and LLL output are proposals, not unchecked proof authority. Kernel
+basis completeness is unnecessary for authenticating the selected unit.
+
+The GMP-native diagnostic discovers 382 nonzero exponents, maximum absolute
+value 41,618, without expanding the unit. Its real absolute logarithm is
+enclosed by
+
+$$
+\frac{160610210145895453011859878300772359635735126}{2^{128}}
+\leq \log|\sigma(u)| \leq
+\frac{160610210145895453011859878300772359638101387}{2^{128}}.
+$$
+
+That interval is near 471,990.9868. Feeding it to the experimental cutoff-5400
+analytic suffix gives the same index-one classification as the externally
+supplied witness experiment. The input contains the polynomial and bounded
+output/workspace buffers, not a class number, relation, or external unit.
+The root deliberately continues to return false with diagnostic marker 96;
+this is not public class-group acceptance or a controlled performance result.
+
+For detached verification, source
+`9ab8d6aab33a05270fe3baf9d4962d885363ddc6c73decf89dfdfb2d982d776e`
+additionally exports the factor-ideal bases, all raw relations and generators,
+the selected dependency, and the seven exact order-basis parameters **from
+that same execution**, before the analytic suffix overwrites diagnostic words.
+The private packed factor buffer contains $9n+r+7$ entries with an explicit
+$9F+R_{\max}+7$ admission bound. This is an untimed research format, not a
+change to the production certificate ABI or arena limits. Its source cache key
+is `6289a9691a5647461710c2b4c20a4f981aecf914c2165d493d34692bb932d2d3`.
+
+The new `replay_with_log` research checker first checks every principal-ideal
+equality and the complete dependency residual using CPython/SymPy exact ideal
+arithmetic. It then independently isolates the unique real root and computes
+outward rational log bounds at 256 bits. Exact cross multiplication proves
+that this fresh enclosure lies inside the native interval. Merely overlapping
+intervals would not suffice. Failure of containment is an inconclusive replay
+at the chosen precision, not proof of a false native interval. Altered ideal
+relations, dependency exponents, invalid endpoint types/scales, and incorrect
+or zero-width proposed log intervals have focused rejection tests. Both signs,
+cross-scale enclosures, and a 261-bit compact torsion cancellation are tested.
+
+The complete large-field replay succeeds: 462 relations, 443 ideals, 3,020
+relation entries, no expanded dependency powers, and a proved non-torsion unit.
+The detached GMP record hashes to
+`d5bb41e11d6d90b785438827ed5ea352ea22ead66cd87facbe7d2147cccfbdf7`.
+Every factor, relation, generator, polynomial, dimension, and order-basis entry
+also agrees exactly with the preceding independently replayed ledger. This
+justifies reusing its HNF/Smith evidence for presentation order 314,928 and
+invariants $(3,3,3,3,3,3,3,12,12)$; matching counters alone would not justify
+that transfer. The checker itself does not prove maximality, factor-base
+generation, fundamentality, or the analytic theorem premises.
+
+One compiler capability boundary is now explicit: `fmpz_matrix_right_kernel`,
+`fmpz_matrix_nrows`, and `fmpz_matrix_ncols` are absent from
+`FMPZ_FFI_DECLARATIONS` in the compiler lane's `exact-analysis.cjs`. Consequently
+this source exports the GMP-native entry but no `fmpz` entry. The initial
+two-backend harness attempted the unavailable entry and recorded a JavaScript
+`TypeError`; it is not evidence of a native mathematical failure. The detached
+export harness checks entry availability explicitly. Simply extending the
+allowlist is not justified without reviewing allocation/checkpoint effects:
+the existing right-kernel binding allocates a square matrix with dimension
+equal to the number of relations. No compiler whitelist, production source
+allowance, or arena byte limit was changed in this experiment.
+
+Research scripts, source copies, build identities, detached data and replay
+results are retained under
+`build/cubic-analytic-schedule-evidence/native-compact/`. Production source
+remains 480,241 bytes under its unchanged 485,000-byte allowance. This closes
+the external-unit-input gap on the selected larger field, but not the public
+publication, source-size, portability, adaptive-refinement, or broad-frontier
+qualification gaps. PR #203 remains draft.
+
+The same-source JavaScript diagnostic was run separately with a 180-second
+limit and exited with timeout status 124 without a result. It is not a
+mathematical decline or evidence of output disagreement; no large-field
+dynamic/native equivalence is claimed. The fresh focused test and docs checks
+pass. `test:changed` passes merge checking, then its CLI sweep passes four
+files before `test/ffi.cjs` fails five missing FFLAS/igraph prerequisite checks,
+cancels the active sibling, and leaves 582 files unstarted. The architecture
+gate passes its FFI/native/resource checks but again stops at the stale
+optimizer-opportunity manifest. These remain failed full gates, not release
+qualification. No full build was needed for the CPython research-checker and
+documentation changes; the experimental native source was compiled afresh.

@@ -1696,10 +1696,30 @@
       "commit": "ba97b0d22b779d8c73c676b02af611ac260e3308",
       "workspace_fingerprint": "d275ed398508b329d50ab49af06a8639384d0c2c0f57eb2c619a676d3a2d880d",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-compact-unit.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.339,
+      "started_at": "2026-09-10T12:04:52.070Z",
+      "commit": "53c6ec0ef82f4782b722746890b40e700830d2e9",
+      "workspace_fingerprint": "f7c12f8cdd9d75826948dc0cde17baf371e5ded630b59e391d36f329bed9772d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-compact-unit.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.303,
+      "started_at": "2026-09-10T12:06:44.132Z",
+      "commit": "53c6ec0ef82f4782b722746890b40e700830d2e9",
+      "workspace_fingerprint": "402f64515380e18a46c143feabd4f4947dbbff8f4c264460066f1d389a7d0c03",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "PR203 remains draft; overall PARI competitiveness is not achieved. Post-rank research source 655a712ad8cb extends the shared powered search, preserving remaining budget and stopping on exact index decrease. On the larger pure cubic, 13 added rows reduce the 449-row index629856 to the 462-row index314928. Independent replay verifies all462 principal-ideal equalities and invariants [3,3,3,3,3,3,3,12,12]; a separate exact membership witness proves only the final added row halves the old index. FLINT/GMP agree on the entire diagnostic ledger and all64 decline words. The kernel still rejects the nine-factor presentation under the unchanged eight-invariant publication envelope. A checked rank19 dependency witness has18 torsion directions (proved using the elementary unit-log gap) and one non-torsion compact unit with382 nonzero exponents, maximum41618, and rigorous log near471990.9868; fundamentality is not inferred from PARI. The independent research classifier now distinguishes torsion, non-torsion, inconclusive, and contradictory intervals with focused tests. Analytic diagnostics exposed the machine-word-only integer log/sqrt batch, repaired in source copy61b0d60af6e2 by existing arbitrary-precision rational logs and exact source-level integer square roots. Existing cutoffs765/1800 remain mathematically insufficient. Diagnostic source9bbdf8b51842 at5400 uses399 terms/353 values within unchanged arena and term/value caps and passes the native joint-index classifier on both backends, but consumes an externally authenticated unit interval and never publishes a certificate. No complete native result or speed claim. 35 search and16 root-control scenarios,47 endpoint-routing scenarios, seven reused two-backend controls and the focused compact-unit test pass. Fresh build/docs/merge checks pass; CLI stops at FFI dependency failures with582 unstarted, and architecture still stops at stale optimizer artifacts. Evidence is archived under build/cubic-analytic-schedule-evidence/index-recovery/ and analytic-suffix/. Production source and485000 allowance unchanged.",
+    "summary": "PR203 remains draft; overall PARI competitiveness is not achieved. Research source09d2af8ba602 removes the external unit witness: the GMP-native closed computation proposes a 19-row integer kernel of its actual462x443 ledger, reduces it, selects a compact unit, checks the exact original-ledger residual, computes rigorous logs, and reaches the cutoff5400 analytic index-one classifier. It still returns false diagnostically. Export source9ab8d6aab33a detaches the same run's factor bases, raw relations, generators, order basis, and selected unit. New replay_with_log independently checks all462 principal-ideal equalities and the dependency, then proves a fresh256-bit rational log enclosure lies inside the native128-bit interval. The unit has382 nonzero exponents, maximum41618; no expanded dependency powers or PARI unit input. Full ledger identity transfers the preceding HNF/Smith evidence for314928 and [3,3,3,3,3,3,3,12,12]. No fundamentality, maximality, public certificate, or performance claim is inferred. The compiler's FMPZ_FFI_DECLARATIONS excludes right_kernel/nrows/ncols, so this source has no fmpz entry; the initial TypeError was harness misuse of that missing capability. Review allocation/checkpoint effects before widening that allowlist. Focused replay mutation tests, formatting, docs and merge checks pass. Full CLI still stops at five FFLAS/igraph prerequisite failures with582 unstarted; architecture still stops at stale optimizer artifacts. Sources, build identities and exact evidence are archived under build/cubic-analytic-schedule-evidence/native-compact/. Production source480241, allowance485000 and arena byte limits unchanged. Next: dimensioned certificate publication, budgeted adaptive analytic refinement, compiler capability/resource review, dynamic and broader-platform qualification, then controlled complete-computation timing.",
     "risks": [
       "Post-rank and analytic source copies are unpromoted. Matching exact presentation invariants and an externally supplied compact-unit interval do not constitute a closed native class-group certificate. Native compact dependency authentication, general invariant publication, adaptive analytic capacity, full-corpus/cross-platform replay and controlled timing remain open. Named-constant exponentiation is a recorded compiler gap; the source uses bounded doubling without weakening checks.",
       "Current overall-goal priority supersedes small-field tuning. Independent compact-unit prototype is a CPython/SymPy research oracle, not native integration or a class-group certificate. Unit membership does not prove nontorsion/fundamentality. PARI versions produce different compact witnesses; do not conflate382/34-bit with412/260-bit. Existing development distribution cannot support claims about overall cubic workloads.",

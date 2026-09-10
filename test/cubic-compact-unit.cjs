@@ -167,6 +167,25 @@ for bits in [32,64,128]:
 rejected(lambda: m.compact_real_log_bounds(oracle,[coords(0)],[1]), "zero")
 rejected(lambda: m.compact_real_log_bounds(oracle,[coords(1)],[]), "dimension")
 
+# Authenticate proposed native log bounds only after the underlying unit.
+unit = [[[[0,1],[1,1],[0,1]],1,[]]]
+for sign in [1,-1]:
+    witness = [[unit[0][0], sign, []]]
+    low,high = (0,1) if sign > 0 else (-1,0)
+    checked = m.replay_with_log(f,witness,low,high,1,bits=128)
+    assert checked["log_enclosure_proven"]
+    assert checked["unit_classification"] == "nontorsion"
+    assert not checked["fundamentality_proven"] and not checked["class_group_proven"]
+    rejected(lambda: m.replay_with_log(f,witness,2,3,1), "not established")
+    rejected(lambda: m.replay_with_log(f,witness,0,0,1), "not established")
+lo,hi = m.compact_real_log_bounds(m.CubicIdealReplay(f),[unit[0][0]],[1],64)
+assert m.replay_with_log(f,unit,lo,hi,2**64,bits=256)["log_enclosure_proven"]
+assert m.replay_with_log(f,good,-1,1,1,bits=512)["unit_classification"] == "torsion"
+rejected(lambda: m.replay_with_log(f,bad,-10**100,10**100,1), "residual")
+rejected(lambda: m.replay_with_log(f,[[coords(3),0,[ideal(2)]]],-1,1,1), "relation mismatch")
+for args in [(0,1,0), (1,0,1), (False,1,1), (0,1,1.0)]:
+    rejected(lambda: m.replay_with_log(f,unit,*args))
+
 rng = random.Random(314159)
 for _ in range(100):
     exponents = [rng.randrange(-1000, 1001) for _ in range(6)]
