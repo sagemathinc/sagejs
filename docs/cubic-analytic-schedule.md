@@ -7529,3 +7529,51 @@ checks parity with unmodified native output. The next experiment retires a
 discovery region at the existing cap and continues with other ideals; it
 must not raise the cap or confuse a partially explored region with a complete
 enumeration. Final exact certification remains the sole publication authority.
+
+The separate 41-control timing run on idle `opt` uses the same augmented and
+incremental binaries as the larger-field run, five warmups and seven alternating
+rounds of sixteen calls. Sums of per-field medians are 167.870 and 164.596 ms;
+the median incremental/parent ratio is 0.9955 and the largest is 1.0430. No
+field exceeds 1.05 in this run. All 64 output words are checked after each
+batch. `incremental-opt-controls.json` retains every sample and exact binary
+identity. This supports no material regression on these reused controls,
+not a universal no-regression theorem.
+
+The capped-region retirement ablation compiled and ran on the same 41 fields.
+It adds no successful class groups: two still succeed and 39 decline, without
+timeout or exception. On $x^3-86126810$ it collects 233 rows while keeping each
+ideal at at most 500 candidates, then hits the next explicit guard: staged
+presentation storage allows only $2n+22=180$ rows for $n=79$. It does not yet
+attempt the final certificate. Thus the phase-44 result must not be described
+as an analytic-index failure. The raw relation store has capacity 257, distinct
+from this staged presentation allowance. This negative experiment is archived
+as `retire-capped-ideal-ablation.py`, `dimensioned-retired-closure.py`,
+`retired-panel.json` and `retired-decline-trace.json`; it is not production code.
+
+PARI debug-3 forensics on this same field (`next-field-pari.gp/log/json`) shows
+cutoff 383, 54 rational primes and 79 factor ideals. PARI first uses 85 relation
+columns and obtains tentative class number 1944 with regulator
+$685.8145472999\ldots$. It then seeks seven further relations using its
+small-ideal recovery step (the trace identifies $p_0$ above 2 and ideals above
+131, 167 and 3), and the tentative class number becomes 486 with unchanged
+regulator. The local trace attributes 5 ms to the first small-norm search,
+3 ms to the initial HNF and below its millisecond resolution to `hnfadd`.
+These instrumented/local phase values are not a new controlled benchmark.
+PARI also warns that explicit fundamental units are not supplied at this
+precision with the chosen `bnfinit(...,0)` call. Our comparison continues to
+use the requested class-number/invariant workload; it does not claim identical
+unit-publication contracts or substitute a heavier PARI baseline.
+
+The next algorithmic question is therefore why our initial collection needs
+233 rows where PARI reaches a full-rank presentation in 85, and how to retain
+and certify the compact support before allocating tall staged workspaces.
+Do not merely raise 180 or 500 until this difference is understood. The
+seconds-scale/high-regulator regime remains part of the overall objective.
+
+The subsequent changed-file validation is terminal, not still running: merge
+checks, all 194 unit files, the full build and documentation checks pass. The
+587-file CLI tier then fails in FFI tests after four files pass; 581 files are
+not started. Missing local optional native prerequisites include the graph
+prefix's `libigraph.a`. This is not a whole-suite pass. The architecture run
+also retains the known stale optimizer-opportunity manifest failure; refreshing
+that manifest is not a substitute for review. Draft PR 203 remains unqualified.
