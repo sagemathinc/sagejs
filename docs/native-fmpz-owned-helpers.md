@@ -665,3 +665,159 @@ archive for unchanged input ledgers and timing baselines.
 The eight-file sibling backup `build/cubic-hnf-sparse-row-evidence-supplement`
 contains those additional full-call cross-backend checks, with manifest hash
 `3d28a94b028dfa57ff208469615836971a2cdc5244ebaf33d5af5fdbb88d36f2`.
+
+## Deferred online normalization: correct algebra, unsuccessful general optimization
+
+The next research campaign separates two operations previously performed
+together: adjoining an exact relation to a positive row-echelon basis, and
+reducing entries above its pivots into canonical HNF. The baseline for this
+comparison is the sparse pivot-row cache described above, not the older
+copying or GMP implementation. None of these experiments changes production
+source, certificate predicates, or memory/source allowances.
+
+### Why the online mathematical queries still work
+
+Let $E$ be a square, zero-row-padded integer row-echelon matrix with positive
+leading pivots. Its nonzero rows generate the retained relation lattice $L$.
+Inserting a row uses swaps, sign changes, and two-row Bezout transformations
+whose determinant is one. These operations preserve the integer row lattice,
+not merely its rational span. Eliminating entries below successive pivots
+therefore suffices to maintain an exact basis of the enlarged lattice.
+
+The following consumers do not require canonical entries above the pivots:
+
+- Exact membership: eliminate leading coordinates in order. At a positive
+  pivot $d$, the remaining coordinate must be divisible by $d$; at a column
+  with no pivot it must vanish. The resulting integer coefficients are
+  necessary and sufficient for membership in $L$.
+- Rank and index: pivot positions give rank; at full rank the product of
+  positive diagonal entries is $[\mathbb Z^n:L]$. Every diagonal entry being
+  one is equivalent to $L=\mathbb Z^n$, even with unreduced upper entries.
+- Quotient-guided discovery: a diagonal one expresses that coordinate class
+  in terms of later coordinates. Coordinates with diagonal greater than one
+  still generate the quotient. Canonicalization leaves these pivots unchanged.
+
+The reversed presentation is explicitly HNF-reduced by its existing consumer.
+The full proof-presentation consumer, however, previously copied an already
+canonical basis. It must now canonicalize its distinct destination. A small
+source-transparent helper copies the logical square prefix, then reduces
+above-pivot entries from left to right. Later pivot rows have zero entries in
+earlier pivot columns, so subsequent operations preserve earlier reductions.
+Its two-row support scratch is local and nonescaping. The original online
+basis and all principal relation witnesses remain unchanged.
+
+This is a written invariant argument with executable checks, **not a Lean
+formalization or a new complete class-group certificate**.
+
+### What failed, and what the bounded alternatives establish
+
+Unrestricted deferral passes small exact tests but is rejected on resource
+behavior. Four initial full-field probes exhaust the temporary budget; the
+larger `.1013` probe reaches its 45-second timeout instead of its roughly
+0.8-second baseline. An observed RSS sample during that probe was about
+890 MiB; it is not a peak measurement or an arena-accounting guarantee.
+
+Canonicalizing every eight rows also passes the algebraic tests but increases
+temporary-capacity failures from three to ten on the existing 47-field panel.
+There is additionally the same invalid-analysis error. Replacing general
+FLINT HNF at the proof-copy boundary with the specialized echelon normalizer
+does not rescue `.387`. Thus final projection alone does not explain that
+failure; fixed-interval deferral is not selected.
+
+A second policy reduces above-pivot entries after each insertion only when
+their Euclidean quotient satisfies $q\leq-2$ or $q\geq2$. Quotients
+$-1,0,1$ may remain. This bounds those quotients, **not all intermediate
+coefficient sizes**. A refinement retains the baseline's optimization of
+skipping the unchanged prefix before the first altered pivot.
+
+Both bounded variants restore all 43 completed observations, with identical
+full transcripts to the canonical sparse-row baseline. The same three
+capacity failures, invalid-analysis error, and completed indeterminate
+classifier remain. No failed call's partially written buffers count as a
+result; all successful research observations still have `accepted=False`.
+
+Independent CPython/SymPy checks cover 240 sequences, 2,497 prefixes and
+7,491 membership queries per variant. The bounded variants additionally
+check the quotient bound, exact canonical projection after every prefix, and
+nonmutation of its source. The source-transparent small native witnesses
+agree on 720 actual fmpz/GMP/JavaScript executions per variant; their outputs
+include both the unreduced and canonical matrices. The unchanged-prefix
+variant also agrees with the unskipped one on the independent Python corpus.
+Four full larger calls agree between fmpz and GMP, and one smaller full call
+agrees with generated JavaScript, for each bounded variant.
+
+### Controlled timing does not justify replacing the baseline
+
+Each row below reports medians from one warmup and six balanced-order rounds
+on idle, locked `opt`, CPU 2, with the same compiler and linked libraries.
+Whole native calls and cleanup are timed with preallocated inputs; complete
+transcript checks are outside the timer. The two columns are separate paired
+experiments, not repeated measurements of the same candidate.
+
+| Field suffix | Baseline / bounded (ms) | Baseline / bounded with prefix skip (ms) | PARI in second experiment (ms) |
+| --- | --- | --- | --- |
+| `341970033803678280.6` | 72.99 / 76.98 | 72.77 / 74.37 | 24 |
+| `1086061775432017340256300.1013` | 811.89 / 964.46 | 810.52 / 862.94 | 199.5 |
+| `.387` | 1508.08 / 1575.31 | 1505.60 / 1504.91 | 359.5 |
+| `.596` | 1027.98 / 1098.36 | 1025.38 / 992.97 | 243 |
+
+The prefix refinement helps `.596` by about 3.2% in this experiment, leaves
+`.387` essentially unchanged, and regresses `.1013` by about 6.5%.
+This is not a uniform improvement, a replicated win, or a PARI win. The
+canonical sparse-row implementation remains the selected research baseline.
+
+A separate final-basis replay provides evidence for the sparsity tradeoff:
+`.1013` has 8,810 nonzero entries before normalization and 2,803 afterward;
+`.387` has 9,070 versus 2,528; `.596` has 10,704 versus 3,012. The counts agree
+between actual fmpz and GMP. They describe the final basis, not a time profile
+or proof of the complete slowdown's cause. In particular, deferring even
+unit-pivot reductions preserves small nonzeros which canonical reduction
+would erase. Fewer row operations can leave a more expensive representation.
+
+### Next structural experiment: retain eliminated identity blocks
+
+Further inspection of pinned PARI 2.17.4 `hnf_snf.c`, specifically `hnfadd_i`,
+shows a persistent block representation. After permutation its existing
+relation columns contain a lower identity block. For new columns split as
+$\binom{T}{U}$, subtracting the old identity columns clears $U$ and changes
+the top to $T-BU$. PARI applies the corresponding transformation to the
+embedding companion data, combines this reduced top with its old residual
+block, then calls `hnffinal`. It does not simply keep a large unreduced
+echelon matrix and normalize less frequently. The earlier `hnfspec_i` unit
+elimination is what makes this reusable smaller representation possible.
+
+The next implementation should investigate that block/batch structure with
+explicit synchronization, rather than tune further arbitrary deferral counts:
+
+1. Distinguish the complete retained ledger from the exact basis's consumed
+   prefix. Never advance the latter counter without incorporating those rows.
+2. A row independent modulo a prime is provably absent from the preceding
+   integer lattice; its admission hint may establish a lattice change without
+   immediate exact HNF. Modular dependence does not prove membership.
+3. Deficient modular rank rules out the lattice being $\mathbb Z^n$, but
+   **does not prove deficient rational rank**. Exact rank-recovery decisions
+   still require synchronization; full modular rank does prove full rational
+   rank, but not class-group completeness.
+4. Synchronize before quotient-guided ideal selection, exact membership when
+   no independent hint exists, rank recovery, and proof presentation. Preserve
+   per-relation support witnesses and resumable stopping semantics explicitly.
+5. Test sparse unit-block elimination and lifting independently, then measure
+   the entire changed discovery/certification computation. Batching cannot be
+   justified by a faster standalone HNF benchmark alone.
+
+The bounded source hashes are
+`3439fa7550b260ff63234b1e9eb9b72a4add96a2e510d13409f634854ff8af93`
+and, with prefix skipping,
+`c89a93a9862009990ddec24bb37b3a141471c85847f43a9e937bbc759c88bc12`.
+Each closure qualifies all 141 functions for fmpz. Timing JSON hashes are
+`c439a360a51916a196b3843ad3f00ba792f54e82e4ec0a51680827921331dea5`
+and `cda3d50e945faaeca0a7ff774b9f374160a5137eb9feb7cddb96e418bae4610f`.
+The local evidence inventory records scripts, independent oracles, generated
+cores, source identities, negative results, panel transcripts, and raw timings;
+the preceding archive supplies the unchanged input ledgers and PARI sources.
+
+The ignored backup `build/cubic-online-echelon-evidence` contains 314 files,
+1,067,351,036 raw bytes compressed to 127,622,093 bytes. Every compressed file
+was read back and checked against its original size and SHA-256. Its manifest
+hash is `af19c7333907f879ad18b48a70907f4fc494bf7e83483eb84fb08b43da9a44d3`.
+These are local backed-up research artifacts, not a new release package.
