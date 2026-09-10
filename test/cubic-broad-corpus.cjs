@@ -5,7 +5,7 @@ const test=require("node:test");
 const {build,validate,summary,isqrt,query}=require("../bench/class-unit-groups/cubic-broad-corpus.cjs");
 const {pilot,select,gpSource,parse}=require("../bench/class-unit-groups/cubic-broad-pari.cjs");
 const {BEFORE,AFTER,ablate,wideDiscriminant,WIDE_INPUT,WIDE_INPUT_AFTER,WIDE_ANCHOR,WIDE_ENDPOINTS}=require("../bench/class-unit-groups/cubic-grh-envelope-ablation.cjs");
-const {result,report}=require("../bench/class-unit-groups/cubic-broad-report.cjs");
+const {result,report,answerAvailability}=require("../bench/class-unit-groups/cubic-broad-report.cjs");
 function fixture() {return {label:"3.1.23.1",r2:1,galt:2,coefficients:["-1","-1","0","1"],discriminant_absolute:"23",disc_sign:-1,
  class_number:"1",class_group:[],regulator:"0.281199574323",used_grh:false,d_band:0,r_band:"-1",h_band:"trivial",
  sample_rank:1,population:10,d_rank:100,h_rank:100,r_rank:100};}
@@ -44,12 +44,33 @@ test("PARI phase parsing distinguishes unknown answers, failures and false succe
  assert.equal(parse({...run,error:{code:"ETIMEDOUT"}},r).status,"timeout");
  assert.equal(parse({...run,stderr:"*** error in bnfinit"},r).status,"error");
  assert.equal(parse({...run,stderr:"*** Warning: increasing stack"},r).status,"agree");
+ for(const diagnostic of ["*** Bach constant: 0.6726344156793303553","*** Bach constant: 1e-3"," ***** check = 1.0095558899573971798"])
+   assert.equal(parse({...run,stderr:diagnostic},r).status,"agree");
+ for(const diagnostic of ["*** Bach constant: invalid","*** Bach constant: 0.5 ERROR","*** unrelated failure","*** Bach constant: 0.5\n*** failure"])
+   assert.equal(parse({...run,stderr:diagnostic},r).status,"error");
  assert.equal(parse({...run,stdout:run.stdout.replace('"1",[],"0.28"','"2",[],"0.28"')},r).status,"malformed");
  assert.equal(parse({...run,stdout:run.stdout.replace('"1",[],"0.28"','"2",["2"],"0.28"')},r).status,"class-mismatch");
  assert.equal(parse({...run,stdout:run.stdout.replace('"-23"','"-31"')},r).status,"field-mismatch");
  assert.equal(parse({...run,stdout:'["bnf"]'},r).status,"incomplete");
  assert.match(gpSource(r),/bnfinit\(n,0\)/);assert.doesNotMatch(gpSource(r),/bnfcertify/);
  assert.throws(()=>gpSource({...r,coefficients:['quit()']}));
+});
+test("answer-availability report retains missing answers, censoring and phase boundaries",()=>{
+ const known=build([fixture()]),unknown=build([{...fixture(),class_number:null,class_group:null}]);
+ const label=fixture().label;
+ const row={label,status:"complete-no-database-answer",nf_wall_ms:1234,bnf_wall_ms:0,class_number:"1",invariants:[]};
+ for(const [time,band] of [[0,"<10ms"],[9,"<10ms"],[10,"10-99ms"],[99,"10-99ms"],[100,"100-999ms"],[999,"100-999ms"],[1000,">=1000ms"]]){
+   const result=answerAvailability(unknown,{rows:[{...row,bnf_wall_ms:time}]})[0];
+   assert.equal(result.fields,1);assert.equal(result.bnf_wall_bands[band],1);
+   assert.equal(result.nf_wall_ms_sum,1234);assert.equal(result.bnf_wall_ms_sum,time);
+ }
+ const censored=answerAvailability(unknown,{rows:[{label,status:"timeout"}]})[0];
+ assert.equal(censored.fields,1);assert.equal(censored.bnf_wall_bands.incomplete,1);
+ assert.equal(censored.fastest,null);assert.equal(censored.slowest,null);
+ assert.equal(answerAvailability(known,{rows:[{...row,status:"agree"}]})[1].fields,1);
+ for(const rows of [[],[row,row],[{...row,label:"3.1.31.1"}],[{...row,bnf_wall_ms:-1}],[{...row,bnf_wall_ms:NaN}],[{...row,status:"agree"}]])
+   assert.throws(()=>answerAvailability(unknown,{rows}));
+ assert.throws(()=>answerAvailability(known,{rows:[row]}));
 });
 test("GRH envelope ablation retains capped search and final decline guards",()=>{
  const suffix="if bdf_value_limit > _CUBIC_MAX_FACTOR_SEARCH_BOUND:\nif grh_search_bound > _CUBIC_MAX_FACTOR_SEARCH_BOUND:\nor generator_bound > _CUBIC_MAX_FACTOR_SEARCH_BOUND\n";

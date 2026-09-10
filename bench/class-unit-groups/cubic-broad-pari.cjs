@@ -46,7 +46,10 @@ function parse(run,r) {
   }
   const result={status:"incomplete",markers};
   if(run.error?.code==="ETIMEDOUT") return {...result,status:"timeout"};
-  if(run.error || run.status!==0 || (run.stderr||"").split(/\r?\n/).some(l=>l.includes("***")&&!l.includes("Warning:"))) return {...result,status:"error"};
+  // buch2.c emits these starred non-error diagnostics at debug level 1.
+  // Admit only their exact numeric shapes; other starred diagnostics fail.
+  const debugDiagnostic = /^(?:\*\*\* Bach constant: | \*\*\*\*\* check = )[0-9]+(?:\.[0-9]*)?(?:[eE][+-]?[0-9]+)?$/;
+  if(run.error || run.status!==0 || (run.stderr||"").split(/\r?\n/).some(l=>l.includes("***")&&!l.includes("Warning:")&&!debugDiagnostic.test(l))) return {...result,status:"error"};
   if(markers.length!==3 || markers.map(m=>m[0]).join(",")!=="irreducible,nf,bnf") return result;
   const [irr,nf,bnf]=markers;
   if(irr.length!==2 || nf.length!==6 || bnf.length!==6 || !Array.isArray(nf[5]) || !Array.isArray(bnf[4]) ||

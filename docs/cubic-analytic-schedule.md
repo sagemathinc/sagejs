@@ -7850,3 +7850,119 @@ missing FFLAS/igraph prerequisites; 582 files are not started. The architecture
 gate still reports the previously recorded stale optimizer manifest. These are
 not whole-suite or release passes. No timing or build job remains live from
 this checkpoint.
+
+## Missing LMFDB class numbers and the seconds-scale cost frontier
+
+Missing database answers must not be equated with computational hardness.
+Reclassification of the existing frozen 1,235-field PARI 2.17.4 run gives the
+following complex-cubic counts. These bands use **only** `bnfinit(nf,0)` wall
+time, unlike the combined initialization/class-group bands above.
+
+| LMFDB class number | Fields | Below 10 ms | 10–99 ms | 100–999 ms | At least 1 s |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Missing | 98 | 27 | 43 | 27 | 1 |
+| Recorded | 426 | 315 | 81 | 30 | 0 |
+
+All 98 missing-answer complex fields completed, as did the 12 missing-answer
+real fields. This is a stratified sample, not a population-weighted estimate.
+It does not establish why any database entry is missing. The corresponding
+PARI results are GRH-conditional reference answers, not independent
+certificates or newly contributed LMFDB data. Across the 98 complex fields,
+initialization totals 82 ms and the subsequent class-group/unit phase totals
+10,284 ms. Discriminant factoring is not the dominant aggregate phase on
+these particular inputs; this must not be extrapolated to arbitrary cubics.
+
+Three fresh, serial local debug traces isolate the wider regime. They are
+not controlled `opt` timing comparisons, and their phase timer intervals
+include surrounding work, not just isolated function bodies:
+
+| Field label | PARI class number | Factor-base ideals | Initial relation matrix | Main debug timer intervals |
+| --- | ---: | ---: | --- | --- |
+| `3.1.256834971976.1` | 3 | 32 | $32\times38$ | HNF 1 ms; complete class-group phase 3 ms |
+| `3.1.1086061775432017340256300.1` | 314928 | 443 | $443\times442$ | Initial small-norm search 320 ms; initial HNF 179 ms |
+| `3.1.12627147759764869116703083.1` | 162 | 349 | $349\times177$ | Small-norm search 261 + 90 + 2 ms; largest HNF update 654 ms |
+
+PARI stores relations as columns in these debug dimensions. The last field is
+$x^3-429667960411287811$, with class invariants $[3,3,18]$ and reported
+regulator approximately $7.0053933504\cdot10^9$. Its fresh trace takes 1 ms
+for `nfinit` and 1,033 ms for `bnfinit(nf,0)`; the earlier frozen run recorded
+1,059 ms for the latter. PARI starts with 66 relations, obtains 111 more in
+its first search pass, then appends 173, four and one relations, reaching
+355. The factor-base bound is 2,247. The trace explicitly warns that the
+fundamental units are too large to return. No expanded unit or unconditional
+`bnfcertify` is requested.
+
+The 443-ideal field has bound 2,960 and finishes with 449 relations. Its
+regulator is approximately 471,991. It also warns that the explicit
+fundamental units are not supplied at the available precision. The returned
+class numbers/invariants in all three traces agree with the corresponding
+earlier PARI run; that is repeatability, not an independent proof.
+
+The inspected PARI `buch2.c` calls `hnfspec_i` on the first relation batch,
+and `hnfadd_i` on subsequent batches while carrying dependency and embedding
+data. Thus the large HNF interval is not merely computing the Smith form of
+a small final class presentation. Scaling our incremental exact presentation
+and compact dependency witnesses together remains essential.
+
+Our square-Smith research artifact still declines the 443-ideal field at
+phase 2, and the 349-ideal field raises the recorded number-field-analysis
+projection exception before relation collection. Neither is a native success.
+The next wider campaign should use the 443-ideal field as an explicit
+hundreds-of-milliseconds target: establish a certified factor-base bound,
+dimension the resident state for that base, and profile relation collection
+and exact dependency-preserving linear algebra. Resolve the analysis boundary
+separately for the one-second target. Simply removing caps or expanding huge
+units is not a solution. Retain the smaller frozen cases as regression tests,
+not as substitutes for this wider frontier.
+
+A fresh capability probe of the lazy-rank research source
+`37a4efb4d234ac235f6cf308c3c4299f546b2c775b02405cf1ab92ec3f3bf0fd`
+on the 443-ideal field still declines at phase 2 for both research layouts
+`(factor_capacity=128, search_limit=1024)` and `(128,4096)` on efforts
+5, 1, 7 and 8. The `(512,4096)` layout instead raises
+`NativeExactArena memory limit exceeded` before relation collection. The
+primary and temporary budgets remain 1 MiB and 3 MiB. No failed invocation
+counts as a speed result. Raw results are in `native-layout-probe.json`.
+
+Read-only generated-JavaScript return-local tracing then disambiguates phase
+2, with all 64 output words checked against the unmodified FLINT-native call.
+At search limit 1,024 the GRH cutoff helper returns zero. At 4,096 it returns
+**2,960, exactly PARI's bound**. The later decline occurs while processing prime
+727, with 126 factor slots and 89 rational-prime groups already used: the next
+group cannot fit the 128-slot layout. Thus the mathematical generator-bound
+gap is closed for this example within the existing research helper. The next
+obstruction is dimensioning and using the 443-ideal resident state within
+reviewed memory requirements, not inventing a more permissive GRH assumption.
+The trace is retained as `native-decline-trace.json`.
+
+The layout formula exposes a specific storage opportunity: its primary exact
+vector reserves $123F+320$ integer slots for factor capacity $F$, of which
+$108F$ are reserved for twelve $3\times3$ ideal powers per factor. Under the
+existing 32-byte-per-slot semantic charge, $F=443$ already requires 1,753,888
+bytes before integer payload growth or other owners; $F=512$ requires
+2,025,472 bytes. This alone exceeds 1 MiB. These are semantic charges, not
+physical RSS measurements. An on-demand or bounded-cache ideal-power layout
+is therefore a concrete general storage experiment; it must preserve all
+power consumers and exact valuation checks. Lowering the accounting constant
+to make the same allocation appear smaller would not solve the problem.
+
+`cubic-broad-report.cjs` now reports answer availability separately, retaining
+incomplete runs in its denominator and checking phase boundaries. The debug
+replay also exposed a parser bug: starred `Bach constant` and `check`
+diagnostics were mistaken for GP failures. The parser now admits only those
+two exact numeric diagnostic shapes; malformed lines and actual GP errors
+still fail. The initial misclassification is retained in raw evidence and
+corrected by replaying its stdout/stderr, without restarting the computations.
+
+Evidence is hash-verified under
+`build/cubic-analytic-schedule-evidence/missing-answer-phases/`, including the
+GP programs, raw debug traces, corrected parses, aggregate report and source
+scripts. The underlying corpus hash remains
+`65d445813d42a18d6d9e6debe231a620a05d900c805064448d0e0358a93ce219`.
+No mathematical implementation, production source allowance, arena budget or
+default proof policy changes in this reporting follow-up.
+
+Validation: the seven focused corpus/report tests pass, as do `test:changed`
+(merge invariants, all 195 unit files, the eight-stage build and documentation
+check), standalone documentation checks and the task-scope check. This does
+not resolve the previously recorded full-CLI or release-qualification gaps.

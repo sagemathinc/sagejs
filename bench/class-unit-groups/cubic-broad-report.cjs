@@ -30,6 +30,40 @@ function result(output) {
   return {class_number:output[1],invariants};
 }
 
+// Missing database answers are a separate stratum, never filtered out of the
+// denominator. These phase counts describe this frozen sample, not prevalence.
+function answerAvailability(corpus, pariRun) {
+  validate(corpus);
+  const byLabel=new Map(pariRun.rows.map(r=>[r.label,r]));
+  assert.equal(byLabel.size,pariRun.rows.length,"duplicate PARI result");
+  assert.equal(byLabel.size,corpus.records.length,"wrong PARI panel size");
+  return [1,0].flatMap(r2=>[true,false].map(missing=>{
+    const fields=corpus.records.filter(f=>f.r2===r2 && (f.class_number===null)===missing);
+    const statuses={},bands={"<10ms":0,"10-99ms":0,"100-999ms":0,">=1000ms":0,incomplete:0};
+    let nf=0,bnf=0;
+    const completed=[];
+    for(const field of fields){
+      const row=byLabel.get(field.label);assert(row,"missing PARI field");
+      assert.equal(typeof row.status,"string");
+      statuses[row.status]=(statuses[row.status]||0)+1;
+      if(!["agree","complete-no-database-answer"].includes(row.status)){
+        bands.incomplete++;continue;
+      }
+      assert.equal(row.status,missing?"complete-no-database-answer":"agree","answer availability mismatch");
+      assert([row.nf_wall_ms,row.bnf_wall_ms].every(t=>Number.isSafeInteger(t)&&t>=0),"invalid phase timing");
+      const t=row.bnf_wall_ms;
+      bands[t<10?"<10ms":t<100?"10-99ms":t<1000?"100-999ms":">=1000ms"]++;
+      nf+=row.nf_wall_ms;bnf+=t;
+      completed.push({label:field.label,nf_wall_ms:row.nf_wall_ms,bnf_wall_ms:t,
+        class_number:row.class_number,invariants:row.invariants});
+    }
+    completed.sort((a,b)=>a.bnf_wall_ms-b.bnf_wall_ms||a.label.localeCompare(b.label,"en"));
+    return {r2,database_answer_missing:missing,fields:fields.length,statuses,
+      bnf_wall_bands:bands,nf_wall_ms_sum:nf,bnf_wall_ms_sum:bnf,
+      fastest:completed[0]||null,slowest:completed.at(-1)||null};
+  }));
+}
+
 function report(corpus, pariRun, nativeRuns) {
   validate(corpus);
   const pari=new Map(pariRun.rows.map(r=>[r.label,r]));
@@ -97,7 +131,7 @@ function report(corpus, pariRun, nativeRuns) {
       parent_accepted_output_changes:changed.map(x=>x.label)};
   });
   return {corpus_sha256:corpus.payload_sha256,pari_statuses:counts(pariRun.rows),
-    pari_signature_phases:bySignature,runs,comparisons,
+    pari_signature_phases:bySignature,pari_answer_availability:answerAvailability(corpus,pariRun),runs,comparisons,
     scope:"All accepted native answers compared with PARI. No independent certificate replay or competitive native timing claim. Phase sums are unweighted diagnostics, not workload prevalence."};
 }
 
@@ -107,4 +141,4 @@ if(require.main===module) {
   const corpus=validate(JSON.parse(fs.readFileSync(corpusFile)));
   console.log(JSON.stringify(report(corpus,loadRun(corpus,pariDirectory),nativeDirectories.map(p=>loadRun(corpus,p))),null,2));
 }
-module.exports={loadRun,result,report};
+module.exports={loadRun,result,report,answerAvailability};
