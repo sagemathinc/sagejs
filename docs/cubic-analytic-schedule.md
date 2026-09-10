@@ -8161,3 +8161,162 @@ prerequisite failures in `test/ffi.cjs`, after four complete files pass, with
 582 not started. The architecture sequence passes its FFI/package/native/Wasm
 checks, then stops at the previously recorded stale optimizer-opportunity
 manifest. Neither gap is hidden by refreshing an allowance or manifest.
+
+## Larger-field powered rank recovery and the lost integer index
+
+The next source-copy experiment continues the 443-ideal field
+`3.1.1086061775432017340256300.1`, using the rank-quota parent
+`df420145dc8fa625f0abe3b24954ce49f6d19bb09d3200cdda9d099356210bf6`.
+It is **not promoted**. Production dispatch, the 485,000-byte source allowance,
+and the 1 MiB/3 MiB arena limits are unchanged.
+
+The existing powered-ideal routine requires full rank and therefore cannot
+repair this parent's exact rank 441 of 443. A separate research helper now
+selects missing modular pivot columns after the caller has established exact
+rank insufficiency. It searches $P_0^eP_j$, using exact ideal products, reduced
+embeddings and the existing principal-relation checker. Modular pivots choose
+discovery targets only; they never authorize a class-group result. It retains
+the existing candidate cap and a shared remaining work budget across at most
+four multiplier passes. The six-row supplementary allowance is a discovery
+policy, not a mathematical completeness assertion.
+
+One multiplier improves exact rank 441 to 442, adding one row after 965
+candidates in two plans. Continuing through four multipliers reaches rank 443,
+with 449 rows, after 2,006 candidates in five plans. The single-multiplier source
+is `3cf93ea78b1732a473278220c15ba31d101eada19d527e94b6d25ecb6e91fa83`;
+the four-pass source is
+`c330e2f86d14833018ba3e91e221d94e3501a5db0b303f6f36a8ddc94a6889f6`
+(560,363 bytes before any production qualification). Both native backends
+agree on every output word and still return false. All 119 existing helper
+bodies/signatures are AST-identical to the quota parent; the root orchestration
+and one new helper account for this experiment. Fourteen actual-body mocked
+control-flow checks pass, but they are not arithmetic or publication proofs.
+
+### Independent replay shows why full rank is insufficient
+
+A separate diagnostic-only native export publishes the ledger before proof
+and returns false with marker 90. It cannot be confused with a successful
+public certificate. Its FLINT/GMP exports agree entry for entry. Independent
+CPython/SymPy replay checks the supplied order's closure and identity,
+invertibility of the used ideals, and **all 449 principal-ideal equalities**.
+The two new generators have order coordinates $(664020,0,1)$ and
+$(812679,0,-1)$; these are discovered witnesses, never input-specific rules.
+
+The replay proves prefix rank 441 using modular independence for the lower
+bound and two independently checked exact null vectors for the upper bound.
+It proves final full rank by modular independence. An exact determinant of a
+full-rank row subset supplies a valid determinant multiple for modular HNF.
+Eliminating unit presentation pivots by unimodular row/column operations leaves
+a 15-by-15 block for independent Smith reduction. Generic deficient-prefix HNF
+and then generic 443-by-443 Smith were separately interrupted after severe
+coefficient growth; neither interrupted attempt is counted as validation.
+
+The resulting finite presentation has order
+
+$$
+5\,035\,908\,620\,195\,247\,849\,621\,248\,714\,631\,818\,400
+$$
+
+and invariant factors
+
+$$
+(3,3,3,3,3,3,3,3,6,60,2132088866955938224873092141540).
+$$
+
+PARI's matrix-only HNF/Smith calculation agrees with this independent replay.
+The presentation order is **15,990,666,502,169,536,686,548,191,061,550 times**
+PARI's GRH-conditional field class number 314,928. Recovering rank therefore
+does not remotely finish relation-index saturation. The existing eight-factor
+publication envelope also rejects this eleven-factor intermediate quotient;
+widening that envelope alone would not establish the field's class group.
+These replay claims do not establish maximality of the supplied order,
+generation by the factor base, unit saturation or a complete class-group
+certificate.
+
+### The six dependency slots contain only sign duplicates
+
+An additional exact check obtains six integral dependency vectors from PARI,
+then independently verifies their rank and zero residual against the full
+relation matrix. Each has only two nonzero exponents, of absolute value one.
+Exact field multiplication shows that **each associated unit is $-1$**.
+Since these vectors span the rational kernel, every integral relation-kernel
+unit has a nonzero power equal to a root of unity and is therefore torsion.
+Thus this ledger contains no non-torsion unit, not merely an unsuccessful
+bounded attempt to find one.
+
+This identifies a concrete defect in the experimental retention policy:
+generator deduplication recognizes $\alpha$ but not $-\alpha$. Sign duplicates
+consume the six supplementary slots without adding an ideal relation or a
+new non-torsion unit. Rejecting those duplicates is mathematically different
+from rejecting all equal exponent rows: distinct generators of the same ideal
+can yield indispensable units and must not be discarded by that shortcut.
+
+The seven reused-control comparison also rejects promotion of the quota
+parent. Six controls complete on both FLINT/GMP backends and preserve every
+word between the quota and powered variants. Five succeed; the former h405
+success `3.1.1246798226700.1` now declines with quotient order 810 in both.
+The h486 control `3.1.4860135888300.8` hits the 45-second limit in all four
+quota/powered native calls; matching timeouts are not equivalence evidence.
+A separate three-backend run agrees on the first two controls but times out
+on the third. These failures are retained, not presented as a no-regression
+result. No controlled performance claim is made for the powered prototype.
+
+Sources, raw ledgers, replay scripts, failure records and content hashes are
+retained under `build/cubic-analytic-schedule-evidence/rank-powered/` and
+`/scratch/sagejs-runtime/cubic-rank-powered-GYdo8N/`. Research helpers should be
+consolidated into shared discovery machinery before promotion, not copied into
+production as another large duplicate routine.
+
+### Rejecting sign duplicates recovers useful index and unit evidence
+
+The sign-aware admission source
+`170c416ecca70a5fa6f97fc432535fc0989b84301ddebb0651da82c0e6559eed`
+rejects a generator only when its coordinates equal an earlier generator or
+its negative. It does **not** reject distinct generators just because their
+ideal exponent rows agree. The actual extracted admission body passes 15,376
+small coordinate-pair tests, including retention of distinct generators with
+identical exponent rows. The justification is the exact identity
+$(\alpha)=(-\alpha)$ and the already-known unit ratio $-1$; removing these
+duplicates loses neither an ideal-class relation nor a non-torsion unit.
+
+On the large field, the 64-word decline status and rank counters happen to
+remain identical, but **307 retained ledger rows change**, beginning at row
+121. Counter equality was therefore not treated as ledger equality. A fresh
+diagnostic export agrees across FLINT/GMP, and the independent replay again
+verifies all 449 principal-ideal equalities and exact rank 441 to 443.
+Its presentation now has order **629,856**, with invariants
+
+$$
+(3,3,3,3,3,3,6,12,12).
+$$
+
+That is twice PARI's field class number, rather than approximately
+$1.60\times10^{31}$ times it. The nine-factor intermediate quotient still
+exceeds the eight-factor public envelope. Neither its smaller order nor its
+agreement in most invariant factors authorizes a class-group answer.
+
+The new rationally spanning six-dimensional dependency kernel is also checked
+exactly. Its vectors use 365 generators each, with maximum exponents between
+860,341 and 1,529,442. Bounded explicit materialization refuses these exponents;
+no allocation or exponent limit is raised. The independent compact-unit
+checker instead supplies rigorous real-log intervals: five are strictly signed
+and prove non-torsion; one contains zero and is inconclusive. This proves the
+presence of non-torsion units, **not** a fundamental unit or saturated unit
+subgroup. Compact representation is now a concrete requirement on this field,
+not merely an anticipated optimization.
+
+In a fresh seven-control FLINT run, six fields succeed and the h405 field still
+declines. In particular, the h486 field that timed out under quota/powered
+admission succeeds again; a separate FLINT/GMP/JavaScript call agrees on every
+output word and matches the cache parent's successful result. This is a
+restored control, not a controlled timing comparison or full-corpus
+qualification. The h405 regression remains open. The first mixed-control
+harness stopped on its regression assertion, and the later all-backend harness
+timed out on h486; the terminal per-backend report preserves those failures.
+
+The next work is to close the remaining integer relation index, retain useful
+unit evidence in bounded resident state, and certify compact units. A general
+invariant-result representation is also needed: increasing an eight-factor
+constant alone would neither resolve the index-two gap nor prove the unit
+subgroup complete. The two new powered generators and every field answer in
+these notes remain diagnostic evidence, never special cases in discovery.
