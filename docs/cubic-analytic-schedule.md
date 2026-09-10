@@ -5222,3 +5222,243 @@ open.
   unit/native checks above ran successfully with the final environment.
   Four-platform release qualification and full-corpus public receipt/replay
   qualification remain outstanding.
+
+## Powered quotient recovery: measured gains, scheduling regressions (2026-09-10)
+
+This is a research source-copy campaign, **not a production promotion**. The
+production module and its 485,000-byte allowance are unchanged. The frozen
+parent is the previous `staged32.py`, SHA-256
+`14844519b1d825edd744f5a602acc0a681118757abfa446749805197ae4f035a`.
+The interleaved candidate `powered-v3.py` is 524,231 bytes, SHA-256
+`2481411bccc458176c62fbaafb8f3782012dbda4b31b2dae16da3d219c3f0488`.
+Its generated isolated core is 17,962,615 bytes, SHA-256
+`9149b9c443f01f8951457ad44aa421b79a336eee487184283d793d69a24fd134`.
+The source-size/resource review is therefore still a release prerequisite.
+
+### New mathematical work and unchanged proof authority
+
+After an explicitly resumable, unsuccessful exact certification, the new
+`_cubic_resume_powered_quotient_search` can target unresolved row-HNF quotient
+coordinates. It chooses a smallest-norm ordinary factor-base ideal $P$, derives
+$e=\lfloor\log_{N(P)}(M^2)\rfloor$ from the largest factor-base norm $M$, and
+searches reduced ellipsoids in products $P^eQ$. The target ideals $Q$ are
+visited in descending coordinate order where the current row-HNF diagonal is
+greater than one. The power exponent is checked against a bounded policy;
+an excessive value exhausts this discovery pass rather than silently changing
+the selected power. Row-HNF targets need not coincide with the column-HNF
+generators in the earlier GP forensic probe, and neither identical LLL bases
+nor identical PARI enumeration order is claimed.
+
+The helper calls the existing exact ideal-power/product, embedding, LLL,
+ellipsoid, smooth-principal-relation admission, and online-HNF machinery. If an
+enumerated $\alpha$ yields a verified factorization
+$(\alpha)=\prod_i\mathfrak p_i^{a_i}$, its exponent row is a valid relation
+regardless of how the search proposed it. Adding such rows preserves the
+surjection from the presented group onto the class group once generation has
+been certified. It does **not** prove that the remaining kernel is trivial.
+The existing exact closure and publication rules remain responsible for that.
+Search failure is not a proof of nonexistence; an HNF change requests another
+proof attempt, never an answer.
+
+The root owns three new matrices: transforms $3\times3$, parameters
+$1\times11$, and persistent traversal state $1\times10$: 30 additional
+`fmpz` cells in three owners. Its borrowed search bundle shares the existing
+factor base, relation witnesses, online HNF and membership scratch. Integer
+slots 7954–7971 reuse the compound-product scratch in this staged regime;
+ordinary adjacent plans and their cursors are not replaced. The 8,192-slot
+workspace, relation/power/coordinate/candidate limits and 1 MiB resident / 3 MiB
+arena call budgets are unchanged. Existing proof/admission function bodies and
+top-level constants are AST-identical to the parent; only the root changes and
+one helper is added. These checks do not substitute for platform/resource
+qualification.
+
+The first build exposed a compiler limitation: augmented indexed assignment
+on `FmpzMatrix` is rejected. Two counter increments now use explicit
+read/add/store. This is a recorded compiler improvement opportunity, not a
+handwritten-native escape hatch.
+
+### Why interleaving is necessary—and not sufficient
+
+The first compiling policy loses `3.1.61822200.1`: dependent powered witnesses
+fill its 62-row storage before ordinary recovery can find the missing class
+relation. The interleaved policy retains every witness and cursor but gives
+ordinary recovery a turn after a powered batch without an exact lattice
+change. It restores **1,012/1,012 first-attempt successes**, with all 64 output
+words agreeing across FLINT, GMP and generated JavaScript, under both normal
+and experimental one-page FLINT linkage.
+
+Actual-body stub tests cover 26 helper-control cases and 1,548 root-prefix and
+post-call cases, including proof success/fatal exits, resume eligibility,
+capacity, unit-cache identity, exhausted state, no-progress handoff and exact
+failure. These are control tests, not arithmetic proofs. Independent GP replay
+checks 2,216 principal rows on 99 fields; a trace-driven supplement checks
+another 548 rows on 25 fields whose final outputs did not expose their changed
+execution. Together these cover every one of the 122 changed traced executions
+plus two controls. Published units are independently checked where the output
+claims a fundamental unit; trivial class presentations use their separate
+exact check. This is not Lean or full public Sage.js certificate replay.
+
+Controlled serial `opt` timings use identical experimental one-page FLINT
+linkage for parent and candidate, preallocated external argument storage, and
+unchanged retries inside the clock. The full corpus uses three rotated rounds,
+two native calls per sample and eight fresh PARI `bnfinit(f,0)` calls per
+sample. All 1,012 fields complete. Totals sum each field's median:
+
+The timing host is Linux x64 on AMD EPYC 7B13, Node 26.7.0. The timed
+`/usr/bin/gp` is **PARI 2.15.4**, executable SHA-256
+`c9673623cad2eaa7cfe402e7b7d833f1f703689a09837026b6386aaafba6deec`.
+This is distinct from the local PARI 2.17.4 used for source forensics and
+independent exact replay. No timing comparison with PARI 2.17.4 is claimed.
+
+| Workload | Parent (ms) | Powered (ms) | PARI (ms) |
+| --- | ---: | ---: | ---: |
+| All 1,012 fields | 2698.458 | 2710.122 | 1433.000 |
+| `3.1.45285240.1` | 8.227 | 4.941 | 1.625 |
+| `3.1.57663252.3` | 6.898 | 6.342 | 2.000 |
+| `3.1.61822200.1` | 7.268 | 9.521 | 1.875 |
+| `3.1.97410060.2` | 18.613 | 27.844 | 1.750 |
+
+The candidate is **1.891 times PARI overall**, slightly slower than its parent.
+The 122 changed traces lose 30.042 ms; other traces move favorably by 18.378 ms.
+Do not attribute that latter movement to a successful scheduling change.
+An 18-field paired panel was frozen before timing: the previous 16 controls
+and targets plus the earliest changed field and the repaired starvation case.
+Twenty-one alternating ABBA/BAAB rounds, ten calls per sample and 200 warmups
+confirm ratios of 0.5996 and 0.9121 for the two gains above, versus 1.3189 and
+1.4952 for the two regressions. Their empirical 10th–90th percentile ranges
+are respectively 0.5961–0.6045, 0.9065–0.9204, 1.3131–1.3266 and
+1.4886–1.5000. These ranges are not statistical confidence intervals.
+
+Exact traces explain the distinction. On `3.1.45285240.1`, one powered
+relation changes quotient order 12 to 6 and certifies at row 24. On
+$x^3+1197x-15048$ (`3.1.57663252.3`), three rows change 9 to 3 and certify at
+row 34 instead of the parent's 47. Conversely, `3.1.97410060.2` already has
+the correct quotient order 27 at row 28, but unit subgroup index 20. New
+witnesses reduce that index to 4 at row 30, 2 at row 31, and 1 at row 45;
+certification waits until row 48. Its final output is identical to the
+parent's despite the 49.5% slowdown. The next scheduling question is therefore
+**class-relation versus unit-saturation progress**, not simply full rank or
+a nontrivial class quotient. Oracle unit indices are diagnostic evidence and
+must not become production dispatch inputs.
+
+### Fresh neighbors and an early eligibility guard
+
+After freezing the powered source and before timing, freeze two coefficient
+neighborhoods, each with $k=-6,\ldots,-1,1,\ldots,6$:
+$x^3+1197x-15048+81k$ and $x^3-x^2+1632x+21012+81k$.
+All 24 are irreducible complex fields, canonically distinct from one another,
+the 1,012 development fields and the previous 24-field panel. GP `bnfcertify`
+passes. Both parent and powered candidate accept only **3/24**; all other
+fields stop at phase 2 before relation collection. No success-filtered timing
+aggregate is reported for this panel.
+
+The immediate cause is the pre-search check
+`minkowski_generator_bound > 4096`. Here the integer bound is
+$B_M=\lfloor(2\lceil\sqrt{|D|}\rceil+6)/7\rfloor$. The code already caps its
+analytic search/storage at the usable factor-search limit, independently of
+$B_M$. A separate, untimed eligibility source copy removes only that early
+upper-bound comparison. It retains the positive exact GRH generation test,
+the final check that the chosen bound is no larger than $B_M$ or the factor
+limit, and every allocation/proof limit. Its SHA-256 is
+`76e25fea827b0553110e072df53836ca5ae711c4f881de1c4355b853d4f7665c`.
+All 1,012 development outputs remain identical to the powered candidate.
+
+This ablation reaches **17/24 successful fields**, with five bounded declines
+and two fields encountering FLINT arena-capacity exceptions. The complete
+normal-linkage and one-page-linkage checks retain those failures. In
+`fresh-powered-gain--5`, effort 7 exhausts the FLINT arena while GMP and
+JavaScript succeed; `fresh-powered-regression-2` exhausts FLINT at effort 5
+while the other backends return a bounded insufficiency. Neither backend
+equivalence nor release readiness is claimed for those two fields. The first
+checker stopped on the exception; its successor records errors separately
+and checks equality only for nonexceptional executions. The guard removal is
+an informative next-frontier experiment, not permission to expand budgets or
+reinterpret an exception as a successful result.
+
+Independent exact replay additionally checks all **17 successful eligibility
+fields and 924 principal rows**, including the published fundamental units
+when claimed. The remaining seven fields stay in the complete panel results;
+this successful-subset replay does not resolve their failures.
+
+Working artifacts are in
+`/scratch/sagejs-runtime/cubic-powered-closure-LYb8r4`; the preserved, hashed
+nonbinary evidence copy is
+`build/cubic-analytic-schedule-evidence/powered-quotient-campaign`.
+`prepare*.cjs`, the source copies, actual-body checks, build identities,
+complete surveys/traces, replay programs/results, frozen panel and timing
+drivers record positive and negative attempts. `summarize.cjs` authenticates
+the timed source/driver identities and checks the reported completed corpus.
+Production integration, source consolidation, public receipt replay, and
+four-platform resource review remain open; PR203 stays draft.
+
+### Unit-aware powered scheduling follow-up
+
+`powered-unit-aware.py`, SHA-256
+`b7722b6101c3b9c98d09db2612684f7537ca050fede467678fa261f44fc260ee`,
+is a separate 525,366-byte source copy. It invokes powered discovery only when
+the retained authenticated unit has the existing exact local obstructions to
+being a square, cube and fifth power. Missing obstructions mean inconclusive;
+even all three do not prove primitivity. Ordinary recovery remains available,
+and neither the acceptance rule nor the new eligibility ablation is included
+in this source. No new owner is added relative to `powered-v3.py`.
+
+This restores `3.1.97410060.2`'s original proof checkpoints 28, 44 and 45 while
+preserving the two powered-search gains. All 1,012 first attempts succeed;
+normal/one-page FLINT/GMP/JavaScript comparisons pass. There are 87 changed
+final outputs but 110 changed traced executions relative to `staged32`.
+Independent replay covers all 110 changed executions and 2,378 principal
+relations; 1,564 actual-root control cases include all combinations of the
+new local-obstruction gate. The helper body is unchanged from the checked
+interleaved version.
+
+Its separate serial full-corpus timing is parent 2736.496 ms, candidate
+2758.106 ms, PARI 1441.000 ms: **still not an aggregate improvement**. The
+earlier `powered-v3` timing is not reused as its baseline. The remaining
+`3.1.61822200.1` trace still inserts a proof attempt at 37 rows, with unchanged
+quotient order 4, between the original failed 33-row and successful 42-row
+attempts. A concrete next ablation is to retain that powered batch but defer
+certification until ordinary search resumes or an exact quotient event occurs.
+That is a scheduling proposal, not a measured claim or a change in proof
+authority. Repeated local-obstruction work also needs cost attribution before
+adopting the gate broadly.
+
+That follow-up must track “new witnesses retained” separately from “request
+proof now.” In particular, an ordinary-search cursor reset must not erase the
+fact that the powered pass added rows. If ordinary discovery exhausts or the
+shared relation storage becomes full, attempt closure on the retained new
+prefix before declining; unit-only witnesses may already suffice even when
+the class HNF is unchanged. Keep fatal exact failures separate from those
+scheduling decisions and test the capacity/stage-exhaustion exits explicitly.
+
+The same frozen 18-field paired protocol confirms ratios 0.6027 and 0.9173
+for the two gains, 1.3316 for `3.1.61822200.1`, and 1.0044 for the repaired
+`3.1.97410060.2`. Their empirical 10th–90th ranges are respectively
+0.5998–0.6090, 0.9147–0.9232, 1.3166–1.3395 and 1.0008–1.0115. Thus the
+large regression is removed, not evidence of literally zero overhead.
+Across the full corpus, changed traces lose 31.989 ms while other traces
+move favorably by 10.379 ms. Both timed policies remain unpromoted. All `opt`
+timing processes for this campaign completed; artifacts are separately kept
+under `timing` and `timing-unit-aware`, with authenticated driver and build
+identities and per-sample results.
+
+The corresponding PARI 2.17.4 source distinction is in `buch2.c`,
+`compute_R` (around lines 3050–3105) and the main loop (around 4090–4127).
+PARI keeps archimedean relation components, reconstructs their generated unit
+lattice using rational approximation and HNF, and checks a tentative $hR$
+against the analytic estimate. A relation-insufficiency result requests one
+more relation. It does not know the true class number or the true unit index
+in advance. Our independently replayed unit indices explain performance;
+they are not available to the production scheduler. In particular, unchanged
+class HNF does not imply unchanged unit information. Deferring an attempt is
+safe only as a search policy, not as an assertion that certification could
+not already succeed.
+
+Validation at this handoff: six focused tests, all 192 unit files, the fresh
+build and documentation checking pass. The broader `test:changed` wrapper
+continues into the 585-file all tier; that running tier is **not claimed
+passing** here. Architecture checking stops at the known stale optimizer
+opportunity inventory (expected `d870e205...`, recorded `ce64558c...`); no
+inventory refresh is used to hide it. The initial direct docs attempt overlapped
+the rebuild and failed on a temporarily absent parser artifact; the later
+standalone docs check passes. Exact and timing checks above are completed,
+separate evidence, not predictions about the running broad suite.
