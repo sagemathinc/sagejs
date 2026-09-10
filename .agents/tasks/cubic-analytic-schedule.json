@@ -9,6 +9,8 @@
   "objective": "Understand deeply how to improve cubic class number computation to be competitive with PARI overall, preserving exact certification and resource contracts",
   "base_commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
   "claims": [
+    "bench/class-unit-groups/cubic-two-primary.py",
+    "test/cubic-two-primary.cjs",
     "bench/class-unit-groups/cubic-bounded-power-cache.py",
     "test/cubic-bounded-power-cache.cjs",
     "bench/class-unit-groups/cubic-square-smith.py",
@@ -1736,10 +1738,30 @@
       "commit": "c0582a645c3eb562f888aa773eae88f2cc6c6174",
       "workspace_fingerprint": "7768d94987d4e85f0a5b8cbb9117304643f4a4499579f78e8dc141662a05d740",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 103.033,
+      "started_at": "2026-09-10T13:54:46.298Z",
+      "commit": "043036ac80979e83885dde94b81faf89d053c228",
+      "workspace_fingerprint": "a4c79a480a019d0ae38495035adef51f080d0a8d902546ff0e08c478ca55bc03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-two-primary.cjs test/cubic-square-smith.cjs test/cubic-compact-unit.cjs test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.4,
+      "started_at": "2026-09-10T13:56:38.262Z",
+      "commit": "043036ac80979e83885dde94b81faf89d053c228",
+      "workspace_fingerprint": "a4c79a480a019d0ae38495035adef51f080d0a8d902546ff0e08c478ca55bc03",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "PR203 remains draft; overall PARI competitiveness is not achieved. This summary supersedes historical next-step entries. Research source0b260478d3e59 implements bounded resident algebraic feedback after a validated positive joint-index log bound. A private arena-free helper owns five temporary matrices and preserves caller ledger/search state; no compiler guard or production allowance changed. Target x^3-7803x-1557948 adds four rows,53->57, retains cyclic presentation18 and halves the selected unit log. Independent exact replay plus the cubic unit gap proves old_unit=+/-new_unit^2. GMP/tagged/JavaScript full target outputs agree;256 repeated GMP calls preserve every detached byte. The same27-field panel improves16->24 index-one classifications;11 changed witnesses have fresh independent relation/unit/log/HNF/Smith replay and16 identical witnesses reuse hash-authenticated previous receipts.3841 retained relations include129 additions. All27 scheduled/preliminary native outputs agree; all24 classified orders and8 new invariant lists agree with PARI. Three bounded failures remain, with presentation/PARI orders1620/405,1944/486,69984/34992. Fresh first-field PARI trace gets405 with the same74 ideals and80 initial rows versus our3240, identifying relation selection as the next structural target. Exact mod2 nonpivots33,34 suggest prime-specific quotient discovery, never deletion without new principal relations.3073 GMP/JS scheduler cases,10 focused tests,200 independent pivot-elimination checks and195 unit files pass. Fresh build/docs/merge/lazy precompile pass; fullCLI stops at5 missing FFLAS/igraph failures after4 passed with582 unstarted; architecture still rejects stale optimizer manifest. No controlled opt timing or public certificate. Source584966 is an unpromoted diagnostic; production480241/allowance485000 and arena caps unchanged. Evidence: build/cubic-analytic-schedule-evidence/algebraic-resume and algebraic-resume-next-forensics. Remaining: targeted relation selection, source consolidation, dimensioned publication and all certificate premises, allocator/platform qualification, controlled complete-computation timing.",
+    "summary": "PR203 remains draft; overall PARI competitiveness is not achieved. This summary supersedes historical next-step entries. Native checkpoint043036ac8 remains unchanged: the larger-field panel has24/27 diagnostic index-one classifications, no public certificate or controlled timing win. New reference parity_relation_basis/parity_quotient_reduce uses exact integer bitsets and passes232 independent dense-matrix comparisons through512 columns, signed257-bit inputs, incremental prefixes and negative membership controls. All3841 retained rows replay modulo2 across27 fields. The three deficits have parity dimensions2/3/3 versusPARI0/1/2. Corrected PARI traces reconstruct original F.LP ordering, not permuted bnf[5], with an exact ideal-HNF bijection. Five PARI-discovered principal witnesses, now regression fixtures, independently prove presentation-index drops1620->405,1944->486,69984->34992. Exact twice-row membership and independent parity residuals establish subgroup orders4/4/2; augmented HNF confirms. All5 generator mutations fail. All5 useful rows occur in PARI initial small-norm passes; the unresolved fields are pure cubics. No duplicate rows in their original80/85/188-row prefixes. Next trace our initial ideal visitation, prepared bounds, centered enumeration, primitive/content normalization, smoothness and word-prime admission to identify why these small elements are missed. Exact same-unit analytic interval transport by proved2^k index ratios gives offline classifiers0/0/1; first2 still need refinement. Do not count external witnesses as native discoveries or hardcode them. Exact Integer &/^ compiler rejection reverified at8cd09c448; live overlapping claims including dirty mixed-exact-float-sidecar block uncoordinated edits; discussion104 comment18386814 requests coordination. Fresh build8m35 and196 unit files pass,13 focused checks pass. FullCLI terminates at5 missingFFLAS/igraph failures after4 files pass with583 unstarted. Architecture passes native/FFI/resource stages then fails pre-existing stale optimizer manifest. Production480241/allowance485000 and arena caps unchanged. Evidence: build/cubic-analytic-schedule-evidence/two-primary (97 original nonbinary files4218702bytes plus supplement), mathematical proof doc, scratch cubic-two-primary-GFo7Va. Remaining: general native discovery, compiler coordination, source consolidation, dimensioned publication and all certificate premises, allocator/platform qualification and controlled complete-computation timing.",
     "risks": [
       "Post-rank and analytic source copies are unpromoted. Matching exact presentation invariants and an externally supplied compact-unit interval do not constitute a closed native class-group certificate. Native compact dependency authentication, general invariant publication, adaptive analytic capacity, full-corpus/cross-platform replay and controlled timing remain open. Named-constant exponentiation is a recorded compiler gap; the source uses bounded doubling without weakening checks.",
       "Current overall-goal priority supersedes small-field tuning. Independent compact-unit prototype is a CPython/SymPy research oracle, not native integration or a class-group certificate. Unit membership does not prove nontorsion/fundamentality. PARI versions produce different compact witnesses; do not conflate382/34-bit with412/260-bit. Existing development distribution cannot support claims about overall cubic workloads.",

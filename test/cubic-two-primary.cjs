@@ -1,0 +1,133 @@
+// sagejs-test-tier: unit
+// CPython reference qualification only: exact Integer bitwise lowering is pending.
+"use strict";
+
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const cp = require("node:child_process");
+const path = require("node:path");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
+
+test("incremental parity quotient agrees with independent dense elimination", () => {
+  const run = cp.spawnSync(pythonExecutable(), ["-c", String.raw`
+import ast
+import random
+from pathlib import Path
+
+source = Path("bench/class-unit-groups/cubic-two-primary.py").read_text()
+tree = ast.parse(source)
+# Execute the actual ordinary-Python bodies, substituting only typed storage.
+functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)]
+namespace = {"FmpzMatrix": object, "uint64": int, "checked_uint64": int}
+exec(compile(ast.Module(body=functions, type_ignores=[]), "parity-source", "exec"), namespace)
+extend = namespace["parity_relation_basis"]
+reduce = namespace["parity_quotient_reduce"]
+
+class Matrix:
+    def __init__(self, rows, columns):
+        assert all(len(row) == columns for row in rows)
+        self.rows = [list(row) for row in rows]
+    def __getitem__(self, key):
+        i, j = key
+        return self.rows[i][j]
+    def __setitem__(self, key, value):
+        i, j = key
+        self.rows[i][j] = value
+
+def dense_echelon(rows, n):
+    # Independent column-first Gaussian elimination on scalar entries, no bitsets.
+    work = [[v % 2 for v in row] for row in rows]
+    rank = 0
+    pivots = []
+    for column in range(n):
+        pivot = next((i for i in range(rank, len(work)) if work[i][column]), None)
+        if pivot is None:
+            continue
+        work[rank], work[pivot] = work[pivot], work[rank]
+        for i in range(rank + 1, len(work)):
+            if work[i][column]:
+                work[i] = [(a + b) % 2 for a, b in zip(work[i], work[rank])]
+        pivots.append(column)
+        rank += 1
+    return work[:rank], pivots
+
+def dense_reduce(rows, pivots, vector):
+    vector = [v % 2 for v in vector]
+    for row, pivot in zip(rows, pivots):
+        if vector[pivot]:
+            vector = [(a + b) % 2 for a, b in zip(vector, row)]
+    return vector
+
+def encode(row):
+    return sum((value % 2) * 2**i for i, value in enumerate(row))
+
+rng = random.Random(20260910)
+cases = []
+for n in range(0, 18):
+    for trial in range(12):
+        rows = [[rng.randrange(-2**130, 2**130) for _ in range(n)] for _ in range(trial)]
+        if rows:
+            rows += [rows[0][:], [-v for v in rows[0]], [0] * n]
+        cases.append((n, rows))
+for n in [31, 64, 65, 127, 128, 255, 512]:
+    cases.append((n, [[rng.randrange(-2**257, 2**257) for _ in range(n)] for _ in range(19)]))
+    # Explicit high-bit and signed pivots cross all machine-word boundaries.
+    columns = sorted(set([0, n // 2, n - 1]))
+    cases.append((n, [[-(2**300 + 1) if i == j else 2**280 for i in range(n)] for j in columns]))
+cases += [(6, [[2 if i == j else 0 for j in range(6)] for i in range(6)]),
+          (6, [[1 if i == j else 0 for j in range(6)] for i in range(6)])]
+
+prefixes = 0
+for n, rows in cases:
+    matrix = Matrix(rows, n)
+    basis = Matrix([[0] * (n + 2)], n + 2)
+    cuts = sorted(set([0, len(rows) // 3, len(rows) // 2, len(rows)]))
+    if n <= 5:
+        cuts = list(range(len(rows) + 1))
+    for count in cuts:
+        expected, pivots = dense_echelon(rows[:count], n)
+        assert extend(matrix, basis, count, n) == len(pivots)
+        assert basis[0, n + 1] == count
+        assert [j for j in range(n) if basis[0, j]] == pivots
+        for j in pivots:
+            bitset = basis[0, j]
+            assert bitset % 2**(j + 1) == 2**j and bitset < 2**n
+        probes = [[int(i == j) for i in range(n)] for j in range(n)]
+        probes += rows[:count]
+        if n <= 5:
+            probes += [[(v // 2**j) % 2 for j in range(n)] for v in range(2**n)]
+        else:
+            probes += [[rng.randrange(2) for _ in range(n)] for _ in range(7)]
+        for row in probes:
+            residual = reduce(basis, encode(row), n)
+            assert residual == encode(dense_reduce(expected, pivots, row))
+            assert reduce(basis, residual, n) == residual
+        old = [row[:] for row in basis.rows]
+        assert extend(matrix, basis, count, n) == len(pivots) and basis.rows == old
+        prefixes += 1
+    fresh = Matrix([[0] * (n + 2)], n + 2)
+    assert extend(matrix, fresh, len(rows), n) == basis[0, n]
+    assert fresh.rows == basis.rows
+    assert reduce(basis, -1, n) == -1
+    assert reduce(basis, 2**n, n) == -1
+    # Invalid cursor/rank rejects before mutation. This is not forged-state authentication.
+    for bad_rank, bad_count in [(-1, 0), (n + 1, 0), (0, -1), (0, len(rows) + 1)]:
+        invalid = Matrix([[0] * n + [bad_rank, bad_count]], n + 2)
+        before = [row[:] for row in invalid.rows]
+        assert extend(matrix, invalid, len(rows), n) == -1
+        assert invalid.rows == before
+
+# Same mod-2 quotient does not imply same integer quotient: Z/2 and Z/4.
+for value in [2, 4]:
+    basis = Matrix([[0, 0, 0]], 3)
+    assert extend(Matrix([[value]], 1), basis, 1, 1) == 0
+    assert reduce(basis, 1, 1) == 1
+# Conversely, parity membership does not imply integer membership in 3Z.
+basis = Matrix([[0, 0, 0]], 3)
+assert extend(Matrix([[3]], 1), basis, 1, 1) == 1
+assert reduce(basis, 1, 1) == 0
+print(len(cases), "matrices;", prefixes, "incremental prefixes; dense quotient agreement")
+`], { cwd: path.resolve(__dirname, ".."), encoding: "utf8", timeout: 60000, maxBuffer: 2e6 });
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(run.stdout, /232 matrices; .* incremental prefixes; dense quotient agreement/);
+});

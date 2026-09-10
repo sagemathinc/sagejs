@@ -8883,3 +8883,111 @@ pre-existing stale optimizer manifest. These failures are not green release
 qualification. The main nonbinary evidence archive contains 140 files
 (8,478,975 bytes), with verified hashes and separate generated-artifact
 identities; generated binaries and full IR are not committed.
+
+## Parity-directed forensics: five small missing generators
+
+The next experiment qualifies an incremental parity-quotient reference in
+`bench/class-unit-groups/cubic-two-primary.py`. It uses exact integer bitsets,
+one per pivot, and reduces arbitrary candidate parity vectors to nonpivot
+coordinates. The actual Python bodies pass independent dense Gaussian
+elimination tests on 232 matrices, including empty inputs, every prefix of
+small ledgers, duplicate and negated rows, signed 257-bit entries, and widths
+through 512. Tests explicitly distinguish parity membership from integer
+lattice membership and retain genuine two-torsion. This is a discovery-only
+reference, not a newly qualified native capability.
+
+The current native compiler rejects integer `&` and `^`: its bitwise lowering
+admits only `uint64`. Supporting exact signed Python bitwise semantics needs
+coordinated lowering/backend/range/resource work. The relevant files have
+overlapping live claims, including a dirty mixed exact/float worktree. No
+compiler file, guard, backend whitelist, production source allowance or arena
+limit was changed. The prerequisite and ownership conflict are recorded in
+[discussion 104](https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18386814).
+
+The reference replays all 3,841 retained relations from the same 27-field
+panel. Its final pivot sets agree with independent dense elimination. All 24
+index-one diagnostics have the same parity-quotient dimensions as the saved
+PARI invariants. The three remaining presentations have dimensions 2, 3 and
+3, versus PARI's 0, 1 and 2: excess dimensions 2, 2 and 1. This comparison
+localizes a discovery problem; the PARI dimensions are not inputs to a
+proposed public algorithm or acceptance rule.
+
+Fresh PARI 2.17.4 debug traces record its accepted raw relations. Their indices
+refer to `F.LP`, **not** the final `bnf[5]`: `buch2.c` constructs the latter
+as `vecpermute(F.LP,F.perm)`. A first direct interpretation against `bnf[5]`
+failed the parity check on the second field. The corrected trace driver
+reconstructs rational-prime/prime-decomposition order, retains precisely the
+returned factor ideals, converts their bases to the native order, and verifies
+an exact HNF-based bijection. No positional agreement is assumed. This maps
+five PARI relations that jointly remove precisely the observed parity gaps:
+
+| Defining polynomial | PARI accepted relation numbers | Principal generators | Retained presentation index after adjoining them |
+| --- | --- | --- | --- |
+| $x^3-93477150$ | 62, 80 | $4a-2055$; $2a^2/435-a-2031$ | $1620\to405$ |
+| $x^3-86126810$ | 61, 82 | $434-a$; $-a^2/203-a-2199$ | $1944\to486$ |
+| $x^3-4036047015$ | 150 | $a+1261$ | $69984\to34992$ |
+
+PARI's principal-ideal routine supplies a generator of each traced ideal
+product, which need not be the identical unit multiple used during discovery.
+The independent `CubicIdealReplay` then verifies every ideal-product identity
+using rational/integer lattice arithmetic, with no PARI arithmetic in the
+checker. All five generator-plus-one mutations fail. Exact solves against
+the original column HNF show every new relation has order two modulo the old
+integer lattice; independent parity residuals prove the subgroups have orders
+4, 4 and 2. Recomputed augmented HNFs give the indices in the table. The proof
+document records this argument. These are **proved presentation improvements**,
+not merely agreement of reported class numbers.
+
+An additional offline check retains the old compact unit and transports the
+old joint-index interval by the proved index factor: subtract $k\log2$ when
+the presentation index drops by $2^k$. A separate 256-bit rational logarithm
+oracle verifies the native $\log2$ endpoints. The resulting intervals are
+approximately $[-1.153,1.069]$, $[-1.160,1.167]$, and $[-0.629,0.642]$.
+The actual classifier returns 0, 0 and 1: the first two still need analytic
+refinement, whereas the third's old enclosure is already sufficient after
+the exact relation improvement. This does not change the native 24/27 count;
+the new relations were supplied externally for forensics. It suggests an
+exact reuse opportunity when a resident retry proves an index ratio while
+retaining its old unit, distinct from blindly reusing class-indexed tables.
+
+All five useful rows already occur during PARI's initial small-norm pass.
+The latter two fields also require PARI's own later powered pass, but our
+existing ledger plus these earlier PARI rows already gives the reference
+index. The search paths are complementary. The next useful investigation is
+therefore why our initial enumeration/admission misses these small elements,
+alongside testing parity-directed continuation; it is not yet justified to
+assume that a bigger budget or a bitset implementation alone fixes discovery.
+None of these particular generators is to become a hardcoded search rule.
+There are no duplicate relation rows in the original 80-, 85- and 188-row
+prefixes, so merely changing duplicate-row admission cannot explain these
+three failures. A targeted diagnostic should distinguish: target ideal not
+visited, element outside the prepared region, enumeration not reaching it,
+primitive/content normalization, smoothness failure, and word-prime rank
+admission rejecting an integer-useful relation. The existing centered
+enumerator must be inspected rather than assumed to use naive box order.
+
+Reproducible scripts, original/corrected GP traces, parity results, detached
+inputs and exact replay evidence are archived under
+`build/cubic-analytic-schedule-evidence/two-primary/`. Scratch originals are in
+`/scratch/sagejs-runtime/cubic-two-primary-GFo7Va`. The first optional reversed
+HNF/Smith audit was stopped after observed resident memory exceeded 2 GB; its
+result is not used. The successful replay uses the existing column-HNF
+convention, exact triangular solves and index products, avoiding that
+unnecessary Smith computation. Initial GP syntax/ordering and reference-format
+errors are recorded separately rather than treated as successful checks.
+
+No new native search, public certificate, controlled timing result or platform
+qualification is claimed at this checkpoint. Production and PR #203's draft
+status are unchanged.
+
+Checkpoint validation: the fresh build passes in 8m35s, all 196 unit-test
+files pass, and 13 focused checks pass, including committed principal-witness
+fixtures and mutations in `test/cubic-compact-unit.cjs`. Python reference
+tests use the repository's platform-aware executable selection. Documentation,
+merge checks and precompilation of 422 lazy modules pass. The full CLI run
+is terminal at the same five missing FFLAS/igraph prerequisite failures after
+four files passed, with 583 files unstarted. Architecture again passes its
+native/FFI/resource stages and fails at the pre-existing stale optimizer
+manifest. These are not green release qualification. The original evidence
+archive has 97 files and 4,218,702 bytes; a separate supplement records the
+analytic interval transport and final test sources/receipts.

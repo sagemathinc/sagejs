@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const { resolve } = require("node:path");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 test("compact-unit replay checks exact ideal identities without dependency powers", () => {
   const script = String.raw`
@@ -211,9 +212,66 @@ for _ in range(100):
     assert (lo, hi) == (min(vertices), max(vertices))
 print("compact unit: exact rational/invertible-ideal replay, mutations, huge exponents, 100 interval vertex oracles pass")
 `;
-  const run = spawnSync("python3", ["-c", script], {
+  const run = spawnSync(pythonExecutable(), ["-c", script], {
     cwd: resolve(__dirname, ".."), encoding: "utf8", timeout: 60000,
   });
   assert.equal(run.status, 0, `${run.error || ""}\n${run.stdout}\n${run.stderr}`);
   assert.match(run.stdout, /100 interval vertex oracles pass/);
+});
+
+test("five PARI-discovered parity witnesses have independently checked principal ideals", () => {
+  // Regression data only, never native discovery inputs or hardcoded answers.
+  // Matrices below are columns flattened consecutively in the native order.
+  const witnesses = [
+    {m: 93477150, denominator: 435, generator: [-2055,4,0], norm: 2695778775,
+      factors: [[2,[3,0,0,0,1,0,0,0,1]], [2,[5,0,0,0,1,0,0,0,1]],
+        [1,[1,0,34,0,1,109,0,0,149]], [1,[1,0,109,0,1,179,0,0,191]],
+        [1,[1,0,41,0,1,119,0,0,421]]]},
+    {m: 93477150, denominator: 435, generator: [-2031,-1,2], norm: 10240677201,
+      factors: [[1,[3,0,0,0,1,0,0,0,1]], [1,[1,0,109,0,1,179,0,0,191]],
+        [1,[1,0,53,0,1,114,0,0,197]], [1,[1,0,134,0,1,7,0,0,257]],
+        [1,[1,0,191,0,1,24,0,0,353]]]},
+    {m: 86126810, denominator: 203, generator: [434,-1,0], norm: 4380306,
+      factors: [[1,[2,0,0,0,1,0,0,0,1]], [1,[1,0,1,0,1,2,0,0,3]],
+        [2,[7,0,0,0,1,0,0,0,1]], [1,[1,0,36,0,1,20,0,0,47]],
+        [1,[1,0,155,0,1,66,0,0,317]]]},
+    {m: 86126810, denominator: 203, generator: [-2199,-1,-1], norm: 8807428519,
+      factors: [[1,[1,0,26,0,1,45,0,0,67]], [2,[1,0,5,0,1,11,0,0,71]],
+        [1,[1,0,55,0,1,7,0,0,89]], [1,[1,0,210,0,1,272,0,0,293]]]},
+    {m: 4036047015, denominator: 13, generator: [1261,1,0], norm: 6041189596,
+      factors: [[2,[1,0,1,0,1,1,0,0,2]], [2,[13,0,0,0,1,0,0,0,1]],
+        [1,[1,0,53,0,1,14,0,0,59]], [1,[1,0,16,0,1,31,0,0,167]],
+        [1,[1,0,659,0,1,720,0,0,907]]]},
+  ];
+  const script = String.raw`
+import importlib.util
+import json
+import sys
+from sympy import Matrix
+from sympy.matrices.normalforms import hermite_normal_form
+spec = importlib.util.spec_from_file_location("compact", "bench/class-unit-groups/cubic-compact-unit.py")
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+for witness in json.load(sys.stdin):
+    d = witness["denominator"]
+    oracle = module.CubicIdealReplay([-witness["m"],0,0,1],
+        module.native_order_basis_columns([d,d,0,0,d,0,1]))
+    product = oracle.one
+    for exponent, flat in witness["factors"]:
+        ideal = hermite_normal_form(Matrix(3,3,flat).T)
+        oracle.ideal([list(map(int, ideal[:,j])) for j in range(3)])
+        product = oracle.product(product, oracle.power(ideal,exponent))
+    multiplication = oracle.multiplication_matrix(witness["generator"])
+    assert hermite_normal_form(multiplication) == product
+    assert abs(int(multiplication.det())) == int(product.det()) == witness["norm"]
+    wrong_generator = [a+b for a,b in zip(witness["generator"],oracle.identity)]
+    assert hermite_normal_form(oracle.multiplication_matrix(wrong_generator)) != product
+print("five principal identities and five generator mutations pass")
+`;
+  const run = spawnSync(pythonExecutable(), ["-c", script], {
+    cwd: resolve(__dirname, ".."), input: JSON.stringify(witnesses),
+    encoding: "utf8", timeout: 60000,
+  });
+  assert.equal(run.status, 0, `${run.error || ""}\n${run.stdout}\n${run.stderr}`);
+  assert.match(run.stdout, /five principal identities and five generator mutations pass/);
 });

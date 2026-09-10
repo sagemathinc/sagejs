@@ -789,6 +789,75 @@ the class group. The experimental native analytic classifier now reaches
 index one, conditional on its stated premises; public certificate
 publication and independent checking of all those premises remain open.
 
+## Parity quotients guide discovery without certifying saturation
+
+Let $L\subseteq\mathbb Z^s$ be the retained full-rank relation lattice. The
+row span of its reduction modulo two describes
+
+$$
+Q_2=\mathbb Z^s/(L+2\mathbb Z^s)
+   \simeq (\mathbb Z^s/L)/2(\mathbb Z^s/L).
+$$
+
+The experimental `parity_relation_basis` encodes each binary row as an
+arbitrary-precision nonnegative integer. Each stored pivot has its least set
+bit in its pivot column. XORing that pivot with a candidate removes the
+leading entry and preserves the accumulated row span. A nonzero residual
+therefore adds exactly one independent row; a zero residual adds none.
+Induction on the unchanged, append-only relation prefix proves that the
+stored pivots span precisely its image over $\mathbb F_2$. Incremental reuse
+requires private, intact state; the cursor checks do not authenticate
+arbitrarily supplied pivots.
+
+Reducing in increasing pivot order gives a unique representative supported
+on nonpivot columns. Those coordinate vectors form a basis of $Q_2$. They
+can suggest prime ideals for another search, but they are not necessarily
+spurious classes. For example, both $L=2\mathbb Z$ and $L=4\mathbb Z$ give
+the same nonzero parity quotient, despite different integer indices. Also,
+$L=3\mathbb Z$ has zero parity quotient although its integer quotient is
+nontrivial. Neither full parity rank nor comparison with a reference class
+group replaces exact certification.
+
+There is a useful exact improvement criterion. Suppose new, independently
+checked principal relations $v_1,\ldots,v_k$ satisfy $2v_i\in L$, and their
+images in $Q_2$ are linearly independent. In
+$L'=L+\sum_i\mathbb Z v_i$, the classes $v_i+L$ have order dividing two.
+No nonempty binary combination belongs to $L$, since its image in $Q_2$
+would then vanish. Consequently
+
+$$
+L'/L\simeq(\mathbb Z/2\mathbb Z)^k,
+\qquad [\mathbb Z^s:L']=[\mathbb Z^s:L]/2^k.
+$$
+
+The experiment applies this criterion to five relations found by PARI:
+two for $x^3-93477150$, two for $x^3-86126810$, and one for
+$x^3-4036047015$. Independent exact ideal arithmetic verifies each generator
+and ideal product, exact triangular solves establish $2v_i\in L$, and the
+parity residuals are independent. The presentation indices decrease
+$1620\to405$, $1944\to486$, and $69984\to34992$, respectively. An additional
+independent HNF recomputation confirms each new index. This proves specific
+relation-lattice improvements; it neither makes PARI's discovery part of our
+algorithm nor establishes all premises of a public class-group certificate.
+
+One can also reuse an old joint-index enclosure without recomputing the unit.
+If the **same** authenticated unit is retained and the exact presentation
+index drops by $2^k$, then $J'=J/2^k$. From $A\leq\log J\leq B$ and a
+validated $l\leq\log2\leq u$, one obtains
+
+$$
+A-ku\leq\log J'\leq B-kl.
+$$
+
+This is transport of the old enclosure, not reuse of a newly indexed analytic
+formula's term table. It requires the exact index ratio and unchanged unit;
+if the selected unit changes, its subgroup ratio must be proved separately.
+On the three replayed examples, transporting the existing bounds gives
+classifier results $0,0,1$. The first two still need tighter analytic evidence;
+the third needs no new analytic evaluation for this conditional index-one
+test. This offline calculation uses the externally discovered relations and
+does not count as a new native-computation success.
+
 ## References
 
 - Karim Belabas and Eduardo Friedman, “Computing the residue of the Dedekind
