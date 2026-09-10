@@ -5848,6 +5848,37 @@ deficient prefixes undergo HNF is stale in this research copy; correct it
 before consolidation. The mathematical rule and executable branch, not that
 old comment, are what the current experiment tests.
 
+Controlled timing is now complete at `/tmp/cubic-hnf-deficient-RWDS4b`:
+**2736.187 → 2714.411 ms**, versus PARI **1439.000 ms**, only **0.80%** faster
+overall. The paired panel is heterogeneous: `3.1.23984479.2` improves about
+16.0% (ratio 0.83990, empirical range 0.83364–0.84393), `3.1.83062751.1`
+about 12.1% (0.87912, 0.87451–0.88329), and `3.1.28159543.3` about 9.1%.
+But `3.1.50086188.2` regresses 1.65% (1.01650, 1.00717–1.02307),
+`3.1.97410060.2` 1.56%, and other smaller regressions occur. Do not promote
+unconditional generalized membership from the aggregate alone. One-page
+three-backend checks also pass for all 1,012 and the reused 85 fields.
+
+A second read-only screen finds **zero zero-vectors** among the 2,278 contained
+deficient rows; this is genuine nontrivial dependence, not an opportunity to
+replace the experiment with a zero-row test. All full outputs remain unchanged.
+The next scheduling question is whether to reuse the modular admission
+information already computed for each row. A row increasing rank modulo the
+scheduler prime cannot belong to the previous *integer* relation lattice:
+an integral linear combination would remain a linear combination after
+reduction modulo that prime. This implication does not require equality of
+modular and rational ranks. It is a sufficient **nonmembership** filter, never
+a class-group certificate or a license to discard dependent unit witnesses.
+
+Do not infer the per-row filter from a global rank counter after a batch:
+several rows may await the exact online update, and the counter may include
+future rows. Correct reuse needs per-row evidence tied to admission, or a
+proved single-row synchronization boundary. The existing support ledger and
+borrowed search workspace may provide a compact representation, but its
+initialization, skipped/retried proposals and catch-up batches need explicit
+review before implementation. No such filter is implemented in this commit.
+The complete nonbinary follow-up evidence is preserved in
+`build/cubic-analytic-schedule-evidence/hnf-followups`.
+
 ### Production backport validation
 
 The tracked diagonal-only source passes a fresh production build, all seven
