@@ -1,0 +1,127 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-exact-layout-records",
+  "title": "Native Exact Layout Records",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Lower mixed exact and scalar layout-record helpers through the exact native compiler with same-source regression coverage",
+  "base_commit": "cbcec8a19404ecd169ae47c025541eeeb0819a2c",
+  "claims": [
+    "tools/native-kernel/ir.cjs",
+    "test/native-exact-layout-records.cjs",
+    "docs/native-exact-layout-records.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "docs/native-exact-layout-records.md",
+    "https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18381738"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp",
+      "flint"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/native-exact-layout-records.cjs test/native-workspace-bundles.cjs test/native-live-exact-records.cjs test/native-uint64-bitwise.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.822,
+      "started_at": "2026-09-10T07:07:57.483Z",
+      "commit": "cbcec8a19404ecd169ae47c025541eeeb0819a2c",
+      "workspace_fingerprint": "526f4c88e5ef33fb8a83e983ed9011ad264b36cb9cb9b481e2b2562d1f220e8b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.34,
+      "started_at": "2026-09-10T07:15:25.830Z",
+      "commit": "cbcec8a19404ecd169ae47c025541eeeb0819a2c",
+      "workspace_fingerprint": "526f4c88e5ef33fb8a83e983ed9011ad264b36cb9cb9b481e2b2562d1f220e8b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 34.394,
+      "started_at": "2026-09-10T07:16:00.223Z",
+      "commit": "cbcec8a19404ecd169ae47c025541eeeb0819a2c",
+      "workspace_fingerprint": "526f4c88e5ef33fb8a83e983ed9011ad264b36cb9cb9b481e2b2562d1f220e8b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-exact-layout-records.cjs test/native-workspace-bundles.cjs test/native-live-exact-records.cjs test/native-uint64-bitwise.cjs test/native-records.cjs test/native-record-vector.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.02,
+      "started_at": "2026-09-10T07:18:22.492Z",
+      "commit": "cbcec8a19404ecd169ae47c025541eeeb0819a2c",
+      "workspace_fingerprint": "526f4c88e5ef33fb8a83e983ed9011ad264b36cb9cb9b481e2b2562d1f220e8b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.393,
+      "started_at": "2026-09-10T07:26:53.143Z",
+      "commit": "cbcec8a19404ecd169ae47c025541eeeb0819a2c",
+      "workspace_fingerprint": "5bd695a773670c5617c8973f2484dda231f9240512a4eeefe0d6a29ef532bd09",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 52.09,
+      "started_at": "2026-09-10T07:27:42.274Z",
+      "commit": "cbcec8a19404ecd169ae47c025541eeeb0819a2c",
+      "workspace_fingerprint": "5bd695a773670c5617c8973f2484dda231f9240512a4eeefe0d6a29ef532bd09",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-exact-layout-records.cjs test/native-workspace-bundles.cjs test/native-live-exact-records.cjs test/native-uint64-bitwise.cjs test/native-records.cjs test/native-record-vector.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.024,
+      "started_at": "2026-09-10T07:29:53.197Z",
+      "commit": "cbcec8a19404ecd169ae47c025541eeeb0819a2c",
+      "workspace_fingerprint": "5bd695a773670c5617c8973f2484dda231f9240512a4eeefe0d6a29ef532bd09",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Private uint64-only NativeRecord helpers now lower through the exact compiler and scalarize before representation analysis. Exact owners and borrowed workspaces retain their identities; public exact-record ABI remains rejected and existing public word-record graphs keep their lowering. CPython, JavaScript, GMP, tagged and fmpz witnesses pass; focused regression has 27 passes and one unavailable WASI skip. Architecture and strict Python pass. Full native prerequisite rebuild deliberately stopped before installation; failed receipt retained. Research full cubic layout forwards through 39 helpers and preserved all64 outputs on41 paired controls without a material timing regression. Timed artifacts precede the final public-word-record guard, so timings are not relabeled as final-build evidence. No production allowance changed. Based on arena-recycling prototype cbcec8a19, not main; release qualification still open.",
+    "risks": [
+      "Requires review/integration of arena-recycling prerequisite; do not present this branch's entire ancestry as a standalone compiler change.",
+      "Only private scalar uint64 records are newly admitted; no new public record ABI, borrowed fields, record vectors or owner lifetime extension.",
+      "Full native suite and Windows/macOS/arm64/WASI qualification remain incomplete. Keep PR draft."
+    ],
+    "next_steps": [
+      "Review the narrow lowering patch independently of the research ancestor. Integrate onto an approved base and run the complete native and platform suites before marking ready.",
+      "Continue the cubic frontier in agent/cubic-analytic-schedule; larger factor-base admission exposed a costly HNF transformation needed for unit dependencies, not overall PARI competitiveness."
+    ]
+  }
+}
