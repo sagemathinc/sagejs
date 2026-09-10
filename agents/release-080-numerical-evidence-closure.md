@@ -70,3 +70,25 @@ explicitly failed; no failed gate is relabeled. Normal v1 capture remains availa
 and continues requiring successful aggregate jobs. Recovery uploads never overwrite
 artifacts; if retention succeeded but a later step fails, use a new control run.
 The signed products remain unchanged. No tag or publication is implied by capture.
+
+## Real handoff and consumer trial
+
+Handoff `34420653216` attempt 1 passed at control
+`06a67da0b8a3f4deedaa1b1a16912d959fccdc15`. Its manifest artifact is
+`10131050691`; independent authentication passed. macOS inspection
+`34421557294` passed with observation artifact `10131125460`.
+
+Read-only publication trial `34421756793` reconstructed and authenticated the
+numerical gate, then exposed a second consumer bug: it expected full artifact
+metadata inside compact capability bindings. Real collectors keep only name and
+path-digest pairs there; the full metadata lives in the gate-bound raw receipt.
+The checker now authenticates that receipt's canonical path and bytes and
+cross-checks its artifact digest against the compact manifest before using its
+content digest and size. No evidence is rewritten or supplemented with invented
+metadata. Fixtures now reproduce this compact-manifest/raw-receipt separation.
+Missing, duplicate, relocated, tampered and mismatched receipts fail.
+
+Direct checks of all four real npm tarballs and their packaged SEA executables
+pass after the correction. The broader release and focused numerical tests pass:
+253 passed, two skipped, zero failures. The signed products and frozen source
+remain unchanged; end-to-end publication verification still needs completion.

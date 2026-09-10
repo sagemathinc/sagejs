@@ -214,14 +214,18 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   fs.mkdirSync(path.join(root, "bench"));
   fs.writeFileSync(path.join(root, "bench/browser-wasm-budget.json"), JSON.stringify(budget));
   const docs = sourceDocumentation(root);
-  const rawManifests = new Map(), capability_manifests = [], platformArchives = new Map(), downloadArchives = new Map();
+  const rawManifests = new Map(), capability_manifests = [], matrix_receipts = [], platformArchives = new Map(), downloadArchives = new Map();
   for (const platform of ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]) {
     const fixture = platformPackage(platform); platformArchives.set(platform, fixture.bytes);
     downloadArchives.set(platform, platformArchive(platform, fixture, docs));
     for (const [kind, value] of fixture.manifests) {
-      const relative = `platform/${platform}/${platform}-${kind}/capabilities.json`, manifest = JSON.stringify(value);
-      rawManifests.set(relative, Buffer.from(manifest));
-      capability_manifests.push({ row_id: `${platform}-${kind}`, path: `build/numerical-qualification/${relative}`, sha256: checksum(Buffer.from(manifest)).slice(7) });
+      const relative = `platform/${platform}/${platform}-${kind}/capabilities.json`;
+      const { manifest, receipt } = require("./helpers/release-platform-package.cjs").serializedEvidence(value);
+      rawManifests.set(relative, manifest);
+      capability_manifests.push({ row_id: `${platform}-${kind}`, path: `build/numerical-qualification/${relative}`, sha256: checksum(manifest).slice(7) });
+      const receiptPath = relative.replace("capabilities.json", `${kind}.receipt.json`);
+      rawManifests.set(receiptPath, receipt);
+      matrix_receipts.push({ row_id: `${platform}-${kind}`, path: `build/numerical-qualification/${receiptPath}`, sha256: checksum(receipt).slice(7) });
     }
   }
   // Source-only CLI fixtures exercise orchestration and byte-equality failure,
@@ -261,7 +265,7 @@ test("publication input preparation retains a failed gate, resumes raw verificat
   const candidate = git("rev-parse", "HEAD"), f = fixture(t, candidate), archives = new Map();
   require("../scripts/release/publish-prepared.cjs").configureConsumer(root, candidate);
   const browser = createBrowserInputs(path.join(f.options.directory, "browser-fixture"), candidate);
-  const exact = JSON.stringify({ fixture_gate: true, capability_manifests, ...browser.gate }) + "\n";
+  const exact = JSON.stringify({ fixture_gate: true, capability_manifests, matrix_receipts, ...browser.gate }) + "\n";
   for (const record of f.manifest.artifacts) {
     const policy = layout(record.key), files = Object.fromEntries(policy.required.map((name) => [name, Buffer.from(name === "release-gate.json" ? exact : `fixture ${name}`)]));
     const nativePlatform = record.key.match(/^native\/sagejs-(linux-x64|linux-arm64|macos-arm64|windows-x64)$/)?.[1];

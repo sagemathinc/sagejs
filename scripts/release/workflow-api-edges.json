@@ -238,6 +238,10 @@
         {
           "filename": "scripts/release/numerical-recovery.cjs",
           "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
+        },
+        {
+          "filename": "scripts/numerical-computing/qualification/authenticate-release-gate.cjs",
+          "sha256": "a8e13176c7857b4ae8a0c3ba7ad9957f05f3fbabb3f7275d757711a1902be3b8"
         }
       ],
       "requiresWorkflowSuccess": [
@@ -311,6 +315,10 @@
         {
           "filename": "scripts/release/numerical-recovery.cjs",
           "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
+        },
+        {
+          "filename": "scripts/numerical-computing/qualification/authenticate-release-gate.cjs",
+          "sha256": "a8e13176c7857b4ae8a0c3ba7ad9957f05f3fbabb3f7275d757711a1902be3b8"
         }
       ],
       "requiresWorkflowSuccess": [
@@ -390,6 +398,10 @@
         {
           "filename": "scripts/release/numerical-recovery.cjs",
           "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
+        },
+        {
+          "filename": "scripts/numerical-computing/qualification/authenticate-release-gate.cjs",
+          "sha256": "a8e13176c7857b4ae8a0c3ba7ad9957f05f3fbabb3f7275d757711a1902be3b8"
         }
       ],
       "requiresWorkflowSuccess": [
@@ -454,6 +466,10 @@
         {
           "filename": "scripts/release/numerical-recovery.cjs",
           "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
+        },
+        {
+          "filename": "scripts/numerical-computing/qualification/authenticate-release-gate.cjs",
+          "sha256": "a8e13176c7857b4ae8a0c3ba7ad9957f05f3fbabb3f7275d757711a1902be3b8"
         }
       ],
       "requiresWorkflowSuccess": [

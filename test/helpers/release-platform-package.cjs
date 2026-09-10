@@ -14,4 +14,11 @@ function platformPackage(platform) {
   ]);
   return { bytes, sea, python, entries, manifests };
 }
-module.exports = { platformPackage };
+function serializedEvidence(value) {
+  const artifacts = value.bindings.artifacts.map((a) => ({ ...a, sha256: a.sha256 ?? hash(JSON.stringify(a)) }));
+  return {
+    manifest: Buffer.from(JSON.stringify({ bindings: { artifacts: artifacts.map(({ name, sha256 }) => ({ name, sha256 })) } })),
+    receipt: Buffer.from(JSON.stringify({ artifacts })),
+  };
+}
+module.exports = { platformPackage, serializedEvidence };
