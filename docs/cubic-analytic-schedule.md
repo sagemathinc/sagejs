@@ -7966,3 +7966,198 @@ Validation: the seven focused corpus/report tests pass, as do `test:changed`
 (merge invariants, all 195 unit files, the eight-stage build and documentation
 check), standalone documentation checks and the task-scope check. This does
 not resolve the previously recorded full-CLI or release-qualification gaps.
+
+## Bounded higher ideal powers and the next anisotropic-search boundary
+
+`bench/class-unit-groups/cubic-bounded-power-cache.py` now emits an inspectable
+research source copy with permanently resident prime-ideal bases and a bounded
+cache of higher powers. This is not a public dispatch change. The generated
+source is 546,403 bytes, SHA256
+`32f1cace5c3e3ad0b42457ba1fe26b41b6cfce2dcb3c2af841255d9c23392dc1`;
+its native cache key is
+`4234700222093cb18ff8f7803210c0f20668942876aea58b5c27244313f4985f`.
+It derives from the lazy rank-recovery source
+`37a4efb4d234ac235f6cf308c3c4299f546b2c775b02405cf1ab92ec3f3bf0fd`.
+The production source remains 480,241 bytes under its unchanged 485,000-byte
+allowance. Primary and temporary arena limits remain 1 MiB and 3 MiB.
+
+### Storage contract and exactness argument
+
+For capacity $F$, keep $9F$ entries for the original prime-ideal HNF bases.
+There are $S=\min(F,32)$ direct-mapped cache slots. Each slot has a factor
+identity, a valid prefix depth, and eleven nine-entry bases for powers
+$P^2,\ldots,P^{12}$: 101 entries total. All remaining layout regions retain
+their sizes. The primary vector therefore changes from $123F+320$ entries to
+$24F+101S+320$ entries. At $F=512$, its base semantic charge falls from
+2,025,472 to 506,880 bytes; at $F=443$, it falls from 1,753,888 to 453,888
+bytes. These figures exclude integer payloads and other owners and are not
+RSS measurements. They do not change the accounting rate.
+
+Generated core C shrinks from 20,719,467 to 20,342,788 bytes; the Linux addon
+grows slightly from 20,706,064 to 20,714,256 bytes. These are artifact-size
+observations, not peak-memory or compile-time qualification. Both builds use
+the same isolated exact-layout compiler prerequisite; no compiler or allowance
+change was needed for this cache.
+
+The cache invariant is: a slot tagged with factor $i$ and depth $d$ contains
+the exact bases of $P_i^2,\ldots,P_i^d$, with $1\leq d\leq12$. Empty slots
+have zero identity and depth. The permanent $P_i$ bases remain unchanged.
+On an identity mismatch, reset the published prefix to depth one. On a miss,
+the existing exact ideal product multiplies $P_i^d$ by $P_i$. Publish depth
+$d+1$ only after that product succeeds. Induction gives the same lattice as
+the old eagerly retained power table. Eviction discards derived data, not
+mathematical evidence. A failed product may dirty its unpublished destination;
+retry overwrites that destination without treating it as valid.
+
+Returned offsets are synchronous borrows, not durable references: consumers
+must finish using them before another cache lookup can evict the slot.
+Valuation first fills the requested maximum power, then tests lower powers
+without intervening eviction or multiplication. The old per-factor valuation
+metadata is not used as cache-validity authority. Ramified-square tests and
+both prewarming loops use the same helper. Relation admission, exact norm and
+membership tests, discovery order, exponent limit and final certification are
+unchanged. Malformed identities/depths and out-of-range accesses fail closed.
+
+The independent CPython/SymPy test checks 17,200 lookups on 55 actual prime
+ideals, cache sizes 1, 2, 4, 16 and 32, powers through twelve, eviction,
+repeated hits, immutable prime bases, and 22 invalid/failed-product cases.
+Reference ideal powers use independent exact ideal arithmetic. Seven reused
+structural controls additionally have identical complete output buffers in
+FLINT, GMP and generated JavaScript. These tests support this cache argument;
+they are not detached proofs of complete class-group results.
+
+### Completed coverage and controlled timing
+
+The frozen 1,235-field corpus is rerun on both the parent and cache sources,
+with capacity 128, search ceiling 1024 and efforts 5, 1, 7, 8. Both accept
+286 complex fields, decline 220, raise 16 exceptions and time out on two;
+711 real cubics remain explicitly outside the kernel signature. Every
+accepted class number and invariant list agrees with the frozen PARI run.
+Every completed attempt preserves status, error and all 64 output words.
+Matching timeout statuses do not establish equivalence of censored outputs.
+
+This also completes the previously missing full-corpus check of lazy rank
+recovery: compared with the older square-Smith run it gains six acceptances
+and loses none, including recovery of all three former class-number-one
+losses. Those gains belong to rank recovery, not to the cache change.
+
+The cache ablation runs serially on idle `opt` (AMD EPYC 7B13, Node 26.7.0).
+Its panel consists of seven reused structural controls plus 33 deterministic
+SHA256-ranked effort-five successes, selected without candidate timing data.
+This is neither a fresh holdout nor a population-weighted workload. Each
+implementation has five warmups and seven rotating-order rounds of four
+calls. Native calls include polynomial-to-result certification, excluding
+input packing, loading and process startup. PARI uses `bnfinit(polynomial,0)`;
+all answers/invariants and native full-output equality are checked. Artifacts,
+binary hashes, runner, field panel and raw samples are retained.
+
+Across the 40 fields, the geometric mean cache/parent time ratio is 0.94137;
+sums of per-field medians are 622.107 versus 636.502 ms. Thirty-nine medians
+decrease; the other rises 0.19%. Thus this run finds no material slowdown,
+not a universal no-regression guarantee. The four larger controls move from
+100.000, 54.495, 113.016 and 120.514 ms to 98.450, 53.512, 110.935 and
+118.608 ms. PARI remains at 14, 11.75, 11.5 and 10.75 ms. The cache is a
+storage improvement with modest speed benefits, not a PARI win.
+
+### Larger-field diagnosis: geometry is not a work budget
+
+With capacity 512 and search ceiling 4096, the 443-ideal field
+`3.1.1086061775432017340256300.1` now passes the former allocation obstruction.
+Both native backends decline during ideal planning, phase 34, factor index
+16 over the prime 53. A separate JavaScript attempt times out at 90 seconds;
+large-field three-backend parity is therefore not established.
+
+Source-transparent diagnostic copies isolate return $-2$ from ellipsoid
+preparation. Exact LLL succeeds, the Gram matrix is positive definite, and
+the first reduced basis vector is the scalar $-53$. The coefficient bounds
+are $(84546,2,2)$: 4,227,325 bounding-box slots exceed the old $129^3=2,146,689$
+limit. This is a resource-policy decline, not a failed mathematical premise.
+All captured diagnostic output words agree between FLINT and GMP.
+
+Inspection of PARI 2.17.4 `buch2.c`, `Fincke_Pohst_ideal`, shows a structurally
+different policy: conditional centered enumeration, explicit scalar-axis
+skipping, at most 500 attempted nonscalar factorizations, and a separate
+1,000,000 enumeration-trial limit. It does not first reject the enclosing box
+because its scalar direction is long. An independent exact Gram diagnostic
+on our rejected region finds 500 distinct primitive nonscalar points after
+500 leaf visits, two rows and one plane, with maximum absolute coordinates
+$(250,1,0)$. This checks points in the region, not smoothness or class relations.
+
+The next experiment should retain exact conditional intervals but use explicit
+visited-node/candidate budgets and resumable cursors, skipping the scalar axis
+without charging its entire virtual length. Our current cursor accounting
+charges virtual box slots, so removing the preparation guard alone is not a
+complete fix. Preserve old successful prefixes and final certification; do
+not disguise a wider geometry envelope as a correctness theorem or simply
+raise the box cap. The seconds-scale compact-unit and HNF boundaries remain.
+
+Source copies, diagnostics, reports and raw timing/coverage evidence are kept
+under `build/cubic-analytic-schedule-evidence/bounded-power-cache/`; rebuildable
+native artifacts remain on scratch. The research code is not qualified for
+public receipts, cross-platform release, or independent full certification.
+
+An initial work-budget source copy now exists at SHA256
+`37fc85bd60fb5d097ff8db65c03d59e01ae19ed61a3170909fd71f20a669df16`
+(native key `5179a2406c72322ff727913841340264a3e784d94d57a52bd7d86d6dc1e256a8`).
+It preserves virtual accounting inside the old envelope and returns consumed
+work explicitly for larger regions. Every candidate or proved empty/scalar
+block consumes one work unit there. Exact predicates and the existing
+500-candidate limit remain. Both callers consume the returned counter; neither
+infers it from the new cursor's virtual-position difference.
+
+The extracted Python cursor harness passes 183 checks, including ordinary
+positive-definite Gram matrices, equality to the old traversal on its envelope,
+zero-work calls, and split budgets of one or mixed small sizes. On the rejected
+large region all tested schedules produce the same 500 points and final cursor
+using 503 work units. Seven reused controls retain all 64 output words in
+FLINT and GMP. This is preliminary qualification: the harness mocks ideal
+arithmetic, and there is no full-corpus or large-field JavaScript result yet.
+
+The new source gets past prime 53 but still declines. A separate compiled
+failure-site trace identifies an append beyond relation capacity: the last
+fully processed count is 499, and the append returns the 500 overflow sentinel,
+not a 500th published relation. It has planned 152 ideals and tested 66,932
+candidates. Both native backends agree on the diagnostic output. The final
+phase-34 marker alone was stale and did not locate this later failure; recording
+the exact failure site was necessary. Further work must address relation
+admission/retention and rank recovery, not merely enlarge the geometric box.
+
+The subsequent state trace measures 443 factors, capacity 499, and modular
+rank 429 at that exit. PARI debug level two records 216,564 small-norm
+candidates and 1,011 smooth candidates in its first pass, followed by smaller
+recovery passes. `add_rel_i` rejects duplicate exponent rows and, while rank
+is missing, permits a limited supplementary dependent-row allowance rather
+than retaining every smooth row. Our current admission predicate deliberately
+retains all modularly dependent rows during rank deficiency to preserve useful
+integer-index/unit witnesses. That small-field recovery choice now consumes
+the large-field buffer before the missing pivots arrive.
+
+A separate, unpromoted rank-quota ablation, source
+`df420145dc8fa625f0abe3b24954ce49f6d19bb09d3200cdda9d099356210bf6`,
+reserves space for missing pivots by limiting dependent admissions to the
+checkpoint's supplementary margin. It passes this storage obstruction and
+reaches exact presentation preparation with 447 retained rows and exact rank
+441 of 443, then correctly declines for insufficient rank. FLINT and GMP
+agree on all output words. This is not yet a complete algorithmic improvement:
+the policy can discard useful class-index or unit witnesses and has no broad
+regression qualification. Recovery after the two remaining missing pivots,
+compact unit witnesses and the later analytic certificate still require work.
+No class number is published by either new search ablation.
+
+The raw level-two PARI trace is preserved, including the level-one parser's
+initial rejection of the extra debug shapes. A separate diagnostic reparser
+admits only explicit cubic ideal-description and rejection-counter lines;
+all other error checks remain, and its class number/invariants match the
+frozen PARI reference. Neither diagnostic timings nor candidate counts are
+substitutes for controlled whole-computation comparisons.
+
+Validation for this checkpoint: all eleven focused cache/layout/corpus tests,
+all 195 unit-test files, the eight-stage build, documentation checks and
+precompilation of 422 lazy modules pass. The first full-CLI attempt overlapped
+an automatically triggered rebuild and produced two compiler-load failures;
+that attempt is not treated as regression evidence. In the serial rerun the
+Brandt tests pass; the 588-file CLI plan then stops at five FFLAS/igraph
+prerequisite failures in `test/ffi.cjs`, after four complete files pass, with
+582 not started. The architecture sequence passes its FFI/package/native/Wasm
+checks, then stops at the previously recorded stale optimizer-opportunity
+manifest. Neither gap is hidden by refreshing an allowance or manifest.
