@@ -1,5 +1,31 @@
 # Manifest-driven MicroPython output qualification
 
+## Integration onto main
+
+The harness changes from PRs #192 and #194 are isolated onto main without the
+draft runtime/default/keyword-binding changes on their original stack. The
+adaptation includes the exact validation-helper build-input list and its
+invalidation tests, while preserving main's newer Windows assertion-cache
+janitor suppression. No compiler/runtime source, baseline, reviewed difference,
+upstream program, timeout, or output normalization is changed by this integration.
+
+The clean pre-integration main at `89e6fcfb2` was freshly built on Linux x64
+with Node 26.8.1 and CPython 3.14.4. Its original output runner passes 505 exact
+comparisons plus three reviewed differences; its separate assertion runner
+passes 13/28, with 15 required failures. These are the integration's comparison
+baseline, not a full compatibility qualification. The candidate also includes
+main's independently merged plan and native constant-index changes through
+`a148916b1`; compare actual compiler/bootstrap artifact digests as well as
+per-case outputs before asserting runtime equivalence.
+
+Qualification must replay the original/extracted/manifest contracts, preserve
+source/oracle/raw-output evidence and all 68 exclusions, and keep inherited
+assertion failures visible. The full manifest must remain unqualified while
+any required assertion fails. Fresh integration results belong to its PR and
+retained raw reports, not to the historical results below.
+
+## Original stacked implementation and historical validation
+
 This slice combines the original 508-case MicroPython output contract with the
 28 required assertion programs. The original baseline, reviews, source bytes,
 license and exclusion inventory remain unchanged. The standalone CLI delegates
