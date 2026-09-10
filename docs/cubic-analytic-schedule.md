@@ -5462,3 +5462,249 @@ inventory refresh is used to hide it. The initial direct docs attempt overlapped
 the rebuild and failed on a temporarily absent parser artifact; the later
 standalone docs check passes. Exact and timing checks above are completed,
 separate evidence, not predictions about the running broad suite.
+
+The broad suite subsequently terminated unsuccessfully in `test/ffi.cjs`:
+the local FFLAS/igraph prerequisites are missing (including `libigraph.a`).
+The completed unit and docs checks stand, but the full tier did not pass.
+The old process is terminal; do not restart it merely to wait for an outcome.
+
+## Deferred powered batches and certified retained units (2026-09-10)
+
+These are research source copies, not changes to production or its source,
+relation, factor-base, exponent or arena limits. Their complete local evidence
+is in `/scratch/sagejs-runtime/cubic-powered-deferred-E955gg`, preserved without
+binaries under `build/cubic-analytic-schedule-evidence/powered-deferred-campaign`.
+
+### Separate witness retention from proof scheduling
+
+`deferred.py` (526,180 bytes), SHA-256
+`d9008a23d93e749b77287bb1b3478d0fc12955075f740f97a238b518a2c47acb`,
+retains powered-search witnesses even when it defers a proof attempt. An
+unchanged class HNF does not mean unchanged unit information. Ordinary search
+therefore sees the retained-row event, and storage/stage exhaustion forces an
+attempt on that prefix before declining. The extracted actual root passes
+1,609 control cases. All 1,012 fields succeed on the first effort with full
+64-word FLINT/GMP/generated-JavaScript agreement under normal and one-page
+FLINT linkage. All 110 changed traced executions independently replay 2,378
+principal rows. This is exact diagnostic replay, not public receipt replay.
+
+Compared with the frozen `staged32` parent, controlled full-corpus totals are
+2739.107 → 2736.265 ms, versus PARI 1441.000 ms: effectively a tie. The paired
+ratio on `3.1.61822200.1` falls from the preceding policy's 1.3316 to 1.0260;
+it is still a regression. The established gains on `3.1.45285240.1` and
+`3.1.57663252.3` remain, with paired ratios 0.6038 and 0.9216. Three additional
+regressions selected *after* that full run have paired ratios 1.3201, 1.6302
+and 1.2648 for `16261112.1`, `47623800.1` and `67151700.2`, respectively.
+Those post-hoc measurements diagnose defects; they are not a frozen holdout.
+
+A new 24-field panel was frozen before Sage execution: constant-coefficient
+neighbors of the two powered-search gains, using steps $29^2$ and $15^2$ and
+$k=-6,\ldots,-1,1,\ldots,6$. All are irreducible complex fields, canonically
+distinct from one another, the 1,012 development fields and the previous 48
+neighbors. All pass `bnfcertify`, three-backend checks and exact replay of
+597 principal rows. Only two change traced execution and one changes final
+output. Full panel totals worsen 95.541 → 96.914 ms (PARI 40.375); the active
+`fresh-deferred-index15-1` case has paired ratio 1.0988. Keeping the panel's
+inactive cases is essential; this is not 24 new powered-search successes.
+
+### Proving that another unit reconstruction cannot help
+
+`certified-unit.py` (527,328 bytes), SHA-256
+`ef0665114868c7c4e1bb67607ca10c461ad8bd720244f0ab42a3983f8ab1bf9f`,
+changes only `_cubic_try_bounded_exact_closure` relative to `deferred.py`.
+After a valid but insufficient analytic check with a retained authenticated
+unit, it can skip the otherwise repeated fresh dependency/unit reconstruction.
+It returns **insufficient**, never success, through this new branch.
+
+Here is the mathematical argument, with the premises made explicit. Let $K$
+be a complex cubic field with certified maximal order, and let the certified
+factor base generate $\operatorname{Cl}(K)$. Exact principal relations of full
+rank define a finite presented group of order $h'$, surjecting onto the class
+group of order $h$. Hence $c=h'/h$ is a positive integer. For a verified
+non-torsion unit $u$, put
+$m=[\mathcal O_K^\times:\langle-1,u\rangle]$. A complex cubic field has unit
+rank one and roots of unity $\{\pm1\}$, so $m$ is a positive integer and
+$u=\pm\varepsilon^m$ for a fundamental unit $\varepsilon$. The existing
+conditional analytic enclosure bounds $\log J$, where $J=cm$.
+
+In a common positive fixed-point scale, let $U$ be the certified upper
+endpoint for $\log J$ and $L_2$ the lower endpoint for $\log2$. The strict
+integer comparison $U<2L_2$ implies $J<4$, hence $1\le m\le3$. Exact local
+obstructions to either sign of $u$ being a square or a cube exclude $2\mid m$
+and $3\mid m$. Therefore $m=1$.
+
+The residue maps are those already used by unit saturation: proven primes
+not dividing the basis denominator and roots of the defining polynomial
+give maps from the maximal order into finite fields. Squares use primes
+$q\equiv1\pmod4$, so both signs have the same quadratic obstruction; for
+odd powers, $-1$ is itself a power. A zero image contradicts the authenticated
+unit/map premises and fails fatally. Missing obstructions are inconclusive.
+No finite unsuccessful root search is promoted to a non-power proof.
+
+This proves fundamentality, **not necessarily $c>1$**: an interval may still
+be too wide even when $J=1$. Thus the frozen experiment's comment about a
+“class-relation deficiency” is stronger than the branch proves. Read it as
+“fresh units cannot enlarge the certified unit subgroup”; correct that wording
+during source consolidation. Deferring further work cannot publish an incorrect
+answer, and the existing final class-group certification remains necessary.
+The GRH hypotheses, analytic bound and exact relation authority are unchanged.
+This is a written argument, not a Lean formalization or a verified compiler.
+
+Actual-guard tests cover 96 control cases, including strict-bound equality,
+missing obstructions and invalid maps. Another 10,000 integer examples are
+sanity checks, not the universal proof above. All 1,012 first attempts and
+normal/one-page three-backend full outputs pass. The 110 changed traces
+relative to `staged32` replay 2,378 exact principal rows. Instrumenting the
+actual new return branch detects 11 activations; separate exact PARI replay
+certifies every captured unit and checks fundamental-unit exponent $\pm1$.
+The reused fresh panel has one activation (`fresh-deferred-index29-1`), also
+checked exactly; all 24 final outputs remain identical to `deferred.py`.
+
+### Completed controlled timing and limits of the claim
+
+The new comparison uses **deferred versus certified-unit**, not `staged32`.
+On `opt`, the frozen 21-field paired panel includes the previously identified
+three regressions. There are 21 ABBA/BAAB rounds, ten kernel calls per sample
+and 84 samples per field. Ratios are candidate/parent; the empirical ranges
+are sample quantiles, not confidence intervals.
+
+| Field suffix | Full-run parent → candidate (ms) | PARI (ms) | Paired ratio | Empirical 10th–90th range |
+| --- | ---: | ---: | ---: | ---: |
+| `16261112.1` | 6.732 → 4.917 | 1.750 | 0.7395 | 0.7293–0.7441 |
+| `47623800.1` | 9.198 → 5.867 | 1.750 | 0.6470 | 0.6432–0.6514 |
+| `67151700.2` | 6.265 → 4.653 | 1.875 | 0.7500 | 0.7428–0.7569 |
+
+The full 1,012-field totals are 2727.913 → 2687.281 ms, versus PARI 1437.750
+ms: still 1.869 times PARI. Only 11.447 ms of the aggregate 40.632 ms movement
+comes from the 11 activated fields; the remaining 29.185 ms is movement on
+other fields and must not be attributed to this branch. The paired results,
+not the aggregate alone, support the targeted performance improvement.
+
+These are closed-kernel timings with packed argument preparation outside the
+clock, on Linux x64/AMD EPYC 7B13, Node 26.7.0. Timed PARI is 2.15.4; local
+exact replay/source forensics use 2.17.4. Both compared kernels link the same
+experimental one-page FLINT library. Full measurements use three rotated
+rounds and medians per field; retries and correctness checks follow the
+retained drivers. Neither public API overhead nor public receipt replay is
+qualified by these results.
+
+The deferred generated core is 17,919,936 bytes; certified-unit is 18,416,409
+bytes, SHA-256
+`6be43db1266c69cb0a1ba6beb71671cc4628e8461da505211b5f3e7f89d30796`.
+The raw 496,473-byte increase despite a 1,148-byte source addition is mostly
+provenance text, **not duplicated mathematical machinery**. An authenticated
+comparison of the actual generated files (`core-growth.cjs`) finds 13,225
+bytes of growth after replacing each main source path by `SOURCE.py`.
+Removing comments and `#line` directives and collapsing whitespace gives
+5,719 bytes of additional C text. Of 278 parsed static-int function bodies,
+only the FLINT/GMP closure helper bodies differ under that normalization;
+their cleanup-call counts are unchanged. These are source-text measurements,
+not machine-code size, peak allocation or cross-platform safety evidence.
+The new branch adds no owner
+declaration, but uses existing temporary-allocating helpers. One-page linkage
+and Linux backend agreement do not establish cross-platform memory safety.
+Production is unchanged and PR203 remains draft.
+
+Next: expand frozen unseen *activation* coverage, separate repeated analytic
+enclosures and local screens from unit reconstruction cost, and consolidate
+successful changes into readable source before production qualification.
+Retain the demonstrated regressions and the separate eligibility/arena failures.
+Six focused tests pass. The earlier full suite's missing FFI prerequisites
+and stale architecture inventory remain unresolved; no all-suite pass is claimed.
+
+### Frozen successor holdout and rejected bound expansion
+
+A successor panel proposes eight constant-coefficient shifts around each of
+the 11 development activation fields, using $k=-4,\ldots,-1,1,\ldots,4$
+times the square of the anchor's equation-order index. All 88 proposals are
+frozen before Sage execution. Three are reducible; the other 85 are complex
+and canonically distinct from all 1,084 previously used fields and one another.
+All pass `bnfcertify`. This is a local structural holdout, not a random sample
+of the population of cubic fields.
+
+All 85 pass the first effort with matching class numbers/invariants and full
+FLINT/GMP/generated-JavaScript output agreement for both deferred and
+certified-unit sources. Each field ran in an isolated process; there are no
+backend exceptions or worker failures. Only one final output changes, but the
+actual shortcut activates twice:
+
+- $x^3-x^2+10x-82$, class number 8;
+- $x^3-x^2-208x-2836$, class number 2.
+
+Both captured units are independently verified fundamental, and all 38
+principal relations in their final prefixes replay exactly. This does not
+claim full independent public-certificate replay on all 85 fields.
+Scripts and evidence are in
+`/scratch/sagejs-runtime/cubic-unit-index-holdout-AijhIL`.
+
+The completed all-85-field controlled timing gives deferred 211.019 ms,
+certified-unit 208.505 ms and PARI 125.000 ms (1.668 times PARI). The two
+activation fields account for only 0.984 ms of the 2.514 ms aggregate movement.
+Repeated paired runs on **every** field confirm activation ratios 0.8617
+(empirical 10th–90th range 0.8489–0.8740) and 0.8147 (0.8083–0.8206).
+Their full-run medians are respectively 2.052 → 1.770 ms versus PARI 1.125 ms,
+and 4.077 → 3.375 ms versus PARI 1.625 ms. The largest non-activation median
+ratio is 1.00535; no universal no-regression claim follows from this sample.
+This panel's timing uses the same frozen parent/candidate and the existing
+three-round full and 21-round paired protocols. Both `opt` processes are
+terminal; exact artifact and driver hashes are checked by `timing-summary.cjs`.
+The complete successor evidence and generated-core analysis are preserved in
+`build/cubic-analytic-schedule-evidence/unit-index-holdout`.
+
+A separate read-only screen considers extending the theorem to $J<7$ with
+exact nonsquare, noncube and non-fifth-power obstructions. Every positive
+integer $m<7$ other than one has a prime factor in $\{2,3,5\}$, so the same
+argument applies. The screen uses an exact lower bound for $\log7$ from
+$3\log2-\log(8/7)$, bounding the atanh series at $z=1/15$ termwise and its
+remaining geometric tail with integer ceilings. It does not change a return
+value or scheduling decision. All 1,012 full outputs remain identical.
+Among 23 fields reaching retained-unit analytic insufficiency it identifies
+**no additional eligible fields**. Do not add a wider production branch merely
+because its sufficient condition is sound: this corpus provides no measured
+workload benefit for it.
+
+The latest development timings also show that the 20 largest per-field
+excesses over PARI sum to 162.309 ms, about 13% of the aggregate 1249.531 ms
+gap. Outlier forensics remain useful, but optimizing only those outliers
+cannot explain or close the whole gap. The next profile should distinguish
+common exact order/ideal work, analytic enclosures and unit reconstruction;
+the current output/trace equality checks alone do not measure those costs.
+
+### Common-work profile and next mathematical experiment
+
+An instrumented copy of the **current** certified-unit core now profiles three
+complete passes through the 1,012-field corpus, checking all 64 output words
+against its uninstrumented survey on every call. The first pass is discarded;
+the remaining 2,024 calls have nested inclusive/exclusive counters whose
+exclusive totals sum exactly to the recorded root total. This ran locally
+with `CLOCK_MONOTONIC_RAW` while a developer rebuild was active. Instrumentation,
+compiler effects and local contention are included: these are diagnostic
+fractions, not controlled timings or estimates of attainable speedup.
+
+The largest measured named exclusive component is
+`_cubic_online_relation_lattice_update`: about 8.4%, with 19.29 calls per field.
+Other substantial components include dependency-unit materialization (6.9%),
+smooth principal-relation admission (5.6%), maximal-order analysis (5.3%) and
+BF-plan preparation (4.6%). No single component explains the whole gap.
+The record lives in
+`/scratch/sagejs-runtime/cubic-certified-common-profile-96vVXy` and its preserved
+`build/cubic-analytic-schedule-evidence/certified-common-profile` copy.
+
+Reading the online updater exposes a concrete general experiment: it scans
+every entry of its $n\times n$ canonical row-HNF basis to count nonzero rows,
+but uses that count only to ask whether rank is $n$. A row-HNF basis padded
+with zero rows is upper triangular, so
+$\det H=\prod_{i=1}^n H_{ii}$; full rank is equivalent to every diagonal entry
+being nonzero. That predicate takes $n$ reads, not $n^2$. It is **not** valid
+to recover the rank of a deficient HNF by counting nonzero diagonal entries:
+for example, $\left(\begin{smallmatrix}0&1\\0&0\end{smallmatrix}\right)$ has
+rank one but zero diagonal. The source comment rejecting all diagonal
+shortcuts conflates these two claims.
+
+This is a proposed source-level optimization, not yet an implemented or timed
+candidate. It must preserve the exact membership test, support transcript,
+dependent unit witnesses and final publication rule. Test the actual predicate
+on canonical rank-deficient and full-rank HNFs, then compare all complete
+outputs and controlled timings before claiming any benefit. Wider matrix-copy
+or prefix-equality primitives are separate compiler/FFI questions, not license
+to replace this algorithm with handwritten mathematics.
