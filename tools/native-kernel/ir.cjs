@@ -2,6 +2,7 @@
 
 const { createCompiler } = require("../..");
 const { analyzeExactModule } = require("./exact-analysis.cjs");
+const { evaluateIntegerConstant } = require("./integer-constants.cjs");
 const {
   canonicalType,
   isIntegerSignature,
@@ -107,31 +108,7 @@ function integerLiteral(node) {
 function moduleIntegerConstants(topLevel, filename) {
   const constants = new Map();
   function evaluate(node) {
-    const literal = integerLiteral(node);
-    if (literal !== undefined) return literal;
-    if (nodeType(node) === "AST_SymbolRef") return constants.get(node.name);
-    if (nodeType(node) !== "AST_Binary") return undefined;
-    const left = evaluate(node.left);
-    const right = evaluate(node.right);
-    if (left === undefined || right === undefined) return undefined;
-    switch (node.operator) {
-      case "+": return left + right;
-      case "-": return left - right;
-      case "*": return left * right;
-      case "//":
-        if (right === 0n) return undefined;
-        return left / right;
-      case "%":
-        if (right === 0n) return undefined;
-        return left % right;
-      case "<<":
-        if (right < 0n || right > 65536n) return undefined;
-        return left << right;
-      case ">>":
-        if (right < 0n || right > 65536n) return undefined;
-        return left >> right;
-      default: return undefined;
-    }
+    return evaluateIntegerConstant(node, integerLiteral, (name) => constants.get(name));
   }
   for (const statement of topLevel) {
     if (nodeType(statement) !== "AST_SimpleStatement" ||

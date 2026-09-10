@@ -1,0 +1,207 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-constant-indices",
+  "title": "Native Constant Indices",
+  "lane": "native-compiler",
+  "status": "review",
+  "owner": "user",
+  "objective": "Preserve Python signed constant semantics and fold pure constant exact workspace indices without changing mathematical source",
+  "base_commit": "89e6fcfb26e152e66b28cd4b136d820cc618133a",
+  "claims": [
+    "tools/native-kernel/ir.cjs",
+    "tools/native-kernel/integer-ir.cjs",
+    "tools/native-kernel/integer-constants.cjs",
+    "tools/native-kernel/compiler.cjs",
+    "tools/native-kernel/test/constant-indices.cjs",
+    "test/native-constant-indices.cjs",
+    "tools/native-kernel/bench/constant-indices.cjs",
+    "docs/native-constant-indices.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "cpython",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 51.371,
+      "started_at": "2026-09-09T08:04:00.491Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "c6818edde3a2fd8a61920ba948742c20ae4fd19dc9cac8d4d75f87fc0cc1f5f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/cubic-frontier-next/packages/flint/.native/prefix node --test test/native-constant-indices.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.749,
+      "started_at": "2026-09-09T08:10:43.243Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "82f9d98e4688f5da9d789dbeb62769ba6d1f87e6ec71772ecc5547e29178559e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 50.731,
+      "started_at": "2026-09-09T08:15:46.357Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "2e769dbb958a17d4a3c388aab7aaad1331b93285f220b132a3e36b7cabacf653",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-constant-indices.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.103,
+      "started_at": "2026-09-09T08:17:33.727Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "2e769dbb958a17d4a3c388aab7aaad1331b93285f220b132a3e36b7cabacf653",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 24.243,
+      "started_at": "2026-09-09T08:23:29.360Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "d2ee03b9662b2981b15b65dba4d10d6395c4a5b1f4d4b7f0688f61b0dcf51060",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.98,
+      "started_at": "2026-09-09T08:24:06.668Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "d2ee03b9662b2981b15b65dba4d10d6395c4a5b1f4d4b7f0688f61b0dcf51060",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native:source-compression",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.52,
+      "started_at": "2026-09-09T08:24:57.793Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "d2ee03b9662b2981b15b65dba4d10d6395c4a5b1f4d4b7f0688f61b0dcf51060",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-constant-indices.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.715,
+      "started_at": "2026-09-09T08:25:50.679Z",
+      "commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+      "workspace_fingerprint": "81da8824bfa2b1c1a971b4eda3b94cb0f89a34a431748902c6596ef92831a597",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.402,
+      "started_at": "2026-09-10T18:12:32.661Z",
+      "commit": "43cb298518c69fa05ba84a55f014bd0001448138",
+      "workspace_fingerprint": "b99a37f0f52193d8b86514ca0edfec4d05acc467859341c7316f4e8a2da67aa4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.684,
+      "started_at": "2026-09-10T18:14:35.911Z",
+      "commit": "43cb298518c69fa05ba84a55f014bd0001448138",
+      "workspace_fingerprint": "b99a37f0f52193d8b86514ca0edfec4d05acc467859341c7316f4e8a2da67aa4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.748,
+      "started_at": "2026-09-10T18:20:08.524Z",
+      "commit": "43cb298518c69fa05ba84a55f014bd0001448138",
+      "workspace_fingerprint": "97c0771394cf77f5e58ce9c348a1fa02328dad9a9df49986d9ac750bd058e41d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.245,
+      "started_at": "2026-09-10T18:20:32.270Z",
+      "commit": "43cb298518c69fa05ba84a55f014bd0001448138",
+      "workspace_fingerprint": "97c0771394cf77f5e58ce9c348a1fa02328dad9a9df49986d9ac750bd058e41d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 312.229,
+      "started_at": "2026-09-10T18:42:13.024Z",
+      "commit": "e21038fbd3b85b45ccefdd17e8bff94f44541b12",
+      "workspace_fingerprint": "900bc62895316544a0e48bf612c3cbc2993d42b0a9fc3beabfaf58896b424ba6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.648,
+      "started_at": "2026-09-10T18:48:28.084Z",
+      "commit": "e21038fbd3b85b45ccefdd17e8bff94f44541b12",
+      "workspace_fingerprint": "900bc62895316544a0e48bf612c3cbc2993d42b0a9fc3beabfaf58896b424ba6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.661,
+      "started_at": "2026-09-10T18:50:26.500Z",
+      "commit": "e21038fbd3b85b45ccefdd17e8bff94f44541b12",
+      "workspace_fingerprint": "900bc62895316544a0e48bf612c3cbc2993d42b0a9fc3beabfaf58896b424ba6",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Integrated compiler-only code at e21038fbd passes focused CPython/JavaScript/native differentials, strict Python (382 modules, zero errors), full architecture checks and the complete canonical pnpm test:native correctness/performance suite. A fresh recorded native rerun also passes in 312.23 seconds with all 41 production families reused from exact content identities. Main integration resolves the old optimizer inventory blocker. Linux routine, Chromium parity, Linux ARM64, macOS ARM64 and Windows x64 smoke checks all pass on e21038fbd. Local review receipts are complete. This final handoff changes only the task manifest; implementation and test sources are identical to the checked revision. Ready for merge review, not full release qualification. Historical 1012-field equivalence and approximately0.8% aggregate timing improvement are not a new PARI win.",
+    "risks": [
+      "Optional WASI tests skipped for an unprepared toolchain; full native platform/release jobs skipped in routine CI are not qualification. The receipt-only handoff commit may trigger fresh CI; retain exact e21038fbd evidence and let merge checks finish.",
+      "Historical identifier-hygiene emission assertion failed on unchanged base; do not conflate that with a verified resolution. Earlier WASI skips remain unqualified.",
+      "Compiler-only experiment is distinct from runtime-base-plus-offset research and from later mathematical improvements. No blanket no-regression claim."
+    ],
+    "next_steps": [
+      "Submit non-draft to the merge manager with completed native receipts and e21038fbd CI evidence. Inspect any fresh receipt-only-head CI failures rather than bypassing merge gates.",
+      "Keep this generic compiler PR independent of the research cubic closure; no source allowance or resource-policy changes."
+    ]
+  }
+}
