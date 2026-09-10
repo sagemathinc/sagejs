@@ -1076,11 +1076,72 @@
       "commit": "b8b9756787934a0169351e747c130d102a935177",
       "workspace_fingerprint": "4cf0ebe97aae8ef7723b1c7fcb19e43dda9b39e28c029157a1547d27535c4104",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 106.464,
+      "started_at": "2026-09-10T04:10:45.395Z",
+      "commit": "ffed5f48c06e215af4763edf67bcc82157b62a01",
+      "workspace_fingerprint": "46a3152f2798526d468fd404063fa712956bd9b3d4e9dcd9e8ddd97febf0bc18",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.394,
+      "started_at": "2026-09-10T04:16:17.218Z",
+      "commit": "ffed5f48c06e215af4763edf67bcc82157b62a01",
+      "workspace_fingerprint": "850c602fd9bb6f0a5ac180a4c92b4d63ba8e32c4ba7108058907ad23bb5ffde5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.745,
+      "started_at": "2026-09-10T04:16:25.293Z",
+      "commit": "ffed5f48c06e215af4763edf67bcc82157b62a01",
+      "workspace_fingerprint": "850c602fd9bb6f0a5ac180a4c92b4d63ba8e32c4ba7108058907ad23bb5ffde5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.117,
+      "started_at": "2026-09-10T04:16:29.741Z",
+      "commit": "ffed5f48c06e215af4763edf67bcc82157b62a01",
+      "workspace_fingerprint": "850c602fd9bb6f0a5ac180a4c92b4d63ba8e32c4ba7108058907ad23bb5ffde5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.939,
+      "started_at": "2026-09-10T04:16:32.549Z",
+      "commit": "ffed5f48c06e215af4763edf67bcc82157b62a01",
+      "workspace_fingerprint": "850c602fd9bb6f0a5ac180a4c92b4d63ba8e32c4ba7108058907ad23bb5ffde5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.141,
+      "started_at": "2026-09-10T04:20:41.883Z",
+      "commit": "ffed5f48c06e215af4763edf67bcc82157b62a01",
+      "workspace_fingerprint": "de5d38843c1d3d3e75c7cf3f4e11fd0fa2bb307353193fc39e2770cd5a8526c7",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Completed staged original/opposite HNF scheduling campaign.32 virtual slots yield zero candidates on all ten selected fields, so reject tiny-slot policy; all1042 backend/linkage and113-trace2208-row replay still pass. Ordinary batch returning to outer scheduler loses prior gains:3 changed traces/100-row replay. Same-call switch after exact support stagnation implements intended policy, with full opposite cursor reset and all witnesses retained.61 actual-body controls,1042 normal/onepage FLINT/GMP/JS full64 parity,1041 first-effort successes/1 gain/0 losses/1 bounded decline.21 changed traces independently replay570 rows. Paired original26.52->9.187ms on rescued target; direct opposite-only9.869->9.187ms confirms6.7% improvement. Prior three small regressions become ties versus original. However, same-call is8-15% slower than opposite-only on three other gain fields; new paired original-relative1.45% and3.91% penalties confirmed, another1.07% unresolved. Full original/opposite/staged/PARI totals2804.754/2744.397/2754.725/1488.000ms; staged1.851xPARI,not universal promotion. Source531509bytes remains over unchanged production allowance; no production/compiler/resource changes. Extended nonbinary archive1128files67551552bytes. All timing/replay jobs terminal. PR203 draft, goal active. Readonly same-source unit trace: both policies make4 numerical attempts at32/110-112 fractional bits, all status18 complex-magnitude underflow for regulator659.076. Even nonzero complex magnitude needs roughly476 fractional bits, not sufficient coordinate-accuracy proof. Exact-product second materialization uses199 matrix multiplications/max3038bits opposite versus211/max2635bits staged; output955/954/953bits. Cost attribution remains unproven. Final all192 unit files, focused7, merge/docs/scope pass.",
+    "summary": "Adaptive unit precision experiment complete and rejected as a speedup. Source04d7691f refines only selected dependency logs for a capped second proposal; preserves original evidence/authentication/fallback. Both large-regulator proposals authenticate and avoid209/211 matrix products, but paired target9.140->13.936ms (+52.6%); full staged2795.362/adaptive3130.139/PARI1488.500ms. All1042 fields full64 FLINT/GMP/JS and normal/onepage agree,1041 accepted,same1decline,0gains/losses vs actual staged parent,19 changed outputs;514 changed reconstruction traces replay11209 principal rows without exclusions.18 actual-body control tests. Coarse/detailed native profiling preserves all64 outputs on200 calls per variant; high-precision square roots add~1.93ms and log-two series~0.76ms per target, with instrumentation caveats. General binary-powered Newton seed ablations e356fc36(staged),e9afad72(adaptive) preserve all1042 outputs across both linkages/backends; actual helpers pass10401 CPython-isqrt cases on FLINT/GMP/JS. Controlled seed totals staged2839.631->2755.201ms(2.97%),adaptive3171.742->3019.637ms(4.80%),PARI1490.750ms. Staged10 paired medians favorable but5 ranges cross1; target9.358->9.168ms. Adaptive target14.224->12.473ms still regresses vs staged. Generated C grows to18.85/19.09MB, production unchanged. Exact-int shift probe fails; literal1<<uint64 instead lowers as bounded word shift, not a big-int solution. Production still lacks research bit_length prerequisite. Next inspect moving independent magnitude calculation ahead of phase construction so underflow avoids unused work; not implemented. Archive2288files108482859bytes. All timing/replay terminal. All192 unit files,focused7,merge/docs/scope pass; architecture still fails existing stale optimizer inventory, not refreshed. PR203 OPEN DRAFT; source consolidation/public/platform/resource qualification remain open. Goal active.",
     "risks": [
+      "Adaptive precision is a measured regression despite correct reconstruction. Binary square-root seed is separately promising but five of ten staged paired ranges cross one; no universal or production speedup claim. Native code grows and public/platform/resource qualification remains open. Full corpus is reused development data. Preserve failed vector/import/word-shift probes; they do not establish an exact-shift implementation.",
       "Current staged campaign: cannot infer no regressions from old three ties; new1824155 and88587 penalties confirmed. More rows and faster target do not prove unit reconstruction caused the speedup. All staged sources diagnostic/unpromoted and above production allowance. These results supersede prior first next-step hypothesis.",
       "Current campaign: opposite-presentation source exceeds unchanged production allowance; no source/limit promotion. Small paired regressions remain, one bounded decline, no new platform/public qualification. Exact selected-trace replay is not full-corpus formal verification. Historical next-step entries are superseded by current first entry.",
       "Powered-v3 is not promoted: paired 31.9% and49.5% regressions;97 final-output changes conceal122 changed executions. Fresh eligibility ablation still has5 bounded declines and2 FLINT arena exceptions even with one-page linkage. Do not remove caps or claim all-backend parity on exceptional fields. Historical next-step entries below are superseded by the current summary.",
@@ -1093,6 +1154,7 @@
       "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
     ],
     "next_steps": [
+      "Current priority supersedes historical entries below: adaptive-unit and sqrt-seed campaigns are complete; inspect /scratch/sagejs-runtime/cubic-modular-hnf-filter-mkOKgG and backed-up build/cubic-analytic-schedule-evidence/modular-hnf-filter. Reject adaptive policy as a speedup. Test identical exponential-magnitude calculation before phase/root work in _cubic_reconstruct_archimedean_unit_at_scale, explicitly reviewing failed-status precedence and resource behavior. Preserve successful proposals and exact authentication. Square-root binary seed alone gives2.97% staged aggregate improvement and target2.27% paired improvement, not PARI competitiveness. Qualify bit_length/compiler prerequisites before any production backport. A generic exact-int left shift would simplify seed construction; the current exact probe rejects, while literal1<<uint64 means bounded word arithmetic. Do not edit shared compiler from this lane. All timing/replay jobs terminal; final summary and docs contain identities, raw protocols, negative results and pending qualification. Keep PR203 draft.",
       "Next investigate adaptive archimedean reconstruction proposal precision using actual regulator/embedding scale. Current target numerical attempts all underflow before exact-product fallback; fixed low scales demonstrably inadequate. Preserve exact norm/regulator authentication and bounded resources. Measure native stage costs and differential/independent replay on fresh fields; do not assume operand maxima alone explain6.7% paired gain. Source root modular-hnf-filter-mkOKgG, structural trace staged-unit-work-v2.json. All jobs terminal; PR203 remains draft.",
       "Profile rescued target exact arithmetic by stage for opposite-only versus same-call staged before adding further scheduling knobs. Direct paired6.7% target win despite38 vs34 rows suggests expression/representation effects, not proof of them. Compare PARI compact class-group work with expanded-unit certificate scope. Preserve all exact evidence; investigate compact checkable unit representation only with explicit ownership/proof contract. Source consolidation and a fresh untouched holdout remain necessary; current1042 and selected panels are development. All opt jobs terminal.",
       "Test general bounded work allocation between original and opposite quotient presentations, with resident cursor reconciliation and retained unit witnesses. First distinguish target/enumeration cost from conversion on three confirmed regressions. Preserve26.3->9.8ms fresh retry gain. Current30 neighbors are now development; freeze new untouched neighbors before candidate execution. Consolidate research source under unchanged allowance and qualify public/resource/platform path before promotion. No opt timing jobs remain live.",

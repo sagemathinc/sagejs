@@ -6430,3 +6430,174 @@ another arbitrary fixed target-order or coordinate-budget choice.
 Final repository validation passes all **192 unit-test files**, seven focused
 cases, merge invariants, documentation generation/check and task scope. These
 checks do not change the experimental/public qualification distinction above.
+
+### Adaptive unit reconstruction: correct proposals, negative timing result
+
+The next experiment changes only `_cubic_materialize_dependency_unit`. The
+first proposal remains cheap. The second may increase its fractional precision
+to $\lceil 2R_{\mathrm{upper}}\rceil+64$, capped at 4,096 bits, and recomputes
+outward logarithm intervals for the nonzero factors in the selected dependency
+at that precision. Negative dependency exponents reverse interval endpoints.
+Original dependency evidence, exact norm/regulator authentication, exponent
+budgets and exact-product fallback remain unchanged. Invalid root/log proposals
+fall through to the existing fallback. This precision is a scheduling estimate,
+**not** a theorem guaranteeing correct coordinate rounding.
+
+Increasing arithmetic precision alone is insufficient: exponentiating the old
+low-precision regulator interval amplifies its uncertainty. Refining the
+selected relation-product logarithm is necessary for this proposal to succeed.
+For the large-regulator target, both 1,383-fractional-bit attempts now authenticate
+and replace the two exact-product materializations (209 and 211 matrix-coordinate
+multiplications). The initial 32-bit attempts still fail with status 18.
+
+Source `adaptive-unit.py` has SHA-256
+`04d7691fc33d54067cb5d05db540785d4ad8a0eb5380afdbce259769c14532a9`
+and 534,686 bytes; generated core has 18,671,945 bytes and SHA-256
+`1323707f8ecd50c8d9776bde514c45c1dedba3fa0dd7d44bfd1f202e7b5c3d54`.
+This remains a research copy, above the unchanged production source allowance.
+Eighteen extracted actual-body control cases cover precision/cap boundaries,
+signed interval accumulation, invalid proposals, unchanged original evidence,
+authentication failure and exponent-budget rejection. Their arithmetic is
+stubbed; they are control tests, not a mathematical oracle.
+
+All 1,042 fields pass full 64-word FLINT/GMP/JavaScript comparisons under both
+normal and one-page linkages. There are 1,041 accepted fields, no gains or losses
+against the actual staged parent, and the same bounded decline
+`membership-holdout-3.1.83062751.1-1`. Nineteen final outputs change. Adding
+reconstruction calls to the selected traces reveals 514 changed traces, including
+many with identical final outputs. Independent exact principal-ideal replay
+checks all 11,209 rows across those 514 prefixes, without exclusions. This is
+not full public-certificate qualification or a new untouched holdout.
+
+Controlled serial `opt` timing uses identical one-page FLINT linkage,
+preallocated external buffers, bounded retries inside the clock, three rotated
+full-corpus rounds, and separate 21-round alternating ABBA/BAAB paired tests.
+PARI uses fresh `bnfinit` calls; public startup/marshalling and expanded-unit
+output equivalence are not claimed.
+
+| Completed-field sum (ms) | Staged parent | Opposite-only | Adaptive | PARI |
+| --- | ---: | ---: | ---: | ---: |
+| All 1,041 | 2795.362 | 2770.703 | 3130.139 | 1488.500 |
+| Changed reconstruction traces | 1749.994 | 1736.027 | 2098.464 | 783.125 |
+
+The adaptive candidate is approximately 12.0% slower overall. Direct pairing
+on the large-regulator target gives **9.140 to 13.936 ms**, ratio **1.52609**
+(empirical p10–p90 **1.51421–1.53891**). `3.1.16261112.1` regresses by 66.8%
+and `3.1.19203756.1` by 34.5%; nine of the ten paired descriptive ranges lie
+above one. These quantiles are not confidence intervals. The candidate is
+rejected as a speedup, despite its successful reconstruction mechanism.
+
+Two local diagnostic native profiles wrap generated functions without changing
+their mathematical bodies, preserve source/core identities, retain identical
+one-page linkage, and check all 64 words on every one of 200 target calls per
+variant. Clock wrappers are diagnostic-only, single-threaded, and include
+instrumentation overhead: their times must not replace controlled measurements.
+The coarse profile attributes the increase primarily to unit materialization
+(approximately 1.94 to 6.75 ms per field), especially reconstruction (1.02 to
+5.28 ms), rather than the original dependency-log stage (about 0.26 ms in both).
+The more detailed profile reports square-root time around 0.35 to 2.28 ms and
+the logarithm-of-two series around 0.032 to 0.796 ms. These nested times must
+not be added to their parents, and detailed-wrapper overhead differs from the
+coarse run.
+
+Source inspection identifies a reusable follow-up: `_cubic_ceil_sqrt` constructs
+its upper Newton seed by one doubling per exponent bit. Binary powering can
+produce exactly the same seed in logarithmically many iterations. Test that
+change separately on both the staged parent and the adaptive candidate; do not
+infer that eliminating this overhead will rescue adaptive reconstruction or
+close the broader PARI gap.
+
+#### Binary-powered square-root seed ablation
+
+The source-transparent follow-up changes only `_cubic_ceil_sqrt` in separate
+copies of the staged parent and adaptive candidate. For nonnegative $n\ge2$,
+write $b=\operatorname{bitlength}(n)$ and $k=\lceil b/2\rceil$. The old loop
+builds $2^k$ using $k$ doublings. The new loop starts with $c=1,p=2,e=k$;
+on odd $e$ it multiplies $c$ by $p$, then halves $e$ and squares $p$ if another
+iteration is needed. The invariant $c p^e=2^k$ proves the identical final seed.
+There are $O(\log k)$ loop iterations rather than $k$. Avoiding the final unused
+square also ensures the power temporary never exceeds the required seed.
+
+Since $n<2^b\le2^{2k}$, this is an upper Newton seed. The existing descending
+integer Newton iteration, final ceiling correction, floor wrapper and negative
+input sentinel are unchanged. No rounding or class-group proof rule changes.
+An extra live exact power temporary is introduced; unchanged mathematical
+outputs do not establish cross-platform allocation qualification by themselves.
+
+Extracted original and candidate bodies pass 10,401 cases against CPython
+`math.isqrt`, including negative inputs, consecutive small integers, square
+boundaries up to 16,385 bits and 300 deterministic random integers up to 8,192
+bits. Both actual compiled copies also pass all 10,401 cases for floor and
+ceiling on FLINT/GMP/JavaScript. The first native-vector harness invocation
+failed before native execution because CPython's default 4,300-digit decimal
+serialization cap rejected a test input; the retained rerun explicitly bounds
+the test-process cap at 10,000 digits. This does not change library limits.
+
+All 1,042 full cubic outputs are identical to each copy's own parent across
+all three backends and both linkages. The source hashes are
+`e356fc368bc41ae8de0308901c8cd25f417fe4d44b19bb289d428618d2ceec8a`
+(staged) and
+`e9afad722a4034c9280fa2668d285ccce1cabd16db243bc6033c23453d263e00`
+(adaptive). Generated cores are 18,852,586 and 19,088,898 bytes, respectively:
+the shorter-running seed construction increases generated code. That resource
+tradeoff must remain visible rather than being hidden by refreshed manifests.
+This experiment does not change production source or raise its allowance.
+
+A narrow compiler probe explains why the natural `1 << k` replacement needs
+care. With a `uint64` exponent the literal is contextually coerced to `uint64`,
+producing a word shift with its documented 0–63 count restriction, not an
+arbitrary-precision power. Explicitly declaring `one: int = 1` and shifting
+`one << exponent` fails compilation with `uint64 operator << requires uint64
+operands`. This is an opportunity for a general checked exact-integer shift,
+not a reason to substitute word arithmetic in the square-root helper. The
+initial probe used the wrong import module and failed before lowering; its
+corrected word and exact probes are distinguished in the retained evidence.
+No compiler or shared ABI edits were made from this arithmetic lane.
+
+The production helper also still counts bits by repeated division, whereas
+these research parents use the separately developed `int.bit_length()` support.
+Consequently a production backport must qualify that compiler prerequisite and
+measure the actual production path; these research timings do not establish
+its speedup.
+
+The controlled square-root ablation is now complete. Full completed-field sums
+are **2,839.631 ms staged**, **2,755.201 ms staged with binary seed**,
+**3,171.742 ms adaptive**, **3,019.637 ms adaptive with binary seed**, and
+**1,490.750 ms PARI**. Thus the seed change improves this run's staged aggregate
+by about 2.97% and adaptive aggregate by 4.80%. Do not combine these ratios with
+totals from earlier runs: even unchanged implementations move between runs.
+
+All ten staged paired median ratios favor the seed change (0.9690–0.9885),
+but five descriptive p10–p90 ranges cross one. The target's direct paired result
+is 9.358 to 9.168 ms, ratio 0.97729 (0.96503–0.99576). On the adaptive target it
+is 14.224 to 12.473 ms, ratio 0.87517 (0.86958–0.88893). The faster seed helps,
+but the adaptive policy remains substantially worse than the staged policy.
+The square-root experiment is promising reusable arithmetic, not a new
+class-group regime victory or a qualified no-regression production release.
+
+Next, examine the proposal's dependency order before increasing precision
+again. Its exponential magnitude depends on the regulator and scale, not on
+the accumulated complex phase. Currently the routine computes roots, phase
+normalizations and phase powers before discovering that the complex magnitude
+rounds to zero. Evaluating the identical magnitude calculation first could
+avoid that provably unused phase work without predicting a heuristic threshold.
+Such a reordering must preserve every successful proposal, resource behavior
+and authoritative certificate; failure-code precedence needs explicit review.
+This is an unimplemented next experiment, not an asserted speedup. Separately,
+the compact-unit representation question remains open: PARI class-group timing
+must not silently be compared with mandatory expanded-unit publication.
+
+All controlled timing and replay processes for this campaign are terminal.
+Repository checks pass all 192 unit files, seven focused cases, merge invariants,
+documentation generation and task scope. `architecture:check` still fails the
+known stale optimizer-opportunity manifest (expected input `be4a3d56...`, recorded
+`ce64558c...`); the native classifications and other preceding architecture
+checks pass. No manifest was refreshed merely to hide that failure. PR 203
+remains draft, and production/compiler source and resource limits are unchanged.
+
+The nonbinary evidence archive now contains **2,288 files / 108,482,859 bytes**
+under `build/cubic-analytic-schedule-evidence/modular-hnf-filter`. It includes
+source transformations, controls, manifests, profile instrumentation scripts,
+raw timings, independent replay programs and failed probe/harness evidence;
+native build caches are omitted. These backed-up local research artifacts are
+not authenticated public Sage.js execution receipts.
