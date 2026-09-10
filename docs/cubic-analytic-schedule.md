@@ -6601,3 +6601,217 @@ source transformations, controls, manifests, profile instrumentation scripts,
 raw timings, independent replay programs and failed probe/harness evidence;
 native build caches are omitted. These backed-up local research artifacts are
 not authenticated public Sage.js execution receipts.
+
+### Magnitude before phase: reject unused reconstruction work
+
+The follow-up is implemented in `magnitude-first.py`, SHA-256
+`c6b54bdb9311a43d241db306e24552530dfb0f5662f6f3459c24f15247cb2335`,
+531,849 bytes, based on the binary-square-root-seed parent. It moves the
+**identical** regulator-to-exponential-to-magnitude calculation before phase
+construction, but after the existing root checks. Application of `real_sign`
+remains after phase construction. An AST multiset check verifies that the
+function's top-level statements are a permutation, not changed expressions;
+every other function is identical.
+
+For valid private-call scales, the unsigned magnitude depends only on the
+regulator interval and scales. Neither evaluating the relation elements at the
+complex embedding nor accumulating their normalized phase changes those inputs.
+If the old magnitude calculation rejects, its phase result was unused. If it
+accepts, the new order computes the same phase, targets, rounded coordinates
+and exact norm check. No new bound, rounding estimate or certificate is used.
+The root guards still precede both parts. On inputs where both phase and
+magnitude would fail, private diagnostic precedence intentionally changes:
+status 16 or 18 can precede status 14. The fresh-unit caller rejects every
+status other than 1; the materializer records the private diagnostic and
+continues reconstruction/exact fallback. Its separate status-2 coordinate
+diagnostic and all successful-unit authentication remain unchanged.
+
+Extracted actual bodies pass 45 synthetic unit-power/precision cases, including
+29 successful proposals and 13 zero-magnitude proposals, with identical tuples.
+The zero-magnitude cases perform no phase embedding or multiplication in the
+new order. Two additional double-failure controls exercise the intentional
+diagnostic precedence. Initial harness runs exposed a missing extracted helper
+and an incorrectly sliced test-argument tuple; both failures and the corrected
+passing run are retained. They were test-harness failures, not passing evidence.
+
+All 1,042 development fields retain identical full 64-word outputs across
+FLINT/GMP/JavaScript under normal and one-page linkages: 1,041 accepted and the
+same one bounded decline. Selected traces change on 390 fields. Reconstruction
+attempts remain **1,411**, while complex-phase multiplications inside them fall
+from **99,438 to 29,554**. The large-regulator target still has four status-18
+attempts, but each now skips 183 phase multiplications. Independent exact replay
+checks 8,813 principal relations across all 390 changed prefixes, without
+exclusions. Counts describe the actual same-source trace, not native timings.
+
+Controlled serial `opt` timing gives completed-field sums **2,832.774 ms parent**,
+**2,737.375 ms candidate**, **1,498.625 ms PARI**: approximately 3.37% lower
+than the parent, still 1.827 times PARI. Changed-trace fields account for
+1,451.577 to 1,375.568 ms of that movement; the other 19.39 ms must not all be
+attributed to skipped phase work. The target improves **9.306 to 8.587 ms** in
+direct pairing, ratio **0.92607** (empirical p10–p90 **0.90805–0.92956**).
+Other paired improvements include approximately 7.35%, 6.02%, 5.24% and 4.76%;
+five of the ten descriptive ranges cross one. PARI's target median in the
+full run is 2.0 ms. This is a narrower gap, not a target or universal PARI win.
+
+The generated core shrinks from 18,852,586 to **18,772,769 bytes**, SHA-256
+`660412535cbc117f6c55b250c615e0f0cdf864a63522f31d719a464e1d34f4fd`.
+Reconstruction retains 346 IR locals, the same calls and no external writes,
+but its exact temporary-slot count rises **17 to 18** because the magnitude
+is live earlier. Thus pure statement reordering is not a proof of identical
+resource use. Existing arena limits are unchanged; corpus checks are not a
+replacement for platform/resource qualification. Production source is untouched.
+
+#### A fresh structural neighbor panel
+
+Before executing Sage.js on new inputs, freeze 84 constant-term perturbations
+of the existing 21 timing anchors: $k\in\{-3,-2,2,3\}$ times the squared
+equation-order index. Exclude only reducible, noncomplex or canonically
+represented fields, using PARI `polredabs` against the 1,199 prior records.
+This leaves **58 canonically new fields**; all PARI class-group oracles pass
+`bnfcertify`. This is a local structural holdout, not random-population evidence.
+The candidate source remains frozen throughout.
+
+All 58 accept on their first attempt and preserve every output word against
+the parent across all three backends and both linkages. Independent exact
+replay checks all 1,220 principal relations across these prefixes, with no
+exclusions. Full controlled sums are **180.815 ms parent**, **172.267 ms
+candidate**, **85.625 ms PARI**: a 4.73% aggregate improvement, still about
+2.01 times PARI. Pairing uses the first ten fields in preexisting input order,
+not fields chosen for observed speedups. One shows a clear descriptive gain:
+`magnitude-holdout-3.1.61822200.1-3`, 2.594 to 2.407 ms, ratio 0.92765
+(0.89980–0.93796). The other nine ranges cross one, including small positive
+median ratios. Do not claim 58 individually demonstrated speedups or a
+qualified absence of regressions. These fields become development data after
+this measurement.
+
+#### Remaining native costs
+
+The magnitude-first generated-core diagnostic checks all 64 output words on
+200 target calls. Subtracting the first cumulative 100-call snapshot from the
+second gives an instrumented warm mean of 9.192 ms. Among instrumented
+boundaries, dependency-unit materialization has 1.209 ms inclusive / 1.086 ms
+exclusive cost, online relation-lattice updates 0.900 ms, HNF transforms
+0.473 ms, BF-plan construction 0.454 ms, and LLL transforms 0.310 ms.
+These are diagnostic costs with wrapper overhead, not the controlled paired
+timings above; inclusive nested times must not be added. They motivate
+investigating compact unit evidence and relation-matrix processing, rather
+than another unmeasured precision heuristic.
+
+### Beyond milliseconds: initialization versus class-group work
+
+Freeze a five-input discovery panel $f_k=x^3-x+10^k+7$ for
+$k\in\{6,9,12,15,18\}$ before running it. On the otherwise idle `opt` VM,
+PARI 2.15.4 runs one fresh process per field with seed 1, a 30-second timeout
+and a 512 MiB maximum PARI stack. Time `nfinit(f)` separately from
+`bnfinit(nf,0)` using `getwalltime()`. No `bnfcertify`, expanded-unit extraction
+or Sage.js fallback is included. All five are irreducible complex cubics with
+equation-order index one. These are single-run discovery observations, not
+representative-population benchmarks or unconditional class-number proofs.
+
+| $k$ | `nfinit` (ms) | `bnfinit(nf,0)` (ms) | Class number | Regulator, approximately |
+| --- | ---: | ---: | ---: | ---: |
+| 6 | 0 | 12 | 1 | $2.316\times10^5$ |
+| 9 | 4 | 53 | 12, invariants $(6,2)$ | $2.905\times10^7$ |
+| 12 | 2 | 961 | 1 | $2.171\times10^{11}$ |
+| 15 | 3 | 810 | 1 | $2.995\times10^{14}$ |
+| 18 | 7 | 19,822 | 1 | $1.894\times10^{17}$ |
+
+Zero milliseconds means below the integer wall timer's resolution, not zero
+work. The polynomial and field discriminants equal
+$4-27(10^k+7)^2$. Initialization is plainly not the dominant cost in the two
+largest-time examples; this does not exclude discriminant factorization as a
+bottleneck for other fields or defining equations.
+
+At $k=12$, a separate `setdebug("bnf",1)` run of flag 0 reports 568 factor-base
+ideals, bound 4051, and 876 ms wall time. The printed internal timer totals
+include 494 ms in HNF routines, 243 ms in `small_norm`, and 47 ms in floating
+embeddings. They are integer CPU-time diagnostics, not an exhaustive disjoint
+wall profile. The trace reaches tentative class number 1 while the regulator
+is still five times its final value, then collects another relation. Thus even
+class number 1 is not evidence that the remaining unit/index work is trivial.
+
+The comparison's output contract matters substantially. Two subsequent fresh,
+untraced flag-0 runs take 862 and 849 ms; two flag-1 runs take 2,469 and
+2,446 ms. Both flags report the same class invariants and regulator, but flag 1
+retains exact algebraic data rather than relying on floating embeddings for
+some operations. This is an ABBA diagnostic, not a statistically qualified
+2.9-times performance claim. In the separate flag-1 trace, `bnfunits` returns
+the nontorsion unit as **412 factors**, with the reported
+$\lfloor\log_2(|e|+1)\rfloor$ of the largest exponent equal to 260. No expanded
+fundamental unit is constructed by our diagnostic. The enormous regulator
+therefore does not force an enormous expanded output in PARI's compact path.
+
+The magnitude-first Sage.js research kernel currently does **not** compete on
+this panel. The $k=6$ input returns false at phase 2 on efforts 5, 1, 7 and 8:
+its Minkowski bound exceeds the unchanged `_CUBIC_MAX_GRH_BOUND_SEARCH=4096`
+guard. The other four inputs raise `RangeError: number-field analysis
+projection is invalid` on the direct first-effort call. The shared analysis
+adapter only projects complete candidates; its bounded constructor can leave
+large-prime or composite residuals unresolved. Those exceptions require a
+separate analysis/fallback-boundary investigation; they are not accepted
+results or evidence of public-path fallback success. No limits are raised and
+no native decline or exception is counted as a timing win. Native observations
+are local capability checks, not same-host successful timings against PARI.
+
+#### Consequence: compact exact unit evidence is a structural requirement
+
+There is a direct mathematical route that avoids expanding a dependency unit.
+Suppose the replayed principal-ideal relations are
+$(\alpha_i)=\prod_j\mathfrak p_j^{M_{ij}}$, with all factors included, and an
+exact integer vector $c$ satisfies $c^TM=0$. Then the **formal product**
+$u=\prod_i\alpha_i^{c_i}$ satisfies $(u)=\mathcal O_K$, hence is a unit.
+This proof uses the exact ideal identities and integer kernel equation; it
+does not require multiplying the algebraic numbers into three huge coordinates
+or checking their expanded norm afterward. A certified interval for
+$\sum_i c_i\log|\sigma_{\mathbb R}(\alpha_i)|$ proves nontorsion when it
+excludes zero and gives an interval for a regulator multiple.
+
+This does **not** by itself prove fundamentality or completeness of the class
+group. Factor-base generation, the relation presentation, and the joint
+class/unit index-one certification still need their existing mathematical
+justification. Signed interval accumulation must refine precision if
+cancellation makes it inconclusive. A compact certificate must bind every
+factor, exponent and exact ideal relation, and its verifier must reject missing
+factors, altered exponents and nonzero kernel residuals. Public compact versus
+expanded unit APIs and bounded replay resources must be explicit. This is a
+proposed next regime, not an implemented compact certificate or formal proof.
+
+Raw scripts, outputs, native failures, profile snapshots and summaries are
+retained with the preceding campaign in
+`build/cubic-analytic-schedule-evidence/modular-hnf-filter`. Relevant entry
+points are `seconds-pari.cjs`, `seconds-pari-paired-flags.cjs`,
+`seconds-pari-trace.gp`, `seconds-native-check.cjs`, and
+`summarize-seconds-and-profile.cjs`. The next large-input campaign should address
+the analysis capability boundary, factor-base/storage scaling and compact unit
+authority together, not merely increase a bound or expand an enormous unit.
+
+Compact logarithmic verification also avoids the failed adaptive proposal's
+precision trap. If each certified logarithm has absolute error at most
+$\delta$, the linear combination has error at most
+$\delta\sum_i|c_i|$. To target error $\varepsilon$, one may therefore refine
+the input logarithms until $\delta\sum_i|c_i|\leq\varepsilon$, using exact
+outward bounds. The needed fractional precision depends logarithmically on
+the exponent sizes and desired error; it need not grow linearly with the
+regulator merely to represent $\exp(-R/2)$ as a nonzero dyadic number.
+This is an error-propagation bound, not a promise that every index test will
+resolve at that precision. It explains why compact exact evidence is a more
+substantial direction than ever-higher-precision coordinate reconstruction.
+
+A separate GP exact-ideal demonstration on the $k=12$ compact unit verifies
+this algebraic route without expanding the unit. It factors each of the 412
+small elements as a principal ideal, reconstructs that individual ideal from
+its prime-ideal factors, and checks equality. Accumulating their signed
+exponents gives zero at all 410 distinct prime ideals across 1,993 factorization
+entries. The successful log records 40 ms for this replay alone; it excludes
+unit discovery and is not a Sage.js benchmark. This checks unit membership,
+not fundamentality, interval accuracy or the final GRH class-number proof.
+It uses PARI's exact ideal arithmetic, not an independently implemented or
+formally verified arithmetic backend.
+
+The first demonstration script had GP comment syntax errors and used the
+reserved name `I`. GP continued and printed a misleading empty-replay marker
+despite those errors. That log is retained as a failed harness run; only the
+corrected, error-free rerun with nonempty counts supports the statement above.
+The corrected script explicitly rejects an empty replay. This is another
+reason not to infer success solely from GP's process exit code or a printed
+success label.
