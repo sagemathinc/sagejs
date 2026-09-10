@@ -8991,3 +8991,121 @@ native/FFI/resource stages and fails at the pre-existing stale optimizer
 manifest. These are not green release qualification. The original evidence
 archive has 97 files and 4,218,702 bytes; a separate supplement records the
 analytic interval transport and final test sources/receipts.
+
+## Search visitation versus admission: two different losses
+
+The next experiment traces the closed research program without importing any
+PARI relation into its search. The baseline source hash is
+`0b260478d3e59df9e47f7a5270bea567cccfdbf052a0ecbb7a3e004da286756a`.
+Entry records detach the ideal basis, LLL transform, exact Gram matrix,
+ellipsoid bounds and retained cursor. Candidate records distinguish a failed
+smoothness check, duplicate generator, new word-prime pivot, and dependent-row
+quota rejection. Trace storage is separate from mathematical state; overflow
+is reported, never interpreted as mathematical exhaustion.
+
+With tracing enabled but the search policy unchanged, **all original output,
+factor, relation, generator, unit-exponent and order-basis fields agree exactly**
+on the three remaining failures. Their complete traces contain 4,164, 6,291
+and 25,946 eligible candidates, respectively. Principal ideals are compared by
+independent exact multiplication and HNF, not just by generator coordinates:
+PARI's later reconstructed generator could differ by a unit.
+
+The findings are different in the two regimes:
+
+- For `3.1.1246798226700.1` and `3.1.4860135888300.8`, none of the four target
+  prime ideals from the preceding PARI witness audit enters the initial-volume
+  search; no tested eligible candidate generates any of those four principal
+  ideals. The scheduler enables eight norm-permutation positions plus local
+  redundancies. Its missing-ideal recovery is conditional on rank deficiency,
+  not on a full-rank presentation having excessive index.
+- For `3.1.2602492536667698675.123`, the program does visit ideal 153, and tests
+  $a+1261$ at reduced coordinates $(-1,1,0)$ inside the prepared ellipsoid.
+  At retained row count 184, the rank modulo 27449 is 178. The target is
+  $182+6=188$ rows, so all six allowed dependent slots are occupied. The actual
+  native trace records the reserved-quota rejection branch. Independent dense
+  elimination confirms that this row does not increase rank modulo 27449,
+  while the exact parity helper shows that it adds a new direction modulo two.
+  This is **not** a missed enumeration candidate or an insufficient bound.
+
+`test/fixtures/cubic-two-primary-admission.json` records the actual sparse
+184-row/182-column prefix (945 nonzero entries), candidate, native rejection
+event, and provenance hashes. `test/cubic-two-primary.cjs` checks the two ranks,
+quota arithmetic, parity extension and signed/doubled candidate controls.
+The separate compact-unit test already verifies this generator's principal
+ideal identity. Neither test infers that genuine class-group two-torsion should
+be removed.
+
+### Controlled policy ablations, not a global optimization claim
+
+Three source-transparent research changes keep the original relation capacity,
+proposal budgets, candidate limits, eight-retry limit and certification checks:
+
+1. Enable every existing factor-base position for lazy initial planning.
+2. Additionally resume that retained unpowered search after an analytically
+   established algebraic deficit, before using powered ideals.
+3. Preserve the old initial prefix and enable the extra positions only after
+   that deficit, then resume as in (2).
+
+No field label, defining coefficient, reference answer, or imported PARI
+generator controls these policies. Extra tracing memory is instrumentation;
+these runs are not timing or production-resource qualification.
+
+| Field | Baseline final index / rows | Full initial ordering, then resume | Late activation, then resume | PARI class number |
+| --- | --- | --- | --- | --- |
+| `3.1.1246798226700.1` | 1620 / 112 | 405 / 80; zero retries | 405 / 99; six retries | 405 |
+| `3.1.4860135888300.8` | 1944 / 117 | 972 / 116; declines | 972 / 115; declines | 486 |
+| `3.1.2602492536667698675.123` | 69984 / 211 | 34992 / 192; one retry | 139968 / 220; declines | 34992 |
+
+These are different final ledgers. Late activation preserves the initial
+prefix, not the baseline's subsequent powered rows; the larger final index
+does not represent an index increase within one append-only computation.
+
+The full-initial experiment without unpowered continuation instead ends at
+69984 / 217 on the third field. All three variants' target-field ledgers have
+fresh independent principal-relation, compact-unit/log, HNF and Smith replay.
+The two successful full-ordering presentations have invariants
+$(3,3,3,15)$ and $(3,3,3,3,6,72)$, agreeing with PARI. They reach the research
+index-one classifier, **not public class-group acceptance**.
+
+The broader panel rejects promoting either traversal policy globally. The
+full-initial/resume run has 21 index-one diagnostics, three declines (including
+two previous successes), and three unqualified runs because the trace exporter
+overflowed. The late-activation run completes all 27 detached computations:
+22 index-one diagnostics versus the baseline's 24. It preserves all 16 initial
+successes' ledgers and compact units exactly, but loses three later successes:
+`3.1.750484414680.1`, `3.1.1343801573410596300.4`, and
+`3.1.2441197187235506700.191`. Three large-field traces are explicitly truncated;
+their detached mathematical outputs are present and their unchanged ledgers
+are compared separately. No truncated trace supports a candidate-level claim.
+
+Thus replacing the search ordering is not the next production patch. The
+evidence supports separate treatment of (a) lost integer-useful relations under
+odd-prime admission, (b) missing ideal coverage, and (c) the choice between
+unpowered and powered continuation. A parity-aware admission/targeting policy
+must still preserve room for missing rational-rank pivots, genuine two-torsion,
+unit witnesses, bounded storage and fail-closed certification. It must beat the
+current policy on the broader panel, not merely repair these two examples.
+Any auxiliary parity basis must describe the **retained** ledger: testing a
+proposal must not commit it to that basis before admission succeeds. Otherwise
+a discarded proposal could incorrectly hide the next useful parity direction.
+
+Research scripts, source snapshots, complete/overflow-marked traces, replay
+results and failed attempts are hash-archived under
+`build/cubic-analytic-schedule-evidence/search-visitation/`. Working scratch is
+`/scratch/sagejs-runtime/cubic-search-trace-EkdWMX`. The final diagnostic source
+has hash `60196d057e0e58634a2c542ae1837e6efccb364dde7b8cfcdd406503b7803f2d`
+and 591,798 bytes. It remains unpromoted; production source and its 485,000-byte
+allowance are unchanged. No `opt` timing, platform qualification or public
+certificate claim is made by this checkpoint.
+
+Validation: the new regression and 18 neighboring focused checks pass. A fresh
+build completes in 8m31s with all 41 native families reused; all 196 unit files,
+documentation checks, and precompilation of 422 lazy modules plus eight dynamic
+programs pass. The subsequent CLI suite stops at the same five missing
+FFLAS/igraph prerequisites after four files pass, with 583 unstarted. The
+architecture check again reaches the pre-existing stale optimizer manifest
+after passing native/FFI/resource checks. An earlier unit attempt overlapped
+the rebuild and saw a temporarily absent generated parser; the sequential
+post-build run passes that test and the full unit tier. These results do not
+constitute green release qualification. The evidence archive contains 142
+hash-checked compressed files (292,560,286 original bytes; 14,565,001 compressed).

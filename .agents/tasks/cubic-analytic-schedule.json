@@ -11,6 +11,7 @@
   "claims": [
     "bench/class-unit-groups/cubic-two-primary.py",
     "test/cubic-two-primary.cjs",
+    "test/fixtures/cubic-two-primary-admission.json",
     "bench/class-unit-groups/cubic-bounded-power-cache.py",
     "test/cubic-bounded-power-cache.cjs",
     "bench/class-unit-groups/cubic-square-smith.py",
@@ -1758,11 +1759,42 @@
       "commit": "043036ac80979e83885dde94b81faf89d053c228",
       "workspace_fingerprint": "a4c79a480a019d0ae38495035adef51f080d0a8d902546ff0e08c478ca55bc03",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-two-primary.cjs test/cubic-compact-unit.cjs test/cubic-analytic-schedule.cjs test/cubic-broad-corpus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.384,
+      "started_at": "2026-09-10T14:27:37.042Z",
+      "commit": "6a8726b0856965740cd52ad410e87bb9426eb7aa",
+      "workspace_fingerprint": "c43c16bbd6d62f5bd390fa545c7add7509df033b2422d7bbc1a489e032ebe739",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 7.226,
+      "started_at": "2026-09-10T14:27:50.017Z",
+      "commit": "6a8726b0856965740cd52ad410e87bb9426eb7aa",
+      "workspace_fingerprint": "c43c16bbd6d62f5bd390fa545c7add7509df033b2422d7bbc1a489e032ebe739",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-two-primary.cjs test/cubic-compact-unit.cjs test/cubic-analytic-schedule.cjs test/cubic-broad-corpus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.343,
+      "started_at": "2026-09-10T14:46:57.377Z",
+      "commit": "6a8726b0856965740cd52ad410e87bb9426eb7aa",
+      "workspace_fingerprint": "b14a77886d29803462d64c55c0e5f6a1efc7ea99f39f9f31558f3d3265551ea3",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "PR203 remains draft; overall PARI competitiveness is not achieved. This summary supersedes historical next-step entries. Native checkpoint043036ac8 remains unchanged: the larger-field panel has24/27 diagnostic index-one classifications, no public certificate or controlled timing win. New reference parity_relation_basis/parity_quotient_reduce uses exact integer bitsets and passes232 independent dense-matrix comparisons through512 columns, signed257-bit inputs, incremental prefixes and negative membership controls. All3841 retained rows replay modulo2 across27 fields. The three deficits have parity dimensions2/3/3 versusPARI0/1/2. Corrected PARI traces reconstruct original F.LP ordering, not permuted bnf[5], with an exact ideal-HNF bijection. Five PARI-discovered principal witnesses, now regression fixtures, independently prove presentation-index drops1620->405,1944->486,69984->34992. Exact twice-row membership and independent parity residuals establish subgroup orders4/4/2; augmented HNF confirms. All5 generator mutations fail. All5 useful rows occur in PARI initial small-norm passes; the unresolved fields are pure cubics. No duplicate rows in their original80/85/188-row prefixes. Next trace our initial ideal visitation, prepared bounds, centered enumeration, primitive/content normalization, smoothness and word-prime admission to identify why these small elements are missed. Exact same-unit analytic interval transport by proved2^k index ratios gives offline classifiers0/0/1; first2 still need refinement. Do not count external witnesses as native discoveries or hardcode them. Exact Integer &/^ compiler rejection reverified at8cd09c448; live overlapping claims including dirty mixed-exact-float-sidecar block uncoordinated edits; discussion104 comment18386814 requests coordination. Fresh build8m35 and196 unit files pass,13 focused checks pass. FullCLI terminates at5 missingFFLAS/igraph failures after4 files pass with583 unstarted. Architecture passes native/FFI/resource stages then fails pre-existing stale optimizer manifest. Production480241/allowance485000 and arena caps unchanged. Evidence: build/cubic-analytic-schedule-evidence/two-primary (97 original nonbinary files4218702bytes plus supplement), mathematical proof doc, scratch cubic-two-primary-GFo7Va. Remaining: general native discovery, compiler coordination, source consolidation, dimensioned publication and all certificate premises, allocator/platform qualification and controlled complete-computation timing.",
+    "summary": "Search-visitation checkpoint: baseline remains the unpromoted 24/27 closed-native diagnostic. Noninterfering traces of the three remaining fields show four PARI principal witnesses' target ideals are never visited; the fifth, a+1261 for x^3-4036047015, is actually tested and rejected by the reserved dependent-row quota at row184/rank178 over27449. A committed 184x182 sparse-prefix fixture and parity regression reproduce the loss: candidate odd-prime rank unchanged, parity rank increases. Full-initial traversal plus unpowered continuation closes two targets (405 with80 rows/no retry;34992 with192 rows/one retry), with independent principal/unit/log/HNF/Smith replay, but the broad panel rejects global promotion. Late activation preserves16 initial successes exactly yet produces22/27 classifications, with three regressions; baseline policy is unchanged. Three large traces explicitly overflow but detached outputs are present; no candidate claims use truncated traces. Nine target variant outputs replay independently. Archive: build/cubic-analytic-schedule-evidence/search-visitation,142 compressed hash-checked files. Production source480241/allowance485000 and mathematical budgets unchanged; research source591798 is unpromoted, all public returnsFalse. Fresh8m31s build,196 unit files,19 focused checks,docs and422-module/eight-program precompile pass. CLI stops at five existing missingFFLAS/igraph prerequisites after4 files,583 unstarted; architecture stops at staleoptimizer manifest. Earlier concurrent unit/build attempt failed on a transient missing parser; sequential fullunit passes. PR203 must remain draft. Next: parity-aware admission that retains integer-useful rows without starving rational-rank pivots or unit witnesses; preserve successful powered continuations and remeasure broad policy before timing or promotion.",
     "risks": [
+      "The full-initial and late-activation traversal experiments regress other fields. Neither is approved as a global replacement or a PARI timing win; production remains unchanged.",
       "Post-rank and analytic source copies are unpromoted. Matching exact presentation invariants and an externally supplied compact-unit interval do not constitute a closed native class-group certificate. Native compact dependency authentication, general invariant publication, adaptive analytic capacity, full-corpus/cross-platform replay and controlled timing remain open. Named-constant exponentiation is a recorded compiler gap; the source uses bounded doubling without weakening checks.",
       "Current overall-goal priority supersedes small-field tuning. Independent compact-unit prototype is a CPython/SymPy research oracle, not native integration or a class-group certificate. Unit membership does not prove nontorsion/fundamentality. PARI versions produce different compact witnesses; do not conflate382/34-bit with412/260-bit. Existing development distribution cannot support claims about overall cubic workloads.",
       "Magnitude-first is research-only: same1042 outputs and58 fresh neighbors do not establish universal no-regression or public/platform/resource qualification. Temporary slots rise17->18 despite smaller generated C. Seconds-panel Sage.js exceptions/declines are not fallback-success or speed evidence. PARI flag0 versus flag1 changes retained exact evidence; align output/certificate contracts before claiming competitiveness at large regulator.",
@@ -1779,6 +1811,8 @@
       "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
     ],
     "next_steps": [
+      "Use the committed 184x182 admission counterexample to implement and qualify parity-aware proposal admission; the auxiliary basis must track retained rows only, not rejected proposals.",
+      "Preserve successful powered continuation while extending missing ideal coverage; compare the complete 27-field panel and retain all declines/regressions before any controlled opt timing or production promotion.",
       "Integrate native compact dependency discovery and authentication with the successful diagnostic analytic path, avoiding expanded huge units and dense padded proof allocations. Preserve the exact row-index proof and make invariant output dimensioned. Replace the tiny-field fixed analytic refinement assumption with budgeted refinement justified by actual joint-index insufficiency; the5400 diagnostic is not a new global default. Only benchmark complete accepted computations against PARI.",
       "Start from the unpromoted sign-aware rank-powered source170c416ecca70a5fa6f97fc432535fc0989b84301ddebb0651da82c0e6559eed in /scratch/sagejs-runtime/cubic-rank-powered-GYdo8N. Larger443-ideal field now has independently replayed presentation629856, nine invariant factors, versusPARI314928. It still returnsfalse at the eight-factor envelope. Continue exact quotient-directed relation discovery before expensive unit expansion/publication; do not simply raise8 or assume full rank means complete relations. Its six original quota dependencies were sign duplicates(-1); the fixed ledger has five rigorously nonzero compact logs with exponents up to1529442. Prove unit saturation with compact witnesses and close the class-index2 gap. Retain h405 control regression and qualify all frozen fields before promotion. h486 is restored acrossFLINT/GMP/JS. All jobs terminal at handoff; no controlled opt timing this checkpoint. Consolidate duplicated research helpers before production and keep PR203 draft.",
       "Continue from the larger443-ideal field, not tiny cases. Work-budget source37fc85bd60 eliminates the anisotropic box guard but fills499 relation slots at modularrank429. PARI first pass tests216564 candidates, finds1011 smooth candidates and keeps a smaller rank-first relation set. Rank-quota ablation df420145dc reaches447 rows/exactrank441 but declines; next reconstruct PARI powered-ideal rank recovery for the two missing directions, with compact unit witnesses and exact final certification intact. Do not promote unqualified global quota/search changes; preserve and recheck the old successful prefixes. Cache alone is qualified narrowly by17200 exact lookups, unchanged1235 corpus outcomes, and40 controlled opt fields.",

@@ -858,6 +858,34 @@ the third needs no new analytic evaluation for this conditional index-one
 test. This offline calculation uses the externally discovered relations and
 does not count as a new native-computation success.
 
+### An executed example of rank-only admission losing a principal relation
+
+For $x^3-4036047015$, a complete, noninterfering native trace shows the
+independently authenticated principal relation for $a+1261$ being rejected at
+184 retained rows. The 182-column prefix has rank 178 modulo 27449; appending
+this relation keeps that rank unchanged. The research admission policy reserves
+room for missing pivots and permits six dependent rows, so its actual executed
+quota test rejects at $184=178+6$.
+
+The relation nevertheless increases the row span modulo two. If $v$ belonged
+to the 184-row integer relation lattice $M$, then its reduction modulo two would
+belong to the image of $M$; the contrapositive proves $v\notin M$. Principal
+ideal replay, rather than the nonzero parity residual alone, establishes that
+$v$ is a legitimate new relation. Separately, for the final 211-row lattice
+$L$, the earlier audit established $2v\in L$ and $v\notin L$, proving an
+index-two enlargement of that final lattice when this row is added. This does
+not assert $2v\in M$. A candidate can therefore be both dispensable for rational
+rank and essential for the integral presentation.
+
+The sparse native prefix and rejection event are preserved in
+`test/fixtures/cubic-two-primary-admission.json`; its focused regression checks
+independent odd-prime elimination and the actual parity helper. These facts
+motivate improved admission, not accepting parity rank as a class-group proof.
+Changing search order alone found useful relations on some fields but regressed
+others in the 27-field panel. All altered native computations still return
+false at the public boundary. See the search-visitation section of
+`cubic-analytic-schedule.md` for the exact scope and failed ablations.
+
 ## References
 
 - Karim Belabas and Eduardo Friedman, “Computing the residue of the Dedekind

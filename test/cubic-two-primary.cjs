@@ -11,6 +11,7 @@ const { pythonExecutable } = require("../tools/python-executable.cjs");
 test("incremental parity quotient agrees with independent dense elimination", () => {
   const run = cp.spawnSync(pythonExecutable(), ["-c", String.raw`
 import ast
+import json
 import random
 from pathlib import Path
 
@@ -126,6 +127,53 @@ for value in [2, 4]:
 basis = Matrix([[0, 0, 0]], 3)
 assert extend(Matrix([[3]], 1), basis, 1, 1) == 1
 assert reduce(basis, 1, 1) == 0
+
+# Actual 182-ideal research prefix: the odd-prime scheduler discarded an
+# independently replayed principal relation that adds a parity direction.
+# This checks the loss mechanism, not whether all true two-torsion is removed.
+fixture = json.loads(Path("test/fixtures/cubic-two-primary-admission.json").read_text())
+n = fixture["columns"]
+def unpack(sparse):
+    row = [0] * n
+    columns = [column for column, value in sparse]
+    assert columns == sorted(set(columns))
+    for column, value in sparse:
+        assert 0 <= column < n and value != 0
+        row[column] = value
+    return row
+rows = [unpack(row) for row in fixture["prefix"]]
+candidate = unpack(fixture["candidate"])
+assert len(rows) == fixture["row_count"] == 184
+def odd_prime_rank(rows):
+    prime = fixture["word_prime"]
+    pivots = {}
+    for row in rows:
+        work = [value % prime for value in row]
+        for column in range(n):
+            if work[column] == 0:
+                continue
+            if column in pivots:
+                value = work[column]
+                work = [(x - value*y) % prime for x, y in zip(work, pivots[column])]
+            else:
+                inverse = pow(work[column], -1, prime)
+                pivots[column] = [x * inverse % prime for x in work]
+                break
+    return len(pivots)
+rank = odd_prime_rank(rows)
+assert rank == fixture["rank_before"] == 178
+assert odd_prime_rank(rows + [candidate]) == rank
+assert len(rows) == rank + fixture["relation_target"] - n
+event = list(map(int, fixture["trace_event"]))
+assert event[3:8] == [1261, 1, 0, 184, 184]
+assert event[12:14] == [5, rank]  # Executed native quota-rejection branch.
+basis = Matrix([[0] * (n + 2)], n + 2)
+before = extend(Matrix(rows, n), basis, len(rows), n)
+assert reduce(basis, encode(candidate), n) != 0
+assert reduce(basis, encode([-value for value in candidate]), n) != 0
+assert reduce(basis, encode([2 * value for value in candidate]), n) == 0
+assert extend(Matrix(rows + [candidate], n), basis, len(rows) + 1, n) == before + 1
+assert reduce(basis, encode(candidate), n) == 0
 print(len(cases), "matrices;", prefixes, "incremental prefixes; dense quotient agreement")
 `], { cwd: path.resolve(__dirname, ".."), encoding: "utf8", timeout: 60000, maxBuffer: 2e6 });
   assert.equal(run.status, 0, run.stderr);
