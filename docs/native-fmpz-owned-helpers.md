@@ -406,3 +406,143 @@ compressed bytes). Its manifest SHA-256 is
 `fa6092aefa8eb97ec86354da5328c9b13dc9a1c6f4a903280c9adeeece803524`.
 It references the earlier archive for unchanged input ledgers. The backup is
 local evidence, not a published release artifact.
+
+## Direct interval unit recovery after sparse kernel compression
+
+The next experiment removes the optional LLL stage from compact-unit discovery.
+It passes the exact, saturated, lifted integral kernel directly to the existing
+interval unit-recovery routine. This is a same-source mathematical experiment,
+not a new compiler backend or a change to production defaults. The 512-bit
+coefficient envelope, precision rule, exact selected-unit residual check, and
+analytic classifier are unchanged. Diagnostic publication still returns
+`accepted=False`, phase 96. A completed diagnostic is not a newly qualified
+public class-group computation.
+
+### Why this change does not need an LLL hypothesis
+
+Let the authenticated principal-relation matrix be $A$, with relation elements
+$\alpha_j$. For every integral dependency $v$ with $Av=0$, the formal product
+$u(v)=\prod_j\alpha_j^{v_j}$ has trivial ideal and is a unit. The discovery
+routine only negates dependencies or forms integral combinations
+$\pm(v-qw)$ with $q\in\mathbb Z$, so it preserves this property. It propagates
+outward-rounded logarithm intervals through those same operations and adopts
+a smaller candidate only when the interval proves a nonzero logarithm and a
+strict decrease. The midpoint-derived quotient is a search policy, not an
+assumption needed for interval validity.
+
+None of those steps needs an LLL-reduced basis. LLL may improve coefficient
+sizes and search cost; it is not a correctness premise for an accepted unit
+proposal. The caller independently checks the final exponent vector against
+every original relation column. A unit with nonzero logarithm is **not**, by
+itself, a proof of a fundamental unit or of the class group. Completeness still
+depends on the unchanged mathematical certification conditions. Discovery
+failure or budget exhaustion remains a decline, not evidence about the answer.
+
+### Independent logarithm replay
+
+The new replay uses only CPython integers and `fractions.Fraction`: no Sage.js,
+FLINT, Arb, or floating-point arithmetic. Negative cubic discriminant supplies
+a unique real root, isolated by exact bisection inside a Cauchy bound. Rational
+interval Horner evaluation encloses each relation element in that embedding.
+For a positive rational endpoint, normalize $x=2^k u$ with $1\leq u<2$ and put
+$t=(u-1)/(u+1)$, so $0\leq t<1/3$. Use
+
+$$
+\log x=k\log 2+2\sum_{j=0}^{N-1}\frac{t^{2j+1}}{2j+1}+R_N,
+\qquad
+0\leq R_N\leq\frac{9}{4(2N+1)3^{2N+1}}.
+$$
+
+The same series at $t=1/3$ encloses $\log 2$. All rounding is outward dyadic
+integer rounding. Signed exponent summation gives an independent enclosure
+of the selected unit logarithm. The checker requires **containment inside**
+the source's published interval, not merely overlapping intervals. This is
+an independent exact witness check, not a Lean formalization or a complete
+class-group certificate.
+
+All 43 completed transcripts in the existing 47-field development/extension
+panel pass this replay. All 43 also agree completely with execution of the
+same new source through GMP, including changed unit exponents and logarithm
+endpoints; one selected input additionally agrees with generated JavaScript.
+The 27-field development panel now has no capacity failures. The extension
+recovers `1291393312047583044300.178`, leaving three temporary-capacity failures
+(`1086061775432017340256300.60`, `.428`, `.163`), the pre-existing invalid
+analysis projection, and one completed but still indeterminate classifier.
+No completed ledger, presentation index, or classifier differs from the prior
+observation. These inputs are not a new holdout set.
+
+### Controlled timing and rejected alternatives
+
+Two `opt` runs use CPU 2, the cooperative timing lock, one warmup and six
+balanced-order rounds, the same compiler and libraries, unchanged memory
+limits, and full per-source transcript checks outside the timed calls.
+The before arm already includes sparse kernel compression. PARI is fresh
+`bnfinit(f,0)` with class-number/invariant checks.
+
+| Field suffix | Before fmpz (ms) | Without LLL (ms) | Repeat before/after (ms) | PARI first/repeat (ms) |
+| --- | ---: | ---: | --- | --- |
+| `341970033803678280.6` | 75.02 | 74.53 | 75.08 / 74.48 | 24 / 24 |
+| `1086061775432017340256300.1013` | 902.21 | 890.92 | 904.55 / 890.24 | 197 / 199 |
+| `.387` | capacity failure | 1559.37 | failure / 1558.23 | 358 / 360 |
+| `.596` | 1097.54 | 1089.46 | 1094.37 / 1091.95 | 243 / 243 |
+
+Removing LLL primarily improves capacity coverage here. The successful-input
+speed improvements are small; the `.596` difference in particular is too small
+to support a substantial speed claim. The larger research calls remain about
+4--4.5 times slower than PARI, and are not public acceptance benchmarks.
+
+Diagnostic-only generated-core ablations retained as negative evidence:
+
+- Omitting the unused LLL transformation matrix still exhausts `.387`'s budget.
+- Approximate-Gram LLL, with or without that matrix, also still exhausts it.
+- Splitting larger freed checkpoint blocks for smaller allocations saves less
+  than 1 KiB at the measured peak and does not resolve the failure. This does
+  not justify adding that allocator complexity.
+
+The selected source is 600,125 bytes, SHA-256
+`a131a25cd945639f9415d2326ed09c9a65763ea34ecc483056fd2ac7f96fa664`,
+with cache key
+`cdabf354da28308177f8d5e6a7aaa2415118cef0e4816b8f75c336f34779679b`.
+It remains outside the production source allowance. No resource allowance or
+release manifest is raised to accommodate it.
+
+### Next measured target: online relation-lattice maintenance
+
+Local diagnostic-only generated-core wrappers measured these inclusive times:
+
+| Field suffix | Whole call (s) | Initial collection (s) | Online row-HNF updates (s / calls) | Compact unit attempt (s) |
+| --- | ---: | ---: | --- | ---: |
+| `.387` | 1.754 | 1.211 | 0.467 / 404 | 0.129 |
+| `.1013` | 1.122 | 0.719 | 0.395 / 430 | 0.035 |
+| `.596` | 1.314 | 0.894 | 0.589 / 420 | 0.039 |
+
+These are **not** `opt` benchmark numbers. Instrumentation changes generated
+code and adds per-call clock overhead; nested inclusive times overlap and must
+not be summed. The purpose is localization. The analytic plan preparation and
+evaluation total only about 3--4 ms per observation. In contrast, online exact
+row-HNF maintenance consumes roughly 27--45% of the instrumented whole call.
+The ellipsoid candidate predicate is called 789,970 times on `.387`, compared
+with 134,742 and 179,145 on `.1013` and `.596` respectively.
+
+The next investigation should therefore compare PARI's larger-field relation
+collection and lattice-update schedule, and examine the general source-level
+online HNF implementation. This evidence does not support spending another
+campaign on the already small logarithm-recovery or analytic-evaluation cost.
+It also does not establish discriminant factorization as the bottleneck:
+initialization outside these wrappers has not yet been separately profiled.
+Any deferred or batched HNF update needs to preserve the search's exact
+membership/change decisions, not merely agree on the final group in examples.
+
+The ignored local backup `build/cubic-direct-unit-evidence` contains 200
+round-trip-verified compressed files (1,095,962,878 raw bytes; 112,655,743
+compressed bytes), including the independent replay programs, complete new
+transcripts, negative generated-core ablations, and detailed phase profiles.
+It references the prior sparse-kernel archive for unchanged inputs.
+Its manifest SHA-256 is
+`7f11036b73dca9fa5de6ae4ee4773226f723a757a33cb0074b28a9dcd17e024c`.
+The two controlled timing report hashes are
+`1601dc9fdecea73e8bf8dd498f2d3a4fd5f60abf8f899dfc3842c6efe104a8a8`
+and `067e8f6485756cf403b68c73ff90bb7222ad0605532515caf4119cdc0b81f21b`.
+The campaign summary hash is
+`b4680a913a91d30233f02cbaea9b50194fe8340573d97bb56802f3f4963d016b`.
+This is a recoverable local research archive, not published release evidence.
