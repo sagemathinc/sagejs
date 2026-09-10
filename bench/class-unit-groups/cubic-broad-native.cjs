@@ -5,7 +5,17 @@ const path = require("node:path");
 const cp = require("node:child_process");
 const {validate,sha256} = require("./cubic-broad-corpus.cjs");
 
-function attempt(record, artifact) {
+function storagePolicy(args=[]) {
+  if (args.length===0) return {factor_capacity:64,modular_entries:4161,native_args:[]};
+  if (args.length!==2 || args.some(x=>!/^\d+$/.test(String(x)))) throw Error("expected FACTOR_CAPACITY SEARCH_LIMIT");
+  const [factor_capacity,search_limit]=args.map(Number);
+  if (!Number.isSafeInteger(factor_capacity) || factor_capacity<1 || factor_capacity>512 ||
+      !Number.isSafeInteger(search_limit) || search_limit<32 || search_limit>4096) throw Error("research storage policy outside envelope");
+  return {factor_capacity,search_limit,modular_entries:factor_capacity*factor_capacity+factor_capacity+1,
+    native_args:[factor_capacity,search_limit]};
+}
+
+function attempt(record, artifact, policy=storagePolicy()) {
   const addon = require(path.resolve(artifact));
   if (!addon.nativeAvailable) throw Error("actual native addon is required");
   const kernel = addon.certified_complex_cubic_class_group_v1;
@@ -13,11 +23,11 @@ function attempt(record, artifact) {
   for (const effort of [5,1,7,8]) {
     const output = kernel.createIntegerBuffer(64,256);
     const input = kernel.packIntegerBuffer(record.coefficients.map(BigInt));
-    const scratch = [kernel.createUInt64Buffer(4161),
+    const scratch = [kernel.createUInt64Buffer(policy.modular_entries),
       ...[512,4,9,16,16,144,48,109,1,1,1].map(n=>kernel.createIntegerBuffer(n,64))];
     try {
       const start = performance.now();
-      const accepted = kernel.fmpz(output,input,...scratch,0,effort,1048576,3145728);
+      const accepted = kernel.fmpz(output,input,...scratch,0,effort,1048576,3145728,...policy.native_args);
       attempts.push({effort,accepted,local_diagnostic_ms:performance.now()-start,
         output:output.toArray().map(String)});
       if (accepted) break;
@@ -32,11 +42,12 @@ function attempt(record, artifact) {
 function main(args) {
   if (args[0]==="child") {
     const record=JSON.parse(fs.readFileSync(0,"utf8"));
-    console.log(JSON.stringify(attempt(record,args[1])));
+    console.log(JSON.stringify(attempt(record,args[1],storagePolicy(args.slice(2)))));
     return;
   }
-  const [corpusFile,destination,artifact]=args;
-  if (!artifact) throw Error("usage: cubic-broad-native.cjs CORPUS OUTPUT ARTIFACT");
+  const [corpusFile,destination,artifact,...policyArgs]=args;
+  if (!artifact) throw Error("usage: cubic-broad-native.cjs CORPUS OUTPUT ARTIFACT [FACTOR_CAPACITY SEARCH_LIMIT]");
+  const policy=storagePolicy(policyArgs);
   const corpus=validate(JSON.parse(fs.readFileSync(corpusFile,"utf8")));
   const absoluteArtifact=path.resolve(artifact);
   fs.mkdirSync(destination,{recursive:false});
@@ -49,13 +60,14 @@ function main(args) {
     runner_sha256:sha256(fs.readFileSync(__filename)),started_at:new Date().toISOString(),
     scope:"Local direct research-kernel coverage, not public dispatch/fallback or competitive timing. Real fields are outside the declared signature and not invoked.",
     process_timeout_ms:10000,efforts:[5,1,7,8],memory_limit:1048576,temporary_limit:3145728,
+    storage_policy:policy,
   },null,2)+"\n");
   let completed=0;
   for (const record of corpus.records) {
     let result;
     if (record.r2===0) result={label:record.label,status:"outside-complex-signature"};
     else {
-      const run=cp.spawnSync(process.execPath,[__filename,"child",absoluteArtifact],{
+      const run=cp.spawnSync(process.execPath,[__filename,"child",absoluteArtifact,...policyArgs],{
         input:JSON.stringify(record),encoding:"utf8",timeout:10000,maxBuffer:4*1024*1024,
         env:{...process.env,SAGEJS_NATIVE_MODE:"native"},
       });
@@ -74,4 +86,4 @@ function main(args) {
   fs.writeFileSync(path.join(destination,"finished.json"),JSON.stringify({fields:completed,finished_at:new Date().toISOString()})+"\n");
 }
 if (require.main===module) main(process.argv.slice(2));
-module.exports={attempt};
+module.exports={attempt,storagePolicy};

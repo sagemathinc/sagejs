@@ -7241,3 +7241,148 @@ no production/compiler/source-limit change or cross-platform qualification is
 claimed, and PR #203 remains draft. The archived broad coverage report, source
 copies, build manifests, raw results and replay logs preserve failures as well
 as successes. Full generated IR and binary caches remain scratch-only.
+
+### Dimensioned storage and the first costlier-field successes
+
+The next source-copy campaign separates storage, discovery geometry and exact
+dependency reduction. It does not qualify a production envelope or replace the
+overall goal with tiny-field timings.
+
+`bench/class-unit-groups/cubic-dimensioned-workspace.py` forwards an ordinary
+scalar `NativeRecord` layout through the transitive helper graph. Its runtime
+policy accepts factor capacity $1\leq F\leq512$ and a search ceiling between
+32 and 4096, checked before arithmetic or allocation. The chosen ceiling is
+not a mathematical generator bound: the existing exact GRH-bound computation
+must still succeed within it. The independent layout test checks disjoint
+regions for every permitted capacity and exactly recovers the old geometry at
+$F=64$. In particular, modular scratch now has $F^2+F+1$ entries. The runner's
+optional `FACTOR_CAPACITY SEARCH_LIMIT` arguments bind both the buffer size
+and the native ABI; its default remains unchanged.
+
+This exposed a compiler obstruction: scalar record parameters were classified
+as prime-field evidence even in exact helpers. The isolated
+`agent/native-exact-layout-records` lane corrects dispatch and erases private
+all-`uint64` records into scalar parameters before exact representation
+analysis. Borrowed exact owners retain their identity; no public exact-record
+ABI is introduced. The cubic layout traverses 39 helpers. Controlled serial
+`opt` timing on 41 reused accepted controls gives sums of per-field medians
+208.426 ms before and 207.264 ms after; worst field ratio 1.024. Five warmups,
+seven alternating paired rounds of sixteen calls, full 64-word comparisons,
+and the same one-page FLINT archive support no material regression on this
+panel, not universal zero overhead. This timing precedes a final compiler
+guard preserving existing public word-record graphs; its artifact identity
+is not relabeled as a later build.
+
+At capacity 128, the target $x^3-93477150$ reaches **the same cutoff 458,
+74 factor ideals and 56 rational-prime groups as PARI**. Capacity 74 itself
+still encounters a conservative one-extra-slot reservation; this is not
+evidence for a 75th ideal. The next failure is a reduced discovery ellipsoid
+with coordinate bounds $(321,2,2)$, rejected by the old per-axis cap 64.
+
+The frozen diagnostic panel is the first 21 complex fields, ordered by
+absolute discriminant, with prior PARI initialization plus class phase at
+least 10 ms. It is reused frontier data, not a pristine holdout. The ablations
+use capacity 128/search ceiling 1024 and retain the 1 MiB/3 MiB arena limits:
+
+| Research variant | Accepted | Declined | 15-second timeouts |
+| --- | ---: | ---: | ---: |
+| Dimensioned layout only | 0 | 21 | 0 |
+| Capacity-aware staged scheduling | 0 | 19 | 2 |
+| Also redistribute the coordinate-box budget | 0 | 13 | 8 |
+| Also use augmented HNF for compact dependencies | 2 | 19 | 0 |
+
+The scheduling ablation changes eleven coordinated `factor_count <= 32` or
+`> 32` guards to the allocated capacity. The volume ablation admits a box only
+if $(2l_0+1)(2l_1+1)(2l_2+1)\leq129^3$. Thus every previously admitted
+axis-64 box remains admitted, and the maximum bounding-box cardinality does
+not grow. The $(321,2,2)$ box has only 16,075 points. Only the bounded,
+resumable initial-volume path opts in; exhaustive fallback paths keep the old
+axis cap. Positivity checks, exact candidate validation, proposal budgets,
+candidate limits and final certification remain unchanged. This is a discovery
+policy, not a completeness theorem.
+
+#### The actual timeout is transformation recovery, not class-number size
+
+The first full-rank prefix has 170 principal rows and quotient index 405.
+Support compaction selects an **84 by 74 matrix with entries of absolute value
+at most 3**. A first coarse trace localized the stall after support preparation;
+the initial suspicion of Smith form was disproved by isolated tests. HNF and
+SNF index probes finish in about 11 and 28 ms locally. Removing the redundant
+SNF index calculation is mathematically valid but the full call still times
+out. Finer tracing locates the stall in the subsequent
+`fmpz_matrix_hnf_transform_prefix` call.
+
+FLINT 3.6.0's `fmpz_mat_hnf_transform` dispatches a matrix of this full-column-
+rank shape to `fmpz_mat_hnf_minors_transform`. The captured matrix reproduces
+the timeout in an isolated native probe. The alternative computes ordinary
+row HNF of $[A\mid I_m]$ and extracts the transformation. It finishes in about
+73 ms locally versus a 10-second censoring limit for the direct transform.
+PARI `mathnf(A~,1)` takes about 3 ms on the same captured input. These are
+local single-run diagnostics, not controlled speedup claims.
+
+The mathematical argument is simple and general. If
+$U[A\mid I_m]=[H\mid U]$ is obtained by unimodular row operations, then
+$UA=H$ and $\det U=\pm1$. For full column rank $n$, the final $m-n$ rows of
+$U$ form a basis of the entire integral relation kernel: writing any integral
+row vector in the unimodular $U$ basis, its product with $A$ vanishes exactly
+when its first $n$ coordinates vanish. This preserves the exact dependencies
+used to construct units; it does not by itself prove unit fundamentality or
+class-group completeness. Independent PARI verification of the native probe
+checks $UA=H$, $|\det U|=1$ and index 405; the recovered transformation's
+entries require at most 13 bits.
+
+The staged native implementation widens its two existing compact matrices
+from $p\times n$ to $p\times(n+p)$ and reuses their logical prefixes, rather
+than adding owners or leaving the native call. Each attempt overwrites the
+entire active identity block before reduction. This adds $2p^2$ matrix slots
+(57,800 slots at $p=170$), so unchanged arena ceilings do **not** mean unchanged
+memory consumption. Insufficient resources must still decline. One-shot and
+other transformation paths have not yet been generalized. The redundant
+compact SNF index check uses the already verified full-rank HNF diagonal
+product; invariant-factor computation for publication remains present. The
+unused Smith scratch is retained in this controlled ablation.
+
+#### Independent replay and controlled timings
+
+Generated JavaScript, GMP and FLINT agree on all 64 published words for both
+new successes. Independent PARI replay checks the maximal-order basis, every
+one of 308 principal rows, the complete final-prefix unit lattice, and the
+published fundamental unit. PARI `bnfcertify` passes. Intermediate prefixes'
+unit lattices were not replayed individually. This remains an independent
+PARI replay, not a detached Sage.js checker or a Lean proof.
+
+| Field label | Class number / invariants | Native median | PARI median |
+| --- | --- | ---: | ---: |
+| `3.1.1246798226700.1` | $405$, $[3,3,3,15]$ | 369.567 ms | 14.000 ms |
+| `3.1.1428754729688.2` | $393$, $[393]$ | 153.463 ms | 11.750 ms |
+
+Controlled serial `opt` comparison uses five warmups and seven alternating
+paired rounds of four calls on AMD EPYC 7B13, Node 26.7.0. Native timing is the
+direct polynomial-to-class-group entry, including its existing exact witness
+and certification work, excluding buffer allocation and loading. PARI times
+fresh `bnfinit(polynomial,0)` calls, including initialization, with seed 1 and
+class-number/invariant checks; process startup is excluded. Native full output
+is checked after every batch. Both compute GRH-conditional class groups, but
+their retained certificate contracts are not identical. Native is still about
+26.4 and 13.1 times slower. These successes establish new native reach into
+the measured-cost frontier, **not competitiveness on it**.
+
+Evidence is under `build/cubic-analytic-schedule-evidence/modular-hnf-filter`:
+`dimensioned-*-panel.json`, `dimensioned-forensics.json`,
+`dimensioned-opt-timing.json`, `compact-transform-*-verify.*`,
+`augmented-gains-{raw,replay}.json`, and `augmented-opt-timing.json`.
+The source-copy chain and negative experiments are retained with their scripts.
+Final experimental source SHA-256 is
+`4474d3d4fb0cea66e5436a2fd449a02dbff48404c358208d2f1a43607f87b6b0`
+(536,701 bytes), core SHA-256
+`ee5881d4811372b8c34ca7bc94b6c760ec965145e522a22698db2db110433a25`
+(20,433,494 bytes), cache key
+`01b1a7ff1016698389a8e3b4988b0254400194ede9ad40354e05515b81792382`.
+Source allowance, public dispatch, production artifacts and release readiness
+are unchanged. Next work is efficient exact transformation/dependency recovery
+and profiling the now-successful larger cases, followed by unseen neighbors
+and the seconds-scale panel—not further optimization of tiny controls.
+
+Correction to the previous handoff: CLI session 65056 terminated in FFI tests
+with missing optional native prerequisites, including `libigraph.a`. It did
+not pass the full 586-file suite and is not still running.
