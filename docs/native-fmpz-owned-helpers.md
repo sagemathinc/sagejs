@@ -946,3 +946,198 @@ compressed to 15,952,090 bytes. Its manifest hash is
 `3021ed28b177629e02b0c07e2ffa2651620da5d6124c362bb3771fc2589fc35b`.
 The archive includes the actual typed Python helper, generated cores, scripts,
 independent small/large replays, complete HNF outputs, and both timing runs.
+
+## Resident unit-block integration in the larger cubic research closure
+
+The next experiment integrates the exact unit-coordinate quotient into the
+complete research closure. It is no longer just replaying retained rows in an
+isolated helper. Every newly admitted relation immediately updates a current
+exact quotient HNF; only the full original-coordinate presentation is lazy.
+The mathematical source remains ordinary typed Python compiled through the
+same closed native program. No new compiler intrinsic, handwritten mathematical
+C, acceptance predicate, or increased resource allowance is introduced.
+
+### Resident invariant and synchronization boundaries
+
+At initialization, freeze the unit rows of the current canonical HNF and form
+the quotient map $\pi$ defined above. Until synchronization, these frozen rows
+span the same primitive sublattice $U$, while the residual matrix represents
+$\pi(L_t)$ for the relation lattice after **every** processed row $t$. Therefore
+
+$$
+x\in L_t\quad\Longleftrightarrow\quad\pi(x)\in\pi(L_t),
+\qquad
+L_t=\mathbb Z^n\quad\Longleftrightarrow\quad
+\pi(L_t)=\mathbb Z^S.
+$$
+
+The reverse membership implication uses $U\subseteq L_t$: subtract a lift of
+the projected relation and the difference lies in $\ker\pi=U$. This justifies
+the unchanged per-row support bit and index-one event. A modularly established
+nonmembership hint can still skip the exact membership test, but not the
+exact insertion. No rational saturation or guessed index is used.
+
+The new state has an active flag, a dirty flag, frozen unit-row coordinates,
+the residual coordinate map, an age counter, and a synchronous-consumer mode.
+Materialization uses the descending integral lift and canonicalizer described
+above. A clean active state can simply be deactivated, releasing its scratch
+matrices to other consumers. A dirty state must first restore the current full
+HNF. Reinitialization may then absorb newly created unit pivots.
+
+The integration routes all six online updater call sites through the new
+state. All three borrowed search workspaces share the same state owner.
+Synchronization occurs at these boundaries:
+
+- Every 32 processed rows, or immediately on the index-one event. The number
+  32 is a presentation-refresh policy, not a correctness or stopping bound.
+- Before all five full-presentation helper call sites reuse the online HNF.
+- Before missing-rank ideal activation reads the full basis.
+- Before powered quotient or powered rank discovery. Their wrappers retain
+  the original synchronous updater throughout those searches, including
+  intermediate diagonal reads and reuse of the original source scratch for
+  the opposite presentation.
+
+The remaining root-level diagonal reads follow full-presentation preparation
+or a synchronous powered search. Matching the retained-row counter alone is
+not sufficient authority to read the lazy full matrix. Future consumers must
+obey this same synchronization contract.
+
+Dimensions below two retain the original updater because the projected-row
+scratch uses row 2. The residual HNF reuses the existing source matrix, and
+normalization support and the candidate reuse the existing reduction matrix.
+The only new owned matrix is $4\times(n+8)$ metadata, about 14 KiB of entries
+at $n=424$ on this target; that is not a measured RSS bound. Existing arena
+capacities remain unchanged.
+
+### Integration checks
+
+An independent SymPy oracle checks the canonical HNF of every original-row
+prefix, exact lattice-change events, and index-one events. It materializes a
+**clone** after each event, leaving the tested state lazy. The schedules also
+exercise explicit synchronization every row, every seven rows, and only at
+internal boundaries, plus transitions into and out of synchronous mode.
+There are 720 schedules and **7,491 prefix/event checks**. The same schedules
+pass **2,160 actual fmpz/GMP/JavaScript executions**, publishing every event
+and every final HNF entry.
+
+Review found that forcing synchronous mode every eleven rows can prevent
+those schedules from exercising the internal 32-row refresh. A supplemental
+witness disables forced synchronization and adds longer, deliberately
+non-index-one streams with late lattice changes. Its 732 schedules pass
+**8,331 further independent prefix/event checks**, including eleven directly
+observed age-triggered refreshes, and **2,196 further fmpz/GMP/JavaScript
+executions**. This closes a coverage gap rather than relying on the full-field
+timings to imply that every state transition was tested.
+
+The 47-field larger panel has **43 completed research calls** with identical
+full transcripts: relation rows, elements, factor-base data, unit exponents,
+analytic outputs, and discovery counters. All four original failures remain:
+temporary-capacity exhaustion on discriminant-family suffixes `.60`, `.428`,
+and `.163`, and invalid analysis projection on
+`3.1.12627147759764869116703083.1`. The completed indeterminate classifier on
+`3.1.15898963521669228.17` also remains unchanged. Four complete larger GMP
+calls and one complete JavaScript call agree with the new fmpz transcripts.
+
+These are phase-96 research outputs with `accepted=False`, **not newly
+authenticated public class-group results**. Exact unit-relation residuals and
+the prior independent interval replay are preserved by transcript equality;
+neither replaces the outstanding complete class-group certificate obligations.
+
+The integrated source is 614,787 bytes with SHA-256
+`7b4f02a01e8b00b3baf1b7eeb9a755ac014392fa3145c902807a79d09504c931`.
+All 145 functions qualify for direct fmpz under cache identity
+`48323fa46f20bf75314d00f777a5391ddfe05409ee6d6af8ede3853e6011cf6b`.
+This remains a research closure outside the production source allowance;
+the production limit is not increased to accommodate it.
+
+### Repeated controlled whole-call timings
+
+Two isolated `opt` runs pin CPU 2 and hold the timing lock. Each uses one
+warmup and six balanced-order rounds for the original GMP backend, the prior
+direct fmpz closure, and the resident direct fmpz closure. Source/cache/binary
+identities are checked before execution. Input packing is outside the timed
+region; the complete native call, publication to packed outputs, and cleanup
+are inside it. Every complete transcript and discovery counter is checked
+outside timing. Fresh seeded PARI 2.17.4 `bnfinit(f,0)` calls provide the
+polynomial-to-BNF baseline; PARI's outputs are checked against the recorded
+class numbers and invariants.
+
+| Field suffix | Prior / resident (ms) | Repeat prior / resident (ms) | PARI (ms, first / repeat) |
+| --- | --- | --- | --- |
+| `341970033803678280.6` | 73.09 / 69.86 | 73.02 / 69.95 | 24.5 / 25.0 |
+| `1086061775432017340256300.1013` | 810.21 / 618.13 | 814.73 / 619.64 | 199.0 / 199.0 |
+| `.387` | 1505.15 / 1237.76 | 1511.72 / 1254.01 | 361.0 / 360.5 |
+| `.596` | 1027.57 / 661.14 | 1021.96 / 662.62 | 243.5 / 243.5 |
+
+The whole-call time reductions repeat: approximately 4%, 24%, 17--18%, and
+35--36%. The original GMP medians in the first run are 163.93, 1872.35,
+3417.85, and 2301.61 ms respectively. This isolates a representation gain
+within the same native compiler and mathematical transcript; it is not a
+change in assumptions or an earlier speculative stopping decision.
+
+PARI remains roughly 2.7--3.5 times faster on these four calls. Moreover, the
+three larger fields share a discriminant and use pure-cubic presentations.
+They are useful controlled cases, not evidence of competitiveness over all
+large cubics. Research outputs remain distinct from authenticated public
+class-group results, so these are comparative workload timings rather than
+a release-level proof of equal product capabilities.
+
+Raw timing SHA-256 values are
+`82138b0792f64effedca030d2758edf48ce9d59c3b9485965e6e6f21bb0e2209`
+and `92432a8ee415c130c230372847a45735bb5fa3288da1e0ece67b84d1cfdca66a`.
+
+### Paired coverage sweep and explicit regressions
+
+Two further locked, CPU-pinned runs compare the same old/new fmpz artifacts
+on **all 43 completed panel fields**, retaining the original capacity for
+each field. Each run uses one warmup and four alternating-order rounds;
+complete transcript checks occur after every call. The four known failing
+fields are explicitly excluded, not counted as fast successes. This is an
+already-used research panel, not a new independent holdout. No new PARI
+timings were taken in this sweep.
+
+The sum of per-field median times decreases from **11,361.26 to 9,259.49 ms**
+in the first run and **11,341.88 to 9,256.90 ms** in the repeat: reductions of
+**18.50% and 18.38%**. Each run has 35 faster medians and eight slower ones;
+33 fields improve in both runs. This sum describes the panel workload, not
+the speedup of a typical random cubic field.
+
+The largest observed slower medians are 1.66% in the first run and 1.04% in
+the repeat. Six fields have slower medians in both runs:
+`3.1.1428754729688.2`, `3.1.232227935940.1`, `3.1.738427259115.2`,
+`3.1.750484414680.1`, `3.1.2545362165060.5`, and `3.1.50890606947180.3`.
+These small differences are retained as regressions to investigate, not
+declared zero or dismissed as noise. All outputs remain identical. The panel
+does demonstrate gains beyond the original shared-discriminant examples,
+including `3.1.1291393312047583044300.178` at approximately 1,015 to 904 ms.
+
+Coverage-sweep timing hashes are
+`d07e5fe1ef18ddda03c91c196cf8d37fcf5abf68462c1601dc8a1c239d556ce6`
+and `1586d93e9bdfd5cd9b2955a1bc44d0301d08caab110bfee0bcc7e1aabdfc1fc1`.
+
+The generated core grows from 26,734,186 to 28,103,096 bytes. The linked
+addon grows from 19,981,072 to 20,013,840 bytes; GNU `size` reports text
+19,720,147 to 19,754,795 bytes with unchanged data (249,008) and BSS
+(227,808). These are generated-code/file measurements on Linux x64, not
+cross-platform qualification or peak-memory measurements. The earlier
+allocator-accounting and production-source review obligations remain open.
+
+### Preserved evidence and next obligations
+
+The round-trip-verified ignored local archive
+`build/cubic-resident-unit-block-evidence` contains 119 files, 287,520,442 raw
+bytes compressed to 35,596,622 bytes. Its manifest SHA-256 is
+`4828a499869581fa7a731ec7c5f00d882e0345238cb379afaed6c2f582657801`.
+It preserves the actual typed source and mechanical integration script,
+generated cores and adapters, both independent state-test campaigns, complete
+field outputs, all four raw timing runs, their input/expected-output files,
+and source/cache/binary identities. The baseline and original-input archive
+are linked by manifest identity. Scratch storage alone is not the backup.
+
+This is a positive end-to-end **research** result, not a completed release.
+The next work is to profile the remaining complete-call cost on the new
+representation, including examples outside the shared-discriminant family;
+address the small repeated regressions and existing capacity failures; and
+integrate the mathematical changes through the production ownership and
+certificate path with cross-platform evidence. The compiler prerequisite
+PR remains draft. Faster research transcripts do not waive those obligations.
