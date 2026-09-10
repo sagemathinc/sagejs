@@ -9642,3 +9642,316 @@ native/FFI/resource checks pass. Final handoff and receipt metadata is written
 after the build, so this is not exact-final-metadata release qualification.
 The goal remains active and PR #203 remains draft. No production path or
 allowance has changed.
+
+## Composing cyclic residue counting with in-place online HNF
+
+The two independently tested changes now coexist in one research closure.
+Starting with the checked cyclic-residue source, only the HNF insertion helper
+and its online-update caller are replaced by their in-place counterparts.
+Removing those two definitions makes the before/after ASTs identical. The
+previously allocated source and reduced matrices remain allocated but unused:
+this experiment does not change resource limits, the factor base, candidate
+order, admission, analytic assumptions, or publication.
+
+The input is cyclic source SHA-256
+`bbe363dc3fce80813efc29494d3f71257dac862d7170fe7962ea2c252aa7bd1e`.
+The composed source is 591426 bytes, SHA-256
+`f5aaecbde89ffbe20eb7d7947dd6231b4fcf53b57f754223b965f7aea8addb5b`,
+with native key
+`e70c6c95ce5069bd3713562430fe90e8e5cfb69a0605c0e1957bf4d7857bdd62`
+and generated core size 17168611 bytes. Compilation uses the same pinned
+compiler foundation `8cd09c4484cddfcf7024b5169a4c18fa0b07d3f0`.
+
+All 27 complete development ledgers agree with the frozen baseline on GMP
+and tagged execution; two complete JavaScript controls agree as well. These
+checks include all 64 output words, factor records, relation rows, principal
+elements, unit exponents, basis records, return value, and parity counters.
+They do not upgrade the research-only return into a public certificate.
+
+Dedicated `opt` measurements pin CPU 2 and hold the exclusive timing lock.
+Each field/backend has one warmup and five alternating samples; all full
+outputs are checked outside the timed interval. Inputs are preallocated, and
+the entire native computation and cleanup are timed. Node is 26.7.0 on the
+AMD EPYC 7B13 host. No files are uploaded during measurement.
+
+| Field label | Cyclic only, median ms | Composed, median ms | Speedup |
+| --- | ---: | ---: | ---: |
+| `3.1.341970033803678280.6` | 453.549 | 348.753 | 1.300 |
+| `3.1.1086061775432017340256300.1013` | 15764.091 | 11403.929 | 1.382 |
+| `3.1.1086061775432017340256300.387` | 17497.904 | 14657.383 | 1.194 |
+| `3.1.1086061775432017340256300.596` | 13924.930 | 9627.001 | 1.446 |
+
+Thus the composition improves the seconds-scale cases too, not merely the
+index-prime target. These are before/after Sage.js ratios, **not PARI wins**.
+The raw `combined-timing.json` scope string accidentally says three samples;
+the retained runner executes five and the raw arrays contain five each. The
+table uses those five actual samples; the original record is not rewritten.
+
+The invariant behind the in-place update remains exact: elementary unimodular
+row operations adjoin the incoming row to the padded canonical HNF. Exact
+membership, including skipped pivots in rank-deficient prefixes, determines
+whether the lattice changes. A retained nonmember hint may bypass that test
+only when the existing admission logic has already established nonmembership.
+The old production full-rank-only membership helper is not a substitute for
+this research closure's padded-HNF membership helper. The 4845-prefix SymPy
+oracle still verifies both insertion implementations, with zero residual on
+success; 27 full-ledger comparisons additionally check the composed callers.
+
+### Phase boundaries and candidate counts
+
+Cumulative-prefix instrumentation of the composition places most remaining
+cost before or during relation collection. For the smaller target, medians
+are 1.504 ms through field analysis, 51.988 ms through factor-base preparation,
+337.319 ms through initial collection, and 359.486 ms for the instrumented full
+call. For the three larger fields, single diagnostic samples reach factor-base
+preparation in 0.56–0.62 s and the full call in 9.60–14.58 s.
+
+These are diagnostic boundaries, not additive phase clocks. In particular,
+the `.1013` initial-collection prefix takes 13.09 s while its instrumented full
+call takes 11.58 s. Early return changes cleanup and potentially generated-code
+behavior. This contradicts interpreting every prefix difference as an isolated
+phase duration; it does not invalidate the separately measured full-call gain.
+
+A separate, untimed source copy counts helper entries in 12 private workspace
+cells. Original workspace-length checks exclude that diagnostic tail, and all
+original outputs and parity counters still agree on the four fields.
+
+| Field suffix | Ellipsoid candidate helper calls | Principal-relation helper calls | Prepared ellipsoids |
+| --- | ---: | ---: | ---: |
+| `341970033803678280.6` | 14322 | 9674 | 21 |
+| `1086061775432017340256300.1013` | 134742 | 56551 | 161 |
+| `1086061775432017340256300.387` | 789970 | 193045 | 405 |
+| `1086061775432017340256300.596` | 179145 | 70602 | 179 |
+
+Fresh local PARI 2.17.4 debug traces use seed 1 and `bnfinit(polynomial,1)`.
+Their returned class numbers and invariants agree with the frozen references.
+PARI's `small_norm` counters report, respectively, 7319, 50395, 168377, and
+71221 factorization attempts, summing all search passes. The associated smooth
+proposal counts are 190, 1122, 1229, and 805. The raw traces are retained;
+their CPU timers are not controlled timing evidence.
+
+The counters have related but nonidentical meanings. PARI increments its
+attempt counter after primitive/nonscalar filtering and before `factorgen`;
+it counts smooth proposals before its relation-admission test. Sage.js's
+principal-relation entry includes its own content removal, norm computation,
+and possible unit handling. The ellipsoid counter includes rejected points.
+These counts therefore support investigating cost per candidate and lattice
+maintenance, not claiming identical searches or dividing unrelated counters
+to obtain an exact overhead ratio. Similar final relation-matrix dimensions
+alone would have established even less.
+
+### Checked word-prime trial-division ablation
+
+The tracked `bench/class-unit-groups/cubic-word-prime-ablation.py` changes one
+statement in `_cubic_append_smooth_principal_relation`:
+
+```python
+rational_prime: uint64 = checked_uint64(workspace[group_base])
+```
+
+This is justified by the existing root guards: $2\leq p\leq B$, where the
+generator bound $B$ is checked against the search limit, at most 4096. The
+conversion checks overflow rather than truncating. Norms, prime valuations,
+and exact divisions remain arbitrary precision. There is no change to which
+integers are smooth or to any ideal, relation, or certificate decision.
+Unsupported input to the research transformer is rejected; it is not a
+general proof that an arbitrary caller supplies a valid factor base.
+
+The pinned compiler already lowers an exact integer modulo a `uint64` divisor
+to `integer.mod_uint64`. Inspection finds exactly one such operation in the
+changed helper, versus zero in the composed baseline. Both are isolated,
+source-transparent native programs; no new compiler rule or C implementation
+was introduced. The source copy is 591450 bytes, SHA-256
+`9dd21f7ad6a9e57b936eb694bcaf6d91263041a5822d57740bf7f7a48086f13f`,
+native key
+`2dbbb04ed32ecff1c2cac4cd75abc6a9a8663f68178735e8251dac0c7243909d`.
+Its generated core is 16890108 bytes. Running the tracked transformer on the
+composed source reproduces this exact source hash.
+
+The focused test proves that reversing this one annotated assignment restores
+the entire original AST. It executes the actual extracted trial-division loop
+on 360 exact cases, including 2048-bit norms, high valuations, and divisors
+near the word boundary, and checks overflow rejection. All 27 full GMP and
+tagged ledgers remain identical; two full JavaScript controls also agree. The
+compiler foundation's two existing exact/word-buffer tests additionally pass
+their IR, generated-core, CPython, GMP, tagged, and JavaScript checks.
+
+Fresh dedicated `opt` paired timings use the same five-sample protocol:
+
+| Field suffix | Composed baseline, median ms | Word prime, median ms | Speedup |
+| --- | ---: | ---: | ---: |
+| `341970033803678280.6` | 357.155 | 350.103 | 1.020 |
+| `1086061775432017340256300.1013` | 11611.136 | 11588.479 | 1.002 |
+| `1086061775432017340256300.387` | 14636.340 | 14517.587 | 1.008 |
+| `1086061775432017340256300.596` | 9596.026 | 9536.496 | 1.006 |
+
+This is a small experiment, not a demonstrated substantial or durable gain.
+In particular, sub-percent changes on the larger fields do not establish a
+meaningful speedup. Keep it as a reproducible representation ablation, not a
+production change or the explanation of the remaining PARI gap. Native CPU
+sampling below separates this negative result from two larger opportunities.
+
+## Factor-group scans and exact index conversions
+
+Native sampling of the composed closure on
+`3.1.1086061775432017340256300.1013` identifies a representation-cost lead.
+The successful V8 profile contains 11,194 leaf-PC samples, 10,483 in the exact
+native addon; only nine addon samples remain unresolved. Symbolization uses
+the live `/proc/self/maps`, the exact unstripped addon, and its `nm` symbol
+ranges. The executable ELF load segment has matching file offset and virtual
+address, validating the recorded PC-to-symbol adjustment. These are **leaf
+samples**, not exact clocks or inclusive per-caller attribution.
+
+Among native samples, `__gmpz_sizeinbase` accounts for 20.88%, `__gmpz_export`
+11.90%, `__gmpz_add` 11.62%, and the smooth-principal-relation helper itself
+9.39%. `sagejs_native_integer_vector_mpz_index` accounts for another 3.79%;
+`__gmpz_mul` accounts for 1.03%. Size/export calls have other consumers too:
+the profile alone does not assign all their cost to indexing. The separate
+source ablation below tests that hypothesis directly.
+
+The profile uses unchanged composed source with compiler `profileSymbols`
+enabled. Its addon SHA-256 is
+`1b4abbfbc2b71ed3aa060746f741ddb40df17570127b1bcd9e19cb8648a61022`;
+the successful raw log hash is
+`c152b96e840b28c269cb408e356fbe6a9716d1a5028e98b61f3274a8531e5a14`.
+The complete field output and parity counters still match the frozen ledger.
+Earlier `gprofng` attempts are explicitly unusable: collector/preload failures
+and SIGPROF-handler conflicts omitted most computation. Their apparent BLAS
+hotspot is not evidence and is not used here.
+
+### Two isolated ordinary-Python transformations
+
+`bench/class-unit-groups/cubic-factor-scan-ablation.py` provides independent
+`indices` and `ranges` modes. Both operate on inspectable source copies;
+neither changes production dispatch or the production source allowance.
+
+**Word offsets.** The compiler preserves exact integer promotion in expressions
+such as `factor_base + 7`, even when `factor_base` is a `uint64`. In this helper,
+eight workspace reads and two writes consequently use arbitrary-precision
+indices and their conversion/bounds-check path. Replacing the ten positive
+offset literals with explicitly typed `uint64` locals makes every workspace
+index in the helper machine-sized: ten reads and five writes. The root's
+bounded layout ensures these particular sums fit. This is not authorization
+to change general Python addition into wrapping or overflow-raising word
+arithmetic. A general compiler improvement must preserve negative indexing,
+exact promotion, and exception semantics independently of this experiment.
+
+**Group ranges.** For every rational prime, the root sets `group_factor_start`
+before appending its factors, then stores that start and the number appended
+in the group record. Each appended factor receives the same group identifier.
+The resulting disjoint contiguous ranges partition the factor records.
+Subsequent visitation ordering does not physically permute them. Hence a scan
+that filters all factors by this group identifier visits the same relevant
+factors, in the same order, when restricted to the stored range. Both existing
+group-equality tests and auxiliary-factor tests remain in place. The new code
+checks nonnegative start/count and an exact end bounded by `factor_count`
+before converting endpoints to machine indices. An invalid range returns the
+existing fatal sentinel above relation capacity.
+
+For $G$ groups and $F$ factors, the two full scans cost $2GF$ factor visits
+per smooth candidate absent early rejection. Using the partition costs $2F$
+visits plus $O(G)$ checked range setup. Norm trial division, ideal-power
+membership, residual auxiliary valuations, relation admission, and all
+certification conditions are unchanged. Bounds checks do **not** establish
+partition completeness for an arbitrary caller: root construction is an
+essential precondition. No untrusted detached group table is newly accepted.
+
+The source hashes are:
+
+- Baseline: `f5aaecbde89ffbe20eb7d7947dd6231b4fcf53b57f754223b965f7aea8addb5b`.
+- Indices: `9475276ad74ee4f24b01c48d197d0b72b06ab08fd32305bfd392034dfcb7c271`.
+- Ranges: `4418fef4f5cdb0ef85628bf75f8f443ac5262766de299d0c49f1eb699f659f95`.
+
+The tracked transformer reproduces both measured source hashes exactly.
+Generated core sizes are 17,168,611, 17,110,591, and 17,066,196 bytes,
+respectively; all three retain source-transparent IR and isolated cores.
+The variants do not enlarge arena/workspace capacities or alter ownership.
+
+### Exact comparison scope
+
+Each variant independently matches all 27 complete frozen development ledgers
+on GMP and tagged execution, plus two JavaScript controls. The checks include
+every output word, relation, element, factor record, basis record, unit
+exponent, return value, and parity counter. This establishes equality with
+the research baseline on those inputs, not public mathematical certification
+or cross-platform qualification.
+
+The focused factor-scan checker extracts and executes the actual group loop
+under exact modeled valuations. Across 2,500 deterministic cases it checks
+identical complete workspace mutations and ideal-power/membership call order,
+including zero valuations, auxiliary factors, rejected relations, and excessive
+valuations. It additionally checks 250 malformed ranges fail closed. This is
+a scan-equivalence test with modeled ideal arithmetic, not a substitute for
+the full native comparisons. On the research source, modeled workspace reads
+fall from 3,148,281 to 457,623. The checker also runs against the production
+helper's different power-storage implementation, rejects repeated/ambiguous
+transformations, and tests Unicode-safe source offsets.
+
+The actual composed online-HNF caller was separately checked against SymPy
+on 4,845 insertion prefixes and two hint policies. Exact HNF, support flags,
+and index-one status agree; 2,913 prefixes change the lattice. Sentinel
+objects prove the obsolete source/reduced matrices are never touched, and
+the original relation rows remain unchanged. This extends the insertion-only
+oracle to its real online-update caller.
+
+### Controlled three-way timings
+
+The dedicated `opt` VM ran the unchanged composed baseline and each isolated
+variant on CPU 2 under the exclusive timing lock. There was one warmup per
+implementation followed by six rounds using all six permutations of the
+three implementations. Thus each implementation occurs twice in every order
+position. All sources and binaries were staged before timing; no compilation
+or uploads overlapped measurement. Inputs were preallocated; the complete
+native call and cleanup were timed, with full ledger and parity checks after
+each call, outside timing. Every check passed.
+
+Medians below are milliseconds; the field labels have prefix `3.1.`:
+
+| Field suffix | Baseline | Word indices | Group ranges | Index speedup | Range speedup |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `341970033803678280.6` | 347.921 | 244.898 | 232.270 | 1.421× | 1.498× |
+| `1086061775432017340256300.1013` | 11370.049 | 5429.465 | 3488.508 | 2.094× | 3.259× |
+| `1086061775432017340256300.387` | 14300.597 | 8281.825 | 7124.813 | 1.727× | 2.007× |
+| `1086061775432017340256300.596` | 9249.727 | 5193.547 | 4086.300 | 1.781× | 2.264× |
+
+Each variant's observed sample range is disjoint from the baseline's on every
+field. For example, `.1013` has baseline 11335.5–11383.2 ms, indices
+5407.6–5447.3 ms, and ranges 3473.2–3494.9 ms. This is not the sub-percent
+word-prime result: source-level index representation and unnecessary group
+scans are both substantial costs on these larger workloads.
+
+Raw `timing-results.json` SHA-256 is
+`2572a483862a6784147b263b1adf18087b6ed484e8cf5f8616af931acf2569ab`.
+It records the runner, inputs, source and native binary hashes, sample orders,
+host identity, and all samples. Both variants improve independently; their
+benefits must not be multiplied or presumed additive. A combined variant is
+not part of this run.
+
+These are still **before/after research computation timings, not PARI wins**.
+The previously recorded PARI values on these fields are about 44, 777, 821,
+and 824 ms, respectively; those are contextual earlier measurements, not a
+fourth implementation freshly interleaved in this experiment. There is still
+a material gap. The next useful work is to compose the changes, reprofile the
+remaining cost, test new fields and limits, and turn the index finding into a
+general semantics-preserving compiler improvement through the compiler lane.
+Production integration must retain the exact range invariant and independently
+complete publication, resource, and platform qualification.
+
+The five focused source/valuation/HNF/residue tests pass after formatting.
+Merge invariants and direct documentation checks pass. The existing runtime
+build passed before the final research-only scripts/documentation additions;
+it is not an exact-final-metadata build claim. The broader `test:changed` run
+passed 196 unit files and rebuilt successfully, then stopped at five existing
+FFLAS/igraph failures in `test/ffi.cjs`, leaving 583 files unstarted. The fresh
+architecture run passes native/FFI/resource checks but still fails the same
+stale optimizer-opportunity manifest. These are not whole-suite passes. PR
+#203 remains draft, and production source remains 480241/485000 bytes.
+
+The sources, generated cores/headers, full comparison ledgers, profile log,
+symbol table/load segments, and timing records are hash-archived under
+`build/cubic-analytic-schedule-evidence/factor-group-scans`: 162 files,
+392,204,462 original bytes and 21,564,037 gzip bytes. Each compressed file was
+round-trip verified. The archive manifest SHA-256 is
+`6ce70f31bb28277259e7933e53125ff90972f44ebd12b1029c5025643ae79bb6`.
+The duplicate Node executable and unusable `gprofng` experiment directories
+are excluded; their limitations are recorded rather than treated as evidence.

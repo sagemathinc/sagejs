@@ -9,6 +9,11 @@
   "objective": "Understand deeply how to improve cubic class number computation to be competitive with PARI overall, preserving exact certification and resource contracts",
   "base_commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
   "claims": [
+    "bench/class-unit-groups/cubic-factor-scan-ablation.py",
+    "bench/class-unit-groups/cubic-factor-scan-check.py",
+    "test/cubic-factor-scan-ablation.cjs",
+    "bench/class-unit-groups/cubic-word-prime-ablation.py",
+    "test/cubic-word-prime-ablation.cjs",
     "bench/class-unit-groups/cubic-residue-algebra.py",
     "test/cubic-residue-algebra.cjs",
     "bench/class-unit-groups/cubic-two-primary.py",
@@ -1881,12 +1886,62 @@
       "commit": "164a10fac5cdd34b725c5ad4e422f6f074eb48c0",
       "workspace_fingerprint": "e1061cdd0ac50984e3ef228b5bfb97358a091adec0cba98080794636e6e9e17c",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 518.61,
+      "started_at": "2026-09-10T17:13:47.283Z",
+      "commit": "217fb05bfdcb37788cd9369094a7ab75c1d4929f",
+      "workspace_fingerprint": "ada5f20d4f2a511c2413afa73dced14ae7a30bf9014d702234320690fcc86516",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base HEAD",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 795.052,
+      "started_at": "2026-09-10T17:23:20.833Z",
+      "commit": "217fb05bfdcb37788cd9369094a7ab75c1d4929f",
+      "workspace_fingerprint": "c1bc5bd710e29755922cec1332f021b9197226c7a3e17945ecf2e6a348f3f5d5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-factor-scan-ablation.cjs test/cubic-word-prime-ablation.cjs test/cubic-incremental-hnf.cjs test/cubic-residue-algebra.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.396,
+      "started_at": "2026-09-10T17:53:07.786Z",
+      "commit": "217fb05bfdcb37788cd9369094a7ab75c1d4929f",
+      "workspace_fingerprint": "950b665bd65d282fdf6c7914dc04744a60906415440d4c03e394c0754bb284fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-factor-scan-ablation.cjs test/cubic-word-prime-ablation.cjs test/cubic-incremental-hnf.cjs test/cubic-residue-algebra.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.32,
+      "started_at": "2026-09-10T17:57:31.014Z",
+      "commit": "217fb05bfdcb37788cd9369094a7ab75c1d4929f",
+      "workspace_fingerprint": "028c1f3ac6ff91d83dae89517e989a9bef091b690e7bed669ffe7851f28997c1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.084,
+      "started_at": "2026-09-10T17:57:46.147Z",
+      "commit": "217fb05bfdcb37788cd9369094a7ab75c1d4929f",
+      "workspace_fingerprint": "028c1f3ac6ff91d83dae89517e989a9bef091b690e7bed669ffe7851f28997c1",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Checked cyclic residue-algebra research checkpoint: one guarded index-prime shortcut identifies a verified basis 1,t,t^2 and counts distinct roots of the reconstructed cubic; original exact enumeration remains on every decline. Caller retains primality and certified maximal-order premises. 733 finite-algebra cases pass CPython and GMP/tagged/JavaScript; 552 accept,181 decline. Combined shortcut/fallback checks pass724 small cases in both policies on all3 backends.24 fresh LMFDB development fields outside prior27 agree with PARI idealprimedec; these are local-algebra checks, not new class-group certificates. All27 complete output ledgers and parity counters remain unchanged on GMP/tagged, plus2 full JavaScript controls. Dedicated opt target confirmation improves5307.402 to455.656ms (11.648x), full output identical; priorPARI44ms still leaves10.4x gap. Three relation-collection-heavy controls are essentially unchanged, not broad wins. Local operation improves38.4–1135.9x on24 fields but cached splitting can eliminate this operation from full calls. AST boundary check proves the rest of the parity source unchanged. Research source593759/core17245835 bytes; no new owned resources, changed arena limits, compiler edits, or production allowance changes (480241/485000).82 source/evidence files hash-archived at build/cubic-analytic-schedule-evidence/cyclic-residue (4.72MB gzip).28 focused checks,196 unit files,8m47s build,docs/merge pass; CLI retains5 existing FFLAS/igraph failures with583 unstarted, architecture retains stale optimizer manifest. PR203 remains draft. Next compose independently tested in-place HNF with this shortcut and profile the residual456ms and larger13–17s relation-collection cases; PARI target has121 ideals/127 rows versus our121/128, so investigate cost per relation and lattice maintenance. No public-certificate, overall-PARI-competitiveness or cross-platform qualification claim.",
+    "summary": "Larger-field factor-scan checkpoint: composed cyclic residue shortcut with in-place exact online HNF, preserving all 27 GMP/tagged full ledgers and two JavaScript controls. Composition improves three seconds-scale cases by 1.19–1.45x. A checked word-prime ablation gives negligible larger-field gains and is not promoted. Successful native leaf-PC sampling identifies substantial size/export/index-conversion costs; failed gprofng profiles are excluded. Two isolated source transformations reproduce exact hashes: explicit uint64 offsets remove eight exact-index reads/two writes; checked contiguous group ranges replace two full-factor-base scans per group while retaining valuation and group tests. Each passes 27 full GMP/tagged comparisons and two JS controls. Actual group-loop oracle checks 2500 cases, mutation/call order and 250 invalid ranges; actual online HNF caller passes 4845 prefixes and two hint policies. Six balanced-order rounds on exclusive opt: baseline/indices/ranges medians ms are 347.921/244.898/232.270,11370.049/5429.465/3488.508,14300.597/8281.825/7124.813,9249.727/5193.547/4086.300. Range gains 1.50–3.26x, not PARI wins; variants are not yet composed. All timed full ledgers/parity match. No compiler edits, changed limits or production promotion; production 480241/485000 bytes. 162 files hash-archived in build/cubic-analytic-schedule-evidence/factor-group-scans,21.56MB gzip. Five focused tests, merge/docs checks pass; broader unit/build pass, CLI retains five FFLAS/igraph failures and architecture retains stale optimizer manifest. PR203 remains draft. All experiment jobs terminal. Next compose both variants, reprofile residual seconds-scale costs, freeze fresh neighboring cases, and coordinate a semantics-preserving compiler index improvement before production/public/platform qualification.",
     "risks": [
-      "Parity admission remains unpromoted:27/27 development diagnostics are not public certificates or unseen-corpus qualification. Larger opt controls remain16.8–21.5x PARI; another field remains121x despite3.64x native improvement. Word scratch increases by up to32856 bytes outside the unchanged arena. Missing LMFDB answers remain null; comparison uses hashed successful PARI records. Handoff metadata is written after the build, not an exact-final-metadata build qualification.",
+      "Current index/range ablations are research-only. Caller-built contiguous factor-group partition is essential: range bounds alone do not authenticate arbitrary group metadata. Word-offset sums fit only by the bounded caller layout; do not globally change exact Python promotion. Development ledger equivalence and sampling do not prove public certificates, all-target safety, universal no-regression, or overall PARI competitiveness. Prior and current PARI clocks are not freshly interleaved. Sampled leaf costs do not identify inclusive callers. Handoff metadata is written after build; no exact-final-metadata build qualification.",
       "The full-initial and late-activation traversal experiments regress other fields. Neither is approved as a global replacement or a PARI timing win; production remains unchanged.",
       "Post-rank and analytic source copies are unpromoted. Matching exact presentation invariants and an externally supplied compact-unit interval do not constitute a closed native class-group certificate. Native compact dependency authentication, general invariant publication, adaptive analytic capacity, full-corpus/cross-platform replay and controlled timing remain open. Named-constant exponentiation is a recorded compiler gap; the source uses bounded doubling without weakening checks.",
       "Current overall-goal priority supersedes small-field tuning. Independent compact-unit prototype is a CPython/SymPy research oracle, not native integration or a class-group certificate. Unit membership does not prove nontorsion/fundamentality. PARI versions produce different compact witnesses; do not conflate382/34-bit with412/260-bit. Existing development distribution cannot support claims about overall cubic workloads.",
@@ -1904,7 +1959,7 @@
       "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
     ],
     "next_steps": [
-      "Profile maximal order/factor base, relation collection, exact lattice/kernel work, compact-unit/log work and analytic refinement on the larger timed regimes. Three controls with414/364/424 factors and million-scale regulators cost13.8–17.7s, about83% of selected new native time. Equal factor-base cardinalities do not prove equal work. Retain bounded parity admission while extending holdouts and publication/resource/platform review. Integer bitwise and discarded-helper-call/void compiler ergonomics remain coordinated work, not authority to edit overlapping claims.",
+      "Compose checked group-range scans with machine-sized offsets, verify full ledgers and fresh holdouts, then reprofile the remaining 3.49–7.12s research paths. Preserve exact bounds, candidate order, range-partition invariant and proof/resource contracts. Coordinate general native vector-index lowering with the compiler lane; no global uint64 arithmetic semantic change and no edits to overlapping compiler claims from this math lane. Consolidate the research closure and complete detached/public/platform qualification before marking PR203 ready. Current source/IR/profile/timing identities and archived evidence are in the latest docs sections; historical next steps below are superseded.",
       "Use the committed 184x182 admission counterexample to implement and qualify parity-aware proposal admission; the auxiliary basis must track retained rows only, not rejected proposals.",
       "Preserve successful powered continuation while extending missing ideal coverage; compare the complete 27-field panel and retain all declines/regressions before any controlled opt timing or production promotion.",
       "Integrate native compact dependency discovery and authentication with the successful diagnostic analytic path, avoiding expanded huge units and dense padded proof allocations. Preserve the exact row-index proof and make invariant output dimensioned. Replace the tiny-field fixed analytic refinement assumption with budgeted refinement justified by actual joint-index insufficiency; the5400 diagnostic is not a new global default. Only benchmark complete accepted computations against PARI.",
