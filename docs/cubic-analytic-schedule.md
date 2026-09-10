@@ -10396,3 +10396,224 @@ cost of constructing its exact witness, and test whether compact/lazy
 transformation data can preserve exact replay while reducing HNF work.
 Dropping the witness or accepting an uncertified floating result is not
 the proposed optimization.
+
+#### Canonical HNF clean-prefix experiment
+
+The next measured change removes redundant normalization in the existing
+ordinary-Python in-place row-HNF insertion, without changing its pivot
+sequence. The reproducible transformer is
+`bench/class-unit-groups/cubic-hnf-clean-prefix.py`; production dispatch is
+unchanged. Its input is the declared-FLINT prime-support closure above.
+
+The invariant is local and exact. A canonical padded row HNF has positive
+pivots and, above a pivot $p$, entries $a$ satisfying $0\le a<p$. Until the
+first mutation of a **basis** row, all such normalization quotients
+$\lfloor a/p\rfloor$ are zero. Eliminating entries in the separate incoming
+residual does not change this fact. A monotone `basis_changed` flag therefore
+starts false and becomes true on row exchange, Bezout combination, or
+negative-pivot normalization. Only while it is false may the above-pivot
+normalization loop be omitted. After the first mutation the original loop
+runs unchanged at every remaining pivot: an earlier row change can invalidate
+later-column residues even if a later pivot itself does not change.
+
+Thus the omitted operations are identities, and the result is the same
+canonical HNF of the enlarged lattice. This argument uses neither GRH nor
+empirical agreement. It requires the existing helper's canonical-input,
+distinct-residual, dimension, and ownership preconditions; it is not an
+optimization for arbitrary unnormalized matrices. There is no new arena
+entry, matrix allocation, bounds relaxation, or proof acceptance rule.
+
+`test/cubic-hnf-clean-prefix.cjs` compares both actual helper bodies and an
+independent SymPy HNF oracle on 4,845 successive prefixes, including sparse,
+signed, rank-deficient, skipped-pivot, repeated, and 300-bit inputs. A
+64-dimensional identity-basis control removes exactly 2,016 matrix reads.
+Malformed/repeated transformations fail closed. The independently tested
+helper body, excluding its docstring, is AST-identical to the compiled
+experiment's input helper. All 27 complete GMP and tagged development
+ledgers, two JavaScript controls, and all 20 frozen extension observations
+remain identical, including both unresolved cases. Existing exact replay
+evidence is preserved by equality of its full inputs, not merely by equality
+of class numbers. This is not new maximality, fundamentality, or public
+certificate qualification.
+
+Controlled `opt` timing uses one warmup per variant, six alternating-order
+pairs, CPU 2 under the exclusive timing lock, preallocated inputs, and the
+entire native call and cleanup. Full output/parity checks are outside the
+timed interval. Both native columns contain the FLINT prime-support filter.
+The separately batched PARI 2.17.4 column uses fresh seeded `bnfinit(f,0)`
+calls and checks class numbers and invariants.
+
+| Label suffix | Before | Clean prefix | PARI 2.17.4 |
+| --- | ---: | ---: | ---: |
+| `341970033803678280.6` | 173.50 ms | 168.69 ms | 24 ms |
+| `1086061775432017340256300.1013` | 2345.78 ms | 2172.59 ms | 199 ms |
+| `1086061775432017340256300.387` | 3915.67 ms | 3764.58 ms | 361 ms |
+| `1086061775432017340256300.596` | 2723.61 ms | 2541.09 ms | 244.5 ms |
+
+The clean variant's slowest sample is faster than the baseline's fastest
+sample in all four comparisons. These modest 2.8–7.4% time reductions are
+not a PARI win or a universal no-regression claim. Compare paired columns,
+not absolute native times from different earlier runs. Raw report SHA-256:
+`df8684cd10ec2b6662cd298faa390d99a7af3ea5e408ede8f79a6534b4ec0753`.
+
+Source: 594,411 bytes, SHA-256
+`91aca70c1a347653bdfa64ab176da7a5c397a8c0fcf177ea3b58973ad708b17a`;
+native key `3c89d5f019695406a46ba444457f30f49a511b59d6f08458079947081b188abb`.
+Core: 16,949,761 bytes, SHA-256
+`ff9b7d2afe69d4b7ab7df3c71ca52b1584b125d5d75ddabfa4db5eb6d75377bc`.
+Addon: 20,779,632 bytes, SHA-256
+`48c6b3db1c2443e34e07544df5d959cc870a0b0776d5ce125d1205f912ee9828`.
+The pinned compiler remains `8cd09c4484cddfcf7024b5169a4c18fa0b07d3f0`.
+The larger research source does not alter the production source allowance:
+production is still 480,241/485,000 bytes, and this closure is unpromoted.
+
+Expanded local diagnostic instrumentation independently checks all three
+profiled full ledgers and attributes inclusive/exclusive time through 24
+selected helpers. On `.1013`, the 2340 ms instrumented root includes 790 ms
+of online HNF insertion and 143 ms in compact-unit construction. On `.387`,
+the 3854 ms root includes 829 ms of HNF insertion, 424 ms in compact-unit
+construction, and 1192 ms exclusive to ellipsoid collection. Root-exclusive
+remainders are 789 and 708 ms respectively: these are **unattributed work**,
+not evidence of idle overhead or a named mathematical phase. Clock wrappers
+alter optimization and execution; these figures are diagnostic, not the
+controlled timing table. Nested exclusive times sum to the root time.
+
+In particular, our online HNF helper maintains a canonical basis, not PARI's
+full integer transformation sidecar. The PARI flag observation does not
+justify assuming that our remaining HNF cost is exact-witness transport.
+The next useful investigation is the dense row-update work and its actual
+sparsity, alongside attribution of the uninstrumented root and ellipsoid
+cost. Compact witness construction remains a separate target.
+
+Profile report SHA-256:
+`815071e5efa4d3bdb3fb3218f5cb7cb288fb94d17cd3959bd1d771a2fb6206c8`.
+Instrumented core/addon SHA-256 values are
+`54137c9acf81586d87e63641266d2c8c147623738010a4fdd0d45fbd5abf32ba`
+and `080c3042b505ac21f490e2331710abce0bbc76246e4cde7d7f61aa373c2a31a5`.
+They are diagnostic-only artifacts, not authenticated production kernels.
+
+Qualification correction: the previously running broad changed-file check
+has finished unsuccessfully. All 196 unit files, the full rebuild, and docs
+checks passed, but the 589-file CLI suite stopped at `test/ffi.cjs`. A focused
+rerun passes 40/45 tests; the five failures require missing FFLAS generated
+manifest, graph addon, or `libigraph.a` artifacts. The remaining CLI files
+were not run. The older stale optimizer-opportunity architecture manifest
+failure also remains. Neither gap is hidden by the focused HNF successes;
+PR #203 stays draft pending integration and qualification.
+
+The completed clean-prefix experiment and expanded phase diagnostics are
+round-trip hash-archived under
+`build/cubic-analytic-schedule-evidence/hnf-clean-prefix`: 61 files,
+210,807,501 raw bytes and 25,998,084 gzip bytes. Manifest SHA-256:
+`9f81c3d1a7575a2157f1e4abc97f7dc2e0a3e6fe04c6a94e4edb5543bb46700b`.
+
+#### Backend identity correction and the closed-fmpz obstruction
+
+An identical-artifact GMP/tagged control gives effectively equal timings:
+168.34/168.20, 2170.56/2178.99, 3794.54/3797.25 and 2542.60/2539.43 ms
+on the four fields above, again with all full-ledger comparisons passing.
+Report SHA-256:
+`31de5f5ea927fb03c9d3ba0204ec3e0d10059ed95f870f16da2716c3efc13c00`.
+Generated-code inspection explains why: the root
+`tagged_certified_complex_cubic_class_group_v1` immediately calls
+`native_certified_complex_cubic_class_group_v1`. Its policy is `kind: gmp`,
+`requiresExactWorkspace: true`, with the stated reason that a lexical
+live-exact workspace has one GMP ownership backend.
+
+**Consequently the GMP/tagged checks reported for this research closure are
+two entry-point checks, not independent arithmetic-backend execution.**
+Historical statements about those checks must be read with this qualification.
+Independent Python helper oracles, the two actual JavaScript controls and
+exact detached presentation replays remain distinct evidence. The new control
+does not compare GMP performance against an executing tagged arithmetic body.
+
+The GMP HNF body repeatedly reads matrix entries into temporary `fmpz_t`
+values, copies them to `mpz_t` scalars, and converts them back for matrix
+stores. These conversions are visible in generated C; their aggregate time
+has not yet been isolated. Merely selecting the tagged entry point cannot
+eliminate them. This is a representation question in addition to the dense
+identity-update work.
+
+Read-only inspection of the pinned compiler's actual
+`inspectFmpzFunction` across all 137 reachable functions finds precisely two
+rejected functions. `_cubic_norm_has_prime_support` uses declared `fmpz_gcd`,
+which is outside the closed-fmpz qualification list. The compact-unit helper
+uses three other unqualified declarations: `fmpz_matrix_right_kernel`,
+`fmpz_matrix_nrows`, and `fmpz_matrix_ncols`. It also owns temporary matrix
+resources, whereas the existing fmpz helper policy admits borrowed resource
+aliases but not such owned locals. No unsupported IR operation kinds are
+reported for either function. The root itself passes the local fmpz shape
+inspection, but the transitive graph does not qualify.
+
+This identifies a concrete compiler investigation: qualify same-source
+closed-fmpz calls with nonescaping owned helper temporaries and the necessary
+declared FFI signatures, with all-exit cleanup and arena provenance tests.
+Simply adding declarations to a whitelist is insufficient: ownership,
+allocation, source provenance, generated lowering, exact differential
+execution and controlled performance must all be checked. The inspection
+does not modify policy or assert that the unqualified route is safe. The
+pinned compiler and production backend remain unchanged.
+
+The entry-point timing, read-only policy probe and relevant pinned compiler
+sources are archived under
+`build/cubic-analytic-schedule-evidence/backend-entry-control`: 11 files,
+4,546,256 raw bytes and 124,849 gzip bytes. Manifest SHA-256:
+`8db7986eab4f11556350eea15129cf1d25ebae78edbe88f051d021b60c7289d9`.
+
+#### Zero-coefficient HNF updates
+
+`bench/class-unit-groups/cubic-hnf-zero-updates.py` adds a separate, reversible
+source ablation on top of the clean-prefix closure. It avoids destination
+reads, arithmetic and stores for $x\leftarrow x-q\cdot0$, and avoids updating
+a Bezout pair when both input entries are zero. All nonzero operations keep
+their previous order. The only omitted operations are identities over
+$\mathbb Z$; the helper's valid dimensions and distinct matrix owners are
+required. This is not a compiler-wide rule that could hide arbitrary indexing
+errors. No new cache, sparse representation, arena allocation, capacity or
+acceptance predicate is introduced.
+
+The separate regression again checks 4,845 full prefixes against the previous
+helper and independent HNF oracle. A 64-dimensional identity-basis example
+eliminates 2,016 residual stores, leaving 64. All 27 GMP/bridged-tagged full
+development ledgers, two actual JavaScript controls and 20 extension
+observations are unchanged. An initial incorrectly specified JavaScript
+selection matched zero fields; that empty report is retained as invalid,
+not as a passing test. The runner now rejects unknown/duplicate/empty
+selections, and the two intended JavaScript fields were actually rerun.
+
+Controlled whole-call median milliseconds, using the same protocol as above:
+
+| Label suffix | Clean prefix | Zero-update guard | PARI 2.17.4 |
+| --- | ---: | ---: | ---: |
+| `341970033803678280.6` | 168.69 | 166.94 | 24.5 |
+| `1086061775432017340256300.1013` | 2189.55 | 2061.14 | 201 |
+| `1086061775432017340256300.387` | 3845.02 | 3761.26 | 362.5 |
+| `1086061775432017340256300.596` | 2604.32 | 2543.34 | 246.5 |
+
+All six paired samples improve on the first three fields; five of six
+improve on the fourth. Only `.1013` has disjoint sample ranges, with a
+5.9% median reduction. The smaller 1–2.3% changes need broader replication;
+this is not a universal performance claim. The report's inherited `clean`
+variant key denotes the new zero-update source, not its clean-prefix parent;
+its source and binary hashes disambiguate both implementations. Report hash:
+`0f87b552066ad72921c531804a80bb8bb1d3cd2c1cca9af51591417c01d1419e`.
+
+Source: 594,700 bytes, SHA-256
+`27469372a5a3b189e81c1e0e3a3b7f8f434e5663b6412501af942159957078da`;
+native key `b3523f0573847c0122e5596e86389bff785b01f78529c7fd100b252749938347`.
+Core: 16,962,615 bytes, SHA-256
+`228472e32ad27f9a70c376173d682dd2478cfe01ae1fcd7d0c59d7dfcb7668ae`.
+Addon: 20,779,632 bytes, SHA-256
+`836a007c272e2802311ea8d0e13342ea037121d96369d66f30affae88a00838f`.
+Five focused regression tests pass. A fresh architecture run again stops at
+the stale optimizer-opportunity manifest after passing the preceding FFI,
+native, package, Wasm and lifetime checks. Production is unchanged and the
+research PR remains draft. The measured gains do not close the roughly
+7–10x remaining gap to PARI's flag-0 class-invariant computation. Qualifying
+the closed-fmpz representation is the next structural investigation, rather
+than assuming that more zero-skipping will bridge that gap.
+
+The completed zero-update evidence is round-trip hash-archived under
+`build/cubic-analytic-schedule-evidence/hnf-zero-updates`: 50 files,
+170,024,609 raw bytes and 16,552,422 gzip bytes. Manifest SHA-256:
+`ca47d6065e01d595b22721653a6e6c24fd188f26550ca10b44f187ce2b98561c`.

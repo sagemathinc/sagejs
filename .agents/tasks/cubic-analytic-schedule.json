@@ -9,6 +9,10 @@
   "objective": "Understand deeply how to improve cubic class number computation to be competitive with PARI overall, preserving exact certification and resource contracts",
   "base_commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
   "claims": [
+    "bench/class-unit-groups/cubic-hnf-zero-updates.py",
+    "test/cubic-hnf-zero-updates.cjs",
+    "bench/class-unit-groups/cubic-hnf-clean-prefix.py",
+    "test/cubic-hnf-clean-prefix.cjs",
     "bench/class-unit-groups/cubic-prime-support-ablation.py",
     "test/cubic-prime-support-ablation.cjs",
     "bench/class-unit-groups/cubic-rank-search-budget.py",
@@ -2071,10 +2075,80 @@
       "commit": "6963d3b953576b78ba0bc6d63293c61b9f8b10e2",
       "workspace_fingerprint": "7a1b97be9da83b5e95d1acfa50f02f736be62c607a1dc54fef3279ae27f6cdb4",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-hnf-clean-prefix.cjs test/cubic-incremental-hnf.cjs test/cubic-prime-support-ablation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.329,
+      "started_at": "2026-09-10T19:46:45.983Z",
+      "commit": "4a97527429862aaa140867202f46779d1a596b4f",
+      "workspace_fingerprint": "005bbedd044369dfbf0796c015d01fc14d53ebba929d22152ad9c2ef81620a0d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-hnf-clean-prefix.cjs test/cubic-incremental-hnf.cjs test/cubic-prime-support-ablation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.35,
+      "started_at": "2026-09-10T19:57:33.325Z",
+      "commit": "4a97527429862aaa140867202f46779d1a596b4f",
+      "workspace_fingerprint": "1730fd67cd157753b8f9b9ccec121ef2a891e92193a6c83f2236f507c603f33c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.529,
+      "started_at": "2026-09-10T19:58:08.762Z",
+      "commit": "4a97527429862aaa140867202f46779d1a596b4f",
+      "workspace_fingerprint": "1730fd67cd157753b8f9b9ccec121ef2a891e92193a6c83f2236f507c603f33c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-hnf-clean-prefix.cjs test/cubic-hnf-zero-updates.cjs test/cubic-incremental-hnf.cjs test/cubic-prime-support-ablation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.336,
+      "started_at": "2026-09-10T20:04:40.379Z",
+      "commit": "4a97527429862aaa140867202f46779d1a596b4f",
+      "workspace_fingerprint": "5dede5ffa72510d01580315933581ace40a77b6a2d8fc47dec4c8287f2715ba6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.393,
+      "started_at": "2026-09-10T20:05:11.764Z",
+      "commit": "4a97527429862aaa140867202f46779d1a596b4f",
+      "workspace_fingerprint": "5dede5ffa72510d01580315933581ace40a77b6a2d8fc47dec4c8287f2715ba6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.897,
+      "started_at": "2026-09-10T20:06:04.208Z",
+      "commit": "4a97527429862aaa140867202f46779d1a596b4f",
+      "workspace_fingerprint": "5dede5ffa72510d01580315933581ace40a77b6a2d8fc47dec4c8287f2715ba6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.577,
+      "started_at": "2026-09-10T20:08:07.165Z",
+      "commit": "4a97527429862aaa140867202f46779d1a596b4f",
+      "workspace_fingerprint": "58eec226d8fbf05f6ecae2bcab818ca6a05c5d938e008f2631f76eadcff6a698",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Exact prime-support filtering implemented as a reproducible source-transparent research ablation, using either the existing Euclidean gcd or the declared FLINT gcd. Both variants preserve all 27 complete GMP/tagged development ledgers, two JavaScript controls, and all 20 frozen extension observations, including the doubled-index and projection failures. Existing 19 exact presentation replays remain applicable by complete input equality; no new full certificate or public acceptance claim. Controlled opt six-round pairs improve the default filter by 1.09–1.39x on four larger fields, including 6.064 to 4.353 seconds. FLINT adds about 4–5% on two fields, with weaker overlapping samples on the others. Fresh pinned PARI flag controls expose an important comparison distinction: flag 0 takes 24/201/356/250 ms versus flag 1 49/918/923.5/962 ms. PARI source and traces locate much of that difference in transport of exact transformation data through HNF; this is the next structural research lead, not permission to drop exact witnesses. Source/resource production caps unchanged; research source remains unpromoted. Four focused tests, merge/direct-doc checks and all 196 unit files pass. Wider architecture check retains the old stale optimizer-manifest failure; the changed-file full rebuild and docs check passed, reusing all 41 production kernel families. Its wider 589-file CLI suite is running in exec session35946 and is not claimed passed. Main experiment 128 files round-trip archived under build/cubic-analytic-schedule-evidence/prime-support-filter, with separate pinned-PARI flag and transform-trace archives. PR203 remains draft.",
+    "summary": "Completed two general exact HNF source ablations: clean-prefix skipping and zero-coefficient identity updates. Each passes 4845 exact prefix comparisons against the old helper and independent SymPy HNF; 27 development ledgers, two actual JavaScript controls and all20 extension observations remain unchanged, including two unresolved cases. Controlled opt clean-prefix medians improve 2.8–7.4%; the subsequent zero-update guard improves .1013 from2189.55 to2061.14ms with disjoint samples, with smaller1–2.3% median changes on three others. Still roughly7–10x PARI2.17.4flag0, not a PARI win. Expanded local profiles isolate790/829ms online HNF and143/424ms compact-unit construction; root-exclusive remainder is unattributed. Important correction: the tagged root delegates to GMP, so the GMP/tagged checks exercise two entry points, not independent arithmetic implementations. Identical-artifact control confirms equivalent timings. Read-only actual compiler inspection finds only two rejected functions in137 reachable: declared gcd and compact-unit helper; required FFI declarations and nonescaping owned helper matrices are outside the closed-fmpz qualification. Next investigate that representation/ownership/compiler gap, preserving exact witnesses and cleanup, rather than changing bounds or merely extending a whitelist. Compiler/production/caps unchanged, research closure unpromoted. Five focused tests, strict382 modules and merge/docs checks pass. Fresh architecture check retains stale optimizer-manifest failure; wider196-unit/build/docs pass but CLI stops on missing FFLAS/graph/igraph artifacts. Completed evidence archived under hnf-clean-prefix, backend-entry-control and hnf-zero-updates with hashes/proofs in docs. No live timing/build jobs remain from this checkpoint. PR203 stays draft.",
     "risks": [
       "Current index/range ablations are research-only. Caller-built contiguous factor-group partition is essential: range bounds alone do not authenticate arbitrary group metadata. Word-offset sums fit only by the bounded caller layout; do not globally change exact Python promotion. Development ledger equivalence and sampling do not prove public certificates, all-target safety, universal no-regression, or overall PARI competitiveness. Prior and current PARI clocks are not freshly interleaved. Sampled leaf costs do not identify inclusive callers. Handoff metadata is written after build; no exact-final-metadata build qualification.",
       "The full-initial and late-activation traversal experiments regress other fields. Neither is approved as a global replacement or a PARI timing win; production remains unchanged.",
