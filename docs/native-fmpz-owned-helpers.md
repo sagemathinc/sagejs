@@ -821,3 +821,128 @@ The ignored backup `build/cubic-online-echelon-evidence` contains 314 files,
 was read back and checked against its original size and SHA-256. Its manifest
 hash is `af19c7333907f879ad18b48a70907f4fc494bf7e83483eb84fb08b43da9a44d3`.
 These are local backed-up research artifacts, not a new release package.
+
+## Unit-block batch insertion: a measured primitive, not yet collector integration
+
+The following campaign implements the smaller-presentation idea as an ordinary
+Python helper, `_row_hnf_unit_block_batch`, compiled with the existing owned
+matrix-helper support. No compiler change or handwritten mathematical C is
+needed. It takes a canonical padded row HNF and a batch of original integer
+rows, then returns the exact canonical HNF of the enlarged lattice.
+
+This is inspired by PARI's retained identity block, but is not a transcription
+of `hnfspec_i`: it uses unit pivots in the already canonical basis rather than
+PARI's more general sparse pivot permutations. It rebuilds the compact block
+at each batch boundary. Retaining that block across collector events remains
+an integration opportunity, not a completed feature.
+
+### Exact quotient, lifting, and an in-place reconstruction invariant
+
+Write $P$ for the unit-pivot columns of the current HNF, $S$ for the remaining
+columns, and $U$ for the integer span of the unit-pivot rows. Restricted to
+$P$, those rows form an identity matrix: canonical HNF has zero entries above
+a unit pivot, and echelon form has zeros below it. Thus the integral map
+
+$$
+\pi(x)=x_S-x_P B_{P,S}
+$$
+
+is surjective onto $\mathbb Z^S$, with kernel exactly $U$. Here $B_{P,S}$
+means the unit-pivot rows restricted to $S$, not an assumption that their
+physical row indices equal their pivot columns. Since the old relation
+lattice contains $U$, adjoining new rows is equivalent to adjoining their
+images under $\pi$ to the old nonunit rows restricted to $S$. This is an
+integral quotient isomorphism; no saturation, rational approximation, or
+unproved index division occurs.
+
+The helper computes HNF of that smaller presentation through the declared
+FLINT operation, embeds its nonzero rows back into the original $S$
+coordinates, and merges them with the original unit rows by leading column.
+Their union generates exactly the enlarged original lattice and is positive
+row echelon. The preceding source-transparent above-pivot normalizer then
+makes it canonical.
+
+The merge avoids allocating another square snapshot. Adding rows cannot
+decrease rational rank in any initial coordinate prefix. Consequently each
+retained unit row moves to the same or a later physical row. A descending
+merge therefore copies it before overwriting any still-needed old unit row.
+The code checks this ordering inequality and fails on inconsistency. It uses
+three short metadata rows, reused as normalization support after lifting.
+Compact matrices are nonescaping owned helper locals and close between
+batches. Rank-deficient and zero-dimensional inputs are included in the
+independent checks; full rank is not assumed by this primitive.
+
+### Independent evidence
+
+- 240 sequences at batch sizes 1, 2, 4, 8 and 32 give 1,200 schedules and
+  **5,218 batch-boundary prefix checks**. An independent SymPy HNF of the
+  original rows checks the complete canonical matrix, not just rank/index.
+- The same schedules give **3,600 actual fmpz/GMP/JavaScript comparisons**.
+  Published witness buffers contain rank, index, and every HNF entry.
+- All four larger retained ledgers agree exactly with the existing
+  row-insertion helper at batch sizes 8, 32 and 64, in both fmpz and GMP.
+  All 32 large checks succeed within the unchanged arena parameters.
+- An additional independent SymPy replay checks all four large matrices.
+  Modular elimination selects a full-rank square minor of the **original
+  relation rows**. Its exact determinant supplies a proven multiple of the
+  row-lattice index for modular HNF. The determinant is not guessed from
+  either implementation's output. These minors have 39, 82, 104 and 111 bits;
+  all three batch sizes match the resulting exact canonical HNF.
+
+The independent replay verifies the relation-lattice computation, not the
+principal-ideal authentication, analytic assumptions, fundamental-unit index,
+or complete class-group certificate. Those remain separate obligations.
+
+### Two controlled isolated timings
+
+Both runs use locked `opt`, CPU 2, identical compiler/library artifacts, one
+warmup and eight balanced rotating/reversed rounds. Input packing is outside
+timing; the complete native replay, output copy and cleanup are inside it.
+Every full HNF is checked outside timing. The row baseline inserts every
+retained row; it is not the complete collector with its modular admission,
+membership shortcuts, and proof scheduling. Therefore these numbers must not
+be substituted directly into a claimed end-to-end speedup.
+
+| Field suffix | Rows × columns | Row / batch-32 (ms) | Repeat row / batch-32 (ms) |
+| --- | --- | --- | --- |
+| `341970033803678280.6` | 128 × 121 | 13.24 / 13.04 | 13.27 / 13.06 |
+| `1086061775432017340256300.1013` | 430 × 424 | 327.09 / 175.80 | 326.43 / 175.96 |
+| `.387` | 404 × 364 | 393.21 / 169.45 | 392.84 / 169.08 |
+| `.596` | 420 × 414 | 522.50 / 222.70 | 524.79 / 222.21 |
+
+The approximately 1.9--2.4× isolated gain repeats on the larger ledgers.
+Batch 64 is slower on the smaller ledger and on `.1013`/`.387`, while roughly
+matching batch 32 on `.596`; increasing the batch is not uniformly better.
+This is neither a PARI timing comparison nor a new public class-group result.
+The full cubic research baseline remains unchanged until integration passes.
+
+### Integration is the next required step
+
+The collector's exact basis affects missing-rank recovery, quotient-guided
+ideal selection, unit-index stopping, per-row support, and requests for an
+early proof attempt. A fixed batch size alone cannot preserve those events.
+The concrete next experiment is an explicit resident unit-block state:
+
+- Project incoming rows into the retained nonunit coordinates, maintaining
+  current exact membership and lattice-change information there.
+- Retain the unit-coordinate map and original unit rows, instead of repeatedly
+  materializing the full original-coordinate HNF during collection.
+- Materialize and synchronize the full HNF before existing consumers that
+  inspect its coordinates. Distinguish that materialized prefix from the
+  complete retained relation ledger; never pretend a stale matrix is current.
+- Preserve support witnesses and stopping events, replay the complete output,
+  and measure the complete polynomial-to-result computation on the wider
+  corpus. If an event requires earlier synchronization, the batch ends there.
+
+The prototype's cache identity is
+`9455ddc19eff71509124f9356e4cee6d3151b228c763315c665471cf0773c565`;
+all three functions qualify for direct fmpz. Timing hashes are
+`2af31de51a8e9bdc5d88cbb410dae909e5ce78df29c8306d1a3c649839779c93`
+and `7279319751b7c2614b18dea0d5d3540f467f9cc0dec935949f00d8967bb19a1f`.
+
+The round-trip-verified ignored local backup
+`build/cubic-unit-block-batch-evidence` contains 71 files, 69,226,138 raw bytes
+compressed to 15,952,090 bytes. Its manifest hash is
+`3021ed28b177629e02b0c07e2ffa2651620da5d6124c362bb3771fc2589fc35b`.
+The archive includes the actual typed Python helper, generated cores, scripts,
+independent small/large replays, complete HNF outputs, and both timing runs.
