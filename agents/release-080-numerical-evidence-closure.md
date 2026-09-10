@@ -92,3 +92,54 @@ Direct checks of all four real npm tarballs and their packaged SEA executables
 pass after the correction. The broader release and focused numerical tests pass:
 253 passed, two skipped, zero failures. The signed products and frozen source
 remain unchanged; end-to-end publication verification still needs completion.
+
+## Completed publication: 2026-09-10
+
+The preceding paragraph records the intermediate state. End-to-end publication
+is now complete, without rebuilding the qualified products:
+
+- Product source: `722b1f49e72e6383a12144929e2253a57bfe348b`.
+- Immutable tag: `v0.8.0+release.13`; GitHub release ID `386007830`, public
+  and Latest at `2026-09-10T05:22:11Z`.
+- Full read-only verification: run `34422691704` succeeded at control
+  `86925182400cfacf62b41fbc99a8a431cbbf81c8`.
+- Publication: run `34437814987`, attempt 2, succeeded at control
+  `566bb0173726d13028b450564e8548264f20491b`. Its journal artifact
+  `10137842945` has archive digest
+  `sha256:9a1890aba2288d0cc5111dbd5ffaa1cd8d285459f1c0b25b5120ed37379557fe`.
+  Final journals report `assets-verified`, `packages-and-root-channel-verified`
+  and `github-and-npm-promoted`.
+- Production app: run `34437516429` succeeded, selecting the unchanged source
+  and browser identity
+  `sha256:31cca5ac0b2de3866aaad8a010c50b10fbf0cf9c5673876d60ead171afbbc3f5`.
+- Stable website: commit `e2a95bbbe00653f8885878b8e844ca630ab3caa1`, Pages run
+  `34440866416`, succeeded. The served installer explicitly defaults to the
+  completed `v0.8.0+release.13`, not the development package version.
+
+The first publishing execution passed complete authentication, created the
+draft, then failed because GitHub's release-by-tag endpoint returned 404 for
+that draft. Authenticated by-ID and inventory reads found it. Control commit
+`566bb0173` adds exact paginated inventory lookup on 404, rejects duplicates,
+and propagates access errors; 33 focused tests and release inventory passed.
+No draft was deleted, tag moved, or artifact replaced. The next waiting run was
+rejected before execution during the owner's environment-settings change;
+attempt 2 resumed successfully after the owner removed required reviewers.
+This owner-selected approval policy is independent of mandatory automated gates.
+
+Independent public checks confirmed all five npm 0.8.0 package SHA-512
+integrities match the qualified tarballs and root Latest is 0.8.0. A fresh
+external-directory npm module import evaluated `factor(370309)` as `67 * 5527`,
+`number_of_partitions(10)` as `42`, and reported version 0.8.0. A fresh Chromium
+session against app.sagejs.org passed the same checks. The actual stable
+`curl -fsSL https://sagejs.org/install.sh | sh` flow, with a temporary
+`SAGEJS_INSTALL_DIR`, downloaded and installed the Linux x64 SEA; its program-file
+smoke checked both mathematical results and `version(True)["version"]`.
+
+Known packaging follow-up: pnpm 11.9 installed the package but exited with
+`ERR_PNPM_IGNORED_BUILDS` for `@cocalc/widgets@1.3.0` and `webgpu@0.4.0`.
+The tested Node API worked with those scripts blocked; this is not evidence
+that every optional widget/GPU path works without scripts. Keep the warning
+visible and investigate dependency/lifecycle packaging separately. Windows
+Authenticode setup also remains unfinished; the existing unsigned-policy
+disclosure is retained. macOS artifacts are signed/notarized and independently
+inspected as recorded above.
