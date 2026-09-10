@@ -1,0 +1,153 @@
+// sagejs-test-tier: specialized
+// Independent exact finite-algebra maps, including noncyclic fallback cases.
+"use strict";
+const assert=require("node:assert/strict"),cp=require("node:child_process"),path=require("node:path"),test=require("node:test");
+const program=String.raw`
+import ast,itertools,json,random
+from pathlib import Path
+from sympy import Matrix
+
+def roots_with_multiplicity(c,l,q,p):
+    total=0
+    roots=0
+    for a in range(p):
+        f=[c,l,q,1]
+        if sum(x*pow(a,i,p) for i,x in enumerate(f))%p: continue
+        roots+=1
+        while len(f)>1 and sum(x*pow(a,i,p) for i,x in enumerate(f))%p==0:
+            quotient=[0]*(len(f)-1)
+            quotient[-1]=f[-1]
+            for i in range(len(quotient)-2,-1,-1): quotient[i]=(f[i+1]+a*quotient[i+1])%p
+            f=quotient
+            total+=1
+    return roots,total
+
+scope={"NativeIntegerVector":list,"uint64":int,"checked_uint64":int,
+       "cubic_root_multiplicity_counts":roots_with_multiplicity}
+source=Path("bench/class-unit-groups/cubic-residue-algebra.py").read_text()
+tree=ast.parse(source)
+functions=[n for n in tree.body if isinstance(n,ast.FunctionDef)]
+exec(compile(ast.Module(body=functions,type_ignores=[]),"cubic-residue-algebra.py","exec"),scope)
+count=scope["_cubic_cyclic_degree_one_prime_count"]
+legacy_tree=ast.parse(Path("src/lib/sagejs/number_fields/cubic_class_number_native.py").read_text())
+legacy_names={"_cubic_positive_mod","_cubic_inverse_mod","_cubic_map_is_multiplicative","_cubic_degree_one_prime_count"}
+legacy_functions=[n for n in legacy_tree.body if isinstance(n,ast.FunctionDef) and n.name in legacy_names]
+assert len(legacy_functions)==len(legacy_names)
+for function in legacy_functions: function.decorator_list=[]
+scope.update({"IntegerBuffer":list,"_IDENTITY_OFFSET":27})
+exec(compile(ast.Module(body=legacy_functions,type_ignores=[]),"original-residue-enumeration.py","exec"),scope)
+fallback=scope["_cubic_degree_one_prime_count"]
+rng=random.Random(20260911)
+vectors=[]
+
+def multiply(table,a,b,p):
+    return [sum(a[i]*b[j]*table[9*i+3*j+k] for i in range(3) for j in range(3))%p for k in range(3)]
+
+def map_count(table,unit,p):
+    answer=0
+    # Deliberately independent: enumerate all linear forms, not generators.
+    for image in itertools.product(range(p),repeat=3):
+        if sum(x*y for x,y in zip(unit,image))%p != 1: continue
+        if all(sum(table[9*i+3*j+k]*image[k] for k in range(3))%p==image[i]*image[j]%p
+               for i in range(3) for j in range(3)): answer+=1
+    return answer
+
+def polynomial_algebra(coefficients,p):
+    table=[]
+    for i in range(3):
+        for j in range(3):
+            v=[0]*5
+            v[i+j]=1
+            for d in [4,3]:
+                for k in range(3): v[d-3+k]-=v[d]*coefficients[k]
+            table.extend(x%p for x in v[:3])
+    return table,[1,0,0]
+
+def change_basis(table,unit,p,basis):
+    inverse=basis.inv_mod(p)
+    new=[]
+    for i in range(3):
+        for j in range(3):
+            value=multiply(table,list(basis[:,i]),list(basis[:,j]),p)
+            new.extend(int(x)%p for x in inverse*Matrix(value))
+    return new,[int(x)%p for x in inverse*Matrix(unit)]
+
+def random_basis(p):
+    while True:
+        b=Matrix(3,3,[rng.randrange(p) for _ in range(9)])
+        if int(b.det())%p: return b
+
+def check(table,unit,p,expected=None,force_decline=False,wide=False,force_ready=False):
+    if expected is None: expected=map_count(table,unit,p)
+    if wide:
+        table=[x+p*(rng.getrandbits(300)*rng.choice([-1,1])) for x in table]
+        unit=[x+p*(rng.getrandbits(300)*rng.choice([-1,1])) for x in unit]
+    before=table[:]
+    ready,value=count(table,*unit,p)
+    assert table==before
+    assert not ready or value==expected,(p,unit,ready,value,expected)
+    if force_decline: assert not ready
+    if force_ready: assert ready
+    if p<=19:
+        # Actual existing index-prime fallback, with its two-dimensional
+        # enumeration, independently checked against all linear forms above.
+        assert fallback(table+unit,[0,0,0,1],p,*unit,p)==expected
+    vectors.append({"prime":p,"table":list(map(str,table)),"identity":list(map(str,unit)),
+                    "ready":ready,"value":value,"map_count":expected})
+
+for p in [2,3,5]:
+    for coefficients in itertools.product(range(p),repeat=3):
+        table,unit=polynomial_algebra(coefficients,p)
+        expected=roots_with_multiplicity(*coefficients,p)[0]
+        assert map_count(table,unit,p)==expected
+        check(table,unit,p,expected,force_ready=p>=5)
+        changed=change_basis(table,unit,p,random_basis(p))
+        check(*changed,p,expected,wide=True,force_ready=p>=5)
+for p in [7,11,17,19]:
+    for trial in range(12):
+        coefficients=[rng.randrange(p) for _ in range(3)]
+        table,unit=polynomial_algebra(coefficients,p)
+        changed=change_basis(table,unit,p,random_basis(p))
+        check(*changed,p,wide=trial%2==0,force_ready=True)
+
+# Product algebra F_p^3; F_2^3 cannot be generated by one element.
+for p in [2,3,5,7,11]:
+    table=[int(i==j==k) for i in range(3) for j in range(3) for k in range(3)]
+    unit=[1,1,1]
+    check(table,unit,p,3,force_decline=p==2,force_ready=p>=5)
+    check(*change_basis(table,unit,p,random_basis(p)),p,3,force_decline=p==2,force_ready=p>=5)
+
+# Square-zero radical of dimension two: never monogenic, even for odd p.
+for p in [2,3,5,7,11]:
+    table=[int((i==0 and j==k) or (j==0 and i==k)) for i in range(3) for j in range(3) for k in range(3)]
+    check(table,[1,0,0],p,1,force_decline=True)
+    check(*change_basis(table,[1,0,0],p,random_basis(p)),p,1,force_decline=True,wide=True)
+
+# Exercise every possible basis of the two characteristic-two examples.
+for entries in itertools.product(range(2),repeat=9):
+    basis=Matrix(3,3,entries)
+    if int(basis.det())%2==0: continue
+    table=[int(i==j==k) for i in range(3) for j in range(3) for k in range(3)]
+    check(*change_basis(table,[1,1,1],2,basis),2,3,force_decline=True)
+    table,unit=polynomial_algebra([0,0,0],2)
+    check(*change_basis(table,unit,2,basis),2,1)
+
+# Boundary-sized proven primes; roots of transformed polynomial quotients
+# are the independent oracle, avoiding a cubic-size map enumeration.
+for p in [251,2819,65521]:
+    for coefficients in [[0,0,0],[0,p-1,0],[1,2,3]]:
+        table,unit=polynomial_algebra(coefficients,p)
+        expected=roots_with_multiplicity(*coefficients,p)[0]
+        check(*change_basis(table,unit,p,random_basis(p)),p,expected,wide=True,force_ready=True)
+assert count([0]*26,1,0,0,3)==(False,0)
+assert count([0]*27,0,0,0,3)==(False,0)
+for p in [0,1,65536]: assert count([0]*27,1,0,0,p)==(False,0)
+assert len(vectors)==733
+assert any(not v["ready"] and v["map_count"]==3 for v in vectors)
+print(json.dumps({"cases":len(vectors),"accepted":sum(v["ready"] for v in vectors),"vectors":vectors}))
+`;
+if(require.main===module)test("cyclic residue algebra counts agree with exact maps and preserve noncyclic fallback",()=>{
+  const r=cp.spawnSync("python3",["-c",program],{cwd:path.resolve(__dirname,".."),encoding:"utf8",timeout:60000,maxBuffer:8e6});
+  assert.equal(r.status,0,r.stderr);const result=JSON.parse(r.stdout);assert.equal(result.cases,733);assert(result.accepted>400);
+});
+module.exports={program};

@@ -9447,3 +9447,198 @@ and resource checks pass. Neither failure is waived or represented as a green
 full-suite receipt. The task stays active and PR #203 stays draft. Final
 validation-receipt metadata is written after the build; this checkpoint does
 not claim release qualification of that exact final metadata snapshot.
+
+## Checked cyclic residue algebras at index primes
+
+The next source-copy experiment addresses the quadratic map enumeration
+identified above. The tracked research helper is
+`bench/class-unit-groups/cubic-residue-algebra.py`; production dispatch,
+source allowances, certification predicates and storage limits are unchanged.
+The complete native experiment inserts one checked shortcut into
+`_cubic_degree_one_prime_count`, only on its index-prime branch. It retains
+the entire existing exact enumeration if the shortcut declines. The baseline
+is the parity-admission source, not the in-place HNF experiment, so these
+effects are separated.
+
+### Exact algebra argument and its premises
+
+Let $A$ be the supplied commutative, associative, unital algebra of dimension
+three over $\mathbb F_p$, with $p$ proven prime. The caller must already have
+authenticated the maximal-order multiplication table and the coordinates of
+$1$. This helper does **not** prove those premises or maximality of the order.
+
+For a proposed $t$, compute $t^2$ using the table and test invertibility of
+$S=(1,t,t^2)$. On success, compute $t^3$, solve
+$t^3=r_0+r_1t+r_2t^2$ by exact determinants modulo $p$, and verify that identity
+in all three original coordinates. The evaluation homomorphism
+
+$$
+\mathbb F_p[T]/(T^3-r_2T^2-r_1T-r_0)\longrightarrow A,\qquad T\longmapsto t
+$$
+
+is surjective because $1,t,t^2$ are a basis. Both vector spaces have dimension
+three, so it is an isomorphism. Unital $\mathbb F_p$-algebra maps from the
+quotient to $\mathbb F_p$ correspond exactly to the **distinct** roots of its
+defining cubic. This remains true for repeated roots and nilpotents: no
+separability or unramified-prime premise is needed. Such maps from
+$\mathcal O_K/p\mathcal O_K$ correspond to the degree-one primes above $p$.
+This local-algebra argument is unconditional; the surrounding class-group
+certification retains its existing analytic assumptions.
+
+The bounded search uses two standard coordinates complementary to the actual
+identity, trying at most four combinations. It never assumes the existence
+of a generator. In particular, $\mathbb F_2^3$ and the algebra with a
+two-dimensional square-zero radical may require the original enumeration.
+An unsuccessful search is not a mathematical error and never supplies a
+root count. Bounds outside $2\leq p\leq65535$ also decline before arithmetic.
+
+There is also a useful completeness observation for this bounded search when
+$p\geq5$. For complementary coordinates $e,f$, the determinant
+$\det(1,e+cf,(e+cf)^2)$ is a polynomial in $c$ of degree at most three.
+If any element generates $A$, this polynomial is not identically zero:
+adding a scalar multiple of $1$ does not change cyclicity, scaling a generator
+scales the determinant by its cube, and the possible generator $f$ is detected
+by the leading coefficient. A nonzero cubic cannot vanish at all four
+distinct values $0,1,2,3$. Thus for these primes a monogenic algebra is found
+within the existing search. The implementation does not rely on this lemma
+to publish a count; every accepted basis is still explicitly checked.
+For characteristics two and three, falling back remains intentional.
+
+The polynomial root-count helper is the existing typed-source
+`cubic_root_multiplicity_counts` from the pinned compiler foundation. It
+counts distinct roots via the squarefree polynomial $T^p-T$ (with its
+qualified discriminant shortcut). For a successful cyclic presentation,
+this replaces $p^2$ candidate linear forms by a bounded number of algebra
+products and degree-three polynomial arithmetic logarithmic in $p$.
+No field label, class number, precomputed splitting answer or GRH bound
+selects the path.
+
+### Differential checks and scope
+
+The focused test constructs 733 finite algebras/bases, of which the helper
+accepts 552 and declines 181. It includes every monic cubic over
+$\mathbb F_2,\mathbb F_3,\mathbb F_5$, random changed bases, all 168 invertible
+bases over $\mathbb F_2$ for two contrasting algebras, products of fields,
+square-zero radicals, and signed 300-bit lifts of table and identity entries.
+The larger prime examples include 251, 2819 and 65521. Independent exhaustive
+linear-form enumeration checks the small algebras; direct polynomial-root
+enumeration checks the larger polynomial quotients. The actual original
+index-prime fallback is also tested on all cases with $p\leq19$.
+
+The compiled witness matches all 733 expected results with GMP, tagged exact
+integers and generated JavaScript, preserving every input entry. A separate
+24-field panel selects previously unused development fields from the frozen
+LMFDB corpus by their largest index-prime divisor at most 65535, then label.
+It excludes the prior 27-field panel and does not select using class numbers
+or performance. The selected primes range from 31 to 191. On all 24 fields,
+all three backends agree with PARI 2.17.4 `idealprimedec` applied to its
+maximal-order algebra. This is a local-algebra comparison, **not** a claim of
+24 new completed class-group computations or an independent maximality proof.
+
+All 27 existing larger-field complete output ledgers are unchanged in GMP
+and tagged execution: relation rows, principal elements, factor data, unit
+exponents, order basis, analytic outputs and parity counters. Two smaller
+members additionally pass full JavaScript execution. These are exact
+equivalence checks against the already retained ledgers; they do not upgrade
+the historical independent replay's proof-authority flags.
+
+### Source and resource identity
+
+The complete research source is 593759 bytes, SHA-256
+`bbe363dc3fce80813efc29494d3f71257dac862d7170fe7962ea2c252aa7bd1e`;
+native cache key
+`b3fefbc313d18531d4f7ef28d082fdcd5bf3d98ac390626989bfa416b2cb7b8b`.
+The generated core is 17245835 bytes, 59304 bytes above the parity baseline.
+The helper borrows the existing table and uses scalar temporaries; it creates
+no additional matrix/vector owners or persistent caches. No arena budget is
+increased. These size observations are not cross-platform resource
+qualification, and the research closure still exceeds the unchanged
+production source allowance.
+
+The small compiled witness has source SHA-256
+`a8d9a3973cdfc2444b99daf41fb90b9a54df3ceaae16d3ae382b82a56ffc2e9d`
+and key `d610b6a0a6a09a589cc264bbbfbb6f1dde028df1ed26e6d16a2dc57d7a8a25b8`.
+Compiler foundation is the clean commit
+`8cd09c4484cddfcf7024b5169a4c18fa0b07d3f0`.
+Reproduction scripts and raw evidence are in
+`/scratch/sagejs-runtime/cubic-cyclic-residue-XTfP0f`.
+
+### Controlled full-computation and local-operation timings
+
+The four-field comparison uses the same dedicated `opt` host, CPU 2, exclusive
+timing lock, precompiled artifacts and preallocated caller buffers. Each
+policy receives one warmup and five alternating measured calls. Timers cover
+the entire native polynomial-to-detached-ledger computation, including private
+arena cleanup; exact output comparisons occur outside the timer. These are
+research closure timings, not timings of a newly qualified public API.
+
+| Field suffix after `3.1.` | Parity baseline (ms) | Cyclic shortcut (ms) | Baseline / shortcut |
+| --- | ---: | ---: | ---: |
+| `1086061775432017340256300.596` | 13510.638 | 13497.058 | 1.001 |
+| `1086061775432017340256300.387` | 17387.771 | 17505.310 | 0.993 |
+| `341970033803678280.6` | 5300.948 | 459.593 | 11.534 |
+| `1086061775432017340256300.1013` | 15779.967 | 15846.919 | 0.996 |
+
+An additional benchmark fixture was transferred while the last control was
+running, so do not interpret its sub-percent difference as a qualified
+regression or speedup. A separate target-only confirmation was run after all
+transfers completed, with the same one-warmup/five-pair protocol and no other
+benchmark activity. Its medians are **5307.402 ms versus 455.656 ms**,
+a **$11.648\times$** improvement. All five baseline samples lie between
+5300.633 and 5326.726 ms; shortcut samples lie between 454.255 and 460.095 ms.
+Every full output remains identical. The earlier controlled PARI reference is
+44 ms, not a fresh measurement in this run: approximately a $10.4\times$ gap
+still remains. Removing one accidental quadratic local-algebra operation is
+not overall PARI competitiveness.
+
+The 24 additional LMFDB algebras also receive an isolated-operation comparison
+on `opt`, after full-computation timing finishes. One compiled witness selects
+the old exact enumeration or the checked shortcut plus fallback; both use the
+same table and identity. Seven alternating batches of ten calls follow one
+warmup per policy. All counts agree. Across these fields, old enumeration
+medians range from 1.508 to 55.600 ms; shortcut medians range from 0.03357 to
+0.04895 ms. The per-field speed ratios range from $38.4\times$ to
+$1135.9\times$. These timings include the witness's private arena and host
+boundary, and are **not class-group speed ratios**. Many complete computations
+already have cached splitting information for these small primes, so the
+isolated gain cannot be attributed to their entire class-group runtime.
+
+The correct next target is the remaining roughly 456 ms full computation and
+the relation-collection-dominated larger controls. The earlier phase and HNF
+measurements remain useful hypotheses, not exact additive timing accounts.
+Test composing the independently justified in-place HNF update with this
+shortcut, then reprofile the residual full path before choosing another
+optimization. Do not reduce analytic bounds or weaken certificate checks to
+erase the remaining PARI gap.
+
+A fresh **local debug trace**, not a controlled timing run, further narrows
+that next question. PARI uses 121 factor-base ideals and a $121\times127$
+initial relation matrix for `341970033803678280.6`. Its debug intervals report
+12 ms in `small_norm`, 23 ms in `hnfspec`, 5 ms in the associated floating-point
+work, and 1 ms in the regulator/check stage. It returns class invariants
+$[3,3,3,3,3]$, but warns that explicit fundamental units cannot be returned at
+the available precision. Our unchanged ledger has 121 ideals and 128 rows.
+Thus this example no longer suggests an orders-of-magnitude excess in the
+number of stored relations; the cost of collecting and maintaining those
+relations is now the appropriate subject of controlled attribution. The raw
+GP program, output and warnings are retained as `pari-target.json`.
+
+Evidence is additionally preserved in the backed-up worktree under
+`build/cubic-analytic-schedule-evidence/cyclic-residue/`: 82 gzip files,
+83716383 original bytes and 4718582 compressed bytes. The manifest records
+original SHA-256 hashes and every compressed file was round-trip checked.
+It includes the complete baseline/candidate sources, generated cores and
+headers, 27 original ledgers, differential vectors and results, fresh-field
+GP scripts, raw timing samples, source-boundary check and failed harness
+attempts. The tracked helper's AST matches its compiled source exactly.
+
+The checkpoint's 28 focused checks pass, as do all 196 unit files, the
+8m47s full build, docs checks and merge checks. The broader CLI suite stops
+at the same five existing FFLAS/igraph dependency failures in `test/ffi.cjs`;
+583 files remain unstarted. The recorded `test:changed` command fails after
+801.88s rather than being described as a complete suite pass. Architecture
+checks still reach the pre-existing optimizer manifest mismatch after their
+native/FFI/resource checks pass. Final handoff and receipt metadata is written
+after the build, so this is not exact-final-metadata release qualification.
+The goal remains active and PR #203 remains draft. No production path or
+allowance has changed.

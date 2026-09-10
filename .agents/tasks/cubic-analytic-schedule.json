@@ -9,6 +9,8 @@
   "objective": "Understand deeply how to improve cubic class number computation to be competitive with PARI overall, preserving exact certification and resource contracts",
   "base_commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
   "claims": [
+    "bench/class-unit-groups/cubic-residue-algebra.py",
+    "test/cubic-residue-algebra.cjs",
     "bench/class-unit-groups/cubic-two-primary.py",
     "test/cubic-two-primary.cjs",
     "test/fixtures/cubic-two-primary-admission.json",
@@ -1839,10 +1841,50 @@
       "commit": "0f47cfcba52e59dc7646e7c1ce65b93d734d728e",
       "workspace_fingerprint": "2c8d82eb505c8a048fdea83a3291e44fb9c6648ad0070a8778812f1680ce0302",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-residue-algebra.cjs test/cubic-incremental-hnf.cjs test/cubic-two-primary.cjs test/cubic-bounded-power-cache.cjs test/cubic-square-smith.cjs test/cubic-dependent-witness-tail.cjs test/cubic-dimensioned-workspace.cjs test/cubic-broad-corpus.cjs test/cubic-compact-unit.cjs test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.247,
+      "started_at": "2026-09-10T16:33:02.443Z",
+      "commit": "164a10fac5cdd34b725c5ad4e422f6f074eb48c0",
+      "workspace_fingerprint": "c42e0ad54e9c48275c0755d1d2a5cd0db80f5ecbf52744f282942ead99dd4975",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base HEAD",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 801.878,
+      "started_at": "2026-09-10T16:33:56.837Z",
+      "commit": "164a10fac5cdd34b725c5ad4e422f6f074eb48c0",
+      "workspace_fingerprint": "e4f7c720ade894723ff41b0852058bd0bec18b43d7f94495828e76c80594ea13",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-residue-algebra.cjs test/cubic-incremental-hnf.cjs test/cubic-two-primary.cjs test/cubic-bounded-power-cache.cjs test/cubic-square-smith.cjs test/cubic-dependent-witness-tail.cjs test/cubic-dimensioned-workspace.cjs test/cubic-broad-corpus.cjs test/cubic-compact-unit.cjs test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 37.683,
+      "started_at": "2026-09-10T16:48:24.569Z",
+      "commit": "164a10fac5cdd34b725c5ad4e422f6f074eb48c0",
+      "workspace_fingerprint": "baafa38994817a985e60439e8378843b20e012c0dec46110536198ff20d40cfa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.138,
+      "started_at": "2026-09-10T16:49:38.918Z",
+      "commit": "164a10fac5cdd34b725c5ad4e422f6f074eb48c0",
+      "workspace_fingerprint": "e1061cdd0ac50984e3ef228b5bfb97358a091adec0cba98080794636e6e9e17c",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Parity-admission checkpoint: research native diagnostics improve24/27 to27/27 with20 complete outputs unchanged. Existing uint64 word helpers prepare privately and commit only retained rows; otherwise-rejected parity novelty uses an extra slot only while reserving all missing odd-prime pivots. No compiler claims, production policy, arena limits or physical relation capacity changed. Three old failures close initially with83/87/191 rows and orders405/486/34992; four earlier successes avoid continuation. Seven changed ledgers (956 relations) independently replay principal ideals, compact units/logs, HNF and Smith; all invariant lists match PARI.46 word cases agree CPython/GMP/tagged/JS; three targets have full-output cross-backend agreement and disabled-policy baseline equality. Ten-field idle-opt pinned timing completes: field3.1.341970033803678280.6 improves19.398s to5.332s but PARI is44ms; large unchanged controls remain13.821/17.670/16.078s vsPARI0.824/0.821/0.777s. No equivalent-result speedup claim for three baseline declines, no durable difference for overlapping control ranges, no holdout/public-certificate claim. Fresh build8m34s,196 unit files,19 focused checks and docs/merge pass; architecture still stops at pre-existing stale optimizer manifest. Archive build/cubic-analytic-schedule-evidence/parity-admission. Research source588740 bytes, generated core17186531; extra packed words2088/8248/32856 bytes at128/256/512 factors. Production480241/485000 unchanged. PR203 remains draft. Next: measured larger-field phase costs, then general improvements on holdouts.",
+    "summary": "Checked cyclic residue-algebra research checkpoint: one guarded index-prime shortcut identifies a verified basis 1,t,t^2 and counts distinct roots of the reconstructed cubic; original exact enumeration remains on every decline. Caller retains primality and certified maximal-order premises. 733 finite-algebra cases pass CPython and GMP/tagged/JavaScript; 552 accept,181 decline. Combined shortcut/fallback checks pass724 small cases in both policies on all3 backends.24 fresh LMFDB development fields outside prior27 agree with PARI idealprimedec; these are local-algebra checks, not new class-group certificates. All27 complete output ledgers and parity counters remain unchanged on GMP/tagged, plus2 full JavaScript controls. Dedicated opt target confirmation improves5307.402 to455.656ms (11.648x), full output identical; priorPARI44ms still leaves10.4x gap. Three relation-collection-heavy controls are essentially unchanged, not broad wins. Local operation improves38.4–1135.9x on24 fields but cached splitting can eliminate this operation from full calls. AST boundary check proves the rest of the parity source unchanged. Research source593759/core17245835 bytes; no new owned resources, changed arena limits, compiler edits, or production allowance changes (480241/485000).82 source/evidence files hash-archived at build/cubic-analytic-schedule-evidence/cyclic-residue (4.72MB gzip).28 focused checks,196 unit files,8m47s build,docs/merge pass; CLI retains5 existing FFLAS/igraph failures with583 unstarted, architecture retains stale optimizer manifest. PR203 remains draft. Next compose independently tested in-place HNF with this shortcut and profile the residual456ms and larger13–17s relation-collection cases; PARI target has121 ideals/127 rows versus our121/128, so investigate cost per relation and lattice maintenance. No public-certificate, overall-PARI-competitiveness or cross-platform qualification claim.",
     "risks": [
       "Parity admission remains unpromoted:27/27 development diagnostics are not public certificates or unseen-corpus qualification. Larger opt controls remain16.8–21.5x PARI; another field remains121x despite3.64x native improvement. Word scratch increases by up to32856 bytes outside the unchanged arena. Missing LMFDB answers remain null; comparison uses hashed successful PARI records. Handoff metadata is written after the build, not an exact-final-metadata build qualification.",
       "The full-initial and late-activation traversal experiments regress other fields. Neither is approved as a global replacement or a PARI timing win; production remains unchanged.",
