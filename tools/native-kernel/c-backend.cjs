@@ -4084,8 +4084,11 @@ function generateHostCore(ir, options = {}) {
         typeof library.native?.checkpoint_cleanup === "string")
       .map((library) => [library.id, library.native.checkpoint_cleanup]),
   );
-  const functions = ir.functions.map((fn) => {
+  const functionsByName = new Map(ir.functions.map((fn) => [fn.name, fn]));
+  function checkpointLibraries(fn, visited = new Set()) {
     const libraryIds = new Set();
+    if (visited.has(fn.name)) return libraryIds;
+    visited.add(fn.name);
     for (const dependency of fn.foreignDependencies || []) {
       const separator = dependency.indexOf("@");
       if (separator > 0) libraryIds.add(dependency.slice(0, separator));
@@ -4093,6 +4096,23 @@ function generateHostCore(ir, options = {}) {
     for (const resource of fn.foreignResources || []) {
       if (resource.library?.id) libraryIds.add(resource.library.id);
     }
+    // Helpers run inside the caller's checkpoint. Their foreign libraries can
+    // retain allocator-backed pools even after every helper-owned object is
+    // cleared, so the arena owner must flush the entire reachable library set
+    // before resetting its storage. Flushing inside a helper would invalidate
+    // resources still live in the caller.
+    for (const name of ir.callGraph?.[fn.name] || fn.dependencies || []) {
+      const dependency = functionsByName.get(name);
+      if (dependency) {
+        for (const id of checkpointLibraries(dependency, visited)) {
+          libraryIds.add(id);
+        }
+      }
+    }
+    return libraryIds;
+  }
+  const functions = ir.functions.map((fn) => {
+    const libraryIds = checkpointLibraries(fn);
     return {
       ...fn,
       checkpointCleanupSymbols: Array.from(libraryIds)
@@ -4125,11 +4145,13 @@ function generateHostCore(ir, options = {}) {
   const functionMap = new Map(exact.map((fn) => [fn.name, fn]));
   const fmpz = generateFmpzFunctions(exact);
   // Scalar dependency-only functions still need internal tagged/word bodies.
-  // Host export selection is distinct from representation eligibility: live
-  // owned and fmpz-only aggregate borrows continue to use their direct core.
+  // Host export selection is distinct from representation eligibility.
+  // Borrowed foreign matrices and packed buffers have valid internal tagged
+  // ABIs even when they have no host entry. Scalar helpers may own a matrix
+  // and pass it to such a private callee. Dropping that callee would break
+  // the same-source tagged fallback graph. Live vectors still lack that ABI.
   const bridgeFunctions = exact.filter((fn) =>
-    !fn.params.some((param) => isLiveExactOwnerType(param.type)) &&
-    fn.analysis?.fmpzExact?.hostBoundary !== "none-internal-borrowed-aggregate-only"
+    !fn.params.some((param) => isLiveExactOwnerType(param.type))
   );
   const tagged = generateTaggedFunctions(bridgeFunctions);
   const wordFunctions = bridgeFunctions.filter((fn) =>

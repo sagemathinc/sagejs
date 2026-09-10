@@ -826,11 +826,12 @@ function emitTaggedFunction(fn, functions) {
     },
   };
   const integerParams = fn.params.filter((param) => param.type === "Integer");
-  const hasPublicResource = [
+  const hasResource = [
     fn.returnType,
     ...fn.params.map((param) => param.type),
+    ...fn.locals.map((local) => local.type),
   ].some((type) => resourceForFunctionType(fn, type) !== undefined);
-  const fastGuard = hasPublicResource
+  const fastGuard = hasResource
     ? "0"
     : integerParams.length === 0
     ? "1"
@@ -844,7 +845,7 @@ function emitTaggedFunction(fn, functions) {
   // Foreign resources have no machine-word ABI.  A dead `if (0)` word body
   // still has to type-check nonexistent word callees and resource locals in
   // C, so resource-bearing functions must enter directly through tagged IR.
-  const wordExecution = hasPublicResource
+  const wordExecution = hasResource
     ? ""
     : `    if (${fastGuard})
     {

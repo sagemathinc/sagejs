@@ -1,0 +1,111 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-fmpz-owned-helpers",
+  "title": "Native Fmpz Owned Helpers",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Qualify closed fmpz native helper calls with nonescaping owned matrix temporaries, exact declared gcd and matrix operations; validate cleanup and measure unchanged larger cubic source",
+  "base_commit": "8cd09c4484cddfcf7024b5169a4c18fa0b07d3f0",
+  "claims": [
+    "tools/native-kernel/tagged-backend.cjs",
+    "tools/native-kernel/word-backend.cjs",
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/fmpz-backend.cjs",
+    "tools/native-kernel/test/fmpz-owned-helpers.cjs",
+    "test/fixtures/native-fmpz-owned-helpers.py",
+    "docs/native-fmpz-owned-helpers.md"
+  ],
+  "dependencies": [
+    "native-exact-layout-records"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1170.018,
+      "started_at": "2026-09-10T20:38:41.918Z",
+      "commit": "8cd09c4484cddfcf7024b5169a4c18fa0b07d3f0",
+      "workspace_fingerprint": "a81d2ccedfa80d6d5240a89df7dc382a5eb4f0c2103113d3ad0f883aa36bf7ac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.649,
+      "started_at": "2026-09-10T21:00:14.846Z",
+      "commit": "8cd09c4484cddfcf7024b5169a4c18fa0b07d3f0",
+      "workspace_fingerprint": "e3b41ebc45d7121c2f10f11a1d947b84661b38ffb33efd81f696fb5f29fb3340",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.209,
+      "started_at": "2026-09-10T21:01:04.693Z",
+      "commit": "8cd09c4484cddfcf7024b5169a4c18fa0b07d3f0",
+      "workspace_fingerprint": "e3b41ebc45d7121c2f10f11a1d947b84661b38ffb33efd81f696fb5f29fb3340",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/fmpz-owned-helpers.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.534,
+      "started_at": "2026-09-10T21:09:42.984Z",
+      "commit": "8cd09c4484cddfcf7024b5169a4c18fa0b07d3f0",
+      "workspace_fingerprint": "e3b41ebc45d7121c2f10f11a1d947b84661b38ffb33efd81f696fb5f29fb3340",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.654,
+      "started_at": "2026-09-10T21:16:31.463Z",
+      "commit": "8cd09c4484cddfcf7024b5169a4c18fa0b07d3f0",
+      "workspace_fingerprint": "b60da3ca76145dc5516490c271e323f9fa95852a985b2a58a3aef31d039442e1",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Qualify source-transparent owned matrix helpers in closed fmpz graphs and repair transitive foreign-library checkpoint cleanup, with focused cross-backend/CPython/sanitizer tests. An unchanged 137-function larger cubic research closure improves about 2.1x on two controlled workloads; no production cubic acceptance or PARI win is claimed.",
+    "risks": [
+      "Draft stacked on native-exact-layout-records; all required non-Linux-x64 platform evidence is still outstanding.",
+      "Early fmpz accounting exposes seven temporary-capacity failures across the existing 27-field and 20-field panels; a diagnostic early-GMP checkpoint reproduces the selected failures. Default limits are unchanged.",
+      "test:changed fails at the stale modular q-expansion package-graph freeze, reproduced on unchanged base; specialized early-checkpoint test also retains its pre-existing 59-versus-91 child-count failure.",
+      "Validation receipts precede subsequent documentation/handoff edits; compiler and fixture source were unchanged after the recorded native suite. Research closure remains outside production source allowance."
+    ],
+    "next_steps": [
+      "Obtain cross-platform qualification and review checkpoint accounting before making the PR non-draft.",
+      "Integrate and measure exact unit-pivot kernel compression with reverse lifting in a separate mathematical campaign; retain independent lattice replay and existing certificate predicates."
+    ]
+  }
+}

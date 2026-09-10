@@ -1279,7 +1279,11 @@ const FMPZ_OPERATION_KINDS = new Set([
 ]);
 
 const FMPZ_FFI_DECLARATIONS = new Set([
+  "flint:fmpz_gcd",
   "flint:fmpz_matrix",
+  "flint:fmpz_matrix_nrows",
+  "flint:fmpz_matrix_ncols",
+  "flint:fmpz_matrix_right_kernel",
   "flint:fmpz_matrix_entry",
   "flint:fmpz_matrix_set_entry",
   "flint:fmpz_polynomial",
@@ -1493,6 +1497,29 @@ function inspectFmpzFunction(fn) {
   visit(fn.body);
   if (!eligible) return null;
 
+  // The ordinary IR already rejects resource construction in branches/loops,
+  // borrowed returns, and arena escapes. Qualify only
+  // direct top-level owned matrix constructors here, not arbitrary resources
+  // or a resource returned by a native callee. Helpers never open/rewind an
+  // arena: their matrices inherit the caller's allocator and are cleared by
+  // the generated all-exit cleanup before returning to that caller.
+  const ownedHelperMatrices = new Set(
+    fn.body.filter((operation) =>
+      operation.kind === "ffi.call" &&
+      (fn.foreignResources || []).some((resource) =>
+        resource.id === "fmpz_matrix" && resource.ownership === "owned" &&
+        (resource.compiler_type || resource.python_name) === operation.returnType
+      )
+    ).map((operation) => operation.target),
+  );
+  const helperResourceLocal = (local) => {
+    if (!fmpzResourceTypes.has(local.type)) return false;
+    const owner = (fn.resourceAliases || {})[local.name] || local.name;
+    return fn.params.some((param) =>
+      param.type === local.type && param.name === owner
+    ) || ownedHelperMatrices.has(owner);
+  };
+
   let zeroBoundedVectors = true;
   walkStatements(fn.body, {
     loop() {},
@@ -1518,15 +1545,13 @@ function inspectFmpzFunction(fn) {
     ) &&
     fn.locals.every((local) =>
       ["Integer", "uint64", "bool", "UInt64Buffer"].includes(local.type) ||
-      (fmpzResourceTypes.has(local.type) && fn.params.some((param) =>
-        param.type === local.type &&
-        param.name === (fn.resourceAliases || {})[local.name]
-      ))
+      helperResourceLocal(local)
     )
   ) {
     return {
       role: "helper",
       borrowedAggregates: fn.params.some(borrowedAggregateParameter),
+      ownedMatrices: ownedHelperMatrices.size,
     };
   }
   return null;
@@ -1592,17 +1617,24 @@ function fmpzClosedCallGraphPolicies(functions, recursive) {
     const borrowedAggregates = Array.from(qualified).some((name) =>
       inspections.get(name)?.borrowedAggregates
     );
+    const ownedHelperMatrices = Array.from(qualified).some((name) =>
+      inspections.get(name)?.ownedMatrices > 0
+    );
     policies.set(rootName, root.dependencies.length === 0
       ? fmpzBackendPolicy(root)
       : {
           kind: "fmpz",
-          reason: borrowedAggregates
+          reason: ownedHelperMatrices
+            ? "a closed exact call graph is qualified for nonescaping owned matrix helpers"
+            : borrowedAggregates
             ? "a closed exact call graph is qualified for borrowed resident fmpz vectors and matrices"
             : packedBuffers
             ? "a closed exact call graph is qualified for direct packed-limb fmpz ingress and publication"
             : "a closed exact call graph is qualified for inline-promoting FLINT fmpz storage",
           requiresExactWorkspace: true,
-          qualification: borrowedAggregates
+          qualification: ownedHelperMatrices
+            ? "direct-fmpz-owned-matrix-helper-call-graph-v5"
+            : borrowedAggregates
             ? "direct-fmpz-borrowed-aggregate-call-graph-v4"
             : packedBuffers
             ? "direct-fmpz-packed-buffer-call-graph-v3"
@@ -1615,7 +1647,9 @@ function fmpzClosedCallGraphPolicies(functions, recursive) {
         reason:
           "a helper is transitively contained in a qualified closed fmpz exact program",
         requiresExactWorkspace: false,
-        qualification: borrowedAggregates
+        qualification: ownedHelperMatrices
+          ? "direct-fmpz-owned-matrix-helper-v5"
+          : borrowedAggregates
           ? "direct-fmpz-borrowed-aggregate-helper-call-graph-v4"
           : "direct-fmpz-helper-call-graph-v2",
       });

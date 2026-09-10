@@ -693,7 +693,8 @@ function emitWordStatements(statements, context, indent) {
 }
 
 function emitWordFunction(fn, functions, mayPromote) {
-  if (fn.analysis?.backend?.requiresExactWorkspace) {
+  if (fn.analysis?.backend?.requiresExactWorkspace ||
+      fn.locals.some((local) => isForeignResourceType(fn, local.type))) {
     const unused = [
       ...wordResults(fn.returnType).map((_value, index) =>
         `    (void) sagejs_word_output_${index};`
