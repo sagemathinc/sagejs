@@ -225,7 +225,7 @@
         },
         {
           "filename": "scripts/release/publish-github-assets.cjs",
-          "sha256": "46bdf44ea8eb170eb0829eb1b0a8da61f9554e72922438a79eccab47fa206b68"
+          "sha256": "48fde84935030f12a59e59695c00e51f842df608f5518d458697b1acac18b03f"
         },
         {
           "filename": "scripts/release/publish-npm-packages.cjs",
@@ -302,7 +302,7 @@
         },
         {
           "filename": "scripts/release/publish-github-assets.cjs",
-          "sha256": "46bdf44ea8eb170eb0829eb1b0a8da61f9554e72922438a79eccab47fa206b68"
+          "sha256": "48fde84935030f12a59e59695c00e51f842df608f5518d458697b1acac18b03f"
         },
         {
           "filename": "scripts/release/publish-npm-packages.cjs",
