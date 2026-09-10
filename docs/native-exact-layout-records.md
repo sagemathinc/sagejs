@@ -82,3 +82,11 @@ that preparation was deliberately terminated before installation. Its failed
 receipt is retained, and it is not a native-suite pass. The isolated compiler
 change may be reviewed separately, but these local results do not qualify a
 release or the large experimental cubic program.
+
+The subsequent `pnpm test:changed -- --base HEAD` invocation completed the full
+eight-stage build (including 42 production kernel families) and the architecture
+gate, then exited nonzero on a modular-form source-freeze assertion in the unit
+tests. The remaining changed-file pipeline was not completed. This failure is
+not a record-lowering regression witness, but it remains an integration gate;
+no inventory was refreshed merely to make it pass. Draft PR #205 is stacked
+on the arena-recycling prototype PR #204, not on current main.
