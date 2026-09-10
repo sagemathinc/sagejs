@@ -7577,3 +7577,171 @@ not started. Missing local optional native prerequisites include the graph
 prefix's `libigraph.a`. This is not a whole-suite pass. The architecture run
 also retains the known stale optimizer-opportunity manifest failure; refreshing
 that manifest is not a substitute for review. Draft PR 203 remains unqualified.
+
+### Broader-factor scheduling, analytic extent and retained unit witnesses
+
+The next read-only ledger snapshot makes the rank failure precise. For
+$x^3-86126810$, the 233-row retired-region variant has rank 78 rather than 79
+modulo 27449. Its entire column for the factor ideal above 263 vanishes. That
+ideal's transposed stored HNF is
+$\left(\begin{smallmatrix}1&0&0\\0&1&0\\142&229&263\end{smallmatrix}\right)$.
+The initial selected-ideal prefix excludes it from direct search. This is not
+discriminant factoring or an analytic failure. The stale staged-storage comment
+also contradicts current admission: dependent rows are retained before full
+rank, so the claimed post-target rank-increase bound no longer applies.
+
+Separate source-copy ablations preserve the 500-candidate per-ideal limit,
+existing arena budgets and final certificate:
+
+| Discovery schedule | First raw rows | Modular rank | Outcome on this field |
+| --- | ---: | ---: | --- |
+| Retire capped regions, selected ideals | 233 | 78 | staged storage guard |
+| Dependent quota alone | 84 | 78 | rank insufficiency |
+| Lazily admit all factor ideals | 125 | 79 | analytic interval inconclusive |
+| All ideals and dependent quota | 85 | 79 | analytic interval inconclusive |
+
+The quota admits at most `target - factor_count` modular-dependent witnesses
+before full rank. It is only discovery scheduling: it can discard an important
+integer-index or unit witness. PARI's `add_rel_i` also limits dependent admission
+through its `relsup` counter, and its `small_norm` visits the full selected
+factor list. These are structural correspondences, not a claim that our
+candidate order, generators or unit sidecar are identical to PARI's.
+
+Independent PARI replay of all 130 principal rows and the actual proof
+checkpoints finds quotient orders 1944, 972, 486 at raw counts 85, 101, 106.
+Every checkpoint's full unit lattice has index one. Sage.js nevertheless
+reconstructs a unit of index two from the first compact subset. The six-row
+positional tail loses earlier dependent witnesses. Once the correct class
+number and regulator are available, the final scaled log-index interval is
+$[-3084636304,3089780167]/2^{32}$. Its upper endpoint is about 0.7194, above
+$\log 2$: another relation cannot resolve this interval-width obstruction when
+the class and regulator evidence are unchanged.
+
+An explicitly accounted research extent of $X=1800$, replacing the refined
+$X=1494$ finite sum, certifies the field under the same theorem and index test.
+The exact scale $X/9=200$ is retained. Universal prime-power counting gives
+367 finite terms and 288 required values; this experiment uses capacities
+512/512. It adds 1,202 exact-vector slots and 1,280 matrix entries, without
+adding owners or increasing the 1-MiB/3-MiB arena budgets. This is not
+constant-memory, a production cap increase, or cross-platform qualification.
+The extent and both table dimensions change together; the original small
+initial extent is unchanged. `analytic-extent-layout.json` and the inspectable
+`analytic-extent-ablation.py` retain the derivation and hashes.
+
+The tracked `bench/class-unit-groups/cubic-dependent-witness-tail.py` then
+changes only `_cubic_compact_relation_plan`: walk backward until six
+**non-support** rows have been retained, rather than inspecting the last six
+raw positions. The selected set still contains the entire exact HNF support
+and at most six additional rows, so it generates the same relation lattice
+and respects the same compact-row bound. It also contains the old positional
+selection. This does not prove preservation of the full unit lattice or a
+speedup; exact unit/index certification remains mandatory. Exhaustive testing
+covers 40,955 support-mask/tail-budget cases, including empty, all-support,
+all-redundant and early-redundancy cases, and rejects out-of-range reads.
+All other program AST nodes are unchanged. The tracked transformer reproduces
+the compiled experiment's entire AST exactly.
+
+Both extent variants certify four of the reused 41 costlier fields; 33 decline
+and four raise resource exceptions. Independent replay of the witness-tail
+variant verifies all 360 principal rows across these four successes, full unit
+lattices at eight actual checkpoints, and all four published fundamental units.
+All 64 outputs also agree across JavaScript, GMP and FLINT for each variant's
+captured run. This is independent PARI replay, not a detached Sage.js checker
+or Lean formalization.
+
+Controlled idle-`opt` comparison uses five warmups and seven rotating-order
+rounds of four fresh direct native calls, with each variant's full 64-word
+output checked and PARI `bnfinit(f,0)` class numbers/invariants checked:
+
+| Field label suffix | Positional tail (ms) | Witness tail (ms) | PARI (ms) |
+| --- | ---: | ---: | ---: |
+| `1246798226700.1` | 89.310 | 91.481 | 14.000 |
+| `1428754729688.2` | 83.211 | 82.382 | 11.750 |
+| `4860135888300.8` | 205.840 | 205.538 | 11.500 |
+| `5782398831495.20` | 179.941 | 121.887 | 10.750 |
+
+The class-number-108 field improves 1.476-fold; this is neither a universal
+speedup nor a PARI win. The two larger new successes still take roughly
+18 and 11 times PARI's time. These measurements do not include public dispatch
+or startup, and PARI's explicit-unit publication contract remains different.
+
+Full frozen-corpus validation gives 280 accepted class groups for both extent
+variants, all matching PARI. The positional variant has 225 declines and 19
+exceptions; the witness variant has 226 declines, 16 exceptions and two
+10-second censored runs. The runs were local coverage diagnostics, not isolated
+timings. One censored field still times out at 15 seconds in a separate retry;
+the other completes. The original censored observations are retained.
+Against the preceding 273-success incremental variant, these combined changes
+gain ten fields but lose three, all of which now hit a bounded exact unit
+materialization exit. There is therefore no promotion recommendation. The
+isolated witness-tail change gains and loses no accepted fields, but changes
+109 attempted outputs/statuses. Of the 280 successes, 276 have PARI cost below
+10 ms and four have cost 10–99 ms; none reaches the 100-ms-or-higher frontier.
+
+Artifacts include `retired-collection.json`, `quota-collection.json`,
+`fullbase-collection.json`, `fullquota-collection.json`, the corresponding
+`*-decline-trace.json` and `*-panel.json` files, `extentwitness-target-raw.json`,
+`extentwitness-target-replay.json`, `schedule-opt-timing.json`, and
+`schedule-full-report.json`. Source/core/binary hashes are recorded in
+`dimensioned-artifact-summary.json`. All experiments remain research copies;
+production source and its allowance are unchanged.
+
+### Smith invariants from the resident square basis
+
+Diagnostic profiling of the class-number-486 witness-tail run attributes about
+70 ms to four tall Smith computations and 41 ms to four compact-presentation
+preparations. These are instrumented local observations, not controlled timing.
+The exact square HNF already exists before each Smith call. For full column
+rank, its first $n$ rows generate exactly the same sublattice of $\mathbf Z^n$
+as the raw relation matrix; its Smith factors are therefore identical.
+
+`bench/class-unit-groups/cubic-square-smith.py` changes only the matrix and
+logical row-count arguments at the two audited Smith call sites: use
+`relation_hnf` and `factor_count`. The preceding rank/HNF preparation remains
+mandatory. Raw principal rows, all support and compact-presentation checks,
+unit recovery, allocation, final certification and publication are unchanged.
+This does not infer class-group completeness from Smith form. Independent
+CPython/SymPy tests cover 244 full-rank tall/square pairs, including duplicated
+and zero rows and integers through 513 bits; AST tests prove that nothing
+outside the four argument expressions changes. The tracked transformer
+reproduces the compiled whole-source AST.
+
+On all 524 complex fields, the square-Smith variant retains the parent's
+280 acceptances, 226 declines, 16 exceptions and two censored runs. Every
+completed attempt has identical full 64-word output, status and exception text.
+No claim of output equivalence is made for the two censored computations.
+All accepted class numbers/invariants match PARI. The four larger successes
+also have identical JavaScript/GMP/FLINT outputs to the independently replayed
+parent. Generated source is 541,205 bytes (ten fewer), SHA-256
+`f42331b80fe22caef454d8502047b19b8af55ecc4a448853d8573ffe884d542c`.
+
+The subsequent idle-`opt` paired run preserves the same five-warmup,
+seven-round, four-call protocol, now requiring identical full outputs for
+both variants:
+
+| Field label suffix | Tall Smith (ms) | Square Smith (ms) | PARI (ms) |
+| --- | ---: | ---: | ---: |
+| `1246798226700.1` | 91.693 | 87.934 | 14.000 |
+| `1428754729688.2` | 80.574 | 72.709 | 11.750 |
+| `4860135888300.8` | 207.965 | 175.571 | 11.500 |
+| `5782398831495.20` | 120.676 | 114.878 | 11.000 |
+
+These are measured improvements of 1.04–1.18-fold, not PARI wins. Preserve
+`square-smith-opt-timing.json`, `square-smith-targets.json`,
+`squaresmith-full-native`, and the profiling scripts/results separately from
+the controlled artifacts. The benchmark VM was idle before the serial runs.
+
+Current validation: changed-file merge checks and all 195 unit files pass;
+the focused witness/HNF/Smith suite passes, including the independent exact
+oracles. Python formatting and direct docs/scope checks pass. The architecture
+gate still fails at the previously documented stale optimizer manifest; no
+inventory was refreshed to hide it. This research-only change is not a
+production or cross-platform qualification.
+
+Next priorities follow the evidence: preserve successful old searches while
+resuming through missing factor ideals; make analytic extent/storage adaptive
+under explicit budgets; carry compact unit authority without expanding large
+dependency powers; and avoid rebuilding unchanged proof stages. In particular,
+the three lost fields exit at the existing bounded unit-materialization guard,
+and the seconds-scale/high-regulator frontier remains unserved. Broadening
+discovery globally is not ready for promotion merely because ten fields improve.
