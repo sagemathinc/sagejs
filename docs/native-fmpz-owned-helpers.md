@@ -284,3 +284,125 @@ manifest is changed here. The fail-fast runner reports 162 successful files
 before the failure, cancels active siblings, and leaves 15 files unstarted.
 This is not a passing full changed-test run. Recompiling the larger research
 closure after the fresh build reproduces its exact original cache key.
+
+## Follow-up research: sparse unit-pivot kernel compression
+
+The separate campaign at
+`/scratch/sagejs-runtime/cubic-unit-pivot-yWwDg3` integrates the kernel prototype
+into the research closure. This section records experiments, not additional
+compiler changes or production mathematical qualification.
+
+The first implementation recomputed all row/column supports and searched the
+entire active matrix for a minimum-product unit pivot at every step. It
+recovered `.596` but slowed `.1013` from 997.39 to 1431.84 ms. Reducing the
+eventual kernel dimensions did not compensate for repeatedly scanning the
+large matrix. This negative run is retained as `timing-results.json`.
+
+The revised ordinary Python implementation:
+
+1. Counts nonzero entries once.
+2. Chooses a shortest active row containing a unit, then a least-supported
+   unit column in that row.
+3. Updates only nonzero pivot-row columns, adjusting support counts when an
+   entry changes between zero and nonzero.
+4. Computes the saturated residual kernel and reverse-lifts it through the
+   recorded unit pivots and column permutation.
+
+The choice of pivot is only a cost policy. Every chosen pivot is exactly
+$1$ or $-1$, so the integral-kernel isomorphism proved above is unchanged.
+No field label, discriminant, expected class number, or benchmark answer
+selects an implementation. Matrix contents determine the elimination.
+
+The revised prototype passes 720 fmpz/GMP/JavaScript small-matrix comparisons
+against independent integral-lattice replay, plus 240 executions of the same
+Python body in CPython with only the matrix FFI replaced by the independent
+rational-nullspace/saturation oracle. All three large recorded kernel bases
+again pass exact residual, full-rank-mod-prime, and primitive-lattice checks.
+
+### Controlled whole-research-call timing
+
+Both runs use `opt`, CPU 2, one warmup per arm, six balanced-order rounds,
+preallocated buffers, and full timed-field transcript checks outside timing.
+A cooperative `flock` guards each controlled run. The old GMP, old fmpz, and
+new fmpz arms use the same compiler and FLINT archive; the sparse kernel source
+is the only mathematical change. The unchanged limits are 1 MiB resident and
+3 MiB temporary. PARI is still `bnfinit(f,0)`, with class/invariant checks.
+
+| Field suffix | Old GMP (ms) | Old fmpz (ms) | Sparse fmpz (ms) | Repeat old/new fmpz (ms) | PARI (ms) |
+| --- | ---: | ---: | ---: | --- | ---: |
+| `341970033803678280.6` | 168.59 | 76.91 | 75.06 | 76.96 / 75.08 | 24 |
+| `1086061775432017340256300.1013` | 2065.36 | 984.66 | 901.09 | 984.83 / 906.29 | 199 |
+| `.387` | 3708.44 | capacity failure | capacity failure | both fail | 360 |
+| `.596` | 2431.90 | capacity failure | 1102.99 | failure / 1097.19 | 244 |
+
+These are medians of whole research calls, not isolated kernel timings or
+newly accepted public class-group computations. `.1013` improves by about
+8% beyond direct fmpz qualification, reproducibly; the roughly 2% difference
+on the smaller field is a much narrower observation. No PARI win is claimed.
+The sparse result on `.596` is newly within the budget, so there is no
+successful old-fmpz time from which to claim a kernel-only speedup.
+
+### Coverage, changed witnesses, and remaining failures
+
+On the 27-field panel, 26 now complete and `.387` still exhausts the budget.
+For every completed observation, factor bases, integral bases, relation rows,
+relation elements, parity counts, presentation indices, and analytic
+classifier results agree with the old observations; selected formal units
+have exactly zero residual against every relation column.
+
+Six fields choose different formal unit exponents and slightly different
+certified logarithm endpoints. Those are not byte-identical transcripts.
+All six complete new transcripts agree between actual GMP and fmpz execution;
+one also agrees completely with the generated JavaScript execution. The
+four controlled timing fields retain exact whole-transcript agreement whenever
+execution succeeds. Agreement and exact residuals are not promoted to a new
+maximal-order/fundamental-unit/class-group certificate.
+
+The 20-field extension recovers `.361`: 15 computations now complete,
+including the prior indeterminate joint-index case. Four temporary-capacity
+failures remain (`1291393312047583044300.178`, and
+`1086061775432017340256300.60`, `.428`, `.163`); the separate pre-existing
+invalid-analysis error also remains. No completed observation has a
+relation-ledger, presentation-index, or classifier mismatch. These are existing
+development and extension inputs, not a newly unseen holdout qualification.
+
+### The bottleneck moves to LLL
+
+Diagnostic-only generated-core probes now locate `.387`'s high-water path:
+
+- Before compact-unit discovery: 2,105,920 bytes.
+- After sparse elimination: unchanged.
+- After residual right-kernel construction and lifting: 3,025,920 bytes.
+- After LLL: 3,579,136 bytes, with soft-limit exhaustion.
+- At helper exit: 3,584,384 bytes.
+
+The old full-kernel path reached 17,671,872 bytes. `.596` now peaks at
+2,020,288 bytes, down from 3,430,464. These are allocator-checkpoint high-water
+statistics, not total process memory or a proof of complete foreign-allocation
+accounting. The new `.387` failure remains a failure even though its dirty
+diagnostic buffers contain plausible values after the exception.
+
+A further experiment canonicalizes the lifted basis with exact row HNF before
+LLL. It restores old transcript bytes on `.387` but does **not** remove the
+capacity failure. That variant is retained as negative evidence, not selected
+or timed. The next investigation should distinguish the cost of basis
+reduction, its unused transformation matrix, and allocator retention. Any
+staged unit proposal must retain exact residual checks and the unchanged
+analytic acceptance predicate; partial proposals cannot certify themselves.
+
+The sparse research source is 600,199 bytes, SHA-256
+`dbea53e7d2539e844faa38da2f219cf654ede1ed22ff5458545752b05ecc772e`.
+Its closed graph has 139 fmpz-qualified functions and cache key
+`8a3d82aa410551cb9b5497b734e6f10286e0039bce4fa328425f8f5ae3ef5041`.
+It remains above the production source allowance; no allowance is changed.
+The first sparse timing report SHA-256 is
+`4714b5aa4e517db92574d14eab740deda05be04502086d5b094791b262ac7711`.
+`campaign-summary.json` records all variants, raw timing report identities,
+remaining errors, changed witnesses, and independent replay results.
+
+The separate ignored backup `build/cubic-unit-pivot-evidence` preserves 160
+round-trip-verified compressed files (708,709,821 raw bytes; 68,272,593
+compressed bytes). Its manifest SHA-256 is
+`fa6092aefa8eb97ec86354da5328c9b13dc9a1c6f4a903280c9adeeece803524`.
+It references the earlier archive for unchanged input ledgers. The backup is
+local evidence, not a published release artifact.
