@@ -73,17 +73,17 @@ function parse(run,r) {
 
 function main(args) {
   const [corpusFile,destination,gp,mode="run"]=args;
-  if(!gp || !["run","plan"].includes(mode)) throw Error("usage: cubic-broad-pari.cjs CORPUS OUTPUT GP [run|plan]");
+  if(!gp || !["run","plan","all","plan-all"].includes(mode)) throw Error("usage: cubic-broad-pari.cjs CORPUS OUTPUT GP [run|plan|all|plan-all]");
   const corpus=validate(JSON.parse(fs.readFileSync(corpusFile,"utf8")));
-  const selected=pilot(corpus);
+  const selected=select(corpus,mode);
   const timeout=10000;
   fs.mkdirSync(destination,{recursive:false}); // Refuse accidental overwrite/restart.
   const protocol={corpus_sha256:corpus.payload_sha256,seed:1,timeout_ms:timeout,
     pari_stack_limit_bytes:536870912,mode,selected:selected.map(s=>({label:s.record.label,reasons:s.reasons})),
-    scope:"Metadata-selected stress pilot, one fresh process per field, nfinit then bnfinit(nf,0), GRH conditional, no bnfcertify or expanded unit output. Not a representative mean or a repeated competitive timing.",
+    scope:(mode.endsWith("all") ? "Complete frozen stratified panel" : "Metadata-selected stress pilot")+", one fresh process per field, nfinit then bnfinit(nf,0), GRH conditional, no bnfcertify or expanded unit output. Not a representative mean or a repeated competitive timing.",
     runner_sha256:sha256(fs.readFileSync(__filename)),started_at:new Date().toISOString()};
   fs.writeFileSync(path.join(destination,"protocol.json"),JSON.stringify(protocol,null,2)+"\n");
-  if(mode==="plan") {console.log(JSON.stringify(protocol,null,2));return;}
+  if(mode.startsWith("plan")) {console.log(JSON.stringify(protocol,null,2));return;}
   protocol.gp=gp;
   protocol.gp_file_sha256=sha256(fs.readFileSync(gp));
   protocol.gp_version=cp.execFileSync(gp,["--version-short"],{encoding:"utf8",timeout:10000}).trim();
@@ -101,5 +101,10 @@ function main(args) {
   }
   fs.writeFileSync(path.join(destination,"finished.json"),JSON.stringify({finished_at:new Date().toISOString(),fields:selected.length,load_end:os.loadavg()})+"\n");
 }
+function select(corpus,mode) {
+  validate(corpus);
+  if(!["run","plan","all","plan-all"].includes(mode)) throw Error("invalid selection mode");
+  return mode.endsWith("all") ? corpus.records.map(record=>({record,reasons:["complete-frozen-panel:"+record.stratum]})) : pilot(corpus);
+}
 if(require.main===module) main(process.argv.slice(2));
-module.exports={pilot,gpSource,parse};
+module.exports={pilot,select,gpSource,parse};

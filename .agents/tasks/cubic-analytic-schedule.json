@@ -9,6 +9,9 @@
   "objective": "Understand deeply how to improve cubic class number computation to be competitive with PARI overall, preserving exact certification and resource contracts",
   "base_commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
   "claims": [
+    "bench/class-unit-groups/cubic-broad-report.cjs",
+    "bench/class-unit-groups/cubic-grh-envelope-ablation.cjs",
+    "bench/class-unit-groups/cubic-broad-native.cjs",
     "bench/class-unit-groups/cubic-broad-corpus.cjs",
     "bench/class-unit-groups/cubic-broad-pari.cjs",
     "test/cubic-broad-corpus.cjs",
@@ -1392,10 +1395,60 @@
       "commit": "a27a454f68def0fa1356ce4192fccd129204e9c3",
       "workspace_fingerprint": "6824aadb37f0389fba84807592687ddeb8f9fdc43a439d9395ab10cdf9cea635",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-broad-corpus.cjs test/cubic-compact-unit.cjs test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.244,
+      "started_at": "2026-09-10T05:57:51.634Z",
+      "commit": "78f440e1bac44629a8c8465fcb100d0156285e01",
+      "workspace_fingerprint": "dabb91b8799fea3e0f76fbd5c6424fa76321eaf5cabf9ee3708b38c7cca54c53",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 100.755,
+      "started_at": "2026-09-10T05:58:40.735Z",
+      "commit": "78f440e1bac44629a8c8465fcb100d0156285e01",
+      "workspace_fingerprint": "dabb91b8799fea3e0f76fbd5c6424fa76321eaf5cabf9ee3708b38c7cca54c53",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.574,
+      "started_at": "2026-09-10T06:02:49.141Z",
+      "commit": "78f440e1bac44629a8c8465fcb100d0156285e01",
+      "workspace_fingerprint": "a73ff10971fcff8919b5e55b54c79251741f9a0c6dc40733a072214ad951b71c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.321,
+      "started_at": "2026-09-10T06:03:51.332Z",
+      "commit": "78f440e1bac44629a8c8465fcb100d0156285e01",
+      "workspace_fingerprint": "a73ff10971fcff8919b5e55b54c79251741f9a0c6dc40733a072214ad951b71c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-broad-corpus.cjs test/cubic-compact-unit.cjs test/cubic-analytic-schedule.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.503,
+      "started_at": "2026-09-10T06:14:33.686Z",
+      "commit": "78f440e1bac44629a8c8465fcb100d0156285e01",
+      "workspace_fingerprint": "02e2bde8c1ab199b57b7096ea86997c10127f65b40391df6ff36b09b9e8677f0",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Broader goal now has a frozen LMFDB panel: 1235 fields/90 strata, 524 complex/711 real, 110 missing h; roles331development/892holdout/12stress are prospective, historical overlap not audited. Payload65d445813d42a18d6d9e6debe231a620a05d900c805064448d0e0358a93ce219. New tracked corpus downloader/validator and serial PARI phase pilot; exact discriminants/index derivation and invariant-product checks. Metadata-selected29-field pilot on idle opt: PARI2.17.4 completes29 (26database matches,3missing),2.15.4 completes28 with all h/invariants equal and real extreme times out10s. Missing complex examples h314928/.545s and h162/1.075s in2.17, also complete in2.15; missing does not mean intractable. Real extreme h3/R5.04e16 takes3.557s in2.17. nfinit1ms inallthree; classworkdominates. First GP apply(Str,...) smoke failed/rejected; correctedvector export used foralltimedruns. All193unitfiles/11focused/merge/directdocs/scopechecks pass. Production/compiler/caps untouched, no Sage.js broad timing/coverage claims. Archive3605files/134029995bytes hashverified. All jobs terminal; PR203draft; goalactive.",
+    "summary": "Full frozen 1235-field PARI 2.17.4 baseline completed on idle opt: 1125 database matches, 110 missing answers, no failures. Complex nfinit/bnf sums 445/21004ms; real 414/9518ms. Historical1100-record audit finds six overlaps (two development/four holdout), not exhaustive isomorphism audit. Direct research native coverage 166/524 complex becomes241 after removing premature M>4096 rejection with search257/factors64/arenas unchanged. All accepted h/invariants agree with PARI, all parent accepted64 outputs unchanged. Guard variant has85exceptions; existing arbitrary-precision rational log plus exact scaled sqrt removes78 machine-word batch exceptions, leaving241accepted/275declined/7exceptions/1timeout. 711 real fields outside this kernel, not public failures. Independent replay21 gains checks661principal rows and three-backend64 parity; one wide-route h117 field adds28rows. Opt21-panel sums of medians193.162ms native vs50.375ms PARI, zero wins; diagnostic direct entry, not public receipts. Critical: every accepted field remains a sub10ms PARI workload; none of187 costlier complex fields accepted. Main next target x^3-93477150, h405,R332.0468,PARI14ms,cutoff458,74factors versus native257/64. Requires dimensioned resident workspace, not a constant bump into overlapping offsets. Separate35-factor retry hits129th compound pair (cap128); PARI incrementally reaches h12 then3. Research sources531980/533345bytes; cores18.53/19.29MB, same one arena/98children. Production/compiler/caps unchanged, PR203draft. Full build (including stable-snapshot rebuild),193unitfiles,focused14,docs and422-module precompile pass. Known stale optimizer inventory remains. Changed-file pipeline is now running the full586-file CLI suite, live exec session65056 at handoff; DO NOT restart while live or claim it passed. Archive11114files/144887173bytes hashverified. Goal active; no controlled opt jobs live.",
     "risks": [
       "Current overall-goal priority supersedes small-field tuning. Independent compact-unit prototype is a CPython/SymPy research oracle, not native integration or a class-group certificate. Unit membership does not prove nontorsion/fundamentality. PARI versions produce different compact witnesses; do not conflate382/34-bit with412/260-bit. Existing development distribution cannot support claims about overall cubic workloads.",
       "Magnitude-first is research-only: same1042 outputs and58 fresh neighbors do not establish universal no-regression or public/platform/resource qualification. Temporary slots rise17->18 despite smaller generated C. Seconds-panel Sage.js exceptions/declines are not fallback-success or speed evidence. PARI flag0 versus flag1 changes retained exact evidence; align output/certificate contracts before claiming competitiveness at large regulator.",
@@ -1412,7 +1465,7 @@
       "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
     ],
     "next_steps": [
-      "Run complete frozen1235-field PARI baseline and audit overlaps with previous development corpora; measure Sage.js public/direct-native coverage under explicit limits before selecting a new regime. Current29 pilot only, metadata biased intentionally. New corpus path modular-hnf-filter/lmfdb-broad-corpus.json SHA65d44581..., reports broad-pari217/broad-pari215, opt /tmp/cubic-broad-pilot-KLDB2U allterminal. ActualGP2.17/libhashes in docs. Largestcomplex missing-answer case x^3-429667960411287811 yields h162,[3,3,18],R7.005e9 in1.075s with nfinit1ms; not an unconditionally proved result. Both versions agree for28completed fields; real maxD2.15timeoutretained. Do not filter unknown recordedR/h away; they include the large-regulator cases database filters miss. Need new source-native field-analysis/factor-base/compact-unit coverage rather than ms-only tuning. Current code/testingallscoped no compiler or production change. KeepPR203draft.",
+      "Main next campaign is measured-cost frontier x^3-93477150 (LMFDB3.1.1246798226700.1). PARI2.17 uses458 cutoff,74factor ideals,80relation target; native fails257 search then would exceed64-factor flat layout. Design dimensioned borrowed factor/group/prime-power/modular workspaces under checked total arena budget; DO NOT merely increase factor constant because GROUP_OFFSET670 and subsequent offsets assume64. Preserve exact bounds/completeness, compact unit dependencies and resumable relation scheduling; cover neighboring costlier fields and synthetic seconds panel. Reuse research grh-wide source1003d7ac..., precise baseline/cost bands/forensics in docs and modular-hnf-filter/grh-cost-frontier*. Separate35-factor x^3-x^2-33195x+2393095 confirms eager compound129>128 failure; PARI resumes relation batches and reaches h3. Poll existing exec session65056 for the already-running full586-file CLI suite (changed-file pipeline); preserve terminal results and do not restart from a timeout alone. Full builds/unit/docs/precompile passed and the completed research is committed separately from that pending validation. Then implement the dimensioned-workspace campaign. KeepPR203draft; current241/524 successes ALL have PARI<10ms, so not overall competitiveness.",
       "User chose LMFDB as primary source. Read lmfdb-broad-survey.cjs/json in modular-hnf-filter archive (query/raw hashes in docs). Coverage survey complete, not a timed or frozen corpus. Freeze deterministic samples by both signatures, discriminant bands, class-group shape and regulator strata; include extremes and missing-answer fields separately. Start bounded pilot per stratum; preserve synthetic huge-regulator panel because mirror complex maxR367081 misses that bottleneck. Record unknown database answers, declines/timeouts and PARI version/output-contract distinctions. Existing small1042 corpus is development only. Reuse existing factored-unit authority/logarithm contracts for later native and detached integration; prototype now independently checks membership only. All unit/focused/merge/docs checks passed, public/resource/platform qualification remains open; keep PR203 draft.",
       "Current first next step supersedes historical entries: retain magnitude-first gains while investigating compact exact unit certificates from authenticated principal-ideal relations and an integer kernel vector. Certified signed logarithm accumulation and joint class/unit index-one proof remain necessary; do not expand huge units or weaken certification. Native profile still attributes materialization1.209ms inclusive and online HNF0.900ms on target. Seconds-scale panel finds broader analysis and factor-base/storage boundaries: k6 hits4096 Minkowski guard, k9..18 analysis-projection exceptions, while PARI k18 spends19.8s after7ms initialization. Diagnose these boundaries separately before generalizing; never treat rejection as a speedup. Artifacts under modular-hnf-filter-mkOKgG, scripts seconds-pari*, seconds-native-check, summarize-seconds-and-profile. No controlled jobs live; production/compiler/caps untouched. KeepPR203 draft pending consolidation/public/platform/resource qualification.",
       "Current priority supersedes historical entries below: adaptive-unit and sqrt-seed campaigns are complete; inspect /scratch/sagejs-runtime/cubic-modular-hnf-filter-mkOKgG and backed-up build/cubic-analytic-schedule-evidence/modular-hnf-filter. Reject adaptive policy as a speedup. Test identical exponential-magnitude calculation before phase/root work in _cubic_reconstruct_archimedean_unit_at_scale, explicitly reviewing failed-status precedence and resource behavior. Preserve successful proposals and exact authentication. Square-root binary seed alone gives2.97% staged aggregate improvement and target2.27% paired improvement, not PARI competitiveness. Qualify bit_length/compiler prerequisites before any production backport. A generic exact-int left shift would simplify seed construction; the current exact probe rejects, while literal1<<uint64 means bounded word arithmetic. Do not edit shared compiler from this lane. All timing/replay jobs terminal; final summary and docs contain identities, raw protocols, negative results and pending qualification. Keep PR203 draft.",

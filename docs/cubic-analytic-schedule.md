@@ -7043,3 +7043,201 @@ metadata and result hashes, missing answers, invariant consistency, GP errors,
 timeouts and mismatches. All 193 repository unit-test files passed. The full
 1,235-field timed baseline, historical-overlap audit and Sage.js coverage
 measurements remain next steps; this pilot does not replace them.
+
+### Full broad baseline and the bounded GRH envelope experiment
+
+The subsequent serial `opt` run uses the same frozen corpus and PARI 2.17.4
+binary/library as the pilot. The runner's `all` mode visits every record,
+including missing-answer fields. All **1,235 computations completed**:
+1,125 class numbers and invariant lists agree with LMFDB; 110 have no database
+answer. There are no timeouts or mismatches. These are still single-sample,
+GRH-conditional phase diagnostics, not independent certification.
+
+| Signature | Fields | Sum of `nfinit` times | Sum of `bnfinit(nf,0)` times |
+| --- | ---: | ---: | ---: |
+| Complex | 524 | 445 ms | 21,004 ms |
+| Real | 711 | 414 ms | 9,518 ms |
+
+The maxima in the class-group phase are 1,059 ms for the complex extreme and
+3,520 ms for the real extreme. Initialization is not the dominant aggregate
+cost on this panel. Startup is excluded from the phase sums; the strata are
+unequally sampled, so these sums do not estimate research-workload prevalence.
+Raw programs, results, errors and protocol are in `broad-full-pari217`.
+
+The crucial limitation is visible when coverage is grouped by PARI's measured
+`nfinit` plus `bnfinit` time, rather than by discriminant alone:
+
+| PARI phase time (complex fields) | Fields | Accepted by the wide research variant |
+| --- | ---: | ---: |
+| Below 10 ms | 337 | 241 |
+| 10–99 ms | 129 | 0 |
+| 100–999 ms | 57 | 0 |
+| At least one second | 1 | 0 |
+
+Thus **every current success is still a sub-10-ms PARI workload**. Larger
+discriminants and regulators do not by themselves establish progress on
+computationally harder cases. The next campaign must cross this measured
+cost frontier, keeping the synthetic seconds-scale panel in scope, rather
+than treating the 75 coverage gains below as sufficient overall progress.
+
+`broad-overlap-audit.json` compares this panel with the previous 1,100 records
+(1,012 original, 30 membership neighbors, 58 magnitude neighbors), using exact
+coefficients, stored canonical coefficients and historical labels. It finds
+six overlaps: two prospective development fields and four holdout fields.
+The roles are not rewritten after measurement. This is not an exhaustive
+isomorphism audit or a claim of no exposure in any other historical dataset.
+
+`bench/class-unit-groups/cubic-broad-native.cjs` runs one isolated child per
+complex field, with efforts 5, 1, 7, 8 and the unchanged arena/caller-buffer
+limits. Each child has a ten-second wall limit. The 711 real fields are
+explicitly outside this kernel's signature, not reported as Sage.js failures.
+These are direct research artifacts, not public dispatch, authenticated public
+receipts, or fallback timings. The parent is source `c6b54bdb...` above.
+
+| Research source | Accepted complex fields | Bounded declines | Exceptions | Timeouts |
+| --- | ---: | ---: | ---: | ---: |
+| Parent | 166 | 357 | 1 | 0 |
+| Remove premature Minkowski rejection | 241 | 197 | 85 | 1 |
+| Also handle wide discriminants exactly | 241 | 275 | 7 | 1 |
+
+Every accepted class number and invariant list agrees with the full PARI run.
+All 166 parent accepted outputs remain identical in all 64 slots. All 241
+accepted outputs also agree between the two ablations. Repeating the first
+ablation with the parent's one-page FLINT archive gives identical statuses
+and accepted outputs; it is not a change of allocator masquerading as coverage.
+`cubic-broad-report.cjs` requires complete runs, checks publication, invariant
+orders, field discriminants and indices, and rejects missing comparisons or
+false accepted results. It does not label scalar agreement a certificate replay.
+
+#### Mathematical and representation changes
+
+The first ablation removes only the early rejection when
+$M=(2\lceil\sqrt{|D|}\rceil+6)\mathbin{//}7>4096$. This is a valid loose
+unconditional Minkowski bound, but its size does not determine the actual
+allocation: the GRH search was already capped at 257, its value table at 258,
+and the final accepted generator bound at 257. If the existing exact GRH
+inequality cannot prove a smaller bound, the unchanged final guard declines.
+Removing this early rejection does not authorize using an unproved bound,
+increase those allocations, or weaken the class/unit completeness check.
+All 356 parent phase-2 declines have $M>4096$ by an independent integer check.
+
+This exposes an unrelated representation limit. The resident integer log/sqrt
+FFI accepts `fmpz` storage but calls `arb_log_ui` and `arb_sqrt_ui`, rejecting
+values that do not fit an unsigned machine word. All 78 new batch exceptions
+have $|D|>2^{64}-1$. The second ablation leaves the small-prime batch intact,
+substitutes 1 in its discriminant slot when $|D|$ exceeds 32 bits (portable to
+Wasm), then fills that slot's endpoints with existing exact-source operations:
+
+- An outward logarithm interval from the arbitrary-precision positive-rational
+  logarithm routine, applied to $|D|/1$.
+- For $S=2^{96}$, let $q=\lfloor\sqrt{|D|S^2}\rfloor$. The scaled square-root
+  endpoints are $q$ and $q+1$ unless $q^2=|D|S^2$, when both are $q$.
+
+Thus $q/S\leq\sqrt{|D|}\leq(q+1)/S$ follows from exact integer inequalities,
+not floating-point rounding or a machine-size assumption. The existing
+Python square-root helpers supply $q$; focused tests execute the actual
+source helpers and injected endpoint code on inputs through 521 bits, including
+word boundaries and perfect squares. The log-routing test uses a stub to
+check argument transfer; it is not an independent proof of Arb's log routine.
+The full native run exercises the real declared log operation. No new native
+primitive or FFI declaration is introduced.
+
+All 78 batch exceptions become bounded declines, not new accepted answers.
+Seven exceptions remain: five temporary-arena exhaustions, one output-buffer
+word-capacity exhaustion, and one incomplete number-field-analysis projection.
+The same field `3.1.997235064.9` times out in both ablations. Final decline phases
+are 1 (one field), 2 (197), 4 (two), 31 (65), and 36 (ten); a final phase alone
+does not identify all failed efforts or prove which individual guard fired.
+
+#### Replay, timing, and the next structural difference
+
+The first 21 newly accepted effort-5 fields in increasing discriminant order
+were selected for detailed replay. This is post-coverage selection, not a new
+untouched holdout. All 64 outputs agree between generated same-source
+JavaScript, FLINT and GMP execution. Independent PARI ideal arithmetic checks
+**661 principal rows**, maximal-order bases, exact relation-prefix identities,
+and the published fundamental unit or trivial-class presentation as applicable.
+The replay also calls `bnfcertify`. It is stronger than final-answer agreement,
+but is not the detached independent Sage.js certificate verifier or a Lean proof.
+Files: `grh-gains-survey.json`, `grh-gains-raw.json`, `grh-gains-replay.json` and
+the corresponding generated GP programs/logs.
+
+The wide variant additionally replays `3.1.5248896471.1` ($h=117$): this is
+the smallest newly accepted effort-5 discriminant above the portable 32-bit
+cutoff. All 64 outputs agree in the three backends, and independent replay
+checks 28 principal rows and the published fundamental unit. This exercises
+the new endpoint route on a successful result, not only on later declines.
+Evidence is under the `grh-wide-replay` prefix.
+
+A separate serial run on idle `opt` measures those 21 fields, with three
+warmups and seven batches of eight fresh computations per implementation.
+Native timing includes the direct polynomial-to-group call and assertion,
+but excludes reusable caller-buffer setup, loading/JIT, and public dispatch.
+PARI timing includes `nfinit` plus `bnfinit(...,0)`, without expanded units.
+The system order alternates by field; this is not a randomized paired study.
+All returned answers are checked. Summed per-field batch medians are
+**193.162 ms native versus 50.375 ms PARI**, with no native wins in this panel.
+The outlier `3.1.542518020.1` is 52.691 versus 2.750 ms. The first new field,
+`3.1.284263800.2`, is 6.164 versus 2.250 ms. These are coverage gains, not a
+claim of overall competitiveness or public-call speed.
+
+The first timing-driver attempts emitted no GP results: increasing the PARI
+stack ceiling on the same input line as the entire workload skipped the
+remaining computation. The empty output was rejected, not counted as fast
+success. Putting the stack setup on its own line produced the complete
+21-field run retained in `grh-gains-opt-timing.json`.
+
+The largest newly accepted discriminant is 323,711,668,280, with PARI
+$h=1$ and $R\approx785290.78$; another accepted field has recorded
+$R\approx367081.48$. This still leaves the seconds-scale extremes uncovered.
+To identify the next mechanism, `grh-compound-forensics.cjs` traces the smallest
+final-phase-31 decline, $x^3-x^2-33195x+2393095$, discriminant
+$-14223227480$. Read-only generated-JS tracing preserves all 64 outputs versus
+the unmodified native computation. Efforts 5 and 7 stop at phase 36, effort 1
+at phase 44; effort 8 tries to plan pair 129 with 35 factors and four compound
+multipliers, exceeding the unchanged 128-pair capacity.
+
+PARI's trace uses the same **35 factor-base ideals**, cutoff 106, and a four-ideal
+subbase. It collects an initial relation batch, subsequently obtains tentative
+$h=12$ and $R\approx14924.495$, then adds three relations and reaches $h=3$.
+Its final trace warns that expanded fundamental units are not supplied at that
+precision. This reinforces two next tasks: stream/resume compound-ideal work
+instead of rejecting its eagerly materialized plan, and retain compact exact
+unit dependencies with certified logs instead of demanding huge expanded units.
+The 257 certified search envelope and incomplete field-analysis candidates are
+separate remaining frontiers; enlarging a buffer is not a substitute for these
+algorithmic and representation changes.
+
+For the broader measured-cost objective, a separate deterministic choice is
+the least-discriminant complex field taking PARI at least 10 ms in the frozen
+run: $x^3-93477150$, label `3.1.1246798226700.1`. Its recorded phase time is
+14 ms, $h=405$, and $R\approx332.0468$; Sage.js declines at phase 2.
+`grh-cost-frontier-pari.log` shows PARI's cutoff **458**, **74 factor-base
+ideals**, three subbase ideals, and an initial 80-column relation target.
+The trace spends most work in small-norm search and the 74-by-80 HNF, not in
+order initialization. Trace timings are local diagnostics, not substitutes
+for the controlled frozen timing. PARI reaches $h=405$ in the first displayed
+regulator/class-number check.
+
+This field exceeds **both** the current 257 search cap and 64-factor workspace
+layout. Merely increasing the search constant cannot make the algorithm cover
+it. In particular, fixed offsets such as `_GROUP_OFFSET = 670` rely on exactly
+64 ten-slot factor records. The next generalization needs dimensioned resident
+factor/group/prime-power workspaces with checked total resource budgets,
+followed by resumable relation collection and compact unit authority. Do not
+raise a factor-count constant while leaving these overlapping offsets intact.
+This measured-cost target, rather than another sub-10-ms PARI success, is the
+next campaign's main representative.
+
+Both ablations remain generated research source copies, reproducible with
+`cubic-grh-envelope-ablation.cjs PARENT OUTPUT [guard|wide]`. Source hashes are
+`a9cb394dcde39569d233e6bb6e02e724149516a1e3eb310da75e700a3a5086ec`
+(531,980 bytes) and
+`1003d7acb758905e19fd1a48704e24ce76349d6e1cb0dfee59737cb3bece9f0b`
+(533,345 bytes). Generated cores are respectively 18,530,075 and 19,288,620
+bytes. Relink manifests identify the unchanged one-page FLINT archive and
+exact addon hashes. Neither meets the unchanged production source allowance;
+no production/compiler/source-limit change or cross-platform qualification is
+claimed, and PR #203 remains draft. The archived broad coverage report, source
+copies, build manifests, raw results and replay logs preserve failures as well
+as successes. Full generated IR and binary caches remain scratch-only.
