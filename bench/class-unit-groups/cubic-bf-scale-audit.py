@@ -55,6 +55,40 @@ def next_analytic_cutoff(
     return candidate
 
 
+def resume_algebraic_collection(
+    status: int,
+    index_lower: int,
+    index_upper: int,
+    round_count: int,
+    round_limit: int,
+    remaining: int,
+    relation_count: int,
+    relation_capacity: int,
+) -> bool:
+    """Request bounded discovery after a validated positive joint-index log.
+
+    Status zero must come from the analytic classifier on an authenticated
+    presentation and unit. A positive lower endpoint excludes index one under
+    that enclosure's mathematical assumptions. It does not identify whether
+    class relations, units, or both are missing, and it is not a certificate.
+
+    This pure scheduling predicate cannot authenticate its inputs. Errors,
+    success, intervals containing zero, and exhausted envelopes never request
+    a retry. Collection must retain and exactly check its principal witnesses;
+    publication still requires the complete certificate after the retry.
+    """
+    return (
+        status == 0
+        and index_lower > 0
+        and index_upper >= index_lower
+        and round_count >= 0
+        and round_count < round_limit
+        and remaining > 0
+        and relation_count > 0
+        and relation_count < relation_capacity
+    )
+
+
 def add(a, b):
     return a[0] + b[0], a[1] + b[1]
 

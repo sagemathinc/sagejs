@@ -734,6 +734,61 @@ does not authenticate its inputs or prove that a non-torsion unit is
 fundamental. In particular, a compact product can have enormous intermediate
 coefficients yet admit this short torsion proof without materialization.
 
+## Analytic feedback may request algebraic continuation
+
+Let $L\subseteq\mathbb Z^s$ be the lattice of authenticated principal
+relations on a generating factor base, with finite presentation order
+$\widetilde h=[\mathbb Z^s:L]$. Let $u$ be an authenticated non-torsion unit
+of positive real logarithm $\widetilde R$. For the complex cubic field's
+class number $h$ and regulator $R$, the two integers
+
+$$
+a=\widetilde h/h\geq1,\qquad m=\widetilde R/R\geq1
+$$
+
+give the joint index $J=am$. These assertions require the generating-base,
+maximal-order and unit premises; numerical agreement with another program
+does not establish them. Suppose the GRH-conditional analytic argument
+supplies a valid enclosure $A\leq\log J\leq B$.
+
+If $A>0$, the current data cannot have joint index one. This justifies
+requesting more algebraic data, but does **not** identify whether class
+relations, unit information, or both are missing. Widening or refining the
+analytic computation alone cannot turn this particular $J>1$ into $J=1$.
+An interval containing zero is different: it may only lack analytic accuracy.
+The experimental `resume_algebraic_collection` predicate distinguishes these
+cases and independently checks remaining rounds, work and relation capacity.
+The predicate itself authenticates neither the interval nor its premises.
+
+Appending checked principal relations preserves the old lattice and unit
+witnesses. The new relation lattice contains $L$, hence its finite index
+divides $\widetilde h$. Every previously available compact unit remains
+representable by padding its exponent vector with zeros. A new kernel/LLL
+proposal need not be trusted: its selected exponent vector is checked
+against the original raw relation columns, and its logarithm is enclosed
+independently. A selected unit need not generate the entire available unit
+subgroup; that is still a certification obligation, not a property inferred
+from the discovery method. A retry budget controls work and never weakens
+the final index-one test.
+
+There is a concrete independently replayed unit improvement for
+$x^3-7803x-1557948$. Four appended relations preserve the cyclic presentation
+of order $18$ and produce a unit $v$ with roughly half the old unit $u$'s
+logarithm. The exact old/new exponent difference authenticates $u/v^2$ as a
+unit. The independently checked logarithm intervals imply
+
+$$
+-\frac15<\log|\sigma(u/v^2)|<\frac15.
+$$
+
+The preceding torsion lemma therefore gives $u=\pm v^2$. Since $v$ is
+non-torsion, the old generated subgroup has index two in the new one modulo
+torsion. This is an exact improvement statement, not just a regulator ratio
+observed against PARI. It does not alone prove $v$ fundamental or establish
+the class group. The experimental native analytic classifier now reaches
+index one, conditional on its stated premises; public certificate
+publication and independent checking of all those premises remain open.
+
 ## References
 
 - Karim Belabas and Eduardo Friedman, “Computing the residue of the Dedekind

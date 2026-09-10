@@ -8763,3 +8763,123 @@ the architecture gate still stops at stale optimizer artifacts after passing
 its native/FFI/resource audits. Neither gate is reported green. The research
 native source and helper were freshly compiled; no production build inputs
 or dispatch were changed.
+
+## Resident algebraic feedback after a positive joint-index bound
+
+The next experimental closed program resumes relation collection when the
+analytic interval proves that the current joint index exceeds one. The exact
+predicate `resume_algebraic_collection` is recorded in
+`bench/class-unit-groups/cubic-bf-scale-audit.py`: it requests a retry only
+for a validated inconclusive classifier with a positive lower endpoint, a
+non-reversed interval, and room in the round/work/relation envelopes. It
+does not certify the analytic premises or distinguish missing class relations
+from missing unit information. Its actual compiled body passes 3,073 exact
+GMP/JavaScript comparisons, including values above the machine-word range.
+
+The caller retains the original ledger, search state, selected-exponent owner
+and analytic workspaces. A private helper borrows them and owns five temporary
+matrices for the transpose, kernel, LLL reduction/transform and logarithms.
+These are ordinary lexical owned resources, not a nested arena. The existing
+compiler already supports this pattern: a separate witness agrees through
+10,000 repeated calls on GMP and JavaScript, including early returns. The
+generated main helper closes all five owned matrices on success and failure,
+and does not close borrowed parameters. This inspection is not a full
+physical-allocation proof: the existing right-kernel binding still allocates
+a relation-count-square workspace. No compiler whitelist was widened.
+
+After each certified algebraic deficit, the existing powered-ideal search
+resumes with its retained cursor and a shared remaining discovery budget.
+It adds at most four rows per batch, possibly returning earlier after exact
+HNF change, and rechecks the compact unit and analytic interval. Eight retries,
+four multiplier passes, relation capacity and the existing per-attempt
+analytic envelope bound the experiment. Exhaustion still declines.
+
+For `3.1.2545362165060.5`, one retry gives **53 -> 57 relations**. Independent
+replay checks every principal equality, the selected exponent residual,
+rational logarithm enclosure and cyclic presentation of order 18. The new
+unit log is approximately 48,973.5147 instead of 97,947.0295. The elementary
+unit-gap argument proves that the old unit is the square of the new one up
+to torsion; this does not merely compare floating-point logs with PARI.
+The native index-one classifier now succeeds at cutoff 1,530. GMP, tagged
+integers and generated JavaScript agree on the complete target diagnostic.
+Across 256 same-process GMP calls, all detached outputs agree; observed RSS
+was about 137/149/192/192/193 MB after 1/16/64/128/256 calls. This is limited
+observed memory behavior, not an allocation bound or a competitive timing.
+
+The same 27-field panel improves from **16 to 24 index-one classifications**.
+All 16 formerly successful cases retain identical raw witnesses, selected
+exponents and analytic endpoints. All 11 changed cases have fresh independent
+replay of every principal relation, selected unit/log and HNF/Smith
+presentation. The 16 byte-identical witnesses reuse their previous independent
+receipts only after checking their input/checker hashes; they are not counted
+as fresh replays. There are 3,841 retained relations, including 129 additions.
+All 24 classified presentation orders match the saved PARI class numbers;
+the eight newly classified invariant lists also match. These are the same
+earlier selected labels, not a new claim of unseen sampling.
+
+| Remaining field | Final rows | Presentation order | PARI class number |
+| --- | ---: | ---: | ---: |
+| `3.1.1246798226700.1` | 112 | 1,620 | 405 |
+| `3.1.4860135888300.8` | 117 | 1,944 | 486 |
+| `3.1.2602492536667698675.123` | 211 | 69,984 | 34,992 |
+
+All three exhaust the eight-retry envelope without index-one classification.
+The next search improvement should address those retained relation deficits,
+not silently increase analytic cutoffs or accept these larger groups.
+
+Fresh PARI debug traces for all three are recorded separately under
+`build/cubic-analytic-schedule-evidence/algebraic-resume-next-forensics/`.
+For the first, $x^3-93477150$, PARI uses cutoff 458, 74 factor ideals and
+80 relations: 16 rational-prime relations followed by 64 small-norm relations.
+Its first HNF already gives class number 405 and regulator approximately
+332.0468, without an additional HNF update. It visits target ideals 74 down
+through 51 and reports 253 factorizations from 5,791 small-norm trials. Our
+original 80-row ledger has presentation order 3,240; the extra 32 rows reduce
+it only to 1,620. Thus the remaining discrepancy is already present in
+relation selection at equal dimensions, not merely too few rows or a larger
+factor base. These debug timings are not controlled performance evidence.
+
+An independent exact modular-rank check further localizes the first ledger:
+its 74 columns have rank 72 modulo two, with nonpivot columns 33 and 34
+(zero-based), while rank modulo three is 70. The corresponding checked
+presentation invariants are $(3,3,6,30)$; PARI reports $(3,3,3,15)$. A useful
+next experiment is prime-specific quotient-directed discovery, rather than
+treating every nonunit HNF diagonal as an equally useful target. This is a
+search heuristic, not permission to discard the presentation's two-primary
+part: doing so still requires new exact principal relations and certification.
+The modular checks agree with independent Smith invariants on all three
+remaining presentations and are recorded beside their PARI traces.
+
+Initial independent replay hit severe coefficient growth in SymPy's full-size
+Smith recursion, after relation/unit/log verification. Stack traces isolate
+that phase. The revised oracle eliminates only unit diagonal pivots by exact
+unimodular Schur complements, then computes Smith on the smaller quotient.
+The actual elimination agrees with direct Smith and determinants on 200
+random small integer matrices. Four mutations of the target certificate
+(generator, exponent, zero exponents, reversed interval) are rejected.
+Initial failed and intentionally stopped runs are preserved separately.
+
+The final scheduled research source has 584,966 bytes and SHA256
+`0b260478d3e59df9e47f7a5270bea567cccfdbf052a0ecbb7a3e004da286756a`;
+its build key is
+`0c6cb183f53a4a2381b8cf972ac2e4abc117f5272c2fb3203f139c08875b3ecd`.
+All 27 full outputs match the preliminary closure before predicate extraction.
+Scripts, source, detached records, replay results and build identities are
+archived in `build/cubic-analytic-schedule-evidence/algebraic-resume/`.
+
+Every root still returns false diagnostically. Production source remains
+480,241 bytes, its allowance remains 485,000, and arena limits remain unchanged.
+Source compression/integration, dimensioned public certificate publication,
+independent maximality/generation/analytic-premise checking and resource/platform
+qualification remain required. No controlled timings were taken; `opt` was
+not used, and PR #203 remains draft.
+
+Final validation: the fresh build passes, all 195 unit-test files pass, and
+documentation/merge checks and lazy-module precompilation pass. The full CLI
+attempt is terminal at the same five missing FFLAS/igraph prerequisite
+failures in `test/ffi.cjs`, after four files passed and with 582 unstarted.
+Architecture passes its native/FFI/resource stages but still rejects the
+pre-existing stale optimizer manifest. These failures are not green release
+qualification. The main nonbinary evidence archive contains 140 files
+(8,478,975 bytes), with verified hashes and separate generated-artifact
+identities; generated binaries and full IR are not committed.

@@ -62,6 +62,30 @@ print("2000 exact schedule cases and uint64-scale termination pass")
   assert.equal(run.status, 0, run.stderr);
 });
 
+test("algebraic continuation requires a validated positive index gap and bounded room", () => {
+  const run = spawnSync(pythonExecutable(), ["-c", `
+import importlib.util
+import itertools
+spec = importlib.util.spec_from_file_location("audit", "bench/class-unit-groups/cubic-bf-scale-audit.py")
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+step = m.resume_algebraic_collection
+assert step(0,1,2,0,8,1000,53,128)
+checks = 0
+for status,lo,hi,round_count,budget,rows in itertools.product(
+    [-1,0,1,2],[-2,0,1,3],[-1,0,2,3],[-1,0,7,8],[0,1,1000],[0,53,128,129]):
+    expected = (status == 0 and 0 < lo <= hi and 0 <= round_count < 8
+                and budget > 0 and 0 < rows < 128)
+    assert step(status,lo,hi,round_count,8,budget,rows,128) == expected
+    checks += 1
+assert not step(0,1,2,0,-1,1000,53,128)
+assert not step(0,1,2,0,0,1000,53,128)
+assert step(0,2**100,2**101,2**70,2**70+1,1,2**80,2**80+1)
+print(checks, "exact scheduling checks; no certificate inferred")
+`], { cwd: require("node:path").resolve(__dirname, ".."), encoding: "utf8" });
+  assert.equal(run.status, 0, run.stderr);
+});
+
 test("online HNF full-rank test reads only the diagonal without counting deficient rank", () => {
   const run = spawnSync(pythonExecutable(), ["-c", `
 import ast
