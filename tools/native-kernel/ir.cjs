@@ -5,6 +5,8 @@ const { analyzeExactModule } = require("./exact-analysis.cjs");
 const {
   canonicalType,
   isIntegerSignature,
+  isLiveExactOwnerType,
+  isTupleType,
   lowerIntegerFunction,
   signatureFromFunction,
 } = require("./integer-ir.cjs");
@@ -673,6 +675,107 @@ function isNativeRecordClass(statement) {
     array(statement.bases)[0].name === "NativeRecord";
 }
 
+/** Erase closed private scalar-record ABIs before representation selection.
+ *
+ * No ownership or public ABI is changed. Each field is a uint64 value, every
+ * construction/copy preserves evaluation order, and helper arguments are
+ * passed by value. Borrowed buffers, prime moduli, record vectors and public
+ * record entries deliberately remain outside this transformation.
+ */
+function scalarizePrivateRecords(functions, filename) {
+  const schemas = new Map();
+  for (const fn of functions) {
+    if (fn.kernelKind !== "integer" || fn.hostCallable !== false) continue;
+    for (const param of fn.params) {
+      if (!param.type.startsWith("Record:")) continue;
+      const schema = fn.records.find(record => record.type === param.type);
+      if (schema?.fields.every(field => field.type === "uint64")) {
+        schemas.set(param.type, schema);
+      }
+    }
+  }
+  if (!schemas.size) return;
+  const plans = new Map();
+  for (const fn of functions) {
+    const values = [...fn.params, ...fn.locals];
+    if (!values.some(value => schemas.has(value.type))) continue;
+    expect(fn.kernelKind === "integer", `${filename}: scalar record closure crosses a non-exact function`);
+    expect(fn.hostCallable === false || !fn.params.some(param => schemas.has(param.type)),
+      `${filename}: scalar record erasure requires private helper parameters`);
+    const occupied = new Set(values.map(value => value.name));
+    const bindings = new Map();
+    let serial = 0;
+    for (const value of values) {
+      const schema = schemas.get(value.type);
+      if (!schema) continue;
+      const fields = schema.fields.map(field => {
+        let name;
+        do { name = `sagejs_record_scalar_${serial++}`; } while (occupied.has(name));
+        occupied.add(name);
+        return {name, type: field.type, field: field.name};
+      });
+      bindings.set(value.name, fields);
+    }
+    plans.set(fn.name, {bindings, params: fn.params});
+  }
+  for (const fn of functions) {
+    const plan = plans.get(fn.name);
+    if (!plan) continue;
+    const {bindings} = plan;
+    const field = (name, member) => {
+      const found = bindings.get(name)?.find(value => value.field === member);
+      expect(found !== undefined, `${filename}: missing scalar record field ${fn.name}:${name}.${member}`);
+      return found.name;
+    };
+    const copy = (operation, target, source) => ({
+      kind: "uint64.copy", target, source, provenance: operation.provenance,
+    });
+    const visit = statements => (statements || []).flatMap(operation => {
+      if (operation.kind === "record.construct" && bindings.has(operation.target)) {
+        return operation.fields.map(value => copy(operation,
+          field(operation.target, value.name), value.value));
+      }
+      if (operation.kind === "record.copy" && bindings.has(operation.target)) {
+        return bindings.get(operation.target).map(value => copy(operation,
+          value.name, field(operation.source, value.field)));
+      }
+      if (operation.kind === "record.get" && bindings.has(operation.source)) {
+        return [copy(operation, operation.target, field(operation.source, operation.field))];
+      }
+      expect(!operation.record || !schemas.has(`Record:${operation.record}`),
+        `${filename}: unsupported scalar record operation ${operation.kind}`);
+      const result = {...operation};
+      if (operation.kind === "native.call") {
+        const callee = plans.get(operation.function);
+        result.arguments = operation.arguments.flatMap((argument, index) => {
+          if (!schemas.has(argument.type)) return [argument];
+          expect(callee?.params[index]?.type === argument.type,
+            `${filename}: scalar record call escapes the closed helper graph`);
+          return bindings.get(argument.name).map(({name, type}) => ({name, type}));
+        });
+      }
+      for (const key of ["body", "alternative", "setup"]) {
+        if (operation[key]) result[key] = visit(operation[key]);
+      }
+      for (const key of ["condition", "right"]) {
+        if (operation[key]?.operations) {
+          result[key] = {...operation[key], operations: visit(operation[key].operations)};
+        }
+      }
+      return [result];
+    });
+    fn.body = visit(fn.body);
+    const expand = values => values.flatMap(value =>
+      bindings.has(value.name)
+        ? bindings.get(value.name).map(({name, type}) => ({name, type}))
+        : [value]
+    );
+    fn.params = expand(fn.params);
+    fn.locals = expand(fn.locals);
+    fn.scalarRecordBindings = [...bindings].map(([name, fields]) => ({name, fields}));
+  }
+}
+
 function nativeRecordSchemas(topLevel, filename) {
   const declarations = topLevel.filter(isNativeRecordClass);
   const names = new Set(declarations.map((record) => record.name?.name));
@@ -1120,10 +1223,36 @@ async function lowerSource(source, filename, options = {}) {
       `native function ${name} conflicts with an imported FFI function`,
     );
   }
+  const publicRecordTypes = new Set(definitions
+    .filter(fn => initiallySelected.has(fn.name.name) || nativeDecorator(fn))
+    .flatMap(fn => (signatures.get(fn.name.name)?.params || [])
+      .filter(param => param.type.startsWith("Record:"))
+      .map(param => param.type)));
   function lowerDefinition(fn) {
     const expanded = workspaces.lower(fn);
     fn = expanded.fn;
     const signature = signatures.get(fn.name.name);
+    // A scalar/packed record is a representation, not evidence of prime-field
+    // arithmetic. Preserve the existing word-only record path, but don't let
+    // its broad signature predicate steal helpers using exact integers or
+    // borrowed exact owners (including expanded NativeWorkspace parameters).
+    const exactRecordSignature = signature !== undefined &&
+      signature.params.some(param => param.type.startsWith("Record:")) &&
+      !isPrimeFieldSignature({
+        ...signature,
+        params: signature.params.filter(param => !param.type.startsWith("Record:")),
+      }) &&
+      signature.params.filter(param => param.type.startsWith("Record:")).every(param =>
+        records.get(param.type.slice(7)).fields.every(field => field.type === "uint64")
+      ) &&
+      ((!initiallySelected.has(signature.name) && !nativeDecorator(fn) &&
+        signature.params.every(param => !publicRecordTypes.has(param.type))) ||
+      [signature.returnType, ...signature.params.map(param => param.type)].some(type =>
+        ["Integer", "IntegerBuffer", "Int64Buffer", "Int64Record"].includes(type) ||
+        isLiveExactOwnerType(type) || isTupleType(type) || foreignResources.has(type)
+      ));
+    expect(!exactRecordSignature || (!initiallySelected.has(signature.name) && !nativeDecorator(fn)),
+      `${filename}: exact scalar record parameters currently require a private helper; select a closed caller`);
     const result = signature === undefined
       ? lowerLegacyFunction(fn, decoratedMode)
       : isFloat64Signature(signature)
@@ -1133,7 +1262,7 @@ async function lowerSource(source, filename, options = {}) {
             filename,
             decoratedMode,
           )
-        : isPrimeFieldSignature(signature)
+        : isPrimeFieldSignature(signature) && !exactRecordSignature
         ? isPrimeFieldIntrinsicFunction(fn)
           ? lowerPrimeFieldFunction(
               fn,
@@ -1238,6 +1367,7 @@ async function lowerSource(source, filename, options = {}) {
     );
   }
   const combined = [...lowered, ...importedLowered];
+  scalarizePrivateRecords(combined, filename);
   rejectNestedArenaCalls(combined, filename);
   const selected = analyzeExactModule(combined).map(
     (fn, index) => index < lowered.length
