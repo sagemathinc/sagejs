@@ -10039,3 +10039,104 @@ The live partial replay report is deliberately excluded; its driver is
 included. Production/public/platform qualification and residual profiling
 remain open. Generic constant folding in PR #202 is separate from the
 runtime-base-plus-offset issue isolated here.
+
+## Rank-discovery admission and traversal limits (2026-09-10)
+
+An instrumented copy of the composed closure identifies both phase-44
+extension failures at the guard following `_cubic_resume_powered_rank_search`
+(original composed source line 13548). The diagnostic changes only two output
+slots to record exit locations; all other outputs and parity counters match.
+This is not a root-isolation failure: slot 62 alone was ambiguous.
+
+The powered search used the same `limit` for two different contracts:
+
+- The admission target is $\min(F+6,C)$ for missing-rank search, where $F$
+  is the factor count and $C$ the physical relation capacity. Independent
+  parity rows can legitimately extend the ledger beyond that ordinary target.
+- The enumeration loop also required `relation_count < visit_limit`, with
+  `visit_limit` set to that admission target. At or beyond the target, it
+  visited no candidate and the caller rejected its zero-work return.
+
+For `3.1.1086061775432017340256300.428`, $F=474$ and the stalled ledger has
+481 rows; for `.163`, $F=432$ and the ledger has 438 rows. Both trigger this
+zero-visit condition. No new analytic bound or special field treatment is
+needed. `cubic-rank-search-budget.py` separates the rank-discovery traversal
+limit from admission: it uses physical capacity for traversal, retaining the
+original dependent/parity admission predicate. Quotient-mode four-row batches
+retain their original limit. Physical capacity, candidate cap, virtual work
+budget, exact support-change stopping, and all certification checks remain.
+The transformation mechanically restores the original source when its two
+edits are undone, and rejects repeated or ambiguous application.
+
+This is a scheduling correction, not a proof that more relations will always
+suffice. All newly retained rows still require the same exact principal-ideal
+checks; modular pivots only guide discovery. Exhaustion remains inconclusive.
+Neither a larger relation ledger nor a modular rank observation grants public
+proof authority.
+
+The focused test executes the extracted actual powered-search helper with
+modeled owners and enumeration: 320 over-target states reproduce the old
+failure and make progress after the fix, 192 ordinary states are unchanged,
+and 512 quotient-mode states are unchanged. Capacity/work exhaustion and
+malformed transformations are checked. This is a control-flow oracle, not a
+replacement for the mathematical relation checker.
+
+The compiled research source hash is
+`ee5f4ff978b4b8980ea99d7a3eeb81199cc4d3d01187a4c99d0792a848fb0330`,
+with build key
+`3814a1dee3f2dd10d96643e8ddda80089f121541d1029c5dabc88ab7af7cc362`.
+All 27 previous full GMP/tagged ledgers and two JavaScript controls remain
+identical. Both newly progressing fields agree across GMP and tagged on all
+64 output words, complete detached ledgers, basis, unit exponents and parity:
+
+| Label suffix | Presentation shape (relations × factors) | Order | Nontrivial Smith invariants |
+| --- | ---: | ---: | --- |
+| `.428` | 524 × 474 | 19,683 | nine factors of 3 |
+| `.163` | 470 × 432 | 5,629,338 | eight factors of 3, then 858 |
+
+Independent exact replay passes for both: order closure, prime-ideal data,
+principal relations, compact unit cancellation, rational log enclosures, and
+presentation Smith invariants. The orders/invariants agree with the hashed
+PARI reference records. The original 180-second replay attempts timed out
+after producing checked HNF witnesses; these failures are retained. A second
+replayer independently verifies the saved witnesses against the input rows,
+then removes all trivial unit-row factors in one step. It completes both
+checks locally in approximately 23 and 21 seconds. These are verification
+durations, not controlled class-group computation benchmarks.
+
+Specifically, with columns $A$ the original relations, an untrusted PARI
+`mathnf` call proposes an upper column HNF $H$ and an integer matrix $C$.
+The checker proves $AC=H$ and checks integral triangular back-substitution
+for every column of $A$. These are both lattice inclusions; neither the
+native class number nor a guessed determinant is used to establish them.
+Canonical upper HNF additionally has $0\le H_{ij}<H_{ii}$ for $i<j$.
+Consequently any diagonal-one row is exactly a coordinate unit row. Integral
+column operations clear its column without altering other entries, so deleting
+all such rows and columns at once preserves the cokernel. Smith computation
+then runs on the small retained matrix instead of repeatedly copying a large
+matrix for hundreds of trivial factors.
+
+The successful replayer SHA-256 is
+`904089320d2e991661efd74553882d26dc652cd8a32affe9caeac9b553b8b2c4`.
+The existing compact-unit checker is unchanged at
+`795d171c6988ae3c80d8a1520011e4d2d12213f32427b069c8f2f74053f44b26`.
+These facts do **not** prove order maximality, unit fundamentality, or the
+complete class group independently. Public acceptance remains false. The
+production source, allowance, and resource contracts are untouched; controlled
+timing, consolidation, and public/platform
+qualification remain open.
+
+The full frozen 20-field extension rerun also completes without child-process
+timeouts: the two rank failures now progress, and every complete observation
+on the other 18 fields is unchanged. Thus 18 research classifier-one class
+numbers match PARI; the doubled-index case and projection error remain
+unresolved. This is not 18 public certificates, nor a timing comparison
+against the old fast-but-unsuccessful rank-search returns.
+
+Completed trace, source, generated code/binary, native ledgers, both timed-out
+and successful fixed-field replay records, HNF witnesses and reference hashes
+are archived under `build/cubic-analytic-schedule-evidence/rank-discovery-budget`.
+The 63 files occupy 333,159,217 raw bytes and 33,510,828 gzip bytes; every
+compressed file was round-trip hash-verified. Manifest SHA-256:
+`cc32f1b8346062d32aa53d2b634d18f478250cad8322a0816ab8384aeb779f8e`.
+The separately running wider replay is not counted as complete in this archive.

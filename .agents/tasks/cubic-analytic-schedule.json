@@ -9,6 +9,9 @@
   "objective": "Understand deeply how to improve cubic class number computation to be competitive with PARI overall, preserving exact certification and resource contracts",
   "base_commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
   "claims": [
+    "bench/class-unit-groups/cubic-rank-search-budget.py",
+    "test/cubic-rank-search-budget.cjs",
+    "test/fixtures/cubic-powered-rank-search.py",
     "bench/class-unit-groups/cubic-factor-scan-ablation.py",
     "bench/class-unit-groups/cubic-factor-scan-check.py",
     "test/cubic-factor-scan-ablation.cjs",
@@ -1946,6 +1949,26 @@
       "commit": "287f417f0b92aa58ce5b3b09cce02b804bee248f",
       "workspace_fingerprint": "f0677b2c4bba8c6d29416bbdf34df795d4f1d865e1689f9e9bfc41995040770d",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-rank-search-budget.cjs test/cubic-factor-scan-ablation.cjs test/cubic-word-prime-ablation.cjs test/cubic-incremental-hnf.cjs test/cubic-residue-algebra.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.112,
+      "started_at": "2026-09-10T18:46:49.662Z",
+      "commit": "daec851c1691a970c325e351019f610fdab13063",
+      "workspace_fingerprint": "de5faa1769070bd535ecf77db869cba58ecd9f6140db172cfd27f9865c67bcf6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-rank-search-budget.cjs test/cubic-factor-scan-ablation.cjs test/cubic-word-prime-ablation.cjs test/cubic-incremental-hnf.cjs test/cubic-residue-algebra.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.102,
+      "started_at": "2026-09-10T18:49:13.910Z",
+      "commit": "daec851c1691a970c325e351019f610fdab13063",
+      "workspace_fingerprint": "d61554cf469dd0d86311c94edd302e181a9c5105835f427b5b2a9c426e8e1a3b",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -1969,6 +1992,7 @@
       "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
     ],
     "next_steps": [
+      "Latest rank-budget checkpoint: exact exit tracing proves the two extension phase44 declines are zero-work powered-rank searches, not root-isolation failures. Separate physical traversal capacity from the unchanged admission target; quotient batches, candidate/work/physical limits and proof predicates remain. The compiled fix preserves27 full GMP/tagged controls and2 JS controls. Both new full ledgers agree GMP/tagged and independently replay principal/unit/log facts and exact HNF/Smith invariants: .428 order19683 with nine3s; .163 order5629338 with eight3s and858. Original180s replay timeouts are retained; checked batch removal of canonical HNF unit rows lets a saved-witness replayer finish in23/21s. Frozen20field rerun completes:18 classifier1 PARI class-number matches, other18 observations unchanged; doubled-index and projection-error failures remain. Not public certificates or a PARI timing win.63 source/evidence files round-trip archived under rank-discovery-budget, manifest cc32f1b8346062d32aa53d2b634d18f478250cad8322a0816ab8384aeb779f8e. Next finish wider replay, measure fixed closed program on opt, profile residual costs, and consolidate source/public/platform qualification without increasing limits.",
       "Compose checked group-range scans with machine-sized offsets, verify full ledgers and fresh holdouts, then reprofile the remaining 3.49–7.12s research paths. Preserve exact bounds, candidate order, range-partition invariant and proof/resource contracts. Coordinate general native vector-index lowering with the compiler lane; no global uint64 arithmetic semantic change and no edits to overlapping compiler claims from this math lane. Consolidate the research closure and complete detached/public/platform qualification before marking PR203 ready. Current source/IR/profile/timing identities and archived evidence are in the latest docs sections; historical next steps below are superseded.",
       "Use the committed 184x182 admission counterexample to implement and qualify parity-aware proposal admission; the auxiliary basis must track retained rows only, not rejected proposals.",
       "Preserve successful powered continuation while extending missing ideal coverage; compare the complete 27-field panel and retain all declines/regressions before any controlled opt timing or production promotion.",
