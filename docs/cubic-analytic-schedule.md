@@ -6245,3 +6245,188 @@ checks pass. Those repository checks do not qualify the larger experimental
 kernels for release. PR 203 stays draft; the earlier architecture inventory
 failure and broader platform/public qualification requirements are not cleared
 by these measurements.
+
+### Staging original and opposite presentations in one resident call
+
+The next campaign tests a general allocation rule rather than a field-specific
+choice: give the original upper-HNF target a bounded opportunity, retain it
+while it changes the exact relation lattice, and switch to the opposite
+presentation after a stagnant batch. This changes discovery only. It does not
+discard admitted principal relations or unit witnesses, add a publication rule,
+or enlarge an arena, matrix, relation capacity or global proposal budget.
+
+Two details are essential to implementing that statement faithfully:
+
+- Online status two means a **trivial quotient**, not arbitrary lattice
+  progress. The ellipsoid leaf stops at the first exact support change, so its
+  last admitted row's exact support marker detects progress; no new rows means
+  no progress. A modular rank counter is not the authority for this decision.
+- A target cursor from the upper presentation is not the visitation history of
+  the opposite presentation. The first opposite plan must reset that cursor
+  even after an oversized or fully exhausted original region. Later opposite
+  plans resume normally. A switched partial original suffix is deliberately
+  abandoned optional discovery, not declared exhausted or mathematically
+  complete. Admitted witnesses and the global remaining budget survive.
+
+The initial corrected-cursor candidate, SHA-256
+`55d15c2c3bf926d1a2235f3b310d265a67b82e3e2bea2a050db40ed3b81cad76`,
+allowed 32 **virtual slots** in the original plan. Actual tracing finds zero
+new candidates and zero relations in all ten selected first 32-slot calls:
+the ellipsoid enumerator can skip large empty regions cheaply, so this is not
+a useful candidate budget. The candidate merely pays for an unused original
+plan before taking the opposite one. All 1,042 normal/one-page three-backend
+comparisons pass; independent replay checks 2,208 principal rows across all
+113 changed traces. It is nevertheless rejected as a scheduling policy.
+Paired ratios on the previous small regressions worsen to 1.06376, 1.06958
+and 1.02845; the rescued target remains 26.293 to 9.822 ms. On the 113
+helper-invoking fields, opposite-only/staged totals are 366.769/371.805 ms.
+The full staged aggregate happens to be lower, 2,718.019 versus 2,725.851 ms,
+because other fields also move; this is not evidence of a policy improvement.
+
+Removing the 32-slot cap restores the existing batch boundary: four admitted
+rows or the first exact support change, under the unchanged global budget.
+That candidate has SHA-256
+`83aa8cffcf3178fbc997ff6391a0ce03e9f0a1733868a1bcc334f3ec0cff41b6`.
+All 1,042 normal/one-page three-backend comparisons pass, but only the rescued
+field's final output changes relative to the original-parent survey. Returning
+after a stagnant original batch gives control to the outer scheduler, which
+can do ordinary collection before the opposite target gets a turn. Thus a
+correct local state transition does not by itself implement the intended
+whole-program work allocation. No controlled timing claim is made for this
+intermediate version.
+
+The next candidate continues inside the same helper call after switching,
+rather than returning solely because stagnant rows were admitted. The second
+batch borrows the same owners and retains the first batch's rows. Exact
+progress, exhaustion, bounded failure or the unchanged remaining proposal
+budget still controls return. Lifecycle tests exercise source bodies with
+stubbed arithmetic; full native/dynamic comparisons and independent ideal
+replay are separate requirements, not implied by those control tests.
+
+The first normal-linkage survey invocation omitted the dynamic fallback's
+module search path and failed before completing the corpus with
+`MODULE_NOT_FOUND` for `@sagemath/sagejs-flint`. The corrected invocation
+supplies the existing compiler worktree's package path. The failed log remains
+retained, and no mathematical pass is inferred from that failed invocation.
+
+The same-call source is 531,509 bytes, SHA-256
+`5d0c318bf4234636b54ddec1a41fddef5651759d783827648653e2506a59675e`;
+its generated C core is 18,597,831 bytes, SHA-256
+`b64fd1c62aaab5d6ef21d8d37ce78d6734bdbb3732fe432c5c224491184bbfa9`.
+All 1,042 fields agree across FLINT/GMP/JavaScript under normal and one-page
+linkages: 1,041 first-effort successes, the rescued-field gain, no losses and
+the same remaining decline. There are 14 changed final outputs and 21 changed
+selected traces. Independent replay checks all 21 traces, 570 principal rows,
+without exclusions. The intermediate return-to-caller version also has
+independent replay of its three changed traces, 100 rows. The 73 earlier and
+61 same-call actual-body control cases include budget accounting, retained
+support marks, unchanged authoritative basis, bounds through 32 factors,
+trivial-quotient return, exact failures and optional oversized plans.
+
+The frozen ten-field paired comparison with the original descending policy
+shows ratios 1.0010, 1.0099 and 0.9984 on the three prior small regressions;
+all empirical p10–p90 ranges cross one. The three retained non-target gains
+become approximately 11%, rather than opposite-only's 18–23%. The rescued
+field is 26.53 to 9.19 ms (ratio 0.3473, empirical p10–p90 0.3444–0.3492).
+Its proof checkpoints are now 29, 34 and 38 rows, versus opposite-only's
+29, 30 and 34. More rows do not by themselves imply greater total runtime:
+unit-reconstruction expressions and arithmetic sizes also matter. However,
+the faster target time relative to the previous opposite-only run requires
+a direct paired comparison before attributing a further gain.
+
+That direct comparison is now complete on the same frozen ten-field panel.
+The rescued field improves **9.869 to 9.187 ms** against opposite-only,
+paired ratio **0.93273** (empirical p10–p90 **0.92633–0.93549**). The
+three original small-regression fields improve against opposite-only by
+approximately 3.1%, 3.6% and 1.3%. Conversely, the three other gain fields
+are **14.7%, 7.7% and 7.6% slower than opposite-only**, despite remaining
+faster than the original descending policy; `3.1.67151700.2` is also 3.8%
+slower than opposite-only. This is a tradeoff, not dominance.
+
+Full 1,042-field timing completes the same 1,041 fields, with totals
+**2,804.754 ms original**, **2,744.397 ms opposite-only**,
+**2,754.725 ms same-call staged**, and **1,488.000 ms PARI**. Among the
+113 helper-invoking fields, original/opposite/staged totals are
+**404.626/369.856/377.464 ms**. Staging is about 2.1% slower on that cohort
+than opposite-only, and about 1.851 times PARI over the full completed set.
+It is not promoted as the universal policy.
+
+The first three newly identified unpaired regressions among changed traces
+were frozen for a further paired adjudication: `3.1.43939476.2`,
+`3.1.1824155.1` and `3.1.88587.1`. This is a post-selection check, not a
+fresh holdout. The checked driver, linkage identities, raw timings, summaries
+and selection policy are retained with the rest of the campaign evidence.
+The resulting staged/original ratios are **1.01066** on `43939476`
+(empirical range 0.99914–1.02339, unresolved), **1.01454** on `1824155`
+(1.00889–1.02265), and **1.03908** on `88587` (1.02718–1.06341).
+The last two are confirmed new penalties; avoiding the old three does not
+establish a no-regression policy.
+
+Before adding another unconditional ordering or batch-size rule, measure the
+target's exact work by stage. The independent replay shows the final published
+units differ only by torsion sign, while both are fundamental. More retained
+rows may alter dependency expressions and unit reconstruction, but the observed
+6.7% speed difference does not by itself attribute cost to that stage. Preserve
+the distinction between PARI's compact class-group computation and an explicit
+expanded-unit certificate when comparing work. A compact, exactly checkable
+representation could matter more than another search-order adjustment; it
+requires a separate representation/proof investigation, not an assumption that
+less evidence may be published. Source consolidation and a new untouched panel
+remain prerequisites to promotion.
+
+The extended nonbinary archive now contains **1,128 files / 67,551,552 bytes**,
+including all staged source variants, failed attempts, controls, exact replay
+programs and controlled measurements. All timing and replay jobs are terminal.
+The tracked change remains documentation and task handoff only; production
+source and its allowance are unchanged, and PR 203 remains draft.
+
+#### Structural follow-up: reconstruction precision and product sizes
+
+A read-only same-source JavaScript trace preserves all 64 result words while
+counting work inside dependency-unit materialization. It is not a native timing
+profile. Both policies materialize twice. Both first try scale $2^{32}$, then
+$2^{112}$ or $2^{110}$; all four numerical attempts return status 18. In the
+source this is the explicit `complex_magnitude <= 0` exit, after
+
+$$
+\text{complex magnitude}
+=\left\lfloor\sqrt{S^3/\text{exponential}}\right\rfloor,
+\qquad \text{exponential}\approx S e^R.
+$$
+
+The recorded regulator intervals give $R\approx659.075824498$. For a unit
+oriented so its real absolute value is $e^R$, its complex absolute value is
+$e^{-R/2}$ by the norm identity. Even avoiding zero in this fixed-point
+quantity requires roughly $\log_2 S\ge R/(2\log 2)\approx475.423$;
+the attempted 32 and 110–112 fractional bits are far too few. This is a
+necessary scale consideration, **not** a sufficient accuracy theorem for
+rounding all integral-basis coordinates. Numerical proposals must still pass
+the existing exact norm and full-precision regulator authentication.
+
+The code then uses exact products of the dependency's relation elements.
+Matrix-coordinate multiplication counts and largest observed operand bit sizes
+inside the two materializations are:
+
+| Policy | First materialization | Second materialization |
+| --- | ---: | ---: |
+| Opposite-only | 209 multiplications, 3,215 bits | 199 multiplications, 3,038 bits |
+| Same-call staged | 209 multiplications, 3,215 bits | 211 multiplications, 2,635 bits |
+
+Both return coordinates of 955, 954 and 953 bits. Thus the staged dependency
+performs more multiplications in its second materialization but with a smaller
+largest operand. This gives a concrete expression-size difference to profile;
+it does not prove how much of the paired 6.7% saving belongs to materialization.
+An initial scalar-coordinate counter saw zero calls because these products use
+the matrix-coordinate path; the extended trace explicitly measures that path.
+Both reports and their scopes are retained.
+
+The next source-transparent experiment should choose reconstruction proposal
+precision from the actual regulator/embedding scale, avoiding demonstrably
+futile low-precision attempts and comparing adaptive reconstruction with exact
+products. Keep bounded resource behavior, same-source fallback and exact
+authentication unchanged. This is a better-supported next question than
+another arbitrary fixed target-order or coordinate-budget choice.
+
+Final repository validation passes all **192 unit-test files**, seven focused
+cases, merge invariants, documentation generation/check and task scope. These
+checks do not change the experimental/public qualification distinction above.
