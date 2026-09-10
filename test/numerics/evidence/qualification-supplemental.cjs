@@ -76,6 +76,7 @@ const {
 );
 const {
   browserArtifactReportBinding,
+  GATES,
 } = require(
   "../../../scripts/numerical-computing/qualification/run-structural-performance.cjs",
 );
@@ -360,6 +361,38 @@ function structuralEvidence() {
     scope: { claim: "source-current-authoritative-structural-and-performance-gates" },
   });
 }
+
+test("every structural producer command matches the independent admission contract", () => {
+  const { structuralGateContracts } = require(
+    "../../../scripts/numerical-computing/qualification/supplemental-report.cjs",
+  ).qualificationInternals;
+  const expected = structuralGateContracts();
+  assert.deepEqual([...expected.keys()], GATES.map(gate => gate.id));
+  for (const gate of GATES) {
+    assert.deepEqual({
+      arguments: [...gate.arguments, ...(gate.report ? ["--output", "<temporary-report>"] : [])],
+      bindings: gate.bindings,
+      artifacts: gate.artifacts ?? [],
+    }, expected.get(gate.id), gate.id);
+  }
+  // A caller cannot mutate the admission table for later verifications.
+  expected.get("numerical-trace-presentation-payload").arguments.pop();
+  assert.equal(structuralGateContracts().get("numerical-trace-presentation-payload").arguments.length, 4);
+});
+
+test("structural gallery qualification serializes both browser test files", () => {
+  const gate = GATES.find(({ id }) => id === "numerical-trace-presentation-payload");
+  const files = [
+    "test/numerics/gallery/root-gallery.test.cjs",
+    "test/numerics/gallery/cross-domain-gallery.test.cjs",
+  ];
+  assert.deepEqual(gate.arguments, ["--test", "--test-concurrency=1", ...files]);
+  assert.deepEqual(gate.bindings, [
+    ...files,
+    "website/numerical-computing/gallery-manifest.json",
+    "docs/numerical-computing/gallery/evidence.json",
+  ]);
+});
 
 test("structural evidence binds the browser report's artifact identity", (context) => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-structural-report-"));

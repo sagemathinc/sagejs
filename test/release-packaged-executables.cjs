@@ -12,14 +12,20 @@ function fixture(t) {
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "sagejs-packaged-sea-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, "release/npm"), { recursive: true });
-  const gate = { capability_manifests: [] }, products = new Map();
+  const gate = { capability_manifests: [], matrix_receipts: [] }, products = new Map();
   function writeManifest(platform, kind, value) {
     const row_id = `${platform}-${kind}`, relative = `build/numerical-qualification/platform/${platform}/${row_id}/capabilities.json`;
-    const bytes = Buffer.from(JSON.stringify(value));
+    const evidence = require("./helpers/release-platform-package.cjs").serializedEvidence(value);
+    const bytes = evidence.manifest;
     fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true }); fs.writeFileSync(path.join(root, relative), bytes);
     const record = gate.capability_manifests.find((item) => item.row_id === row_id);
     if (record) record.sha256 = hash(bytes);
     else gate.capability_manifests.push({ row_id, path: relative, sha256: hash(bytes) });
+    const receiptPath = relative.replace("capabilities.json", `${kind}.receipt.json`);
+    fs.writeFileSync(path.join(root, receiptPath), evidence.receipt);
+    const receiptRecord = gate.matrix_receipts.find((item) => item.row_id === row_id);
+    if (receiptRecord) receiptRecord.sha256 = hash(evidence.receipt);
+    else gate.matrix_receipts.push({ row_id, path: receiptPath, sha256: hash(evidence.receipt) });
   }
   for (const platform of platforms) {
     const product = platformPackage(platform); products.set(platform, product);

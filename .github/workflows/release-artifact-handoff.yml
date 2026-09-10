@@ -29,6 +29,11 @@ on:
         description: Run with the successful browser product aggregate
         required: true
         type: string
+      recover_numerical_evidence:
+        description: Recover omitted support inputs after all nine native producers passed; never replaces product bytes
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   actions: read
@@ -38,7 +43,15 @@ jobs:
   capture:
     name: Freeze qualified release artifact set v1
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_SHA: ${{ inputs.candidate_sha }}
+      SOURCE_REF: ${{ inputs.source_ref }}
+      SOURCE_EVENT: ${{ inputs.source_event }}
+      PURPOSE: ${{ inputs.purpose }}
+      NATIVE_RUN_ID: ${{ inputs.native_run_id }}
+      BROWSER_RUN_ID: ${{ inputs.browser_run_id }}
     outputs:
       artifact-id: ${{ steps.retain.outputs.artifact-id }}
       artifact-digest: ${{ steps.retain.outputs.artifact-digest }}
@@ -47,6 +60,68 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 26.5.1
+      - uses: pnpm/action-setup@v6
+        if: inputs.recover_numerical_evidence
+        with:
+          version: 11.9.0
+      - name: Install control dependencies without building products
+        if: inputs.recover_numerical_evidence
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Check out frozen product verifier
+        if: inputs.recover_numerical_evidence
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          path: candidate
+          submodules: recursive
+      - name: Restore pinned recovery inputs
+        if: inputs.recover_numerical_evidence
+        run: node scripts/release/recover-handoff.cjs restore candidate recovery-cache
+      - name: Reconstruct and authenticate recovered evidence
+        if: inputs.recover_numerical_evidence
+        run: |
+          ln -s "$GITHUB_WORKSPACE/node_modules" candidate/node_modules
+          cd candidate
+          # Only regenerate omitted support bytes. The frozen verifier below
+          # requires their hashes to equal the original successful observations.
+          # No SEA/npm/browser distribution is compiled or repackaged.
+          node packages/wasm-toolchain/scripts/toolchain.cjs prepare
+          node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/build.cjs
+          node scripts/numerical-computing/qualification/assemble-release-gate.cjs \
+            --candidate "$SOURCE_SHA" --input build/numerical-qualification --output build/numerical-qualification/gate
+          mv build/numerical-qualification/gate build/validated-numerical-gate
+          node scripts/numerical-computing/qualification/assemble-release-gate.cjs \
+            --candidate "$SOURCE_SHA" --input build/numerical-qualification --output build/numerical-qualification/gate
+          node scripts/numerical-computing/qualification/authenticate-release-gate.cjs \
+            --candidate "$SOURCE_SHA" --gate build/validated-numerical-gate/release-gate.json \
+            --rebuilt-gate build/numerical-qualification/gate/release-gate.json \
+            --public-npm-root build/release/npm/sagejs.tgz --browser-distribution packages/flint-wasm/dist
+          node -e 'require("../scripts/release/numerical-support.cjs").stageSupport(process.cwd())'
+      - name: Retain recovered gate
+        if: inputs.recover_numerical_evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: numerical-release-gate
+          path: candidate/build/numerical-qualification/gate
+          if-no-files-found: error
+          retention-days: 90
+          overwrite: false
+      - name: Retain recovered raw evidence
+        if: inputs.recover_numerical_evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: numerical-release-evidence
+          path: |
+            candidate/build/numerical-qualification/platform
+            candidate/build/numerical-qualification/browser/rows
+            candidate/build/numerical-qualification/browser/supplemental
+            candidate/build/numerical-qualification/support/build/sea/sagejs
+            candidate/build/numerical-qualification/support/dist/numerical
+            candidate/build/numerical-qualification/support/packages/flint-wasm/numerical/build
+            candidate/build/numerical-qualification/support/src/lib/sagejs/numerics/optimization/backends/nlopt/build
+          if-no-files-found: error
+          retention-days: 90
+          overwrite: false
       - name: Capture exact qualified artifact set
         env:
           GH_TOKEN: ${{ github.token }}
@@ -56,11 +131,16 @@ jobs:
           PURPOSE: ${{ inputs.purpose }}
           NATIVE_RUN_ID: ${{ inputs.native_run_id }}
           BROWSER_RUN_ID: ${{ inputs.browser_run_id }}
+          RECOVER_EVIDENCE: ${{ inputs.recover_numerical_evidence }}
         run: |
-          node scripts/release/artifact-set.cjs capture \
-            --sha "$SOURCE_SHA" --ref "$SOURCE_REF" --event "$SOURCE_EVENT" \
-            --purpose "$PURPOSE" --native-run "$NATIVE_RUN_ID" \
-            --browser-run "$BROWSER_RUN_ID" > artifact-set.json
+          if [ "$RECOVER_EVIDENCE" = true ]; then
+            node scripts/release/recover-handoff.cjs capture recovery-cache > artifact-set.json
+          else
+            node scripts/release/artifact-set.cjs capture \
+              --sha "$SOURCE_SHA" --ref "$SOURCE_REF" --event "$SOURCE_EVENT" \
+              --purpose "$PURPOSE" --native-run "$NATIVE_RUN_ID" \
+              --browser-run "$BROWSER_RUN_ID" > artifact-set.json
+          fi
       - name: Retain frozen artifact set
         id: retain
         uses: actions/upload-artifact@v7

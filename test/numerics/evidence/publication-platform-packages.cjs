@@ -13,17 +13,21 @@ function fixture(t) {
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "sagejs-platform-bindings-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, "release/npm"), { recursive: true });
-  const gate = { capability_manifests: [] }, manifests = new Map();
+  const gate = { capability_manifests: [], matrix_receipts: [] }, manifests = new Map();
   for (const platform of platforms) {
     const bytes = Buffer.from(`qualified ${platform} tarball`);
     const relative = `build/numerical-qualification/platform/${platform}/${platform}-npm/capabilities.json`;
     const manifest = { bindings: { artifacts: [{ name: "npm-platform-tarball",
       path: `original-producer/${platform}.tgz`, content_sha256: hash(bytes), bytes: bytes.length, files: 1 }] } };
     fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-    const serialized = JSON.stringify(manifest);
+    const evidence = require("../../helpers/release-platform-package.cjs").serializedEvidence(manifest);
+    const serialized = evidence.manifest;
     fs.writeFileSync(path.join(root, relative), serialized);
     fs.writeFileSync(path.join(root, "release/npm", `sagejs-${platform}.tgz`), bytes);
     gate.capability_manifests.push({ row_id: `${platform}-npm`, path: relative, sha256: hash(serialized) });
+    const receiptPath = relative.replace("capabilities.json", "npm.receipt.json");
+    fs.writeFileSync(path.join(root, receiptPath), evidence.receipt);
+    gate.matrix_receipts.push({ row_id: `${platform}-npm`, path: receiptPath, sha256: hash(evidence.receipt) });
     manifests.set(platform, manifest);
   }
   return { root, gate, manifests };
@@ -53,6 +57,23 @@ test("changed raw manifests cannot authorize substituted platform archives", (t)
   assert.throws(() => authenticatePlatformNpmPackages(f.gate, "release/npm", f.root), /differs from the authenticated gate/);
 });
 
+test("compact manifests require the matching independently gate-bound receipt", (t) => {
+  for (const mutate of [
+    (f) => f.gate.matrix_receipts.shift(),
+    (f) => f.gate.matrix_receipts.push(f.gate.matrix_receipts[0]),
+    (f) => { f.gate.matrix_receipts[0].path = "elsewhere/receipt.json"; },
+    (f) => fs.writeFileSync(path.join(f.root, f.gate.matrix_receipts[0].path), "{}"),
+    (f) => {
+      const record = f.gate.matrix_receipts[0], filename = path.join(f.root, record.path);
+      const receipt = JSON.parse(fs.readFileSync(filename)); receipt.artifacts[0].sha256 = "f".repeat(64);
+      const bytes = JSON.stringify(receipt); fs.writeFileSync(filename, bytes); record.sha256 = hash(bytes);
+    },
+  ]) {
+    const f = fixture(t); mutate(f);
+    assert.throws(() => authenticatePlatformNpmPackages(f.gate, "release/npm", f.root));
+  }
+});
+
 test("missing, duplicated or relocated manifest rows cannot satisfy a platform", (t) => {
   for (const change of [
     (gate) => gate.capability_manifests.pop(),
@@ -72,8 +93,10 @@ test("tarball bindings must be single ordinary-file records and cannot be hardli
     (manifest) => { manifest.bindings.artifacts[0].content_sha256 = "invalid"; },
   ]) {
     const f = fixture(t), record = f.gate.capability_manifests[0], manifest = f.manifests.get(platforms[0]);
-    change(manifest); const bytes = JSON.stringify(manifest);
+    change(manifest); const evidence = require("../../helpers/release-platform-package.cjs").serializedEvidence(manifest), bytes = evidence.manifest;
     fs.writeFileSync(path.join(f.root, record.path), bytes); record.sha256 = hash(bytes);
+    const receipt = f.gate.matrix_receipts[0];
+    fs.writeFileSync(path.join(f.root, receipt.path), evidence.receipt); receipt.sha256 = hash(evidence.receipt);
     assert.throws(() => authenticatePlatformNpmPackages(f.gate, "release/npm", f.root), /one content-bound platform tarball/);
   }
   const f = fixture(t);
@@ -84,7 +107,9 @@ test("tarball bindings must be single ordinary-file records and cannot be hardli
 test("publisher and resumable consumer explicitly enable platform binding", () => {
   const root = path.resolve(__dirname, "../../..");
   const source = fs.readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8");
-  assert.match(source, /--public-npm-root release\/npm\/sagejs\.tgz \\\n\s+--platform-npm-directory release\/npm \\\n/);
+  assert.match(source, /scripts\/release\/publish-prepared.cjs/);
+  const consumer = fs.readFileSync(path.join(root, "scripts/release/prepare-publication.cjs"), "utf8");
+  assert.ok(consumer.includes('authenticatePlatformNpmPackages(gate, "release/npm", root)'));
   const { verificationStages } = require("../../../scripts/release/prepare-publication.cjs");
   const stage = verificationStages(root, "a".repeat(40), `sha256:${"b".repeat(64)}`)[1];
   assert.ok(stage.inputs.includes("release/npm"));

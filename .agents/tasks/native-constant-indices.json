@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Preserve Python signed constant semantics and fold pure constant exact workspace indices without changing mathematical source",
-  "base_commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+  "base_commit": "89e6fcfb26e152e66b28cd4b136d820cc618133a",
   "claims": [
     "tools/native-kernel/ir.cjs",
     "tools/native-kernel/integer-ir.cjs",

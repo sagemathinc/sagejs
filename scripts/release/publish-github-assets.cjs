@@ -148,7 +148,16 @@ function githubClient(fetchImplementation = fetch, uploadCommand = execFileSync)
   }
   return {
     async resolveTag(tag) { return (await request(`commits/${encodeURIComponent(tag)}`)).sha; },
-    findRelease(tag) { return request(`releases/tags/${encodeURIComponent(tag)}`, { allowMissing: true }); },
+    async findRelease(tag) {
+      const published = await request(`releases/tags/${encodeURIComponent(tag)}`, { allowMissing: true });
+      if (published !== null) return published;
+      // The by-tag endpoint can omit drafts, even for their authenticated
+      // creator. Discover the exact draft through the paginated inventory;
+      // otherwise recovery could try to create a second release.
+      const matches = (await pages("releases")).filter(entry => entry.tag_name === tag);
+      if (matches.length > 1) throw new Error("duplicate releases for selected tag");
+      return matches[0] ?? null;
+    },
     latestRelease() { return request("releases/latest", { allowMissing: true }); },
     listReleases() { return pages("releases"); },
     makePublicLatest(id) {

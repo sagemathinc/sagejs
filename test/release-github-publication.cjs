@@ -147,7 +147,8 @@ test("API client distinguishes 404 from errors, paginates and never enables clob
   const previous = process.env.GH_TOKEN; process.env.GH_TOKEN = "fixture-not-a-secret";
   t.after(() => { if (previous === undefined) delete process.env.GH_TOKEN; else process.env.GH_TOKEN = previous; });
   let status = 404;
-  const client = githubClient(async () => ({ status, ok: false }));
+  const client = githubClient(async url => url.includes("?per_page=") && status === 404
+    ? { ok: true, json: async () => [] } : { status, ok: false });
   assert.equal(await client.findRelease("v0.8.0"), null);
   for (status of [401, 403, 429, 500]) await assert.rejects(client.findRelease("v0.8.0"), /HTTP/);
   let page = 0; const calls = [];
@@ -155,6 +156,25 @@ test("API client distinguishes 404 from errors, paginates and never enables clob
   assert.equal((await other.listAssets(123)).length, 101);
   await other.upload("v0.8.0", "/fixture/asset");
   assert.deepEqual(calls[0][1], ["release", "upload", "v0.8.0", "/fixture/asset", "--repo", "sagemathinc/sagejs"]);
+});
+test("draft lookup falls back to exact paginated inventory without swallowing errors", async (t) => {
+  const previous = process.env.GH_TOKEN; process.env.GH_TOKEN = "fixture";
+  t.after(() => { if (previous === undefined) delete process.env.GH_TOKEN; else process.env.GH_TOKEN = previous; });
+  const draft = { id: 123, tag_name: "v0.8.0+release.13", draft: true, prerelease: false };
+  let duplicate = false, denied = false;
+  const client = githubClient(async url => {
+    if (url.includes("/tags/")) return { status: 404, ok: false };
+    if (denied) return { status: 403, ok: false };
+    return { ok: true, json: async () => url.endsWith("page=1")
+      ? Array.from({length: 100}, (_, id) => ({id: id + 1, tag_name: `v0.0.${id}`}))
+      : duplicate ? [draft, draft] : [draft] };
+  });
+  assert.deepEqual(await client.findRelease(draft.tag_name), draft);
+  assert.equal(await client.findRelease("v0.8.0"), null);
+  duplicate = true;
+  await assert.rejects(client.findRelease(draft.tag_name), /duplicate/);
+  denied = true;
+  await assert.rejects(client.findRelease(draft.tag_name), /HTTP 403/);
 });
 test("draft creation pins source and never advances Latest", async (t) => {
   const previous = process.env.GH_TOKEN; process.env.GH_TOKEN = "fixture";

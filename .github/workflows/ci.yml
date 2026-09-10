@@ -1402,6 +1402,7 @@ jobs:
             dist/numerical
             packages/flint-wasm/dist
             packages/flint-wasm/numerical/build
+            src/lib/sagejs/numerics/optimization/backends/nlopt/build
           if-no-files-found: error
           retention-days: 14
 
@@ -1482,6 +1483,9 @@ jobs:
             --public-npm-root build/release/npm/sagejs.tgz \
             --browser-distribution packages/flint-wasm/dist
 
+      - name: Preserve generated inputs required by numerical reconstruction
+        run: node scripts/release/numerical-support.cjs
+
       - name: Preserve the final numerical release evidence
         uses: actions/upload-artifact@v7
         with:
@@ -1500,6 +1504,10 @@ jobs:
             build/numerical-qualification/platform
             build/numerical-qualification/browser/rows
             build/numerical-qualification/browser/supplemental
+            build/numerical-qualification/support/build/sea/sagejs
+            build/numerical-qualification/support/dist/numerical
+            build/numerical-qualification/support/packages/flint-wasm/numerical/build
+            build/numerical-qualification/support/src/lib/sagejs/numerics/optimization/backends/nlopt/build
           if-no-files-found: error
           retention-days: 90
 

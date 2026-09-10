@@ -73,7 +73,9 @@ The exact algebra and number-theory libraries also gained major foundations:
   frontier with authenticated replayable certificates and fail-closed resource
   limits. Its frozen 1,000-field survey and 20-field holdout agree exactly with
   retained PARI and LMFDB reference data; this is explicitly not yet broad
-  PARI performance parity.
+  PARI performance parity. Pre-release review corrected the analytic cutoff
+  to preserve the exact Belabas--Friedman `X/9` scale; nonintegral ninth scales
+  are rejected before certification.
 
 Linux native worker teardown is now fork-safe. Mathematical addons that embed
 process-wide OpenBLAS `atfork` handlers remain mapped for process lifetime, and

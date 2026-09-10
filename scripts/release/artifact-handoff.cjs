@@ -28,6 +28,26 @@ function verifyHandoffArchive(options, request = githubApi) {
   expectations(options);
   const accepted = verifyControlArtifact(options, contract, (bytes, run) => {
     const manifest = readManifestZip(bytes);
+    if (manifest.recovery) {
+      const r = manifest.recovery;
+      if (r.runId !== run.id || r.runAttempt !== run.run_attempt || r.controlRevision !== run.head_sha || r.ref !== run.head_branch) {
+        throw new Error("recovered evidence must belong to this authenticated handoff attempt");
+      }
+      const { inspectProducers } = require("./numerical-recovery.cjs");
+      const original = inspectProducers({ nativeRunId: manifest.qualification.native.runId,
+        sha: manifest.sourceRevision, ref: manifest.ref, event: manifest.event }, request);
+      const { producerJobs, ...qualification } = original;
+      const { identity } = require("./artifact-set.cjs");
+      if (identity(qualification) !== identity(manifest.qualification.native) || identity(producerJobs) !== identity(r.producerJobs)) {
+        throw new Error("original recovery producers changed");
+      }
+      const recoveryJobs = request(`repos/sagemathinc/sagejs/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100`, true);
+      const job = require("./product-acceptance.cjs").jobsFromPages(recoveryJobs, run)[0];
+      for (const name of ["Restore pinned recovery inputs", "Reconstruct and authenticate recovered evidence", "Retain recovered gate", "Retain recovered raw evidence"]) {
+        const steps = job.steps.filter((step) => step.name === name);
+        if (steps.length !== 1 || steps[0].conclusion !== "success" || steps[0].status !== "completed") throw new Error("incomplete numerical recovery");
+      }
+    }
     if (manifest.sourceRevision !== options.sha || manifest.ref !== options.ref || manifest.event !== options.event ||
         manifest.purpose !== options.purpose || manifest.repositoryId !== run.repository.id) throw new Error("handoff product identity does not match the requested candidate");
     return manifest;

@@ -10,6 +10,7 @@ const { prepareHandoff, argumentsFor: handoffArguments } = require("./artifact-h
 const { run, identity, fileDigest, atomicJson, acquireLock } = require("./runner.cjs");
 const { realDirectory, exists } = require("./directory-transaction.cjs");
 const { requireDownloadSpace } = require("./stage-artifacts.cjs");
+const { supportPaths, supportTarget } = require("./numerical-support.cjs");
 const statePath = "build/release-publication/state.json";
 // The complete nine-role handoff is still authenticated. Browser deployment
 // consumes only these bytes; it does not qualify or publish native installers.
@@ -20,7 +21,8 @@ function projectedPath(key, name) {
   if (/^native\/sagejs-(linux-x64|linux-arm64|windows-x64|macos-arm64)$/.test(key)) return `release/${name}`;
   if (key === "native/sagejs-public-npm-root") return name === "build/release/npm/sagejs.tgz" ? "release/npm/sagejs.tgz" : name;
   if (key === "native/numerical-release-gate") return `build/validated-numerical-gate/${name}`;
-  if (key === "native/numerical-release-evidence") return `build/numerical-qualification/${name}`;
+  if (key === "native/numerical-release-evidence") return name.startsWith("support/")
+    ? supportTarget(name.slice("support/".length)) : `build/numerical-qualification/${name}`;
   if (key === "browser/wasm-clean-build-a") return `build/release-publication/browser-clean/${name}`;
   if (key === "browser/sagejs-wasm-reproducible") return `build/release-publication/browser-reproducible/${name}`;
   throw new Error("unknown publication input role");
@@ -50,17 +52,23 @@ function ordinary(filename) {
 }
 function checkConsumer(root, candidate, manifestDigest) {
   realDirectory(root); identity(root, candidate);
-  if (exists(path.join(root, "dist"))) throw new Error("use a dedicated source-only publication checkout, not a built producer");
   const marker = path.join(root, statePath);
   if (exists(marker)) {
     if (ordinary(marker).size > 65536) throw new Error("oversized publication state");
     const state = JSON.parse(fs.readFileSync(marker, "utf8"));
     if (state.schema !== "sagejs.publication-inputs/v1" || state.candidate !== candidate || !/^sha256:[a-f0-9]{64}$/.test(state.manifestDigest ?? "") ||
         (manifestDigest !== undefined && state.manifestDigest !== manifestDigest)) throw new Error("consumer checkout belongs to another artifact set");
+    if (exists(path.join(root, "dist"))) {
+      realDirectory(path.join(root, "dist"));
+      if (fs.readdirSync(path.join(root, "dist")).some((name) => name !== "numerical")) {
+        throw new Error("consumer dist contains unrelated build output");
+      }
+      if (exists(path.join(root, "dist/numerical"))) realDirectory(path.join(root, "dist/numerical"));
+    }
     return;
   }
   // Never commandeer a producer checkout or its frozen validation artifacts.
-  for (const relative of ["release", "packages/flint-wasm/dist"]) if (exists(path.join(root, relative))) throw new Error("use a dedicated source-only publication checkout, not a built producer");
+  for (const relative of ["dist", "release", "packages/flint-wasm/dist"]) if (exists(path.join(root, relative))) throw new Error("use a dedicated source-only publication checkout, not a built producer");
   const build = path.join(root, "build");
   if (exists(build)) {
     realDirectory(build);
@@ -91,7 +99,7 @@ function verificationStages(root, candidate, manifestDigest) {
   return [
     { id: "publication-numerical-reconstruction", gate: "numerical-evidence", timeoutSeconds: 600,
       controlImplementation: fileDigest(__filename),
-      inputs: [...state, "build/numerical-qualification/platform", "build/numerical-qualification/browser"],
+      inputs: [...state, "build/numerical-qualification/platform", "build/numerical-qualification/browser", ...supportPaths],
       outputs: ["build/numerical-qualification/gate"],
       commands: [["node", __filename, "--rotate-gate", root, candidate, manifestDigest],
         ["node", "scripts/numerical-computing/qualification/assemble-release-gate.cjs", "--candidate", candidate,

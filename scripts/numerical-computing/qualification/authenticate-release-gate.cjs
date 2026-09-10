@@ -401,7 +401,26 @@ function qualifiedPackageArtifact(value, platform, kind, repositoryRoot = root) 
   const bytes = fs.readFileSync(filename);
   if (sha256(bytes) !== records[0].sha256) throw new Error(`${rowId} manifest differs from the authenticated gate`);
   const manifest = parseJsonText(bytes.toString("utf8"), `${rowId} manifest`);
-  const bindings = manifest.bindings?.artifacts?.filter((artifact) => artifact.name === artifactName);
+  const compact = manifest.bindings?.artifacts?.filter((artifact) => artifact.name === artifactName);
+  const receipts = value.matrix_receipts?.filter((record) => record.row_id === rowId);
+  if (receipts?.length !== 1 || receipts[0].path !== EXPECTED_ROWS.get(rowId).receipt) {
+    throw new Error(`${rowId} lacks its canonical qualified receipt`);
+  }
+  const receiptPath = repositoryPath(repositoryRoot, receipts[0].path, `${rowId} receipt`).absolute;
+  const receiptStat = fs.lstatSync(receiptPath);
+  if (!receiptStat.isFile() || receiptStat.isSymbolicLink() || receiptStat.nlink !== 1 || receiptStat.size > 16 * 1024 * 1024) {
+    throw new Error(`${rowId} receipt must be a bounded ordinary file`);
+  }
+  const receiptBytes = fs.readFileSync(receiptPath);
+  if (sha256(receiptBytes) !== receipts[0].sha256) throw new Error(`${rowId} receipt differs from the authenticated gate`);
+  const receipt = parseJsonText(receiptBytes.toString("utf8"), `${rowId} receipt`);
+  const bindings = receipt.artifacts?.filter((artifact) => artifact.name === artifactName);
+  // Capability manifests intentionally retain only name/path-digest pairs.
+  // Size and content digests live in the separately gate-bound raw receipt.
+  if (compact?.length !== 1 || bindings?.length !== 1 ||
+      !/^[a-f0-9]{64}$/.test(compact[0].sha256 ?? "") || compact[0].sha256 !== bindings[0].sha256) {
+    throw new Error(`${rowId} lacks one content-bound ${kind === "npm" ? "platform tarball" : "SEA executable"}`);
+  }
   if (bindings?.length !== 1 || !/^[a-f0-9]{64}$/.test(bindings[0].content_sha256 ?? "") ||
       !Number.isSafeInteger(bindings[0].bytes) || bindings[0].bytes < 1 || bindings[0].files !== 1) {
     throw new Error(`${rowId} lacks one content-bound ${kind === "npm" ? "platform tarball" : "SEA executable"}`);

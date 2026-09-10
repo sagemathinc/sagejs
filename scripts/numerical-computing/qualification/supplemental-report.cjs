@@ -420,27 +420,8 @@ function browserClaims(evidence) {
   return [{ requirement: "browser-process-tree-memory", tokens: [token] }];
 }
 
-function structuralPerformanceClaims(evidence) {
-  const tokens = [
-    "package-graph-lazy-ownership",
-    "sea-startup-budgets",
-    "browser-artifact-payload-and-pack-topology",
-    "numerical-trace-presentation-payload",
-    "wasm-production-resource-closure",
-  ];
-  if (evidence.status !== "passed" || evidence.scope?.claim !==
-      "source-current-authoritative-structural-and-performance-gates" ||
-      !evidence.tool?.sha256 || !Array.isArray(evidence.gates) ||
-      evidence.gates.length !== tokens.length) {
-    throw new Error("structural performance evidence lacks authenticated gate bindings");
-  }
-  authenticateCollector(
-    evidence,
-    "scripts/numerical-computing/qualification/run-structural-performance.cjs",
-    "structural performance evidence",
-  );
-  validateExternalExecutableBinding(evidence.tool, "structural performance Node executable");
-  const expectedGates = new Map([
+function structuralGateContracts() {
+  return new Map([
     ["package-graph-lazy-ownership", {
       arguments: ["scripts/check-package-graph.cjs"],
       bindings: ["scripts/check-package-graph.cjs", "architecture/package-graph.json"],
@@ -465,7 +446,7 @@ function structuralPerformanceClaims(evidence) {
     }],
     ["numerical-trace-presentation-payload", {
       arguments: [
-        "--test", "test/numerics/gallery/root-gallery.test.cjs",
+        "--test", "--test-concurrency=1", "test/numerics/gallery/root-gallery.test.cjs",
         "test/numerics/gallery/cross-domain-gallery.test.cjs",
       ],
       bindings: [
@@ -489,6 +470,23 @@ function structuralPerformanceClaims(evidence) {
       artifacts: [],
     }],
   ]);
+}
+
+function structuralPerformanceClaims(evidence) {
+  const expectedGates = structuralGateContracts();
+  const tokens = [...expectedGates.keys()];
+  if (evidence.status !== "passed" || evidence.scope?.claim !==
+      "source-current-authoritative-structural-and-performance-gates" ||
+      !evidence.tool?.sha256 || !Array.isArray(evidence.gates) ||
+      evidence.gates.length !== tokens.length) {
+    throw new Error("structural performance evidence lacks authenticated gate bindings");
+  }
+  authenticateCollector(
+    evidence,
+    "scripts/numerical-computing/qualification/run-structural-performance.cjs",
+    "structural performance evidence",
+  );
+  validateExternalExecutableBinding(evidence.tool, "structural performance Node executable");
   const gates = new Map(evidence.gates.map((gate) => [gate.id, gate]));
   if (gates.size !== tokens.length) {
     throw new Error("structural performance evidence has duplicate or extra gates");
@@ -1404,5 +1402,5 @@ module.exports = {
   verifyMatrixBrowserSubjectCoherence,
   verifyMatrixScipyOracleCoherence,
   verifyMatrixSoakArtifactCoherence,
-  qualificationInternals: { addUniqueReceiptId, validateExternalExecutableBinding },
+  qualificationInternals: { addUniqueReceiptId, validateExternalExecutableBinding, structuralGateContracts },
 };

@@ -124,7 +124,7 @@ from sagejs.number_fields.cubic_class_number_native_runtime import _checked_nati
 
 assert _CUBIC_DIRECT_MINKOWSKI_MAX_BOUND == 8
 assert _CUBIC_ARCHIMEDEAN_EXPONENT_LIMIT == 4096
-assert _CUBIC_ANALYTIC_THRESHOLD == 997
+assert _CUBIC_ANALYTIC_THRESHOLD == 999
 assert _CUBIC_ANALYTIC_REFINED_THRESHOLD == 1494
 assert _CUBIC_ANALYTIC_MAX_TERMS >= 329
 assert _CUBIC_ANALYTIC_MAX_VALUES >= 248
@@ -158,7 +158,7 @@ cases = (
     # exercising the bounded large-unit regime rather than the former decline.
     ((-644, 243, 0, 1), 2, (2,)),
     # LMFDB 3.1.93074700.2 reaches the exact C42 presentation and fundamental
-    # unit at the ordinary boundary, but X=997 leaves the rigorous analytic
+    # unit at the ordinary boundary, but X=999 leaves the rigorous analytic
     # interval just too wide. The bounded X=1494 retry proves index one.
     ((-5570, 0, 0, 1), 42, (42,)),
 )
