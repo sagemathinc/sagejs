@@ -9,6 +9,8 @@
   "objective": "Understand deeply how to improve cubic class number computation to be competitive with PARI overall, preserving exact certification and resource contracts",
   "base_commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
   "claims": [
+    "bench/class-unit-groups/cubic-prime-support-ablation.py",
+    "test/cubic-prime-support-ablation.cjs",
     "bench/class-unit-groups/cubic-rank-search-budget.py",
     "test/cubic-rank-search-budget.cjs",
     "test/fixtures/cubic-powered-rank-search.py",
@@ -1979,10 +1981,100 @@
       "commit": "8a8ec82ed18aaf13f08410471528381ec01998f5",
       "workspace_fingerprint": "fdb3d3859cc2124f96a32994f7c41684b5fa2e761c980969fc3c2dab17603f08",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-prime-support-ablation.cjs test/cubic-factor-scan-ablation.cjs test/cubic-rank-search-budget.cjs test/cubic-word-prime-ablation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.085,
+      "started_at": "2026-09-10T19:16:56.626Z",
+      "commit": "6963d3b953576b78ba0bc6d63293c61b9f8b10e2",
+      "workspace_fingerprint": "c4bff5c1dad9198b7bc6be6ca1a421dbebc18b93eb130e3c808f2d5846cd9872",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.552,
+      "started_at": "2026-09-10T19:17:43.617Z",
+      "commit": "6963d3b953576b78ba0bc6d63293c61b9f8b10e2",
+      "workspace_fingerprint": "c4bff5c1dad9198b7bc6be6ca1a421dbebc18b93eb130e3c808f2d5846cd9872",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.631,
+      "started_at": "2026-09-10T19:18:16.360Z",
+      "commit": "6963d3b953576b78ba0bc6d63293c61b9f8b10e2",
+      "workspace_fingerprint": "c4bff5c1dad9198b7bc6be6ca1a421dbebc18b93eb130e3c808f2d5846cd9872",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-prime-support-ablation.cjs test/cubic-factor-scan-ablation.cjs test/cubic-rank-search-budget.cjs test/cubic-word-prime-ablation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.14,
+      "started_at": "2026-09-10T19:21:58.144Z",
+      "commit": "6963d3b953576b78ba0bc6d63293c61b9f8b10e2",
+      "workspace_fingerprint": "2269bc343b622dc0a02ca2e1cc0bc34b70c89fe12321703b917878645982a4e4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.085,
+      "started_at": "2026-09-10T19:22:45.709Z",
+      "commit": "6963d3b953576b78ba0bc6d63293c61b9f8b10e2",
+      "workspace_fingerprint": "2269bc343b622dc0a02ca2e1cc0bc34b70c89fe12321703b917878645982a4e4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.114,
+      "started_at": "2026-09-10T19:25:49.682Z",
+      "commit": "6963d3b953576b78ba0bc6d63293c61b9f8b10e2",
+      "workspace_fingerprint": "4baa9a9976a4808ed1c218553729800b785b064812a2e28378c9557da8a417e6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.618,
+      "started_at": "2026-09-10T19:27:13.201Z",
+      "commit": "6963d3b953576b78ba0bc6d63293c61b9f8b10e2",
+      "workspace_fingerprint": "7a1b97be9da83b5e95d1acfa50f02f736be62c607a1dc54fef3279ae27f6cdb4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-prime-support-ablation.cjs test/cubic-factor-scan-ablation.cjs test/cubic-rank-search-budget.cjs test/cubic-word-prime-ablation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.113,
+      "started_at": "2026-09-10T19:27:59.142Z",
+      "commit": "6963d3b953576b78ba0bc6d63293c61b9f8b10e2",
+      "workspace_fingerprint": "7a1b97be9da83b5e95d1acfa50f02f736be62c607a1dc54fef3279ae27f6cdb4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.081,
+      "started_at": "2026-09-10T19:28:12.198Z",
+      "commit": "6963d3b953576b78ba0bc6d63293c61b9f8b10e2",
+      "workspace_fingerprint": "7a1b97be9da83b5e95d1acfa50f02f736be62c607a1dc54fef3279ae27f6cdb4",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Composed checked group-range scans with machine-sized offsets in the research closure, preserving 27 full GMP/tagged ledgers, two JS controls, and 2500 actual-loop equivalence cases plus 250 invalid ranges. Completed six balanced-order rounds on exclusive opt: baseline/ranges/composed medians ms 349.315/234.234/206.912, 11346.800/3471.834/3018.972, 14273.237/7107.563/5986.413, 9256.416/4120.400/3603.082. Still not PARI wins. A pre-execution frozen 20-field extension beyond the native panel preserves every baseline/composed observation: 16 phase96 classifier1 class numbers agree with PARI, one classifier0 index is twice PARI, two phase44 failures and one projection RangeError retained. Slot62 is reused: do not infer a root-isolation cause from value11 without tracing. Independent exact extension replay is running separately and is not a completed full-certificate claim. Five focused tests, merge and direct docs checks pass; production source and safety limits unchanged. 68 completed evidence files archived and round-trip verified under build/cubic-analytic-schedule-evidence/combined-factor-group-scans, manifest a07d16a8579328bbb816c3cb03e3ccb6d4c92d9986dd782ed801dda9c5c6ace8. PR203 remains draft/conflicted against newer main. Independently, PR202 main integration43cb29851 is pushed; focused, strict Python and architecture gates pass, full native prerequisite build remains active. Next complete replay, trace the unresolved wider-field failures, profile residual seconds-scale costs, and consolidate source-transparent production/public/platform qualification.",
+    "summary": "Exact prime-support filtering implemented as a reproducible source-transparent research ablation, using either the existing Euclidean gcd or the declared FLINT gcd. Both variants preserve all 27 complete GMP/tagged development ledgers, two JavaScript controls, and all 20 frozen extension observations, including the doubled-index and projection failures. Existing 19 exact presentation replays remain applicable by complete input equality; no new full certificate or public acceptance claim. Controlled opt six-round pairs improve the default filter by 1.09–1.39x on four larger fields, including 6.064 to 4.353 seconds. FLINT adds about 4–5% on two fields, with weaker overlapping samples on the others. Fresh pinned PARI flag controls expose an important comparison distinction: flag 0 takes 24/201/356/250 ms versus flag 1 49/918/923.5/962 ms. PARI source and traces locate much of that difference in transport of exact transformation data through HNF; this is the next structural research lead, not permission to drop exact witnesses. Source/resource production caps unchanged; research source remains unpromoted. Four focused tests, merge/direct-doc checks and all 196 unit files pass. Wider architecture check retains the old stale optimizer-manifest failure; the changed-file full rebuild and docs check passed, reusing all 41 production kernel families. Its wider 589-file CLI suite is running in exec session35946 and is not claimed passed. Main experiment 128 files round-trip archived under build/cubic-analytic-schedule-evidence/prime-support-filter, with separate pinned-PARI flag and transform-trace archives. PR203 remains draft.",
     "risks": [
       "Current index/range ablations are research-only. Caller-built contiguous factor-group partition is essential: range bounds alone do not authenticate arbitrary group metadata. Word-offset sums fit only by the bounded caller layout; do not globally change exact Python promotion. Development ledger equivalence and sampling do not prove public certificates, all-target safety, universal no-regression, or overall PARI competitiveness. Prior and current PARI clocks are not freshly interleaved. Sampled leaf costs do not identify inclusive callers. Handoff metadata is written after build; no exact-final-metadata build qualification.",
       "The full-initial and late-activation traversal experiments regress other fields. Neither is approved as a global replacement or a PARI timing win; production remains unchanged.",

@@ -10190,3 +10190,209 @@ replay outcomes and consolidation are separately round-trip hash-archived in
 `5d5d5e107b08e8e46f1c0a06711ae40a0e807f02c3843e0ee798b603a392988b`.
 Next distinguish collection, lattice maintenance, and certification costs
 with phase-level evidence before selecting another general optimization.
+
+### Exact prime-support rejection before individual valuations
+
+Inclusive, local diagnostic instrumentation now separates the costs that the
+leaf profiles could not. On `.1013`, 56,551 smooth-principal-relation calls
+consume 0.964 s inclusive (0.871 s exclusive), and 430 online HNF updates
+consume 0.960 s, in a 3.111 s instrumented root call. On `.387`, the respective
+counts/times are 193,045 calls and 2.596 s (2.513 s exclusive), and 404 HNF
+updates taking 0.978 s, in a 5.918 s root call. These are single local runs
+with clock instrumentation, not controlled performance measurements. Every
+run compares the full transcript and the exclusive counters sum to the root.
+
+Seeded PARI 2.17.4 `bnf` debug traces visit 50,395 candidates on `.1013` and
+168,377 on `.387`, with 1,122 and 1,229 smooth candidates, respectively.
+The candidate counts are comparable, not separated by orders of magnitude.
+PARI's `src/basemath/buch2.c`, `can_factor`, first calls `Z_ppo(N, F->prodZ)`
+before factoring an integer norm. `src/basemath/base4.c`, `Z_ppo`, repeatedly
+takes a gcd and divides it out. The extracted 2.17.4 source and raw traces
+are retained with the experiment. Unlike PARI's preceding rounded embedding
+norm calculation, this ablation retains our exact norm-form evaluation.
+
+The ordinary-Python transformer
+`bench/class-unit-groups/cubic-prime-support-ablation.py` inserts the same
+prime-support criterion before the existing trial-division loop. Its default
+uses the existing Euclidean `_cubic_gcd`; `--gcd flint` uses the already
+declared `sagejs.ffi.flint.fmpz_gcd` only inside the new filter. Neither option
+changes any other gcd call, factor-base selection, candidate order, admission
+predicate, ideal-valuation check, or certification condition.
+
+#### Mathematical and storage contract
+
+Let $P$ be the product of the rational primes represented in the factor base
+and let $N>0$ be the exactly computed absolute principal norm. Starting with
+$x=N$ and $g=P$, repeat $g\leftarrow\gcd(x,g)$ and, if $g>1$, replace
+$x\leftarrow x/g$. Each division is exact and strictly decreases $x$.
+No prime outside the support of $P$ is ever removed. Conversely, a prime
+dividing both the remaining $x$ and the original $P$ continues to divide the
+current $g$: it cannot disappear from the gcd while its exponent in $x$ is
+positive. Consequently, when the gcd becomes one, the remaining $x$ is
+coprime to the original $P$. The original norm is supported on the factor
+base exactly when this residue equals one. Repeated prime powers in either
+input are allowed. This criterion needs **no GRH assumption**.
+
+A rejection therefore proves that the principal ideal cannot factor over
+the existing ideal factor base. A pass is only permission to run the old
+exact valuation and ideal-membership checks; it is not a relation or a class
+group certificate. Norm one retains its existing unit path; zero or invalid
+norms remain rejected. The filter explicitly rejects nonpositive inputs.
+
+The product is computed once after factor-base construction and resides in
+one new exact arena entry at `layout.norm + 10`. The ten existing norm-form
+coefficients occupy offsets 0 through 9. The compound workspace starts one
+entry later and `layout.entries` grows by one, so no guessed unused padding
+or overlapping storage is used. The product is immutable during collection.
+All existing arena, candidate, relation, and output budgets remain unchanged;
+allocation exhaustion still fails closed. Rejected candidates no longer
+overwrite the transient group valuation slots. Thus the claim is equality
+of externally observable transcripts, not byte identity of private scratch
+state or identical cache-preparation work. Successful candidates still
+overwrite every group valuation before the detailed checks read them.
+
+Both source variants compile with the pinned private-layout compiler
+`8cd09c4484cddfcf7024b5169a4c18fa0b07d3f0`. The default source SHA-256 is
+`8d4d845c72474dd5424834140b5bcd81cdb3c7a4624e5073e7f1cd00dbf1fc05`;
+its key is
+`25838e7e5d68a94c3ed41e352fde2163fe9b85bcb0c9496f135ab439feb8a399`.
+The default research source is 594,121 bytes; generated core grows from
+16,617,213 to 16,774,273 bytes. Both native addons are 20,779,632 bytes.
+Production source remains 480,241/485,000 bytes: this is **not** a source
+allowance increase or production promotion of the larger research closure.
+
+The 12,288 deterministic positive-integer tests compare the criterion with
+trial division, including non-squarefree products, missing primes and large
+prime powers. Additional tests cover empty support, invalid inputs, source
+insertion guards, and continued detailed checking after a successful filter.
+The default variant preserves every full ledger in all 27 development fields
+in both GMP and tagged native execution, plus two JavaScript controls. All
+20 frozen extension observations also match the rank-corrected baseline,
+including its unaccepted doubled-index result and analysis-projection error.
+The previously replayed 19 presentations are not new independent replays:
+the complete replay inputs are unchanged, not merely their class numbers.
+
+#### Controlled default-filter measurement
+
+On exclusive `opt` CPU 2 (AMD EPYC 7B13, Node v26.7.0), one warmup followed
+by six alternating-order paired rounds gives these median times. Inputs are
+preallocated; each entire native call and arena cleanup is timed; full
+transcript and parity checks run outside the timed interval.
+
+| Label suffix after `3.1.` | Before | Exact support filter | Speedup |
+| --- | ---: | ---: | ---: |
+| `341970033803678280.6` | 205.43 ms | 188.47 ms | 1.09x |
+| `1086061775432017340256300.1013` | 3029.26 ms | 2453.37 ms | 1.23x |
+| `1086061775432017340256300.387` | 6063.93 ms | 4352.98 ms | 1.39x |
+| `1086061775432017340256300.596` | 3650.36 ms | 2920.73 ms | 1.25x |
+
+The slowest filter sample is below the fastest baseline sample on every
+field. Raw timing report SHA-256:
+`702391ca0f95fa56508d134c8eec4138acfaa438cf89b14f0651b462f295340f`.
+This run also measured the system `/usr/bin/gp`, which is **PARI 2.15.4**, not
+the 2.17.4 executable used in the forensics. Its separately batched, seeded
+polynomial-to-`bnfinit(f,0)` medians were 48, 476.5, 382, and 349.5 ms.
+Those are version-labelled additional observations, not replacements for
+earlier 2.17.4 timings or evidence of a PARI win. GP startup is excluded;
+its internal wall timer has millisecond resolution. The research native
+program still does not publish complete class-group certification.
+
+Focused tests and merge checks pass. The wider architecture gate still
+fails at the branch's pre-existing stale optimizer-opportunity manifest;
+it is not reported as passing or repaired by refreshing unrelated metadata.
+The next ablation compares the two gcd implementations and measures the
+explicit PARI 2.17.4 executable. Residual online HNF and root-exclusive work
+remain significant targets after smoothness rejection becomes cheaper.
+
+That second ablation is now complete, with the same warmup, paired sampling,
+CPU affinity, exclusive lock, complete-ledger checks, and separately batched
+PARI protocol. In this table both native columns already contain the exact
+prime-support filter; only its gcd implementation differs.
+
+| Label suffix | Euclidean gcd | Declared FLINT gcd | PARI 2.17.4 |
+| --- | ---: | ---: | ---: |
+| `341970033803678280.6` | 189.45 ms | 181.70 ms | 25 ms |
+| `1086061775432017340256300.1013` | 2458.33 ms | 2442.98 ms | 205 ms |
+| `1086061775432017340256300.387` | 4329.09 ms | 4135.31 ms | 365 ms |
+| `1086061775432017340256300.596` | 2970.71 ms | 2903.48 ms | 248 ms |
+
+The gcd substitution adds about 4–5% with disjoint sample ranges on `.6`
+and `.387`. The ranges overlap on `.1013` and `.596`; their smaller median
+differences are not strong evidence of a win. The principal improvement is
+the mathematical prefilter, not this choice of gcd implementation. Both
+variants remain available for reproducible comparison instead of declaring
+the FLINT version universally faster.
+
+The explicit PARI executable is
+`/tmp/cubic-parity-admission-5U8qem/gp`, version 2.17.4; the timing report binds
+its binary hash. Seed 1 is reset before every fresh `bnfinit(f,0)`, with a
+512 MiB maximum PARI stack. The return value's class number and invariants
+are checked each time. These are fresh, version-labelled observations, not
+a cross-version speedup claim: the preceding parity campaign used the same
+seed but `bnfinit(f,1)`, a 512 MiB initial stack, and three calls per sample.
+Neither these four fields nor these fixed-seed runs
+establish performance across the full cubic population. On this protocol a
+roughly 7–12x native/PARI gap remains, so the overall goal is still open.
+
+FLINT-filter source SHA-256:
+`e04f8428b2dea0799e2676ea7e5a2f3891abf29e0fc60deb16e6ebeba52ea902`;
+key `8ab4f2468ba58946edac260cd0d1e08276d1f08949093971bedca9e5c2f0e439`.
+Its generated core is 17,112,454 bytes and directly invokes the declared
+`fmpz_gcd` from the isolated native body. No host callback or new handwritten
+mathematical routine is introduced. All 27 GMP/tagged development ledgers,
+two JavaScript controls and all 20 extension observations are again equal
+to the baseline, including the unresolved results. The tracked transformer
+reproduces both compiled Python sources byte for byte. Second raw timing
+report SHA-256:
+`a5e261b354f58ccbf7bd6ee86e605bb3562f47d467d36da96b6ca2fa6a861c4c`.
+
+The two native variants, full transcripts, generated IR/core/binaries,
+timing runners, baseline and replay identities, inclusive instrumentation,
+raw PARI traces and relevant PARI source are round-trip hash-archived under
+`build/cubic-analytic-schedule-evidence/prime-support-filter`: 128 files,
+444,869,383 raw bytes and 65,085,879 gzip bytes. Manifest SHA-256:
+`ba66e5c773abfed62d5a431096f671a15eed28130a613ba4f0fdf9a00e2fde29`.
+
+#### PARI flag control: do not confuse retained algebraic data with class invariants
+
+A final dedicated control pins both PARI executable and shared-library
+hashes, uses the same 512 MiB initial stack for both flags, and alternates
+six fresh seeded calls after warmup. Median milliseconds for flags 0/1 are
+24/49 on `.6`, 201/918 on `.1013`, 356/923.5 on `.387`, and 250/962 on
+`.596`. Every call agrees on the class number and invariants. The shared
+library hash is
+`b7856e5e6ed098f816c122fc8116f1b1cb27776da77d6fe3eba66a901c1515eb`;
+the installed library resolved by the preceding run and the explicitly
+pinned copy have this same hash. Control report SHA-256:
+`c330b46148974021b7e656370650addc9e1a1741372fe9b22946771d81b58897`.
+
+This distinction is documented by
+[PARI's `bnfinit` contract](https://pari.math.u-bordeaux.fr/dochtml/html-stable/General_number_fields.html#bnfinit):
+flag 0 can use floating embeddings in place of exact algebraic data and is
+appropriate when only class-group invariants or the regulator are wanted;
+flag 1 retains exact algebraic data, including compact units, for subsequent
+operations. Both use the same default GRH assumption. Thus the class-number
+performance target must include flag 0, while certificate/compact-unit work
+also needs a separately labelled flag-1 comparison. This experiment does
+not establish which internal operation accounts for the entire flag gap.
+
+Subsequent **local diagnostic** flag-1 traces narrow that question. They keep
+exactly the same candidate and smooth counts as the flag-0 traces. On
+`.1013`, `hnfspec` accounts for 652 ms versus the earlier 96 ms with flag 0;
+on `.387`, it accounts for 491 ms versus 93 ms, with additional HNF updates
+also more expensive. These diagnostic clocks are not the controlled table
+above and do not support precise cross-run phase ratios. They do identify
+where most of the observed flag cost appears, rather than attributing it
+to more relation search or discriminant factoring.
+
+The source explains a structural difference: at the first HNF reduction,
+`Buchall_param` sets `C = flag ? matbotid(&cache) : embs` before calling
+`hnfspec_i`. `matbotid` constructs integer identity columns indexed by the
+retained relations. Flag 1 later combines the transformed integer columns
+with embeddings and retains them for exact compact-unit reconstruction;
+flag 0 transports the much smaller embedding data instead. This motivates
+an explicit next experiment: separate our invariant computation from the
+cost of constructing its exact witness, and test whether compact/lazy
+transformation data can preserve exact replay while reducing HNF work.
+Dropping the witness or accepting an uncertified floating result is not
+the proposed optimization.
