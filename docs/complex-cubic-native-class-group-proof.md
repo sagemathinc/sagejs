@@ -886,6 +886,57 @@ others in the 27-field panel. All altered native computations still return
 false at the public boundary. See the search-visitation section of
 `cubic-analytic-schedule.md` for the exact scope and failed ablations.
 
+### Retained-ledger parity admission with a bounded pivot reserve
+
+The next research experiment keeps the previous traversal and continuation
+policy and augments its admission test. Let $L$ be the lattice spanned by
+retained principal relations and let $B$ be an echelon basis for its image in
+$\mathbf F_2^f$. A proposal is reduced against $B$ in private scratch. If its
+residual is nonzero, it is not in $L$. This implication is unconditional, but
+the converse is false; in particular, a parity-dependent row can still reduce
+an odd or higher-power index. The proposal's principal-ideal authentication
+remains necessary, and a nontrivial parity quotient may represent genuine
+class-group two-torsion.
+
+`parity_word_prepare` encodes each row in $\lceil c/64\rceil$ unsigned words,
+where $c\ge f$ is the checked factor capacity. Each pivot has zero entries
+before its leading column. XOR eliminates that leading entry and preserves the
+span together with $B$. An absent pivot yields a new independent direction.
+The prepare operation changes only a separate proposal row. After admission,
+`parity_word_commit` copies its residual into the missing pivot row. Rejected
+proposals never change $B$. Induction on retained rows therefore proves that
+$B$ represents exactly the retained ledger's parity span, not the larger span
+of every proposal encountered. Signed relation exponents are reduced modulo
+two before packing; shifts are bounded to $0,\ldots,63$.
+
+Let $r$ be the retained row count, $q$ its rank modulo 27449, $C$ the existing
+physical relation capacity, and $e$ the number of additional parity admissions.
+The original dependent-row quota is increased by $e$, not by every proposal.
+An otherwise-rejected row may increment $e$ only when its parity residual is
+nonzero and
+
+$$
+r+(f-q)<C.
+$$
+
+After accepting that odd-prime-dependent row, at least $f-q$ slots remain for
+missing odd-prime pivots. Each such additional admission strictly increases
+parity rank, so there can be at most $f$ of them. An odd-prime pivot increases
+both $r$ and $q$; a parity-extra row increases both $r$ and $e$. Neither consumes
+the ordinary dependent-row allowance measured by $r-q-e$. This accounts for
+storage and preserves that allowance; it does **not** prove a sufficient unit
+witness will be found. The existing physical-capacity checks, exact HNF,
+compact-unit authentication and analytic index check remain authoritative.
+
+The packed helper has independent scalar-elimination tests and same-source
+GMP/tagged/JavaScript differential evidence, including a deliberately rejected
+independent proposal later offered again. The 27-field research panel improves
+from 24 to 27 index-one diagnostics without changing 20 complete outputs.
+Neither these tests nor parity rank alone establish a public class-group
+certificate or formal verification of the compiler. The full scope, independent
+replays, resource delta and remaining publication work are recorded in the
+parity-admission section of `cubic-analytic-schedule.md`.
+
 ## References
 
 - Karim Belabas and Eduardo Friedman, “Computing the residue of the Dedekind

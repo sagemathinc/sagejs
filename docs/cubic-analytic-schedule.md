@@ -9109,3 +9109,170 @@ the rebuild and saw a temporarily absent generated parser; the sequential
 post-build run passes that test and the full unit tier. These results do not
 constitute green release qualification. The evidence archive contains 142
 hash-checked compressed files (292,560,286 original bytes; 14,565,001 compressed).
+
+## Retained-ledger parity admission: 27/27 broad diagnostics
+
+The next experiment starts from the unchanged powered-continuation baseline
+`0b260478d3e59df9e47f7a5270bea567cccfdbf052a0ecbb7a3e004da286756a`.
+It does not replace the initial ideal ordering, ellipsoid bounds, per-ideal
+quotas, analytic checks or continuation policy. Instead, a private word-packed
+parity basis detects when an otherwise rejected odd-prime-dependent row adds
+integer-lattice information. Such a row is admitted only with room reserved
+for every missing odd-prime pivot. The existing physical relation capacity is
+unchanged. See the proof document for the retained-span and capacity arguments.
+
+The exact helpers are ordinary Python in
+`bench/class-unit-groups/cubic-two-primary.py`. They use existing uint64 XOR,
+AND, OR and shifts, with `# sagejs: native-bitwise` preserving Python's XOR
+semantics. No compiler files or claims were changed. The compiler currently
+requires binding a helper call's result rather than discarding the expression;
+the commit helper returns whether it published a pivot. The earlier exact
+arbitrary-precision bitset reference remains separate from this compiled
+machine-word representation.
+
+The frozen larger-field development panel now has **27/27 index-one
+diagnostics**, versus **24/27** before. All 27 detached runs complete and still
+return false at the public boundary. Twenty have byte-identical original
+output fields, including all 16 previous initial-pass successes. Seven change:
+
+| LMFDB label suffix after `3.1.` | Previous rows / retries | Parity rows / retries | Additional parity admissions | Presentation order |
+| --- | ---: | ---: | ---: | ---: |
+| `1246798226700.1` | 112 / 8, declines | 83 / 0 | 3 | 405 |
+| `4860135888300.8` | 117 / 8, declines | 87 / 0 | 2 | 486 |
+| `2602492536667698675.123` | 211 / 8, declines | 191 / 0 | 3 | 34992 |
+| `347399299982700.28` | 105 / 2 | 105 / 0 | 2 | 3159 |
+| `341970033803678280.6` | 131 / 3 | 128 / 0 | 1 | 243 |
+| `1343801573410596300.4` | 182 / 8 | 165 / 0 | 2 | 2187 |
+| `2441197187235506700.191` | 204 / 5 | 197 / 0 | 2 | 227448 |
+
+The panel retains 3,735 rows rather than 3,841. These counts are structural
+evidence, not controlled timings. The three former failures now finish in the
+initial pass, without the eight unsuccessful continuation rounds. Admission
+changes which rows exhaust each local quota, so subsequent actual candidates
+can differ despite the same traversal policy. In particular, this run does
+not simply insert the five previously reconstructed PARI witnesses: none is
+hardcoded, and the third field closes without retaining `a+1261` itself.
+
+For all three former failures, disabling the policy reproduces every original
+output field exactly. With the policy enabled, GMP, tagged integers and
+JavaScript agree on every detached field, not just the class-number diagnostic.
+The packed helper separately passes 46 native/dynamic cases against the actual
+CPython helper and independent scalar rank checks, including factor counts
+0, 63, 64, 65, 127, 128, 129, 255, 256, 257, 511 and 512, signed 301-bit
+coefficients, rejected proposals, padding and guard words. Invalid dimensions
+are rejected before mutation by the witness wrapper. The tracked 232-matrix
+reference test also exercises the new prepare/commit split and the real
+184-row admission-loss fixture.
+
+Research source `5b20a10fdabace9b758117657976ed8dd2467523bc3e9456180d535d8c45ede9`
+has 588,740 bytes, up 3,774 from its research baseline. Its generated isolated C
+core has 17,186,531 bytes, up 12,335 from 17,174,196. This is not a proposal to
+raise the production source allowance. Production effective source remains
+480,241 bytes against the unchanged 485,000-byte limit. The extra caller-owned
+packed scratch is `8 * ((capacity + 1) * ceil(capacity / 64) + 3)` bytes:
+2,088 / 8,248 / 32,856 bytes at capacities 128 / 256 / 512. It adds no exact
+matrix owner and does not widen the exact arena, factor, candidate or relation
+limits. Full generated-code/platform/resource qualification is still required.
+
+Working evidence is `/scratch/sagejs-runtime/cubic-parity-admission-ipwLEI`;
+the durable local archive is
+`build/cubic-analytic-schedule-evidence/parity-admission/`. Native build key:
+`f3ec959b377c6fbc6796222d1ba3d9fecec3ce17d4d7617eaeac4557b5c3e4c2`;
+standalone word witness key:
+`fd204651386f0d9d79499db12e1ecf0b4b156f92807d15fed04f6b6ce4981642`.
+PR #203 remains draft. This is a research diagnostic improvement, not a
+release-qualified certificate, independent holdout success or PARI timing win.
+
+All seven changed ledgers have independent principal-ideal, compact-unit/log,
+HNF and Smith replay: 956 relations in total, with all seven invariant lists
+matching the recorded PARI 2.17.4 results. The other 20 outputs match their
+previously replayed baseline data exactly. The checker proves unit membership
+and logarithm enclosure, not maximality or fundamentality by itself; its
+`class_group_proven` flag remains false. LMFDB's missing class numbers are
+preserved as missing. When a database answer is absent, comparison uses the
+successful PARI record and its SHA256 instead. An initial comparison mistakenly
+called `int(None)`; the corrected per-field pass completed all replays but then
+hit an aggregate filename collision. The seven persisted results were assembled
+with fresh input-hash and completeness checks. Both harness failures are kept
+in `attempts.md`; neither was treated as successful full-batch validation.
+
+Focused checks pass (19), and a fresh `pnpm test:changed -- --base HEAD` receipt
+passes merge/doc checks, an 8m34s build, and all 196 unit files (1m43s), with
+626.14 seconds total. The full architecture gate still stops at the existing
+stale optimizer-opportunity manifest, after native/FFI/resource checks pass.
+No release qualification or additional platform coverage follows from this
+research checkpoint.
+
+### Larger-field structural follow-up
+
+Fresh PARI probes on the three large controls with discriminant-label component
+`1086061775432017340256300` report the following retained factor-base sizes:
+414 (`.596`), 364 (`.387`) and 424 (`.1013`), matching Sage.js's respective
+cardinalities. This checks counts, not equality of the ideal sets or all search
+bounds. Their regulators are approximately $1.99\cdot10^6$,
+$8.36\cdot10^6$ and $8.15\cdot10^6$. These are not small-unit examples despite
+their class groups having only nine invariant factors.
+
+PARI's returned HNF block is $9\times9$ in each case, with companion blocks
+$9\times405$, $9\times355$ and $9\times415$. These are returned structures,
+not proof that PARI used only nine-dimensional matrices throughout its run.
+Sage.js's compact-unit step operates on 420, 404 and 430 retained rows and
+6, 40 and 6 kernel dependencies; its recorded log precisions are 134, 134 and
+138 bits. All three finish analytic refinement at cutoff 5400. The current
+declared right-kernel adapter already uses rational nullspace plus saturation,
+not the older full transpose-HNF unimodular transform. It would be incorrect
+to propose removing that obsolete algorithm as if it were still running.
+
+These facts motivate a phase-cost breakdown before another optimization:
+maximal order/factor base, relation search, exact lattice/kernel work,
+compact-unit/log work, and analytic refinement. Neither final matrix sizes nor
+matching factor-base counts identify the dominant phase by themselves.
+The exact GP programs and outputs are retained in `pari-shapes.json` and the
+corresponding `*-shape.gp` files in the evidence archive.
+
+### Controlled opt diagnostic timings: improvement and the larger remaining gap
+
+The 10-field panel is deliberately selected development data: the seven changed
+fields and three large unchanged controls. It is not an unseen holdout. The
+idle dedicated `opt` VM used one pinned CPU (2) on AMD EPYC 7B13, Node 26.7.0,
+and an exclusive timing lock. No compilation or unrelated task ran on that VM.
+Both source hashes and native binary hashes are recorded. Inputs and buffers
+were allocated outside timing; every call recomputed from polynomial to the
+detached ledger, with all original outputs checked after each measured call.
+The native policy had one warmup and five rotating single-call samples.
+PARI 2.17.4 used `bnfinit(polynomial,1)`, a fixed random seed, one warmup and
+three fresh computations per sample; every sample checked the class number
+and invariants. GP process startup was excluded from its reported interval.
+
+All entries below are medians in milliseconds:
+
+| Label suffix after `3.1.` | Previous native | Parity native | PARI | Parity / PARI |
+| --- | ---: | ---: | ---: | ---: |
+| `1246798226700.1` | 308.31, declines | 142.03 | 19.00 | 7.48 |
+| `4860135888300.8` | 327.05, declines | 195.22 | 18.67 | 10.46 |
+| `347399299982700.28` | 239.50 | 221.11 | 23.33 | 9.48 |
+| `1086061775432017340256300.596` | 13931.88 | 13821.34 | 823.67 | 16.78 |
+| `1086061775432017340256300.387` | 17715.76 | 17669.81 | 820.67 | 21.53 |
+| `341970033803678280.6` | 19398.32 | 5331.76 | 44.00 | 121.18 |
+| `1343801573410596300.4` | 1602.02 | 1084.42 | 69.00 | 15.72 |
+| `1086061775432017340256300.1013` | 16081.19 | 16078.44 | 777.00 | 20.69 |
+| `2441197187235506700.191` | 1635.23 | 1417.94 | 102.00 | 13.90 |
+| `2602492536667698675.123` | 2078.11, declines | 1546.20 | 88.00 | 17.57 |
+
+These remain **research diagnostic costs**, not public certified API timings.
+The three former declines are not equivalent-result speedup comparisons.
+The four other changed fields all improve with nonoverlapping observed native
+sample ranges; notably `341970033803678280.6` improves by $3.64\times$, while
+remaining about $121\times$ slower than PARI. The three unchanged large controls
+have overlapping old/new sample ranges: no durable speed difference is claimed
+for them. Their remaining $16.8$--$21.5\times$ gaps, and the $121\times$ gap on
+the smaller factor base, require actual phase profiling. They cannot be
+explained away as submillisecond overhead or a missing LMFDB answer.
+
+Raw samples, full output expectations, host/affinity data, GP and native binary
+hashes, and the exact runner are in `opt-timing.json`, `fields.json`,
+`timing.cjs` and `launch-timing.cjs` in the archive. The remote run completed in
+`/tmp/cubic-parity-admission-5U8qem`; its result and log were retrieved before
+handoff. The next performance priority is the larger-field phase breakdown,
+alongside holdout testing and eventual public-certificate integration, rather
+than declaring this 27-field development panel generally competitive.

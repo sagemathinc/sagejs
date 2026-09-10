@@ -1,5 +1,5 @@
 // sagejs-test-tier: unit
-// CPython reference qualification only: exact Integer bitwise lowering is pending.
+// CPython reference qualification; native word-admission evidence is documented separately.
 "use strict";
 
 const test = require("node:test");
@@ -19,10 +19,12 @@ source = Path("bench/class-unit-groups/cubic-two-primary.py").read_text()
 tree = ast.parse(source)
 # Execute the actual ordinary-Python bodies, substituting only typed storage.
 functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)]
-namespace = {"FmpzMatrix": object, "uint64": int, "checked_uint64": int}
+namespace = {"FmpzMatrix": object, "UInt64Buffer": list, "uint64": int, "checked_uint64": int}
 exec(compile(ast.Module(body=functions, type_ignores=[]), "parity-source", "exec"), namespace)
 extend = namespace["parity_relation_basis"]
 reduce = namespace["parity_quotient_reduce"]
+prepare_word = namespace["parity_word_prepare"]
+commit_word = namespace["parity_word_commit"]
 
 class Matrix:
     def __init__(self, rows, columns):
@@ -81,6 +83,32 @@ cases += [(6, [[2 if i == j else 0 for j in range(6)] for i in range(6)]),
 prefixes = 0
 for n, rows in cases:
     matrix = Matrix(rows, n)
+    # Physical stride may exceed the logical number of factors. Check both
+    # boundary words and untouched guards outside the exact borrowed range.
+    capacity = max(1, n + 3)
+    words = (capacity + 63) // 64
+    base = 2
+    word_state = [991, 992] + [0] * ((capacity + 1) * words) + [993]
+    retained = []
+    for row_index, row in enumerate(rows):
+        before = word_state[:base + capacity * words]
+        pivot = prepare_word(matrix, word_state, row_index, n, base, capacity)
+        assert word_state[:base + capacity * words] == before
+        _, old_pivots = dense_echelon(retained, n)
+        _, new_pivots = dense_echelon(retained + [row], n)
+        assert (pivot < n) == (len(new_pivots) > len(old_pivots))
+        # Rejected independent proposals must not hide later directions.
+        if row_index % 3 != 1:
+            commit_word(word_state, pivot, n, base, capacity)
+            retained.append(row)
+        else:
+            assert word_state[:base + capacity * words] == before
+        _, retained_pivots = dense_echelon(retained, n)
+        actual_pivots = [j for j in range(n) if
+            word_state[base + j * words + j // 64] & (1 << (j % 64))]
+        assert actual_pivots == retained_pivots
+        assert word_state[:base] == [991, 992] and word_state[-1] == 993
+        assert all(0 <= value < 2**64 for value in word_state)
     basis = Matrix([[0] * (n + 2)], n + 2)
     cuts = sorted(set([0, len(rows) // 3, len(rows) // 2, len(rows)]))
     if n <= 5:
@@ -174,6 +202,22 @@ assert reduce(basis, encode([-value for value in candidate]), n) != 0
 assert reduce(basis, encode([2 * value for value in candidate]), n) == 0
 assert extend(Matrix(rows + [candidate], n), basis, len(rows) + 1, n) == before + 1
 assert reduce(basis, encode(candidate), n) == 0
+# Replay the real retained prefix through the machine-word implementation.
+capacity = 256
+words = 4
+state = [0] * ((capacity + 1) * words)
+matrix = Matrix(rows + [candidate], n)
+for i in range(len(rows)):
+    pivot = prepare_word(matrix, state, i, n, 0, capacity)
+    commit_word(state, pivot, n, 0, capacity)
+before = state[:capacity * words]
+pivot = prepare_word(matrix, state, len(rows), n, 0, capacity)
+assert pivot < n and state[:capacity * words] == before
+# Deliberately reject, then propose again: novelty must still be visible.
+assert prepare_word(matrix, state, len(rows), n, 0, capacity) == pivot
+assert state[:capacity * words] == before
+commit_word(state, pivot, n, 0, capacity)
+assert prepare_word(matrix, state, len(rows), n, 0, capacity) == n
 print(len(cases), "matrices;", prefixes, "incremental prefixes; dense quotient agreement")
 `], { cwd: path.resolve(__dirname, ".."), encoding: "utf8", timeout: 60000, maxBuffer: 2e6 });
   assert.equal(run.status, 0, run.stderr);

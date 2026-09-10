@@ -1,3 +1,4 @@
+# sagejs: native-bitwise
 """Exact parity-quotient discovery hints; never class-group certification.
 
 The rows are an append-only, independently authenticated principal-relation
@@ -6,12 +7,79 @@ one arbitrary-precision bitset per pivot, followed by rank and processed count.
 Its entries are private state, not a certificate accepted from an untrusted
 caller. See docs/cubic-analytic-schedule.md for the invariant and limitations.
 
-This is a research helper. Native compilation currently rejects exact-integer
-bitwise operations; no production dispatch or compiler guard is changed here.
+These are research helpers. The arbitrary-precision reference still requires
+exact-integer bitwise lowering. The word implementation uses existing uint64
+operations; no production dispatch or compiler guard is changed here.
 """
 
 from sagejs.ffi.flint import FmpzMatrix
-from sagejs.native import checked_uint64, uint64
+from sagejs.native import UInt64Buffer, checked_uint64, uint64
+
+
+def parity_word_prepare(
+    relations: FmpzMatrix,
+    state: UInt64Buffer,
+    row: uint64,
+    factor_count: uint64,
+    base: uint64,
+    capacity: uint64,
+) -> uint64:
+    """Reduce a proposal without modifying the retained-ledger parity basis.
+
+    Private state has `capacity` pivot rows and one proposal row, each with
+    `ceil(capacity / 64)` words. The caller checks dimensions and zeroes state
+    before the first retained row. Return `factor_count` for dependence, or
+    the new pivot column. Only `parity_word_commit` publishes a pivot, after
+    the caller decides to retain this exact proposal. No intervening prepare
+    may overwrite the proposal scratch before its commit.
+    """
+    words: uint64 = (capacity + 63) // 64
+    scratch: uint64 = base + capacity * words
+    word: uint64 = 0
+    while word < words:
+        state[scratch + word] = 0
+        word += 1
+    column: uint64 = 0
+    one: uint64 = 1
+    while column < factor_count:
+        if relations[row, column] % 2 != 0:
+            word = column // 64
+            bit: uint64 = one << (column % 64)
+            state[scratch + word] = state[scratch + word] | bit
+        column += 1
+    column = 0
+    while column < factor_count:
+        word = column // 64
+        bit = one << (column % 64)
+        if state[scratch + word] & bit != 0:
+            pivot: uint64 = base + column * words
+            if state[pivot + word] & bit == 0:
+                return column
+            while word < words:
+                state[scratch + word] = state[scratch + word] ^ state[pivot + word]
+                word += 1
+        column += 1
+    return factor_count
+
+
+def parity_word_commit(
+    state: UInt64Buffer,
+    pivot: uint64,
+    factor_count: uint64,
+    base: uint64,
+    capacity: uint64,
+) -> bool:
+    """Publish the prepared residual only for an actually retained relation."""
+    if pivot < factor_count:
+        words: uint64 = (capacity + 63) // 64
+        scratch: uint64 = base + capacity * words
+        destination: uint64 = base + pivot * words
+        word: uint64 = 0
+        while word < words:
+            state[destination + word] = state[scratch + word]
+            word += 1
+        return True
+    return False
 
 
 def parity_relation_basis(
