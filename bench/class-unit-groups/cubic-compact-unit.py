@@ -39,6 +39,33 @@ def signed_log_interval(exponents, intervals):
     return lower, upper
 
 
+def classify_unit_log_interval(lower, upper, scale):
+    """Classify an authenticated complex-cubic unit's real log interval.
+
+    Unit membership, signature `(1, 1)`, and the enclosure are preconditions,
+    not established by this arithmetic predicate. Every non-torsion unit in
+    a complex cubic has real absolute logarithm greater than `1/5`; see the
+    elementary proof in `docs/complex-cubic-native-class-group-proof.md`.
+    Thus a zero-containing interval inside that gap proves torsion without
+    expanding the compact product. Merely containing zero is inconclusive.
+
+    Return `torsion`, `nontorsion`, or `inconclusive`. An interval entirely
+    in the forbidden punctured gap contradicts the preconditions and raises
+    `ValueError`. No classification proves unit-subgroup saturation.
+    """
+    if any(type(value) is not int for value in (lower, upper, scale)):
+        raise ValueError("integer logarithm endpoints and scale required")
+    if scale <= 0 or lower > upper:
+        raise ValueError("invalid logarithm interval")
+    inside_gap = 5 * lower >= -scale and 5 * upper <= scale
+    contains_zero = lower <= 0 <= upper
+    if inside_gap:
+        if not contains_zero:
+            raise ValueError("interval contradicts the complex-cubic unit gap")
+        return "torsion"
+    return "inconclusive" if contains_zero else "nontorsion"
+
+
 def positive_log_bounds(value, bits=128):
     """Enclose log of a positive rational in integer units of `2**bits`.
 

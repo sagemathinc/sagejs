@@ -723,6 +723,17 @@ existing reduction/recovery path. The screen itself does not authenticate
 principal equalities, kernel completeness, or interval construction; those
 remain explicit obligations of its caller and any future independent checker.
 
+The independent research checker `classify_unit_log_interval` applies the
+same lemma to a single authenticated unit. A zero-containing interval wholly
+inside $[-1/5,1/5]$ proves torsion; a wider zero-containing interval is
+inconclusive. A strictly signed interval proves non-torsion unless it is
+wholly inside the forbidden punctured gap, in which case the supplied
+premises contradict one another and the checker rejects them. Endpoint
+comparisons use exact integers with a positive common scale. This predicate
+does not authenticate its inputs or prove that a non-torsion unit is
+fundamental. In particular, a compact product can have enormous intermediate
+coefficients yet admit this short torsion proof without materialization.
+
 ## References
 
 - Karim Belabas and Eduardo Friedman, “Computing the residue of the Dedekind

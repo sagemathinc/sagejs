@@ -63,6 +63,24 @@ rejected(lambda: m.positive_log_bounds(-1))
 rejected(lambda: m.positive_log_bounds(1, 8))
 assert m.kernel_residual([E, -E], [[(0, 1), (0, 2)], [(0, 3)]], 1) == [0]
 
+# The proved unit gap upgrades only sufficiently narrow zero-containing
+# intervals. Strictly nonzero intervals inside the gap contradict unit
+# membership; a numerical near-zero observation alone is not a certificate.
+for scale in [1, 5, 10, 2**128, 2**521]:
+    edge = scale // 5
+    assert m.classify_unit_log_interval(-edge, edge, scale) == "torsion"
+    assert m.classify_unit_log_interval(0, 0, scale) == "torsion"
+    assert m.classify_unit_log_interval(-edge-1, edge, scale) == "inconclusive"
+    assert m.classify_unit_log_interval(-edge, edge+1, scale) == "inconclusive"
+    assert m.classify_unit_log_interval(edge+1, edge+2, scale) == "nontorsion"
+    assert m.classify_unit_log_interval(-edge-2, -edge-1, scale) == "nontorsion"
+    if edge:
+        rejected(lambda: m.classify_unit_log_interval(1, edge, scale), "unit gap")
+        rejected(lambda: m.classify_unit_log_interval(-edge, -1, scale), "unit gap")
+for args in [(0,0,0), (0,0,-1), (1,0,5), (False,0,5),
+             (0,True,5), (0,0,True), (0.0,0,5), (0,0,Fraction(5))]:
+    rejected(lambda: m.classify_unit_log_interval(*args))
+
 # Non-power order basis: theta=2*a, with 1,a,a^2 as rational columns.
 from sympy import Matrix
 g = [-8, -4, 0, 1]
@@ -136,6 +154,16 @@ for bits in [32,64,128]:
     assert zero[0] <= 0 <= zero[1]
     inverse_log = m.compact_real_log_bounds(oracle,[[[0,1],[1,1],[0,1]]],[-E],bits)
     assert inverse_log == (-hi,-lo)
+# Authenticate the compact product before applying the torsion classifier.
+# Moderate cancellation permits a narrow rigorous enclosure at these scales.
+for bits in [32,64,128]:
+    coordinates = [[[0,1],[1,1],[0,1]]]*2
+    assert m.replay(g, [[coordinates[0],17,[]], [coordinates[1],-17,[]]],
+                    maximal_basis)["unit_membership_proven"]
+    lo,hi = m.compact_real_log_bounds(oracle,coordinates,[17,-17],bits)
+    assert m.classify_unit_log_interval(lo,hi,2**bits) == "torsion"
+    lo,hi = m.compact_real_log_bounds(oracle,coordinates[:1],[1],bits)
+    assert m.classify_unit_log_interval(lo,hi,2**bits) == "nontorsion"
 rejected(lambda: m.compact_real_log_bounds(oracle,[coords(0)],[1]), "zero")
 rejected(lambda: m.compact_real_log_bounds(oracle,[coords(1)],[]), "dimension")
 

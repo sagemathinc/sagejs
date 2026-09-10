@@ -8320,3 +8320,200 @@ invariant-result representation is also needed: increasing an eight-factor
 constant alone would neither resolve the index-two gap nor prove the unit
 subgroup complete. The two new powered generators and every field answer in
 these notes remain diagnostic evidence, never special cases in discovery.
+
+### Post-rank recovery reaches the reference presentation on the larger field
+
+The next source-copy experiment extends the same powered-search helper with
+a post-rank mode; it does not add a second copy of the search algorithm.
+Its source hash is
+`655a712ad8cb1b7fa5860c5db377cfd81c7e7dc3007e5f775f8b4ecb7f39c738`
+(565,385 bytes, **unpromoted**). The caller must first have an exact full-rank
+presentation, synchronized online HNF and raw rows, and evidence that this
+attempt actually used powered rank recovery. Nonunit diagonal positions of
+the exact HNF select discovery directions. They are not completeness tests.
+The root preserves the remaining work budget, collects bounded batches, and
+stops at the first exact decrease in the HNF determinant. It then prepares
+the ordinary proof attempt; a determinant decrease never publishes a result.
+The new index must divide the old one. Increased or nondividing indices,
+invalid row counts, and inconsistent state fail closed.
+
+On `3.1.1086061775432017340256300.1`, this appends 13 rows to the previously
+retained 449, using 4,628 additional candidates in ten powered-ideal plans
+with one multiplier pass. The index falls from 629,856 to **314,928**.
+FLINT and GMP agree on every output word. Both still return false: the
+unchanged eight-invariant publication envelope rejects the nine-factor
+presentation before the remaining unit/analytic certification runs.
+Neither the 1 MiB/3 MiB arena limits nor production dispatch has changed.
+
+A diagnostic export again returns false with marker 90 and detaches the
+ledger. The two native exports agree entry for entry. Independent
+CPython/SymPy replay verifies all **462 principal-ideal equalities**, exact
+rank 443, HNF index 314,928, and Smith invariant factors
+
+$$
+(3,3,3,3,3,3,3,12,12).
+$$
+
+PARI's matrix-only HNF/Smith calculation agrees. These are also the invariant
+factors of PARI's GRH-conditional field computation, but that agreement is
+not a proof of the field's class group. The independent replay does not yet
+establish maximality, factor-base generation, or unit saturation.
+
+The old ledger is checked to be an unchanged prefix. Exact triangular
+membership in its column HNF identifies the index-changing row without
+using PARI: rows 449 through 460 (zero-based) are already in the old relation
+lattice. Row 461, whose discovered order coordinates are $(-174170,0,1)$,
+is not in it, but twice that row is. Its exact HNF coordinates have seven
+half-integral entries and no other denominators. Thus its image has order
+two modulo the old lattice, proving the index halves. This generator is a
+diagnostic witness, never a hardcoded discovery rule.
+
+### The enlarged ledger supplies a useful compact unit
+
+PARI proposes a 462-by-19 integral dependency matrix. The replay checks the
+integer zero residual against the relation matrix and proves full rational
+column rank by rank 19 modulo 27,449. The first attempt at generic symbolic
+rank was deliberately interrupted during coefficient growth; it is not a
+passing check. Full modular column rank is an exact lower-bound witness for
+rational rank, not a heuristic replacement. This establishes rational
+spanning, not integral saturation of the proposed dependency basis.
+
+One dependency uses 382 nonzero exponents, of maximum absolute value 41,618.
+Its independently enclosed real absolute logarithm is
+
+$$
+\frac{160610210145895453011859878300772358658052060}{2^{128}}
+\ \leq\ \log|\sigma(u)|\ \leq\
+\frac{160610210145895453011859878300772360623064428}{2^{128}}.
+$$
+
+This is approximately 471,990.9868 and proves a non-torsion unit without
+expanding its coefficients. Similarity to PARI's regulator does **not** prove
+fundamentality. The other 18 dependencies are torsion: one is explicitly
+materialized as $-1$, and fresh independently authenticated logarithm
+enclosures for all 18 lie inside $[-1/5,1/5]$. The elementary complex-cubic
+unit-gap lemma in the proof document applies. An interval merely containing
+zero would not suffice.
+
+The independent compact-unit checker now exposes that classification
+explicitly. It rejects malformed intervals and intervals contradicting the
+unit gap, distinguishes inconclusive wide intervals from torsion, and never
+claims unit saturation. Focused tests include exact boundary inequalities,
+128/521-bit scales, invalid types, and authenticated compact cancellation
+products. This is research replay machinery, not a new public certificate.
+
+The actual extracted search body passes 35 mocked mode/budget/failure
+scenarios. The actual extracted root block passes 16 further scenarios for
+first-decrease stopping, multiplier and budget exhaustion, invalid index
+transitions, and prerequisite guards. Mathematical operations are mocked in
+these control tests; the separate ideal and lattice replays provide the
+arithmetic evidence. Seven reused controls complete on FLINT and GMP and
+preserve every parent output word: six successes and the known h405 decline.
+There is no new full-corpus, JavaScript, cross-platform, or controlled timing
+qualification for this experiment.
+
+The first source build failed definite-assignment checking for a capacity
+variable defined in the earlier recovery branch. Moving that definition to
+its common dominating scope fixes the source; no compiler check was weakened.
+The measured source's older helper docstring still describes rank discovery
+only and needs generalization before promotion. Generated core source is
+21,022,222 bytes and the local addon is 20,792,080 bytes; these are recorded
+resource observations, not a generated-code approval or a raised allowance.
+
+Sources, diagnostic ledgers, independent replay programs, hashes, and failure
+records are preserved in
+`build/cubic-analytic-schedule-evidence/index-recovery/` (30 nonbinary files,
+4,119,207 bytes) and `/scratch/sagejs-runtime/cubic-index-recovery-5VjExI/`.
+The focused compact-unit test and Python formatting pass. The architecture
+gate passes its FFI/native/resource stages but still stops at the existing
+stale optimizer-opportunity artifact manifest; it is not reported green.
+
+**Next:** carry authenticated compact-unit exponents and outward-rounded
+logarithms through the native analytic joint-index proof, with bounded
+dependency storage and a dimensioned invariant result. Do not merely enlarge
+the eight-factor constant or attempt to expand this unit. Only a complete
+accepted computation is eligible for the next controlled PARI comparison.
+
+### Analytic feasibility exposes and repairs a large-integer endpoint boundary
+
+A further diagnostic runs the same native relation search and analytic
+helpers, but supplies the independently authenticated compact-unit log
+interval as an explicit input. It returns false with a diagnostic marker;
+it is **not** native authentication of that input or a complete certificate.
+The initial source is
+`9c0d521b792680aa982e6d94a9855a817f25309ea892ee0f3531a306aad38ab1`.
+Both cutoffs, 765 and 1800, throw on both native backends before analytic
+evaluation. The first harness stopped on the exception; the revised harness
+preserves every error and diagnostic output rather than counting matching
+errors as successful equivalence.
+
+The cause is concrete: the existing resident logarithm/square-root batch
+checks `fmpz_abs_fits_ui` and uses `arb_log_ui`/`arb_sqrt_ui`. It rejects this
+field discriminant, which exceeds a machine word. This is not an overly
+conservative analytic bound or failed relation search.
+
+The corrected source
+`61b0d60af6e26559de96f64df4e12e6ad6856f76b28fb4afb0e51c3464f9a9a8`
+keeps the batch for values at most $2^{31}-1$, a portable routing threshold,
+not a mathematical input limit. Larger values use the existing
+arbitrary-precision positive-rational log operation. Their square-root
+endpoints are computed in ordinary source from
+$r=\lfloor\sqrt{vS^2}\rfloor$, with explicit exact checks
+$r^2\leq vS^2<(r+1)^2$; the upper endpoint is $r$ for a perfect square and
+$r+1$ otherwise. The batch sees private positive placeholders, and every
+large input and its four endpoints are restored before any BF evaluation.
+Invalid intervals or integer-root checks decline. Three already-owned log
+workspaces are forwarded through the helper calls; no foreign interface,
+handwritten mathematical C, or arena byte limit changes.
+
+Forty-seven extracted-body tests exercise routing and root arithmetic through
+8,192-bit values, boundary cases, inactive tails, and failure paths. They use
+the actual integer square-root source and independent rational logarithm
+bounds in place of foreign calls. The first extraction attempts omitted the
+native decorator removal and then a square-root dependency; both test-harness
+failures were corrected before counting the passing run. The first source
+build also exposed unsupported named-constant exponentiation; constructing
+the expected scale with the existing bounded doubling pattern avoids that
+compiler gap without weakening its checks.
+
+With the endpoint correction, the native BF diagnostics complete and agree
+on every output word across FLINT/GMP. The joint-index logarithm intervals
+are approximately $[-2.2083,2.2563]$ at 765 and $[-1.1871,1.2345]$ at 1800.
+Both are correctly inconclusive: their upper endpoints exceed $\log 2$.
+Thus a wider field range needs a discriminant-aware analytic refinement
+schedule, not just compact unit storage.
+
+A separate **unpromoted** cutoff experiment extends the coefficient workspace
+to 5400 while keeping the 512-term/512-value capacities and 1 MiB/3 MiB arena
+limits. Its source hash is
+`9bbdf8b51842d87aefddea762aae76706870c86ea8a858bf056604ce44f7d68e`.
+On this field it uses 399 terms and 353 values, and yields
+
+$$
+-\frac{2411168422}{2^{32}}
+\ \leq\ \log([\mathbb Z^{443}:L]/h\;[\mathcal O_K^\times:\langle-1,u\rangle])
+\ \leq\ \frac{2523365782}{2^{32}}.
+$$
+
+The upper endpoint is strictly less than the certified lower bound
+$2977044471/2^{32}$ for $\log 2$, and the interval contains zero. The ordinary
+analytic classifier therefore returns one on both native backends. This is
+conditional on the analytic theorem's assumptions and authenticated order,
+factor-base, relation, and unit premises. In particular, the diagnostic
+kernel did not authenticate the supplied unit-log input and still returns
+false: no public class-group result or native end-to-end certificate is
+claimed. Raising the default refinement cutoff globally is not proposed.
+
+These additional sources, raw errors/results and hashes are preserved in
+`build/cubic-analytic-schedule-evidence/index-recovery/analytic-suffix/`
+(15 nonbinary files, 2,313,754 bytes). The next closed-program work must join
+native compact dependency discovery and authentication to this analytic
+path, generalize invariant publication, and select refinement from actual
+certificate insufficiency under explicit storage/work budgets.
+
+The changed-file checks passed merge invariants and a fresh eight-stage build
+plus documentation checking. The CLI sweep then stopped in `test/ffi.cjs`,
+including unavailable igraph native-library prerequisites, cancelled its
+active sibling and left 582 files unstarted. The full suite is not green;
+these environment failures are separate from the passing focused compact-unit
+test and diagnostic mathematical replays.
