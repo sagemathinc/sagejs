@@ -1141,3 +1141,119 @@ address the small repeated regressions and existing capacity failures; and
 integrate the mathematical changes through the production ownership and
 certificate path with cross-platform evidence. The compiler prerequisite
 PR remains draft. Faster research transcripts do not waive those obligations.
+
+## Warm-profile correction: transcript capacity versus mathematical work
+
+The first phase profile of the resident closure ran each field once in a fresh
+process. It attributed 150--190 ms on the largest examples to
+`_cubic_publish_relation_rows`. That is **not the warm export cost** and must
+not be used to explain the gap in the controlled, warmed comparisons above.
+This section records the follow-up rather than treating the initial profile
+as an optimization result.
+
+`createIntegerBuffer(length, wordCapacity)` takes a count of **64-bit words**,
+not bits. The research harness reserves 256 words per relation exponent and
+element coordinate. For `.1013`, the relation transcript alone consequently
+has 182,320 entries and 373,391,360 limb bytes (356.09 MiB). The generated
+setter clears every destination slot, including unused limbs. A fresh typed
+array reserves zeroed memory but need not have physically touched all its
+pages; the first native export pays that cost. No interpreter callback or
+matrix-wide validation scan was found inside the copy loop.
+
+### Same-capacity cold and warm observations
+
+An unchanged, uninstrumented native artifact was called three times on the
+same buffers. A separate process per arm either used the original buffers,
+explicitly touched the two transcript limb arrays before the first call, or
+allocated four words per transcript entry. All other buffers, arithmetic,
+limits, inputs and output checks stayed unchanged. These are **local diagnostic
+measurements**, not CPU-pinned `opt` benchmarks. Full transcripts and modular
+parity counters agree on every call: three fields, three arms, three calls,
+27 complete comparisons.
+
+| Field suffix | Original first call (ms) | Original reused (ms) | Pretouched first (ms) | Four-word reused (ms) |
+| --- | ---: | ---: | ---: | ---: |
+| `1086061775432017340256300.1013` | 842.27 | 627.49 / 623.22 | 648.34 | 602.45 / 600.45 |
+| `.387` | 1420.90 | 1237.68 / 1230.24 | 1251.59 | 1220.50 / 1227.44 |
+| `1291393312047583044300.178` | 1037.41 | 902.63 / 902.59 | 933.01 | 895.10 / 892.91 |
+
+Four words reduce `.1013`'s relation storage to 5,834,240 bytes. Inspection of
+all 43 existing expected ledgers finds maximum magnitude bit lengths of four
+for relation entries and 28 for element coordinates. This describes those
+ledgers only: it is not a general bound on cubic relations, and narrowing
+buffers must still report capacity failure rather than truncate values.
+No production capacity policy or compiler implementation is changed here.
+
+A second diagnostic reuses the instrumented artifact for three calls, taking
+differences of its cumulative counters to recover each call's phase times.
+The clock wrappers perturb optimization and add per-call overhead; in
+particular, candidate-call totals are not uninstrumented timing claims.
+All nine additional complete transcripts and parity counters agree.
+
+| Field suffix | Export first / warm (ms) | Warm initial collector (ms) | Warm generator bound (ms) | Warm candidate helper (ms) |
+| --- | ---: | ---: | ---: | ---: |
+| `.1013` | 195.29 / 21.63--21.74 | 423.65--427.63 | 82.56--83.97 | 72.22--72.36 |
+| `.387` | 157.15 / 17.37--17.45 | 919.48--922.35 | 82.16--82.39 | 274.51--274.87 |
+| `1291393312047583044300.178` | 110.44 / 12.22--13.74 | 655.76--658.42 | 23.64--23.70 | 200.04--200.54 |
+
+The helper column includes candidates from all instrumented search paths;
+it is not necessarily a disjoint component of the initial collector column.
+These results reject the hypothesis that transcript copying accounts for
+most of the remaining **warm** gap. The original controlled `opt` harness
+already warms and reuses its buffers; its reported resident-update gains and
+remaining PARI gap are not being replaced by these fresh-process profiles.
+Full transcript export stays in the research comparison.
+
+### Next mathematical target
+
+Relation collection remains the dominant warm phase. Its conditional exact
+ellipsoid traversal already calculates an admissible interval for the first
+coordinate, but then the candidate helper reloads the Gram coefficients and
+recomputes the full quadratic form. This is a concrete redundancy to test,
+not yet an implemented optimization.
+
+Write the form as
+
+$$
+Q(x,y,z)=a x^2+2bxy+2cxz+d y^2+2eyz+f z^2,
+\quad B=by+cz,
+\quad S=a(T-dy^2-2eyz-fz^2)+B^2.
+$$
+
+For $a>0$, the identity $a(T-Q)=S-(ax+B)^2$ proves that the existing
+integer interval
+
+$$
+\left\lceil\frac{-\lfloor\sqrt S\rfloor-B}{a}\right\rceil
+\leq x\leq
+\left\lfloor\frac{\lfloor\sqrt S\rfloor-B}{a}\right\rfloor
+$$
+
+implies $Q\leq T$, provided $S\geq0$. If the Gram matrix is positive definite
+and the canonical point is nonzero, it also proves $Q>0$. A future fast path
+can use those facts only where their hypotheses are established and the
+lower bound is nonpositive. Positive lower bounds still require their shell
+test. Primitive-content, nonscalar-coordinate, order, cursor, budget and
+lattice-change checks must remain intact. Independent interval-boundary and
+resumption tests, complete transcript comparison, and controlled timing are
+required before promotion.
+
+### Reproduction and preservation
+
+The unchanged source/cache identity is the resident closure above. The three
+original diagnostic builds explicitly mark their modified generated cores as
+non-production artifacts; their inherited module identity is not claimed to
+authenticate the instrumented binary. `run.cjs` and `warm-profile.cjs` under
+`/scratch/sagejs-runtime/cubic-transcript-capacity-DxdTcC` reproduce the new
+diagnostics using fresh output destinations.
+
+Report hashes are
+`822985a7a7e8dab4dcb11fd6df76ddc766baea7bba26911d642e469c95ecc37a`
+and `69481d3bd40c2e604edb826d4f9b0531c8a9b23740812175792959bdeadebeb9`.
+The round-trip-verified local archive `build/cubic-warm-profile-evidence`
+preserves 58 files, 145,697,529 raw bytes compressed to 29,227,144 bytes.
+Manifest SHA-256:
+`cd62968f05c75ee69033ba50a6795543dd8954356c2ccf799a7b208e518b3ec1`.
+It includes cold and warm raw reports, scripts, diagnostic generated cores
+and binaries, and links the original source/input archive by manifest hash.
+These remain phase-96 research computations, not public class-group certificates.
