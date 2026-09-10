@@ -1544,10 +1544,70 @@
       "commit": "30cfd48c66debdb8f84583aee9f7f580e4434628",
       "workspace_fingerprint": "1ba7d24205d5d2e2479a409073776e233dd59a326217cf51415e291f241a6404",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-compact-unit.cjs test/cubic-square-smith.cjs test/cubic-dependent-witness-tail.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.398,
+      "started_at": "2026-09-10T08:58:32.591Z",
+      "commit": "7bd74b5091159c43e76de3a15c69b7a817282775",
+      "workspace_fingerprint": "fd4ad6c78890185772107e08baa6bb4c1aa16561cabab13616b14407cd27645f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-compact-unit.cjs test/cubic-square-smith.cjs test/cubic-dependent-witness-tail.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.432,
+      "started_at": "2026-09-10T09:00:43.196Z",
+      "commit": "7bd74b5091159c43e76de3a15c69b7a817282775",
+      "workspace_fingerprint": "5762dae045885efe9eae62b8408d57635f3ac8dbd57065d0595dcd3843cd0047",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.394,
+      "started_at": "2026-09-10T09:02:02.388Z",
+      "commit": "7bd74b5091159c43e76de3a15c69b7a817282775",
+      "workspace_fingerprint": "5dd27acabd5c18471084d065b57c9f8c6be8c41100fae427a862aec48db22d22",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-compact-unit.cjs test/cubic-square-smith.cjs test/cubic-dependent-witness-tail.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.431,
+      "started_at": "2026-09-10T09:07:58.342Z",
+      "commit": "7bd74b5091159c43e76de3a15c69b7a817282775",
+      "workspace_fingerprint": "757d61345c011f118fcf06f2a464d96ba8eea73d324947135331c06412f7632a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-compact-unit.cjs test/cubic-square-smith.cjs test/cubic-dependent-witness-tail.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.497,
+      "started_at": "2026-09-10T09:11:34.700Z",
+      "commit": "7bd74b5091159c43e76de3a15c69b7a817282775",
+      "workspace_fingerprint": "8eb75b7a953d146b56db10a9a7d622e7e0be81b0554767e706e5b0a144664cfd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/cubic-compact-unit.cjs test/cubic-square-smith.cjs test/cubic-dependent-witness-tail.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.477,
+      "started_at": "2026-09-10T09:15:07.577Z",
+      "commit": "7bd74b5091159c43e76de3a15c69b7a817282775",
+      "workspace_fingerprint": "94f755b85f45d0fe28a02ccf6fd60a3375d555d332ab8aa5f7a951dce31323f6",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Latest research checkpoint: full frozen 1,235-field corpus has 280 accepted complex fields, 226 declines, 16 exceptions, two censored runs and 711 real fields outside this kernel. All accepted class numbers/invariants agree with PARI. Broader-factor/quota/analytic-extent combination gains ten and loses three relative to the 273-success incremental baseline; no promotion. All three losses hit bounded unit materialization. Witness-tail selection retains up to six non-support rows; square-HNF Smith uses the same exact relation lattice. The isolated square-Smith change preserves every completed attempt's 64 outputs/status/error across 524 complex fields. Independent tests cover 40,955 witness masks and 244 Smith pairs. Four larger-field successes have JS/GMP/FLINT parity and independent replay of 360 principal rows, eight unit-lattice checkpoints and four published fundamental units. Controlled opt square-Smith medians 87.934/72.709/175.571/114.878 ms versus PARI 14/11.75/11.5/11 ms: measurable 1.04-1.18x improvement, still no PARI win. Only four accepted fields have PARI cost >=10ms; none >=100ms. Tracked research transformers/tests/docs, no production source/cap changes. 17,498 archived nonbinary evidence files (189,363,993 bytes) hash-verified. 195 unit files and focused exact tests pass; existing architecture inventory failure and incomplete optional-native CLI qualification remain visible. Keep PR203 draft; overall goal active. Earlier checkpoint: Dimensioned research workspace and private scalar-record compiler prerequisite now implemented. Frozen 21-field measured-cost frontier (PARI >=10ms): layout-only 0 accepted/21 declined; staged 0/19/2 timeouts; volume-box 0/13/8; augmented compact HNF 2 accepted/19 declined/no timeouts. Target x^3-93477150 reaches cutoff458/74ideals/56groups and certifies h405,[3,3,3,15]; second field1428754729688.2 certifiesh393. Direct HNF-transform stalls on captured84x74 entries<=3; ordinary HNF of[A|I] recovers unimodular transform in73ms diagnostic and independently verifies UA=H,detU=+-1,index405. Initial SNF suspicion disproved; redundant SNF removal alone does not fix timeout. Final native source536701/core20433494bytes, unchanged production source and arena limits; two compact matrices widened, not constant-memory. All64 parity JS/GMP/fmpz for2 successes; independent PARI bnfcertify/maximal-basis/308principal-row/final-unit-lattice/published-fundamental-unit replay passes. Controlled opt medians369.567/14.000ms and153.463/11.750ms native/PARI, still26.4x/13.1x slower. Layout-only41controls208.426->207.264ms aggregate, worst1.024ratio. No overall competitiveness claim or pristine holdout claim;19declines andseconds-scale work remain. Compiler patch isolated in agent/native-exact-layout-records based on arena prototype; release/platform/full-suite qualification open. Correction: old CLI65056 terminated for missing optional FFI prerequisites includinglibigraph.a, not a full586-suite pass or live job. KeepPR203draft. Goal active. Follow-up incremental canonical HNF replaces one online full reduction without changing allocation, support or certification. Controlled opt: 351.891 to123.166ms and152.861 to71.102ms (2.857x/2.150x), still8.798x/6.051x PARI. All64 JavaScript/GMP/fmpz words unchanged; 4845 independent small/wide prefixes, 612 probe checks and392 PARI-verified captured prefixes. Original21 panel unchanged; next20 selected costlier neighbors all decline. Research helper, single-site transformer and tests tracked; goal and draft qualification remain open.",
+    "summary": "Research branch agent/cubic-analytic-schedule; PR203 remains draft and the overall PARI-competitiveness goal is active. Production source and 485000-byte allowance unchanged. Compiler prerequisites are isolated in draft204/205. Frozen1235 corpus: latest square-Smith variant accepts280 complex fields, declines226, raises16 exceptions and has2 censored runs;711 real fields are outside this kernel. All accepted h/invariants match PARI. Only4 accepted fields have PARI cost10-99ms, none >=100ms. Broader-factor/quota/extent changes gain10 but lose3 versus incremental273; no promotion. Isolated square-Smith preserves every completed attempt's full64 outputs/status/error. Controlled opt larger-field medians87.934/72.709/175.571/114.878ms versusPARI14/11.75/11.5/11ms, still no PARI win. Prior incremental HNF improves two measured workloads2.857x/2.150x. Independent witness/Smith/HNF tests, full64JS/GMP/FLINT comparisons and selected principal/unit replay support the narrow changes, not general correctness or platform qualification.\n\nLatest diagnosis: all3 lost fields have h1. The old search reaches a trivial exact relation quotient without materializing units; the new schedule stays at h2 and hits reconstruction17/materialization437. Exact independent replay identifies one old principal relation per field that reduces the new quotient2->1. Preserve old discovery prefixes before broadening. A separate PARI factored companion confirms one raw unit kernel has index68, not just a witness lost in compaction; its candidate log28479003 is not the fundamental regulator418809.\n\nTracked independent compact-unit oracle now accepts checked rational order bases and encloses real logarithms with exact root isolation, interval Horner and outward-rounded atanh series. Five captured witnesses (201 principal-generator occurrences) prove unit membership and nontorsion without expanding dependency powers; enclosure widths <=2.47e-28. Neither maximality, fundamentality nor class-group completeness is inferred. Tests cover30 basis changes,260 numerical log comparisons,12 exact rational-series enclosures, invalid orders/ideals and huge signed dependencies. Evidence is under /scratch/sagejs-runtime/cubic-modular-hnf-filter-mkOKgG and hash-verified backed-up build/cubic-analytic-schedule-evidence/modular-hnf-filter (17520nonbinaryfiles,189848098bytes at latest archive). See docs/cubic-analytic-schedule.md for protocols, hashes, negative results and chronology.\n\nNext: preserve successful relation discovery; make analytic extent/storage adaptive under explicit budgets; integrate compact authenticated unit/regulator authority into a source-transparent native joint-index certificate; extend into >=100ms/seconds and high-regulator workloads. Do not promote global search changes or lift caps to conceal failures. Focused tests and195unitfiles pass; the eight-stage build and docs pass. CLI588 stops on five missing FFLAS/igraph prerequisite failures after4files pass,582notstarted. All validation/timing jobs terminal. Architecture gate retains the known stale optimizer manifest failure. Public receipts, detached complete class-group replay, full suite and cross-platform/resource qualification remain outstanding.",
     "risks": [
       "Current overall-goal priority supersedes small-field tuning. Independent compact-unit prototype is a CPython/SymPy research oracle, not native integration or a class-group certificate. Unit membership does not prove nontorsion/fundamentality. PARI versions produce different compact witnesses; do not conflate382/34-bit with412/260-bit. Existing development distribution cannot support claims about overall cubic workloads.",
       "Magnitude-first is research-only: same1042 outputs and58 fresh neighbors do not establish universal no-regression or public/platform/resource qualification. Temporary slots rise17->18 despite smaller generated C. Seconds-panel Sage.js exceptions/declines are not fallback-success or speed evidence. PARI flag0 versus flag1 changes retained exact evidence; align output/certificate contracts before claiming competitiveness at large regulator.",

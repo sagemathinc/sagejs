@@ -58,7 +58,86 @@ rejected(lambda: m.kernel_residual([E], [[(1, 2)]], 1))
 rejected(lambda: m.kernel_residual([E], [], 1))
 rejected(lambda: m.signed_log_interval([1], [(2, 1)]))
 rejected(lambda: m.signed_log_interval([1], []))
+rejected(lambda: m.positive_log_bounds(0))
+rejected(lambda: m.positive_log_bounds(-1))
+rejected(lambda: m.positive_log_bounds(1, 8))
 assert m.kernel_residual([E, -E], [[(0, 1), (0, 2)], [(0, 3)]], 1) == [0]
+
+# Non-power order basis: theta=2*a, with 1,a,a^2 as rational columns.
+from sympy import Matrix
+g = [-8, -4, 0, 1]
+def rational_columns(B):
+    return [[[int(B[i,j].p), int(B[i,j].q)] for i in range(3)] for j in range(3)]
+B = Matrix.diag(1, Fraction(1,2), Fraction(1,4))
+maximal_basis = rational_columns(B)
+oracle = m.CubicIdealReplay(g, maximal_basis)
+assert oracle.identity == [1,0,0]
+assert oracle.multiply([0,1,0], [0,0,1]) == [1,1,0]
+assert m.replay(g, good, maximal_basis)["unit_membership_proven"]
+assert m.replay(g, [[[[0,1],[1,1],[0,1]], E, []]], maximal_basis)["unit_membership_proven"]
+# Stable under theta is insufficient for stability under this larger order.
+theta_order_lattice = [[1,0,0],[0,2,0],[0,0,4]]
+rejected(lambda: oracle.ideal(theta_order_lattice), "not an ideal")
+rejected(lambda: m.CubicIdealReplay(g, rational_columns(Matrix.diag(2,1,1))), "identity")
+rejected(lambda: m.CubicIdealReplay(g, rational_columns(Matrix.diag(1,Fraction(1,3),1))), "closed")
+rejected(lambda: m.CubicIdealReplay(g, rational_columns(Matrix.zeros(3))), "singular")
+rejected(lambda: m.CubicIdealReplay(g, [[[1,0]]*3]*3), "rational basis")
+
+# Exact basis-equivariance, including bases in which 1 is not a basis vector.
+basis_rng = random.Random(271828)
+for _ in range(30):
+    U = Matrix.eye(3)
+    for __ in range(6):
+        i,j = basis_rng.sample(range(3),2)
+        U[:,i] = U[:,i] + basis_rng.randrange(-3,4)*U[:,j]
+    inverse = U.inv()
+    changed = m.CubicIdealReplay(g, rational_columns(B*U))
+    assert Matrix(changed.identity) == inverse*Matrix([1,0,0])
+    for i in range(3):
+        for j in range(3):
+            v,w = Matrix.eye(3)[:,i],Matrix.eye(3)[:,j]
+            assert Matrix(changed.multiply(v,w)) == inverse*Matrix(oracle.multiply(U*v,U*w))
+    alpha = inverse*Matrix([0,1,0])
+    witness = [[[[int(v),1] for v in alpha],E,[]]]
+    assert m.replay(g,witness,rational_columns(B*U))["unit_membership_proven"]
+
+# High-precision independent numerical oracle for the rational interval
+# implementation. Numerical comparisons are tests, not its proof argument.
+import mpmath as mp
+mp.mp.dps = 180
+log_rng = random.Random(161803)
+values = [Fraction(1),Fraction(2),Fraction(1,2),Fraction(2**160+1,2**160),
+          Fraction(2**160-1,2**160)]
+for _ in range(60):
+    e = log_rng.randrange(-5000,5001)
+    v = Fraction(log_rng.randrange(1,10**9),log_rng.randrange(1,10**9))
+    values.append(v*2**e if e>=0 else v/Fraction(2**-e))
+for bits in [16,32,64,128]:
+    for value in values:
+        lo,hi = m.positive_log_bounds(value,bits)
+        reference = mp.log(mp.mpf(value.numerator)/value.denominator)*2**bits
+        assert lo <= reference <= hi, (bits,value,lo,reference,hi)
+        assert hi-lo <= 4*(bits+1)*(abs(value.numerator.bit_length()-value.denominator.bit_length())+2)
+# A second, exact rational-series enclosure fits inside the fixed-point
+# enclosure. This checks rounding against rigorous bounds, not just numerics.
+for bits in [16,32,64]:
+    for value in [Fraction(1),Fraction(101,100),Fraction(3,2),Fraction(2)]:
+        y = (value-1)/(value+1)
+        lower = 2*sum(y**(2*j+1)/(2*j+1) for j in range(bits))
+        upper = lower + 2*y**(2*bits+1)/((2*bits+1)*(1-y*y))
+        lo,hi = m.positive_log_bounds(value,bits)
+        assert Fraction(lo,2**bits) <= lower <= upper <= Fraction(hi,2**bits)
+root = mp.findroot(lambda x: x**3-x-1,1.3)
+for bits in [32,64,128]:
+    lo,hi = m.compact_real_log_bounds(oracle,[[[0,1],[1,1],[0,1]]],[E],bits)
+    reference = E*mp.log(root)*2**bits
+    assert 0 < lo <= reference <= hi
+    zero = m.compact_real_log_bounds(oracle,[[[0,1],[1,1],[0,1]]]*2,[E,-E],bits)
+    assert zero[0] <= 0 <= zero[1]
+    inverse_log = m.compact_real_log_bounds(oracle,[[[0,1],[1,1],[0,1]]],[-E],bits)
+    assert inverse_log == (-hi,-lo)
+rejected(lambda: m.compact_real_log_bounds(oracle,[coords(0)],[1]), "zero")
+rejected(lambda: m.compact_real_log_bounds(oracle,[coords(1)],[]), "dimension")
 
 rng = random.Random(314159)
 for _ in range(100):

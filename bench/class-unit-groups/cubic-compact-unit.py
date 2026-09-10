@@ -2,8 +2,10 @@
 
 Requires CPython and SymPy for independent exact integer HNF. This is not a
 production certificate schema or a native kernel. A successful replay proves
-unit membership in `ZZ[a]`, not fundamentality or a class-group result.
-Each ideal's invertibility is checked, so maximality of `ZZ[a]` is unnecessary.
+unit membership in the supplied order, not fundamentality or a class-group
+result. The default order is `ZZ[a]`. A rational power-basis matrix may instead
+specify any order: closure and the identity are checked exactly, as is each
+ideal's invertibility. Maximality is neither assumed nor proved.
 """
 
 import argparse
@@ -37,6 +39,92 @@ def signed_log_interval(exponents, intervals):
     return lower, upper
 
 
+def positive_log_bounds(value, bits=128):
+    """Enclose log of a positive rational in integer units of `2**bits`.
+
+    Reduce to `[1, 2]`, then use `log(v) = 2*atanh((v-1)/(v+1))`.
+    Every fixed-point operation rounds outward. After N terms, the omitted
+    positive tail is at most `9/(4*(2*N+1)*3**(2*N+1))`, since `0 <= y <= 1/3`.
+    This is a rational-arithmetic oracle, not a floating-point log call.
+    """
+    if type(bits) is not int or not 16 <= bits <= 4096:
+        raise ValueError("invalid logarithm precision")
+    value = Fraction(value)
+    if value <= 0:
+        raise ValueError("positive logarithm argument required")
+    scale = 1 << bits
+    exponent = value.numerator.bit_length() - value.denominator.bit_length()
+    reduced = value / (1 << exponent) if exponent >= 0 else value * (1 << -exponent)
+    if reduced < 1:
+        reduced *= 2
+        exponent -= 1
+    if not 1 <= reduced <= 2:
+        raise ValueError("invalid logarithm reduction")
+
+    def ceil_div(a, b):
+        return -(-a // b)
+
+    def series(v):
+        y = (v - 1) / (v + 1)
+        lo = y.numerator * scale // y.denominator
+        hi = ceil_div(y.numerator * scale, y.denominator)
+        square_lo, square_hi = lo * lo // scale, ceil_div(hi * hi, scale)
+        power_lo, power_hi = lo, hi
+        lower = upper = 0
+        terms = bits // 3 + 2
+        for j in range(terms):
+            lower += 2 * power_lo // (2 * j + 1)
+            upper += ceil_div(2 * power_hi, 2 * j + 1)
+            power_lo = power_lo * square_lo // scale
+            power_hi = ceil_div(power_hi * square_hi, scale)
+        upper += ceil_div(9 * scale, 4 * (2 * terms + 1) * 3 ** (2 * terms + 1))
+        return lower, upper
+
+    return signed_log_interval([1, exponent], [series(reduced), series(Fraction(2))])
+
+
+def compact_real_log_bounds(oracle, coordinates, exponents, bits=128):
+    """Enclose the real log-absolute-value of an unexpanded formal product.
+
+    Exact real-root isolation and rational interval Horner evaluation enclose
+    each generator. Zero-containing intervals fail closed and request more
+    precision; they never establish torsion. Unit membership must be checked
+    separately. A strictly signed result proves the formal product nontorsion.
+    """
+    from sympy import Poly, Rational, symbols
+
+    if type(bits) is not int or not 16 <= bits <= 4096:
+        raise ValueError("invalid logarithm precision")
+    if len(coordinates) != len(exponents):
+        raise ValueError("logarithm dimension mismatch")
+    x = symbols("x")
+    poly = Poly(sum(c * x**i for i, c in enumerate(oracle.polynomial)), x)
+    roots = poly.intervals(eps=Rational(1, 1 << bits))
+    if len(roots) != 1 or roots[0][1] != 1:
+        raise ValueError("expected a unique simple real root")
+    root_lo, root_hi = (Fraction(v) for v in roots[0][0])
+    intervals = []
+    for coordinate in coordinates:
+        if len(coordinate) != 3:
+            raise ValueError("three rational coordinates required")
+        power = oracle.basis * oracle.matrix([Fraction(*v) for v in coordinate])
+        lo = hi = Fraction(power[2])
+        for coefficient in (power[1], power[0]):
+            products = [lo * root_lo, lo * root_hi, hi * root_lo, hi * root_hi]
+            lo, hi = (
+                min(products) + Fraction(coefficient),
+                max(products) + Fraction(coefficient),
+            )
+        if lo <= 0 <= hi:
+            raise ValueError("generator interval contains zero; increase precision")
+        if hi < 0:
+            lo, hi = -hi, -lo
+        intervals.append(
+            (positive_log_bounds(lo, bits)[0], positive_log_bounds(hi, bits)[1])
+        )
+    return signed_log_interval(exponents, intervals)
+
+
 def kernel_residual(exponents, rows, width):
     """Replay a sparse exact relation dependency, combining duplicate entries."""
     if type(width) is not int or not 0 <= width <= 4096:
@@ -59,7 +147,7 @@ def kernel_residual(exponents, rows, width):
 class CubicIdealReplay:
     """Small exact lattice oracle, independent of PARI's ideal arithmetic."""
 
-    def __init__(self, polynomial):
+    def __init__(self, polynomial, basis=None):
         from sympy import Matrix, Poly, symbols
         from sympy.matrices.normalforms import hermite_normal_form
 
@@ -77,8 +165,44 @@ class CubicIdealReplay:
         self.one = Matrix.eye(3)
         self.ideals = []
         self.indices = {}
+        self.basis = self.one
+        if basis is not None:
+            if len(basis) != 3 or any(len(column) != 3 for column in basis):
+                raise ValueError("basis must have three rational columns")
+            columns = []
+            for column in basis:
+                values = []
+                for pair in column:
+                    if (
+                        len(pair) != 2
+                        or any(type(v) is not int for v in pair)
+                        or pair[1] <= 0
+                        or any(abs(v).bit_length() > 4096 for v in pair)
+                    ):
+                        raise ValueError("invalid rational basis entry")
+                    values.append(Fraction(*pair))
+                columns.append(Matrix(values))
+            self.basis = Matrix.hstack(*columns)
+        if self.basis.det() == 0:
+            raise ValueError("singular order basis")
+        inverse = self.basis.inv()
+        identity = inverse * Matrix([1, 0, 0])
+        if any(v.q != 1 for v in identity):
+            raise ValueError("order basis does not contain the identity")
+        self.identity = [int(v) for v in identity]
+        self.table = []
+        for i in range(3):
+            row = []
+            for j in range(3):
+                value = inverse * Matrix(
+                    self.power_basis_multiply(self.basis[:, i], self.basis[:, j])
+                )
+                if any(v.q != 1 for v in value):
+                    raise ValueError("order basis is not closed under multiplication")
+                row.append([int(v) for v in value])
+            self.table.append(row)
 
-    def multiply(self, left, right):
+    def power_basis_multiply(self, left, right):
         coefficients = [0] * 5
         for i in range(3):
             for j in range(3):
@@ -87,6 +211,16 @@ class CubicIdealReplay:
             for j in range(3):
                 coefficients[i - 3 + j] -= coefficients[i] * self.polynomial[j]
         return coefficients[:3]
+
+    def multiply(self, left, right):
+        return [
+            sum(
+                left[i] * right[j] * self.table[i][j][k]
+                for i in range(3)
+                for j in range(3)
+            )
+            for k in range(3)
+        ]
 
     def multiplication_matrix(self, value):
         return self.matrix.hstack(
@@ -131,10 +265,12 @@ class CubicIdealReplay:
             return self.indices[key], matrix
         if len(self.ideals) >= 4096:
             raise ValueError("too many ideals")
-        # Closure under a suffices for closure under ZZ[a].
-        a_matrix = self.multiplication_matrix([0, 1, 0])
-        if self.hnf(self.matrix.hstack(matrix, a_matrix * matrix)) != matrix:
-            raise ValueError("lattice is not an ideal of ZZ[a]")
+        # For a non-power basis, checking multiplication by a alone is not
+        # enough: verify closure under every supplied order basis element.
+        for i in range(3):
+            multiplication = self.multiplication_matrix(self.one[:, i])
+            if self.hnf(self.matrix.hstack(matrix, multiplication * matrix)) != matrix:
+                raise ValueError("lattice is not an ideal of the supplied order")
         # xI subset O iff every multiplication-matrix row pairs integrally
         # with x. Their integer span S gives I^-1 = S^(-transpose) ZZ^3.
         dual = self.hnf(
@@ -185,11 +321,11 @@ class CubicIdealReplay:
         return row
 
 
-def replay(polynomial, factors):
+def replay(polynomial, factors, basis=None):
     """Prove a formal product is a unit; never expand dependency powers."""
     if not 1 <= len(factors) <= 2048:
         raise ValueError("compact factor count exceeds replay cap")
-    oracle = CubicIdealReplay(polynomial)
+    oracle = CubicIdealReplay(polynomial, basis)
     rows = []
     exponents = []
     for coordinates, exponent, ideal_factors in factors:
@@ -204,6 +340,8 @@ def replay(polynomial, factors):
         "unit_membership_proven": True,
         "fundamentality_proven": False,
         "class_group_proven": False,
+        "order_basis_checked": True,
+        "order_maximality_proven": False,
         "factors": len(factors),
         "ideals": len(oracle.ideals),
         "relation_entries": sum(map(len, rows)),

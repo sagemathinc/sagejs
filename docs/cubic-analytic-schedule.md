@@ -7745,3 +7745,108 @@ dependency powers; and avoid rebuilding unchanged proof stages. In particular,
 the three lost fields exit at the existing bounded unit-materialization guard,
 and the seconds-scale/high-regulator frontier remains unserved. Broadening
 discovery globally is not ready for promotion merely because ten fields improve.
+
+### The three lost trivial groups and unexpanded unit evidence
+
+Read-only traces of both variants, with identical 64-word results across
+JavaScript/GMP/FLINT, refine the preceding materialization diagnosis. All three
+lost fields have class number one. The old search reaches an exact trivial
+relation quotient and publishes without requiring a fundamental unit. The
+broader/quota search remains at quotient order two, repeatedly fails unit
+reconstruction at the exponent-limit exit (status 17), and exceeds the existing
+4096 dependency-exponent budget. Thus unit materialization is the observed
+exit, but the changed relation-discovery schedule also loses decisive class
+relations. Preserve the successful old search before broader activation.
+
+The captured unit log magnitudes are about 367081.4754, 28479003.5178 and
+862343.9301. The middle value is **not** the field regulator: comparison with
+PARI's numerical regulator 418808.8753 initially suggests unit index 68. A
+subsequent PARI companion check with `bnfunits` and factored `bnfisunit` returns
+the exact exponent 68 and finds that the **entire raw relation kernel** at that
+checkpoint generates a unit subgroup of index 68. This is not just a witness
+lost during compaction. The other two captured subgroups have index one, while
+all captured class quotients have order two. A compact unit representation
+alone cannot remove these indices or prove completeness. The companion uses
+`bnfinit(f,1)` to retain unit data; the initial flag-zero attempt cannot supply
+`bnfunits` at that precision and is preserved as a failed experiment. It is not
+a timing comparison with the flag-zero class-group baseline.
+
+`bench/class-unit-groups/cubic-compact-unit.py` now supports a supplied rational
+order basis, not just the equation order. It verifies that the basis contains
+1 and is closed under multiplication. Each ideal must be closed under every
+order basis element and independently invertible; closure under the polynomial
+generator alone is insufficient in a larger order. Principal-ideal identities
+and the exact zero relation residual then prove the formal product is a unit.
+Neither maximality nor fundamentality is assumed or asserted.
+
+An independent real-logarithm checker isolates the unique real root exactly,
+evaluates each generator by rational interval Horner arithmetic, and uses
+outward-rounded fixed-point arithmetic for $\log v=2\operatorname{atanh} y$.
+After reduction to $1\leq v\leq2$, $0\leq y\leq1/3$; the omitted positive tail
+after $N$ terms is bounded by
+
+$$
+\frac{2y^{2N+1}}{(2N+1)(1-y^2)}
+\leq \frac{9}{4(2N+1)3^{2N+1}}.
+$$
+
+All sums of signed dependency logarithms retain outward rounding. An interval
+containing zero is inconclusive, never a torsion certificate. A strictly signed
+interval, together with the ideal replay, proves a nontorsion unit without
+expanding any dependency power. This is an independent CPython/SymPy research
+checker, not yet native certificate publication or a formalized proof.
+
+Five actual compact witnesses from the three fields (two old, three new) pass
+this replay: 201 principal-generator occurrences over the supplied order bases,
+maximum dependency width 25 bits, and no expanded unit powers. Their independent
+128-bit-scale log enclosures have widths at most $2.47\cdot10^{-28}$ and overlap
+the retained native intervals. Overlap does not independently establish that
+the narrower native intervals themselves enclose the exact value. These checks
+prove unit membership and nontorsion, **not** a fundamental unit or class group.
+
+Tests include 30 unimodular changes of order basis, invalid/nonclosed bases,
+an equation-order lattice that is not an ideal of the larger order, 260
+high-precision numerical comparisons and 12 exact rational-series comparisons
+for the rational log enclosure, signed
+huge-exponent products, cancellation, and zero-containing interval rejection.
+The numerical comparisons are regression oracles, not the enclosure proof.
+Artifacts: `trace-unit-losses.cjs`, `unit-loss-traces.json`,
+`replay-unit-losses.py`, `unit-loss-independent-replay.json`, and
+`pari-unit-loss-indices.json`. The next
+mathematical boundary is combining this compact exact unit authority with a
+verified regulator lattice and the joint class/unit index test, while recovering
+the missing class relations and retaining explicit failure/resource accounting.
+
+The old final presentations expose one decisive relation for each regression.
+Independent ideal replay and square-HNF index checks verify that adjoining
+each row to the corresponding new first full-rank checkpoint reduces the
+quotient order from two to one:
+
+| Field suffix | Old row (zero-based) | Generator in the defining power basis |
+| --- | ---: | --- |
+| `232227935940.1` | 46 | $(-49474+144a+a^2)/261$ |
+| `738427259115.2` | 58 | $(130527-47a+a^2)/137$ |
+| `750484414680.1` | 47 | $848+3a$ |
+
+These are diagnostic witnesses, never hardcoded inputs to discovery. The old
+final raw counts are 47, 59 and 54; the new first full-rank counts are 35, 43
+and 47. `replay-missing-trivial-relations.py` and
+`missing-trivial-relations.json` retain all exact rows, generators and hashes.
+This identifies concrete missing work rather than treating the last
+unit-materialization guard as the whole cause of the regression.
+
+Call-origin tracing (`trace-missing-proposals.cjs` and
+`missing-proposal-origins.json`) places all three old witnesses in
+`_cubic_append_initial_volume_ellipsoid`. No rational multiple or sign change
+of any corresponding generator reaches the new variant's smooth-relation
+append boundary. Thus these are not the same proposals subsequently rejected
+by that appender's admission test. The discovery traversal or earlier filters
+must be reconciled before blaming only the final certificate.
+
+Validation of this follow-up is terminal: focused exact tests, all 195 unit
+files, the eight-stage build and documentation checks pass. The 588-file CLI
+plan stops after four files pass and `test/ffi.cjs` reports five failures from
+missing FFLAS/igraph prerequisites; 582 files are not started. The architecture
+gate still reports the previously recorded stale optimizer manifest. These are
+not whole-suite or release passes. No timing or build job remains live from
+this checkpoint.
