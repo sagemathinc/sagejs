@@ -39,6 +39,24 @@ in the compiler's content-addressed backend fingerprint.
 
 ## Qualification
 
+### Current integration checkpoint (2026-09-10)
+
+Commit `43cb29851` integrates main at `89e6fcfb2` without changing the
+compiler optimization. The focused four-test CPython/JavaScript/native
+differential passes after integration, as do the complete architecture gate
+and strict Python checks (382 modules, zero errors). Main's
+`a75002d06` fixes the optimizer-inventory blocker described in the historical
+qualification below. No manifest was refreshed locally to bypass that check.
+
+The previously pushed revision `47e902dcd` has successful Linux routine,
+Chromium parity, and Linux ARM64/macOS ARM64/Windows x64 smoke checks. Those
+are not full native qualification for the new integrated revision. A fresh
+`pnpm test:native` is running through canonical dependency preparation;
+neither its eventual result nor new-head CI is presumed here. PR #202 remains
+draft until the remaining qualification and handoff are complete.
+
+### Initial branch evidence
+
 The focused test is `node --test test/native-constant-indices.cjs`. It compares
 signed and large constant arithmetic against CPython and exercises module
 constants, local shadowing, vector/matrix indexing, effectful helper calls,
