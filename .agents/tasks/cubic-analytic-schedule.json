@@ -1969,6 +1969,16 @@
       "commit": "daec851c1691a970c325e351019f610fdab13063",
       "workspace_fingerprint": "d61554cf469dd0d86311c94edd302e181a9c5105835f427b5b2a9c426e8e1a3b",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.046,
+      "started_at": "2026-09-10T18:57:26.721Z",
+      "commit": "8a8ec82ed18aaf13f08410471528381ec01998f5",
+      "workspace_fingerprint": "fdb3d3859cc2124f96a32994f7c41684b5fa2e761c980969fc3c2dab17603f08",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -1992,6 +2002,7 @@
       "The Corollary8 citation no longer closes the proof audit: direct exact Theorem7 specialization requires upper constant 5.35 and lower real-place coefficient 0.429, rather than printed 3.35/0.619. Explain a missing stronger estimate or replace with a directly derived bound before promotion. Production Theorem1 scale correction unaffected."
     ],
     "next_steps": [
+      "Completed wider replay:19/20 current presentations independently replay principal/unit/log and exact HNF/Smith facts,18 match hashed PARI class numbers/invariants; doubled-index and projection-error cases remain unaccepted. Final .361 replay used checked batch removal of HNF unit rows after preserving180s timeout. Consolidation hash b5072a856371e8db6f505f8da981d9b7388d87c9f7fc82edd91e2e9c6a6b63ab authenticates current complete ledgers against replay inputs. New symbolized corrected-source V8 profiles on .387/.1013 preserve full ledgers and show residual GMP copying/division costs; leaf samples do not attribute inclusive phases.46 completed profile/replay files archived, manifest5d5d5e107b08e8e46f1c0a06711ae40a0e807f02c3843e0ee798b603a392988b. Next measure inclusive collection/lattice/certification phases and controlled opt timing; no production acceptance or bounds changes. Independently PR202 now non-draft with full localnative/architecture/strict receipts and all e21038fbd routine/platform/Chromium CI checks green; finalreceipt-only6214ddcb8 pushed.",
       "Latest rank-budget checkpoint: exact exit tracing proves the two extension phase44 declines are zero-work powered-rank searches, not root-isolation failures. Separate physical traversal capacity from the unchanged admission target; quotient batches, candidate/work/physical limits and proof predicates remain. The compiled fix preserves27 full GMP/tagged controls and2 JS controls. Both new full ledgers agree GMP/tagged and independently replay principal/unit/log facts and exact HNF/Smith invariants: .428 order19683 with nine3s; .163 order5629338 with eight3s and858. Original180s replay timeouts are retained; checked batch removal of canonical HNF unit rows lets a saved-witness replayer finish in23/21s. Frozen20field rerun completes:18 classifier1 PARI class-number matches, other18 observations unchanged; doubled-index and projection-error failures remain. Not public certificates or a PARI timing win.63 source/evidence files round-trip archived under rank-discovery-budget, manifest cc32f1b8346062d32aa53d2b634d18f478250cad8322a0816ab8384aeb779f8e. Next finish wider replay, measure fixed closed program on opt, profile residual costs, and consolidate source/public/platform qualification without increasing limits.",
       "Compose checked group-range scans with machine-sized offsets, verify full ledgers and fresh holdouts, then reprofile the remaining 3.49–7.12s research paths. Preserve exact bounds, candidate order, range-partition invariant and proof/resource contracts. Coordinate general native vector-index lowering with the compiler lane; no global uint64 arithmetic semantic change and no edits to overlapping compiler claims from this math lane. Consolidate the research closure and complete detached/public/platform qualification before marking PR203 ready. Current source/IR/profile/timing identities and archived evidence are in the latest docs sections; historical next steps below are superseded.",
       "Use the committed 184x182 admission counterexample to implement and qualify parity-aware proposal admission; the auxiliary basis must track retained rows only, not rejected proposals.",

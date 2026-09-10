@@ -10140,3 +10140,53 @@ The 63 files occupy 333,159,217 raw bytes and 33,510,828 gzip bytes; every
 compressed file was round-trip hash-verified. Manifest SHA-256:
 `cc32f1b8346062d32aa53d2b634d18f478250cad8322a0816ab8384aeb779f8e`.
 The separately running wider replay is not counted as complete in this archive.
+
+### Completed extension replay and residual profiles
+
+The wider replay has now terminated. Its naive dense-HNF version retained
+nine replays, eight timeouts and three unresolved native results. The checked
+HNF-witness version completed 16 replays, with one timeout and the same three
+unresolved results. The final timeout, `.361`, also disappears when the
+canonical diagonal-one rows are removed in one batch: independent replay of
+its saved witness completes in about 18 seconds, with presentation order
+40,861,908 and invariants eight factors of 3 followed by 6,228.
+
+Combining that checked result with the two corrected rank-search fields
+completes replay for **19 of the 20 current extension presentations**. Eighteen
+have class numbers and invariants matching the hashed PARI references. The
+remaining replayed presentation is the explicitly unaccepted doubled-index
+case; the twentieth input still raises the analysis-projection error.
+The consolidation script checks every replay input hash and exact equality
+of the complete current ledger against the replayed ledger, including field
+data, all output slots and parity counters. It does not silently reuse a
+replay merely because the class number matches. Consolidated report SHA-256:
+`b5072a856371e8db6f505f8da981d9b7388d87c9f7fc82edd91e2e9c6a6b63ab`.
+Maximality, fundamentality and complete class-group proof remain explicitly
+false in these independent reports.
+
+Two new local V8 leaf-PC profiles use a symbolized build of the corrected
+source, key
+`db2e107ebbf4574bc1f5e86771edacea8c8100c705bcb6844ad2655f92e857bb`.
+Both runs compare the complete result with the original frozen development
+ledger. Exact addon hashes, captured executable mappings and symbol ranges
+bind the sampled PCs to functions. These profiles are not controlled timings,
+inclusive call trees, or mathematical operation counts.
+
+For field `.387`, 5,026 of 5,945 samples land in the native addon; 28 native
+samples remain unresolved. For `.1013`, the corresponding counts are
+2,594/3,322, with 12 unresolved. Among native samples, GMP limb inversion
+accounts for 11.6%/8.1%, integer copying (`mpz_set`) 8.8%/6.6%, and limb copying
+7.5%/6.2%, respectively. Division/remainder operations also remain prominent.
+Leaf samples in smooth-principal-relation and online-lattice-update helpers
+identify useful candidates for subsequent inclusive phase instrumentation,
+but do not attribute the shared GMP expense to either caller. The earlier
+word-prime trial's near-tie still argues against assuming that changing one
+trial-division operand type will remove this whole residual cost.
+
+The completed profiles, exact symbolized native artifacts, all HNF witnesses,
+replay outcomes and consolidation are separately round-trip hash-archived in
+`build/cubic-analytic-schedule-evidence/residual-profile-replay`: 46 files,
+258,281,559 raw bytes and 42,806,090 gzip bytes. Manifest SHA-256:
+`5d5d5e107b08e8e46f1c0a06711ae40a0e807f02c3843e0ee798b603a392988b`.
+Next distinguish collection, lattice maintenance, and certification costs
+with phase-level evidence before selecting another general optimization.
