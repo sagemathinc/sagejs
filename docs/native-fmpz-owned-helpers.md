@@ -546,3 +546,122 @@ and `067e8f6485756cf403b68c73ff90bb7222ad0605532515caf4119cdc0b81f21b`.
 The campaign summary hash is
 `b4680a913a91d30233f02cbaea9b50194fe8340573d97bb56802f3f4963d016b`.
 This is a recoverable local research archive, not published release evidence.
+
+## Lazy sparse pivot-row caching in online HNF
+
+The next research variant preserves the online update schedule and every
+integer row operation, but avoids repeatedly scanning zeros in an unchanged
+pivot row. When a row above the pivot first needs reduction, record the pivot
+row's nonzero columns and coefficients. Reuse that list for the remaining
+rows above this pivot; discard it before advancing to the next pivot. The
+cache is built lazily, so pivots needing no above-row reductions do not pay
+for a support scan.
+
+### Equivalence and workspace lifetime
+
+For fixed pivot row $p$, every update has the form
+
+$$
+B_{r,j}\leftarrow B_{r,j}-qB_{p,j},\qquad r<p.
+$$
+
+The pivot row is not modified during these updates. Omitting its zero entries
+therefore produces exactly the same matrix after each reduction, not just an
+equivalent lattice. The cache is rebuilt after any pivot construction, sign
+normalization, or Bezout change. The algorithm's divisibility, sign, pivot,
+and quotient decisions are unchanged. Hence all exact membership decisions
+and resulting search-scheduling decisions are preserved.
+
+For $q$ affected rows, pivot-tail length $d$, and support size $s$, repeated
+tail scans cost $O(qd)$ entry inspections; the cache needs one $O(d)$ scan
+and $O(qs)$ updates. This does not accelerate every part of HNF insertion and
+is not an asymptotic claim for arbitrary dense matrices.
+
+The previously unused `source` argument of the online updater provides two
+temporary rows of its already allocated $(n+1)\times n$ matrix. No new arena
+resource or allocation limit is introduced. The first cache row stores column
+indices, the second exact coefficients. For $n>0$, the shape supplies at least
+two rows; support length is at most $n$, and every stored index is less than
+$n$. The empty-dimensional standalone test does not access the cache. The
+caller supplies distinct basis, residual, and cache owners.
+
+The same source matrix is also used by opposite-presentation discovery, but
+that consumer rewrites all its entries before using it as HNF input. It does
+not retain a cache-dependent view across an online update. This lifetime
+inspection matters: merely noticing an unused parameter in one helper would
+not justify repurposing shared workspace.
+
+### Checks and controlled performance
+
+An independent SymPy column-HNF oracle, translated to the leading row-pivot
+convention by reversing axes, agrees after all 2,497 incremental prefixes in
+240 deterministic sequences. Cases include dimensions 0 through 16, zero and
+dependent rows, skipped pivots, mixed signs, and coefficients above 270 bits.
+The same helper passes 720 compiled comparisons across fmpz, GMP, and generated
+JavaScript. CPython executes the actual helper body with only matrix storage
+replaced by a bounds-checked integer container.
+
+The four timed full research calls also agree completely between actual GMP
+and fmpz execution of the new source. A selected smaller full call agrees with
+generated JavaScript, beyond the standalone helper comparisons.
+
+All 43 completed observations in the 47-field panel retain **identical full
+transcripts** relative to direct unit recovery without LLL: relation rows,
+unit exponents, logarithm endpoints, basis, classifier, and parity counters.
+The previous three capacity failures, invalid-analysis error, and completed
+indeterminate classifier remain unchanged. The prior independent unit-log
+replay therefore applies to exactly the same published witness values.
+
+Two controlled `opt` runs use the same established CPU-2, lock, warmup,
+balanced-six-round, same-compiler/library, and whole-native-call protocol:
+
+| Field suffix | Before/after (ms) | Repeat before/after (ms) | PARI first/repeat (ms) |
+| --- | --- | --- | --- |
+| `341970033803678280.6` | 75.37 / 73.08 | 74.62 / 72.93 | 25 / 24 |
+| `1086061775432017340256300.1013` | 892.39 / 809.12 | 893.87 / 806.97 | 198.5 / 199.5 |
+| `.387` | 1564.88 / 1503.91 | 1566.21 / 1509.43 | 358.5 / 361 |
+| `.596` | 1092.23 / 1031.75 | 1088.62 / 1030.94 | 242 / 244 |
+
+The approximately 9--10% gain on `.1013` and 4--6% gains on `.387`/`.596`
+repeat. No PARI win or newly qualified public result is claimed. These are
+the same diagnostic calls, still explicitly `accepted=False`. The shared
+large discriminant and pure-cubic presentations of these three fields also
+limit generalization: this is not evidence about every seconds-scale cubic.
+
+### PARI's batching is a larger structural difference
+
+Inspection of the pinned PARI 2.17.4 `buch2.c` shows that relations between
+`cache.chk` and `cache.last` form a batch: the first reduction uses `hnfspec_i`,
+then later batches use `hnfadd_i`. In `hnf_snf.c`, `hnfspec_i` separately
+eliminates singleton unit rows, rows containing only $0,\pm1$, and more general
+unit pivots while word-size bounds permit, before moving to multiprecision.
+This is more than a faster scalar HNF loop.
+
+The saved seeded flag-0 trace on `.1013` reports one `hnfspec` on a
+$424\times430$ relation matrix. The `.387` trace reports an initial
+$364\times367$ reduction and two subsequent additions. These are local debug
+traces, not controlled timing samples. Their candidate counts are not assumed
+to have the same definition as our instrumented predicate-call counts.
+
+Sage.js currently consults its intermediate exact HNF for rank recovery and
+quotient-guided discovery, as well as immediate lattice-change stopping.
+Replacing that state with a stale batched basis would be incorrect. A staged
+design must define which scheduling facts modular independence already proves
+and synchronize the exact basis before each consumer that actually needs it.
+Extracting the validated generic HNF helper and investigating that explicit
+batched-state contract are the next steps; blindly deferring updates is not.
+
+The selected research source is 601,035 bytes, SHA-256
+`c6beb5fc771c2a1bb2f3e1249582fbd3cb36ad52e021c5c30b45178ba1ea76f6`,
+with 139 fmpz-qualified functions and cache key
+`7178f114edf6d93dc13343b218fae73531600a3e8e9969b1831380808dbac2b2`.
+The production source allowance remains unchanged. The ignored local backup
+`build/cubic-hnf-sparse-row-evidence` contains 100 round-trip-verified files,
+238,677,593 raw bytes compressed to 33,421,605 bytes, with manifest hash
+`a59e725fb0430e212a07bcc2c7934b0da2e7b2c3021696545071d30a8de78a39`.
+It includes the pinned PARI source and debug traces and references the previous
+archive for unchanged input ledgers and timing baselines.
+
+The eight-file sibling backup `build/cubic-hnf-sparse-row-evidence-supplement`
+contains those additional full-call cross-backend checks, with manifest hash
+`3d28a94b028dfa57ff208469615836971a2cdc5244ebaf33d5af5fdbb88d36f2`.
