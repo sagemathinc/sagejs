@@ -9,9 +9,11 @@
   "objective": "Consolidate byte method publication and audit lazy native property cache misses",
   "base_commit": "41a401e65c2f81b4e889d990ea8b1055704b6a34",
   "claims": [
+    ".agents/lanes.json",
     "src/baselib/byte_strings.py",
     "src/baselib/builtins.py",
     "src/lib/sagejs/_namespace.py",
+    "src/lib/sagejs/_introspection.py",
     "test/core-cold-registration.cjs"
   ],
   "dependencies": [],
