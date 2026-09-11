@@ -124,6 +124,24 @@ The canonical type-ownership slice is now being qualified directly on that
 main baseline; see `agents/python-canonical-instance-type.md`. The preserved
 original worktree and the remaining draft stack are not thereby qualified.
 
+**2026-09-11 adopted-failure campaign checkpoint:** the clean combined stack at
+`5b7f4ddc5` passes the unchanged 536-case corpus: 533 passes, three reviewed
+differences and zero required failures. Four pinned package workflows and the
+focused cross-feature checks also pass. This closes the original fifteen
+required failures on that candidate, not on main and not across all upstream
+tests. PR214 is non-draft with successful routine/Chromium CI; PR216 remains
+draft pending combined qualification and its cold-import correction.
+
+The controlled campaign demonstrates common-call/construction improvements of
+1.23–1.88x, but warm packaging remains about 228x CPython and cold packaging is
+26% slower than the retained baseline. Treat these as open performance cliffs,
+not completed M5 gates. Profiles identify duplicated prepared/legacy class
+method emission as the main added cold cost. Correct that shared mechanism and
+repeat paired measurements before broadening adoption. The private compiler
+artifact has a separately focused-tested size correction; it does not establish
+that the cold regression is fixed. Exact candidates, receipts and remaining
+qualification work are recorded in `agents/python-object-call-protocols.md`.
+
 Existing assets to reuse:
 
 - `scripts/audit-python-grammar.cjs`
