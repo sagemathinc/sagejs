@@ -1942,3 +1942,134 @@ The round-trip-verified archive `build/cubic-missing-coset-evidence` contains
 generated artifacts for the diagnostic and rejected variants, negative controls,
 all final screens/replays, and controlled timing. Its manifest SHA-256 is
 `1f08fd597cd364d40347342f76def07da9f1e1472b266ef67073d570b084bf26`.
+
+### Bounded class-relation-only prepass
+
+The next research candidate limits the optional first prepass to 64 units of
+the existing search-work accounting. These are **not uniformly 64 primitive
+candidates**: small boxes account for virtual positions, while larger boxes
+account for tested candidates and skipped blocks. All work is debited from the
+existing shared budget. Subsequent powered searches and their unit-discovery
+policy are unchanged.
+
+Within this prepass only, a newly authenticated principal relation is discarded
+when the synchronized exact quotient proves it belongs to the previously
+retained integer relation lattice. This does not change that lattice. The
+logical relation and online-row counts are restored together; the temporary
+row outside the retained prefix can be overwritten by the next proposal.
+The implementation requires full modular rank, synchronized exact state, a
+single appended row, and unchanged extra-parity quota. Failure of a rollback
+precondition declines rather than trusting inconsistent state. Deferred full
+HNF updates are still materialized before certification.
+
+This is deliberately **not** a general rule for discarding dependent rows.
+A dependent relation can contribute a new unit. Losing that information can
+affect discovery and bounded-search success even though it leaves the class
+relation lattice unchanged. The experiment confines the policy to one optional
+class-relation prepass and retains normal/powered unit discovery. Exact
+membership alone never proves completeness or authorizes publication.
+
+The actual Python admission control flow passes 501 focused checks, including
+100 seeded full-rank lattices with dependent rows followed by a nonmember,
+comparison with independent HNF, budget exhaustion, unit rows, and fail-closed
+quota/state checks. Candidate generation and principality are injected
+boundaries in these control-flow tests; they are not number-field proofs.
+Full compiled transcripts receive the separate independent replay below.
+
+Across the same 72+43 inputs, 104 full outcomes are unchanged. Of the 11 changed
+transcripts, nine differ only in output diagnostics, not retained mathematical
+data. All 11 are GMP/fmpz-equal and pass independent principal-ideal, formal-unit,
+log-enclosure, HNF, and Smith replay. There are 61 and 42 index-one research
+outcomes respectively, with no previously index-one outcome lost. The target
+retains its original 118 rows and adds the independently proved $a+15675$
+witness as row 119. The older unresolved field remains unresolved; its replay
+proves a presentation of index 52488, not PARI's class number 26244.
+
+Fresh locked CPU-2 `opt` measurements use the same one-warmup, six-alternating-
+round protocol and full detached-transcript checks outside the timer:
+
+| Field suffix | Baseline / new prepass median (ms) | PARI median (ms) |
+| --- | ---: | ---: |
+| `601670940964268175.1` | 154.794 unresolved / 51.883 index one | 21 |
+| `1404087621760849825800.150` | 1028.856 / 1029.019 | 178.5 |
+| `168342521186083444200.61` | 222.610 / 223.417 | 71 |
+| `337548337352608341960.58` | 175.059 / 176.262 | 58 |
+| `6927187507738538040.67` | 106.299 / 106.865 | 35 |
+| `1404087621760849825800.179` | 382.694 / 398.477 | 71 |
+
+Three earlier slowdowns are reduced to measured differences of 0.36--0.69%,
+which warrant more samples before a no-regression claim. The `.179` slowdown
+remains 4.12%; the approximately one-second case is unchanged. These results
+do not establish a production-ready policy or overall competitiveness. The
+target is still about 2.47 times PARI, and its baseline did not finish with
+index one. Phase 96 still returns `False`; independent replay does not prove
+order maximality, unit fundamentality, or standalone class-group completeness.
+
+The candidate is in `/scratch/sagejs-runtime/cubic-prepass-admission-OMUzEW`.
+Source SHA-256 is
+`dde91d3a3cfd2b73d7d84bd90cc484015fd16a33b64f33af148ac2013bb28366`;
+cache key is
+`734c81b4d034d82a9c02826bf68f5e6aaa4a375909fe3809cf4247e09e173289`.
+It contains 623,284 source bytes and 146 lowered functions. Normalizing full
+source filenames to `/frozen/closure.py`, generated core size is 23,108,027
+bytes, versus baseline 23,013,233; addon size is 20,034,320 versus 20,022,032.
+No production mathematical source, source allowance, or resource limit changed.
+
+The round-trip-checked `build/cubic-prepass-admission-evidence` archive contains
+182 files, 210,564,907 raw bytes and 18,919,469 compressed bytes. Its manifest
+SHA-256 is
+`f8b70df0e520352c2ce4ff5b085e3efddc229810d1e285eb81e992cfcb116fea`.
+
+### Larger-field bottleneck: residue-map enumeration at denominator primes
+
+Diagnostic wrappers of the original and candidate generated cores preserve all
+detached transcripts across three calls each on `.179` and `.150`. The first
+profile measures the extra `.179` prepass itself at less than 0.1 ms, with
+essentially unchanged HNF materialization. It does not explain the controlled
+4.12% slowdown. More detailed wrappers perturb optimization enough that this
+difference is not reproduced consistently; its cause remains unresolved.
+
+The finer profile exposes a more substantial structural cost. Factor-base
+construction calls `_cubic_map_is_multiplicative` 1,216,809 times on `.179`
+and 1,481,355 times on `.150`. At primes dividing the order-basis denominator,
+the existing algorithm enumerates all $p^2$ pairs of free basis images after
+using the identity to eliminate the third. Prime 1103 accounts for 1,216,609
+of those tests on `.179`; prime 1217 accounts for 1,481,089 on `.150`.
+These counts are diagnostic evidence, not instrumented timing claims.
+
+A separate independent prototype replaces that exhaustive second-coordinate
+loop by a necessary linear equation when available. Write the three images as
+$v_k=a_k+b_ky$ after fixing the first free image. Each multiplication identity
+has degree at most two in $y$. A nonzero linear equation forces one value;
+an inconsistent constant equation rejects the fiber. Otherwise retain the
+exhaustive loop. All candidates still pass all nine multiplication equations.
+Thus no valid unital map can be removed, and none can be added. The original
+lexicographic ordering of accepted maps is preserved. No maximal-order or
+class-group-completeness conclusion follows from this local argument.
+
+On the two selected order bases, even the linear-only version reduces those
+large-prime candidate counts to 1103 and 1217 respectively, and reproduces the
+exact prime-ideal HNFs. It also handles the denominator prime 7 on `.150`.
+There are 264 exhaustive small-field equation-system comparisons, including
+nilpotent and inconsistent systems, and another 220 comparisons executing the
+actual proposed typed-Python helper. This is not yet native or full-pipeline
+qualification. Degenerate fibers retain the quadratic-cost fallback.
+
+Local PARI 2.17.4 `base2.c:primedec_aux` uses a more general approach at index
+primes: applicable Kummer factors, the radical, and splitting of the reduced
+finite algebra using Frobenius kernels and minimal-polynomial roots. The
+linear filter is a proved improvement to our existing degree-one map search,
+not a reconstruction of that entire method. General finite-algebra splitting
+remains relevant for larger primes and other residue degrees.
+
+Diagnostic profiles are under
+`/scratch/sagejs-runtime/cubic-prepass-profile-QBJHxl`; the fine report SHA-256
+is `c360b8d9092acd34319289bd4074ae1a22202a7d4f45e709fdc0d6d437c0f5d0`.
+The prototype, proposed native source, exhaustive tests, and mathematical
+argument are under `/scratch/sagejs-runtime/cubic-residue-map-equations-Sxk3Kt`.
+The proposed helper SHA-256 is
+`ae9a872afccef0f0dffcadfd2ee172924a977c9767f4568ecdcb5c3422e11745`.
+Both directories are retained in
+`build/cubic-prepass-profile-and-map-prototype.tar.gz`. Diagnostic binaries
+are explicitly nonproduction and have their own hashes; their inherited
+module cache identities do not authenticate the instrumented code.
