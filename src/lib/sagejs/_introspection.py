@@ -105,6 +105,17 @@ def _default_dir(item: Any) -> list[_Str]:
     else:
         _builtins_append_dir_names(target, answer, seen)
 
+    namespace = _core.ρσ_instance_namespace(target)
+    if namespace is not None:
+        for name in namespace.keymap.values():
+            if not runtime.strict_equal(runtime.jstype(name), "string"):
+                raise TypeError(
+                    "instance dictionary contains a non-string attribute name"
+                )
+            if not seen.has(name):
+                seen.add(name)
+                answer.append(name)
+
     # Python classes expose their instance methods through the class object.
     # Sage.js stores those methods on the JavaScript constructor prototype.
     if target_is_function:
