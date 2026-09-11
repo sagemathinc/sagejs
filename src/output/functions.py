@@ -135,7 +135,11 @@ def function_preamble(node, output, offset, javascript_name):
                     argument_name
                     + " = "
                     + fname
-                    + ".__defaults__ == null ? undefined : "
+                    + ".__defaults__ == null || "
+                    + fname
+                    + ".__defaults__.length < "
+                    + str(a.length - index)
+                    + " ? ρσ_no_default : "
                 )
                 output.print(
                     fname
@@ -151,9 +155,15 @@ def function_preamble(node, output, offset, javascript_name):
                 or not Object.prototype.hasOwnProperty.call(a.defaults, argument.name)
             ):
                 output.indent()
-                output.print("if (typeof ")
+                output.print(
+                    "if (" if output.options.python_attributes else "if (typeof "
+                )
                 output.print(python_argument_name(argument))
-                output.print(' === "undefined") ')
+                output.print(
+                    " === ρσ_no_default) "
+                    if output.options.python_attributes
+                    else ' === "undefined") '
+                )
                 output.print(
                     "throw ρσ_function_argument_error("
                     '"missing required argument: ' + argument.name + '", ' + fname + ")"
@@ -168,7 +178,7 @@ def function_preamble(node, output, offset, javascript_name):
                     argument_name
                     + " = "
                     + fname
-                    + ".__kwdefaults__ == null ? undefined : ρσ_dict_keyword_default("
+                    + ".__kwdefaults__ == null ? ρσ_no_default : ρσ_dict_keyword_default("
                 )
                 output.print(
                     fname + ".__kwdefaults__, " + JSON.stringify(argument.name) + ")"
@@ -179,9 +189,15 @@ def function_preamble(node, output, offset, javascript_name):
                 or not Object.prototype.hasOwnProperty.call(a.defaults, argument.name)
             ):
                 output.indent()
-                output.print("if (typeof ")
+                output.print(
+                    "if (" if output.options.python_attributes else "if (typeof "
+                )
                 output.print(python_argument_name(argument))
-                output.print(' === "undefined") ')
+                output.print(
+                    " === ρσ_no_default) "
+                    if output.options.python_attributes
+                    else ' === "undefined") '
+                )
                 output.print(
                     "throw ρσ_function_argument_error("
                     '"missing required keyword-only '
