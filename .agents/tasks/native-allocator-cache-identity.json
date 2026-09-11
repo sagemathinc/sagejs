@@ -66,6 +66,36 @@
       "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
       "workspace_fingerprint": "e4134b34e56926c2e1c1abb60ddc37cd82dd0d37eeea489ea437eaa3fc183ebf",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.471,
+      "started_at": "2026-09-11T01:08:26.828Z",
+      "commit": "7feace3cc8427d4e983f8115a913c1a82a0bb176",
+      "workspace_fingerprint": "928379436392ec36fa05edf4e3abc0c28b916223c277f0677decd481eddb934e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 799.738,
+      "started_at": "2026-09-11T01:09:23.960Z",
+      "commit": "7feace3cc8427d4e983f8115a913c1a82a0bb176",
+      "workspace_fingerprint": "928379436392ec36fa05edf4e3abc0c28b916223c277f0677decd481eddb934e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-allocator-cache-identity.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.127,
+      "started_at": "2026-09-11T02:31:35.506Z",
+      "commit": "7feace3cc8427d4e983f8115a913c1a82a0bb176",
+      "workspace_fingerprint": "928379436392ec36fa05edf4e3abc0c28b916223c277f0677decd481eddb934e",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -74,11 +104,11 @@
       "Corrected backend identities cause a one-time rebuild of cached native artifacts.",
       "This does not qualify the experimental allocator, layout-record, or owned-helper stack.",
       "test:changed completes its fresh eight-stage build, then fails architecture:check at the existing cowasm documentation reference in agents/python-compiler-runtime-value-and-performance-plan.md:124. The plan and auditor are byte-identical to main d654e3d45; PR #209 removes the triggering direct reference. No audit or inventory is changed here.",
-      "Full unit suite passes (202 files); compiler suite passes (21 passed, 28 existing skips). The separately running 394-file integration suite and following docs check have not yet reached a terminal result. Platform CI remains outstanding."
+      "On 7feace3cc, the clean serial integration rerun passes all 394 files in 52m59s; the following docs check passes after its 8m37s rebuild. Earlier integration runs overlapped native preparation and are invalidated, not counted as passes. Full unit (202 files), compiler (21 passed, 28 existing skips), strict-baselib, and native sanitizer/resource suites pass. All non-skipped GitHub platform/browser CI checks pass on that code commit."
     ],
     "next_steps": [
-      "Collect the existing integration/docs process result without restarting it; update the PR with terminal validation.",
-      "Retest architecture against the integration correction and obtain strict-baselib, native-suite and platform checks before making the PR non-draft."
+      "Retest architecture against the main-branch documentation correction; this remains the outstanding gate before making PR #210 non-draft.",
+      "The implementation has not changed since 7feace3cc. Qualification receipts and this handoff do not add experimental allocator or mathematical changes."
     ]
   }
 }
