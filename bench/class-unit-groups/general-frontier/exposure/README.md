@@ -127,3 +127,93 @@ exact discriminants and same-field tests, propagate exposure across equivalent
 presentations, audit missing/deleted historical sources and evaluated holdouts,
 then explicitly decide final eligibility. Strict consumers must require
 `holdout_eligible === true`; this inventory cannot supply that approval.
+
+## Reproducible conservative reconciliation
+
+`reconcile.cjs` implements the bounded next step without running CAS code:
+
+```sh
+node bench/class-unit-groups/general-frontier/exposure/reconcile.cjs \
+  --manifest bench/class-unit-groups/general-frontier/exposure/reconciliation-inputs.local.json \
+  --output /absolute/new/task-directory/conservative-reconciliation.json
+node --test bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs
+```
+
+The explicit input manifest pins raw SHA256 values for the existing v2
+`candidates-v2/pool.json`, exposure inventory, and class-unit oracle fixture.
+It does not edit or refresh any input. The pool adapter checks schema/policy
+versions, whole-pool/record/label hashes, unique labels, exact coefficients,
+degree/signature consistency, and discriminants against canonical label parts.
+The inventory's canonical digest and each evidence digest are checked too.
+
+All historical label assertions contribute their degree, signature, and signed
+discriminant, including the 442 cubic labels without coefficient arrays in the
+pinned inventory. This is conservative bucketing, **not database membership or
+an isomorphism assertion**. Exact-label and exact-coefficient matches retain
+their distinct reason codes. Other compatible degree/discriminant/signature
+matches are marked `possible-same-field-bucket-not-isomorphism`; the candidates
+remain separate, including distinct fields with equal discriminants.
+
+For coefficient-only class-unit oracle cases, source ID/kind and raw fixture
+hash must agree with the inventory source. Case IDs bind the exact polynomial.
+Only agreeing `sage_pari` and `magma` recorded field-discriminant/signature values
+are joined. Conflicting metadata across these records, canonical labels, or
+identical polynomials fails closed. This produces 16 per-case join receipts for
+the pinned fixture; eight distinct polynomial buckets otherwise lacked field
+discriminants after deduplication across all historical sources. There is no
+need to recompute those discriminants with CAS for this conservative audit.
+
+Missing metadata is not evidence of non-exposure: unresolved valid historical
+presentations conservatively quarantine compatible degree/signature candidates
+and are listed in `unresolved_metadata`. Declared-invalid presentations are
+exact-match quarantines, not reasons to exclude every field of their degree.
+Selection-only/reference-only observations retain reasons but do not trigger
+historical quarantine automatically.
+
+The pinned no-pilot replay yields 4,436 candidates, 14 quarantines, 4,422 not
+quarantined, and zero unresolved metadata records. Seven quarantines are exact
+coefficient matches; seven more are conservative same-discriminant buckets.
+This preserves all 34 signatures. The output gives per-degree and per-signature
+total/quarantined/not-quarantined counts, full per-candidate reasons, source
+assertions, and metadata join receipts. The envelope binds every raw input,
+canonical input manifest, exporter and normalization producer hashes, and result.
+
+Optional `additional_exposure` is another explicit raw-hashed descriptor. Its
+file must be:
+
+```json
+{
+  "schema": "sagejs.general-frontier/additional-exposure-v1",
+  "category": "historical-quarantine",
+  "records": [
+    {"id": "reviewed-pilot", "label": "2.2.5.1", "coefficients": ["-1", "-1", "1"]}
+  ]
+}
+```
+
+Each row needs a unique nonempty string ID and coefficient array; a canonical
+LMFDB label is optional. The category is an explicit reviewer decision, not
+inferred from pilot filenames, reference timings, or acquisition. The same four
+categories apply. Quarantined additional labels also conservatively exclude
+matching discriminant/signature buckets, not just their exact labels. Additional
+unlabeled presentations without discriminants remain unresolved and block their
+compatible degree candidates conservatively. Therefore this policy may exclude
+more than an earlier exact-label-only pilot count; reasons are retained.
+
+For this campaign, the 168 reference pilot labels must **not** be labeled prior
+Sage.js exposure simply because they were screened. The separately reviewed five
+actual Sage.js diagnostic presentations are `real-cubic-49`,
+`mixed-quartic-283`, `real-quartic-725`, `3.3.1179905564504915820.14`, and
+`4.2.1261504958441728000.28`. An explicit prior-Sage wrapper with their exact
+diagnostic `case.coefficients` yields 39 total quarantines and 4,397 remaining
+candidates under this same conservative policy; degree 3 retains 249 and degree
+4 retains 300. Their diagnostic raw hashes and explicit canonical-label mapping
+belong in a retained derivation sidecar, bound to the wrapper's raw SHA256.
+This records exposure attempts, including timeouts, not authenticated timing.
+
+The reconciliation does not grant coverage approval, count distinct fields,
+assert that an unquarantined candidate is unseen, or emit true holdout
+eligibility. Remaining candidates stay null until historical source coverage
+and the final selection policy are explicitly reviewed. Optional exact same-field
+tests may recover conservatively quarantined distinct fields later; they are not
+required to reproduce this conservative result.
