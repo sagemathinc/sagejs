@@ -103,10 +103,30 @@
       "commit": "2436b080fbbd478888f87c6e0cef5baa80beb094",
       "workspace_fingerprint": "f62ce8dee5d2014315f0ed0ec4826adbe09fca87db64c7dc918d311b4fc44bcd",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-detached-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.372,
+      "started_at": "2026-09-11T14:01:51.085Z",
+      "commit": "dc5de62b791020c6117d611a3a6f54d90b75a635",
+      "workspace_fingerprint": "cbd5e15f8e56bb56240d09db97a7909ea2bc616cbf3ae3fc50c03c5819090641",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-detached-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.982,
+      "started_at": "2026-09-11T14:02:30.174Z",
+      "commit": "dc5de62b791020c6117d611a3a6f54d90b75a635",
+      "workspace_fingerprint": "0bbb553a8fbfc0059c9ebf623980158c81aee835984b298db9c13ac48ccfcdc8",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Active draft source 2436b080f: bounded portable component export and fresh exact replay with no completeness or map authority. Current-checkpoint focused CPython/generated-JS tests, registered strict checks, direct module Pyright, native suite and docs pass. Independent source review found no remaining blocker within these limited claims. test:changed retains the expected package-ownership cap failure.",
+    "summary": "Active draft bounded portable component export and fresh exact replay with no completeness or map authority. Source 2436b080f had focused CPython/generated-JS, registered strict, direct module Pyright, native and docs passes. Integration strict registration found I001 at the local replay imports; the formatting-only followup sorts and combines those imports, passes pinned Ruff I and diff checks, and passes dedicated CPython/generated-JS tests (2/2, 19.98s) against the final changed source. Earlier full gates do not qualify this followup; integration requalification remains pending. Independent source review found no remaining blocker within the limited mathematical claims. test:changed retains the expected package-ownership cap failure.",
     "risks": [
       "Always component_only=true and complete=false: class generation, analytic index and unit-lattice completeness remain pending. Source proof status is unverified provenance.",
       "Arithmetic preflight limits are not wall-clock or RSS guarantees; maximal order is recomputed.",
