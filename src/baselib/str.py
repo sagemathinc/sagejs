@@ -514,7 +514,12 @@ def _resolve_field(path: _Str, value: Any) -> Any:
             key = path[position:end]
             if _string_call(key, "match", runtime.regexp(r"^\d+$")) is not None:
                 key = runtime.parse_int(key, 10)
-            value = value[key]
+            modules = runtime.reflect.get(
+                runtime.global_object, "__sagejs_baselib_modules__"
+            )
+            internal = runtime.reflect.get(modules, "sagejs._baselib.internal")
+            getitem = runtime.reflect.get(internal, "ρσ_getitem")
+            value = runtime.reflect.apply(getitem, runtime.undefined, [value, key])
             position = end + 1
         else:
             while end < len(path) and path[end] not in ".[":
@@ -586,7 +591,6 @@ def string_format(
                 if index >= len(format_args):
                     raise IndexError(root)
                 value = format_args[index]
-            value = _resolve_field(key[root_end:], value)
         else:
             automatic = True
             if manual:
@@ -598,6 +602,7 @@ def string_format(
                 raise IndexError("Not enough arguments to match template: " + template)
             value = format_args[next_index]
             next_index += 1
+        value = _resolve_field(key[root_end:], value)
         if conversion == "r":
             formatted_value = ρσ_repr(value)
         elif conversion == "s":
