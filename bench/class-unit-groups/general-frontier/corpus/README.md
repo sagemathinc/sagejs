@@ -23,7 +23,7 @@ Empty and failed cells are evidence, not permission to substitute silently.
 
 Every SQL query requests the first **128** rows ordered by numeric `disc_abs`
 then bytewise LMFDB label within one cell. Local SHA-256 ranking using the
-pinned seed, cell ID and label selects at most **40** non-excluded rows. This
+pinned seed, cell ID and label selects at most **64** non-excluded rows. This
 avoids an unbounded database-wide random sort. It is deliberately **not uniform
 sampling of the entire cell**: when a window is full, its candidates come from
 the low-discriminant edge of that band. The receipt explicitly records
@@ -37,7 +37,7 @@ duration/output, not database rows examined internally; indexed-plan quality
 may vary. Defaults fetch **one** pending cell; `--max-cells` permits at most
 34 per invocation (at most 1,020 seconds of client deadlines, serially).
 Do not run the full acquisition as a side effect of a smoke check. A completely
-filled policy would contain at most 21,760 selections before cross-cell label
+filled policy would contain at most 34,816 selections before cross-cell label
 deduplication, and at most 69,632 raw rows. Raw windows are retained for audit.
 
 Create a task-scoped output directory, then explicitly select small cells:
@@ -70,9 +70,37 @@ selected-record and ordered-label hashes. It describes all 544 cells, including
 pending cells. Per-degree availability summaries report distinct labels,
 missing class numbers, signature counts, and the arithmetic shortfall to 200
 candidates; even zero shortfall does not establish a qualified final panel.
-The 40-row selection cap permits more than 200 degree-2 candidates from `all`
-channels alone; actual empty cells, exclusions and source coverage may still
-prevent this. `check` recomputes every digest and projection offline.
+`check` recomputes every digest and projection offline.
+
+## Explicit v2 acquisition revision
+
+Bounded read-only source probes on 2026-09-11 established a real v1
+cardinality shortfall: the maximum absolute quadratic discriminant was
+`802241960520` in both signatures (minima 5 for real, 3 for imaginary), and no
+degree-2 record had a missing class number. All four signature × band-0/1
+windows had at least 128 records. Thus only those four quadratic `all` cells
+can contribute: v1's 40 selections per cell gave a maximum of **160**, not
+the required 200. Higher bands and missing-class-number channels cannot fill
+that witnessed gap. The maximum/minimum queries used ordered `LIMIT 1`
+lookups; the four count probes used `LIMIT 128` subqueries, with a 15-second
+statement timeout and read-only connection. This was source discovery, not
+Sage.js performance-based selection.
+
+Policy, export, cell-receipt and pool schema identifiers are explicitly **v2**.
+The global selection cap is now **64**, yielding at most **256** quadratic
+candidates from the four known populated windows before hard exclusions.
+The 128-row source windows, SQL queries, ranking seed, time/response limits,
+and all coverage/performance acceptance targets are unchanged. For identical
+source rows and exclusions, the selected 40-label set is contained in the new
+64-label set. The retained seed's `v1` suffix identifies that unchanged ranking
+seed; it does not identify the revised policy version.
+
+Use a **new output directory** and bounded refetch for v2. Existing v1 exports
+and receipts remain immutable: v2 validation/resume rejects their policy and
+schema identities before any query or artifact rewrite. There is deliberately
+no v1 importer or silent receipt relabelling. Keep the v1 tool revision if
+offline verification of historical v1 artifacts is needed. The extra candidate
+capacity does not establish reference timing coverage or qualify a final panel.
 
 Successful and empty cells are never refetched. Errors remain pinned unless
 `--retry-errors` explicitly appends another attempt. Failed attempts have
@@ -107,6 +135,9 @@ cases**. Selected matching records carry
 `exposure: "historically-exposed-development-only"` and
 `holdout_eligible: false`. All other records have exposure audit pending and
 `holdout_eligible: null`, never an unsupported claim of being unseen.
+Final holdout consumers must require `holdout_eligible === true` after a
+separate completed exposure audit; `holdout_eligible !== false` incorrectly
+accepts unknowns. This acquisition tool itself never emits `true`.
 
 `--exclude-labels PATH` is a separate, explicit hard-exclusion list, also a
 JSON array. Those labels remain in raw windows but cannot enter the candidate
