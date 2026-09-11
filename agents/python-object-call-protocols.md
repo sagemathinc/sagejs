@@ -256,9 +256,9 @@ job passed its startup gate; the local routine run is still recorded as failed.
 Cross-platform review then exposed two integration defects on this candidate:
 
 - Chromium's `number-field-cubic-headline` workload failed while mpmath
-  `FPContext._wrap_specfun` read `function_docs.__dict__`. Browser bootstrap
-  lacked Node's private module-identity registry. Bootstrap now installs and
-  seeds an evaluator-owned WeakSet; lazy imports register placeholders before
+  `FPContext._wrap_specfun` read `function_docs.__dict__`. Browser imports
+  lacked Node's private module-identity registry. Module-loader installation
+  now creates and seeds an evaluator-owned WeakSet; lazy imports register placeholders before
   evaluation and replacement namespaces before returning. This preserves
   live module dictionaries without accepting arbitrary objects as modules.
 - Windows's prepared-call interaction oracle compared LF output to CPython's
@@ -270,3 +270,10 @@ Focused evaluator/loader tests cover registration during evaluation, replacement
 namespace identity, and restoration when the evaluator terminates. The new
 candidate still requires fresh production Chromium and platform CI; the earlier
 browser failure and Windows failure are not treated as passing receipts.
+
+The initial evaluator-host placement at `a9053098a` triggered the frozen NLopt
+public-semantics source check. Registry ownership was moved into the module
+loader, which is installed for every evaluator and already owns import
+lifecycle. The evaluator source is restored exactly; existing numerical
+qualification manifests and receipts are unchanged. The same evaluator
+registration and teardown tests cover this final placement.
