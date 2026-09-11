@@ -433,3 +433,25 @@ a constructor-only scan would miss. Their pinned-source supplement is being
 implemented; the earlier 39-exclusion result must not be treated as final
 eligibility approval. The hard-window acquisition work separately targets eight
 explicit higher-discriminant windows, not silent changes to the v2 exports.
+
+The 72-field PARI expansion completed with 62 successes and ten timeouts;
+eight successful worker requests exceeded ten seconds. These are not yet
+matched counts. Persistent Hecke screening of the 28-field rank-two supplement
+is next, prioritizing the bridge rather than only higher-degree expensive cases.
+After lock release, the explicit 6,000-second acquisition allowance was applied
+once: the ledger stood at 14,825.670 of 432,000 seconds before that Hecke run.
+The checked-in adjustment helper refuses pending reservations and duplicate
+charges.
+
+Independent review found and repaired two fail-closed gaps in cap-rescue
+admission: equal but invalid measurement controls are no longer accepted, and
+both source runs must explicitly declare one sample. Every actual selected
+receipt already satisfied the required controls. The revised selector requires
+conditional GRH, the persistent fresh-field boundary, 4 GiB, zero swap,
+CPU affinity two, and matching hosts independently of completion status.
+
+The finite source-coverage supplement is integrated and its exact
+Sylvester–Hadamard bounds independently reviewed. It adds five conservative
+quadratic quarantines, giving 44 exclusions and 4,392 remaining candidates.
+Remaining TEST-family dispositions and preservation of the original source
+inventory are still under review; this is not a holdout-eligibility approval.

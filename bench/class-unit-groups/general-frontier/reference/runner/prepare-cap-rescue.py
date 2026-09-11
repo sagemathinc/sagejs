@@ -14,6 +14,11 @@ spec.loader.exec_module(pairer)
 
 
 def select(report):
+    if any(
+        report[f"{engine}_review"].get("declared_samples") != 1
+        for engine in ("pari", "hecke")
+    ):
+        raise ValueError("rescue policy requires declared single-sample runs")
     selected = {"pari": [], "hecke": []}
     seen = set()
     for row in report["rows"]:
@@ -39,6 +44,20 @@ def select(report):
                 continue
             if failed["coefficients"] != completed["coefficients"]:
                 raise ValueError("different presentations")
+            for result in (failed, completed):
+                controls = result.get("controls")
+                if (
+                    result.get("sample") != 1
+                    or not isinstance(controls, dict)
+                    or not controls.get("hostname")
+                    or controls.get("affinity") != [2]
+                    or controls.get("memory_max") != 4294967296
+                    or controls.get("swap_max") != 0
+                    or result.get("proof_policy") != "conditional-grh"
+                    or result.get("producer_boundary")
+                    != "persistent-process-fresh-field-not-proven-warm-JIT"
+                ):
+                    raise ValueError("invalid rescue measurement contract")
             if failed["controls"] != completed["controls"]:
                 # Per-run cgroup paths differ; host and actual limits must not.
                 keys = ("hostname", "affinity", "memory_max", "swap_max")
