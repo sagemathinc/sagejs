@@ -1,4 +1,4 @@
-"""Strict detached component replay, deliberately without completeness authority.
+"""Strict detached components and bounded conditional completeness replay.
 
 This adapter reconstructs exact objects through existing mathematical services.
 It neither resumes a producer nor grants a class/unit computation or map token.
@@ -96,7 +96,7 @@ def _reject_number(text: str) -> Any:
     raise ValueError("noninteger JSON numbers are unsupported: " + text[:32])
 
 
-def _decode(text: str) -> dict[str, Any]:
+def _decode(text: str, *, proof_scalars: bool = False) -> dict[str, Any]:
     _require(type(text) is str, "component replay requires JSON text")
     if len(text) > MAX_BYTES or len(text.encode("utf-8")) > MAX_BYTES:
         raise ComponentReplayResourceError("component JSON exceeds its byte limit")
@@ -151,6 +151,8 @@ def _decode(text: str) -> dict[str, Any]:
         elif type(item) is str:
             if len(item) > 4096:
                 raise ComponentReplayResourceError("component string is too long")
+        elif proof_scalars and (type(item) is bool or item is None):
+            continue
         else:
             _require(type(item) is int, "unsupported component scalar")
     _require(type(value) is dict, "component envelope must be an object")
@@ -437,6 +439,30 @@ def replay_terminal_components(text: str) -> dict[str, Any]:
     """Independently check components; never issue terminal completeness."""
     payload = _decode(text)
     _preflight(payload)
+    _, _, factor_base, presentation, decoded_units, _ = _replay_component_payload(
+        payload
+    )
+    return {
+        "schema": "sagejs.number-fields/class-unit-component-report-v1",
+        "component_only": True,
+        "complete": False,
+        "pending": ["class_generation", "analytic_index", "unit_lattice_completeness"],
+        "source_proof_status_claim": payload["source_proof_status"],
+        "source_proof_status_verified": False,
+        "content_sha256": payload["content_sha256"],
+        "maximal_order": "recomputed by exact service and compared",
+        "factor_base_primes_verified": len(factor_base),
+        "relations_verified": len(payload["relations"]),
+        "presentation_rank": presentation.rank,
+        "presentation_columns": presentation.column_count,
+        "relation_quotient_invariants": list(presentation.invariants),
+        "unit_memberships_verified": len(decoded_units),
+        "torsion_order_verified": payload["torsion"]["order"],
+    }
+
+
+def _replay_component_payload(payload: dict[str, Any]) -> tuple[Any, ...]:
+    """Own fresh exact objects after the caller's bounded schema preflight."""
     from sagejs.number_fields import class_group_matrix as matrix
     from sagejs.number_fields import class_group_relations as relations
     from sagejs.number_fields import class_unit_context as context
@@ -499,12 +525,14 @@ def replay_terminal_components(text: str) -> dict[str, Any]:
         == [list(record.row) for record in records],
         "presentation is not the verified relation lattice",
     )
+    decoded_units = []
     for encoded in payload["units"]:
         unit = FactoredNumberFieldElement.from_dict(field, encoded)
         _require(
             unit.principal_ideal(order) == order.ideal(1),
             "factored input is not a unit",
         )
+        decoded_units.append(unit)
     torsion = payload["torsion"]
     certificate = units.RootsOfUnityCertificate.from_dict(field, torsion["certificate"])
     generator = field._from_coefficients(
@@ -523,20 +551,214 @@ def replay_terminal_components(text: str) -> dict[str, Any]:
         units.RootsOfUnityResult.verify(result, force_replay=True),
         "torsion replay failed",
     )
+    return field, order, factor_base, presentation, decoded_units, result
+
+
+COMPLETION_SCHEMA = "sagejs.number-fields/class-unit-conditional-completion-v1"
+COMPACT_INDEX_SCHEMA = "sagejs.number-fields/compact-bf-index-v1"
+
+
+def _sealed(body: dict[str, Any]) -> dict[str, Any]:
+    result = dict(body)
+    result["content_sha256"] = _hash(body)
+    return result
+
+
+def _preflight_completion(payload: dict[str, Any]) -> None:
+    _keys(payload, "schema components generation analytic content_sha256")
+    _require(payload["schema"] == COMPLETION_SCHEMA, "unknown completion schema")
+    body = dict(payload)
+    digest = body.pop("content_sha256")
+    _require(type(digest) is str and _hash(body) == digest, "completion hash mismatch")
+    components = _decode(_json(payload["components"]))
+    _preflight(components)
+    from sagejs.number_fields import class_unit_generation_replay as generation
+
+    generation_payload = _decode(_json(payload["generation"]))
+    generation._preflight(generation_payload)
+    _require(
+        generation_payload["field_order"] == components["field_order"]
+        and generation_payload["factor_base"] == components["factor_base"],
+        "generation is not bound to the ordered component base",
+    )
+    analytic = payload["analytic"]
+    _keys(
+        analytic,
+        "schema components_sha256 generation_sha256 configuration index_bound analytic_proof",
+    )
+    _require(
+        analytic["schema"] == COMPACT_INDEX_SCHEMA
+        and analytic["components_sha256"] == components["content_sha256"]
+        and analytic["generation_sha256"] == generation_payload["content_sha256"],
+        "compact analytic binding differs",
+    )
+    _require(
+        type(analytic["index_bound"]) is int and analytic["index_bound"] == 1,
+        "compact completion requires an index-one claim",
+    )
+    configuration = analytic["configuration"]
+    _keys(
+        configuration,
+        "signature class_number roots_of_unity hr_precision_bits regulator zeta",
+    )
+    signature = _list(configuration["signature"], 2)
+    _require(len(signature) == 2, "invalid analytic signature")
+    for value in signature:
+        _integer(value, 4)
+    _require(
+        signature[0] + 2 * signature[1] == components["field_order"]["field"]["degree"]
+        and signature[0] + signature[1] - 1 == len(components["units"]),
+        "analytic degree or free-unit count differs",
+    )
+    _integer(configuration["class_number"], (1 << 4096) - 1, minimum=1)
+    _integer(configuration["roots_of_unity"], 12, minimum=1)
+    _require(
+        configuration["roots_of_unity"] == components["torsion"]["order"],
+        "analytic torsion differs",
+    )
+    regulator = configuration["regulator"]
+    _keys(regulator, "precision_bits absolute_tolerance_bits maximum_precision_bits")
+    zeta = configuration["zeta"]
+    _keys(zeta, "absolute_error absolute_error_history precision_bits limits")
+    limits = zeta["limits"]
+    _keys(
+        limits,
+        "maximum_prime_bound maximum_degree splitting_block_size maximum_precision_bits",
+    )
+    history = _list(zeta["absolute_error_history"], 32)
+    for value in [zeta["absolute_error"]] + history:
+        _require(type(value) is str, "analytic error must be an exact rational string")
+        parts = value.split("/")
+        _require(
+            len(parts) in (1, 2) and all(part.isdigit() for part in parts),
+            "invalid analytic rational",
+        )
+        pair = [
+            _parse_integer(parts[0]),
+            _parse_integer(parts[1]) if len(parts) == 2 else 1,
+        ]
+        _rational(pair, 4096)
+        _require(pair[0] > 0, "analytic error must be positive")
+    from sagejs.number_fields import class_unit_analytic
+
+    # The existing verifier owns all analytic precision and prime-work limits,
+    # including exact JSON-integer checks. Do not duplicate or widen its policy.
+    class_unit_analytic._unit_index_replay_parameters(configuration)
+    _keys(
+        analytic["analytic_proof"],
+        "regulator zeta_log_residue hr_index zeta_absolute_error_history",
+    )
+
+
+def export_conditional_class_unit(source: Any) -> str:
+    """Bind compact terminal claims for independent conditional replay.
+
+    This format is distinct from the ordinary-coordinate v1 index certificate.
+    Export does not establish detached completeness; the receiver rechecks it.
+    """
+    from sagejs.number_fields import class_group_factor_base as bases
+    from sagejs.number_fields import class_unit_generation_replay as generation
+    from sagejs.number_fields.unit_coordinates import _recognized_authority
+
+    components = _decode(export_terminal_components(source))
+    order, _, evidence = _recognized_authority(source)
+    generating_base = _sealed(
+        {
+            "schema": generation.SCHEMA,
+            "field_order": components["field_order"],
+            "factor_base": components["factor_base"],
+            "claimed_minkowski_bound": bases.minkowski_bound(order).bound,
+        }
+    )
+    certificate = evidence._analytic_certificate
+    analytic = {
+        "schema": COMPACT_INDEX_SCHEMA,
+        "components_sha256": components["content_sha256"],
+        "generation_sha256": generating_base["content_sha256"],
+        "configuration": certificate.configuration,
+        "index_bound": certificate.index_bound,
+        "analytic_proof": certificate.analytic_proof,
+    }
+    text = _json(
+        _sealed(
+            {
+                "schema": COMPLETION_SCHEMA,
+                "components": components,
+                "generation": generating_base,
+                "analytic": analytic,
+            }
+        )
+    )
+    _preflight_completion(_decode(text, proof_scalars=True))
+    _recognized_authority(source)
+    return text
+
+
+def replay_conditional_class_unit(text: str) -> dict[str, Any]:
+    """Prove bounded class/unit completeness conditional on explicit zeta GRH.
+
+    Returns detached evidence only, never a producer context or map token.
+    Every exact and analytic check is recomputed on verifier-owned objects.
+    """
+    payload = _decode(text, proof_scalars=True)
+    _preflight_completion(payload)
+    components = payload["components"]
+    field, order, factor_base, presentation, units, torsion = _replay_component_payload(
+        components
+    )
+    from sagejs.number_fields import class_unit_analytic as analytic
+    from sagejs.number_fields import class_unit_generation_replay as generation
+    from sagejs.number_fields.class_group_proof_contracts import (
+        BELABAS_FRIEDMAN_ZETA_GRH,
+    )
+
+    checked_generation = generation._check_generating_base(
+        payload["generation"], field, order, factor_base
+    )
+    if checked_generation["status"] == "resource-limit":
+        raise ComponentReplayResourceError("generating-base replay exceeded its policy")
+    _require(
+        checked_generation["assumptions"] == [],
+        "only unconditional generation is supported by this envelope",
+    )
+    _require(
+        checked_generation["generation_verified"] is True,
+        "factor-base generation was not established",
+    )
+    _require(
+        presentation.rank == len(factor_base) and presentation.order is not None,
+        "relation quotient is not finite",
+    )
+    binding = payload["analytic"]
+    configuration = binding["configuration"]
+    _require(
+        configuration["class_number"] == presentation.order,
+        "analytic h-prime differs from verified relation quotient",
+    )
+    _require(
+        configuration["roots_of_unity"] == torsion.order,
+        "analytic torsion differs from exact replay",
+    )
+    index, proof = analytic._compute_unit_index_proof(
+        field, order, units, configuration, workspace=None
+    )
+    _require(
+        index == 1 and proof == binding["analytic_proof"],
+        "fresh compact BF proof is not the claimed index one",
+    )
     return {
-        "schema": "sagejs.number-fields/class-unit-component-report-v1",
-        "component_only": True,
-        "complete": False,
-        "pending": ["class_generation", "analytic_index", "unit_lattice_completeness"],
-        "source_proof_status_claim": payload["source_proof_status"],
-        "source_proof_status_verified": False,
+        "schema": "sagejs.number-fields/class-unit-conditional-report-v1",
+        "complete": True,
+        "proof_status": "exact-relations-conditional-grh",
+        "assumptions": [BELABAS_FRIEDMAN_ZETA_GRH],
         "content_sha256": payload["content_sha256"],
-        "maximal_order": "recomputed by exact service and compared",
-        "factor_base_primes_verified": len(factor_base),
-        "relations_verified": len(records),
-        "presentation_rank": presentation.rank,
-        "presentation_columns": presentation.column_count,
-        "relation_quotient_invariants": list(presentation.invariants),
-        "unit_memberships_verified": len(payload["units"]),
-        "torsion_order_verified": torsion["order"],
+        "field_order": components["field_order"],
+        "class_number": presentation.order,
+        "class_invariants": list(presentation.invariants),
+        "free_unit_rank": len(units),
+        "torsion_order": torsion.order,
+        "analytic_index": index,
+        "regulator": proof["regulator"],
+        "generation": checked_generation,
+        "live_context_authority": False,
     }

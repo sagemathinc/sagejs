@@ -1,0 +1,178 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-conditional-replay",
+  "title": "General Class Unit Conditional Replay",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compose fresh exact components and standalone generation with compact BF index-one replay for conditional completeness",
+  "base_commit": "57a4d452920090ba9fb661d8105a801a826b0f18",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_replay.py",
+    "test/general-class-unit-conditional-replay.cjs",
+    "docs/number-field-conditional-replay.md"
+  ],
+  "dependencies": [
+    "general-class-unit-generation-replay"
+  ],
+  "references": [
+    "Initial integration foundation 3f5edf0ab69089fd19f3af26db0863aedc5ef3bf; reviewed generation dependency bfc3503d9d9445a9d5a01b7590664beb5c3df328 cherry-picked as 57a4d4529 before composition qualification"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Exposed real cubic and mixed quartic conditional terminals with rehashed index-two and mathematical mutations"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test --test-name-pattern=malformed input test/general-class-unit-conditional-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.16,
+      "started_at": "2026-09-11T14:37:16.170Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "46d0a3fff6d1c29956d2be38b9491831902c0e6f04f2d3d5b2a749bffdaa56e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-detached-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.578,
+      "started_at": "2026-09-11T14:38:50.804Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "f53aa39696c3645629ccb8ebb4d8829d0a6bb88ca078a504566fcc155ddd1f27",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 58.978,
+      "started_at": "2026-09-11T14:40:06.105Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "e119bf7bdcd6aef569192f0df4889d87073732e955a4504d03f0e40dc3ba9774",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-conditional-replay.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.792,
+      "started_at": "2026-09-11T14:47:14.646Z",
+      "commit": "57a4d452920090ba9fb661d8105a801a826b0f18",
+      "workspace_fingerprint": "3d8ed9b75d8bc74d04e78d1f38131cca5411857156e21e833225fab6c14d5f4e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-conditional-replay.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.723,
+      "started_at": "2026-09-11T14:47:48.983Z",
+      "commit": "57a4d452920090ba9fb661d8105a801a826b0f18",
+      "workspace_fingerprint": "1caa6d7df14da9eb0b26660273b9a55eee3e3d3e3e50a2bf49234fe0b11575a3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-conditional-replay.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 24.035,
+      "started_at": "2026-09-11T14:48:30.750Z",
+      "commit": "57a4d452920090ba9fb661d8105a801a826b0f18",
+      "workspace_fingerprint": "facda9930571491abaa714d12ef5e64d0bce1da4d3aefeabe4fdc8e837a0639e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-conditional-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 63.481,
+      "started_at": "2026-09-11T14:49:38.691Z",
+      "commit": "57a4d452920090ba9fb661d8105a801a826b0f18",
+      "workspace_fingerprint": "a5134570e0992451cc442eb0786d060111dc63432cb3fd90e5a6761ca0f4ca34",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.256,
+      "started_at": "2026-09-11T14:51:02.816Z",
+      "commit": "57a4d452920090ba9fb661d8105a801a826b0f18",
+      "workspace_fingerprint": "a5134570e0992451cc442eb0786d060111dc63432cb3fd90e5a6761ca0f4ca34",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-detached-replay.cjs test/general-class-unit-generation-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 19.595,
+      "started_at": "2026-09-11T14:51:58.722Z",
+      "commit": "57a4d452920090ba9fb661d8105a801a826b0f18",
+      "workspace_fingerprint": "a5134570e0992451cc442eb0786d060111dc63432cb3fd90e5a6761ca0f4ca34",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.402,
+      "started_at": "2026-09-11T14:52:18.971Z",
+      "commit": "57a4d452920090ba9fb661d8105a801a826b0f18",
+      "workspace_fingerprint": "a5134570e0992451cc442eb0786d060111dc63432cb3fd90e5a6761ca0f4ca34",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-conditional-replay.cjs test/general-class-unit-detached-replay.cjs test/general-class-unit-generation-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 64.062,
+      "started_at": "2026-09-11T14:53:23.075Z",
+      "commit": "57a4d452920090ba9fb661d8105a801a826b0f18",
+      "workspace_fingerprint": "2582ff1316c1a287bb2de8d005a6df9a0f61031bc70a7c209ffd0fbf2f30620f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.851,
+      "started_at": "2026-09-11T14:54:27.780Z",
+      "commit": "57a4d452920090ba9fb661d8105a801a826b0f18",
+      "workspace_fingerprint": "2582ff1316c1a287bb2de8d005a6df9a0f61031bc70a7c209ffd0fbf2f30620f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Active draft conditional completeness composition. One extracted component pipeline creates fresh exact field/order/primes/relations/presentation/units/torsion; the independently checked generation dependency and existing workspace-free BF recomputation prove index one. New compact binding authenticates ordered factored units through the full component digest, derives h-prime from verified presentation.order and returns only detached conditional-GRH completeness, never live/map authority. Legacy component-only API and ordinary-coordinate v1 analytic certificate are unchanged; no analytic.py edit was needed. Final focused six tests pass (64.06s), including actual generic real-cubic and mixed-quartic complete=True, actual recomputed squared-unit index2 rejection and forbidden expansion/discovery/shared-cache paths. Final strict384 passes (54.85s). Keep active/draft pending source allowance, registration and full integration/native qualification.",
+    "risks": [
+      "No runtime/resource cap increased. Existing 32-magnitude-bit coefficients, 128-bit discriminant, base32, relations128, factor exponent256/aggregate4096 and Minkowski1000 caps do not establish the campaign's twenty expensive rank-two target. The retained input-size audit supports a later explicit policy review, not silent admission expansion.",
+      "Source class_unit_replay.py is 30027 bytes, SHA25634ca98a348e25aa95d1a19a9b8b6ce2be91a13f07aa1704e4f6ab9d46f11b733; source-matched generated JavaScript is193365 UTF8 bytes, SHA256262583f98f893cb4ba8e3a9869829931e073e6778f27ccd7e23e488dd8b78d1f. Together with the8823-byte generation module this needs explicit integration source-ownership/allowance review. No generated artifacts are committed.",
+      "Architecture receipt retains the expected unregistered-generation failure: number-field-algorithms1208723 >1200000. The global source allowance also needs review. test:changed was inspected with --list; its full build/architecture/integration sequence has not been qualified in this lane.",
+      "Development tests reused compiler/native artifacts from the frozen BF lane and authenticated lazy caches; the changed module was compiled from this lane's actual source. Fresh complete build/native/docs/platform qualification remains pending, not implied by focused mathematical execution.",
+      "Earlier strict failure was the not-yet-merged generation import. Initial squared-unit negatives declined without isolating index2 at inherited coarse error; the final test requests1/64 within unchanged caps and asserts actual index2. Another test failure exposed the harness missing the existing AnalyticResourceError type. All original receipts are retained.",
+      "Arithmetic preflights are not wall-time/RSS guarantees. Fresh maximal order, exact ideal membership and BF prime-sum work are recomputed. No producer token, caller-supplied generation callback, shared zeta snapshot or retained regulator issuance grants authority."
+    ],
+    "next_steps": [
+      "Coordinator review the source/resource allowance and package/strict/census integration; preserve all failures and perform fresh combined qualification before ready status.",
+      "Review practical existing BDF/GRH generation and actual terminal size evidence separately before extending this bounded envelope to expensive rank-two bridge fields.",
+      "Do not interpret detached complete=True as a live class/unit context or coordinate-map token, full M1 exit, corpus freeze or an optimization campaign result."
+    ]
+  }
+}
