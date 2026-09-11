@@ -6,8 +6,8 @@
   "lane": "integration",
   "status": "active",
   "owner": "user",
-  "objective": "Integrate authenticated unit-coordinate maps with explicit global-arithmetic ownership, strict typing, resource evidence and unchanged safety gates",
-  "base_commit": "b1554f9efd6f07f1904ba75eaeb518f30da9a0af",
+  "objective": "Integrate authenticated unit-coordinate maps, corrected BF proof policy and bounded detached component replay with explicit ownership, strict typing, resource evidence and unchanged safety gates",
+  "base_commit": "d6caf8e075db2dab0d85bce2eaccbb5ff74311f6",
   "claims": [
     "architecture/package-graph.json",
     "pyrightconfig.json",
@@ -21,12 +21,17 @@
     "bench/modular/qexp-correctness/source-freeze.json"
   ],
   "dependencies": [
-    "general-unit-coordinate-map"
+    "general-unit-coordinate-map",
+    "general-class-unit-bf-proof-policy",
+    "general-class-unit-component-replay"
   ],
   "references": [
     "Mathematical dependency f531a6b640ce8344a9e595ba8bc602a24678bafe, merged as47746b60bcd1e5e1c141667413f397a5ad73a35e; integration does not claim its mathematical files",
     "Independent exact documentary audit correction e5288a49e and portable test metadata followup f06c92ca7",
-    "Full integration validation compares against b1740b78722ea3c8f22aa1df97823a75e40bf78b rather than omitting merged dependencies"
+    "Full integration validation compares against b1740b78722ea3c8f22aa1df97823a75e40bf78b rather than omitting merged dependencies",
+    "BF proof-policy dependency4d53ffb039d0df8988f69afa818466995d83d72c merged at83226d9cd; independent source review approved, exact-revision integration validation pending",
+    "Detached component replay source2436b080fbbd478888f87c6e0cef5baa80beb094 and metadatahandoffdc5de62b791020c6117d611a3a6f54d90b75a635 merged atf1c19aae8; no completeness authority claimed",
+    "Strict import-order followup0bef58bb57f65a121ab3eacfc624867d935b6ec0 merged atd6caf8e075db2dab0d85bce2eaccbb5ff74311f6; dedicated replay tests passed and prior strict failure retained"
   ],
   "architecture": {
     "strategy": "dynamic-python",
@@ -45,7 +50,8 @@
   "validation": [
     "pnpm architecture:check",
     "pnpm test:portable",
-    "pnpm test:baselib:strict"
+    "pnpm test:baselib:strict",
+    "pnpm test:changed -- --base b1740b78722ea3c8f22aa1df97823a75e40bf78b"
   ],
   "runs": [
     {
@@ -76,6 +82,26 @@
       "started_at": "2026-09-11T12:33:48.596Z",
       "commit": "e19a712bee767d89850017e24f4f981c8812a667",
       "workspace_fingerprint": "9a8e1029f2dafcfc6c3e19632fddf5c3732aa60719340d8100f88041406dd69d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.994,
+      "started_at": "2026-09-11T13:57:07.116Z",
+      "commit": "f1c19aae850df20c42d94b9d0c842f9d8e663718",
+      "workspace_fingerprint": "f9c6a6892489be08add4e79b67de44aba73fbe56df0e53b1d215b504b6d4e375",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 12.972,
+      "started_at": "2026-09-11T13:59:29.296Z",
+      "commit": "f1c19aae850df20c42d94b9d0c842f9d8e663718",
+      "workspace_fingerprint": "62d20de4a6b99fb42bcc79a3980abb277472819186d407dba47069418d77829f",
       "platform": "linux-x64"
     }
   ],

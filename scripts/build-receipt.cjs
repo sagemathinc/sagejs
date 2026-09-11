@@ -66,6 +66,8 @@ const validationOnlyFiles = new Set([
   ".agents/tasks/general-frontier-build-partition.json",
   ".agents/tasks/general-unit-coordinate-map.json",
   ".agents/tasks/general-unit-map-integration.json",
+  ".agents/tasks/general-class-unit-bf-proof-policy.json",
+  ".agents/tasks/general-class-unit-component-replay.json",
 ]);
 
 function isArtifactInput(name, reviewedInputs = new Set()) {

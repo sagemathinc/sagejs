@@ -89,6 +89,7 @@
     "src/lib/sagejs/number_fields/class_unit_analytic.py",
     "src/lib/sagejs/number_fields/class_unit_context.py",
     "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "src/lib/sagejs/number_fields/class_unit_replay.py",
     "src/lib/sagejs/number_fields/factored_elements.py",
     "src/lib/sagejs/number_fields/quadratic_class_units.py",
     "src/lib/sagejs/number_fields/quadratic_narrow_relations.py",

@@ -136,7 +136,79 @@ claim that previously recorded modular qualification ran at the new revision.
 
 ## Next correctness boundary: detached terminal replay
 
-The follow-up audit is pinned to source commit `f531a6b640`. Existing
+### Integrated component slice and proof-policy repair
+
+The complete changed-tree check at `e19a712be` passed, including 395 integration
+files (55 minutes 41 seconds for that stage; 4,616.394 seconds overall). Its
+receipt retains the actual revision and workspace fingerprint. It does not
+qualify the subsequent changes below, and the integration remains draft.
+
+Independent source review then confirmed a pre-existing proof-policy defect:
+the generic Belabas--Friedman analytic index could be labelled unconditional
+after an exact class-generation check. Minkowski generation does not discharge
+the separate zeta-GRH hypothesis. Source `4d53ffb039d0df8988f69afa818466995d83d72c`
+rejects that promotion at construction, decoding, replay, live-token consumption
+and public publication. Genuine independently proved specialized/scalar routes
+remain available. This correction removes 22,361 net mathematical source bytes;
+it does not introduce an unconditional analytic theorem.
+
+The independently reviewed detached slice at
+`2436b080fbbd478888f87c6e0cef5baa80beb094` adds 21,080 bytes in
+`class_unit_replay.py`. Its fresh field/order, ideal, relation, presentation,
+unit-membership and torsion checks return component data only, never a live
+context or map token. Successful output explicitly has `component_only=True`,
+`complete=False` and `source_proof_status_verified=False`. Degree 2--4 and
+arithmetic-size restrictions are not wall-clock or memory guarantees; callers
+still need external resource supervision. Class generation, analytic index and
+unit-lattice completeness remain pending obligations.
+
+Both sources were initially merged at `f1c19aae850df20c42d94b9d0c842f9d8e663718`.
+Strict registration then exposed an import-order failure. The narrow follow-up
+`0bef58bb57f65a121ab3eacfc624867d935b6ec0`, merged at `d6caf8e075`, sorts the
+local imports and combines two imports; dedicated CPython/JavaScript replay
+tests passed afterward. The first strict failure remains recorded. Replay
+source is now 21,044 bytes, with no mathematical check changed.
+Explicit global-arithmetic ownership totals **1,721,301 bytes**, below the
+existing **1,730,000-byte** allowance and 1,317 bytes below the earlier unit-map
+integration. No source or runtime allowance is raised for these additions.
+The replay module joins strict typing. The two exact new lane-contract paths
+join the reviewed metadata-only build partition; all 14 Git/archive partition
+regressions pass, including continued validation-fingerprint invalidation.
+The integration contract baseline advances to the merged dependency commit for
+ownership checking, while full qualification still compares against `b1740b787`
+so mathematical dependencies cannot disappear from the test selection.
+
+Before the import-order follow-up, the actual compiler regenerated the census
+in 90.60 seconds: 637 compiled
+modules, 16,577 functions and 14,562 function-body loops, with zero source
+failures and unchanged compiler identity. Its logical snapshot is
+`sha256:ad6c4cbf1622d712e6036e6cba629e43e33a5f95170a9f145366c3cd22edc564`.
+The complete architecture gate passed after regeneration; its receipt retains
+the actual dirty-workspace fingerprint before this documentation update rather
+than claiming a post-commit run. Import reordering changes the source hash and
+requires another generated census; that earlier snapshot is historical.
+The import-order source was subsequently regenerated in 85.87 seconds with
+the same counts and zero compilation failures, producing
+`sha256:6973bc8167292113fce040dd124392db47d3773949c88ea2a97bcd9cb3dc472f`.
+The modular source-freeze generator changed only its shared package-graph hash
+and aggregate digest. No modular mathematics or oracle changed.
+
+Frozen proof-policy broad engine/public validation passed 48 tests with two
+existing slow tests skipped (577.40 seconds); strict checking passed all 383
+modules then registered in that lane, and its documentation gate passed. The
+new replay registration still requires the integrated 384-module check.
+
+Frozen proof-policy native validation retained one dense-QQ timing failure
+(11.16 ms against an unchanged 8 ms trace gate). An overlapping focused rerun
+passed at 4.93 ms; this is neither an explanation nor a replacement for the
+failed run. The coordinated unchanged quiet check subsequently passed at
+4.91 ms; no cause is inferred from that pass. One full native rerun is in
+progress. Combined-revision integration validation and final generated-code
+resource measurements remain pending.
+
+### Remaining completeness work
+
+The original follow-up audit was pinned to source commit `f531a6b640`. Existing
 `RelationRecord.verify`, `RelationPresentation.verify`, class-map witnesses,
 torsion/unit verifiers and `UnitSaturationIndexCertificate.verify` provide
 substantive mathematical checks. In contrast, checkpoint decoding accepts
