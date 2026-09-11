@@ -123,25 +123,6 @@ def _internal_bound_method_helper(name: str) -> Any:
 def _internal_get_member(value: Any, name: Any) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
-    member = runtime.native_get(value, name)
-    if _internal_get_member_raw(member, "__sagejs_eager_bound_cache__") is not True:
-        return member
-
-    # Eager method binding is an implementation cache, not an own Python
-    # attribute.  Resolve it through the authoritative descriptor machinery:
-    # a subclass may have overridden the method after the cache was created,
-    # and an override may itself later have been deleted.
-    resolver = runtime.reflect.get(runtime.global_object, "ρσ_getattr_internal")
-    if not _internal_type_is(runtime.jstype(resolver), "function"):
-        return member
-    return runtime.reflect.apply(
-        resolver, runtime.undefined, [value, name, runtime.undefined]
-    )
-
-
-def _internal_get_member_raw(value: Any, name: Any) -> Any:
-    if value is None or value is runtime.undefined:
-        return runtime.undefined
     return runtime.native_get(value, name)
 
 
@@ -155,7 +136,7 @@ def _internal_member_is_function(value: Any, name: Any) -> bool:
 def _internal_is_baselib_function(value: Any) -> bool:
     if not _internal_type_is(runtime.jstype(value), "function"):
         return False
-    module_name = _internal_get_member_raw(value, "__module__")
+    module_name = _internal_get_member(value, "__module__")
     return _internal_type_is(
         runtime.jstype(module_name), "string"
     ) and runtime.reflect.apply(
@@ -1409,7 +1390,7 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
                 raise IndexError("index out of range")
             return _internal_native_getitem(value, key)
         if (
-            _internal_get_member_raw(key, "__sagejs_slice__") is True
+            _internal_get_member(key, "__sagejs_slice__") is True
             and _internal_get_member(value, "__getitem__") is runtime.undefined
         ):
             # Lists and tuples use native Array storage.  Preserve an explicit
@@ -1692,6 +1673,20 @@ def _internal_exists_alternative(
 
 def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     """Test one `isinstance` candidate without a variadic call frame."""
+    if runtime.array.isArray(candidate) and runtime.object.isFrozen(candidate):
+        for nested_candidate in candidate:
+            if ρσ_instanceof_one(value, nested_candidate):
+                return True
+        return False
+    # Implicit checks consult the candidate's type, never its own attributes.
+    # Only exact Python type identity may bypass an overriding instance hook.
+    check_hook = _internal_bound_method_helper("ρσ_class_check_hook")
+    if _internal_type_is(runtime.jstype(check_hook), "function"):
+        checked = runtime.reflect.apply(
+            check_hook, runtime.undefined, [value, candidate, "__instancecheck__"]
+        )
+        if checked is not runtime.undefined:
+            return checked
     value_type = runtime.jstype(value)
     if (
         value is None
@@ -1729,11 +1724,6 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
         )
     ):
         return True
-    if runtime.array.isArray(candidate) and runtime.object.isFrozen(candidate):
-        for nested_candidate in candidate:
-            if ρσ_instanceof_one(value, nested_candidate):
-                return True
-        return False
     module_namespaces = runtime.reflect.get(
         runtime.global_object, "__sagejs_module_namespaces__"
     )
