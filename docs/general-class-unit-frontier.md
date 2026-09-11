@@ -197,3 +197,33 @@ The larger PARI supplement exposed its default 8 MB worker-stack overflow.
 Subsequent configuration explicitly pins `nbthreads=1` and allows worker-stack
 growth within the unchanged 4 GiB cgroup cap. Earlier attempts remain retained
 with their original configuration/failures; do not pool them as one baseline.
+
+The first 28 supplemental requests completed with 17 successful screening
+records, ten 60-second timeouts, and one worker-stack error. Nine completed
+PARI requests exceeded one second and three exceeded ten seconds. Generated
+polynomial identity is not field distinctness, and these costs are not yet
+matched against persistent Hecke. The subsequent 21-request high-discriminant
+LMFDB screen uses the explicitly single-threaded configuration above.
+
+Reference-only expansion policy `general-frontier-reference-cost-expansion-v1`
+selects twelve previously unscreened candidates per signature/discriminant
+cell where an earlier PARI request took at least one second or timed out.
+Selection uses seeded hashes, preserves censored strata, and records the pool
+and review hashes. It has a 200-request batch ceiling and 60-second request
+caps. It neither declares the chosen fields expensive for the faster reference
+nor freezes the performance panel. Cells with only infrastructure errors are
+not promoted as mathematical cost evidence.
+
+The M0 ledger additionally reserves a conservative 2,000 seconds for the
+fourteen local Sage.js diagnostic attempts through `profile-large-v1`, including
+failed starts and timeouts. This is separate from the initial reference-only
+allowance and is not a controlled timing claim. As of this adjustment, charged
+discovery time was 3,706.15 seconds of the 432,000-second M0 ceiling, before the
+running high-discriminant screen. Optimization campaigns remain **0 of 2**.
+
+Reviewed build-input partition changes now exclude this developer-only
+benchmark tree and five exact coordination contracts from artifact inputs.
+Full workspace validation still fingerprints them; unknown paths and runtime,
+compiler, native, and production-manifest inputs remain conservative. Fourteen
+focused partition tests pass after integration. Old build receipts are not
+relabeled or migrated: a fresh local build is required before baseline staging.
