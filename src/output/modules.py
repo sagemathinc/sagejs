@@ -174,6 +174,10 @@ def write_imports(module, output):
         imports.push(module.imports[import_id])
 
     imports.sort(lambda left, right: left.import_order - right.import_order)
+    has_lazy_imports = False
+    for module_ in imports:
+        if module_.standalone_lazy:
+            has_lazy_imports = True
     output.indent()
     if output.options.module_registry:
         output.print("var ρσ_modules = globalThis[")
@@ -269,6 +273,32 @@ def write_imports(module, output):
         )
         output.end_statement()
 
+    if has_lazy_imports:
+        output.indent()
+        output.print(
+            "var ρσ_standalone_factories = globalThis.__sagejs_standalone_module_factories__ "
+            "|| (globalThis.__sagejs_standalone_module_factories__ = Object.create(null));"
+            "if (!globalThis.__sagejs_load_module__ || "
+            "!globalThis.__sagejs_load_module__.__sagejs_embedded_modules__) "
+            "globalThis.__sagejs_load_module__ = (function(previous){"
+            "function load(name){"
+            "if(Object.prototype.hasOwnProperty.call(ρσ_modules,name))return ρσ_modules[name];"
+            "var factory=globalThis.__sagejs_standalone_module_factories__[name];"
+            "if(!factory){if(previous)return previous(name);"
+            'throw new ImportError("No module named \'"+name+"\'")}'
+            "var dot=name.lastIndexOf('.');"
+            "var parent=dot<0?null:load(name.slice(0,dot));"
+            "if(Object.prototype.hasOwnProperty.call(ρσ_modules,name))return ρσ_modules[name];"
+            "var namespace=ρσ_modules[name]=Object.create(null);"
+            "if(globalThis.__sagejs_module_namespaces__)"
+            "globalThis.__sagejs_module_namespaces__.add(namespace);"
+            "try{factory();if(parent)parent[name.slice(dot+1)]=namespace;return namespace}"
+            "catch(error){delete ρσ_modules[name];throw error}}"
+            "load.__sagejs_embedded_modules__=true;return load"
+            "})(globalThis.__sagejs_load_module__);"
+        )
+        output.newline()
+
     # Declare all variable names exported from the modules as global symbols
     nonlocalvars = {}
     for module_ in imports:
@@ -284,7 +314,7 @@ def write_imports(module, output):
     # Create the module objects
     for module_ in imports:
         module_id = module_.module_id
-        if module_.dynamic:
+        if module_.dynamic or module_.standalone_lazy:
             continue
         output.indent()
         if module_id == "__main__" and output.options.reuse_main_module:
@@ -343,7 +373,7 @@ def write_imports(module, output):
     # wrote ``import package.child`` or ``from package import child``.
     for module_ in imports:
         module_id = module_.module_id
-        if module_.dynamic or module_id.indexOf(".") is -1:
+        if module_.dynamic or module_.standalone_lazy or module_id.indexOf(".") is -1:
             continue
         parts = module_id.split(".")
         parent_id = parts.slice(0, -1).join(".")
@@ -369,7 +399,16 @@ def write_imports(module, output):
             # the imported module instead of the surrounding `__main__`.
             output.push_node(module_)
             try:
-                print_module(module_, output)
+                if module_.standalone_lazy:
+                    output.indent()
+                    output.print("ρσ_standalone_factories[")
+                    output.print_string(module_.module_id)
+                    output.print("] = function(){")
+                    print_module(module_, output)
+                    output.print("};")
+                    output.newline()
+                else:
+                    print_module(module_, output)
             finally:
                 output.pop_node()
 
@@ -1370,6 +1409,14 @@ def print_imports(container, output):
         if self.dynamic and self.key != "builtins":
             dynamic_import(self)
             continue
+        output.indent()
+        output.print("if (!Object.prototype.hasOwnProperty.call(ρσ_modules,")
+        output.print_string(self.key)
+        output.print(") && typeof globalThis.__sagejs_load_module__ === 'function') ")
+        output.print("globalThis.__sagejs_load_module__(")
+        output.print_string(self.key)
+        output.print(")")
+        output.end_statement()
         if self.star:
             import_star(self.key, self.target_module)
             continue

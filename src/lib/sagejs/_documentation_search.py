@@ -91,8 +91,10 @@ def _search_doc(query: Any) -> None:
             or name in seen
         ):
             continue
-        descriptor = runtime.object.getOwnPropertyDescriptor(namespace, name)
-        value = runtime.reflect.get(descriptor, "value")
+        # Module bindings are live accessor-backed slots in standalone output.
+        # Read the namespace binding; class method inspection below still uses
+        # descriptors so searching documentation never evaluates properties.
+        value = runtime.reflect.get(namespace, name)
         if value is runtime.undefined:
             continue
         doc = _builtins_doc(value)

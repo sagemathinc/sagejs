@@ -474,6 +474,7 @@ class AST_Toplevel(AST_Scope):
         "srchash": "[string] SHA1 hash of source code, used for caching",
         "comments_after": "[array] True iff there were comments before this token",
         "python_star_import": "[boolean?] resolve unbound globals through the module namespace after a star import",
+        "standalone_lazy": "[boolean?] embed this implicit runtime dependency as a lazy module factory",
     }
 
 

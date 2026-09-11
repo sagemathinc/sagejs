@@ -20,6 +20,7 @@ const { dirname, join, relative } = require("path");
 const {
   BASELIB_STANDALONE_CACHE_MODULES,
   BUILTINS_STANDALONE_MODULES,
+  CORE_STANDALONE_MODULES,
   MATRIX_STANDALONE_MODULES,
 } = require("../tools/standalone-library.cjs");
 const {
@@ -96,6 +97,7 @@ const nloptBackendArtifact = join(
 const embeddedStandaloneLibraryBanner = `globalThis.__sagejs_embedded_standalone_library__ = ${JSON.stringify(
   {
     builtins: BUILTINS_STANDALONE_MODULES,
+    core: CORE_STANDALONE_MODULES,
     matrix: MATRIX_STANDALONE_MODULES,
     cache: BASELIB_STANDALONE_CACHE_MODULES,
   },
