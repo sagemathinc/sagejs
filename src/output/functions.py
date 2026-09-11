@@ -828,6 +828,8 @@ def function_definition(
         output.set_indentation(output.next_indent())
         output.spaced("(function()", "{"), output.newline()
         output.indent(), output.spaced("var", anonfunc, "="), output.space()
+    prepared_namespace = output.prepared_namespace
+    output.prepared_namespace = None
     output.print("function"), output.space()
     if self.name:
         if javascript_name:
@@ -943,6 +945,7 @@ def function_definition(
             python_implicit_return,
         )
 
+    output.prepared_namespace = prepared_namespace
     if as_expression:
         output.end_statement()
         function_annotation(self, output, strip_first, anonfunc)
@@ -1039,6 +1042,10 @@ def print_function_call(self, output):
                 return candidate
 
     def print_namespace(scope, live_globals):
+        prepared = output.prepared_namespace
+        if not live_globals and prepared and scope is prepared.scope:
+            output.print(prepared.state + ".namespace")
+            return
         if live_globals or is_node_type(scope, AST_Toplevel):
             output.print("ρσ_live_scope_dict(ρσ_modules[")
             output.print(JSON.stringify(scope.module_id))
@@ -1177,6 +1184,11 @@ def print_function_call(self, output):
             add_name("help")
 
         if want_dir:
+            prepared = output.prepared_namespace
+            if prepared and scope is prepared.scope:
+                output.print(prepared.state + ".names()")
+                finish_reusable_guard()
+                return
             if output.options.reuse_main_module and is_node_type(scope, AST_Toplevel):
                 output.print(
                     "(function(){var names=arguments[0];"
@@ -1200,6 +1212,12 @@ def print_function_call(self, output):
             output.print("ρσ_live_scope_dict(ρσ_modules[")
             output.print(JSON.stringify(scope.module_id))
             output.print("])")
+            finish_reusable_guard()
+            return
+
+        prepared = output.prepared_namespace
+        if prepared and scope is prepared.scope:
+            output.print(prepared.state + ".namespace")
             finish_reusable_guard()
             return
 

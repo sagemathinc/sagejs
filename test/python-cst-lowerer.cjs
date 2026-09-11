@@ -1316,10 +1316,11 @@ test("explicit class metaclasses are lowered before decorators", async () => {
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.match(
-      javascript,
-      /ρσ_apply_metaclass\(\$ρσ\$py\$Meta, "Example"/,
-    );
+    const prepare = javascript.indexOf('ρσ_prepare_class("Example"');
+    const store = javascript.indexOf('.bindings["answer"] = ', prepare);
+    const finish = javascript.indexOf(".finish()", store);
+    assert.ok(prepare >= 0 && store > prepare && finish > store);
+    assert.match(javascript, /ρσ_class_header_\d+ = .*\$ρσ\$py\$Meta\]/);
   } finally {
     frontend.close();
   }
@@ -1337,9 +1338,9 @@ test("parameterized builtin bases lower to their runtime origins", async () => {
     assert.equal(definition.parent.name, "list");
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
-    assert.ok(output.get().includes(
-      `ρσ_extends($ρσ$py$Entries, ${checkedModuleRead("list")})`,
-    ));
+    const javascript = output.get();
+    assert.equal(javascript.split(checkedModuleRead("list")).length - 1, 1);
+    assert.match(javascript, /ρσ_extends\(\$ρσ\$py\$Entries, ρσ_class_header_\d+\[1\]\[0\]\)/);
   } finally {
     frontend.close();
   }

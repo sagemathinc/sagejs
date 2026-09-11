@@ -2357,6 +2357,7 @@ export class PythonCstLowerer {
       properties.is_getter = names.includes("property");
       properties.is_setter = names.includes("setter");
       properties.is_deleter = names.includes("deleter");
+      properties.python_namespace_decorators = decorators;
       properties.decorators = decorators.filter((decorator) => {
         const name = decorator.expression?.property ??
           decorator.expression?.name;
@@ -2666,6 +2667,7 @@ export class PythonCstLowerer {
       delete classvars[name];
       delete ownClassvars[name];
     }
+    const namespaceStatements = classStatements.slice();
     // A descriptor remains an ordinary namespace value until class creation.
     // Preserve aliases such as ``oldName = new_name`` when ``new_name`` is a
     // property; reading it from the partly built JavaScript prototype would
@@ -2697,6 +2699,13 @@ export class PythonCstLowerer {
     this.rewriteClassVariables(
       bindingName,
       classStatements,
+      classvars,
+      ownClassvars,
+      new Set([...nonlocalNames, ...globalNames]),
+    );
+    this.rewriteClassVariables(
+      bindingName,
+      namespaceStatements,
       classvars,
       ownClassvars,
       new Set([...nonlocalNames, ...globalNames]),
@@ -2765,6 +2774,7 @@ export class PythonCstLowerer {
       parent,
       bases: effectiveBases,
       metaclass,
+      python_namespace_body: namespaceStatements,
       implicit_object_base: implicitObjectBase,
       static: staticMethods,
       classmethods: classMethods,
@@ -2910,6 +2920,21 @@ export class PythonCstLowerer {
       symbol.python_lexical_binding = symbol.python_identifier;
       return symbol;
     };
+    const bindTarget = (target: any): void => {
+      if (target instanceof this.compiler.AST_Symbol) {
+        const name = target.name;
+        if (nonlocals.has(name)) return;
+        known.add(name);
+        classvars[name] = true;
+        ownClassvars[name] = true;
+        target.thedef = definition(name);
+      } else if (target instanceof this.compiler.AST_Array) {
+        for (const element of target.elements) bindTarget(element);
+      } else if (target instanceof this.compiler.AST_UnaryPrefix &&
+          target.operator === "*") {
+        bindTarget(target.expression);
+      }
+    };
     const markClassPrebindingFallback = (
       value: any,
       name: string,
@@ -2948,6 +2973,23 @@ export class PythonCstLowerer {
         return;
       }
       if (value instanceof this.compiler.AST_Scope) return;
+      if (value instanceof this.compiler.AST_ListComprehension) {
+        // Only the outermost iterable executes in the enclosing class scope.
+        visit(value.object, seen);
+        return;
+      }
+      if (value instanceof this.compiler.AST_ForIn) {
+        visit(value.object, seen);
+        bindTarget(value.init);
+        visit(value.body, seen);
+        visit(value.alternative, seen);
+        return;
+      }
+      if (value instanceof this.compiler.AST_WithClause) {
+        visit(value.expression, seen);
+        if (value.alias) bindTarget(value.alias);
+        return;
+      }
       if (value instanceof this.compiler.AST_Imports) {
         for (const destination of Object.values(
           value.python_import_bindings ?? {},
@@ -3054,7 +3096,8 @@ export class PythonCstLowerer {
         // arguments, and annotations are evaluated immediately in the
         // surrounding class namespace.  Rewrite those expressions without
         // descending into the method body itself.
-        for (const decorator of statement.decorators ?? []) visit(decorator);
+        for (const decorator of statement.python_namespace_decorators ??
+          statement.decorators ?? []) visit(decorator);
         for (const value of Object.values(
           statement.argnames?.defaults ?? {},
         )) visit(value);

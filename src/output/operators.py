@@ -261,6 +261,12 @@ def print_delete(self, output):
         else:
             class_prefix = output.make_name(class_prefix)
         class_namespace = class_prefix + "." + ".".join(definition_parts[1:-1])
+        prepared = output.prepared_namespace
+        if prepared and definition_name.startswith(prepared.prefix + ".prototype."):
+            output.print(
+                prepared.state + ".delete_name(" + JSON.stringify(self.name) + ")"
+            )
+            return
         output.print("(ρσ_delete_name(")
         output.print("Object.prototype.hasOwnProperty.call(")
         output.print(class_namespace)

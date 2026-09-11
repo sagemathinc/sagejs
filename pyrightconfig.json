@@ -212,6 +212,7 @@
     "src/lib/sage/interacts/library.py",
     "src/lib/sage/interacts/statistics.py",
     "src/lib/sagejs/javascript.py",
+    "src/lib/sagejs/class_namespace.py",
     "src/lib/sagejs/compiler.py",
     "src/lib/sagejs/native.py",
     "src/lib/sagejs/plotting/__init__.py",
