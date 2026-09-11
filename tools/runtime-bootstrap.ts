@@ -37,7 +37,7 @@ import {
   readRuntimeBootstrapSource,
   standardLibraryCacheDirectory,
 } from "./resources";
-import { loadSagejsCapabilityApi } from "./capability-api";
+import { createLazySagejsCapabilityApi } from "./capability-api";
 import { installImmutableUInt64CapsuleRuntime } from "./immutable-uint64-capsule";
 import { basePath, getImportDirs, importPath, libraryPath, sha1sum } from "./utils";
 import {
@@ -314,7 +314,7 @@ export function runRuntimeBootstrap(
   installHyperellipticAutoReceiptPolicy();
   installImmutableUInt64CapsuleRuntime();
   if (Reflect.get(globalThis, "__sagejs_capability_api__") === undefined) {
-    Reflect.set(globalThis, "__sagejs_capability_api__", loadSagejsCapabilityApi());
+    Reflect.set(globalThis, "__sagejs_capability_api__", createLazySagejsCapabilityApi());
   }
   const internalRequire = Reflect.get(globalThis, "require");
   if (typeof internalRequire === "function") {
