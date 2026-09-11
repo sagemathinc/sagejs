@@ -364,3 +364,32 @@ affinity, memory, threads, fixed seed, precision and exact summary invariants,
 and binds its own source hash. Missing samples on both sides remain explicit.
 All six persistent pilot pairs pass those checks. This does not establish
 independent witness replay or equivalence of the regulator guarantees.
+
+### Retained-source coverage follow-up
+
+Independent read-only checks discharged the five omitted Buchmann–Lenstra,
+factor-base, relation, quadratic-narrow and quadratic-composition fixtures:
+their field presentations are already inventoried, explicitly outside the
+current pool's discriminant ranges, or an exact variable-sign presentation of
+an inventoried field. The huge quadratic-form arithmetic test is not evidence
+of a maximal-order field computation; its order discriminant must not be used
+as a lower bound on a field discriminant.
+
+The retained `complex-cubic-f344` candidate/predecessor censuses (1,000 labels
+each), 400-field holdout corpus and 20-label holdout census are subsets of the
+historical 3,259-label quarantine. The alternate scratch survey is byte-identical
+to the inventoried 1,012-record survey. These are explicit subset checks, not
+inferences from directory names.
+
+One remaining fixed scratch polynomial is $f=x^3-1009$. It is irreducible over
+$\mathbb Q$: a rational root would be an integer, but $10^3<1009<11^3$.
+Its polynomial discriminant is $-27\cdot1009^2=-27488187$. Since
+$\operatorname{disc}(\mathbb Z[\alpha])=[\mathcal O_K:\mathbb Z[\alpha]]^2D_K$,
+we have $|D_K|\le27488187<10^{12}$, outside this pool's cubic range. This
+discharges the presentation without computing its maximal order or class group.
+
+A bounded review of constructor-bearing test/benchmark sources remains in
+progress. Generic environment-variable input overrides do not establish actual
+past input choices; retained invocation bindings and the scope of the coverage
+claim must be explicit before approving eligibility. The audit does not claim
+to reconstruct arbitrary deleted experiments.
