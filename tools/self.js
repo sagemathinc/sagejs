@@ -31,6 +31,14 @@ const COMPILER_BASELIB_MODULES = new Set([
   "str.py",
 ]);
 
+function supportsCompactStatements(PyLang) {
+  const probe = new PyLang.OutputStream({ beautify: false });
+  probe.print("(() => { const value = 1; return value; })()");
+  probe.semicolon();
+  probe.print("next");
+  return probe.get().endsWith("();next");
+}
+
 async function compile_baselib(PyLang, src_path, compiler_only = false) {
   let supportsPythonOrdering = false;
   try {
@@ -56,11 +64,7 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
   // on the next pass without stripping names, docstrings or annotations.
   let beautify = true;
   if (compiler_only) {
-    const probe = new PyLang.OutputStream({ beautify: false });
-    probe.print("(() => { const value = 1; return value; })()");
-    probe.semicolon();
-    probe.print("next");
-    beautify = !probe.get().endsWith("();next");
+    beautify = !supportsCompactStatements(PyLang);
   }
   const { createPythonCompilerFrontend } = require("./python/compiler-frontend");
   const frontend = PyLang.AST_AnnotatedAssignment
@@ -454,7 +458,11 @@ async function compile(
   // explicit; generated Python and ordinary baselib modules default to Python
   // truth testing.
   output_options = {
-    beautify: true,
+    // The private compiler implementation follows its bootstrap's compact
+    // formatting policy. Keep names and metadata intact; ordinary user output
+    // and the readable full baselib retain their separate formatting policies.
+    // Stage zero still uses readable output until separators are safe.
+    beautify: !supportsCompactStatements(PyLang),
     baselib_plain: compiler_baselib.pretty,
   };
   try {
