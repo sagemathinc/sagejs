@@ -1,0 +1,42 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "core-cold-registration",
+  "title": "Core Cold Registration",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Consolidate byte method publication and audit lazy native property cache misses",
+  "base_commit": "41a401e65c2f81b4e889d990ea8b1055704b6a34",
+  "claims": [
+    "src/baselib/byte_strings.py",
+    "src/baselib/builtins.py",
+    "src/lib/sagejs/_namespace.py",
+    "test/core-cold-registration.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
