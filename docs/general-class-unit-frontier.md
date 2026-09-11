@@ -417,3 +417,19 @@ allowance for bounded source metadata probes, as an explicit additional
 not a measurement of CPU consumed by the shared database server. It is separate
 from the earlier local-reference allowances; do not mutate the live timing
 ledger while its coordinator owns a pending reservation.
+
+The next explicit cap-extension batch contains eight PARI and five Hecke
+requests: each timed out at 60 seconds while the other engine completed in
+at least ten worker seconds. Retry only that timed-out side at the already
+authorized 600-second coverage cap, still with 4 GiB and one CPU. The fixed
+selector admits at most 32 requests, rejects implicit repeated-sample selection,
+and never selects from Sage.js results. This 13-request batch reserves at most
+7,800 request-wall seconds plus startup/warmups. Original censored results remain
+immutable; a successful retry is additional evidence, not an erased failure.
+
+The source audit has also identified five additional small quadratic candidates
+requiring quarantine, including an indirect number-field order computation that
+a constructor-only scan would miss. Their pinned-source supplement is being
+implemented; the earlier 39-exclusion result must not be treated as final
+eligibility approval. The hard-window acquisition work separately targets eight
+explicit higher-discriminant windows, not silent changes to the v2 exports.

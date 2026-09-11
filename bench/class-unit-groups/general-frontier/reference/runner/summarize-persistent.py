@@ -79,6 +79,7 @@ def normalize(receipt):
         "controls": receipt.get("controls"),
         "proof_policy": receipt.get("proof_policy"),
         "producer_boundary": receipt.get("boundary"),
+        "cap_seconds": receipt.get("cap_seconds"),
     }
     if status != "ok":
         return row
