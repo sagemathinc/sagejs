@@ -348,3 +348,19 @@ fields from ten promising cells. Their maximum request-only wall allowance is
 4,320 seconds per engine at the 60-second discovery cap. This is a declared next
 discovery batch, not an executed result or frozen panel. Selection still excludes
 all previously screened labels and never consults Sage.js outcomes.
+
+The integrated exposure reconciliation reproduces 39 conservative exclusions
+from 4,436 candidates after including the five actual Sage.js diagnostic
+presentations. It leaves 4,397 candidates, with per-degree counts
+245, 249, 300, 384, 455, 281, 772, 751 and 960. Reference-only pilots are not
+reclassified as Sage.js exposure. Sixteen pinned oracle metadata joins resolve
+the otherwise missing historical bucket information; zero unresolved metadata
+records remain in this input set. Equal-discriminant candidates are not merged
+or asserted isomorphic, and unquarantined candidates still have null eligibility
+pending the final source-coverage and split-policy review.
+
+The matched discovery join revalidates both raw run directories, checks host,
+affinity, memory, threads, fixed seed, precision and exact summary invariants,
+and binds its own source hash. Missing samples on both sides remain explicit.
+All six persistent pilot pairs pass those checks. This does not establish
+independent witness replay or equivalence of the regulator guarantees.
