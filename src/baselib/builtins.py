@@ -314,6 +314,9 @@ _builtins_prototype_owners = runtime.reflect.construct(
 _builtins_class_annotation_slots = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
+_builtins_class_metaclasses = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
 
 
 def ρσ_register_heap_class(value: Any) -> Any:
@@ -6669,7 +6672,12 @@ def _builtins_inherited_metaclass(bases: Any, selected: Any = runtime.undefined)
     if selected is runtime.undefined:
         selected = ρσ_type
     for base in bases:
-        candidate = runtime.reflect.apply(ρσ_type, runtime.undefined, [base])
+        key = _builtins_heap_class_keys.get(base)
+        candidate = _builtins_class_metaclasses.get(
+            base if key is runtime.undefined else key
+        )
+        if candidate is runtime.undefined:
+            candidate = ρσ_type
         if candidate is selected:
             continue
         candidate_mro = _builtins_get_member(candidate, "__mro__")
@@ -6953,6 +6961,7 @@ def _builtins_apply_metaclass_namespace(
         "__python_type__",
         {"value": metaclass, "writable": True, "configurable": True},
     )
+    _builtins_class_metaclasses.set(created, metaclass)
     initializer = _builtins_get_member(
         _builtins_get_member(metaclass, "prototype"),
         "__init__",
