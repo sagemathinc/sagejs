@@ -189,6 +189,7 @@ for base in (PlainBase, PreparedBase):
     assert next(generator) == 9
     assert generator.throw(ValueError("sent")) == "sent"
     generator.close()
+    assert list(cls.generator(obj)) == [9, None]
     fn = cls.method
     assert fn is cls.method
     assert cls.alias is fn
@@ -224,4 +225,13 @@ first = create(PlainBase)
 second = create(PreparedBase)
 assert first.method is not second.method
 assert first.method.__kwdefaults__ is not second.method.__kwdefaults__
+
+
+class default:
+    def __init__(self, value=31):
+        self.value = value
+
+
+assert default.__init__.__name__ == "__init__"
+assert default().value == 31
 print("shared-class-method-factories-ok")

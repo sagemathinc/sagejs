@@ -970,10 +970,14 @@ test("leading class assignments are available to method defaults", async () => {
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.ok(
-      javascript.indexOf("Example.prototype.sentinel = marker") <
-        javascript.indexOf("Example.prototype.method.__defaults__"),
-    );
+    const assignment = javascript.indexOf("Example.prototype.sentinel =");
+    const method = javascript.indexOf("Example.prototype.method =");
+    assert.ok(assignment >= 0 && method > assignment);
+    assert.match(javascript,
+      /Example\.prototype\.method = ρσ_class_header_\d+_method_\d+\(\[ρσ_check_unbound\(\$ρσ\$py\$Example\.prototype\.sentinel/);
+    const preparedAssignment = javascript.indexOf('bindings["sentinel"] =');
+    const preparedMethod = javascript.indexOf('bindings["method"] =');
+    assert.ok(preparedAssignment >= 0 && preparedMethod > preparedAssignment);
   } finally {
     frontend.close();
   }
@@ -1115,8 +1119,10 @@ test("generator methods shift an explicit descriptor receiver before iteration",
     ast.print(output);
     const javascript = output.get();
     const receiverShift =
-      /Values\.prototype\.items = function[^]*?if \(\(this === globalThis \|\| this == null\)[^]*?function\* js_generator/;
+      /function ρσ_method_items[^]*?if \(\(this === globalThis \|\| this == null\)[^]*?function\* js_generator/;
     assert.match(javascript, receiverShift);
+    assert.match(javascript, /Values\.prototype\.items = ρσ_class_header_\d+_method_\d+\(\[\]\)/);
+    assert.equal((javascript.match(/function\* js_generator/g) ?? []).length, 1);
   } finally {
     frontend.close();
   }
@@ -1269,9 +1275,11 @@ test("reserved Python class names stay mangled in method metadata", async () => 
     const javascript = output.get();
     assert.match(
       javascript,
-      /\$ρσ\$py\$default\.prototype\.__init__\.__name__/,
+      /\$ρσ\$py\$default\.prototype\.__init__ = ρσ_class_header_\d+_method_\d+\(\[\]\)/,
     );
+    assert.match(javascript, /ρσ_anonfunc\.__name__ = "__init__"/);
     assert.doesNotMatch(javascript, /(?:^|[^\w$])default\.prototype/);
+    assert.doesNotThrow(() => new Script(javascript));
   } finally {
     frontend.close();
   }
