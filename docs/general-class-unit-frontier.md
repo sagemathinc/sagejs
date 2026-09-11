@@ -393,3 +393,18 @@ progress. Generic environment-variable input overrides do not establish actual
 past input choices; retained invocation bindings and the scope of the coverage
 claim must be explicit before approving eligibility. The audit does not claim
 to reconstruct arbitrary deleted experiments.
+
+### First expensive matched discovery batch
+
+Both 78-field runs finished: PARI completed 69 and timed out on nine; Hecke
+completed 71 and timed out on seven. The join retains all 78 fields, with 63
+paired successes and 15 censored pairs. All 63 paired exact summaries agree.
+The observed faster worker exceeds one second on 54 fields and ten seconds
+on only five. There is no exact-summary disagreement, but no detached replay
+has been performed and regulator guarantees still differ.
+
+The small ten-second count matters: PARI-only expensive counts overstated how
+many cases satisfy the faster-reference stratum. The next predeclared 72-field
+PARI batch is running; additional acquisition must target genuinely harder
+reference strata if repeated sampling of the current windows remains inadequate.
+The required 120 one-second and 40 ten-second panel counts are not lowered.
