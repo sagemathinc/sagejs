@@ -22,6 +22,8 @@ def main():
     parser.add_argument("--worker", type=Path, required=True)
     parser.add_argument("--project", type=Path)
     parser.add_argument("--depot", type=Path)
+    parser.add_argument("--bits", type=int, choices=(100, 200), default=200)
+    parser.add_argument("--iterations", type=int, choices=(1, 2), default=1)
     parser.add_argument("--local-uncontrolled", action="store_true", required=True)
     args = parser.parse_args()
     factory, provenance = supervisor.worker_factory(
@@ -39,12 +41,20 @@ def main():
             ("local-cubic", ["-1", "-1", "0", "1"]),
         ):
             request, marker = supervisor.encode_request(
-                args.engine, label, coefficients, 200, 1
+                args.engine, label, coefficients, args.bits, 1, args.iterations
             )
             response = worker.exchange(request, 60, marker)
-            assert supervisor.validate_answer(args.engine, response, label) == "ok", (
-                response
-            )
+            assert (
+                supervisor.validate_answer(
+                    args.engine,
+                    response,
+                    label,
+                    len(coefficients) - 1,
+                    args.bits,
+                    args.iterations,
+                )
+                == "ok"
+            ), response
             assert response["pid"] == pid
             if args.engine == "hecke":
                 diagnostics = json.loads(response["stdout"])["diagnostics"]
@@ -56,6 +66,8 @@ def main():
                     "status": "ok",
                     "engine": args.engine,
                     "requests": 2,
+                    "bits": args.bits,
+                    "iterations": args.iterations,
                     "same_process": True,
                     "qualification_evidence": False,
                     "controls": "local-uncontrolled",

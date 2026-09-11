@@ -52,6 +52,7 @@ const generalFrontierValidationPaths = [
   ".agents/tasks/general-class-unit-candidate-pool.json",
   ".agents/tasks/general-class-unit-hecke-screen.json",
   ".agents/tasks/general-class-unit-persistent-reference.json",
+  ".agents/tasks/general-class-unit-exposure-inventory.json",
   ".agents/tasks/general-frontier-build-partition.json",
 ];
 
@@ -124,6 +125,8 @@ for (const git of [false, true]) {
       ".agents/tasks/class-unit-rank-two-frontier.json.in",
       ".agents/tasks/general-class-unit-candidate-pool-extra.json",
       ".agents/tasks/general-class-unit-persistent-reference-extra.json",
+      ".agents/tasks/general-class-unit-exposure-inventory-extra.json",
+      ".agents/tasks/general-class-unit-exposure-inventory.json.in",
       "scripts/optimizer-opportunity-dashboard.cjs",
       "tools/optimizer-development/dashboard-artifacts.cjs",
       "tools/optimizer-development/identity.cjs",

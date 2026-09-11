@@ -75,8 +75,8 @@ This is a source/test inventory, not a timing result. Paths below are under
 
 Source-confirmed mechanisms to investigate include rank-sized subset selection
 (a 50,000-subset cap), bounded prime-root searches, dense exact transforms,
-and some expansion of factored saturation targets. None is yet identified as
-the dominant measured bottleneck. Floating log-rank steering is not the
+and some expansion of factored saturation targets. At that initial audit stage,
+none had yet been identified as the dominant measured bottleneck. Floating log-rank steering is not the
 rigorous certification step and must not be described as one.
 
 Existing tests include rank-two real-cubic recovery, slow-gated mixed-quartic
@@ -262,3 +262,82 @@ exponents without expansion. Detached replay must bind the basis-completeness
 argument, membership evidence, log enclosures, and torsion determination under
 its own resource limits. This section is an implementation obligation, not a
 claim that these maps or their replay verifier already exist.
+
+## Persistent references and relocated baseline
+
+The controlled six-field persistent pilots completed in both engines, with
+matching exact summary values for class number, canonical class invariants,
+field discriminant, signature and torsion order. PARI worker times were 8–12 ms;
+Hecke worker times were about 33–539 ms. These single samples are **not** the
+required batched/repeated competitive measurements. Three Hecke samples still
+reported residual JIT. Julia's outer compile-time diagnostic may include
+dispatch compilation before the worker's internal timer starts; never subtract
+it mechanically from the reported worker time. Compact identities and basis
+completeness have not been independently replayed by these comparisons.
+
+The fresh local build passed in 8m44s, reusing all 41 production kernel families.
+Strict baselib validation passed on 382 modules. `architecture:check` passed its
+FFI/package/native/Wasm stages but failed at an unchanged `cowasm` mention in
+`agents/python-compiler-runtime-value-and-performance-plan.md:124`; this failure
+is retained, not reported as a passing full architecture check.
+
+A standalone baseline, including independent root/submodule Git metadata,
+dependencies and shipped artifacts, passed unchanged-receipt verification on
+`opt`. Its full transfer inventory has 24,436 entries and 991,267,539 bytes;
+receipt SHA-256 is
+`d10d3776499fb032b1836cf9263615a0cbd1cec1cf1c588bc573b5dcbb62ab9f`.
+This authenticates build/transfer correspondence, **not equal first-use preparation**.
+An initial local relocated smoke timed out while compiling lazy Python modules:
+the working tree had warm absolute-path-keyed caches that the normal build does
+not ship. The second staged attempt advanced as that cache accumulated.
+
+The correction uses the existing portable lazy-module precompiler in a separate
+stage, with `SAGEJS_USE_SOURCE=1`, without changing mathematical source. Preserve
+the original receipt, bind supplemental templates and compiler hashes in a new
+transfer inventory, and test with an empty `XDG_CACHE_HOME`. Portable JavaScript
+templates still do not prove that V8/JIT work is absent. The failed first-stage
+receipts remain part of the preparation record.
+
+The four additional local diagnostics (30 s relocated, 10 s native-required,
+10 s rebuilt-root, 30 s portable-stage caps) require a further conservative 150-second ledger charge
+after the in-flight reference batch releases its pending reservation. Do not
+edit the coordinator's live ledger underneath a running batch.
+
+The portable stage completed: 422 lazy modules, eight dynamic programs and 44
+multiprocessing modules were prepared in 298 seconds (compilation, not benchmark
+CPU). All lazy resource hashes and the task compiler hash were checked. A fresh
+empty-cache real-cubic diagnostic completed in 2.556 seconds inside the context
+request, 3.681 seconds process-to-result. This is a preparation smoke, not a warm
+competitive measurement. The supplemental inventory has 24,868 entries and
+1,159,849,217 bytes. A post-seal Git index refresh changed exactly seven index
+files; preserve the failed original manifest and explicitly reseal after review.
+Verification now disables optional Git locks to avoid refreshing those indexes.
+
+The 78-field PARI expansion finished with 69 completions and nine 60-second
+timeouts. Sixty completed requests exceeded one second and ten exceeded ten
+seconds. All 78 raw receipts normalize with no missing requests. These are
+single-sample discovery costs; matched Hecke costs are still required before
+claiming membership in faster-reference timing strata. The coordinator ledger
+stood at 5,293.054 conservatively charged seconds with no pending reservation.
+
+Persistent review now binds request IDs, 100/200-bit precision, whole-batch
+iteration counts and individual sample ordinals. Missing planned samples remain
+explicit, and batch duration is never silently presented as per-iteration time.
+The mathematical engine remains unchanged; no optimization campaign is consumed.
+
+Follow-up verification passed on `opt` against the explicitly resealed portable
+stage. The original mismatching manifest remains retained. Matched Hecke
+screening of the same 78 fields is now in progress. The ledger was raised to
+5,543.054 seconds by an explicit 250-second local-check allowance (150 for stage
+diagnostics, 100 for reference precision/batch smoke checks), before launching
+that batch under the exclusive lock.
+
+Independent review required the normalizer to bind receipt provenance to its
+run, include the imported terminal-validator hash, reject mixed legacy/explicit
+request identities, and retain interrupted samples as missing with their pending
+reservations. These checks prevent foreign receipts or partial batches from
+quietly filling planned sample slots; they do not constitute mathematical replay.
+
+Effort checkpoint, 2026-09-11 08:57 UTC: conservatively charge **six aggregate
+active agent-hours to M0** so far. M1 and both optimization campaigns remain
+unstarted; the 40-hour M0 ceiling and frozen-population requirements are unchanged.

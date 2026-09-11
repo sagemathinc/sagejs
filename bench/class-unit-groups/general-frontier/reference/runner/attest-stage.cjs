@@ -27,7 +27,16 @@ function inventory(directory) {
 
 function attest(root, node) {
   root = fs.realpathSync(root);
-  const receipt = require(path.join(root, "scripts/build-receipt.cjs")).inspectBuildReceipt(root);
+  // Provenance inspection must not refresh the very Git indexes being sealed.
+  const previous = process.env.GIT_OPTIONAL_LOCKS;
+  process.env.GIT_OPTIONAL_LOCKS = "0";
+  let receipt;
+  try {
+    receipt = require(path.join(root, "scripts/build-receipt.cjs")).inspectBuildReceipt(root);
+  } finally {
+    if (previous === undefined) delete process.env.GIT_OPTIONAL_LOCKS;
+    else process.env.GIT_OPTIONAL_LOCKS = previous;
+  }
   if (!receipt.current) throw new Error(`staged receipt not current: ${receipt.reason}`);
   return { schema: "sagejs.general-frontier-runtime-stage.v1", mathematical_certificate: false,
     node_sha256: hash(fs.readFileSync(node)),
@@ -49,4 +58,4 @@ if (require.main === module) {
     bytes: value.entries.reduce((n, x) => n + (x.bytes || 0), 0),
     build_receipt_sha256: value.build_receipt_sha256 }));
 }
-module.exports = { inventory };
+module.exports = { inventory, attest };
