@@ -1,0 +1,104 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-persistent-reference",
+  "title": "General Class Unit Persistent Reference",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add bounded persistent reference supervisor with shared M0 accounting and immutable receipts",
+  "base_commit": "e12cf4b949e1cd8453b8b3faab0e1dc55289b8fe",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/reference/persistent/"
+  ],
+  "dependencies": [],
+  "references": [
+    "bench/class-unit-groups/general-frontier/runner/screen-batch.py",
+    "bench/class-unit-groups/general-frontier/reference/pari-screen.gp",
+    "bench/class-unit-groups/general-frontier/reference/hecke/screen.jl"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "python bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py"
+  ],
+  "runs": [
+    {
+      "command": "python bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.192,
+      "started_at": "2026-09-11T08:23:50.200Z",
+      "commit": "e12cf4b949e1cd8453b8b3faab0e1dc55289b8fe",
+      "workspace_fingerprint": "6fc8ae270d659248529a57263bc4409b52af4ed2764b1ab811a7d2f6b5c9b7c2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.06,
+      "started_at": "2026-09-11T08:23:52.029Z",
+      "commit": "e12cf4b949e1cd8453b8b3faab0e1dc55289b8fe",
+      "workspace_fingerprint": "6fc8ae270d659248529a57263bc4409b52af4ed2764b1ab811a7d2f6b5c9b7c2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.476,
+      "started_at": "2026-09-11T08:24:10.475Z",
+      "commit": "e12cf4b949e1cd8453b8b3faab0e1dc55289b8fe",
+      "workspace_fingerprint": "6fc8ae270d659248529a57263bc4409b52af4ed2764b1ab811a7d2f6b5c9b7c2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.723,
+      "started_at": "2026-09-11T08:25:24.281Z",
+      "commit": "e12cf4b949e1cd8453b8b3faab0e1dc55289b8fe",
+      "workspace_fingerprint": "6fc8ae270d659248529a57263bc4409b52af4ed2764b1ab811a7d2f6b5c9b7c2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.215,
+      "started_at": "2026-09-11T08:25:50.254Z",
+      "commit": "e12cf4b949e1cd8453b8b3faab0e1dc55289b8fe",
+      "workspace_fingerprint": "6fc8ae270d659248529a57263bc4409b52af4ed2764b1ab811a7d2f6b5c9b7c2",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Persistent Linux controlled-host screening supervisor reuses shared M0 accounting and validators, with separately charged startup, six fixed warmups, fresh-field samples and shutdown; immutable receipts and bounded failure cleanup. Includes offline regressions and optional uncontrolled local GP/Hecke protocol checks.",
+    "risks": [
+      "Screening only: qualification and independent replay remain false; compact checks are structural sanity, not mathematical proof.",
+      "Julia on-demand compilation can remain inside samples; bootstrap reports compile/recompile diagnostics rather than claiming warmed JIT.",
+      "Only the existing 200-bit terminal contract is accepted; 100-bit requests fail closed.",
+      "Optional Linux x64 benchmark tooling only; no production platform support changes. No opt runs or writes performed.",
+      "Architecture, portable and test:changed checks cannot complete in this unbuilt worktree: missing dist/tools/cli or dist/tools/compiler.js. Contract remains active; no production build added to this bounded task."
+    ],
+    "next_steps": [
+      "Coordinator review and controlled small pilot using the existing shared ledger and containing service cgroup. Thirteen offline regressions, strict baselib, and final local GP/Hecke same-process two-field smokes passed.",
+      "Correct old Hecke README timer sentence separately in its owning lane: startup/package loading are excluded, but on-demand JIT may be included."
+    ]
+  }
+}
