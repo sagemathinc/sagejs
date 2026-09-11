@@ -8,6 +8,9 @@ class _Array:
     prototype: Any
 
     @staticmethod
+    def of(*items: Any) -> Any: ...
+
+    @staticmethod
     def isArray(value: object) -> bool: ...
 
 

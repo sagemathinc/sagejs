@@ -23,7 +23,7 @@ from ast_types import (
 from output.stream import OutputStream
 from output.statements import print_bracketed
 from output.utils import create_doctring
-from output.operators import print_getattr
+from output.operators import is_python_attribute_read, print_getattr
 
 anonfunc = "ρσ_anonfunc"
 module_name = "null"
@@ -1405,6 +1405,25 @@ def print_function_call(self, output):
                 if i:
                     output.comma()
                 a.print(output)
+
+        if (
+            not is_new
+            and not is_node_type(self, AST_ClassCall)
+            and not self.direct_call
+            and is_node_type(self.expression, AST_Dot)
+            and is_python_attribute_read(self.expression, output)
+        ):
+            # Resolve and retain the attribute before evaluating arguments.
+            # A per-call record remains valid across nested calls and mutation;
+            # ordinary attribute reads still produce observable bound methods.
+            output.print("ρσ_invoke_prepared_method(ρσ_prepare_method_call(")
+            self.expression.expression.print(output)
+            output.comma()
+            output.print(JSON.stringify(self.expression.property))
+            output.print("), [")
+            print_args()
+            output.print("])")
+            return
 
         if is_new:
             output.print("new"), output.space()

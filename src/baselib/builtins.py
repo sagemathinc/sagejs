@@ -5093,6 +5093,38 @@ def ρσ_getattr_internal(
     name: _Str,
     default_value: Any,
 ) -> Any:
+    return _builtins_getattr_impl(value, name, default_value, runtime.undefined)
+
+
+def ρσ_prepare_method_call(value: Any, name: _Str) -> Any:
+    """Capture lookup before arguments without materializing ordinary methods."""
+    context = runtime.array.of(runtime.undefined, runtime.undefined, False)
+    member = _builtins_getattr_impl(value, name, _BUILTINS_MISSING, context)
+    if context[0] is runtime.undefined:
+        context[0] = member
+    return context
+
+
+def ρσ_invoke_prepared_method(context: Any, call_args: Any) -> Any:
+    """Invoke a captured call after all positional arguments are evaluated."""
+    target = context[0]
+    receiver = context[1]
+    if context[2] is True:
+        call_args.unshift(receiver)
+        return runtime.reflect.apply(target, runtime.undefined, call_args)
+    if receiver is not runtime.undefined:
+        return runtime.reflect.apply(target, receiver, call_args)
+    return runtime.reflect.apply(
+        ρσ_resolve_callable(target), runtime.undefined, call_args
+    )
+
+
+def _builtins_getattr_impl(
+    value: Any,
+    name: _Str,
+    default_value: Any,
+    call_context: Any,
+) -> Any:
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
     if runtime.strict_equal(name, "__annotations__"):
@@ -5297,6 +5329,22 @@ def ρσ_getattr_internal(
                 and _builtins_get_member(descriptor, "__sagejs_callable_instance__")
                 is not True
             ):
+                if (
+                    call_context is not runtime.undefined
+                    and _builtins_class_attribute_resolution(owner, "__getattribute__")
+                    is runtime.undefined
+                ):
+                    call_context[0] = descriptor
+                    call_context[1] = value
+                    call_context[2] = (
+                        _builtins_get_member(descriptor, "__sagejs_native_method__")
+                        is not True
+                        and _builtins_get_member(
+                            descriptor, "__sagejs_method_signature_excludes_self__"
+                        )
+                        is not True
+                    )
+                    return runtime.undefined
                 return _builtins_bind_python_function(descriptor, value)
             return _builtins_call_member(descriptor, "__get__", [value, owner])
         if runtime.strict_equal(
