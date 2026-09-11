@@ -72,3 +72,34 @@ observed regression but do not replace the integrated full-corpus rerun.
 The separate lightweight worker runtime must also be regenerated when adding a
 compiler-runtime symbol; `self --complete` plus the evaluator cache alone does
 not refresh that bundle.
+
+## Browser payload follow-up
+
+PR #213's Chromium job failed at the release-artifact budget gate, before
+Chromium installation or parity execution. Run `34569074429`, job
+`103167110922`, measured eager-core Brotli size 9861547 against the unchanged
+9700000-byte limit. The exact pre-defaults base measured 9253797; almost all of
+the increase came from repeated emitted binding code inside `lazy-modules.json`
+and `stdlib.json`, not a browser-specific semantic failure.
+
+Omitted positional arguments now call one shared presence-based resolver. The
+supplied-argument guard remains in emitted code, so supplied arguments do not
+read or normalize defaults. The helper preserves live tuple replacement,
+explicit host-undefined defaults, and call-site-attributed argument errors.
+A compiler-output regression checks the guard and absence of repeated inline
+tuple-length resolution. Keyword-default binding is unchanged.
+
+The compact emitter passes a full build, 19 runtime/error-diagnostic tests,
+76 frontend/compiler/documentation tests, eight package-facing tests, and the
+worker Pool regression. All thirteen previously affected unchanged MicroPython
+files still match CPython 3.14.4 exactly, and the six original adopted files
+pass direct execution. Strict checking remains zero errors across 382 modules;
+architecture and merge checks pass. Core source is 902768/903000 bytes.
+The full pinned-toolchain browser build and unchanged artifact budget gate pass:
+eager-core Brotli is 9598889/9700000 bytes (262658 bytes smaller than the failed
+CI artifact, with 101111 bytes of headroom); gzip is 16518187/17600000 bytes.
+The production receipt and deployment security checks pass. Actual pinned
+Chromium 151 routine parity passes all twelve cases with no page errors, and
+the live-defaults fixture also passes directly in Chromium. These local Linux
+checks used Node 26.8.1 and do not establish full compatibility-manifest or
+cross-platform qualification; CI must qualify the pushed follow-up revision.

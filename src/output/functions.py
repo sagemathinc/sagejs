@@ -133,37 +133,20 @@ def function_preamble(node, output, offset, javascript_name):
                 output.print("if (typeof " + argument_name + ' === "undefined") ')
                 output.print(
                     argument_name
-                    + " = "
+                    + " = ρσ_positional_default("
                     + fname
-                    + ".__defaults__ == null || "
-                    + fname
-                    + ".__defaults__.length < "
+                    + ", "
                     + str(a.length - index)
-                    + " ? ρσ_no_default : "
-                )
-                output.print(
-                    fname
-                    + ".__defaults__["
-                    + fname
-                    + ".__defaults__.length - "
-                    + str(a.length - index)
-                    + "]"
+                    + ", "
+                    + JSON.stringify(argument.name)
+                    + ")"
                 )
                 output.end_statement()
-            if (
-                output.options.python_attributes
-                or not Object.prototype.hasOwnProperty.call(a.defaults, argument.name)
-            ):
+            elif not Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
                 output.indent()
-                output.print(
-                    "if (" if output.options.python_attributes else "if (typeof "
-                )
+                output.print("if (typeof ")
                 output.print(python_argument_name(argument))
-                output.print(
-                    " === ρσ_no_default) "
-                    if output.options.python_attributes
-                    else ' === "undefined") '
-                )
+                output.print(' === "undefined") ')
                 output.print(
                     "throw ρσ_function_argument_error("
                     '"missing required argument: ' + argument.name + '", ' + fname + ")"
