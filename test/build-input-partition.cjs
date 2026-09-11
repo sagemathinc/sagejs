@@ -55,6 +55,8 @@ const generalFrontierValidationPaths = [
   ".agents/tasks/general-class-unit-exposure-inventory.json",
   ".agents/tasks/general-class-unit-hard-windows.json",
   ".agents/tasks/general-frontier-build-partition.json",
+  ".agents/tasks/general-unit-coordinate-map.json",
+  ".agents/tasks/general-unit-map-integration.json",
 ];
 
 function fixture(context, git = false) {

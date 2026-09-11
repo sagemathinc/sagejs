@@ -77,6 +77,7 @@
     "src/lib/sagejs/number_fields/maximal_order.py",
     "src/lib/sagejs/number_fields/maximal_order_engine.py",
     "src/lib/sagejs/number_fields/units.py",
+    "src/lib/sagejs/number_fields/unit_coordinates.py",
     "src/lib/sagejs/number_fields/class_groups.py",
     "src/lib/sagejs/number_fields/class_group_proof_contracts.py",
     "src/lib/sagejs/number_fields/class_group_factor_base.py",
