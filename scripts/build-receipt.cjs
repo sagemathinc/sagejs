@@ -62,6 +62,7 @@ const validationOnlyFiles = new Set([
   ".agents/tasks/general-class-unit-hecke-screen.json",
   ".agents/tasks/general-class-unit-persistent-reference.json",
   ".agents/tasks/general-class-unit-exposure-inventory.json",
+  ".agents/tasks/general-class-unit-hard-windows.json",
   ".agents/tasks/general-frontier-build-partition.json",
 ]);
 
