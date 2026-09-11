@@ -21,6 +21,23 @@ non-draft; PR216 remains draft while its compiled-size and cold-path issues are
 addressed. A separate, pre-existing class-property deletion defect has a focused
 tested follow-up, not part of this checkpoint.
 
+### Compiler footprint correction
+
+Commit `1c8e82c24` compacts only the private compiler implementation artifact,
+using the existing adjacent-statement safety probe and preserving metadata.
+It does not change user-facing generated output or remove documentation.
+In the isolated matching build (`943863f38`), compiler size falls from
+4,325,754 to 3,957,471 bytes; 72 focused checks, including the unchanged
+runtime-cache footprint gate and a new adjacent-IIFE regression, pass.
+This is a focused receipt, not qualification of the combined PR artifact.
+
+The cold-import problem is separate: changing whitespace does not remove
+duplicated prepared/legacy method emission. A bounded shared-method factory
+optimization is being checked against runtime-selected metaclasses, source-order
+defaults, closures, saved functions and live metadata before another full build
+and controlled cold/warm comparison. The existing cold regression remains open
+until that comparison is completed.
+
 ### Final paired measurements for this snapshot
 
 The retained clean snapshot was measured on idle `bench-1`, with the same
