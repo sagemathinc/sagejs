@@ -216,15 +216,22 @@ integration fixture. The overall failed receipt is retained at 1,271.38 seconds;
 
 Independent source review and a direct reproduction locate the failure at the
 first combined `proof=True` request for `3.1.588.1`. The three fixture fields
-have independently proved scalar class numbers 3, 8 and 6, but their generic
-fundamental-unit completeness used the conditional BF index argument. The old
+have class numbers 3, 8 and 6, but their generic fundamental-unit completeness
+used the conditional BF index argument. The old
 test therefore relied on the corrected false unconditional promotion. A narrow
 test correction must retain nontrivial conditional class maps and mutation
-checks, separately check the exact scalar class numbers, and explicitly test
+checks, separately exercise the public scalar route, and explicitly test
 the unsupported unconditional combined request's decline. Restoring the false
 label, or replacing the cases with only trivial class groups, is unacceptable.
 The public class-only adapter currently shares the combined route; providing
 an independent class-only proof/map route remains a separate product gap.
+The first test correction incorrectly expected all three public scalar calls
+to complete unconditionally. Direct execution instead returned 3 for the first
+field and declined for the other two through the generic combined proof guard.
+The failed 247.17-second fixture receipt is retained. The corrected expectations
+record those two scalar capability gaps rather than infer an implemented public
+route from the existence of scalar certificate machinery. This does not count
+the two declines as successful unconditional computations.
 
 Current generated UTF-8 `javascriptTemplate` measurements, using the same
 boundary as the earlier integration baseline, are:
