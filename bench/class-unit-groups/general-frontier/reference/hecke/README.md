@@ -37,8 +37,10 @@ monic and degree at least two. `bits` is 100 or 200; run independent fresh
 requests for both. `iterations` batches fresh constructions, not cached answers.
 The response retains the last compact result and total elapsed nanoseconds as
 an exact string. Repeat `frontier_case(id, coefficients, bits, iterations, seed)`
-directly when embedding the worker. Startup and compilation are excluded from
-its timer. Warm all representative signatures/ranks before collecting a
+directly when embedding the worker. Process startup and package loading occur
+outside the worker timer; on-demand JIT compilation may occur inside it. The
+persistent bootstrap reports `frontier_case` compile/recompile time separately.
+Warm all representative signatures/ranks before collecting a
 persistent-process precompiled-code baseline; a single tiny warmup does not
 establish that boundary. External orchestration owns wall-time/memory limits,
 CPU affinity, process restart after failures, and version/artifact recording.

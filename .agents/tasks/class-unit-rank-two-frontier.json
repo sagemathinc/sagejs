@@ -7,16 +7,17 @@
   "status": "active",
   "owner": "user",
   "objective": "Establish matched general class-unit baselines and qualify a shared rank-two native bridge",
-  "base_commit": "4e4e17b0c2a65ecb421da6b2ffb371ab6d6f0f54",
+  "base_commit": "537e301e44eb5d9e5731c406b8f832ec9329fb8d",
   "claims": [
     "bench/class-unit-groups/general-frontier/campaign.json",
     "bench/class-unit-groups/general-frontier/reference/pari-screen.gp",
     "bench/class-unit-groups/general-frontier/reference/sagejs-diagnostic.py",
     "bench/class-unit-groups/general-frontier/reference/README.md",
+    "bench/class-unit-groups/general-frontier/reference/hecke/README.md",
     "bench/class-unit-groups/general-frontier/reference/runner/",
     "docs/general-class-unit-frontier.md"
   ],
-  "dependencies": ["general-class-unit-candidate-pool", "general-class-unit-hecke-screen", "general-frontier-build-partition"],
+  "dependencies": ["general-class-unit-candidate-pool", "general-class-unit-hecke-screen", "general-frontier-build-partition", "general-class-unit-persistent-reference"],
   "references": ["Main mathematical baseline remains d654e3d45d8c066b979566338a53647a37ab8d00; task scope base includes separately claimed developer tooling and build-input partition review, not a changed mathematical engine."],
   "architecture": {
     "strategy": "source-transparent-native",
