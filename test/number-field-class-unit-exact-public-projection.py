@@ -1,4 +1,4 @@
-"""Exact public projection regression executed as an ordinary Python program."""
+"""Exact map isolation under conditional completeness, with proof-policy controls."""
 
 # DISABLED: full-runtime FLINT integration fixture, covered by its dedicated CJS test
 
@@ -15,6 +15,17 @@ CASES = (
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 original_adapter = class_group_maps.class_group_from_engine_result
+CONDITIONAL = "exact-relations-conditional-grh"
+
+
+def require_combined_decline(field, **options):
+    try:
+        field.class_unit_group(proof=True, **options)
+    except NotImplementedError as error:
+        assert "unconditional analytic unit completeness is unavailable" in str(error)
+        assert "Belabas--Friedman" in str(error)
+    else:
+        raise AssertionError("conditional BF evidence granted unconditional units")
 
 
 def make_field(coefficients, name):
@@ -26,17 +37,19 @@ def make_field(coefficients, name):
     return field
 
 
-def check_case(case_index, label, coefficients, invariants, proof):
+def check_case(case_index, label, coefficients, invariants):
+    proof = False
     K = make_field(coefficients, "a" + str(case_index) + str(int(proof)))
     result = K.class_unit_group(proof=proof)
     assert result.complete
+    assert result.proof_status == CONDITIONAL
     raw_group = result.class_group()
     live = result.context._live_artifacts
     assert live is not None
 
     # The combined standard adapter/sealer owns one reservation. A failure
     # below that identity-checked helper must roll the reservation back.
-    if label == "3.1.588.1" and proof:
+    if label == "3.1.588.1":
         projection_type = class_group_maps._SealedIdealClassGroupProjection
         original_canonical_json = class_group_maps._canonical_json
 
@@ -137,7 +150,7 @@ def check_case(case_index, label, coefficients, invariants, proof):
     original_reconstruct = collector.reconstruct_factor_base_ideal
     original_principal = class_group_maps._principal_ideal
     original_witness_verify = class_group_maps.PrincipalIdealWitness.verify
-    proof_type = class_group_maps.UnconditionalMinkowskiProofRecord
+    proof_type = class_group_maps.ConditionalGRHProofRecord
     original_record_from_dict = proof_type.from_dict
 
     def counted_discrete_log(ideal):
@@ -225,7 +238,9 @@ def check_case(case_index, label, coefficients, invariants, proof):
     started = time.monotonic()
     assert fresh.verify()
     verify_seconds = time.monotonic() - started
+    decodes_before = counters["proof_record_rebuilds"]
     assert fresh.verify_proof_payload(exact_payload)
+    assert counters["proof_record_rebuilds"] > decodes_before
 
     retained = live.public_class_group_projection
     live.public_class_group_projection = object()
@@ -243,10 +258,27 @@ def check_case(case_index, label, coefficients, invariants, proof):
     class_group_maps._principal_ideal = original_principal
     class_group_maps.PrincipalIdealWitness.verify = original_witness_verify
     proof_type.from_dict = original_record_from_dict
+
+    # A richer proof request cannot relabel or destroy the already retained
+    # conditional result, map capsule, or independently verifiable payload.
+    retained_projection = live.public_class_group_projection
+    retained_context = result.context
+    retained_payload = K.class_group(proof=False).proof_payload()
+    require_combined_decline(K)
+    assert K.class_unit_group(proof=False) is result
+    assert result.complete and result.proof_status == CONDITIONAL
+    assert result.context is retained_context
+    assert live.public_class_group_projection is retained_projection
+    after_decline = K.class_group(proof=False)
+    assert after_decline.invariants() == invariants
+    assert after_decline.proof_status == CONDITIONAL
+    assert after_decline.proof_payload() == retained_payload
+    assert after_decline.verify()
     return {
         "label": label,
         "proof": proof,
         "proof_status": result.proof_status,
+        "cached_unconditional_combined_declined": True,
         "repeat_median_seconds": sorted(repeats)[len(repeats) // 2],
         "verify_seconds": verify_seconds,
         "counters": repeat_counters,
@@ -254,21 +286,63 @@ def check_case(case_index, label, coefficients, invariants, proof):
 
 
 rows = []
+scalar_controls = []
+fresh_declines = []
 for case_index, case in enumerate(CASES):
-    for proof in (False, True):
-        print("projection-case-start", case[0], "proof=" + str(proof))
-        rows.append(check_case(case_index, case[0], case[1], case[2], proof))
-        print("projection-case-complete", case[0], "proof=" + str(proof))
+    print("projection-case-start", case[0], "proof=False")
+    rows.append(check_case(case_index, case[0], case[1], case[2]))
+    print("projection-case-complete", case[0], "proof=False")
+    # The public scalar route independently completes the first field. The
+    # other two currently reach the conditional combined engine: record that
+    # capability gap instead of inferring a working route from a theorem.
+    scalar_field = make_field(case[1], "scalar" + str(case_index))
+    expected = case[2][0]
+    if case_index == 0:
+        assert scalar_field.class_number(proof=True) == expected
+        assert scalar_field.class_number(proof=True) == expected
+        scalar_controls.append(
+            {"label": case[0], "proof": True, "class_number": expected}
+        )
+    else:
+        try:
+            scalar_field.class_number(proof=True)
+        except NotImplementedError as error:
+            assert "unconditional analytic unit completeness is unavailable" in str(
+                error
+            )
+        else:
+            raise AssertionError(
+                "update the diagnosed scalar capability gap after independent qualification"
+            )
+        scalar_controls.append(
+            {"label": case[0], "proof": True, "scalar_declined": True}
+        )
+    fresh_field = make_field(case[1], "fresh" + str(case_index))
+    require_combined_decline(fresh_field)
+    fresh_declines.append({"label": case[0], "proof": True, "combined_declined": True})
 
-# Callback-bearing exact work never gains access to an existing projection.
+# Callback-bearing conditional work never gains a reusable public projection.
 print("projection-callback-start")
 callback_field = make_field((1, 5, -1, 1), "callback")
 events = []
-callback_result = callback_field.class_unit_group(proof=True, progress=events.append)
+callback_result = callback_field.class_unit_group(proof=False, progress=events.append)
+assert callback_result.complete and callback_result.proof_status == CONDITIONAL
 assert callback_result.context._live_artifacts is not None
 assert callback_result.context._live_artifacts.public_class_group_projection is None
-if callback_result.complete:
-    assert original_adapter(callback_result).verify()
+assert original_adapter(callback_result).verify()
+require_combined_decline(callback_field, progress=events.append)
+assert callback_result.complete and callback_result.proof_status == CONDITIONAL
+assert callback_result.context._live_artifacts.public_class_group_projection is None
 print("projection-callback-complete")
 
-print(json.dumps({"rows": rows, "status": "ok"}, sort_keys=True))
+print(
+    json.dumps(
+        {
+            "rows": rows,
+            "scalar_controls": scalar_controls,
+            "fresh_declines": fresh_declines,
+            "status": "ok",
+        },
+        sort_keys=True,
+    )
+)

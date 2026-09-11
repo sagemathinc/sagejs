@@ -1,0 +1,88 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-projection-proof-fixture",
+  "title": "General Class Unit Projection Proof Fixture",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Correct projection regression proof expectations while preserving exact map isolation checks",
+  "base_commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+  "claims": [
+    "test/number-field-class-unit-exact-public-projection.py",
+    "test/number-field-class-unit-exact-public-projection.cjs",
+    "docs/number-field-class-unit-projection-regression.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "Reviewed BF proof-policy correction at integration 3f5edf0ab: generic BF is conditional only",
+    "src/lib/sagejs/number_fields/units.py: bounded_unit_subgroup has no independent completion certificate for these three presentations",
+    "src/lib/sagejs/number_fields/cubic_class_number.py: independent exact scalar norm-obstruction certificate",
+    "docs/number-field-class-unit-projection-regression.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing exact class-group invariants (3), (8), (6) on retained cubic fixtures",
+      "Independent scalar proof=True route and conditional map proof replay",
+      "Mutation, cancellation, decoder instrumentation and cache-isolation assertions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-class-unit-exact-public-projection.cjs",
+    "pnpm test:changed -- --base 3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.061,
+      "started_at": "2026-09-11T14:57:49.591Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "d6a090b7c7f879ee39e3095e920c0daa1e7d467672fb89719f2149a7286cfd30",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-exact-public-projection.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 247.172,
+      "started_at": "2026-09-11T15:10:33.395Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "d6a090b7c7f879ee39e3095e920c0daa1e7d467672fb89719f2149a7286cfd30",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-exact-public-projection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 187.713,
+      "started_at": "2026-09-11T15:16:08.736Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "8480a971cdb9814846f0831feba2f2743d9d75c3e0adc2881454829418e166b7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Focused projection regression passed in 187.713 seconds. Retains three nontrivial conditional projection families, mutation and cache isolation checks, verifies exact scalar three, explicitly records public unconditional scalar declines for eight and six, and requires fresh/cached unconditional combined declines. No production proof semantics changed; prior failed expectation retained.",
+    "risks": [
+      "Full changed-tree/native and non-Linux validation remain pending; focused fixture is not full integration qualification.",
+      "Unconditional combined class/unit capability for these presentations remains unavailable; exact scalar class numbers do not prove fundamental units."
+    ],
+    "next_steps": [
+      "Focused fixture passed; qualify full integrated revision without treating this as a full-suite receipt.",
+      "Root reviews and integrates the test-only correction before rerunning combined qualification."
+    ]
+  }
+}
