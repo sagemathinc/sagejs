@@ -115,10 +115,10 @@ def function_preamble(node, output, offset, javascript_name):
             return
         if a.starargs is undefined:
             output.indent()
-            output.print("if (arguments.length > " + str(a.length - offset))
-            output.print(" && !(arguments[arguments.length - 1] ")
+            output.print("if (arguments.length - (arguments[arguments.length - 1] ")
             output.print("&& arguments[arguments.length - 1]")
-            output.print("[ρσ_kwargs_symbol] === true)) ")
+            output.print("[ρσ_kwargs_symbol] === true ? 1 : 0) > ")
+            output.print(str(a.length - offset) + ") ")
             output.print(
                 "throw ρσ_function_argument_error("
                 '"too many positional arguments", ' + fname + ")"
@@ -127,7 +127,29 @@ def function_preamble(node, output, offset, javascript_name):
         for index, argument in enumerate(a):
             if index < offset:
                 continue
-            if not Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
+            if output.options.python_attributes:
+                output.indent()
+                argument_name = python_argument_name(argument)
+                output.print("if (typeof " + argument_name + ' === "undefined") ')
+                output.print(
+                    argument_name
+                    + " = "
+                    + fname
+                    + ".__defaults__ == null ? undefined : "
+                )
+                output.print(
+                    fname
+                    + ".__defaults__["
+                    + fname
+                    + ".__defaults__.length - "
+                    + str(a.length - index)
+                    + "]"
+                )
+                output.end_statement()
+            if (
+                output.options.python_attributes
+                or not Object.prototype.hasOwnProperty.call(a.defaults, argument.name)
+            ):
                 output.indent()
                 output.print("if (typeof ")
                 output.print(python_argument_name(argument))
@@ -138,7 +160,24 @@ def function_preamble(node, output, offset, javascript_name):
                 )
                 output.end_statement()
         for argument in a.kwonly:
-            if not Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
+            if output.options.python_attributes:
+                output.indent()
+                argument_name = python_argument_name(argument)
+                output.print("if (typeof " + argument_name + ' === "undefined") ')
+                output.print(
+                    argument_name
+                    + " = "
+                    + fname
+                    + ".__kwdefaults__ == null ? undefined : ρσ_dict_keyword_default("
+                )
+                output.print(
+                    fname + ".__kwdefaults__, " + JSON.stringify(argument.name) + ")"
+                )
+                output.end_statement()
+            if (
+                output.options.python_attributes
+                or not Object.prototype.hasOwnProperty.call(a.defaults, argument.name)
+            ):
                 output.indent()
                 output.print("if (typeof ")
                 output.print(python_argument_name(argument))
@@ -167,7 +206,10 @@ def function_preamble(node, output, offset, javascript_name):
             output.print("var")
             output.space()
             output.assign(python_argument_name(arg))
-            if Object.prototype.hasOwnProperty.call(a.defaults, arg.name):
+            if (
+                not output.options.python_attributes
+                and Object.prototype.hasOwnProperty.call(a.defaults, arg.name)
+            ):
                 output.spaced(
                     "(arguments[" + i + "]",
                     "===",
@@ -299,7 +341,10 @@ def function_preamble(node, output, offset, javascript_name):
             output.indent()
             output.print("var ")
             output.assign(python_argument_name(argument))
-            if Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
+            if (
+                not output.options.python_attributes
+                and Object.prototype.hasOwnProperty.call(a.defaults, argument.name)
+            ):
                 output.print(
                     fname + ".__defaults__[" + JSON.stringify(argument.name) + "]"
                 )
@@ -533,7 +578,34 @@ def function_annotation(self, output, strip_first, name):
     # Create __defaults__
     defaults = self.argnames.defaults
     dkeys = Object.keys(self.argnames.defaults)
-    if dkeys.length:
+
+    def print_python_default(value):
+        if is_node_type(value, AST_Seq):
+            output.print("ρσ_math_tuple([")
+            value.print(output)
+            output.print("])")
+        else:
+            value.print(output)
+
+    if output.options.python_attributes:
+
+        def positional_defaults():
+            positional_names = []
+            for argument in self.argnames:
+                if Object.prototype.hasOwnProperty.call(defaults, argument.name):
+                    positional_names.push(argument.name)
+            if not positional_names.length:
+                output.print("null")
+                return
+            output.print("ρσ_math_tuple([")
+            for index, key in enumerate(positional_names):
+                if index:
+                    output.comma()
+                print_python_default(defaults[key])
+            output.print("])")
+
+        props.__defaults__ = positional_defaults
+    elif dkeys.length:
 
         def __defaults__():
             output.print("{")
@@ -567,14 +639,19 @@ def function_annotation(self, output, strip_first, name):
         if not kwdefault_names.length:
             output.print("null")
             return
-        output.print("{")
+        output.print("ρσ_dict({" if output.options.python_attributes else "{")
         for index, name in enumerate(kwdefault_names):
             if index:
                 output.comma()
             output.print_string(name)
             output.colon()
-            self.argnames.defaults[name].print(output)
-        output.print("}")
+            if output.options.python_attributes:
+                print_python_default(self.argnames.defaults[name])
+            else:
+                # The bootstrap ABI keeps a host defaults record. Reuse it
+                # rather than evaluating a keyword default expression twice.
+                output.print(fname + ".__defaults__[" + JSON.stringify(name) + "]")
+        output.print("})" if output.options.python_attributes else "}")
 
     props.__kwdefaults__ = __kwdefaults__
 
@@ -602,6 +679,29 @@ def function_annotation(self, output, strip_first, name):
         output.print("]")
 
     props.__argnames__ = argnames
+
+    if output.options.python_attributes:
+
+        def code_varnames():
+            names = []
+
+            def add(name):
+                if names.indexOf(name) is -1:
+                    names.push(name)
+
+            for argument in self.argnames:
+                add(argument.name)
+            for argument in self.argnames.kwonly:
+                add(argument.name)
+            if self.argnames.starargs is not undefined:
+                add(self.argnames.starargs.name)
+            if self.argnames.kwargs is not undefined:
+                add(self.argnames.kwargs.name)
+            for name in self.python_scope_bindings or []:
+                add(name)
+            output.print("ρσ_math_tuple(" + JSON.stringify(names) + ")")
+
+        props.__sagejs_code_varnames__ = code_varnames
 
     positional_only = self.argnames.posonly or 0
     if strip_first and positional_only:

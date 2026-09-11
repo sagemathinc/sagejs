@@ -716,6 +716,7 @@ def print_class(output):
     constructor_signature_attributes = [
         ".__argnames__",
         ".__defaults__",
+        ".__kwdefaults__",
         ".__handles_kwarg_interpolation__",
         ".__kwonly__",
         ".__positional_only__",

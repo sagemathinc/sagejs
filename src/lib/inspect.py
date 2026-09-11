@@ -311,10 +311,21 @@ def signature(
         # have CPython's introspection signature; libraries such as pluggy use
         # this distinction to discover hook arguments.
         names.insert(0, "self")
-    # Compiler metadata is intentionally stored as lightweight JavaScript
-    # records.  Normalize it to Python mappings before using the public dict
-    # API; third-party decorators should never have to know the distinction.
-    defaults = dict(getattr(callable, "__defaults__", {}))
+    positional_defaults = getattr(callable, "__defaults__", None)
+    if positional_defaults is None:
+        defaults = {}
+    elif isinstance(positional_defaults, tuple):
+        # Match inspect's slicing even for an overlong reassigned tuple;
+        # CPython's binder itself uses the trailing entries in that case.
+        defaults = (
+            dict(zip(names[-len(positional_defaults) :], positional_defaults))
+            if positional_defaults
+            else {}
+        )
+    else:
+        # Compiler/baselib bootstrap functions retain a host-record ABI.
+        defaults = dict(positional_defaults)
+    keyword_defaults = dict(getattr(callable, "__kwdefaults__", None) or {})
     annotations = _signature_annotations(
         callable,
         globals_mapping=globals,
@@ -353,7 +364,7 @@ def signature(
             Parameter(
                 name,
                 Parameter.KEYWORD_ONLY,
-                defaults.get(name, _empty),
+                keyword_defaults.get(name, _empty),
                 annotations.get(name, _empty),
             )
         )
@@ -367,6 +378,52 @@ def signature(
             )
         )
     return Signature(parameters, annotations.get("return", _empty))
+
+
+def _sagejs_signature_text(callable, name):
+    """Render the existing concise help signature from the shared model."""
+    try:
+        description = signature(callable, follow_wrapped=False)
+    except (TypeError, ValueError):
+        return name + "()"
+
+    def annotation_text(value):
+        if value is _empty:
+            return ""
+        if isinstance(value, str):
+            return value
+        return getattr(value, "__name__", None) or repr(value)
+
+    parts = []
+    positional_only = False
+    keyword_marker = False
+    for parameter in description.parameters.values():
+        kind = parameter.kind
+        if positional_only and kind != Parameter.POSITIONAL_ONLY:
+            parts.append("/")
+            positional_only = False
+        if kind == Parameter.KEYWORD_ONLY and not keyword_marker:
+            parts.append("*")
+            keyword_marker = True
+        part = parameter.name
+        if kind == Parameter.POSITIONAL_ONLY:
+            positional_only = True
+        elif kind == Parameter.VAR_POSITIONAL:
+            part = "*" + part
+            keyword_marker = True
+        elif kind == Parameter.VAR_KEYWORD:
+            part = "**" + part
+        annotation = annotation_text(parameter.annotation)
+        if annotation:
+            part += ": " + annotation
+        if parameter.default is not _empty:
+            part += "=" + repr(parameter.default)
+        parts.append(part)
+    if positional_only:
+        parts.append("/")
+    result = name + "(" + ", ".join(parts) + ")"
+    annotation = annotation_text(description.return_annotation)
+    return result + " -> " + annotation if annotation else result
 
 
 def isfunction(value):

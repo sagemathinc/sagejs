@@ -3538,12 +3538,18 @@ export class PythonCstLowerer {
       : [argumentsNode];
     let sawKeyword = false;
     let sawDictionarySplat = false;
+    const explicitKeywords = new Set<string>();
     for (const argument of argumentNodes) {
       if (argument.type === "keyword_argument") {
         sawKeyword = true;
+        const keywordName = this.field(argument, "name").text;
+        if (explicitKeywords.has(keywordName)) {
+          throw new SyntaxError(`keyword argument repeated: ${keywordName}`);
+        }
+        explicitKeywords.add(keywordName);
         (args as any).kwargs.push([
           this.make("AST_SymbolRef", this.field(argument, "name"), {
-            name: this.field(argument, "name").text,
+            name: keywordName,
           }),
           this.lowerExpression(this.field(argument, "value")),
         ]);
