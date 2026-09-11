@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Integrate authenticated unit-coordinate maps, corrected BF proof policy and bounded detached component replay with explicit ownership, strict typing, resource evidence and unchanged safety gates",
-  "base_commit": "d6caf8e075db2dab0d85bce2eaccbb5ff74311f6",
+  "base_commit": "8cc0919212467e3a16ef88a2f7f654fa3a2ea423",
   "claims": [
     "architecture/package-graph.json",
     "pyrightconfig.json",
@@ -23,7 +23,8 @@
   "dependencies": [
     "general-unit-coordinate-map",
     "general-class-unit-bf-proof-policy",
-    "general-class-unit-component-replay"
+    "general-class-unit-component-replay",
+    "general-class-unit-projection-proof-fixture"
   ],
   "references": [
     "Mathematical dependency f531a6b640ce8344a9e595ba8bc602a24678bafe, merged as47746b60bcd1e5e1c141667413f397a5ad73a35e; integration does not claim its mathematical files",
