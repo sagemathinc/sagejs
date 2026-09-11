@@ -7014,6 +7014,15 @@ def ρσ_apply_metaclass(
     return created
 
 
+def ρσ_prepare_class(name: Any, bases: Any, metaclass: Any, module: Any) -> Any:
+    """Enter the lazy prepared-namespace path for a non-default metaclass."""
+    selected = _builtins_inherited_metaclass(bases, metaclass)
+    if selected is ρσ_type:
+        return runtime.undefined
+    implementation = __import__("sagejs.class_namespace", fromlist=["prepare"])
+    return implementation.prepare(selected, name, bases, module)
+
+
 def ρσ_apply_inherited_metaclass(
     class_name: _Str,
     bases: Any,
