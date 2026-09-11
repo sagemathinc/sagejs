@@ -99,6 +99,10 @@ for (const scope of ["private", "global"]) {
         "assert 'marker' in dir(Listed)",
         "assert 'marker' in dir(Listed())",
         "assert Listed.__dict__['marker'] == 7",
+        "nested = [[1], [2]]",
+        "cloned = copy(nested)",
+        "assert cloned is not nested and cloned[0] is nested[0]",
+        "assert flatten([1, [2, (3, 4)]]) == [1, 2, 3, 4]",
         "def documented(value=3):",
         "    return value",
         "documented.__doc__ = 'standalone documentation sentinel'",
@@ -122,7 +126,7 @@ for (const scope of ["private", "global"]) {
         "const realm={console};" +
         "require('node:vm').runInNewContext(require('node:fs').readFileSync(process.argv[1], 'utf8'), realm);" +
         "if(Object.hasOwn(realm.ρσ_modules,'sys'))throw Error('unused sys initialized eagerly');" +
-        "for(const name of ['sagejs._introspection','sagejs._documentation_search','inspect'])" +
+        "for(const name of ['sagejs._introspection','sagejs._documentation_search','sagejs._collection_helpers','inspect'])" +
         "if(!Object.hasOwn(realm.ρσ_modules,name))throw Error('missing implicit module '+name)",
         output], options);
       assert.equal(result.status, 0, result.stderr);
