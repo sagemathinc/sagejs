@@ -1,4 +1,4 @@
-"""Lazy documentation search for the public builtins facade."""
+"""Lazy help rendering and documentation search for the public builtins facade."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Any
 
 import sagejs.runtime as runtime
 
-__all__ = ["_search_doc"]
+__all__ = ["_help", "_search_doc"]
 
 _core: Any = runtime.reflect.get(
     runtime.reflect.get(runtime.global_object, "__sagejs_baselib_modules__"),
@@ -72,7 +72,7 @@ def _search_doc(query: Any) -> None:
         registered_value = registered_entry[1]
         if registered_name in seen:
             continue
-        registered_doc = _core._builtins_doc(registered_value)
+        registered_doc = _builtins_doc(registered_value)
         if _builtins_doc_search_match(needle, registered_name) or (
             registered_doc and _builtins_doc_search_match(needle, registered_doc)
         ):
@@ -95,7 +95,7 @@ def _search_doc(query: Any) -> None:
         value = runtime.reflect.get(descriptor, "value")
         if value is runtime.undefined:
             continue
-        doc = _core._builtins_doc(value)
+        doc = _builtins_doc(value)
         if _builtins_doc_search_match(needle, name) or (
             doc and _builtins_doc_search_match(needle, doc)
         ):
@@ -114,7 +114,7 @@ def _search_doc(query: Any) -> None:
             qualified_name = name + "." + method_name
             if qualified_name in seen:
                 continue
-            method_doc = _core._builtins_doc(method)
+            method_doc = _builtins_doc(method)
             if _builtins_doc_search_match(needle, qualified_name) or (
                 method_doc and _builtins_doc_search_match(needle, method_doc)
             ):
@@ -130,3 +130,132 @@ def _search_doc(query: Any) -> None:
     _core.ρσ_print(
         "Search results for '" + text + "':\n    " + str.join("\n    ", matches)
     )
+
+
+def _builtins_signature(value: Any, name: _Str) -> _Str:
+    # Signature binding and rendering belong together in the lazy inspect
+    # module, not in two independently maintained defaults implementations.
+    inspection = _core._builtins_default_import("inspect")
+    return inspection._sagejs_signature_text(value, name)
+
+
+def _builtins_doc(value: Any = None) -> _Str:
+    for entry in runtime.documentation_registry():
+        if entry[1] is value:
+            metadata_doc = _core._builtins_get_member(entry[2], "doc")
+            if runtime.strict_equal(runtime.jstype(metadata_doc), "string"):
+                return metadata_doc
+    doc = _core._builtins_get_member(value, "__doc__")
+    if runtime.strict_equal(runtime.jstype(doc), "string"):
+        return doc
+    return ""
+
+
+def _builtins_indent_doc(doc: _Str, prefix: _Str) -> _Str:
+    if not doc:
+        return ""
+    lines = []
+    for line in doc.split("\n"):
+        lines.append(prefix + line)
+    return str.join("\n", lines)
+
+
+def _builtins_class_help(value: Any, instance: _Bool) -> _Str:
+    cls = value
+    if instance:
+        cls = _core._builtins_get_member(value, "constructor")
+    name = _core._builtins_callable_name(cls)
+    heading = "Help on class " + name + ":"
+    if instance:
+        heading = "Help on " + name + " object:"
+    lines = [
+        heading,
+        "",
+        "class " + _builtins_signature(cls, name),
+    ]
+    doc = _builtins_doc(cls)
+    if doc:
+        lines.extend(["", _builtins_indent_doc(doc, "    ")])
+
+    prototype = _core._builtins_get_member(cls, "prototype")
+    methods = []
+    for method_name in _core.ρσ_dir(cls):
+        method = _core._builtins_prototype_member(prototype, method_name)
+        if runtime.string_find(method_name, "_") != 0 and runtime.strict_equal(
+            runtime.jstype(method), "function"
+        ):
+            methods.append(method_name)
+    if len(methods) > 0:
+        lines.extend(["", "Methods:"])
+        for method_name in methods:
+            method = _core._builtins_prototype_member(prototype, method_name)
+            lines.append("    " + _builtins_signature(method, method_name))
+            method_doc = _builtins_doc(method)
+            if method_doc:
+                lines.append(_builtins_indent_doc(method_doc, "        "))
+    return str.join("\n", lines)
+
+
+def _help(item: Any, omitted: _Bool = False) -> None:
+    """Print concise Python-style help derived from Sage.js metadata."""
+    if omitted:
+        _core.ρσ_print(
+            "Welcome to Sage.js help.  "
+            + "Call help(object) for information about an object."
+        )
+        return
+
+    for entry in runtime.documentation_registry():
+        if entry[1] is item:
+            registered_name = entry[0]
+            metadata = entry[2]
+            metadata_doc = _core._builtins_get_member(metadata, "doc")
+            if runtime.strict_equal(runtime.jstype(metadata_doc), "string"):
+                registered_kind = _core._builtins_get_member(metadata, "kind")
+                if not runtime.strict_equal(runtime.jstype(registered_kind), "string"):
+                    registered_kind = "object"
+                registered_lines = [
+                    ("Help on " + registered_kind + " " + registered_name + ":"),
+                    "",
+                ]
+                if registered_kind in ["function", "method", "class"]:
+                    registered_lines.append(_builtins_signature(item, registered_name))
+                    registered_lines.append("")
+                else:
+                    registered_lines.extend([registered_name, ""])
+                registered_lines.append(
+                    _builtins_indent_doc(metadata_doc.strip(), "    ")
+                )
+                _core.ρσ_print(str.join("\n", registered_lines))
+                return
+
+    if _core._builtins_is_python_class(item):
+        text = _builtins_class_help(item, False)
+    elif runtime.strict_equal(runtime.jstype(item), "function"):
+        name = _core._builtins_callable_name(item)
+        bound = _core._builtins_has_member(item, "__self__")
+        kind = "method" if bound else "function"
+        module = _core._builtins_get_member(item, "__module__")
+        heading = "Help on " + kind + " " + name
+        if runtime.strict_equal(runtime.jstype(module), "string") and module:
+            heading += " in module " + module
+        lines = [
+            heading + ":",
+            "",
+            _builtins_signature(item, name),
+        ]
+        doc = _builtins_doc(item)
+        if doc:
+            lines.extend(["", _builtins_indent_doc(doc, "    ")])
+        text = str.join("\n", lines)
+    else:
+        constructor = _core._builtins_get_member(item, "constructor")
+        if _core._builtins_is_python_class(constructor):
+            text = _builtins_class_help(item, True)
+        else:
+            type_name = _core._builtins_callable_name(constructor)
+            text = "Help on " + type_name + " object."
+            doc = _builtins_doc(item)
+            if doc:
+                text += "\n\n" + _builtins_indent_doc(doc, "    ")
+    _core.ρσ_print(text)
