@@ -70,6 +70,60 @@ work; this manifest does not purport to cover them.
 
 ## Categories and candidate matching
 
+### Finite source-coverage supplement
+
+`source-coverage.cjs` verifies the reviewed, hash-pinned assertions in
+`source-coverage-policy.json` without running Sage.js or an external CAS. This
+is a finite supplement covering the listed BENCH gaps and five independently
+reviewed TEST quadratic presentations, not a claim that the entire source tree
+or every historical invocation has been audited. Inline polynomial extraction
+is a reviewed assertion bound to the exact source hash, not a generic parser.
+
+For a monic degree-`n` integral polynomial with ascending coefficients `c`, the
+Sylvester matrix has `n-1` shifted rows of `f` and `n` shifted rows of `f'`.
+Hadamard's inequality therefore gives the exact integer bound
+`disc(f)^2 <= (sum(c_i^2))^(n-1) * (sum(i^2*c_i^2))^n`.
+The field discriminant divides the equation discriminant by an index square.
+For the 15 listed small presentations, no same-degree candidate has squared
+field discriminant below this bound. This proves current-pool non-overlap,
+not irreducibility, signature, isomorphism, or a field's exact discriminant.
+The rational microbenchmark `x^3+x/2+1` is represented by `y^3+2*y+8` under
+`y=2*x`. The remaining Ford--Letard quintic is checked against its pinned
+fixture case's exact coefficients and source-asserted field discriminant
+`7291332`; no current-pool absolute-discriminant bucket matches it.
+
+Only the five new quadratic presentations are added to the inventory, using
+the existing explicit-presentations adapter and `historical-quarantine`
+category. The 16 pool-excluded presentations remain in the separate coverage
+receipt, which is bound to that exact pool. This is not an assertion that all
+tests actually ran. An optional existing five-diagnostic prior-Sage wrapper
+stays separate and unchanged. Generic corpus/fixture override history remains
+explicitly unresolved; reference screening is not promoted to Sage exposure.
+
+Run with explicit existing inputs and a **new** output directory:
+
+```sh
+node bench/class-unit-groups/general-frontier/exposure/source-coverage.cjs \
+  --root /path/to/reviewed/worktree \
+  --policy bench/class-unit-groups/general-frontier/exposure/source-coverage-policy.json \
+  --sources bench/class-unit-groups/general-frontier/exposure/historical-sources.local.json \
+  --reconciliation /path/to/actual-sage-reconciliation-inputs-v1.json \
+  --output-dir /path/to/new/source-coverage-supplement-v1
+```
+
+The output contains the coverage proof receipt, five-presentation wrapper,
+new source manifest, regenerated inventory, new reconciliation input manifest,
+and reconciliation output. Existing exports are never overwritten. A failed
+run may leave an explicitly incomplete new directory; rerun into another new
+directory. Every successful result retains `source_coverage_approved: false`
+and `holdout_eligible: null` for unmatched candidates.
+
+Focused verification:
+
+```sh
+node --test bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs
+```
+
 Categories are source-owner assertions preserved per evidence record:
 
 - `prior-sage-exposure`: prior Sage.js evaluation/development exposure.
