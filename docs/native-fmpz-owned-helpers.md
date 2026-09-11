@@ -1421,3 +1421,227 @@ guarded reuse on the ordinary non-index-prime path. That would leave index
 primes and out-of-envelope primes on their existing paths. Check the caller's
 primality obligation and complete splitting/bound equality before claiming
 any benefit; this follow-up is not part of the measurements above.
+
+## Guarded root counting in the generator-bound phase
+
+The follow-up above is now measured in the research closure. It changes only
+the non-index-prime branch of `_cubic_degree_one_prime_count`: for a proven
+prime $2 \le p \le 65535$, reduce the defining polynomial coefficients modulo
+$p$ and call the already imported `cubic_root_multiplicity_counts`. Accept
+its result only when the root and multiplicity counts satisfy the primitive's
+valid-result contract. Otherwise use the original exact residue enumeration.
+The complete index-prime branch is byte-identical, and larger primes retain
+the original path. This is reuse of compiled ordinary Python, not a new
+handwritten native implementation or a change to the certified bound.
+
+### Mathematical and implementation obligations
+
+If $p$ does not divide $[\mathcal O_K:\mathbb Z[a]]$, then
+$\mathcal O_K/p\mathcal O_K \cong \mathbb F_p[X]/(f)$, where $f$ is the monic
+defining polynomial. The distinct linear factors, equivalently the distinct
+roots of $f$ in $\mathbb F_p$, count the degree-one prime ideals above $p$.
+This remains true at ramified primes; multiplicity is not the number of
+distinct prime ideals. Thus replacing exhaustive root enumeration by an
+exact root-count algorithm preserves the contribution to bound selection.
+
+Both callers establish primality by exact trial division before the count
+is used. The guard uses the defining-order index, not merely a discriminant
+test. Coefficients are reduced before conversion to bounded words. The
+primitive's finite-field argument and word-arithmetic bounds are documented
+in `docs/cubic-discriminant-splitting.md`: it uses the odd-prime nonsquare
+discriminant case when applicable and otherwise computes the degree of
+$\gcd(f,X^p-X)$. Characteristics two and three and repeated roots are included.
+The generator-selection proof and GRH assumptions are unchanged.
+
+An independent CPython enumeration check compares the actual old and new
+function bodies on 4,106 cases: every monic cubic over the six primes through
+13, signed 120-digit coefficients, boundary primes, repeated roots and
+index-prime dispatch. There are 4,087 bounded-primitive calls. An injected
+invalid primitive result falls back to enumeration. The index-prime dispatch
+test uses a stub and separately verifies byte identity of that entire branch;
+it is not a new proof of the index-prime algorithm.
+
+Actual compiled execution passes 47 complete transcript comparisons:
+43 fmpz panel fields, three additional GMP checks and one JavaScript check.
+Five additional comparisons preserve the two temporary-capacity failures,
+the input-projection failure, and the `.163` completion in both fmpz and GMP.
+All relation, element, factor, basis, unit-exponent, output and parity data
+remain unchanged. The panel still has 44 completed research transcripts,
+two capacity failures and one input-analysis failure. These are phase-96
+research results with `accepted=False`, not new public certificates.
+
+### Controlled performance
+
+Two serial, CPU-2-pinned `opt` runs use the shared timing lock, one warmup and
+six alternating paired rounds per field. They time the whole native call
+and cleanup with unchanged preallocated buffers, and compare full transcripts
+outside timing. Fresh seeded PARI 2.17.4 `bnfinit(f,0)` calls are measured
+separately and their class numbers and invariants checked against metadata.
+
+| Field suffix | Before / candidate (ms) | Repeat (ms) | PARI median range (ms) |
+| --- | ---: | ---: | ---: |
+| `341970033803678280.6` | 64.00 / 57.38 | 64.09 / 57.56 | 24--25 |
+| `1086061775432017340256300.1013` | 582.80 / 504.91 | 582.29 / 502.80 | 199--200 |
+| `.387` | 1112.45 / 1039.55 | 1109.82 / 1036.87 | 360--360.5 |
+| `.596` | 617.71 / 540.30 | 615.45 / 538.86 | 243.5--244.5 |
+| `1291393312047583044300.178` | 800.74 / 781.29 | 801.92 / 777.30 | 274.5 |
+
+The improvement repeats on all five fields, approximately 2--14%. PARI
+remains faster. A separate four-round sweep of the 43 previously completed
+fields lowers the sum of per-field medians from 8,403.7612 to 7,592.0830 ms,
+**9.6585%**, with lower medians on all 43. This is an existing development
+panel, not unseen holdout qualification or a universal speedup claim. The
+sweep does not include `.163` or retime PARI; raw timing outliers are retained.
+
+The panel has 35 distinct discriminants. Of its 43 displayed defining
+polynomials, 26 have the binomial shape $X^3+c$ and 17 do not (this is a
+polynomial-shape classification, not a field-isomorphism test). The root-count
+change reduces the respective sums of medians from 7,840.2661 to 7,061.4381 ms
+and from 563.4951 to 530.6449 ms. Thus it benefits both subsets, but the
+aggregate is heavily weighted toward the binomial examples. A further
+seconds-scale holdout should deliberately include non-binomial presentations
+and not rely solely on this panel's aggregate.
+
+First, repeat and panel timing report SHA-256 values respectively:
+
+- `d5d6952a7578e0b9472883ca3c1816a0169a12dfeb6152f2fd79f2a4c4de54c7`
+- `aae8a6e02f10921f3ffa60f1ab054009d5a95e64508c66eae23d860a62445fc0`
+- `3501f58458fc6834e1b73dfb2626a2e407a46973b1c782adc2c1b8e2ef81cd82`
+
+### Reproduction, resources and remaining work
+
+The experiment directory is
+`/scratch/sagejs-runtime/cubic-generator-root-count-M9hKmq`.
+`prepare.cjs` checks the parent hash and applies the sole guarded-source
+replacement. `build.cjs`, `oracle.py`, `check.cjs`, `failure-checks.cjs`,
+`stage.cjs`, `timing.cjs` and the panel scripts retain the actual construction,
+validation and measurement procedures. Scripts creating frozen outputs
+deliberately refuse to overwrite existing evidence; reproduce in fresh
+directories with the recorded parent artifacts.
+
+Source bytes increase by 442 to 617,630; source SHA-256 is
+`3331ae70172472e0c6cf5d205d3fceef3de887b879cf352154d18f4d2f805463`,
+and cache key is
+`d4c56a685e8f80c5d12af2c24d27556f01b26d3ed6d60ce32c83b70718715213`.
+The closure remains at 146 functions. The addon increases from 20,017,936
+to 20,022,032 bytes. Generated-core bytes increase from 27,740,824 to
+28,296,133; after normalizing each exact provenance path to `SOURCE.py`,
+the increase is only 22,042,420 to 22,062,311. Neither raw size nor normalized
+size is a measurement of peak memory. No resource or production-source
+allowance is increased.
+
+The round-trip-verified archive `build/cubic-generator-root-count-evidence`
+preserves 137 files, 218,840,386 raw bytes compressed to 18,792,104 bytes,
+including the imported primitive's source, generated artifacts, complete
+ledgers and raw reports. Its manifest SHA-256 is
+`93e83a6ca4cc53aca89660585eb7efbb8a3da6d309e6d9feb33b209ee8656f5e`;
+it links the parent archive manifest recorded above.
+
+The splitting primitive itself is still in the draft prerequisite stack,
+not current main. Integrating this change therefore requires qualifying that
+dependency as well as the production consumer, with independent public
+certificate replay, frozen-corpus and platform checks. PR #206 remains draft.
+The remaining collection and unit-recovery costs, two capacity failures and
+input-analysis failure remain meaningful targets; this small exact reuse
+does not establish overall competitiveness with PARI.
+
+### Refreshed phase profile
+
+Diagnostic clock wrappers applied to this candidate confirm that the warm
+generator-bound phase is now about 2--5 ms in the three profiled examples.
+Nine complete transcript/parity checks pass, using three calls on reused
+buffers for each field. These locally measured, instrumented durations are
+for localization only: the wrappers perturb optimization and add clock cost.
+They are not controlled `opt` performance evidence.
+
+On `.387`, the third call spends about 869 ms in initial collection, including
+152 ms in the primitive/nonscalar candidate helper; the compact unit attempt
+takes about 127 ms. On `.1013`, initial collection is about 389 ms and the unit
+attempt about 33 ms. Remaining effort should primarily target collection and
+its coordinate, norm, admission and row-lattice work, not the now small
+generator-bound calculation.
+
+The corresponding retained PARI debug traces are also useful for avoiding a
+misleading candidate-count comparison. PARI's `.1013` trace reports 50,395
+small-norm candidates and `.387` reports 166,188 in its initial batch; the
+Sage.js profile has 56,551 and 193,045 smooth-principal-relation attempts.
+Sage.js's much larger primitive-helper counts include rejected points before
+those attempts and must not be compared as if they counted the same stage.
+The PARI traces are older local seeded observations, not new timing results
+or proof that the enumeration schedules agree.
+
+The profile lives in `/scratch/sagejs-runtime/cubic-root-count-profile-FaZKau`.
+The original generated core has SHA-256
+`ceadaf574e8105add7951f725aa4b11b9c7b0678db55f068071b6719ca8ca516`;
+the instrumented core and binary have SHA-256
+`292d877f2e49e598edefa32a52092c508bed1c5b65870ceb3f0325060cf43eef`
+and `fde9fdd16d30872b0fe3a232ac14e710d7ef2a6c0779fa92930c8c42b04c058e`.
+Its inherited module cache identity is explicitly **not** the identity of
+the modified instrumented binary. The round-trip-checked 17-file archive
+`build/cubic-root-count-profile-evidence` contains 51,702,955 raw bytes,
+10,043,501 compressed bytes, and links the candidate's source archive.
+Manifest SHA-256:
+`c0759a3e67ce86088f30293b4ef7da274be29e94d9edd57a93fc3365b05c0bbf`.
+
+## Cached row content: a small, not decisive, collector improvement
+
+A further source-only experiment computes $g=\gcd(|y|,|z|)$ once whenever
+the actual conditional row changes, then tests $\gcd(|x|,g)=1$ in the
+primitive candidate helper. Associativity of nonnegative gcd proves this
+equivalent to the original two gcd calls, including zero coordinates. The
+row cache is initialized on every collector invocation and recomputed after
+each plane/row change; it does not become resumable external state. The
+positive-shell fallback and all cursor/budget/admission logic are unchanged.
+The helper also drops its three unused norm-parameter arguments.
+
+Independent actual-source checks cover 16,625 primitive comparisons, 88,128
+interval identities, and 21,316 matching paused/resumed collector checkpoints.
+The compiled candidate passes all 47 complete transcript checks and the five
+retained failure/completion comparisons. The first JavaScript check failed
+because the scratch directory could not resolve `@sagemath/sagejs-flint`;
+the failed process record is retained. Repeating only that check with the
+worktree's normal `node_modules` on `NODE_PATH` passes. No mathematical output
+or generated artifact was changed to repair the harness lookup.
+
+Two locked, CPU-pinned five-field runs use the same warmup, six paired rounds,
+full transcript checks and PARI protocol described above:
+
+| Field suffix | Before / candidate (ms) | Repeat (ms) |
+| --- | ---: | ---: |
+| `341970033803678280.6` | 57.387 / 57.025 | 57.740 / 57.245 |
+| `1086061775432017340256300.1013` | 504.785 / 500.371 | 507.408 / 503.456 |
+| `.387` | 1032.212 / 1017.218 | 1040.001 / 1020.903 |
+| `.596` | 537.466 / 534.015 | 543.462 / 538.639 |
+| `1291393312047583044300.178` | 777.513 / 770.444 | 783.669 / 776.670 |
+
+These reductions are only about 0.6--1.8%. The separate 43-field sweep lowers
+the sum of medians from 7,574.0262 to 7,517.4126 ms, **0.7475%**. Four fields
+have higher candidate medians (by about 0.3--0.9%), so this is not a no-regression
+or universal improvement result. No new PARI competitiveness is established.
+The small gain is useful evidence about where *not* to spend the next major
+campaign: coordinate transformation, norm screening, candidate ordering and
+relation admission merit closer investigation than further gcd micro-tuning.
+
+Experiment: `/scratch/sagejs-runtime/cubic-row-content-Ybdnp0`.
+Source SHA-256:
+`96cde5e13d62407e5423f01b434b9ef08db65ce290f10070f5c59eb995f9d1d8`;
+cache key:
+`9480e57672063f0b767a61fa7dde9e995987d756eee5f335ff56aab916d6243b`.
+Source decreases by 89 bytes to 617,541, with 146 functions and unchanged
+20,022,032-byte addon size. Provenance-normalized generated-core size falls
+by only 47 bytes to 22,062,264; its much larger raw decrease is a shorter
+source-path effect. Production source and resource limits remain unchanged.
+
+First, repeat and panel report hashes respectively:
+
+- `0241c01a5d1ebf98a0305f229217bea4fb8cd9abf124a0530dc721c6ff09d277`
+- `1fe256d5a9bbb94c554e86c549f4957617ffc81bf57e8919c752ab2937a72b85`
+- `59a093896de7717c83762b10aa6751f18e05bf1e1bbaa61fe4d2d35346981fc9`
+
+The round-trip-verified archive `build/cubic-row-content-evidence` has 142
+files, 216,981,845 raw bytes and 18,773,015 compressed bytes. It includes
+the actual source/edit scripts, independent checks, failed and repaired
+harness observations, full ledgers, generated artifacts and raw timing
+reports, linked to the guarded-root-count parent. Manifest SHA-256:
+`85e5b74e8cc0aba77fff0589d225a93168c5b4a5a2752e56a8a3917044247e80`.
+This remains a research candidate, not production integration or certification.

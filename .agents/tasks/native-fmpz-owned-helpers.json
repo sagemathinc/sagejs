@@ -113,6 +113,26 @@
       "commit": "cbd5e106aaedf91c3a4bb9e3e075e2feecac46ee",
       "workspace_fingerprint": "e213192a1cbe41b3253456a5c24a1cadb930bb1650a0f013ce31b5b6c709793c",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base HEAD",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 532.254,
+      "started_at": "2026-09-11T00:58:42.331Z",
+      "commit": "d982b3b29b0b605acd927f190b4b96518e4962af",
+      "workspace_fingerprint": "97d72409ad2ab597da75e78d6c16fe7ef47acaa9c2947c3d9d1bcad4cdc73a8c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base HEAD",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 81.729,
+      "started_at": "2026-09-11T01:11:45.695Z",
+      "commit": "d982b3b29b0b605acd927f190b4b96518e4962af",
+      "workspace_fingerprint": "d79026b5c02e9c69d3e09640aeb15d94a8c940f3ba8e97a24b12b075de7fdb10",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
