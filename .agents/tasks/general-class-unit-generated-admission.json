@@ -1,0 +1,100 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-generated-admission",
+  "title": "General Class Unit Generated Admission",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Offline generated-source admission companion with pinned raw reference receipts and conservative exposure reconciliation; no qualification authority",
+  "base_commit": "b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/generated/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact BigInt index-square checks and known indices 11/17",
+      "Existing generator, raw receipt validator and pairer reused offline",
+      "Synthetic schema and rehashed provenance mutation regressions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/generated/admit.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.206,
+      "started_at": "2026-09-11T12:18:15.864Z",
+      "commit": "b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "workspace_fingerprint": "70897711f5ff5c911485e88ce864ad8b34cce4a7266ee3b3dd122fce3750895f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python -B -m unittest discover -s bench/class-unit-groups/general-frontier/generated -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.691,
+      "started_at": "2026-09-11T12:18:16.827Z",
+      "commit": "b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "workspace_fingerprint": "70897711f5ff5c911485e88ce864ad8b34cce4a7266ee3b3dd122fce3750895f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/generated/admit.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.176,
+      "started_at": "2026-09-11T12:19:40.928Z",
+      "commit": "b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "workspace_fingerprint": "f9151f1d540de1b5e927e26da5d0ac091e7cfea2183cc31411fe07b58522a8c7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python -B -m unittest discover -s bench/class-unit-groups/general-frontier/generated -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.709,
+      "started_at": "2026-09-11T12:19:41.783Z",
+      "commit": "b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "workspace_fingerprint": "f9151f1d540de1b5e927e26da5d0ac091e7cfea2183cc31411fe07b58522a8c7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm format:python:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.659,
+      "started_at": "2026-09-11T12:20:25.309Z",
+      "commit": "b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "workspace_fingerprint": "f9151f1d540de1b5e927e26da5d0ac091e7cfea2183cc31411fe07b58522a8c7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Developer-only Node admission companion with CPython reuse of existing offline generator/reference validators. Separate generated identity schema; mandatory raw receipt, union/exposure and finite source reconstruction; exact square-index checks and conservative exposure coordination. No runtime mathematics changes, CAS execution or source-union/exposure API changes.",
+    "risks": [
+      "Foreign worker metadata remains observed, not independent mathematical replay or runtime attestation. No qualification or holdout eligibility is granted.",
+      "Finite exposure scope does not establish universal history; future split still requires coordinator coverage decision and bucket/isomorphism reconciliation.",
+      "Lane classified dynamic-python for its offline CPython validator helper; Node BigInt checks are developer-only. Full native/strict lane qualification not run within this bounded no-CAS task. Contract remains active."
+    ],
+    "next_steps": [
+      "Independent review and cherry-pick into laboratory; preserve original LMFDB-only union and immutable prior outputs.",
+      "Use generated metadata only in a later explicitly reviewed freeze; j2-5 development-only and j6-7 reserve-unassigned remain unchanged."
+    ]
+  }
+}
