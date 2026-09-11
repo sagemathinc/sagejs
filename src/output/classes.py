@@ -616,6 +616,13 @@ def print_class(output):
         output.with_parens(f_extends)
         output.end_statement()
 
+    if not compiling_baselib:
+        output.indent()
+        output.print("ρσ_finalize_heap_class(")
+        self.name.print(output)
+        output.print(")")
+        output.end_statement()
+
     if live_keyword_constructor:
         output.indent()
         output.print("ρσ_register_keyword_constructor(")

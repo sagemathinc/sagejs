@@ -308,6 +308,9 @@ _builtins_descriptor_epoch = 0
 _builtins_heap_class_keys = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
+_builtins_prototype_owners = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
 _builtins_class_annotation_slots = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
@@ -319,11 +322,21 @@ def ρσ_register_heap_class(value: Any) -> Any:
     return value
 
 
+def ρσ_finalize_heap_class(value: Any) -> Any:
+    """Record ownership after inheritance installs the instance prototype."""
+    if _builtins_heap_class_keys.has(value):
+        _builtins_prototype_owners.set(runtime.reflect.get(value, "prototype"), value)
+    return value
+
+
 def ρσ_alias_heap_class(wrapper: Any, target: Any) -> Any:
     """Preserve private class slots across a known runtime proxy adapter."""
     key = _builtins_heap_class_keys.get(target)
     if key is not runtime.undefined:
         _builtins_heap_class_keys.set(wrapper, key)
+        _builtins_prototype_owners.set(
+            runtime.reflect.get(target, "prototype"), wrapper
+        )
     return wrapper
 
 
@@ -6730,6 +6743,11 @@ def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
 def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
     """Implement `type.__call__` after a custom metaclass delegates."""
     interpolate = runtime.reflect.get(runtime.global_object, "ρσ_interpolate_kwargs")
+    if not runtime.strict_equal(runtime.jstype(interpolate), "function"):
+        internal = __import__(
+            "sagejs._baselib.internal", fromlist=["ρσ_interpolate_kwargs"]
+        )
+        interpolate = internal.ρσ_interpolate_kwargs
     call_args = list(args)
     runtime.reflect.apply(runtime.array.prototype.push, call_args, [keywords])
     allocator = ρσ_getattr(cls, "__new__", None)
@@ -6854,6 +6872,7 @@ def ρσ_type(*values: Any) -> Any:
         runtime.reflect.deleteProperty(dynamic_class, "__annotations__")
         runtime.reflect.deleteProperty(dynamic_class, "__annotations_text__")
         ρσ_register_heap_class(dynamic_class)
+        ρσ_finalize_heap_class(dynamic_class)
         for pair in namespace.items():
             member_name = pair[0]
             member = pair[1]
@@ -6921,7 +6940,18 @@ def ρσ_type(*values: Any) -> Any:
     value = values[0]
     if value is None:
         return _NoneType
-    value_type = ρσ_python_jstype(value)
+    value_type = runtime.jstype(value)
+    if runtime.strict_equal(value_type, "object") or runtime.strict_equal(
+        value_type, "function"
+    ):
+        # Read actual representation ownership, never a user constructor or
+        # __python_type__ attribute. Exact lookup deliberately leaves unknown
+        # native/math prototypes on their existing representation paths.
+        owner = _builtins_prototype_owners.get(runtime.object.getPrototypeOf(value))
+        if owner is not runtime.undefined:
+            return owner
+        if runtime.strict_equal(value_type, "object"):
+            value_type = ρσ_python_jstype(value)
     module_namespaces = runtime.reflect.get(
         runtime.global_object, "__sagejs_module_namespaces__"
     )
@@ -9353,6 +9383,9 @@ class SageObject:
 
     def __hash__(self) -> _Int:
         return id(self)
+
+
+_builtins_prototype_owners.set(runtime.reflect.get(SageObject, "prototype"), SageObject)
 
 
 def _builtins_object_new(cls: Any) -> Any:
