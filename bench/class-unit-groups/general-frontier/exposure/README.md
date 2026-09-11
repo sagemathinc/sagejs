@@ -60,6 +60,10 @@ tracked/neighbor labels; a quarantine entry does **not** certify actual executio
 The pinned local inputs currently yield 6,734 evidence records, 3,315 unique
 source-asserted label strings, 3,428 unique coefficient arrays, and two declared
 invalid records. These are inventory/presentation counts, **not field counts**.
+There are 567 polynomial-only evidence records across all sources. The 365
+degree-2-through-10 maximal-order presentations are only a subset, not the full
+same-field reconciliation pool; all relevant polynomial-only and alternative
+labeled presentations must be reviewed.
 Current general-frontier pilots, inline polynomial constructions, additional
 scratch experiments, and alternative-presentation reconciliation remain review
 work; this manifest does not purport to cover them.
@@ -92,7 +96,10 @@ receipt layouts; the freeze coordinator must explicitly construct this wrapper.
 Matches use exact asserted label strings or exact canonical coefficient arrays.
 Decimal strings remain exact; unsafe JSON numbers, noncanonical decimal forms,
 trailing zero coefficients, degree contradictions, and unsupported schemas are
-rejected. Multiple polynomials sharing a label are retained, not silently
+rejected. Candidates require a nonempty string ID and an actual coefficient
+array even when a label is present. Records supplying both `coefficients` and
+`polynomial` are rejected, even when the two aliases appear to agree.
+Multiple polynomials sharing a label are retained, not silently
 collapsed into one field. Label syntax validation proves no database membership.
 
 Prior-Sage matches set `prior_sage_exposure: true`; otherwise it remains `null`,

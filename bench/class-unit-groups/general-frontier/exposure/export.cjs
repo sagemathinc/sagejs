@@ -58,6 +58,9 @@ function rows(value, name) {
 function normalizeRecord(record, index, options = {}) {
   object(record, "record");
   const invalid = options.invalid === true;
+  requireThat(!(Object.hasOwn(record, "coefficients") && Object.hasOwn(record, "polynomial")), "record has competing coefficients/polynomial aliases");
+  if (Object.hasOwn(record, "coefficients")) requireThat(Array.isArray(record.coefficients), "record coefficients must be an array");
+  if (Object.hasOwn(record, "polynomial")) requireThat(record.polynomial !== null && record.polynomial !== undefined, "record polynomial cannot be null or undefined");
   let poly = options.polynomial ?? record.coefficients ?? record.polynomial;
   if (poly !== undefined && !Array.isArray(poly)) {
     object(poly, "polynomial");
@@ -70,10 +73,10 @@ function normalizeRecord(record, index, options = {}) {
   requireThat(fieldLabel !== null || coeffs !== null, "record lacks a label and polynomial");
   if (coeffs && !invalid) requireThat(coeffs.at(-1) === "1", "valid presentation must be monic");
   if (coeffs && fieldLabel) requireThat(Number(fieldLabel.split(".")[0]) === coeffs.length - 1, "label/polynomial degree mismatch");
-  if (record.degree !== undefined && coeffs) requireThat(record.degree === coeffs.length - 1, "record/polynomial degree mismatch");
   const id = record.id ?? record.label ?? `polynomial:${digest(coeffs)}`;
   requireThat(typeof id === "string" && id.length > 0, "record id must be nonempty text");
   const degree = coeffs ? coeffs.length - 1 : Number(fieldLabel.split(".")[0]);
+  if (record.degree !== undefined) requireThat(record.degree === degree, "record/label-or-polynomial degree mismatch");
   const signature = record.signature ?? (fieldLabel === null ? null :
     [Number(fieldLabel.split(".")[1]), (degree - Number(fieldLabel.split(".")[1])) / 2]);
   if (signature !== null) requireThat(Array.isArray(signature) && signature.length === 2 &&
@@ -227,6 +230,8 @@ function exportInventory(manifest, baseDirectory = process.cwd()) {
     const ids = new Set();
     candidates = rows(input.records, "candidates").map((r, i) => {
       keys(r, ["id", "label", "coefficients"], ["id", "coefficients"], "candidate");
+      requireThat(typeof r.id === "string" && r.id.length > 0, "candidate id must be nonempty text");
+      requireThat(Array.isArray(r.coefficients), "candidate coefficients must be an array");
       requireThat(!ids.has(r.id), "duplicate candidate id");
       ids.add(r.id);
       const normalized = normalizeRecord(r, i);

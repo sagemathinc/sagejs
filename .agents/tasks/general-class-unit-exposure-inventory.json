@@ -56,6 +56,46 @@
       "commit": "a4638a1eb191496c635e1c9a4fc015974fbf021d",
       "workspace_fingerprint": "f4b21c9c8f56b92608d12af35fa60422fce745d6912a11b75cea785d65fffb28",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.444,
+      "started_at": "2026-09-11T08:42:30.859Z",
+      "commit": "d4e10b3d93f95167a44d19329e15e5356cd3b91e",
+      "workspace_fingerprint": "527abd3809052e5020a044be7713b477595b565d774646c22a57fc194e728c1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.59,
+      "started_at": "2026-09-11T08:42:49.248Z",
+      "commit": "d4e10b3d93f95167a44d19329e15e5356cd3b91e",
+      "workspace_fingerprint": "527abd3809052e5020a044be7713b477595b565d774646c22a57fc194e728c1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.466,
+      "started_at": "2026-09-11T08:43:06.893Z",
+      "commit": "d4e10b3d93f95167a44d19329e15e5356cd3b91e",
+      "workspace_fingerprint": "9b3865cd49a95c7ebd106248211c22fbfdb1b0c861fa9ffed025e185af68327b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.566,
+      "started_at": "2026-09-11T08:43:08.025Z",
+      "commit": "d4e10b3d93f95167a44d19329e15e5356cd3b91e",
+      "workspace_fingerprint": "9b3865cd49a95c7ebd106248211c22fbfdb1b0c861fa9ffed025e185af68327b",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

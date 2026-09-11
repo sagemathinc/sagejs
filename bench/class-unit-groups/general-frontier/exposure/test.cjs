@@ -146,6 +146,31 @@ test("source signature and nested coefficient degree contradictions fail", () =>
   assert.throws(() => api.normalizeRecord({ label: "2.2.5.1", signature: [0, 1], coefficients: P }, 0), /signature mismatch/);
   assert.throws(() => api.normalizeRecord({ polynomial: { coefficientOrder: "ascending", coefficients: P, degree: 3 } }, 0), /nested polynomial degree/);
 });
+test("candidates require explicit nonempty IDs and coefficient arrays even with labels", (t) => {
+  const f = fixture(t); f.source("one");
+  for (const id of [null, "", 42]) {
+    f.candidates([{ id, label: "2.2.5.1", coefficients: P }]);
+    assert.throws(f.run, /candidate id/);
+  }
+  for (const coefficients of [null, "-5,0,1", { coefficientOrder: "ascending", coefficients: P }]) {
+    f.candidates([{ id: "a", label: "2.2.5.1", coefficients }]);
+    assert.throws(f.run, /candidate coefficients must be an array/);
+  }
+  f.candidates([{ id: null, label: "2.2.5.1", coefficients: null }]);
+  assert.throws(f.run, /candidate id/);
+});
+test("label-only records cannot contradict their declared degree", () => {
+  assert.throws(() => api.normalizeRecord({ label: "2.2.5.1", degree: 3 }, 0), /degree mismatch/);
+  assert.throws(() => api.normalizeRecord({ label: "2.2.5.1", degree: "2" }, 0), /degree mismatch/);
+  assert.equal(api.normalizeRecord({ label: "2.2.5.1", degree: 2 }, 0).degree, 2);
+});
+test("polynomial aliases cannot silently compete, even if equal", () => {
+  for (const polynomial of [["-2", "0", "1"], P, null]) {
+    assert.throws(() => api.normalizeRecord({ coefficients: P, polynomial }, 0), /competing coefficients\/polynomial aliases/);
+  }
+  assert.throws(() => api.normalizeRecord({ label: "2.2.5.1", coefficients: null }, 0), /coefficients must be an array/);
+  assert.throws(() => api.normalizeRecord({ label: "2.2.5.1", polynomial: null }, 0), /polynomial cannot be null/);
+});
 test("CLI publishes exclusively and never overwrites an inventory", (t) => {
   const f = fixture(t); f.source("one"); f.put("manifest.json", f.manifest);
   const output = path.join(f.root, "out.json");
