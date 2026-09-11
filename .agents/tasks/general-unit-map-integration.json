@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-unit-map-integration",
+  "title": "General Unit Map Integration",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate authenticated unit-coordinate maps with explicit global-arithmetic ownership, strict typing, resource evidence and unchanged safety gates",
+  "base_commit": "b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+  "claims": [
+    "architecture/package-graph.json",
+    "pyrightconfig.json",
+    "docs/general-unit-map-integration-review.md",
+    "scripts/audit-cowasm-dependency.cjs",
+    "test/retired-dependency-provenance.cjs"
+  ],
+  "dependencies": [
+    "general-unit-coordinate-map"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Focused exact unit-coordinate and terminal-context regressions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
