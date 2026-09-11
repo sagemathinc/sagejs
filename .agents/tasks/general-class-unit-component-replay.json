@@ -1,0 +1,123 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-component-replay",
+  "title": "General Class Unit Component Replay",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Replay strictly bounded detached exact class/unit components in a fresh field while explicitly withholding terminal completeness and map authority",
+  "base_commit": "b1554f9efd6f07f1904ba75eaeb518f30da9a0af",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_replay.py",
+    "test/general-class-unit-detached-replay.cjs",
+    "docs/number-field-class-unit-replay.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Rehashed mathematical mutation rejection and exposed exact class-unit fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.037,
+      "started_at": "2026-09-11T12:26:39.824Z",
+      "commit": "b1554f9efd6f07f1904ba75eaeb518f30da9a0af",
+      "workspace_fingerprint": "8bcddb793cf4e8f50384ced88383ab4406fffb298dde5bac13d9520ad37e639f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1018.25,
+      "started_at": "2026-09-11T12:31:06.373Z",
+      "commit": "2436b080fbbd478888f87c6e0cef5baa80beb094",
+      "workspace_fingerprint": "f62ce8dee5d2014315f0ed0ec4826adbe09fca87db64c7dc918d311b4fc44bcd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-detached-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.098,
+      "started_at": "2026-09-11T12:48:14.673Z",
+      "commit": "2436b080fbbd478888f87c6e0cef5baa80beb094",
+      "workspace_fingerprint": "f62ce8dee5d2014315f0ed0ec4826adbe09fca87db64c7dc918d311b4fc44bcd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 59.454,
+      "started_at": "2026-09-11T12:48:35.436Z",
+      "commit": "2436b080fbbd478888f87c6e0cef5baa80beb094",
+      "workspace_fingerprint": "f62ce8dee5d2014315f0ed0ec4826adbe09fca87db64c7dc918d311b4fc44bcd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_replay.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.678,
+      "started_at": "2026-09-11T12:49:35.565Z",
+      "commit": "2436b080fbbd478888f87c6e0cef5baa80beb094",
+      "workspace_fingerprint": "f62ce8dee5d2014315f0ed0ec4826adbe09fca87db64c7dc918d311b4fc44bcd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 528.752,
+      "started_at": "2026-09-11T12:49:37.936Z",
+      "commit": "2436b080fbbd478888f87c6e0cef5baa80beb094",
+      "workspace_fingerprint": "f62ce8dee5d2014315f0ed0ec4826adbe09fca87db64c7dc918d311b4fc44bcd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.449,
+      "started_at": "2026-09-11T12:58:27.367Z",
+      "commit": "2436b080fbbd478888f87c6e0cef5baa80beb094",
+      "workspace_fingerprint": "f62ce8dee5d2014315f0ed0ec4826adbe09fca87db64c7dc918d311b4fc44bcd",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Active draft source 2436b080f: bounded portable component export and fresh exact replay with no completeness or map authority. Current-checkpoint focused CPython/generated-JS tests, registered strict checks, direct module Pyright, native suite and docs pass. Independent source review found no remaining blocker within these limited claims. test:changed retains the expected package-ownership cap failure.",
+    "risks": [
+      "Always component_only=true and complete=false: class generation, analytic index and unit-lattice completeness remain pending. Source proof status is unverified provenance.",
+      "Arithmetic preflight limits are not wall-clock or RSS guarantees; maximal order is recomputed.",
+      "Integration must review existing global-package ownership and source allowance, strict registration and optimizer census; this lane changes no budgets or registry.",
+      "An independently reproduced pre-existing generic BF unconditional-proof-label defect requires a separate correction. This component report does not grant or propagate that authority.",
+      "Required native validation began with identical uncommitted source and recorded the checkpoint at completion; earlier dirty strict receipt remains unchanged. Fresh checkpoint focused/strict/docs receipts are retained."
+    ],
+    "next_steps": [
+      "Integrate and qualify separately from the first unit-coordinate PR; remain active/draft until shared gates pass.",
+      "Preserve the failed test:changed receipt (algorithms source 1240820 > 1200000) and requalify after explicit package registration.",
+      "Do not claim full detached terminal replay, M1 exit or campaign performance."
+    ]
+  }
+}
