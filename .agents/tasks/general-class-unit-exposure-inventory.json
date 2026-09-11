@@ -167,15 +167,36 @@
       "commit": "25ff5c945a51db91c8f3bed75d81d2070390533f",
       "workspace_fingerprint": "c068fde21e55de0e377a6e93ddd959d08fdb661836db550083b3bfd77db6e8aa",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.44,
+      "started_at": "2026-09-11T09:49:34.451Z",
+      "commit": "ecfd8548974d84778200554a04e557b6dfdcdd6e",
+      "workspace_fingerprint": "45adb2fcb100d7e66f1d919c2fcce73572e17c27b785e16e8e0b0156061b7a33",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.458,
+      "started_at": "2026-09-11T09:51:06.907Z",
+      "commit": "ecfd8548974d84778200554a04e557b6dfdcdd6e",
+      "workspace_fingerprint": "45adb2fcb100d7e66f1d919c2fcce73572e17c27b785e16e8e0b0156061b7a33",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Export a deterministic 12-source exposure inventory and auditable conservative reconciliation against an explicit v2 candidate pool. Pin raw sources, join agreeing recorded oracle metadata, retain exact and possible-same-field quarantine reasons, and keep coverage/holdout approval unknown. No CAS, network, opt, or runtime implementation changes.",
+    "summary": "Add a finite hash-pinned source coverage supplement: exact BigInt Sylvester bounds exclude 15 reviewed small presentations from the current pool; a pinned fixture discriminant excludes one quintic; five quadratic presentations enter historical-quarantine via the unchanged exporter/reconciler. Real replay preserves the five separate prior-Sage diagnostics and gives 44 quarantined / 4392 remaining. All 49 focused tests pass. No CAS, network, opt, or runtime implementation changes.",
     "risks": [
       "Historical coverage is incomplete until reviewed; labels are source assertions rather than independently verified database identities.",
       "Alternative presentations require later exact isomorphism reconciliation. No distinct-field count or true holdout eligibility is emitted.",
       "The local manifest has explicit retained scratch paths and fails if a source is unavailable or changed; it is not a portable bundled dataset.",
-      "Broad build-dependent validation was not run in this fresh no-build lane; the contract remains active rather than review."
+      "pnpm test:changed selected the broad origin/main diff, passed merge:check, and began a local build; its exact build and launcher processes were terminated to preserve the bounded lane. Broad validation is interrupted, not passed; the contract remains active rather than review.",
+      "Source coverage is explicitly limited to the reviewed source-policy presentations; generic override invocation history remains unresolved."
     ],
     "next_steps": [
       "Coordinator reviews and cherry-picks; add the exact exposure-inventory task contract to the reviewed build-input partition.",
