@@ -82,6 +82,74 @@ raises(AttributeError, object.__setattr__, readonly, "value", 1)
 assert readonly.value == 5 and readonly.__dict__["value"] == 99
 
 
+class MutableProperty:
+    @property
+    def value(self):
+        return 11
+
+    @value.deleter
+    def value(self):
+        self.deleted = True
+
+
+class InheritedProperty(MutableProperty):
+    pass
+
+
+mutable = MutableProperty()
+child = InheritedProperty()
+saved = MutableProperty.value
+assert InheritedProperty.value is saved
+mutable.__dict__["value"] = 12
+child.__dict__["value"] = 14
+assert mutable.value == child.value == 11
+del MutableProperty.value
+assert not hasattr(MutableProperty, "value")
+assert not hasattr(InheritedProperty, "value")
+assert mutable.value == 12 and child.value == 14
+mutable.value = 13
+assert mutable.__dict__["value"] == 13
+del mutable.value
+assert "value" not in mutable.__dict__ and not hasattr(mutable, "deleted")
+assert saved.__get__(mutable, MutableProperty) == 11
+saved.__delete__(mutable)
+assert mutable.deleted
+MutableProperty.value = saved
+assert MutableProperty.value is saved and InheritedProperty.value is saved
+assert mutable.value == child.value == 11
+MutableProperty.value = 17
+assert MutableProperty.value == mutable.value == 17
+assert child.value == 14
+
+
+class DeleterBase:
+    @property
+    def field(self):
+        return 1
+
+    @field.deleter
+    def field(self):
+        self.deleted = True
+
+
+class DeleterChild(DeleterBase):
+    pass
+
+
+DeleterChild.field = 2
+overridden = DeleterChild()
+overridden.field = 3
+del overridden.field
+assert overridden.field == 2 and not hasattr(overridden, "deleted")
+overridden.field = 4
+object.__delattr__(overridden, "field")
+assert overridden.field == 2 and not hasattr(overridden, "deleted")
+InheritedProperty.value = saved
+assert InheritedProperty.value is saved and child.value == 11
+del InheritedProperty.value
+assert child.value == 14
+
+
 class OptionalGetter:
     @property
     def value(self, fallback=12):

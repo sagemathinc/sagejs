@@ -5721,7 +5721,17 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
             member, "__set__"
         ) or _builtins_member_is_function(member, "__delete__"):
             _builtins_data_descriptor_names.add(name)
-        runtime.reflect.set(value.prototype, name, prototype_member)
+        runtime.object.defineProperty(
+            value.prototype,
+            name,
+            {
+                "value": prototype_member,
+                "writable": True,
+                "configurable": True,
+                "enumerable": True,
+            },
+        )
+        runtime.reflect.deleteProperty(value.prototype, "ρσ_property_deleter_" + name)
         if _builtins_member_is_function(member, "__set_name__"):
             _builtins_call_member(member, "__set_name__", [value, name])
     if _builtins_store_instance_attribute(value, name, member):
@@ -6237,6 +6247,18 @@ def ρσ_exec(
     return None
 
 
+def _builtins_native_property_deleter(value: Any, name: _Str) -> Any:
+    resolution = _builtins_class_attribute_resolution(
+        _builtins_attribute_owner(value), name
+    )
+    if (
+        resolution is not runtime.undefined
+        and resolution[2] == _BUILTINS_DESCRIPTOR_NATIVE_GETTER
+    ):
+        return _builtins_get_member(value, "ρσ_property_deleter_" + name)
+    return runtime.undefined
+
+
 def ρσ_delattr(value: Any, name: _Str) -> None:
     global _builtins_descriptor_epoch
     if not runtime.strict_equal(runtime.jstype(name), "string"):
@@ -6298,13 +6320,14 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
             runtime.reflect.deleteProperty(value, name)
         if prototype_has_own:
             runtime.reflect.deleteProperty(prototype, name)
+            runtime.reflect.deleteProperty(prototype, "ρσ_property_deleter_" + name)
         _builtins_descriptor_epoch += 1
         return
     if not runtime.strict_equal(
         runtime.jstype(value), "function"
     ) and _builtins_member_is_function(value, "__delattr__"):
         return _builtins_call_member(value, "__delattr__", [name])
-    property_deleter = _builtins_get_member(value, "ρσ_property_deleter_" + name)
+    property_deleter = _builtins_native_property_deleter(value, name)
     if runtime.strict_equal(runtime.jstype(property_deleter), "function"):
         runtime.reflect.apply(property_deleter, value, [])
         return
@@ -9433,7 +9456,7 @@ def _builtins_object_setattr(
 def _builtins_object_delattr(self: Any, name: _Str) -> None:
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
-    property_deleter = _builtins_get_member(self, "ρσ_property_deleter_" + name)
+    property_deleter = _builtins_native_property_deleter(self, name)
     if runtime.strict_equal(runtime.jstype(property_deleter), "function"):
         runtime.reflect.apply(property_deleter, self, [])
         return
