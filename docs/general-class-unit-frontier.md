@@ -408,3 +408,217 @@ many cases satisfy the faster-reference stratum. The next predeclared 72-field
 PARI batch is running; additional acquisition must target genuinely harder
 reference strata if repeated sampling of the current windows remains inadequate.
 The required 120 one-second and 40 ten-second panel counts are not lowered.
+
+Budget reconciliation pending the current lock release: retained acquisition
+receipts contain 68 v1 and 112 v2 database-window attempts. Charge their full
+30-second client ceilings (5,400 seconds), plus a conservative 600-second
+allowance for bounded source metadata probes, as an explicit additional
+6,000-second discovery allowance. This is a conservative operational proxy,
+not a measurement of CPU consumed by the shared database server. It is separate
+from the earlier local-reference allowances; do not mutate the live timing
+ledger while its coordinator owns a pending reservation.
+
+The next explicit cap-extension batch contains eight PARI and five Hecke
+requests: each timed out at 60 seconds while the other engine completed in
+at least ten worker seconds. Retry only that timed-out side at the already
+authorized 600-second coverage cap, still with 4 GiB and one CPU. The fixed
+selector admits at most 32 requests, rejects implicit repeated-sample selection,
+and never selects from Sage.js results. This 13-request batch reserves at most
+7,800 request-wall seconds plus startup/warmups. Original censored results remain
+immutable; a successful retry is additional evidence, not an erased failure.
+
+The source audit has also identified five additional small quadratic candidates
+requiring quarantine, including an indirect number-field order computation that
+a constructor-only scan would miss. Their pinned-source supplement is being
+implemented; the earlier 39-exclusion result must not be treated as final
+eligibility approval. The hard-window acquisition work separately targets eight
+explicit higher-discriminant windows, not silent changes to the v2 exports.
+
+The 72-field PARI expansion completed with 62 successes and ten timeouts;
+eight successful worker requests exceeded ten seconds. These are not yet
+matched counts. Persistent Hecke screening of the 28-field rank-two supplement
+is next, prioritizing the bridge rather than only higher-degree expensive cases.
+After lock release, the explicit 6,000-second acquisition allowance was applied
+once: the ledger stood at 14,825.670 of 432,000 seconds before that Hecke run.
+The checked-in adjustment helper refuses pending reservations and duplicate
+charges.
+
+Independent review found and repaired two fail-closed gaps in cap-rescue
+admission: equal but invalid measurement controls are no longer accepted, and
+both source runs must explicitly declare one sample. Every actual selected
+receipt already satisfied the required controls. The revised selector requires
+conditional GRH, the persistent fresh-field boundary, 4 GiB, zero swap,
+CPU affinity two, and matching hosts independently of completion status.
+
+The finite source-coverage supplement is integrated and its exact
+Sylvester–Hadamard bounds independently reviewed. It adds five conservative
+quadratic quarantines, giving 44 exclusions and 4,392 remaining candidates.
+Remaining TEST-family dispositions and preservation of the original source
+inventory are still under review; this is not a holdout-eligibility approval.
+
+The discovery-readiness projection now revalidates raw paired runs and applies
+the performance panel's forty-per-degree ceiling before reporting necessary
+cost-stratum shortfalls. The first six plus 78 pairs still leave at least 66
+one-second and 35 ten-second slots unfilled. Repeated attempts require explicit
+reconciliation; generated-family identities are not silently counted as
+distinct fields. Passing these cost counts alone will not establish corpus
+eligibility or the development/holdout split.
+
+### M1 implementation boundary prepared during reference screening
+
+A focused read-only review confirms that unit coordinates should reuse the
+terminal context rather than start another discovery or saturation engine.
+The proposed `UnitGroupComputation.coordinate_map()` returns a map whose
+`gens()` includes torsion first, `log(u)` returns torsion/free integer
+coordinates, `factored_exp(coords)` reconstructs compactly, and `exp(coords)`
+explicitly expands. This avoids changing the computation's existing free-only
+generator convention by accident. This API is a proposal, not implemented.
+
+Authentication must bind field, maximal order, ordered basis, torsion,
+completion evidence and proof status through the existing terminal semantic
+snapshot (`class_unit_context._terminal_source_matches`). The current
+`UnitGroupComputation.verify_completion()` alone is not that authority: it can
+call duck-typed evidence and expand generators. Detached map evidence needs
+recognized completion replay under verifier-owned limits, not a caller hook.
+
+For arbitrary input, establish unit membership through its principal ideal,
+then use rigorous weighted logs and an invertible minor to isolate the unique
+integer free coordinates. Authenticated completeness supplies the integrality
+premise; precision alone does not. Existing factored-log workspaces and ball
+determinants provide the initial small-rank implementation. The residual is
+torsion: factorwise real signs suffice when a real embedding exists; otherwise
+use bounded reduction with invertible factors/denominators and distinct images
+of all certified torsion elements. Neither norm one nor syntactic product
+equality proves the needed identity.
+
+Even compact `norm()` or `principal_ideal()` can produce huge integers or ideal
+powers. Bounded arbitrary-input membership and detached replay are therefore
+real implementation obligations, not assumed cheap helper calls. Exhaustion
+must be an explicit incomplete operation, never a false nonunit answer. Tests
+must include rank zero/torsion four and six, ranks two and three, huge signed
+exponents, cancellation between nonunit factors, nonintegral norm-one inputs,
+mutated completion evidence, wrong fields, and precision exhaustion.
+
+Effort checkpoint, 2026-09-11 10:03 UTC: conservatively account for **ten
+aggregate active M0 engineering hours** of the forty-hour allowance. No M1
+mathematical implementation or optimization campaign has started.
+
+### Bounded harder-window acquisition
+
+The eight predeclared windows produced seven successful responses and one empty
+response, selecting 56 records. No retry or altered window followed the empty
+result. The plan pinned all seven previous/current screening input files,
+excluding 346 distinct labels before seeded selection. The output has its own
+`hard-window-v1` identity; it is not a relabeled v2 cell export. Its canonical
+pool digest is `11e48acffc39a9fc2c2020620174625b08eaff7e2aaf560d44344f6d0cbbd970`.
+Matched reference costs and exposure reconciliation remain pending.
+
+Charge a further conservative **300 seconds** at the next timing-lock release:
+eight 30-second query ceilings plus 60 seconds of local bookkeeping. The
+one-shot allowance is implemented but not yet applied while the Hecke supplement
+owns the ledger. It is separate from the earlier 6,000-second allowance.
+
+Readiness reporting now requires an actual validated source-pool binding for
+each counted label, exact coefficients, discriminant and signature; a numeric
+label shape alone does not establish field identity. The earlier report's
+54/5 counts are unchanged after this repair. Its shortfalls describe the
+currently confirmed successful subset only: censored costs are unknown and
+predeclared cap retries may close gaps without acquiring new fields.
+
+The reviewed offline source union reconstructed 4,492 distinct labels with no
+cross-export duplicates. It replays both acquisitions, checks the stored v2
+projection and raw hard-window receipts, and retains explicit provenance for
+each source kind. Canonical union digest:
+`89da73c2eb521bff0335e73aae65d679f5c99aede765e820675f057c530e7efc`.
+Union-aware exposure reconciliation remains in progress; old v2 eligibility
+cannot simply be copied onto these new records.
+
+The persistent Hecke rank-two supplement finished with 13 successes and 15
+60-second timeouts. Ten successful workers exceeded one second. The corresponding
+persistent PARI run is in progress; the earlier differently configured
+fresh-process screen is not substituted for it. After the Hecke run, the
+300-second hard-window allowance was applied exactly once, bringing the ledger
+to 16,615.771 seconds before the new PARI run.
+
+Broad validation at `d4b954c4a` passed `pnpm test:changed --base d654e3d45`:
+merge invariants, an 8m23s full build, all 201 unit-test files, and documentation
+checks. All 41 production kernel families were reused, none rebuilt. The later
+source-union companion has its own seven focused tests and independent review;
+these developer-tool results do not constitute mathematical or performance
+qualification of the still-unmodified shared engine.
+
+### Acquisition closure and matched rank-two supplement
+
+The union-aware exposure review is complete for the retained, enumerated source
+scope: 4,492 candidate labels, 44 quarantined, 4,448 remaining, and no unresolved
+metadata dispositions. All 82 finite source proofs passed. This is not a proof
+about arbitrary deleted experiments or unrecorded inputs, and does not itself
+approve holdout eligibility. Coverage approval and freeze flags remain false.
+Readiness can now consume the authenticated candidate manifest directly,
+reconstructing both acquisitions and retaining their distinct identities.
+Independent review found no blocking issue in that adapter.
+
+The persistent 28-field supplement is now paired: 13 successful pairs, 15
+censored cases, and no disagreement in the checked exact summaries. Five
+successful pairs exceed one second in the faster reference; none exceeds ten
+seconds. These are discovery measurements, not independently replayed results
+or a proof of distinctness of the generated fields. The conservative ledger
+stands at 17,458.648 seconds of 432,000 before the second 72-field Hecke run.
+The 20-expensive-field bridge requirement remains unmet.
+
+### Candidate mechanism: reject impossible norms before ideal factorization
+
+Forensics now uses the actual benchmarked upstream versions, rather than a
+different locally installed PARI version:
+
+- PARI 2.15.4, upstream commit `e87796ac3acc76eab7a459c39c271b61a2b16fc3`.
+  The [official source archive](https://pari.math.u-bordeaux.fr/pub/pari/OLD/2.15/pari-2.15.4.tar.gz)
+  has SHA-256 `c3545bfee0c6dfb40b77fb4bbabaf999d82e60069b9f6d28bcb6cf004c8c5c0f`;
+  `src/basemath/buch2.c` has SHA-256
+  `29d1018d4d1d98f95cd94511e255a518ea81b2f55faa196f6732d659ad298674`.
+  Lines 820–843 implement `smooth_norm`; `can_factor`, lines 861–873,
+  invokes it before the prime-ideal valuation work. Its documented premise is
+  a nonzero integral primitive ideal. This is a factor-base smoothness path,
+  not evidence that PARI uses our proposed one-large-prime mechanism. This
+  pins upstream source, not every possible distribution patch to the binary.
+- Hecke 0.40.0, commit `66af28e52682620edb302931fce3f9ac87fc4eb7`.
+  [Rel_add.jl](https://github.com/thofma/Hecke.jl/blob/66af28e52682620edb302931fce3f9ac87fc4eb7/src/NumFieldOrd/NfOrd/Clgp/Rel_add.jl)
+  lines 52–91 checks rational norm support before `_factor!`.
+  [FacBase_Euc.jl](https://github.com/thofma/Hecke.jl/blob/66af28e52682620edb302931fce3f9ac87fc4eb7/src/NumFieldOrd/NfOrd/Clgp/FacBase_Euc.jl)
+  lines 56–67 strips that support by repeated gcd and exact division. Its
+  particular large-prime branch also requires rational primality and excludes
+  index divisors; those restrictions must not be imported into a different
+  acceptance contract without justification.
+
+Here is a necessary condition for the existing Sage.js one-large-prime
+contract. Let the nonzero fractional ideal have an accepted decomposition
+
+$$
+J=Q\prod_{P\in\mathcal F}P^{e_P},\qquad N(Q)\leq L,
+$$
+
+where $Q$ is the single extra prime ideal, with exponent one. Let $S$ contain
+all rational primes below the factor-base ideals $\mathcal F$. Write the
+positive ideal norm in lowest terms as $N(J)=A/B$, and remove all prime factors
+in $S$ from $A$, leaving $R$. If $q$ lies below $Q$, unique ideal factorization
+and multiplicativity of the norm imply:
+
+$$
+R=\begin{cases}N(Q)=q^f,&q\notin S,\\1,&q\in S.\end{cases}
+$$
+
+Also, $B$ has no prime factor outside $S$. Consequently $R>L$, or an unsupported
+denominator, proves that the candidate cannot satisfy this contract. This
+argument permits arbitrary signed $e_P$; it does not assume integrality.
+It is only a rejection test. Passing it does not establish ideal smoothness,
+splitting type, or the existence of the required decomposition. In particular,
+do not require $R$ to be a rational prime: $q^f$ with $f>1$ is allowed.
+
+Implementation must use complete support, a canonical nonzero positive norm,
+and explicit handling of zero or unavailable data. The present concrete ideal
+factorization already rejects nonintegral ideals, so the fractional statement
+does not imply a new accepted input class or a measured speedup there. On
+rejected integral candidates, the expected avoided work is integer norm
+factorization, local splitting, valuations, and reconstruction. Principal ideal
+construction and quotient/norm computation still cost time. No implementation
+or speed claim for this mechanism has been made yet.

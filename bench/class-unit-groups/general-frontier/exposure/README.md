@@ -70,6 +70,144 @@ work; this manifest does not purport to cover them.
 
 ## Categories and candidate matching
 
+### Finite source-coverage supplement
+
+`source-coverage.cjs` verifies the reviewed, hash-pinned assertions in
+`source-coverage-policy.json` without running Sage.js or an external CAS. This
+is a finite supplement covering the listed BENCH gaps and five independently
+reviewed TEST quadratic presentations, not a claim that the entire source tree
+or every historical invocation has been audited. Inline polynomial extraction
+is a reviewed assertion bound to the exact source hash, not a generic parser.
+
+For a monic degree-`n` integral polynomial with ascending coefficients `c`, the
+Sylvester matrix has `n-1` shifted rows of `f` and `n` shifted rows of `f'`.
+Hadamard's inequality therefore gives the exact integer bound
+`disc(f)^2 <= (sum(c_i^2))^(n-1) * (sum(i^2*c_i^2))^n`.
+The field discriminant divides the equation discriminant by an index square.
+For the 15 listed small presentations, no same-degree candidate has squared
+field discriminant below this bound. This proves current-pool non-overlap,
+not irreducibility, signature, isomorphism, or a field's exact discriminant.
+The rational microbenchmark `x^3+x/2+1` is represented by `y^3+2*y+8` under
+`y=2*x`. The remaining Ford--Letard quintic is checked against its pinned
+fixture case's exact coefficients and source-asserted field discriminant
+`7291332`; no current-pool absolute-discriminant bucket matches it.
+
+Only the five new quadratic presentations are added to the inventory, using
+the existing explicit-presentations adapter and `historical-quarantine`
+category. The 16 pool-excluded presentations remain in the separate coverage
+receipt, which is bound to that exact pool. This is not an assertion that all
+tests actually ran. An optional existing five-diagnostic prior-Sage wrapper
+stays separate and unchanged. Generic corpus/fixture override history remains
+explicitly unresolved; reference screening is not promoted to Sage exposure.
+
+Run with explicit existing inputs and a **new** output directory:
+
+```sh
+node bench/class-unit-groups/general-frontier/exposure/source-coverage.cjs \
+  --root /path/to/reviewed/worktree \
+  --policy bench/class-unit-groups/general-frontier/exposure/source-coverage-policy.json \
+  --sources bench/class-unit-groups/general-frontier/exposure/historical-sources.local.json \
+  --reconciliation /path/to/actual-sage-reconciliation-inputs-v1.json \
+  --output-dir /path/to/new/source-coverage-supplement-v1
+```
+
+The output contains the coverage proof receipt, five-presentation wrapper,
+new source manifest, regenerated inventory, new reconciliation input manifest,
+and reconciliation output. Existing exports are never overwritten. A failed
+run may leave an explicitly incomplete new directory; rerun into another new
+directory. Every successful result retains `source_coverage_approved: false`
+and `holdout_eligible: null` for unmatched candidates.
+
+Focused verification:
+
+```sh
+node --test bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs
+```
+
+#### Version 2 enumerated TEST dispositions
+
+Use `--policy .../source-coverage-policy-v2.json` and a new `...-v2` output
+directory for the expanded audit. The v1 policy and existing v1 exports remain
+unchanged. Version 2 pins the independently reviewed 65-file lexical TEST
+checklist (canonical digest
+`f670f2247411aeb94b7ee281a86418723483814c68541b40991a6343a6e833a4`).
+This checklist names the inspected paths; it is not an exhaustive mapping of
+every indirect constructor or input family in those files. The separately
+enumerated presentations and families specify the actual closure claims.
+
+The expansion includes small TEST polynomials, the finite cyclotomic orders,
+the rational quartic and cubic presentations, three large translations, three
+scaled presentations of `Q(sqrt(2))`, two source-asserted global cubic
+discriminants outside the pool, and the exact 30 prospective Round4 LCG samples.
+The LCG keeps all samples, including reducible/repeated candidates that the
+original test would skip; it does not infer that every sample ran. Quadratic
+non-overlap checks the necessary condition `disc(f)/D_candidate` is a positive
+integer square, with sign retained. Nonnegative square quadratic discriminants
+are explicitly reducible over `QQ`. Higher-degree samples use the exact bound.
+
+Translations verify every integer coefficient of `base(x-shift)`. Rational
+generator changes verify `input_i * scale_num^(n-i) ==
+base_i * input_n * scale_den^(n-i)` for every coefficient; a common nonzero
+rational factor in the defining polynomial cancels. The resulting base
+presentation supplies the bound/index test, not the enormous translated
+equation discriminant. Out-of-degree cyclotomic/degree-16 controls have an
+explicit source-asserted-degree disposition. The two large cubic values bind
+the reviewed global maximal-order assertion's exact literal fragments in the
+pinned source; local order discriminants are not used as field metadata.
+
+Before writing any new directory, the compiler re-exports the supplied
+historical manifest and requires its exact evidence identities/categories to
+equal the pinned original inventory. This permits relocated source paths but
+rejects a valid smaller manifest that silently drops historical exposures.
+The original reconciliation inputs, including any separate actual-Sage
+diagnostics wrapper, are validated first and remain separately bound.
+
+#### Validated acquisition unions
+
+The original reconciliation manifest v1 accepts only an actual candidate-pool
+v2 export. A union is never relabeled or assigned a fictitious v2 policy/pool
+digest. Use explicit manifest schema
+`sagejs.general-frontier/exposure-reconciliation-inputs-v2` instead:
+
+```json
+{
+  "schema": "sagejs.general-frontier/exposure-reconciliation-inputs-v2",
+  "candidates": { "path": "source-union-v1.json", "sha256": "<raw union file SHA256>" },
+  "acquisitions": { "v2_directory": "candidates-v2", "hard_directory": "hard-windows-v1" },
+  "inventory": { "path": "inventory.json", "sha256": "<raw inventory SHA256>" },
+  "oracle_fixture": { "path": "oracles.json", "sha256": "<raw fixture SHA256>" }
+}
+```
+
+The optional `additional_exposure` descriptor has the same meaning as in v1;
+the five actual Sage diagnostic presentations remain separate from reference
+screening. Every path is resolved relative to the manifest containing it.
+The adapter checks the union byte hash, independently reconstructs both
+acquisition directories with the reviewed `source-union.cjs` producer, then
+requires exact canonical equality with the pinned union. A self-consistent
+`union_sha256` does not grant membership. Changed raw receipts, invented
+provenance, stale snapshots, or mutated authenticated in-memory inputs fail
+closed. Acquisition errors/pending cells remain visible in the retained union
+identity rather than being hidden as successful acquisition.
+
+For the JS API, `loadCandidateInput(manifest, baseDirectory)` returns the
+reconstructed union for `reconcile` or `compileCoverage`. Bare parsed unions
+are rejected by those consumers. Existing v1 pool APIs remain unchanged.
+Union reconciliation uses envelope/result v2 with `candidate_source` containing
+the real union digest, record digest, producer hashes, and complete acquisition
+identities. Each candidate retains its union record hash and all contributing
+source receipt/raw-row/dispatch hashes. Existing acquisition-level false
+eligibility is preserved as an explicit conservative historical-quarantine
+reason even when not rediscovered in the inventory.
+
+Run the same source-coverage CLI with this manifest and a **new** output
+directory to recompute all 82 v2 finite dispositions against the expanded
+candidate universe. Its union-aware coverage receipt has schema v3 and the
+union identity, not `pool_sha256`. The historical evidence equality check still
+runs before append; previous inventory and coverage files are not overwritten.
+The resulting inventory/reconciliation remain non-final: coverage approval is
+false and candidate holdout eligibility is exclusively false/null.
+
 Categories are source-owner assertions preserved per evidence record:
 
 - `prior-sage-exposure`: prior Sage.js evaluation/development exposure.
