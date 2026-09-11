@@ -83,11 +83,36 @@ export class PythonModuleResolver {
 
   lowerMain(parsed: PythonSyntaxTree): any {
     const moduleId = this.options.module_id ?? "__main__";
-    return this.lowerModule(parsed, {
+    const implicitDependencies: string[] = [];
+    if (moduleId === "__main__" && !this.options.runtime_imports &&
+        !this.options.compiler_bootstrap && !this.options.for_linting) {
+      // Static output has no host loader. Include the implementation closure
+      // of implicit core builtins through the ordinary authoritative resolver,
+      // without injecting Python names or changing runtime-import sessions.
+      const { CORE_STANDALONE_MODULES } = require("../standalone-library.cjs");
+      const existingModules = new Set(Object.keys(this.importedModules));
+      for (const dependency of CORE_STANDALONE_MODULES) {
+        this.ensureImported(dependency, parsed.tree.rootNode, this.options);
+      }
+      for (const [name, module] of Object.entries(this.importedModules)) {
+        if (!existingModules.has(name) && !module.dynamic) {
+          module.standalone_lazy = true;
+          implicitDependencies.push(name);
+        }
+      }
+    }
+    const ast = this.lowerModule(parsed, {
       ...this.options,
       module_id: moduleId,
       filename: this.options.filename ?? "<input>",
     });
+    for (const dependency of implicitDependencies) {
+      if (!ast.imported_module_ids.includes(dependency)) {
+        ast.imported_module_ids.push(dependency);
+      }
+      Object.assign(ast.baselib, this.importedModules[dependency].baselib);
+    }
+    return ast;
   }
 
   private lowerModule(
