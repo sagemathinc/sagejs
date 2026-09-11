@@ -408,3 +408,12 @@ many cases satisfy the faster-reference stratum. The next predeclared 72-field
 PARI batch is running; additional acquisition must target genuinely harder
 reference strata if repeated sampling of the current windows remains inadequate.
 The required 120 one-second and 40 ten-second panel counts are not lowered.
+
+Budget reconciliation pending the current lock release: retained acquisition
+receipts contain 68 v1 and 112 v2 database-window attempts. Charge their full
+30-second client ceilings (5,400 seconds), plus a conservative 600-second
+allowance for bounded source metadata probes, as an explicit additional
+6,000-second discovery allowance. This is a conservative operational proxy,
+not a measurement of CPU consumed by the shared database server. It is separate
+from the earlier local-reference allowances; do not mutate the live timing
+ledger while its coordinator owns a pending reservation.
