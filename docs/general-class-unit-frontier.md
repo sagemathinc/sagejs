@@ -298,7 +298,29 @@ transfer inventory, and test with an empty `XDG_CACHE_HOME`. Portable JavaScript
 templates still do not prove that V8/JIT work is absent. The failed first-stage
 receipts remain part of the preparation record.
 
-The three additional local diagnostics (30 s relocated, 10 s native-required,
-10 s rebuilt-root caps) require a further conservative 100-second ledger charge
+The four additional local diagnostics (30 s relocated, 10 s native-required,
+10 s rebuilt-root, 30 s portable-stage caps) require a further conservative 150-second ledger charge
 after the in-flight reference batch releases its pending reservation. Do not
 edit the coordinator's live ledger underneath a running batch.
+
+The portable stage completed: 422 lazy modules, eight dynamic programs and 44
+multiprocessing modules were prepared in 298 seconds (compilation, not benchmark
+CPU). All lazy resource hashes and the task compiler hash were checked. A fresh
+empty-cache real-cubic diagnostic completed in 2.556 seconds inside the context
+request, 3.681 seconds process-to-result. This is a preparation smoke, not a warm
+competitive measurement. The supplemental inventory has 24,868 entries and
+1,159,849,217 bytes. A post-seal Git index refresh changed exactly seven index
+files; preserve the failed original manifest and explicitly reseal after review.
+Verification now disables optional Git locks to avoid refreshing those indexes.
+
+The 78-field PARI expansion finished with 69 completions and nine 60-second
+timeouts. Sixty completed requests exceeded one second and ten exceeded ten
+seconds. All 78 raw receipts normalize with no missing requests. These are
+single-sample discovery costs; matched Hecke costs are still required before
+claiming membership in faster-reference timing strata. The coordinator ledger
+stood at 5,293.054 conservatively charged seconds with no pending reservation.
+
+Persistent review now binds request IDs, 100/200-bit precision, whole-batch
+iteration counts and individual sample ordinals. Missing planned samples remain
+explicit, and batch duration is never silently presented as per-iteration time.
+The mathematical engine remains unchanged; no optimization campaign is consumed.

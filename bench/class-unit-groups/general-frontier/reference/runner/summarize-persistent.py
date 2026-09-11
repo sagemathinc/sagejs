@@ -21,7 +21,26 @@ def normalize(receipt):
     engine = receipt["engine"]
     if engine not in ("pari", "hecke"):
         raise ValueError("unknown engine")
-    status = persistent.validate_answer(engine, receipt, label, len(coefficients) - 1)
+    bits = receipt.get("bits", 200)
+    iterations = receipt.get("iterations", 1)
+    sample = receipt.get("sample", 1)
+    if (
+        type(bits) is not int
+        or bits not in (100, 200)
+        or type(iterations) is not int
+        or not 1 <= iterations <= 10000
+        or type(sample) is not int
+        or not 1 <= sample <= 5
+    ):
+        raise ValueError("invalid request parameters")
+    request_id = receipt.get("request_id", label)
+    if request_id != (
+        f"sample-{sample:04}-{label}" if "request_id" in receipt else label
+    ):
+        raise ValueError("request identity disagrees with sample")
+    status = persistent.validate_answer(
+        engine, receipt, request_id, len(coefficients) - 1, bits, iterations
+    )
     row = {
         "label": label,
         "coefficients": coefficients,
@@ -29,6 +48,11 @@ def normalize(receipt):
         "original_status": receipt["status"],
         "engine": engine,
         "wall_seconds": receipt["wall_seconds"],
+        "bits": bits,
+        "iterations": iterations,
+        "sample": sample,
+        "request_id": request_id,
+        "timing_boundary": "whole-fresh-field-batch",
     }
     if status != "ok":
         return row
@@ -88,6 +112,19 @@ def normalize(receipt):
 def summarize(directory):
     run_bytes = (directory / "run.json").read_bytes()
     run = json.loads(run_bytes)
+    bits, iterations, samples = (
+        run.get(k, default)
+        for k, default in (("bits", 200), ("iterations", 1), ("samples", 1))
+    )
+    if (
+        type(bits) is not int
+        or bits not in (100, 200)
+        or type(iterations) is not int
+        or not 1 <= iterations <= 10000
+        or type(samples) is not int
+        or not 1 <= samples <= 5
+    ):
+        raise ValueError("invalid registered request parameters")
     expected = dict(persistent.shared.validate_case(r) for r in run["records"])
     if len(expected) != len(run["records"]):
         raise ValueError("duplicate registered labels")
@@ -112,11 +149,15 @@ def summarize(directory):
             continue
         row = normalize(receipt)
         if (
-            row["label"] in observed
+            (row["label"], row["sample"]) in observed
             or expected.get(row["label"]) != row["coefficients"]
+            or row["bits"] != bits
+            or row["iterations"] != iterations
+            or row["sample"] > samples
+            or receipt.get("declared_samples", 1) != samples
         ):
             raise ValueError("unexpected, changed or duplicate sample")
-        observed.add(row["label"])
+        observed.add((row["label"], row["sample"]))
         row["receipt_sha256"] = hashlib.sha256(raw).hexdigest()
         rows.append(row)
     return {
@@ -130,7 +171,20 @@ def summarize(directory):
             Path(persistent.__file__).read_bytes()
         ).hexdigest(),
         "stages": stages,
-        "missing_labels": sorted(set(expected) - observed),
+        "bits": bits,
+        "iterations": iterations,
+        "declared_samples": samples,
+        "missing_labels": sorted(
+            label
+            for label in expected
+            if any((label, s) not in observed for s in range(1, samples + 1))
+        ),
+        "missing_samples": [
+            {"label": label, "sample": s}
+            for s in range(1, samples + 1)
+            for label in sorted(expected)
+            if (label, s) not in observed
+        ],
         "rows": rows,
     }
 
