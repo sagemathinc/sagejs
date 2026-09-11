@@ -1,0 +1,105 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-lazy-exception-stack",
+  "title": "Python Lazy Exception Stack",
+  "lane": "compiler-runtime",
+  "status": "review",
+  "owner": "user",
+  "objective": "Defer JavaScript exception stack formatting until diagnostics or introspection consumes it without losing captured frames",
+  "base_commit": "3dde354742539c063e9555009e98571dce01921c",
+  "claims": [
+    ".agents/lanes.json",
+    "src/baselib/errors.py",
+    "test/exception-repr.cjs",
+    "test/lazy-exception-stack.cjs",
+    "test/fixtures/lazy-exception-stack.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test --test-name-pattern=stacks format|surfaced exceptions|exception repr|parser|compiler|timing|runtime source|cause/context|branching chains|attaching|worker serialization test/lazy-exception-stack.cjs test/exception-repr.cjs test/python-diagnostics.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.245,
+      "started_at": "2026-09-11T07:33:48.759Z",
+      "commit": "c630670cbf431e04a95ebaf3ef1016a7ef846857",
+      "workspace_fingerprint": "218582f4b87e58509645994c7754f385db4df4e011e594e576af68a04ef9c836",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.461,
+      "started_at": "2026-09-11T07:34:00.891Z",
+      "commit": "c630670cbf431e04a95ebaf3ef1016a7ef846857",
+      "workspace_fingerprint": "218582f4b87e58509645994c7754f385db4df4e011e594e576af68a04ef9c836",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/lazy-exception-stack.cjs test/exception-repr.cjs test/python-diagnostics.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.41,
+      "started_at": "2026-09-11T07:35:06.503Z",
+      "commit": "c630670cbf431e04a95ebaf3ef1016a7ef846857",
+      "workspace_fingerprint": "218582f4b87e58509645994c7754f385db4df4e011e594e576af68a04ef9c836",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 test/fixtures/lazy-exception-stack.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.053,
+      "started_at": "2026-09-11T07:35:10.576Z",
+      "commit": "c630670cbf431e04a95ebaf3ef1016a7ef846857",
+      "workspace_fingerprint": "218582f4b87e58509645994c7754f385db4df4e011e594e576af68a04ef9c836",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm dlx node@22.22.2 --test --test-name-pattern=stacks format|surfaced exceptions|exception repr test/lazy-exception-stack.cjs test/exception-repr.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.303,
+      "started_at": "2026-09-11T07:35:11.260Z",
+      "commit": "c630670cbf431e04a95ebaf3ef1016a7ef846857",
+      "workspace_fingerprint": "218582f4b87e58509645994c7754f385db4df4e011e594e576af68a04ef9c836",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Capture native errors eagerly but defer stack formatting through shared accessors and a private WeakMap. Preserve capture-time headers/frames, writable overrides, sealed/frozen observation, subclass stack setters, and surfaced worker diagnostics. Diagnostic baselib rebuild only: selected 15 tests pass on Node 26; selected 6 pass on Node 22.22.2; strict checks pass for 385 modules. The full 17-test command retains two failures from the independently reproduced baseline raise-from cause/suppression bug; no assertion is weakened.",
+    "risks": [
+      "Not integration-qualified: the exact broad oracle is blocked by the separate raise-from prerequisite, and a full combined build/corpus run remains required.",
+      "Adds 2405 raw errors.py source bytes beyond the separate repr prerequisite; the integration source budget must pass without widening thresholds.",
+      "Before first observation the stack is an enumerable/configurable accessor, becoming the prior writable data property on read or assignment. Native error capture is retained; only formatting is deferred.",
+      "End-to-end performance and four-platform qualification remain pending. Local mechanism timing is not an acceptance benchmark."
+    ],
+    "next_steps": [
+      "Integrate repr prerequisite c630670cb and the separately assigned raise-from correction, retaining all exact oracle assertions.",
+      "Retain the integration branch's positional-default helper when merging errors.py.",
+      "Run the full combined build, complete focused suite, original corpus, source budgets, and controlled representative performance campaign before readiness."
+    ]
+  }
+}
