@@ -15,8 +15,6 @@
     "bench/class-unit-groups/general-frontier/corpus/source-union.cjs",
     "bench/class-unit-groups/general-frontier/corpus/source-union.test.cjs",
     "bench/class-unit-groups/general-frontier/corpus/SOURCE-UNION.md",
-    "scripts/build-receipt.cjs",
-    "test/build-input-partition.cjs",
     "bench/class-unit-groups/general-frontier/reference/attempts/"
   ],
   "dependencies": [],
@@ -238,6 +236,26 @@
       "commit": "c114a2b4a1f75c6181f43383591a94d782bb1e08",
       "workspace_fingerprint": "642fc558ebcf1467991aa4aed973e35467362d9041d9827a1b0dd32eb087051e",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/reference/attempts/reconcile.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.378,
+      "started_at": "2026-09-11T12:16:46.821Z",
+      "commit": "ae1d91dc30576606d6c8090bdaf0456cffe2afb3",
+      "workspace_fingerprint": "47d6433997126c680deaaa7732ec8210fe47420189609cd124b81571072023a7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base ae1d91dc3",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 111.238,
+      "started_at": "2026-09-11T12:17:35.260Z",
+      "commit": "ae1d91dc30576606d6c8090bdaf0456cffe2afb3",
+      "workspace_fingerprint": "3d1cece5750a4b50c1c68fbbd60e1a077e43ceacdd933bd6edad3d517edabe86",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -249,7 +267,8 @@
       "Not mathematical qualification or isomorphism deduplication; reference time bands and holdout eligibility remain pending.",
       "Compiler artifact repaired using supported native cache prepare and full build. Original-baseline scoped changed checks (202 unit files), portable checks (187 files) and architecture pass. Earlier failed receipts remain historical; final receipts are refreshed serially to avoid task-manifest write races. No opt access or reference-worker runs.",
       "Historical policy creation time and original machine attestation/budget ledger are external custody obligations; offline content equality cannot authenticate chronology. Effective reviews are marked synthetic and must retain the explicit attempt provenance.",
-      "Urgent README correction distinguishes per-engine executed harness hashes from offline reviewer hashes. Contract reopened for this documentary follow-up; prior broad receipts remain historical and focused reconciliation tests are refreshed. Strict default reconciliation is unchanged."
+      "Urgent README correction distinguishes per-engine executed harness hashes from offline reviewer hashes. Additive mislaunch validator binds exact original policy, wrong-harness raw custody, unchanged five-input selection and full interrupted-reservation charge; it emits a predeclaration envelope only, not a promoted corrected paired report. Strict reconcile.py is unchanged. Focused 22 tests and scoped changed checks (202 unit files) pass; full older contract receipts remain historical, so status stays active.",
+      "Released scripts/build-receipt.cjs and test/build-input-partition.cjs to the integration owner for its separately coordinated exact-contract exclusions."
     ],
     "next_steps": [
       "Coordinator reviews the attempts-only follow-up commit for a separate PR, not expansion of PR 217; cap retries have not yet run.",

@@ -68,7 +68,42 @@ budget reservation/charge history. Any replacement requires a separate,
 pre-execution infrastructure-correction policy naming exactly one fresh attempt
 and retaining the aborted run; it must not edit the original policy, select the
 fastest outcome, or imply that the current reconciler supports this extra attempt
-history. No such exception is implemented here.
+history. No such exception is implemented by `reconcile.py`.
+
+## Separate fixed-incident custody envelope
+
+`mislaunch.py` is an additive validator for this exact incident, not a generic
+retry facility. It pins the original policy hash above, requires the five
+unchanged ordered Hecke inputs, and verifies that the aborted run differs from
+Hecke's expected execution provenance only by using PARI's two harness files.
+It retains every raw receipt hash, including the completed first sample and
+interrupted second sample. Neither can supply eligible timings or invariants.
+The before/after ledger must clear the matching interruption and add the full
+610-second reservation without refunds or unrelated ledger edits. Prior charges
+for completed work remain in the before-ledger; this tool does not independently
+reconstruct their full accounting history.
+
+```sh
+python3 bench/class-unit-groups/general-frontier/reference/attempts/mislaunch.py plan \
+  --policy-directory ORIGINAL_CAP_RESCUE_V2 \
+  --aborted-directory persistent-hecke-cap-rescue-v2-attempt-1 \
+  --ledger-before BEFORE.json --ledger-after AFTER.json --correction NEW.json
+```
+
+Use `check` with the same arguments to verify that an existing correction equals
+the retained evidence. `plan` creates only a new JSON file, never launches a
+worker and never edits either ledger or the original policy. The envelope names
+only `persistent-hecke-cap-rescue-v2-attempt-2`, requiring all five fields again
+under the original modern Hecke provenance at 600 seconds, 200 bits, one sample
+and one iteration. Coordinator approval and evidence that the old process has
+exited must precede that execution; hashes do not authenticate chronology.
+
+The envelope does **not** reconcile or promote the fresh attempt. A future
+additive join must bind that exact named fresh directory, validate it through
+the unchanged strict reconciler against the original inputs/provenance, and
+attach this complete excluded-attempt history. Until then keep this envelope,
+raw aborted directory, both ledgers, and any fresh paired report together; do not
+describe the strict paired report alone as retaining the mislaunch history.
 
 Offline tests: `python3 -m unittest discover -s
 bench/class-unit-groups/general-frontier/reference/attempts -p 'test_*.py'`.
