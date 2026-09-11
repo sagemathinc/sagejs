@@ -4,7 +4,7 @@
   "id": "python-lazy-exception-stack",
   "title": "Python Lazy Exception Stack",
   "lane": "compiler-runtime",
-  "status": "review",
+  "status": "active",
   "owner": "user",
   "objective": "Defer JavaScript exception stack formatting until diagnostics or introspection consumes it without losing captured frames",
   "base_commit": "3dde354742539c063e9555009e98571dce01921c",
