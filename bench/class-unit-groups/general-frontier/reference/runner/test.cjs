@@ -19,6 +19,8 @@ test("cost-screen selection is deterministic, stratified and independent of answ
   assert.deepEqual(chosen.map((r) => r.label), select({ records: [...records].reverse()
     .map((r) => ({ ...r, class_number: "999", sagejs_complete: false })) }).map((r) => r.label));
   assert.equal(new Set(chosen.map((r) => r.cell)).size, 2);
+  assert.equal(select({ records }, 2, 12).length, 2);
+  assert.throws(() => select({ records }, 2, 13));
   assert.throws(() => select({ records }, 0));
   assert.throws(() => select({ records: [{ ...records[0], discriminant_absolute: "0" }] }));
 });
@@ -45,11 +47,13 @@ test("PARI compact screening across signatures and exact small power witnesses",
   skip: !process.env.GP_ORACLE,
 }, () => {
   const source = path.resolve(__dirname, "../pari-screen.gp");
-  const run = spawnSync(process.env.GP_ORACLE, ["-fq"], {
+  const run = spawnSync(process.env.GP_ORACLE, ["-fq", "--default", "nbthreads=1",
+    "--default", "parisizemax=2147483648", "--default", "threadsizemax=2147483648"], {
     encoding: "utf8", timeout: 30000,
     env: { ...process.env, ...(process.env.GP_LIBRARY_PATH
       ? { LD_LIBRARY_PATH: process.env.GP_LIBRARY_PATH } : {}) },
     input: `read(${JSON.stringify(source)});
+if(default(nbthreads)!=1,error("thread count"));
 frontier_case("q23",[23,0,1],100,1,1);
 frontier_case("c49",[1,-2,-1,1],100,1,1);
 frontier_case("q283",[-1,-1,0,0,1],200,1,1);

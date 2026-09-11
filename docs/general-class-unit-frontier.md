@@ -150,3 +150,50 @@ including failed attempts and reservation bookkeeping allowances.
 The existing 201-file unit suite and documentation/build check passed during
 integration. The build took 11 minutes and is not benchmark work. These
 developer tools have not changed the mathematical engine or its safety caps.
+
+## First measured cross-degree bottleneck (diagnostic, not optimization)
+
+The general engine timed out at 120 seconds on both real cubic
+`3.3.1179905564504915820.14` and mixed quartic
+`4.2.1261504958441728000.28`. Both were still collecting relations, before
+unit recovery. Shorter reruns with diagnostic wrappers gave these inclusive
+completed-call totals at their last progress events:
+
+| Diagnostic snapshot | Real cubic | Mixed quartic |
+| --- | --- | --- |
+| Engine elapsed | 55.0 s | 55.1 s |
+| One-large-prime partial handling | 43.6 s | 45.6 s |
+| Full ideal factorization within it | 39.7 s | 43.4 s |
+| Prime-ideal valuations | 26.3 s | 13.7 s |
+| Rational-prime splitting | 10.7 s | 28.9 s |
+| Minkowski/LLL candidate generation | 0.50 s | 0.16 s |
+
+These are nested, instrumented local timings; **do not sum the rows** or use
+them as competitive ratios. They identify work to investigate: the existing
+partial path fully factors a quotient ideal before rejecting unsuitable
+outside primes. The current `rank` event field describes the last exact
+presentation, not the modular rank including pending rows; the apparent
+unchanged rank is not evidence of a broken exact-refresh policy.
+
+A sound prospective filter has a short conditional argument. For integral
+nonzero $J$, let $S$ be the rational primes below factor-base ideals and strip
+all their powers from $N=\operatorname{Norm}(J)$, leaving $R$. If $J$ has just
+one outside prime $Q$ with exponent one and norm at most $L$, then either
+$R=1$ (the prime below $Q$ is in $S$), or $R=\operatorname{Norm}(Q)\le L$.
+Thus $R>L$ safely rejects that existing one-large-prime opportunity before
+full factorization. Passing the test proves nothing about admissibility;
+the exact ideal checks remain necessary. Do not reject $R=1$, strip each
+prime only once, or confuse prime-ideal norm with its rational prime.
+An integral scalar norm does not itself prove that an ideal is integral.
+
+This filter is **not implemented**. Corpus freeze and campaign selection still
+precede optimization. The profile establishes a shared target, not that this
+particular filter alone will meet the bridge goal.
+
+Hecke 0.40.0 on `opt` completed six pilot requests, with class numbers and
+invariants matching PARI. Cold-process times include JIT and are not qualified
+persistent-process comparisons; internal round trips are not detached replay.
+The larger PARI supplement exposed its default 8 MB worker-stack overflow.
+Subsequent configuration explicitly pins `nbthreads=1` and allows worker-stack
+growth within the unchanged 4 GiB cgroup cap. Earlier attempts remain retained
+with their original configuration/failures; do not pool them as one baseline.

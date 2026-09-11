@@ -291,7 +291,16 @@ def main():
                 tempfile.TemporaryFile(mode="w+") as stderr,
             ):
                 child = subprocess.Popen(
-                    [executable, "-fq", "--default", "parisizemax=2147483648"]
+                    [
+                        executable,
+                        "-fq",
+                        "--default",
+                        "parisizemax=2147483648",
+                        "--default",
+                        "nbthreads=1",
+                        "--default",
+                        "threadsizemax=2147483648",
+                    ]
                     if args.engine == "pari"
                     else [
                         executable,

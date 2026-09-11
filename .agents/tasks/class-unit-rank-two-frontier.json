@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Establish matched general class-unit baselines and qualify a shared rank-two native bridge",
-  "base_commit": "edd8b7310d75451bafea2d36292c684d3c540020",
+  "base_commit": "e12cf4b949e1cd8453b8b3faab0e1dc55289b8fe",
   "claims": [
     "bench/class-unit-groups/general-frontier/campaign.json",
     "bench/class-unit-groups/general-frontier/reference/pari-screen.gp",

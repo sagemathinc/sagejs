@@ -9,8 +9,9 @@ const seed = "general-frontier-all-signatures-cost-screen-v1";
 const boundaries = [0, 6, 12, 18, 24, 36, 60, 100, 200];
 const hash = (value) => crypto.createHash("sha256").update(value).digest("hex");
 
-function select(pool, count = 2) {
+function select(pool, count = 2, minimumExponent = 0) {
   if (!Number.isSafeInteger(count) || count < 1 || count > 4) throw new Error("count must be 1..4");
+  if (!boundaries.includes(minimumExponent) || minimumExponent === 200) throw new Error("minimum must be a declared lower band boundary");
   const cells = new Map();
   for (const record of pool.records) {
     const discriminant = BigInt(record.discriminant_absolute);
@@ -18,6 +19,7 @@ function select(pool, count = 2) {
       && discriminant >= 10n ** BigInt(exponent)
       && discriminant < 10n ** BigInt(boundaries[i + 1]));
     if (band < 0) throw new Error("discriminant outside declared bands");
+    if (discriminant < 10n ** BigInt(minimumExponent)) continue;
     const key = `${record.degree}:${record.signature.join(",")}:${band}`;
     if (!cells.has(key)) cells.set(key, []);
     cells.get(key).push(record);
@@ -30,14 +32,15 @@ function select(pool, count = 2) {
 }
 
 if (require.main === module) {
-  const [directory, destination, count = "2"] = process.argv.slice(2);
+  const [directory, destination, count = "2", minimumExponent = "0"] = process.argv.slice(2);
   if (!directory || !destination) throw new Error("usage: prepare-panel-screen.cjs CANDIDATE_EXPORT OUTPUT [COUNT_PER_CELL]");
   const { pool } = loadExport(directory);
-  const chosen = select(pool, Number(count));
+  const chosen = select(pool, Number(count), Number(minimumExponent));
   const records = chosen.map(({ label, coefficients }) => ({ label, coefficients }));
   fs.writeFileSync(destination, JSON.stringify(records, null, 2) + "\n", { flag: "wx" });
   fs.writeFileSync(destination + ".selection.json", JSON.stringify({
-    seed, boundaries, per_populated_cell: Number(count), candidate_pool_sha256: hash(JSON.stringify(pool)),
+    seed, boundaries, minimum_discriminant_exponent: Number(minimumExponent),
+    per_populated_cell: Number(count), candidate_pool_sha256: hash(JSON.stringify(pool)),
     request: "reference-cost-discovery-not-frozen-panel", selection_uses_sagejs_results: false,
     fields: chosen.map(({ label, cell }) => ({ label, cell })),
   }, null, 2) + "\n", { flag: "wx" });

@@ -34,6 +34,10 @@ with `MemoryMax=4G`, `MemorySwapMax=0`, `CPUAffinity=2`; systemd's default
 control-group cleanup is an additional guard if the coordinator is killed.
 GP receives `--default parisizemax=2147483648` at startup, not during a loaded
 script (changing PARI's stack inside `read` can abort that load).
+It also pins `nbthreads=1` and `threadsizemax=2147483648`. Early retained pilots
+predate those two explicit settings; the larger supplement exposed a worker
+stack overflow. Do not mix configurations in a final baseline. All runs retain
+the 4 GiB cgroup cap regardless of PARI's stack-growth ceilings.
 Only exact stack-growth warning lines are accepted alongside successful
 terminal records; all other diagnostics remain failures. Raw stderr is kept.
 `runner/summarize-screen.py` revalidates retained receipts into a separate
@@ -50,6 +54,13 @@ profiling, explicit source launcher, no enforced memory cap, no authenticated
 source/runtime correspondence claim, and no competitive timing acceptance.
 It reports context time separately from projections. Its POSIX supervisor's
 RSS is reaped-child rusage, not aggregate simultaneous process-tree memory.
+Set `SAGEJS_FRONTIER_PROFILE=1` for diagnostic wrappers around relation search,
+partial handling and ideal arithmetic. Reported times are **inclusive and
+nested**, not additive phase times. Wrappers retain exceptions and return
+values; partial snapshots contain only completed calls. These runs change
+instrumentation, never the search policy, and cannot support timing claims.
+An optional fourth `diagnose.cjs` argument supplies a predeclared case JSON
+file instead of the three smoke examples.
 
 `screen-batch.py --engine hecke` uses the same controls and ledger, with explicit
 `--julia`, `--project`, `--depot`, and `--worker` paths. It disables package/cache
