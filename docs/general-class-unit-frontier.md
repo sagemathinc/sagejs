@@ -338,6 +338,6 @@ request identities, and retain interrupted samples as missing with their pending
 reservations. These checks prevent foreign receipts or partial batches from
 quietly filling planned sample slots; they do not constitute mathematical replay.
 
-Effort checkpoint, 2026-09-11 09:00 UTC: conservatively charge **six aggregate
+Effort checkpoint, 2026-09-11 08:57 UTC: conservatively charge **six aggregate
 active agent-hours to M0** so far. M1 and both optimization campaigns remain
 unstarted; the 40-hour M0 ceiling and frozen-population requirements are unchanged.

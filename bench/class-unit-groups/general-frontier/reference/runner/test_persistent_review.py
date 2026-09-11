@@ -111,6 +111,8 @@ class ReviewTests(unittest.TestCase):
         row = review.normalize(r)
         self.assertEqual(row["status"], "timeout")
         self.assertNotIn("class_number", row)
+        r["status"] = "shape-error"
+        self.assertEqual(review.normalize(r)["status"], "shape-error")
 
     def test_explicit_batch_identity_and_precision(self):
         r = receipt()
@@ -131,6 +133,10 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(row["iterations"], 3)
         self.assertEqual(row["worker_nanoseconds"], "10000000")
         self.assertEqual(row["timing_boundary"], "whole-fresh-field-batch")
+        r["declared_samples"] = True
+        with self.assertRaises(ValueError):
+            review.normalize(r)
+        r["declared_samples"] = 3
         r["sample"] = 1
         with self.assertRaises(ValueError):
             review.normalize(r)

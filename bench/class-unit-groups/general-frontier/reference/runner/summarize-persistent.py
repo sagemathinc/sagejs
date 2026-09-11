@@ -33,6 +33,7 @@ def normalize(receipt):
         "timeout",
         "output-limit",
         "protocol-error",
+        "shape-error",
         "crash",
         "interrupted",
     }:
@@ -43,6 +44,7 @@ def normalize(receipt):
     bits = receipt.get("bits", 200)
     iterations = receipt.get("iterations", 1)
     sample = receipt.get("sample", 1)
+    declared_samples = receipt.get("declared_samples", 1)
     if (
         type(bits) is not int
         or bits not in (100, 200)
@@ -50,6 +52,8 @@ def normalize(receipt):
         or not 1 <= iterations <= 10000
         or type(sample) is not int
         or not 1 <= sample <= 5
+        or type(declared_samples) is not int
+        or not sample <= declared_samples <= 5
     ):
         raise ValueError("invalid request parameters")
     request_id = receipt.get("request_id", label)
