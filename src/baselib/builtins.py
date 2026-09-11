@@ -300,6 +300,9 @@ _builtins_float_prototype = runtime.undefined
 _builtins_descriptor_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
+_builtins_property_cache = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
 _builtins_class_namespace_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
@@ -3378,7 +3381,6 @@ def _builtins_callable_namespace_snapshot(value: Any) -> Any:
                 # those accessors so a class rebuilt by ``type``/a metaclass
                 # retains the property in its namespace.
                 getter = runtime.reflect.get(descriptor, "get")
-                setter = runtime.reflect.get(descriptor, "set")
                 if (
                     _builtins_get_member(getter, "__sagejs_lazy_method_getter__")
                     is True
@@ -3390,10 +3392,7 @@ def _builtins_callable_namespace_snapshot(value: Any) -> Any:
                     runtime.reflect.set(
                         namespace,
                         member_name,
-                        SageProperty(
-                            None if getter is runtime.undefined else getter,
-                            None if setter is runtime.undefined else setter,
-                        ),
+                        _builtins_native_property(source, member_name, descriptor),
                     )
                     continue
             native_function_slot = (
@@ -4702,7 +4701,9 @@ class SageProperty:
         self.fget = fget
         self.fset = fset
         self.fdel = fdel
-        self.__doc__ = doc
+        self._getter_doc = doc is None
+        inherited_doc = _builtins_get_member(fget, "__doc__") if doc is None else doc
+        self.__doc__ = None if inherited_doc is runtime.undefined else inherited_doc
 
     def __get__(self, instance: Any, _owner: Any = None) -> Any:
         if instance is None:
@@ -4740,17 +4741,26 @@ class SageProperty:
     def getter(self, target_function: Any) -> SageProperty:
         if target_function is None:
             target_function = self.fget
-        return SageProperty(target_function, self.fset, self.fdel, self.__doc__)
+        return SageProperty(
+            target_function,
+            self.fset,
+            self.fdel,
+            None if self._getter_doc else self.__doc__,
+        )
 
     def setter(self, target_function: Any) -> SageProperty:
         if target_function is None:
             target_function = self.fset
-        return SageProperty(self.fget, target_function, self.fdel, self.__doc__)
+        answer = SageProperty(self.fget, target_function, self.fdel, self.__doc__)
+        answer._getter_doc = self._getter_doc
+        return answer
 
     def deleter(self, target_function: Any) -> SageProperty:
         if target_function is None:
             target_function = self.fdel
-        return SageProperty(self.fget, self.fset, target_function, self.__doc__)
+        answer = SageProperty(self.fget, self.fset, target_function, self.__doc__)
+        answer._getter_doc = self._getter_doc
+        return answer
 
 
 def ρσ_property(
@@ -4758,8 +4768,55 @@ def ρσ_property(
     fset: Any = None,
     fdel: Any = None,
     doc: Any = None,
+    *extra: Any,
 ) -> SageProperty:
+    if extra:
+        raise TypeError("property() takes at most 4 arguments")
     return SageProperty(fget, fset, fdel, doc)
+
+
+def _builtins_native_property(source: Any, name: _Str, descriptor: Any) -> Any:
+    """Expose one stable Python property for a native accessor pair."""
+    getter = runtime.reflect.get(descriptor, "get")
+    setter = runtime.reflect.get(descriptor, "set")
+    key = setter if getter is runtime.undefined else getter
+    cached = _builtins_property_cache.get(key)
+    if cached is not runtime.undefined:
+        return cached
+    deleter = _builtins_get_member(source, "ρσ_property_deleter_" + name)
+    cached = SageProperty(
+        None if getter is runtime.undefined else runtime.unbound_method_adapter(getter),
+        None if setter is runtime.undefined else runtime.unbound_method_adapter(setter),
+        None
+        if deleter is runtime.undefined
+        else runtime.unbound_method_adapter(deleter),
+    )
+    _builtins_property_cache.set(key, cached)
+    return cached
+
+
+def ρσ_register_property(owner: Any, name: _Str, has_setter: _Bool) -> None:
+    """Register the Python descriptor behind compiler-emitted native accessors."""
+    prototype = runtime.reflect.get(owner, "prototype")
+    descriptor = runtime.object.getOwnPropertyDescriptor(prototype, name)
+    value = _builtins_native_property(prototype, name, descriptor)
+    if not has_setter:
+        value.fset = None
+
+
+def _builtins_descriptor_read(
+    descriptor: Any, value: Any, owner: Any, name: _Str, default_value: Any
+) -> Any:
+    try:
+        if owner is runtime.undefined:
+            return runtime.reflect.apply(descriptor, value, [])
+        return _builtins_call_member(descriptor, "__get__", [value, owner])
+    except AttributeError:
+        if _builtins_member_is_function(value, "__getattr__"):
+            return _builtins_missing_attribute(value, name, default_value)
+        if default_value is not _BUILTINS_MISSING:
+            return default_value
+        raise
 
 
 def ρσ_ellipsis_range(*specification: Any) -> list[Any]:
@@ -4997,7 +5054,9 @@ def ρσ_getattr_internal(
                 descriptor_kind,
                 _BUILTINS_DESCRIPTOR_NATIVE_GETTER,
             ):
-                native_value = runtime.reflect.apply(descriptor, value, [])
+                native_value = _builtins_descriptor_read(
+                    descriptor, value, runtime.undefined, name, default_value
+                )
                 if native_value is runtime.undefined:
                     if default_value is not _BUILTINS_MISSING:
                         return default_value
@@ -5007,7 +5066,9 @@ def ρσ_getattr_internal(
                 descriptor_kind,
                 _BUILTINS_DESCRIPTOR_DATA,
             ):
-                return _builtins_call_member(descriptor, "__get__", [value, owner])
+                return _builtins_descriptor_read(
+                    descriptor, value, owner, name, default_value
+                )
         # A data descriptor has now had its required precedence.  An own
         # non-callable value cannot require binding or another inherited
         # lookup, which is the overwhelmingly common path for mathematical
@@ -5035,7 +5096,9 @@ def ρσ_getattr_internal(
                 is not True
             ):
                 return _builtins_bind_python_function(descriptor, value)
-            return _builtins_call_member(descriptor, "__get__", [value, owner])
+            return _builtins_descriptor_read(
+                descriptor, value, owner, name, default_value
+            )
         if runtime.strict_equal(
             descriptor_kind,
             _BUILTINS_DESCRIPTOR_DIRECT,
@@ -5053,6 +5116,24 @@ def ρσ_getattr_internal(
             and class_prototype is not runtime.undefined
             and _builtins_has_member(class_prototype, name)
         ):
+            descriptor_source = class_prototype
+            class_descriptor = runtime.undefined
+            while descriptor_source is not None:
+                class_descriptor = runtime.object.getOwnPropertyDescriptor(
+                    descriptor_source, name
+                )
+                if class_descriptor is not runtime.undefined:
+                    break
+                descriptor_source = runtime.object.getPrototypeOf(descriptor_source)
+            if class_descriptor is not runtime.undefined:
+                native_getter = runtime.reflect.get(class_descriptor, "get")
+                if native_getter is not runtime.undefined and (
+                    _builtins_get_member(native_getter, "__sagejs_lazy_method_getter__")
+                    is not True
+                ):
+                    return _builtins_native_property(
+                        class_prototype, name, class_descriptor
+                    )
             class_member = _builtins_get_member(class_prototype, name)
             if _builtins_get_member(class_member, "__self__") is class_prototype:
                 class_member = _builtins_get_member(class_member, "__func__")
@@ -5262,7 +5343,9 @@ def ρσ_getattr_internal(
                 descriptor = class_target
             return _builtins_bind_python_function(descriptor, owner)
         if _builtins_member_is_function(descriptor, "__get__"):
-            return _builtins_call_member(descriptor, "__get__", [value, owner])
+            return _builtins_descriptor_read(
+                descriptor, value, owner, name, default_value
+            )
         if _builtins_has_member(descriptor, "__staticmethod__"):
             static_target = _builtins_get_member(descriptor, "__func__")
             return (
@@ -5275,6 +5358,10 @@ def ρσ_getattr_internal(
         ) and not _builtins_is_python_class(descriptor):
             return _builtins_bind_python_function(descriptor, value)
         return descriptor
+    return _builtins_missing_attribute(value, name, default_value)
+
+
+def _builtins_missing_attribute(value: Any, name: _Str, default_value: Any) -> Any:
     if _builtins_member_is_function(value, "__getattr__"):
         try:
             if _builtins_is_module_namespace(value):

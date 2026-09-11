@@ -677,6 +677,40 @@ def print_class(output):
                 class_def("ρσ_property_deleter_" + name)
                 define_method(prop.deleter, True)
                 output.end_statement()
+            if output.options.python_attributes:
+                class_name = (
+                    output.make_python_name(class_binding_name)
+                    if self.name.python_identifier
+                    else output.make_name(class_binding_name)
+                )
+                descriptor_name = (
+                    "Object.getOwnPropertyDescriptor("
+                    + class_name
+                    + ".prototype, "
+                    + JSON.stringify(name)
+                    + ")"
+                )
+                for accessor, member in [
+                    [prop.getter, descriptor_name + ".get"],
+                    [prop.setter, descriptor_name + ".set"],
+                    [
+                        prop.deleter,
+                        class_name + ".prototype.ρσ_property_deleter_" + name,
+                    ],
+                ]:
+                    if accessor:
+                        function_annotation(accessor, output, True, member)
+                output.indent()
+                output.print(
+                    "ρσ_register_property("
+                    + class_name
+                    + ", "
+                    + JSON.stringify(name)
+                    + ", "
+                    + ("true" if prop.setter else "false")
+                    + ")"
+                )
+                output.end_statement()
 
     # Python executes a class body from top to bottom.  The JavaScript class
     # representation emits methods as prototype properties, but their default
