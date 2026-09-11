@@ -1,0 +1,256 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-exposure-inventory",
+  "title": "General Class Unit Exposure Inventory",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Export an auditable historical exposure inventory with exact presentations and unknown same-field status",
+  "base_commit": "513329b656264e94092abbc610b2e979c1355ac2",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/exposure/"
+  ],
+  "dependencies": [],
+  "references": [
+    "bench/class-unit-groups/general-frontier/exposure/historical-sources.local.json",
+    "bench/class-unit-groups/general-frontier/exposure/README.md"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Pinned historical 3259-label SHA256 and source fixtures; offline adversarial exact-coefficient/category/schema tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs",
+    "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.454,
+      "started_at": "2026-09-11T08:39:45.503Z",
+      "commit": "a4638a1eb191496c635e1c9a4fc015974fbf021d",
+      "workspace_fingerprint": "f4b21c9c8f56b92608d12af35fa60422fce745d6912a11b75cea785d65fffb28",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.64,
+      "started_at": "2026-09-11T08:39:59.119Z",
+      "commit": "a4638a1eb191496c635e1c9a4fc015974fbf021d",
+      "workspace_fingerprint": "f4b21c9c8f56b92608d12af35fa60422fce745d6912a11b75cea785d65fffb28",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.444,
+      "started_at": "2026-09-11T08:42:30.859Z",
+      "commit": "d4e10b3d93f95167a44d19329e15e5356cd3b91e",
+      "workspace_fingerprint": "527abd3809052e5020a044be7713b477595b565d774646c22a57fc194e728c1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.59,
+      "started_at": "2026-09-11T08:42:49.248Z",
+      "commit": "d4e10b3d93f95167a44d19329e15e5356cd3b91e",
+      "workspace_fingerprint": "527abd3809052e5020a044be7713b477595b565d774646c22a57fc194e728c1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.466,
+      "started_at": "2026-09-11T08:43:06.893Z",
+      "commit": "d4e10b3d93f95167a44d19329e15e5356cd3b91e",
+      "workspace_fingerprint": "9b3865cd49a95c7ebd106248211c22fbfdb1b0c861fa9ffed025e185af68327b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.566,
+      "started_at": "2026-09-11T08:43:08.025Z",
+      "commit": "d4e10b3d93f95167a44d19329e15e5356cd3b91e",
+      "workspace_fingerprint": "9b3865cd49a95c7ebd106248211c22fbfdb1b0c861fa9ffed025e185af68327b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.439,
+      "started_at": "2026-09-11T09:11:47.490Z",
+      "commit": "9f20a76eb54b0c66a90bb29188aa72175d02f10d",
+      "workspace_fingerprint": "a814b0704c8cd6051af74c6c975cce234c276e90a77ec6c143be6639524dee39",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.575,
+      "started_at": "2026-09-11T09:11:48.580Z",
+      "commit": "9f20a76eb54b0c66a90bb29188aa72175d02f10d",
+      "workspace_fingerprint": "a814b0704c8cd6051af74c6c975cce234c276e90a77ec6c143be6639524dee39",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.423,
+      "started_at": "2026-09-11T09:21:21.490Z",
+      "commit": "9f20a76eb54b0c66a90bb29188aa72175d02f10d",
+      "workspace_fingerprint": "a48c5fed95afc173d594432bf18e32b9023cc31304ddab77afcaf17e997162c4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.553,
+      "started_at": "2026-09-11T09:21:22.556Z",
+      "commit": "9f20a76eb54b0c66a90bb29188aa72175d02f10d",
+      "workspace_fingerprint": "a48c5fed95afc173d594432bf18e32b9023cc31304ddab77afcaf17e997162c4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.442,
+      "started_at": "2026-09-11T09:26:23.677Z",
+      "commit": "25ff5c945a51db91c8f3bed75d81d2070390533f",
+      "workspace_fingerprint": "573423370e3fd90593095c53672f9ef98d17e1dd45fec056a9b27de6265b3f0f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.555,
+      "started_at": "2026-09-11T09:26:43.962Z",
+      "commit": "25ff5c945a51db91c8f3bed75d81d2070390533f",
+      "workspace_fingerprint": "c068fde21e55de0e377a6e93ddd959d08fdb661836db550083b3bfd77db6e8aa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.458,
+      "started_at": "2026-09-11T09:26:52.799Z",
+      "commit": "25ff5c945a51db91c8f3bed75d81d2070390533f",
+      "workspace_fingerprint": "c068fde21e55de0e377a6e93ddd959d08fdb661836db550083b3bfd77db6e8aa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.44,
+      "started_at": "2026-09-11T09:49:34.451Z",
+      "commit": "ecfd8548974d84778200554a04e557b6dfdcdd6e",
+      "workspace_fingerprint": "45adb2fcb100d7e66f1d919c2fcce73572e17c27b785e16e8e0b0156061b7a33",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.458,
+      "started_at": "2026-09-11T09:51:06.907Z",
+      "commit": "ecfd8548974d84778200554a04e557b6dfdcdd6e",
+      "workspace_fingerprint": "45adb2fcb100d7e66f1d919c2fcce73572e17c27b785e16e8e0b0156061b7a33",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.443,
+      "started_at": "2026-09-11T10:04:02.474Z",
+      "commit": "8fad2f4738a5565827d8bf1a465b084bd8ed6161",
+      "workspace_fingerprint": "f2299130f0698b3e6edc2e74440fd35b8b5049a4160dd22e0af2c3eba9eae33b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.45,
+      "started_at": "2026-09-11T10:05:40.960Z",
+      "commit": "8fad2f4738a5565827d8bf1a465b084bd8ed6161",
+      "workspace_fingerprint": "323d24b3d415f8de6f597160949c4a0d1774e03c1e0f5245e26ef6d5d430df96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.439,
+      "started_at": "2026-09-11T10:06:20.613Z",
+      "commit": "8fad2f4738a5565827d8bf1a465b084bd8ed6161",
+      "workspace_fingerprint": "68d1dbf7073297f519a2754e10d5d9f814608a6554d3529beedad60b24b1cd90",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs bench/class-unit-groups/general-frontier/exposure/union-input.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.765,
+      "started_at": "2026-09-11T10:32:52.433Z",
+      "commit": "513329b656264e94092abbc610b2e979c1355ac2",
+      "workspace_fingerprint": "f244e972b2f8ca2d04917fbfb054be6bb49140bf4a252710aa5cab38dcdfe8e4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs bench/class-unit-groups/general-frontier/exposure/union-input.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.748,
+      "started_at": "2026-09-11T10:33:27.487Z",
+      "commit": "513329b656264e94092abbc610b2e979c1355ac2",
+      "workspace_fingerprint": "f244e972b2f8ca2d04917fbfb054be6bb49140bf4a252710aa5cab38dcdfe8e4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Add explicit reconciliation manifest v2 for source-union.v1: raw union byte binding plus independently reconstructed acquisition membership, unchanged v1 pool behavior, preserved per-record source chains and acquisition identities, and union-aware coverage report v3. Re-run all 82 finite coverage dispositions and historical evidence binding against 4492 candidates: 44 quarantined / 4448 remaining. Five actual Sage diagnostics remain separate. All 60 focused tests pass. No CAS, network, opt, runtime changes, or automatic eligibility approval.",
+    "risks": [
+      "Historical coverage is incomplete until reviewed; labels are source assertions rather than independently verified database identities.",
+      "Alternative presentations require later exact isomorphism reconciliation. No distinct-field count or true holdout eligibility is emitted.",
+      "The local manifest has explicit retained scratch paths and fails if a source is unavailable or changed; it is not a portable bundled dataset.",
+      "pnpm test:changed selected the broad origin/main diff, passed merge:check, and began a local build; its exact build and launcher processes were terminated to preserve the bounded lane. Broad validation is interrupted, not passed; the contract remains active rather than review.",
+      "Source coverage is explicitly limited to the reviewed source-policy presentations; generic override invocation history remains unresolved."
+    ],
+    "next_steps": [
+      "Coordinator reviews and cherry-picks; add the exact exposure-inventory task contract to the reviewed build-input partition.",
+      "Extend reviewed source coverage, wrap current candidates explicitly, and perform exact same-field reconciliation before final holdout assignment."
+    ]
+  }
+}

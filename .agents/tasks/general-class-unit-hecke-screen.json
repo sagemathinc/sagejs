@@ -1,0 +1,134 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-hecke-screen",
+  "title": "General Class Unit Hecke Screen",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add bounded complete Hecke class-unit screening reference worker",
+  "base_commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/reference/hecke/"
+  ],
+  "dependencies": [],
+  "references": [
+    "Local Hecke 0.39.22 source; PARI complete-request screening contract"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Hecke internal round trips and known small-field invariants; not independent replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm test:changed",
+    "env JULIA_DEPOT_PATH=/scratch/sagejs-runtime/julia JULIA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 /scratch/sagejs-runtime/julia/juliaup/julia-1.12.7+0.x64.linux.gnu/bin/julia --startup-file=no --compiled-modules=strict --pkgimages=existing --project=/home/user/.local/share/sagejs-benchmarks/number-fields-julia bench/class-unit-groups/general-frontier/reference/hecke/smoke.jl",
+    "env JULIA=/scratch/sagejs-runtime/julia/juliaup/julia-1.12.7+0.x64.linux.gnu/bin/julia JULIA_DEPOT_PATH=/scratch/sagejs-runtime/julia JULIA_PROJECT=/home/user/.local/share/sagejs-benchmarks/number-fields-julia JULIA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 node bench/class-unit-groups/general-frontier/reference/hecke/transport-smoke.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 54.23,
+      "started_at": "2026-09-11T07:02:17.744Z",
+      "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+      "workspace_fingerprint": "7ff199063b81f1d8c08dc511fd58d5467a1f8e827d9faaffccef001ec271f7de",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 6.073,
+      "started_at": "2026-09-11T07:03:43.634Z",
+      "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+      "workspace_fingerprint": "a541e898b09d98ecf8b1ae0f8812a12ab8e8b0fab217f702f7c83b59a2233cb3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.162,
+      "started_at": "2026-09-11T07:04:33.786Z",
+      "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+      "workspace_fingerprint": "13bfe1713fc5de7fa861f6018b91278cbaaeacc939a6344e0024ac156a37a3f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env JULIA_DEPOT_PATH=/scratch/sagejs-runtime/julia JULIA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 /scratch/sagejs-runtime/julia/juliaup/julia-1.12.7+0.x64.linux.gnu/bin/julia --startup-file=no --project=/home/user/.local/share/sagejs-benchmarks/number-fields-julia bench/class-unit-groups/general-frontier/reference/hecke/smoke.jl",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.646,
+      "started_at": "2026-09-11T07:05:50.696Z",
+      "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+      "workspace_fingerprint": "13bfe1713fc5de7fa861f6018b91278cbaaeacc939a6344e0024ac156a37a3f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env JULIA_DEPOT_PATH=/scratch/sagejs-runtime/julia JULIA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 /scratch/sagejs-runtime/julia/juliaup/julia-1.12.7+0.x64.linux.gnu/bin/julia --startup-file=no --compiled-modules=strict --pkgimages=existing --project=/home/user/.local/share/sagejs-benchmarks/number-fields-julia bench/class-unit-groups/general-frontier/reference/hecke/smoke.jl",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.23,
+      "started_at": "2026-09-11T07:40:31.621Z",
+      "commit": "47e8f7e80ed9da69640abc8570db5db301f44050",
+      "workspace_fingerprint": "b50368783e69cccba7bf4b5a5d35d8779773442721b3e89b72d4354701c8f2f7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env JULIA=/scratch/sagejs-runtime/julia/juliaup/julia-1.12.7+0.x64.linux.gnu/bin/julia JULIA_DEPOT_PATH=/scratch/sagejs-runtime/julia JULIA_PROJECT=/home/user/.local/share/sagejs-benchmarks/number-fields-julia JULIA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 node bench/class-unit-groups/general-frontier/reference/hecke/transport-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.614,
+      "started_at": "2026-09-11T07:41:19.759Z",
+      "commit": "47e8f7e80ed9da69640abc8570db5db301f44050",
+      "workspace_fingerprint": "b50368783e69cccba7bf4b5a5d35d8779773442721b3e89b72d4354701c8f2f7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.9,
+      "started_at": "2026-09-11T07:41:54.179Z",
+      "commit": "47e8f7e80ed9da69640abc8570db5db301f44050",
+      "workspace_fingerprint": "b50368783e69cccba7bf4b5a5d35d8779773442721b3e89b72d4354701c8f2f7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.935,
+      "started_at": "2026-09-11T07:42:50.729Z",
+      "commit": "47e8f7e80ed9da69640abc8570db5db301f44050",
+      "workspace_fingerprint": "b50368783e69cccba7bf4b5a5d35d8779773442721b3e89b72d4354701c8f2f7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Developer-only Hecke screening worker with versioned tab-separated requests and dependency-free JSON responses; no JSON3 loading or eval. Preserves fresh field/order, compact maps and witnesses, and rational regulator enclosure endpoints. Focused mathematical, malformed-protocol and independent JSON parser checks use precompiled Hecke without generating package caches. Remains active pending coordinator review and broad suite provisioning.",
+    "risks": [
+      "Screening only, GRH-conditional complete groups; internal round trips are not independent replay.",
+      "Hecke regulator enclosure guarantee is stronger than the PARI approximate reference and must be reported separately.",
+      "test:native was interrupted when native:prepare began a compiler build; no native test pass is claimed.",
+      "test:changed passes merge checks but its unit tier lacks dist/compiler/compiler.js in this no-install worktree."
+    ],
+    "next_steps": [
+      "Coordinator review of compact schema and PARI matching before integration; do not open a PR independently.",
+      "Run broad required suites in a provisioned integration worktree; qualify independent replay and controlled timings separately."
+    ]
+  }
+}

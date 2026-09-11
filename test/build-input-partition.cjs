@@ -8,7 +8,8 @@ const { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } = require(
 const { tmpdir } = require("node:os");
 const { dirname, join } = require("node:path");
 const { artifactInputsFingerprint, workspaceFingerprint, currentBuildIdentity,
-  inspectBuildReceipt, refreshBuildReceiptAfterNative, writeBuildReceipt } = require("../scripts/build-receipt.cjs");
+  nativeInputIdentity, inspectBuildReceipt, refreshBuildReceiptAfterNative,
+  writeBuildReceipt } = require("../scripts/build-receipt.cjs");
 const { requireUnchangedWorkspace } = require("../scripts/run-python-conformance.cjs");
 
 const pythonConformanceValidationPaths = [
@@ -40,6 +41,22 @@ const derivedValidationArtifactPaths = [
   "bench/modular/qexp-correctness/source-freeze.json",
 ];
 
+const generalFrontierValidationPaths = [
+  "bench/class-unit-groups/general-frontier/campaign.json",
+  "bench/class-unit-groups/general-frontier/corpus/candidate-pool.cjs",
+  "bench/class-unit-groups/general-frontier/corpus/rank_two_supplement.py",
+  "bench/class-unit-groups/general-frontier/reference/pari-screen.gp",
+  "bench/class-unit-groups/general-frontier/reference/hecke/screen.jl",
+  "bench/class-unit-groups/general-frontier/reference/runner/diagnose.cjs",
+  ".agents/tasks/class-unit-rank-two-frontier.json",
+  ".agents/tasks/general-class-unit-candidate-pool.json",
+  ".agents/tasks/general-class-unit-hecke-screen.json",
+  ".agents/tasks/general-class-unit-persistent-reference.json",
+  ".agents/tasks/general-class-unit-exposure-inventory.json",
+  ".agents/tasks/general-class-unit-hard-windows.json",
+  ".agents/tasks/general-frontier-build-partition.json",
+];
+
 function fixture(context, git = false) {
   const root = mkdtempSync(join(tmpdir(), "sagejs-build-inputs-"));
   context.after(() => rmSync(root, { recursive: true, force: true }));
@@ -61,7 +78,8 @@ for (const git of [false, true]) {
       "packages/flint-wasm/test/example.test.cjs",
       "upstream-tests/micropython/baselines/review.json",
       "upstream-tests/python-compat/suites/example.py",
-      ...packageAndBenchmarkValidationPaths, ...derivedValidationArtifactPaths]) {
+      ...packageAndBenchmarkValidationPaths, ...derivedValidationArtifactPaths,
+      ...generalFrontierValidationPaths]) {
       const artifact = artifactInputsFingerprint(root);
       const workspace = workspaceFingerprint(root);
       write(name);
@@ -73,7 +91,8 @@ for (const git of [false, true]) {
 
   test(`validation-only edits and removal preserve artifacts (${git ? "Git" : "archive"})`, (context) => {
     const { root, write } = fixture(context, git);
-    for (const name of [...derivedValidationArtifactPaths, ...pythonConformanceValidationPaths]) {
+    for (const name of [...derivedValidationArtifactPaths, ...pythonConformanceValidationPaths,
+      ...generalFrontierValidationPaths]) {
       write(name);
       const artifact = artifactInputsFingerprint(root);
       const workspace = workspaceFingerprint(root);
@@ -97,6 +116,20 @@ for (const git of [false, true]) {
       "bench/numerical-p3-nlopt/corpus.json",
       "scripts/build-receipt.cjs", "scripts/precompiled-python-packages.json",
       "src/compiler.py", "tools/python/lowerer.ts",
+      "src/lib/sagejs/number_fields/class_unit.py",
+      "packages/flint/src/addon.cc", "tools/native-kernel/compiler.cjs",
+      "bench/class-unit-groups/general-frontier-extra/campaign.json",
+      "bench/class-unit-groups/general-frontier.json",
+      "bench/class-unit-groups/unknown-campaign/corpus.json",
+      ".agents/lanes.json", ".agents/task.schema.json",
+      ".agents/tasks/unknown-campaign.json",
+      ".agents/tasks/class-unit-rank-two-frontier.json.in",
+      ".agents/tasks/general-class-unit-candidate-pool-extra.json",
+      ".agents/tasks/general-class-unit-persistent-reference-extra.json",
+      ".agents/tasks/general-class-unit-exposure-inventory-extra.json",
+      ".agents/tasks/general-class-unit-hard-windows-extra.json",
+      ".agents/tasks/general-class-unit-hard-windows.json.in",
+      ".agents/tasks/general-class-unit-exposure-inventory.json.in",
       "scripts/optimizer-opportunity-dashboard.cjs",
       "tools/optimizer-development/dashboard-artifacts.cjs",
       "tools/optimizer-development/identity.cjs",
@@ -131,7 +164,8 @@ for (const git of [false, true]) {
 for (const field of ["reviewed_sagejs_files", "qualification_tooling_files"]) {
   test(`reviewed production ${field} overrides validation-only exclusions`, (context) => {
     const { root, write } = fixture(context);
-    const paths = [...packageAndBenchmarkValidationPaths, ...derivedValidationArtifactPaths];
+    const paths = [...packageAndBenchmarkValidationPaths, ...derivedValidationArtifactPaths,
+      ...generalFrontierValidationPaths];
     write("src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json",
       JSON.stringify({ [field]: Object.fromEntries(
         paths.map((name) => [name, "reviewed"])) }));
@@ -154,7 +188,8 @@ test("artifact reuse preserves the original build provenance and output checks",
   writeBuildReceipt({ root, durationMilliseconds: 1, identity: original });
   const receipt = readFileSync(join(root, "dist/build-receipt.json"));
   write("test/new-case.cjs");
-  for (const name of [...derivedValidationArtifactPaths, ...pythonConformanceValidationPaths]) write(name);
+  for (const name of [...derivedValidationArtifactPaths, ...pythonConformanceValidationPaths,
+    ...generalFrontierValidationPaths]) write(name);
   const status = inspectBuildReceipt(root);
   assert.equal(status.current, true);
   assert.equal(status.buildWorkspaceSha256, original.workspaceSha256);
@@ -169,6 +204,26 @@ test("artifact reuse preserves the original build provenance and output checks",
   write("dist/module-cache/payload", "tampered");
   assert.match(inspectBuildReceipt(root).reason, /digest or inventory/);
 });
+
+for (const git of [false, true]) {
+  test(`frontier metadata preserves installed native identity (${git ? "Git" : "archive"})`, (context) => {
+    const { root, write } = fixture(context, git);
+    const addon = "packages/flint/build/Release/sagejs_flint.node";
+    write(addon, "fixture native bytes");
+    const native = nativeInputIdentity(root);
+    for (const name of generalFrontierValidationPaths) {
+      write(name, "initial coordination or benchmark source");
+      const artifact = artifactInputsFingerprint(root);
+      const workspace = workspaceFingerprint(root);
+      write(name, "changed metadata, including validation receipts");
+      assert.equal(artifactInputsFingerprint(root), artifact, name);
+      assert.deepEqual(nativeInputIdentity(root), native, name);
+      assert.notEqual(workspaceFingerprint(root), workspace, name);
+    }
+    write(addon, "changed native bytes");
+    assert.notDeepEqual(nativeInputIdentity(root), native);
+  });
+}
 
 test("source-reviewed tests remain build inputs even in validation-only roots", (context) => {
   const { root, write } = fixture(context);
@@ -185,6 +240,26 @@ test("source-reviewed tests remain build inputs even in validation-only roots", 
     write(name, "changed contract");
     assert.notEqual(artifactInputsFingerprint(root), before, name);
   }
+});
+
+test("partition changes do not relabel an earlier receipt as current", (context) => {
+  const { root, write } = fixture(context);
+  write(generalFrontierValidationPaths[0]);
+  for (const directory of ["compiler", "tools", "vendor", "module-cache", "runtime-cache"]) {
+    write(`dist/${directory}/payload`);
+  }
+  for (const name of ["compiler/compiler.js", "tools/kernel.js", "runtime-cache/manifest.json", "sagejs-version.json"]) write(`dist/${name}`);
+  const identity = currentBuildIdentity(root);
+  // A receipt from a partition that included the campaign has a different
+  // input digest. No inspection or native reconciliation may rewrite it.
+  identity.artifactInputsSha256 = workspaceFingerprint(root);
+  assert.notEqual(identity.artifactInputsSha256, artifactInputsFingerprint(root));
+  writeBuildReceipt({ root, durationMilliseconds: 1, identity });
+  const filename = join(root, "dist/build-receipt.json");
+  const receipt = readFileSync(filename);
+  assert.deepEqual(inspectBuildReceipt(root), { current: false, reason: "build inputs changed" });
+  assert.throws(() => refreshBuildReceiptAfterNative(root), /cannot refresh/);
+  assert.deepEqual(readFileSync(filename), receipt);
 });
 
 test("submodule revision, dirty source, and untracked source are fingerprinted", (context) => {

@@ -1,0 +1,92 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-hard-windows",
+  "title": "General Class Unit Hard Windows",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add explicit bounded hard-discriminant acquisition and offline replay",
+  "base_commit": "4d1acbba4217b146106132e92f9c59088469b54b",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/corpus/hard-windows.cjs",
+    "bench/class-unit-groups/general-frontier/corpus/hard-windows.test.cjs",
+    "bench/class-unit-groups/general-frontier/corpus/HARD-WINDOWS.md",
+    "bench/class-unit-groups/general-frontier/corpus/source-union.cjs",
+    "bench/class-unit-groups/general-frontier/corpus/source-union.test.cjs",
+    "bench/class-unit-groups/general-frontier/corpus/SOURCE-UNION.md",
+    "scripts/build-receipt.cjs",
+    "test/build-input-partition.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "bench/class-unit-groups/general-frontier/corpus/candidate-pool.cjs",
+    "bench/class-unit-groups/general-frontier/reference/runner/prepare-cost-expansion.cjs"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --test bench/class-unit-groups/general-frontier/corpus/hard-windows.test.cjs test/build-input-partition.cjs",
+    "node --test bench/class-unit-groups/general-frontier/corpus/source-union.test.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/hard-windows.test.cjs test/build-input-partition.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.3,
+      "started_at": "2026-09-11T10:05:46.565Z",
+      "commit": "4d1acbba4217b146106132e92f9c59088469b54b",
+      "workspace_fingerprint": "40e2fc7d1290e8f67d0787fe146f73d3c5f56824c0aec12b76ca06a617de9d4e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/source-union.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.698,
+      "started_at": "2026-09-11T10:17:07.801Z",
+      "commit": "d67347ef17e08d6c1c3ea496f5f7eb847a1426f5",
+      "workspace_fingerprint": "2913105cd408914468f60cb0d74dda18e3b92b130197003c1162306cfc1df651",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/hard-windows.test.cjs test/build-input-partition.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.402,
+      "started_at": "2026-09-11T10:17:09.127Z",
+      "commit": "d67347ef17e08d6c1c3ea496f5f7eb847a1426f5",
+      "workspace_fingerprint": "2913105cd408914468f60cb0d74dda18e3b92b130197003c1162306cfc1df651",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Separate bounded hard-window acquisition policy with eight fixed windows, pinned exclusion input snapshots, immutable dispatch/raw-result receipts and deterministic offline replay. Explicit fetch only; no automatic retries. Exports distinct hard-window-v1 source identity. Offline source-union companion validates both v2 and hard-window acquisitions, retains actual raw-row/receipt membership and exact-metadata duplicate provenance, and never marks eligibility or final selection. Adds only this task's exact build-partition metadata exclusion and near-name regressions.",
+    "risks": [
+      "No acquisition network calls, CAS computations or opt access performed; offline fixtures plus read-only reconstruction of the coordinator's acquired sources.",
+      "Coordinator must supply all prior and active screening inputs; omitted exclusions cannot be discovered automatically.",
+      "Optional native psql required only for explicit fetch; absence yields client-unavailable. Windows file fsync retained, directory fsync unavailable.",
+      "Not mathematical qualification or isomorphism deduplication; reference time bands and holdout eligibility remain pending.",
+      "Contract remains active: coordinator requested focused validation for interim tooling review, deferring broad build-dependent checks."
+    ],
+    "next_steps": [
+      "Coordinator review, then explicitly approve and run offline plan plus bounded fetch with complete exclusion inputs.",
+      "Preserve generated-family 20-field reserve and the separate censored-reference rescue policy.",
+      "Coordinator can use buildUnion(v2Directory, hardDirectory) for validated source membership; source kinds remain explicit and mathematical/exposure readiness remains separate. Read-only real-source smoke reconstructed 4492 records with zero duplicate labels and the expected hard-window pool hash."
+    ]
+  }
+}

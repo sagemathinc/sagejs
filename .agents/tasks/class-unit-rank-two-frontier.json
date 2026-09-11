@@ -1,0 +1,149 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-unit-rank-two-frontier",
+  "title": "Class Unit Rank Two Frontier",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Deliver the bounded reference laboratory and source-exposure tooling for the general class-unit campaign; mathematical qualification continues separately",
+  "base_commit": "916baca462e85dd7767c5a328fa33b7ff4e0f54b",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/campaign.json",
+    "bench/class-unit-groups/general-frontier/reference/pari-screen.gp",
+    "bench/class-unit-groups/general-frontier/reference/sagejs-diagnostic.py",
+    "bench/class-unit-groups/general-frontier/reference/README.md",
+    "bench/class-unit-groups/general-frontier/reference/hecke/README.md",
+    "bench/class-unit-groups/general-frontier/reference/runner/",
+    "docs/general-class-unit-frontier.md"
+  ],
+  "dependencies": [
+    "general-class-unit-candidate-pool",
+    "general-class-unit-hecke-screen",
+    "general-frontier-build-partition",
+    "general-class-unit-persistent-reference",
+    "general-class-unit-exposure-inventory"
+  ],
+  "references": [
+    "Main mathematical baseline remains d654e3d45d8c066b979566338a53647a37ab8d00; task scope base includes separately claimed developer tooling and build-input partition review, not a changed mathematical engine."
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "pari",
+      "hecke"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "python3 -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+    "pnpm docs:check",
+    "pnpm format:python:check"
+  ],
+  "runs": [
+    {
+      "command": "python3 -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.104,
+      "started_at": "2026-09-11T10:46:15.684Z",
+      "commit": "916baca462e85dd7767c5a328fa33b7ff4e0f54b",
+      "workspace_fingerprint": "74f0cc14d0022742e4c1df205c2131149ed19e66a67f83d183b7109e7c420b6d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.258,
+      "started_at": "2026-09-11T10:46:16.459Z",
+      "commit": "916baca462e85dd7767c5a328fa33b7ff4e0f54b",
+      "workspace_fingerprint": "74f0cc14d0022742e4c1df205c2131149ed19e66a67f83d183b7109e7c420b6d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm format:python:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.916,
+      "started_at": "2026-09-11T10:46:21.398Z",
+      "commit": "916baca462e85dd7767c5a328fa33b7ff4e0f54b",
+      "workspace_fingerprint": "74f0cc14d0022742e4c1df205c2131149ed19e66a67f83d183b7109e7c420b6d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.032,
+      "started_at": "2026-09-11T10:47:05.308Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "12be83ef6127bfad29bb10ee207a0fa7ffdf1a7c0f8e0d14e9288b2f040aa500",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 940.016,
+      "started_at": "2026-09-11T10:48:06.017Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "12be83ef6127bfad29bb10ee207a0fa7ffdf1a7c0f8e0d14e9288b2f040aa500",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.109,
+      "started_at": "2026-09-11T11:04:31.196Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "12be83ef6127bfad29bb10ee207a0fa7ffdf1a7c0f8e0d14e9288b2f040aa500",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.39,
+      "started_at": "2026-09-11T11:04:31.997Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "12be83ef6127bfad29bb10ee207a0fa7ffdf1a7c0f8e0d14e9288b2f040aa500",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm format:python:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.974,
+      "started_at": "2026-09-11T11:04:37.054Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "12be83ef6127bfad29bb10ee207a0fa7ffdf1a7c0f8e0d14e9288b2f040aa500",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Reviewed developer-only laboratory: pinned candidate acquisitions, finite exposure reconciliation, controlled persistent PARI/Hecke workers, conservative execution ledger, raw-receipt pairing and source-bound cost readiness. Full baseline validation passed 201 unit files; later source-union and exposure adapters have focused tests and independent review. Mathematical baseline is unchanged.",
+    "risks": [
+      "M0 corpus is not frozen and cost strata are not yet filled.",
+      "Matching exact summaries is not detached mathematical replay; regulator request guarantees differ between references.",
+      "Finite retained-source exposure proofs do not reconstruct arbitrary unrecorded historical work."
+    ],
+    "next_steps": [
+      "Finish the predeclared reference batches within the M0 budget and decide scoped corpus eligibility.",
+      "Freeze coverage/performance and bridge panels before shared-engine optimization.",
+      "Implement and qualify the missing shared unit-coordinate/context work under a new narrow contract."
+    ]
+  }
+}
