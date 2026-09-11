@@ -1,0 +1,84 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-allocator-cache-identity",
+  "title": "Native Allocator Cache Identity",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Bind native kernel cache identity to the embedded GMP checkpoint allocator without importing experimental recycling or cubic changes",
+  "base_commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+  "claims": [
+    "tools/native-kernel/compiler.cjs",
+    "test/native-allocator-cache-identity.cjs",
+    "docs/native-allocator-cache-identity.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm test:changed",
+    "node --test test/native-allocator-cache-identity.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/native-allocator-cache-identity.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.123,
+      "started_at": "2026-09-11T00:24:34.061Z",
+      "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+      "workspace_fingerprint": "e4134b34e56926c2e1c1abb60ddc37cd82dd0d37eeea489ea437eaa3fc183ebf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 635.631,
+      "started_at": "2026-09-11T00:25:43.866Z",
+      "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+      "workspace_fingerprint": "e4134b34e56926c2e1c1abb60ddc37cd82dd0d37eeea489ea437eaa3fc183ebf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 132.242,
+      "started_at": "2026-09-11T00:36:31.241Z",
+      "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+      "workspace_fingerprint": "e4134b34e56926c2e1c1abb60ddc37cd82dd0d37eeea489ea437eaa3fc183ebf",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Extract the allocator fingerprint dependency from draft #204 onto current main, with portable red/green regression tests; no allocator or mathematical behavior changes.",
+    "risks": [
+      "Corrected backend identities cause a one-time rebuild of cached native artifacts.",
+      "This does not qualify the experimental allocator, layout-record, or owned-helper stack.",
+      "test:changed completes its fresh eight-stage build, then fails architecture:check at the existing cowasm documentation reference in agents/python-compiler-runtime-value-and-performance-plan.md:124. The plan and auditor are byte-identical to main d654e3d45; PR #209 removes the triggering direct reference. No audit or inventory is changed here.",
+      "Full unit suite passes (202 files); compiler suite passes (21 passed, 28 existing skips). The separately running 394-file integration suite and following docs check have not yet reached a terminal result. Platform CI remains outstanding."
+    ],
+    "next_steps": [
+      "Collect the existing integration/docs process result without restarting it; update the PR with terminal validation.",
+      "Retest architecture against the integration correction and obtain strict-baselib, native-suite and platform checks before making the PR non-draft."
+    ]
+  }
+}
