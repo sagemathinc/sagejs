@@ -676,6 +676,16 @@ class AST_Yield(AST_Return):
 class AST_Throw(AST_Exit):
     "A `throw` statement"
 
+    properties = {"cause": "[AST_Node?] explicit exception cause, including None"}
+
+    def _walk(self, visitor):
+        def f_throw():
+            self.value._walk(visitor)
+            if self.cause:
+                self.cause._walk(visitor)
+
+        return visitor._visit(self, f_throw)
+
 
 class AST_LoopControl(AST_Jump):
     "Base class for loop control statements (`break` and `continue`)"

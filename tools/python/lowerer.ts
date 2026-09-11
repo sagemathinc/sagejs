@@ -481,6 +481,7 @@ export class PythonCstLowerer {
       }
       case "raise_statement": {
         const value = significantChildren(node)[0];
+        const cause = node.childForFieldName("cause");
         let raised: any;
         if (value) {
           raised = this.lowerExpression(value);
@@ -503,6 +504,7 @@ export class PythonCstLowerer {
         }
         return [this.make("AST_Throw", node, {
           value: raised,
+          cause: cause ? this.lowerExpression(cause) : null,
         })];
       }
       case "assert_statement": {

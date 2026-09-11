@@ -608,6 +608,24 @@ def generate_code():
         if self.value:
             output.space()
             if kind is "throw":
+                if self.cause:
+                    # Evaluate both expressions before constructing either
+                    # exception class, exactly once and in source order.
+                    output.print(
+                        "(function(ρσ_error, ρσ_cause) {"
+                        "ρσ_error = ρσ_exception_value(ρσ_error);"
+                        "if (ρσ_cause !== null) "
+                        "ρσ_cause = ρσ_exception_value(ρσ_cause);"
+                        "ρσ_error.__cause__ = ρσ_cause;"
+                        "ρσ_error.__suppress_context__ = true;"
+                        "return ρσ_error;})("
+                    )
+                    self.value.print(output)
+                    output.print(", ")
+                    self.cause.print(output)
+                    output.print(")")
+                    output.semicolon()
+                    return
                 output.print("ρσ_exception_value(")
                 self.value.print(output)
                 output.print(")")
