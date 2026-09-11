@@ -811,7 +811,7 @@ def _print_legacy_class(self, output):
                     def f_enum2():
                         (
                             output.indent(),
-                            output.print('"enumerable":'),
+                            output.print('"configurable": true, "enumerable":'),
                             output.space(),
                             output.print("true"),
                             output.comma(),
