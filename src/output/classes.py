@@ -411,30 +411,6 @@ def print_class(output):
                     '{"value":++ρσ_object_counter})',
                 )
                 output.end_statement()
-            if self.bound.length or self.shadowed_bound.length:
-                output.indent()
-                (
-                    self.name.print(output),
-                    output.print(
-                        ".prototype.__bind_methods__.call(" + instance_name + ")"
-                    ),
-                )
-                output.end_statement()
-            elif self.bind_inherited_methods and self.bases.length:
-                # A dynamically resolved base (for example ``Base[T]`` from
-                # another module) may provide eagerly bound Python methods
-                # even when this class defines none of its own.  The inherited
-                # binder is only known at runtime, so invoke it when present.
-                # Without this, keyword calls through such inherited methods
-                # lose their function metadata and are interpreted as a
-                # positional kwargs packet.
-                output.indent()
-                output.print("if (typeof ")
-                self.name.print(output)
-                output.print('.prototype.__bind_methods__ === "function") ')
-                self.name.print(output)
-                output.print(".prototype.__bind_methods__.call(" + instance_name + ")")
-                output.end_statement()
             if live_keyword_constructor:
                 output.indent()
                 output.print("var ρσ_initializer = ")
@@ -629,105 +605,6 @@ def print_class(output):
         self.name.print(output)
         output.print(")")
         output.end_statement()
-
-    # method binding
-    if self.bound.length or self.shadowed_bound.length:
-        seen_methods = Object.create(None)
-
-        def f_bind_methods():
-            output.spaced("function", "()", "")
-
-            def f_bases():
-                if self.bases.length:
-                    for i in range(self.bases.length - 1, -1, -1):
-                        base = self.bases[i]
-                        (
-                            output.indent(),
-                            base.print(output),
-                            output.spaced(".prototype.__bind_methods__", "&&", ""),
-                        )
-                        (
-                            base.print(output),
-                            output.print(".prototype.__bind_methods__.call(this)"),
-                        )
-                        output.end_statement()
-                # Base binders eagerly cache methods as own instance fields.
-                # A class-body value with the same name (including a runtime
-                # ``staticmethod`` descriptor) shadows that inherited method,
-                # so remove the implementation-only cache before normal
-                # descriptor lookup observes the instance.
-                for bname in self.shadowed_bound:
-                    output.indent()
-                    output.print("delete this." + bname)
-                    output.end_statement()
-                # Lightweight immutable mathematical values are often
-                # allocated millions of times.  Their own methods use lazy
-                # prototype accessors emitted below; only inherited methods
-                # from ordinary classes need the traditional eager binding.
-                if not self.lightweight:
-                    for bname in self.bound:
-                        if seen_methods[bname] or self.dynamic_properties[bname]:
-                            continue
-                        seen_methods[bname] = True
-                        is_classmethod = has_prop(self.classmethods, bname)
-
-                        def f_bind_one():
-                            output.indent(), output.assign("this." + bname)
-                            self.name.print(output)
-                            output.print(".prototype." + bname + ".bind(")
-                            output.print(
-                                "this.constructor" if is_classmethod else "this"
-                            )
-                            output.print(")")
-                            output.end_statement()
-                            (
-                                output.indent(),
-                                output.print("Object.assign(this." + bname + ", "),
-                            )
-                            (
-                                self.name.print(output),
-                                output.print(".prototype." + bname + ")"),
-                            )
-                            output.end_statement()
-                            (
-                                output.indent(),
-                                output.assign("this." + bname + ".__func__"),
-                            )
-                            self.name.print(output), output.print(".prototype." + bname)
-                            output.end_statement()
-                            (
-                                output.indent(),
-                                output.assign("this." + bname + ".__self__"),
-                            )
-                            output.print(
-                                "this.constructor" if is_classmethod else "this"
-                            )
-                            output.end_statement()
-                            (
-                                output.indent(),
-                                output.assign("this." + bname + ".__name__"),
-                            )
-                            output.print(JSON.stringify(bname))
-                            output.end_statement()
-                            output.indent()
-                            output.print("Object.defineProperty(this." + bname)
-                            output.print(
-                                ', "__sagejs_eager_bound_cache__", {value: true})'
-                            )
-                            output.end_statement()
-                            output.indent()
-                            output.print("ρσ_brand_bound_method(this." + bname + ")")
-                            output.end_statement()
-
-                        output.indent()
-                        output.print("if (typeof ")
-                        self.name.print(output)
-                        output.print(".prototype." + bname + ' === "function")')
-                        output.with_block(f_bind_one)
-
-            output.with_block(f_bases)
-
-        add_hidden_property("__bind_methods__", f_bind_methods)
 
     # dynamic properties
     property_names = Object.keys(self.dynamic_properties)
@@ -1184,10 +1061,9 @@ def print_class(output):
         ):
             print_class_statement(stmt)
 
-    # Preserve Python bound-method behavior for lightweight mathematical
-    # classes without eagerly allocating and decorating every bound method on
-    # every instance.  A method is bound only when it is first retrieved.
-    if self.lightweight and self.bound.length:
+    # Bind fresh method values on access, never in the instance namespace.
+    # Saved methods retain their function/receiver; later reads see mutations.
+    if self.bound.length:
         seen_lazy_methods = Object.create(None)
         for bname in self.bound:
             if (
@@ -1198,7 +1074,11 @@ def print_class(output):
                 # Leaving them as ordinary prototype functions lets hot
                 # calls such as ``left._mul_(right)`` preserve JavaScript's
                 # receiver without allocating a bound wrapper.
-                or (bname.startswith("_") and not bname.startswith("__"))
+                or (
+                    self.lightweight
+                    and bname.startswith("_")
+                    and not bname.startswith("__")
+                )
             ):
                 continue
             seen_lazy_methods[bname] = True
@@ -1207,6 +1087,12 @@ def print_class(output):
             output.print("(function(ρσ_unbound_method, ρσ_prototype)")
 
             def f_lazy_binding():
+                output.indent()
+                output.print(
+                    'if (typeof ρσ_unbound_method !== "function" || '
+                    "ρσ_unbound_method.__sagejs_callable_instance__ === true) return"
+                )
+                output.end_statement()
                 output.indent()
                 output.print("Object.defineProperty(ρσ_prototype, ")
                 output.print(JSON.stringify(bname))
@@ -1221,50 +1107,21 @@ def print_class(output):
                     output.end_statement()
                     output.indent()
                     output.assign("var ρσ_receiver")
-                    output.print("this.constructor" if is_classmethod else "this")
+                    output.print("ρσ_type(this)" if is_classmethod else "this")
                     output.end_statement()
                     output.indent()
-                    output.assign("var ρσ_bound_method")
-                    output.print("ρσ_unbound_method.bind(ρσ_receiver)")
-                    output.end_statement()
-                    output.indent()
-                    output.print("Object.assign(ρσ_bound_method, ρσ_unbound_method)")
-                    output.end_statement()
-                    output.indent()
-                    output.assign("ρσ_bound_method.__func__")
-                    output.print("ρσ_unbound_method")
-                    output.end_statement()
-                    output.indent()
-                    output.assign("ρσ_bound_method.__self__")
-                    output.print("ρσ_receiver")
-                    output.end_statement()
-                    output.indent()
-                    output.print("ρσ_brand_bound_method(ρσ_bound_method)")
-                    output.end_statement()
-                    output.indent()
-                    output.assign("ρσ_bound_method.__name__")
-                    output.print(JSON.stringify(bname))
-                    output.end_statement()
-                    output.indent()
-                    # Immutable tuple-backed values can inherit lightweight
-                    # Python methods, but cannot accept the usual per-instance
-                    # bound-method cache.
-                    output.print("if (Object.isExtensible(this)) ")
-                    output.print("Object.defineProperty(this, ")
-                    output.print(JSON.stringify(bname))
-                    output.comma()
-                    output.space()
                     output.print(
-                        "{value: ρσ_bound_method, writable: true, "
-                        "configurable: true, enumerable: true})"
+                        "return ρσ_finish_bound_method("
+                        "ρσ_unbound_method.bind(ρσ_receiver), "
+                        "ρσ_unbound_method, ρσ_receiver)"
                     )
-                    output.end_statement()
-                    output.indent()
-                    output.print("return ρσ_bound_method")
                     output.end_statement()
 
                 output.with_block(f_lazy_getter)
-                output.print(", {__sagejs_lazy_method_getter__: true})")
+                output.print(
+                    ", {__sagejs_lazy_method_getter__: true, "
+                    "__sagejs_unbound_method__: ρσ_unbound_method})"
+                )
                 output.print(", set: function(ρσ_method_value)")
 
                 def f_lazy_setter():

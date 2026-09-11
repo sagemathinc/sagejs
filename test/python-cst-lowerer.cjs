@@ -1785,7 +1785,9 @@ test("callable class variables retain runtime descriptor lookup", async () => {
       /ρσ_getattr_internal\(\$ρσ\$py\$Config, "selected", ρσ_getattr_missing\)/,
     );
     assert.doesNotMatch(javascript, /Config\.prototype\.selected\(\)/);
-    assert.match(javascript, /delete this\.selected/);
+    // Binding no longer installs inherited methods on the instance, so a
+    // subclass override must not need constructor-time cache cleanup.
+    assert.doesNotMatch(javascript, /delete this\.selected|__bind_methods__/);
   } finally {
     frontend.close();
   }
