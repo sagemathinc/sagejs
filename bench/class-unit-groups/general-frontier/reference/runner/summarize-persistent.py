@@ -76,6 +76,9 @@ def normalize(receipt):
         "sample": sample,
         "request_id": request_id,
         "timing_boundary": "whole-fresh-field-batch",
+        "controls": receipt.get("controls"),
+        "proof_policy": receipt.get("proof_policy"),
+        "producer_boundary": receipt.get("boundary"),
     }
     if status != "ok":
         return row
@@ -193,6 +196,7 @@ def summarize(directory):
         "qualification_evidence": False,
         "independent_replay": False,
         "engine": run["engine"],
+        "provenance": run["provenance"],
         "run_sha256": hashlib.sha256(run_bytes).hexdigest(),
         "reviewer_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "validator_sha256": hashlib.sha256(
@@ -205,6 +209,7 @@ def summarize(directory):
         "bits": bits,
         "iterations": iterations,
         "declared_samples": samples,
+        "seed": run.get("seed", 1),
         "missing_labels": sorted(
             label
             for label in expected
