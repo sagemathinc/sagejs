@@ -41,6 +41,21 @@ counter.item = 4
 assert counter.item == 4
 del counter.item
 assert counter.item == -1
+object.__setattr__(counter, "item", 5)
+assert counter.item == 5
+
+# Exposing or replacing the instance dictionary must not redirect data slots
+# into dictionary entries, even when the supplied mapping shadows their names.
+namespace = counter.__dict__
+namespace["item"] = 99
+counter.item = 6
+assert counter.item == 6 and namespace["value"] == 6
+assert namespace["item"] == 99
+object.__setattr__(counter, "item", 7)
+assert counter.item == 7 and namespace["value"] == 7
+counter.__dict__ = {"value": 8, "item": 100}
+counter.item = 9
+assert counter.item == 9 and counter.__dict__["item"] == 100
 
 
 class Child(Counter):
@@ -59,6 +74,12 @@ class ReadOnly:
 assert ReadOnly.value.fset is None
 assert ReadOnly.value.fdel is None
 raises(AttributeError, setattr, ReadOnly(), "value", 1)
+readonly = ReadOnly()
+raises(AttributeError, object.__setattr__, readonly, "value", 1)
+readonly.__dict__["value"] = 99
+raises(AttributeError, setattr, readonly, "value", 1)
+raises(AttributeError, object.__setattr__, readonly, "value", 1)
+assert readonly.value == 5 and readonly.__dict__["value"] == 99
 
 
 class OptionalGetter:

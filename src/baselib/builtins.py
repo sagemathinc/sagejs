@@ -460,6 +460,16 @@ def ρσ_instance_prototype(value: Any) -> Any:
 def _builtins_store_instance_attribute(value: Any, name: _Str, member: Any) -> _Bool:
     if not _builtins_has_instance_dict(value):
         return False
+    if _builtins_data_descriptor_names.has(name):
+        resolution = _builtins_class_attribute_resolution(
+            _builtins_attribute_owner(value), name
+        )
+        if (
+            resolution is not runtime.undefined
+            and resolution[2] == _BUILTINS_DESCRIPTOR_NATIVE_GETTER
+        ):
+            # Preserve native property setters, including readonly rejection.
+            return False
     if _builtins_instance_namespaces.has(value):
         namespace = _builtins_instance_namespaces.get(value)
         if namespace is runtime.undefined:
