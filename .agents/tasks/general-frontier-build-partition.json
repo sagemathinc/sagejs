@@ -1,0 +1,75 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-frontier-build-partition",
+  "title": "General Frontier Build Partition",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Exclude reviewed general-frontier validation metadata from artifact inputs without weakening runtime provenance",
+  "base_commit": "cd7568d459cc51e39fc5f776f2068ac852fd5cfe",
+  "claims": [
+    "scripts/build-receipt.cjs",
+    "test/build-input-partition.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "test/build-input-partition.cjs",
+    "scripts/build-receipt.cjs validationOnlyRoots, validationOnlyFiles, and reviewedBuildInputs"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Git and archive fixtures: workspace changes, artifact/native preservation, conservative input rejection, production-manifest overrides, unchanged old receipts"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --test test/build-input-partition.cjs test/test-runner-ux.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/build-input-partition.cjs test/test-runner-ux.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.958,
+      "started_at": "2026-09-11T08:10:26.277Z",
+      "commit": "cd7568d459cc51e39fc5f776f2068ac852fd5cfe",
+      "workspace_fingerprint": "bd24a32f63cc241d09e9b7e627bd71e1c107d8fc972417a2a4c63acccf90d2ee",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.013,
+      "started_at": "2026-09-11T08:10:34.778Z",
+      "commit": "cd7568d459cc51e39fc5f776f2068ac852fd5cfe",
+      "workspace_fingerprint": "bd24a32f63cc241d09e9b7e627bd71e1c107d8fc972417a2a4c63acccf90d2ee",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Exclude only the reviewed general-frontier benchmark root and four exact campaign contracts from artifact inputs; retain full workspace accounting, production-manifest overrides, native identities, and fail-closed stale receipts.",
+    "risks": [
+      "No blanket bench or .agents exclusion: unknown contracts, lanes/schema policy, and adjacent benchmark roots remain artifact inputs.",
+      "This partition helper change itself changes build inputs. Earlier receipts remain stale and are not rewritten or automatically migrated.",
+      "Full build and broad portable/native suites were not run for this bounded setup correction; contract remains active.",
+      "architecture:check is recorded as failed: its initial ffi:check cannot load dist/tools/cli in this fresh no-build worktree. test:changed --base cd7568d459cc51e39fc5f776f2068ac852fd5cfe --list requests merge:check, build, and test:unit; these broad checks are deferred."
+    ],
+    "next_steps": [
+      "Coordinator reviews and cherry-picks the focused correction, then establishes a valid baseline receipt through the normal build workflow.",
+      "Future runtime consumers of this benchmark tree must promote their input paths into reviewedBuildInputs or remove the exclusion."
+    ]
+  }
+}
