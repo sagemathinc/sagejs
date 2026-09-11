@@ -1,5 +1,65 @@
 # Object and call protocol campaign
 
+## Qualified semantic checkpoint — 2026-09-11
+
+Clean candidate `5b7f4ddc5` passes the full unchanged adopted corpus:
+**533 passes, three unchanged reviewed differences, zero required failures**.
+This repairs the original fifteen required failures without changing assertions
+or dispositions. The full build, 21 focused cross-feature tests, four pinned
+package workflows (packaging, attrs, tomli, decorator), and strict checks for
+386 modules pass. Core source remains 902,570 / 903,000 bytes.
+
+The namespace integration initially bypassed native property setters; the
+shared storage guard now preserves setters/read-only errors before and after
+dictionary exposure, including injected shadow entries. Both upstream property
+programs and the expanded Python/Sage oracle pass.
+
+This is not full PR qualification. The subsequent routine run caught compiled
+compiler size of 4,325,754 bytes against the unchanged 4,276,224-byte limit.
+PR214 passes a quiet full routine and production Chromium qualification and is
+non-draft; PR216 remains draft while its compiled-size and cold-path issues are
+addressed. A separate, pre-existing class-property deletion defect has a focused
+tested follow-up, not part of this checkpoint.
+
+### Final paired measurements for this snapshot
+
+The retained clean snapshot was measured on idle `bench-1`, with the same
+`f9b2b4d98` baseline, Node 26.7.0 and pinned CPython 3.14.4. Correctness preflights,
+three warmups/seven samples, source/artifact hashes and reversed-order common-call
+rounds are retained. The full original common-call driver now works; no reduced
+import driver was needed. Ratios to the earlier reduced-driver checkpoint are
+not an isolated causal comparison.
+
+| Workload | Baseline median | Candidate median | Outcome |
+| --- | ---: | ---: | --- |
+| Packaging cold CLI | 5184 ms | 6524 ms | 26% slower |
+| Packaging first import, including lazy compilation | 4268 ms | 5554 ms | 30% slower |
+| Packaging first workflow | 25.87 ms | 24.46 ms | 1.06x faster |
+| Packaging 1000 Version workflows | 2826 ms | 2575 ms | 1.10x faster; still 228x CPython |
+| Simple construction | 4748 ms | 2526 ms | 1.88x faster; still 47x CPython |
+| Initialized construction | 473 ms | 385 ms | 1.23x faster; still 46x CPython |
+| Immediate method calls | 319 ms | 247 ms | 1.29x faster; still 79x CPython |
+
+None of these closes a performance cliff. Cold/import sample ranges do not
+overlap. Separate diagnostic profiles attribute about 94.5% of the sampled
+increase to compiler/frontend work: prepared-class lowering emits both prepared
+and legacy method bodies/metadata. Generated `packaging.version` grew 69% and
+`collections` 90%; `_namespace` lazy compilation is a secondary cost. Runtime
+module execution excluding compilation did not account for the increase.
+The next optimization must share emission while retaining runtime metaclass
+selection, namespace ordering, receiver conventions and live metadata.
+
+Evidence in the directory below:
+
+- `object-final-corpus.json`, `object-final-packages.json`, and
+  `object-final-focused.log` qualify the stated semantic scopes.
+- `common-final-5b7f4ddc5-timings.json`, SHA256
+  `138db85294a8bb94dd4a40ae9603081988fa5a17ee6de0f087ea331f1fdf480b`.
+- `packaging-final-5b7f4ddc5-timings.json`, SHA256
+  `1ed2b7fa46367d4c51de64d922560956943989d64d3abd512d1d2c7890886ded`.
+- `final-5b7f4ddc5-benchmark-handoff.md` and `cold-profile-handoff.md`
+  distinguish timings from diagnostic profiles and record source identities.
+
 ## Intermediate checkpoint — 2026-09-11
 
 The combined artifact at `2e6be3f44` plus the recorded integer-adapter
@@ -59,7 +119,7 @@ These nested percentages are not additive, and the profile is not a timing
 sample. Investigate lazy formatting while preserving surfaced exception
 diagnostics; do not discard traceback information to improve this workload.
 
-## Remaining integration gates
+## Earlier remaining integration gates (superseded by checkpoint above)
 
 - Repair the two required namespace cases with exact dictionary identity and
   descriptor ownership, while preserving native backing fields and ordinary
