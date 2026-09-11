@@ -756,7 +756,7 @@ test("class-body global declarations bind the isolated module cell", async () =>
     );
     assert.match(
       javascript,
-      /ρσ_getattr_internal\([^;\n]*\$ρσ\$py\$runtime[^;\n]*"native_get"/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\([^;\n]*\$ρσ\$py\$runtime[^;\n]*"native_get"\), \[/,
     );
     assert.doesNotMatch(javascript, /\$ρσ\$py\$answer = target\[property_name\]/);
   } finally {
@@ -1041,11 +1041,11 @@ test("formatted strings invoke format on their template value", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /\ρσ_getattr_internal\("\{!r\}", "format"/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\("\{!r\}", "format"\), \[ρσ_check_unbound\(ρσ_resolve_module_name\(void 0, "value"/,
     );
     assert.doesNotMatch(
       javascript,
-      /\ρσ_getattr_internal\(ρσ_str, "format"/,
+      /(?:ρσ_getattr_internal|ρσ_prepare_method_call)\(ρσ_str, "format"/,
     );
   } finally {
     frontend.close();
@@ -1140,7 +1140,7 @@ test("dotted callable instances resolve through __call__", async () => {
     );
     assert.match(
       javascript,
-      /ρσ_resolve_callable\(ρσ_getattr_internal\(package, "factory", ρσ_getattr_missing\)\)/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\(package, "factory"\), \[ρσ_resolve_callable\(Integer\)\("1"\)\]\)/,
     );
   } finally {
     frontend.close();
@@ -1769,7 +1769,7 @@ test("same-class static calls are not guessed to be unbound methods", async () =
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(\$ρσ\$py\$Config, "name", ρσ_getattr_missing\)/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\(\$ρσ\$py\$Config, "name"\), \[\$ρσ\$py\$value\]\)/,
     );
     assert.doesNotMatch(
       javascript,
@@ -1798,7 +1798,7 @@ test("callable class variables retain runtime descriptor lookup", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(\$ρσ\$py\$Config, "selected", ρσ_getattr_missing\)/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\(\$ρσ\$py\$Config, "selected"\), \[\]\)/,
     );
     assert.doesNotMatch(javascript, /Config\.prototype\.selected\(\)/);
     // Binding no longer installs inherited methods on the instance, so a
