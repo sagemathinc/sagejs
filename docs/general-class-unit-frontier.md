@@ -546,3 +546,79 @@ checks. All 41 production kernel families were reused, none rebuilt. The later
 source-union companion has its own seven focused tests and independent review;
 these developer-tool results do not constitute mathematical or performance
 qualification of the still-unmodified shared engine.
+
+### Acquisition closure and matched rank-two supplement
+
+The union-aware exposure review is complete for the retained, enumerated source
+scope: 4,492 candidate labels, 44 quarantined, 4,448 remaining, and no unresolved
+metadata dispositions. All 82 finite source proofs passed. This is not a proof
+about arbitrary deleted experiments or unrecorded inputs, and does not itself
+approve holdout eligibility. Coverage approval and freeze flags remain false.
+Readiness can now consume the authenticated candidate manifest directly,
+reconstructing both acquisitions and retaining their distinct identities.
+Independent review found no blocking issue in that adapter.
+
+The persistent 28-field supplement is now paired: 13 successful pairs, 15
+censored cases, and no disagreement in the checked exact summaries. Five
+successful pairs exceed one second in the faster reference; none exceeds ten
+seconds. These are discovery measurements, not independently replayed results
+or a proof of distinctness of the generated fields. The conservative ledger
+stands at 17,458.648 seconds of 432,000 before the second 72-field Hecke run.
+The 20-expensive-field bridge requirement remains unmet.
+
+### Candidate mechanism: reject impossible norms before ideal factorization
+
+Forensics now uses the actual benchmarked upstream versions, rather than a
+different locally installed PARI version:
+
+- PARI 2.15.4, upstream commit `e87796ac3acc76eab7a459c39c271b61a2b16fc3`.
+  The [official source archive](https://pari.math.u-bordeaux.fr/pub/pari/OLD/2.15/pari-2.15.4.tar.gz)
+  has SHA-256 `c3545bfee0c6dfb40b77fb4bbabaf999d82e60069b9f6d28bcb6cf004c8c5c0f`;
+  `src/basemath/buch2.c` has SHA-256
+  `29d1018d4d1d98f95cd94511e255a518ea81b2f55faa196f6732d659ad298674`.
+  Lines 820–843 implement `smooth_norm`; `can_factor`, lines 861–873,
+  invokes it before the prime-ideal valuation work. Its documented premise is
+  a nonzero integral primitive ideal. This is a factor-base smoothness path,
+  not evidence that PARI uses our proposed one-large-prime mechanism. This
+  pins upstream source, not every possible distribution patch to the binary.
+- Hecke 0.40.0, commit `66af28e52682620edb302931fce3f9ac87fc4eb7`.
+  [Rel_add.jl](https://github.com/thofma/Hecke.jl/blob/66af28e52682620edb302931fce3f9ac87fc4eb7/src/NumFieldOrd/NfOrd/Clgp/Rel_add.jl)
+  lines 52–91 checks rational norm support before `_factor!`.
+  [FacBase_Euc.jl](https://github.com/thofma/Hecke.jl/blob/66af28e52682620edb302931fce3f9ac87fc4eb7/src/NumFieldOrd/NfOrd/Clgp/FacBase_Euc.jl)
+  lines 56–67 strips that support by repeated gcd and exact division. Its
+  particular large-prime branch also requires rational primality and excludes
+  index divisors; those restrictions must not be imported into a different
+  acceptance contract without justification.
+
+Here is a necessary condition for the existing Sage.js one-large-prime
+contract. Let the nonzero fractional ideal have an accepted decomposition
+
+$$
+J=Q\prod_{P\in\mathcal F}P^{e_P},\qquad N(Q)\leq L,
+$$
+
+where $Q$ is the single extra prime ideal, with exponent one. Let $S$ contain
+all rational primes below the factor-base ideals $\mathcal F$. Write the
+positive ideal norm in lowest terms as $N(J)=A/B$, and remove all prime factors
+in $S$ from $A$, leaving $R$. If $q$ lies below $Q$, unique ideal factorization
+and multiplicativity of the norm imply:
+
+$$
+R=\begin{cases}N(Q)=q^f,&q\notin S,\\1,&q\in S.\end{cases}
+$$
+
+Also, $B$ has no prime factor outside $S$. Consequently $R>L$, or an unsupported
+denominator, proves that the candidate cannot satisfy this contract. This
+argument permits arbitrary signed $e_P$; it does not assume integrality.
+It is only a rejection test. Passing it does not establish ideal smoothness,
+splitting type, or the existence of the required decomposition. In particular,
+do not require $R$ to be a rational prime: $q^f$ with $f>1$ is allowed.
+
+Implementation must use complete support, a canonical nonzero positive norm,
+and explicit handling of zero or unavailable data. The present concrete ideal
+factorization already rejects nonintegral ideals, so the fractional statement
+does not imply a new accepted input class or a measured speedup there. On
+rejected integral candidates, the expected avoided work is integer norm
+factorization, local splitting, valuations, and reconstruction. Principal ideal
+construction and quotient/norm computation still cost time. No implementation
+or speed claim for this mechanism has been made yet.

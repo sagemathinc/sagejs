@@ -79,7 +79,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pair", nargs=2, type=Path, action="append", required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--pool", type=Path, required=True)
+    inputs = parser.add_mutually_exclusive_group(required=True)
+    inputs.add_argument("--pool", type=Path)
+    inputs.add_argument("--candidate-manifest", type=Path)
     parser.add_argument("--node", default="node")
     args = parser.parse_args()
     reports = [
@@ -87,22 +89,29 @@ if __name__ == "__main__":
         for a, b in args.pair
     ]
     validator = Path(__file__).resolve().parents[2] / "exposure" / "reconcile.cjs"
-    pool_bytes = args.pool.read_bytes()
+    input_path = args.pool or args.candidate_manifest
+    input_bytes = input_path.read_bytes()
     source = subprocess.run(
         [
             args.node,
             "-e",
-            "const fs=require('node:fs');const v=require(process.argv[1]);process.stdout.write(JSON.stringify(v.poolRecords(JSON.parse(fs.readFileSync(0)))));",
+            "const fs=require('node:fs');const v=require(process.argv[1]);const x=JSON.parse(fs.readFileSync(0));let p=x,identity=null;if(process.argv[2]==='manifest'){const r=v.fromManifest(x,process.argv[3]);p=v.loadCandidateInput(x,process.argv[3]);identity={envelope_sha256:r.envelope_sha256,candidate_source:r.result.candidate_source??{pool_sha256:p.pool_sha256}};}process.stdout.write(JSON.stringify({records:v.poolRecords(p),identity}));",
             str(validator),
+            "pool" if args.pool else "manifest",
+            str(input_path.resolve().parent),
         ],
-        input=pool_bytes.decode("utf-8"),
+        input=input_bytes.decode("utf-8"),
         check=True,
         capture_output=True,
         text=True,
         timeout=30,
     )
-    result = readiness(reports, json.loads(source.stdout))
-    result["source_pool_file_sha256"] = hashlib.sha256(pool_bytes).hexdigest()
+    validated = json.loads(source.stdout)
+    result = readiness(reports, validated["records"])
+    result[
+        "source_pool_file_sha256" if args.pool else "source_manifest_file_sha256"
+    ] = hashlib.sha256(input_bytes).hexdigest()
+    result["candidate_source_identity"] = validated["identity"]
     result["source_validator_sha256"] = hashlib.sha256(
         validator.read_bytes()
     ).hexdigest()
@@ -112,4 +121,12 @@ if __name__ == "__main__":
     with args.output.open("x") as output:
         json.dump(result, output, indent=2, sort_keys=True)
         output.write("\n")
-    print(json.dumps({k: v for k, v in result.items() if k != "paired_reports"}))
+    print(
+        json.dumps(
+            {
+                k: v
+                for k, v in result.items()
+                if k not in ("paired_reports", "candidate_source_identity")
+            }
+        )
+    )
