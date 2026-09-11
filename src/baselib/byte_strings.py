@@ -1678,46 +1678,48 @@ def _int_from_bytes(
     return runtime.normalize_integer(answer)
 
 
-runtime.reflect.set(
-    ρσ_bytes,
-    "prototype",
-    runtime.reflect.get(SageBytes, "prototype"),
-)
-for _method_name in [
-    "center",
-    "count",
-    "decode",
-    "endswith",
-    "find",
-    "index",
-    "isalpha",
-    "isdigit",
-    "islower",
-    "isspace",
-    "isupper",
-    "join",
-    "lower",
-    "lstrip",
-    "partition",
-    "replace",
-    "rfind",
-    "rindex",
-    "rpartition",
-    "rsplit",
-    "rstrip",
-    "split",
-    "startswith",
-    "strip",
-    "upper",
+for _byte_factory, _byte_class in [
+    (ρσ_bytes, SageBytes),
+    (ρσ_bytearray, SageByteArray),
 ]:
-    runtime.reflect.set(
-        ρσ_bytes,
-        _method_name,
-        runtime.reflect.get(
-            runtime.reflect.get(SageBytes, "prototype"),
+    _byte_prototype = runtime.reflect.get(_byte_class, "prototype")
+    runtime.reflect.set(_byte_factory, "prototype", _byte_prototype)
+    for _method_name in [
+        "append",
+        "center",
+        "count",
+        "decode",
+        "endswith",
+        "extend",
+        "find",
+        "index",
+        "isalpha",
+        "isdigit",
+        "islower",
+        "isspace",
+        "isupper",
+        "join",
+        "lower",
+        "lstrip",
+        "partition",
+        "replace",
+        "rfind",
+        "rindex",
+        "rpartition",
+        "rsplit",
+        "rstrip",
+        "split",
+        "startswith",
+        "strip",
+        "upper",
+    ]:
+        if _byte_factory is ρσ_bytes and _method_name in ("append", "extend"):
+            continue
+        runtime.reflect.set(
+            _byte_factory,
             _method_name,
-        ),
-    )
+            runtime.reflect.get(_byte_prototype, _method_name),
+        )
 
 bytes = ρσ_bytes
 bytearray = ρσ_bytearray
@@ -1740,48 +1742,6 @@ runtime.set_class_repr(SageBytes, "<class 'bytes'>")
 runtime.set_class_repr(SageByteArray, "<class 'bytearray'>")
 runtime.set_class_repr(SageMemoryView, "<class 'memoryview'>")
 
-runtime.reflect.set(
-    ρσ_bytearray,
-    "prototype",
-    runtime.reflect.get(SageByteArray, "prototype"),
-)
-for _bytearray_method_name in [
-    "append",
-    "center",
-    "count",
-    "decode",
-    "endswith",
-    "extend",
-    "find",
-    "index",
-    "isalpha",
-    "isdigit",
-    "islower",
-    "isspace",
-    "isupper",
-    "join",
-    "lower",
-    "lstrip",
-    "partition",
-    "replace",
-    "rfind",
-    "rindex",
-    "rpartition",
-    "rsplit",
-    "rstrip",
-    "split",
-    "startswith",
-    "strip",
-    "upper",
-]:
-    runtime.reflect.set(
-        ρσ_bytearray,
-        _bytearray_method_name,
-        runtime.reflect.get(
-            runtime.reflect.get(SageByteArray, "prototype"),
-            _bytearray_method_name,
-        ),
-    )
 
 runtime.reflect.set(ρσ_bytes, "fromhex", _bytes_fromhex)
 runtime.reflect.set(ρσ_bytearray, "fromhex", _bytearray_fromhex)

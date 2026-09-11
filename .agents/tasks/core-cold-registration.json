@@ -35,10 +35,27 @@
     "pnpm test:compiler",
     "pnpm test:integration"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/core-cold-registration.cjs test/python-property-clone.cjs test/python-public-super.cjs test/documentation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.706,
+      "started_at": "2026-09-11T08:26:39.640Z",
+      "commit": "7982bad68d882489098897666507fc19881bb241",
+      "workspace_fingerprint": "48301987ef62d138aadd349bc03e297cd46d4f4cac236729b7a5a840b89647f9",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Consolidated byte and documentation registration tables and moved native property cache-miss construction into the existing lazy namespace module, saving 971 eager source bytes. Matching self-compiler converged and 28 focused tests passed, including cache reuse and host-free standalone properties; strict checks passed 386 modules.",
+    "risks": [
+      "Full build/compiler/integration receipts remain with the integration lane; this task stays active until that qualification is attached.",
+      "Existing property-protocol assignment regression requires the independently validated prerequisite 20e28931a. The cold extraction does not alter instance stores."
+    ],
+    "next_steps": [
+      "Integrate the semantic commit separately from primary PR216 and retain the unchanged core budget.",
+      "Qualify the combined native setter prerequisite and cold extraction against property-protocol before final publication."
+    ]
   }
 }
