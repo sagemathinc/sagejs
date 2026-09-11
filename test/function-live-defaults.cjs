@@ -8,6 +8,28 @@ const { join } = require("node:path");
 const test = require("node:test");
 const { createSage } = require("../dist/tools/kernel.js");
 
+test("positional default resolution is shared behind the omitted-argument guard", async () => {
+  const compiler = require("../dist/tools/compiler.js").default();
+  const { createPythonCompilerFrontend } = require("../dist/tools/python/compiler-frontend.js");
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse("def compact(value=3):\n    return value\n", {
+      filename: "<compact-function-defaults>",
+    });
+    const output = new compiler.OutputStream({
+      omit_baselib: true, write_name: false, beautify: true,
+      python_attributes: true,
+    });
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /if \(typeof (\S+) === "undefined"\) \1 = ρσ_positional_default\([^;]+\);/);
+    assert.equal((javascript.match(/ρσ_positional_default\(/g) ?? []).length, 1);
+    assert.doesNotMatch(javascript, /__defaults__\.length/);
+  } finally {
+    frontend.close();
+  }
+});
+
 for (const mode of ["python", "sage"]) {
   test(`function defaults are live Python slots (${mode})`, async (context) => {
     const session = await createSage({ mode });
