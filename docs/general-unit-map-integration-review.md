@@ -206,7 +206,44 @@ failed run. The coordinated unchanged quiet check subsequently passed at
 progress. Combined-revision integration validation and final generated-code
 resource measurements remain pending.
 
-### Remaining completeness work
+### Exact-revision validation checkpoint at `3f5edf0ab`
+
+The integrated strict check passed all 384 modules with zero errors. The full
+changed-tree run passed build (8 minutes 34 seconds), architecture, 202 unit
+files, documentation and lazy-module checks, then failed the public projection
+integration fixture. The overall failed receipt is retained at 1,271.38 seconds;
+395 integration files were not started. This is not a passed integration gate.
+
+Independent source review and a direct reproduction locate the failure at the
+first combined `proof=True` request for `3.1.588.1`. The three fixture fields
+have independently proved scalar class numbers 3, 8 and 6, but their generic
+fundamental-unit completeness used the conditional BF index argument. The old
+test therefore relied on the corrected false unconditional promotion. A narrow
+test correction must retain nontrivial conditional class maps and mutation
+checks, separately check the exact scalar class numbers, and explicitly test
+the unsupported unconditional combined request's decline. Restoring the false
+label, or replacing the cases with only trivial class groups, is unacceptable.
+The public class-only adapter currently shares the combined route; providing
+an independent class-only proof/map route remains a separate product gap.
+
+Current generated UTF-8 `javascriptTemplate` measurements, using the same
+boundary as the earlier integration baseline, are:
+
+| Module | Template bytes | Change from earlier baseline |
+| --- | ---: | ---: |
+| `class_unit_groups` | 2,112,307 | -112,783 |
+| `class_unit_analytic` | 1,760,431 | +1,209 |
+
+Their SHA-256 digests are respectively
+`ae37c0edc6cce756e5a6cccea37a80562af608b2c5faf25a6f94b07666ff9c70`
+and `6d1b4afd91f46a9be88fd61002a4f2ac5e6d0a7066be3847d04d8a4c9b514a17`.
+These two artifacts do not account for the new lazy replay and coordinate
+modules, nor establish runtime or memory competitiveness. The proof-policy
+lane's single quiet full-native retry separately passed in 802.55 seconds,
+including the unchanged dense-QQ gate at 5.04 ms. The original timing failure
+remains retained; a later pass does not establish its cause.
+
+### Remaining completeness implementation
 
 The original follow-up audit was pinned to source commit `f531a6b640`. Existing
 `RelationRecord.verify`, `RelationPresentation.verify`, class-map witnesses,
