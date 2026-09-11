@@ -6664,13 +6664,12 @@ def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
 _BUILTINS_TYPE_NEW_PLAIN_TOKEN = runtime.object.create(None)
 
 
-def _builtins_inherited_metaclass(bases: Any) -> Any:
+def _builtins_inherited_metaclass(bases: Any, selected: Any = runtime.undefined) -> Any:
     """Select the most-derived metaclass required by `bases`."""
-    selected = ρσ_type
+    if selected is runtime.undefined:
+        selected = ρσ_type
     for base in bases:
-        candidate = _builtins_get_member(base, "__python_type__")
-        if candidate is runtime.undefined:
-            candidate = ρσ_type
+        candidate = runtime.reflect.apply(ρσ_type, runtime.undefined, [base])
         if candidate is selected:
             continue
         candidate_mro = _builtins_get_member(candidate, "__mro__")
@@ -6718,22 +6717,10 @@ def ρσ_type(*values: Any) -> Any:
                 )
 
         def dynamic_class(*args: Any, **keywords: Any) -> Any:
-            # Forward user keywords as the eventual instance initializer's
-            # keyword packet.  Sending them through ordinary interpolation
-            # here would let a user keyword named ``cls`` bind the private
-            # first parameter of ``_builtins_type_call`` instead.
-            runtime.reflect.set(keywords, runtime.kwargs_symbol, True)
-            call_args = [dynamic_class]
-            call_args.extend(args)
-            # A marked keyword packet cannot be passed through the Python
-            # ``list.append`` adapter: the adapter would interpret it as its
-            # own keyword packet.  Append it at the JavaScript boundary.
-            runtime.reflect.apply(runtime.array.prototype.push, call_args, [keywords])
-            return runtime.reflect.apply(
-                _builtins_type_call,
-                runtime.undefined,
-                call_args,
-            )
+            # Calling a class invokes its metaclass slot. Explicit delegation
+            # through `type.__call__` still reaches the allocation helper.
+            slot = ρσ_get_type_slot(dynamic_class, "__call__")
+            return slot(*args, **keywords)
 
         prototype = runtime.object.create(runtime.reflect.get(parent, "prototype"))
         runtime.reflect.set(prototype, "constructor", dynamic_class)
@@ -6996,6 +6983,7 @@ def ρσ_apply_metaclass(
     # copy so custom metaclasses can normalize entries before ``type.__new__``
     # without mutating the temporary compiler-generated class.
     namespace = _builtins_namespace_dict(compiled_class).copy()
+    metaclass = _builtins_inherited_metaclass(bases, metaclass)
     # Class construction invokes ``type(metaclass).__call__``.  It must not
     # invoke a ``__call__`` defined *by* the metaclass: that hook constructs
     # instances of the eventual class (RegexLexerMeta is a prominent real
@@ -7019,19 +7007,8 @@ def ρσ_apply_inherited_metaclass(
     compiled_class: Any,
 ) -> Any:
     """Apply the non-default metaclass inherited from a base class."""
-    selected = runtime.undefined
-    for base in bases:
-        candidate = _builtins_get_member(base, "__python_type__")
-        if candidate is runtime.undefined or candidate is ρσ_type:
-            continue
-        if selected is runtime.undefined:
-            selected = candidate
-        elif selected is not candidate:
-            raise TypeError(
-                "metaclass conflict: the metaclass of a derived class must "
-                "be a subclass of the metaclasses of all its bases"
-            )
-    if selected is runtime.undefined:
+    selected = _builtins_inherited_metaclass(bases)
+    if selected is ρσ_type:
         return compiled_class
     return ρσ_apply_metaclass(selected, class_name, bases, compiled_class)
 
