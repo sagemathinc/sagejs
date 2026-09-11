@@ -83,7 +83,10 @@ class BaseException(runtime.error):
         self.__suppress_context__ = False
 
     def __repr__(self) -> str:
-        return self.name + runtime.repr(self.args)
+        representations = []
+        for argument in self.args:
+            representations.append(runtime.repr(argument))
+        return self.name + "(" + ", ".join(representations) + ")"
 
     def __str__(self) -> str:
         return self.message
