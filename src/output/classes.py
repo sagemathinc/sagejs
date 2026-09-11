@@ -4,6 +4,7 @@ from ast_types import (
     AST_AnnotatedAssignment,
     AST_Class,
     AST_Method,
+    AST_Seq,
     AST_SymbolNonlocal,
     AST_SymbolRef,
     AST_Var,
@@ -12,6 +13,93 @@ from ast_types import (
 from output.functions import decorate, function_definition, function_annotation
 from output.utils import create_doctring
 from utils import has_prop
+
+
+def _print_shared_method_factories(self, output, prefix):
+    # Hoist only JS factory definitions, never Python definition-time work.
+    # Each branch supplies defaults under its actual class-namespace context.
+    # Keep forms with different descriptor/receiver metadata on their existing
+    # paths; eligibility makes no assumption about the runtime base/metaclass.
+    shared = []
+    for stmt in self.python_namespace_body or self.body:
+        if not is_node_type(stmt, AST_Method) or self.body.indexOf(stmt) == -1:
+            continue
+        name = stmt.name.name
+        if (
+            (stmt.python_namespace_decorators or stmt.decorators or []).length
+            or stmt.is_getter
+            or stmt.is_setter
+            or stmt.is_deleter
+            or stmt["static"]
+            or stmt.classmethod
+            or has_prop(self["static"] or {}, name)
+            or has_prop(self.classmethods or {}, name)
+            or name in self.nonlocal_names
+            or name in ("__new__", "__init_subclass__", "__class_getitem__")
+            or not stmt.argnames.length
+            or stmt.argnames[0].name != "self"
+            or stmt.argnames[0].annotation
+            or stmt.argnames.posonly
+            or (stmt.annotations and stmt.annotations != "future")
+            or has_prop(stmt.argnames.defaults, "self")
+        ):
+            continue
+        factory = prefix + "_method_" + str(shared.length)
+        defaults = stmt.argnames.defaults
+        keys = Object.keys(defaults)
+        replacements = Object.create(None)
+        for index, key in enumerate(keys):
+            replacements[key] = AST_SymbolRef(
+                {"name": "ρσ_shared_defaults[" + str(index) + "]"}
+            )
+        output.indent()
+        output.print("var " + factory + " = function(ρσ_shared_defaults) {")
+        output.print("var ρσ_shared_method = ")
+        stmt.argnames.defaults = replacements
+        try:
+            function_definition(stmt, output, True, True, "ρσ_method_" + name)
+        finally:
+            stmt.argnames.defaults = defaults
+        output.print(
+            ";ρσ_shared_method.__sagejs_method_signature_excludes_self__ = true;"
+            "return ρσ_shared_method;}"
+        )
+        output.end_statement()
+        stmt.python_shared_factory = {"name": factory, "keys": keys}
+        shared.push(stmt)
+    return shared
+
+
+def _print_shared_method_call(stmt, output, prepared=False):
+    factory = stmt.python_shared_factory
+    execution_flags = prepared and (stmt.is_generator or stmt.is_coroutine)
+    if execution_flags:
+        output.print("Object.assign(")
+    if prepared:
+        output.print("ρσ_unbound_method_adapter(")
+    output.print(factory.name + "([")
+    for index, key in enumerate(factory.keys):
+        if index:
+            output.comma()
+        value = stmt.argnames.defaults[key]
+        if is_node_type(value, AST_Seq):
+            output.print("ρσ_math_tuple([")
+            value.print(output)
+            output.print("])")
+        else:
+            value.print(output)
+    output.print("])")
+    if prepared:
+        output.print(")")
+    if execution_flags:
+        output.print(", {")
+        if stmt.is_generator:
+            output.print("__is_generator__: true")
+        if stmt.is_coroutine:
+            if stmt.is_generator:
+                output.comma()
+            output.print("__is_coroutine__: true")
+        output.print("})")
 
 
 def _print_prepared_body(self, output, state):
@@ -72,13 +160,16 @@ def _print_prepared_body(self, output, state):
                 previous_static = stmt["static"]
                 stmt["static"] = True
                 try:
-                    decorate(
-                        stmt.python_namespace_decorators or stmt.decorators or [],
-                        output,
-                        lambda: function_definition(
-                            stmt, output, False, True, "ρσ_prepared_method_" + name
-                        ),
-                    )
+                    if stmt.python_shared_factory:
+                        _print_shared_method_call(stmt, output, True)
+                    else:
+                        decorate(
+                            stmt.python_namespace_decorators or stmt.decorators or [],
+                            output,
+                            lambda: function_definition(
+                                stmt, output, False, True, "ρσ_prepared_method_" + name
+                            ),
+                        )
                 finally:
                     stmt["static"] = previous_static
                 if (
@@ -121,6 +212,7 @@ def print_class(output):
     output.prepared_class_serial = (output.prepared_class_serial or 0) + 1
     header = "ρσ_class_header_" + str(output.prepared_class_serial)
     state = "ρσ_class_namespace_" + str(output.prepared_class_serial)
+    shared = _print_shared_method_factories(self, output, header)
     decorators = self.decorators or []
     output.indent()
     output.print("var " + header + " = [[")
@@ -194,6 +286,8 @@ def print_class(output):
         self.metaclass = original_metaclass
         for index, decorator in enumerate(decorators):
             decorator.expression = original_decorators[index]
+        for stmt in shared:
+            stmt.python_shared_factory = None
 
 
 def _print_legacy_class(self, output):
@@ -339,13 +433,16 @@ def _print_legacy_class(self, output):
             if not is_property:
                 output.end_statement()
         else:
-            function_definition(
-                stmt,
-                output,
-                strip_first,
-                False,
-                javascript_name,
-            )
+            if stmt.python_shared_factory:
+                _print_shared_method_call(stmt, output)
+            else:
+                function_definition(
+                    stmt,
+                    output,
+                    strip_first,
+                    False,
+                    javascript_name,
+                )
             if not is_property:
                 output.end_statement()
                 fname = (
@@ -357,7 +454,8 @@ def _print_legacy_class(self, output):
                     + ("." if is_static else ".prototype.")
                     + name
                 )
-                function_annotation(stmt, output, strip_first, fname)
+                if not stmt.python_shared_factory:
+                    function_annotation(stmt, output, strip_first, fname)
                 if is_static:
                     output.indent()
                     self.name.print(output)
