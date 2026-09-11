@@ -63,6 +63,12 @@ class Child(Counter):
 
 
 assert Child.item is descriptor
+inherited_counter = Child()
+del inherited_counter.item
+assert inherited_counter.value == -1
+inherited_counter.item = 5
+object.__delattr__(inherited_counter, "item")
+assert inherited_counter.value == -1
 
 
 class ReadOnly:
@@ -134,6 +140,28 @@ class DeleterBase:
 
 class DeleterChild(DeleterBase):
     pass
+
+
+class GetterOnlyChild(DeleterBase):
+    @property
+    def field(self):
+        return 7
+
+
+getter_only = GetterOnlyChild()
+raises(AttributeError, delattr, getter_only, "field")
+raises(AttributeError, object.__delattr__, getter_only, "field")
+assert getter_only.field == 7 and not hasattr(getter_only, "deleted")
+getter_only.__dict__["field"] = 99
+raises(AttributeError, delattr, getter_only, "field")
+raises(AttributeError, object.__delattr__, getter_only, "field")
+assert getter_only.field == 7 and getter_only.__dict__["field"] == 99
+saved_getter_only = GetterOnlyChild.field
+assert saved_getter_only.fdel is None
+GetterOnlyChild.field = saved_getter_only
+raises(AttributeError, delattr, getter_only, "field")
+raises(AttributeError, object.__delattr__, getter_only, "field")
+assert getter_only.field == 7 and getter_only.__dict__["field"] == 99
 
 
 DeleterChild.field = 2

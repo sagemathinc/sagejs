@@ -4911,13 +4911,15 @@ def _builtins_native_property(source: Any, name: _Str, descriptor: Any) -> Any:
     cached = _builtins_property_cache.get(key)
     if cached is not runtime.undefined:
         return cached
-    deleter = _builtins_get_member(source, "ρσ_property_deleter_" + name)
+    deleter = runtime.object.getOwnPropertyDescriptor(
+        source, "ρσ_property_deleter_" + name
+    )
     cached = SageProperty(
         None if getter is runtime.undefined else runtime.unbound_method_adapter(getter),
         None if setter is runtime.undefined else runtime.unbound_method_adapter(setter),
         None
         if deleter is runtime.undefined
-        else runtime.unbound_method_adapter(deleter),
+        else runtime.unbound_method_adapter(runtime.reflect.get(deleter, "value")),
     )
     _builtins_property_cache.set(key, cached)
     return cached
@@ -5337,7 +5339,7 @@ def _builtins_getattr_impl(
                     is not True
                 ):
                     return _builtins_native_property(
-                        class_prototype, name, class_descriptor
+                        descriptor_source, name, class_descriptor
                     )
             class_member = _builtins_get_member(class_prototype, name)
             if _builtins_get_member(class_member, "__self__") is class_prototype:
@@ -6255,7 +6257,15 @@ def _builtins_native_property_deleter(value: Any, name: _Str) -> Any:
         resolution is not runtime.undefined
         and resolution[2] == _BUILTINS_DESCRIPTOR_NATIVE_GETTER
     ):
-        return _builtins_get_member(value, "ρσ_property_deleter_" + name)
+        prototype = runtime.object.getPrototypeOf(value)
+        while not runtime.reflect.get(runtime.object, "hasOwn")(prototype, name):
+            prototype = runtime.object.getPrototypeOf(prototype)
+        deleter = runtime.object.getOwnPropertyDescriptor(
+            prototype, "ρσ_property_deleter_" + name
+        )
+        if deleter is runtime.undefined:
+            raise AttributeError("property has no deleter")
+        return runtime.reflect.get(deleter, "value")
     return runtime.undefined
 
 
