@@ -1,7 +1,8 @@
 # Method-binding correctness experiment
 
-Status: draft follow-on to canonical type PR #209 (`f9b2b4d98`); startup gate
-remains unresolved. Do not merge yet.
+Status: follow-on PR #211 to canonical type PR #209 (`f9b2b4d98`). The lexical
+capture revision passes local routine including startup; exact-revision platform
+CI remains required. Earlier failures below are retained as experiment history.
 PR #209 independently passed Linux x64, Linux ARM64, macOS ARM64, Windows x64
 and Chromium parity. This experiment is not part of that PR.
 
@@ -74,10 +75,10 @@ revision failed bootstrap for that reason; it is not the current source.
 
 ## Next actions
 
-1. Reduce generated getter/descriptor initialization overhead without restoring
-   observable instance caches. Meet the unchanged startup gate.
-2. Independently confirm performance on a quiet qualification host and run
-   platform CI before promoting this draft. Retain all failed startup runs.
+1. Qualify the lexical-capture commit in platform CI before merging. Retarget
+   main after the canonical-type prerequisite merges.
+2. Independently confirm performance on a quiet qualification host before
+   claiming cliff closure. Startup margin remains narrow; retain failed runs.
 3. Add any reduced regressions found by broader testing. Do not publish this
    as ready while a new required failure or unexplained large cost remains.
 
@@ -109,3 +110,23 @@ qualification or cliff closure. The final revision remains roughly 43x, 29x
 and 88x CPython respectively on these workloads. Full reports include the
 runtime identities, samples and environment; filenames are
 `method-binding-calls-baseline7.json` and `method-binding-shared-calls7.json`.
+
+## Lexical capture follow-up
+
+Replace each immediately invoked method-binding factory with a lexical block
+and `const` captures. Getter/setter behavior remains unchanged; repeated class
+definitions in a loop now have an explicit independent-target regression.
+The compiler no longer emits or initializes one extra factory per method.
+
+The runtime V8 cache shrinks from 8347784 to 7913624 bytes (434160 bytes).
+The full build passes in 7m17s; 88 focused groups, architecture and the complete
+routine suite pass. Isolated startup is 399.5 ms against 400 ms, followed by a
+successful routine startup check. This resolves the local gate, not the narrow
+margin or every environment's startup cost.
+
+The frozen `method-binding-block-compat.json` preserves all 536 dispositions
+with unchanged source/build identity. Seven-sample warm medians are 2617 ms
+simple construction, 274 ms initialized construction, and 284 ms method calls.
+They retain the earlier local improvement against exact M1 (4990/500/335 ms),
+but remain approximately 45x/30x/87x CPython: no performance cliff is closed.
+Logs and samples use the `method-binding-block-` prefix in the evidence folder.

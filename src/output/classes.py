@@ -1084,16 +1084,24 @@ def print_class(output):
             seen_lazy_methods[bname] = True
             is_classmethod = has_prop(self.classmethods, bname)
             output.indent()
-            output.print("(function(ρσ_unbound_method, ρσ_prototype)")
 
             def f_lazy_binding():
+                # Block-local captures avoid allocating an immediately invoked
+                # factory for every method during runtime initialization.
                 output.indent()
-                output.print(
-                    'if (typeof ρσ_unbound_method !== "function" || '
-                    "ρσ_unbound_method.__sagejs_callable_instance__ === true) return"
-                )
+                output.print("const ρσ_prototype = ")
+                self.name.print(output)
+                output.print(".prototype")
                 output.end_statement()
                 output.indent()
+                output.print("const ρσ_unbound_method = ρσ_prototype.")
+                output.print(bname)
+                output.end_statement()
+                output.indent()
+                output.print(
+                    'if (typeof ρσ_unbound_method === "function" && '
+                    "ρσ_unbound_method.__sagejs_callable_instance__ !== true) "
+                )
                 output.print("Object.defineProperty(ρσ_prototype, ")
                 output.print(JSON.stringify(bname))
                 output.comma()
@@ -1141,12 +1149,6 @@ def print_class(output):
                 output.end_statement()
 
             output.with_block(f_lazy_binding)
-            output.print(")(")
-            self.name.print(output)
-            output.print(".prototype." + bname)
-            output.comma()
-            self.name.print(output)
-            output.print(".prototype)")
             output.end_statement()
 
     # A property alias such as ``old_name = new_name`` is represented as a

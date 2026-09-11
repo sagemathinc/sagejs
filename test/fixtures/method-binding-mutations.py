@@ -145,4 +145,22 @@ assert StaticOverride.inherited() == 43
 assert overridden.inherited() == 43
 assert "inherited" not in overridden.__dict__
 
+# Repeated class creation must capture each definition's prototype and target.
+instances = []
+for index in range(3):
+
+    class Repeated:
+        def first(self, value=index):
+            return value
+
+        def second(self, value=index + 10):
+            return value
+
+    instances.append(Repeated())
+
+assert [item.first() for item in instances] == [0, 1, 2]
+assert [item.second() for item in instances] == [10, 11, 12]
+assert instances[0].first.__self__ is instances[0]
+assert instances[0].first.__func__ is not instances[1].first.__func__
+
 print("method-binding-oracle-ok")
