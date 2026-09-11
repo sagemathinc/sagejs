@@ -55,6 +55,13 @@ class Unrelated(metaclass=UnrelatedMeta):
     pass
 
 
+Counted.__python_type__ = UnrelatedMeta
+Counted.constructor = UnrelatedMeta
+Counted.__call__ = lambda: "instance shadow"
+assert type(Counted) is CountingMeta
+assert Counted().count == 6
+
+
 try:
 
     class Conflict(Counted, Unrelated):
