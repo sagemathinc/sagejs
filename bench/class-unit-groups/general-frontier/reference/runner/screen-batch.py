@@ -73,7 +73,17 @@ def validate_state(state, reservation):
         raise ValueError("invalid, interrupted or exhausted M0 budget requires review")
 
 
-def validate_terminal(output, errors, label, returncode, timed_out, output_capped):
+def validate_terminal(
+    output,
+    errors,
+    label,
+    returncode,
+    timed_out,
+    output_capped,
+    *,
+    expected_bits=200,
+    expected_iterations=1,
+):
     if output_capped:
         return "output-limit"
     if timed_out:
@@ -111,7 +121,13 @@ def validate_terminal(output, errors, label, returncode, timed_out, output_cappe
         or len(lines) != 1
         or len(compact) != 1
         or not valid_summary
-        or not lines[0].startswith("FRONTIER_RESULT|" + label + "|200|1|")
+        or type(expected_bits) is not int
+        or expected_bits not in (100, 200)
+        or type(expected_iterations) is not int
+        or not 1 <= expected_iterations <= 10000
+        or not lines[0].startswith(
+            f"FRONTIER_RESULT|{label}|{expected_bits}|{expected_iterations}|"
+        )
         or not compact[0].startswith("FRONTIER_COMPACT|" + label + "|")
         or not compact[0].split("|", 2)[-1].strip()
     ):
@@ -139,7 +155,15 @@ def validate_case(record):
 
 
 def validate_hecke_terminal(
-    output, errors, label, returncode, timed_out, output_capped
+    output,
+    errors,
+    label,
+    returncode,
+    timed_out,
+    output_capped,
+    *,
+    expected_bits=200,
+    expected_iterations=1,
 ):
     if output_capped:
         return "output-limit"
@@ -153,16 +177,21 @@ def validate_hecke_terminal(
         compact = result["compact"]
         if (
             answer["status"] != "ok"
+            or type(expected_bits) is not int
+            or expected_bits not in (100, 200)
+            or type(expected_iterations) is not int
+            or not 1 <= expected_iterations <= 10000
             or result["schema"] != "sagejs-hecke-frontier-screen-v1"
             or result["id"] != label
             or type(result["bits"]) is not int
-            or result["bits"] != 200
+            or result["bits"] != expected_bits
             or type(result["iterations"]) is not int
-            or result["iterations"] != 1
+            or result["iterations"] != expected_iterations
             or not re.fullmatch(r"[0-9]+", result["elapsed_ns"])
             or not re.fullmatch(r"[1-9][0-9]*", compact["class_number"])
             or not re.fullmatch(r"[1-9][0-9]*", compact["torsion_order"])
-            or compact["regulator"]["bits"] != 200
+            or type(compact["regulator"]["bits"]) is not int
+            or compact["regulator"]["bits"] != expected_bits
             or compact["regulator"]["guarantee"] != "absolute-radius-less-than-2^-bits"
             or not compact["integral_basis"]
             or not compact["units"]
