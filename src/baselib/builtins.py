@@ -6701,6 +6701,10 @@ def ρσ_type(*values: Any) -> Any:
     if runtime.strict_equal(value_type, "object") or runtime.strict_equal(
         value_type, "function"
     ):
+        class_key = _builtins_heap_class_keys.get(value)
+        if class_key is not runtime.undefined:
+            metaclass = _builtins_class_metaclasses.get(class_key)
+            return ρσ_type if metaclass is runtime.undefined else metaclass
         # Read actual representation ownership, never a user constructor or
         # __python_type__ attribute. Exact lookup deliberately leaves unknown
         # native/math prototypes on their existing representation paths.
