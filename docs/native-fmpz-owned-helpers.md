@@ -1645,3 +1645,162 @@ harness observations, full ledgers, generated artifacts and raw timing
 reports, linked to the guarded-root-count parent. Manifest SHA-256:
 `85e5b74e8cc0aba77fff0589d225a93168c5b4a5a2752e56a8a3917044247e80`.
 This remains a research candidate, not production integration or certification.
+
+## Fresh non-binomial frontier and a missing order-two relation
+
+On September 11, 2026, a read-only LMFDB mirror query froze 72 complex cubic
+fields before evaluating them in Sage.js. The selection takes 24 fields in
+each three-decade discriminant band beginning at $10^{15}$, $10^{18}$ and
+$10^{21}$, deterministically ordered by a salted label hash, and requires a
+nonzero linear or quadratic coefficient. The query does not require a known
+class number. The selected fields have 43 distinct discriminants, spanning
+$1,161,546,078,587,895$ to $13,408,170,067,061,942,472,300$. None of their labels
+occurs in the preceding 43-field timing panel. This is a stratified database
+sample, not a uniform distribution of cubic fields or an audit of every
+historical experiment for overlap.
+
+Only ten selected records have LMFDB class numbers. Nevertheless, fresh,
+seeded PARI 2.17.4 computations complete all 72 within a 30-second per-field
+limit, with exact discriminant agreement and agreement with all available
+class-number/invariant metadata. On locked CPU 2 of `opt`, separately timed
+`nfinit(f)` totals 84 ms and subsequent `bnfinit(nf,0)` totals 5,057 ms.
+The largest individual second-stage time is 292 ms. Thus neither missing
+database class numbers nor discriminant magnitude alone identifies a hard
+class-group computation. This screen does not reach seconds-scale PARI cases,
+and it does not justify generalizing its phase proportions to such cases.
+
+The frozen guarded-root-count research closure, without the subsequent
+row-gcd change, produces these outcomes:
+
+| Outcome | Fields |
+| --- | ---: |
+| Phase 96, index-one analytic classifier | 60 |
+| Phase 96, unresolved index-two presentation deficit | 1 |
+| Explicit 12-component analysis-layout guard | 4 |
+| Native field/order-analysis failure | 4 |
+| Rank-stage decline (phase 42) | 2 |
+| Exact-arena temporary capacity exhausted | 1 |
+
+All calls remain non-public: `accepted=False`, or an exception. Sixty-one
+detached transcripts pass independent CPython/SymPy replay of order closure,
+ideal invertibility, every recorded principal relation, compact-unit
+membership/log enclosure, and exact presentation invariants. All 60
+index-one cases agree with PARI in both class number and invariants. This
+replay does **not** establish order maximality, factor-base generation, the
+analytic suffix's hypotheses, or a public class-group certificate.
+
+The first unresolved relation case is
+
+$$f(x)=x^3-177996885x-1449257304220,$$
+
+LMFDB label `3.1.601670940964268175.1`. Its 145 recorded relations have exact
+presentation index $486$ and invariants $(3,3,3,3,6)$; PARI gives class number
+$243$ and invariants $(3,3,3,3,3)$. The native analytic classifier returns zero,
+not success, after exhausting eight algebraic-resumption rounds. Its initial
+batch contained 118 relations. The compact-unit log replay passes and its
+value agrees numerically with PARI's regulator, approximately $2562602.073345$;
+that numerical agreement alone does not prove fundamentality.
+
+The PARI debug trace has factor-base bound 655, 112 ideals, 6,197 tested
+primitive small-norm elements, 152 smooth elements, and 118 retained relations.
+Its local diagnostic phase times include 12 ms for small-norm search and
+5 ms for `hnfspec`; these instrumented timings are not the controlled comparison.
+Reconstructing `FBgen`'s original ideal order and canonicalizing both bases in
+the same rational power basis proves that the two factor bases coincide,
+up to an explicit permutation. Independent integer HNF of PARI's 118 debug
+rows has index 243. Precisely rows **82, 83 and 84** lie outside our final
+relation lattice; each has coset order two and lowers its index from 486 to
+243 when adjoined. All three arise during PARI's search in ideal 98, of norm
+569. The debug rows do not carry their principal generators, so this comparison
+proves their lattice effect, not independently their principality.
+
+This isolates an actionable algorithmic discrepancy: inspect the reduced
+lattice and candidate traversal for that ideal, recover the principal witnesses,
+and explain why our traversal/admission misses their coset. Increasing an
+undifferentiated relation quota is not yet justified by this evidence.
+
+### Storage-derived component guard experiment
+
+A source-only candidate replaces `output[10] > 12` with
+`20 + 3 * output[10] > len(output) - 1`. For a cubic, the projected header has
+11 entries, each discriminant component has three, and the order basis has
+nine. The final diagnostic slot must remain disjoint. The pre-existing
+64-entry output therefore admits up to 14 components; a 13-component
+projection uses 59 entries. This derives the guard from the representation
+instead of allocating more storage or relaxing a mathematical check. All
+fixed-point, discriminant, index and order checks remain unchanged.
+
+The candidate recovers all four 13-component declines. GMP and fmpz produce
+identical full mathematical transcripts for each, and all four independently
+replay and agree with PARI in class number and invariants. All other 68
+outcomes, including complete transcripts and retained failures, are unchanged.
+Boundary arithmetic is checked for component counts 1 through 512. Production
+source, published formats and resource limits are untouched: this is still
+an archived research candidate, not a production widening of qualification.
+
+A separate 128-entry projection probe distinguishes the other four projection
+errors: their analysis proof headers report status 3 (`FALLBACK_NATIVE_FAILURE`),
+not insufficient projection space. The specific order-construction/witness
+failure inside that status remains to be diagnosed. The first probe harness
+incorrectly requested an fmpz entry point even though its compiler-selected
+backend was GMP; that failed record and the corrected GMP execution are retained.
+
+Controlled `opt` measurements use one warmup, six alternating native rounds,
+reusable buffers, full transcript/parity checks outside timing, and fresh seeded
+PARI `bnfinit(f,0)` calls:
+
+| Field suffix | Before / candidate native median (ms) | PARI median (ms) |
+| --- | ---: | ---: |
+| `31705204362341770260.13` | decline / 126.320 | 66 |
+| `1404087621760849825800.26` | decline / 378.056 | 141.5 |
+| `.21` | decline / 159.151 | 169 |
+| `.181` | decline / 194.837 | 71 |
+| `8851281412591800.3` | 42.253 / 42.179 | 19 |
+| `601670940964268175.1` | 152.770 / 153.124, unresolved | 21 |
+| `1404087621760849825800.150` | 1021.289 / 1021.776 | 179 |
+| `.155` | 507.623 / 510.195 | 200 |
+
+The four previously completed paths change by at most approximately 0.51% in
+this run; this is not a universal no-regression guarantee. Comparing a fast
+decline against a completed computation would be meaningless. Even the
+159-versus-169-ms result is not a qualified public PARI win: our measured
+object is a research transcript. The seconds-scale `.150` computation remains
+about 5.7 times PARI's time and merits phase-level investigation.
+
+Independent replay initially timed out on one original field and three newly
+admitted fields. Stack traces exposed ordinary SymPy HNF coefficient growth
+and repeated large-matrix reconstruction when removing unit pivots. Replaying
+with modular HNF bounded by an independently computed nonzero full-size minor
+avoids assuming the native index. Unit-diagonal HNF rows are removed together
+only after checking that every off-diagonal entry in those rows is zero.
+Ninety-seven comparisons against ordinary HNF/Smith, including rank-screen
+prime failures, validate these replay changes. All four timed-out cases then
+pass, giving 65 final independent transcript replays. Initial timeout records
+are retained, not rewritten as successful runs.
+
+Evidence locations:
+
+- Frozen sample, raw PARI/native results, replay, ideal permutation and missing
+  coset rows: `/scratch/sagejs-runtime/cubic-nonbinomial-frontier-RseYFl`.
+- Candidate source, compiled artifacts, comparisons and controlled timing:
+  `/scratch/sagejs-runtime/cubic-analysis-layout-F243J4`.
+- Selection SHA-256:
+  `94235fb03e0bc8c17eb622d7aa532d4dddec9f72425823cd3bcf36d8d794a109`.
+- Candidate source SHA-256:
+  `21962b0a8946aed1c60e33bf70cd64c25f127eb69c5c9627cb5edf822c27ea7b`.
+- Candidate cache key:
+  `afb70076d8aced0278d71f19e73b0d22458e1b58bcc05ed24f13584b8e7dd884`.
+
+The candidate has 617,801 source bytes, 146 compiled functions and an unchanged
+20,022,032-byte addon. Replacing each experiment's absolute source directory
+with the same marker gives generated-core sizes 23,118,891 and 23,121,971 bytes;
+the raw decrease otherwise reflects shorter provenance paths, not code removal.
+
+Round-trip-verified archives in this worktree's ignored build directory:
+
+- `build/cubic-nonbinomial-frontier-evidence`: 171 files, 27,803,902 raw bytes,
+  8,220,621 compressed bytes; manifest
+  `7d2b1b3695a58df744ca460f79911ac935e5d929060f1809201a3f7077cda021`.
+- `build/cubic-analysis-layout-evidence`: 107 files, 200,465,433 raw bytes,
+  18,546,317 compressed bytes; manifest
+  `191286a9a04c38a2be11761e00ddd79589404805eec37d69f1ad223efbcb39e4`.
