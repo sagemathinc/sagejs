@@ -2,7 +2,24 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs"), path = require("node:path"), os = require("node:os");
-const { inventory } = require("./attest-stage.cjs");
+const { inventory, attest } = require("./attest-stage.cjs");
+
+test("receipt inspection disables optional index writes and restores environment", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "frontier-attest-env-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, "scripts"));
+  fs.mkdirSync(path.join(root, "dist"));
+  fs.writeFileSync(path.join(root, "scripts/build-receipt.cjs"),
+    'exports.inspectBuildReceipt = () => { if (process.env.GIT_OPTIONAL_LOCKS !== "0") throw Error("index writes enabled"); return {current: true}; };');
+  fs.writeFileSync(path.join(root, "dist/build-receipt.json"), "{}");
+  const before = process.env.GIT_OPTIONAL_LOCKS;
+  assert.equal(attest(root, process.execPath).mathematical_certificate, false);
+  assert.equal(process.env.GIT_OPTIONAL_LOCKS, before);
+  const module = require(path.join(root, "scripts/build-receipt.cjs"));
+  module.inspectBuildReceipt = () => { throw Error("inspection failure"); };
+  assert.throws(() => attest(root, process.execPath), /inspection failure/);
+  assert.equal(process.env.GIT_OPTIONAL_LOCKS, before);
+});
 
 test("stage inventory detects mutation, additions and removals", (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "frontier-attest-test-"));

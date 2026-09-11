@@ -21,6 +21,25 @@ def normalize(receipt):
     engine = receipt["engine"]
     if engine not in ("pari", "hecke"):
         raise ValueError("unknown engine")
+    identity_fields = {"iterations", "sample", "declared_samples", "request_id"}
+    modern = bool(identity_fields.intersection(receipt))
+    if modern and not (identity_fields | {"bits"}).issubset(receipt):
+        raise ValueError("incomplete explicit request identity")
+    if not modern and receipt.get("bits", 200) != 200:
+        raise ValueError("legacy request must use original precision")
+    if receipt["status"] not in {
+        "ok",
+        "error",
+        "timeout",
+        "output-limit",
+        "protocol-error",
+        "crash",
+        "interrupted",
+    }:
+        raise ValueError("unknown sample status")
+    wall = receipt["wall_seconds"]
+    if type(wall) not in (int, float) or not math.isfinite(wall) or wall < 0:
+        raise ValueError("invalid wall duration")
     bits = receipt.get("bits", 200)
     iterations = receipt.get("iterations", 1)
     sample = receipt.get("sample", 1)
@@ -112,6 +131,8 @@ def normalize(receipt):
 def summarize(directory):
     run_bytes = (directory / "run.json").read_bytes()
     run = json.loads(run_bytes)
+    if not isinstance(run.get("provenance"), dict) or not run["provenance"]:
+        raise ValueError("missing run provenance")
     bits, iterations, samples = (
         run.get(k, default)
         for k, default in (("bits", 200), ("iterations", 1), ("samples", 1))
@@ -128,7 +149,7 @@ def summarize(directory):
     expected = dict(persistent.shared.validate_case(r) for r in run["records"])
     if len(expected) != len(run["records"]):
         raise ValueError("duplicate registered labels")
-    rows, observed, stages = [], set(), {}
+    rows, observed, stages, seen = [], set(), {}, set()
     for path in sorted(directory.glob("*.json")):
         if path.name == "run.json":
             continue
@@ -138,18 +159,16 @@ def summarize(directory):
             receipt.get("schema") != "sagejs.general-frontier-persistent-screen.v1"
             or receipt.get("engine") != run["engine"]
             or receipt.get("qualification_evidence") is not False
+            or receipt.get("provenance") != run["provenance"]
         ):
             raise ValueError("unexpected receipt identity")
         stage = receipt["stage"]
         stages[stage] = stages.get(stage, 0) + 1
         if stage != "sample":
             continue
-        if receipt["status"] == "interrupted":
-            # Its pending reservation is retained; it has no completed record.
-            continue
         row = normalize(receipt)
         if (
-            (row["label"], row["sample"]) in observed
+            (row["label"], row["sample"]) in seen
             or expected.get(row["label"]) != row["coefficients"]
             or row["bits"] != bits
             or row["iterations"] != iterations
@@ -157,7 +176,12 @@ def summarize(directory):
             or receipt.get("declared_samples", 1) != samples
         ):
             raise ValueError("unexpected, changed or duplicate sample")
-        observed.add((row["label"], row["sample"]))
+        key = (row["label"], row["sample"])
+        seen.add(key)
+        if row["status"] == "interrupted":
+            row["pending_reservation"] = receipt["pending_reservation"]
+        else:
+            observed.add(key)
         row["receipt_sha256"] = hashlib.sha256(raw).hexdigest()
         rows.append(row)
     return {
@@ -169,6 +193,9 @@ def summarize(directory):
         "reviewer_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "validator_sha256": hashlib.sha256(
             Path(persistent.__file__).read_bytes()
+        ).hexdigest(),
+        "shared_validator_sha256": hashlib.sha256(
+            Path(persistent.shared.__file__).read_bytes()
         ).hexdigest(),
         "stages": stages,
         "bits": bits,

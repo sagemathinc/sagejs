@@ -58,4 +58,4 @@ if (require.main === module) {
     bytes: value.entries.reduce((n, x) => n + (x.bytes || 0), 0),
     build_receipt_sha256: value.build_receipt_sha256 }));
 }
-module.exports = { inventory };
+module.exports = { inventory, attest };

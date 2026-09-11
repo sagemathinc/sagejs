@@ -33,6 +33,7 @@ class ReviewTests(unittest.TestCase):
                 "bits": 200,
                 "iterations": 1,
                 "samples": 3,
+                "provenance": {"test_identity": "original"},
             }
             (directory / "run.json").write_text(json.dumps(run))
             for sample in (1, 2):
@@ -47,6 +48,7 @@ class ReviewTests(unittest.TestCase):
                     sample=sample,
                     declared_samples=3,
                     request_id=name,
+                    provenance=run["provenance"],
                 )
                 r["stdout"] = r["stdout"].replace("|example|", f"|{name}|")
                 (directory / f"{name}.json").write_text(json.dumps(r))
@@ -60,6 +62,23 @@ class ReviewTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 review.summarize(directory)
 
+            r["bits"] = 200
+            r["provenance"] = run["provenance"]
+            r.update(status="interrupted", pending_reservation={"seconds": 70})
+            (directory / f"{name}.json").write_text(json.dumps(r))
+            result = review.summarize(directory)
+            self.assertEqual([x["sample"] for x in result["missing_samples"]], [2, 3])
+            self.assertEqual(result["rows"][1]["status"], "interrupted")
+            (directory / "duplicate.json").write_text(json.dumps(r))
+            with self.assertRaises(ValueError):
+                review.summarize(directory)
+            (directory / "duplicate.json").unlink()
+            r["bits"] = 200
+            r["provenance"] = {"test_identity": "foreign"}
+            (directory / f"{name}.json").write_text(json.dumps(r))
+            with self.assertRaises(ValueError):
+                review.summarize(directory)
+
     def test_exact_order_and_normalization(self):
         row = review.normalize(receipt("8", "[4, 2]"))
         self.assertEqual(row["class_invariants"], ["2", "4"])
@@ -67,6 +86,18 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(
             row["regulator"]["guarantee"], "working-precision-approximation"
         )
+
+    def test_rejects_mixed_legacy_and_invalid_status_or_duration(self):
+        for update in (
+            {"iterations": 3, "bits": 100, "sample": 2},
+            {"status": "invented"},
+            {"wall_seconds": -5},
+            {"wall_seconds": float("nan")},
+        ):
+            r = receipt()
+            r.update(update)
+            with self.assertRaises(ValueError):
+                review.normalize(r)
 
     def test_disagreement_is_not_silently_accepted(self):
         with self.assertRaises(ValueError):

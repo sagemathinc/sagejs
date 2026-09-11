@@ -324,3 +324,20 @@ Persistent review now binds request IDs, 100/200-bit precision, whole-batch
 iteration counts and individual sample ordinals. Missing planned samples remain
 explicit, and batch duration is never silently presented as per-iteration time.
 The mathematical engine remains unchanged; no optimization campaign is consumed.
+
+Follow-up verification passed on `opt` against the explicitly resealed portable
+stage. The original mismatching manifest remains retained. Matched Hecke
+screening of the same 78 fields is now in progress. The ledger was raised to
+5,543.054 seconds by an explicit 250-second local-check allowance (150 for stage
+diagnostics, 100 for reference precision/batch smoke checks), before launching
+that batch under the exclusive lock.
+
+Independent review required the normalizer to bind receipt provenance to its
+run, include the imported terminal-validator hash, reject mixed legacy/explicit
+request identities, and retain interrupted samples as missing with their pending
+reservations. These checks prevent foreign receipts or partial batches from
+quietly filling planned sample slots; they do not constitute mathematical replay.
+
+Effort checkpoint, 2026-09-11 09:00 UTC: conservatively charge **six aggregate
+active agent-hours to M0** so far. M1 and both optimization campaigns remain
+unstarted; the 40-hour M0 ceiling and frozen-population requirements are unchanged.
