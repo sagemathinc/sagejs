@@ -12,16 +12,18 @@ state, marker = Path(sys.argv[1]), sys.argv[2]
 with state.open("a") as stream:
     stream.write(str(os.getpid()) + "\n")
 print(marker, flush=True)
+previous_id = None
 for line in sys.stdin:
-    label = line.split("\t")[1]
-    if label == "timeout":
+    _, label, bits, iterations, _, _ = line.rstrip("\n").split("\t")
+    bits, iterations = int(bits), int(iterations)
+    if label.endswith("-timeout"):
         child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
         state.with_suffix(".descendant").write_text(str(child.pid))
         time.sleep(60)
-    if label == "output-limit":
+    if label.endswith("-output-limit"):
         print("x" * 100000, flush=True)
         continue
-    if label == "crash":
+    if label.endswith("-crash"):
         sys.exit(7)
     basis = [["1", "0"], ["0", "1"]]
     decomposition = {"coordinates": [], "representative": basis, "witness": []}
@@ -30,9 +32,11 @@ for line in sys.stdin:
             "status": "ok",
             "result": {
                 "schema": "sagejs-hecke-frontier-screen-v1",
-                "id": label,
-                "bits": 200,
-                "iterations": 1,
+                "id": previous_id if label.endswith("-reused-id") else label,
+                "bits": 300 - bits if label.endswith("-wrong-bits") else bits,
+                "iterations": iterations + 1
+                if label.endswith("-wrong-batch")
+                else iterations,
                 "elapsed_ns": "1",
                 "compact": {
                     "class_number": "1",
@@ -50,7 +54,7 @@ for line in sys.stdin:
                     "probes": [basis, basis, basis],
                     "decompositions": [decomposition, decomposition, decomposition],
                     "regulator": {
-                        "bits": 200,
+                        "bits": bits,
                         "guarantee": "absolute-radius-less-than-2^-bits",
                         "lower": "1",
                         "upper": "1",
@@ -60,5 +64,6 @@ for line in sys.stdin:
         }
     )
     print(answer, flush=True)
-    if label == "duplicate":
+    if label.endswith("-duplicate"):
         print(answer, flush=True)
+    previous_id = label

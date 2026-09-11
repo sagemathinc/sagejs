@@ -263,21 +263,29 @@ class Worker:
                 pass
 
 
-def encode_request(engine, label, coefficients, bits, seed):
-    if bits != 200:
-        raise ValueError(
-            "shared terminal validators currently support only 200 bits; 100 is not relabelled"
-        )
+def validate_measurement(bits, iterations, samples):
+    if type(bits) is not int or bits not in (100, 200):
+        raise ValueError("bits must be explicitly 100 or 200")
+    if type(iterations) is not int or not 1 <= iterations <= 10000:
+        raise ValueError("iterations must be 1..10000")
+    if type(samples) is not int or not 1 <= samples <= 5:
+        raise ValueError("samples must be 1..5")
+
+
+def encode_request(engine, label, coefficients, bits, seed, iterations=1):
+    validate_measurement(bits, iterations, 1)
     if engine == "hecke":
         return (
-            f"FRONTIER1\t{label}\t{bits}\t1\t{seed}\t" + ",".join(coefficients) + "\n"
+            f"FRONTIER1\t{label}\t{bits}\t{iterations}\t{seed}\t"
+            + ",".join(coefficients)
+            + "\n"
         ).encode(), None
     marker = ("FRONTIER_DONE|" + uuid.uuid4().hex).encode()
-    command = f"frontier_case({json.dumps(label)},[{','.join(coefficients)}],{bits},1,{seed});\n"
+    command = f"frontier_case({json.dumps(label)},[{','.join(coefficients)}],{bits},{iterations},{seed});\n"
     return (command + "print(" + json.dumps(marker.decode()) + ");\n").encode(), marker
 
 
-def validate_hecke_shape(output, degree=None):
+def validate_hecke_shape(output, degree=None, bits=200):
     """Structural screening sanity only, not mathematical verification/replay."""
     try:
         result = json.loads(output)["result"]
@@ -379,22 +387,36 @@ def validate_hecke_shape(output, degree=None):
         ):
             return False
         lo, hi = [Fraction(v.replace("//", "/")) for v in endpoints]
-        return 0 < lo <= hi and hi - lo < Fraction(1, 2**199)
+        return (
+            type(bits) is int
+            and bits in (100, 200)
+            and 0 < lo <= hi
+            and hi - lo < Fraction(1, 2 ** (bits - 1))
+        )
     except (KeyError, TypeError, ValueError, AttributeError, ZeroDivisionError):
         return False
 
 
-def validate_answer(engine, response, label, degree=None):
+def validate_answer(engine, response, label, degree=None, bits=200, iterations=1):
     if response["status"] != "ok":
         return response["status"]
     validator = (
         shared.validate_terminal if engine == "pari" else shared.validate_hecke_terminal
     )
-    result = validator(response["stdout"], response["stderr"], label, 0, False, False)
+    result = validator(
+        response["stdout"],
+        response["stderr"],
+        label,
+        0,
+        False,
+        False,
+        expected_bits=bits,
+        expected_iterations=iterations,
+    )
     if (
         engine == "hecke"
         and result == "ok"
-        and not validate_hecke_shape(response["stdout"], degree)
+        and not validate_hecke_shape(response["stdout"], degree, bits)
     ):
         return "shape-error"
     if engine == "pari" and any(
@@ -419,7 +441,11 @@ class Campaign:
         startup_seconds=60,
         lock=LOCK,
         warmups=WARMUPS,
+        bits=200,
+        iterations=1,
+        samples=1,
     ):
+        validate_measurement(bits, iterations, samples)
         self.ledger, self.output = Path(ledger), Path(output)
         self.engine, self.factory = engine, factory
         self.controls, self.provenance = controls, provenance
@@ -428,8 +454,11 @@ class Campaign:
         self.worker = None
         self.state = None
         self.session = 0
+        self.bits, self.iterations, self.samples = bits, iterations, samples
 
-    def attempt(self, name, stage, cap, operation, request=b"", record=None):
+    def attempt(
+        self, name, stage, cap, operation, request=b"", record=None, sample=None
+    ):
         destination = self.output / (name + ".json")
         if destination.exists():
             raise ValueError("refusing duplicate immutable attempt: " + name)
@@ -465,10 +494,16 @@ class Campaign:
                 "independent_replay": False,
                 "proof_policy": "conditional-grh",
                 "boundary": "persistent-process-fresh-field-not-proven-warm-JIT",
-                "bits": 200 if stage in ("sample", "warmup") else None,
+                "bits": self.bits if stage in ("sample", "warmup") else None,
+                "iterations": (self.iterations if stage == "sample" else 1)
+                if stage in ("sample", "warmup")
+                else None,
+                "declared_samples": self.samples,
+                "sample": sample,
+                "request_id": name if stage in ("sample", "warmup") else None,
                 "regulator_guarantee": "PARI-working-precision-approximation-not-enclosure"
                 if self.engine == "pari"
-                else "Hecke-absolute-radius-less-than-2^-200",
+                else f"Hecke-absolute-radius-less-than-2^-{self.bits}",
                 "warmup_policy": "fixed-six-controls-repeated-after-restart-not-qualification",
                 "record": record,
                 "controls": self.controls,
@@ -506,6 +541,14 @@ class Campaign:
                         "attempt": name,
                         "engine": self.engine,
                         "session": self.session,
+                        "request_id": name if stage in ("sample", "warmup") else None,
+                        "record": record,
+                        "bits": self.bits if stage in ("sample", "warmup") else None,
+                        "iterations": (self.iterations if stage == "sample" else 1)
+                        if stage in ("sample", "warmup")
+                        else None,
+                        "sample": sample,
+                        "declared_samples": self.samples,
                         "qualification_evidence": False,
                         "independent_replay": False,
                         "pending_reservation": self.state["pending"],
@@ -539,20 +582,26 @@ class Campaign:
             raise RuntimeError("startup failed; receipt retained, no sample launched")
         for index, (label, coefficients) in enumerate(self.warmups):
             receipt = self.request(
-                f"warmup-{self.session:04}-{index:02}", "warmup", label, coefficients
+                f"warmup-{self.session:04}-{index:02}-{label}",
+                "warmup",
+                label,
+                coefficients,
             )
             if receipt["status"] != "ok":
                 raise RuntimeError(
                     "warmup failed; receipt retained, no sample launched"
                 )
 
-    def request(self, name, stage, label, coefficients):
-        payload, marker = encode_request(self.engine, label, coefficients, 200, 1)
+    def request(self, name, stage, label, coefficients, sample=None):
+        iterations = self.iterations if stage == "sample" else 1
+        payload, marker = encode_request(
+            self.engine, name, coefficients, self.bits, 1, iterations
+        )
 
         def operation():
             answer = self.worker.exchange(payload, self.seconds, marker)
             answer["status"] = validate_answer(
-                self.engine, answer, label, len(coefficients) - 1
+                self.engine, answer, name, len(coefficients) - 1, self.bits, iterations
             )
             return answer
 
@@ -563,6 +612,7 @@ class Campaign:
             operation,
             payload,
             {"label": label, "coefficients": coefficients},
+            sample,
         )
 
     def run(self, records):
@@ -586,17 +636,28 @@ class Campaign:
                     "engine": self.engine,
                     "records": records,
                     "warmups": self.warmups,
-                    "bits": 200,
+                    "bits": self.bits,
+                    "iterations": self.iterations,
+                    "samples": self.samples,
+                    "sample_order": "sample-major-input-order",
+                    "seed": 1,
                     "qualification_evidence": False,
                     "provenance": self.provenance,
                 },
             )
             with interrupted_signals():
                 try:
-                    for label, coefficients in identities:
-                        if self.worker is None:
-                            self.prepare()
-                        self.request("sample-" + label, "sample", label, coefficients)
+                    for sample in range(1, self.samples + 1):
+                        for label, coefficients in identities:
+                            if self.worker is None:
+                                self.prepare()
+                            self.request(
+                                f"sample-{sample:04}-{label}",
+                                "sample",
+                                label,
+                                coefficients,
+                                sample,
+                            )
                 finally:
                     if self.worker is not None:
                         if self.state["pending"] is None:
@@ -694,11 +755,10 @@ def main():
     parser.add_argument("--seconds", type=int, default=60)
     parser.add_argument("--startup-seconds", type=int, default=60)
     parser.add_argument("--bits", type=int, default=200)
+    parser.add_argument("--iterations", type=int, default=1)
+    parser.add_argument("--samples", type=int, default=1)
     args = parser.parse_args()
-    if args.bits != 200:
-        raise ValueError(
-            "only explicit 200-bit screening is supported by current shared validators"
-        )
+    validate_measurement(args.bits, args.iterations, args.samples)
     if not all(1 <= cap <= 600 for cap in (args.seconds, args.startup_seconds)):
         raise ValueError("caps must be 1..600 seconds")
     if args.engine == "hecke" and (args.project is None or args.depot is None):
@@ -719,6 +779,9 @@ def main():
         provenance,
         args.seconds,
         args.startup_seconds,
+        bits=args.bits,
+        iterations=args.iterations,
+        samples=args.samples,
     ).run(records)
 
 
