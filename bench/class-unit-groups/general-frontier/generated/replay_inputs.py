@@ -88,7 +88,8 @@ def rebuild(request):
                 raise ValueError(
                     "worker source identity does not match reviewed metadata semantics"
                 )
-        if before != [pinned(path) for path in files]:
+        after_files = sorted(directory.glob("*.json"))
+        if files != after_files or before != [pinned(path) for path in after_files]:
             raise ValueError("raw reference inputs changed during replay")
         reports.append(report)
         pins.extend(before)

@@ -14,7 +14,9 @@ python -B -m unittest discover \
   -s bench/class-unit-groups/general-frontier/generated -p 'test_*.py'
 ```
 
-The CLI requires Node 22.22.2+ and CPython (`python` on PATH). The Python helper
+The CLI requires Node 22.22.2+ and CPython selected through the repository's
+`pythonExecutable()` helper (`SAGEJS_REFERENCE_PYTHON`, then `PYTHON`, then the
+platform default). The Python helper
 imports the existing generator, selection builder, persistent receipt validator
 and pairer, **without invoking their worker-launching paths**. Its subprocess
 has a 120-second bound and 64 MiB output cap. Each explicit raw reference
@@ -64,6 +66,9 @@ Producer/version mismatches fail closed rather
 than silently re-signing an older report. Raw references and local validator
 hashes are retained in the output. These hashes establish content binding,
 not the trustworthiness of the recorded foreign binary or mathematical proof.
+Raw JSON directory membership is checked again after reconstruction, as well
+as rehashing every originally observed file, so concurrent added receipts fail
+closed too.
 
 ## Output and exact checks
 

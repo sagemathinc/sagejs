@@ -3,6 +3,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { pythonExecutable } = require("../../../../tools/python-executable.cjs");
 const api = require("../exposure/export.cjs");
 const reconciliation = require("../exposure/reconcile.cjs");
 const coverageApi = require("../exposure/source-coverage.cjs");
@@ -186,7 +187,7 @@ function fromManifest(manifest, base) {
   const loaded = Object.fromEntries(["generator", "pilot", "pilot_selection", "paired", "union", "exposure", "coverage", "coverage_policy"].map(k => [k, loadPinned(manifest[k], base)]));
   const replayRequest = Object.fromEntries(["generator", "pilot", "pilot_selection", "paired"].map(k => [k, loaded[k].descriptor]));
   replayRequest.reference_directories = Object.fromEntries(Object.entries(manifest.reference_directories).map(([k, v]) => { check(typeof v === "string" && v.length > 0, "invalid reference directory"); return [k, path.resolve(base, v)]; }));
-  const proc = spawnSync("python", [path.join(__dirname, "replay_inputs.py")], { input: JSON.stringify(replayRequest), encoding: "utf8", timeout: 120_000, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" } });
+  const proc = spawnSync(pythonExecutable(), [path.join(__dirname, "replay_inputs.py")], { input: JSON.stringify(replayRequest), encoding: "utf8", timeout: 120_000, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" } });
   check(proc.status === 0, `offline raw-input replay failed: ${proc.stderr || proc.error?.message || "unknown error"}`);
   const replayed = JSON.parse(proc.stdout);
   check(same(replayed.generator, loaded.generator.value) && same(replayed.paired, loaded.paired.value), "inputs changed during raw replay");

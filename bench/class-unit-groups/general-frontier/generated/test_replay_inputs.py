@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 
 spec = importlib.util.spec_from_file_location(
@@ -173,6 +174,27 @@ class ReplayInputsTests(unittest.TestCase):
         request["paired"]["sha256"] = "b" * 64
         with self.assertRaisesRegex(ValueError, "hash changed"):
             replay.rebuild(request)
+
+    def test_new_raw_file_during_summarize_is_rejected(self):
+        original_module = replay.module
+        original_summarize = self.pairer.review.summarize
+
+        def select_module(name, relative):
+            if name == "generated_pairer":
+                return self.pairer
+            return original_module(name, relative)
+
+        def add_after_summarize(directory):
+            report = original_summarize(directory)
+            (directory / "concurrent-added.json").write_text("{}")
+            return report
+
+        with mock.patch.object(replay, "module", side_effect=select_module):
+            with mock.patch.object(
+                self.pairer.review, "summarize", side_effect=add_after_summarize
+            ):
+                with self.assertRaisesRegex(ValueError, "inputs changed during replay"):
+                    replay.rebuild(self.request)
 
 
 if __name__ == "__main__":
