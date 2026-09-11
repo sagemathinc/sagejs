@@ -1,0 +1,38 @@
+{
+  "schema": "sagejs.general-class-unit-campaign.v1",
+  "id": "rank-two-frontier-2026-09-11",
+  "base_commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+  "plan_commit": "09e9d3532",
+  "plan_path": "agents/general-class-unit-competitive-plan.md",
+  "authorized_milestones": ["M0", "M1", "M2"],
+  "optimization_campaign_limit": 2,
+  "candidate_limit_per_campaign": 3,
+  "engineering_hours_per_milestone_or_campaign": 40,
+  "controlled_cpu_seconds": {"M0": 432000, "campaign-1": 86400, "campaign-2": 86400},
+  "request_caps": {
+    "coverage": {"wall_seconds": 600, "memory_bytes": 4294967296},
+    "stress": {"wall_seconds": 1800, "memory_bytes": 17179869184}
+  },
+  "corpus": {
+    "state": "unfrozen",
+    "seed": "sagejs-general-class-unit-rank-two-2026-09-11-v1",
+    "degrees": [2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "coverage_per_degree": {"development": 120, "holdout": 80},
+    "performance_per_degree": {"development": 24, "holdout": 16},
+    "smoke_per_degree": 10,
+    "performance_minimum_reference_one_second": 120,
+    "performance_minimum_reference_ten_seconds": 40,
+    "missing_class_numbers_allowed": true,
+    "selection_uses_sagejs_results": false
+  },
+  "bridge": {
+    "minimum_fields": 60,
+    "minimum_unseen_development_neighbors": 20,
+    "minimum_reference_above_one_second": 20,
+    "maximum_geometric_mean_slowdown": 10,
+    "signatures": [[3, 0], [2, 1]],
+    "rank_three_controls": [[4, 0]]
+  },
+  "controlled_host": {"ssh_target": "opt", "lock": "/tmp/sagejs-opt-timing.lock", "cpu": 2, "threads": 1},
+  "deferred": [{"pr": 212, "reason": "Independent draft cubic-filter qualification must not block the shared-engine baseline; not included in the base revision."}]
+}

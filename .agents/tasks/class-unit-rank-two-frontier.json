@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-unit-rank-two-frontier",
+  "title": "Class Unit Rank Two Frontier",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Establish matched general class-unit baselines and qualify a shared rank-two native bridge",
+  "base_commit": "edd8b7310d75451bafea2d36292c684d3c540020",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/campaign.json",
+    "bench/class-unit-groups/general-frontier/reference/pari-screen.gp",
+    "bench/class-unit-groups/general-frontier/reference/sagejs-diagnostic.py",
+    "bench/class-unit-groups/general-frontier/reference/README.md",
+    "bench/class-unit-groups/general-frontier/reference/runner/",
+    "docs/general-class-unit-frontier.md"
+  ],
+  "dependencies": ["general-class-unit-candidate-pool", "general-class-unit-hecke-screen"],
+  "references": ["Main mathematical baseline remains d654e3d45d8c066b979566338a53647a37ab8d00; task scope base includes the two separately claimed developer-tool lanes, not a changed mathematical engine."],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "pari",
+      "hecke"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
