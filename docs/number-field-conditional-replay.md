@@ -43,3 +43,13 @@ Large defining coefficients, larger terminal payloads and practical BDF/GRH
 generation require separately reviewed policies and measured admission
 evidence. Passing the exposed cubic/quartic tests is neither twenty expensive
 fields nor an M1 completion or competitive-performance claim.
+
+The focused integration regression also exercises the previously used totally
+real quartic `x^4-x^3-3*x^2+x+1` (discriminant 725), with three free units.
+It checks fresh conditional completion and recomputed index two after squaring
+one unit, using the same verifier and unchanged resource limits as the rank-two
+examples. The three-field test passed locally in 120.23 seconds; this is a
+correctness-test duration with discovery and negative checks, not a controlled
+class-and-unit timing. A proper relation-sublattice negative test remains a
+separate obligation: changing only the claimed class number tests binding,
+not the relation-index factor of the completeness argument.

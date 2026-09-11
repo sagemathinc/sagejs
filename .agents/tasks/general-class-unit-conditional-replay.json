@@ -157,6 +157,16 @@
       "commit": "57a4d452920090ba9fb661d8105a801a826b0f18",
       "workspace_fingerprint": "2582ff1316c1a287bb2de8d005a6df9a0f61031bc70a7c209ffd0fbf2f30620f",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-conditional-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 120.23,
+      "started_at": "2026-09-11T15:11:33.810Z",
+      "commit": "abd0aa8e057ed04af1c5b0a4f66695144c481be8",
+      "workspace_fingerprint": "99fe9905d2d07db1b64bf0a147ad86b750f522a1284109117d5925c9a3571595",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

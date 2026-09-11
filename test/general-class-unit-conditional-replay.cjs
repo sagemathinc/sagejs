@@ -69,7 +69,7 @@ def reject(value,rebind=False):
     except (ValueError,ArithmeticError,analytic.AnalyticResourceError,replay.ComponentReplayCapabilityError,replay.ComponentReplayResourceError) as error: return str(error)
     else: raise AssertionError("forged conditional completeness accepted")
 def forbidden(*args,**kwargs): raise AssertionError("live discovery, certificate callback or unit expansion used")
-for polynomial in [x**3-x**2-2*x+1,x**4-x-1]:
+for polynomial, expected_rank in [(x**3-x**2-2*x+1,2),(x**4-x-1,2),(x**4-x**3-3*x**2+x+1,3)]:
     K=NumberField(polynomial,"a")
     computation=K.class_unit_group(proof=False,algorithm="buchmann-hecke")
     text=replay.export_conditional_class_unit(computation)
@@ -121,7 +121,7 @@ for polynomial in [x**3-x**2-2*x+1,x**4-x-1]:
         assert report["complete"] is True
         assert report["proof_status"]=="exact-relations-conditional-grh"
         assert report["assumptions"]==[BELABAS_FRIEDMAN_ZETA_GRH]
-        assert report["class_number"]==1 and report["free_unit_rank"]==2
+        assert report["class_number"]==1 and report["free_unit_rank"]==expected_rank
         assert report["analytic_index"]==1 and report["live_context_authority"] is False
         square_reason=reject(bad_square,True)
         assert indices[-1]==2, "squared basis must actually recompute index two: "+square_reason+str(indices)
