@@ -153,6 +153,12 @@ PR216 remains draft. Reliable startup headroom and a passing complete routine
 are the next readiness work; do not hide this behind the successful semantic
 and package campaign or expand adoption before resolving it.
 
+**Readiness update:** `4d8909d33` defers capability-catalogue loading until first
+query and passes the complete routine, including the unchanged startup gate,
+plus a fresh 533/3/0 corpus and four package workflows. PR216 is ready for
+non-draft CI/integration review. The prior failed runs and all remaining
+CPython-relative cliffs stay recorded; this does not complete the broader plan.
+
 Existing assets to reuse:
 
 - `scripts/audit-python-grammar.cjs`

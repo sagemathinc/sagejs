@@ -1,5 +1,31 @@
 # Object and call protocol campaign
 
+## Ready-for-review checkpoint — 2026-09-11
+
+`4d8909d33` passes the complete `pnpm test` routine (12m39s including rebuild),
+including the unchanged startup gate. A fresh full corpus again reports
+533 passes, three unchanged reviewed differences and zero required failures;
+all four pinned package workflows pass. This supersedes the local readiness
+failure below, not the retained measurements or remaining performance cliffs.
+
+Startup now defers capability catalogue I/O, parsing and recursive freezing
+until an actual query. The same loader still validates the report; successful
+loads preserve immutable identity and failures remain observable/retryable.
+The CLI regression proves ordinary arithmetic never queries the catalogue.
+Existing CPython/Sage.js capability facade checks pass. An alternating
+fresh-process diagnostic measured 415.0 ms eager versus 407.9 ms lazy, about
+7 ms saved; this diagnostic is distinct from the passing full routine gate.
+Its first timing run overlapped a capability test and is retained but not used
+as a controlled comparison. Earlier c99 package benchmarks describe c99, not
+this subsequent host-loading change; no new package speedup is claimed.
+
+Evidence: `lazy-capability-routine.log`, `lazy-capability-corpus.json`,
+`lazy-capability-packages.json`, `lazy-capability-paired.json`, and the retained
+focused/initial timing logs in the evidence directory below. PR216 can now be
+non-draft for cross-platform CI and integration review; neither main integration
+nor a release is implied. Broader compiler-plan work and CPython-relative cliffs
+remain open.
+
 ## Shared-emission checkpoint — 2026-09-11
 
 Clean compiler/runtime candidate `c99e6067a` passes the full build and the
