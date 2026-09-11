@@ -137,6 +137,36 @@
       "commit": "9f20a76eb54b0c66a90bb29188aa72175d02f10d",
       "workspace_fingerprint": "a48c5fed95afc173d594432bf18e32b9023cc31304ddab77afcaf17e997162c4",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.442,
+      "started_at": "2026-09-11T09:26:23.677Z",
+      "commit": "25ff5c945a51db91c8f3bed75d81d2070390533f",
+      "workspace_fingerprint": "573423370e3fd90593095c53672f9ef98d17e1dd45fec056a9b27de6265b3f0f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.555,
+      "started_at": "2026-09-11T09:26:43.962Z",
+      "commit": "25ff5c945a51db91c8f3bed75d81d2070390533f",
+      "workspace_fingerprint": "c068fde21e55de0e377a6e93ddd959d08fdb661836db550083b3bfd77db6e8aa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.458,
+      "started_at": "2026-09-11T09:26:52.799Z",
+      "commit": "25ff5c945a51db91c8f3bed75d81d2070390533f",
+      "workspace_fingerprint": "c068fde21e55de0e377a6e93ddd959d08fdb661836db550083b3bfd77db6e8aa",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
