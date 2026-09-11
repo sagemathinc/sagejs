@@ -60,6 +60,22 @@ are retained in the local `python-output-integration-evidence.X9vc1T` directory.
 
 ## Connected shared protocols and footprint
 
+### Follow-up combined checkpoint
+
+The presence-based defaults repair (`03ce3792a`) is integrated. A fresh full
+build and unchanged 536-case corpus record **528 passes, three reviewed
+differences, and five original required failures**, with no new failures.
+The remaining cases are object, mappingproxy, metaclass preparation, property,
+and custom descriptors. The overall corpus remains **not qualified** until
+those pass. Reports are `protocol-round2-{corpus,packages}.json` in the same
+retained evidence directory; the earlier regression report is not overwritten.
+
+All 27 focused/connected checks and strict checks (384 modules) pass. The four
+pinned package workflows pass again. Lazy help and directory traversal reduce
+the combined core to 891978 / 903000 bytes, without a budget change. Callable
+slot mutation now shares type-level lookup for positional and keyword calls.
+These are Linux source-runtime results, not a four-platform or release claim.
+
 Type-level special-method lookup is shared by mapping item access, class-check
 hooks, and formatting; instance shadows cannot replace these implicit slots.
 The old eager-bound-method cache marker is no longer emitted and no longer
