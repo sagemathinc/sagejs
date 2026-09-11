@@ -1,4 +1,5 @@
-// sagejs-test-tier: portable
+// sagejs-test-tier: unit
+// sagejs-test-portable: true
 "use strict";
 
 const assert = require("node:assert/strict");
