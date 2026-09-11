@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import subprocess
 from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
@@ -13,7 +14,10 @@ pairer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pairer)
 
 
-def readiness(reports):
+def readiness(reports, candidates):
+    identities = {c["label"]: c for c in candidates}
+    if len(identities) != len(candidates):
+        raise ValueError("duplicate source identities")
     degrees = {
         str(d): {"observed": 0, "paired": 0, "one_second": 0, "ten_seconds": 0}
         for d in range(2, 11)
@@ -28,11 +32,21 @@ def readiness(reports):
                     "overlapping runs require explicit attempt reconciliation"
                 )
             seen.add(label)
-            parts = label.split(".")
-            if len(parts) != 4 or not all(p.isdecimal() for p in parts):
+            identity = identities.get(label)
+            if identity is None:
                 unclassified.append(label)
                 continue
-            degree = parts[0]
+            for engine in ("pari", "hecke"):
+                result = row.get(engine)
+                if result is not None:
+                    if result["coefficients"] != identity["coefficients"]:
+                        raise ValueError("source presentation mismatch")
+                    if result["status"] == "ok" and (
+                        result["discriminant"] != identity["discriminant"]
+                        or result["signature"] != identity["signature"]
+                    ):
+                        raise ValueError("source field metadata mismatch")
+            degree = str(identity["degree"])
             if degree not in degrees:
                 raise ValueError("field degree outside panel")
             counts = degrees[degree]
@@ -55,7 +69,7 @@ def readiness(reports):
         "ten_second_panel_upper_bound": ten,
         "necessary_one_second_shortfall": max(0, 120 - one),
         "necessary_ten_second_shortfall": max(0, 40 - ten),
-        "caveat": "Discovery only; per-degree cap 40 applied. Exposure, signature, holdout and field-distinctness constraints may further reduce feasibility. Non-LMFDB identities are not counted without reconciliation.",
+        "caveat": "Confirmed successful discovery subset only; per-degree cap 40 applied. Censored/missing costs are unknown, so predeclared retries may close shortfalls without new candidates. Exposure, signature and holdout constraints may further reduce feasibility. Only exact presentations bound to the validated source pool count; this is not an independent isomorphism proof.",
         "producer_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "paired_reports": reports,
     }
@@ -65,12 +79,36 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pair", nargs=2, type=Path, action="append", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--pool", type=Path, required=True)
+    parser.add_argument("--node", default="node")
     args = parser.parse_args()
     reports = [
         pairer.pair(pairer.review.summarize(a), pairer.review.summarize(b))
         for a, b in args.pair
     ]
-    result = readiness(reports)
+    validator = Path(__file__).resolve().parents[2] / "exposure" / "reconcile.cjs"
+    pool_bytes = args.pool.read_bytes()
+    source = subprocess.run(
+        [
+            args.node,
+            "-e",
+            "const fs=require('node:fs');const v=require(process.argv[1]);process.stdout.write(JSON.stringify(v.poolRecords(JSON.parse(fs.readFileSync(0)))));",
+            str(validator),
+        ],
+        input=pool_bytes.decode("utf-8"),
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    result = readiness(reports, json.loads(source.stdout))
+    result["source_pool_file_sha256"] = hashlib.sha256(pool_bytes).hexdigest()
+    result["source_validator_sha256"] = hashlib.sha256(
+        validator.read_bytes()
+    ).hexdigest()
+    result["source_normalizer_sha256"] = hashlib.sha256(
+        validator.with_name("export.cjs").read_bytes()
+    ).hexdigest()
     with args.output.open("x") as output:
         json.dump(result, output, indent=2, sort_keys=True)
         output.write("\n")

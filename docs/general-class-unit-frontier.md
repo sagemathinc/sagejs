@@ -502,3 +502,25 @@ mutated completion evidence, wrong fields, and precision exhaustion.
 Effort checkpoint, 2026-09-11 10:03 UTC: conservatively account for **ten
 aggregate active M0 engineering hours** of the forty-hour allowance. No M1
 mathematical implementation or optimization campaign has started.
+
+### Bounded harder-window acquisition
+
+The eight predeclared windows produced seven successful responses and one empty
+response, selecting 56 records. No retry or altered window followed the empty
+result. The plan pinned all seven previous/current screening input files,
+excluding 346 distinct labels before seeded selection. The output has its own
+`hard-window-v1` identity; it is not a relabeled v2 cell export. Its canonical
+pool digest is `11e48acffc39a9fc2c2020620174625b08eaff7e2aaf560d44344f6d0cbbd970`.
+Matched reference costs and exposure reconciliation remain pending.
+
+Charge a further conservative **300 seconds** at the next timing-lock release:
+eight 30-second query ceilings plus 60 seconds of local bookkeeping. The
+one-shot allowance is implemented but not yet applied while the Hecke supplement
+owns the ledger. It is separate from the earlier 6,000-second allowance.
+
+Readiness reporting now requires an actual validated source-pool binding for
+each counted label, exact coefficients, discriminant and signature; a numeric
+label shape alone does not establish field identity. The earlier report's
+54/5 counts are unchanged after this repair. Its shortfalls describe the
+currently confirmed successful subset only: censored costs are unknown and
+predeclared cap retries may close gaps without acquiring new fields.

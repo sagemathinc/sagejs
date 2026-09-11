@@ -34,6 +34,15 @@ class AcquisitionTests(unittest.TestCase):
                 acquisition.charge(state)
             self.assertEqual(state, before)
 
+    def test_hard_windows_is_separate_bounded_allowance(self):
+        state = acquisition.charge(self.state())
+        acquisition.charge(state, "hard-windows-v1")
+        self.assertEqual(state["charged_seconds"], 6400)
+        with self.assertRaises(ValueError):
+            acquisition.charge(state, "hard-windows-v1")
+        with self.assertRaises(ValueError):
+            acquisition.charge(state, "unbounded")
+
 
 if __name__ == "__main__":
     unittest.main()
