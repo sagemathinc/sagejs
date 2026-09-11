@@ -5112,6 +5112,17 @@ def ρσ_getattr_internal(
         runtime.strict_equal(value_type, "function")
         and runtime.native_get(value, "__sagejs_callable_instance__") is True
     )
+    if runtime.strict_equal(name, "__func__") and ρσ_is_bound_method(value):
+        target = runtime.native_get(value, "__func__")
+        # Internal binding/rebinding consumes the receiver-style target.
+        # Python exposes the same cached explicit-self function as C.method.
+        if (
+            _builtins_get_member(target, "__sagejs_native_method__") is True
+            or _builtins_get_member(target, "__sagejs_method_signature_excludes_self__")
+            is True
+        ):
+            return runtime.unbound_method_adapter(target)
+        return target
     if runtime.strict_equal(value_type, "function") and (
         runtime.strict_equal(name, "__defaults__")
         or runtime.strict_equal(name, "__kwdefaults__")
