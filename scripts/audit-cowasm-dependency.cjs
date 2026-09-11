@@ -22,6 +22,11 @@ const allowed = [
   // Benchmark provenance only; neither file imports the retired toolchain.
   /^bench\/python-compat\/README\.md$/,
   /^test\/python-performance-runner\.cjs$/,
+  // These documents cite the retained benchmark corpus or record an earlier
+  // audit failure. Neither introduces a build/runtime dependency. Keep these
+  // exact paths: new code and other documentation remain fail-closed.
+  /^agents\/python-compiler-runtime-value-and-performance-plan\.md$/,
+  /^docs\/general-class-unit-frontier\.md$/,
   // Build freshness classifies the retained benchmark runner as validation
   // input; these references do not load the retired toolchain or runtime.
   /^scripts\/build-receipt\.cjs$/,
