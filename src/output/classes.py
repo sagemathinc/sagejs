@@ -4,6 +4,7 @@ from ast_types import (
     AST_AnnotatedAssignment,
     AST_Class,
     AST_Method,
+    AST_Seq,
     AST_SymbolNonlocal,
     AST_SymbolRef,
     AST_Var,
@@ -14,8 +15,282 @@ from output.utils import create_doctring
 from utils import has_prop
 
 
+def _print_shared_method_factories(self, output, prefix):
+    # Hoist only JS factory definitions, never Python definition-time work.
+    # Each branch supplies defaults under its actual class-namespace context.
+    # Keep forms with different descriptor/receiver metadata on their existing
+    # paths; eligibility makes no assumption about the runtime base/metaclass.
+    shared = []
+    for stmt in self.python_namespace_body or self.body:
+        if not is_node_type(stmt, AST_Method) or self.body.indexOf(stmt) == -1:
+            continue
+        name = stmt.name.name
+        if (
+            (stmt.python_namespace_decorators or stmt.decorators or []).length
+            or stmt.is_getter
+            or stmt.is_setter
+            or stmt.is_deleter
+            or stmt["static"]
+            or stmt.classmethod
+            or has_prop(self["static"] or {}, name)
+            or has_prop(self.classmethods or {}, name)
+            or name in self.nonlocal_names
+            or name in ("__new__", "__init_subclass__", "__class_getitem__")
+            or not stmt.argnames.length
+            or stmt.argnames[0].name != "self"
+            or stmt.argnames[0].annotation
+            or stmt.argnames.posonly
+            or (stmt.annotations and stmt.annotations != "future")
+            or has_prop(stmt.argnames.defaults, "self")
+        ):
+            continue
+        factory = prefix + "_method_" + str(shared.length)
+        defaults = stmt.argnames.defaults
+        keys = Object.keys(defaults)
+        replacements = Object.create(None)
+        for index, key in enumerate(keys):
+            replacements[key] = AST_SymbolRef(
+                {"name": "ρσ_shared_defaults[" + str(index) + "]"}
+            )
+        output.indent()
+        output.print("var " + factory + " = function(ρσ_shared_defaults) {")
+        output.print("var ρσ_shared_method = ")
+        stmt.argnames.defaults = replacements
+        try:
+            function_definition(stmt, output, True, True, "ρσ_method_" + name)
+        finally:
+            stmt.argnames.defaults = defaults
+        output.print(
+            ";ρσ_shared_method.__sagejs_method_signature_excludes_self__ = true;"
+            "return ρσ_shared_method;}"
+        )
+        output.end_statement()
+        stmt.python_shared_factory = {"name": factory, "keys": keys}
+        shared.push(stmt)
+    return shared
+
+
+def _print_shared_method_call(stmt, output, prepared=False):
+    factory = stmt.python_shared_factory
+    execution_flags = prepared and (stmt.is_generator or stmt.is_coroutine)
+    if execution_flags:
+        output.print("Object.assign(")
+    if prepared:
+        output.print("ρσ_unbound_method_adapter(")
+    output.print(factory.name + "([")
+    for index, key in enumerate(factory.keys):
+        if index:
+            output.comma()
+        value = stmt.argnames.defaults[key]
+        if is_node_type(value, AST_Seq):
+            output.print("ρσ_math_tuple([")
+            value.print(output)
+            output.print("])")
+        else:
+            value.print(output)
+    output.print("])")
+    if prepared:
+        output.print(")")
+    if execution_flags:
+        output.print(", {")
+        if stmt.is_generator:
+            output.print("__is_generator__: true")
+        if stmt.is_coroutine:
+            if stmt.is_generator:
+                output.comma()
+            output.print("__is_coroutine__: true")
+        output.print("})")
+
+
+def _print_prepared_body(self, output, state):
+    previous = output.prepared_namespace
+    definition = self.name.definition()
+    output.prepared_namespace = {
+        "scope": self,
+        "state": state,
+        "prefix": definition.name if definition else self.name.name,
+        "parent": previous,
+    }
+    previous_class_body = output.in_class_body
+    output.in_class_body = True
+    try:
+        names = Object.keys(self.own_classvars or self.classvars or {})
+        for stmt in self.python_namespace_body or self.body:
+            if is_node_type(stmt, AST_Method) or is_node_type(stmt, AST_Class):
+                if names.indexOf(stmt.name.name) == -1:
+                    names.push(stmt.name.name)
+        names.push("__doc__", "__annotations__")
+        output.indent()
+        output.print(state + ".bind(" + JSON.stringify(names) + ")")
+        output.end_statement()
+        for statement in self.python_namespace_body or self.body:
+            annotated = (
+                statement
+                if is_node_type(statement, AST_AnnotatedAssignment)
+                else statement.body
+            )
+            if is_node_type(annotated, AST_AnnotatedAssignment):
+                output.indent()
+                output.print(state + ".setup_annotations()")
+                output.end_statement()
+                break
+        if (
+            self.docstrings
+            and self.docstrings.length
+            and output.options.keep_docstrings
+        ):
+            output.indent()
+            output.print(state + '.bindings["__doc__"] = ')
+            output.print(JSON.stringify(create_doctring(self.docstrings)))
+            output.end_statement()
+        for stmt in self.python_namespace_body or self.body:
+            if is_node_type(stmt, AST_Method):
+                name = stmt.name.name
+                output.indent()
+                if name in self.nonlocal_names:
+                    output.print_python_name(name)
+                else:
+                    output.print(state + ".bindings[" + JSON.stringify(name) + "]")
+                output.print(" = ")
+                if (
+                    name == "__new__"
+                    and not (stmt.python_namespace_decorators or []).length
+                ):
+                    output.print("ρσ_staticmethod(")
+                previous_static = stmt["static"]
+                stmt["static"] = True
+                try:
+                    if stmt.python_shared_factory:
+                        _print_shared_method_call(stmt, output, True)
+                    else:
+                        decorate(
+                            stmt.python_namespace_decorators or stmt.decorators or [],
+                            output,
+                            lambda: function_definition(
+                                stmt, output, False, True, "ρσ_prepared_method_" + name
+                            ),
+                        )
+                finally:
+                    stmt["static"] = previous_static
+                if (
+                    name == "__new__"
+                    and not (stmt.python_namespace_decorators or []).length
+                ):
+                    output.print(")")
+                output.end_statement()
+            elif is_node_type(stmt, AST_Class):
+                output.indent()
+                stmt.print(output)
+                if stmt.name.name not in self.nonlocal_names:
+                    output.indent()
+                    output.print(
+                        state + ".bindings[" + JSON.stringify(stmt.name.name) + "] = "
+                    )
+                    stmt.name.print(output)
+                    output.end_statement()
+            elif not (
+                is_node_type(stmt, AST_Var)
+                and all(
+                    is_node_type(item.name, AST_SymbolNonlocal)
+                    for item in stmt.definitions
+                )
+            ):
+                output.indent()
+                stmt.print(output)
+                output.newline()
+    finally:
+        output.prepared_namespace = previous
+        output.in_class_body = previous_class_body
+
+
 def print_class(output):
     self = this
+    bases = self.bases or []
+    requires_header = self.metaclass or bases.length
+    if not output.options.python_attributes or self.external or not requires_header:
+        return _print_legacy_class(self, output)
+    output.prepared_class_serial = (output.prepared_class_serial or 0) + 1
+    header = "ρσ_class_header_" + str(output.prepared_class_serial)
+    state = "ρσ_class_namespace_" + str(output.prepared_class_serial)
+    shared = _print_shared_method_factories(self, output, header)
+    decorators = self.decorators or []
+    output.indent()
+    output.print("var " + header + " = [[")
+    for index, decorator in enumerate(decorators):
+        if index:
+            output.comma()
+        decorator.expression.print(output)
+    output.print("], ρσ_math_tuple([")
+    for index, base in enumerate(bases):
+        if index:
+            output.comma()
+        base.print(output)
+    output.print("]), ")
+    if self.metaclass:
+        self.metaclass.print(output)
+    else:
+        output.print("undefined")
+    output.print("]")
+    output.end_statement()
+    output.indent()
+    output.print("var " + state + " = ρσ_prepare_class(")
+    output.print(JSON.stringify(self.name.name))
+    output.print(", " + header + "[1], " + header + "[2], ")
+    output.print(JSON.stringify(self.module_id or "__main__"))
+    output.print(")")
+    output.end_statement()
+    output.indent()
+    output.print("if (" + state + " !== undefined) ")
+
+    def prepared():
+        _print_prepared_body(self, output, state)
+        output.indent()
+        output.print("var ")
+        self.name.print(output)
+        output.print(" = " + state + ".finish()")
+        output.end_statement()
+        for index in range(len(decorators) - 1, -1, -1):
+            output.indent()
+            output.assign(self.name)
+            output.print("ρσ_resolve_callable(" + header + "[0][" + str(index) + "])(")
+            self.name.print(output)
+            output.print(")")
+            output.end_statement()
+
+    output.with_block(prepared)
+    output.print(" else ")
+    original_parent = self.parent
+    original_metaclass = self.metaclass
+    original_decorators = [item.expression for item in decorators]
+    self.bases = [
+        AST_SymbolRef({"name": header + "[1][" + str(index) + "]"})
+        for index in range(len(bases))
+    ]
+    self.python_header_original_bases = bases
+    self.python_header_default = True
+    if bases.length:
+        self.parent = self.bases[0]
+    if original_metaclass:
+        self.metaclass = AST_SymbolRef({"name": header + "[2]"})
+    for index, decorator in enumerate(decorators):
+        decorator.expression = AST_SymbolRef(
+            {"name": header + "[0][" + str(index) + "]"}
+        )
+    try:
+        output.with_block(lambda: _print_legacy_class(self, output))
+    finally:
+        self.bases = bases
+        self.python_header_original_bases = None
+        self.python_header_default = False
+        self.parent = original_parent
+        self.metaclass = original_metaclass
+        for index, decorator in enumerate(decorators):
+            decorator.expression = original_decorators[index]
+        for stmt in shared:
+            stmt.python_shared_factory = None
+
+
+def _print_legacy_class(self, output):
     if self.external:
         return
     # Runtime-loaded package modules do not participate in the compiler's
@@ -55,7 +330,7 @@ def print_class(output):
         "ρσ_list_constructor",
         "ρσ_str",
     ]
-    for base in self.bases:
+    for base in self.python_header_original_bases or self.bases:
         if is_node_type(base, AST_SymbolRef) and base.name in native_storage_names:
             native_storage_parent = base.name
             break
@@ -158,13 +433,16 @@ def print_class(output):
             if not is_property:
                 output.end_statement()
         else:
-            function_definition(
-                stmt,
-                output,
-                strip_first,
-                False,
-                javascript_name,
-            )
+            if stmt.python_shared_factory:
+                _print_shared_method_call(stmt, output)
+            else:
+                function_definition(
+                    stmt,
+                    output,
+                    strip_first,
+                    False,
+                    javascript_name,
+                )
             if not is_property:
                 output.end_statement()
                 fname = (
@@ -176,7 +454,8 @@ def print_class(output):
                     + ("." if is_static else ".prototype.")
                     + name
                 )
-                function_annotation(stmt, output, strip_first, fname)
+                if not stmt.python_shared_factory:
+                    function_annotation(stmt, output, strip_first, fname)
                 if is_static:
                     output.indent()
                     self.name.print(output)
@@ -676,6 +955,40 @@ def print_class(output):
             if prop.deleter:
                 class_def("ρσ_property_deleter_" + name)
                 define_method(prop.deleter, True)
+                output.end_statement()
+            if output.options.python_attributes:
+                class_name = (
+                    output.make_python_name(class_binding_name)
+                    if self.name.python_identifier
+                    else output.make_name(class_binding_name)
+                )
+                descriptor_name = (
+                    "Object.getOwnPropertyDescriptor("
+                    + class_name
+                    + ".prototype, "
+                    + JSON.stringify(name)
+                    + ")"
+                )
+                for accessor, member in [
+                    [prop.getter, descriptor_name + ".get"],
+                    [prop.setter, descriptor_name + ".set"],
+                    [
+                        prop.deleter,
+                        class_name + ".prototype.ρσ_property_deleter_" + name,
+                    ],
+                ]:
+                    if accessor:
+                        function_annotation(accessor, output, True, member)
+                output.indent()
+                output.print(
+                    "ρσ_register_property("
+                    + class_name
+                    + ", "
+                    + JSON.stringify(name)
+                    + ", "
+                    + ("true" if prop.setter else "false")
+                    + ")"
+                )
                 output.end_statement()
 
     # Python executes a class body from top to bottom.  The JavaScript class
@@ -1239,11 +1552,26 @@ def print_class(output):
         output.print(".prototype." + method_name)
         output.end_statement()
 
+    if not compiling_baselib:
+        output.indent()
+        output.print("ρσ_install_instance_dict(")
+        self.name.print(output)
+        output.comma()
+        output.print(
+            "true"
+            if (self.own_classvars or {})["__dict__"]
+            or defined_methods["__dict__"]
+            or self.dynamic_properties["__dict__"]
+            else "false"
+        )
+        output.print(")")
+        output.end_statement()
+
     # An explicit Python 3 metaclass owns the final class object.  The native
     # lowering above efficiently evaluates the class body and gives us its
     # complete namespace; hand that namespace to the metaclass before class
     # decorators run, exactly as CPython does.
-    if self.metaclass:
+    if self.metaclass and not self.python_header_default:
         output.indent()
         output.assign(self.name)
         output.print("ρσ_apply_metaclass(")
@@ -1256,7 +1584,7 @@ def print_class(output):
         self.name.print(output)
         output.print(")")
         output.end_statement()
-    elif self.bases.length:
+    elif self.bases.length and not self.python_header_default:
         output.indent()
         output.assign(self.name)
         output.print("ρσ_apply_inherited_metaclass(")

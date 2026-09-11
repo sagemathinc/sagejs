@@ -52,7 +52,7 @@ def _builtins_append_dir_names(
                 )
             if (
                 not data_value_missing
-                and _core._builtins_visible_introspection_name(name)
+                and _core.ρσ_visible_introspection_name(name)
                 and not seen.has(name)
             ):
                 seen.add(name)
@@ -82,7 +82,7 @@ def _builtins_append_own_dir_names(
             )
         if (
             not data_value_missing
-            and _core._builtins_visible_introspection_name(name)
+            and _core.ρσ_visible_introspection_name(name)
             and not seen.has(name)
         ):
             seen.add(name)
@@ -104,6 +104,17 @@ def _default_dir(item: Any) -> list[_Str]:
                 answer.remove(native_function_name)
     else:
         _builtins_append_dir_names(target, answer, seen)
+
+    namespace = _core.ρσ_instance_namespace(target)
+    if namespace is not None:
+        for name in namespace.keymap.values():
+            if not runtime.strict_equal(runtime.jstype(name), "string"):
+                raise TypeError(
+                    "instance dictionary contains a non-string attribute name"
+                )
+            if not seen.has(name):
+                seen.add(name)
+                answer.append(name)
 
     # Python classes expose their instance methods through the class object.
     # Sage.js stores those methods on the JavaScript constructor prototype.

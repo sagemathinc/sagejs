@@ -540,6 +540,16 @@ def generate_code():
             )
             assignment.print(output)
             output.semicolon()
+        prepared = output.prepared_namespace
+        if prepared and is_node_type(self.target, AST_SymbolRef):
+            output.print(
+                "ρσ_setitem(" + prepared.state + '.bindings["__annotations__"], '
+            )
+            output.print(JSON.stringify(self.target.name))
+            output.comma()
+            self.annotation.print(output)
+            output.print(")")
+            output.semicolon()
 
     DEFPRINT(AST_AnnotatedAssignment, print_annotated_assignment)
 
@@ -1000,6 +1010,59 @@ def generate_code():
         star_import_fallback = False
         module_scope = None
         assignment_target = output.assignment_target or is_assignment_target()
+        prepared = output.prepared_namespace
+        if prepared and not output.skip_prepared_namespace:
+            qualified = def_ and def_.name.startswith(prepared.prefix + ".prototype.")
+            if qualified and assignment_target:
+                output.print(
+                    prepared.state + ".bindings[" + JSON.stringify(self.name) + "]"
+                )
+                return
+            in_prepared_scope = False
+            stack = output.stack()
+            for index in range(stack.length - 2, -1, -1):
+                scope = stack[index]
+                if scope is prepared.scope:
+                    in_prepared_scope = True
+                    break
+                if is_node_type(scope, AST_ListComprehension):
+                    if scope.object is stack[index + 1]:
+                        continue
+                    break
+                if is_node_type(scope, AST_Scope) and not is_node_type(
+                    scope, AST_Class
+                ):
+                    break
+            if (
+                is_node_type(self, AST_SymbolRef)
+                and self.python_identifier
+                and not assignment_target
+                and in_prepared_scope
+                and self.name not in (prepared.scope.nonlocal_names or [])
+            ):
+                output.print(
+                    prepared.state
+                    + ".read("
+                    + JSON.stringify(self.name)
+                    + ", function(){return "
+                )
+                saved_definition = self.thedef
+                saved_resolution = self.python_resolution_provenance
+                saved_fallback = self.python_class_prebinding_fallback
+                if qualified:
+                    self.thedef = None
+                    self.python_resolution_provenance = "class-fallback"
+                    self.python_class_prebinding_fallback = True
+                output.skip_prepared_namespace = True
+                try:
+                    f_print_symbol(self, output)
+                finally:
+                    output.skip_prepared_namespace = False
+                    self.thedef = saved_definition
+                    self.python_resolution_provenance = saved_resolution
+                    self.python_class_prebinding_fallback = saved_fallback
+                output.print(";})")
+                return
         if is_node_type(self, AST_SymbolRef) and (
             not assignment_target
             or (

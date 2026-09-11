@@ -19,7 +19,7 @@ test("Node compiler resources retain the authoritative standalone core", () => {
 });
 
 test("implicit standalone core includes literal default-import dependencies", () => {
-  for (const name of ["sagejs._introspection", "sagejs._documentation_search", "inspect"]) {
+  for (const name of ["sagejs._introspection", "sagejs._documentation_search", "sagejs.class_namespace", "inspect"]) {
     assert(CORE_STANDALONE_MODULES.includes(name), name);
     assert(BASELIB_STANDALONE_MODULES.includes(name) || name === "inspect", name);
   }

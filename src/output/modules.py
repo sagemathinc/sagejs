@@ -1107,6 +1107,12 @@ def print_imports(container, output):
             print_local_name(name)
             return
         if destination.kind is "class":
+            prepared = output.prepared_namespace
+            if prepared and prepared.prefix == destination.owner:
+                output.print(prepared.state + ".bindings[")
+                output.print_string(destination.name)
+                output.print("]")
+                return
             output.print_python_name(destination.owner)
             output.print(".prototype[")
             output.print_string(destination.name)

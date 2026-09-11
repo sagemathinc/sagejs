@@ -23,7 +23,7 @@ from ast_types import (
 from output.stream import OutputStream
 from output.statements import print_bracketed
 from output.utils import create_doctring
-from output.operators import print_getattr
+from output.operators import is_python_attribute_read, print_getattr
 
 anonfunc = "ρσ_anonfunc"
 module_name = "null"
@@ -811,6 +811,8 @@ def function_definition(
         output.set_indentation(output.next_indent())
         output.spaced("(function()", "{"), output.newline()
         output.indent(), output.spaced("var", anonfunc, "="), output.space()
+    prepared_namespace = output.prepared_namespace
+    output.prepared_namespace = None
     output.print("function"), output.space()
     if self.name:
         if javascript_name:
@@ -926,6 +928,7 @@ def function_definition(
             python_implicit_return,
         )
 
+    output.prepared_namespace = prepared_namespace
     if as_expression:
         output.end_statement()
         function_annotation(self, output, strip_first, anonfunc)
@@ -1022,6 +1025,10 @@ def print_function_call(self, output):
                 return candidate
 
     def print_namespace(scope, live_globals):
+        prepared = output.prepared_namespace
+        if not live_globals and prepared and scope is prepared.scope:
+            output.print(prepared.state + ".namespace")
+            return
         if live_globals or is_node_type(scope, AST_Toplevel):
             output.print("ρσ_live_scope_dict(ρσ_modules[")
             output.print(JSON.stringify(scope.module_id))
@@ -1160,6 +1167,11 @@ def print_function_call(self, output):
             add_name("help")
 
         if want_dir:
+            prepared = output.prepared_namespace
+            if prepared and scope is prepared.scope:
+                output.print(prepared.state + ".names()")
+                finish_reusable_guard()
+                return
             if output.options.reuse_main_module and is_node_type(scope, AST_Toplevel):
                 output.print(
                     "(function(){var names=arguments[0];"
@@ -1183,6 +1195,12 @@ def print_function_call(self, output):
             output.print("ρσ_live_scope_dict(ρσ_modules[")
             output.print(JSON.stringify(scope.module_id))
             output.print("])")
+            finish_reusable_guard()
+            return
+
+        prepared = output.prepared_namespace
+        if prepared and scope is prepared.scope:
+            output.print(prepared.state + ".namespace")
             finish_reusable_guard()
             return
 
@@ -1404,6 +1422,25 @@ def print_function_call(self, output):
                 if i:
                     output.comma()
                 a.print(output)
+
+        if (
+            not is_new
+            and not is_node_type(self, AST_ClassCall)
+            and not self.direct_call
+            and is_node_type(self.expression, AST_Dot)
+            and is_python_attribute_read(self.expression, output)
+        ):
+            # Resolve and retain the attribute before evaluating arguments.
+            # A per-call record remains valid across nested calls and mutation;
+            # ordinary attribute reads still produce observable bound methods.
+            output.print("ρσ_invoke_prepared_method(ρσ_prepare_method_call(")
+            self.expression.expression.print(output)
+            output.comma()
+            output.print(JSON.stringify(self.expression.property))
+            output.print("), [")
+            print_args()
+            output.print("])")
+            return
 
         if is_new:
             output.print("new"), output.space()

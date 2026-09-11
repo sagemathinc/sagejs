@@ -128,7 +128,8 @@ const BUILTINS_STANDALONE_MODULES = Object.freeze(
 // import statement. Keep it separate from optional mathematical algorithms.
 const CORE_STANDALONE_MODULES = Object.freeze(
   EMBEDDED_STANDALONE_LIBRARY?.core ?? moduleClosure(
-    BUILTINS_STANDALONE_MODULES.filter(name => name.startsWith("sagejs._")),
+    BUILTINS_STANDALONE_MODULES.filter(name =>
+      name.startsWith("sagejs._") || name === "sagejs.class_namespace"),
   ),
 );
 
