@@ -3477,7 +3477,7 @@ _BUILTINS_FUNCTION_SLOT_NAMES = runtime.reflect.construct(
 )
 
 
-def _builtins_visible_introspection_name(name: Any) -> _Bool:
+def ρσ_visible_introspection_name(name: Any) -> _Bool:
     return (
         runtime.strict_equal(runtime.jstype(name), "string")
         and runtime.string_find(name, "ρσ") != 0
