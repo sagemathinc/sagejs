@@ -437,11 +437,10 @@ def replay_terminal_components(text: str) -> dict[str, Any]:
     """Independently check components; never issue terminal completeness."""
     payload = _decode(text)
     _preflight(payload)
-    from sagejs.number_fields import class_unit_context as context
     from sagejs.number_fields import class_group_matrix as matrix
     from sagejs.number_fields import class_group_relations as relations
-    from sagejs.number_fields import prime_ideals
-    from sagejs.number_fields import units
+    from sagejs.number_fields import class_unit_context as context
+    from sagejs.number_fields import prime_ideals, units
     from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
 
     identity = payload["field_order"]
