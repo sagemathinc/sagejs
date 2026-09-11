@@ -1889,9 +1889,8 @@ runtime.reflect.set(ρσ_dict, "fromkeys", SageDict.fromkeys)
 def ρσ_dict_keyword_default(mapping: Any, name: _Str) -> Any:
     """Read a function default from dict storage, not subclass overrides."""
     if runtime.instance_of(mapping, _LiveScopeDict):
-        value = _LiveScopeDict.get(mapping, name, _CONTAINERS_MISSING)
-        return runtime.undefined if value is _CONTAINERS_MISSING else value
-    return mapping.jsmap.get(name)
+        return _LiveScopeDict.get(mapping, name, _CONTAINERS_MISSING)
+    return mapping.jsmap.get(name) if mapping.jsmap.has(name) else _CONTAINERS_MISSING
 
 
 def dict_wrap(native_map: Any) -> SageDict:
@@ -1902,6 +1901,7 @@ def dict_wrap(native_map: Any) -> SageDict:
 
 
 # Stable generated-runtime names used by the compiler.
+ρσ_no_default = _CONTAINERS_MISSING
 ρσ_equals = equals
 ρσ_not_equals = not_equals
 ρσ_list_contains = _list_contains
