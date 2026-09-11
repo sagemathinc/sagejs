@@ -187,10 +187,40 @@
       "commit": "ecfd8548974d84778200554a04e557b6dfdcdd6e",
       "workspace_fingerprint": "45adb2fcb100d7e66f1d919c2fcce73572e17c27b785e16e8e0b0156061b7a33",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.443,
+      "started_at": "2026-09-11T10:04:02.474Z",
+      "commit": "8fad2f4738a5565827d8bf1a465b084bd8ed6161",
+      "workspace_fingerprint": "f2299130f0698b3e6edc2e74440fd35b8b5049a4160dd22e0af2c3eba9eae33b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.45,
+      "started_at": "2026-09-11T10:05:40.960Z",
+      "commit": "8fad2f4738a5565827d8bf1a465b084bd8ed6161",
+      "workspace_fingerprint": "323d24b3d415f8de6f597160949c4a0d1774e03c1e0f5245e26ef6d5d430df96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/exposure/test.cjs bench/class-unit-groups/general-frontier/exposure/reconcile.test.cjs bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.439,
+      "started_at": "2026-09-11T10:06:20.613Z",
+      "commit": "8fad2f4738a5565827d8bf1a465b084bd8ed6161",
+      "workspace_fingerprint": "68d1dbf7073297f519a2754e10d5d9f814608a6554d3529beedad60b24b1cd90",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Add a finite hash-pinned source coverage supplement: exact BigInt Sylvester bounds exclude 15 reviewed small presentations from the current pool; a pinned fixture discriminant excludes one quintic; five quadratic presentations enter historical-quarantine via the unchanged exporter/reconciler. Real replay preserves the five separate prior-Sage diagnostics and gives 44 quarantined / 4392 remaining. All 49 focused tests pass. No CAS, network, opt, or runtime implementation changes.",
+    "summary": "Versioned finite source-coverage policy v2 retains 82 dispositions (52 explicit and 30 exact LCG prospective samples), a pinned 65-path lexical checklist, exact generator-change identities, quadratic index-square exclusions, small-polynomial bounds and pinned global field-discriminant assertions. Historical source manifests must reproduce the pinned original inventory evidence before append. Real replay retains five separate prior-Sage diagnostics and gives 44 quarantined / 4392 remaining. All 55 focused tests pass. No CAS, network, opt, or runtime implementation changes.",
     "risks": [
       "Historical coverage is incomplete until reviewed; labels are source assertions rather than independently verified database identities.",
       "Alternative presentations require later exact isomorphism reconciliation. No distinct-field count or true holdout eligibility is emitted.",

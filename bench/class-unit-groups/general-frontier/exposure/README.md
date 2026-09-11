@@ -124,6 +124,44 @@ Focused verification:
 node --test bench/class-unit-groups/general-frontier/exposure/source-coverage.test.cjs
 ```
 
+#### Version 2 enumerated TEST dispositions
+
+Use `--policy .../source-coverage-policy-v2.json` and a new `...-v2` output
+directory for the expanded audit. The v1 policy and existing v1 exports remain
+unchanged. Version 2 pins the independently reviewed 65-file lexical TEST
+checklist (canonical digest
+`f670f2247411aeb94b7ee281a86418723483814c68541b40991a6343a6e833a4`).
+This checklist names the inspected paths; it is not an exhaustive mapping of
+every indirect constructor or input family in those files. The separately
+enumerated presentations and families specify the actual closure claims.
+
+The expansion includes small TEST polynomials, the finite cyclotomic orders,
+the rational quartic and cubic presentations, three large translations, three
+scaled presentations of `Q(sqrt(2))`, two source-asserted global cubic
+discriminants outside the pool, and the exact 30 prospective Round4 LCG samples.
+The LCG keeps all samples, including reducible/repeated candidates that the
+original test would skip; it does not infer that every sample ran. Quadratic
+non-overlap checks the necessary condition `disc(f)/D_candidate` is a positive
+integer square, with sign retained. Nonnegative square quadratic discriminants
+are explicitly reducible over `QQ`. Higher-degree samples use the exact bound.
+
+Translations verify every integer coefficient of `base(x-shift)`. Rational
+generator changes verify `input_i * scale_num^(n-i) ==
+base_i * input_n * scale_den^(n-i)` for every coefficient; a common nonzero
+rational factor in the defining polynomial cancels. The resulting base
+presentation supplies the bound/index test, not the enormous translated
+equation discriminant. Out-of-degree cyclotomic/degree-16 controls have an
+explicit source-asserted-degree disposition. The two large cubic values bind
+the reviewed global maximal-order assertion's exact literal fragments in the
+pinned source; local order discriminants are not used as field metadata.
+
+Before writing any new directory, the compiler re-exports the supplied
+historical manifest and requires its exact evidence identities/categories to
+equal the pinned original inventory. This permits relocated source paths but
+rejects a valid smaller manifest that silently drops historical exposures.
+The original reconciliation inputs, including any separate actual-Sage
+diagnostics wrapper, are validated first and remain separately bound.
+
 Categories are source-owner assertions preserved per evidence record:
 
 - `prior-sage-exposure`: prior Sage.js evaluation/development exposure.
