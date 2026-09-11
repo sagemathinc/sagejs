@@ -1804,3 +1804,141 @@ Round-trip-verified archives in this worktree's ignored build directory:
 - `build/cubic-analysis-layout-evidence`: 107 files, 200,465,433 raw bytes,
   18,546,317 compressed bytes; manifest
   `191286a9a04c38a2be11761e00ddd79589404805eec37d69f1ad223efbcb39e4`.
+
+### Recovering the missing generators and resuming the saved ideal
+
+For the non-binomial target $f=x^3-177996885x-1449257304220$, the missing
+PARI relations are now independently authenticated principal-ideal identities,
+not merely debug rows that change an HNF. Writing $a$ for the defining root,
+the three generators, up to sign, are
+
+$$
+a+15675,\qquad 2a-12463,\qquad
+\frac{a^2-3113a-203859062}{7534}.
+$$
+
+Their absolute norms are respectively $2510591803720$, $18531726607933$,
+and $738480708108$. PARI `qfminim` on the norm-569 ideal was used only to
+discover candidates. The independent rational-lattice checker converts each
+element to the checked native order basis, verifies integrality, its complete
+principal-ideal factorization, and its norm by an exact multiplication-matrix
+determinant. Adjoining any one of these rows to the original relation lattice
+reduces its index from $486$ to $243$. This does not, by itself, establish
+maximality of the order or completeness of the class-group presentation.
+
+A diagnostic-only compiled source copy exports every initial ideal's LLL
+transform, Gram matrix, region bounds, visit state, and factor metadata. Its
+entire original transcript and parity counters remain unchanged; GMP and fmpz
+give identical detached search state. For the norm-569 ideal, the reduced basis
+in power coordinates is
+
+$$
+-569,\qquad a-257,\qquad
+\frac{118122142+3113a-a^2}{7534}.
+$$
+
+The three generators have reduced coordinates, up to sign,
+$(-28,1,0)$, $(21,2,0)$, and $(-20,0,1)$. Independent integer enumeration of
+the exported positive-definite Gram form proves all three lie **inside the
+existing native region**. They are primitive nonscalar candidates 57, 135,
+and 197. The saved search cursor has processed only 54 such candidates and
+has retained one row in its current four-row visit. Thus the first missing
+relation lies three candidates beyond the paused cursor. Neither a larger
+region nor more embedding precision is needed to find it.
+
+The scheduling experiment resumes that resident initial search after the
+existing validated positive joint-index interval requests more algebraic data.
+The final tested policy makes one initial-search prepass, bounded by the
+existing four-row visit and shared work budget. If this prepass adds only
+dependent relations, the powered search still gets a turn in that same retry.
+If the exact quotient changes, control returns to certification. Subsequent
+retries use the powered search. No field, prime 569, generator, class number,
+or factor-base index is encoded in the candidate source.
+
+The underlying correctness argument is unchanged: an arbitrary discovery
+schedule may suggest elements, but each retained row must pass the exact
+principal-ideal checker. Resuming preserves the ideal, reduction transform,
+region, cursor, original witnesses, and quotient state. A changed relation
+lattice is not a completeness certificate. Final acceptance still needs the
+full mathematical checks. The eight-retry, candidate, capacity, precision,
+and arena limits have not been increased.
+
+Independent replay and broader screening rejected earlier experiments:
+
+- The first implementation retained the correct new relation but read a stale
+  full-coordinate HNF during certification. Replay found that the exported
+  ledger index was $243$, not the reported $486$. The corrected boundary
+  materializes deferred quotient updates before every certification attempt.
+- Always preferring initial regions starved powered discovery in four of the
+  72 fields. Alternating restored those cases but regressed one older field.
+  One other older field was initially misidentified as a regression; its
+  baseline was already unresolved and it remains so.
+- The one-prepass policy restores the previously completed cases in both the
+  72-field and 43-field panels. A fixed-shape test harness first rejected a
+  changed relation count; rerunning with the existing bounded shape-probe
+  protocol distinguishes changed valid transcripts from actual failures.
+
+On the selected target the first 118 rows and their generators are unchanged.
+The new 119th row is exactly the independently recovered $a+15675$ witness.
+The research classifier reaches index one after one retry, with presentation
+invariants $(3,3,3,3,3)$, rather than remaining inconclusive after eight retries
+and 145 rows. The entry point continues to return `False` with research phase
+96: these experiments are not public certificates or a release qualification.
+
+The source and full experiment history are under
+`/scratch/sagejs-runtime/cubic-missing-coset-0EopOw`. The final `resume-v4`
+source SHA-256 is
+`e4e8c831ccb16ad88c4c5eb66a65d8b2519456cae2fc8ae380626ac7d26f9546`,
+with cache key
+`da4c47558987a595796a11104ddad678773b731176c0be5d9cfb6a2b4ba23c7d`.
+Its source is 620,902 bytes and still lowers 146 functions. This is an
+experimental assembled closure, not a change to the production source
+allowance or production mathematical module.
+
+Across the 115 screened inputs, 104 full transcripts/outcomes are unchanged;
+all 11 changed transcripts agree between GMP and fmpz and pass fresh independent
+principal-ideal, formal-unit, log-enclosure, HNF, and Smith replay. The 72-field
+panel has 61 index-one research results and the same 11 earlier failures. The
+older panel retains its previously unresolved `15898963521669228.17`; no
+previously index-one outcome is lost. Replay does not assert order maximality,
+unit fundamentality, or standalone class-group completeness. The first old-panel
+PARI harness put a stack-size change and the computation on one input line,
+yielding empty output; its failures are retained alongside successful multiline
+reruns.
+
+Controlled `opt` timing uses a shared exclusive timing lock, CPU 2, one warmup,
+six alternating native rounds with reusable buffers, full transcript/parity
+checks outside timing, and fresh seeded PARI `bnfinit(f,0)` calls. Representative
+medians from the eleven-field measurement are:
+
+| Field suffix | Before / prepass native median (ms) | PARI median (ms) |
+| --- | ---: | ---: |
+| `601670940964268175.1` | 154.146 unresolved / 51.755 index one | 21 |
+| `601670940964268175.10` | 41.942 / 41.453 | 19 |
+| `1404087621760849825800.150` | 1020.694 / 1018.212 | 178 |
+| `168342521186083444200.61` | 221.020 / 229.452 | 70 |
+| `337548337352608341960.58` | 174.043 / 178.330 | 59 |
+| `6927187507738538040.67` | 105.612 / 112.253 | 35 |
+| `1404087621760849825800.179` | 383.219 / 400.253 | 71.5 |
+
+The target spends 66.42% less time and now reaches index one, but its baseline
+was not a completed computation. The candidate is still about 2.46 times PARI
+there. Other retrying fields incur 2.46–6.29% slowdowns; these costs are not
+hidden by an aggregate. The seconds-scale `.150` case barely changes. This is
+therefore structural research progress, not a general PARI win or a
+no-regression release candidate. A useful next experiment is to prevent an
+unproductive prepass from adding expensive dependent-row work, without losing
+unit discovery or spending the powered-search budget. That admission policy
+requires its own mathematical and differential checks.
+
+Replacing each complete source filename with `/frozen/closure.py` gives
+generated-core sizes 23,013,233 and 23,061,383 bytes, an increase of 48,150.
+The addon grows from 20,022,032 to 20,034,320 bytes. This is genuine generated
+code growth, separately reported from absolute provenance-path differences.
+The production source and resource allowances remain unchanged.
+
+The round-trip-verified archive `build/cubic-missing-coset-evidence` contains
+460 files (1,003,979,283 raw bytes; 92,028,450 compressed bytes), including
+generated artifacts for the diagnostic and rejected variants, negative controls,
+all final screens/replays, and controlled timing. Its manifest SHA-256 is
+`1f08fd597cd364d40347342f76def07da9f1e1472b266ef67073d570b084bf26`.
