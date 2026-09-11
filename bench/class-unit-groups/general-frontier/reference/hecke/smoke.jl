@@ -2,6 +2,7 @@ using Test
 include("screen.jl")
 
 @testset "complete compact Hecke screening" begin
+    @test !any(pkg.name == "JSON3" for pkg in keys(Base.loaded_modules))
     cases = [
         ("imaginary-class-three", [23, 0, 1], 3, 2, [0, 1]),
         ("real-quadratic", [-2, 0, 1], 1, 2, [2, 0]),
@@ -29,13 +30,14 @@ include("screen.jl")
     @test_throws ArgumentError frontier_case("bad-bits", [-2, 0, 1], 53, 1, 17)
     @test_throws ArgumentError frontier_case("bad-batch", [-2, 0, 1], 100, 0, 17)
     @test_throws ArgumentError frontier_case("nonmonic", [-2, 0, 2], 100, 1, 17)
-    request = JSON3.write((id="protocol", coefficients=["-2", "0", "1"], bits=100,
-                           iterations=1, seed="17"))
+    request = "FRONTIER1\tprotocol\t100\t1\t17\t-2,0,1"
     output = IOBuffer()
-    main(IOBuffer("not-json\n" * request * "\n"), output)
-    responses = JSON3.read.(split(chomp(String(take!(output))), '\n'))
+    main(IOBuffer("not-a-request\n" * request * "\n"), output)
+    responses = split(chomp(String(take!(output))), '\n')
     @test length(responses) == 2
-    @test responses[1].status == "error"
-    @test responses[2].status == "ok"
-    @test responses[2].result.compact.class_number == "1"
+    @test startswith(responses[1], "{\"status\":\"error\",")
+    @test startswith(responses[2], "{\"status\":\"ok\",")
+    @test occursin("\"class_number\":\"1\"", responses[2])
 end
+
+include("transport-smoke.jl")

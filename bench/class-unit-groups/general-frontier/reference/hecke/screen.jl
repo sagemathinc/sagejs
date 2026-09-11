@@ -1,7 +1,7 @@
 # Developer-only Hecke reference screening; not a Sage.js production backend.
 using Hecke
-using JSON3
 using Random
+include("transport.jl")
 
 function element_payload(x, K)
     y = K(x)
@@ -87,17 +87,20 @@ function one_fresh_case(coefficients, bits)
         regulator=regulator_payload(units[2:end], bits),
     )
     # Materialize exact compact data inside the timed boundary. No evaluate().
-    return JSON3.write(result)
+    materialized = frontier_json(result)
+    return result, materialized
 end
 
 function frontier_case(id, coefficients, bits, iterations, seed)
     bits in (100, 200) || throw(ArgumentError("precision must be 100 or 200"))
     1 <= iterations <= 100000 || throw(ArgumentError("invalid batch size"))
     Random.seed!(seed)
+    compact = nothing
     materialized = ""
     started = time_ns()
     for _ in 1:iterations
-        materialized = one_fresh_case(coefficients, bits)
+        compact, materialized = one_fresh_case(coefficients, bits)
+        isempty(materialized) && error("compact materialization failed")
     end
     elapsed_ns = time_ns() - started
     return (schema="sagejs-hecke-frontier-screen-v1", id=string(id), bits=bits,
@@ -105,7 +108,7 @@ function frontier_case(id, coefficients, bits, iterations, seed)
             boundary="persistent-process-fresh-field-complete-compact-screen",
             proof_policy="conditional-grh", independent_replay=false,
             versions=(julia=string(VERSION), hecke=string(Base.pkgversion(Hecke)),
-                      nemo=string(Base.pkgversion(Hecke.Nemo))), compact=JSON3.read(materialized))
+                      nemo=string(Base.pkgversion(Hecke.Nemo))), compact=compact)
 end
 
 function main(input=stdin, output=stdout)
@@ -113,13 +116,13 @@ function main(input=stdin, output=stdout)
         isempty(strip(line)) && continue
         id = nothing
         try
-            request = JSON3.read(line)
-            id = string(request.id)
-            result = frontier_case(request.id, request.coefficients, Int(request.bits),
-                                   Int(request.iterations), parse(Int, string(request.seed)))
-            println(output, JSON3.write((status="ok", result=result)))
+            request = parse_frontier_request(line)
+            id = request.id
+            result = frontier_case(request.id, request.coefficients, request.bits,
+                                   request.iterations, request.seed)
+            println(output, frontier_json((status="ok", result=result)))
         catch err
-            println(output, JSON3.write((status="error", id=id, error=sprint(showerror, err))))
+            println(output, frontier_json((status="error", id=id, error=sprint(showerror, err))))
         end
         flush(output)
     end
