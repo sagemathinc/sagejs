@@ -340,6 +340,15 @@ def ρσ_alias_heap_class(wrapper: Any, target: Any) -> Any:
     return wrapper
 
 
+def _builtins_attribute_owner(value: Any) -> Any:
+    """Use private Python ownership, retaining unknown native fallbacks."""
+    if value is not None and value is not runtime.undefined:
+        owner = _builtins_prototype_owners.get(runtime.object.getPrototypeOf(value))
+        if owner is not runtime.undefined:
+            return owner
+    return _builtins_get_member(value, "constructor")
+
+
 def _builtins_class_annotation_key(value: Any) -> Any:
     key = _builtins_heap_class_keys.get(value)
     if key is runtime.undefined:
@@ -562,7 +571,7 @@ def _builtins_bind_python_function(
         target,
         bind_arguments,
     )
-    runtime.object.assign(bound, target)
+    ρσ_finish_bound_method(bound, target, receiver)
     target_argnames = _builtins_get_member(target, "__argnames__")
     if (
         _builtins_get_member(target, "__sagejs_native_method__") is not True
@@ -579,15 +588,14 @@ def _builtins_bind_python_function(
                 [1],
             ),
         )
+    return bound
+
+
+def ρσ_finish_bound_method(bound: Any, target: Any, receiver: Any) -> Any:
+    runtime.object.assign(bound, target)
     runtime.reflect.set(bound, "__func__", target)
     runtime.reflect.set(bound, "__self__", receiver)
-    ρσ_brand_bound_method(bound)
-    runtime.reflect.set(
-        bound,
-        "__name__",
-        _builtins_get_member(target, "__name__"),
-    )
-    return bound
+    return ρσ_brand_bound_method(bound)
 
 
 _BUILTINS_BOUND_METHODS = runtime.reflect.construct(
@@ -702,6 +710,16 @@ def _builtins_class_attribute_resolution(
                 if runtime.strict_equal(runtime.jstype(native_getter), "function"):
                     descriptor_kind = _BUILTINS_DESCRIPTOR_NATIVE_GETTER
                     descriptor_target = native_getter
+                    if (
+                        _builtins_get_member(
+                            native_getter, "__sagejs_lazy_method_getter__"
+                        )
+                        is True
+                    ):
+                        descriptor_kind = _BUILTINS_DESCRIPTOR_NONDATA
+                        descriptor_target = _builtins_get_member(
+                            native_getter, "__sagejs_unbound_method__"
+                        )
             elif _builtins_member_is_function(descriptor_value, "__get__"):
                 descriptor_target = descriptor_value
                 if _builtins_member_is_function(
@@ -730,12 +748,8 @@ def _builtins_class_attribute_resolution(
                     is True
                 )
             ):
-                # Every ordinary function stored in a Python class namespace
-                # is a non-data descriptor.  This includes compiler-emitted
-                # methods, functions assigned after construction, and methods
-                # overriding an eagerly cached implementation from an imported
-                # base.  Class objects and explicitly static callables retain
-                # their separate paths above.
+                # Ordinary class functions are non-data descriptors, including
+                # later assignments. Classes and static callables stay separate.
                 descriptor_kind = _BUILTINS_DESCRIPTOR_NONDATA
             elif not runtime.strict_equal(runtime.jstype(descriptor_value), "function"):
                 # Non-callable values without ``__get__`` cannot require
@@ -3435,15 +3449,23 @@ def _builtins_callable_namespace_snapshot(value: Any) -> Any:
                 # retains the property in its namespace.
                 getter = runtime.reflect.get(descriptor, "get")
                 setter = runtime.reflect.get(descriptor, "set")
-                runtime.reflect.set(
-                    namespace,
-                    member_name,
-                    SageProperty(
-                        None if getter is runtime.undefined else getter,
-                        None if setter is runtime.undefined else setter,
-                    ),
-                )
-                continue
+                if (
+                    _builtins_get_member(getter, "__sagejs_lazy_method_getter__")
+                    is True
+                ):
+                    member = _builtins_get_member(getter, "__sagejs_unbound_method__")
+                    if _builtins_get_member(member, "__classmethod__") is not True:
+                        member = runtime.unbound_method_adapter(member)
+                else:
+                    runtime.reflect.set(
+                        namespace,
+                        member_name,
+                        SageProperty(
+                            None if getter is runtime.undefined else getter,
+                            None if setter is runtime.undefined else setter,
+                        ),
+                    )
+                    continue
             native_function_slot = (
                 source is value
                 and runtime.strict_equal(runtime.jstype(value), "function")
@@ -5380,22 +5402,12 @@ def ρσ_getattr_internal(
         )
         if has_own_member and not _builtins_data_descriptor_names.has(name):
             own_member = runtime.native_get(value, name)
-            own_is_eager_bound_cache = (
-                _builtins_get_member(
-                    own_member,
-                    "__sagejs_eager_bound_cache__",
-                )
-                is True
-            )
             if _builtins_is_missing_binding(own_member):
                 if default_value is not _BUILTINS_MISSING:
                     return default_value
                 raise AttributeError("The attribute " + name + " is not present")
-            if not own_is_eager_bound_cache:
-                return own_member
-        else:
-            own_is_eager_bound_cache = False
-        owner = runtime.native_get(value, "constructor")
+            return own_member
+        owner = _builtins_attribute_owner(value)
         descriptor_resolution = _builtins_class_attribute_resolution(owner, name)
         if descriptor_resolution is not runtime.undefined:
             descriptor_kind = descriptor_resolution[2]
@@ -5425,12 +5437,7 @@ def ρσ_getattr_internal(
                 if default_value is not _BUILTINS_MISSING:
                     return default_value
                 raise AttributeError("The attribute " + name + " is not present")
-            if not (own_is_eager_bound_cache and descriptor is not runtime.undefined):
-                # Python functions stored directly on an instance are
-                # ordinary values.  A marked eager cache is only an
-                # implementation detail, however: any different descriptor
-                # later installed by a subclass or setattr() must shadow it.
-                return own_member
+            return own_member
         if runtime.strict_equal(
             descriptor_kind,
             _BUILTINS_DESCRIPTOR_NONDATA,
@@ -5466,6 +5473,8 @@ def ρσ_getattr_internal(
             and _builtins_has_member(class_prototype, name)
         ):
             class_member = _builtins_get_member(class_prototype, name)
+            if _builtins_get_member(class_member, "__self__") is class_prototype:
+                class_member = _builtins_get_member(class_member, "__func__")
             if _builtins_is_missing_binding(class_member):
                 class_member = runtime.undefined
             if class_member is runtime.undefined:
@@ -5755,7 +5764,7 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
         ):
             return _builtins_call_member(value, "__setattr__", [name, member])
     descriptor_info = _builtins_class_attribute_descriptor(
-        _builtins_get_member(value, "constructor"), name
+        _builtins_attribute_owner(value), name
     )
     if descriptor_info is not runtime.undefined:
         descriptor = runtime.reflect.get(descriptor_info, "value")
@@ -6372,7 +6381,7 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
         runtime.reflect.apply(property_deleter, value, [])
         return
     descriptor_info = _builtins_class_attribute_descriptor(
-        _builtins_get_member(value, "constructor"), name
+        _builtins_attribute_owner(value), name
     )
     if descriptor_info is not runtime.undefined:
         descriptor = runtime.reflect.get(descriptor_info, "value")
@@ -6494,14 +6503,10 @@ def ρσ_py_super(
                         )
                         is True
                     ):
-                        # A lightweight-class method accessor normally caches
-                        # a bound method on its receiver. Super lookup must
-                        # retrieve the raw base function without overwriting a
-                        # same-named method cached by the derived class.
-                        return runtime.reflect.apply(
-                            descriptor_getter,
-                            base_prototype,
-                            [],
+                        # Super needs the raw base function, not a method bound
+                        # to the prototype used for descriptor lookup.
+                        return _builtins_get_member(
+                            descriptor_getter, "__sagejs_unbound_method__"
                         )
                     return runtime.reflect.get(base_prototype, name, instance)
         return runtime.undefined
@@ -6543,13 +6548,7 @@ def ρσ_py_super(
                 member,
                 [receiver],
             )
-            # Function.bind preserves execution semantics but discards the
-            # Python signature metadata used by keyword interpolation.
-            runtime.object.assign(bound, member)
-            runtime.reflect.set(bound, "__self__", receiver)
-            runtime.reflect.set(bound, "__func__", member)
-            ρσ_brand_bound_method(bound)
-            return bound
+            return ρσ_finish_bound_method(bound, member, receiver)
         if _builtins_member_is_function(member, "__get__"):
             return _builtins_call_member(member, "__get__", [instance, instance_class])
         return member
@@ -6893,7 +6892,15 @@ def ρσ_type(*values: Any) -> Any:
                 # explicit marker when rebuilding the class through a custom
                 # metaclass.
                 runtime.reflect.set(member, "__python_descriptor__", True)
-            runtime.reflect.set(prototype, member_name, member)
+            prototype_member = member
+            if (
+                runtime.strict_equal(runtime.jstype(member), "function")
+                and _builtins_get_member(member, "__func__") is not runtime.undefined
+                and _builtins_get_member(member, "__self__") is runtime.undefined
+                and _builtins_get_member(member, "__classmethod__") is not True
+            ):
+                prototype_member = _builtins_get_member(member, "__func__")
+            runtime.reflect.set(prototype, member_name, prototype_member)
             if _builtins_member_is_function(
                 member, "__set__"
             ) or _builtins_member_is_function(member, "__delete__"):
@@ -9441,7 +9448,7 @@ def _builtins_object_setattr(
         _builtins_replace_instance_dict(self, value)
         return
     descriptor_info = _builtins_class_attribute_descriptor(
-        _builtins_get_member(self, "constructor"), name
+        _builtins_attribute_owner(self), name
     )
     if descriptor_info is not runtime.undefined:
         descriptor = runtime.reflect.get(descriptor_info, "value")
@@ -9460,7 +9467,7 @@ def _builtins_object_delattr(self: Any, name: _Str) -> None:
         runtime.reflect.apply(property_deleter, self, [])
         return
     descriptor_info = _builtins_class_attribute_descriptor(
-        _builtins_get_member(self, "constructor"), name
+        _builtins_attribute_owner(self), name
     )
     if descriptor_info is not runtime.undefined:
         descriptor = runtime.reflect.get(descriptor_info, "value")
