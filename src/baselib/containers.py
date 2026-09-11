@@ -1908,36 +1908,14 @@ def dict_wrap(native_map: Any) -> SageDict:
 ρσ_set_wrap = set_wrap
 ρσ_dict_wrap = dict_wrap
 
-runtime.reflect.set(
-    ρσ_set,
-    "prototype",
-    runtime.reflect.get(SageSet, "prototype"),
-)
-runtime.reflect.set(
-    ρσ_frozenset,
-    "prototype",
-    runtime.reflect.get(SageFrozenSet, "prototype"),
-)
-runtime.reflect.set(
-    ρσ_dict,
-    "prototype",
-    runtime.reflect.get(SageDict, "prototype"),
-)
-runtime.reflect.set(
-    runtime.reflect.get(SageDict, "prototype"),
-    "__python_type__",
-    ρσ_dict,
-)
-runtime.reflect.set(
-    runtime.reflect.get(SageSet, "prototype"),
-    "__python_type__",
-    ρσ_set,
-)
-runtime.reflect.set(
-    runtime.reflect.get(SageFrozenSet, "prototype"),
-    "__python_type__",
-    ρσ_frozenset,
-)
+for _container_factory, _container_class in [
+    (ρσ_set, SageSet),
+    (ρσ_frozenset, SageFrozenSet),
+    (ρσ_dict, SageDict),
+]:
+    _container_prototype = runtime.reflect.get(_container_class, "prototype")
+    runtime.reflect.set(_container_factory, "prototype", _container_prototype)
+    runtime.reflect.set(_container_prototype, "__python_type__", _container_factory)
 list_constructor = ρσ_list_constructor
 runtime.reflect.set(list_constructor, "prototype", _list_prototype())
 runtime.reflect.set(list_constructor, "__init__", _list_static_init)

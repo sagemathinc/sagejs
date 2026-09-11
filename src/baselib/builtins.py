@@ -9472,49 +9472,17 @@ def _builtins_object_delattr(self: Any, name: _Str) -> None:
         raise AttributeError("object has no attribute '" + name + "'")
 
 
-runtime.reflect.set(
-    SageObject,
-    "__new__",
-    _builtins_object_new,
-)
-runtime.reflect.set(
-    _builtins_object_new,
-    "__staticmethod__",
-    True,
-)
-runtime.reflect.set(
-    SageObject,
-    "__setattr__",
-    _builtins_object_setattr,
-)
-runtime.reflect.set(
-    SageObject,
-    "__delattr__",
-    _builtins_object_delattr,
-)
+runtime.reflect.set(_builtins_object_new, "__staticmethod__", True)
 _sage_object_prototype = runtime.reflect.get(SageObject, "prototype")
+for _object_owner in (SageObject, _sage_object_prototype):
+    for _object_name, _object_method in [
+        ("__new__", _builtins_object_new),
+        ("__setattr__", _builtins_object_setattr),
+        ("__delattr__", _builtins_object_delattr),
+    ]:
+        runtime.reflect.set(_object_owner, _object_name, _object_method)
 runtime.reflect.set(
-    _sage_object_prototype,
-    "__new__",
-    _builtins_object_new,
-)
-runtime.reflect.set(
-    _sage_object_prototype,
-    "__setattr__",
-    _builtins_object_setattr,
-)
-runtime.reflect.set(
-    _sage_object_prototype,
-    "__delattr__",
-    _builtins_object_delattr,
-)
-runtime.reflect.set(
-    SageObject,
-    "__init__",
-    runtime.reflect.get(
-        runtime.reflect.get(SageObject, "prototype"),
-        "__init__",
-    ),
+    SageObject, "__init__", runtime.reflect.get(_sage_object_prototype, "__init__")
 )
 runtime.set_class_repr(SageObject, "<class 'object'>")
 runtime.reflect.set(SageObject, "__name__", "object")
@@ -9615,52 +9583,22 @@ def _builtins_tuple_new(
 runtime.reflect.set(_builtins_tuple_new, "__staticmethod__", True)
 runtime.reflect.set(tuple, "__new__", _builtins_tuple_new)
 runtime.reflect.set(_tuple_prototype, "__new__", _builtins_tuple_new)
-runtime.reflect.set(
-    _tuple_prototype, "__init__", runtime.native_method(_builtins_tuple_subclass_init)
-)
-runtime.reflect.set(
-    _tuple_prototype, "__len__", runtime.native_method(_builtins_tuple_subclass_len)
-)
-runtime.reflect.set(
-    _tuple_prototype, "__iter__", runtime.native_method(_builtins_tuple_subclass_iter)
-)
-runtime.reflect.set(
-    _tuple_prototype,
-    runtime.iterator_symbol,
-    runtime.native_method(_builtins_tuple_subclass_iter),
-)
-runtime.reflect.set(
-    _tuple_prototype,
-    "__getitem__",
-    runtime.native_method(_builtins_tuple_subclass_getitem),
-)
-runtime.reflect.set(
-    _tuple_prototype, "__repr__", runtime.native_method(_builtins_tuple_subclass_repr)
-)
-runtime.reflect.set(
-    _tuple_prototype, "__str__", runtime.native_method(_builtins_tuple_subclass_repr)
-)
-runtime.reflect.set(
-    _tuple_prototype, "toString", runtime.native_method(_builtins_tuple_subclass_repr)
-)
-runtime.reflect.set(
-    _tuple_prototype, "__eq__", runtime.native_method(_builtins_tuple_subclass_eq)
-)
-runtime.reflect.set(
-    _tuple_prototype, "__add__", runtime.native_method(_builtins_tuple_subclass_add)
-)
-runtime.reflect.set(
-    _tuple_prototype, "__mul__", runtime.native_method(_builtins_tuple_subclass_mul)
-)
-runtime.reflect.set(
-    _tuple_prototype, "__rmul__", runtime.native_method(_builtins_tuple_subclass_mul)
-)
-runtime.reflect.set(
-    _tuple_prototype, "count", runtime.native_method(_builtins_tuple_count)
-)
-runtime.reflect.set(
-    _tuple_prototype, "index", runtime.native_method(_builtins_tuple_index)
-)
+for _tuple_names, _tuple_implementation in [
+    (("__init__",), _builtins_tuple_subclass_init),
+    (("__len__",), _builtins_tuple_subclass_len),
+    (("__iter__", runtime.iterator_symbol), _builtins_tuple_subclass_iter),
+    (("__getitem__",), _builtins_tuple_subclass_getitem),
+    (("__repr__", "__str__", "toString"), _builtins_tuple_subclass_repr),
+    (("__eq__",), _builtins_tuple_subclass_eq),
+    (("__add__",), _builtins_tuple_subclass_add),
+    (("__mul__", "__rmul__"), _builtins_tuple_subclass_mul),
+    (("count",), _builtins_tuple_count),
+    (("index",), _builtins_tuple_index),
+]:
+    for _tuple_name in _tuple_names:
+        runtime.reflect.set(
+            _tuple_prototype, _tuple_name, runtime.native_method(_tuple_implementation)
+        )
 runtime.reflect.set(tuple, "count", _builtins_tuple_count)
 runtime.reflect.set(tuple, "index", _builtins_tuple_index)
 issubclass = ρσ_issubclass
