@@ -104,6 +104,43 @@ class ScreeningContracts(unittest.TestCase):
                 {"label": "../escape", "coefficients": ["1", "0", "1"]}
             )
 
+    def test_explicit_pari_precision_and_batch(self):
+        for bits in (100, 200):
+            for iterations in (1, 3, 10000):
+                good = f"FRONTIER_RESULT|sample-0002-field|{bits}|{iterations}|1|1|[]|-23|[0,1]|2|1\nFRONTIER_COMPACT|sample-0002-field|[]\n"
+                options = {"expected_bits": bits, "expected_iterations": iterations}
+                self.assertEqual(
+                    screen.validate_terminal(
+                        good, "", "sample-0002-field", 0, False, False, **options
+                    ),
+                    "ok",
+                )
+                for mutation in (
+                    {"expected_bits": 300 - bits},
+                    {"expected_iterations": iterations + 1},
+                    {"expected_iterations": True},
+                    {"expected_iterations": 0},
+                    {"expected_bits": True},
+                ):
+                    self.assertEqual(
+                        screen.validate_terminal(
+                            good,
+                            "",
+                            "sample-0002-field",
+                            0,
+                            False,
+                            False,
+                            **dict(options, **mutation),
+                        ),
+                        "error",
+                    )
+                self.assertEqual(
+                    screen.validate_terminal(
+                        good, "", "sample-0001-field", 0, False, False, **options
+                    ),
+                    "error",
+                )
+
     def test_hecke_terminal_contract(self):
         result = {
             "schema": "sagejs-hecke-frontier-screen-v1",
@@ -131,6 +168,8 @@ class ScreeningContracts(unittest.TestCase):
                 kwargs.get("returncode", 0),
                 False,
                 False,
+                expected_bits=kwargs.get("expected_bits", 200),
+                expected_iterations=kwargs.get("expected_iterations", 1),
             )
 
         self.assertEqual(check({"status": "ok", "result": result}), "ok")
@@ -152,6 +191,32 @@ class ScreeningContracts(unittest.TestCase):
         self.assertEqual(
             check({"status": "ok", "result": result}, returncode=1), "error"
         )
+        for bits in (100, 200):
+            for iterations in (1, 3, 10000):
+                explicit = dict(
+                    result,
+                    bits=bits,
+                    iterations=iterations,
+                    compact=dict(
+                        result["compact"],
+                        regulator=dict(result["compact"]["regulator"], bits=bits),
+                    ),
+                )
+                answer = {"status": "ok", "result": explicit}
+                options = {"expected_bits": bits, "expected_iterations": iterations}
+                self.assertEqual(check(answer, **options), "ok")
+                for mutation in (
+                    {"expected_bits": 300 - bits},
+                    {"expected_iterations": iterations + 1},
+                    {"expected_iterations": True},
+                    {"expected_iterations": 0},
+                    {"expected_bits": True},
+                ):
+                    self.assertEqual(
+                        check(answer, **dict(options, **mutation)), "error"
+                    )
+                explicit["compact"]["regulator"]["bits"] = 300 - bits
+                self.assertEqual(check(answer, **options), "error")
 
 
 if __name__ == "__main__":

@@ -75,8 +75,8 @@ This is a source/test inventory, not a timing result. Paths below are under
 
 Source-confirmed mechanisms to investigate include rank-sized subset selection
 (a 50,000-subset cap), bounded prime-root searches, dense exact transforms,
-and some expansion of factored saturation targets. None is yet identified as
-the dominant measured bottleneck. Floating log-rank steering is not the
+and some expansion of factored saturation targets. At that initial audit stage,
+none had yet been identified as the dominant measured bottleneck. Floating log-rank steering is not the
 rigorous certification step and must not be described as one.
 
 Existing tests include rank-two real-cubic recovery, slow-gated mixed-quartic
@@ -197,3 +197,108 @@ The larger PARI supplement exposed its default 8 MB worker-stack overflow.
 Subsequent configuration explicitly pins `nbthreads=1` and allows worker-stack
 growth within the unchanged 4 GiB cgroup cap. Earlier attempts remain retained
 with their original configuration/failures; do not pool them as one baseline.
+
+The first 28 supplemental requests completed with 17 successful screening
+records, ten 60-second timeouts, and one worker-stack error. Nine completed
+PARI requests exceeded one second and three exceeded ten seconds. Generated
+polynomial identity is not field distinctness, and these costs are not yet
+matched against persistent Hecke. The subsequent 21-request high-discriminant
+LMFDB screen uses the explicitly single-threaded configuration above.
+
+Reference-only expansion policy `general-frontier-reference-cost-expansion-v1`
+selects twelve previously unscreened candidates per signature/discriminant
+cell where an earlier PARI request took at least one second or timed out.
+Selection uses seeded hashes, preserves censored strata, and records the pool
+and review hashes. It has a 200-request batch ceiling and 60-second request
+caps. It neither declares the chosen fields expensive for the faster reference
+nor freezes the performance panel. Cells with only infrastructure errors are
+not promoted as mathematical cost evidence.
+
+The M0 ledger additionally reserves a conservative 2,000 seconds for the
+fourteen local Sage.js diagnostic attempts through `profile-large-v1`, including
+failed starts and timeouts. This is separate from the initial reference-only
+allowance and is not a controlled timing claim. As of this adjustment, charged
+discovery time was 3,706.15 seconds of the 432,000-second M0 ceiling, before the
+running high-discriminant screen. Optimization campaigns remain **0 of 2**.
+
+Reviewed build-input partition changes now exclude this developer-only
+benchmark tree and five exact coordination contracts from artifact inputs.
+Full workspace validation still fingerprints them; unknown paths and runtime,
+compiler, native, and production-manifest inputs remain conservative. Fourteen
+focused partition tests pass after integration. Old build receipts are not
+relabeled or migrated: a fresh local build is required before baseline staging.
+
+## M1 design obligation: compact unit maps
+
+The shared engine already owns the expensive arithmetic and publication state;
+the public unit-coordinate interface is a separate missing capability. Reuse
+the existing context rather than launch another class/unit computation. Before
+implementation, settle the Sage-facing convention: coordinates include the
+torsion component, whereas the current computation object's generator list is
+free-only. Any compact-by-default difference from Sage's expanded `exp` needs
+an explicit name or documented, tested contract.
+
+For an authenticated complete fundamental system, a proposed logarithm map
+first proves the input is a unit. Solve the rank-dimensional logarithmic system
+using rigorous intervals, increasing precision until every coefficient is
+uniquely determined as an integer. Completeness and membership justify that
+integer solution; being numerically close to integers does not. The remaining
+factor is then known to be torsion. In fields with a real embedding its sign
+distinguishes the two possibilities. For totally complex controls, reduction
+at a suitable prime can distinguish all torsion images, provided every factor
+and denominator is invertible and those images are proved distinct.
+
+Do not expand huge factored elements to verify this interface. Constructed
+coordinates may carry context-bound evidence. Arbitrary factored inputs still
+need exact membership evidence, for example cancellation of their signed
+prime-valuation ledgers; a scalar norm of one is insufficient. Syntactic equality
+of factored products is not equality of field elements. Neither a caller's
+`complete` flag nor an unkeyed mutable payload is proof authority.
+
+Required controls include rank zero, rank three, complex fields with torsion
+beyond $\{\pm1\}$, wrong fields/dimensions, counterfeit basis evidence,
+nonintegral norm-one elements, cancellation between nonunit factors, and large
+exponents without expansion. Detached replay must bind the basis-completeness
+argument, membership evidence, log enclosures, and torsion determination under
+its own resource limits. This section is an implementation obligation, not a
+claim that these maps or their replay verifier already exist.
+
+## Persistent references and relocated baseline
+
+The controlled six-field persistent pilots completed in both engines, with
+matching exact summary values for class number, canonical class invariants,
+field discriminant, signature and torsion order. PARI worker times were 8–12 ms;
+Hecke worker times were about 33–539 ms. These single samples are **not** the
+required batched/repeated competitive measurements. Three Hecke samples still
+reported residual JIT. Julia's outer compile-time diagnostic may include
+dispatch compilation before the worker's internal timer starts; never subtract
+it mechanically from the reported worker time. Compact identities and basis
+completeness have not been independently replayed by these comparisons.
+
+The fresh local build passed in 8m44s, reusing all 41 production kernel families.
+Strict baselib validation passed on 382 modules. `architecture:check` passed its
+FFI/package/native/Wasm stages but failed at an unchanged `cowasm` mention in
+`agents/python-compiler-runtime-value-and-performance-plan.md:124`; this failure
+is retained, not reported as a passing full architecture check.
+
+A standalone baseline, including independent root/submodule Git metadata,
+dependencies and shipped artifacts, passed unchanged-receipt verification on
+`opt`. Its full transfer inventory has 24,436 entries and 991,267,539 bytes;
+receipt SHA-256 is
+`d10d3776499fb032b1836cf9263615a0cbd1cec1cf1c588bc573b5dcbb62ab9f`.
+This authenticates build/transfer correspondence, **not equal first-use preparation**.
+An initial local relocated smoke timed out while compiling lazy Python modules:
+the working tree had warm absolute-path-keyed caches that the normal build does
+not ship. The second staged attempt advanced as that cache accumulated.
+
+The correction uses the existing portable lazy-module precompiler in a separate
+stage, with `SAGEJS_USE_SOURCE=1`, without changing mathematical source. Preserve
+the original receipt, bind supplemental templates and compiler hashes in a new
+transfer inventory, and test with an empty `XDG_CACHE_HOME`. Portable JavaScript
+templates still do not prove that V8/JIT work is absent. The failed first-stage
+receipts remain part of the preparation record.
+
+The three additional local diagnostics (30 s relocated, 10 s native-required,
+10 s rebuilt-root caps) require a further conservative 100-second ledger charge
+after the in-flight reference batch releases its pending reservation. Do not
+edit the coordinator's live ledger underneath a running batch.
