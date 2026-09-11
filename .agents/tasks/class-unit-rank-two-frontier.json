@@ -45,6 +45,8 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
     "python3 -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
     "pnpm docs:check",
     "pnpm format:python:check"
@@ -78,6 +80,56 @@
       "started_at": "2026-09-11T10:46:21.398Z",
       "commit": "916baca462e85dd7767c5a328fa33b7ff4e0f54b",
       "workspace_fingerprint": "74f0cc14d0022742e4c1df205c2131149ed19e66a67f83d183b7109e7c420b6d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.032,
+      "started_at": "2026-09-11T10:47:05.308Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "12be83ef6127bfad29bb10ee207a0fa7ffdf1a7c0f8e0d14e9288b2f040aa500",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 940.016,
+      "started_at": "2026-09-11T10:48:06.017Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "12be83ef6127bfad29bb10ee207a0fa7ffdf1a7c0f8e0d14e9288b2f040aa500",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.109,
+      "started_at": "2026-09-11T11:04:31.196Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "12be83ef6127bfad29bb10ee207a0fa7ffdf1a7c0f8e0d14e9288b2f040aa500",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.39,
+      "started_at": "2026-09-11T11:04:31.997Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "12be83ef6127bfad29bb10ee207a0fa7ffdf1a7c0f8e0d14e9288b2f040aa500",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm format:python:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.974,
+      "started_at": "2026-09-11T11:04:37.054Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "12be83ef6127bfad29bb10ee207a0fa7ffdf1a7c0f8e0d14e9288b2f040aa500",
       "platform": "linux-x64"
     }
   ],
