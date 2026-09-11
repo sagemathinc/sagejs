@@ -46,3 +46,29 @@ supported help output has focused coverage. Core source size is 902091 bytes
 against the unchanged 903000-byte budget. Generated optimizer source records and
 reference locations are refreshed through their existing scripts, without
 publishing compiler artifacts or changing bootstrap snapshots.
+
+## Host sentinel follow-up
+
+The integrated corpus exposed thirteen regressions after the initial focused
+checks: `array` initializer and byte-view length defaults, and `OrderedDict`
+iterable defaults. These are explicitly `runtime.undefined` in ordinary library
+source. The first implementation loaded the correct tuple slot but then treated
+its value as evidence that no default existed. This was not an inherited
+initializer-metadata defect; even `array('i')` reproduced it directly.
+
+The follow-up separates absent defaults from present host-undefined values with
+a dedicated internal sentinel. Positional presence follows tuple length;
+keyword presence follows dictionary storage membership. Supplied arguments still
+avoid reading defaults. Focused coverage includes explicit host undefined,
+`None`, slot replacement/removal, and affected library/subclass constructions.
+
+After self-hosting both compiler passes and refreshing the runtime cache, all
+thirteen affected unchanged MicroPython files match CPython 3.14.4 stdout and
+stderr exactly in direct executions. The six original adopted files still pass,
+as do nine focused runtime tests and 76 frontend/compiler/documentation tests.
+Strict Python remains at zero errors across 382 modules. Core source size is
+902104 bytes against the unchanged 903000-byte budget. These checks repair the
+observed regression but do not replace the integrated full-corpus rerun.
+The separate lightweight worker runtime must also be regenerated when adding a
+compiler-runtime symbol; `self --complete` plus the evaluator cache alone does
+not refresh that bundle.
