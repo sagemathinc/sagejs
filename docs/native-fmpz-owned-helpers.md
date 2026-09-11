@@ -2073,3 +2073,54 @@ Both directories are retained in
 `build/cubic-prepass-profile-and-map-prototype.tar.gz`. Diagnostic binaries
 are explicitly nonproduction and have their own hashes; their inherited
 module cache identities do not authenticate the instrumented code.
+
+### Compiled linear-fiber candidate: first larger-field measurements
+
+The linear-only helper now compiles as ordinary source-transparent Python in
+the same resident closure (147 lowered functions). Across all 115 frozen
+inputs, **every full transcript/outcome is unchanged** from the prepass parent:
+outputs, principal generators, factor ideals, relation rows, unit exponents,
+basis, parity counters, and declines. Ten phase-96 timing-panel inputs also
+have fresh GMP/fmpz full-transcript agreement. The eleventh timing input still
+declines at phase 42; it is not a completed computation. Unchanged mathematical
+transcripts retain their existing replay evidence; this comparison is not a
+new proof of class-group completeness.
+
+An expanded independent finite-map test covers 98 fields and 250 denominator-
+prime cases with $p\le2000$. Linear-only and general quadratic-equation search
+agree throughout; all 244 cases with available native degree-one ideals match
+their exact HNFs. In the other six cases absence from the bounded factor base
+is not treated as proof of nonexistence. Candidate checks total 20,731 instead
+of 16,481,037 exhaustive pairs. These counts are not a timing ratio.
+
+Fresh controlled `opt` medians, with the same lock/CPU/warmup/alternating-round
+and detached-transcript protocol, compare the prepass parent against the
+linear-fiber candidate:
+
+| Field suffix | Parent / linear-fiber median (ms) | Change | PARI (ms) |
+| --- | ---: | ---: | ---: |
+| `1404087621760849825800.150` | 1022.322 / 593.160 | -41.98% | 178 |
+| `1404087621760849825800.179` | 389.706 / 199.801 | -48.73% | 71 |
+| `337548337352608341960.58` | 175.276 / 163.064 | -6.97% | 58 |
+| `168342521186083444200.61` | 222.911 / 219.186 | -1.67% | 70.5 |
+| `1404087621760849825800.155` | 514.400 / 515.444 | +0.20% | 200 |
+
+The seven other measured outcomes, including the `.155` row above, have
+changes between -1.02% and +0.44%. No global no-regression claim follows from
+six rounds. The large reductions do show that the eliminated quadratic
+residue-map enumeration materially affected full larger-field calls, rather
+than merely a microbenchmark. PARI remains faster; `.150` still takes about
+3.33 times PARI. The next major cost there is relation collection, while
+general finite-algebra splitting remains relevant beyond these linear fibers.
+
+Candidate source SHA-256:
+`88e2ef97173d8a4d67bfe795097f63515d1dc58212b0ef730f22afb3571f70fc`.
+Cache key:
+`4a3112bc7c9c7262674b7ef2a7ac99a5c22983617e2790c7b82f7a3351ef4ee4`.
+Source grows from 623,284 to 626,409 bytes; normalized generated core from
+23,108,027 to 23,188,360; addon from 20,034,320 to 20,042,512. The complete
+candidate, scripts, controls, screens, GMP comparisons, and timing are retained
+in `build/cubic-residue-map-linear-native.tar.gz`. This is still a scratch
+research closure, not a production source/budget change or a merge-ready PR.
+Cross-platform validation and integration with public certificate semantics
+remain required.
