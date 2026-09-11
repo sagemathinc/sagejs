@@ -9637,82 +9637,27 @@ runtime.register_doc(
 )
 compile = ρσ_compile
 exec = ρσ_exec
-_integer_is_irreducible_native = runtime.native_method(_builtins_integer_is_irreducible)
-_integer_is_one_native = runtime.native_method(_builtins_integer_is_one)
-_integer_is_square_native = runtime.native_method(_builtins_integer_is_square)
-_integer_digits_native = runtime.native_method(_builtins_integer_digits)
-_integer_bits_native = runtime.native_method(_builtins_integer_bits)
-_integer_nbits_native = runtime.native_method(_builtins_integer_nbits)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.number, "prototype"),
-    "is_irreducible",
-    _integer_is_irreducible_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, "prototype"),
-    "is_irreducible",
-    _integer_is_irreducible_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.number, "prototype"),
-    "is_one",
-    _integer_is_one_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, "prototype"),
-    "is_one",
-    _integer_is_one_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.number, "prototype"),
-    "is_square",
-    _integer_is_square_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, "prototype"),
-    "is_square",
-    _integer_is_square_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.number, "prototype"),
-    "digits",
-    _integer_digits_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, "prototype"),
-    "digits",
-    _integer_digits_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.number, "prototype"),
-    "bits",
-    _integer_bits_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, "prototype"),
-    "bits",
-    _integer_bits_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.number, "prototype"),
-    "nbits",
-    _integer_nbits_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, "prototype"),
-    "nbits",
-    _integer_nbits_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.number, "prototype"),
-    "bit_length",
-    _integer_nbits_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, "prototype"),
-    "bit_length",
-    _integer_nbits_native,
-)
+# Share each native adapter across both integer representations and aliases.
+for _integer_names, _integer_implementation in [
+    (("is_irreducible",), _builtins_integer_is_irreducible),
+    (("is_one",), _builtins_integer_is_one),
+    (("is_square",), _builtins_integer_is_square),
+    (("digits",), _builtins_integer_digits),
+    (("bits",), _builtins_integer_bits),
+    (("nbits", "bit_length"), _builtins_integer_nbits),
+]:
+    _integer_adapter = runtime.native_method(_integer_implementation)
+    for _integer_name in _integer_names:
+        runtime.reflect.set(
+            runtime.reflect.get(runtime.number, "prototype"),
+            _integer_name,
+            _integer_adapter,
+        )
+        runtime.reflect.set(
+            runtime.reflect.get(runtime.bigint, "prototype"),
+            _integer_name,
+            _integer_adapter,
+        )
 runtime.reflect.set(runtime.global_object, "true", True)
 runtime.reflect.set(runtime.global_object, "false", False)
 runtime.reflect.set(runtime.global_object, "ρσ_py_true", True)
