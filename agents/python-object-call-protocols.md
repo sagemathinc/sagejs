@@ -1,5 +1,73 @@
 # Object and call protocol campaign
 
+## Shared-emission checkpoint — 2026-09-11
+
+Clean compiler/runtime candidate `c99e6067a` passes the full build and the
+unchanged adopted corpus (**533 passes, three reviewed differences, zero
+required failures**), plus all four pinned package workflows. The test-only
+follow-up `c40561c4e` updates three structural emitter assertions and adds
+execution coverage; 71 focused checks and the CPython fixture pass. Its routine
+run passes every portable test, strict checks, documentation/FFI integrity and
+public API checks, but **fails startup**. This is not full PR qualification.
+
+The shared factories retain runtime-selected class construction, source-order
+defaults and fresh function objects. Tests caught and corrected signature and
+generator/coroutine metadata loss before integration. Decorated methods,
+special receiver forms, positional-only parameters and evaluated annotations
+retain their existing emission paths. The private compiler is now 3,967,185
+bytes, below the unchanged 4,276,224-byte cap.
+
+### Controlled outcome
+
+All comparisons use the retained benchmark protocol, pinned CPython, verified
+package paths and source/artifact hashes. Direct pairing against `5b7f4ddc5`
+isolates this correction from the earlier campaign:
+
+| Packaging workload | Previous candidate | Shared emission | Outcome |
+| --- | ---: | ---: | --- |
+| Cold CLI | 6579 ms | 5463 ms | 17.0% less elapsed time |
+| First import | 5533 ms | 4446 ms | 19.7% less elapsed time |
+| First workflow | 24.459 ms | 24.463 ms | Essentially unchanged |
+| 1000 warm workflows | 2587 ms | 2605 ms | Overlapping ranges; no resolved change |
+
+The separate original-baseline pairing still shows **4.8% slower cold startup
+and 5.1% slower first import**. Warm packaging is 1.087x faster but remains
+about 228x CPython. Original-baseline common-call gains are retained: 1.86x
+simple construction, 1.24x initialized construction and 1.33x immediate calls;
+their CPython-relative gaps remain approximately 47x, 45x and 79x. No cliff is
+closed. The benchmark VM was released after all three comparisons passed.
+
+### Remaining readiness gate and evidence
+
+Local startup measured 409.7 ms in the complete routine and 400.2 ms in one
+identical quiet repeat, both above the unchanged 400 ms limit. The prerequisite
+PR214 measured 396.9 ms on this host. Retain these failures; do not repeatedly
+sample until green, widen the budget or call the PR ready. A diagnostic profile
+shows substantial generated-source loading, VM compilation and bootstrap work;
+it does not establish lazy exception stacks as a remedy. Next: obtain reliable
+startup headroom, then rerun the entire routine and downstream qualification.
+
+Exploratory tests also found pre-existing `__class__` cell and code-object
+argument-count gaps on the retained baseline. These are future repair items,
+not newly approved intentional differences or reclassified adopted failures.
+
+Evidence under `/home/user/python-output-integration-evidence.X9vc1T/`:
+
+- `object-shared-build.log`, `object-shared-corpus.json`,
+  `object-shared-packages.json`, `shared-method-shape-tests.log`;
+- `object-shared-routine2.log`, `object-shared-startup-repeat.log`,
+  `protocol-startup-comparison.log`, `startup-shared-c99.cpuprofile`;
+- `common-shared-c99-timings.json`, SHA256
+  `fbb5f4bb0b851a883ff1c420d270bbb078fab98cb2baecfd0599b31a847b0af8`;
+- `packaging-shared-c99-timings.json`, SHA256
+  `d13af07781fe5bd5966f9454bc2d40749ce96a6afc676c7a546b441b2750e885`;
+- `packaging-shared-vs5b7-c99-timings.json`, SHA256
+  `4ed7ae584f5bef42e78b2c660da7533243eb402f04db31f43e2965456623c5df`;
+- `c99-benchmark-handoff.md` and `c99-benchmark-evidence-manifest.json`
+  record complete identities and distinguish the measured source from the
+  subsequent test-only commit. Optional native capability scope matches the
+  previous candidate; this is not native mathematical qualification.
+
 ## Qualified semantic checkpoint — 2026-09-11
 
 Clean candidate `5b7f4ddc5` passes the full unchanged adopted corpus:

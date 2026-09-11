@@ -142,6 +142,17 @@ artifact has a separately focused-tested size correction; it does not establish
 that the cold regression is fixed. Exact candidates, receipts and remaining
 qualification work are recorded in `agents/python-object-call-protocols.md`.
 
+**Subsequent shared-emission checkpoint:** `c99e6067a` preserves the 533/3/0
+corpus result and four package workflows. Direct pairing with the previous
+candidate reduces packaging cold time 17.0% and first-import time 19.7%, while
+retaining common-call gains. The original-baseline cold/import gaps are now
+about 5%, not zero; warm packaging remains about 228x CPython. The compiled-size
+gate is repaired. All portable checks pass after the test-only `c40561c4e`, but
+startup remains over its unchanged 400 ms gate (409.7 ms, then 400.2 ms).
+PR216 remains draft. Reliable startup headroom and a passing complete routine
+are the next readiness work; do not hide this behind the successful semantic
+and package campaign or expand adoption before resolving it.
+
 Existing assets to reuse:
 
 - `scripts/audit-python-grammar.cjs`
