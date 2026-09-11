@@ -524,3 +524,25 @@ label shape alone does not establish field identity. The earlier report's
 54/5 counts are unchanged after this repair. Its shortfalls describe the
 currently confirmed successful subset only: censored costs are unknown and
 predeclared cap retries may close gaps without acquiring new fields.
+
+The reviewed offline source union reconstructed 4,492 distinct labels with no
+cross-export duplicates. It replays both acquisitions, checks the stored v2
+projection and raw hard-window receipts, and retains explicit provenance for
+each source kind. Canonical union digest:
+`89da73c2eb521bff0335e73aae65d679f5c99aede765e820675f057c530e7efc`.
+Union-aware exposure reconciliation remains in progress; old v2 eligibility
+cannot simply be copied onto these new records.
+
+The persistent Hecke rank-two supplement finished with 13 successes and 15
+60-second timeouts. Ten successful workers exceeded one second. The corresponding
+persistent PARI run is in progress; the earlier differently configured
+fresh-process screen is not substituted for it. After the Hecke run, the
+300-second hard-window allowance was applied exactly once, bringing the ledger
+to 16,615.771 seconds before the new PARI run.
+
+Broad validation at `d4b954c4a` passed `pnpm test:changed --base d654e3d45`:
+merge invariants, an 8m23s full build, all 201 unit-test files, and documentation
+checks. All 41 production kernel families were reused, none rebuilt. The later
+source-union companion has its own seven focused tests and independent review;
+these developer-tool results do not constitute mathematical or performance
+qualification of the still-unmodified shared engine.
