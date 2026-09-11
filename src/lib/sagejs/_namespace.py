@@ -17,6 +17,7 @@ __all__ = [
     "_delete_instance_dict",
     "_get_instance_dict",
     "_namespace_dict",
+    "_native_property",
     "_replace_function_namespace",
     "_refresh_class_namespace",
     "_set_instance_dict",
@@ -33,6 +34,22 @@ def _native_member(value: Any, name: str) -> Any:
     """Keep absent host members distinct from both Python None and locals."""
     member = [runtime.reflect.get(value, name)]
     return _MISSING if member[0] is runtime.undefined else member[0]
+
+
+def _native_property(source: Any, name: str, descriptor: Any, key: Any) -> Any:
+    """Construct and cache the Python property for a native accessor pair."""
+    getter = _native_member(descriptor, "get")
+    setter = _native_member(descriptor, "set")
+    deleter = [_core._builtins_get_member(source, "ρσ_property_deleter_" + name)]
+    value = _core.SageProperty(
+        None if getter is _MISSING else runtime.unbound_method_adapter(getter),
+        None if setter is _MISSING else runtime.unbound_method_adapter(setter),
+        None
+        if deleter[0] is runtime.undefined
+        else runtime.unbound_method_adapter(deleter[0]),
+    )
+    _core._builtins_property_cache.set(key, value)
+    return value
 
 
 def _stored_namespace(value: Any) -> Any:

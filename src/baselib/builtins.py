@@ -4911,16 +4911,7 @@ def _builtins_native_property(source: Any, name: _Str, descriptor: Any) -> Any:
     cached = _builtins_property_cache.get(key)
     if cached is not runtime.undefined:
         return cached
-    deleter = _builtins_get_member(source, "ρσ_property_deleter_" + name)
-    cached = SageProperty(
-        None if getter is runtime.undefined else runtime.unbound_method_adapter(getter),
-        None if setter is runtime.undefined else runtime.unbound_method_adapter(setter),
-        None
-        if deleter is runtime.undefined
-        else runtime.unbound_method_adapter(deleter),
-    )
-    _builtins_property_cache.set(key, cached)
-    return cached
+    return _builtins_namespace_module()._native_property(source, name, descriptor, key)
 
 
 def ρσ_register_property(owner: Any, name: _Str, has_setter: _Bool) -> None:
@@ -9243,36 +9234,32 @@ _quit_doc = {
 }
 runtime.register_doc("quit", quit, _quit_doc)
 runtime.register_doc("exit", exit, _quit_doc)
-runtime.register_doc(
-    "help",
-    help,
-    {
-        "kind": "function",
-        "module": "builtins",
-        "tags": ["documentation", "introspection"],
-        "backends": ["Sage.js runtime"],
-        "sage_compatibility": {
-            "status": "compatible",
-            "notes": "Provides concise runtime help for installed APIs.",
+for _doc_name, _doc_function, _doc_tags, _doc_notes in [
+    (
+        "help",
+        help,
+        ["documentation", "introspection"],
+        "Provides concise runtime help for installed APIs.",
+    ),
+    (
+        "search_doc",
+        search_doc,
+        ["documentation", "search", "introspection"],
+        "Searches the installed Sage.js corpus only.",
+    ),
+]:
+    runtime.register_doc(
+        _doc_name,
+        _doc_function,
+        {
+            "kind": "function",
+            "module": "builtins",
+            "tags": _doc_tags,
+            "backends": ["Sage.js runtime"],
+            "sage_compatibility": {"status": "compatible", "notes": _doc_notes},
+            "provenance": [{"kind": "sagejs-original"}],
         },
-        "provenance": [{"kind": "sagejs-original"}],
-    },
-)
-runtime.register_doc(
-    "search_doc",
-    search_doc,
-    {
-        "kind": "function",
-        "module": "builtins",
-        "tags": ["documentation", "search", "introspection"],
-        "backends": ["Sage.js runtime"],
-        "sage_compatibility": {
-            "status": "compatible",
-            "notes": "Searches the installed Sage.js corpus only.",
-        },
-        "provenance": [{"kind": "sagejs-original"}],
-    },
-)
+    )
 ord = ρσ_ord
 chr = ρσ_chr
 bin = ρσ_bin
@@ -9679,49 +9666,30 @@ def _builtins_arithmetic_doc(
     }
 
 
-runtime.register_doc(
-    "factor",
-    factor,
-    _builtins_arithmetic_doc(
-        ["factorization"],
-        "FLINT integer factorization",
-    ),
-)
-runtime.register_doc(
-    "next_prime",
-    next_prime,
-    _builtins_arithmetic_doc(
-        ["primes"],
-        "FLINT next-prime search",
-    ),
-)
-runtime.register_doc(
-    "is_prime",
-    is_prime,
-    _builtins_arithmetic_doc(
-        ["primes", "primality"],
-        "FLINT primality testing",
-    ),
-)
-runtime.register_doc(
-    "prime_range",
-    prime_range,
-    _builtins_arithmetic_doc(
+for _doc_name, _doc_function, _doc_tags, _doc_algorithm, _doc_limits in [
+    ("factor", factor, ["factorization"], "FLINT integer factorization", None),
+    ("next_prime", next_prime, ["primes"], "FLINT next-prime search", None),
+    ("is_prime", is_prime, ["primes", "primality"], "FLINT primality testing", None),
+    (
+        "prime_range",
+        prime_range,
         ["primes", "enumeration"],
         "Repeated FLINT next-prime search",
+        None,
     ),
-)
-runtime.register_doc(
-    "prime_pi",
-    prime_pi,
-    _builtins_arithmetic_doc(
+    (
+        "prime_pi",
+        prime_pi,
         ["primes", "prime counting"],
         "Lehmer prime counting with incremental enumeration for small bounds",
-        [
-            ("Like Sage primecountpy, inputs at or above 2^63 are not supported."),
-        ],
+        ["Like Sage primecountpy, inputs at or above 2^63 are not supported."],
     ),
-)
+]:
+    runtime.register_doc(
+        _doc_name,
+        _doc_function,
+        _builtins_arithmetic_doc(_doc_tags, _doc_algorithm, _doc_limits),
+    )
 compile = ρσ_compile
 exec = ρσ_exec
 # Share each native adapter across both integer representations and aliases.
