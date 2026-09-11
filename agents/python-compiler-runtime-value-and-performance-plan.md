@@ -114,6 +114,16 @@ Reconcile it against source, artifacts, PR bases, and current tests before codin
   are useful leads. Historical comparisons were provisional; independent
   confirmation and remaining CPython-relative cliffs are still work.
 
+**2026-09-11 integration update:** #208 integrated the isolated #192/#194 harness
+changes into main at `d654e3d45`, without their draft runtime ancestors. Fresh
+main qualification records 518 passes, three reviewed outcomes, and fifteen
+required assertion failures across 536 cases. All original/extracted/manifest
+raw outcomes match; four-platform routine/smoke CI passed. This supersedes the
+main-integration observation above, not the historical stack's distinct results.
+The canonical type-ownership slice is now being qualified directly on that
+main baseline; see `agents/python-canonical-instance-type.md`. The preserved
+original worktree and the remaining draft stack are not thereby qualified.
+
 Existing assets to reuse:
 
 - `scripts/audit-python-grammar.cjs`
@@ -121,7 +131,7 @@ Existing assets to reuse:
 - `scripts/run-python-compat.cjs` and `upstream-tests/python-compat/`
 - `scripts/run-pure-python-packages.cjs`, package phase/suite helpers, and
   `upstream-tests/python-packages/`
-- `bench/python-compat/` and the behavior-checked `bench/cowasm/` workloads
+- `bench/python-compat/` and the legacy workloads linked from its README
 - compiler/runtime focused tests, build receipts, package/source budgets,
   startup gates, and the existing optimizer-development tooling
 
