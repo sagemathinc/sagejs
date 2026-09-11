@@ -13,6 +13,11 @@ const {
   moduleClosure,
 } = require("../tools/standalone-library.cjs");
 
+test("Node compiler resources retain the authoritative standalone core", () => {
+  const { coreStandaloneModules } = require("../dist/tools/resources.js");
+  assert.deepEqual(coreStandaloneModules(), CORE_STANDALONE_MODULES);
+});
+
 test("implicit standalone core includes literal default-import dependencies", () => {
   for (const name of ["sagejs._introspection", "sagejs._documentation_search", "inspect"]) {
     assert(CORE_STANDALONE_MODULES.includes(name), name);

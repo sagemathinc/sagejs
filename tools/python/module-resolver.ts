@@ -2,7 +2,7 @@ import { dirname, join } from "path";
 
 import type { Node as SyntaxNode } from "web-tree-sitter";
 
-import { readResourceText } from "../resources";
+import { coreStandaloneModules, readResourceText } from "../resources";
 import { sha1sum } from "../utils";
 import type {
   PythonSyntaxFrontend,
@@ -89,9 +89,8 @@ export class PythonModuleResolver {
       // Static output has no host loader. Include the implementation closure
       // of implicit core builtins through the ordinary authoritative resolver,
       // without injecting Python names or changing runtime-import sessions.
-      const { CORE_STANDALONE_MODULES } = require("../standalone-library.cjs");
       const existingModules = new Set(Object.keys(this.importedModules));
-      for (const dependency of CORE_STANDALONE_MODULES) {
+      for (const dependency of coreStandaloneModules()) {
         this.ensureImported(dependency, parsed.tree.rootNode, this.options);
       }
       for (const [name, module] of Object.entries(this.importedModules)) {
