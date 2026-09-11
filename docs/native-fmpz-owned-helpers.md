@@ -1257,3 +1257,167 @@ Manifest SHA-256:
 It includes cold and warm raw reports, scripts, diagnostic generated cores
 and binaries, and links the original source/input archive by manifest hash.
 These remain phase-96 research computations, not public class-group certificates.
+
+## Proved-interval candidate authentication
+
+The next source-copy experiment implements the conditional-interval shortcut
+described above. It changes only the initial-volume collector and adds a
+private primitive/nonscalar helper. The existing full candidate helper remains
+available unchanged to all other callers and to the guarded fallback. This
+is not an integration into the production 485,000-byte source envelope.
+
+The collector establishes once per invocation that the lower bound is
+nonpositive and the leading principal minors $a$, $ad-b^2$, and $\det G$
+are positive. For each coordinate selected from the conditional interval,
+it additionally checks $S\geq0$ and actual membership in the computed
+$x$ interval. Only then does it skip reloading seven Gram/bound entries and
+recomputing the six-term quadratic form. The private helper retains the
+canonical sign, primitive gcd, exact ideal-coordinate transformation and
+nonscalar checks. Positive shell lower bounds retain the complete old test.
+No approximate arithmetic or guessed search bound participates.
+
+### Why the shortcut preserves the collector
+
+Sylvester's criterion gives positive definiteness from the three checked
+minors. The exact identity and interval inequalities in the preceding section
+give $Q\leq T$. A canonical positive point is nonzero, so $Q>0$ and hence
+$Q$ exceeds the nonpositive lower bound. Thus, whenever the new branch is
+taken, the omitted old test would pass. On rejected sign/content/scalar
+points both helpers return the same rejection. Elsewhere the original helper
+is called. Relation admission, conditional-coordinate order, virtual skips,
+budget accounting, cursor advancement, support flags, and stopping checks
+are untouched; equal candidate outputs therefore give equal subsequent
+collector transitions, including on resumption.
+
+The cached $S$ value is initialized to $-1$. The first compilation correctly
+rejected a version that relied on the cursor-cache invariant to initialize it
+before use. The explicit negative sentinel makes the shortcut unavailable
+until the cache computes its square. No compiler exception or weakened
+definite-assignment check was needed. The rejected source and build error are
+retained in the evidence archive.
+
+The proof obligation belongs to the caller; the new private helper does not
+by itself authenticate an ellipsoid bound. It must not become an unchecked
+public entry. The current prototype duplicates a small primitive/nonscalar
+suffix to keep the old helper intact for the comparison. Production factoring
+should share that logic and respect the unchanged source/ownership limits,
+not simply add another growing duplicate to the production file.
+
+### Exact control-flow and whole-field comparisons
+
+The CPython oracle checks 88,128 integer interval/identity cases on Gram
+matrices constructed as $A^t A+I$. It executes the actual old and new
+collector bodies against deterministic mocked relation admission and a
+coordinate boundary. There are 21,316 matching prefix checkpoints, 34,818
+shortcut calls, and 24,438 full-check calls. Schedules cover positive and
+nonpositive lower bounds, both work-budget regimes, zero-work pauses,
+uninterrupted and short resumptions, streaming completion, online lattice
+updates, and stop-on-change. Different budget partitions also produce the
+same final candidate ledger. These are control-flow and interval tests, not
+mocked evidence for full class-group correctness.
+
+All 43 previously completed larger-panel fields have identical full fmpz
+transcripts and parity counters. Three complete larger GMP calls and one
+JavaScript call agree as well. The selected source remains a fully closed
+146-function fmpz graph; no compiler or foreign-library implementation was
+changed for this experiment.
+
+The former capacity failure `3.1.1086061775432017340256300.163` now completes
+with the unchanged 1 MiB / 3 MiB limits. Its complete new fmpz and GMP
+transcripts agree. Its 470-by-432 relation ledger, factors, basis, elements,
+parity counters, presentation index and analytic classifier agree with the
+older retained GMP computation. Its new compact exponent vector has zero
+exact relation residual, and an independent rational/dyadic replay encloses
+its unit logarithm inside the published interval. This does not
+constitute a new public class-group certificate or a general allocator/RSS
+bound. The existing allocator-accounting review remains necessary.
+
+The `.60` and `.428` temporary-capacity failures and
+`3.1.12627147759764869116703083.1` input-analysis failure are unchanged,
+including their recorded output state. Thus this panel has **44 completed
+research transcripts, two capacity failures and one input-analysis failure**.
+The old assertion that every failure remained byte-identical deliberately
+failed on the new `.163` completion; it was replaced by explicit checks of
+that transition, not by dropping the case.
+
+### Controlled five-field comparisons
+
+Two serial `opt` runs use the shared timing lock, CPU 2, one warmup per arm,
+six alternating-order rounds, and unchanged preallocated transcript buffers.
+The complete native call and cleanup are timed; complete output and parity
+comparison are outside timing. PARI is a fresh seeded `bnfinit(f,0)` call,
+with a warmup and six measurements. No failed calls are timed as successes.
+
+| Field suffix | Before / candidate (ms) | Repeat (ms) | PARI median range (ms) |
+| --- | ---: | ---: | ---: |
+| `341970033803678280.6` | 69.85 / 64.46 | 69.81 / 64.64 | 24 |
+| `1086061775432017340256300.1013` | 617.26 / 581.56 | 622.25 / 583.31 | 198--199.5 |
+| `.387` | 1232.18 / 1113.11 | 1235.13 / 1116.62 | 359.5--360 |
+| `.596` | 658.20 / 617.49 | 665.93 / 616.15 | 243.5--244.5 |
+| `1291393312047583044300.178` | 899.22 / 804.48 | 903.13 / 803.68 | 274--275 |
+
+The repeated improvement is about 6--11% on these five examples, including
+one outside the shared-discriminant family. PARI remains substantially faster.
+These are research transcript timings, not a new public-call or PARI-win claim.
+Two early harness attempts terminated before producing a timing report: a
+single-line PARI command stopped after changing its stack limit, and the
+panel metadata initially lacked class-group oracle fields. The corrected
+harness uses separate GP lines and validates oracle metadata before timing.
+
+First and repeated timing report hashes:
+`d849db345c68494a9958bae4a9832545f746c8db3dd811a21fbedf85be3b5a37`
+and `57ca7d35b183261d79a05c4f84d2737e70965931f596adcebf123ee1b87c2906`.
+
+A separate controlled sweep covers all 43 previously completed fields with
+one warmup and four alternating rounds per field. Full transcripts and
+parity counters agree throughout. The sum of per-field medians falls from
+9,227.6008 to 8,425.0010 ms, **8.6978%**; all 43 candidate medians are lower
+in this sweep. This is one sweep, not evidence of universal improvement or
+an unseen holdout result. It does not include the newly completed `.163` in
+the aggregate, and does not retime PARI. Raw outliers remain in the report.
+Sweep SHA-256:
+`cf53f2af6c31d308322a53d9df18181a07d719f37250d3c44ea0eb42cee3353c`.
+
+### Source and generated-code scope
+
+The candidate source has 617,188 bytes, 2,401 more than the resident research
+parent, and SHA-256
+`354a93eb085f5df4960d6b01e65e0ed06ade23d7674275d3d079957071c12b1a`.
+Its cache key is
+`d4e26005d06766c0c5b1e4ae1b00ec0494fce812edd643fc8457d01722089b25`.
+The addon grows from 20,013,840 to 20,017,936 bytes. Raw generated-core bytes
+fall from 28,103,096 to 27,740,824 because the source provenance path is four
+characters shorter and occurs over 105,000 times. After replacing the exact
+source path by the same `SOURCE.py` placeholder in both measurements, the
+core instead grows from 22,001,612 to 22,042,420 bytes. The raw shrink must
+not be called a code-generation improvement.
+
+The round-trip-verified local archive `build/cubic-proved-interval-evidence`
+contains 140 files, 201,844,284 raw bytes compressed to 18,361,571 bytes.
+Manifest SHA-256:
+`45628980943cd1af71bc97d085d126fe048ce3a9ccf0f45d5142a771ee4398cc`.
+It preserves the actual source, mechanical edit and refinement scripts,
+rejected first source/build log, generated core/header/adapter/binary,
+independent interval/control-flow checks, all complete ledgers, the explicit
+failure-to-completion transition, independent unit-log replay, and three
+controlled timing reports. The original source and frozen expected corpus
+are linked by the parent archive manifest. The local experiment directory is
+`/scratch/sagejs-runtime/cubic-proved-interval-LDS1mN`; generated artifacts
+are not substituted for their authoritative typed source.
+
+Next, carry this proof-aware candidate interface into shared production
+search helpers without duplicating their sign/content/coordinate logic,
+preserving the positive-shell path and the production source limit. The
+remaining larger-field collection and unit-recovery costs, two capacity
+failures, public certificate replay, allocator accounting and platform
+qualification remain open. This checkpoint does not make PR #206 merge-ready.
+
+One concrete follow-up is visible in the generator-bound phase: at primes
+not dividing the defining-order index, `_cubic_degree_one_prime_count` still
+scans all residues. The same closure already imports and uses
+`cubic_root_multiplicity_counts` for cyclic maximal-order residue algebras.
+Its proven-prime, canonical-coefficient, `p <= 65535` contract suggests a
+guarded reuse on the ordinary non-index-prime path. That would leave index
+primes and out-of-envelope primes on their existing paths. Check the caller's
+primality obligation and complete splitting/bound equality before claiming
+any benefit; this follow-up is not part of the measurements above.

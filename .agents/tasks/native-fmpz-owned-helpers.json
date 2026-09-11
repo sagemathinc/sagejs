@@ -103,6 +103,16 @@
       "commit": "cc4cfb031a19416420f496e682a1f5a34d5f5178",
       "workspace_fingerprint": "4337ba813fda2f361cf65e521066850bdf80ae06092d5b1e2873e9983db8ad9b",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base HEAD",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 519.871,
+      "started_at": "2026-09-11T00:05:25.208Z",
+      "commit": "cbd5e106aaedf91c3a4bb9e3e075e2feecac46ee",
+      "workspace_fingerprint": "e213192a1cbe41b3253456a5c24a1cadb930bb1650a0f013ce31b5b6c709793c",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
