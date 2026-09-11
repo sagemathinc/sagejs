@@ -240,6 +240,22 @@ def recurrence(n, field):
   }
 });
 
+test("explicit duplicate keywords are syntax errors, unlike mapping unpacking", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    for (const source of ["f(a=1, a=2)", "f(a=1, **mapping, a=2)"]) {
+      assert.throws(() => frontend.parse(source, parserOptions),
+        /keyword argument repeated: a/);
+    }
+    for (const source of ["f(a=1, **mapping)", "f(**left, **right)"]) {
+      assert.doesNotThrow(() => frontend.parse(source, parserOptions));
+    }
+  } finally {
+    frontend.close();
+  }
+});
+
 test("starred set displays lower to valid JavaScript spread", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");

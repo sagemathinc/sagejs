@@ -115,7 +115,8 @@ test("DocSpec preserves typed positional and keyword-only signatures", () => {
   example.__name__ = "typed";
   example.__argnames__ = ["value"];
   example.__kwonly__ = ["proof"];
-  example.__defaults__ = { proof: true };
+  example.__defaults__ = null;
+  example.__kwdefaults__ = { proof: true };
   example.__annotations_text__ = {
     value: "list[int]",
     proof: "bool",
@@ -128,6 +129,22 @@ test("DocSpec preserves typed positional and keyword-only signatures", () => {
     catalog.entries[0].signature,
     "typed(value: list[int], *, proof: bool=true) -> tuple[int, ...]",
   );
+});
+
+test("DocSpec reads positional tuples and live keyword-default mappings", () => {
+  function example() {}
+  example.__name__ = "live";
+  example.__argnames__ = ["value", "order"];
+  example.__kwonly__ = ["proof"];
+  example.__defaults__ = [4];
+  example.__kwdefaults__ = new Map([["proof", true], ["order", 99]]);
+  const signature = () => documentationCatalogFromRegistry([["live", example, {
+    provenance: [{ kind: "sagejs-original" }],
+  }]]).entries[0].signature;
+  assert.equal(signature(), "live(value, order=4, *, proof=true)");
+  example.__defaults__ = [7];
+  example.__kwdefaults__.set("proof", false);
+  assert.equal(signature(), "live(value, order=7, *, proof=false)");
 });
 
 test("DocSpec supports documented constants without mutating their value", () => {
