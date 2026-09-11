@@ -57,10 +57,20 @@
       "commit": "cd7568d459cc51e39fc5f776f2068ac852fd5cfe",
       "workspace_fingerprint": "bd24a32f63cc241d09e9b7e627bd71e1c107d8fc972417a2a4c63acccf90d2ee",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/build-input-partition.cjs test/test-runner-ux.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.434,
+      "started_at": "2026-09-11T08:14:38.354Z",
+      "commit": "bb8e79a7859a13c548db2efd2b66c71036a4c823",
+      "workspace_fingerprint": "dd3055b9793800aa8e83e9fe19b9d44f57a6afd0fde54c86cccc4eea7137f02b",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Exclude only the reviewed general-frontier benchmark root and four exact campaign contracts from artifact inputs; retain full workspace accounting, production-manifest overrides, native identities, and fail-closed stale receipts.",
+    "summary": "Exclude only the reviewed general-frontier benchmark root and five exact campaign contracts, including persistent-reference coordination, from artifact inputs; retain full workspace accounting, production-manifest overrides, native identities, and fail-closed stale receipts.",
     "risks": [
       "No blanket bench or .agents exclusion: unknown contracts, lanes/schema policy, and adjacent benchmark roots remain artifact inputs.",
       "This partition helper change itself changes build inputs. Earlier receipts remain stale and are not rewritten or automatically migrated.",
