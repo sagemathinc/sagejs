@@ -1239,6 +1239,21 @@ def print_class(output):
         output.print(".prototype." + method_name)
         output.end_statement()
 
+    if not compiling_baselib:
+        output.indent()
+        output.print("ρσ_install_instance_dict(")
+        self.name.print(output)
+        output.comma()
+        output.print(
+            "true"
+            if (self.own_classvars or {})["__dict__"]
+            or defined_methods["__dict__"]
+            or self.dynamic_properties["__dict__"]
+            else "false"
+        )
+        output.print(")")
+        output.end_statement()
+
     # An explicit Python 3 metaclass owns the final class object.  The native
     # lowering above efficiently evaluates the class body and gives us its
     # complete namespace; hand that namespace to the metaclass before class

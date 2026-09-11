@@ -73,6 +73,7 @@
     "src/lib/sagejs/number_fields/riemann_zeta.py",
     "src/lib/sagejs/special_functions.py",
     "src/lib/sagejs/_documentation_search.py",
+    "src/lib/sagejs/_namespace.py",
     "src/lib/sagejs/number_fields/round4.py",
     "src/lib/sagejs/number_fields/round4_state_kernel.py",
     "src/lib/sagejs/number_fields/maximal_order.py",
