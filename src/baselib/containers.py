@@ -1878,6 +1878,14 @@ def ρσ_live_scope_dict(scope: Any, hide_eager_bound_cache: bool = False) -> Sa
 runtime.reflect.set(ρσ_dict, "fromkeys", SageDict.fromkeys)
 
 
+def ρσ_dict_keyword_default(mapping: Any, name: _Str) -> Any:
+    """Read a function default from dict storage, not subclass overrides."""
+    if runtime.instance_of(mapping, _LiveScopeDict):
+        value = _LiveScopeDict.get(mapping, name, _CONTAINERS_MISSING)
+        return runtime.undefined if value is _CONTAINERS_MISSING else value
+    return mapping.jsmap.get(name)
+
+
 def dict_wrap(native_map: Any) -> SageDict:
     answer = SageDict()
     for pair in native_map.entries():

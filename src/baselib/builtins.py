@@ -3286,6 +3286,7 @@ _BUILTINS_HIDDEN_INTROSPECTION_NAMES = runtime.reflect.construct(
             "__bind_methods__",
             "__handles_kwarg_interpolation__",
             "__sagejs_baselib_private_names__",
+            "__sagejs_code_varnames__",
             "__varargs__",
             "__varkw__",
             "apply",
@@ -3729,89 +3730,11 @@ def _builtins_callable_name(value: Any) -> _Str:
     return "<anonymous>"
 
 
-def _builtins_has_own(value: Any, name: _Str) -> _Bool:
-    if value is None or value is runtime.undefined:
-        return False
-    return runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty,
-        value,
-        [name],
-    )
-
-
 def _builtins_signature(value: Any, name: _Str) -> _Str:
-    argument_names = _builtins_get_member(value, "__argnames__")
-    defaults = _builtins_get_member(value, "__defaults__")
-    annotation_text = _builtins_get_member(
-        value,
-        "__signature_annotations_text__",
-    )
-    if annotation_text is runtime.undefined:
-        annotation_text = _builtins_get_member(value, "__annotations_text__")
-    annotations = _builtins_get_member(value, "__signature_annotations__")
-    if annotations is runtime.undefined:
-        annotations = _builtins_get_member(value, "__annotations__")
-
-    def annotation(argument: _Str) -> _Str:
-        if _builtins_has_own(annotation_text, argument):
-            return str(_builtins_get_member(annotation_text, argument))
-        if not _builtins_has_own(annotations, argument):
-            return ""
-        item = _builtins_get_member(annotations, argument)
-        if runtime.strict_equal(runtime.jstype(item), "string"):
-            return item
-        callable_name = _builtins_callable_name(item)
-        if callable_name != "<anonymous>":
-            return callable_name
-        return runtime.repr(item)
-
-    def argument_part(argument: _Str) -> _Str:
-        part = argument
-        type_name = annotation(argument)
-        if type_name:
-            part += ": " + type_name
-        if _builtins_has_own(defaults, argument):
-            default_value = _builtins_get_member(defaults, argument)
-            if default_value is runtime.undefined:
-                part += "=None"
-            else:
-                part += "=" + runtime.repr(default_value)
-        return part
-
-    parts = []
-    if runtime.array.isArray(argument_names):
-        for argument in argument_names:
-            parts.append(argument_part(argument))
-
-    positional_only = _builtins_get_member(value, "__positional_only__")
-    if positional_only is True and len(parts):
-        parts.append("/")
-
-    varargs = _builtins_get_member(value, "__varargs__")
-    if runtime.strict_equal(runtime.jstype(varargs), "string"):
-        varargs_part = "*" + varargs
-        varargs_type = annotation(varargs)
-        if varargs_type:
-            varargs_part += ": " + varargs_type
-        parts.append(varargs_part)
-    kwonly = _builtins_get_member(value, "__kwonly__")
-    if runtime.array.isArray(kwonly) and len(kwonly):
-        if not runtime.strict_equal(runtime.jstype(varargs), "string"):
-            parts.append("*")
-        for argument in kwonly:
-            parts.append(argument_part(argument))
-    varkw = _builtins_get_member(value, "__varkw__")
-    if runtime.strict_equal(runtime.jstype(varkw), "string"):
-        varkw_part = "**" + varkw
-        varkw_type = annotation(varkw)
-        if varkw_type:
-            varkw_part += ": " + varkw_type
-        parts.append(varkw_part)
-    signature = name + "(" + str.join(", ", parts) + ")"
-    return_type = annotation("return")
-    if return_type:
-        signature += " -> " + return_type
-    return signature
+    # Signature binding and rendering belong together in the lazy inspect
+    # module, not in two independently maintained defaults implementations.
+    inspection = _builtins_default_import("inspect")
+    return inspection._sagejs_signature_text(value, name)
 
 
 def _builtins_doc(value: Any) -> _Str:
@@ -5289,6 +5212,16 @@ def ρσ_getattr_internal(
         runtime.strict_equal(value_type, "function")
         and runtime.native_get(value, "__sagejs_callable_instance__") is True
     )
+    if runtime.strict_equal(value_type, "function") and (
+        runtime.strict_equal(name, "__defaults__")
+        or runtime.strict_equal(name, "__kwdefaults__")
+    ):
+        target = runtime.native_get(value, "__func__")
+        if target is not runtime.undefined and (
+            ρσ_is_bound_method(value)
+            or _builtins_get_member(target, "__sagejs_unbound_adapter__") is value
+        ):
+            return ρσ_getattr_internal(target, name, default_value)
     if runtime.instance_of(value, runtime.error):
         # Native TypeError/ReferenceError/SyntaxError objects are part of the
         # Python exception hierarchy but do not pass through BaseException's
@@ -5747,6 +5680,31 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
         value
     ):
         raise AttributeError("'method' object has no attribute '" + name + "'")
+    if (
+        runtime.strict_equal(runtime.jstype(value), "function")
+        and not _builtins_is_python_class(value)
+        and (
+            runtime.strict_equal(name, "__defaults__")
+            or runtime.strict_equal(name, "__kwdefaults__")
+        )
+    ):
+        if member is not None and not isinstance(
+            member, runtime.tuple_builtin if name == "__defaults__" else dict
+        ):
+            raise TypeError(
+                name
+                + " must be set to a "
+                + ("tuple" if name == "__defaults__" else "dict")
+                + " object"
+            )
+        target = runtime.native_get(value, "__func__")
+        if (
+            target is not runtime.undefined
+            and _builtins_get_member(target, "__sagejs_unbound_adapter__") is value
+        ):
+            ρσ_setattr(target, name, member)
+        runtime.reflect.set(value, name, member)
+        return
     if name == "__class__":
         if not _builtins_is_python_class(member):
             raise TypeError("__class__ must be set to a class")
@@ -5983,6 +5941,16 @@ class _Code:
 class _FunctionCode:
     def __init__(self, source_function: Any) -> None:
         self.source_function = source_function
+
+    @property
+    def co_varnames(self) -> Any:
+        names = _builtins_get_member(self.source_function, "__sagejs_code_varnames__")
+        if names is not runtime.undefined:
+            return names
+        # Bootstrap functions do not carry source-local metadata.
+        return runtime.math_tuple(
+            _builtins_get_member(self.source_function, "__argnames__") or []
+        )
 
     @property
     def co_filename(self) -> _Str:
@@ -6325,6 +6293,16 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
     global _builtins_descriptor_epoch
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
+    if (
+        runtime.strict_equal(runtime.jstype(value), "function")
+        and not _builtins_is_python_class(value)
+        and (
+            runtime.strict_equal(name, "__defaults__")
+            or runtime.strict_equal(name, "__kwdefaults__")
+        )
+    ):
+        ρσ_setattr(value, name, None)
+        return
     if runtime.strict_equal(name, "__annotations__"):
         annotation_key = _builtins_class_annotation_key(value)
         if annotation_key is not runtime.undefined:
@@ -6715,6 +6693,7 @@ def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
         )
     for attribute_name in (
         "__defaults__",
+        "__kwdefaults__",
         "__handles_kwarg_interpolation__",
         "__kwonly__",
         "__varargs__",

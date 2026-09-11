@@ -281,6 +281,7 @@ function signature(value: unknown, fallbackName: string): string {
   const name = callableName(value) || fallbackName.split(".").at(-1) || fallbackName;
   const argumentNames = Reflect.get(value, "__argnames__");
   const defaults = Reflect.get(value, "__defaults__");
+  const keywordDefaults = Reflect.get(value, "__kwdefaults__");
   const signatureAnnotationText = Reflect.get(
     value,
     "__signature_annotations_text__",
@@ -307,16 +308,25 @@ function signature(value: unknown, fallbackName: string): string {
     }
     return "";
   };
-  const argumentPart = (argument: string): string => {
+  const missingDefault = Symbol("missing default");
+  const argumentPart = (argument: string, keywordOnly = false): string => {
     let part = argument;
     const typeName = annotation(argument);
     if (typeName) part += `: ${typeName}`;
-    if (
-      defaults &&
-      (typeof defaults === "object" || typeof defaults === "function") &&
-      Object.prototype.hasOwnProperty.call(defaults, argument)
-    ) {
-      const item = Reflect.get(defaults, argument);
+    let item: unknown = missingDefault;
+    const source = keywordOnly ? keywordDefaults : defaults;
+    if (source && (typeof source === "object" || typeof source === "function")) {
+      if (!keywordOnly && Array.isArray(source) && Array.isArray(argumentNames)) {
+        const index = argumentNames.indexOf(argument) + source.length - argumentNames.length;
+        if (index >= 0 && index < source.length) item = source[index];
+      } else if (keywordOnly && typeof Reflect.get(source, "get") === "function") {
+        item = Reflect.apply(Reflect.get(source, "get"), source, [argument, missingDefault]);
+      } else if (Object.prototype.hasOwnProperty.call(source, argument)) {
+        // Explicit compiler/baselib and host-callable metadata ABI.
+        item = Reflect.get(source, argument);
+      }
+    }
+    if (item !== missingDefault) {
       part += `=${item === undefined ? "None" : defaultRepr(item)}`;
     }
     return part;
@@ -334,7 +344,7 @@ function signature(value: unknown, fallbackName: string): string {
   const keywordOnly = Reflect.get(value, "__kwonly__");
   if (Array.isArray(keywordOnly) && keywordOnly.length) {
     if (typeof varargs !== "string") parts.push("*");
-    parts.push(...keywordOnly.map((argument) => argumentPart(String(argument))));
+    parts.push(...keywordOnly.map((argument) => argumentPart(String(argument), true)));
   }
   const varkw = Reflect.get(value, "__varkw__");
   if (typeof varkw === "string") {
