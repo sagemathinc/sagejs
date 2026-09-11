@@ -79,20 +79,82 @@
       "commit": "e19a712bee767d89850017e24f4f981c8812a667",
       "workspace_fingerprint": "b562c09da977620589a77f245d1ddc164297c43ce07448f23dd5e5a39bc38f9f",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 991.736,
+      "started_at": "2026-09-11T13:27:11.156Z",
+      "commit": "4d53ffb039d0df8988f69afa818466995d83d72c",
+      "workspace_fingerprint": "97b99b2f1fe63365547c9f9d4c5b60a9a0510f4b3b86023c09c5fba145a104a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-public.cjs test/number-field-class-unit-engine.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 577.4,
+      "started_at": "2026-09-11T13:43:43.608Z",
+      "commit": "4d53ffb039d0df8988f69afa818466995d83d72c",
+      "workspace_fingerprint": "97b99b2f1fe63365547c9f9d4c5b60a9a0510f4b3b86023c09c5fba145a104a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.533,
+      "started_at": "2026-09-11T13:53:21.660Z",
+      "commit": "4d53ffb039d0df8988f69afa818466995d83d72c",
+      "workspace_fingerprint": "97b99b2f1fe63365547c9f9d4c5b60a9a0510f4b3b86023c09c5fba145a104a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 518.866,
+      "started_at": "2026-09-11T13:56:56.902Z",
+      "commit": "4d53ffb039d0df8988f69afa818466995d83d72c",
+      "workspace_fingerprint": "97b99b2f1fe63365547c9f9d4c5b60a9a0510f4b3b86023c09c5fba145a104a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:matrix:rational-performance",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.935,
+      "started_at": "2026-09-11T14:07:09.752Z",
+      "commit": "4d53ffb039d0df8988f69afa818466995d83d72c",
+      "workspace_fingerprint": "97b99b2f1fe63365547c9f9d4c5b60a9a0510f4b3b86023c09c5fba145a104a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 802.549,
+      "started_at": "2026-09-11T14:07:36.276Z",
+      "commit": "4d53ffb039d0df8988f69afa818466995d83d72c",
+      "workspace_fingerprint": "97b99b2f1fe63365547c9f9d4c5b60a9a0510f4b3b86023c09c5fba145a104a4",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Active draft BF proof-policy correction. BF index certificate construction, decoding, live-parent consumption and replay cannot erase zeta GRH. Generic combined proof=True declines with an explicit proof-stage capability exception; obsolete cached upgrade and clone machinery removed. Existing bounded specialized exact proofs and independently completed scalar artifacts remain supported. Recorded focused 7/7, changed public 5/5, changed engine 4/4 and strict 383-module checks pass. Independent source review found no remaining objection. Native and full frozen broad validation pending at this checkpoint.",
+    "summary": "Active draft BF proof-policy correction at frozen source 4d53ffb039d0df8988f69afa818466995d83d72c. BF index certificate construction, decoding, live-parent consumption and replay cannot erase zeta GRH. Generic combined proof=True declines with an explicit proof-stage capability exception; obsolete cached upgrade and clone machinery removed. Existing bounded specialized exact proofs and independently completed scalar artifacts remain supported. Independent source review approved the frozen source. Precommit focused 7/7 and targeted regressions passed; committed broad public/engine tests passed 48/50 with two existing slow skips (577.40s), strict 383 modules passed (58.53s), and docs passed (518.87s including rebuild). Initial native timing failure is retained; one coordinated quiet diagnostic and one complete unchanged native retry passed (20.94s and 802.55s). Combined integration and cross-platform qualification remain pending; keep active/draft.",
     "risks": [
       "This corrects unsupported proof labels, not numerical class numbers or a new unconditional analytic theorem. BF-dependent scalar prefixes cannot retain prior unconditional expectations.",
       "Auto D49 uses an already existing recognized exact specialized theorem: unit box bounds [2,2,2], 125 candidates, unchanged wrapper cap100000/exponent8, plus an independently replayed empty Minkowski prime-list class certificate. It is not new generality or performance progress.",
       "Exploratory broad run while source evolved had 44 passes, 4 failures, 2 skips; all four causes passed focused current-source reruns. It is not a frozen broad validation receipt.",
       "The context fork/lease protocol remains unmodified outside these claims; the engine no longer consumes it for unconditional upgrade. Integration owns optimizer census refresh and full gates.",
-      "Native and full frozen broad validation remain pending; keep active/draft and do not mark ready."
+      "Initial frozen native run failed at QQ trace_300_cold_resource: 11.16ms > unchanged 8ms gate, 991.74s overall. An immediate unrecorded direct diagnostic passed at 4.93ms while other validations overlapped; that exploratory pass does not explain or replace the failure. After both owner and coordinator heavy jobs stopped, one recorded diagnostic passed at 4.91ms and the single full native retry passed at 5.04ms (QQ load factor1.00x). No source, gate or limit changed and no causal attribution is made.",
+      "This frozen lane counts its new task contract as a build input, so receipt appends caused docs/native rebuilds; integration separately fixes the exact reviewed validation-only paths. Frozen owner source was not edited to evade rebuilding.",
+      "Final combined test:changed, architecture/census, strict registration and platform gates belong to integration. Owner will not launch additional heavy retries after this bounded requalification."
     ],
     "next_steps": [
-      "Run native and broad validation against this committed source, retaining earlier dirty-workspace receipts unchanged.",
-      "Coordinate integration census/package review without altering runtime caps or frozen M0 baseline.",
+      "Retain all failed, exploratory, precommit and committed receipts with their original provenance; no relabelling of earlier source or overlapping timing results.",
+      "Complete coordinator-owned combined qualification without altering runtime caps or frozen M0 baseline; remain active/draft until it passes.",
       "Consider separate cleanup of the unused context fork protocol only if independently scoped; no replacement completeness authority is granted."
     ]
   }
