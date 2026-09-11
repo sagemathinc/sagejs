@@ -7,7 +7,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
-const SCHEMA = "sagejs.general-class-unit-candidate-pool.v1";
+const SCHEMA = "sagejs.general-class-unit-candidate-pool.v2";
 const SEED = "sagejs-general-class-unit-rank-two-2026-09-11-v1";
 function deepFreeze(value) {
   if (value && typeof value === "object") {
@@ -17,13 +17,13 @@ function deepFreeze(value) {
   return value;
 }
 const POLICY = deepFreeze({
-  schema: "sagejs.general-class-unit-candidate-policy.v1",
+  schema: "sagejs.general-class-unit-candidate-policy.v2",
   seed: SEED,
   degrees: [2, 3, 4, 5, 6, 7, 8, 9, 10],
   discriminant_exponents: [0, 6, 12, 18, 24, 36, 60, 100, 200],
   channels: ["all", "missing-h"],
   window_rows: 128,
-  selected_per_cell: 40,
+  selected_per_cell: 64,
   statement_timeout_ms: 20000,
   connect_timeout_seconds: 8,
   process_timeout_ms: 30000,
@@ -242,7 +242,7 @@ function identity(excludedLabels = [], campaign = null, exposedLabels = []) {
     fail("campaign conflicts with pinned candidate policy");
   }
   return {
-    schema: "sagejs.general-class-unit-candidate-export.v1", policy: POLICY, source: SOURCE,
+    schema: "sagejs.general-class-unit-candidate-export.v2", policy: POLICY, source: SOURCE,
     excluded_labels: labels, excluded_labels_sha256: digest(labels),
     exposed_labels: exposed, exposed_labels_sha256: digest(exposed),
     campaign_sha256: campaign === null ? null : digest(campaign),
@@ -252,7 +252,7 @@ function identity(excludedLabels = [], campaign = null, exposedLabels = []) {
 function receipt(cell, rows, exportIdentity, attempt = 1, failure = null) {
   const normalized = validateWindow(rows, cell);
   const result = {
-    schema: "sagejs.general-class-unit-candidate-cell.v1",
+    schema: "sagejs.general-class-unit-candidate-cell.v2",
     export_sha256: digest(exportIdentity), cell, attempt,
     captured_at: new Date().toISOString(),
     status: failure ? "error" : normalized.length ? "ok" : "empty",
@@ -265,7 +265,7 @@ function receipt(cell, rows, exportIdentity, attempt = 1, failure = null) {
 }
 
 function validateReceipt(value, exportIdentity) {
-  if (!value || value.schema !== "sagejs.general-class-unit-candidate-cell.v1") fail("invalid cell receipt schema");
+  if (!value || value.schema !== "sagejs.general-class-unit-candidate-cell.v2") fail("invalid cell receipt schema");
   const { receipt_sha256: checksum, ...body } = value;
   if (checksum !== digest(body)) fail("cell receipt digest mismatch");
   if (value.export_sha256 !== digest(exportIdentity)) fail("cell export identity mismatch");

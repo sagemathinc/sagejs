@@ -99,11 +99,48 @@
       "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
       "workspace_fingerprint": "5b54c99eb2e83210990f406eed684c989be2488f2afe5b54a7dbe8f2f59bbab2",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/candidate-pool.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.437,
+      "started_at": "2026-09-11T07:21:49.851Z",
+      "commit": "e65a130f039ebef60a7708e9486aef03663f23ad",
+      "workspace_fingerprint": "c460108251c5c88773b8fbaa5fd5e1c41a75f10f128a70c21307badd361cfe65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.588,
+      "started_at": "2026-09-11T07:21:50.936Z",
+      "commit": "e65a130f039ebef60a7708e9486aef03663f23ad",
+      "workspace_fingerprint": "c460108251c5c88773b8fbaa5fd5e1c41a75f10f128a70c21307badd361cfe65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.64,
+      "started_at": "2026-09-11T07:21:55.164Z",
+      "commit": "e65a130f039ebef60a7708e9486aef03663f23ad",
+      "workspace_fingerprint": "c460108251c5c88773b8fbaa5fd5e1c41a75f10f128a70c21307badd361cfe65",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Explicit v2 candidate policy selects 64 rows per unchanged 128-row source window. Read-only discovery established the v1 quadratic ceiling of 160; four populated signature/band windows now permit up to 256 candidates before exclusions. Policy/export/receipt/pool versions advance together, and v1 directories fail closed without queries or rewrites. Eighteen focused regressions cover the nullable source contract, exposure markers and v1 immutability.",
+    "risks": [
+      "Candidate capacity is not final coverage or matched-reference timing qualification; final roles and time bands remain pending.",
+      "Unknown holdout eligibility remains null, never true; consumers must require an independently audited true value.",
+      "The contract remains active. Broad unit validation on this worktree requires the absent optional FLINT addon; full native qualification and additional builds are deferred by coordinator instruction. Earlier build/strict receipts describe the v1 revision, not a new v2 full-suite run."
+    ],
+    "next_steps": [
+      "Cherry-pick the v2 follow-up and acquire into a new v2 output directory with bounded refetch; keep historical v1 exports unchanged.",
+      "Acquire the four degree-2 signature/band-0/1 cells, preserve the historical exposure union, and screen references before freezing the final 1800/360 corpus."
+    ]
   }
 }

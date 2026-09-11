@@ -35,7 +35,10 @@ test("policy spans all 34 signatures and eight discriminant bands with null-h ch
   assert.equal(api.cells().length, 544);
   assert.equal(api.POLICY.state, "candidate-pool-only-reference-timeband-selection-pending");
   assert.equal(api.POLICY.selection_uses_sagejs_results, false);
-  assert.ok(2 * 8 * api.POLICY.selected_per_cell >= 200);
+  assert.equal(2 * 2 * api.POLICY.selected_per_cell, 256);
+  assert.equal(api.POLICY.schema, "sagejs.general-class-unit-candidate-policy.v2");
+  assert.deepEqual(api.POLICY.coverage_targets_per_degree, { development: 120, holdout: 80 });
+  assert.deepEqual(api.POLICY.performance_targets_per_degree, { development: 24, holdout: 16 });
   assert.throws(() => api.POLICY.degrees.push(11), TypeError);
   for (let i = 0; i < 7; i += 1) {
     const bands = api.cells().filter((item) => item.degree === 2 && item.r2 === 0 && item.channel === "all");
@@ -109,7 +112,7 @@ test("seeded selection, source hashes and pool are independent of input order", 
   const rows = sampleRows(65);
   const exportIdentity = api.identity();
   assert.deepEqual(api.selectedRows(rows, cell()), api.selectedRows([...rows].reverse(), cell()));
-  assert.equal(api.selectedRows(rows, cell()).length, 40);
+  assert.equal(api.selectedRows(rows, cell()).length, 64);
   const first = api.receipt(cell(), rows, exportIdentity);
   const second = api.receipt(cell(), [...rows].reverse(), exportIdentity);
   assert.equal(first.raw_rows_sha256, second.raw_rows_sha256);
@@ -119,10 +122,10 @@ test("seeded selection, source hashes and pool are independent of input order", 
 });
 
 test("exposure exclusions are sorted/deduplicated and applied before bounded selection", () => {
-  const rows = sampleRows(65);
+  const rows = sampleRows(70);
   const excluded = rows.slice(0, 3).map((raw) => raw.label);
   assert.deepEqual(api.identity([...excluded, excluded[0]]), api.identity([...excluded].reverse()));
-  assert.equal(api.selectedRows(rows, cell(), excluded).length, 40);
+  assert.equal(api.selectedRows(rows, cell(), excluded).length, 64);
   assert.ok(api.selectedRows(rows, cell(), excluded).every((raw) => !excluded.includes(raw.label)));
   assert.throws(() => api.exclusions(["3.1.23.1; SELECT 1"]));
 });
@@ -259,4 +262,34 @@ test("changed source contents within retry history remain visible rather than si
   const first = api.receipt(cell(), [rawRow()], exportIdentity);
   const later = api.receipt(cell(), [rawRow({ regulator: "2" })], exportIdentity, 2);
   assert.throws(() => api.assemble(exportIdentity, [first, later]), /source changed/);
+});
+
+test("v2 rejects immutable v1 exports and receipts without refetching or relabelling", (t) => {
+  const directory = temporary(t);
+  const v2 = api.identity();
+  const v1 = JSON.parse(JSON.stringify(v2));
+  v1.schema = "sagejs.general-class-unit-candidate-export.v1";
+  v1.policy.schema = "sagejs.general-class-unit-candidate-policy.v1";
+  v1.policy.selected_per_cell = 40;
+  const oldReceipt = api.receipt(cell(), [rawRow()], v2);
+  oldReceipt.schema = "sagejs.general-class-unit-candidate-cell.v1";
+  oldReceipt.export_sha256 = api.digest(v1);
+  delete oldReceipt.receipt_sha256;
+  oldReceipt.receipt_sha256 = api.digest(oldReceipt);
+  const files = {
+    "export.json": v1,
+    "pool.json": { schema: "sagejs.general-class-unit-candidate-pool.v1" },
+    [`${cell().id}.000001.receipt.json`]: oldReceipt,
+  };
+  for (const [name, value] of Object.entries(files)) fs.writeFileSync(path.join(directory, name), JSON.stringify(value));
+  const before = Object.fromEntries(Object.keys(files).map((name) => [name, fs.readFileSync(path.join(directory, name), "utf8")]));
+  assert.throws(() => api.loadExport(directory), /invalid export policy/);
+  assert.throws(() => api.validateReceipt(oldReceipt, v2), /invalid cell receipt schema/);
+  let queries = 0;
+  assert.throws(() => api.fetchCells(directory, v2, [cell().id], 1, false, () => {
+    queries += 1; return { rows: [rawRow()], failure: null };
+  }), /identity changed; use a new directory/);
+  assert.equal(queries, 0);
+  assert.deepEqual(fs.readdirSync(directory).sort(), Object.keys(files).sort());
+  for (const [name, contents] of Object.entries(before)) assert.equal(fs.readFileSync(path.join(directory, name), "utf8"), contents);
 });
