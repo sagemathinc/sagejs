@@ -341,3 +341,10 @@ quietly filling planned sample slots; they do not constitute mathematical replay
 Effort checkpoint, 2026-09-11 08:57 UTC: conservatively charge **six aggregate
 active agent-hours to M0** so far. M1 and both optimization campaigns remain
 unstarted; the 40-hour M0 ceiling and frozen-population requirements are unchanged.
+
+The unchanged reference-cost selection rule, now accepting explicitly identified
+single-field 200-bit persistent PARI reviews, selected a further 72 unscreened
+fields from ten promising cells. Their maximum request-only wall allowance is
+4,320 seconds per engine at the 60-second discovery cap. This is a declared next
+discovery batch, not an executed result or frozen panel. Selection still excludes
+all previously screened labels and never consults Sage.js outcomes.

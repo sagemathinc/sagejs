@@ -32,3 +32,15 @@ test("cost expansion rejects malformed provenance and invalid budgets", () => {
   assert.throws(() => select({ records }, [bad]));
   assert.throws(() => select({ records: [...records, records[0]] }, []));
 });
+
+test("persistent discovery costs bind engine, precision, batch size and polynomial", () => {
+  const r = {schema: "sagejs.general-frontier-persistent-review.v1",
+    qualification_evidence: false, engine: "pari", bits: 200, iterations: 1,
+    rows: [{label: records[0].label, coefficients: records[0].coefficients,
+      status: "ok", worker_nanoseconds: "1000000000", receipt_sha256: "b".repeat(64)}]};
+  assert.equal(select({records}, [r]).selected.length, 12);
+  for (const change of [{engine: "hecke"}, {bits: 100}, {iterations: 2}])
+    assert.throws(() => select({records}, [{...r, ...change}]));
+  assert.throws(() => select({records}, [{...r, rows: [{...r.rows[0], coefficients: ["999", "1"]}]}]));
+  assert.throws(() => select({records}, [{...r, rows: [{...r.rows[0], worker_nanoseconds: "-1"}]}]));
+});

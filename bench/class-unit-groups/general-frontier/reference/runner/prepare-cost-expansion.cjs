@@ -24,14 +24,24 @@ function select(pool, reports, perCell = 12) {
   if (byLabel.size !== pool.records.length) throw new Error("duplicate candidate label");
   const exposed = new Set(), promising = new Set();
   for (const report of reports) {
-    if (report.schema !== "sagejs.general-frontier-cost-screen-review.v1"
+    const persistent = report.schema === "sagejs.general-frontier-persistent-review.v1";
+    if ((!persistent && report.schema !== "sagejs.general-frontier-cost-screen-review.v1")
         || report.qualification_evidence !== false || !Array.isArray(report.rows))
       throw new Error("expected an explicit cost-screen review");
-    for (const row of report.rows) {
+    if (persistent && (report.engine !== "pari" || report.bits !== 200 || report.iterations !== 1))
+      throw new Error("discovery requires single-field 200-bit PARI costs");
+    for (const raw of report.rows) {
+      if (persistent && raw.status === "ok"
+          && (typeof raw.worker_nanoseconds !== "string" || !/^(0|[1-9][0-9]*)$/.test(raw.worker_nanoseconds)))
+        throw new Error("invalid exact worker duration");
+      const row = persistent ? { ...raw, reviewed_status: raw.status,
+        elapsed_milliseconds: raw.status === "ok" ? Number(BigInt(raw.worker_nanoseconds) / 1000000n) : null } : raw;
       const record = byLabel.get(row.label);
       if (!record) throw new Error("review label absent from candidate pool");
+      if (persistent && JSON.stringify(row.coefficients) !== JSON.stringify(record.coefficients))
+        throw new Error("review polynomial differs from candidate");
       if (!/^[0-9a-f]{64}$/.test(row.receipt_sha256)) throw new Error("missing receipt digest");
-      if (!["ok", "timeout", "error", "output-limit"].includes(row.reviewed_status))
+      if (!["ok", "timeout", "error", "output-limit", "protocol-error", "crash", "shape-error", "interrupted"].includes(row.reviewed_status))
         throw new Error("unknown reviewed status");
       exposed.add(row.label);
       if (row.reviewed_status === "ok"
