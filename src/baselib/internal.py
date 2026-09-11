@@ -126,6 +126,14 @@ def _internal_get_member(value: Any, name: Any) -> Any:
     return runtime.native_get(value, name)
 
 
+def _internal_callable_slot(value: Any) -> Any:
+    lookup = _internal_bound_method_helper("ρσ_get_type_slot")
+    method = runtime.reflect.apply(lookup, runtime.undefined, [value, "__call__"])
+    if not _internal_type_is(runtime.jstype(method), "function"):
+        raise TypeError("object is not callable")
+    return method
+
+
 def _internal_member_is_function(value: Any, name: Any) -> bool:
     return _internal_type_is(
         runtime.jstype(_internal_get_member(value, name)),
@@ -637,8 +645,8 @@ def _internal_set_class_repr(wrapper: Any, target: Any) -> None:
 def ρσ_callable_instance_class_adapter(target: Any) -> Any:
     def make_instance(target_class: Any, call_args: Any) -> Any:
         def callable_instance(*instance_args: Any) -> Any:
-            method = _internal_get_member(callable_instance, "__call__")
-            return runtime.reflect.apply(method, callable_instance, instance_args)
+            method = _internal_callable_slot(callable_instance)
+            return runtime.reflect.apply(method, runtime.undefined, instance_args)
 
         # This fresh function is only an instance's host representation. Remove
         # configurable host fields and emitted Python function metadata before
@@ -967,11 +975,7 @@ def ρσ_interpolate_kwargs(
         or _internal_get_member(target_function, "__sagejs_callable_instance__") is True
     ):
         receiver = target_function
-        target_function = runtime.reflect.apply(
-            _internal_builtin("ρσ_getattr"),
-            runtime.undefined,
-            [target_function, "__call__"],
-        )
+        target_function = _internal_callable_slot(target_function)
     elif _internal_has_own(target_function, "__bases__"):
         # A class obtained through ``obj.factory`` is a callable value, not a
         # function descriptor.  The simple-call lowering already removes the
@@ -1084,11 +1088,7 @@ def ρσ_interpolate_kwargs_legacy(
         or _internal_get_member(target_function, "__sagejs_callable_instance__") is True
     ):
         receiver = target_function
-        target_function = runtime.reflect.apply(
-            _internal_builtin("ρσ_getattr"),
-            runtime.undefined,
-            [target_function, "__call__"],
-        )
+        target_function = _internal_callable_slot(target_function)
     elif _internal_has_own(target_function, "__bases__"):
         receiver = runtime.undefined
     elif (
