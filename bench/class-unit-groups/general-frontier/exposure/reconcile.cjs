@@ -2,8 +2,10 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { canonical, digest, sha256, normalizeRecord, OUTPUT_SCHEMA } = require("./export.cjs");
+const unionInput = require("./union-input.cjs");
 const SCHEMA = "sagejs.general-frontier/conservative-exposure-reconciliation-v1";
 const INPUT_SCHEMA = "sagejs.general-frontier/exposure-reconciliation-inputs-v1";
+const UNION_INPUT_SCHEMA = "sagejs.general-frontier/exposure-reconciliation-inputs-v2";
 const fail = (message) => { throw new Error(message); };
 const check = (ok, message) => { if (!ok) fail(message); };
 const sort = (a, b) => a < b ? -1 : a > b ? 1 : 0;
@@ -32,11 +34,15 @@ function signature(value, degree) {
 function sameSignature(a, b) { return canonical(a) === canonical(b); }
 
 function poolRecords(pool) {
-  check(pool.schema === "sagejs.general-class-unit-candidate-pool.v2" && pool.policy?.schema === "sagejs.general-class-unit-candidate-policy.v2", "unknown pool schema/policy");
-  verifyDigest(pool, "pool_sha256");
+  const isUnion = pool.schema === unionInput.SCHEMA;
+  if (isUnion) unionInput.requireAuthenticated(pool);
+  else {
+    check(pool.schema === "sagejs.general-class-unit-candidate-pool.v2" && pool.policy?.schema === "sagejs.general-class-unit-candidate-policy.v2", "unknown pool schema/policy");
+    verifyDigest(pool, "pool_sha256");
+  }
   check(Array.isArray(pool.records) && pool.records.length <= 100_000 && pool.selected_count === pool.records.length &&
     digest(pool.records) === pool.records_sha256, "pool record binding mismatch");
-  check(sha256(pool.records.map((r) => r.label).join("\n") + (pool.records.length ? "\n" : "")) === pool.labels_sha256, "pool label binding mismatch");
+  if (!isUnion) check(sha256(pool.records.map((r) => r.label).join("\n") + (pool.records.length ? "\n" : "")) === pool.labels_sha256, "pool label binding mismatch");
   const seen = new Set();
   return pool.records.map((r) => {
     check(Array.isArray(r.coefficients), "pool coefficients must be an array");
@@ -48,7 +54,8 @@ function poolRecords(pool) {
       (BigInt(r.discriminant_sign) * BigInt(r.discriminant_absolute)).toString() === m.discriminant, "pool discriminant/label conflict");
     return { label: r.label, coefficients: n.coefficients, polynomial_sha256: n.polynomial_sha256,
       degree: n.degree, signature: m.signature, discriminant: m.discriminant,
-      source_record_sha256: digest(r) };
+      source_record_sha256: digest(r), ...(isUnion ? { source_kind: r.source_kind, sources: r.sources,
+        acquisition_exposure: r.exposure, acquisition_holdout_eligible: r.holdout_eligible } : {}) };
   });
 }
 
@@ -148,6 +155,8 @@ function reconcile(pool, inventory, oracle, oracleRawSha256, additional = null) 
   }
   const results = candidates.map((c) => {
     const reasons = [];
+    if (c.acquisition_holdout_eligible === false) reasons.push({ kind: "retained-acquisition-historical-quarantine",
+      category: "historical-quarantine", quarantine: true, source_record_sha256: c.source_record_sha256 });
     for (const w of witnesses) {
       let kind = null;
       if (w.label === c.label) kind = "exact-source-asserted-label";
@@ -180,8 +189,10 @@ function reconcile(pool, inventory, oracle, oracleRawSha256, additional = null) 
       const sig = [degree - 2 * r2, r2]; return { signature: sig, ...count(rs.filter((r) => sameSignature(r.signature, sig))) };
     }) };
   });
-  const payload = { schema: SCHEMA, state: "conservative-quarantine-not-field-isomorphism-or-final-eligibility",
-    source_coverage_approved: false, distinct_fields: null, pool_sha256: pool.pool_sha256,
+  const isUnion = pool.schema === unionInput.SCHEMA;
+  const payload = { schema: isUnion ? "sagejs.general-frontier/conservative-exposure-reconciliation-v2" : SCHEMA, state: "conservative-quarantine-not-field-isomorphism-or-final-eligibility",
+    source_coverage_approved: false, distinct_fields: null,
+    ...(isUnion ? { candidate_source: unionInput.identity(pool) } : { pool_sha256: pool.pool_sha256 }),
     inventory_sha256: inventory.inventory_sha256, oracle_fixture_sha256: oracleRawSha256,
     metadata_joins: joins.sort((a, b) => sort(a.evidence_sha256, b.evidence_sha256)),
     unresolved_metadata: unresolved.sort((a, b) => sort(a.evidence_sha256, b.evidence_sha256)),
@@ -201,15 +212,25 @@ function load(descriptor, base) {
   return JSON.parse(bytes);
 }
 function fromManifest(manifest, base) {
-  exactKeys(manifest, ["schema", "pool", "inventory", "oracle_fixture"], ["additional_exposure"]);
-  check(manifest.schema === INPUT_SCHEMA, "unknown reconciliation manifest schema");
-  const result = reconcile(load(manifest.pool, base), load(manifest.inventory, base),
+  const isUnion = manifest.schema === UNION_INPUT_SCHEMA;
+  exactKeys(manifest, ["schema", ...(isUnion ? ["candidates", "acquisitions"] : ["pool"]), "inventory", "oracle_fixture"], ["additional_exposure"]);
+  check(isUnion || manifest.schema === INPUT_SCHEMA, "unknown reconciliation manifest schema");
+  const result = reconcile(loadCandidateInput(manifest, base), load(manifest.inventory, base),
     load(manifest.oracle_fixture, base), manifest.oracle_fixture.sha256,
     manifest.additional_exposure ? load(manifest.additional_exposure, base) : null);
-  const payload = { schema: "sagejs.general-frontier/exposure-reconciliation-envelope-v1", inputs: manifest,
+  const payload = { schema: `sagejs.general-frontier/exposure-reconciliation-envelope-v${isUnion ? 2 : 1}`, inputs: manifest,
     inputs_sha256: digest(manifest), producer_sha256: sha256(fs.readFileSync(__filename)),
     normalization_producer_sha256: sha256(fs.readFileSync(path.join(__dirname, "export.cjs"))), result };
   return { ...payload, envelope_sha256: digest(payload) };
+}
+function loadCandidateInput(manifest, base) {
+  if (manifest.schema === INPUT_SCHEMA) {
+    const input = load(manifest.pool, base);
+    check(input.schema === "sagejs.general-class-unit-candidate-pool.v2", "v1 manifest requires actual v2 pool");
+    return input;
+  }
+  check(manifest.schema === UNION_INPUT_SCHEMA, "unknown reconciliation manifest schema");
+  return unionInput.authenticateUnion(load(manifest.candidates, base), manifest.acquisitions, base);
 }
 if (require.main === module) {
   try {
@@ -219,4 +240,4 @@ if (require.main === module) {
     console.log(JSON.stringify({ ...out.result.counts, metadata_joins: out.result.metadata_joins.length, unresolved_metadata: out.result.unresolved_metadata.length, envelope_sha256: out.envelope_sha256 }));
   } catch (error) { console.error(error.message); process.exitCode = 1; }
 }
-module.exports = { SCHEMA, INPUT_SCHEMA, reconcile, fromManifest, poolRecords, labelMetadata };
+module.exports = { SCHEMA, INPUT_SCHEMA, UNION_INPUT_SCHEMA, reconcile, fromManifest, loadCandidateInput, poolRecords, labelMetadata };

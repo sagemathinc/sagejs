@@ -162,6 +162,52 @@ rejects a valid smaller manifest that silently drops historical exposures.
 The original reconciliation inputs, including any separate actual-Sage
 diagnostics wrapper, are validated first and remain separately bound.
 
+#### Validated acquisition unions
+
+The original reconciliation manifest v1 accepts only an actual candidate-pool
+v2 export. A union is never relabeled or assigned a fictitious v2 policy/pool
+digest. Use explicit manifest schema
+`sagejs.general-frontier/exposure-reconciliation-inputs-v2` instead:
+
+```json
+{
+  "schema": "sagejs.general-frontier/exposure-reconciliation-inputs-v2",
+  "candidates": { "path": "source-union-v1.json", "sha256": "<raw union file SHA256>" },
+  "acquisitions": { "v2_directory": "candidates-v2", "hard_directory": "hard-windows-v1" },
+  "inventory": { "path": "inventory.json", "sha256": "<raw inventory SHA256>" },
+  "oracle_fixture": { "path": "oracles.json", "sha256": "<raw fixture SHA256>" }
+}
+```
+
+The optional `additional_exposure` descriptor has the same meaning as in v1;
+the five actual Sage diagnostic presentations remain separate from reference
+screening. Every path is resolved relative to the manifest containing it.
+The adapter checks the union byte hash, independently reconstructs both
+acquisition directories with the reviewed `source-union.cjs` producer, then
+requires exact canonical equality with the pinned union. A self-consistent
+`union_sha256` does not grant membership. Changed raw receipts, invented
+provenance, stale snapshots, or mutated authenticated in-memory inputs fail
+closed. Acquisition errors/pending cells remain visible in the retained union
+identity rather than being hidden as successful acquisition.
+
+For the JS API, `loadCandidateInput(manifest, baseDirectory)` returns the
+reconstructed union for `reconcile` or `compileCoverage`. Bare parsed unions
+are rejected by those consumers. Existing v1 pool APIs remain unchanged.
+Union reconciliation uses envelope/result v2 with `candidate_source` containing
+the real union digest, record digest, producer hashes, and complete acquisition
+identities. Each candidate retains its union record hash and all contributing
+source receipt/raw-row/dispatch hashes. Existing acquisition-level false
+eligibility is preserved as an explicit conservative historical-quarantine
+reason even when not rediscovered in the inventory.
+
+Run the same source-coverage CLI with this manifest and a **new** output
+directory to recompute all 82 v2 finite dispositions against the expanded
+candidate universe. Its union-aware coverage receipt has schema v3 and the
+union identity, not `pool_sha256`. The historical evidence equality check still
+runs before append; previous inventory and coverage files are not overwritten.
+The resulting inventory/reconciliation remain non-final: coverage approval is
+false and candidate holdout eligibility is exclusively false/null.
+
 Categories are source-owner assertions preserved per evidence record:
 
 - `prior-sage-exposure`: prior Sage.js evaluation/development exposure.

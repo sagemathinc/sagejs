@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const api = require("./export.cjs");
 const reconciliation = require("./reconcile.cjs");
+const unionInput = require("./union-input.cjs");
 const SCHEMA = "sagejs.general-frontier/source-coverage-policy-v1";
 const SCHEMA_V2 = "sagejs.general-frontier/source-coverage-policy-v2";
 const check = (ok, message) => { if (!ok) throw new Error(message); };
@@ -167,8 +168,9 @@ function compileCoverage(policy, root, pool) {
     audit.push({ ...row, coefficients, proof, ...(transform ? { verified_transform: transform } : {}), source_sha256: source.input.sha256 });
   }
   records.sort((a, b) => a.id.localeCompare(b.id)); audit.sort((a, b) => a.id.localeCompare(b.id));
-  const report = { schema: `sagejs.general-frontier/source-coverage-report-v${v2 ? 2 : 1}`, producer_sha256: api.sha256(fs.readFileSync(__filename)),
-    policy_sha256: api.digest(policy), pool_sha256: pool.pool_sha256, scope: policy.scope, sources: policy.sources,
+  const isUnion = pool.schema === unionInput.SCHEMA;
+  const report = { schema: `sagejs.general-frontier/source-coverage-report-v${isUnion ? 3 : v2 ? 2 : 1}`, producer_sha256: api.sha256(fs.readFileSync(__filename)),
+    policy_sha256: api.digest(policy), ...(isUnion ? { candidate_source: unionInput.identity(pool) } : { pool_sha256: pool.pool_sha256 }), scope: policy.scope, sources: policy.sources,
     ...(v2 ? { lexical_checklist: checklist, families: policy.families } : {}),
     source_coverage_approved: false, holdout_eligible: null, presentations: audit };
   return { report: { ...report, report_sha256: api.digest(report) },
@@ -183,7 +185,7 @@ function main(argv) {
   // before generating any new artifacts. No implicit reference-to-Sage promotion.
   reconciliation.fromManifest(inputs, path.dirname(inputFile));
   bindHistoricalInventory(historical, path.dirname(historicalFile), JSON.parse(readPinned(path.dirname(inputFile), inputs.inventory)));
-  const pool = JSON.parse(readPinned(path.dirname(inputFile), inputs.pool));
+  const pool = reconciliation.loadCandidateInput(inputs, path.dirname(inputFile));
   const compiled = compileCoverage(policy, root, pool), output = path.resolve(argv[9]);
   fs.mkdirSync(output); // Must not overwrite or relabel an existing v1 export.
   function write(name, value) { const file = path.join(output, name); const raw = api.canonical(value) + "\n";
@@ -197,7 +199,8 @@ function main(argv) {
   write("sources.json", manifest);
   const inventory = write("inventory.json", api.exportInventory(manifest, output));
   const nextInputs = { ...inputs, inventory };
-  for (const k of ["pool", "oracle_fixture", "additional_exposure"]) if (inputs[k]) nextInputs[k] = { ...inputs[k], path: path.resolve(path.dirname(inputFile), inputs[k].path) };
+  for (const k of ["pool", "candidates", "oracle_fixture", "additional_exposure"]) if (inputs[k]) nextInputs[k] = { ...inputs[k], path: path.resolve(path.dirname(inputFile), inputs[k].path) };
+  if (inputs.acquisitions) nextInputs.acquisitions = Object.fromEntries(Object.entries(inputs.acquisitions).map(([k, v]) => [k, path.resolve(path.dirname(inputFile), v)]));
   write("reconciliation-inputs.json", nextInputs);
   const reconciled = reconciliation.fromManifest(nextInputs, output);
   write("reconciliation.json", reconciled);
