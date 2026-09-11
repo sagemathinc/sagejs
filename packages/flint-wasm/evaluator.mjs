@@ -1034,8 +1034,20 @@ export async function instantiateSageEvaluator({
     outputHandler(String(text));
   });
   installGlobal("__sagejs_sage_mode__", mode === "sage");
+  // Python module identity is private runtime state, including in browsers.
+  // Install it before compiled imports can request a live module __dict__.
+  const moduleNamespaces = new WeakSet();
+  installGlobal("__sagejs_module_namespaces__", moduleNamespaces);
   try {
     globalEvaluate(initialization);
+    for (const registry of [globalThis.ρσ_modules, globalThis.__sagejs_baselib_modules__]) {
+      for (const namespace of Object.values(registry ?? {})) {
+        if (namespace !== null &&
+            (typeof namespace === "object" || typeof namespace === "function")) {
+          moduleNamespaces.add(namespace);
+        }
+      }
+    }
     if (wasmNativeResolver !== undefined) {
       const modules = Reflect.get(globalThis, "ρσ_modules");
       const builtins = modules?.builtins ?? globalThis;

@@ -17,5 +17,5 @@ test("prepared calls compose with class namespaces and properties", async (conte
   context.after(() => session.close());
   const result = await session.evaluate(source);
   assert.equal(result.stderr ?? "", "");
-  assert.equal(result.stdout, oracle.stdout);
+  assert.equal(result.stdout, oracle.stdout.replaceAll("\r\n", "\n"));
 });

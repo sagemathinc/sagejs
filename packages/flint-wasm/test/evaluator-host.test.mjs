@@ -182,11 +182,15 @@ test("evaluator host shares process.env and separates stdout from stderr", async
       "globalThis.ρσ_baselib_facade=null;",
   );
   const originalModules = globalThis.ρσ_modules;
+  const originalModuleNamespaces = globalThis.__sagejs_module_namespaces__;
   const evaluator = await instantiateSageEvaluator({
     ...backendOptions,
     WorkerConstructor,
   });
   try {
+    assert.ok(globalThis.__sagejs_module_namespaces__ instanceof WeakSet);
+    assert.ok(globalThis.__sagejs_module_namespaces__.has(globalThis.ρσ_modules.builtins));
+    assert.equal(globalThis.__sagejs_module_namespaces__.has({}), false);
     assert.deepEqual(globalThis.__sagejs_host__.call("setEnv", ["SAGE", "wasm"]), {
       ok: true,
       value: null,
@@ -215,6 +219,7 @@ test("evaluator host shares process.env and separates stdout from stderr", async
     evaluator.terminate();
   }
   assert.equal(globalThis.ρσ_modules, originalModules);
+  assert.equal(globalThis.__sagejs_module_namespaces__, originalModuleNamespaces);
 });
 
 test("compiled module dependencies prepare receipt-bound runtime specialists", async () => {

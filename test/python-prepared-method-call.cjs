@@ -206,7 +206,7 @@ test("prepared method calls agree with CPython", async (context) => {
   context.after(() => session.close());
   const result = await session.evaluate(source);
   assert.equal(result.stderr ?? "", "");
-  assert.equal(result.stdout, python.stdout);
+  assert.equal(result.stdout, python.stdout.replaceAll("\r\n", "\n"));
 });
 
 for (const [name, regression] of [
@@ -238,6 +238,6 @@ print('callable-slot-replacement-ok')
     context.after(() => session.close());
     const result = await session.evaluate(regression);
     assert.equal(result.stderr ?? "", "");
-    assert.equal(result.stdout, python.stdout);
+    assert.equal(result.stdout, python.stdout.replaceAll("\r\n", "\n"));
   });
 }

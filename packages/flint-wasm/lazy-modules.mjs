@@ -189,6 +189,7 @@ export function installLazyModuleLoader(
       return registry[name];
     }
     const namespace = Object.create(null);
+    globalObject.__sagejs_module_namespaces__?.add(namespace);
     registry[name] = namespace;
     if (parent !== undefined && childName) parent[childName] = namespace;
     const previous = globalObject.__sagejs_current_module_namespace__;
@@ -224,6 +225,7 @@ export function installLazyModuleLoader(
         installed !== null &&
         (typeof installed === "object" || typeof installed === "function")
       ) {
+        globalObject.__sagejs_module_namespaces__?.add(installed);
         const prefix = `${name}.`;
         for (const registeredName of Object.keys(registry)) {
           if (!registeredName.startsWith(prefix)) continue;

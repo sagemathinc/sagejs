@@ -241,3 +241,32 @@ diagnostics; do not discard traceback information to improve this workload.
   call and default mechanisms; retain private/global no-host coverage.
 - Rerun the package and common-call campaign on that exact candidate, including
   cold/import scopes and any regressions, before marking the PR ready.
+
+## Integration review, 2026-09-11
+
+The merge of prerequisite #214 at `1a1d9066f` preserves the exact source tree
+of `61a9a8c0a`; conflicts were generated evidence and ancestry only.
+Independent review passed the full build, 46 focused Python protocol tests,
+strict Python checks (386 modules), architecture checks, portable tests,
+API smoke, documentation integrity, and merge invariants. Local Node 26.8.1
+startup did not pass: 409.4 ms in the routine suite and 414.6 ms in one isolated
+confirmation, against the unchanged 400 ms limit. The GitHub Linux routine
+job passed its startup gate; the local routine run is still recorded as failed.
+
+Cross-platform review then exposed two integration defects on this candidate:
+
+- Chromium's `number-field-cubic-headline` workload failed while mpmath
+  `FPContext._wrap_specfun` read `function_docs.__dict__`. Browser bootstrap
+  lacked Node's private module-identity registry. Bootstrap now installs and
+  seeds an evaluator-owned WeakSet; lazy imports register placeholders before
+  evaluation and replacement namespaces before returning. This preserves
+  live module dictionaries without accepting arbitrary objects as modules.
+- Windows's prepared-call interaction oracle compared LF output to CPython's
+  CRLF output. Normalize only CRLF in the oracle output, preserving all other
+  output and semantic assertions. Apply the same correction to the adjacent
+  prepared-call oracle comparisons.
+
+Focused evaluator/loader tests cover registration during evaluation, replacement
+namespace identity, and restoration when the evaluator terminates. The new
+candidate still requires fresh production Chromium and platform CI; the earlier
+browser failure and Windows failure are not treated as passing receipts.
