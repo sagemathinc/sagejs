@@ -227,3 +227,38 @@ Full workspace validation still fingerprints them; unknown paths and runtime,
 compiler, native, and production-manifest inputs remain conservative. Fourteen
 focused partition tests pass after integration. Old build receipts are not
 relabeled or migrated: a fresh local build is required before baseline staging.
+
+## M1 design obligation: compact unit maps
+
+The shared engine already owns the expensive arithmetic and publication state;
+the public unit-coordinate interface is a separate missing capability. Reuse
+the existing context rather than launch another class/unit computation. Before
+implementation, settle the Sage-facing convention: coordinates include the
+torsion component, whereas the current computation object's generator list is
+free-only. Any compact-by-default difference from Sage's expanded `exp` needs
+an explicit name or documented, tested contract.
+
+For an authenticated complete fundamental system, a proposed logarithm map
+first proves the input is a unit. Solve the rank-dimensional logarithmic system
+using rigorous intervals, increasing precision until every coefficient is
+uniquely determined as an integer. Completeness and membership justify that
+integer solution; being numerically close to integers does not. The remaining
+factor is then known to be torsion. In fields with a real embedding its sign
+distinguishes the two possibilities. For totally complex controls, reduction
+at a suitable prime can distinguish all torsion images, provided every factor
+and denominator is invertible and those images are proved distinct.
+
+Do not expand huge factored elements to verify this interface. Constructed
+coordinates may carry context-bound evidence. Arbitrary factored inputs still
+need exact membership evidence, for example cancellation of their signed
+prime-valuation ledgers; a scalar norm of one is insufficient. Syntactic equality
+of factored products is not equality of field elements. Neither a caller's
+`complete` flag nor an unkeyed mutable payload is proof authority.
+
+Required controls include rank zero, rank three, complex fields with torsion
+beyond $\{\pm1\}$, wrong fields/dimensions, counterfeit basis evidence,
+nonintegral norm-one elements, cancellation between nonunit factors, and large
+exponents without expansion. Detached replay must bind the basis-completeness
+argument, membership evidence, log enclosures, and torsion determination under
+its own resource limits. This section is an implementation obligation, not a
+claim that these maps or their replay verifier already exist.
