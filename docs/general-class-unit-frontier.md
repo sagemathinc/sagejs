@@ -455,3 +455,50 @@ Sylvester–Hadamard bounds independently reviewed. It adds five conservative
 quadratic quarantines, giving 44 exclusions and 4,392 remaining candidates.
 Remaining TEST-family dispositions and preservation of the original source
 inventory are still under review; this is not a holdout-eligibility approval.
+
+The discovery-readiness projection now revalidates raw paired runs and applies
+the performance panel's forty-per-degree ceiling before reporting necessary
+cost-stratum shortfalls. The first six plus 78 pairs still leave at least 66
+one-second and 35 ten-second slots unfilled. Repeated attempts require explicit
+reconciliation; generated-family identities are not silently counted as
+distinct fields. Passing these cost counts alone will not establish corpus
+eligibility or the development/holdout split.
+
+### M1 implementation boundary prepared during reference screening
+
+A focused read-only review confirms that unit coordinates should reuse the
+terminal context rather than start another discovery or saturation engine.
+The proposed `UnitGroupComputation.coordinate_map()` returns a map whose
+`gens()` includes torsion first, `log(u)` returns torsion/free integer
+coordinates, `factored_exp(coords)` reconstructs compactly, and `exp(coords)`
+explicitly expands. This avoids changing the computation's existing free-only
+generator convention by accident. This API is a proposal, not implemented.
+
+Authentication must bind field, maximal order, ordered basis, torsion,
+completion evidence and proof status through the existing terminal semantic
+snapshot (`class_unit_context._terminal_source_matches`). The current
+`UnitGroupComputation.verify_completion()` alone is not that authority: it can
+call duck-typed evidence and expand generators. Detached map evidence needs
+recognized completion replay under verifier-owned limits, not a caller hook.
+
+For arbitrary input, establish unit membership through its principal ideal,
+then use rigorous weighted logs and an invertible minor to isolate the unique
+integer free coordinates. Authenticated completeness supplies the integrality
+premise; precision alone does not. Existing factored-log workspaces and ball
+determinants provide the initial small-rank implementation. The residual is
+torsion: factorwise real signs suffice when a real embedding exists; otherwise
+use bounded reduction with invertible factors/denominators and distinct images
+of all certified torsion elements. Neither norm one nor syntactic product
+equality proves the needed identity.
+
+Even compact `norm()` or `principal_ideal()` can produce huge integers or ideal
+powers. Bounded arbitrary-input membership and detached replay are therefore
+real implementation obligations, not assumed cheap helper calls. Exhaustion
+must be an explicit incomplete operation, never a false nonunit answer. Tests
+must include rank zero/torsion four and six, ranks two and three, huge signed
+exponents, cancellation between nonunit factors, nonintegral norm-one inputs,
+mutated completion evidence, wrong fields, and precision exhaustion.
+
+Effort checkpoint, 2026-09-11 10:03 UTC: conservatively account for **ten
+aggregate active M0 engineering hours** of the forty-hour allowance. No M1
+mathematical implementation or optimization campaign has started.
