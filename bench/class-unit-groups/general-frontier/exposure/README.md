@@ -158,8 +158,11 @@ For coefficient-only class-unit oracle cases, source ID/kind and raw fixture
 hash must agree with the inventory source. Case IDs bind the exact polynomial.
 Only agreeing `sage_pari` and `magma` recorded field-discriminant/signature values
 are joined. Conflicting metadata across these records, canonical labels, or
-identical polynomials fails closed. This produces 16 per-case join receipts for
-the pinned fixture; eight distinct polynomial buckets otherwise lacked field
+identical polynomials fails closed. The same consistency check includes every
+candidate and additional-exposure assertion, not just historical records;
+conflicting discriminants or signatures are rejected before bucket matching.
+There are 16 per-case join receipts for the pinned fixture; eight distinct
+polynomial buckets otherwise lacked field
 discriminants after deduplication across all historical sources. There is no
 need to recompute those discriminants with CAS for this conservative audit.
 

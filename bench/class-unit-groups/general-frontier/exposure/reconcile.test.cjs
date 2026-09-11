@@ -77,6 +77,29 @@ test("identical polynomial metadata cannot disagree across records", () => {
   assert.throws(() => reconcile(pool(), inventory([{ id: "a", coefficients, field_discriminant: "5" },
     { id: "b", coefficients, field_discriminant: "8" }]), oracle(), HASH), /identical polynomial/);
 });
+test("additional exposures share the inventory and pool polynomial consistency boundary", () => {
+  const coefficients = ["-1", "-1", "1"];
+  const extra = { schema: "sagejs.general-frontier/additional-exposure-v1", category: "reference-only",
+    records: [{ id: "conflict", label: "2.2.8.1", coefficients }] };
+  assert.throws(() => reconcile(pool(), inventory([]), oracle(), HASH, extra), /identical polynomial/);
+  const i = inventory([{ coefficients, field_discriminant: "5", signature: [2, 0] }]);
+  assert.throws(() => reconcile(pool([]), i, oracle(), HASH, extra), /identical polynomial/);
+  extra.records.push({ id: "conflict-two", label: "2.2.5.1", coefficients });
+  assert.throws(() => reconcile(pool([]), inventory([]), oracle(), HASH, extra), /identical polynomial/);
+});
+test("candidate assertions cannot conflict with history or another candidate", () => {
+  const coefficients = ["-1", "-1", "1"];
+  assert.throws(() => reconcile(pool(), inventory([{ coefficients, field_discriminant: "8" }]), oracle(), HASH), /identical polynomial/);
+  const p = pool([{ label: "2.2.5.1", coefficients }, { label: "2.2.8.1", coefficients }]);
+  assert.throws(() => reconcile(p, inventory([]), oracle(), HASH), /identical polynomial/);
+});
+test("identical-polynomial signature conflicts fail even when discriminants agree", () => {
+  const coefficients = ["1", "1", "-3", "-1", "1"];
+  const p = pool([{ label: "4.4.725.1", coefficients }]);
+  const extra = { schema: "sagejs.general-frontier/additional-exposure-v1", category: "prior-sage-exposure",
+    records: [{ id: "wrong-signature", label: "4.0.725.1", coefficients }] };
+  assert.throws(() => reconcile(p, inventory([]), oracle(), HASH, extra), /identical polynomial/);
+});
 test("reference-only and selection-only matches do not become Sage exposure", () => {
   for (const category of ["reference-only", "selection-only"]) {
     const r = reconcile(pool(), inventory([{ label: "2.2.5.1" }], { category }), oracle(), HASH);

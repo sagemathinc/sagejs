@@ -116,15 +116,6 @@ function reconcile(pool, inventory, oracle, oracleRawSha256, additional = null) 
     witnesses.push(w);
     if (quarantine && !invalid && r.degree >= 2 && r.degree <= 10 && d === null) unresolved.push(w);
   }
-  const polynomialMetadata = new Map();
-  for (const w of witnesses.filter((w) => w.polynomial_sha256 !== null && !w.invalid)) {
-    const previous = polynomialMetadata.get(w.polynomial_sha256);
-    if (previous) {
-      check(previous.degree === w.degree && (previous.field_discriminant === null || w.field_discriminant === null || previous.field_discriminant === w.field_discriminant) &&
-        (previous.signature === null || w.signature === null || sameSignature(previous.signature, w.signature)), "conflicting metadata for identical polynomial");
-      previous.field_discriminant ??= w.field_discriminant; previous.signature ??= w.signature;
-    } else polynomialMetadata.set(w.polynomial_sha256, { ...w });
-  }
   let extras = [];
   if (additional !== null) {
     exactKeys(additional, ["schema", "category", "records"]);
@@ -139,6 +130,21 @@ function reconcile(pool, inventory, oracle, oracleRawSha256, additional = null) 
       return { id: r.id, label: n.label, polynomial_sha256: n.polynomial_sha256, category: additional.category, ...m,
         quarantine: ["prior-sage-exposure", "historical-quarantine"].includes(additional.category) };
     });
+  }
+  // Every exact presentation shares one consistency boundary, irrespective of
+  // whether its metadata came from history, an additional exposure, or the pool.
+  const polynomialMetadata = new Map();
+  for (const w of [
+    ...witnesses.filter((w) => w.polynomial_sha256 !== null && !w.invalid),
+    ...extras.map((w) => ({ ...w, field_discriminant: w.discriminant })),
+    ...candidates.map((w) => ({ ...w, field_discriminant: w.discriminant })),
+  ]) {
+    const previous = polynomialMetadata.get(w.polynomial_sha256);
+    if (previous) {
+      check(previous.degree === w.degree && (previous.field_discriminant === null || w.field_discriminant === null || previous.field_discriminant === w.field_discriminant) &&
+        (previous.signature === null || w.signature === null || sameSignature(previous.signature, w.signature)), "conflicting metadata for identical polynomial");
+      previous.field_discriminant ??= w.field_discriminant; previous.signature ??= w.signature;
+    } else polynomialMetadata.set(w.polynomial_sha256, { ...w });
   }
   const results = candidates.map((c) => {
     const reasons = [];
