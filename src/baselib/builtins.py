@@ -314,6 +314,9 @@ _builtins_prototype_owners = runtime.reflect.construct(
 _builtins_class_annotation_slots = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
+_builtins_class_metaclasses = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
 
 
 def ρσ_register_heap_class(value: Any) -> Any:
@@ -3337,80 +3340,6 @@ def _builtins_visible_introspection_name(name: Any) -> _Bool:
     )
 
 
-def _builtins_introspection_target(value: Any) -> Any:
-    value_type = runtime.jstype(value)
-    if runtime.strict_equal(value_type, "object") or runtime.strict_equal(
-        value_type, "function"
-    ):
-        return value
-    return runtime.object(value)
-
-
-def _builtins_append_dir_names(
-    value: Any,
-    answer: list[_Str],
-    seen: Any,
-) -> None:
-    current = value
-    while (
-        current is not None
-        and current is not runtime.undefined
-        and current is not runtime.object.prototype
-    ):
-        for name in runtime.object.getOwnPropertyNames(current):
-            descriptor = runtime.object.getOwnPropertyDescriptor(current, name)
-            member = runtime.reflect.get(descriptor, "value")
-            getter = runtime.reflect.get(descriptor, "get")
-            if _builtins_is_module_namespace(current) and runtime.strict_equal(
-                runtime.jstype(getter), "function"
-            ):
-                data_value_missing = _builtins_is_missing_binding(
-                    runtime.reflect.get(current, name)
-                )
-            else:
-                data_value_missing = _builtins_is_missing_binding(member) and (
-                    getter is runtime.undefined
-                    and runtime.reflect.get(descriptor, "set") is runtime.undefined
-                )
-            if (
-                not data_value_missing
-                and _builtins_visible_introspection_name(name)
-                and not seen.has(name)
-            ):
-                seen.add(name)
-                answer.append(name)
-        current = runtime.object.getPrototypeOf(current)
-
-
-def _builtins_append_own_dir_names(
-    value: Any,
-    answer: list[_Str],
-    seen: Any,
-) -> None:
-    for name in runtime.object.getOwnPropertyNames(value):
-        descriptor = runtime.object.getOwnPropertyDescriptor(value, name)
-        member = runtime.reflect.get(descriptor, "value")
-        getter = runtime.reflect.get(descriptor, "get")
-        if _builtins_is_module_namespace(value) and runtime.strict_equal(
-            runtime.jstype(getter), "function"
-        ):
-            data_value_missing = _builtins_is_missing_binding(
-                runtime.reflect.get(value, name)
-            )
-        else:
-            data_value_missing = _builtins_is_missing_binding(member) and (
-                getter is runtime.undefined
-                and runtime.reflect.get(descriptor, "set") is runtime.undefined
-            )
-        if (
-            not data_value_missing
-            and _builtins_visible_introspection_name(name)
-            and not seen.has(name)
-        ):
-            seen.add(name)
-            answer.append(name)
-
-
 def _builtins_is_module_namespace(value: Any) -> _Bool:
     """Return whether `value` is a registered Sage.js module namespace."""
     module_namespaces = runtime.reflect.get(
@@ -3606,77 +3535,20 @@ def _builtins_namespace_dict(value: Any) -> Any:
 
 def ρσ_default_dir(item: Any = runtime.undefined) -> list[_Str]:
     """Return the default sorted Python-facing attributes for `item`."""
-    if item is runtime.undefined:
-        item = runtime.global_object
-
-    target = _builtins_introspection_target(item)
-    answer = []
-    seen = runtime.reflect.construct(runtime.set_class, [])
-    target_is_function = runtime.strict_equal(runtime.jstype(target), "function")
-    constructor = _builtins_get_member(target, "constructor")
-    target_is_python_instance = _builtins_is_python_class(constructor)
-    if target_is_function and not target_is_python_instance:
-        _builtins_append_own_dir_names(target, answer, seen)
-        for native_function_name in ["length", "name"]:
-            if native_function_name in answer:
-                answer.remove(native_function_name)
-    else:
-        _builtins_append_dir_names(target, answer, seen)
-
-    # Python classes expose their instance methods through the class object.
-    # Sage.js stores those methods on the JavaScript constructor prototype.
-    if target_is_function:
-        prototype = _builtins_get_member(target, "prototype")
-        if prototype is not runtime.undefined and prototype is not None:
-            _builtins_append_dir_names(prototype, answer, seen)
-    if target_is_python_instance and target_is_function:
-        for class_only_name in [
-            "__bases__",
-            "__module__",
-            "__name__",
-            "length",
-            "name",
-        ]:
-            if class_only_name in answer:
-                answer.remove(class_only_name)
-    elif not target_is_function and "__bases__" in answer:
-        answer.remove("__bases__")
-    if target is runtime.global_object:
-        private_names = _builtins_get_member(
-            runtime.global_object, "__sagejs_baselib_private_names__"
-        )
-        if private_names is not runtime.undefined:
-            for private_name in private_names:
-                if private_name in answer:
-                    answer.remove(private_name)
-
-    # Attribute names are primitive strings, so the host's stable lexical sort
-    # has exactly the ordering required by Python without routing every
-    # comparison through the generic rich-comparison machinery.  Traitlets
-    # calls ``dir(cls)`` for every descriptor-bearing class, making the former
-    # quadratic Python loop dominate imports of class-heavy packages.
-    runtime.reflect.apply(runtime.array.prototype.sort, answer, [])
-    return answer
+    module = _builtins_default_import(
+        "sagejs._introspection", fromlist=["_default_dir"]
+    )
+    return module._default_dir(
+        runtime.global_object if item is runtime.undefined else item
+    )
 
 
 def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
     """Return the sorted Python-facing attributes available on `item`."""
+    module = _builtins_default_import("sagejs._introspection", fromlist=["_dir"])
     if item is runtime.undefined:
-        return ρσ_default_dir(item)
-    if _builtins_member_is_function(item, "__dir__"):
-        # Use ordinary receiver-aware host lookup here.  In particular, a
-        # Python class is itself the receiver for ``object.__dir__``; routing
-        # through the generic class-descriptor path would intentionally expose
-        # an unbound function and make ``dir(SomeClass)`` inspect globals.
-        custom_names = _builtins_call_member(item, "__dir__", [])
-        answer = []
-        for name in custom_names:
-            if not runtime.strict_equal(runtime.jstype(name), "string"):
-                raise TypeError("__dir__() must return an iterable of strings")
-            answer.append(name)
-        answer.sort()
-        return answer
-    return ρσ_default_dir(item)
+        return module._default_dir(runtime.global_object)
+    return module._dir(item)
 
 
 def ρσ_vars(item: Any = _BUILTINS_MISSING) -> Any:
@@ -3730,73 +3602,6 @@ def _builtins_callable_name(value: Any) -> _Str:
     return "<anonymous>"
 
 
-def _builtins_signature(value: Any, name: _Str) -> _Str:
-    # Signature binding and rendering belong together in the lazy inspect
-    # module, not in two independently maintained defaults implementations.
-    inspection = _builtins_default_import("inspect")
-    return inspection._sagejs_signature_text(value, name)
-
-
-def _builtins_doc(value: Any) -> _Str:
-    for entry in runtime.documentation_registry():
-        if entry[1] is value:
-            metadata_doc = _builtins_get_member(entry[2], "doc")
-            if runtime.strict_equal(runtime.jstype(metadata_doc), "string"):
-                return metadata_doc
-    doc = _builtins_get_member(value, "__doc__")
-    if runtime.strict_equal(runtime.jstype(doc), "string"):
-        return doc
-    return ""
-
-
-def _builtins_indent_doc(doc: _Str, prefix: _Str) -> _Str:
-    if not doc:
-        return ""
-    lines = []
-    for line in doc.split("\n"):
-        lines.append(prefix + line)
-    return str.join("\n", lines)
-
-
-def _builtins_doc_summary(doc: _Str) -> _Str:
-    for line in doc.split("\n"):
-        summary = line.strip()
-        if summary:
-            return summary
-    return ""
-
-
-def _builtins_doc_search_match(
-    query: _Str,
-    candidate: _Str,
-) -> _Bool:
-    lowered = runtime.reflect.apply(
-        runtime.string_class.prototype.normalize,
-        candidate.lower(),
-        ["NFD"],
-    ).replace(
-        runtime.regexp(r"[\u0300-\u036f]", "g"),
-        "",
-    )
-    query = runtime.reflect.apply(
-        runtime.string_class.prototype.normalize,
-        query,
-        ["NFD"],
-    ).replace(
-        runtime.regexp(r"[\u0300-\u036f]", "g"),
-        "",
-    )
-    if query in lowered:
-        return True
-    normalized_query = query.replace(runtime.regexp(r"[`_-]+", "g"), " ").replace(
-        runtime.regexp(r"\s+", "g"), " "
-    )
-    normalized_candidate = lowered.replace(runtime.regexp(r"[`_-]+", "g"), " ").replace(
-        runtime.regexp(r"\s+", "g"), " "
-    )
-    return normalized_query in normalized_candidate
-
-
 def _builtins_is_python_class(value: Any) -> _Bool:
     if not runtime.strict_equal(runtime.jstype(value), "function"):
         return False
@@ -3831,105 +3636,12 @@ def _builtins_prototype_member(
     return runtime.undefined
 
 
-def _builtins_class_help(value: Any, instance: _Bool) -> _Str:
-    cls = value
-    if instance:
-        cls = _builtins_get_member(value, "constructor")
-    name = _builtins_callable_name(cls)
-    heading = "Help on class " + name + ":"
-    if instance:
-        heading = "Help on " + name + " object:"
-    lines = [
-        heading,
-        "",
-        "class " + _builtins_signature(cls, name),
-    ]
-    doc = _builtins_doc(cls)
-    if doc:
-        lines.extend(["", _builtins_indent_doc(doc, "    ")])
-
-    prototype = _builtins_get_member(cls, "prototype")
-    methods = []
-    for method_name in ρσ_dir(cls):
-        method = _builtins_prototype_member(prototype, method_name)
-        if runtime.string_find(method_name, "_") != 0 and runtime.strict_equal(
-            runtime.jstype(method), "function"
-        ):
-            methods.append(method_name)
-    if len(methods) > 0:
-        lines.extend(["", "Methods:"])
-        for method_name in methods:
-            method = _builtins_prototype_member(prototype, method_name)
-            lines.append("    " + _builtins_signature(method, method_name))
-            method_doc = _builtins_doc(method)
-            if method_doc:
-                lines.append(_builtins_indent_doc(method_doc, "        "))
-    return str.join("\n", lines)
-
-
 def ρσ_help(item: Any = runtime.undefined) -> None:
     """Print concise Python-style help derived from Sage.js metadata."""
-    if item is runtime.undefined:
-        ρσ_print(
-            "Welcome to Sage.js help.  "
-            + "Call help(object) for information about an object."
-        )
-        return
-
-    for entry in runtime.documentation_registry():
-        if entry[1] is item:
-            registered_name = entry[0]
-            metadata = entry[2]
-            metadata_doc = _builtins_get_member(metadata, "doc")
-            if runtime.strict_equal(runtime.jstype(metadata_doc), "string"):
-                registered_kind = _builtins_get_member(metadata, "kind")
-                if not runtime.strict_equal(runtime.jstype(registered_kind), "string"):
-                    registered_kind = "object"
-                registered_lines = [
-                    ("Help on " + registered_kind + " " + registered_name + ":"),
-                    "",
-                ]
-                if registered_kind in ["function", "method", "class"]:
-                    registered_lines.append(_builtins_signature(item, registered_name))
-                    registered_lines.append("")
-                else:
-                    registered_lines.extend([registered_name, ""])
-                registered_lines.append(
-                    _builtins_indent_doc(metadata_doc.strip(), "    ")
-                )
-                ρσ_print(str.join("\n", registered_lines))
-                return
-
-    if _builtins_is_python_class(item):
-        text = _builtins_class_help(item, False)
-    elif runtime.strict_equal(runtime.jstype(item), "function"):
-        name = _builtins_callable_name(item)
-        bound = _builtins_has_member(item, "__self__")
-        kind = "method" if bound else "function"
-        module = _builtins_get_member(item, "__module__")
-        heading = "Help on " + kind + " " + name
-        if runtime.strict_equal(runtime.jstype(module), "string") and module:
-            heading += " in module " + module
-        lines = [
-            heading + ":",
-            "",
-            _builtins_signature(item, name),
-        ]
-        doc = _builtins_doc(item)
-        if doc:
-            lines.extend(["", _builtins_indent_doc(doc, "    ")])
-        text = str.join("\n", lines)
-    else:
-        constructor = _builtins_get_member(item, "constructor")
-        if _builtins_is_python_class(constructor):
-            text = _builtins_class_help(item, True)
-        else:
-            type_name = _builtins_callable_name(constructor)
-            text = "Help on " + type_name + " object."
-            doc = _builtins_doc(item)
-            if doc:
-                text += "\n\n" + _builtins_indent_doc(doc, "    ")
-    ρσ_print(text)
+    module = _builtins_default_import(
+        "sagejs._documentation_search", fromlist=["_help"]
+    )
+    module._help(None if item is runtime.undefined else item, item is runtime.undefined)
 
 
 def ρσ_search_doc(query: Any) -> None:
@@ -3952,74 +3664,10 @@ def ρσ_search_doc(query: Any) -> None:
     not imply that every object documented by the full SageMath manual is
     implemented.
     """
-    text = str(query)
-    needle = text.lower()
-    if not needle:
-        raise ValueError("search_doc query must not be empty")
-
-    matches = []
-    seen = []
-    for registered_entry in runtime.documentation_registry():
-        registered_name = registered_entry[0]
-        registered_value = registered_entry[1]
-        if registered_name in seen:
-            continue
-        registered_doc = _builtins_doc(registered_value)
-        if _builtins_doc_search_match(needle, registered_name) or (
-            registered_doc and _builtins_doc_search_match(needle, registered_doc)
-        ):
-            matches.append(
-                registered_name + " -- " + _builtins_doc_summary(registered_doc)
-            )
-            seen.append(registered_name)
-
-    namespace = _builtins_get_member(runtime.modules, "__main__")
-    names = runtime.object.getOwnPropertyNames(namespace)
-    names.sort()
-    for name in names:
-        if (
-            runtime.string_find(name, "_") == 0
-            or runtime.string_find(name, "ρσ_") == 0
-            or name in seen
-        ):
-            continue
-        descriptor = runtime.object.getOwnPropertyDescriptor(namespace, name)
-        value = runtime.reflect.get(descriptor, "value")
-        if value is runtime.undefined:
-            continue
-        doc = _builtins_doc(value)
-        if _builtins_doc_search_match(needle, name) or (
-            doc and _builtins_doc_search_match(needle, doc)
-        ):
-            matches.append(name + " -- " + _builtins_doc_summary(doc))
-            seen.append(name)
-
-        if not _builtins_is_python_class(value):
-            continue
-        prototype = _builtins_get_member(value, "prototype")
-        for method_name in ρσ_dir(value):
-            if runtime.string_find(method_name, "_") == 0:
-                continue
-            method = _builtins_prototype_member(prototype, method_name)
-            if not runtime.strict_equal(runtime.jstype(method), "function"):
-                continue
-            qualified_name = name + "." + method_name
-            if qualified_name in seen:
-                continue
-            method_doc = _builtins_doc(method)
-            if _builtins_doc_search_match(needle, qualified_name) or (
-                method_doc and _builtins_doc_search_match(needle, method_doc)
-            ):
-                matches.append(
-                    qualified_name + " -- " + _builtins_doc_summary(method_doc)
-                )
-                seen.append(qualified_name)
-
-    matches.sort()
-    if len(matches) == 0:
-        ρσ_print("No documentation matching '" + text + "'.")
-        return
-    ρσ_print("Search results for '" + text + "':\n    " + str.join("\n    ", matches))
+    module = _builtins_default_import(
+        "sagejs._documentation_search", fromlist=["_search_doc"]
+    )
+    module._search_doc(query)
 
 
 def ρσ_ord(value: Any) -> _Int:
@@ -6767,11 +6415,15 @@ def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
 _BUILTINS_TYPE_NEW_PLAIN_TOKEN = runtime.object.create(None)
 
 
-def _builtins_inherited_metaclass(bases: Any) -> Any:
+def _builtins_inherited_metaclass(bases: Any, selected: Any = runtime.undefined) -> Any:
     """Select the most-derived metaclass required by `bases`."""
-    selected = ρσ_type
+    if selected is runtime.undefined:
+        selected = ρσ_type
     for base in bases:
-        candidate = _builtins_get_member(base, "__python_type__")
+        key = _builtins_heap_class_keys.get(base)
+        candidate = _builtins_class_metaclasses.get(
+            base if key is runtime.undefined else key
+        )
         if candidate is runtime.undefined:
             candidate = ρσ_type
         if candidate is selected:
@@ -6821,22 +6473,10 @@ def ρσ_type(*values: Any) -> Any:
                 )
 
         def dynamic_class(*args: Any, **keywords: Any) -> Any:
-            # Forward user keywords as the eventual instance initializer's
-            # keyword packet.  Sending them through ordinary interpolation
-            # here would let a user keyword named ``cls`` bind the private
-            # first parameter of ``_builtins_type_call`` instead.
-            runtime.reflect.set(keywords, runtime.kwargs_symbol, True)
-            call_args = [dynamic_class]
-            call_args.extend(args)
-            # A marked keyword packet cannot be passed through the Python
-            # ``list.append`` adapter: the adapter would interpret it as its
-            # own keyword packet.  Append it at the JavaScript boundary.
-            runtime.reflect.apply(runtime.array.prototype.push, call_args, [keywords])
-            return runtime.reflect.apply(
-                _builtins_type_call,
-                runtime.undefined,
-                call_args,
-            )
+            # Calling a class invokes its metaclass slot. Explicit delegation
+            # through `type.__call__` still reaches the allocation helper.
+            slot = ρσ_get_type_slot(dynamic_class, "__call__")
+            return slot(*args, **keywords)
 
         prototype = runtime.object.create(runtime.reflect.get(parent, "prototype"))
         runtime.reflect.set(prototype, "constructor", dynamic_class)
@@ -6930,6 +6570,10 @@ def ρσ_type(*values: Any) -> Any:
     if runtime.strict_equal(value_type, "object") or runtime.strict_equal(
         value_type, "function"
     ):
+        class_key = _builtins_heap_class_keys.get(value)
+        if class_key is not runtime.undefined:
+            metaclass = _builtins_class_metaclasses.get(class_key)
+            return ρσ_type if metaclass is runtime.undefined else metaclass
         # Read actual representation ownership, never a user constructor or
         # __python_type__ attribute. Exact lookup deliberately leaves unknown
         # native/math prototypes on their existing representation paths.
@@ -7069,6 +6713,7 @@ def _builtins_apply_metaclass_namespace(
         "__python_type__",
         {"value": metaclass, "writable": True, "configurable": True},
     )
+    _builtins_class_metaclasses.set(created, metaclass)
     initializer = _builtins_get_member(
         _builtins_get_member(metaclass, "prototype"),
         "__init__",
@@ -7099,6 +6744,7 @@ def ρσ_apply_metaclass(
     # copy so custom metaclasses can normalize entries before ``type.__new__``
     # without mutating the temporary compiler-generated class.
     namespace = _builtins_namespace_dict(compiled_class).copy()
+    metaclass = _builtins_inherited_metaclass(bases, metaclass)
     # Class construction invokes ``type(metaclass).__call__``.  It must not
     # invoke a ``__call__`` defined *by* the metaclass: that hook constructs
     # instances of the eventual class (RegexLexerMeta is a prominent real
@@ -7122,29 +6768,72 @@ def ρσ_apply_inherited_metaclass(
     compiled_class: Any,
 ) -> Any:
     """Apply the non-default metaclass inherited from a base class."""
-    selected = runtime.undefined
-    for base in bases:
-        candidate = _builtins_get_member(base, "__python_type__")
-        if candidate is runtime.undefined or candidate is ρσ_type:
-            continue
-        if selected is runtime.undefined:
-            selected = candidate
-        elif selected is not candidate:
-            raise TypeError(
-                "metaclass conflict: the metaclass of a derived class must "
-                "be a subclass of the metaclasses of all its bases"
-            )
-    if selected is runtime.undefined:
+    selected = _builtins_inherited_metaclass(bases)
+    if selected is ρσ_type:
         return compiled_class
     return ρσ_apply_metaclass(selected, class_name, bases, compiled_class)
 
 
+def ρσ_get_type_slot(candidate: Any, name: _Str) -> Any:
+    """Bind an implicit type slot, ignoring instance attributes.
+
+    Missing slots return `undefined`; present noncallables remain unchanged so
+    the caller's invocation raises normally. Ownership uses the canonical
+    Python type, not writable host `constructor` or instance type markers.
+    """
+    owner = runtime.reflect.apply(ρσ_type, runtime.undefined, [candidate])
+    resolution = _builtins_class_attribute_resolution(owner, name)
+    if resolution is runtime.undefined:
+        return runtime.undefined
+    method = resolution[3]
+    if resolution[2] == _BUILTINS_DESCRIPTOR_NATIVE_GETTER:
+        method = runtime.reflect.apply(method, candidate, [])
+    elif _builtins_get_member(method, "__classmethod__") is True:
+        target = _builtins_get_member(method, "__func__")
+        method = _builtins_bind_python_function(
+            method if target is runtime.undefined else target, owner
+        )
+    elif _builtins_get_member(method, "__staticmethod__") is True:
+        target = _builtins_get_member(method, "__func__")
+        if target is not runtime.undefined:
+            method = target
+    elif _builtins_member_is_function(method, "__get__"):
+        method = _builtins_call_member(method, "__get__", [candidate, owner])
+    elif (
+        runtime.strict_equal(runtime.jstype(method), "function")
+        and not _builtins_is_python_class(method)
+        and _builtins_get_member(method, "__sagejs_callable_instance__") is not True
+        and (
+            resolution[2] == _BUILTINS_DESCRIPTOR_NONDATA
+            or _builtins_get_member(method, "__sagejs_native_method__") is True
+        )
+    ):
+        method = _builtins_bind_python_function(method, candidate)
+    return method
+
+
+def ρσ_class_check_hook(value: Any, candidate: Any, name: _Str) -> Any:
+    """Dispatch a class-check slot, or return `undefined` for structural lookup."""
+    if (
+        name == "__instancecheck__"
+        and runtime.reflect.apply(ρσ_type, runtime.undefined, [value]) is candidate
+    ):
+        return True
+    method = ρσ_get_type_slot(candidate, name)
+    if method is runtime.undefined:
+        return runtime.undefined
+    return ρσ_bool(method(value))
+
+
 def ρσ_issubclass(cls: Any, candidates: Any) -> _Bool:
-    if runtime.array.isArray(candidates):
+    if runtime.array.isArray(candidates) and runtime.object.isFrozen(candidates):
         for candidate in candidates:
             if ρσ_issubclass(cls, candidate):
                 return True
         return False
+    result = ρσ_class_check_hook(cls, candidates, "__subclasscheck__")
+    if result is not runtime.undefined:
+        return result
     if not _builtins_is_python_class(cls) or not _builtins_is_python_class(candidates):
         raise TypeError("issubclass() arg 1 must be a class")
     if cls is candidates:

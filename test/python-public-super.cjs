@@ -85,3 +85,57 @@ for (const mode of ["node-runtime", "standalone", "standalone-global"]) {
     } finally { rmSync(scratch, { recursive: true, force: true }); }
   });
 }
+
+for (const scope of ["private", "global"]) {
+  test(`standalone-${scope}: implicit dir and documentation need no host loader`, async () => {
+    const scratch = mkdtempSync(join(tmpdir(), "sagejs-standalone-introspection-"));
+    try {
+      const input = join(scratch, "introspection.py");
+      const output = join(scratch, "introspection.js");
+      const driver = join(scratch, "compile.cjs");
+      writeFileSync(input, [
+        "class Listed:",
+        "    marker = 7",
+        "assert 'marker' in dir(Listed)",
+        "assert 'marker' in dir(Listed())",
+        "assert Listed.__dict__['marker'] == 7",
+        "def documented(value=3):",
+        "    return value",
+        "documented.__doc__ = 'standalone documentation sentinel'",
+        "assert 'documented' in dir()",
+        "help()",
+        "help(Listed)",
+        "help(Listed())",
+        "help(documented)",
+        "search_doc('standalone documentation sentinel')",
+      ].join("\n"));
+      writeFileSync(driver, `(${compileStandaloneFixture.toString()})().catch(error => { console.error(error); process.exitCode = 1; });\n`);
+      const options = {
+        cwd: scratch,
+        env: { ...isolatedEnvironment(scratch), NODE_PATH: join(root, "node_modules") },
+        timeoutMs: 30000, maxOutputBytes: 1048576,
+      };
+      clean(await executeAssertion(process.execPath,
+        [driver, root, input, output, scope], options));
+      // A browser-like realm has neither require nor a host module loader.
+      const result = await executeAssertion(process.execPath, ["-e",
+        "const realm={console};" +
+        "require('node:vm').runInNewContext(require('node:fs').readFileSync(process.argv[1], 'utf8'), realm);" +
+        "if(Object.hasOwn(realm.ρσ_modules,'sys'))throw Error('unused sys initialized eagerly');" +
+        "for(const name of ['sagejs._introspection','sagejs._documentation_search','inspect'])" +
+        "if(!Object.hasOwn(realm.ρσ_modules,name))throw Error('missing implicit module '+name)",
+        output], options);
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.error, null);
+      assert.equal(result.timedOut, false);
+      assert.equal(result.outputLimited, false);
+      assert.match(result.stdout, /Help on function documented/);
+      assert.match(result.stdout, /Welcome to Sage.js help/);
+      assert.match(result.stdout, /Help on class Listed/);
+      assert.match(result.stdout, /Help on Listed object/);
+      assert.match(result.stdout, /documented\(value=3\)/);
+      assert.match(result.stdout, /documented -- standalone documentation sentinel/);
+      assert.equal(executionBytes(result, "stderr").length, 0, result.stderr);
+    } finally { rmSync(scratch, { recursive: true, force: true }); }
+  });
+}

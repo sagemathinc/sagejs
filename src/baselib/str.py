@@ -312,9 +312,15 @@ def _apply_formatting(
         format_type,
     ) = match[1:]
 
+    string_value = _value_type_is(original, "string")
+    if string_value:
+        if format_type and format_type != "s":
+            raise ValueError("Unknown format code '" + format_type + "' for str")
+        if sign or alternate or grouping:
+            raise ValueError("Invalid format specifier for str")
     if zero_pad:
         fill = fill or "0"
-        align = align or "="
+        align = align or ("<" if string_value else "=")
     else:
         fill = fill or " "
 
@@ -329,6 +335,8 @@ def _apply_formatting(
     is_numeric = integer_value or not runtime.is_nan(numeric_value)
     precision = runtime.parse_int(precision_text, 10)
     lower_type = _lower(format_type or "")
+    if integer_value and precision_text and lower_type not in ("e", "f", "g", "%"):
+        raise ValueError("Precision not allowed in integer format specifier")
     value = original
     integer_sign = ""
     integer_prefix = ""
@@ -363,7 +371,7 @@ def _apply_formatting(
             value = integer_sign + integer_prefix + integer_digits
     elif lower_type in ("e", "f", "g", "%"):
         is_numeric = True
-        value = runtime.parse_float(original)
+        value = runtime.number(float(original))
         digits = 6 if runtime.is_nan(precision) else precision
         if lower_type == "e":
             value = value.toExponential(digits)
@@ -400,7 +408,7 @@ def _apply_formatting(
         if lower_type == "s":
             if not _value_type_is(original, "string"):
                 raise ValueError("Unknown format code 's' for object")
-            if sign or alternate or grouping or zero_pad:
+            if sign or alternate or grouping:
                 raise ValueError("Invalid format specifier for str")
             is_numeric = False
         elif not format_type and integer_value:
@@ -466,6 +474,32 @@ def _apply_formatting(
         else:
             raise ValueError("Unrecognized alignment: " + align)
     return value
+
+
+def format(value: Any, format_spec: _Str = "") -> _Str:
+    """Format a value using its type's `__format__` slot."""
+    if not isinstance(format_spec, str):  # pyright: ignore[reportArgumentType]
+        raise TypeError("format() argument 2 must be str")
+    modules = runtime.reflect.get(runtime.global_object, "__sagejs_baselib_modules__")
+    builtins_module = runtime.reflect.get(modules, "sagejs._baselib.builtins")
+    lookup = runtime.reflect.get(builtins_module, "ρσ_get_type_slot")
+    slot = runtime.reflect.apply(lookup, runtime.undefined, [value, "__format__"])
+    if slot is not runtime.undefined:
+        answer = slot(format_spec)
+        if not isinstance(answer, str):  # pyright: ignore[reportArgumentType]
+            raise TypeError("__format__ must return a str")
+        return answer
+    specification = _native_string(format_spec)
+    if not specification:
+        return ρσ_str(value)
+    if isinstance(value, str):  # pyright: ignore[reportArgumentType]
+        value = _native_string(value)
+    elif isinstance(value, int):
+        if _value_type_is(value, "object") and specification[-1] not in "eEfFgG%":
+            value = runtime.reflect.apply(runtime.number.prototype.valueOf, value, [])
+    elif not isinstance(value, float):
+        raise TypeError("unsupported format string passed to object.__format__")
+    return _apply_formatting(value, specification)
 
 
 def _resolve_field(path: _Str, value: Any) -> Any:
@@ -594,9 +628,9 @@ def string_format(
                     specification[spec_position + 1 : spec_end - 1]
                 )
                 spec_position = spec_end
-            answer = _apply_formatting(formatted_value, resolved_specification)
+            answer = format(formatted_value, resolved_specification)
         else:
-            answer = ρσ_str(formatted_value)
+            answer = format(formatted_value)
         if show_key:
             answer = key + "=" + answer
         return answer
