@@ -1193,6 +1193,16 @@ class ClassUnitComputation:
     def units(self) -> tuple[Any, ...]:
         return tuple(_value(self.unit_group(), ("generators", "gens"), ()))
 
+    def unit_coordinate_map(self, **limits: Any) -> Any:
+        """Return a bounded authenticated map without rediscovering any units.
+
+        The map orders torsion before the free generators. Unsupported
+        completeness authorities or membership requests fail explicitly.
+        """
+        from sagejs.number_fields.unit_coordinates import unit_coordinate_map
+
+        return unit_coordinate_map(self, **limits)
+
     def regulator(self) -> Any:
         unit_group = self.unit_group()
         value = _value(unit_group, ("regulator_enclosure",), None)
