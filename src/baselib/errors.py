@@ -13,6 +13,52 @@ import sagejs.runtime as runtime
 NameError = runtime.reference_error
 
 
+_errors_captured_stacks = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+
+
+def _errors_write_stack(receiver: Any, value: Any) -> None:
+    descriptor = runtime.object.getOwnPropertyDescriptor(receiver, "stack")
+    if runtime.reflect.get(
+        descriptor, "configurable"
+    ) is not True and not runtime.object.isFrozen(receiver):
+        # Sealing keeps the old writable-stack contract. The native Error
+        # also accepts replacement without formatting its captured frames.
+        captured = _errors_captured_stacks.get(receiver)
+        runtime.reflect.set(captured, "stack", value)
+        return
+    runtime.object.defineProperty(
+        receiver,
+        "stack",
+        {"value": value, "writable": True, "enumerable": True, "configurable": True},
+    )
+    runtime.reflect.apply(
+        runtime.reflect.get(_errors_captured_stacks, "delete"),
+        _errors_captured_stacks,
+        [receiver],
+    )
+
+
+def _errors_read_stack(receiver: Any) -> Any:
+    captured = _errors_captured_stacks.get(receiver)
+    value = runtime.reflect.get(captured, "stack")
+    descriptor = runtime.object.getOwnPropertyDescriptor(receiver, "stack")
+    if runtime.reflect.get(descriptor, "configurable") is True:
+        _errors_write_stack(receiver, value)
+    # Frozen/sealed exceptions still expose their original capture. V8 caches
+    # the formatted value on the private Error when the accessor cannot be
+    # replaced on the public exception.
+    return value
+
+
+_errors_stack_descriptor = runtime.object.create(None)
+_errors_stack_descriptor.get = runtime.native_method_adapter(_errors_read_stack)
+_errors_stack_descriptor.set = runtime.native_method_adapter(_errors_write_stack)
+_errors_stack_descriptor.enumerable = True
+_errors_stack_descriptor.configurable = True
+
+
 def ρσ_exception_value(value: object) -> object:
     if runtime.strict_equal(runtime.jstype(value), "function"):
         value = runtime.reflect.construct(value, [])
@@ -73,7 +119,16 @@ class BaseException(runtime.error):
         )
         error = runtime.error(message)
         error.name = self.name
-        self.stack = error.stack
+        if runtime.reflect.has(self, "stack"):
+            # Preserve existing instance fields and subclass accessor setters,
+            # including their write failures and explicit stack observation.
+            self.stack = error.stack
+        else:
+            # Capture at construction, format only when actually observed.
+            # Keep the native Error private so later changes to the Python
+            # exception's name/message do not rewrite its captured header.
+            _errors_captured_stacks.set(self, error)
+            runtime.object.defineProperty(self, "stack", _errors_stack_descriptor)
         # Until an embedding provides structured frame objects, the native
         # Error itself is our traceback-like carrier.  ``traceback.extract_tb``
         # understands its stack string.
