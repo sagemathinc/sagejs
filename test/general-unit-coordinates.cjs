@@ -82,7 +82,7 @@ from sagejs.number_fields.unit_coordinates import UnitCoordinateCapabilityError,
 from sagejs.number_fields.class_unit_context import ClassUnitProofState
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-for f, rank, proof in [(x**3-x**2-2*x+1,2,False),(x**4-x-1,2,False),(x**4-x**3-3*x**2+x+1,3,False),(x**3-x**2-2*x+1,2,True)]:
+for f, rank, proof in [(x**3-x**2-2*x+1,2,False),(x**4-x-1,2,False),(x**4-x**3-3*x**2+x+1,3,False)]:
     K = NumberField(f,"a")
     result = K.class_unit_group(proof=proof,algorithm="buchmann-hecke")
     factor=result.unit_group().gens()[0].factors()[0][0]

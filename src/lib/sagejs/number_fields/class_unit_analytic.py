@@ -5833,7 +5833,7 @@ _LIVE_UNIT_INDEX_PARENT_TOKEN = object()
 
 
 class UnitSaturationIndexCertificate:
-    """Hash-bound analytic proof of the initial missing class/unit index."""
+    """Hash-bound BF analytic index proof, conditional on zeta GRH."""
 
     def __init__(
         self,
@@ -5852,11 +5852,10 @@ class UnitSaturationIndexCertificate:
         selected_proof_status = str(proof_status)
         if selected_index_bound < 1:
             raise ValueError("a global index certificate needs a positive index")
-        if selected_proof_status not in (
-            "exact-unconditional",
-            "exact-relations-conditional-grh",
-        ):
-            raise ValueError("a global index certificate needs an exact proof status")
+        if selected_proof_status != "exact-relations-conditional-grh":
+            raise AnalyticCertificationError(
+                "a Belabas--Friedman index certificate is conditional on zeta GRH"
+            )
         body: dict[str, Any] = {
             "schema": "sagejs.number-fields.unit-saturation-index-certificate.v1",
             "field_order_identity": field_order_identity,
@@ -5897,7 +5896,9 @@ class UnitSaturationIndexCertificate:
         try:
             encoded = _canonical_json(self._body_snapshot)
             return bool(
-                encoded == self._body_json
+                self._proof_status == "exact-relations-conditional-grh"
+                and self._body_snapshot["proof_status"] == self._proof_status
+                and encoded == self._body_json
                 and hashlib.sha256(encoded.encode("utf-8")).hexdigest()
                 == self._content_sha256
             )
@@ -5925,6 +5926,8 @@ class UnitSaturationIndexCertificate:
         if (
             token is not _LIVE_UNIT_INDEX_PARENT_TOKEN
             or not self._live_parent_authority_available
+            or self._proof_status != "exact-relations-conditional-grh"
+            or self._body_snapshot.get("proof_status") != self._proof_status
         ):
             return None
         self._live_parent_authority_available = False
@@ -6138,12 +6141,9 @@ def certify_unit_saturation_index(
         raise AnalyticCertificationError(
             "a global index certificate needs replayable generation evidence"
         )
-    if proof_status not in (
-        "exact-unconditional",
-        "exact-relations-conditional-grh",
-    ):
+    if proof_status != "exact-relations-conditional-grh":
         raise AnalyticCertificationError(
-            "a global index certificate needs an exact proof status"
+            "a Belabas--Friedman index certificate is conditional on zeta GRH"
         )
     if not bool(
         generation_verifier(
