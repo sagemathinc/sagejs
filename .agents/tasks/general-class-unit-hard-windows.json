@@ -4,10 +4,10 @@
   "id": "general-class-unit-hard-windows",
   "title": "General Class Unit Hard Windows",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Add bounded acquisition/source union and offline reconciliation of predeclared reference cap rescues",
-  "base_commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+  "base_commit": "2e790e2b5d1cadda9386f66c9577021128daa105",
   "claims": [
     "bench/class-unit-groups/general-frontier/corpus/hard-windows.cjs",
     "bench/class-unit-groups/general-frontier/corpus/hard-windows.test.cjs",
@@ -22,7 +22,10 @@
   "dependencies": [],
   "references": [
     "bench/class-unit-groups/general-frontier/corpus/candidate-pool.cjs",
-    "bench/class-unit-groups/general-frontier/reference/runner/prepare-cost-expansion.cjs"
+    "bench/class-unit-groups/general-frontier/reference/runner/prepare-cost-expansion.cjs",
+    "e5288a49e (reviewed integration audit correction; cherry-pick dfb54d906)",
+    "f06c92ca7 (reviewed integration test-metadata correction; cherry-pick 2e790e2b5)",
+    "Original source comparison remains 9dd8714f43ba3135bfac0c04edb36b001dc606dd; bookkeeping base advances only to incorporate reviewed dependencies."
   ],
   "architecture": {
     "strategy": "not-applicable",
@@ -42,7 +45,8 @@
     "pnpm test:baselib:strict",
     "node --test bench/class-unit-groups/general-frontier/corpus/hard-windows.test.cjs test/build-input-partition.cjs",
     "node --test bench/class-unit-groups/general-frontier/corpus/source-union.test.cjs",
-    "node --test bench/class-unit-groups/general-frontier/reference/attempts/reconcile.test.cjs"
+    "node --test bench/class-unit-groups/general-frontier/reference/attempts/reconcile.test.cjs",
+    "pnpm test:changed -- --base 9dd8714f43ba3135bfac0c04edb36b001dc606dd"
   ],
   "runs": [
     {
@@ -94,16 +98,146 @@
       "commit": "2a7740a05fe04d6404e9c25f1928148d7b289d5c",
       "workspace_fingerprint": "e0d46de1c61aa43278a36ed1ff807391b83830975e516ce2aa9bba7bfdf43c2b",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.307,
+      "started_at": "2026-09-11T11:31:58.764Z",
+      "commit": "52e5d1759d826b15705fc9c81aecc387280c920d",
+      "workspace_fingerprint": "15def15bda003abed22e0f98797e0a8ece49610b65aeeef0d237b1056dcb62b2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.891,
+      "started_at": "2026-09-11T11:32:07.135Z",
+      "commit": "52e5d1759d826b15705fc9c81aecc387280c920d",
+      "workspace_fingerprint": "15def15bda003abed22e0f98797e0a8ece49610b65aeeef0d237b1056dcb62b2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.631,
+      "started_at": "2026-09-11T11:34:41.504Z",
+      "commit": "52e5d1759d826b15705fc9c81aecc387280c920d",
+      "workspace_fingerprint": "15def15bda003abed22e0f98797e0a8ece49610b65aeeef0d237b1056dcb62b2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.107,
+      "started_at": "2026-09-11T11:43:56.732Z",
+      "commit": "dfb54d90694769182df624ebca2fe316bac317b8",
+      "workspace_fingerprint": "73d9b8339e062fc0622f51635ca9c075e2ee8fd1030f2c7de4537c9a0ab835d1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.675,
+      "started_at": "2026-09-11T11:44:09.030Z",
+      "commit": "dfb54d90694769182df624ebca2fe316bac317b8",
+      "workspace_fingerprint": "73d9b8339e062fc0622f51635ca9c075e2ee8fd1030f2c7de4537c9a0ab835d1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.602,
+      "started_at": "2026-09-11T11:44:10.195Z",
+      "commit": "dfb54d90694769182df624ebca2fe316bac317b8",
+      "workspace_fingerprint": "73d9b8339e062fc0622f51635ca9c075e2ee8fd1030f2c7de4537c9a0ab835d1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 654.495,
+      "started_at": "2026-09-11T11:45:06.287Z",
+      "commit": "2e790e2b5d1cadda9386f66c9577021128daa105",
+      "workspace_fingerprint": "47b31d545db8b7bd01cf687563cd9f5d7bc2d1c2ebdc7e703f610d1cd8aa323f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 83.14,
+      "started_at": "2026-09-11T11:56:01.450Z",
+      "commit": "2e790e2b5d1cadda9386f66c9577021128daa105",
+      "workspace_fingerprint": "47b31d545db8b7bd01cf687563cd9f5d7bc2d1c2ebdc7e703f610d1cd8aa323f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.911,
+      "started_at": "2026-09-11T11:57:29.836Z",
+      "commit": "2e790e2b5d1cadda9386f66c9577021128daa105",
+      "workspace_fingerprint": "47b31d545db8b7bd01cf687563cd9f5d7bc2d1c2ebdc7e703f610d1cd8aa323f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.694,
+      "started_at": "2026-09-11T11:58:18.357Z",
+      "commit": "2e790e2b5d1cadda9386f66c9577021128daa105",
+      "workspace_fingerprint": "47b31d545db8b7bd01cf687563cd9f5d7bc2d1c2ebdc7e703f610d1cd8aa323f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/hard-windows.test.cjs test/build-input-partition.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.144,
+      "started_at": "2026-09-11T11:59:16.732Z",
+      "commit": "2e790e2b5d1cadda9386f66c9577021128daa105",
+      "workspace_fingerprint": "47b31d545db8b7bd01cf687563cd9f5d7bc2d1c2ebdc7e703f610d1cd8aa323f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/source-union.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.798,
+      "started_at": "2026-09-11T11:59:24.533Z",
+      "commit": "2e790e2b5d1cadda9386f66c9577021128daa105",
+      "workspace_fingerprint": "47b31d545db8b7bd01cf687563cd9f5d7bc2d1c2ebdc7e703f610d1cd8aa323f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/reference/attempts/reconcile.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.35,
+      "started_at": "2026-09-11T11:59:25.999Z",
+      "commit": "2e790e2b5d1cadda9386f66c9577021128daa105",
+      "workspace_fingerprint": "47b31d545db8b7bd01cf687563cd9f5d7bc2d1c2ebdc7e703f610d1cd8aa323f",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Follow-up offline cap-rescue reconciliation in reference/attempts only, based on coordinator-authorized merge of 9dd8714f4. Reuses inherited raw reviewer, pairer and rescue selector without changing runner files. Exact original replay, selected input bytes, runtime/source hashes and measurement controls must match; only designated 60-to-600-second timeout rescue outcomes replace original rows. Original paired report, retry reviews, raw receipt hashes and failure histories remain explicit; qualification/replay stay false. Earlier hard-window acquisition/source-union changes were already integrated separately.",
+    "summary": "Follow-up offline cap-rescue reconciliation source is commit 52e5d1759 in reference/attempts only. Reuses inherited raw reviewer, pairer and rescue selector without changing runner files. Exact original replay, selected input bytes, runtime/source hashes and measurement controls must match; only designated 60-to-600-second timeout rescue outcomes replace original rows. Original paired report, retry reviews, raw receipt hashes and failure histories remain explicit; qualification/replay stay false. Supported local cache/build repair completed; all declared gates now have fresh passing Linux receipts. Coordinator-owned documentary gate corrections are explicit separate dependencies. Earlier hard-window acquisition/source-union changes were already integrated separately.",
     "risks": [
       "No acquisition network calls, CAS computations or opt access performed; offline fixtures plus read-only reconstruction of the coordinator's acquired sources.",
       "Coordinator must supply all prior and active screening inputs; omitted exclusions cannot be discovered automatically.",
       "Optional native psql required only for explicit fetch; absence yields client-unavailable. Windows file fsync retained, directory fsync unavailable.",
       "Not mathematical qualification or isomorphism deduplication; reference time bands and holdout eligibility remain pending.",
-      "Contract remains active: current changed-file merge checks pass but broad unit checks fail at compiler.get_compiler_version in this worktree's incomplete local build; focused offline tests pass. No reference/CAS workers or opt access used for reconciliation.",
+      "Compiler artifact repaired using supported native cache prepare and full build. Original-baseline scoped changed checks (202 unit files), portable checks (187 files) and architecture pass. Earlier failed receipts remain historical; final receipts are refreshed serially to avoid task-manifest write races. No opt access or reference-worker runs.",
       "Historical policy creation time and original machine attestation/budget ledger are external custody obligations; offline content equality cannot authenticate chronology. Effective reviews are marked synthetic and must retain the explicit attempt provenance."
     ],
     "next_steps": [
