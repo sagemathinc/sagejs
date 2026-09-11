@@ -18,6 +18,7 @@ __all__ = [
     "_get_instance_dict",
     "_namespace_dict",
     "_native_property",
+    "_register_property",
     "_replace_function_namespace",
     "_refresh_class_namespace",
     "_set_instance_dict",
@@ -50,6 +51,15 @@ def _native_property(source: Any, name: str, descriptor: Any, key: Any) -> Any:
     )
     _core._builtins_property_cache.set(key, value)
     return value
+
+
+def _register_property(owner: Any, name: str, has_setter: bool) -> None:
+    """Register the Python descriptor behind compiler-emitted native accessors."""
+    prototype = runtime.reflect.get(owner, "prototype")
+    descriptor = runtime.object.getOwnPropertyDescriptor(prototype, name)
+    value = _core._builtins_native_property(prototype, name, descriptor)
+    if not has_setter:
+        value.fset = None
 
 
 def _stored_namespace(value: Any) -> Any:
