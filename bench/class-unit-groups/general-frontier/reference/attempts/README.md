@@ -44,14 +44,31 @@ attestation: trusted pre-execution custody and the original supervisor's budget
 ledger remain external obligations. Unknown producer revisions fail closed;
 there is no compatibility normalization of earlier policies.
 
-Coordinator inspection of the actual `cap-rescue-v2` originals found older
-supervisor (`8673c74e…`) and shared validator (`daf64e…`) source identities,
-different from the later precision/batching harness (`e7d6c4b…`, `e9ff8aa…`).
-Running those rescues with the newer harness would correctly fail this tool's
-strict provenance check. Deploy the exact pinned original harness, after
-confirming it supports the declared cap, or predeclare and independently review
-a separate harness-change policy before execution. This tool does not authorize
-or implement that exception; do not quietly edit old receipts or policies.
+The actual `cap-rescue-v2` policy pins **different execution harnesses for the
+two engines**. Its exact policy-file SHA256 is
+`fbbf94e50ca6bed7ae7000711eb553df355992b333836df288339671cf94d025`.
+Read each engine's `paired_report.<engine>_review.provenance.sha256`, not the
+review's top-level `validator_sha256` or `shared_validator_sha256`: those latter
+hashes identify offline review code, not the original executed harness.
+
+| Engine | Executed supervisor SHA256 | Executed shared runner SHA256 |
+| --- | --- | --- |
+| PARI | `8673c74e009dea0f3ef1c69d3d75e41fc9b9286150191726a880859057ac10bb` | `daf64e8199d4f6d0801bdbbfb48030e74d7c0d30858fd281765e5298fe93bd30` |
+| Hecke | `e7d6c4b102437b521050ed340d3e7f44ca8a0d907790ed4906bfe797651095bc` | `e9ff8aa09f1accf4e8d4ae4ddc598685e7fa847696bf8f9fc97448114d103911` |
+
+PARI's eight designated rescues require its older harness; Hecke's five require
+its newer precision/batching harness. All other per-engine runtime/source hashes
+must also match. Deploying either engine with the other engine's harness would
+correctly fail this tool's strict provenance check. The earlier wording that
+described both originals as using the older harness was incorrect.
+
+An aborted infrastructure-misconfigured run is not accepted as an ordinary
+designated rescue by this tool. Preserve its raw receipts, interruption and
+budget reservation/charge history. Any replacement requires a separate,
+pre-execution infrastructure-correction policy naming exactly one fresh attempt
+and retaining the aborted run; it must not edit the original policy, select the
+fastest outcome, or imply that the current reconciler supports this extra attempt
+history. No such exception is implemented here.
 
 Offline tests: `python3 -m unittest discover -s
 bench/class-unit-groups/general-frontier/reference/attempts -p 'test_*.py'`.
