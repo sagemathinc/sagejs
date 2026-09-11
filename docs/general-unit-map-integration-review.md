@@ -126,6 +126,14 @@ lane definitions, mathematical source, and generators remain build inputs.
 This prevents recording a validation run from unnecessarily invalidating the
 compiler build that the run just checked; it does not relax any test gate.
 
+The first full changed-tree run passed build and architecture, then stopped at
+the modular q-expansion source-freeze test. Its sole changed file binding was
+the shared package graph, due to the reviewed unit-map ownership above; no
+modular mathematical source or oracle changed. The existing source-freeze
+generator refreshed that binding and its bundle digest, and the focused test
+passed. The failed full-run receipt remains recorded; this refresh is not a
+claim that previously recorded modular qualification ran at the new revision.
+
 ## Next correctness boundary: detached terminal replay
 
 The follow-up audit is pinned to source commit `f531a6b640`. Existing
