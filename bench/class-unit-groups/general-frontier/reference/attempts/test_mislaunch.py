@@ -232,6 +232,96 @@ class MislaunchTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 m.main()
 
+    def prepare_join(self):
+        self.correction = self.root / "correction.json"
+        self.fresh = self.root / m.FRESH_NAME
+        self.fresh.mkdir()
+        evidence = self.evidence()
+        save(self.correction, evidence)
+        save(
+            self.fresh / "run.json",
+            {
+                "provenance": evidence["expected_fresh_execution_provenance"],
+                "records": self.records,
+            },
+        )
+        return [
+            self.policy,
+            self.abort,
+            self.before,
+            self.after,
+            self.correction,
+            m.reconcile.sha(self.correction.read_bytes()),
+            self.root / "original-pari",
+            self.root / "original-hecke",
+            self.root / "retry-pari",
+            self.fresh,
+        ]
+
+    def test_join_retains_every_aborted_receipt_and_strict_history(self):
+        args = self.prepare_join()
+        strict = {
+            "attempt_reconciliation": {"histories": ["strict-original-and-retry"]}
+        }
+        with patch.object(
+            m.reconcile, "reconcile", return_value=copy.deepcopy(strict)
+        ) as call:
+            result = m.join(*args)
+        self.assertEqual(
+            result["attempt_reconciliation"], strict["attempt_reconciliation"]
+        )
+        call.assert_called_once_with(
+            args[6], args[7], self.policy, {"pari": args[8], "hecke": self.fresh}
+        )
+        joined = result["mislaunch_reconciliation"]
+        self.assertFalse(joined["aborted_rows_eligible"])
+        self.assertEqual(json.loads(joined["correction_raw_json"]), self.evidence())
+        for name, digest in self.evidence()["aborted_raw_snapshot"][
+            "files_sha256"
+        ].items():
+            self.assertEqual(
+                m.reconcile.sha(joined["excluded_aborted_raw_json"][name].encode()),
+                digest,
+            )
+        self.assertEqual(
+            joined["ledger_raw_json"]["after"].encode(), self.after.read_bytes()
+        )
+
+    def test_join_rejects_wrong_fresh_name_or_hash_or_provenance(self):
+        args = self.prepare_join()
+        with patch.object(m.reconcile, "reconcile") as strict:
+            for index, value in ((9, self.abort), (5, "0" * 64)):
+                bad = list(args)
+                bad[index] = value
+                with self.assertRaises(ValueError):
+                    m.join(*bad)
+            save(self.fresh / "run.json", {"records": self.records, "provenance": {}})
+            with self.assertRaises(ValueError):
+                m.join(*args)
+            strict.assert_not_called()
+
+    def test_join_rejects_changed_correction_or_lost_custody(self):
+        args = self.prepare_join()
+        raw = self.correction.read_bytes()
+        self.correction.write_bytes(raw + b"\n")
+        with self.assertRaises(ValueError):
+            m.join(*args)
+        self.correction.write_bytes(raw)
+        receipt = self.abort / "sample-field-1.json"
+        with patch.object(
+            m.reconcile, "reconcile", side_effect=lambda *unused: receipt.unlink() or {}
+        ):
+            with self.assertRaises((ValueError, FileNotFoundError)):
+                m.join(*args)
+
+    def test_join_propagates_strict_rejection(self):
+        args = self.prepare_join()
+        with patch.object(
+            m.reconcile, "reconcile", side_effect=ValueError("wrong precise controls")
+        ):
+            with self.assertRaisesRegex(ValueError, "wrong precise controls"):
+                m.join(*args)
+
 
 if __name__ == "__main__":
     unittest.main()

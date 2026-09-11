@@ -98,12 +98,32 @@ under the original modern Hecke provenance at 600 seconds, 200 bits, one sample
 and one iteration. Coordinator approval and evidence that the old process has
 exited must precede that execution; hashes do not authenticate chronology.
 
-The envelope does **not** reconcile or promote the fresh attempt. A future
-additive join must bind that exact named fresh directory, validate it through
-the unchanged strict reconciler against the original inputs/provenance, and
-attach this complete excluded-attempt history. Until then keep this envelope,
-raw aborted directory, both ledgers, and any fresh paired report together; do not
-describe the strict paired report alone as retaining the mislaunch history.
+The envelope does **not** reconcile or promote the fresh attempt. Once the
+designated execution has finished, the separate `join` command rechecks its
+approved byte hash and unchanged custody, requires the exact fresh directory
+name/provenance/ordered inputs, then calls the unchanged strict reconciler.
+The ordinary paired-discovery result retains strict original/retry histories
+and additionally embeds the complete excluded-abort envelope, exact raw JSON
+receipt texts and both ledger texts. Aborted answers never enter pairing.
+
+Use the same five custody arguments shown above, with `join` instead of `plan`,
+and add:
+
+```sh
+  --correction-sha256 APPROVED_PREDECLARATION_BYTE_SHA256 \
+  --pari-original ORIGINAL_PARI_DIRECTORY \
+  --hecke-original ORIGINAL_HECKE_DIRECTORY \
+  --pari-retry COMPLETED_DESIGNATED_PARI_RETRY_DIRECTORY \
+  --hecke-retry /custody/persistent-hecke-cap-rescue-v2-attempt-2 \
+  --output /custody/paired-cap-rescue-with-excluded-incident.json
+```
+
+Output is exclusive-create and must be outside the source directories. The
+caller must supply the hash retained at approval, not compute a new approval
+from modified evidence. This remains discovery only, not qualification or
+independent replay. Offline checks do not authenticate approval chronology or
+process exit. The strict paired report alone still omits mislaunch custody;
+only this additive join carries that history. Keep all original files as well.
 
 Offline tests: `python3 -m unittest discover -s
 bench/class-unit-groups/general-frontier/reference/attempts -p 'test_*.py'`.

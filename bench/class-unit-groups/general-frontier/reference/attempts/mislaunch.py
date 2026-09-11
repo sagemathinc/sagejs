@@ -181,9 +181,94 @@ def evidence(policy_directory, aborted_directory, ledger_before, ledger_after):
     return result
 
 
+def join(
+    policy_directory,
+    aborted_directory,
+    ledger_before,
+    ledger_after,
+    correction,
+    correction_sha256,
+    pari_original,
+    hecke_original,
+    pari_retry,
+    hecke_retry,
+):
+    """Strictly reconcile the fresh attempts and retain the excluded incident.
+
+    The caller supplies the previously approved correction's byte hash. No
+    directory search, selection among retries, or aborted-answer promotion occurs.
+    """
+    correction = Path(correction)
+    raw = correction.read_bytes()
+    if reconcile.sha(raw) != correction_sha256:
+        raise ValueError("changed approved correction bytes")
+    expected = evidence(
+        policy_directory, aborted_directory, ledger_before, ledger_after
+    )
+    if json.loads(raw) != expected:
+        raise ValueError("correction differs from retained evidence")
+    fresh = Path(hecke_retry)
+    if fresh.name != FRESH_NAME or fresh.resolve() == Path(aborted_directory).resolve():
+        raise ValueError("wrong designated fresh attempt directory")
+    fresh_snapshot = reconcile.snapshot(fresh)
+    run = json.loads((fresh / "run.json").read_bytes())
+    if (
+        run.get("provenance") != expected["expected_fresh_execution_provenance"]
+        or run.get("records") != expected["selected"]
+    ):
+        raise ValueError("fresh execution differs from correction")
+    result = reconcile.reconcile(
+        pari_original,
+        hecke_original,
+        policy_directory,
+        {"pari": pari_retry, "hecke": fresh},
+    )
+    # Preserve exact text, not just normalized outcomes: interrupted and wrong-
+    # harness completed receipts remain inspectable but cannot affect pairing.
+    custody = {
+        name: (Path(aborted_directory) / name).read_bytes().decode("utf8")
+        for name in expected["aborted_raw_snapshot"]["files_sha256"]
+    }
+    if any(
+        reconcile.sha(text.encode("utf8"))
+        != expected["aborted_raw_snapshot"]["files_sha256"][name]
+        for name, text in custody.items()
+    ):
+        raise ValueError("aborted raw history changed")
+    ledger_text = {
+        "before": Path(ledger_before).read_bytes().decode("utf8"),
+        "after": Path(ledger_after).read_bytes().decode("utf8"),
+    }
+    if any(
+        reconcile.sha(text.encode("utf8")) != expected[f"ledger_{key}_sha256"]
+        for key, text in ledger_text.items()
+    ):
+        raise ValueError("ledger history changed")
+    result["mislaunch_reconciliation"] = {
+        "schema": "sagejs.general-frontier-hecke-mislaunch-join.v1",
+        "joiner_sha256": reconcile.sha(Path(__file__).read_bytes()),
+        "correction_sha256": correction_sha256,
+        "correction": expected,
+        "correction_raw_json": raw.decode("utf8"),
+        "excluded_aborted_raw_json": custody,
+        "ledger_raw_json": ledger_text,
+        "aborted_rows_eligible": False,
+        "qualification_evidence": False,
+        "independent_replay": False,
+    }
+    if (
+        correction.read_bytes() != raw
+        or reconcile.snapshot(fresh) != fresh_snapshot
+        or evidence(policy_directory, aborted_directory, ledger_before, ledger_after)
+        != expected
+    ):
+        raise ValueError("join inputs changed during validation")
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("plan", "check"))
+    parser.add_argument("command", choices=("plan", "check", "join"))
     for name in (
         "policy-directory",
         "aborted-directory",
@@ -192,7 +277,55 @@ def main():
         "correction",
     ):
         parser.add_argument("--" + name, type=Path, required=True)
+    for name in (
+        "pari-original",
+        "hecke-original",
+        "pari-retry",
+        "hecke-retry",
+        "output",
+    ):
+        parser.add_argument("--" + name, type=Path)
+    parser.add_argument("--correction-sha256")
     args = parser.parse_args()
+    if args.command == "join":
+        required = (
+            "pari_original",
+            "hecke_original",
+            "pari_retry",
+            "hecke_retry",
+            "output",
+            "correction_sha256",
+        )
+        if any(getattr(args, name) is None for name in required):
+            parser.error(
+                "join requires original/retry directories, output and correction SHA256"
+            )
+        directories = (
+            args.policy_directory,
+            args.aborted_directory,
+            args.pari_original,
+            args.hecke_original,
+            args.pari_retry,
+            args.hecke_retry,
+        )
+        if any(args.output.resolve().is_relative_to(p.resolve()) for p in directories):
+            raise ValueError("output must be outside immutable input directories")
+        result = join(
+            args.policy_directory,
+            args.aborted_directory,
+            args.ledger_before,
+            args.ledger_after,
+            args.correction,
+            args.correction_sha256,
+            args.pari_original,
+            args.hecke_original,
+            args.pari_retry,
+            args.hecke_retry,
+        )
+        with args.output.open("x", encoding="utf8") as target:
+            json.dump(result, target, indent=2, sort_keys=True)
+            target.write("\n")
+        return
     result = evidence(
         args.policy_directory,
         args.aborted_directory,
