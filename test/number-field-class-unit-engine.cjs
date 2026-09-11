@@ -2507,7 +2507,7 @@ cases = (
     (
         x**4 - x - 1,
         (),
-        "exact-unconditional",
+        "exact-relations-conditional-grh",
     ),
     (
         x**5 + x**3 - x**2 + 4*x + 1,
@@ -3117,7 +3117,7 @@ for algorithm, expected in (
     ("buchmann-hecke", False),
     ("minkowski", True),
 ):
-    engine = ProbeEngine(K, algorithm=algorithm, components=ProbeComponents())
+    engine = ProbeEngine(K, proof=False, algorithm=algorithm, components=ProbeComponents())
     result = engine.run()
     assert not result.complete
     assert result.reason == "factor-base probe complete"
@@ -3131,7 +3131,7 @@ print(observed)
   );
 });
 
-test("factor-base theorem authority controls proof status and upgrades", () => {
+test("factor-base theorem authority is independent of analytic proof status", () => {
   const output = run(String.raw`
 class Plan:
     def __init__(self, theorem, assumptions):
@@ -3144,10 +3144,6 @@ conditional = _factor_base_proof_status(
 unconditional = _factor_base_proof_status(Plan("Minkowski", ()))
 assert conditional == EXACT_RELATIONS_CONDITIONAL_GRH
 assert unconditional == EXACT_UNCONDITIONAL
-assert not _needs_unconditional_upgrade(False, conditional)
-assert _needs_unconditional_upgrade(True, conditional)
-assert not _needs_unconditional_upgrade(False, unconditional)
-assert not _needs_unconditional_upgrade(True, unconditional)
 try:
     _factor_base_proof_status(Plan("unsupported unconditional theorem", ()))
     raise AssertionError("unsupported unconditional authority was accepted")

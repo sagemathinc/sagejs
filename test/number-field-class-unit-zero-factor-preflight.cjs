@@ -58,6 +58,15 @@ polynomial = x**3 - x**2 + 1
 
 for proof in (False, True):
     K = NumberField(polynomial, "a" + str(int(proof)))
+    if proof:
+        # Exact class generation does not discharge BF unit completeness.
+        assert K.class_number(proof=True) == 1
+        try:
+            K.class_unit_group(proof=True, algorithm="buchmann-hecke")
+            raise AssertionError("empty class factor base removed BF hypothesis")
+        except NotImplementedError as error:
+            assert "unconditional analytic unit completeness" in str(error)
+        continue
     result = K.class_unit_group(proof=proof)
     resources = result.diagnostics["resources"]
     artifact = K._bounded_cubic_class_number_artifact
@@ -110,7 +119,7 @@ authority = tampered.__dict__["_live_authentication"]
 authority.__dict__["factor_base_size"] = 1
 assert cubic_module.authenticated_cubic_class_number(tampered, T) is None
 T._bounded_cubic_class_number_artifact = tampered
-fallback = T.class_unit_group(proof=True)
+fallback = T.class_unit_group(proof=False)
 assert fallback.complete and fallback.class_number() == 1
 assert fallback.class_group().invariants() == ()
 assert fallback.class_group().verify()
