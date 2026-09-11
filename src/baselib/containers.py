@@ -1923,13 +1923,10 @@ runtime.reflect.set(list_constructor, "append", _list_type_append)
 runtime.reflect.set(list_constructor, "__name__", "list")
 runtime.reflect.set(list_constructor, "__qualname__", "list")
 runtime.reflect.set(_list_prototype(), "__python_type__", list_constructor)
-runtime.set_class_repr(list_constructor, "<class 'list'>")
-runtime.set_class_repr(ρσ_dict, "<class 'dict'>")
-runtime.set_class_repr(ρσ_set, "<class 'set'>")
-runtime.set_class_repr(ρσ_frozenset, "<class 'frozenset'>")
 
 
 def _containers_set_type_metadata(cls: Any, name: _Str) -> None:
+    runtime.set_class_repr(cls, "<class '" + name + "'>")
     runtime.reflect.set(cls, "__name__", name)
     runtime.reflect.set(cls, "__qualname__", name)
     runtime.reflect.set(cls, "__module__", "builtins")
@@ -1937,16 +1934,13 @@ def _containers_set_type_metadata(cls: Any, name: _Str) -> None:
     runtime.reflect.deleteProperty(cls, "__annotations_text__")
 
 
-_containers_set_type_metadata(list_constructor, "list")
-_containers_set_type_metadata(ρσ_dict, "dict")
-_containers_set_type_metadata(ρσ_set, "set")
-_containers_set_type_metadata(ρσ_frozenset, "frozenset")
-for builtin_container_type in (
-    list_constructor,
-    ρσ_dict,
-    ρσ_set,
-    ρσ_frozenset,
-):
+for builtin_container_type, _container_name in [
+    (list_constructor, "list"),
+    (ρσ_dict, "dict"),
+    (ρσ_set, "set"),
+    (ρσ_frozenset, "frozenset"),
+]:
+    _containers_set_type_metadata(builtin_container_type, _container_name)
     runtime.object.defineProperty(
         builtin_container_type,
         "__python_type__",

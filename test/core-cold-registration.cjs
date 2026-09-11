@@ -11,6 +11,10 @@ const {createSage} = require("../dist/tools/kernel.js");
 const root = join(__dirname, "..");
 
 const propertySource = `
+for cls, name in ((list, 'list'), (dict, 'dict'), (set, 'set'), (frozenset, 'frozenset')):
+    assert cls.__name__ == cls.__qualname__ == name
+    assert cls.__module__ == 'builtins'
+    assert repr(cls) == "<class '" + name + "'>"
 class Counter:
     def __init__(self):
         self.value = 1
@@ -88,6 +92,32 @@ assert (24930).to_bytes(2, 'big') == b'ab'
 print('byte registration passed')
 `);
   assert.equal(result.stdout, "byte registration passed\n");
+});
+
+test("container publication preserves class field order and descriptors", async t => {
+  const session = await createSage({mode: "python"});
+  t.after(() => session.close());
+  const result = await session.evaluate(`
+import sagejs.runtime as runtime
+expected = ['__name__', '__qualname__', '__module__', '__repr__', '__python_type__']
+for cls in (list, dict, set, frozenset):
+    names = [name for name in runtime.object.getOwnPropertyNames(cls) if name in expected]
+    assert names == expected
+    descriptor = runtime.object.getOwnPropertyDescriptor(cls, '__python_type__')
+    assert runtime.reflect.get(descriptor, 'value') is type
+    assert runtime.reflect.get(descriptor, 'writable') is True
+    assert runtime.reflect.get(descriptor, 'configurable') is True
+    assert runtime.reflect.get(descriptor, 'enumerable') is False
+    assert type(cls()) is cls
+class ListChild(list):
+    pass
+class DictChild(dict):
+    pass
+assert ListChild([1, 2]) == [1, 2]
+assert DictChild(a=1) == {'a': 1}
+print('container publication passed')
+`);
+  assert.equal(result.stdout, "container publication passed\n");
 });
 
 test("documentation tables preserve complete independent metadata records", async t => {

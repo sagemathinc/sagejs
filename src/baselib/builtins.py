@@ -4916,11 +4916,7 @@ def _builtins_native_property(source: Any, name: _Str, descriptor: Any) -> Any:
 
 def ρσ_register_property(owner: Any, name: _Str, has_setter: _Bool) -> None:
     """Register the Python descriptor behind compiler-emitted native accessors."""
-    prototype = runtime.reflect.get(owner, "prototype")
-    descriptor = runtime.object.getOwnPropertyDescriptor(prototype, name)
-    value = _builtins_native_property(prototype, name, descriptor)
-    if not has_setter:
-        value.fset = None
+    _builtins_namespace_module()._register_property(owner, name, has_setter)
 
 
 def _builtins_descriptor_read(
