@@ -23,11 +23,6 @@ import { createHash, randomUUID } from "node:crypto";
 import { measureInitialization } from "./timing";
 import { configureImmutableUInt64KernelWrapper } from "./immutable-uint64-capsule";
 
-/** Core dependencies supplied by the host's standalone-library resources. */
-export function coreStandaloneModules(): readonly string[] {
-  return require("./standalone-library.cjs").CORE_STANDALONE_MODULES;
-}
-
 const VIRTUAL_ROOT = normalize("/__sagejs_sea__");
 const COMPILER_ASSET = "compiler/compiler.js";
 const COMPILER_CACHE_ASSET = "runtime-cache/compiler.bin";

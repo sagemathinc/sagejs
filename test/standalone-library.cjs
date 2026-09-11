@@ -14,7 +14,7 @@ const {
 } = require("../tools/standalone-library.cjs");
 
 test("Node compiler resources retain the authoritative standalone core", () => {
-  const { coreStandaloneModules } = require("../dist/tools/resources.js");
+  const { coreStandaloneModules } = require("../dist/tools/standalone-resources.js");
   assert.deepEqual(coreStandaloneModules(), CORE_STANDALONE_MODULES);
 });
 

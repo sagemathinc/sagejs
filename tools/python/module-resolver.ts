@@ -2,7 +2,8 @@ import { dirname, join } from "path";
 
 import type { Node as SyntaxNode } from "web-tree-sitter";
 
-import { coreStandaloneModules, readResourceText } from "../resources";
+import { readResourceText } from "../resources";
+import { coreStandaloneModules } from "../standalone-resources";
 import { sha1sum } from "../utils";
 import type {
   PythonSyntaxFrontend,

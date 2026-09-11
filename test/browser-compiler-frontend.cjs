@@ -37,7 +37,7 @@ test("the browser worker uses the authoritative Tree-sitter frontend", async () 
       name: "sagejs-browser-compiler-resources",
       setup(build) {
         build.onResolve(
-          { filter: /^\.\.\/(?:resources|utils)$/ },
+          { filter: /^\.\.\/(?:resources|standalone-resources|utils)$/ },
           () => ({ path: resourceShim }),
         );
       },
