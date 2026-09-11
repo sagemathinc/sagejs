@@ -32,7 +32,9 @@ from ast_types import (
 from output.loop_common import print_target_assignment, unpack_tuple
 
 
-def print_getattr(self, output, skip_expression):  # AST_Dot
+def is_python_attribute_read(expression, output):
+    """Whether a dot read uses Python lookup rather than host access."""
+
     def is_native_attribute_chain(expression):
         while is_node_type(expression, AST_Dot):
             expression = expression.expression
@@ -78,6 +80,16 @@ def print_getattr(self, output, skip_expression):  # AST_Dot
                     return False
         return True
 
+    return (
+        output.options.python_attributes
+        and not is_node_type(expression.expression, AST_Existential)
+        and not expression.property.startswith("ρσ_")
+        and "." not in expression.property
+        and not is_native_attribute_chain(expression)
+    )
+
+
+def print_getattr(self, output, skip_expression):  # AST_Dot
     assignment_target = False
     stack = output.stack()
     for index in range(stack.length):
@@ -100,17 +112,13 @@ def print_getattr(self, output, skip_expression):  # AST_Dot
             if assignment_target:
                 break
     if (
-        output.options.python_attributes
+        is_python_attribute_read(self, output)
         and not skip_expression
         and not assignment_target
         # Sage.js's legacy existential access ``value?.name`` is lowered to
         # a conditional expression whose fallback deliberately has no
         # attributes.  It must retain JavaScript's optional-access result
         # instead of raising Python's AttributeError.
-        and not is_node_type(self.expression, AST_Existential)
-        and not self.property.startswith("ρσ_")
-        and "." not in self.property
-        and not is_native_attribute_chain(self)
     ):
         output.print("ρσ_getattr_internal(")
         self.expression.print(output)
