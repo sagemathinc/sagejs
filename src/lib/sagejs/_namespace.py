@@ -252,7 +252,7 @@ def _callable_namespace_snapshot(value: Any) -> Any:
                     )
                     is True
                 )
-                and _core._builtins_visible_introspection_name(member_name)
+                and _core.ρσ_visible_introspection_name(member_name)
             ):
                 runtime.reflect.set(
                     namespace,

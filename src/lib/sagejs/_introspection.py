@@ -52,7 +52,7 @@ def _builtins_append_dir_names(
                 )
             if (
                 not data_value_missing
-                and _core._builtins_visible_introspection_name(name)
+                and _core.ρσ_visible_introspection_name(name)
                 and not seen.has(name)
             ):
                 seen.add(name)
@@ -82,7 +82,7 @@ def _builtins_append_own_dir_names(
             )
         if (
             not data_value_missing
-            and _core._builtins_visible_introspection_name(name)
+            and _core.ρσ_visible_introspection_name(name)
             and not seen.has(name)
         ):
             seen.add(name)
