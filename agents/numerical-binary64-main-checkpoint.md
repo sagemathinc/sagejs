@@ -75,6 +75,25 @@ historical/disabled skips and nine failures, all requesting the absent
 foundation's prefix-free target tests and the mixed-prefix regressions above
 are separate evidence. No failed fixture or dependency requirement was removed.
 
+A subsequent complete optional-addon preparation builds the direct FLINT addon
+and all 427 generated FFI adapters against the existing dependency prefix,
+without rebuilding or modifying that prefix. The pinned patched eclib source
+was copied into this checkout's private build directory. Building only the
+direct addon first exposed the separately required FFI manifest; that missing
+artifact was built before the final rerun, not bypassed.
+
+With both addon components installed, the full compiler suite reports **25
+passes, one `algebra.py` timeout and 28 declared skips**. The identical
+60-second algebra timeout reproduces in isolated unchanged `5b307b65f`, using
+the same compiled FLINT package through a diagnostic module-cache injection.
+The baseline checkout remained untouched; `packages/flint` and its FFI
+declaration have no source diff from that baseline to the integration base.
+This is a baseline timeout reproduction, not a pass or a diagnosis of the
+underlying slow operation. The build predates optional-addon installation and
+does not qualify production exact-native packs. Reviewed raw logs, adapter
+identities and the baseline injection script are retained under
+`bench/numerics/performance/results/n2-binary64-main-2026-09-12/`.
+
 FFI, package graph, numerical, native, Wasm capability/workload/lifetime audits
 pass. The broad architecture command stops on inherited historical-word
 mentions at `agents/python-property-mutation-followup.md:47` and
