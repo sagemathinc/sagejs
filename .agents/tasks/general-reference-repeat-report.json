@@ -1,0 +1,112 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-reference-repeat-report",
+  "title": "General Reference Repeat Report",
+  "lane": "arithmetic-algebra",
+  "status": "blocked",
+  "owner": "user",
+  "objective": "Adjudicate predeclared retained reference batches without asserting numerical equivalence or certification",
+  "base_commit": "2a4719e2d8fb0ca6a8debc80d3410e33da3172d9",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/reference/runner/review-repeats.py",
+    "bench/class-unit-groups/general-frontier/reference/runner/test_review_repeats.py",
+    "bench/class-unit-groups/general-frontier/reference/runner/REPEAT-REPORT.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Offline mutation tests using retained-batch normalizer"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_review_repeats.py",
+    "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_batch_evidence.py"
+  ],
+  "runs": [
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_review_repeats.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.403,
+      "started_at": "2026-09-12T18:33:37.890Z",
+      "commit": "2a4719e2d8fb0ca6a8debc80d3410e33da3172d9",
+      "workspace_fingerprint": "1f31ceb2fa62d83631179dad45f07b2a16fd453e3027cf709f0c033fc03868c8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_batch_evidence.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.283,
+      "started_at": "2026-09-12T18:33:38.935Z",
+      "commit": "2a4719e2d8fb0ca6a8debc80d3410e33da3172d9",
+      "workspace_fingerprint": "1f31ceb2fa62d83631179dad45f07b2a16fd453e3027cf709f0c033fc03868c8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_review_repeats.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.415,
+      "started_at": "2026-09-12T18:34:39.535Z",
+      "commit": "2a4719e2d8fb0ca6a8debc80d3410e33da3172d9",
+      "workspace_fingerprint": "7d65e7064f93d4bd0a778cd0ac8a4dd632af3be5cad34752a4671981e0688b50",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_batch_evidence.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.28,
+      "started_at": "2026-09-12T18:34:40.589Z",
+      "commit": "2a4719e2d8fb0ca6a8debc80d3410e33da3172d9",
+      "workspace_fingerprint": "7d65e7064f93d4bd0a778cd0ac8a4dd632af3be5cad34752a4671981e0688b50",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_review_repeats.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.448,
+      "started_at": "2026-09-12T18:35:27.911Z",
+      "commit": "2a4719e2d8fb0ca6a8debc80d3410e33da3172d9",
+      "workspace_fingerprint": "2dad361e557838aa2d706f02b4a7ef44e18310790c0b7b985c85a9d1f1d52d5c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_batch_evidence.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.282,
+      "started_at": "2026-09-12T18:35:28.998Z",
+      "commit": "2a4719e2d8fb0ca6a8debc80d3410e33da3172d9",
+      "workspace_fingerprint": "2dad361e557838aa2d706f02b4a7ef44e18310790c0b7b985c85a9d1f1d52d5c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Separate offline retained-batch repeat adjudicator binds a predispatch request plan to postexecution custody, validates all retained members, retains censored denominators, and reports per-engine repeated timing without claiming certification or equivalent regulators. Legacy discovery pairer is unchanged.",
+    "risks": [
+      "Independent replay, authenticated predeclaration chronology, and warm-JIT qualification remain explicitly false.",
+      "PARI approximate regulators and Hecke enclosures remain different numerical guarantees.",
+      "Focused Python regressions and merge invariants pass; the broader Node unit/build validation was not run in this bounded slice. Keep PR draft pending integration validation."
+    ],
+    "next_steps": [
+      "Review the predeclared-plan/postexecution-custody interface and report labels before using coordinator-owned receipts.",
+      "Integrate after prerequisite PR273 and run broader required validation before marking ready. No CAS or measurement jobs were dispatched."
+    ]
+  }
+}
