@@ -14,7 +14,11 @@ const moduleRoot = path.join(root, "src", "lib");
 const contractProgram = String.raw`
 import json
 import sys
-sys.path.insert(0, ${JSON.stringify(moduleRoot)})
+# Append only the mathematical package root: src/lib also contains Sage.js
+# stdlib replacements that must never shadow CPython's standard library.
+sys.path.append(${JSON.stringify(moduleRoot)})
+import unicodedata
+assert not getattr(unicodedata, "__file__", "").startswith(${JSON.stringify(moduleRoot)})
 from sagejs.polynomial_algorithms.groebner_contract import *
 from sagejs.polynomial_algorithms.generic_groebner import GroebnerBudget
 from fractions import Fraction

@@ -531,6 +531,38 @@ formulas. Its native first-run timings (about 11 seconds for the new route and
 5 seconds for the subsequent reference) include unequal lazy initialization
 and must not be presented as a warmed native speed comparison.
 
+### Qualification recovery, 2026-09-12
+
+The environment-policy block is resolved. Attempt 2 of
+[CI 34019965064](https://github.com/sagemathinc/sagejs/actions/runs/34019965064)
+actually builds and authenticates the same production artifact as the local
+candidate, `sha256:e8c5ee080b4c4253ca0515917db05220f5326d42c78a250263f128a9dbf54ad0`,
+from `cb604c65e`. It then fails the aggregate Brotli limit (16,876,678 bytes
+versus 16,334,290). This is not yet a passing payload receipt.
+
+The macOS CPython contract fixture fails because prepending `src/lib` shadows
+CPython's `unicodedata` with the Sage.js runtime replacement. Appending the
+mathematical package path instead preserves CPython stdlib precedence; a new
+assertion verifies that precedence explicitly. The focused contract, generated
+scalar facade, and polynomial resource checks pass locally (8 tests).
+
+The public Wasm fallback inventory is refreshed against the actual bindings:
+263 portable N-API decisions and 60 directly referenced methods without an
+identically named Wasm backend method. `fqCoordinates` is such a method, not a
+claim of missing coordinate support: Wasm uses the generated coordinate-byte
+resource boundary. The inherited character-Hecke implementations are no longer
+listed as absent. The serialization-only size guard admits the reviewed
+59,034-byte closure (previously 53,551 bytes), reflecting inherited modular-form
+and abelian-variety codecs; its ceiling is 60,000 bytes. Both resource tests,
+including forced-GC ownership cleanup, and the source inventory check pass.
+
+These are test/packaging-maintenance changes, not changes to the authenticated
+mathematical source closure. Fresh full production geometry reruns are in
+progress; missing historical temporary logs are not counted as passes.
+The lane-only `parallel:check` cannot select one task in this integration
+worktree, which inherits 383 live task manifests; this is recorded rather than
+changing other lanes' contracts.
+
 ## Still required
 
 - F4 source-current native four-platform public tests, production Node-Wasm,
