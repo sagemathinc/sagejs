@@ -190,6 +190,76 @@ assert containers._dict_metadata(mapping).state == containers._DICT_CANONICAL
 `, canonical);
 });
 
+test("native BigInt tokens may collide across domains and primitive keys", async (t) => {
+  await run(t, `
+def native_domain(group):
+    owner = runtime.object.create(None)
+    owner.group = group
+    return owner
+
+class NativeKey:
+    def __init__(self, value, owner):
+        self.value = value
+        self.owner = owner
+    def __eq__(self, other):
+        if type(other) is NativeKey:
+            return self.value == other.value and self.owner.group == other.owner.group
+        return self.owner.group == "number" and self.value == other
+
+def native_probe(key):
+    if type(key) is not NativeKey:
+        return None
+    descriptor = runtime.object.create(None)
+    descriptor.domain = key.owner
+    descriptor.guard = key.owner
+    descriptor.token = runtime.bigint(key.value)
+    return descriptor
+
+def native_valid(guard):
+    return True
+
+containers._register_dict_canonical_provider(native_probe, native_valid)
+# Above 2^53, primitive normalization preserves this exact native BigInt token.
+primitive = runtime.bigint("1208925819614629174706176")
+for equivalent in (False, True):
+    left_domain = native_domain("number" if equivalent else "left")
+    right_domain = native_domain("number" if equivalent else "right")
+    left = NativeKey(primitive, left_domain)
+    right = NativeKey(primitive, right_domain)
+    assert native_probe(left).domain is not native_probe(right).domain
+    assert native_probe(left).token is native_probe(right).token
+    assert native_probe(left).token is primitive
+    assert runtime.jstype(native_probe(left).token) == "bigint"
+    entries = ((left, "left"), (right, "right"), (primitive, "primitive"))
+    for order in ((0, 1, 2), (2, 0, 1), (1, 2, 0)):
+        mapping = {}
+        for index in order:
+            mapping[entries[index][0]] = entries[index][1]
+        if equivalent:
+            assert len(mapping) == 1
+            assert next(iter(mapping)) is entries[order[0]][0]
+            mapping[NativeKey(primitive, left_domain)] = "replacement"
+            assert mapping[NativeKey(primitive, right_domain)] == "replacement"
+            assert mapping[primitive] == "replacement"
+            assert next(iter(mapping)) is entries[order[0]][0]
+        else:
+            assert len(mapping) == 3
+            for position in range(3):
+                assert list(mapping)[position] is entries[order[position]][0]
+            assert mapping[NativeKey(primitive, left_domain)] == "left"
+            assert mapping[NativeKey(primitive, right_domain)] == "right"
+            assert mapping[primitive] == "primitive"
+            mapping[NativeKey(primitive, left_domain)] = "left replacement"
+            mapping[NativeKey(primitive, right_domain)] = "right replacement"
+            assert mapping[primitive] == "primitive"
+            assert mapping[NativeKey(primitive, left_domain)] == "left replacement"
+            assert mapping[NativeKey(primitive, right_domain)] == "right replacement"
+            assert len(mapping) == 3
+            for position in range(3):
+                assert list(mapping)[position] is entries[order[position]][0]
+`);
+});
+
 test("invalid guards suppress old normalized hits and misses in canonical and mixed tables", async (t) => {
   await run(t, `
 first = Key(1)

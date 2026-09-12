@@ -1201,10 +1201,12 @@ _DICT_METADATA = runtime.reflect.construct(
 def _register_dict_canonical_provider(probe: Any, valid: Any) -> None:  # pyright: ignore[reportUnusedFunction]
     """Register a private first-party canonical family, not a public hash hook.
 
-    `probe(key)` returns an opaque `{domain, token, guard}` descriptor, None
+    `probe(key)` returns a native `{domain, token, guard}` descriptor, None
     for an unrecognized key, or False for a recognized but invalid family.
     `valid(guard)` must remain true only for the original immutable equality
-    contract. Domain, token, guard and provider comparisons use native identity.
+    contract. Tokens are stable native identities or values canonical within
+    their domain; they need not be disjoint across domains or primitive keys.
+    Domain, guard and provider comparisons use native identity.
     """
     if not runtime.strict_equal(
         runtime.jstype(probe), "function"

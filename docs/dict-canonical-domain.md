@@ -7,10 +7,13 @@ callable identities. `probe(key)` returns a native `{domain, token, guard}` reco
 `valid(guard)` must return exactly `True` while the original contract holds.
 
 The provider owns the proof that immutable admitted keys in one domain compare
-equal exactly when their opaque tokens have the same native identity. Tokens,
-domains, guards and provider records are compared by identity. A token cache
-reachable through a public parent attribute cannot supply that authority. A
-provider must guard the actual equality/normalization/representation paths; an
+equal exactly when their tokens have the same stable native identity or value.
+An opaque object or exact native BigInt can be a token; tokens need not be
+disjoint across domains or from native primitive keys. Domain, guard and provider
+records are compared by identity, so a foreign token collision must still compare
+retained original keys. A token cache reachable through a public parent attribute
+cannot supply that authority. A provider must guard the actual
+equality/normalization/representation paths; an
 inherited user hook alone does not establish admission. Residue-provider admission
 and its mutation guards are tested separately.
 
@@ -44,6 +47,9 @@ Per-map iterator counts test zero retained-key scans at sizes 32, 128 and 512
 without replacing the guarded `containers.equals` function. Mixed primitive/object
 equality is covered in both insertion orders, along with invalid hits/misses,
 foreign domains, retained identities, freezing and shared mutation paths.
+The native-token regression covers the same BigInt value in two domains and as
+a primitive key: unequal originals coexist, while equal replacements preserve
+the first original, including primitive-first and either-domain-first orders.
 
 Candidate validation commands:
 
@@ -58,8 +64,8 @@ The final command requires a freshly built combined containers/provider source;
 an unrelated generated runtime is not qualification. The unchanged algebra test
 with its 60-second gate, compiler/integration regressions, and generated-code and
 resource review remain required before any speed or merge-readiness claim. The
-formatted source resource check failed at 907726 bytes against the unchanged
-903000 core-runtime allowance (base 900094, growth 7632). `pnpm test:changed`
+initial storage candidate's formatted source check failed at 907726 bytes against
+the unchanged 903000 core-runtime allowance (base 900094, growth 7632). `pnpm test:changed`
 stops at the same merge/package gate, before any build. This lane does not raise
 the allowance or relax mathematical, execution-memory or timeout limits. This is an unqualified
 source candidate until the coordinator resolves that explicit resource gate and
