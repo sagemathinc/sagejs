@@ -1,0 +1,315 @@
+{
+  "schema": "sagejs.general-frontier.hecke-proof-controls.v1",
+  "source_commit": "e55646d011b94bbca1db8e7139fee88d7774c92e",
+  "scope": "Local tiny proof-policy controls; exact toy witness checks, not independent completeness or matched performance.",
+  "completion": {
+    "completed_requests": 13,
+    "elapsed_seconds": 30.211906310985796,
+    "independent_replay": false,
+    "process_closed": true,
+    "qualification_evidence": false,
+    "status": "ok"
+  },
+  "completion_sha256": "bc5e8b40c03688a5867f90b65f64ae308a556fbf7b4a2969bcbe969cc4b98629",
+  "decoded_sha256": "1a5d3e4422f140e04249ecc4fe267f16b6f248975b42abaa8d794ad87b182366",
+  "attempts_retained": [
+    1,
+    2,
+    3
+  ],
+  "prior_attempts": "Two startup failures retained; the successful third attempt was separately prepaid after pinned environment repair.",
+  "runtime": {
+    "julia": "1.12.7",
+    "hecke": "0.40.0",
+    "nemo": "0.56.1",
+    "executable_sha256": "582718c20c563d824b88a08e2a9d0afcf5015b3053f425697cecc79ec4e9ea36",
+    "hecke_source_inventory_sha256": "303572bb02bbb097b7ef01b5e4c15b6ecf8a2c7d70952422d5f463673c892eff",
+    "cache_inventory_sha256": "ab87fc09d384836f8c5f5e863c320588bd7685bd99c88542e752676eb3d73dab"
+  },
+  "requests": [
+    {
+      "id": "proof-conditional-grh-rank-zero-100",
+      "bits": 100,
+      "iterations": 1,
+      "proof_policy": "conditional-grh",
+      "proof_execution": null,
+      "retained_iteration": 1,
+      "batch_outputs_complete": true,
+      "class_number": "2",
+      "class_invariants": [
+        "2"
+      ],
+      "discriminant": "-20",
+      "signature": [
+        0,
+        1
+      ],
+      "regulator_guarantee": "absolute-radius-less-than-2^-bits"
+    },
+    {
+      "id": "proof-conditional-grh-rank-one-100",
+      "bits": 100,
+      "iterations": 1,
+      "proof_policy": "conditional-grh",
+      "proof_execution": null,
+      "retained_iteration": 1,
+      "batch_outputs_complete": true,
+      "class_number": "1",
+      "class_invariants": [],
+      "discriminant": "8",
+      "signature": [
+        2,
+        0
+      ],
+      "regulator_guarantee": "absolute-radius-less-than-2^-bits"
+    },
+    {
+      "id": "proof-conditional-grh-torsion-eight-100",
+      "bits": 100,
+      "iterations": 1,
+      "proof_policy": "conditional-grh",
+      "proof_execution": null,
+      "retained_iteration": 1,
+      "batch_outputs_complete": true,
+      "class_number": "1",
+      "class_invariants": [],
+      "discriminant": "256",
+      "signature": [
+        0,
+        2
+      ],
+      "regulator_guarantee": "absolute-radius-less-than-2^-bits"
+    },
+    {
+      "id": "proof-conditional-grh-rank-zero-200",
+      "bits": 200,
+      "iterations": 1,
+      "proof_policy": "conditional-grh",
+      "proof_execution": null,
+      "retained_iteration": 1,
+      "batch_outputs_complete": true,
+      "class_number": "2",
+      "class_invariants": [
+        "2"
+      ],
+      "discriminant": "-20",
+      "signature": [
+        0,
+        1
+      ],
+      "regulator_guarantee": "absolute-radius-less-than-2^-bits"
+    },
+    {
+      "id": "proof-conditional-grh-rank-one-200",
+      "bits": 200,
+      "iterations": 1,
+      "proof_policy": "conditional-grh",
+      "proof_execution": null,
+      "retained_iteration": 1,
+      "batch_outputs_complete": true,
+      "class_number": "1",
+      "class_invariants": [],
+      "discriminant": "8",
+      "signature": [
+        2,
+        0
+      ],
+      "regulator_guarantee": "absolute-radius-less-than-2^-bits"
+    },
+    {
+      "id": "proof-conditional-grh-torsion-eight-200",
+      "bits": 200,
+      "iterations": 1,
+      "proof_policy": "conditional-grh",
+      "proof_execution": null,
+      "retained_iteration": 1,
+      "batch_outputs_complete": true,
+      "class_number": "1",
+      "class_invariants": [],
+      "discriminant": "256",
+      "signature": [
+        0,
+        2
+      ],
+      "regulator_guarantee": "absolute-radius-less-than-2^-bits"
+    },
+    {
+      "id": "proof-unconditional-rank-zero-100",
+      "bits": 100,
+      "iterations": 1,
+      "proof_policy": "unconditional",
+      "proof_execution": {
+        "class_group_call_nanoseconds": "404674732",
+        "class_group_grh": false,
+        "completed_iterations": 1,
+        "method": "hecke-class-and-unit-grh-false",
+        "unit_group_call_nanoseconds": "6860",
+        "unit_group_grh": false
+      },
+      "retained_iteration": 1,
+      "batch_outputs_complete": true,
+      "class_number": "2",
+      "class_invariants": [
+        "2"
+      ],
+      "discriminant": "-20",
+      "signature": [
+        0,
+        1
+      ],
+      "regulator_guarantee": "absolute-radius-less-than-2^-bits"
+    },
+    {
+      "id": "proof-unconditional-rank-one-100",
+      "bits": 100,
+      "iterations": 1,
+      "proof_policy": "unconditional",
+      "proof_execution": {
+        "class_group_call_nanoseconds": "7737648",
+        "class_group_grh": false,
+        "completed_iterations": 1,
+        "method": "hecke-class-and-unit-grh-false",
+        "unit_group_call_nanoseconds": "371050",
+        "unit_group_grh": false
+      },
+      "retained_iteration": 1,
+      "batch_outputs_complete": true,
+      "class_number": "1",
+      "class_invariants": [],
+      "discriminant": "8",
+      "signature": [
+        2,
+        0
+      ],
+      "regulator_guarantee": "absolute-radius-less-than-2^-bits"
+    },
+    {
+      "id": "proof-unconditional-torsion-eight-100",
+      "bits": 100,
+      "iterations": 1,
+      "proof_policy": "unconditional",
+      "proof_execution": {
+        "class_group_call_nanoseconds": "15172946",
+        "class_group_grh": false,
+        "completed_iterations": 1,
+        "method": "hecke-class-and-unit-grh-false",
+        "unit_group_call_nanoseconds": "1023450",
+        "unit_group_grh": false
+      },
+      "retained_iteration": 1,
+      "batch_outputs_complete": true,
+      "class_number": "1",
+      "class_invariants": [],
+      "discriminant": "256",
+      "signature": [
+        0,
+        2
+      ],
+      "regulator_guarantee": "absolute-radius-less-than-2^-bits"
+    },
+    {
+      "id": "proof-unconditional-rank-zero-200",
+      "bits": 200,
+      "iterations": 1,
+      "proof_policy": "unconditional",
+      "proof_execution": {
+        "class_group_call_nanoseconds": "7235408",
+        "class_group_grh": false,
+        "completed_iterations": 1,
+        "method": "hecke-class-and-unit-grh-false",
+        "unit_group_call_nanoseconds": "2920",
+        "unit_group_grh": false
+      },
+      "retained_iteration": 1,
+      "batch_outputs_complete": true,
+      "class_number": "2",
+      "class_invariants": [
+        "2"
+      ],
+      "discriminant": "-20",
+      "signature": [
+        0,
+        1
+      ],
+      "regulator_guarantee": "absolute-radius-less-than-2^-bits"
+    },
+    {
+      "id": "proof-unconditional-rank-one-200",
+      "bits": 200,
+      "iterations": 1,
+      "proof_policy": "unconditional",
+      "proof_execution": {
+        "class_group_call_nanoseconds": "8748428",
+        "class_group_grh": false,
+        "completed_iterations": 1,
+        "method": "hecke-class-and-unit-grh-false",
+        "unit_group_call_nanoseconds": "344350",
+        "unit_group_grh": false
+      },
+      "retained_iteration": 1,
+      "batch_outputs_complete": true,
+      "class_number": "1",
+      "class_invariants": [],
+      "discriminant": "8",
+      "signature": [
+        2,
+        0
+      ],
+      "regulator_guarantee": "absolute-radius-less-than-2^-bits"
+    },
+    {
+      "id": "proof-unconditional-torsion-eight-200",
+      "bits": 200,
+      "iterations": 1,
+      "proof_policy": "unconditional",
+      "proof_execution": {
+        "class_group_call_nanoseconds": "17010086",
+        "class_group_grh": false,
+        "completed_iterations": 1,
+        "method": "hecke-class-and-unit-grh-false",
+        "unit_group_call_nanoseconds": "1049840",
+        "unit_group_grh": false
+      },
+      "retained_iteration": 1,
+      "batch_outputs_complete": true,
+      "class_number": "1",
+      "class_invariants": [],
+      "discriminant": "256",
+      "signature": [
+        0,
+        2
+      ],
+      "regulator_guarantee": "absolute-radius-less-than-2^-bits"
+    },
+    {
+      "id": "proof-unconditional-batch",
+      "bits": 100,
+      "iterations": 2,
+      "proof_policy": "unconditional",
+      "proof_execution": {
+        "class_group_call_nanoseconds": "15504076",
+        "class_group_grh": false,
+        "completed_iterations": 2,
+        "method": "hecke-class-and-unit-grh-false",
+        "unit_group_call_nanoseconds": "671720",
+        "unit_group_grh": false
+      },
+      "retained_iteration": 2,
+      "batch_outputs_complete": false,
+      "class_number": "1",
+      "class_invariants": [],
+      "discriminant": "8",
+      "signature": [
+        2,
+        0
+      ],
+      "regulator_guarantee": "absolute-radius-less-than-2^-bits"
+    }
+  ],
+  "caveats": [
+    "Only the final output of a multi-iteration v3 request is retained.",
+    "Regulator enclosures are not matched with PARI working-precision approximations.",
+    "Source-bound proof calls are not detached completeness certificates.",
+    "This does not qualify M0, M1 or a competitive performance panel."
+  ]
+}

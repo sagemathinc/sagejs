@@ -1,0 +1,31 @@
+{
+  "schema": "sagejs.general-frontier.effort-amendment.v1",
+  "date": "2026-09-12",
+  "authority": "User explicitly answered approved. Proceed to the proposed sixteen additional aggregate active-agent M0 hours.",
+  "plan_commit": "09e9d35328bb3a42834aaf81699c95f99034446c",
+  "plan_sha256": "aceadd86d81f796740e9fa1e02c5d1a57854453ecc0d1774f3f09bf2dcd14403",
+  "milestone": "M0",
+  "previous_active_agent_hour_limit": 40,
+  "additional_active_agent_hours": 16,
+  "cumulative_active_agent_hour_limit": 56,
+  "accounting_reset": false,
+  "last_checkpoint_active_agent_hours": 39.5,
+  "last_checkpoint_utc": "2026-09-12T11:25:49Z",
+  "controlled_cpu_second_limit": 432000,
+  "controlled_seconds_previously_charged": 96572.2998570711,
+  "ledger_sha256_at_approval": "7586c74c130cd24cc3cbfc48f316348749df915900aabc73016b25c5ff369cbd",
+  "work_packages": [
+    {"id": "pinned-hecke-environment", "active_agent_hour_limit": 4},
+    {"id": "matched-reference-qualification", "active_agent_hour_limit": 4},
+    {"id": "stress-unconditional-admission", "active_agent_hour_limit": 4},
+    {"id": "baseline-report-review", "active_agent_hour_limit": 4}
+  ],
+  "unchanged": [
+    "Frozen inputs, selection and reserve policies",
+    "All mathematical, replay, performance and platform acceptance criteria",
+    "120 controlled CPU-hour M0 ceiling and prior failed-run charges",
+    "M1 effort and all optimization-campaign budgets",
+    "Existing source, startup, memory, timeout and verifier limits"
+  ],
+  "stopping_rule": "Report unmet gates and request a new decision if a work-package or cumulative ceiling is exhausted. Do not reinterpret the extension as mathematical qualification."
+}
