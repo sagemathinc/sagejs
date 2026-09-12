@@ -1,0 +1,19 @@
+✔ finite sums have isolated, source-transparent binary64 lowering (342.99444ms)
+✔ binary64 compilation and execution need no exact-arithmetic prefix (1024.923282ms)
+✔ ordinary Sage.js source preserves cancellation and final half-even rounding (18598.972491ms)
+✔ packed summation agrees bit-for-bit with exact rationals and CPython (1031.848961ms)
+﹣ isolated packed sums preserve bounds under address and undefined-behavior sanitizers (0.38452ms) # set SAGEJS_NUMERICAL_SANITIZER_TESTS=1 on a qualified sanitizer host
+✔ packed sums execute in emitted Wasm without host callbacks (810.287146ms)
+✔ binary64 comparisons and conditionals preserve inspectable source (318.382323ms)
+✔ binary64 branches agree in JavaScript, native, and CPython execution (4037.533774ms)
+(node:131868) ExperimentalWarning: WASI is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Float64 buffers execute in standalone and browser-shaped Wasm loaders (272.916208ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 27090.50047

@@ -50,16 +50,14 @@ test("generated wrapper identifiers are hygienic", async () => {
   assert.equal(artifacts.hostIsolation.isolated, true);
   assert.equal(artifacts.hostIsolation.hostCallbacks, 0);
 
-  for (const name of ["compiled_record_status", "compiled_record_status_gmp"]) {
-    const wrapper = emittedWrapper(artifacts.adapterSource, name);
-    assert.match(wrapper, /uint64_t sagejs_wrapper_status;/);
-    assert.match(
-      wrapper,
-      /sagejs_native_status sagejs_wrapper_status_1 = \{0, NULL\};/,
-    );
-    assert.match(wrapper, /uint64_t sagejs_wrapper_result;/);
-    assert.match(wrapper, /int sagejs_wrapper_result_1;/);
-  }
+  // An undecorated lexical helper belongs in the isolated call graph, not
+  // the host export table. Inspect the public caller's colliding names.
+  assert.doesNotMatch(artifacts.adapterSource, /static napi_value compiled_record_status/);
+  const caller = emittedWrapper(artifacts.adapterSource, "compiled_identifier_hygiene_witness");
+  assert.match(caller, /sagejs_native_status status = \{0, NULL\};/);
+  assert.match(caller, /uint64_t sagejs_status = 0;/);
+  assert.match(caller, /uint64_t sagejs_result = 0;/);
+  assert.match(caller, /napi_value result = NULL;/);
 
   const tuple = emittedWrapper(
     artifacts.adapterSource,

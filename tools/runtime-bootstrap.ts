@@ -6,7 +6,7 @@
  * architecture, then compiles the unchanged source normally.
  */
 
-import { mkdirSync, statSync } from "fs";
+import { mkdirSync, realpathSync, statSync } from "fs";
 import { homedir } from "os";
 import { dirname, join, resolve } from "path";
 import { createRequire } from "module";
@@ -605,7 +605,14 @@ export function runRuntimeBootstrap(
         Object.hasOwn(taskSources, filename)
       ? Reflect.get(taskSources, filename)
       : undefined;
-    return resolve(typeof mapped === "string" && mapped ? mapped : filename);
+    const absolute = resolve(typeof mapped === "string" && mapped ? mapped : filename);
+    // Match the compiler's physical identity for symlinked source paths,
+    // retaining lexical names for embedded/virtual resources without a file.
+    try {
+      return realpathSync(absolute);
+    } catch {
+      return absolute;
+    }
   };
   const usableNativeCandidate = (candidate: unknown): boolean => {
     if (typeof candidate !== "function") return false;
@@ -781,7 +788,7 @@ export function runRuntimeBootstrap(
         "private native-function metadata overlaps callable exports",
       );
     }
-    nativeModules.set(resolve(filename), {
+    nativeModules.set(nativeSourcePath(filename), {
       sourceHash,
       functions,
       privateFunctions: new Set(validated.privateFunctions),
