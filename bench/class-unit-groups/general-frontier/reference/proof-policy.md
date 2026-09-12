@@ -127,6 +127,25 @@ changing Julia's strict existing-image policy. Historical live results above
 remain tied to the pre-split source; the split requires its own authorized live
 gate before making any new runtime claim.
 
+The post-split source `878ff5e38eb163bc139a7153a4257f40aab89402` subsequently
+passed its single separately authorized Hecke matrix: all 24 requests, 36
+retained/toy-replayed outputs, and 18 unconditional proof iterations, in
+26.231608049 seconds including startup and replay. The process closed and all
+ten driver/source/executable/project/manifest pins matched before and after.
+No retry or opt work occurred. Raw custody is
+`build/general-frontier/reference-batch-evidence-live-v2-testfree/hecke` in the
+backed-up campaign worktree; its parent `source-after-and-custody.json` records
+all raw-file hashes and explicit post-run pin verification. This does not attest
+the complete Julia dependency/cache tree or constitute performance qualification.
+
+The transitive source deployment set for this Hecke diagnostic is
+`hecke/{screen.jl,toy-replay.jl,transport.jl}`,
+`persistent/{hecke-bootstrap.jl,local-smoke.py,supervisor.py}`, and
+`runner/screen-batch.py`, all relative to this reference directory. Deployment
+must also bind the existing Julia executable, project/manifest and separately
+reviewed dependency environment. Do not reuse an older whitelist that omits
+`toy-replay.jl` or copy unrelated test-framework caches.
+
 ## Complete-request boundary
 
 Every iteration constructs a fresh field and performs all requested work. The
