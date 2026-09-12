@@ -1,0 +1,78 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "finite-field-canonical-domain",
+  "title": "Finite Field Canonical Domain",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide exact finite residue canonical dictionary domains and guards for the bounded M1 dictionary lane",
+  "base_commit": "d27c1b123d699de33b0a0502206e3d356515d090",
+  "claims": [
+    "src/baselib/finite_fields.py",
+    "test/finite-field-canonical-domain.cjs",
+    "docs/finite-field-canonical-domain.md"
+  ],
+  "dependencies": [
+    "dict-canonical-domain"
+  ],
+  "references": [
+    "Original common source base0c2945e1de400b0ee66150ae523491f7c712ce0a; exact storage candidate d27c1b123d699de33b0a0502206e3d356515d090 is now the provider ownership base, not a claim that source-budget or runtime qualification passed.",
+    "Bounded M1 canonical-domain approach: at most4 aggregate active agent hours, including the storage/provider and independent review. Existing core source allowance remains903000; storage candidate907726 explicitly exceeds it. No execution-memory, mathematical, verifier or timeout limits change.",
+    "Independent safety note: /home/user/sagejs-worktrees/class-unit-rank-two-frontier/build/general-frontier/finite-residue-canonical-domain-safety-review-v1.md; original old-runtime immutability diagnostic retained separately and is not new-provider qualification."
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact prime/composite residue dictionary equality, provider mutation and subclass fail-closed tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "/usr/bin/time -v pnpm build",
+    "node --test test/dict-canonical-domain.cjs test/finite-field-canonical-domain.cjs test/dict-reinitialization-storage.cjs",
+    "node --test --test-name-pattern=compiler/algebra.py test/compiler.test.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.68,
+      "started_at": "2026-09-12T09:55:58.082Z",
+      "commit": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
+      "workspace_fingerprint": "1555ec797d48b43cd42e10ffa704caacaec6774b82bc19264332940cbab2366e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.606,
+      "started_at": "2026-09-12T10:01:04.560Z",
+      "commit": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
+      "workspace_fingerprint": "d35db149b508bf3c8dee58779863b1e24091fea29681bf8cdf8765f72b1ffe4e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Source candidate for guarded exact-residue dictionary domains. Combined same-source runtime and resource qualification is pending; this is not merge-ready or a class/unit speedup claim.",
+    "risks": [
+      "Companion core-runtime source exceeds its existing allowance. Separate generated-code/resource evidence and review must resolve that failed gate before publication.",
+      "Old-runtime tests exposed explicit object-setattr and reinitialization bypasses. The new provider freezes only admitted keys and guards the exact original dispatch; new-provider execution remains pending."
+    ],
+    "next_steps": [
+      "Build the exact combined candidate without modifying source caps, record generated-code/build/memory evidence, execute both focused suites and the unchanged60-second algebra gate, then reassess source layout or reviewed allowance."
+    ]
+  }
+}
