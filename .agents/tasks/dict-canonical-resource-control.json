@@ -1,0 +1,56 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dict-canonical-resource-control",
+  "title": "Dict Canonical Resource Control",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Read-only common-source developer build and resource control for guarded dictionary domains; no mathematical or compiler implementation changes",
+  "base_commit": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
+  "claims": [
+    "bench/dict-canonical-control/README.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "python3 /home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/bench/dict-canonical-domain/measure.py build/general-frontier/dict-control-build-v1.resource.json pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 800.251,
+      "started_at": "2026-09-12T10:34:21.184Z",
+      "commit": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
+      "workspace_fingerprint": "bfee2b0a2f867e4bd465fcd61af2ad29c29e8be9fb66c2a072e62bc137826601",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Completed the unmodified common-base developer resource control, not a product implementation or qualification. Runtime/compiler source remains exactly0c2945e1d; all observed failures are retained in the benchmark README and backed-up coordinator evidence.",
+    "risks": [
+      "Baseline algebra reaches its unchanged60s deadline and startup407.7ms exceeds its400ms gate; neither is relabeled as a passing baseline.",
+      "The parallel build receipt's task-run append invalidates the conservative whole-tree artifact fingerprint; source hashes and before/after metadata are preserved, and observations explicitly remain developer-only.",
+      "Full compiler and integration suites were not run for this read-only control; it does not claim current product readiness."
+    ],
+    "next_steps": [
+      "Compare the separately built direct-value-token candidate, review generated/runtime/memory costs, and retain unchanged source and execution limits until that review is complete."
+    ]
+  }
+}
