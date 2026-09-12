@@ -46,6 +46,41 @@ so this comparison does not isolate a causal PR effect. Do not label the local
 routine plan green or relax the threshold. Confirm the combined candidate on
 the standard CI runtime before promoting it.
 
+## Promotion evidence
+
+The exact candidate `3e0acee2ec89283951144e12b4c93018a0776a4f` subsequently
+passed [CI run 34696138258](https://github.com/sagemathinc/sagejs/actions/runs/34696138258):
+Linux x64 routine validation including startup, and Linux ARM64, macOS ARM64,
+and Windows x64 platform smoke/startup checks. It also passed
+[Chromium/Wasm parity run 34696139819](https://github.com/sagemathinc/sagejs/actions/runs/34696139819).
+The optimizer evidence assets were published and fetched into a fresh cache,
+where the normal reader verified their content identity. The promotion follow-up
+changes this audit only, not the validated implementation or generated evidence.
+
+An additional full compiler-corpus diagnostic initially lacked native addons.
+The native cache had no exact match. A direct-addon rebuild using the existing
+custom prefix failed because that layout lacked package-local eclib sources.
+Instead, the existing main direct addon passed the candidate's exact source,
+runtime, environment, and binary-hash validator and was copied into this worktree.
+The generated FFI adapter was then built from current source against the existing
+FLINT prefix (438 adapters); no dependency rebuild or source change was needed.
+
+With those adapters present, the full compiler corpus reported 24 passing,
+8 failing, and 34 explicitly disabled/historical fixtures. Every failing case
+was rerun on existing main `02a683d21` and reproduced the same failure:
+
+- `algebra.py`: child-process timeout at the existing 60-second limit.
+- `extension-field-capabilities.py`, `extension-multivariate.py`, and
+  `extension-sparse-polynomial.py`: missing `sagejs.kernels.polynomial.packed_prime_field`.
+- `extension-geometry.py`: missing `sagejs.polynomial_algorithms.field_capabilities`.
+- `extension-ideals.py`, `extension-zero-dimensional.py`, and `polynomial.py`:
+  missing `sagejs.polynomial_algorithms.extension_mpoly_backend`.
+
+These are retained baseline failures, not a passing full-corpus claim. The legacy
+whole-baselib harness uses explicit standalone import closures; the missing-module
+cases need a separate harness/closure follow-up. Do not silently disable these
+fixtures or raise the algebra timeout as part of this merge.
+
 ## Held dependency
 
 #244 at `9c46612c` contains the exact head of draft #260, `ce2aedd1`.
