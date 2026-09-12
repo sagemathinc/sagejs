@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `4f4ee615ed82b53ead7ef7e7dd7de36c5f038add513aa10cdbae523f93b889e9` (729 files, 14776921 bytes).
-Analyzed source bundle: `sha256:1ab67dc146a5d195788c028e9f3ec2f5e7b02fafd14957191b2995573ff4ed48`; compiler identity: `sha256:3f9d2e8fb0faed18f732fb2c096e2b65f7b989f35bb5152f448095d616b86bac`.
+Input identity: `d4640b73b5ae92aed741e438729b6aa61306467925589e7573d400d071825847` (729 files, 14777154 bytes).
+Analyzed source bundle: `sha256:82429215ec7edd635ef7c178e6f0bf37c17d150bdf7487f7f547289b339a82d1`; compiler identity: `sha256:79ec7f9f01b95150aea4c777a5e82efab7e0107ecc072bf8bd03db5aa148e743`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -49,11 +49,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 97451
+- Potential object-result sites: 97475
 - Collection-allocation sites: 11751
 - Known coercion sites: 20288
 - Potential boundary-call sites: 107
-- Unresolved call sites: 50097
+- Unresolved call sites: 50121
 - Selected-target allocations: 3 known; 53 runtime-dependent
 - Selected-target representation conversions: 3 known; 55 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent

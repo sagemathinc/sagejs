@@ -96,7 +96,7 @@ its parent integration and combined CI remain coordinated separately.
 
 The architecture aggregate retains the two inherited prose audit failures in
 `agents/python-property-mutation-followup.md:47` and
-`docs/general-class-unit-frontier.md:280` (the word `cowasm`). Package budgets,
+`docs/general-class-unit-frontier.md:280`. Package budgets,
 native/export/wasm checks preceding that audit pass; algebraic geometry,
 optimization engine and current optimizer-opportunity evidence pass separately.
 The aggregate is not represented as green, and no assertion or budget changed.
