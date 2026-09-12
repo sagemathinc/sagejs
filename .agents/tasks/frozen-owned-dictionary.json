@@ -1,0 +1,81 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "frozen-owned-dictionary",
+  "title": "Frozen Owned Dictionary",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Enforce shallow frozen instance authority across owned dictionary aliases",
+  "base_commit": "3716761bcd5c14ba344de40e13521040ac3c3261",
+  "claims": [
+    "src/lib/sagejs/_namespace.py",
+    "test/frozen-owned-dictionary.cjs",
+    "test/fixtures/frozen-owned-dictionary.py",
+    "test/fixtures/frozen-owned-dictionary-cost.py",
+    "test/fixtures/instance-slots-dict-gap.py",
+    "test/fixtures/frozen-instance-authority.py",
+    "docs/frozen-owned-dictionary.md"
+  ],
+  "dependencies": [
+    "frozen-instance-authority",
+    "dict-reinitialization-storage"
+  ],
+  "references": [
+    "PR255 fe9ffff10 and PR256 0c2945e1d"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Frozen instance alias mutation matrix, weak ownership, shallow nested value preservation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.822,
+      "started_at": "2026-09-12T09:42:45.974Z",
+      "commit": "3716761bcd5c14ba344de40e13521040ac3c3261",
+      "workspace_fingerprint": "916f7a41663ede617771e2cdeba1a4f27fddcf55c7bdaccdb4634522502ba2a0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.822,
+      "started_at": "2026-09-12T09:48:56.650Z",
+      "commit": "3716761bcd5c14ba344de40e13521040ac3c3261",
+      "workspace_fingerprint": "4709f83e9ec6a12409bef4b4e2c1310741021380fd9e2783bd0f760c9a76e645",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Weak owner array guards for exposed instance dictionaries, stable frozen own-data snapshots, and explicit shallow semantics. Source-reviewed diagnostics pass; metadata frozen active for final direct build and read-only qualification.",
+    "risks": [
+      "Pre-build mixed-artifact semantic and cost diagnostics are not candidate build qualification; final results belong in the PR handoff without rewriting this frozen metadata.",
+      "Protected writes retain about 3.4x local cost versus identical unguarded exposed writes (+0.35 microseconds); initial roughly 60x rejected design and all baseline samples remain documented.",
+      "Native fallback object.__setattr__ ignored Reflect.set(false), explicit dict.__new__, and slots plus dict layout remain separately tracked defects. No hostile Proxy transaction, deep freeze, or security boundary is claimed."
+    ],
+    "next_steps": [
+      "Complete own full build, verify current receipt, then run read-only focused, compiler, integration, portable, strict, and documentation checks.",
+      "Repeat cost sanity using exact built artifacts before adoption; retain weak/shared-owner correctness and ordinary dictionary controls.",
+      "Publish dependent PR with exact validation and unresolved compatibility limitations; do not mutate immutable predecessor evidence snapshots."
+    ]
+  }
+}
