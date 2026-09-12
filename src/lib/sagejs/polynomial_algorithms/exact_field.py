@@ -36,9 +36,8 @@ def _decimal(value: Any) -> int:
 
 
 class ExactField:
-    """Reviewed adapter for rational, prime, and finite-extension fields.
+    """Reviewed adapter for rational, finite, and simple absolute number fields.
 
-    Number fields intentionally remain unavailable until Milestone N. The
     private family tag is consumed only here, never in generic algorithms.
     This object does not assert that a polynomial operation is implemented;
     operation-level capability routing remains a separate decision.
@@ -61,10 +60,20 @@ class ExactField:
             self.characteristic = int(parent.characteristic())
             self.degree = int(parent.degree())
             self.cardinality = int(parent.cardinality())
+        elif kind == "NumberField":
+            if parent.defining_polynomial().parent().base_ring() is not sage.QQ:
+                raise NotImplementedError(
+                    "exact-field adapter requires a simple absolute number field over QQ"
+                )
+            self.family = "number-field"
+            self.characteristic = 0
+            self.degree = int(parent.degree())
+            self.cardinality = None
         else:
             raise NotImplementedError(
                 "exact polynomial coefficient adapter supports QQ, prime GF(p), "
-                "and simple finite extensions; received " + str(parent)
+                "simple finite extensions, and simple absolute number fields; received "
+                + str(parent)
             )
         if self.degree > MAX_COORDINATES:
             raise NotImplementedError(
@@ -76,11 +85,37 @@ class ExactField:
         # every coefficient in a transformation certificate.
         self._zero_value = parent(0)
         self._one_value = parent(1)
-        self._modulus_descriptor = (
+        self._modulus_descriptor: tuple[Any, ...] = (
             tuple(str(int(c)) for c in parent.modulus().coefficients())
             if self.family == "finite-extension"
             else tuple()
         )
+        if self.family == "number-field":
+            coefficients = parent.defining_polynomial().coefficients()
+            leading = coefficients[-1]
+            self._modulus_descriptor = tuple(
+                (
+                    str(int((c / leading).numerator())),
+                    str(int((c / leading).denominator())),
+                )
+                for c in coefficients
+            )
+            if (
+                any(
+                    len(component) > MAX_INTEGER_DIGITS
+                    for pair in self._modulus_descriptor
+                    for component in pair
+                )
+                or sum(
+                    len(component)
+                    for pair in self._modulus_descriptor
+                    for component in pair
+                )
+                > MAX_COEFFICIENT_BYTES
+            ):
+                raise ValueError(
+                    "number-field defining polynomial exceeds codec limits"
+                )
 
     def descriptor(self) -> dict[str, Any]:
         """Mathematical identity, without cosmetic generator names or handles."""
@@ -89,7 +124,9 @@ class ExactField:
             "family": self.family,
             "characteristic": str(self.characteristic),
             "degree": self.degree,
-            "modulus": list(self._modulus_descriptor),
+            "modulus": [list(pair) for pair in self._modulus_descriptor]
+            if self.family == "number-field"
+            else list(self._modulus_descriptor),
             "basis": "power",
         }
 
@@ -98,7 +135,7 @@ class ExactField:
         return {
             "field": self.descriptor(),
             "generator": self.parent.variable_name()
-            if self.family == "finite-extension"
+            if self.family in ("finite-extension", "number-field")
             else None,
         }
 
@@ -144,6 +181,15 @@ class ExactField:
             return [int(value.numerator()), int(value.denominator())]
         if self.family == "prime":
             return [int(value)]
+        if self.family == "number-field":
+            # Flatten canonical numerator/denominator pairs. Unlike a finite
+            # field, rational coordinates must never be truncated to integers.
+            result = []
+            for coefficient in value.list():
+                result.extend(
+                    [int(coefficient.numerator()), int(coefficient.denominator())]
+                )
+            return result
         coefficients = value.polynomial().coefficients()
         return [
             int(coefficients[i]) if i < len(coefficients) else 0
@@ -153,7 +199,7 @@ class ExactField:
     def from_coordinates(self, coordinates: list[Any]) -> Any:
         if any(not isinstance(c, int) or isinstance(c, bool) for c in coordinates):
             raise ValueError("exact-field coordinates must be exact integers")
-        expected = 2 if self.family == "rational" else self.degree
+        expected = self._coordinate_width()
         if len(coordinates) != expected:
             raise ValueError(
                 "exact-field coordinate width does not match its descriptor"
@@ -165,6 +211,17 @@ class ExactField:
             if self.coordinates(value) != coordinates:
                 raise ValueError("rational coordinates must be relatively prime")
             return value
+        if self.family == "number-field":
+            rational = ExactField(sage.QQ)
+            coefficients = [
+                rational.from_coordinates(coordinates[i : i + 2])
+                for i in range(0, len(coordinates), 2)
+            ]
+            result = self.zero()
+            generator = self.parent.gen()
+            for coefficient in reversed(coefficients):
+                result = result * generator + self.parent(coefficient)
+            return result
         if any(c < 0 or c >= self.characteristic for c in coordinates):
             raise ValueError(
                 "finite-field coordinates must be canonical prime residues"
@@ -200,7 +257,7 @@ class ExactField:
         if record["abi"] != COEFFICIENT_ABI or record["field"] != self.descriptor():
             raise ValueError("exact-field coefficient descriptor mismatch")
         coordinates = record["coordinates"]
-        expected = 2 if self.family == "rational" else self.degree
+        expected = self._coordinate_width()
         if not isinstance(coordinates, list) or len(coordinates) != expected:
             raise ValueError("invalid exact-field coordinate vector")
         if any(not isinstance(c, str) for c in coordinates):
@@ -208,6 +265,13 @@ class ExactField:
         if sum(len(c) for c in coordinates) > MAX_COEFFICIENT_BYTES:
             raise ValueError("exact-field coefficient exceeds the codec byte limit")
         return self.from_coordinates([_decimal(c) for c in coordinates])
+
+    def _coordinate_width(self) -> int:
+        if self.family == "rational":
+            return 2
+        if self.family == "number-field":
+            return 2 * self.degree
+        return self.degree
 
     def elements(self, limit: int) -> Iterator[Any]:
         """Enumerate a finite field only after checking its full cardinality."""
