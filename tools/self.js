@@ -21,6 +21,7 @@ var {
 
 const COMPILER_BASELIB_MODULES = new Set([
   "__future__.py",
+  "bootstrap_shared.py",
   "builtins.py",
   "compiler_bootstrap.py",
   "containers.py",
@@ -30,6 +31,14 @@ const COMPILER_BASELIB_MODULES = new Set([
   "runtime_primitives.py",
   "str.py",
 ]);
+
+function supportsCompactStatements(PyLang) {
+  const probe = new PyLang.OutputStream({ beautify: false });
+  probe.print("(() => { const value = 1; return value; })()");
+  probe.semicolon();
+  probe.print("next");
+  return probe.get().endsWith("();next");
+}
 
 async function compile_baselib(PyLang, src_path, compiler_only = false) {
   let supportsPythonOrdering = false;
@@ -56,11 +65,7 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
   // on the next pass without stripping names, docstrings or annotations.
   let beautify = true;
   if (compiler_only) {
-    const probe = new PyLang.OutputStream({ beautify: false });
-    probe.print("(() => { const value = 1; return value; })()");
-    probe.semicolon();
-    probe.print("next");
-    beautify = !probe.get().endsWith("();next");
+    beautify = !supportsCompactStatements(PyLang);
   }
   const { createPythonCompilerFrontend } = require("./python/compiler-frontend");
   const frontend = PyLang.AST_AnnotatedAssignment
@@ -88,6 +93,8 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
   items.sort(function (left, right) {
     if (left === "runtime_primitives.py") return -1;
     if (right === "runtime_primitives.py") return 1;
+    if (left === "bootstrap_shared.py") return -1;
+    if (right === "bootstrap_shared.py") return 1;
     if (left === "builtins.py") return -1;
     if (right === "builtins.py") return 1;
     return left.localeCompare(right);
@@ -224,7 +231,8 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
     // values later in the same deterministic sequence.
     modules.sort(function (left, right) {
       const priority = function (module) {
-        if (module.filename === "runtime_primitives.py") return 0;
+        if (module.filename === "runtime_primitives.py") return -1;
+        if (module.filename === "bootstrap_shared.py") return 0;
         if (
           module.filename === "sagejs_bootstrap.py" ||
           module.filename === "compiler_bootstrap.py"
@@ -454,7 +462,11 @@ async function compile(
   // explicit; generated Python and ordinary baselib modules default to Python
   // truth testing.
   output_options = {
-    beautify: true,
+    // The private compiler implementation follows its bootstrap's compact
+    // formatting policy. Keep names and metadata intact; ordinary user output
+    // and the readable full baselib retain their separate formatting policies.
+    // Stage zero still uses readable output until separators are safe.
+    beautify: !supportsCompactStatements(PyLang),
     baselib_plain: compiler_baselib.pretty,
   };
   try {
@@ -467,6 +479,13 @@ async function compile(
   try {
     new PyLang.OutputStream({ python_ordering: false });
     output_options.python_ordering = false;
+  } catch (_error) {}
+
+  try {
+    // Only private self-hosting opts in. Ordinary Python and baselib retain
+    // authoritative namespace reads; the immutable seed lacks this option.
+    new PyLang.OutputStream({ private_compiler_import_reads: true });
+    output_options.private_compiler_import_reads = true;
   } catch (_error) {}
 
   try {

@@ -438,7 +438,8 @@ completeness have not been independently replayed by these comparisons.
 
 The fresh local build passed in 8m44s, reusing all 41 production kernel families.
 Strict baselib validation passed on 382 modules. `architecture:check` passed its
-FFI/package/native/Wasm stages but failed at an unchanged `cowasm` mention in
+FFI/package/native/Wasm stages but failed at an unchanged forbidden
+dependency-name mention in
 `agents/python-compiler-runtime-value-and-performance-plan.md:124`; this failure
 is retained, not reported as a passing full architecture check.
 

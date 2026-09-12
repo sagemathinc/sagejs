@@ -4,6 +4,7 @@ from ast_types import (
     AST_AnnotatedAssignment,
     AST_Class,
     AST_Method,
+    AST_Seq,
     AST_SymbolNonlocal,
     AST_SymbolRef,
     AST_Var,
@@ -14,8 +15,282 @@ from output.utils import create_doctring
 from utils import has_prop
 
 
+def _print_shared_method_factories(self, output, prefix):
+    # Hoist only JS factory definitions, never Python definition-time work.
+    # Each branch supplies defaults under its actual class-namespace context.
+    # Keep forms with different descriptor/receiver metadata on their existing
+    # paths; eligibility makes no assumption about the runtime base/metaclass.
+    shared = []
+    for stmt in self.python_namespace_body or self.body:
+        if not is_node_type(stmt, AST_Method) or self.body.indexOf(stmt) == -1:
+            continue
+        name = stmt.name.name
+        if (
+            (stmt.python_namespace_decorators or stmt.decorators or []).length
+            or stmt.is_getter
+            or stmt.is_setter
+            or stmt.is_deleter
+            or stmt["static"]
+            or stmt.classmethod
+            or has_prop(self["static"] or {}, name)
+            or has_prop(self.classmethods or {}, name)
+            or name in self.nonlocal_names
+            or name in ("__new__", "__init_subclass__", "__class_getitem__")
+            or not stmt.argnames.length
+            or stmt.argnames[0].name != "self"
+            or stmt.argnames[0].annotation
+            or stmt.argnames.posonly
+            or (stmt.annotations and stmt.annotations != "future")
+            or has_prop(stmt.argnames.defaults, "self")
+        ):
+            continue
+        factory = prefix + "_method_" + str(shared.length)
+        defaults = stmt.argnames.defaults
+        keys = Object.keys(defaults)
+        replacements = Object.create(None)
+        for index, key in enumerate(keys):
+            replacements[key] = AST_SymbolRef(
+                {"name": "ρσ_shared_defaults[" + str(index) + "]"}
+            )
+        output.indent()
+        output.print("var " + factory + " = function(ρσ_shared_defaults) {")
+        output.print("var ρσ_shared_method = ")
+        stmt.argnames.defaults = replacements
+        try:
+            function_definition(stmt, output, True, True, "ρσ_method_" + name)
+        finally:
+            stmt.argnames.defaults = defaults
+        output.print(
+            ";ρσ_shared_method.__sagejs_method_signature_excludes_self__ = true;"
+            "return ρσ_shared_method;}"
+        )
+        output.end_statement()
+        stmt.python_shared_factory = {"name": factory, "keys": keys}
+        shared.push(stmt)
+    return shared
+
+
+def _print_shared_method_call(stmt, output, prepared=False):
+    factory = stmt.python_shared_factory
+    execution_flags = prepared and (stmt.is_generator or stmt.is_coroutine)
+    if execution_flags:
+        output.print("Object.assign(")
+    if prepared:
+        output.print("ρσ_unbound_method_adapter(")
+    output.print(factory.name + "([")
+    for index, key in enumerate(factory.keys):
+        if index:
+            output.comma()
+        value = stmt.argnames.defaults[key]
+        if is_node_type(value, AST_Seq):
+            output.print("ρσ_math_tuple([")
+            value.print(output)
+            output.print("])")
+        else:
+            value.print(output)
+    output.print("])")
+    if prepared:
+        output.print(")")
+    if execution_flags:
+        output.print(", {")
+        if stmt.is_generator:
+            output.print("__is_generator__: true")
+        if stmt.is_coroutine:
+            if stmt.is_generator:
+                output.comma()
+            output.print("__is_coroutine__: true")
+        output.print("})")
+
+
+def _print_prepared_body(self, output, state):
+    previous = output.prepared_namespace
+    definition = self.name.definition()
+    output.prepared_namespace = {
+        "scope": self,
+        "state": state,
+        "prefix": definition.name if definition else self.name.name,
+        "parent": previous,
+    }
+    previous_class_body = output.in_class_body
+    output.in_class_body = True
+    try:
+        names = Object.keys(self.own_classvars or self.classvars or {})
+        for stmt in self.python_namespace_body or self.body:
+            if is_node_type(stmt, AST_Method) or is_node_type(stmt, AST_Class):
+                if names.indexOf(stmt.name.name) == -1:
+                    names.push(stmt.name.name)
+        names.push("__doc__", "__annotations__")
+        output.indent()
+        output.print(state + ".bind(" + JSON.stringify(names) + ")")
+        output.end_statement()
+        for statement in self.python_namespace_body or self.body:
+            annotated = (
+                statement
+                if is_node_type(statement, AST_AnnotatedAssignment)
+                else statement.body
+            )
+            if is_node_type(annotated, AST_AnnotatedAssignment):
+                output.indent()
+                output.print(state + ".setup_annotations()")
+                output.end_statement()
+                break
+        if (
+            self.docstrings
+            and self.docstrings.length
+            and output.options.keep_docstrings
+        ):
+            output.indent()
+            output.print(state + '.bindings["__doc__"] = ')
+            output.print(JSON.stringify(create_doctring(self.docstrings)))
+            output.end_statement()
+        for stmt in self.python_namespace_body or self.body:
+            if is_node_type(stmt, AST_Method):
+                name = stmt.name.name
+                output.indent()
+                if name in self.nonlocal_names:
+                    output.print_python_name(name)
+                else:
+                    output.print(state + ".bindings[" + JSON.stringify(name) + "]")
+                output.print(" = ")
+                if (
+                    name == "__new__"
+                    and not (stmt.python_namespace_decorators or []).length
+                ):
+                    output.print("ρσ_staticmethod(")
+                previous_static = stmt["static"]
+                stmt["static"] = True
+                try:
+                    if stmt.python_shared_factory:
+                        _print_shared_method_call(stmt, output, True)
+                    else:
+                        decorate(
+                            stmt.python_namespace_decorators or stmt.decorators or [],
+                            output,
+                            lambda: function_definition(
+                                stmt, output, False, True, "ρσ_prepared_method_" + name
+                            ),
+                        )
+                finally:
+                    stmt["static"] = previous_static
+                if (
+                    name == "__new__"
+                    and not (stmt.python_namespace_decorators or []).length
+                ):
+                    output.print(")")
+                output.end_statement()
+            elif is_node_type(stmt, AST_Class):
+                output.indent()
+                stmt.print(output)
+                if stmt.name.name not in self.nonlocal_names:
+                    output.indent()
+                    output.print(
+                        state + ".bindings[" + JSON.stringify(stmt.name.name) + "] = "
+                    )
+                    stmt.name.print(output)
+                    output.end_statement()
+            elif not (
+                is_node_type(stmt, AST_Var)
+                and all(
+                    is_node_type(item.name, AST_SymbolNonlocal)
+                    for item in stmt.definitions
+                )
+            ):
+                output.indent()
+                stmt.print(output)
+                output.newline()
+    finally:
+        output.prepared_namespace = previous
+        output.in_class_body = previous_class_body
+
+
 def print_class(output):
     self = this
+    bases = self.bases or []
+    requires_header = self.metaclass or bases.length
+    if not output.options.python_attributes or self.external or not requires_header:
+        return _print_legacy_class(self, output)
+    output.prepared_class_serial = (output.prepared_class_serial or 0) + 1
+    header = "ρσ_class_header_" + str(output.prepared_class_serial)
+    state = "ρσ_class_namespace_" + str(output.prepared_class_serial)
+    shared = _print_shared_method_factories(self, output, header)
+    decorators = self.decorators or []
+    output.indent()
+    output.print("var " + header + " = [[")
+    for index, decorator in enumerate(decorators):
+        if index:
+            output.comma()
+        decorator.expression.print(output)
+    output.print("], ρσ_math_tuple([")
+    for index, base in enumerate(bases):
+        if index:
+            output.comma()
+        base.print(output)
+    output.print("]), ")
+    if self.metaclass:
+        self.metaclass.print(output)
+    else:
+        output.print("undefined")
+    output.print("]")
+    output.end_statement()
+    output.indent()
+    output.print("var " + state + " = ρσ_prepare_class(")
+    output.print(JSON.stringify(self.name.name))
+    output.print(", " + header + "[1], " + header + "[2], ")
+    output.print(JSON.stringify(self.module_id or "__main__"))
+    output.print(")")
+    output.end_statement()
+    output.indent()
+    output.print("if (" + state + " !== undefined) ")
+
+    def prepared():
+        _print_prepared_body(self, output, state)
+        output.indent()
+        output.print("var ")
+        self.name.print(output)
+        output.print(" = " + state + ".finish()")
+        output.end_statement()
+        for index in range(len(decorators) - 1, -1, -1):
+            output.indent()
+            output.assign(self.name)
+            output.print("ρσ_resolve_callable(" + header + "[0][" + str(index) + "])(")
+            self.name.print(output)
+            output.print(")")
+            output.end_statement()
+
+    output.with_block(prepared)
+    output.print(" else ")
+    original_parent = self.parent
+    original_metaclass = self.metaclass
+    original_decorators = [item.expression for item in decorators]
+    self.bases = [
+        AST_SymbolRef({"name": header + "[1][" + str(index) + "]"})
+        for index in range(len(bases))
+    ]
+    self.python_header_original_bases = bases
+    self.python_header_default = True
+    if bases.length:
+        self.parent = self.bases[0]
+    if original_metaclass:
+        self.metaclass = AST_SymbolRef({"name": header + "[2]"})
+    for index, decorator in enumerate(decorators):
+        decorator.expression = AST_SymbolRef(
+            {"name": header + "[0][" + str(index) + "]"}
+        )
+    try:
+        output.with_block(lambda: _print_legacy_class(self, output))
+    finally:
+        self.bases = bases
+        self.python_header_original_bases = None
+        self.python_header_default = False
+        self.parent = original_parent
+        self.metaclass = original_metaclass
+        for index, decorator in enumerate(decorators):
+            decorator.expression = original_decorators[index]
+        for stmt in shared:
+            stmt.python_shared_factory = None
+
+
+def _print_legacy_class(self, output):
     if self.external:
         return
     # Runtime-loaded package modules do not participate in the compiler's
@@ -55,7 +330,7 @@ def print_class(output):
         "ρσ_list_constructor",
         "ρσ_str",
     ]
-    for base in self.bases:
+    for base in self.python_header_original_bases or self.bases:
         if is_node_type(base, AST_SymbolRef) and base.name in native_storage_names:
             native_storage_parent = base.name
             break
@@ -158,13 +433,16 @@ def print_class(output):
             if not is_property:
                 output.end_statement()
         else:
-            function_definition(
-                stmt,
-                output,
-                strip_first,
-                False,
-                javascript_name,
-            )
+            if stmt.python_shared_factory:
+                _print_shared_method_call(stmt, output)
+            else:
+                function_definition(
+                    stmt,
+                    output,
+                    strip_first,
+                    False,
+                    javascript_name,
+                )
             if not is_property:
                 output.end_statement()
                 fname = (
@@ -176,7 +454,8 @@ def print_class(output):
                     + ("." if is_static else ".prototype.")
                     + name
                 )
-                function_annotation(stmt, output, strip_first, fname)
+                if not stmt.python_shared_factory:
+                    function_annotation(stmt, output, strip_first, fname)
                 if is_static:
                     output.indent()
                     self.name.print(output)
@@ -411,30 +690,6 @@ def print_class(output):
                     '{"value":++ρσ_object_counter})',
                 )
                 output.end_statement()
-            if self.bound.length or self.shadowed_bound.length:
-                output.indent()
-                (
-                    self.name.print(output),
-                    output.print(
-                        ".prototype.__bind_methods__.call(" + instance_name + ")"
-                    ),
-                )
-                output.end_statement()
-            elif self.bind_inherited_methods and self.bases.length:
-                # A dynamically resolved base (for example ``Base[T]`` from
-                # another module) may provide eagerly bound Python methods
-                # even when this class defines none of its own.  The inherited
-                # binder is only known at runtime, so invoke it when present.
-                # Without this, keyword calls through such inherited methods
-                # lose their function metadata and are interpreted as a
-                # positional kwargs packet.
-                output.indent()
-                output.print("if (typeof ")
-                self.name.print(output)
-                output.print('.prototype.__bind_methods__ === "function") ')
-                self.name.print(output)
-                output.print(".prototype.__bind_methods__.call(" + instance_name + ")")
-                output.end_statement()
             if live_keyword_constructor:
                 output.indent()
                 output.print("var ρσ_initializer = ")
@@ -616,111 +871,19 @@ def print_class(output):
         output.with_parens(f_extends)
         output.end_statement()
 
+    if not compiling_baselib:
+        output.indent()
+        output.print("ρσ_finalize_heap_class(")
+        self.name.print(output)
+        output.print(")")
+        output.end_statement()
+
     if live_keyword_constructor:
         output.indent()
         output.print("ρσ_register_keyword_constructor(")
         self.name.print(output)
         output.print(")")
         output.end_statement()
-
-    # method binding
-    if self.bound.length or self.shadowed_bound.length:
-        seen_methods = Object.create(None)
-
-        def f_bind_methods():
-            output.spaced("function", "()", "")
-
-            def f_bases():
-                if self.bases.length:
-                    for i in range(self.bases.length - 1, -1, -1):
-                        base = self.bases[i]
-                        (
-                            output.indent(),
-                            base.print(output),
-                            output.spaced(".prototype.__bind_methods__", "&&", ""),
-                        )
-                        (
-                            base.print(output),
-                            output.print(".prototype.__bind_methods__.call(this)"),
-                        )
-                        output.end_statement()
-                # Base binders eagerly cache methods as own instance fields.
-                # A class-body value with the same name (including a runtime
-                # ``staticmethod`` descriptor) shadows that inherited method,
-                # so remove the implementation-only cache before normal
-                # descriptor lookup observes the instance.
-                for bname in self.shadowed_bound:
-                    output.indent()
-                    output.print("delete this." + bname)
-                    output.end_statement()
-                # Lightweight immutable mathematical values are often
-                # allocated millions of times.  Their own methods use lazy
-                # prototype accessors emitted below; only inherited methods
-                # from ordinary classes need the traditional eager binding.
-                if not self.lightweight:
-                    for bname in self.bound:
-                        if seen_methods[bname] or self.dynamic_properties[bname]:
-                            continue
-                        seen_methods[bname] = True
-                        is_classmethod = has_prop(self.classmethods, bname)
-
-                        def f_bind_one():
-                            output.indent(), output.assign("this." + bname)
-                            self.name.print(output)
-                            output.print(".prototype." + bname + ".bind(")
-                            output.print(
-                                "this.constructor" if is_classmethod else "this"
-                            )
-                            output.print(")")
-                            output.end_statement()
-                            (
-                                output.indent(),
-                                output.print("Object.assign(this." + bname + ", "),
-                            )
-                            (
-                                self.name.print(output),
-                                output.print(".prototype." + bname + ")"),
-                            )
-                            output.end_statement()
-                            (
-                                output.indent(),
-                                output.assign("this." + bname + ".__func__"),
-                            )
-                            self.name.print(output), output.print(".prototype." + bname)
-                            output.end_statement()
-                            (
-                                output.indent(),
-                                output.assign("this." + bname + ".__self__"),
-                            )
-                            output.print(
-                                "this.constructor" if is_classmethod else "this"
-                            )
-                            output.end_statement()
-                            (
-                                output.indent(),
-                                output.assign("this." + bname + ".__name__"),
-                            )
-                            output.print(JSON.stringify(bname))
-                            output.end_statement()
-                            output.indent()
-                            output.print("Object.defineProperty(this." + bname)
-                            output.print(
-                                ', "__sagejs_eager_bound_cache__", {value: true})'
-                            )
-                            output.end_statement()
-                            output.indent()
-                            output.print("ρσ_brand_bound_method(this." + bname + ")")
-                            output.end_statement()
-
-                        output.indent()
-                        output.print("if (typeof ")
-                        self.name.print(output)
-                        output.print(".prototype." + bname + ' === "function")')
-                        output.with_block(f_bind_one)
-
-            output.with_block(f_bases)
-
-        add_hidden_property("__bind_methods__", f_bind_methods)
 
     # dynamic properties
     property_names = Object.keys(self.dynamic_properties)
@@ -746,7 +909,7 @@ def print_class(output):
                     def f_enum2():
                         (
                             output.indent(),
-                            output.print('"enumerable":'),
+                            output.print('"configurable": true, "enumerable":'),
                             output.space(),
                             output.print("true"),
                             output.comma(),
@@ -793,15 +956,44 @@ def print_class(output):
                 class_def("ρσ_property_deleter_" + name)
                 define_method(prop.deleter, True)
                 output.end_statement()
+            if output.options.python_attributes:
+                class_name = (
+                    output.make_python_name(class_binding_name)
+                    if self.name.python_identifier
+                    else output.make_name(class_binding_name)
+                )
+                descriptor_name = (
+                    "Object.getOwnPropertyDescriptor("
+                    + class_name
+                    + ".prototype, "
+                    + JSON.stringify(name)
+                    + ")"
+                )
+                for accessor, member in [
+                    [prop.getter, descriptor_name + ".get"],
+                    [prop.setter, descriptor_name + ".set"],
+                    [
+                        prop.deleter,
+                        class_name + ".prototype.ρσ_property_deleter_" + name,
+                    ],
+                ]:
+                    if accessor:
+                        function_annotation(accessor, output, True, member)
+                output.indent()
+                output.print(
+                    "ρσ_register_property("
+                    + class_name
+                    + ", "
+                    + JSON.stringify(name)
+                    + ", "
+                    + ("true" if prop.setter else "false")
+                    + ")"
+                )
+                output.end_statement()
 
-    # Python executes a class body from top to bottom.  The JavaScript class
-    # representation emits methods as prototype properties, but their default
-    # arguments are still evaluated at definition time.  Emit the leading
-    # ordinary class-body statements before the first method/nested class so a
-    # default such as ``def f(self, value=SENTINEL)`` sees an earlier
-    # ``SENTINEL = object()`` assignment.  Remaining statements stay in the
-    # historical post-method section below; preserving arbitrary interleaving
-    # is a separate, larger class-namespace lowering concern.
+    # Class statements and method defaults execute in source order.  Keep the
+    # leading statements separate for the legacy bootstrap path, but never let
+    # a generated Python initializer overwrite a binding made by that body.
     early_statements = []
     for stmt in self.body:
         if is_node_type(stmt, AST_Method) or is_node_type(stmt, AST_Class):
@@ -832,6 +1024,7 @@ def print_class(output):
     constructor_signature_attributes = [
         ".__argnames__",
         ".__defaults__",
+        ".__kwdefaults__",
         ".__handles_kwarg_interpolation__",
         ".__kwonly__",
         ".__positional_only__",
@@ -843,9 +1036,53 @@ def print_class(output):
         (".__annotations_text__", ".__signature_annotations_text__"),
     ]
 
-    # actual methods
-    if not self.init:
-        # Create a default __init__ method
+    def emit_constructor_signature_copies(emit_copy):
+        if not output.options.python_attributes:
+            for attr in constructor_signature_attributes:
+                emit_copy(attr)
+            return
+        # Keep each read immediately before its write, in the original field
+        # order. Object.assign would copy unrelated fields and an object
+        # literal would eagerly read every getter before the first write.
+        output.indent()
+        output.print("for (var ρσ_init_attr of [")
+        for index, attr in enumerate(constructor_signature_attributes):
+            if index:
+                output.comma()
+            output.print(JSON.stringify(attr.slice(1)))
+        output.print("])")
+        output.space()
+        output.with_block(lambda: emit_copy("[ρσ_init_attr]"))
+
+    # A direct initializer followed only by side-effect-free method creation
+    # remains the winning binding. Ordinary statements, decorators, defaults,
+    # annotations, and descriptor definitions invalidate that proof. This is
+    # deliberately narrower than self.init, which also survives assignments
+    # and deletions that replace the declared method.
+    guaranteed_initializer = False
+    for stmt in self.body:
+        plain_method = (
+            is_node_type(stmt, AST_Method)
+            and not stmt.is_getter
+            and not stmt.is_setter
+            and not stmt.is_deleter
+            and not (stmt.decorators or []).length
+            and stmt.name.name not in self.nonlocal_names
+            and not has_prop(self["static"], stmt.name.name)
+            and not has_prop(self.classmethods, stmt.name.name)
+        )
+        if plain_method and stmt.name.name == "__init__":
+            guaranteed_initializer = True
+        elif (
+            not plain_method
+            or Object.keys(stmt.argnames.defaults).length
+            or (stmt.annotations and stmt.annotations != "future")
+        ):
+            guaranteed_initializer = False
+
+    def emit_default_initializer():
+        # Bootstrap methods have a receiver-style ABI; Python constructors use
+        # the existing descriptor-aware forwarding boundary.
         def f_default():
             if self.parent:
                 if output.options.python_attributes:
@@ -900,11 +1137,11 @@ def print_class(output):
             self.parent.print(output)
             output.print(".prototype.__init__")
             output.end_statement()
-            # The class call binder consults constructor metadata before the
-            # synthetic forwarding method runs.  Mirror the inherited
-            # initializer signature on both the forwarding method and class
-            # so keyword validation and binding remain exact.
-            for attr in constructor_signature_attributes:
+
+            # Preserve the forwarding method's inherited signature. Legacy
+            # class binders also need a class copy; Python class metadata is
+            # published once from the final winning initializer below.
+            def copy_forwarded_signature(attr):
                 output.indent()
                 self.name.print(output)
                 output.print(".prototype.__init__")
@@ -914,12 +1151,15 @@ def print_class(output):
                 self.parent.print(output)
                 output.print(".prototype.__init__" + attr)
                 output.end_statement()
-                output.indent()
-                self.name.print(output)
-                output.assign(attr)
-                self.name.print(output)
-                output.print(".prototype.__init__" + attr)
-                output.end_statement()
+                if not output.options.python_attributes:
+                    output.indent()
+                    self.name.print(output)
+                    output.assign(attr)
+                    self.name.print(output)
+                    output.print(".prototype.__init__" + attr)
+                    output.end_statement()
+
+            emit_constructor_signature_copies(copy_forwarded_signature)
             for source_attr, target_attr in constructor_annotation_attributes:
                 output.indent()
                 self.name.print(output)
@@ -930,12 +1170,16 @@ def print_class(output):
                 self.parent.print(output)
                 output.print(".prototype.__init__" + source_attr)
                 output.end_statement()
-                output.indent()
-                self.name.print(output)
-                output.assign(target_attr)
-                self.name.print(output)
-                output.print(".prototype.__init__" + source_attr)
-                output.end_statement()
+                if not output.options.python_attributes:
+                    output.indent()
+                    self.name.print(output)
+                    output.assign(target_attr)
+                    self.name.print(output)
+                    output.print(".prototype.__init__" + source_attr)
+                    output.end_statement()
+
+    if not output.options.python_attributes and not self.init:
+        emit_default_initializer()
 
     defined_methods = {}
 
@@ -976,15 +1220,19 @@ def print_class(output):
             define_method(stmt)
             defined_methods[stmt.name.name] = True
             sname = stmt.name.name
-            if sname is "__init__":
+            if sname is "__init__" and (
+                not output.options.python_attributes or guaranteed_initializer
+            ):
                 # Copy argument handling data so that kwarg interpolation works when calling the constructor
-                for attr in constructor_signature_attributes:
+                def copy_declared_signature(attr):
                     output.indent(), self.name.print(output), output.assign(attr)
                     (
                         self.name.print(output),
                         output.print(".prototype.__init__" + attr),
                         output.end_statement(),
                     )
+
+                emit_constructor_signature_copies(copy_declared_signature)
                 for source_attr, target_attr in constructor_annotation_attributes:
                     output.indent(), self.name.print(output), output.assign(target_attr)
                     (
@@ -1019,14 +1267,24 @@ def print_class(output):
             print_class_statement(stmt)
             emitted_statements.append(stmt)
 
-    if not self.init and output.options.python_attributes:
-        output.indent()
-        output.print("ρσ_apply_custom_new_signature(")
-        self.name.print(output)
-        output.comma()
-        self.name.print(output)
-        output.print(".prototype.__init__)")
-        output.end_statement()
+    if output.options.python_attributes:
+        for stmt in self.statements:
+            if (
+                not is_node_type(stmt, AST_Method)
+                and emitted_statements.indexOf(stmt) is -1
+            ):
+                print_class_statement(stmt)
+                emitted_statements.append(stmt)
+        if not guaranteed_initializer:
+            # The completed namespace, not the presence of an AST_Method,
+            # decides whether an initializer was supplied. None and other
+            # noncallables fail when the class is called, not during creation.
+            output.indent()
+            output.print("if (!Object.prototype.hasOwnProperty.call(")
+            self.name.print(output)
+            output.print('.prototype, "__init__"))')
+            output.space()
+            output.with_block(emit_default_initializer)
 
     if defined_methods["__next__"]:
         class_def("next", False)
@@ -1129,7 +1387,7 @@ def print_class(output):
             output.comma()
             self.bases[i].print(output)
         output.print(")"), output.end_statement()
-        if not self.init:
+        if not self.init and not output.options.python_attributes:
             # C3 mixin resolution can replace a synthetic initializer from an
             # empty primary base with an explicit initializer from a later
             # base.  Refresh the class-call contract from the winning method.
@@ -1151,6 +1409,75 @@ def print_class(output):
                 self.name.print(output)
                 output.print(".prototype.__init__" + source_attr)
                 output.end_statement()
+
+    if output.options.python_attributes and not guaranteed_initializer:
+        # Assignment after a method definition and C3 resolution can both
+        # replace its initializer. Publish only the final binding's contract;
+        # actual class calls continue to bind against the live initializer.
+        output.indent()
+        output.print("var ρσ_init_signature = ρσ_live_initializer(")
+        self.name.print(output)
+        output.print(")")
+        output.end_statement()
+        output.indent()
+        output.print(
+            "var ρσ_init_explicit_self = ρσ_init_signature != null && "
+            "ρσ_init_signature.__python_descriptor__ === true && "
+            "ρσ_init_signature.__self__ === undefined && "
+            "ρσ_init_signature.__staticmethod__ !== true && "
+            "ρσ_init_signature.__sagejs_native_method__ !== true && "
+            "ρσ_init_signature.__sagejs_method_signature_excludes_self__ !== true"
+        )
+        output.end_statement()
+
+        def copy_winning_signature(attr):
+            output.indent()
+            self.name.print(output)
+            output.assign(attr)
+            output.print(
+                "ρσ_init_signature == null ? undefined : ρσ_init_signature" + attr
+            )
+            output.end_statement()
+
+        emit_constructor_signature_copies(copy_winning_signature)
+        output.indent()
+        output.print("if (ρσ_init_explicit_self && Array.isArray(")
+        self.name.print(output)
+        output.print(".__argnames__))")
+        output.space()
+
+        def normalize_initializer_signature():
+            output.indent()
+            self.name.print(output)
+            output.assign(".__argnames__")
+            self.name.print(output)
+            output.print(".__argnames__.slice(1)")
+            output.end_statement()
+            output.indent()
+            self.name.print(output)
+            output.assign(".__positional_only__")
+            output.print(
+                "ρσ_init_signature.__positional_only__ === true ? "
+                "ρσ_init_signature.__argnames__.length - 1 : "
+                "Math.max(0, (ρσ_init_signature.__positional_only__ || 0) - 1)"
+            )
+            output.end_statement()
+
+        output.with_block(normalize_initializer_signature)
+        for source_attr, target_attr in constructor_annotation_attributes:
+            output.indent()
+            self.name.print(output)
+            output.assign(target_attr)
+            output.print(
+                "ρσ_init_signature == null ? undefined : ρσ_init_signature"
+                + source_attr
+            )
+            output.end_statement()
+        output.indent()
+        output.print("ρσ_apply_custom_new_signature(")
+        self.name.print(output)
+        output.print(", ρσ_init_signature)")
+        output.end_statement()
 
     # Every Python class has ``__doc__``.  Keep the attribute present with a
     # value of ``None`` even when the class has no docstring; introspection
@@ -1177,10 +1504,9 @@ def print_class(output):
         ):
             print_class_statement(stmt)
 
-    # Preserve Python bound-method behavior for lightweight mathematical
-    # classes without eagerly allocating and decorating every bound method on
-    # every instance.  A method is bound only when it is first retrieved.
-    if self.lightweight and self.bound.length:
+    # Bind fresh method values on access, never in the instance namespace.
+    # Saved methods retain their function/receiver; later reads see mutations.
+    if self.bound.length:
         seen_lazy_methods = Object.create(None)
         for bname in self.bound:
             if (
@@ -1191,16 +1517,34 @@ def print_class(output):
                 # Leaving them as ordinary prototype functions lets hot
                 # calls such as ``left._mul_(right)`` preserve JavaScript's
                 # receiver without allocating a bound wrapper.
-                or (bname.startswith("_") and not bname.startswith("__"))
+                or (
+                    self.lightweight
+                    and bname.startswith("_")
+                    and not bname.startswith("__")
+                )
             ):
                 continue
             seen_lazy_methods[bname] = True
             is_classmethod = has_prop(self.classmethods, bname)
             output.indent()
-            output.print("(function(ρσ_unbound_method, ρσ_prototype)")
 
             def f_lazy_binding():
+                # Block-local captures avoid allocating an immediately invoked
+                # factory for every method during runtime initialization.
                 output.indent()
+                output.print("const ρσ_prototype = ")
+                self.name.print(output)
+                output.print(".prototype")
+                output.end_statement()
+                output.indent()
+                output.print("const ρσ_unbound_method = ρσ_prototype.")
+                output.print(bname)
+                output.end_statement()
+                output.indent()
+                output.print(
+                    'if (typeof ρσ_unbound_method === "function" && '
+                    "ρσ_unbound_method.__sagejs_callable_instance__ !== true) "
+                )
                 output.print("Object.defineProperty(ρσ_prototype, ")
                 output.print(JSON.stringify(bname))
                 output.comma()
@@ -1214,50 +1558,21 @@ def print_class(output):
                     output.end_statement()
                     output.indent()
                     output.assign("var ρσ_receiver")
-                    output.print("this.constructor" if is_classmethod else "this")
+                    output.print("ρσ_type(this)" if is_classmethod else "this")
                     output.end_statement()
                     output.indent()
-                    output.assign("var ρσ_bound_method")
-                    output.print("ρσ_unbound_method.bind(ρσ_receiver)")
-                    output.end_statement()
-                    output.indent()
-                    output.print("Object.assign(ρσ_bound_method, ρσ_unbound_method)")
-                    output.end_statement()
-                    output.indent()
-                    output.assign("ρσ_bound_method.__func__")
-                    output.print("ρσ_unbound_method")
-                    output.end_statement()
-                    output.indent()
-                    output.assign("ρσ_bound_method.__self__")
-                    output.print("ρσ_receiver")
-                    output.end_statement()
-                    output.indent()
-                    output.print("ρσ_brand_bound_method(ρσ_bound_method)")
-                    output.end_statement()
-                    output.indent()
-                    output.assign("ρσ_bound_method.__name__")
-                    output.print(JSON.stringify(bname))
-                    output.end_statement()
-                    output.indent()
-                    # Immutable tuple-backed values can inherit lightweight
-                    # Python methods, but cannot accept the usual per-instance
-                    # bound-method cache.
-                    output.print("if (Object.isExtensible(this)) ")
-                    output.print("Object.defineProperty(this, ")
-                    output.print(JSON.stringify(bname))
-                    output.comma()
-                    output.space()
                     output.print(
-                        "{value: ρσ_bound_method, writable: true, "
-                        "configurable: true, enumerable: true})"
+                        "return ρσ_finish_bound_method("
+                        "ρσ_unbound_method.bind(ρσ_receiver), "
+                        "ρσ_unbound_method, ρσ_receiver)"
                     )
-                    output.end_statement()
-                    output.indent()
-                    output.print("return ρσ_bound_method")
                     output.end_statement()
 
                 output.with_block(f_lazy_getter)
-                output.print(", {__sagejs_lazy_method_getter__: true})")
+                output.print(
+                    ", {__sagejs_lazy_method_getter__: true, "
+                    "__sagejs_unbound_method__: ρσ_unbound_method})"
+                )
                 output.print(", set: function(ρσ_method_value)")
 
                 def f_lazy_setter():
@@ -1277,12 +1592,6 @@ def print_class(output):
                 output.end_statement()
 
             output.with_block(f_lazy_binding)
-            output.print(")(")
-            self.name.print(output)
-            output.print(".prototype." + bname)
-            output.comma()
-            self.name.print(output)
-            output.print(".prototype)")
             output.end_statement()
 
     # A property alias such as ``old_name = new_name`` is represented as a
@@ -1372,11 +1681,26 @@ def print_class(output):
         output.print(".prototype." + method_name)
         output.end_statement()
 
+    if not compiling_baselib:
+        output.indent()
+        output.print("ρσ_install_instance_dict(")
+        self.name.print(output)
+        output.comma()
+        output.print(
+            "true"
+            if (self.own_classvars or {})["__dict__"]
+            or defined_methods["__dict__"]
+            or self.dynamic_properties["__dict__"]
+            else "false"
+        )
+        output.print(")")
+        output.end_statement()
+
     # An explicit Python 3 metaclass owns the final class object.  The native
     # lowering above efficiently evaluates the class body and gives us its
     # complete namespace; hand that namespace to the metaclass before class
     # decorators run, exactly as CPython does.
-    if self.metaclass:
+    if self.metaclass and not self.python_header_default:
         output.indent()
         output.assign(self.name)
         output.print("ρσ_apply_metaclass(")
@@ -1389,7 +1713,7 @@ def print_class(output):
         self.name.print(output)
         output.print(")")
         output.end_statement()
-    elif self.bases.length:
+    elif self.bases.length and not self.python_header_default:
         output.indent()
         output.assign(self.name)
         output.print("ρσ_apply_inherited_metaclass(")

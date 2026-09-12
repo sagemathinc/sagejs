@@ -59,6 +59,14 @@ const modules = [
 const requestedModules = [
   ...standardModules,
   ...BASELIB_STANDALONE_MODULES,
+  // Literal dynamic-import dependencies are included in the expected cache
+  // closure but are not necessarily traversed by the Python import resolver.
+  // Request every expected output explicitly rather than relying on traversal.
+  // Intrinsic parent shells are emitted by their children, not standalone
+  // import requests (which deliberately require an explicit runtime alias).
+  ...BASELIB_STANDALONE_CACHE_MODULES.filter(
+    (name) => name !== "sagejs" && name !== "sagejs.runtime",
+  ),
 ];
 
 rmSync(outputDirectory, { recursive: true, force: true });

@@ -8,19 +8,46 @@ const { join } = require("node:path");
 
 const { createSage } = require("../dist/tools/kernel.js");
 
+function assertDirectDictionaryInitializer(source) {
+  // Imported module factories may legitimately use `.call(this)`. The
+  // optimization contract concerns the fixture's own assignment, not those
+  // dependencies. Require a direct literal call, rather than merely finding
+  // that helper somewhere in the complete emitted program.
+  const assignments = [...source.matchAll(
+    /^[\t ]*(?:\$ρσ\$py\$)?dictionary_literal_codegen_target\s*=(?!=)([^\n]*)$/gm,
+  )];
+  assert.equal(assignments.length, 1, "exactly one fixture initializer must be present");
+  assert.match(assignments[0][1], /^\s*ρσ_dict_literal\(\[[^\n]*\]\);\s*$/);
+}
+
+test("dictionary initializer assertion distinguishes dependencies from its target", () => {
+  const dependency = "function dependency() { return other.call(this); }\n";
+  assertDirectDictionaryInitializer(dependency +
+    '$ρσ$py$dictionary_literal_codegen_target = ρσ_dict_literal([1, "first", true, "last"]);\n');
+  assertDirectDictionaryInitializer('dictionary_literal_codegen_target = ρσ_dict_literal([1, "value"]);\n');
+  for (const source of [
+    'dictionary_literal_codegen_target = (function() { return ρσ_dict_literal([1, "value"]); }).call(this);\n',
+    'dependency = ρσ_dict_literal([1, "value"]);\ndictionary_literal_codegen_target = old_literal();\n',
+    'dictionary_literal_codegen_target = wrap(ρσ_dict_literal([1, "value"]));\n',
+    'dictionary_literal_codegen_target = ρσ_dict_literal([]);\ndictionary_literal_codegen_target = old_literal();\n',
+    'dependency = ρσ_dict_literal([1, "value"]);\n',
+  ]) {
+    assert.throws(() => assertDirectDictionaryInitializer(source), assert.AssertionError);
+  }
+});
+
 test("the compiler lowers nonempty dictionary literals without an IIFE", () => {
   const compiled = spawnSync(
     process.execPath,
     ["bin/sagejs", "compile", "--python", "--omit-baselib", "--bare"],
     {
       cwd: join(__dirname, ".."),
-      input: "answer = {1: 'first', True: 'last'}\n",
+      input: "dictionary_literal_codegen_target = {1: 'first', True: 'last'}\n",
       encoding: "utf8",
     },
   );
   assert.equal(compiled.status, 0, compiled.stderr);
-  assert.match(compiled.stdout, /ρσ_dict_literal\(/);
-  assert.doesNotMatch(compiled.stdout, /\.call\(this\)/);
+  assertDirectDictionaryInitializer(compiled.stdout);
 });
 
 test("native dictionary construction preserves Python mapping semantics", async (t) => {

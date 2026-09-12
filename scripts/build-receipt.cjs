@@ -54,17 +54,84 @@ const validationOnlyFiles = new Set([
   "tools/python-compat/legacy-output-runner.cjs",
   "tools/python-compat/output-suite.cjs",
   "bench/cowasm/run.cjs", "bench/python-compat/qualification.cjs",
-  // These exact campaign contracts contain coordination and validation run
-  // receipts, not runtime configuration. Do not exclude .agents/ generally:
-  // lanes.json and other unknown metadata still participate in build policy.
-  ".agents/tasks/class-unit-rank-two-frontier.json",
-  ".agents/tasks/general-class-unit-candidate-pool.json",
-  ".agents/tasks/general-class-unit-hecke-screen.json",
-  ".agents/tasks/general-class-unit-persistent-reference.json",
-  ".agents/tasks/general-class-unit-exposure-inventory.json",
-  ".agents/tasks/general-class-unit-hard-windows.json",
-  ".agents/tasks/general-frontier-build-partition.json",
 ]);
+
+function closedRecord(value, required, optional = []) {
+  return value !== null && typeof value === "object" && !Array.isArray(value) &&
+    required.every((name) => Object.hasOwn(value, name)) &&
+    Object.keys(value).every((name) => required.includes(name) || optional.includes(name));
+}
+
+function stringArray(value, minimumLength = 0, unique = false) {
+  return Array.isArray(value) && value.every((entry) =>
+    typeof entry === "string" && [...entry].length >= minimumLength) &&
+    (!unique || new Set(value).size === value.length);
+}
+
+// This reviewed v2 shape is deliberately independent of mutable schema files.
+// Unknown fields anywhere, future schemas, and invalid records retain raw-byte
+// hashing. Only coordination fields are omitted, never the task's contract.
+function taskArtifactContent(name, source) {
+  const match = /^\.agents\/tasks\/([a-z][a-z0-9-]*)\.json$/.exec(name);
+  if (!match) return null;
+  if (!Buffer.from(source.toString("utf8"), "utf8").equals(source)) return null;
+  let task;
+  try { task = JSON.parse(source); } catch { return null; }
+  const fields = ["schema_version", "id", "title", "lane", "status", "owner",
+    "objective", "base_commit", "claims", "dependencies", "references",
+    "architecture", "platforms", "validation", "runs", "handoff"];
+  if (!closedRecord(task, fields, ["$schema"]) || task.schema_version !== 2 ||
+      task.id !== match[1] ||
+      (Object.hasOwn(task, "$schema") && typeof task.$schema !== "string")) return null;
+  for (const [field, minimum] of [["title", 4], ["owner", 1], ["objective", 12]]) {
+    if (typeof task[field] !== "string" || [...task[field]].length < minimum) return null;
+  }
+  const lanes = ["compiler-runtime", "arithmetic-algebra", "elliptic-curves",
+    "hyperelliptic-curves", "modular-forms", "symbolic", "numeric-symbolic-wasm",
+    "graphics", "combinatorics-groups", "polyglot", "documentation-compat",
+    "native-compiler", "optimizer-development", "distribution", "numerical-contracts",
+    "numerical-linear-algebra", "numerical-approximation", "numerical-integration",
+    "numerical-optimization", "numerical-ode", "numerical-spectral",
+    "numerical-statistics", "numerical-multilingual", "numerical-sweeps",
+    "numerical-qualification", "integration"];
+  if (!lanes.includes(task.lane) ||
+      !["proposed", "active", "review", "blocked", "complete"].includes(task.status) ||
+      typeof task.base_commit !== "string" || !/^[0-9a-f]{40}$/.test(task.base_commit) ||
+      !stringArray(task.claims, 1, true) || task.claims.length === 0 ||
+      !stringArray(task.dependencies) || !stringArray(task.references) ||
+      !stringArray(task.validation, 1)) return null;
+  const architecture = task.architecture;
+  if (!closedRecord(architecture, ["strategy", "fallback", "oracles", "exceptions"]) ||
+      !["dynamic-python", "source-transparent-native", "external-library",
+        "native-primitive", "mixed", "compiler-infrastructure", "not-applicable"]
+        .includes(architecture.strategy) ||
+      !["same-source", "tested-capability", "not-applicable"].includes(architecture.fallback) ||
+      !stringArray(architecture.oracles, 1, true) ||
+      !stringArray(architecture.exceptions, 20, true)) return null;
+  const platforms = ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"];
+  if (!closedRecord(task.platforms, platforms) || !platforms.every((platform) =>
+    ["required", "fallback", "not-applicable"].includes(task.platforms[platform]))) return null;
+  if (!closedRecord(task.handoff, ["summary", "risks", "next_steps"]) ||
+      typeof task.handoff.summary !== "string" || !stringArray(task.handoff.risks) ||
+      !stringArray(task.handoff.next_steps) || !Array.isArray(task.runs)) return null;
+  for (const run of task.runs) {
+    if (!closedRecord(run, ["command", "result", "exit_code", "seconds", "started_at",
+      "commit", "workspace_fingerprint", "platform"]) ||
+        !["command", "started_at", "commit", "workspace_fingerprint", "platform"]
+          .every((field) => typeof run[field] === "string") ||
+        !["pass", "fail"].includes(run.result) || !Number.isInteger(run.exit_code) ||
+        !Number.isFinite(run.seconds) || run.seconds < 0 ||
+        !/^[0-9a-f]{40}$/.test(run.commit) ||
+        !/^[0-9a-f]{64}$/.test(run.workspace_fingerprint)) return null;
+    // parallel:run emits this canonical date-time form. Other representations
+    // conservatively stay raw rather than requiring a schema-format dependency.
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(run.started_at)) return null;
+    const timestamp = Date.parse(run.started_at);
+    if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString() !== run.started_at) return null;
+  }
+  const { status, runs, handoff, ...contract } = task;
+  return JSON.stringify(contract);
+}
 
 function isArtifactInput(name, reviewedInputs = new Set()) {
   // These are Node test entry points, not browser build inputs. Keep shared
@@ -177,8 +244,11 @@ function workspaceFingerprint(root = repositoryRoot, { artifactOnly = false } = 
       hash.update("symlink\0");
       hash.update(readlinkSync(filename));
     } else if (status.isFile()) {
-      hash.update("file\0");
-      hash.update(readFileSync(filename));
+      const source = readFileSync(filename);
+      const projected = artifactOnly && !reviewedInputs.has(name)
+        ? taskArtifactContent(name, source) : null;
+      hash.update(projected === null ? "file\0" : "task-contract/v2\0");
+      hash.update(projected === null ? source : projected);
     } else if (status.isDirectory()) {
       // Git lists submodules as directories, not their source files. Bind the
       // checked-out revision AND tracked/untracked contents, including dirty

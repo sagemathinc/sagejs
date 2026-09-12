@@ -8,6 +8,9 @@ class _Array:
     prototype: Any
 
     @staticmethod
+    def of(*items: Any) -> Any: ...
+
+    @staticmethod
     def isArray(value: object) -> bool: ...
 
 
@@ -56,6 +59,9 @@ class _Object:
 
     @staticmethod
     def isFrozen(value: object) -> bool: ...
+
+    @staticmethod
+    def isExtensible(value: object) -> bool: ...
 
     @staticmethod
     def getOwnPropertyDescriptor(value: object, name: Any) -> Any: ...

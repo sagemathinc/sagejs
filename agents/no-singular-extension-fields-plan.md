@@ -23,10 +23,29 @@ interfaces over `QQ` and prime fields first. Its extension-ready boundaries
 are prerequisites for this plan, not a reason to combine the two delivery
 milestones.
 
-Do not start an implementation branch from the historical audited commit.
-Start from PR #114's eventual merge commit, or a later green `origin/main` that
-contains it, and rerun the Phase E0 audit against that exact source. The commit
-above records what was inspected; it is not a permanent fork point.
+Implementation is on `agent/no-singular-extension-fields`, initially based on
+PR #114 at `5b6ffb5075fabd1f040cbf2553d34837ff8e3da5`, as authorized by the
+user while the release manager handles that PR's merge. Keep the new PR
+explicitly dependent on #114. Once it merges, integrate a green `origin/main`
+containing it and repeat the affected validation. The earlier audited commit
+records inspected evidence rather than a permanent fork point.
+
+Integration update (2026-09-06): PR #114 has merged. The extension branch
+integrates green `origin/main` at `60ab78c2a0044797538d396bdb3797d811421d7b`.
+Regenerate combined FFI/architecture inventories and rebuild compiler tooling,
+the self-hosted compiler, and runtime/module caches before qualification; the
+old compiled caches are not evidence for this merged source. Milestone F
+remains unqualified until its complete native and production-Wasm matrix
+passes, and this integration does not authorize a release.
+
+Integration update (2026-09-12): refresh the merge base to `origin/main` at
+`c4c126d09` before Milestone F handoff. Combine the runtime-owned lazy-module
+inventory with main's standalone-core dependency inventory; neither replaces
+the other. Regenerate FFI, capability, source-freeze, optimizer, and reference
+artifacts from this combined tree. Prior `cb604c65e` payload and simulator
+receipts remain historical evidence, not qualification of the integrated
+runtime. Keep PR #122 a draft until source-current qualification is complete;
+removing draft status is the handoff signal to the merge manager.
 
 The implementation order is intentional:
 
@@ -446,8 +465,8 @@ acceleration an experiment rather than the initial architecture.
 
 ## Phase E0: readiness audit and shared coefficient contract
 
-Begin only after PR #114 is merged. Repeat this audit against its merge commit
-and any later `origin/main` changes before editing dispatch.
+Begin on the authorized branch based on PR #114. Repeat the affected parts of
+this audit when integrating its merge commit and later `origin/main` changes.
 
 1. Audit the completed core implementation for concrete `_kind`, numerator,
    prime-residue, characteristic-only, and method-presence assumptions. The
@@ -499,6 +518,28 @@ Acceptance:
 The existing native `fq_nmod_mpoly` selection is not public support until
 coefficients can cross the sparse-term boundary and the same operations work
 in the production Wasm artifact.
+
+Implementation constraints from the E0 boundary audit:
+
+- Prefer one declared, host-neutral FLINT resource interface for native and
+  Wasm multivariate values, with a retained context and explicit bulk sparse
+  transfers. Keep backend selection behind the existing public polynomial
+  classes; do not create a separate public extension-polynomial hierarchy.
+- Construct that resource context from canonical characteristic/modulus data.
+  Do not pass legacy native scalar handles or assume that scalar and lazy
+  multivariate Wasm resources inhabit the same reactor or linear memory.
+- Audit copied-byte output ownership when assigning the new specialist group.
+  A byte-transfer resource must remain associated with the reactor that owns
+  its storage until the bytes have been copied and the resource closed.
+- Require native exponent-width checks before FLINT word export, checked
+  products for `terms * degree` and `terms * variables`, and transactional
+  sparse input/output. Include zero-variable ambient spaces in the audit
+  rather than silently assuming every polynomial context has a variable.
+
+The E0 `field_capabilities` registry deliberately distinguishes scalar and
+internal generic-engine availability from public ideal/geometry availability.
+Opening a later capability must accompany the actual storage/dispatch path
+and positive tests; it must not merely relax the existing rejection gate.
 
 1. Implement exact storage-neutral import/export of sparse
    `(coefficient, exponent_vector)` terms for native `fq_nmod_mpoly` values.
@@ -623,6 +664,12 @@ Acceptance:
 - the browser examples include a genuinely extension-field calculation.
 
 ### Phase F3: auxiliary-variable msolve fast-path experiment
+
+The first bounded tranche is complete: see the
+[full-block export investigation](extension-fields-msolve-block-investigation.md).
+All 36 degrevlex cases from the independent finite-field corpus decode exactly,
+but the exposed API supplies no transformation provenance. Production
+acceleration is deferred; no automatic route or performance gain is claimed.
 
 This optional investigation follows initial Phase F4 qualification of the
 direct exact implementation. Its phase identifier is retained for references;
@@ -1002,34 +1049,39 @@ tests until handoff.
 
 ## Definition of done: Milestone F
 
-- [ ] `GF(p^d)` multivariate construction, arithmetic, and storage-neutral
+Qualified at `077b64861`; see the [final audit](no-singular-extension-fields-completion-audit.md)
+and [machine-readable evidence](extension-fields-qualification-077b64861.json).
+Merge remains owned by the merge manager. No extension msolve path is shipped;
+the fast-path condition below is satisfied by retaining the exact fallback.
+
+- [x] `GF(p^d)` multivariate construction, arithmetic, and storage-neutral
       sparse terms work on native, Node-Wasm, and production Chromium.
-- [ ] The common characteristic bound is explicit and tested at its boundary;
+- [x] The common characteristic bound is explicit and tested at its boundary;
       unsupported inputs never truncate or change interpretation across hosts.
-- [ ] Reused mathematical cache entries reconstruct values in the requesting
+- [x] Reused mathematical cache entries reconstruct values in the requesting
       parent; generator renaming never leaks another parent's objects.
-- [ ] Multivariate polynomial ideals over validated `GF(p^d)` parents work in
+- [x] Multivariate polynomial ideals over validated `GF(p^d)` parents work in
       `lex`, `deglex`, and `degrevlex`.
-- [ ] Exact Gröbner certificates and normal forms are field-representation
+- [x] Exact Gröbner certificates and normal forms are field-representation
       neutral.
-- [ ] Every applicable core algebraic-geometry operation has a `GF(p^d)` test
+- [x] Every applicable core algebraic-geometry operation has a `GF(p^d)` test
       and capability record.
-- [ ] Bounded rational-point enumeration uses `q = p^d` and fails before
+- [x] Bounded rational-point enumeration uses `q = p^d` and fails before
       infeasible allocation.
-- [ ] Canonical finite-field enumeration returns each of the `q` elements
+- [x] Canonical finite-field enumeration returns each of the `q` elements
       exactly once without assuming the defining generator is primitive.
-- [ ] Zero-dimensional radical and primary decomposition exactly recompose.
-- [ ] Squarefree decomposition correctly applies inverse Frobenius to
+- [x] Zero-dimensional radical and primary decomposition exactly recompose.
+- [x] Squarefree decomposition correctly applies inverse Frobenius to
       extension coefficients, including derivative-zero polynomials.
-- [ ] Direct exact behavior is identical across native and Wasm targets.
-- [ ] Any msolve fast path is block-order correct, independently verified,
+- [x] Direct exact behavior is identical across native and Wasm targets.
+- [x] Any msolve fast path is block-order correct, independently verified,
       receipt-bounded, and optional.
-- [ ] Four native platforms plus production browser qualification pass on one
+- [x] Four native platforms plus production browser qualification pass on one
       commit.
-- [ ] Exact-runtime iPhone and iPad simulator checks pass on that commit.
-- [ ] The canonical Wasm artifact and every lazy specialist group have
+- [x] Exact-runtime iPhone and iPad simulator checks pass on that commit.
+- [x] The canonical Wasm artifact and every lazy specialist group have
       authenticated identities and reviewed compressed-size budgets.
-- [ ] Documentation clearly distinguishes field presentation, rational
+- [x] Documentation clearly distinguishes field presentation, rational
       points, geometric points, and residue extensions.
 
 ## Definition of done: Milestone N

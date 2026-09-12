@@ -1,7 +1,10 @@
 /* Browser resource boundary for the bundled Tree-sitter compiler frontend. */
 
+import { decodeBrowserModuleCache } from "../dynamic-compiler.mjs";
+
 interface StandardLibraryDocument {
   preload?: string[];
+  coreStandalone: string[];
   modules: Record<string, {
     package?: boolean;
     source: string;
@@ -12,6 +15,11 @@ interface StandardLibraryDocument {
 const binaryResources = new Map<string, Uint8Array>();
 const textResources = new Map<string, string>();
 const sourceSignatures = new Map<string, string>();
+let standaloneCore: readonly string[] = [];
+
+export function coreStandaloneModules(): readonly string[] {
+  return standaloneCore;
+}
 
 function normalized(filename: string): string {
   return filename.replaceAll("\\", "/").replace(/^\.\//, "");
@@ -28,9 +36,13 @@ export function configureBrowserCompilerResources({
   sageGrammar: Uint8Array;
   standardLibrary: StandardLibraryDocument;
 }): void {
+  if (!Array.isArray(standardLibrary.coreStandalone)) {
+    throw new TypeError("browser standard library requires coreStandalone dependencies");
+  }
   binaryResources.clear();
   textResources.clear();
   sourceSignatures.clear();
+  standaloneCore = Object.freeze([...standardLibrary.coreStandalone]);
   binaryResources.set("web-tree-sitter.wasm", treeSitterRuntime);
   binaryResources.set("tree-sitter-python.wasm", pythonGrammar);
   binaryResources.set("tree-sitter-sage.wasm", sageGrammar);
@@ -44,7 +56,7 @@ export function configureBrowserCompilerResources({
     );
     textResources.set(
       `__module_cache__/${name.replaceAll(".", "-")}.json`,
-      JSON.stringify(module.cache),
+      JSON.stringify(decodeBrowserModuleCache(module.cache)),
     );
     sourceSignatures.set(module.source, String(module.cache.signature));
   }

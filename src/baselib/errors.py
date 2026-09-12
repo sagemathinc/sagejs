@@ -41,6 +41,20 @@ def ρσ_function_argument_error(
     return error
 
 
+def ρσ_positional_default(target_function: Any, from_end: int, name: str) -> Any:
+    """Resolve an omitted argument without duplicating binding code per function."""
+    defaults = runtime.native_get(target_function, "__defaults__")
+    if defaults is None or defaults is runtime.undefined or defaults.length < from_end:
+        # The host Error representation crosses the Python exception boundary.
+        error = runtime.reflect.apply(
+            ρσ_function_argument_error,
+            runtime.undefined,
+            ["missing required argument: " + name, target_function],
+        )
+        raise error
+    return defaults[defaults.length - from_end]
+
+
 class BaseException(runtime.error):
     def __init__(self, *args: object) -> None:
         self.args = runtime.math_tuple(list(args))
@@ -326,12 +340,28 @@ class UnicodeError(ValueError):
     pass
 
 
+def _unicode_codec_init(self: Any, *args: Any) -> None:
+    if len(args) != 5:
+        raise TypeError(
+            "function takes exactly 5 arguments (" + str(len(args)) + " given)"
+        )
+    encoding, obj, start, end, reason = args
+    UnicodeError.__init__(self, encoding, obj, start, end, reason)
+    self.encoding = encoding
+    self.object = obj
+    self.start = start
+    self.end = end
+    self.reason = reason
+
+
 class UnicodeEncodeError(UnicodeError):
-    pass
+    def __init__(self, *args: Any) -> None:
+        _unicode_codec_init(self, *args)
 
 
 class UnicodeDecodeError(UnicodeError):
-    pass
+    def __init__(self, *args: Any) -> None:
+        _unicode_codec_init(self, *args)
 
 
 class UnicodeTranslateError(UnicodeError):

@@ -336,6 +336,10 @@ print(
             "%%matlab\\n" +
             "x=arrayfun(@(x) x^2,[1 2;3 4]); size(x)"
           );
+          const punycode = await session.evaluate(
+            "print('bücher'.encode('punycode'))\\n" +
+            "print(b'bcher-kva'.decode('punycode'))"
+          );
           const nlopt = await session.evaluate(
             "from sagejs.numerics.optimization import minimize\\n" +
             "answer = minimize(\\n" +
@@ -353,6 +357,7 @@ print(
           return {
             python: { stdout: python.stdout, repr: python.repr },
             matlab: { stdout: matlab.stdout, repr: matlab.repr },
+            punycode: { stdout: punycode.stdout, stderr: punycode.stderr ?? '', repr: punycode.repr },
             nlopt: { stdout: nlopt.stdout, repr: nlopt.repr },
           };
         } finally {
@@ -366,6 +371,7 @@ print(
     assert.deepEqual(pythonModeProbe.result.value, {
       python: { stdout: "True\nZeroDivisionError\n", repr: "" },
       matlab: { stdout: "", repr: "(2, 2)" },
+      punycode: { stdout: "b'bcher-kva'\nbücher\n", stderr: "", repr: "" },
       nlopt: { stdout: "False False\n", repr: "" },
     });
     const publicExactSubspacesOnly = process.argv.includes(
@@ -428,10 +434,10 @@ print(
       "1 True\nTrue",
     );
     await runSource(
-      "AffineSpace(GF(4, 'a'), 2)",
-      "Error: algebraic geometry currently supports QQ and " +
-        "prime GF(p); finite extensions and number fields are planned in " +
-        "agents/no-singular-extension-fields-plan.md",
+      "K = GF(4, 'a')\nA = AffineSpace(K, 2, names=('x', 'y'))\n" +
+        "x, y = A.gens()\nX = A.subscheme([y-x^2-K.gen()])\n" +
+        "print(len(X.rational_points()), X.is_smooth())",
+      "4 True\n",
     );
     await runSource(
       "R.<x> = QQ[]\nx^2 - 2*x + 1",

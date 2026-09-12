@@ -3,9 +3,11 @@
 from __python__ import hash_literals
 
 from ast_types import (
+    AST_Binary,
     AST_Call,
     AST_Class,
     AST_ClassCall,
+    AST_Conditional,
     AST_Dot,
     AST_ItemAccess,
     AST_Lambda,
@@ -17,13 +19,14 @@ from ast_types import (
     AST_Sub,
     AST_SymbolRef,
     AST_Toplevel,
+    AST_Unary,
     has_calls,
     is_node_type,
 )
 from output.stream import OutputStream
 from output.statements import print_bracketed
 from output.utils import create_doctring
-from output.operators import print_getattr
+from output.operators import is_python_attribute_read, print_getattr
 
 anonfunc = "ρσ_anonfunc"
 module_name = "null"
@@ -115,10 +118,10 @@ def function_preamble(node, output, offset, javascript_name):
             return
         if a.starargs is undefined:
             output.indent()
-            output.print("if (arguments.length > " + str(a.length - offset))
-            output.print(" && !(arguments[arguments.length - 1] ")
+            output.print("if (arguments.length - (arguments[arguments.length - 1] ")
             output.print("&& arguments[arguments.length - 1]")
-            output.print("[ρσ_kwargs_symbol] === true)) ")
+            output.print("[ρσ_kwargs_symbol] === true ? 1 : 0) > ")
+            output.print(str(a.length - offset) + ") ")
             output.print(
                 "throw ρσ_function_argument_error("
                 '"too many positional arguments", ' + fname + ")"
@@ -127,7 +130,22 @@ def function_preamble(node, output, offset, javascript_name):
         for index, argument in enumerate(a):
             if index < offset:
                 continue
-            if not Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
+            if output.options.python_attributes:
+                output.indent()
+                argument_name = python_argument_name(argument)
+                output.print("if (typeof " + argument_name + ' === "undefined") ')
+                output.print(
+                    argument_name
+                    + " = ρσ_positional_default("
+                    + fname
+                    + ", "
+                    + str(a.length - index)
+                    + ", "
+                    + JSON.stringify(argument.name)
+                    + ")"
+                )
+                output.end_statement()
+            elif not Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
                 output.indent()
                 output.print("if (typeof ")
                 output.print(python_argument_name(argument))
@@ -138,11 +156,34 @@ def function_preamble(node, output, offset, javascript_name):
                 )
                 output.end_statement()
         for argument in a.kwonly:
-            if not Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
+            if output.options.python_attributes:
                 output.indent()
-                output.print("if (typeof ")
+                argument_name = python_argument_name(argument)
+                output.print("if (typeof " + argument_name + ' === "undefined") ')
+                output.print(
+                    argument_name
+                    + " = "
+                    + fname
+                    + ".__kwdefaults__ == null ? ρσ_no_default : ρσ_dict_keyword_default("
+                )
+                output.print(
+                    fname + ".__kwdefaults__, " + JSON.stringify(argument.name) + ")"
+                )
+                output.end_statement()
+            if (
+                output.options.python_attributes
+                or not Object.prototype.hasOwnProperty.call(a.defaults, argument.name)
+            ):
+                output.indent()
+                output.print(
+                    "if (" if output.options.python_attributes else "if (typeof "
+                )
                 output.print(python_argument_name(argument))
-                output.print(' === "undefined") ')
+                output.print(
+                    " === ρσ_no_default) "
+                    if output.options.python_attributes
+                    else ' === "undefined") '
+                )
                 output.print(
                     "throw ρσ_function_argument_error("
                     '"missing required keyword-only '
@@ -167,7 +208,10 @@ def function_preamble(node, output, offset, javascript_name):
             output.print("var")
             output.space()
             output.assign(python_argument_name(arg))
-            if Object.prototype.hasOwnProperty.call(a.defaults, arg.name):
+            if (
+                not output.options.python_attributes
+                and Object.prototype.hasOwnProperty.call(a.defaults, arg.name)
+            ):
                 output.spaced(
                     "(arguments[" + i + "]",
                     "===",
@@ -299,7 +343,10 @@ def function_preamble(node, output, offset, javascript_name):
             output.indent()
             output.print("var ")
             output.assign(python_argument_name(argument))
-            if Object.prototype.hasOwnProperty.call(a.defaults, argument.name):
+            if (
+                not output.options.python_attributes
+                and Object.prototype.hasOwnProperty.call(a.defaults, argument.name)
+            ):
                 output.print(
                     fname + ".__defaults__[" + JSON.stringify(argument.name) + "]"
                 )
@@ -533,7 +580,34 @@ def function_annotation(self, output, strip_first, name):
     # Create __defaults__
     defaults = self.argnames.defaults
     dkeys = Object.keys(self.argnames.defaults)
-    if dkeys.length:
+
+    def print_python_default(value):
+        if is_node_type(value, AST_Seq):
+            output.print("ρσ_math_tuple([")
+            value.print(output)
+            output.print("])")
+        else:
+            value.print(output)
+
+    if output.options.python_attributes:
+
+        def positional_defaults():
+            positional_names = []
+            for argument in self.argnames:
+                if Object.prototype.hasOwnProperty.call(defaults, argument.name):
+                    positional_names.push(argument.name)
+            if not positional_names.length:
+                output.print("null")
+                return
+            output.print("ρσ_math_tuple([")
+            for index, key in enumerate(positional_names):
+                if index:
+                    output.comma()
+                print_python_default(defaults[key])
+            output.print("])")
+
+        props.__defaults__ = positional_defaults
+    elif dkeys.length:
 
         def __defaults__():
             output.print("{")
@@ -567,14 +641,19 @@ def function_annotation(self, output, strip_first, name):
         if not kwdefault_names.length:
             output.print("null")
             return
-        output.print("{")
+        output.print("ρσ_dict({" if output.options.python_attributes else "{")
         for index, name in enumerate(kwdefault_names):
             if index:
                 output.comma()
             output.print_string(name)
             output.colon()
-            self.argnames.defaults[name].print(output)
-        output.print("}")
+            if output.options.python_attributes:
+                print_python_default(self.argnames.defaults[name])
+            else:
+                # The bootstrap ABI keeps a host defaults record. Reuse it
+                # rather than evaluating a keyword default expression twice.
+                output.print(fname + ".__defaults__[" + JSON.stringify(name) + "]")
+        output.print("})" if output.options.python_attributes else "}")
 
     props.__kwdefaults__ = __kwdefaults__
 
@@ -602,6 +681,29 @@ def function_annotation(self, output, strip_first, name):
         output.print("]")
 
     props.__argnames__ = argnames
+
+    if output.options.python_attributes:
+
+        def code_varnames():
+            names = []
+
+            def add(name):
+                if names.indexOf(name) is -1:
+                    names.push(name)
+
+            for argument in self.argnames:
+                add(argument.name)
+            for argument in self.argnames.kwonly:
+                add(argument.name)
+            if self.argnames.starargs is not undefined:
+                add(self.argnames.starargs.name)
+            if self.argnames.kwargs is not undefined:
+                add(self.argnames.kwargs.name)
+            for name in self.python_scope_bindings or []:
+                add(name)
+            output.print("ρσ_math_tuple(" + JSON.stringify(names) + ")")
+
+        props.__sagejs_code_varnames__ = code_varnames
 
     positional_only = self.argnames.posonly or 0
     if strip_first and positional_only:
@@ -712,6 +814,8 @@ def function_definition(
         output.set_indentation(output.next_indent())
         output.spaced("(function()", "{"), output.newline()
         output.indent(), output.spaced("var", anonfunc, "="), output.space()
+    prepared_namespace = output.prepared_namespace
+    output.prepared_namespace = None
     output.print("function"), output.space()
     if self.name:
         if javascript_name:
@@ -827,6 +931,7 @@ def function_definition(
             python_implicit_return,
         )
 
+    output.prepared_namespace = prepared_namespace
     if as_expression:
         output.end_statement()
         function_annotation(self, output, strip_first, anonfunc)
@@ -923,6 +1028,10 @@ def print_function_call(self, output):
                 return candidate
 
     def print_namespace(scope, live_globals):
+        prepared = output.prepared_namespace
+        if not live_globals and prepared and scope is prepared.scope:
+            output.print(prepared.state + ".namespace")
+            return
         if live_globals or is_node_type(scope, AST_Toplevel):
             output.print("ρσ_live_scope_dict(ρσ_modules[")
             output.print(JSON.stringify(scope.module_id))
@@ -1061,6 +1170,11 @@ def print_function_call(self, output):
             add_name("help")
 
         if want_dir:
+            prepared = output.prepared_namespace
+            if prepared and scope is prepared.scope:
+                output.print(prepared.state + ".names()")
+                finish_reusable_guard()
+                return
             if output.options.reuse_main_module and is_node_type(scope, AST_Toplevel):
                 output.print(
                     "(function(){var names=arguments[0];"
@@ -1084,6 +1198,12 @@ def print_function_call(self, output):
             output.print("ρσ_live_scope_dict(ρσ_modules[")
             output.print(JSON.stringify(scope.module_id))
             output.print("])")
+            finish_reusable_guard()
+            return
+
+        prepared = output.prepared_namespace
+        if prepared and scope is prepared.scope:
+            output.print(prepared.state + ".namespace")
             finish_reusable_guard()
             return
 
@@ -1246,7 +1366,9 @@ def print_function_call(self, output):
         output.comma()
 
     def do_print_this():
-        if not is_repeatable:
+        if resolved_python_attribute:
+            output.print("undefined")
+        elif not is_repeatable:
             output.print("ρσ_expr_temp")
         elif is_node_type(self, AST_ClassCall) and self["static"]:
             # ``AST_ClassCall.static`` covers both static methods and class
@@ -1292,6 +1414,39 @@ def print_function_call(self, output):
     has_kwargs = has_kwarg_items or has_kwarg_formals
     is_new = is_node_type(self, AST_New) and not self.python_class
     is_repeatable = True
+    resolved_python_attribute = (
+        not is_new
+        and not is_node_type(self, AST_ClassCall)
+        and not self.direct_call
+        and is_node_type(self.expression, AST_Dot)
+        and is_python_attribute_read(self.expression, output)
+    )
+
+    if (
+        output.options.python_attributes
+        and not has_kwargs
+        and not is_new
+        and not is_node_type(self, AST_ClassCall)
+        and not self.direct_call
+        and (
+            is_node_type(self.expression, AST_Binary)
+            or is_node_type(self.expression, AST_Conditional)
+            or is_node_type(self.expression, AST_Unary)
+            or is_node_type(self.expression, AST_Seq)
+        )
+    ):
+        # Compound expressions produce callable values, including instances
+        # whose __call__ is inherited. Resolve only after evaluating arguments:
+        # an invalid target must not suppress argument side effects or errors.
+        output.print("ρσ_invoke_prepared_method([(")
+        self.expression.print(output)
+        output.print(")], ")
+        if self.args.length:
+            print_positional_args()
+        else:
+            output.print("[]")
+        output.print(")")
+        return
 
     if is_new and not self.args.length and not has_kwargs and not self.args.starargs:
         output.print("new"), output.space()
@@ -1306,13 +1461,31 @@ def print_function_call(self, output):
                     output.comma()
                 a.print(output)
 
+        if resolved_python_attribute:
+            # Resolve and retain the attribute before evaluating arguments.
+            # A per-call record remains valid across nested calls and mutation;
+            # ordinary attribute reads still produce observable bound methods.
+            output.print("ρσ_invoke_prepared_method(ρσ_prepare_method_call(")
+            self.expression.expression.print(output)
+            output.comma()
+            output.print(JSON.stringify(self.expression.property))
+            output.print("), [")
+            print_args()
+            output.print("])")
+            return
+
         if is_new:
             output.print("new"), output.space()
         print_function_name()
         output.with_parens(print_args)
         return
 
-    is_repeatable = is_new or not has_calls(self.expression)
+    # Python attribute lookup already applies descriptors and returns the
+    # callable value. Do not evaluate its syntactic receiver a second time or
+    # infer binding again from unrelated attributes in that receiver.
+    is_repeatable = (
+        resolved_python_attribute or is_new or not has_calls(self.expression)
+    )
     if not is_repeatable:
         (
             output.assign("(ρσ_expr_temp"),
@@ -1337,6 +1510,10 @@ def print_function_call(self, output):
             print_new(True)
             print_function_name(True)
             output.comma()
+        elif resolved_python_attribute:
+            output.print("ρσ_invoke_prepared_method([")
+            self.expression.print(output)
+            output.print("], ")
         else:
             print_function_name(True)
             output.print(".apply(")

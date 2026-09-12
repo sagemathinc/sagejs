@@ -9,7 +9,7 @@ const { tmpdir } = require("node:os");
 const { dirname, join } = require("node:path");
 const { artifactInputsFingerprint, workspaceFingerprint, currentBuildIdentity,
   nativeInputIdentity, inspectBuildReceipt, refreshBuildReceiptAfterNative,
-  writeBuildReceipt } = require("../scripts/build-receipt.cjs");
+  writeBuildReceipt, validateBuildReceipt } = require("../scripts/build-receipt.cjs");
 const { requireUnchangedWorkspace } = require("../scripts/run-python-conformance.cjs");
 
 const pythonConformanceValidationPaths = [
@@ -48,6 +48,10 @@ const generalFrontierValidationPaths = [
   "bench/class-unit-groups/general-frontier/reference/pari-screen.gp",
   "bench/class-unit-groups/general-frontier/reference/hecke/screen.jl",
   "bench/class-unit-groups/general-frontier/reference/runner/diagnose.cjs",
+];
+
+const coordinationTaskPaths = [
+  ".agents/tasks/receipt-task.json",
   ".agents/tasks/class-unit-rank-two-frontier.json",
   ".agents/tasks/general-class-unit-candidate-pool.json",
   ".agents/tasks/general-class-unit-hecke-screen.json",
@@ -56,6 +60,28 @@ const generalFrontierValidationPaths = [
   ".agents/tasks/general-class-unit-hard-windows.json",
   ".agents/tasks/general-frontier-build-partition.json",
 ];
+
+function taskContract(id = "receipt-task") {
+  return {
+    $schema: "../task.schema.json", schema_version: 2, id,
+    title: "Receipt projection", lane: "compiler-runtime", status: "active",
+    owner: "test", objective: "Preserve build and validation identities",
+    base_commit: "a".repeat(40), claims: ["src/baselib/builtins.py"],
+    dependencies: [], references: [],
+    architecture: {strategy: "compiler-infrastructure", fallback: "not-applicable",
+      oracles: [], exceptions: []},
+    platforms: {"linux-x64": "required", "linux-arm64": "required",
+      "windows-x64": "required", "macos-arm64": "required"},
+    validation: ["pnpm merge:check"], runs: [],
+    handoff: {summary: "", risks: [], next_steps: []},
+  };
+}
+
+function taskRun() {
+  return {command: "pnpm merge:check", result: "pass", exit_code: 0, seconds: 1.5,
+    started_at: "2026-09-12T09:00:00.000Z", commit: "a".repeat(40),
+    workspace_fingerprint: "b".repeat(64), platform: "linux-x64"};
+}
 
 function fixture(context, git = false) {
   const root = mkdtempSync(join(tmpdir(), "sagejs-build-inputs-"));
@@ -70,6 +96,162 @@ function fixture(context, git = false) {
 }
 
 for (const git of [false, true]) {
+  test(`post-build task runs preserve receipt provenance and output integrity (${git ? "Git" : "archive"})`, context => {
+    const {root, write} = fixture(context, git);
+    if (git) write(".gitignore", "dist/\n");
+    const name = coordinationTaskPaths[0];
+    const task = taskContract();
+    write(name, JSON.stringify(task));
+    for (const directory of ["compiler", "tools", "vendor", "module-cache", "runtime-cache"]) {
+      write(`dist/${directory}/payload`);
+    }
+    for (const file of ["compiler/compiler.js", "tools/kernel.js", "runtime-cache/manifest.json", "sagejs-version.json"]) {
+      write(`dist/${file}`);
+    }
+    // This synthetic artifact tree intentionally has no numerical provider,
+    // regardless of which optional toolchains are installed on the test host.
+    const identity = () => ({...currentBuildIdentity(root), numericalRuntimeProvider: undefined});
+    const original = identity();
+    writeBuildReceipt({root, durationMilliseconds: 1, identity: original});
+    const filename = join(root, "dist/build-receipt.json");
+    const receipt = readFileSync(filename);
+    const inspect = () => validateBuildReceipt(JSON.parse(readFileSync(filename)), identity(), root);
+    task.runs.push(taskRun());
+    task.status = "review";
+    task.handoff.summary = "Qualification recorded after the build";
+    write(name, JSON.stringify(task, null, 2) + "\n");
+    const status = inspect();
+    assert.equal(status.current, true);
+    assert.equal(status.buildWorkspaceSha256, original.workspaceSha256);
+    assert.notEqual(status.validationWorkspaceSha256, original.workspaceSha256);
+    assert.deepEqual(readFileSync(filename), receipt, "inspection never rewrites provenance");
+    task.claims.push("src/baselib/internal.py");
+    write(name, JSON.stringify(task));
+    assert.equal(inspect().current, false);
+    task.claims.pop();
+    write(name, JSON.stringify(task));
+    assert.equal(inspect().current, true);
+    write("dist/module-cache/payload", "tampered");
+    assert.match(inspect().reason, /digest or inventory/);
+    assert.deepEqual(readFileSync(filename), receipt);
+  });
+
+  test(`validated task bookkeeping preserves only artifact identity (${git ? "Git" : "archive"})`, context => {
+    const {root, write} = fixture(context, git);
+    for (const name of coordinationTaskPaths) {
+      const task = taskContract(name.split("/").pop().slice(0, -5));
+      const absent = artifactInputsFingerprint(root);
+      write(name, JSON.stringify(task));
+      const artifact = artifactInputsFingerprint(root);
+      assert.notEqual(artifact, absent, "the contract itself remains an input");
+      for (const change of [
+        () => task.runs.push(taskRun()),
+        () => { task.handoff = {summary: "Qualified", risks: ["CI pending"], next_steps: ["Review"]}; },
+        () => { task.status = "review"; },
+      ]) {
+        const workspace = workspaceFingerprint(root);
+        change();
+        write(name, JSON.stringify(task, null, 2) + "\n");
+        assert.equal(artifactInputsFingerprint(root), artifact, name);
+        assert.notEqual(workspaceFingerprint(root), workspace, name);
+      }
+      rmSync(join(root, name));
+      assert.equal(artifactInputsFingerprint(root), absent, "deletion changes artifact identity");
+    }
+  });
+
+  test(`task semantics and schema remain build inputs (${git ? "Git" : "archive"})`, context => {
+    const {root, write} = fixture(context, git);
+    const name = coordinationTaskPaths[0];
+    for (const change of [
+      task => { task.claims = ["src/baselib/internal.py"]; },
+      task => { task.objective = "A different semantic contract objective"; },
+      task => { task.validation.push("pnpm test:compiler"); },
+      task => { task.dependencies.push("prerequisite"); },
+      task => { task.references.push("contract reference"); },
+      task => { task.base_commit = "c".repeat(40); },
+      task => { task.owner = "another owner"; },
+      task => { task.title = "Changed title"; },
+      task => { task.lane = "integration"; },
+      task => { task.architecture.oracles.push("cpython"); },
+      task => { task.platforms["windows-x64"] = "fallback"; },
+      task => { task.$schema = "../future-task.schema.json"; },
+    ]) {
+      const task = taskContract();
+      write(name, JSON.stringify(task));
+      const before = artifactInputsFingerprint(root);
+      change(task);
+      write(name, JSON.stringify(task));
+      assert.notEqual(artifactInputsFingerprint(root), before);
+    }
+    const before = artifactInputsFingerprint(root);
+    write(".agents/task.schema.json", JSON.stringify({additionalProperties: true}));
+    assert.notEqual(artifactInputsFingerprint(root), before);
+  });
+
+  test(`unreviewed task shapes remain raw (${git ? "Git" : "archive"})`, context => {
+    const {root, write} = fixture(context, git);
+    const name = coordinationTaskPaths[0];
+    for (const change of [
+      task => { task.extra = "unknown"; },
+      task => { task.handoff.extra = "unknown"; },
+      task => { task.architecture.extra = "unknown"; },
+      task => { task.platforms.extra = "unknown"; },
+      task => { task.runs = [{...taskRun(), extra: "unknown"}]; },
+      task => { task.schema_version = 3; },
+      task => { task.status = "unreviewed"; },
+      task => { task.id = "different-file"; },
+      task => { delete task.dependencies; },
+      task => { task.claims = ["same", "same"]; },
+      task => { task.dependencies = [{}]; },
+      task => { task.runs = [null]; },
+      task => { task.runs = [{...taskRun(), seconds: -1}]; },
+      task => { task.runs = [{...taskRun(), exit_code: "0"}]; },
+      task => { task.runs = [{...taskRun(), result: "unknown"}]; },
+      task => { task.runs = [{...taskRun(), started_at: "2026-02-30T09:00:00.000Z"}]; },
+      task => { task.runs = [{...taskRun(), commit: "invalid"}]; },
+      task => { task.runs = [{...taskRun(), workspace_fingerprint: "invalid"}]; },
+      task => { task.handoff.risks = [{}]; },
+    ]) {
+      const task = taskContract();
+      change(task);
+      write(name, JSON.stringify(task));
+      const before = artifactInputsFingerprint(root);
+      task.handoff.summary = "Bookkeeping changed on an invalid contract";
+      write(name, JSON.stringify(task));
+      assert.notEqual(artifactInputsFingerprint(root), before);
+    }
+    const invalidUtf8 = Buffer.from(JSON.stringify(taskContract()));
+    invalidUtf8[invalidUtf8.indexOf('"owner":"test"') + 9] = 255;
+    for (const source of ["{", "null", "[]", "42", '"task"', invalidUtf8]) {
+      write(name, source);
+      const before = artifactInputsFingerprint(root);
+      write(name, Buffer.isBuffer(source) ? Buffer.concat([source, Buffer.from("\n")]) : source + "\n");
+      assert.notEqual(artifactInputsFingerprint(root), before);
+    }
+    for (const path of [name + ".in", ".agents/tasks/nested/receipt-task.json"]) {
+      write(path, JSON.stringify(taskContract()));
+      const before = artifactInputsFingerprint(root);
+      write(path, JSON.stringify({...taskContract(), status: "complete"}));
+      assert.notEqual(artifactInputsFingerprint(root), before);
+    }
+  });
+
+  for (const field of ["reviewed_sagejs_files", "qualification_tooling_files"]) {
+    test(`production ${field} overrides task projection (${git ? "Git" : "archive"})`, context => {
+      const {root, write} = fixture(context, git);
+      const name = coordinationTaskPaths[0];
+      write("src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json",
+        JSON.stringify({[field]: {[name]: "reviewed"}}));
+      const task = taskContract();
+      write(name, JSON.stringify(task));
+      const before = artifactInputsFingerprint(root);
+      task.runs.push(taskRun());
+      write(name, JSON.stringify(task));
+      assert.notEqual(artifactInputsFingerprint(root), before);
+    });
+  }
+
   test(`audited validation-only edits preserve artifacts (${git ? "Git" : "archive"})`, (context) => {
     const { root, write } = fixture(context, git);
     for (const name of ["README.md", "AGENTS.md", "agents/plan.md", "docs/reference/api.md",

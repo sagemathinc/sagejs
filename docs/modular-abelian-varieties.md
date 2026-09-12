@@ -6,7 +6,10 @@ title: "Modular abelian varieties"
 
 Sage.js represents the first modular-abelian-variety slice using exact
 weight-$2$ modular symbols and saturated integral homology.  The initial scope
-is $J_0(N)$ and its rational Hecke constituents over $\mathbf Q$.
+includes $J_0(N)$, its rational Hecke constituents, products, and certified
+morphisms over $\mathbf Q$. Continue with the
+[products, kernels, and isogenies tour](modular-abelian-morphisms.md) for integral
+map arithmetic and composite-level degeneracy maps.
 
 The [benchmark notes](../bench/modular/abelian-varieties/README.md#larger-level-performance)
 explain the sign-aware decomposition algorithm and give reproducible
@@ -104,8 +107,9 @@ Integer Ring
 At composite level, `decomposition()` currently means rational full-Hecke
 isotypic decomposition.  Repeated oldform copies that do not split over
 $\mathbf Q$ under the available $U_p$ action can remain together.  This is an
-honest Hecke decomposition, not yet Sage's finer degeneracy-labelled
-isogeny decomposition.
+honest full-Hecke decomposition. For the finer, geometrically labelled
+oldform copies, use `J0(N).oldform_decomposition()`, whose `isogeny()` returns
+the sum of the copies' integral inclusions.
 
 ## The connected quotient $A_f$
 
@@ -233,16 +237,19 @@ constituent matching, saturation, and quotient construction.  This is a safe,
 data-only, mathematically authenticated format; it never executes serialized
 source code.
 
-Map serialization currently supports canonical inclusions and connected
-quotients only. Both endpoints and the exact matrix are checked on saving and
-loading. An arbitrary integral homology map is rejected rather than silently
-replaced by a canonical map.
+Map serialization replays identities, inclusions, quotients, Hecke maps,
+product injections and projections, degeneracy maps, and exact map arithmetic.
+Both endpoints and the exact matrix are checked on saving and loading.
+Explicit matrices require a certificate in a supplied rational span of genuine
+morphisms; an arbitrary integral matrix is not automatically an algebraic map.
 
 ## Current boundary
 
 This initial layer does not yet implement $J_1(N)$, nontrivial character
-quotients, products, arbitrary Hecke ideals, periods, polarizations, modular
-degrees, rational torsion, or component groups.  The saturated lattice and
+quotients, arbitrary Hecke ideals, periods, polarizations, modular
+degrees, rational torsion, or Néron component groups. Finite geometric kernel
+component groups of morphisms are supported; they are not Néron component
+groups or rational torsion points. The saturated lattice and
 exact-map representation is designed as the foundation for those features.
 
 The implementation follows Sage's modular-abelian-variety semantics where

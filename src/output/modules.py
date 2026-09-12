@@ -15,6 +15,7 @@ from ast_types import (
     AST_Call,
     AST_Class,
     AST_Import,
+    AST_Imports,
     AST_Lambda,
     AST_Seq,
     AST_String,
@@ -26,7 +27,7 @@ from ast_types import (
 )
 
 
-def control_flow_import_names(module):
+def control_flow_import_names(module, output=None):
     """Return module names that require runtime namespace resolution."""
     names = {}
     star_candidates = {}
@@ -62,6 +63,41 @@ def control_flow_import_names(module):
             return True
 
     module.walk(TreeWalker(detect_star_import))
+
+    if output:
+        output.private_lexical_import_names = {}
+        if (
+            output.options.private_compiler_import_reads
+            and not output.options.reuse_main_module
+            and not output.options.execution_namespace_module_id
+            and not output.options.module_cache_dir
+            and module.python_lexical_hygiene is False
+            and not has_module_star_import
+        ):
+            # Only immediate imports, not imports beneath control flow or a
+            # nested scope. AST_Imports is a transparent parser container.
+            for statement in module.body:
+                imports = (
+                    statement.imports
+                    if is_node_type(statement, AST_Imports)
+                    else [statement]
+                    if is_node_type(statement, AST_Import)
+                    else []
+                )
+                for imported in imports:
+                    local_names = (
+                        [
+                            arg.alias.name if arg.alias else arg.name
+                            for arg in imported.argnames
+                        ]
+                        if imported.argnames
+                        else [imported.alias.name]
+                        if imported.alias
+                        else [imported.key.split(".")[0]]
+                    )
+                    for name in local_names:
+                        if name in (module.python_scope_bindings or []):
+                            output.private_lexical_import_names[name] = True
 
     def collect(node, descend):
         if node is module:
@@ -174,6 +210,10 @@ def write_imports(module, output):
         imports.push(module.imports[import_id])
 
     imports.sort(lambda left, right: left.import_order - right.import_order)
+    has_lazy_imports = False
+    for module_ in imports:
+        if module_.standalone_lazy:
+            has_lazy_imports = True
     output.indent()
     if output.options.module_registry:
         output.print("var ρσ_modules = globalThis[")
@@ -269,6 +309,32 @@ def write_imports(module, output):
         )
         output.end_statement()
 
+    if has_lazy_imports:
+        output.indent()
+        output.print(
+            "var ρσ_standalone_factories = globalThis.__sagejs_standalone_module_factories__ "
+            "|| (globalThis.__sagejs_standalone_module_factories__ = Object.create(null));"
+            "if (!globalThis.__sagejs_load_module__ || "
+            "!globalThis.__sagejs_load_module__.__sagejs_embedded_modules__) "
+            "globalThis.__sagejs_load_module__ = (function(previous){"
+            "function load(name){"
+            "if(Object.prototype.hasOwnProperty.call(ρσ_modules,name))return ρσ_modules[name];"
+            "var factory=globalThis.__sagejs_standalone_module_factories__[name];"
+            "if(!factory){if(previous)return previous(name);"
+            'throw new ImportError("No module named \'"+name+"\'")}'
+            "var dot=name.lastIndexOf('.');"
+            "var parent=dot<0?null:load(name.slice(0,dot));"
+            "if(Object.prototype.hasOwnProperty.call(ρσ_modules,name))return ρσ_modules[name];"
+            "var namespace=ρσ_modules[name]=Object.create(null);"
+            "if(globalThis.__sagejs_module_namespaces__)"
+            "globalThis.__sagejs_module_namespaces__.add(namespace);"
+            "try{factory();if(parent)parent[name.slice(dot+1)]=namespace;return namespace}"
+            "catch(error){delete ρσ_modules[name];throw error}}"
+            "load.__sagejs_embedded_modules__=true;return load"
+            "})(globalThis.__sagejs_load_module__);"
+        )
+        output.newline()
+
     # Declare all variable names exported from the modules as global symbols
     nonlocalvars = {}
     for module_ in imports:
@@ -284,7 +350,7 @@ def write_imports(module, output):
     # Create the module objects
     for module_ in imports:
         module_id = module_.module_id
-        if module_.dynamic:
+        if module_.dynamic or module_.standalone_lazy:
             continue
         output.indent()
         if module_id == "__main__" and output.options.reuse_main_module:
@@ -343,7 +409,7 @@ def write_imports(module, output):
     # wrote ``import package.child`` or ``from package import child``.
     for module_ in imports:
         module_id = module_.module_id
-        if module_.dynamic or module_id.indexOf(".") is -1:
+        if module_.dynamic or module_.standalone_lazy or module_id.indexOf(".") is -1:
             continue
         parts = module_id.split(".")
         parent_id = parts.slice(0, -1).join(".")
@@ -369,7 +435,16 @@ def write_imports(module, output):
             # the imported module instead of the surrounding `__main__`.
             output.push_node(module_)
             try:
-                print_module(module_, output)
+                if module_.standalone_lazy:
+                    output.indent()
+                    output.print("ρσ_standalone_factories[")
+                    output.print_string(module_.module_id)
+                    output.print("] = function(){")
+                    print_module(module_, output)
+                    output.print("};")
+                    output.newline()
+                else:
+                    print_module(module_, output)
             finally:
                 output.pop_node()
 
@@ -823,7 +898,7 @@ def print_top_level(self, output):
     set_module_name(effective_module_id)
     is_main = self.module_id is "__main__"
     numeric_literal_pool = prepare_numeric_literal_pool(self, output)
-    output.module_control_flow_names = control_flow_import_names(self)
+    output.module_control_flow_names = control_flow_import_names(self, output)
 
     def write_docstrings():
         if (
@@ -866,7 +941,9 @@ def print_top_level(self, output):
 
                 prologue(self, output)
                 write_imports(self, output)
-                output.module_control_flow_names = control_flow_import_names(self)
+                output.module_control_flow_names = control_flow_import_names(
+                    self, output
+                )
                 set_module_name(effective_module_id)
                 output.newline()
                 output.indent()
@@ -905,7 +982,7 @@ def print_top_level(self, output):
             write_strict_directive()
             prologue(self, output)
             write_imports(self, output)
-            output.module_control_flow_names = control_flow_import_names(self)
+            output.module_control_flow_names = control_flow_import_names(self, output)
             set_module_name(effective_module_id)
             write_main_name(output, self.filename)
         else:
@@ -922,6 +999,9 @@ def print_top_level(self, output):
 
 def print_module(self, output):
     set_module_name(self.module_id)
+    # A cached module has no live AST to classify. Never retain the previous
+    # module's private import authority while emitting cached output.
+    output.private_lexical_import_names = {}
     # Cached modules contain rendered output and lightweight symbol metadata,
     # not a live AST. Their rendered variants already include the numeric
     # literal pool produced on the cache-writing pass.
@@ -929,7 +1009,7 @@ def print_module(self, output):
         [] if self.is_cached else prepare_numeric_literal_pool(self, output)
     )
     output.module_control_flow_names = (
-        {} if self.is_cached else control_flow_import_names(self)
+        {} if self.is_cached else control_flow_import_names(self, output)
     )
 
     def output_module(output):
@@ -1068,6 +1148,12 @@ def print_imports(container, output):
             print_local_name(name)
             return
         if destination.kind is "class":
+            prepared = output.prepared_namespace
+            if prepared and prepared.prefix == destination.owner:
+                output.print(prepared.state + ".bindings[")
+                output.print_string(destination.name)
+                output.print("]")
+                return
             output.print_python_name(destination.owner)
             output.print(".prototype[")
             output.print_string(destination.name)
@@ -1364,6 +1450,14 @@ def print_imports(container, output):
         if self.dynamic and self.key != "builtins":
             dynamic_import(self)
             continue
+        output.indent()
+        output.print("if (!Object.prototype.hasOwnProperty.call(ρσ_modules,")
+        output.print_string(self.key)
+        output.print(") && typeof globalThis.__sagejs_load_module__ === 'function') ")
+        output.print("globalThis.__sagejs_load_module__(")
+        output.print_string(self.key)
+        output.print(")")
+        output.end_statement()
         if self.star:
             import_star(self.key, self.target_module)
             continue

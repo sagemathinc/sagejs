@@ -6,6 +6,9 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const esbuild = require("esbuild");
 const { browserModuleCache } = require("./browser-module-cache.cjs");
+const { CORE_STANDALONE_MODULES } = require(
+  "../../../tools/standalone-library.cjs",
+);
 const { loadRegistry } = require("../../../tools/ffi/declarations.cjs");
 const {
   generatedWasmResourceAdapter,
@@ -83,6 +86,9 @@ const ffiClosureOutput = path.join(
   outputDirectory,
   "ffi-production-closure.json",
 );
+const extensionOutput = path.join(outputDirectory, "flint-extension-multivariate.wasm");
+const extensionAdapterSource = path.join(outputDirectory, "extension-resource-adapter.c");
+const extensionBackendOutput = path.join(outputDirectory, "extension-resource-backend.mjs");
 const m4riRawOutput = path.join(
   outputDirectory,
   "m4ri-resource.unstripped.wasm",
@@ -283,24 +289,12 @@ const adapterInputsFilename = path.join(
   "adapter-inputs.json",
 );
 const adapterInputs = JSON.parse(fs.readFileSync(adapterInputsFilename, "utf8"));
-if (adapterInputs.schema !== "sagejs.wasm-adapter-inputs/v2" ||
+if (adapterInputs.schema !== "sagejs.wasm-adapter-inputs/v3" ||
     adapterInputs.policy !== "all-declared-wasm" ||
     adapterInputs.modules === null ||
     typeof adapterInputs.modules !== "object") {
   throw new Error(`unsupported generated-adapter input contract: ${adapterInputsFilename}`);
 }
-const adapterSelections = Object.entries(adapterInputs.modules).map(
-  ([module, entry]) => {
-    if (entry?.declaration !== module ||
-        typeof entry.ownershipDomain !== "string") {
-      throw new Error(`invalid generated-adapter selection ${module}`);
-    }
-    return {
-      library: entry.declaration,
-      ownershipDomain: entry.ownershipDomain,
-    };
-  },
-);
 const productionLayout = JSON.parse(fs.readFileSync(
   path.join(packageRoot, "release", "production-layout.json"),
   "utf8",
@@ -412,7 +406,7 @@ fs.copyFileSync(
 
 const registry = loadRegistry({ root: repositoryRoot });
 const generatedClosure = generatedWasmClosure(registry, {
-  selections: adapterSelections,
+  adapterInputs,
   strict: true,
 });
 fs.writeFileSync(ffiClosureOutput, generatedClosure.manifestSource);
@@ -436,6 +430,13 @@ fs.writeFileSync(
     ");\n",
 );
 fs.writeFileSync(resourceManifestOutput, resourceAdapter.manifestSource);
+const extensionAdapter = generatedClosure.artifacts.get("flint-extension-multivariate");
+if (!extensionAdapter) throw new Error("extension multivariate closure is missing");
+fs.writeFileSync(extensionAdapterSource, extensionAdapter.cSource);
+fs.writeFileSync(extensionBackendOutput, extensionAdapter.javascriptSource +
+  "\nexport const generatedWasmManifest = Object.freeze(" +
+  JSON.stringify(extensionAdapter.manifest) + ");\n");
+fs.writeFileSync(path.join(outputDirectory, "extension-resource-manifest.json"), extensionAdapter.manifestSource);
 
 const m4riDeclaration = registry.byId.get(
   "m4ri",
@@ -772,6 +773,7 @@ if (reuseLinkedArtifacts) {
   console.log("Reusing previously linked Wasm artifacts for packaging resume");
   for (const [module, filename] of [
     ["flint", output],
+    ["flint-extension-multivariate", extensionOutput],
     ["m4ri", m4riOutput],
     ["algebraic", algebraicOutput],
   ]) {
@@ -809,6 +811,16 @@ run(clang, [
 run(wasmStrip, ["--strip-all", rawOutput, "-o", output]);
 fs.rmSync(rawOutput);
 verifyWasmMemoryContract(output, productionModules.get("flint").memory);
+run(clang, [
+  ...targetCompileFlags, `--sysroot=${sysroot}`, "-Oz",
+  ...includeArguments, ...flintLocalIncludeArguments,
+  extensionAdapterSource, path.join(packageRoot, "src", "wasi-stubs.c"),
+  ...libraryArguments, "-lflint", "-lmpfr", "-lgmp", "-lm", "-lwasi-emulated-signal",
+  ...extensionAdapter.manifest.exports.map((name) => `-Wl,--export=${name}`),
+  ...toolchain.lock.build.linkFlags, "-Wl,-z,stack-size=8388608", "-o", extensionOutput,
+]);
+run(wasmStrip, ["--strip-all", extensionOutput]);
+verifyWasmMemoryContract(extensionOutput, productionModules.get("flint-extension-multivariate").memory);
 run(clang, [
   ...targetCompileFlags,
   `--sysroot=${sysroot}`,
@@ -946,7 +958,7 @@ function requireBrowserModuleCache(name) {
   );
 }
 
-for (const name of browserAdditionalModules) {
+for (const name of new Set([...browserAdditionalModules, ...CORE_STANDALONE_MODULES])) {
   requireBrowserModuleCache(name);
 }
 
@@ -983,6 +995,12 @@ fs.writeFileSync(
   JSON.stringify({
     modules: standardLibraryModules,
     preload: browserAdditionalModules,
+    // Names only: executable bodies remain in the authenticated lazy bundle.
+    // The compiler must not recreate these package shells on each cell.
+    runtimeModules: Object.keys(JSON.parse(
+      fs.readFileSync(lazyModulesSource, "utf8"),
+    ).modules).sort(),
+    coreStandalone: CORE_STANDALONE_MODULES,
   }),
 );
 fs.copyFileSync(lazyModulesSource, lazyModulesOutput);
@@ -1082,6 +1100,11 @@ for (const asset of runtimeHostClosure) {
 }
 
 const bytes = fs.statSync(output).size;
+const extensionBytes = fs.readFileSync(extensionOutput);
+fs.writeFileSync(path.join(outputDirectory, "extension-resource-receipt.json"),
+  JSON.stringify({schema: "sagejs.extension-multivariate-artifact/v1",
+    declaration: extensionAdapter.manifest.declaration, bytes: extensionBytes.length,
+    sha256: createHash("sha256").update(extensionBytes).digest("hex")}, null, 2) + "\n");
 const m4riBytes = fs.statSync(m4riOutput).size;
 console.log(
   `Built ${path.relative(repositoryRoot, output)} ` +
@@ -1112,6 +1135,9 @@ const receipt = writeProductionReceipt({
   outputDirectory,
   toolchain,
   sourceInputs: [
+    ...compilerDependencyClosure([extensionAdapterSource], [
+      ...includeArguments, ...flintLocalIncludeArguments,
+    ]),
     ...compilerDependencyClosure(flintLinkedSources, [
       ...includeArguments,
       ...smalljacIncludeArguments,

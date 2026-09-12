@@ -141,10 +141,14 @@ function main() {
     assert.equal(evaluation.stdout.trim(), "5");
 
     const moduleSmoke = join(temporary, "wasm-smoke.mjs");
+    const extensionSource = readFileSync(
+      join(root, "test/fixtures/extension-distribution.py"), "utf8",
+    );
     writeFileSync(
       moduleSmoke,
       `import { createSage } from "@sagemath/sagejs/wasm/node";\n` +
         `const sage = await createSage();\n` +
+        `await sage.evaluate(${JSON.stringify(extensionSource)}, {timeout: 120000});\n` +
         `const result = await sage.evaluateJSON("{'answer': 6 * 7}");\n` +
         `process.stdout.write(JSON.stringify(result));\n` +
         `await sage.close();\n`,

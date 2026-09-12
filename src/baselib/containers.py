@@ -49,19 +49,7 @@ def _has_own(value: Any, key: Any) -> bool:
 def _get_member(value: Any, name: str) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
-    member = runtime.native_get(value, name)
-    if (
-        member is None
-        or member is runtime.undefined
-        or runtime.native_get(member, "__sagejs_eager_bound_cache__") is not True
-    ):
-        return member
-    resolver = runtime.reflect.get(runtime.global_object, "ρσ_getattr_internal")
-    if runtime.strict_equal(runtime.jstype(resolver), "function"):
-        return runtime.reflect.apply(
-            resolver, runtime.undefined, [value, name, runtime.undefined]
-        )
-    return member
+    return runtime.native_get(value, name)
 
 
 def _call_member(value: Any, name: str, args: Any) -> Any:
@@ -1360,6 +1348,14 @@ def _dict_storage_setitem(mapping: Any, key: Any, value: Any) -> None:
 ρσ_dict_storage_setitem = _dict_storage_setitem
 
 
+def _dict_update(mapping: Any, iterable: Any) -> None:
+    runtime.reflect.apply(
+        runtime.reflect.get(runtime.reflect.get(SageDict, "prototype"), "update"),
+        mapping,
+        [iterable],
+    )
+
+
 @runtime.lightweight_math_class
 class SageDict:
     def __init__(
@@ -1367,12 +1363,15 @@ class SageDict:
         iterable: Any = runtime.undefined,
         **keywords: Any,
     ) -> None:
-        self.jsmap = _new_map()
-        self.keymap = _new_map()
+        # Reinitialization is an update, not a replacement of existing storage.
+        # Keep live views and instance-owned namespace aliases authoritative.
+        if not _has_own(self, "jsmap"):
+            self.jsmap = _new_map()
+            self.keymap = _new_map()
         if iterable is not runtime.undefined:
-            self.update(iterable)
+            _dict_update(self, iterable)
         if len(keywords):
-            self.update(keywords)
+            _dict_update(self, keywords)
 
     @property
     def length(self) -> int:
@@ -1512,50 +1511,78 @@ class SageDict:
         **keywords: Any,
     ) -> None:
         if iterable is not runtime.undefined:
+            if iterable is None:
+                raise TypeError("'NoneType' object is not iterable")
             if isinstance(iterable, SageDict):
-                source = iterable.items()
+                source = (
+                    iterable.items()
+                    if isinstance(iterable, _LiveScopeDict)
+                    else _DictView(iterable, "items")
+                )
                 for pair in source:
                     _dict_storage_setitem(self, pair[0], pair[1])
             elif isinstance(iterable, runtime.map_class):
                 for pair in iterable.entries():
                     _dict_storage_setitem(self, pair[0], pair[1])
             elif runtime.strict_equal(runtime.jstype(iterable), "object") and (
-                runtime.reflect.get(iterable, "constructor") is runtime.object
+                runtime.object.getPrototypeOf(iterable) is runtime.object.prototype
                 or runtime.object.getPrototypeOf(iterable) is None
             ):
                 # Native object literals are used as compact compiler
                 # metadata (notably function annotations).  Object.prototype
                 # also carries Python compatibility methods, so recognize the
-                # native mapping before the generic ``hasattr(items)`` path.
+                # native mapping before the generic mapping protocol.
                 for key in runtime.object.keys(iterable):
                     _dict_storage_setitem(self, key, runtime.native_get(iterable, key))
-            elif hasattr(iterable, "items"):
-                for pair in iterable.items():
-                    _dict_storage_setitem(self, pair[0], pair[1])
-            elif runtime.array.isArray(iterable):
-                for pair in iterable:
-                    if len(pair) != 2:
-                        raise ValueError(
-                            "dictionary update sequence element has "
-                            "length " + str(len(pair)) + "; 2 is required"
-                        )
-                    _dict_storage_setitem(self, pair[0], pair[1])
-            elif runtime.strict_equal(
-                runtime.jstype(runtime.reflect.get(iterable, runtime.iterator_symbol)),
-                "function",
+            elif (
+                hasattr(iterable, "keys")
+                and _get_member(iterable, "keys") is not runtime.array.prototype.keys
             ):
-                for pair in iterable:
+                modules = runtime.reflect.get(
+                    runtime.global_object, "__sagejs_baselib_modules__"
+                )
+                builtins_module = runtime.reflect.get(
+                    modules, "sagejs._baselib.builtins"
+                )
+                get_type_slot = runtime.reflect.get(builtins_module, "ρσ_get_type_slot")
+                for key in iterable.keys():
+                    getitem = runtime.reflect.apply(
+                        get_type_slot, runtime.undefined, [iterable, "__getitem__"]
+                    )
+                    _dict_storage_setitem(
+                        self,
+                        key,
+                        runtime.reflect.apply(getitem, runtime.undefined, [key]),
+                    )
+            else:
+                for pair in iter(iterable):
+                    pair = list_constructor(pair)
                     if len(pair) != 2:
                         raise ValueError(
                             "dictionary update sequence element has "
                             "length " + str(len(pair)) + "; 2 is required"
                         )
                     _dict_storage_setitem(self, pair[0], pair[1])
-            else:
-                for key in runtime.object.keys(iterable):
-                    _dict_storage_setitem(self, key, iterable[key])
         for key in keywords:
             _dict_storage_setitem(self, key, keywords[key])
+
+    def __or__(self, other: Any) -> Any:
+        if not isinstance(other, SageDict):
+            return NotImplemented
+        result = ρσ_dict(self)
+        result.update(other)
+        return result
+
+    def __ror__(self, other: Any) -> Any:
+        if not isinstance(other, SageDict):
+            return NotImplemented
+        result = ρσ_dict(other)
+        result.update(self)
+        return result
+
+    def __ior__(self, other: Any) -> SageDict:
+        _dict_update(self, other)
+        return self
 
     def __repr__(self) -> str:
         entries = list_constructor()
@@ -1594,15 +1621,15 @@ class SageDict:
 class _LiveScopeDict(SageDict):
     """A Python dictionary view over a compiled module namespace."""
 
-    def __init__(self, scope: Any, hide_eager_bound_cache: bool = False) -> None:
+    def __init__(self, scope: Any, instance_namespace: bool = False) -> None:
         SageDict.__init__(self)
         self._scope = scope
-        self._hide_eager_bound_cache = hide_eager_bound_cache
+        self._instance_namespace = instance_namespace
         # The second cache is used for ordinary instance ``__dict__`` views.
         # An instance is never a module merely because user data gives it the
         # conventional main-module name.
         self._exports_to_global = (
-            not hide_eager_bound_cache
+            not instance_namespace
             and runtime.reflect.get(scope, "__name__") == "__main__"
         )
 
@@ -1611,20 +1638,8 @@ class _LiveScopeDict(SageDict):
         self.keymap.clear()
         for key in runtime.object.keys(self._scope):
             value = runtime.reflect.get(self._scope, key)
-            if not _containers_is_missing_binding(
-                value
-            ) and not self._is_eager_bound_cache(key, value):
+            if not _containers_is_missing_binding(value):
                 SageDict.__setitem__(self, key, value)
-
-    def _is_eager_bound_cache(self, key: Any, value: Any) -> bool:
-        return (
-            self._hide_eager_bound_cache
-            and value is not None
-            and value is not runtime.undefined
-            and runtime.native_get(value, "__sagejs_eager_bound_cache__") is True
-            and runtime.native_get(value, "__self__") is self._scope
-            and runtime.native_get(value, "__name__") == key
-        )
 
     @property
     def length(self) -> int:
@@ -1646,9 +1661,7 @@ class _LiveScopeDict(SageDict):
         if not _has_own(self._scope, key):
             return False
         value = runtime.reflect.get(self._scope, key)
-        return not _containers_is_missing_binding(
-            value
-        ) and not self._is_eager_bound_cache(key, value)
+        return not _containers_is_missing_binding(value)
 
     has = __contains__
 
@@ -1664,7 +1677,7 @@ class _LiveScopeDict(SageDict):
     def __setitem__(self, key: Any, value: Any) -> None:
         if not runtime.strict_equal(runtime.jstype(key), "string"):
             raise TypeError("globals dictionary keys must be strings")
-        if self._hide_eager_bound_cache:
+        if self._instance_namespace:
             # Instance dictionaries hold own data fields.  Reflect.set would
             # invoke inherited host accessors such as Object.__proto__ rather
             # than create the Python dictionary entry.
@@ -1861,21 +1874,26 @@ _INSTANCE_SCOPE_DICTIONARIES = runtime.reflect.construct(
 )
 
 
-def ρσ_live_scope_dict(scope: Any, hide_eager_bound_cache: bool = False) -> SageDict:
+def ρσ_live_scope_dict(scope: Any, instance_namespace: bool = False) -> SageDict:
     cache = (
-        _INSTANCE_SCOPE_DICTIONARIES
-        if hide_eager_bound_cache
-        else _LIVE_SCOPE_DICTIONARIES
+        _INSTANCE_SCOPE_DICTIONARIES if instance_namespace else _LIVE_SCOPE_DICTIONARIES
     )
     cached = cache.get(scope)
     if cached is not runtime.undefined:
         return cached
-    answer = _LiveScopeDict(scope, hide_eager_bound_cache)
+    answer = _LiveScopeDict(scope, instance_namespace)
     cache.set(scope, answer)
     return answer
 
 
 runtime.reflect.set(ρσ_dict, "fromkeys", SageDict.fromkeys)
+
+
+def ρσ_dict_keyword_default(mapping: Any, name: _Str) -> Any:
+    """Read a function default from dict storage, not subclass overrides."""
+    if runtime.instance_of(mapping, _LiveScopeDict):
+        return _LiveScopeDict.get(mapping, name, _CONTAINERS_MISSING)
+    return mapping.jsmap.get(name) if mapping.jsmap.has(name) else _CONTAINERS_MISSING
 
 
 def dict_wrap(native_map: Any) -> SageDict:
@@ -1886,42 +1904,21 @@ def dict_wrap(native_map: Any) -> SageDict:
 
 
 # Stable generated-runtime names used by the compiler.
+ρσ_no_default = _CONTAINERS_MISSING
 ρσ_equals = equals
 ρσ_not_equals = not_equals
 ρσ_list_contains = _list_contains
 ρσ_set_wrap = set_wrap
 ρσ_dict_wrap = dict_wrap
 
-runtime.reflect.set(
-    ρσ_set,
-    "prototype",
-    runtime.reflect.get(SageSet, "prototype"),
-)
-runtime.reflect.set(
-    ρσ_frozenset,
-    "prototype",
-    runtime.reflect.get(SageFrozenSet, "prototype"),
-)
-runtime.reflect.set(
-    ρσ_dict,
-    "prototype",
-    runtime.reflect.get(SageDict, "prototype"),
-)
-runtime.reflect.set(
-    runtime.reflect.get(SageDict, "prototype"),
-    "__python_type__",
-    ρσ_dict,
-)
-runtime.reflect.set(
-    runtime.reflect.get(SageSet, "prototype"),
-    "__python_type__",
-    ρσ_set,
-)
-runtime.reflect.set(
-    runtime.reflect.get(SageFrozenSet, "prototype"),
-    "__python_type__",
-    ρσ_frozenset,
-)
+for _container_factory, _container_class in [
+    (ρσ_set, SageSet),
+    (ρσ_frozenset, SageFrozenSet),
+    (ρσ_dict, SageDict),
+]:
+    _container_prototype = runtime.reflect.get(_container_class, "prototype")
+    runtime.reflect.set(_container_factory, "prototype", _container_prototype)
+    runtime.reflect.set(_container_prototype, "__python_type__", _container_factory)
 list_constructor = ρσ_list_constructor
 runtime.reflect.set(list_constructor, "prototype", _list_prototype())
 runtime.reflect.set(list_constructor, "__init__", _list_static_init)

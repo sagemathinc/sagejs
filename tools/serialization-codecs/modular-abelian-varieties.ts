@@ -43,6 +43,15 @@ export function encodeModularAbelianParent(value: unknown, context: EncodeContex
     case "ModularAbelianVariety": {
       const construction = String(callMethod(value, "construction"));
       const newform = Reflect.get(Object(value), "_newform");
+      if (construction === "product") {
+        return context.encode({ kind: "ModularAbelianVariety", construction,
+          factors: callMethod(value, "factors") });
+      }
+      if (construction === "homology subvariety") {
+        return context.encode({ kind: "ModularAbelianVariety", construction,
+          recipe: Reflect.get(Object(value), "_recipe"),
+          basis: Reflect.get(Object(value), "_relative_basis") });
+      }
       return context.encode({
         kind: "ModularAbelianVariety",
         construction,
@@ -68,6 +77,22 @@ export function encodeModularAbelianParent(value: unknown, context: EncodeContex
 export function decodeModularAbelianParent(data: Record<string, unknown>): unknown {
   switch (data.kind) {
     case "ModularAbelianVariety":
+      if (data.construction === "product") {
+        return callGlobal("AbelianVariety", [data.factors]);
+      }
+      if (data.construction === "homology subvariety") {
+        const recipe = data.recipe as unknown[];
+        if (!Array.isArray(recipe) || recipe.length !== 2 ||
+            !["kernel", "image"].includes(String(recipe[0]))) {
+          throw new SageSerializationError("invalid homology subvariety construction");
+        }
+        const variety = callMethod(recipe[1], recipe[0] === "kernel" ? "connected_kernel" : "image");
+        const basis = Reflect.get(Object(variety), "_relative_basis");
+        if (callMethod(basis, "__eq__", [data.basis]) !== true) {
+          throw new SageSerializationError("homology subvariety basis does not match its construction");
+        }
+        return variety;
+      }
       if (data.construction === "J0") {
         return callGlobal("J0", [data.level]);
       }
@@ -94,6 +119,9 @@ export function decodeModularAbelianParent(data: Record<string, unknown>): unkno
 
 export function encodeModularAbelianOperator(value: unknown, context: EncodeContext): WireValue {
   switch (kind(value)) {
+    case "AbelianVarietyKernelComponents":
+      return context.encode({ kind: "AbelianVarietyKernelComponents",
+        morphism: callMethod(value, "morphism") });
     case "AbelianVarietyHeckeOperator":
       return context.encode({
         kind: "AbelianVarietyHeckeOperator",
@@ -104,13 +132,14 @@ export function encodeModularAbelianOperator(value: unknown, context: EncodeCont
       const domain = callMethod(value, "domain");
       const codomain = callMethod(value, "codomain");
       const matrix = callMethod(value, "matrix");
-      const quotient = Boolean(callMethod(codomain, "is_quotient"));
-      canonicalHomologyMap(domain, codomain, quotient, matrix);
+      if (callMethod(value, "verify") !== true) {
+        throw new SageSerializationError("invalid morphism construction certificate");
+      }
       return context.encode({
         kind: "ModularAbelianVarietyMap",
         domain,
         codomain,
-        quotient,
+        recipe: callMethod(value, "construction_data"),
         matrix,
       });
     }
@@ -126,9 +155,18 @@ export function encodeModularAbelianOperator(value: unknown, context: EncodeCont
 
 export function decodeModularAbelianOperator(data: Record<string, unknown>): unknown {
   switch (data.kind) {
+    case "AbelianVarietyKernelComponents":
+      return callMethod(data.morphism, "component_group");
     case "AbelianVarietyHeckeOperator":
       return callMethod(data.parent, "T", [data.index]);
     case "ModularAbelianVarietyMap":
+      if (data.recipe !== undefined) {
+        const morphism = callMethod(data.domain, "_replay_morphism", [data.codomain, data.recipe]);
+        if (callMethod(callMethod(morphism, "matrix"), "__eq__", [data.matrix]) !== true) {
+          throw new SageSerializationError("morphism matrix does not match its construction");
+        }
+        return morphism;
+      }
       return canonicalHomologyMap(
         data.domain, data.codomain, data.quotient, data.matrix,
       );

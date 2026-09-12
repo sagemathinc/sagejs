@@ -1,0 +1,31 @@
+{
+  "schema": "sagejs.numerics.n1-source-portability/v1",
+  "classification": "source-only-portability",
+  "scope": "CPython ordinary source only; not generated Sage.js, native, Wasm, npm/SEA, or performance qualification",
+  "collected_at": "2026-09-12T05:34:28.321Z",
+  "platform": "linux",
+  "architecture": "arm64",
+  "python": "Python 3.12.3",
+  "runner_sha256": "e6b3ec3315e47ab33a27f45bf150517e6af2df15a1eb410cdace372eeaa5ae2e",
+  "complete": true,
+  "records": [
+    {
+      "name": "trace",
+      "commit": "db7c806b072b6f1d181f92532b75f1d395428a42",
+      "archive_sha256": "186c7b430e18628927d3c90bc3f49f1668eefa822241423a2a88acf1b7043824",
+      "test": "trace-accounting.py",
+      "test_sha256": "ada19d8b3473c579163203e26fca51ec9d40e6e1d5b8189e186d073cffe5717d",
+      "stdout": "trace accounting passed",
+      "passed": true
+    },
+    {
+      "name": "result",
+      "commit": "b0c532cfb9b0295ae444b536027231c403214bea",
+      "archive_sha256": "b978b3ff6e7b9685402f0ce58afe16555262d03a5376b1ea7fb9b0af085d674b",
+      "test": "result-bookkeeping.py",
+      "test_sha256": "04c01010ce655fba34def8f3af93cb327d85121e4bfe9d2d24e0182c3ddc8ecc",
+      "stdout": "result bookkeeping passed",
+      "passed": true
+    }
+  ]
+}
