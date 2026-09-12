@@ -127,3 +127,13 @@ already-validated flat class; all entries still undergo live validation,
 including invalid entries following a successful match. No exception-class
 cache or mutation assumption is introduced. Final combined full-build,
 controlled benchmark and platform qualification remain outstanding.
+
+Combined revision `3edff0e0c` subsequently passed the full build in 6m 56s,
+all 18 selected exception/traceback/truth-conversion tests, and the pinned
+pyparsing 3.3.2 workflow with the CPython 3.14.4 oracle. The package report
+qualifies only that selected workflow, not the full package manifest or its
+performance. The separate combined CPU profile still places exception
+initialization first among sampled functions; it includes compiler setup and
+is not a warm-only percentage attribution. The remaining exception cliff and
+cross-platform qualification are open; PR #272 retains its other documented
+integration gaps and remains draft.
