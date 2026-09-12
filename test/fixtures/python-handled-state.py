@@ -511,3 +511,152 @@ def test_manual_await_throw_close():
     task.close()
     assert events == ["closed"]
     active(None)
+
+
+def test_handler_selector_suspends():
+    owned = ValueError("selector")
+
+    def generator():
+        try:
+            raise owned
+        except (yield sys.exception()):
+            active(owned)
+            yield owned
+
+    g = generator()
+    assert next(g) is owned
+    active(None)
+    assert g.send(ValueError) is owned
+    active(None)
+    g.close()
+    active(None)
+
+
+def test_nested_defaults_and_decorators_suspend():
+    owned = ValueError("definition")
+
+    def identity(function):
+        return function
+
+    def generator():
+        try:
+            raise owned
+        except ValueError:
+
+            def inner(value=(yield sys.exception())):
+                return value
+
+            active(owned)
+
+            @(yield sys.exception())
+            def decorated():
+                return inner()
+
+            active(owned)
+            # Calling this nested default-bearing function has a distinct open
+            # generator-classification defect, retained in its own full oracle.
+            yield sys.exception()
+
+    g = generator()
+    assert next(g) is owned
+    active(None)
+    assert g.send(42) is owned
+    active(None)
+    assert g.send(identity) is owned
+    active(None)
+    g.close()
+    active(None)
+
+
+def test_plain_delegate_and_helpers():
+    owned = ValueError("child")
+    caller = TypeError("caller")
+
+    def helper():
+        try:
+            raise owned
+        except ValueError:
+            active(owned)
+
+    def child():
+        try:
+            raise owned
+        except ValueError:
+            yield sys.exception()
+            yield sys.exception()
+
+    def parent():
+        helper()
+        yield from child()
+        yield sys.exception()
+
+    g = parent()
+    assert next(g) is owned
+    active(None)
+    try:
+        raise caller
+    except TypeError:
+        assert next(g) is owned
+        active(caller)
+        assert next(g) is caller
+        active(caller)
+    active(None)
+    g.close()
+    active(None)
+
+
+def test_plain_manual_await_resumer():
+    first = ValueError("first")
+    second = TypeError("second")
+
+    @types.coroutine
+    def plain_pause():
+        yield sys.exception()
+
+    async def task():
+        await plain_pause()
+        await plain_pause()
+
+    g = task()
+    for error in (first, second):
+        try:
+            raise error
+        except BaseException:
+            assert g.send(None) is error
+            active(error)
+        active(None)
+    g.close()
+    active(None)
+
+
+def test_plain_iterator_error_restores_caller():
+    owned = ValueError("iterator")
+    caller = TypeError("caller")
+
+    class Source:
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            try:
+                raise owned
+            except ValueError:
+                active(owned)
+                raise
+
+    def generator():
+        yield from Source()
+
+    g = generator()
+    try:
+        raise caller
+    except TypeError:
+        try:
+            next(g)
+        except ValueError as error:
+            assert error is owned
+            active(owned)
+        active(caller)
+    active(None)
+    assert next(g, None) is None
+    active(None)

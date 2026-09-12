@@ -8,6 +8,7 @@ import {
 import type { PythonSyntaxTree } from "./frontend";
 import { optimizePythonAst } from "./optimizer";
 import { PythonAstSemanticAnalyzer } from "./semantic";
+import { generatorNeedsHandledState } from "./handled-state";
 
 export class UnsupportedPythonCstNode extends Error {
   readonly nodeType: string;
@@ -2175,6 +2176,7 @@ export class PythonCstLowerer {
   private lowerLambda(node: SyntaxNode): any {
     const parameters = node.childForFieldName("parameters");
     const body = this.field(node, "body");
+    const isGenerator = this.containsNodeType(node, "yield");
     const args = parameters ? this.lowerParameters(parameters) : this.emptyParameters();
     const inherited = this.functionFrames.at(-1);
     const globals = new Set<string>();
@@ -2200,9 +2202,10 @@ export class PythonCstLowerer {
       argnames: args,
       decorators: [],
       annotations: this.annotationsMode,
-      is_generator: this.containsNodeType(node, "yield"),
+      is_generator: isGenerator,
       is_coroutine: false,
       is_lambda: true,
+      needs_handled_state: isGenerator ? generatorNeedsHandledState(body) : undefined,
       is_expression: true,
       is_anonymous: true,
       sequential_definition: true,
@@ -2258,6 +2261,7 @@ export class PythonCstLowerer {
     const returnAnnotationText = returnType ? returnType.text : null;
     const bodyNode = this.field(node, "body");
     const isCoroutine = node.children.some((part) => part.text === "async");
+    const isGenerator = isCoroutine || this.containsNodeType(node, "yield");
     const methodDecoratorNames = decorators.map((decorator) =>
       decorator.expression?.property ?? decorator.expression?.name
     );
@@ -2315,8 +2319,9 @@ export class PythonCstLowerer {
       // Sage.js implements Python coroutines with the generator protocol, so
       // an async function must be emitted as `function*` even when its only
       // suspension points are `await`, `async for`, or `async with`.
-      is_generator: isCoroutine || this.containsNodeType(node, "yield"),
+      is_generator: isGenerator,
       is_coroutine: isCoroutine,
+      needs_handled_state: isGenerator ? generatorNeedsHandledState(bodyNode) : undefined,
       is_lambda: false,
       is_expression: false,
       is_anonymous: false,
@@ -3478,6 +3483,9 @@ export class PythonCstLowerer {
       }
       const first = clauses[0];
       const properties: Record<string, any> = {
+        needs_handled_state: constructor === "AST_GeneratorComprehension"
+          ? generatorNeedsHandledState(node)
+          : undefined,
         clauses,
         init: first.init,
         name: first.name,

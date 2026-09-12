@@ -606,7 +606,9 @@ def print_list_comprehension(self, output):
                     "var",
                     "result",
                     "=",
-                    "ρσ_handled_state.wrap(js_generator.call(this))",
+                    "js_generator.call(this)"
+                    if self.needs_handled_state is False
+                    else "ρσ_handled_state.wrap(js_generator.call(this))",
                 )
                 output.end_statement()
                 # Native generator .constructor is a non-callable host object, not
