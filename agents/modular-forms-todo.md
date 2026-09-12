@@ -43,9 +43,12 @@ checkout predated the character and $\Gamma_1$ object layers; their existing
 main checkmarks are retained below. P0 freeze receipts are historical evidence
 for their exact revisions, not qualification of every subsequent feature.
 
-The next active slice is **modular abelian varieties: products, certified
-morphisms, finite kernels, isogenies, and degeneracy-labelled oldform copies**.
-Its acceptance items are deliberately unchecked until implemented and tested.
+The **modular abelian varieties: products, certified morphisms, finite kernels,
+isogenies, and degeneracy-labelled oldform copies** slice is implemented on
+`feature/modular-abelian-morphisms` (pending merge). Native, Node/Wasm and real
+Chromium execute the same exact positive/adversarial corpus. See
+`docs/modular-abelian-morphisms.md`; this does not implement entire Hom rings,
+rational torsion points, or Néron component groups of newform quotients.
 
 - [x] Portable character Hecke action and exact cyclotomic factorization for
   browser character-newform decomposition; shared native/Node-Wasm/Chromium
@@ -539,12 +542,12 @@ $401$ receipt ranges from $3\times$ to $10\times$ faster than SageMath.
   Sage, including levels $1009$ and $2003$
   (`bench/modular/abelian-varieties/`). These cover the prior slice, not the
   new morphism workloads below.
-- [ ] Products, identities, composition, addition and certified explicit
+- [x] Products, identities, composition, addition and certified explicit
   homology matrices; arbitrary integral matrices are not morphism proofs.
-- [ ] Connected kernel varieties, finite geometric kernel-component groups,
+- [x] Connected kernel varieties, finite geometric kernel-component groups,
   and nonsaturated integral image lattices.
-- [ ] Isogeny certification, Smith kernel invariants and exact degrees.
-- [ ] Explicit raising/lowering degeneracy maps and labelled oldform copies
+- [x] Isogeny certification, Smith kernel invariants and exact degrees.
+- [x] Explicit raising/lowering degeneracy maps and labelled oldform copies
   at composite levels (finer than full-Hecke isotypic decomposition).
 - [ ] Sage differential tests, larger-level cold/warm benchmarks and
   native/browser parity for the new morphism slice.

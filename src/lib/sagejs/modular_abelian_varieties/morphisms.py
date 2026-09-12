@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import copy
 from typing import Any
 
 import sagejs as sage
@@ -17,7 +18,7 @@ from sagejs.modular_abelian_varieties.lattices import (
 
 
 def _sealed(matrix: Any) -> Any:
-    answer = _global("matrix")(sage.ZZ, matrix.nrows(), matrix.ncols(), matrix.list())
+    answer = copy(matrix)
     answer.set_immutable()
     return answer
 

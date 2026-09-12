@@ -1,6 +1,14 @@
 """Shared native/browser public-API corpus for integral morphism geometry."""
 
 J = J0(11)
+# Packed rational numerators are a word buffer, not a Python entry list.
+integral_rationals = matrix(QQ, [[2**90, 0], [0, 3]])
+assert integral_rationals.change_ring(ZZ).change_ring(QQ) == integral_rationals
+try:
+    (integral_rationals / 2).change_ring(ZZ)
+    raise AssertionError("nonintegral rational matrix coerced to integers")
+except TypeError:
+    pass
 identity = J.identity_morphism()
 double = J.multiplication_by(2)
 assert double.is_surjective() and not double.is_injective()
@@ -123,9 +131,17 @@ for N in [22, 33, 44]:
     assert decomposition.isogeny().verify()
     labels = [(c.source_level(), c.degeneracy_index()) for c in decomposition]
     assert (11, 1) in labels and (11, N // 11) in labels
+old_copy = J0(22).oldform_decomposition()[0].variety()
+assert old_copy.inclusion_map().verify(5)
+try:
+    old_copy.hecke_matrix(2)
+    raise AssertionError("an individual old copy was incorrectly made U2-stable")
+except ValueError:
+    pass
 
 Z = J**0
 assert Z.dimension() == 0 and Z.identity_morphism().degree() == 1
+assert J0(1).oldform_decomposition().isogeny().degree() == 1
 assert J.zero_morphism().kernel()[1].dimension() == 1
 assert J.zero_morphism().component_group().invariants() == ()
 # Invariant-only native SNF and the transformed portable path must agree,

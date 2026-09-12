@@ -1,5 +1,6 @@
 """Exact integral lattices and shared matrix primitives."""
 
+from copy import copy
 from typing import Any
 
 import sagejs as sage
@@ -134,9 +135,7 @@ class IntegralHomologyLattice(sage.Parent):
         saturated: bool,
     ) -> None:
         self._kind = "IntegralHomologyLattice"
-        self._basis = _global("matrix")(
-            sage.QQ, basis_matrix.nrows(), basis_matrix.ncols(), basis_matrix.list()
-        )
+        self._basis = copy(basis_matrix.change_ring(sage.QQ))
         self._basis.set_immutable()
         self._model = str(model)
         self._saturated = bool(saturated)

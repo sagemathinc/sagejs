@@ -896,6 +896,7 @@
       "max_source_bytes": 85000,
       "depends_on": [
         "core-runtime",
+        "python-stdlib",
         "arithmetic",
         "linear-algebra",
         "modular-forms",

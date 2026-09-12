@@ -4361,7 +4361,9 @@ class Matrix(sage.Element):
                     base,
                     self.nrows(),
                     self.ncols(),
-                )._from_integer_values(self._rational_numerators())
+                )._from_integer_values(
+                    _integer_buffer_values(self._rational_numerators())
+                )
             return matrix(base, self.nrows(), self.ncols(), self.list())
         if (
             self.base_ring() is sage.ZZ

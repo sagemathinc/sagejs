@@ -52,13 +52,13 @@ publish an explicit product-to-Jacobian isogeny.
 
 ## Acceptance and performance
 
-- [ ] Reconcile the existing roadmap without treating planned work as done.
-- [ ] Products, certified matrix maps, arithmetic and serialization by replay.
-- [ ] Connected kernels, finite components, images and isogeny degrees.
-- [ ] Raising/lowering maps and labelled oldform decomposition.
-- [ ] Sage exact corpus (including $[2]$, diagonal maps, singular Hecke maps,
+- [x] Reconcile the existing roadmap without treating planned work as done.
+- [x] Products, certified matrix maps, arithmetic and serialization by replay.
+- [x] Connected kernels, finite components, images and isogeny degrees.
+- [x] Raising/lowering maps and labelled oldform decomposition.
+- [x] Sage exact corpus (including $[2]$, diagonal maps, singular Hecke maps,
   $J_0(33)$, $J_0(44)$, prime powers, repeated copies and tampering).
-- [ ] Native and browser shared positive/adversarial corpus.
+- [x] Native and browser shared positive/adversarial corpus.
 - [ ] Forced larger-level benchmarks, with construction/cold computation/warm
   reuse and identical mathematical outputs reported separately.
 
