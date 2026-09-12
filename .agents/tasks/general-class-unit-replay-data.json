@@ -1,0 +1,139 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-replay-data",
+  "title": "General Class Unit Replay Data",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Factor bounded detached field/order/prime replay data without changing caller policies",
+  "base_commit": "d5d62102ae7ceb61c455563020ab9e68e13296a5",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_replay.py",
+    "src/lib/sagejs/number_fields/class_unit_generation_replay.py",
+    "src/lib/sagejs/number_fields/_class_unit_replay_data.py",
+    "test/general-class-unit-replay-data.cjs",
+    "test/general-class-unit-detached-replay.cjs",
+    "test/general-class-unit-conditional-replay.cjs",
+    "docs/number-field-replay-data.md"
+  ],
+  "dependencies": [
+    "general-class-unit-conditional-replay"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing detached replay suites and focused distinct-policy regressions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm exec pyright --project pyrightconfig.json src/lib/sagejs/number_fields/class_unit_replay.py src/lib/sagejs/number_fields/class_unit_generation_replay.py src/lib/sagejs/number_fields/_class_unit_replay_data.py",
+    "node --test test/general-class-unit-replay-data.cjs test/general-class-unit-detached-replay.cjs test/general-class-unit-generation-replay.cjs test/general-class-unit-conditional-replay.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/general-class-unit-replay-data.cjs test/general-class-unit-detached-replay.cjs test/general-class-unit-generation-replay.cjs test/general-class-unit-conditional-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 142.853,
+      "started_at": "2026-09-12T04:50:24.855Z",
+      "commit": "d5d62102ae7ceb61c455563020ab9e68e13296a5",
+      "workspace_fingerprint": "62fdeb6c9d8ca814fcb7fb51b43811f3a277c4433cd859114222aa9d77394162",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.444,
+      "started_at": "2026-09-12T04:52:48.423Z",
+      "commit": "d5d62102ae7ceb61c455563020ab9e68e13296a5",
+      "workspace_fingerprint": "62fdeb6c9d8ca814fcb7fb51b43811f3a277c4433cd859114222aa9d77394162",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --project pyrightconfig.json src/lib/sagejs/number_fields/class_unit_replay.py src/lib/sagejs/number_fields/class_unit_generation_replay.py src/lib/sagejs/number_fields/_class_unit_replay_data.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.882,
+      "started_at": "2026-09-12T04:53:47.581Z",
+      "commit": "d5d62102ae7ceb61c455563020ab9e68e13296a5",
+      "workspace_fingerprint": "62fdeb6c9d8ca814fcb7fb51b43811f3a277c4433cd859114222aa9d77394162",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base d5d62102ae7ceb61c455563020ab9e68e13296a5",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.497,
+      "started_at": "2026-09-12T04:54:15.624Z",
+      "commit": "d5d62102ae7ceb61c455563020ab9e68e13296a5",
+      "workspace_fingerprint": "62fdeb6c9d8ca814fcb7fb51b43811f3a277c4433cd859114222aa9d77394162",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.625,
+      "started_at": "2026-09-12T04:54:26.343Z",
+      "commit": "d5d62102ae7ceb61c455563020ab9e68e13296a5",
+      "workspace_fingerprint": "62fdeb6c9d8ca814fcb7fb51b43811f3a277c4433cd859114222aa9d77394162",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 773.105,
+      "started_at": "2026-09-12T04:54:34.611Z",
+      "commit": "d5d62102ae7ceb61c455563020ab9e68e13296a5",
+      "workspace_fingerprint": "2b9bc4906f0d092f3bbfed442eff77c43cfeebef4f2424150c7e604e2ab328a6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node /home/user/sagejs-worktrees/class-unit-rank-two-frontier/build/general-frontier/replay-generated-resource-probe-v1.cjs /home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/general-class-unit-replay-data sagejs.number_fields.class_unit_replay sagejs.number_fields.class_unit_generation_replay sagejs.number_fields._class_unit_replay_data",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.272,
+      "started_at": "2026-09-12T04:55:01.179Z",
+      "commit": "d5d62102ae7ceb61c455563020ab9e68e13296a5",
+      "workspace_fingerprint": "62fdeb6c9d8ca814fcb7fb51b43811f3a277c4433cd859114222aa9d77394162",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node /home/user/sagejs-worktrees/class-unit-rank-two-frontier/build/general-frontier/replay-generated-resource-probe-v1.cjs /home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/general-class-unit-replay-data sagejs.number_fields.class_unit_replay sagejs.number_fields.class_unit_generation_replay sagejs.number_fields._class_unit_replay_data",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.595,
+      "started_at": "2026-09-12T05:08:03.713Z",
+      "commit": "d5d62102ae7ceb61c455563020ab9e68e13296a5",
+      "workspace_fingerprint": "2b9bc4906f0d092f3bbfed442eff77c43cfeebef4f2424150c7e604e2ab328a6",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Factored shared portable field/order/prime preflight and fresh exact reconstruction into _class_unit_replay_data.py without widening component degree-four/base-32 or generation degree-ten/base-128 policies. Kept JSON proof-scalar behavior and the existing exact/analytic authority pipeline. Added CPython/Sage.js boundary and cold-import regressions; retained the dependency's real index-eight rejection. All ten focused tests and registered plus explicit per-file strict checks pass. Total replay Python is 36,538 bytes (2,312 fewer); fresh canonical JS is 265,456 bytes (16,670 more), all three files counted. The full standalone build passed; a serial probe after rebuilding reconfirmed all three canonical-template hashes and byte counts.",
+    "risks": [
+      "Generation and shared replay data remain deliberately unregistered in integration-owned package and strict-module registries. Current catch-all package attribution fails its source budget, so architecture/changed gates are not green despite the successful standalone build.",
+      "Correct global-arithmetic source attribution is 1,736,795 bytes, 6,795 above the unchanged 1,730,000 allowance. Generated JS grows despite the Python saving; this is not a runtime or generated-size optimization claim.",
+      "The arithmetic-algebra lane requires pnpm test:native. The coordinator explicitly reserved broad native/full-suite validation for integration, so this contract remains active rather than claiming a fresh review receipt. No Windows/portable or SSH qualification was run."
+    ],
+    "next_steps": [
+      "Integrate after d5d62102ae7ceb61c455563020ab9e68e13296a5; the only changes to existing detached/conditional tests are their CPython package search paths.",
+      "Register class_unit_generation_replay and _class_unit_replay_data under number-field-global-arithmetic and in pyrightconfig.json; explicitly review any residual source allowance without changing arithmetic limits.",
+      "Run the integration build, architecture, changed/full native and portable/Windows gates against final integrated sources, preserving the failed lane receipts. Supply the missing lane receipt before marking review or complete."
+    ]
+  }
+}

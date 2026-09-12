@@ -25,7 +25,8 @@ function run(source, python = false) {
 
 test("CPython rejects malformed detached input before mathematical imports", () => {
   const source = String.raw`
-import importlib.util
+import importlib.util, sys
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 spec=importlib.util.spec_from_file_location("component_replay",${JSON.stringify(join(root, "src/lib/sagejs/number_fields/class_unit_replay.py"))})
 module=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)

@@ -25,7 +25,8 @@ function run(source, python = false) {
 
 test("conditional envelope rejects malformed input before mathematical imports", () => {
   const source = String.raw`
-import importlib.util
+import importlib.util, sys
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 spec=importlib.util.spec_from_file_location("replay",${JSON.stringify(join(root, "src/lib/sagejs/number_fields/class_unit_replay.py"))})
 replay=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(replay)

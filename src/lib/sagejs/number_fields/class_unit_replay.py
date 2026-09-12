@@ -10,6 +10,18 @@ import hashlib
 import json
 from typing import Any
 
+from sagejs.number_fields._class_unit_replay_data import (
+    ComponentReplayResourceError,
+    _integer,
+    _keys,
+    _list,
+    _rational,
+    _require,
+    _vector,
+    preflight_field_order_primes,
+    reconstruct_field_order_primes,
+)
+
 SCHEMA = "sagejs.number-fields/class-unit-components-v1"
 MAX_BYTES = 4 * 1024 * 1024
 MAX_NODES = 100_000
@@ -22,49 +34,6 @@ MAX_TOTAL_EXPONENT = 4096
 
 class ComponentReplayCapabilityError(NotImplementedError):
     """The component adapter does not support this producer or proof kind."""
-
-
-class ComponentReplayResourceError(RuntimeError):
-    """Detached input exceeds the fixed arithmetic preflight policy."""
-
-
-def _require(condition: bool, message: str) -> None:
-    if not condition:
-        raise ValueError(message)
-
-
-def _keys(value: Any, names: str) -> None:
-    _require(type(value) is dict and set(value) == set(names.split()), "invalid fields")
-
-
-def _integer(value: Any, maximum: int, *, minimum: int = 0) -> int:
-    _require(type(value) is int, "an exact JSON integer is required")
-    if not minimum <= value <= maximum:
-        raise ComponentReplayResourceError("integer exceeds its arithmetic preflight")
-    return value
-
-
-def _list(value: Any, maximum: int) -> list[Any]:
-    _require(type(value) is list, "a JSON list is required")
-    if len(value) > maximum:
-        raise ComponentReplayResourceError("container exceeds its count limit")
-    return value
-
-
-def _rational(value: Any, bits: int = 512) -> None:
-    _require(type(value) is list and len(value) == 2, "invalid rational pair")
-    numerator = _integer(value[0], (1 << bits) - 1, minimum=-(1 << bits) + 1)
-    denominator = _integer(value[1], (1 << bits) - 1, minimum=1)
-    left, right = abs(numerator), denominator
-    while right:
-        left, right = right, left % right
-    _require(left == 1, "noncanonical rational pair")
-
-
-def _vector(value: Any, size: int, bits: int = 512) -> None:
-    _require(len(_list(value, size)) == size, "incorrect coordinate count")
-    for pair in value:
-        _rational(pair, bits)
 
 
 def _json(value: Any) -> str:
@@ -174,73 +143,11 @@ def _preflight(payload: Any) -> int:
     digest = body.pop("content_sha256")
     _require(type(digest) is str and _hash(body) == digest, "component hash mismatch")
     identity = payload["field_order"]
-    _keys(identity, "field maximal_order_basis discriminant")
+    primes = payload["factor_base"]
+    degree = preflight_field_order_primes(
+        identity, primes, max_degree=4, max_base=MAX_FACTORS, max_prime=1000
+    )
     field = identity["field"]
-    _keys(field, "defining_polynomial degree variable")
-    degree = _integer(field["degree"], 4, minimum=2)
-    _require(
-        type(field["variable"]) is str and field["variable"].isidentifier(),
-        "invalid field variable",
-    )
-    _vector(field["defining_polynomial"], degree + 1, 32)
-    _require(
-        field["defining_polynomial"][-1] == [1, 1], "a monic presentation is required"
-    )
-    _integer(identity["discriminant"], (1 << 128) - 1, minimum=-(1 << 128) + 1)
-    _require(
-        len(_list(identity["maximal_order_basis"], degree)) == degree,
-        "incorrect order basis size",
-    )
-    for row in identity["maximal_order_basis"]:
-        _vector(row, degree)
-    primes = _list(payload["factor_base"], MAX_FACTORS)
-    for prime in primes:
-        _keys(prime, "schema field_order_fingerprint prime e f basis residue")
-        _require(
-            prime["schema"] == "sagejs.number-fields.prime-ideal.v1",
-            "unknown prime schema",
-        )
-        rational_prime = _integer(prime["prime"], 1000, minimum=2)
-        _integer(prime["e"], degree, minimum=1)
-        residue_degree = _integer(prime["f"], degree, minimum=1)
-        _require(
-            prime["field_order_fingerprint"]
-            == {
-                "defining_polynomial": field["defining_polynomial"],
-                "variable": field["variable"],
-                "maximal_order_basis": identity["maximal_order_basis"],
-                "discriminant": identity["discriminant"],
-            },
-            "prime field/order binding differs",
-        )
-        _require(
-            len(_list(prime["basis"], degree)) == degree, "incorrect prime basis size"
-        )
-        for row in prime["basis"]:
-            _vector(row, degree)
-        residue = prime["residue"]
-        _keys(residue, "primitive quotient_matrix power_inverse modulus")
-        for name, size in (("primitive", degree), ("modulus", residue_degree + 1)):
-            _require(
-                len(_list(residue[name], size)) == size, "incorrect residue vector size"
-            )
-            for entry in residue[name]:
-                _integer(entry, rational_prime - 1)
-        for name, row_count in (
-            ("quotient_matrix", degree),
-            ("power_inverse", residue_degree),
-        ):
-            _require(
-                len(_list(residue[name], row_count)) == row_count,
-                "incorrect residue matrix size",
-            )
-            for row in residue[name]:
-                _require(
-                    len(_list(row, residue_degree)) == residue_degree,
-                    "incorrect residue row size",
-                )
-                for entry in row:
-                    _integer(entry, rational_prime - 1)
     records = _list(payload["relations"], MAX_RELATIONS)
     power_sum = 0
     for record in records:
@@ -465,41 +372,12 @@ def _replay_component_payload(payload: dict[str, Any]) -> tuple[Any, ...]:
     """Own fresh exact objects after the caller's bounded schema preflight."""
     from sagejs.number_fields import class_group_matrix as matrix
     from sagejs.number_fields import class_group_relations as relations
-    from sagejs.number_fields import class_unit_context as context
-    from sagejs.number_fields import prime_ideals, units
+    from sagejs.number_fields import units
     from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
 
-    identity = payload["field_order"]
-    field_payload = identity["field"]
-    algebra = __import__("sagejs._baselib.algebra", fromlist=["QQ"])
-    polynomials = __import__("sagejs._baselib.polynomial", fromlist=["PolynomialRing"])
-    polynomial = polynomials.PolynomialRing(algebra.QQ, "x")(
-        [algebra.QQ(a) / b for a, b in field_payload["defining_polynomial"]]
+    field, order, factor_base = reconstruct_field_order_primes(
+        payload["field_order"], payload["factor_base"]
     )
-    number_fields = __import__(
-        "sagejs._baselib.number_fields", fromlist=["NumberField"]
-    )
-    field = number_fields.NumberField(polynomial, field_payload["variable"])
-    order = field.maximal_order()
-    _require(
-        context._order_fingerprint(field, order) == identity,
-        "recomputed maximal order differs",
-    )
-    factor_base = []
-    for portable in payload["factor_base"]:
-        encoded = dict(portable)
-        encoded["field_instance"] = prime_ideals._identity_token(field)
-        encoded["order_instance"] = prime_ideals._identity_token(order)
-        prime = prime_ideals.prime_ideal_from_dict(order, encoded)
-        canonical = prime.to_dict()
-        del canonical["field_instance"]
-        del canonical["order_instance"]
-        _require(canonical == portable, "prime payload is not canonical")
-        _require(
-            not any(prime == previous for previous in factor_base),
-            "duplicate factor-base ideal",
-        )
-        factor_base.append(prime)
     _require(
         len(set(_json(p) for p in payload["factor_base"])) == len(factor_base),
         "duplicate factor-base prime",
@@ -535,6 +413,7 @@ def _replay_component_payload(payload: dict[str, Any]) -> tuple[Any, ...]:
         decoded_units.append(unit)
     torsion = payload["torsion"]
     certificate = units.RootsOfUnityCertificate.from_dict(field, torsion["certificate"])
+    algebra = __import__("sagejs._baselib.algebra", fromlist=["QQ"])
     generator = field._from_coefficients(
         [algebra.QQ(a) / b for a, b in certificate.generator_coordinates]
     )
