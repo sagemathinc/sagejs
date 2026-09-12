@@ -10,8 +10,8 @@ investigation started at `d520ed4df`; the current integration baseline is
 | Milestone | Current status |
 | --- | --- |
 | N0 | Partial public-call corpus and profiles; complete scaling, startup, memory, route and platform matrix still required. |
-| N1 | Independent main-based trace PR #224 and result-binding PR #225 are non-draft. Trace gains have independent Linux x64 confirmation; result timings retain substantial host drift. Remaining bookkeeping, memory and public targets are open. |
-| N2 | Private binary64 sum/compiler foundation is being isolated on main; prepared statistics and public packaging in earlier drafts remain experimental. No 10 ms public-query pass. |
+| N1 | Independent main-based trace PR #224 and result-binding PR #225 are non-draft. Both now have independent Linux x64 confirmation of their narrow gains; result statistics rows do not improve. Remaining bookkeeping, memory and public targets are open. |
+| N2 | Draft #232 isolates the private binary64 sum/compiler foundation on main, with local dynamic/native/Wasm/browser and sanitizer evidence. Four-platform qualification, prepared statistics and public packaging remain open. No 10 ms public-query pass. |
 | N3 | Earlier typed LU, Eigen probes and packed validation are candidate evidence, not a qualified public backend or completed latency target. |
 | N4 | Earlier prepared scalar evaluators/root prototypes remain experimental; derivative/vector/external-solver integration and public targets remain open. |
 | N5 | Breadth and sustained-throughput qualification remain open. |
@@ -31,13 +31,27 @@ unchanged payload budget passes. Evidence and limitations are in the PR's
 [PR #225](https://github.com/sagemathinc/sagejs/pull/225), source
 `b0c532cfb`, avoids hashing the identical live problem twice during result
 binding. Distinct objects still get fresh content comparisons; mathematical
-validation and outward provenance remain unchanged. All 40 paired public
-observations match, but local host drift prevents an independently confirmed
-speedup. CPython source-only ARM64/Windows receipts are not compiled-product
+validation and outward provenance remain unchanged. Both local and independent
+reserved `bench-1` A1/B1/B2/A2 experiments retain 40 matching observations each.
+The quiet-host run confirms scalar overhead gains: traced root falls from
+about 45 ms to 30–31 ms, and untraced bounded minimum from 46–48 ms to 33–34 ms.
+Dense/FFT gains are small; statistics does not improve and its worse/noisy rows
+are retained. This is not a general numerical speedup or public target pass.
+CPython source-only ARM64/Windows receipts are not compiled-product
 qualification. The checkpoint retains baseline failures instead of counting
 retries as erased failures. Both PRs have source-commit routine, Chromium and
 three additional platform smoke passes; evidence-head checks are tracked
 separately on GitHub.
+
+[PR #232](https://github.com/sagemathinc/sagejs/pull/232), source `c092f9fe7`,
+isolates the prefix-free binary64 compiler and private finite-sum foundation.
+Its 200 exact-rational/CPython cases pass ordinary dynamic Sage.js, generated
+JavaScript, native code, emitted Wasm and three browser workers; focused tests
+also pass on Node 22.22.2 and 26.8.1, including standalone sanitizer checks.
+Local reused native summation of 20,000 values is 0.117 ms versus CPython
+`math.fsum` at 0.115 ms; fresh packing raises it to 0.293 ms. These are kernel
+opportunity measurements, not public `describe` performance. The PR remains
+draft pending current-source qualification; it changes no public dispatch.
 
 Earlier stacked drafts are preserved for source, experiments and review, but
 are not prerequisites to merge merely because a later draft depends on them.
