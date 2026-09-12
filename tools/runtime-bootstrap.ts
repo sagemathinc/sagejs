@@ -11,6 +11,8 @@ import { homedir } from "os";
 import { dirname, join, resolve } from "path";
 import { createRequire } from "module";
 import { compileFunction, Script } from "vm";
+import { PythonSourceMap, PythonSourceMapCollector, relocatePythonSourceMap, validatePythonSourceMap } from "./python/source-map";
+import { mappedPythonScript } from "./python/stack-adapter";
 
 import { markModuleCacheInUse } from "./cache-lease";
 import { atomicWriteCacheFileSync } from "./cache-file";
@@ -1154,6 +1156,7 @@ export function runRuntimeBootstrap(
         `${name.replaceAll(".", "-")}.json`,
       );
       let javascript = "";
+      let pythonSourceMap: PythonSourceMap | undefined;
       let cachedData: Buffer | undefined;
       let cacheNeedsWrite = false;
       if (cacheFilename) {
@@ -1164,9 +1167,16 @@ export function runRuntimeBootstrap(
             cached.signature === sourceHash &&
             cached.mode === moduleMode &&
             cached.filename === filename &&
-            typeof cached.javascript === "string"
+            typeof cached.javascript === "string" &&
+            cached.pythonSourceMap?.source?.text === source &&
+            cached.pythonSourceMap?.source?.filename === filename &&
+            cached.pythonSourceMap?.generated === cached.javascript
           ) {
+            const validatedMap = validatePythonSourceMap(cached.pythonSourceMap, cached.javascript, source);
             javascript = cached.javascript;
+            // A legacy local cache is rebuilt, not assigned guessed locations.
+            // Portable records below remain explicitly unmapped in this tranche.
+            pythonSourceMap = validatedMap;
             if (typeof cached.cachedData === "string") {
               cachedData = Buffer.from(cached.cachedData, "base64");
             }
@@ -1215,6 +1225,7 @@ export function runRuntimeBootstrap(
         }
       }
       if (!javascript) {
+        const collector = new PythonSourceMapCollector(source, filename);
         const ast = pythonFrontend.parse(source, {
           filename,
           basedir: dirname(filename),
@@ -1253,22 +1264,27 @@ export function runRuntimeBootstrap(
           numeric_literal_pool_prefix:
             `rho_module_${name.replaceAll(".", "_")}_`,
           module_registry: "ρσ_modules",
+          source_map: collector,
         });
         ast.print(output);
         javascript = output.get();
+        pythonSourceMap = collector.finish(javascript);
         cacheNeedsWrite = true;
       }
       const scriptSource = `(function(){\n${javascript}\n})();`;
-      let moduleScript = new Script(scriptSource, {
+      const wrappedMap = pythonSourceMap ? relocatePythonSourceMap(pythonSourceMap, [
+        { start: 0, end: 0, text: "(function(){\n" },
+        { start: javascript.length, end: javascript.length, text: "\n})();" },
+      ]) : undefined;
+      const moduleScript = wrappedMap ? mappedPythonScript(scriptSource, source, wrappedMap, cachedData) : new Script(scriptSource, {
         filename: `sagejs/lazy-module-${name}.js`,
         cachedData,
       });
       if (moduleScript.cachedDataRejected) {
         cachedData = undefined;
         cacheNeedsWrite = true;
-        moduleScript = new Script(scriptSource, {
-          filename: `sagejs/lazy-module-${name}.js`,
-        });
+        // The rejected-data Script already contains freshly compiled code.
+        // Keep that registered identity and refresh its bytecode below.
       }
       if (cacheFilename && (cacheNeedsWrite || !cachedData)) {
         try {
@@ -1280,6 +1296,7 @@ export function runRuntimeBootstrap(
             mode: moduleMode,
             filename,
             javascript,
+            pythonSourceMap,
             cachedData: cachedData.toString("base64"),
           }));
         } catch (_error) {
