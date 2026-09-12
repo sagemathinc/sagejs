@@ -4911,13 +4911,15 @@ def _builtins_native_property(source: Any, name: _Str, descriptor: Any) -> Any:
     cached = _builtins_property_cache.get(key)
     if cached is not runtime.undefined:
         return cached
-    deleter = _builtins_get_member(source, "ρσ_property_deleter_" + name)
+    deleter = runtime.object.getOwnPropertyDescriptor(
+        source, "ρσ_property_deleter_" + name
+    )
     cached = SageProperty(
         None if getter is runtime.undefined else runtime.unbound_method_adapter(getter),
         None if setter is runtime.undefined else runtime.unbound_method_adapter(setter),
         None
         if deleter is runtime.undefined
-        else runtime.unbound_method_adapter(deleter),
+        else runtime.unbound_method_adapter(runtime.reflect.get(deleter, "value")),
     )
     _builtins_property_cache.set(key, cached)
     return cached
@@ -5337,7 +5339,7 @@ def _builtins_getattr_impl(
                     is not True
                 ):
                     return _builtins_native_property(
-                        class_prototype, name, class_descriptor
+                        descriptor_source, name, class_descriptor
                     )
             class_member = _builtins_get_member(class_prototype, name)
             if _builtins_get_member(class_member, "__self__") is class_prototype:
@@ -5721,7 +5723,17 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
             member, "__set__"
         ) or _builtins_member_is_function(member, "__delete__"):
             _builtins_data_descriptor_names.add(name)
-        runtime.reflect.set(value.prototype, name, prototype_member)
+        runtime.object.defineProperty(
+            value.prototype,
+            name,
+            {
+                "value": prototype_member,
+                "writable": True,
+                "configurable": True,
+                "enumerable": True,
+            },
+        )
+        runtime.reflect.deleteProperty(value.prototype, "ρσ_property_deleter_" + name)
         if _builtins_member_is_function(member, "__set_name__"):
             _builtins_call_member(member, "__set_name__", [value, name])
     if _builtins_store_instance_attribute(value, name, member):
@@ -6237,6 +6249,26 @@ def ρσ_exec(
     return None
 
 
+def _builtins_native_property_deleter(value: Any, name: _Str) -> Any:
+    resolution = _builtins_class_attribute_resolution(
+        _builtins_attribute_owner(value), name
+    )
+    if (
+        resolution is not runtime.undefined
+        and resolution[2] == _BUILTINS_DESCRIPTOR_NATIVE_GETTER
+    ):
+        prototype = runtime.object.getPrototypeOf(value)
+        while not runtime.reflect.get(runtime.object, "hasOwn")(prototype, name):
+            prototype = runtime.object.getPrototypeOf(prototype)
+        deleter = runtime.object.getOwnPropertyDescriptor(
+            prototype, "ρσ_property_deleter_" + name
+        )
+        if deleter is runtime.undefined:
+            raise AttributeError("property has no deleter")
+        return runtime.reflect.get(deleter, "value")
+    return runtime.undefined
+
+
 def ρσ_delattr(value: Any, name: _Str) -> None:
     global _builtins_descriptor_epoch
     if not runtime.strict_equal(runtime.jstype(name), "string"):
@@ -6298,13 +6330,14 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
             runtime.reflect.deleteProperty(value, name)
         if prototype_has_own:
             runtime.reflect.deleteProperty(prototype, name)
+            runtime.reflect.deleteProperty(prototype, "ρσ_property_deleter_" + name)
         _builtins_descriptor_epoch += 1
         return
     if not runtime.strict_equal(
         runtime.jstype(value), "function"
     ) and _builtins_member_is_function(value, "__delattr__"):
         return _builtins_call_member(value, "__delattr__", [name])
-    property_deleter = _builtins_get_member(value, "ρσ_property_deleter_" + name)
+    property_deleter = _builtins_native_property_deleter(value, name)
     if runtime.strict_equal(runtime.jstype(property_deleter), "function"):
         runtime.reflect.apply(property_deleter, value, [])
         return
@@ -9188,18 +9221,8 @@ search_doc = ρσ_search_doc
 
 def copy(value: Any) -> Any:
     """Return a shallow copy, matching Python's `copy.copy` convenience API."""
-    copier = getattr(value, "__copy__", None)
-    if callable(copier):
-        return copier()
-    copier = getattr(value, "copy", None)
-    if callable(copier):
-        return copier()
-    if isinstance(value, (str, bytes, int, float, complex, tuple, frozenset)):
-        return value
-    try:
-        return type(value)(value)
-    except Exception:
-        raise TypeError("object does not support shallow copying")  # noqa: B904
+    module = _builtins_default_import("sagejs._collection_helpers", fromlist=["copy"])
+    return module.copy(value)
 
 
 def flatten(
@@ -9213,26 +9236,10 @@ def flatten(
     unchanged, while larger values recursively flatten that many nested
     levels. By default only lists and tuples are flattened, matching Sage.
     """
-    use_default_types = ltypes is None
-    answer = []
-    values = list(in_list)
-    pending = []
-    for index in range(len(values) - 1, -1, -1):
-        pending.append((values[index], 0))
-    while pending:
-        value, level = pending.pop()
-        flatten_value = (
-            isinstance(value, (list, tuple))
-            if use_default_types
-            else isinstance(value, ltypes)
-        )
-        if level < max_level and flatten_value:
-            nested = list(value)
-            for index in range(len(nested) - 1, -1, -1):
-                pending.append((nested[index], level + 1))
-        else:
-            answer.append(value)
-    return answer
+    module = _builtins_default_import(
+        "sagejs._collection_helpers", fromlist=["flatten"]
+    )
+    return module.flatten(in_list, ltypes, max_level)
 
 
 def quit(code: Any = None) -> None:
@@ -9459,7 +9466,7 @@ def _builtins_object_setattr(
 def _builtins_object_delattr(self: Any, name: _Str) -> None:
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
-    property_deleter = _builtins_get_member(self, "ρσ_property_deleter_" + name)
+    property_deleter = _builtins_native_property_deleter(self, name)
     if runtime.strict_equal(runtime.jstype(property_deleter), "function"):
         runtime.reflect.apply(property_deleter, self, [])
         return
