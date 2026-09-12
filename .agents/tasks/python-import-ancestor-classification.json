@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-import-ancestor-classification",
+  "title": "Python Import Ancestor Classification",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Guard private self-hosted compiler lexical import reads while retaining authoritative fallback and unchanged public Python behavior",
+  "base_commit": "c96853f0d12b4e10fd236ec20b791b1019cc867a",
+  "claims": [
+    "src/output/modules.py",
+    "src/output/codegen.py",
+    "src/output/stream.py",
+    "tools/self.js",
+    "test/python-import-ancestor-classification.cjs",
+    "docs/python-private-import-reads.md"
+  ],
+  "dependencies": ["python-ast-instanceof"],
+  "references": ["https://github.com/sagemathinc/sagejs/pull/248"],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Prototype opt-in private compiler lexical import guards; ordinary Python/default emission remains unchanged. PR248 implementation prerequisite is cherry-picked on fresh main. Compiler-only bootstrap and executable semantic diagnostics passed before final qualification. Freeze this contract before full build; exact results and any later evidence-only metadata boundary are recorded separately.",
+    "risks": ["No performance benefit or cliff closure is claimed before controlled comparison.", "Private JavaScript escape/module-table replacement is outside this option's contract; public Python, reusable globals, star imports, execution namespaces, and module caches retain the old path.", "Native and combined CI qualification remain separate from focused bootstrap diagnostics."],
+    "next_steps": ["Run frozen full build, focused/CST/portable/strict checks, and document exact outcomes.", "Compare against the PR248 compiler with common runtime/resources on an explicitly reserved idle benchmark host before promotion."]
+  }
+}
