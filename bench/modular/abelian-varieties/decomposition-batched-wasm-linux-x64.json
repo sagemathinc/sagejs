@@ -1,0 +1,176 @@
+{
+  "date": "2026-09-12T13:42:23.195Z",
+  "revision": "02a683d213072c3129da1f71e2aa47de447cfc4a",
+  "host": {
+    "cpu": "AMD EPYC 7B13",
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.8.1"
+  },
+  "artifact": "sha256:d2aa066d16fdcd33d7aba29879a5e5568f1a8129493d4a6c1750814fc81aeb8d",
+  "sourceSha256": {
+    "src/lib/sagejs/modular_abelian_varieties/__init__.py": "3c16f02391eda071724b980939d909b5b81ae91e0632da3cb7c8feeebcbf8394",
+    "src/lib/sagejs/modular_abelian_varieties/abelian_variety.py": "9427d6f924116557f904b88285668133eb0ed2f5bb54f37ccb6042e380f7ae91",
+    "src/lib/sagejs/modular_abelian_varieties/degeneracy.py": "fd0a74e3e6de9e724b2b09cfb2d71ba9c79a259122829a1648598150d6d19646",
+    "src/lib/sagejs/modular_abelian_varieties/lattices.py": "1a3b324f0ca96f265a6b1c2e0d39324a3bb6618f62cdb97836b35eb607cbc00a",
+    "src/lib/sagejs/modular_abelian_varieties/morphisms.py": "43b8197c05f7ed5f8b5821cf80f62775bcab627e67b47fc1ac0dc87738520571",
+    "src/lib/sagejs/modular_abelian_varieties/products.py": "59cefa90f29d013c53775d0126f9632cfc9b110743520bf3bf0b9d036931a766",
+    "src/lib/sagejs/linear_algebra/integer_smith.py": "6862814f0d9d13876816ca610c62d653adad9e4440021ed7f47bd808d9eed961",
+    "src/baselib/matrix.py": "c4443c8fd819ef9e959030828b75fc7dba67e0c2721b1220d92e4e0eb78e2cf0",
+    "src/baselib/modular.py": "569be50b927a9ac8b0b8746e1dd04b56314da4db07bf9e923e2ac19e114d904b",
+    "ffi/flint.ffi.py": "4b2b9baccde7c07bbc715798e47cb932e9336c8218eda79de8fd31f670317ebc",
+    "ffi/flint.ffi.json": "0ec9a5df0b6a94549815fa63547e7637e5aab33591db8e74f381e4854603271a",
+    "src/lib/sagejs/ffi/flint.py": "64c7d0ac33989c004b4ea6ac311579cb517e4213422f630c36515c76228d1b84"
+  },
+  "policy": "Sequential fresh Node/Wasm processes. Startup excluded. No library warmup. Evaluation timeout 120s; process timeout 150s. Exact comparison with the pinned Sage/native receipt; no timings of concurrent owned builds/tests.",
+  "reference": "decomposition-performance-linux-x64.json",
+  "samples": 3,
+  "results": [
+    {
+      "level": 242,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js/Wasm",
+          "workload": "oldform-isogeny",
+          "level": 242,
+          "dimension": 22,
+          "rank": 44,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            12,
+            12,
+            24,
+            24,
+            120,
+            120,
+            1320,
+            1320,
+            2640,
+            13200
+          ],
+          "construction_seconds": 6.263570547103882,
+          "smith_seconds": 0.07247567176818848,
+          "warm_seconds": 0.000052142143249511716
+        }
+      ]
+    },
+    {
+      "level": 242,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js/Wasm",
+          "workload": "oldform-isogeny",
+          "level": 242,
+          "dimension": 22,
+          "rank": 44,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            12,
+            12,
+            24,
+            24,
+            120,
+            120,
+            1320,
+            1320,
+            2640,
+            13200
+          ],
+          "construction_seconds": 6.28121280670166,
+          "smith_seconds": 0.07332539558410645,
+          "warm_seconds": 0.000050950050354003904
+        }
+      ]
+    },
+    {
+      "level": 242,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js/Wasm",
+          "workload": "oldform-isogeny",
+          "level": 242,
+          "dimension": 22,
+          "rank": 44,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            12,
+            12,
+            24,
+            24,
+            120,
+            120,
+            1320,
+            1320,
+            2640,
+            13200
+          ],
+          "construction_seconds": 6.254000186920166,
+          "smith_seconds": 0.07252168655395508,
+          "warm_seconds": 0.00005514621734619141
+        }
+      ]
+    },
+    {
+      "level": 726,
+      "sample": 0,
+      "status": 1,
+      "signal": null,
+      "stderr": "SageSessionTimeoutError: Sage.js evaluation timed out after 120000 ms\n    at Timeout.<anonymous> (file:///home/user/sagejs-worktrees/modular-abelian-morphisms/packages/flint-wasm/kernel.mjs:340:13)\n    at listOnTimeout (node:internal/timers:685:17)\n    at process.processTimers (node:internal/timers:618:7)\nfile:///home/user/sagejs-worktrees/modular-abelian-morphisms/packages/flint-wasm/kernel.mjs:482\n    const error = new SageSessionClosedError();\n                  ^\n\nSageSessionClosedError: Sage.js session is closed\n    at SageSession.close (file:///home/user/sagejs-worktrees/modular-abelian-morphisms/packages/flint-wasm/kernel.mjs:482:19)\n    at /home/user/sagejs-worktrees/modular-abelian-morphisms/bench/modular/abelian-varieties/morphisms-sagejs.cjs:30:29\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n\nNode.js v26.8.1\n",
+      "records": []
+    }
+  ]
+}

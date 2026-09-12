@@ -293,4 +293,23 @@ try:
     assert preconditioned_elementary_divisors(A) == [6] * 16
 finally:
     smith_helpers._modular_hnf = original_modular_hnf
+# Rectangular coordinate solves use bulk extraction after exact RREF in Wasm.
+# Keep multiple right sides, free variables and inconsistent zero rows covered.
+for base in [ZZ, QQ]:
+    B = matrix(base, [[1, 0, 2], [0, 1, 3]])
+    C = matrix(base, [[2, 3, 13], [-1, 4, 10]])
+    assert B.solve_left(C) == matrix(QQ, [[2, 3], [-1, 4]])
+    A = B.transpose()
+    assert A * A.solve_right(C.transpose()) == C.transpose()
+    W = matrix(base, [[1, 2, 0], [0, 0, 1]])
+    assert W.solve_right(matrix(base, [[3, 4], [5, 6]])) == matrix(
+        QQ, [[3, 4], [0, 0], [5, 6]]
+    )
+    try:
+        A.solve_right(vector(base, [0, 0, 1]))
+        raise AssertionError("inconsistent coordinate solve accepted")
+    except ValueError:
+        pass
+assert matrix(QQ, 0, 3).solve_right(matrix(QQ, 0, 2)) == matrix(QQ, 3, 2)
+assert matrix(QQ, 3, 0).solve_right(matrix(QQ, 3, 2)) == matrix(QQ, 0, 2)
 print("integral morphism geometry passed")
