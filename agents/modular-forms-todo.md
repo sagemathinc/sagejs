@@ -556,10 +556,21 @@ $401$ receipt ranges from $3\times$ to $10\times$ faster than SageMath.
   At level $1009$, the integral $T_2-1$ workload takes $0.758$ s native,
   $6.721$ s Node/Wasm, and $56.589$ s in Sage on the recorded host; the shared
   Chromium corpus includes the formerly timing-out level-$389$ case.
-- [ ] Composite-level decomposition-isogeny performance parity with Sage:
-  the implemented slice is still $4.8$–$5.9\times$ slower on the measured
-  levels $121$, $242$, $363$, despite faster Hecke-map workloads. Exact receipts
-  and separated timings: `bench/modular/abelian-varieties/morphisms-performance.md`.
+- [x] Remove complementary-kernel saturation and large-isogeny Smith
+  coefficient-growth bottlenecks; batch exact transfers and product maps.
+  Three-run native totals at levels $726$ and $1089$ are $17.539$ s and
+  $16.994$ s, versus Sage's $21.614$ s and $21.756$ s, with every integral
+  kernel invariant matching. Native, Node/Wasm and Chromium regressions pass.
+- [ ] Universal composite-level decomposition-isogeny performance parity:
+  cold totals at levels $121$, $242$, $363$ still take $3.99$, $3.14$,
+  $2.70\times$ Sage's time. Large-level construction alone also remains slower;
+  faster Smith reduction wins the complete large-level workload. Exact
+  receipts and phase timings:
+  `bench/modular/abelian-varieties/decomposition-performance.md`.
+- [ ] Large-composite-level browser throughput qualification. The native
+  speedup is not a Wasm speedup claim: the level-$726$ portable diagnostic
+  exceeded its $120$ s limit, despite passing the shared Chromium correctness
+  corpus and the smaller exact portable decomposition comparison.
 - [ ] Homomorphism and endomorphism rings of supported modular abelian
   varieties.
 - [ ] Rational torsion and finite subgroup schemes in the supported domain.

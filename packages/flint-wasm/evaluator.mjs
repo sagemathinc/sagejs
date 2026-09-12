@@ -1,5 +1,6 @@
 import { instantiateFlintFactor } from "./index.mjs";
 import { instantiateM4ri } from "./m4ri.mjs";
+import { createExtensionMultivariate } from "./extension-multivariate.mjs";
 import {
   canSeedDynamicName,
   createPrecompiledDynamicCompiler,
@@ -610,6 +611,7 @@ export async function instantiateSageEvaluator({
   WorkerConstructor = globalThis.Worker,
   instantiateFlint = instantiateFlintFactor,
   instantiateM4riBackend = instantiateM4ri,
+  instantiateExtensionBackend = createExtensionMultivariate,
   importSymbolic = (url) => import(String(url)),
   importNumpy = (url) => import(String(url)),
   fetchNumerical = globalThis.fetch,
@@ -652,8 +654,10 @@ export async function instantiateSageEvaluator({
       capabilityDispatchTrace.record(id, route, options),
   });
   const abort = (error) => {
+    initializationAborted = true;
     try {
       conwayDataResource?.close();
+      extensionResource?.close();
     } catch (cleanupError) {
       if (error && typeof error === "object") error.cleanupError = cleanupError;
     }
@@ -682,6 +686,8 @@ export async function instantiateSageEvaluator({
   let lazyModuleBundle;
   let conwayDataReady;
   let conwayDataResource;
+  let extensionResource;
+  let initializationAborted = false;
   let flintBackend;
   let m4riBackend;
   let symbolicBackendModule;
@@ -705,6 +711,7 @@ export async function instantiateSageEvaluator({
       capabilityReportResponse,
       autoReceiptPolicyResponse,
       dynamicProgramBundle,
+      extensionResource,
     ] = await Promise.all([
       language.request("initialize", {
         mode,
@@ -737,7 +744,39 @@ export async function instantiateSageEvaluator({
       useSynchronousCompilerWorker
         ? Promise.resolve(undefined)
         : fetchDynamicPrograms(dynamicPrograms),
+      instantiateExtensionBackend({WorkerConstructor,
+        recordCapability: (id, route, options) => capabilityDispatchTrace.record(id, route, options),
+      }).then((resource) => {
+        if (initializationAborted) {
+          resource.close();
+          throw new Error("extension backend initialized after evaluator abort");
+        }
+        extensionResource = resource;
+        return resource;
+      }),
     ]);
+    const primaryManifest = flintBackend.__sagejs_ffi_manifest__;
+    if (primaryManifest?.declaration !== extensionResource.manifest.declaration) {
+      throw new Error("FLINT core and specialist declaration identities disagree");
+    }
+    const mergedManifest = Object.freeze({...primaryManifest,
+      resources: [...primaryManifest.resources, ...extensionResource.manifest.resources],
+      functions: [...primaryManifest.functions, ...extensionResource.manifest.functions],
+    });
+    const descriptors = Object.getOwnPropertyDescriptors(flintBackend);
+    // Copy descriptors onto a fresh object: the core manifest is frozen, and
+    // a get-only Proxy would hide methods from capability enumeration.
+    delete descriptors.__sagejs_ffi_manifest__;
+    for (const [key, descriptor] of Object.entries(
+      Object.getOwnPropertyDescriptors(extensionResource.backend),
+    )) {
+      if (Object.hasOwn(descriptors, key)) {
+        throw new Error(`FLINT specialist adapter collision: ${key}`);
+      }
+      descriptors[key] = descriptor;
+    }
+    descriptors.__sagejs_ffi_manifest__ = {value: mergedManifest};
+    flintBackend = Object.freeze(Object.defineProperties({}, descriptors));
     if (conwayDataReady !== true) {
       throw new Error("the authenticated Conway data worker did not become ready");
     }
@@ -1213,6 +1252,7 @@ export async function instantiateSageEvaluator({
 
   function terminate() {
     conwayDataResource.close();
+    extensionResource.close();
     language.terminate();
     globals.restoreAll();
   }

@@ -1,5 +1,7 @@
 /* Browser resource boundary for the bundled Tree-sitter compiler frontend. */
 
+import { decodeBrowserModuleCache } from "../dynamic-compiler.mjs";
+
 interface StandardLibraryDocument {
   preload?: string[];
   coreStandalone: string[];
@@ -54,7 +56,7 @@ export function configureBrowserCompilerResources({
     );
     textResources.set(
       `__module_cache__/${name.replaceAll(".", "-")}.json`,
-      JSON.stringify(module.cache),
+      JSON.stringify(decodeBrowserModuleCache(module.cache)),
     );
     sourceSignatures.set(module.source, String(module.cache.signature));
   }

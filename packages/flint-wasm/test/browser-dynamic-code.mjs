@@ -61,6 +61,14 @@ try {
         );
         assert.equal(language.repr, "");
         assert.equal(language.stdout, "43\n-1\n3\n30\n8\n1/2\nsyntax-error\n");
+        const metadata = await evaluate(
+          "scope = {'__name__': 'fixture_module', '__file__': 'fixture.py'}\n" +
+          "print(eval('__name__', scope))\n" +
+          "print(eval('__file__', scope))\n" +
+          "exec('def origin():\\n    return __name__, __file__', scope)\n" +
+          "print(scope['origin']())",
+        );
+        assert.equal(metadata.stdout, "fixture_module\nfixture.py\n('fixture_module', 'fixture.py')\n");
       }
 
       const mpmath = await evaluate(
@@ -80,11 +88,9 @@ try {
           evaluate("eval('40 + 2')"),
           /authenticated portable cache.*cross-origin-isolated host/,
         );
-        assert.equal(pageErrors.length, 1);
-        assert.match(
-          pageErrors.pop(),
-          /authenticated portable cache.*cross-origin-isolated host/,
-        );
+        // A rejected evaluation is reported through its promise, not as an
+        // unhandled exception in the embedding page.
+        assert.equal(pageErrors.length, 0);
       }
       assert.deepEqual(pageErrors, []);
       await context.close();

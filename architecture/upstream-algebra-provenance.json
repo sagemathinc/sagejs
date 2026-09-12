@@ -8,6 +8,13 @@
   },
   "projects": [
     {
+      "id": "sagemath-10.9-oracle",
+      "revision": "686dc1a8d420c2e0aabadd4f602d9a0aa4690c50",
+      "license": "GPL-2.0-or-later",
+      "copyright": "SageMath contributors",
+      "repository": "https://github.com/sagemath/sage"
+    },
+    {
       "id": "sagemath",
       "revision": "6cd06ec1acdec7a4516ed9928bd575b7a63999b8",
       "license": "GPL-2.0-or-later",
@@ -44,6 +51,20 @@
     }
   ],
   "records": [
+    {
+      "id": "extension-field-groebner-oracles",
+      "project": "sagemath-10.9-oracle",
+      "relationship": "independent-oracle",
+      "copied_code": false,
+      "sources": ["src/sage/rings/polynomial/multi_polynomial_ideal.py"],
+      "symbols_or_lines": "groebner_basis, dimension, normal_basis over explicit finite extensions",
+      "sagejs_files": [
+        "src/lib/sagejs/polynomial_algorithms/generic_groebner.py",
+        "test/fixtures/generate-extension-fields-sage.py",
+        "test/fixtures/extension-fields-sage-oracles-v1.json"
+      ],
+      "note": "108 cases generated with SageMath 10.9; downstream sagelib package SHA-256 and reproduction command are recorded with the fixtures. Ordinary-Python coefficient arithmetic independently checks the results. Sage and Singular remain oracle-only, not runtime dependencies; no implementation fragments were copied."
+    },
     {
       "id": "public-scheme-semantics",
       "project": "sagemath",

@@ -470,7 +470,7 @@
       "id": "polynomial-algorithms",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 260000,
+      "max_source_bytes": 325000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -900,6 +900,7 @@
         "python-stdlib",
         "arithmetic",
         "linear-algebra",
+        "linear-algebra-algorithms",
         "modular-forms",
         "modular-form-expansions"
       ],

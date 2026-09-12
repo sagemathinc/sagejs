@@ -65,8 +65,15 @@ function fakeWorkerClass(initialization, moduleImports = () => []) {
 }
 
 const backendOptions = {
-  instantiateFlint: async () => ({}),
+  instantiateFlint: async () => ({
+    __sagejs_ffi_manifest__: {declaration: "test-flint", resources: [], functions: []},
+  }),
   instantiateM4riBackend: async () => ({}),
+  instantiateExtensionBackend: async () => ({
+    backend: {},
+    manifest: {declaration: "test-flint", resources: [], functions: []},
+    close() {},
+  }),
   importSymbolic: async () => ({}),
   fetchLazyModules: async () => ({
     schema: "sagejs.lazy-module-bundle/v2",
@@ -155,11 +162,16 @@ test("a throwing post-worker initialization terminates and restores globals", as
   const WorkerConstructor = fakeWorkerClass("boom");
   const sentinelRequire = globalThis.require;
   const sentinelProcess = globalThis.process;
+  let extensionCloses = 0;
 
   await assert.rejects(
     instantiateSageEvaluator({
       ...backendOptions,
       WorkerConstructor,
+      instantiateExtensionBackend: async () => ({
+        ...(await backendOptions.instantiateExtensionBackend()),
+        close() {extensionCloses++;},
+      }),
       evaluateGlobal() {
         throw new Error("deliberate browser init failure");
       },
@@ -168,12 +180,32 @@ test("a throwing post-worker initialization terminates and restores globals", as
   );
 
   assert.equal(WorkerConstructor.instances[0].terminated, true);
+  assert.equal(extensionCloses, 1);
   assert.equal(globalThis.require, sentinelRequire);
   assert.equal(globalThis.process, sentinelProcess);
   assert.equal(globalThis.__sagejs_host__, undefined);
   assert.equal(globalThis.__sagejs_output_write__, undefined);
   assert.equal(globalThis.__sagejs_runtime_require__, undefined);
   assert.equal(globalThis.__sagejs_hyperelliptic_auto_receipt_policy__, undefined);
+});
+
+test("an extension reactor that finishes after initialization failure is closed", async () => {
+  const WorkerConstructor = fakeWorkerClass("unused");
+  let finish;
+  let extensionCloses = 0;
+  await assert.rejects(instantiateSageEvaluator({
+    ...backendOptions,
+    WorkerConstructor,
+    instantiateFlint: async () => {throw new Error("core initialization failed");},
+    instantiateExtensionBackend: () => new Promise((resolve) => {finish = resolve;}),
+  }), /core initialization failed/);
+  finish({
+    ...(await backendOptions.instantiateExtensionBackend()),
+    close() {extensionCloses++;},
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(extensionCloses, 1);
+  assert.equal(WorkerConstructor.instances[0].terminated, true);
 });
 
 test("evaluator host shares process.env and separates stdout from stderr", async () => {
