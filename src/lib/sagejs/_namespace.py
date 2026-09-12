@@ -48,6 +48,8 @@ def _stored_fields(value: Any) -> Any:
 
 
 def _change_instance_class(value: Any, owner: Any) -> None:
+    if runtime.object.isFrozen(value):
+        raise TypeError("cannot change the class of a frozen instance")
     prototype = runtime.reflect.get(owner, "prototype")
     if not _core._builtins_instance_namespaces.has(value):
         runtime.object.setPrototypeOf(value, prototype)
@@ -127,17 +129,29 @@ def _replace_instance_namespace(value: Any, namespace: Any) -> None:
     enumeration still describes the host layout, not the Python namespace.
     Native private own fields were never registered and remain untouched.
     """
+    if runtime.object.isFrozen(value):
+        raise TypeError("cannot replace the dictionary of a frozen instance")
+    exposed = _core._builtins_instance_namespaces.has(value)
+    if not exposed and not runtime.object.isExtensible(value):
+        raise TypeError("cannot expose the dictionary of a nonextensible instance")
     fields = _stored_fields(value)
+    if fields is not None:
+        for name in fields:
+            descriptor = runtime.object.getOwnPropertyDescriptor(value, name)
+            if descriptor is not runtime.undefined and not descriptor.configurable:
+                raise TypeError("cannot move a nonconfigurable instance attribute")
+    # For ordinary registered instances, the preflight establishes that all
+    # field deletions can succeed. Install the bridge before publishing storage:
+    # a failed host prototype operation must not change namespace authority.
+    if not exposed:
+        _core.ρσ_bridge_instance_namespace(value)
     if fields is not None:
         for name in fields:
             runtime.reflect.deleteProperty(value, name)
         fields.clear()
-    exposed = _core._builtins_instance_namespaces.has(value)
     _core._builtins_instance_namespaces.set(
         value, runtime.undefined if namespace is None else namespace
     )
-    if not exposed:
-        _core.ρσ_bridge_instance_namespace(value)
 
 
 def _copy_instance_namespace(source: Any, target: Any) -> None:
@@ -308,8 +322,9 @@ def _delete_instance_attribute(value: Any, name: str) -> bool:
     if namespace is None:
         fields = _stored_fields(value)
         if fields is not None and fields.has(name):
+            if not runtime.reflect.deleteProperty(value, name):
+                raise TypeError("cannot delete a nonconfigurable instance attribute")
             runtime.reflect.apply(runtime.reflect.get(fields, "delete"), fields, [name])
-            runtime.reflect.deleteProperty(value, name)
             return True
     if namespace is None:
         raise AttributeError("object has no attribute '" + name + "'")
