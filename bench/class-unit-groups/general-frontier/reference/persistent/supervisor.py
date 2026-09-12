@@ -517,7 +517,15 @@ class Campaign:
         self.bits, self.iterations, self.samples = bits, iterations, samples
 
     def attempt(
-        self, name, stage, cap, operation, request=b"", record=None, sample=None
+        self,
+        name,
+        stage,
+        cap,
+        operation,
+        request=b"",
+        record=None,
+        sample=None,
+        request_marker=None,
     ):
         destination = self.output / (name + ".json")
         if destination.exists():
@@ -535,6 +543,7 @@ class Campaign:
             "output": str(destination),
             "started_at": datetime.now(timezone.utc).isoformat(),
             "request_sha256": hashlib.sha256(request).hexdigest(),
+            "request_marker": request_marker,
         }
         shared.save(self.ledger, self.state)
         started = time.monotonic()
@@ -569,6 +578,7 @@ class Campaign:
                 "controls": self.controls,
                 "provenance": self.provenance,
                 "request_sha256": hashlib.sha256(request).hexdigest(),
+                "request_marker": request_marker,
                 "cap_seconds": cap,
                 "wall_seconds": time.monotonic() - started,
                 **response,
@@ -681,6 +691,7 @@ class Campaign:
             payload,
             {"label": label, "coefficients": coefficients},
             sample,
+            marker.decode() if marker is not None else None,
         )
 
     def run(self, records):

@@ -38,6 +38,20 @@ bound, never translated to one global unit.
 declare 1000000000 explicitly for those runs too. This is distinct from the
 three-sample minimum, and no observed timing silently changes either policy.
 
+Each run also declares `cap_seconds` as an integer from 1 through 600. Every
+sample receipt, including failed samples, must carry that exact cap. Interrupted
+receipts instead bind their retained pending reservation to `cap_seconds + 10`,
+matching the supervisor's reservation overhead; interruption remains censored.
+Every sample also binds `request_sha256` to the canonical supervisor transport
+encoding of its explicit request. PARI encoding includes a random completion
+nonce: the producer now retains `request_marker` on ordinary receipts and in
+the pending reservation retained on interruption. The adjudicator reconstructs
+the exact nonce-bearing payload; old PARI receipts without this marker cannot
+be admitted through this check and are never rewritten. Hecke's transport is
+deterministic. Nonce generation, request bytes, execution and scheduling are
+unchanged by marker retention. A request hash is an integrity check, not an
+independent mathematical certificate or authenticated provenance by itself.
+
 After execution, create a separate custody JSON:
 
 ```json

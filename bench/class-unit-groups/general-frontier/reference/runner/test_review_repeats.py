@@ -53,6 +53,7 @@ class Repeats(unittest.TestCase):
                         request=request,
                         timing_class="seconds",
                         min_worker_nanoseconds=0,
+                        cap_seconds=600,
                         controls={
                             **self.plan["controls"],
                             "cgroup": f"/fixture/{name}.service",
@@ -80,6 +81,7 @@ class Repeats(unittest.TestCase):
                         bits=bits,
                         iterations=2,
                         declared_samples=3,
+                        cap_seconds=600,
                         sample=sample,
                         request_id=value["id"],
                         provenance=request["provenance"],
@@ -87,7 +89,22 @@ class Repeats(unittest.TestCase):
                         boundary="persistent-process-fresh-field-not-proven-warm-JIT",
                         stdout=fixtures.policy_tests.output(engine, value),
                     )
+                    self.bind_request(receipt, request)
                     (path / f"sample-{sample}.json").write_text(json.dumps(receipt))
+
+    def bind_request(self, receipt, request):
+        payload, marker = repeats.normalizer.persistent.encode_request(
+            request["engine"],
+            receipt["request_id"],
+            receipt["record"]["coefficients"],
+            request["bits"],
+            request["seed"],
+            request["iterations"],
+            request["requested_proof_policy"],
+        )
+        receipt["request_sha256"] = repeats.digest(payload)
+        if marker is not None:
+            receipt["request_marker"] = marker.decode()
 
     def run_review(self):
         raw = json.dumps(self.plan).encode()
@@ -160,6 +177,43 @@ class Repeats(unittest.TestCase):
         self.plan["runs"][0]["min_worker_nanoseconds"] = 10**9
         report = self.run_review()
         self.assertEqual(report["rejection_counts"]["inadequate-worker-duration"], 3)
+
+    def test_changed_or_missing_sample_cap_rejects_whole_run(self):
+        self.mutate(lambda r: r.update(cap_seconds=600000))
+        report = self.run_review()
+        self.assertEqual(report["rejection_counts"]["rejected-run"], 3)
+        self.assertEqual(report["declared_sample_denominator"], 12)
+        self.mutate(lambda r: r.pop("cap_seconds"))
+        self.assertEqual(self.run_review()["rejection_counts"]["rejected-run"], 3)
+
+    def test_request_hash_tampering_rejects_both_engines(self):
+        for name in ("pari-100", "hecke-100"):
+            self.mutate(lambda r: r.update(request_sha256="0" * 64), name)
+        self.assertEqual(self.run_review()["rejection_counts"]["rejected-run"], 6)
+
+    def test_pari_missing_nonce_cannot_be_reconstructed(self):
+        self.mutate(lambda r: r.pop("request_marker"), "pari-100")
+        self.assertEqual(self.run_review()["rejection_counts"]["rejected-run"], 3)
+
+    def test_interrupted_pending_payload_and_cap_are_bound_but_censored(self):
+        def interrupt(r):
+            r["status"] = "interrupted"
+            r["pending_reservation"] = {
+                "reserved_seconds": r.pop("cap_seconds") + 10,
+                "request_sha256": r.pop("request_sha256"),
+                "request_marker": r.pop("request_marker", None),
+            }
+
+        for name in ("pari-100", "hecke-100"):
+            self.mutate(interrupt, name)
+        report = self.run_review()
+        self.assertEqual(report["rejection_counts"]["interrupted"], 2)
+        self.assertEqual(report["declared_sample_denominator"], 12)
+        self.mutate(
+            lambda r: r["pending_reservation"].update(request_sha256="0" * 64),
+            "pari-100",
+        )
+        self.assertEqual(self.run_review()["rejection_counts"]["rejected-run"], 3)
 
     def test_cross_precision_disagreement_blocks_complete_panel(self):
         for engine in ("pari", "hecke"):
@@ -258,14 +312,15 @@ class Repeats(unittest.TestCase):
                     request["engine"], "unconditional", request["bits"]
                 )
                 value["id"] = f"sample-{sample:04}-field"
-                self.mutate(
-                    lambda r: r.update(
+
+                def change(r):
+                    r.update(
                         iterations=1,
                         stdout=fixtures.policy_tests.output(request["engine"], value),
-                    ),
-                    entry["id"],
-                    sample,
-                )
+                    )
+                    self.bind_request(r, request)
+
+                self.mutate(change, entry["id"], sample)
         report = self.run_review()
         self.assertEqual(report["eligible_samples"], 12, report["rejection_counts"])
         self.assertTrue(

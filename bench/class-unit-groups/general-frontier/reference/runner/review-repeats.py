@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 from statistics import median
 
 spec = importlib.util.spec_from_file_location(
@@ -51,6 +52,44 @@ def summary(compact):
         else compact[key]
         for key in SUMMARY_KEYS
     }
+
+
+def validate_request_hash(receipt, request):
+    """Bind the actual transport bytes, including PARI's retained nonce."""
+    label, coefficients = normalizer.persistent.shared.validate_case(receipt["record"])
+    payload, generated_marker = normalizer.persistent.encode_request(
+        request["engine"],
+        receipt["request_id"],
+        coefficients,
+        request["bits"],
+        request["seed"],
+        request["iterations"],
+        request["requested_proof_policy"],
+    )
+    pending = (
+        receipt.get("pending_reservation", {})
+        if receipt.get("status") == "interrupted"
+        else receipt
+    )
+    if request["engine"] == "pari":
+        marker = pending.get("request_marker")
+        if (
+            not isinstance(marker, str)
+            or re.fullmatch(r"FRONTIER_DONE\|[0-9a-f]{32}", marker) is None
+        ):
+            raise ValueError(
+                "PARI exact request binding requires retained completion marker"
+            )
+        # The canonical encoder includes a fresh nonce. Replace only its exact
+        # trailing transport frame with the historically retained nonce.
+        trailer = ("print(" + json.dumps(generated_marker.decode()) + ");\n").encode()
+        if not payload.endswith(trailer):
+            raise ValueError("unexpected canonical PARI transport framing")
+        payload = (
+            payload[: -len(trailer)] + ("print(" + json.dumps(marker) + ");\n").encode()
+        )
+    if pending.get("request_sha256") != digest(payload):
+        raise ValueError("sample request hash differs from canonical transport")
 
 
 def review(plan_bytes, custody, base=Path(".")):
@@ -108,6 +147,11 @@ def review(plan_bytes, custody, base=Path(".")):
             or (entry["timing_class"] == "tiny" and minimum < 10**9)
         ):
             raise ValueError("invalid declared worker duration threshold")
+        if (
+            type(entry["cap_seconds"]) is not int
+            or not 1 <= entry["cap_seconds"] <= 600
+        ):
+            raise ValueError("invalid declared sample cap")
         provenance = request["provenance"]
         if provenance.get("threads") != 1 or not provenance.get("sha256"):
             raise ValueError("missing pinned single-thread runtime")
@@ -161,7 +205,24 @@ def review(plan_bytes, custody, base=Path(".")):
                         {"path": str(path), "sha256": digest(path.read_bytes())}
                     )
                 for item in result["files"]:
-                    strict_json(Path(item["path"]).read_bytes())
+                    receipt = strict_json(Path(item["path"]).read_bytes())
+                    if receipt.get("stage") == "sample":
+                        validate_request_hash(receipt, request)
+                        if receipt.get("status") == "interrupted":
+                            if (
+                                receipt.get("pending_reservation", {}).get(
+                                    "reserved_seconds"
+                                )
+                                != entry["cap_seconds"] + 10
+                            ):
+                                raise ValueError(
+                                    "interrupted sample cap differs from declaration"
+                                )
+                        elif (
+                            type(receipt.get("cap_seconds")) is not int
+                            or receipt["cap_seconds"] != entry["cap_seconds"]
+                        ):
+                            raise ValueError("sample cap differs from declaration")
                 raw = (directory / "run.json").read_bytes()
                 if digest(raw) != location["run_sha256"]:
                     raise ValueError("run custody hash mismatch")
