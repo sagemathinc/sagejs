@@ -14,6 +14,11 @@ spec.loader.exec_module(review)
 
 
 def pair(pari, hecke):
+    policy = review.persistent.shared.validate_proof_policy(
+        pari.get("requested_proof_policy", "conditional-grh")
+    )
+    if hecke.get("requested_proof_policy", "conditional-grh") != policy:
+        raise ValueError("different requested proof policies")
     for report, engine in ((pari, "pari"), (hecke, "hecke")):
         if report["engine"] != engine or report["qualification_evidence"] is not False:
             raise ValueError("expected unqualified engine-specific review")
@@ -39,6 +44,35 @@ def pair(pari, hecke):
         raise ValueError("different precision requests")
     indexed = []
     for report in (pari, hecke):
+        for r in report["rows"]:
+            if r.get("requested_proof_policy", "conditional-grh") != policy:
+                raise ValueError("row/request proof policy mismatch")
+            if r["status"] == "ok" and r.get("proof_policy") != policy:
+                raise ValueError("completed/request proof policy mismatch")
+            if r["status"] == "ok" and (
+                policy == "unconditional" or r.get("worker_schema", "").endswith("-v3")
+            ):
+                if (
+                    r.get("worker_schema")
+                    != f"sagejs-{report['engine']}-frontier-screen-v3"
+                ):
+                    raise ValueError(
+                        "unconditional pairing requires current completed worker output"
+                    )
+                review.persistent.shared.validate_proof_execution(
+                    {
+                        "schema": r["worker_schema"],
+                        "proof_policy": r["proof_policy"],
+                        "proof_execution": r["proof_execution"],
+                        "retained_iteration": r["retained_iteration"],
+                        "batch_outputs_complete": r["batch_outputs_complete"],
+                        "independent_replay": False,
+                        "compact": {"regulator": r["regulator"]},
+                    },
+                    report["engine"],
+                    policy,
+                    report["iterations"],
+                )
         mapping = {(r["label"], r["sample"]): r for r in report["rows"]}
         if len(mapping) != len(report["rows"]):
             raise ValueError("duplicate samples")
@@ -53,6 +87,7 @@ def pair(pari, hecke):
             "label": key[0],
             "sample": key[1],
             "status": "censored-or-missing",
+            "requested_proof_policy": policy,
             "pari": a,
             "hecke": b,
         }
@@ -68,7 +103,7 @@ def pair(pari, hecke):
                         or c.get("affinity") != [2]
                         or c.get("memory_max") != 4294967296
                         or c.get("swap_max") != 0
-                        or r["proof_policy"] != "conditional-grh"
+                        or r["proof_policy"] != policy
                         or r["producer_boundary"]
                         != "persistent-process-fresh-field-not-proven-warm-JIT"
                     ):
@@ -98,6 +133,7 @@ def pair(pari, hecke):
         rows.append(row)
     return {
         "schema": "sagejs.general-frontier-paired-discovery.v1",
+        "requested_proof_policy": policy,
         "pairer_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "qualification_evidence": False,
         "independent_replay": False,

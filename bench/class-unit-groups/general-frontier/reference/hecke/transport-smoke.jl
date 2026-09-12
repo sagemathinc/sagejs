@@ -2,13 +2,18 @@ using Test
 isdefined(@__MODULE__, :parse_frontier_request) || include("transport.jl")
 
 @testset "dependency-free frontier transport" begin
-    valid = "FRONTIER1\tcase:1\t100\t2\t17\t-123456789012345678901234567890,0,1"
+    valid = "FRONTIER2\tcase:1\t100\t2\t17\tconditional-grh\t-123456789012345678901234567890,0,1"
     r = parse_frontier_request(valid)
     @test r.id == "case:1"
     @test (r.bits, r.iterations, r.seed) == (100, 2, 17)
     @test r.coefficients == ["-123456789012345678901234567890", "0", "1"]
+    @test r.proof_policy == "conditional-grh"
+    @test parse_frontier_request(replace(valid, "conditional-grh" => "unconditional")).proof_policy == "unconditional"
     for bad in (
-        "", "{}", replace(valid, "FRONTIER1" => "FRONTIER2"),
+        "", "{}", replace(valid, "FRONTIER2" => "FRONTIER1"),
+        replace(valid, "conditional-grh\t" => ""),
+        replace(valid, "conditional-grh" => "Unconditional"),
+        replace(valid, "conditional-grh" => "true"),
         replace(valid, "case:1" => "bad id"), replace(valid, "case:1" => "\"quoted\""),
         replace(valid, "case:1" => repeat("a", 129)),
         replace(valid, "\t100\t" => "\t53\t"),

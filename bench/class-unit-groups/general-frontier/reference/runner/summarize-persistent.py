@@ -16,6 +16,7 @@ spec.loader.exec_module(persistent)
 
 
 def normalize(receipt):
+    policy = persistent.shared.receipt_policy(receipt)
     record = receipt["record"]
     label, coefficients = persistent.shared.validate_case(record)
     engine = receipt["engine"]
@@ -62,7 +63,15 @@ def normalize(receipt):
     ):
         raise ValueError("request identity disagrees with sample")
     status = persistent.validate_answer(
-        engine, receipt, request_id, len(coefficients) - 1, bits, iterations
+        engine,
+        receipt,
+        request_id,
+        len(coefficients) - 1,
+        bits,
+        iterations,
+        policy,
+        require_current=receipt.get("schema")
+        == "sagejs.general-frontier-persistent-screen.v2",
     )
     row = {
         "label": label,
@@ -77,12 +86,14 @@ def normalize(receipt):
         "request_id": request_id,
         "timing_boundary": "whole-fresh-field-batch",
         "controls": receipt.get("controls"),
-        "proof_policy": receipt.get("proof_policy"),
+        "requested_proof_policy": policy,
         "producer_boundary": receipt.get("boundary"),
         "cap_seconds": receipt.get("cap_seconds"),
     }
     if status != "ok":
         return row
+    row["proof_policy"] = policy
+    row["proof_execution"] = None
     if engine == "pari":
         line = next(
             x
@@ -97,6 +108,33 @@ def normalize(receipt):
             "guarantee": "working-precision-approximation",
             "text": regulator,
         }
+        row["worker_schema"] = "legacy-pari-native-text"
+        row["exact_compact_output"] = False
+        if any(
+            x.startswith("FRONTIER_COMPACT_JSON|")
+            for x in receipt["stdout"].splitlines()
+        ):
+            result = persistent.shared.parse_pari_compact(
+                receipt["stdout"],
+                request_id,
+                bits,
+                iterations,
+                len(coefficients) - 1,
+                proof_policy=policy,
+            )
+            for key in (
+                "witness_semantics",
+                "class_generator_order",
+                "unit_generator_order",
+                "retained_iteration",
+                "batch_outputs_complete",
+            ):
+                row[key] = result[key]
+            row["worker_schema"] = result["schema"]
+            row["proof_execution"] = result.get("proof_execution")
+            row["exact_compact_output"] = True
+            row["presentation_class_invariants"] = result["compact"]["class_invariants"]
+            row["regulator"] = result["compact"]["regulator"]
     else:
         response = json.loads(receipt["stdout"])
         result = response["result"]
@@ -115,7 +153,18 @@ def normalize(receipt):
         if ns < 0:
             raise ValueError("negative worker duration")
         row["worker_nanoseconds"] = str(ns)
+        row["worker_schema"] = result["schema"]
+        row["witness_semantics"] = (
+            result["witness_semantics"]
+            if result["schema"]
+            in ("sagejs-hecke-frontier-screen-v2", "sagejs-hecke-frontier-screen-v3")
+            else "ideal-equals-principal-witness-times-returned-class-map-representative"
+        )
         row["regulator"] = compact["regulator"]
+        row["proof_execution"] = result.get("proof_execution")
+        if result["schema"] == "sagejs-hecke-frontier-screen-v3":
+            row["retained_iteration"] = result["retained_iteration"]
+            row["batch_outputs_complete"] = result["batch_outputs_complete"]
         row["julia_diagnostics"] = response.get("diagnostics")
         # @timed can include compiling frontier_case before its internal timer
         # starts. Never subtract this diagnostic from worker elapsed_ns.
@@ -139,6 +188,14 @@ def normalize(receipt):
 def summarize(directory):
     run_bytes = (directory / "run.json").read_bytes()
     run = json.loads(run_bytes)
+    current = run.get("schema") == "sagejs.general-frontier-persistent-request.v2"
+    if not current and ("schema" in run or "requested_proof_policy" in run):
+        raise ValueError("unknown run request contract")
+    policy = (
+        persistent.shared.validate_proof_policy(run["requested_proof_policy"])
+        if current
+        else "conditional-grh"
+    )
     if not isinstance(run.get("provenance"), dict) or not run["provenance"]:
         raise ValueError("missing run provenance")
     bits, iterations, samples = (
@@ -164,7 +221,13 @@ def summarize(directory):
         raw = path.read_bytes()
         receipt = json.loads(raw)
         if (
-            receipt.get("schema") != "sagejs.general-frontier-persistent-screen.v1"
+            receipt.get("schema")
+            != (
+                "sagejs.general-frontier-persistent-screen.v2"
+                if current
+                else "sagejs.general-frontier-persistent-screen.v1"
+            )
+            or persistent.shared.receipt_policy(receipt) != policy
             or receipt.get("engine") != run["engine"]
             or receipt.get("qualification_evidence") is not False
             or receipt.get("provenance") != run["provenance"]
@@ -194,6 +257,7 @@ def summarize(directory):
         rows.append(row)
     return {
         "schema": "sagejs.general-frontier-persistent-review.v1",
+        "requested_proof_policy": policy,
         "qualification_evidence": False,
         "independent_replay": False,
         "engine": run["engine"],

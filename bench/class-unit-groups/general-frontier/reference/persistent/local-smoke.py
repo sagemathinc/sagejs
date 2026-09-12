@@ -1,9 +1,11 @@
 """Optional local-only live protocol check; no controlled-performance evidence."""
 
 import argparse
+from datetime import datetime, timezone
 import importlib.util
 import json
 from pathlib import Path
+import time
 import uuid
 
 
@@ -15,6 +17,245 @@ supervisor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(supervisor)
 
 
+TOY_FIELDS = (
+    ("rank-zero", ["5", "0", "1"], "2", "-20", [0, 1], "2"),
+    ("rank-one", ["-2", "0", "1"], "1", "8", [2, 0], "2"),
+    ("torsion-eight", ["1", "0", "0", "0", "1"], "1", "256", [0, 2], "8"),
+)
+
+
+def matrix_requests():
+    requests = []
+    for policy in supervisor.shared.PROOF_POLICIES:
+        for bits in (100, 200):
+            for name, coefficients, h, disc, signature, torsion in TOY_FIELDS:
+                requests.append(
+                    dict(
+                        label=f"proof-{policy}-{name}-{bits}",
+                        coefficients=coefficients,
+                        proof_policy=policy,
+                        bits=bits,
+                        iterations=1,
+                        expected=dict(
+                            class_number=h,
+                            discriminant=disc,
+                            signature=signature,
+                            torsion_order=torsion,
+                        ),
+                    )
+                )
+    requests.append(
+        dict(requests[7], label="proof-unconditional-batch", bits=100, iterations=2)
+    )
+    return requests
+
+
+def proof_matrix(args):
+    """One process, fixed tiny inputs, overall cap including startup/cleanup."""
+    if args.output is None or not 1 <= args.seconds <= 180:
+        raise ValueError(
+            "matrix requires a new --output and whole-process --seconds 1..180"
+        )
+    args.output.mkdir(parents=True, exist_ok=False)
+    started = time.monotonic()
+    worker = None
+    status, completed, decoded = "error", 0, []
+
+    def save(name, value):
+        supervisor.immutable_save(args.output / (name + ".json"), value)
+
+    def remaining():
+        budget = args.seconds - (time.monotonic() - started) - 5
+        if budget <= 0:
+            raise TimeoutError(
+                "whole diagnostic deadline exhausted; no further request"
+            )
+        return budget
+
+    try:
+        factory, provenance = supervisor.worker_factory(
+            args.engine,
+            args.executable,
+            args.worker,
+            args.project,
+            args.depot,
+            toy_replay=args.engine == "hecke",
+        )
+        sources = [Path(__file__)]
+        if args.engine == "pari":
+            sources += [
+                HERE.parent / "pari-explicit-output-smoke.gp",
+                HERE.parent / "runner/test_pari_explicit_output.py",
+            ]
+        provenance["diagnostic_sha256"] = {
+            str(p): supervisor.digest(p) for p in sources
+        }
+        declared = matrix_requests()
+        save(
+            "inputs",
+            dict(
+                engine=args.engine,
+                requests=declared,
+                provenance=provenance,
+                started_at=datetime.now(timezone.utc).isoformat(),
+                whole_process_cap_seconds=args.seconds,
+                cleanup_reserved_seconds=5,
+                qualification_evidence=False,
+                independent_replay=False,
+                controls="local-uncontrolled-correctness-only",
+                one_process=True,
+                source_text={
+                    str(p): Path(p).read_text()
+                    for p in [
+                        *sources,
+                        *(
+                            Path(p)
+                            for p in provenance["sha256"]
+                            if Path(p).suffix in (".gp", ".jl", ".py", ".toml")
+                        ),
+                    ]
+                },
+            ),
+        )
+        marker = ("FRONTIER_READY|" + uuid.uuid4().hex).encode()
+        worker, payload = factory(marker)
+        if args.engine == "pari":
+            payload = b'print("FRONTIER_VERSION|",version());\n' + payload
+        save("startup-request", dict(command=worker.command, text=payload.decode()))
+        ready = worker.start(min(60, remaining()), marker, payload)
+        save("startup", ready)
+        if (
+            ready["status"] != "ok"
+            or ready["stderr"].strip()
+            or (
+                not ready["stdout"].startswith("FRONTIER_VERSION|")
+                if args.engine == "pari"
+                else bool(ready["stdout"].strip())
+            )
+        ):
+            raise ValueError("startup failed; raw receipt retained")
+        pid = worker.child.pid
+        for index, request in enumerate(declared):
+            payload, marker = supervisor.encode_request(
+                args.engine,
+                request["label"],
+                request["coefficients"],
+                request["bits"],
+                1,
+                request["iterations"],
+                request["proof_policy"],
+            )
+            save(f"request-{index:02}", dict(declared=request, text=payload.decode()))
+            response = worker.exchange(payload, remaining(), marker)
+            reviewed = supervisor.validate_answer(
+                args.engine,
+                response,
+                request["label"],
+                len(request["coefficients"]) - 1,
+                request["bits"],
+                request["iterations"],
+                request["proof_policy"],
+                require_current=True,
+            )
+            save(f"response-{index:02}", dict(response, reviewed_status=reviewed))
+            if reviewed != "ok" or response["pid"] != pid:
+                raise ValueError("request failed; no retry or field substitution")
+            if args.engine == "pari":
+                result = supervisor.shared.parse_pari_compact(
+                    response["stdout"],
+                    request["label"],
+                    request["bits"],
+                    request["iterations"],
+                    len(request["coefficients"]) - 1,
+                    proof_policy=request["proof_policy"],
+                )
+            else:
+                answer = supervisor.shared.strict_json(response["stdout"])
+                result = answer["result"]
+                toy = answer["diagnostics"]["toy_replay"]
+                count = len(result["compact"]["class_generators"])
+                if (
+                    toy["scope"]
+                    != "test-only-decoded-exact-payload-not-independent-proof"
+                    or toy["literal_equations"] != count + 3
+                    or toy["rejected_mutations"] != count + 3
+                    or toy["class_powers"] != count
+                    or toy["units"] != sum(result["compact"]["signature"])
+                ):
+                    raise ValueError("missing declared decoded toy checks")
+            if any(
+                result["compact"][key] != expected
+                for key, expected in request["expected"].items()
+            ):
+                raise ValueError("tiny exact abstract invariant disagrees")
+            decoded.append(result)
+            completed += 1
+        save("decoded", decoded)
+        if args.engine == "pari":
+            module_spec = importlib.util.spec_from_file_location(
+                "pari_toy_replay", HERE.parent / "runner/test_pari_explicit_output.py"
+            )
+            replay = importlib.util.module_from_spec(module_spec)
+            module_spec.loader.exec_module(replay)
+            commands = [
+                f"read({json.dumps(str(HERE.parent / 'pari-explicit-output-smoke.gp'))});"
+            ]
+            for result, request in zip(decoded, declared):
+                commands += replay.replay_commands(
+                    result, request["coefficients"], native_identity=False
+                )
+            commands += [
+                'print("FRONTIER_TOY_REPLAY|ok");',
+                'print("FRONTIER_TOY_DONE");',
+            ]
+            payload = ("\n".join(commands) + "\n").encode()
+            save("replay-request", {"text": payload.decode()})
+            response = worker.exchange(payload, remaining(), b"FRONTIER_TOY_DONE")
+            save("replay", response)
+            if (
+                response["status"] != "ok"
+                or response["stderr"].strip()
+                or response["stdout"] != "FRONTIER_TOY_REPLAY|ok\n"
+            ):
+                raise ValueError("decoded exact toy replay failed")
+        if any(
+            supervisor.digest(p) != h
+            for p, h in {
+                **provenance["sha256"],
+                **provenance["diagnostic_sha256"],
+            }.items()
+        ):
+            raise ValueError("runtime or source changed during diagnostic")
+        status = "ok"
+    except BaseException as error:
+        save("failure", {"type": type(error).__name__, "message": str(error)})
+        raise
+    finally:
+        if worker is not None:
+            worker.close()
+        save(
+            "completion",
+            dict(
+                status=status,
+                completed_requests=completed,
+                elapsed_seconds=time.monotonic() - started,
+                process_closed=worker is None or worker.child is None,
+                qualification_evidence=False,
+                independent_replay=False,
+            ),
+        )
+    print(
+        json.dumps(
+            {
+                "status": status,
+                "requests": completed,
+                "output": str(args.output),
+                "qualification_evidence": False,
+            }
+        )
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--engine", choices=("pari", "hecke"), required=True)
@@ -24,8 +265,19 @@ def main():
     parser.add_argument("--depot", type=Path)
     parser.add_argument("--bits", type=int, choices=(100, 200), default=200)
     parser.add_argument("--iterations", type=int, choices=(1, 2), default=1)
+    parser.add_argument(
+        "--proof-policy",
+        choices=supervisor.shared.PROOF_POLICIES,
+        default="conditional-grh",
+    )
+    parser.add_argument("--proof-policy-matrix", action="store_true")
+    parser.add_argument("--seconds", type=int, default=180)
+    parser.add_argument("--output", type=Path)
     parser.add_argument("--local-uncontrolled", action="store_true", required=True)
     args = parser.parse_args()
+    if args.proof_policy_matrix:
+        proof_matrix(args)
+        return
     factory, provenance = supervisor.worker_factory(
         args.engine, args.executable, args.worker, args.project, args.depot
     )
@@ -41,7 +293,13 @@ def main():
             ("local-cubic", ["-1", "-1", "0", "1"]),
         ):
             request, marker = supervisor.encode_request(
-                args.engine, label, coefficients, args.bits, 1, args.iterations
+                args.engine,
+                label,
+                coefficients,
+                args.bits,
+                1,
+                args.iterations,
+                args.proof_policy,
             )
             response = worker.exchange(request, 60, marker)
             assert (
@@ -52,6 +310,8 @@ def main():
                     len(coefficients) - 1,
                     args.bits,
                     args.iterations,
+                    args.proof_policy,
+                    require_current=True,
                 )
                 == "ok"
             ), response

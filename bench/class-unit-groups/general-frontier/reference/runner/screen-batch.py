@@ -21,9 +21,320 @@ import subprocess
 import tempfile
 import time
 from datetime import datetime, timezone
+from fractions import Fraction
 
 
 LIMIT = 120 * 3600
+PARI_SCHEMA = "sagejs-pari-frontier-screen-v3"
+PROOF_POLICIES = ("conditional-grh", "unconditional")
+PARI_SEMANTICS = "ideal-equals-principal-witness-times-literal-class-generator-product"
+
+
+def validate_proof_policy(policy):
+    if not isinstance(policy, str) or policy not in PROOF_POLICIES:
+        raise ValueError("invalid requested proof policy")
+    return policy
+
+
+def strict_json(text):
+    def distinct(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate JSON key")
+            result[key] = value
+        return result
+
+    def nonfinite(value):
+        raise ValueError("nonfinite JSON constant")
+
+    return json.loads(text, object_pairs_hook=distinct, parse_constant=nonfinite)
+
+
+def validate_proof_execution(result, engine, policy, iterations):
+    """Validate claimed execution, not an independent mathematical certificate."""
+    validate_proof_policy(policy)
+    current = result.get("schema") == f"sagejs-{engine}-frontier-screen-v3"
+    if not current:
+        if (
+            policy != "conditional-grh"
+            or result.get("proof_policy", "conditional-grh") != policy
+            or "proof_execution" in result
+            or result.get("compact", {})
+            .get("regulator", {})
+            .get("fundamental_units_policy", "conditional-grh")
+            != policy
+        ):
+            raise ValueError("historical output is conditional only")
+        return
+    if (
+        result.get("proof_policy") != policy
+        or result.get("independent_replay") is not False
+    ):
+        raise ValueError("worker proof policy mismatch")
+    if result["compact"]["regulator"].get("fundamental_units_policy") != policy:
+        raise ValueError("regulator fundamental-unit policy mismatch")
+    if (
+        type(result.get("retained_iteration")) is not int
+        or result["retained_iteration"] != iterations
+    ):
+        raise ValueError("retained iteration mismatch")
+    if result.get("batch_outputs_complete") is not (iterations == 1):
+        raise ValueError("batch retention mismatch")
+    execution = result["proof_execution"]
+    if policy == "conditional-grh":
+        if execution is not None:
+            raise ValueError("conditional output must not claim proof execution")
+        return
+    expected = (
+        "method flag last_return completed_iterations certification_milliseconds"
+        if engine == "pari"
+        else "method class_group_grh unit_group_grh completed_iterations class_group_call_nanoseconds unit_group_call_nanoseconds"
+    )
+    if not isinstance(execution, dict) or set(execution) != set(expected.split()):
+        raise ValueError("invalid proof execution fields")
+    if (
+        type(execution["completed_iterations"]) is not int
+        or execution["completed_iterations"] != iterations
+    ):
+        raise ValueError("incomplete proof iterations")
+    if engine == "pari":
+        if (
+            execution["method"] != "pari-bnfcertify-full"
+            or type(execution["flag"]) is not int
+            or execution["flag"] != 0
+            or execution["last_return"] != "1"
+        ):
+            raise ValueError("full bnfcertify result required")
+        durations = ("certification_milliseconds",)
+    else:
+        if (
+            execution["method"] != "hecke-class-and-unit-grh-false"
+            or execution["class_group_grh"] is not False
+            or execution["unit_group_grh"] is not False
+        ):
+            raise ValueError("both Hecke proof owners must be unconditional")
+        durations = ("class_group_call_nanoseconds", "unit_group_call_nanoseconds")
+    for name in durations:
+        value = execution[name]
+        if not isinstance(value, str) or not re.fullmatch(r"0|[1-9][0-9]*", value):
+            raise ValueError("proof duration must be a canonical nonnegative integer")
+
+
+def receipt_policy(receipt):
+    """New requests are explicit; old receipts are never upgraded."""
+    schema = receipt.get("schema", "")
+    if schema.endswith(("persistent-screen.v2", "cost-screen.v2")):
+        policy = validate_proof_policy(receipt["requested_proof_policy"])
+        if "proof_policy" in receipt and receipt["proof_policy"] != policy:
+            raise ValueError("receipt completed/requested policy mismatch")
+        return policy
+    if "requested_proof_policy" in receipt:
+        raise ValueError("historical receipt has a new request-policy field")
+    if receipt.get("proof_policy", "conditional-grh") != "conditional-grh":
+        raise ValueError("historical receipt cannot claim unconditional proof")
+    return "conditional-grh"
+
+
+def parse_pari_compact(
+    output,
+    label,
+    bits=200,
+    iterations=1,
+    degree=None,
+    seed=1,
+    proof_policy="conditional-grh",
+):
+    """Strict versioned transport/shape checks, not certificate replay."""
+
+    def require(condition):
+        if not condition:
+            raise ValueError("invalid explicit PARI output")
+
+    def keys(value, expected):
+        require(isinstance(value, dict) and set(value) == set(expected.split()))
+
+    def distinct(pairs):
+        result = {}
+        for key, value in pairs:
+            require(key not in result)
+            result[key] = value
+        return result
+
+    def nonfinite(value):
+        raise ValueError("nonfinite JSON constant")
+
+    def integer(value):
+        require(isinstance(value, str) and re.fullmatch(r"0|-?[1-9][0-9]*", value))
+        return int(value)
+
+    def bounded(value, low, high):
+        require(type(value) is int and low <= value <= high)
+
+    def sequence(value, length):
+        require(isinstance(value, list) and len(value) == length)
+
+    require(len(output.encode()) <= 32 * 1024 * 1024)
+    lines = [line for line in output.splitlines() if line.strip()]
+    require(len(lines) == 2 and lines[0].startswith("FRONTIER_RESULT|"))
+    require(lines[1].startswith("FRONTIER_COMPACT_JSON|" + label + "|"))
+    summary = lines[0].split("|")
+    require(len(summary) == 11)
+    require(summary[1:4] == [label, str(bits), str(iterations)])
+    result = json.loads(
+        lines[1].split("|", 2)[2], object_pairs_hook=distinct, parse_constant=nonfinite
+    )
+    keys(
+        result,
+        "schema id bits iterations seed proof_policy independent_replay witness_semantics class_generator_order unit_generator_order element_basis ideal_basis_layout pari_version retained_iteration batch_outputs_complete compact"
+        + (" proof_execution" if result.get("schema") == PARI_SCHEMA else ""),
+    )
+    require(
+        result["schema"] in (PARI_SCHEMA, "sagejs-pari-frontier-screen-v2")
+        and result["id"] == label
+    )
+    validate_proof_execution(result, "pari", proof_policy, iterations)
+    bounded(bits, 100, 200)
+    require(bits in (100, 200))
+    bounded(iterations, 1, 10000)
+    require(type(seed) is int and seed > 0)
+    for key, expected in (
+        ("bits", bits),
+        ("iterations", iterations),
+        ("retained_iteration", iterations),
+    ):
+        require(type(result[key]) is int and result[key] == expected)
+    require(integer(result["seed"]) == seed)
+    require(
+        result["proof_policy"] == proof_policy and result["independent_replay"] is False
+    )
+    require(result["witness_semantics"] == PARI_SEMANTICS)
+    require(result["class_generator_order"] == "pari-bnf.gen")
+    require(result["unit_generator_order"] == "torsion-first-then-bnfunits-free-order")
+    require(result["element_basis"] == "ascending-powers-of-input-generator")
+    require(result["ideal_basis_layout"] == "outer-array-of-basis-elements")
+    require(result["batch_outputs_complete"] is (iterations == 1))
+    sequence(result["pari_version"], 3)
+    for value in result["pari_version"]:
+        bounded(value, 0, 1000000)
+    compact = result["compact"]
+    keys(
+        compact,
+        "class_number class_invariants discriminant signature integral_basis class_generators class_coordinates class_decompositions class_power_witnesses unit_invariants torsion_order units unit_coordinates probes decompositions regulator",
+    )
+    signature = compact["signature"]
+    sequence(signature, 2)
+    for value in signature:
+        bounded(value, 0, 10)
+    n = signature[0] + 2 * signature[1]
+    require(2 <= n <= 10 and (degree is None or (type(degree) is int and degree == n)))
+    require(isinstance(compact["class_invariants"], list))
+    orders = [integer(value) for value in compact["class_invariants"]]
+    require(all(value > 1 for value in orders))
+    require(all(a % b == 0 for a, b in zip(orders, orders[1:])))
+    require(integer(compact["class_number"]) == math.prod(orders))
+    require(integer(compact["discriminant"]) != 0)
+    torsion = integer(compact["torsion_order"])
+    require(torsion > 0)
+    require(summary[5] == compact["class_number"] and json.loads(summary[6]) == orders)
+    require(
+        summary[7] == compact["discriminant"] and json.loads(summary[8]) == signature
+    )
+    require(summary[9] == compact["torsion_order"])
+    count, unit_count = len(orders), sum(signature)
+
+    def element(value):
+        sequence(value, n)
+        for coefficient in value:
+            require(
+                isinstance(coefficient, str)
+                and re.fullmatch(r"(?:0|-?[1-9][0-9]*)(?:/[1-9][0-9]*)?", coefficient)
+            )
+            require(str(Fraction(coefficient)) == coefficient)
+
+    def ideal(value):
+        sequence(value, n)
+        for basis_element in value:
+            element(basis_element)
+
+    def factored(value):
+        require(isinstance(value, list))
+        for factor in value:
+            keys(factor, "factor exponent")
+            element(factor["factor"])
+            require(any(c != "0" for c in factor["factor"]))
+            require(integer(factor["exponent"]) != 0)
+
+    def coordinates(value):
+        sequence(value, count)
+        require(all(0 <= integer(c) < d for c, d in zip(value, orders)))
+
+    def decomposition(value):
+        keys(value, "coordinates generator_product_witness")
+        coordinates(value["coordinates"])
+        factored(value["generator_product_witness"])
+
+    ideal(compact["integral_basis"])
+    for name in (
+        "class_generators",
+        "class_coordinates",
+        "class_decompositions",
+        "class_power_witnesses",
+    ):
+        sequence(compact[name], count)
+    for j in range(count):
+        ideal(compact["class_generators"][j])
+        coordinates(compact["class_coordinates"][j])
+        require(
+            compact["class_coordinates"][j] == [str(int(k == j)) for k in range(count)]
+        )
+        decomposition(compact["class_decompositions"][j])
+        require(
+            compact["class_decompositions"][j]["coordinates"]
+            == compact["class_coordinates"][j]
+        )
+        power = compact["class_power_witnesses"][j]
+        keys(power, "exponent witness")
+        require(integer(power["exponent"]) == orders[j])
+        factored(power["witness"])
+    sequence(compact["unit_invariants"], unit_count)
+    require(compact["unit_invariants"] == [str(torsion)] + ["0"] * (unit_count - 1))
+    sequence(compact["units"], unit_count)
+    sequence(compact["unit_coordinates"], unit_count)
+    for j in range(unit_count):
+        factored(compact["units"][j])
+        sequence(compact["unit_coordinates"][j], unit_count)
+        require(
+            compact["unit_coordinates"][j]
+            == [str(int(k == j)) for k in range(unit_count)]
+        )
+    sequence(compact["probes"], 3)
+    sequence(compact["decompositions"], 3)
+    for probe, answer in zip(compact["probes"], compact["decompositions"]):
+        ideal(probe)
+        decomposition(answer)
+    regulator = compact["regulator"]
+    keys(
+        regulator,
+        "guarantee requested_working_bits initial_working_bits value_precision_bits text fundamental_units_policy",
+    )
+    require(regulator["guarantee"] == "working-precision-approximation")
+    require(
+        type(regulator["requested_working_bits"]) is int
+        and regulator["requested_working_bits"] == bits
+    )
+    bounded(regulator["initial_working_bits"], bits, 1000000)
+    if regulator["value_precision_bits"] is not None:
+        bounded(regulator["value_precision_bits"], 1, 1000000)
+    require(regulator["fundamental_units_policy"] == proof_policy)
+    text = regulator["text"]
+    require(
+        isinstance(text, str)
+        and re.fullmatch(r"[0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?", text)
+    )
+    require(any(c in "123456789" for c in text.split("E")[0].split("e")[0]))
+    require(summary[10] == text)
+    return result
 
 
 def save(path, value):
@@ -83,6 +394,10 @@ def validate_terminal(
     *,
     expected_bits=200,
     expected_iterations=1,
+    expected_degree=None,
+    expected_seed=1,
+    expected_proof_policy="conditional-grh",
+    require_current=False,
 ):
     if output_capped:
         return "output-limit"
@@ -92,7 +407,9 @@ def validate_terminal(
         line for line in output.splitlines() if line.startswith("FRONTIER_RESULT|")
     ]
     compact = [
-        line for line in output.splitlines() if line.startswith("FRONTIER_COMPACT|")
+        line
+        for line in output.splitlines()
+        if line.startswith(("FRONTIER_COMPACT|", "FRONTIER_COMPACT_JSON|"))
     ]
     fields = lines[0].split("|") if len(lines) == 1 else []
     valid_summary = (
@@ -128,9 +445,35 @@ def validate_terminal(
         or not lines[0].startswith(
             f"FRONTIER_RESULT|{label}|{expected_bits}|{expected_iterations}|"
         )
-        or not compact[0].startswith("FRONTIER_COMPACT|" + label + "|")
+        or not compact[0].startswith(
+            ("FRONTIER_COMPACT|" + label + "|", "FRONTIER_COMPACT_JSON|" + label + "|")
+        )
         or not compact[0].split("|", 2)[-1].strip()
     ):
+        return "error"
+    if compact[0].startswith("FRONTIER_COMPACT_JSON|"):
+        try:
+            parsed = parse_pari_compact(
+                output,
+                label,
+                expected_bits,
+                expected_iterations,
+                expected_degree,
+                expected_seed,
+                expected_proof_policy,
+            )
+            if require_current and parsed["schema"] != PARI_SCHEMA:
+                return "error"
+        except (
+            KeyError,
+            TypeError,
+            ValueError,
+            AttributeError,
+            RecursionError,
+            OverflowError,
+        ):
+            return "error"
+    elif expected_proof_policy != "conditional-grh" or require_current:
         return "error"
     return "ok"
 
@@ -164,6 +507,9 @@ def validate_hecke_terminal(
     *,
     expected_bits=200,
     expected_iterations=1,
+    expected_seed=1,
+    expected_proof_policy="conditional-grh",
+    require_current=False,
 ):
     if output_capped:
         return "output-limit"
@@ -172,16 +518,66 @@ def validate_hecke_terminal(
     if returncode != 0 or errors.strip():
         return "error"
     try:
-        answer = json.loads(output)
+        answer = strict_json(output)
         result = answer["result"]
+        if (
+            require_current
+            and result.get("schema") != "sagejs-hecke-frontier-screen-v3"
+        ):
+            return "error"
         compact = result["compact"]
+        validate_proof_execution(
+            result, "hecke", expected_proof_policy, expected_iterations
+        )
+        if result["schema"] == "sagejs-hecke-frontier-screen-v3":
+            if set(result) != set(
+                "schema id bits iterations seed elapsed_ns boundary witness_semantics proof_policy proof_execution independent_replay retained_iteration batch_outputs_complete versions compact".split()
+            ):
+                return "error"
+            if result["seed"] != str(expected_seed):
+                return "error"
+            if (
+                result["boundary"]
+                != "persistent-process-fresh-field-complete-compact-screen"
+            ):
+                return "error"
+            if (
+                not isinstance(result["versions"], dict)
+                or set(result["versions"]) != {"julia", "hecke", "nemo"}
+                or not all(
+                    isinstance(v, str) and v for v in result["versions"].values()
+                )
+            ):
+                return "error"
+            if set(compact["regulator"]) != set(
+                "guarantee bits lower upper display fundamental_units_policy".split()
+            ):
+                return "error"
         if (
             answer["status"] != "ok"
             or type(expected_bits) is not int
             or expected_bits not in (100, 200)
             or type(expected_iterations) is not int
             or not 1 <= expected_iterations <= 10000
-            or result["schema"] != "sagejs-hecke-frontier-screen-v1"
+            or result["schema"]
+            not in (
+                "sagejs-hecke-frontier-screen-v1",
+                "sagejs-hecke-frontier-screen-v2",
+                "sagejs-hecke-frontier-screen-v3",
+            )
+            or (
+                result["schema"]
+                in (
+                    "sagejs-hecke-frontier-screen-v2",
+                    "sagejs-hecke-frontier-screen-v3",
+                )
+                and (
+                    result.get("witness_semantics")
+                    != "ideal-equals-principal-witness-times-literal-class-generator-product"
+                    or result.get("proof_policy") != expected_proof_policy
+                    or result.get("independent_replay") is not False
+                )
+            )
             or result["id"] != label
             or type(result["bits"]) is not int
             or result["bits"] != expected_bits
@@ -197,9 +593,39 @@ def validate_hecke_terminal(
             or not compact["units"]
         ):
             return "error"
-    except (KeyError, TypeError, ValueError):
+    except (
+        KeyError,
+        TypeError,
+        ValueError,
+        AttributeError,
+        RecursionError,
+        OverflowError,
+    ):
         return "error"
     return "ok"
+
+
+def encode_fresh_request(engine, worker_text, label, coefficients, proof_policy):
+    validate_proof_policy(proof_policy)
+    validate_case({"label": label, "coefficients": coefficients})
+    if engine == "pari":
+        return (
+            worker_text
+            + "\nfrontier_case("
+            + json.dumps(label)
+            + ",["
+            + ",".join(coefficients)
+            + "],200,1,1,"
+            + json.dumps(proof_policy)
+            + ");\n"
+        )
+    if engine == "hecke":
+        return (
+            f"FRONTIER2\t{label}\t200\t1\t1\t{proof_policy}\t"
+            + ",".join(coefficients)
+            + "\n"
+        )
+    raise ValueError("invalid engine")
 
 
 def main():
@@ -214,6 +640,9 @@ def main():
     parser.add_argument("--depot", type=Path)
     parser.add_argument("--worker", type=Path, required=True)
     parser.add_argument("--seconds", type=int, default=60)
+    parser.add_argument(
+        "--proof-policy", choices=PROOF_POLICIES, default="conditional-grh"
+    )
     args = parser.parse_args()
     if args.engine == "pari" and not args.gp:
         raise ValueError("PARI screen requires --gp")
@@ -288,16 +717,9 @@ def main():
             destination = args.output / (label + ".json")
             if destination.exists():
                 raise ValueError("refusing to overwrite a previous attempt")
-            request = worker_text + "\nfrontier_case(" + json.dumps(label) + ",["
-            request += ",".join(coefficients) + "],200,1,1);\n"
-            if args.engine == "hecke":
-                request = (
-                    "FRONTIER1\t"
-                    + label
-                    + "\t200\t1\t1\t"
-                    + ",".join(coefficients)
-                    + "\n"
-                )
+            request = encode_fresh_request(
+                args.engine, worker_text, label, coefficients, args.proof_policy
+            )
             reservation = args.seconds + 10
             validate_state(state, reservation)
             state["pending"] = {
@@ -352,6 +774,8 @@ def main():
                     child.communicate(request, timeout=args.seconds)
                 except subprocess.TimeoutExpired:
                     status = "timeout"
+                except InterruptedError:
+                    status = "interrupted"
                 finally:
                     try:
                         os.killpg(child.pid, signal.SIGKILL)
@@ -376,19 +800,35 @@ def main():
             validator = (
                 validate_terminal if args.engine == "pari" else validate_hecke_terminal
             )
-            status = validator(
-                output,
-                errors,
-                label,
-                child.returncode,
-                status == "timeout",
-                output_capped,
+            interrupted_attempt = status == "interrupted"
+            status = (
+                "interrupted"
+                if interrupted_attempt
+                else validator(
+                    output,
+                    errors,
+                    label,
+                    child.returncode,
+                    status == "timeout",
+                    output_capped,
+                    expected_proof_policy=args.proof_policy,
+                    require_current=True,
+                    **(
+                        {"expected_degree": len(coefficients) - 1}
+                        if args.engine == "pari"
+                        else {}
+                    ),
+                )
             )
             receipt = {
-                "schema": "sagejs.general-frontier-" + args.engine + "-cost-screen.v1",
+                "schema": "sagejs.general-frontier-" + args.engine + "-cost-screen.v2",
                 "engine": args.engine,
                 "qualification_evidence": False,
                 "label": label,
+                "request_id": label,
+                "bits": 200,
+                "iterations": 1,
+                "seed": "1",
                 "coefficients": coefficients,
                 "status": status,
                 "regulator_guarantee": "PARI-working-precision-approximation-not-enclosure"
@@ -403,7 +843,7 @@ def main():
                 "runner_sha256": runner_sha256,
                 "input_sha256": input_sha256,
                 "controls": controls,
-                "proof_policy": "conditional-grh",
+                "requested_proof_policy": args.proof_policy,
                 "captured_at": datetime.now(timezone.utc).isoformat(),
                 "worker_sha256": hashlib.sha256(worker_text.encode()).hexdigest(),
                 "request_sha256": hashlib.sha256(request.encode()).hexdigest(),
@@ -415,6 +855,10 @@ def main():
                 "stderr": errors,
             }
             save(destination, receipt)
+            if interrupted_attempt:
+                raise InterruptedError(
+                    "interrupted receipt retained; reservation remains pending"
+                )
             # Include parsing and receipt publication plus one second reserved
             # for ledger bookkeeping. Wall-time overrun remains visible and
             # leaves the reservation pending rather than silently continuing.

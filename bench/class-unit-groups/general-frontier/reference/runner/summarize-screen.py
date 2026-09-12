@@ -18,15 +18,44 @@ def summarize(directory):
     for path in sorted(directory.glob("*.json")):
         raw = path.read_bytes()
         receipt = json.loads(raw)
-        if receipt.get("schema") != "sagejs.general-frontier-pari-cost-screen.v1":
+        if receipt.get("schema") not in (
+            "sagejs.general-frontier-pari-cost-screen.v1",
+            "sagejs.general-frontier-pari-cost-screen.v2",
+        ):
             raise ValueError("unexpected receipt schema")
-        status = screen.validate_terminal(
-            receipt["stdout"],
-            receipt["stderr"],
-            receipt["label"],
-            receipt["exit_code"],
-            receipt["status"] == "timeout",
-            receipt["status"] == "output-limit",
+        policy = screen.receipt_policy(receipt)
+        label, coefficients = screen.validate_case(receipt)
+        if receipt["schema"].endswith(".v2") and (
+            receipt.get("request_id") != label
+            or type(receipt.get("bits")) is not int
+            or receipt["bits"] != 200
+            or type(receipt.get("iterations")) is not int
+            or receipt["iterations"] != 1
+            or receipt.get("seed") != "1"
+        ):
+            raise ValueError("fresh request identity mismatch")
+        if receipt["status"] not in (
+            "ok",
+            "error",
+            "timeout",
+            "output-limit",
+            "interrupted",
+        ):
+            raise ValueError("unknown retained fresh status")
+        status = (
+            receipt["status"]
+            if receipt["status"] != "ok"
+            else screen.validate_terminal(
+                receipt["stdout"],
+                receipt["stderr"],
+                receipt["label"],
+                receipt["exit_code"],
+                receipt["status"] == "timeout",
+                receipt["status"] == "output-limit",
+                expected_degree=len(coefficients) - 1,
+                expected_proof_policy=policy,
+                require_current=receipt["schema"].endswith(".v2"),
+            )
         )
         row = {
             "label": receipt["label"],
@@ -34,8 +63,20 @@ def summarize(directory):
             "original_status": receipt["status"],
             "reviewed_status": status,
             "wall_seconds": receipt["wall_seconds"],
+            "requested_proof_policy": policy,
         }
         if status == "ok":
+            row["proof_policy"] = policy
+            row["proof_execution"] = None
+            if "FRONTIER_COMPACT_JSON|" in receipt["stdout"]:
+                result = screen.parse_pari_compact(
+                    receipt["stdout"],
+                    label,
+                    degree=len(coefficients) - 1,
+                    proof_policy=policy,
+                )
+                row["proof_execution"] = result.get("proof_execution")
+                row["regulator"] = result["compact"]["regulator"]
             line = next(
                 line
                 for line in receipt["stdout"].splitlines()
@@ -60,7 +101,7 @@ def summarize(directory):
         "rows": rows,
         "counts": {
             status: sum(r["reviewed_status"] == status for r in rows)
-            for status in ("ok", "error", "timeout", "output-limit")
+            for status in ("ok", "error", "timeout", "output-limit", "interrupted")
         },
         "pari_only_at_least_one_second": sum(
             r.get("elapsed_milliseconds", 0) >= 1000 for r in rows
