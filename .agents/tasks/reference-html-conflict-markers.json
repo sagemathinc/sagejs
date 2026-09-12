@@ -76,6 +76,46 @@
       "commit": "c4c126d09ba4f5c2fb30001fd8b561b24105d80f",
       "workspace_fingerprint": "4a2b56729a375877853a7df3a1315c06241d2d9a3ee73b02ea7c4f6afc28af86",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/website.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.136,
+      "started_at": "2026-09-12T06:11:31.269Z",
+      "commit": "831523ff73788f9a3014b820c6d6546f8ef0499b",
+      "workspace_fingerprint": "993b8a2f470f713673a66c10ee6cb8d1c4c084225b9a39f6cc8cb5d394b825d0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check test/website.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.03,
+      "started_at": "2026-09-12T06:11:32.049Z",
+      "commit": "831523ff73788f9a3014b820c6d6546f8ef0499b",
+      "workspace_fingerprint": "993b8a2f470f713673a66c10ee6cb8d1c4c084225b9a39f6cc8cb5d394b825d0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.035,
+      "started_at": "2026-09-12T06:11:32.730Z",
+      "commit": "831523ff73788f9a3014b820c6d6546f8ef0499b",
+      "workspace_fingerprint": "993b8a2f470f713673a66c10ee6cb8d1c4c084225b9a39f6cc8cb5d394b825d0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.626,
+      "started_at": "2026-09-12T06:11:33.422Z",
+      "commit": "831523ff73788f9a3014b820c6d6546f8ef0499b",
+      "workspace_fingerprint": "993b8a2f470f713673a66c10ee6cb8d1c4c084225b9a39f6cc8cb5d394b825d0",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
