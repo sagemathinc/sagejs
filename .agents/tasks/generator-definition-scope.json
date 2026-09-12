@@ -1,0 +1,70 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "generator-definition-scope",
+  "title": "Generator Definition Scope",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Classify generator suspension by executing definition scope",
+  "base_commit": "6c42dd0938deaf3e13c7c681f4206d7199ad89ef",
+  "claims": [
+    "tools/python/lowerer.ts",
+    "src/output/functions.py",
+    "test/generator-definition-scope.cjs",
+    "test/generator-definition-scope-runtime.cjs",
+    "test/fixtures/generator-definition-scope.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node bin/sagejs-source.cjs --python test/fixtures/generator-definition-scope.py",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.142,
+      "started_at": "2026-09-12T08:37:04.731Z",
+      "commit": "6c42dd0938deaf3e13c7c681f4206d7199ad89ef",
+      "workspace_fingerprint": "15b25dfdf14a2ba07fe11a97c4ab51ce1119715a42c41ea9b3d3bde1cdfbc0c9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/generator-definition-scope.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.248,
+      "started_at": "2026-09-12T09:01:15.522Z",
+      "commit": "6c42dd0938deaf3e13c7c681f4206d7199ad89ef",
+      "workspace_fingerprint": "ed37177cc1311fb0be1acdbd7bd460436724e9ac5bed6d63044bff9b31919ad3",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Scope-aware yield ownership and enclosing-scope expression default capture implemented; final qualification pending. Detector-only full build passed and its named-definition runtime oracle passed both modes. Subsequent builds were deliberately interrupted for tuple-option correction and cheap diagnostic batching; they are unqualified, not correctness failures. Completed current-compiler diagnostics passed the expanded both-mode fixture, all four tuple-output options with original-AST restoration, and 78 adjacent default/method/CST tests. Final build and adopted-corpus/package reports are recorded externally to avoid changing the frozen build identity.",
+    "risks": [
+      "Historical evaluated-annotation mode is preserved; this does not implement Python 3.14 deferred annotations."
+    ],
+    "next_steps": [
+      "Complete a direct frozen-source build and focused, compiler, integration, compatibility-corpus, and package qualification before review."
+    ]
+  }
+}
