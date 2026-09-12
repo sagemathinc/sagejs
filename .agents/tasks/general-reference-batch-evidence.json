@@ -4,7 +4,7 @@
   "id": "general-reference-batch-evidence",
   "title": "General Reference Batch Evidence",
   "lane": "arithmetic-algebra",
-  "status": "blocked",
+  "status": "active",
   "owner": "user",
   "objective": "Retain every fresh reference batch compact output within existing caps with strict source-bound validation; retain unmatched regulator guarantees",
   "base_commit": "e55646d011b94bbca1db8e7139fee88d7774c92e",
@@ -20,7 +20,8 @@
     "bench/class-unit-groups/general-frontier/reference/persistent/local-smoke.py",
     "bench/class-unit-groups/general-frontier/reference/persistent/hecke-bootstrap.jl",
     "bench/class-unit-groups/general-frontier/reference/runner/test_batch_evidence.py",
-    "bench/class-unit-groups/general-frontier/reference/proof-policy.md"
+    "bench/class-unit-groups/general-frontier/reference/proof-policy.md",
+    "bench/class-unit-groups/general-frontier/reference/persistent/README.md"
   ],
   "dependencies": [
     "general-hecke-generator-witness"
