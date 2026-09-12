@@ -243,3 +243,38 @@ system PATH. The next attempt finds a test defaulting to `python3`; setting its
 supported `PYTHON` override to the existing Python 3.13 executable passes that
 focused test. The ordinary portable suite then passes. The attempts remain
 separate logs; no gate is bypassed and no files are deleted.
+
+The unchanged macOS `d3c436020` archives subsequently pass the complete fresh
+installation/public/lazy-resource/relocated-SEA checker from a separate clean
+`94c872832` checkout. Runtime and checker sources remain distinct; this is not
+a claim that the old archives were rebuilt at the checker commit. The Mac host
+reservation is released. Its Sage.js/SagePython SHA-256 values are
+`663e8a33c6a05d216faa70dedf510ec58ebbaa78b17377a4e558e11e453fceb7` and
+`652d0f7451d025db7ace853ec9e9a06182a8811f4c48fa6d1d68c19c935329be`;
+root/platform archives are
+`c7d9f13b7b2d8e4969ea6928b5b9502cc6fc5aa40656a51e38b84b51ea303972` and
+`78e76ed100688644c46102ce5e5a9a051755ff3242ea39ee52a2be4a3fe38039`.
+
+Windows routine prepack passes in 6m19s, followed by both SEAs and the general
+SEA smoke. The explicit CMinpack/NLopt smokes then fail: the build explicitly
+reported optional reactor omission, and those tests indexed unavailable result
+values. This is not qualified numerical execution. The authenticated numerical
+product is now transferred from the frozen ARM64 source using the existing
+publisher/installer, identity
+`sha256:1313fd9ad1d870225b681c7cb170c7cd57a96ad96e95eaeafaa2bfa9ce41c069`.
+Its transport archive SHA-256 is
+`33b3bac538178cec59d7410cf6205520f31bcec5daa32027fac859b88545aba6`.
+Windows installation authenticates it successfully. A fresh bounded runner
+sets `SAGEJS_NUMERICAL_PRODUCT_ROOT` and `SAGEJS_NUMERICAL_RUNTIME_REQUIRED=1`,
+then rebuilds, ordinarily prepacks, tests both SEAs, and uses the corrected
+checker. Those final results remain pending, not a four-platform pass.
+
+To preserve Windows capacity, only this candidate's generated
+`packages/flint/.native/production-kernels` cache receives reversible NTFS
+compression after checking it contains no reparse points: 1,349,816,031 logical
+bytes occupy 653,805,992 compressed bytes. No files or shared prefixes are
+deleted. The current local controller is
+`/tmp/sagejs-multipack-windows-required-product.ps1`; its output is
+`/tmp/sagejs-multipack-d3c436020-windows-required.log`, with a 45-minute ceiling
+and a 1.5 GiB free-space check before each stage. Inspect it before resuming or
+launching another host job. Earlier attempts remain in their separate logs.
