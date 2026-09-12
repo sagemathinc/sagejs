@@ -34,12 +34,27 @@ The broader contract, fitting/ODE frontend, ODE, and optimization run passes
 14/16 tests, including optimization failures/budgets and the live SciPy ODE
 oracle. Both failures reproduce on the unchanged, freshly built main baseline:
 the Sage-mode frontend needs the absent optional FLINT addon, and the dynamic
-ODE witness raises an assertion. The latter is still under investigation;
-neither is counted as a pass. Numerical/native/Wasm/resource architecture
+ODE witness intermittently fails `rejections.success`. An instrumented full
+baseline retry later passes unchanged conditions. The isolated rejected-step
+case converges with identical 100 iterations / 601 evaluations in baseline,
+result-only and trace-only branches; baseline/result-only take about 30.5 s
+near the existing 30 s cooperative budget, versus about 1.55 s with #224.
+This is consistent with budget sensitivity, but the failing run's status was
+not captured: do not claim a conclusively diagnosed mathematical failure or
+erase the original failed runs. No limits were raised.
+Numerical/native/Wasm/resource architecture
 checks pass; the broad gate stops on an unchanged historical retired-toolchain
 mention at `docs/general-class-unit-frontier.md:280`.
 
-Paired public-call measurements are pending. Historical measurements from
-another compiler or draft stack are not receipts for this branch. The program's
-latency targets and N0–N6 completion remain open. Keep the integration draft
-until the current-main handoff is adequately qualified.
+[Paired public-call evidence](../bench/numerics/performance/results/n1-result-main-2026-09-12/README.md)
+now retains all 40 matching observations against the freshly built main
+baseline. Host drift makes quantitative gains provisional; no speedup is
+independently confirmed here. Linux ARM64 and native Windows also pass the
+exact source-archive CPython oracles, explicitly not full product qualification.
+Source commit `b0c532cfb` passes routine Linux, Chromium parity, and Linux ARM64,
+macOS ARM64 and Windows x64 CI smoke checks. Evidence-only follow-ups must
+retain that attribution; current integration checks remain separate.
+
+The narrow identity shortcut is ready for review on its correctness and
+no-snapshot witnesses, not a claim of completing N1 or meeting latency targets.
+Independent quiet performance confirmation and N0–N6 remain open.
