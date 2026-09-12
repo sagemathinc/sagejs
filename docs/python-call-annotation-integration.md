@@ -53,3 +53,24 @@ not a claim that a prior workspace fingerprint includes the report itself.
 No fresh four-platform or production-browser qualification has been run for
 this combined candidate, and the earlier controlled performance comparison
 does not measure these additional annotation/divmod changes.
+
+## Follow-up: sole starred argument consumption
+
+The Python emitter now evaluates a sole starred expression and the keyword
+packet before consuming the iterable. A private, per-invocation function only
+performs consumption and packet assembly; user expressions remain arguments at
+the original call site, preserving generator suspension and nested-call state.
+Multiple starred groups and positional-prefix calls keep their existing path;
+the legacy raw-JavaScript emission mode is unchanged.
+
+The compiler converged in two passes (72.339s and 72.891s). All 12 focused
+ordering checks pass across CPython 3.14 and both Sage.js modes, covering
+constructors, keyword failures preventing iteration, multiple-star controls,
+and generator suspension. The same eight-file call/annotation/traceback matrix,
+with two added regression functions, now reports **66 passes and 6 required
+failures**: class publication, duplicate mapping order, and custom attribute
+lookup remain unfixed in both modes. Strict Python and formatting checks pass.
+
+These are source-emitter and focused runtime checks using the rebuilt compiler
+with the earlier built runtime. They do not replace a new full-build or
+cross-platform receipt for this follow-up, or the open performance review.

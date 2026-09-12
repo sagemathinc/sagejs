@@ -1544,16 +1544,34 @@ def print_function_call(self, output):
     if is_prototype_call and self.args.length > 1:
         self.args.shift()
 
-    print_positional_args()
-
-    if has_kwargs:
-        if self.args.length:
-            output.print(".concat(")
-        output.print("[")
+    if (
+        output.options.python_attributes
+        and has_kwargs
+        and self.args.length == 1
+        and self.args[0].is_array
+    ):
+        # A sole starred expression is evaluated before keywords, but its
+        # iterable is consumed afterwards. Keep user expressions at the call
+        # site (including yield/await), and give each invocation private state.
+        output.print(
+            "(function(ρσ_star,ρσ_keywords){return "
+            "Array.from(ρσ_Iterable(ρσ_star)).concat([ρσ_keywords]);})("
+        )
+        self.args[0].print(output)
+        output.comma()
         print_kwargs()
-        output.print("]")
-        if self.args.length:
-            output.print(")")
+        output.print(")")
+    else:
+        print_positional_args()
+
+        if has_kwargs:
+            if self.args.length:
+                output.print(".concat(")
+            output.print("[")
+            print_kwargs()
+            output.print("]")
+            if self.args.length:
+                output.print(")")
 
     output.print(")")
     if not is_repeatable:

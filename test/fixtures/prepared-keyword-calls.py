@@ -277,6 +277,73 @@ def test_star_arguments_with_keywords():
     assert events == ["lookup", "star-expression", "keyword", "iterate", "body"]
 
 
+def test_sole_star_keyword_errors_and_constructors():
+    events = []
+
+    class Arguments:
+        def __init__(self):
+            events.append("star")
+
+        def __iter__(self):
+            events.append("iterate")
+            return iter([3])
+
+    def keyword():
+        events.append("keyword")
+        return 4
+
+    def fail():
+        events.append("failure")
+        raise ValueError("keyword")
+
+    class Target:
+        def __init__(self, positional, *, value):
+            events.append("body")
+            self.result = positional + value
+
+    assert Target(*Arguments(), value=keyword()).result == 7
+    assert events == ["star", "keyword", "iterate", "body"]
+    events.clear()
+    try:
+        Target(*Arguments(), value=fail())
+    except ValueError as error:
+        assert str(error) == "keyword"
+    else:
+        assert False
+    assert events == ["star", "failure"]
+    events.clear()
+    try:
+        Target(*Arguments(), **None)
+    except TypeError:
+        pass
+    else:
+        assert False
+    assert events == ["star"]
+
+
+def test_sole_star_suspends_in_the_callers_generator():
+    events = []
+
+    class Arguments:
+        def __iter__(self):
+            events.append("iterate")
+            return iter([3])
+
+    def target(positional, *, value):
+        return positional + value
+
+    def caller():
+        result = target(*(yield "star"), value=(yield "keyword"))
+        yield result
+
+    generator = caller()
+    assert next(generator) == "star"
+    assert generator.send(Arguments()) == "keyword"
+    assert events == []
+    assert generator.send(4) == 7
+    assert events == ["iterate"]
+
+
 def test_multiple_stars_and_positional_items():
     events = []
 
