@@ -190,8 +190,8 @@ integration:
 - [PR226](https://github.com/sagemathinc/sagejs/pull/226), `2ed4a2635`, preserves
   assigned class-body initializers and compacts ordered signature publication.
   The first candidate exceeded the unchanged browser topology budget; the
-  follow-up passes that Chromium gate without a budget increase. It remains
-  draft pending final platform readiness. Empty-class arity and initializer
+  follow-up passes all platform and Chromium gates without a budget increase
+  and is non-draft. Empty-class arity and initializer
   descriptor-wrapper behavior are still separate gaps.
 - [PR231](https://github.com/sagemathinc/sagejs/pull/231), `0f62af751`, moves four
   duplicated low-level adapters into one counted shared bootstrap module,
@@ -201,9 +201,10 @@ integration:
 - [PR234](https://github.com/sagemathinc/sagejs/pull/234), `dcc601312`, fixes
   duplicate property evaluation in resolved keyword/star calls and selected
   string keyword metadata. It passes 206 portable files, 66 lowering tests and
-  four pinned package workflows. It remains draft pending controlled performance
-  comparison and current-head CI; no speedup is inferred from the baseline
-  namespace-scan profile.
+  four pinned package workflows. A later invalid-target oracle found a starred
+  argument evaluation-order regression; repair and requalification are underway.
+  It remains draft, and its benchmark was deferred before any VM execution.
+  No speedup is inferred from the baseline namespace-scan profile.
 
 The complete package matrix on the main-based PR228 candidate remains **8/11,
 not qualified**: pyparsing, IDNA and mpmath are still failures on that branch.
