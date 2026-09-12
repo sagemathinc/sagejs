@@ -2,12 +2,12 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 55,
+    "registered_kernels": 57,
     "production_kernels": 47,
     "compiled_functions": 286,
     "unsupported_production_functions": 1,
-    "non_production_functions": 54,
-    "same_source_fallback_functions": 55
+    "non_production_functions": 58,
+    "same_source_fallback_functions": 59
   },
   "kernels": [
     {
@@ -316,6 +316,28 @@
       "fallback_functions": 0,
       "total_functions": 6,
       "fallback_reasons": []
+    },
+    {
+      "id": "numerical-statistics-centered-production",
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 3,
+      "total_functions": 3,
+      "fallback_reasons": [
+        "prepared-statistics-browser-storage-not-qualified"
+      ]
+    },
+    {
+      "id": "numerical-statistics-sum-production",
+      "production": false,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 1,
+      "total_functions": 1,
+      "fallback_reasons": [
+        "prepared-statistics-browser-storage-not-qualified"
+      ]
     },
     {
       "id": "p1-heilbronn-production",

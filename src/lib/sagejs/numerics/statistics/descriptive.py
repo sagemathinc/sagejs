@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Iterable
-from typing import Any
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any, cast
 
 from ..model import ResourceBudget
 from ._core import (
@@ -20,6 +20,7 @@ from ._core import (
     scaled_centered_products,
     stable_mean,
 )
+from .prepared import StatisticsData
 from .result import StatisticsResult
 
 _MAX_VISUAL_OBSERVATIONS = 257
@@ -38,7 +39,7 @@ def _visual_observations(ordered: list[float]) -> tuple[list[float], list[float]
     last = len(ordered) - 1
     denominator = max(last, 1)
     return (
-        [ordered[index] for index in indices],
+        [float(ordered[index]) for index in indices],
         [index / denominator for index in indices],
     )
 
@@ -108,6 +109,18 @@ def _numerical_failure(
     )
 
 
+def _ordinary_components(values: Sequence[float]) -> tuple[Any, ...]:
+    """The original arithmetic and validation inputs, without input conversion."""
+    mean = stable_mean(values)
+    total = math.fsum(values)
+    sum_squares = centered_sum_squares(values, mean)
+    ordered = sorted(values)
+    median = quantile_sorted(ordered, 0.5)
+    absolute_deviations = sorted(abs(value - median) for value in values)
+    centered_residual = abs(math.fsum(value - mean for value in values))
+    return mean, total, sum_squares, ordered, absolute_deviations, centered_residual
+
+
 def describe(
     data: Iterable[Any],
     *,
@@ -132,21 +145,30 @@ def describe(
         force=True,
     )
     try:
-        values = finite_values(data, nan_policy=nan_policy, guard=guard)
-        if len(values) <= ddof:
+        prepared = cast(StatisticsData, data) if type(data) is StatisticsData else None
+        values: list[float] = []
+        if prepared is not None:
+            if nan_policy not in ("raise", "omit"):
+                raise ValueError("nan_policy must be 'raise' or 'omit'")
+            count = len(prepared)
+        else:
+            values = finite_values(data, nan_policy=nan_policy, guard=guard)
+            count = len(values)
+        if count <= ddof:
             raise ValueError("sample size must exceed ddof")
-        mean = stable_mean(values)
-        total = math.fsum(values)
-        sum_squares = centered_sum_squares(values, mean)
-        variance = sum_squares / (len(values) - ddof)
-        ordered = sorted(values)
+        if prepared is not None:
+            components = prepared._components(guard)
+        else:
+            components = _ordinary_components(values)
+        mean, total, sum_squares, ordered, absolute_deviations, centered_residual = (
+            components
+        )
+        variance = sum_squares / (count - ddof)
         q1 = quantile_sorted(ordered, 0.25)
         median = quantile_sorted(ordered, 0.5)
         q3 = quantile_sorted(ordered, 0.75)
-        absolute_deviations = sorted(abs(value - median) for value in values)
         mad = quantile_sorted(absolute_deviations, 0.5)
-        centered_residual = abs(math.fsum(value - mean for value in values))
-        scale = max(abs(total), abs(mean) * len(values), 1.0)
+        scale = max(abs(total), abs(mean) * count, 1.0)
         centered_tolerance = 16.0 * binary64_ulp(scale)
         checks = [
             {
@@ -165,19 +187,21 @@ def describe(
             },
         ]
         passed = all(bool(check["passed"]) for check in checks)
+        minimum = float(ordered[0])
+        maximum = float(ordered[-1])
         result_value = {
-            "count": len(values),
+            "count": count,
             "sum": total,
             "mean": mean,
             "variance": variance,
             "standard_deviation": math.sqrt(variance),
-            "standard_error": math.sqrt(variance / len(values)),
-            "minimum": ordered[0],
+            "standard_error": math.sqrt(variance / count),
+            "minimum": minimum,
             "q1": q1,
             "median": median,
             "q3": q3,
-            "maximum": ordered[-1],
-            "range": ordered[-1] - ordered[0],
+            "maximum": maximum,
+            "range": maximum - minimum,
             "interquartile_range": q3 - q1,
             "median_absolute_deviation": mad,
             "ddof": ddof,
@@ -187,7 +211,7 @@ def describe(
         guard.trace.append(
             "phase",
             data={
-                "count": len(values),
+                "count": count,
                 "mean": mean,
                 "median": median,
                 "interquartile_range": q3 - q1,
@@ -225,12 +249,14 @@ def describe(
             evaluations=guard.evaluations,
             elapsed_ms=guard.elapsed_ms(),
             resource_budget=guard.budget,
+            backend=prepared.backend if prepared is not None else "ordinary-python",
+            preparation=prepared.preparation() if prepared is not None else None,
             domain_payload={
                 "plot": {
                     "kind": "descriptive",
                     "ordered_values": visual_values,
                     "empirical_ranks": visual_ranks,
-                    "source_count": len(values),
+                    "source_count": count,
                 }
             },
         )

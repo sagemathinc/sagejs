@@ -1,14 +1,14 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "8395edb804df508a081d68be7684d6cb5ba37d7f9705069aeab71e1eed5cf89a",
+  "source_sha256": "3d13cf6eac6827e79572e8ae77fe5dd5047649beb333c3fd7e406660326be4af",
   "counts": {
-    "total": 1106,
+    "total": 1108,
     "by_kind": {
       "declared-ffi-function": 480,
       "declared-ffi-resource": 37,
       "napi-export": 358,
-      "production-kernel": 55,
+      "production-kernel": 57,
       "runtime-intrinsic": 148,
       "specialist-capability": 28
     },
@@ -16,13 +16,13 @@
       "compiled-source": 55,
       "desktop-only": 47,
       "generated-wasm": 379,
-      "portable-fallback": 575,
+      "portable-fallback": 577,
       "shared-core": 50
     },
     "by_status": {
       "available": 625,
       "desktop-only": 47,
-      "fallback": 434
+      "fallback": 436
     }
   },
   "workflow_aliases": {
@@ -6985,6 +6985,30 @@
         "number-field-zeta-coefficients"
       ],
       "explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:numerical-statistics-centered-production",
+      "family": "numerical-statistics-centered",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "portable-python",
+      "public_consumers": [
+        "explicit prepared descriptive statistics"
+      ],
+      "explanation": "This family uses compiled WebAssembly for 0 of 3 functions and the same-source fallback for 3 functions."
+    },
+    {
+      "id": "kernel:numerical-statistics-sum-production",
+      "family": "numerical-statistics-sum",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "portable-python",
+      "public_consumers": [
+        "explicit prepared descriptive statistics"
+      ],
+      "explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 functions."
     },
     {
       "id": "kernel:p1-heilbronn-production",

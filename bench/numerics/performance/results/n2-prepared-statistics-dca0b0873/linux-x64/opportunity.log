@@ -1,0 +1,12 @@
+cpython none generic setup_ms=0 query_ms=19.936328986659646
+cpython none prepared-dynamic setup_ms=11.749809025786817 query_ms=8.90457903733477
+cpython none prepared-native setup_ms=13.12345900805667 query_ms=9.196099010296166
+cpython summary generic setup_ms=0 query_ms=20.62766795279458
+cpython summary prepared-dynamic setup_ms=11.897618998773396 query_ms=9.504168992862105
+cpython summary prepared-native setup_ms=11.853999050799757 query_ms=9.602499019820243
+sagejs none generic setup_ms=0 query_ms=4952.980756759644
+sagejs none prepared-dynamic setup_ms=1086.9507789611816 query_ms=4636.780023574829
+sagejs none prepared-native setup_ms=1070.7969665527344 query_ms=82.06033706665039
+sagejs summary generic setup_ms=0 query_ms=4797.037601470947
+sagejs summary prepared-dynamic setup_ms=1062.2787475585938 query_ms=4576.63106918335
+sagejs summary prepared-native setup_ms=1255.3048133850098 query_ms=92.57769584655762

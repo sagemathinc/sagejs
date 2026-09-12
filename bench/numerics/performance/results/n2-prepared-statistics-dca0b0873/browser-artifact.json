@@ -1,0 +1,1040 @@
+{
+  "schema": "sagejs.browser-wasm-release-artifact/v1",
+  "production_manifest_sha256": "55b6ff295a25fa9d60dc9912ed177ab3b09ad8ba90fd735b8111c26b462dd801",
+  "build_receipt_sha256": "5bc0f98aa47b050452291f111a74cbc7ef27bd7f9667a0010f53c8fe04aaa9fe",
+  "source_revision": "dca0b087308e665f56adb706944e93314708f97e",
+  "artifact_identity": "sha256:6ee801bf335ec7ef0cfffc94c12662c9c27b8b5399ca2debd6f7547e182eb842",
+  "files": [
+    {
+      "path": "baselib.js",
+      "bytes": 13524780,
+      "sha256": "e64a1a6eb7aa12cbce57efdf94707f5beb48f3efd16a08570ad5d3f61333d415",
+      "gzip_bytes": 1464658,
+      "brotli_bytes": 956097
+    },
+    {
+      "path": "cminpack.wasm",
+      "bytes": 72155,
+      "sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5",
+      "gzip_bytes": 28940,
+      "brotli_bytes": 23884
+    },
+    {
+      "path": "compiler-frontend.mjs",
+      "bytes": 822855,
+      "sha256": "36a0537574e722a0eef3cc871b87dabde67646d1647c8b1e3ad35188d164fc0a",
+      "gzip_bytes": 154111,
+      "brotli_bytes": 120522
+    },
+    {
+      "path": "compiler.js",
+      "bytes": 3968020,
+      "sha256": "63607b3ee7c2ba13ed894b35add6a2ab80fc9bebaed952d449d77f9aac6f8126",
+      "gzip_bytes": 445098,
+      "brotli_bytes": 305444
+    },
+    {
+      "path": "conway-polynomials.json",
+      "bytes": 1114459,
+      "sha256": "43a555093e65ac1eed877c7bb79e6e8d44ad63285dc52fb227e64e2e7aa298ea",
+      "gzip_bytes": 213599,
+      "brotli_bytes": 156326
+    },
+    {
+      "path": "dynamic-programs.json",
+      "bytes": 152964,
+      "sha256": "0b4ed0f09dadc55a557a7ab82fc8b7c5fb4c7b29f4c6ff6eb43cf7bd3a6cf9b2",
+      "gzip_bytes": 10021,
+      "brotli_bytes": 6823
+    },
+    {
+      "path": "ffi-production-closure.json",
+      "bytes": 28685,
+      "sha256": "cd96d623d31596c6a3f2600078252ec8eda673c18ef2b761b2269e612e749028",
+      "gzip_bytes": 4243,
+      "brotli_bytes": 3695
+    },
+    {
+      "path": "ffi-resource-adapter.c",
+      "bytes": 741776,
+      "sha256": "f75516809388c4f54f0093cb9e2ddda7c246889ba21c6ed6b91bd39ceefdb3be",
+      "gzip_bytes": 31610,
+      "brotli_bytes": 18689
+    },
+    {
+      "path": "ffi-resource-backend.mjs",
+      "bytes": 430645,
+      "sha256": "1de6dcf30fc7381f542ba4930cabb870506229c8631436da909ba746a67b3b20",
+      "gzip_bytes": 28218,
+      "brotli_bytes": 20172
+    },
+    {
+      "path": "ffi-resource-manifest.json",
+      "bytes": 86547,
+      "sha256": "f947d2c893a7e6dc90030193913ef034a6647b527bdb05a3267007379c670662",
+      "gzip_bytes": 7210,
+      "brotli_bytes": 5758
+    },
+    {
+      "path": "flint-algebraic.wasm",
+      "bytes": 5002644,
+      "sha256": "4e37943b3962502b0a51df2f8a1a97db119adfae120af07af639171525bd2c9b",
+      "gzip_bytes": 2043068,
+      "brotli_bytes": 1643506
+    },
+    {
+      "path": "flint-factor.wasm",
+      "bytes": 6761098,
+      "sha256": "4bd7d9091c1f415fa3a8ae8975617651146abd6e480eb32de2da435212a57aef",
+      "gzip_bytes": 2565873,
+      "brotli_bytes": 1990116
+    },
+    {
+      "path": "foreign-frontend.mjs",
+      "bytes": 272089,
+      "sha256": "8bbd9f464e1ff4c94dbc2262d5c54aec065deadeb50445bc34bf27a73b4a9fcd",
+      "gzip_bytes": 52155,
+      "brotli_bytes": 44123
+    },
+    {
+      "path": "hyperelliptic-auto-receipt-policy.json",
+      "bytes": 10462,
+      "sha256": "6305003f109aeb7fa59197237c314113f98459e963fe8009c3014d77dddffc5c",
+      "gzip_bytes": 1918,
+      "brotli_bytes": 1615
+    },
+    {
+      "path": "katex/fonts/KaTeX_AMS-Regular.woff2",
+      "bytes": 28076,
+      "sha256": "0cdd387c9590a1a9f9794560022dbb59654a7d86f187aa0c81495ad42d3a7308",
+      "gzip_bytes": 28104,
+      "brotli_bytes": 28080
+    },
+    {
+      "path": "katex/fonts/KaTeX_Caligraphic-Bold.woff2",
+      "bytes": 6912,
+      "sha256": "de7701e42cf1f4cf0b766c03fb27977207eee2f4fd5d76fa82188406da43ea4c",
+      "gzip_bytes": 6935,
+      "brotli_bytes": 6916
+    },
+    {
+      "path": "katex/fonts/KaTeX_Caligraphic-Regular.woff2",
+      "bytes": 6908,
+      "sha256": "5d53e70ad607c2352162dec9e0923fb54ecdafaccbf604cd8dcf7d00facb989b",
+      "gzip_bytes": 6931,
+      "brotli_bytes": 6908
+    },
+    {
+      "path": "katex/fonts/KaTeX_Fraktur-Bold.woff2",
+      "bytes": 11348,
+      "sha256": "74444efd593c005e3f4573b44524704c0af0a937fe911cca9e94068d0d140d3f",
+      "gzip_bytes": 11371,
+      "brotli_bytes": 11352
+    },
+    {
+      "path": "katex/fonts/KaTeX_Fraktur-Regular.woff2",
+      "bytes": 11316,
+      "sha256": "51814d270d06ff0255dba0799994fa4d8c84d11f09951d47595f4abb1f3602dc",
+      "gzip_bytes": 11339,
+      "brotli_bytes": 11320
+    },
+    {
+      "path": "katex/fonts/KaTeX_Main-Bold.woff2",
+      "bytes": 25324,
+      "sha256": "0f60d1b897938ec918c8ce073092411baf9438f6739465693ff18b0f9d20b021",
+      "gzip_bytes": 25352,
+      "brotli_bytes": 25324
+    },
+    {
+      "path": "katex/fonts/KaTeX_Main-BoldItalic.woff2",
+      "bytes": 16780,
+      "sha256": "99cd42a3c072d918f2f44984a807cf7aa16e13545fd0875fc07c6c65f99e715b",
+      "gzip_bytes": 16808,
+      "brotli_bytes": 16784
+    },
+    {
+      "path": "katex/fonts/KaTeX_Main-Italic.woff2",
+      "bytes": 16988,
+      "sha256": "97479ca6cce906abc961ecac96faa5f9ca2e61b8e7670d475826bcdee9a7c267",
+      "gzip_bytes": 17016,
+      "brotli_bytes": 16990
+    },
+    {
+      "path": "katex/fonts/KaTeX_Main-Regular.woff2",
+      "bytes": 26272,
+      "sha256": "c2342cd8b869e01752a9321dc17213fc40d4d04c79688c1d43f2cf316abd7866",
+      "gzip_bytes": 26300,
+      "brotli_bytes": 26272
+    },
+    {
+      "path": "katex/fonts/KaTeX_Math-BoldItalic.woff2",
+      "bytes": 16400,
+      "sha256": "dc47344dbb6cb5b655c8460d561f4df5f501b90c804ad3c6cec65fe322351ab1",
+      "gzip_bytes": 16423,
+      "brotli_bytes": 16399
+    },
+    {
+      "path": "katex/fonts/KaTeX_Math-Italic.woff2",
+      "bytes": 16440,
+      "sha256": "7af58c5ec8f132a2ddde9027c6d7814decce4d3b822a11192a42a20e2e973264",
+      "gzip_bytes": 16468,
+      "brotli_bytes": 16441
+    },
+    {
+      "path": "katex/fonts/KaTeX_SansSerif-Bold.woff2",
+      "bytes": 12216,
+      "sha256": "e99ae51144bf1232efcc1bfe5add36262c6866b0faab24fa75740e1b98577a62",
+      "gzip_bytes": 12239,
+      "brotli_bytes": 12220
+    },
+    {
+      "path": "katex/fonts/KaTeX_SansSerif-Italic.woff2",
+      "bytes": 12028,
+      "sha256": "00b26ac825e2095056396e0553b8ac26d3f8ad158c3826e28b4c45b385c4714a",
+      "gzip_bytes": 12051,
+      "brotli_bytes": 12032
+    },
+    {
+      "path": "katex/fonts/KaTeX_SansSerif-Regular.woff2",
+      "bytes": 10344,
+      "sha256": "68e8c73ef42afd3ccec58bf0fba302cce448938e7fc020a5e31f8a952eee1342",
+      "gzip_bytes": 10367,
+      "brotli_bytes": 10348
+    },
+    {
+      "path": "katex/fonts/KaTeX_Script-Regular.woff2",
+      "bytes": 9644,
+      "sha256": "036d4e95149b69ff9bcc0cd55771efeb25ffa3947293e69acd78d5ac328c684b",
+      "gzip_bytes": 9667,
+      "brotli_bytes": 9648
+    },
+    {
+      "path": "katex/fonts/KaTeX_Size1-Regular.woff2",
+      "bytes": 5468,
+      "sha256": "6b47c40166b6dbe21a5dfca7718413f2147fd2399be1ba605d8ad39cedf25dfe",
+      "gzip_bytes": 5491,
+      "brotli_bytes": 5472
+    },
+    {
+      "path": "katex/fonts/KaTeX_Size2-Regular.woff2",
+      "bytes": 5208,
+      "sha256": "d04c54219f9eaec6d4d4fd42dfb28785975a4794d6b2fc71e566b9cd6db842dd",
+      "gzip_bytes": 5231,
+      "brotli_bytes": 5212
+    },
+    {
+      "path": "katex/fonts/KaTeX_Size3-Regular.woff2",
+      "bytes": 3624,
+      "sha256": "73d591271b1604960cb10bb90fee021670af7297017e0e98480b332d11f51995",
+      "gzip_bytes": 3647,
+      "brotli_bytes": 3628
+    },
+    {
+      "path": "katex/fonts/KaTeX_Size4-Regular.woff2",
+      "bytes": 4928,
+      "sha256": "a4af7d414440a1c1790825cfb700cf9cf43b0f2c4b04f0ebc523011ad9853ec0",
+      "gzip_bytes": 4951,
+      "brotli_bytes": 4932
+    },
+    {
+      "path": "katex/fonts/KaTeX_Typewriter-Regular.woff2",
+      "bytes": 13568,
+      "sha256": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b",
+      "gzip_bytes": 13591,
+      "brotli_bytes": 13572
+    },
+    {
+      "path": "katex/katex.min.css",
+      "bytes": 22593,
+      "sha256": "012a04cc949cc3a171c467965933772e41c7ca99c7887f98442be049657506cc",
+      "gzip_bytes": 3333,
+      "brotli_bytes": 2747
+    },
+    {
+      "path": "katex/katex.min.js",
+      "bytes": 272179,
+      "sha256": "2ec5916941ef4383e0314eaabcc712301b06001d9fb68e08d751d2bae5a27a1a",
+      "gzip_bytes": 75958,
+      "brotli_bytes": 62892
+    },
+    {
+      "path": "kernel-flint-resource-backend.mjs",
+      "bytes": 19963,
+      "sha256": "c3c2a7e2de7df1b603e2ebd7711d2b40f7ed4ac2ae335eb3128edff89f3d34e1",
+      "gzip_bytes": 3893,
+      "brotli_bytes": 3454
+    },
+    {
+      "path": "lazy-modules.json",
+      "bytes": 94873889,
+      "sha256": "74d910707aeb0a5387bbe79f72cb5f08b51abd61a1eac5cbd772b14eb5cbe3e2",
+      "gzip_bytes": 7982756,
+      "brotli_bytes": 4289496
+    },
+    {
+      "path": "m4ri-resource-adapter.c",
+      "bytes": 44158,
+      "sha256": "df679accdbb75881e57578fa63066bb3bbd3cb61720ff18bc2c5e7a968e1d4dc",
+      "gzip_bytes": 3270,
+      "brotli_bytes": 2794
+    },
+    {
+      "path": "m4ri-resource-backend.mjs",
+      "bytes": 39866,
+      "sha256": "7b42e828c264a50c96f53d3113458af167ed81910ee34ae212c6de4a14504d45",
+      "gzip_bytes": 5339,
+      "brotli_bytes": 4679
+    },
+    {
+      "path": "m4ri-resource-manifest.json",
+      "bytes": 7118,
+      "sha256": "8350858608e841c14b09f4a68618bbb9fa06261cbf93c6f39750526d864fe127",
+      "gzip_bytes": 1218,
+      "brotli_bytes": 1050
+    },
+    {
+      "path": "m4ri-resource.wasm",
+      "bytes": 124229,
+      "sha256": "71dbc75665984269fd20930784ba4b9d5afad61a6411ecb32f211dca4d474e0e",
+      "gzip_bytes": 45956,
+      "brotli_bytes": 37582
+    },
+    {
+      "path": "native-kernels/index.json",
+      "bytes": 606339,
+      "sha256": "eb1f25194b9936dbb616b767c294c9447b910beec791c4235a335ba28d55cdd3",
+      "gzip_bytes": 61125,
+      "brotli_bytes": 38615
+    },
+    {
+      "path": "native-kernels/kernel-flint.wasm",
+      "bytes": 6027765,
+      "sha256": "61a22248a0ca76b6c6c5d8f0d9fa3972a9004075ce4db191acbe8fbe34b1343d",
+      "gzip_bytes": 2312188,
+      "brotli_bytes": 1812890
+    },
+    {
+      "path": "native-kernels/kernel-gmp.wasm",
+      "bytes": 1485919,
+      "sha256": "be759c5c119da8667a93a6ddc912154ec40515dd60ce4906b8f4ae128228d118",
+      "gzip_bytes": 376463,
+      "brotli_bytes": 236423
+    },
+    {
+      "path": "nlopt-backend.mjs",
+      "bytes": 32451,
+      "sha256": "7f9c36c4fa8fd9c6fa1770f4797aec0cc4f3200523b59272268205415731f9c0",
+      "gzip_bytes": 9174,
+      "brotli_bytes": 7819
+    },
+    {
+      "path": "nlopt-methods.wasm",
+      "bytes": 72592,
+      "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+      "gzip_bytes": 29234,
+      "brotli_bytes": 23996
+    },
+    {
+      "path": "numerical-backend.mjs",
+      "bytes": 16731,
+      "sha256": "b6edfb2453a519a61e68a371d3ef79b95fe44efd0f46219b8e8131d9f3d9de6f",
+      "gzip_bytes": 4483,
+      "brotli_bytes": 3933
+    },
+    {
+      "path": "numpy-ts.mjs",
+      "bytes": 2721597,
+      "sha256": "2a7fd50f76a7b56d3eb295dd2d114563f927175382d4d4379cc182fc8ddb9403",
+      "gzip_bytes": 613827,
+      "brotli_bytes": 385818
+    },
+    {
+      "path": "plotly.min.js",
+      "bytes": 4851164,
+      "sha256": "8ef4c6ab1369f0019611cbcd2d5b8aafef23e5d19ef58c39d4b4249831fe2180",
+      "gzip_bytes": 1475320,
+      "brotli_bytes": 1098607
+    },
+    {
+      "path": "production-kernel-coverage.json",
+      "bytes": 13947,
+      "sha256": "fdcaa7cd74b2ecb273f7597f0165d3c19b387ee33ed25454b9f2978ba0271243",
+      "gzip_bytes": 1234,
+      "brotli_bytes": 1045
+    },
+    {
+      "path": "runtime/algebraic.mjs",
+      "bytes": 48989,
+      "sha256": "0a4d526393b328d7ad3a1382061fbc3804168f0fd0b5bb70394ee37234057140",
+      "gzip_bytes": 10647,
+      "brotli_bytes": 9357
+    },
+    {
+      "path": "runtime/analytic-backend.mjs",
+      "bytes": 19718,
+      "sha256": "960bdd1d8b6c776dde4d485128744c08c810abd44bb3224be648ee4ebd1e0129",
+      "gzip_bytes": 4836,
+      "brotli_bytes": 4274
+    },
+    {
+      "path": "runtime/auto-receipt-policy.mjs",
+      "bytes": 4091,
+      "sha256": "00c08efa213ce6bf7f1f51ec4f283f1e2a20c746cec1c615c1d7513adfb59445",
+      "gzip_bytes": 1261,
+      "brotli_bytes": 1101
+    },
+    {
+      "path": "runtime/capability-trace.mjs",
+      "bytes": 3078,
+      "sha256": "453f190b844172ad9da83d3946f18b3a4a7f226a51fab7065ada9853db0adabf",
+      "gzip_bytes": 1030,
+      "brotli_bytes": 877
+    },
+    {
+      "path": "runtime/compiler-worker.mjs",
+      "bytes": 11173,
+      "sha256": "c0306cb01eb230316ffac034d83697a431964a7b3aaf595bb82698cac0695171",
+      "gzip_bytes": 3057,
+      "brotli_bytes": 2724
+    },
+    {
+      "path": "runtime/conway-data-worker.mjs",
+      "bytes": 1341,
+      "sha256": "df8e29cc9ac58ca2c1fdb37b70129b0b4f34b93c6b0ddab0bebc71a3d2d68d64",
+      "gzip_bytes": 580,
+      "brotli_bytes": 506
+    },
+    {
+      "path": "runtime/conway-data.mjs",
+      "bytes": 8551,
+      "sha256": "1fbbe97a81acbef0656ac7b8e230371791cac51077e056f102e02cc30d7bc601",
+      "gzip_bytes": 2588,
+      "brotli_bytes": 2261
+    },
+    {
+      "path": "runtime/curve-backend.d.ts",
+      "bytes": 3699,
+      "sha256": "d7d87e04c776cc15e5727c98d41523c05ed8d9d4cc897db27a49804571cefd59",
+      "gzip_bytes": 1144,
+      "brotli_bytes": 1006
+    },
+    {
+      "path": "runtime/curve-backend.mjs",
+      "bytes": 32214,
+      "sha256": "e3996bdd1f155fe5ff8b20b9dd52a05fabf98e4fc98bce09f076e30e48b52a31",
+      "gzip_bytes": 6787,
+      "brotli_bytes": 5923
+    },
+    {
+      "path": "runtime/dirichlet-group.mjs",
+      "bytes": 7710,
+      "sha256": "2202b09cef21f13dd8d176d9f7ba68060ac492ddb50fa35e0b7f90bb166cecde",
+      "gzip_bytes": 1939,
+      "brotli_bytes": 1669
+    },
+    {
+      "path": "runtime/dynamic-compiler.mjs",
+      "bytes": 12902,
+      "sha256": "8a678c2dbdc7b97c8e3eeb04311b4e60c52af1831a8527eae35387aa60b293b7",
+      "gzip_bytes": 4331,
+      "brotli_bytes": 3694
+    },
+    {
+      "path": "runtime/evaluator.mjs",
+      "bytes": 42693,
+      "sha256": "58adaa3026498ab20df2c2f6ae0698891ce205a38245e4209781f7c1537118f2",
+      "gzip_bytes": 10025,
+      "brotli_bytes": 8953
+    },
+    {
+      "path": "runtime/index.mjs",
+      "bytes": 48691,
+      "sha256": "70199f48beaadf1bda2f97b012387214d5cfd8498a90268143acf03c2e1b3690",
+      "gzip_bytes": 9825,
+      "brotli_bytes": 8587
+    },
+    {
+      "path": "runtime/kernel-worker.mjs",
+      "bytes": 18452,
+      "sha256": "2f9dd1ed0ce0a82b0c0b23b7f075ddf4c3531b7ef142f946567a392358ccb996",
+      "gzip_bytes": 5074,
+      "brotli_bytes": 4459
+    },
+    {
+      "path": "runtime/kernel.d.ts",
+      "bytes": 5194,
+      "sha256": "7ea7370f4984ba4f0d3c3572ecc21dcc3cbea39af119e4175b3e645575f09967",
+      "gzip_bytes": 1594,
+      "brotli_bytes": 1358
+    },
+    {
+      "path": "runtime/kernel.mjs",
+      "bytes": 16696,
+      "sha256": "3c54d493ee298d8426fc21248a2f120d1596d465e3844089469552d66d3ad68c",
+      "gzip_bytes": 4189,
+      "brotli_bytes": 3662
+    },
+    {
+      "path": "runtime/lazy-modules.mjs",
+      "bytes": 10886,
+      "sha256": "43d307e10546eff2d0dab5f033295c1560f4b404648fe9324aecf10e0f9a436b",
+      "gzip_bytes": 3204,
+      "brotli_bytes": 2770
+    },
+    {
+      "path": "runtime/m4ri.mjs",
+      "bytes": 1612,
+      "sha256": "96e4c7671cceb38358e0288e9d3171a081d48823278a881a676d284ba90e9c4b",
+      "gzip_bytes": 698,
+      "brotli_bytes": 594
+    },
+    {
+      "path": "runtime/multivariate-backend.mjs",
+      "bytes": 41734,
+      "sha256": "a6f62bcf463b5667153e23f422f96d6d6142c16dc86d0049bc9072b2cb346974",
+      "gzip_bytes": 7919,
+      "brotli_bytes": 6919
+    },
+    {
+      "path": "runtime/node-cli.mjs",
+      "bytes": 13331,
+      "sha256": "f6711bf3825805727547923ddddd8a02007a95fc1eb01d5bca40edfbd9668609",
+      "gzip_bytes": 4001,
+      "brotli_bytes": 3506
+    },
+    {
+      "path": "runtime/node-kernel.mjs",
+      "bytes": 585,
+      "sha256": "406a091ffa7b32249b1a873107ab73ec5790704d14250d1a264d508c20dd02ad",
+      "gzip_bytes": 353,
+      "brotli_bytes": 292
+    },
+    {
+      "path": "runtime/node-worker-bootstrap.mjs",
+      "bytes": 2345,
+      "sha256": "6f050f4c4519938a969a14e65a70695c435426a9c1ff270fc9e7fcda7506cf03",
+      "gzip_bytes": 1067,
+      "brotli_bytes": 869
+    },
+    {
+      "path": "runtime/node-worker.mjs",
+      "bytes": 2368,
+      "sha256": "1ac90a8403c0da9f473fe1d6d614b20d2a052de48cbacf066a70dc7e9c473aad",
+      "gzip_bytes": 882,
+      "brotli_bytes": 743
+    },
+    {
+      "path": "runtime/number-field-zeta.mjs",
+      "bytes": 6405,
+      "sha256": "d667104c39abbafbf2ad1cff2b5aa22e444c4822389d61653aec191b349258c5",
+      "gzip_bytes": 2039,
+      "brotli_bytes": 1756
+    },
+    {
+      "path": "runtime/numeric-backend.mjs",
+      "bytes": 59480,
+      "sha256": "fbf06a3f2c70726401228a2c0b9feec2937ede6ef55ed96dc84a6b79f5e7e2b6",
+      "gzip_bytes": 10423,
+      "brotli_bytes": 9060
+    },
+    {
+      "path": "runtime/plotly-renderer.d.ts",
+      "bytes": 2148,
+      "sha256": "3566a608ae050c622b8913a39c343de381d847a3450b34860b520c1014377a3e",
+      "gzip_bytes": 707,
+      "brotli_bytes": 599
+    },
+    {
+      "path": "runtime/plotly-renderer.mjs",
+      "bytes": 10255,
+      "sha256": "ad2ae48ed164a836b6922c7f35fa1d74dc591c8f87a9c0572aaf7952aa06161f",
+      "gzip_bytes": 3347,
+      "brotli_bytes": 2897
+    },
+    {
+      "path": "runtime/portable-exact.mjs",
+      "bytes": 2209,
+      "sha256": "f05f729637135f15310422e910aed7b870003cfc78523f97c5d2f298c14fa955",
+      "gzip_bytes": 915,
+      "brotli_bytes": 745
+    },
+    {
+      "path": "runtime/portable-matrix.mjs",
+      "bytes": 44047,
+      "sha256": "24eb71dca5309aa61152cbc91c090adaba6099f9f111e6e044414d835d77e085",
+      "gzip_bytes": 7780,
+      "brotli_bytes": 6861
+    },
+    {
+      "path": "runtime/portable-polynomial.mjs",
+      "bytes": 20573,
+      "sha256": "182b37f34a48068998d4d3662af214339cff69ee50e79c9595ca17f8121660a7",
+      "gzip_bytes": 4247,
+      "brotli_bytes": 3777
+    },
+    {
+      "path": "serialization.mjs",
+      "bytes": 59034,
+      "sha256": "9820eeed844b834a56b378c25e4de737cfd7c87bdebe43f7abc2bf8013a95928",
+      "gzip_bytes": 15696,
+      "brotli_bytes": 14063
+    },
+    {
+      "path": "stdlib.json",
+      "bytes": 44687730,
+      "sha256": "734f1f1036e5c891c4058f5baa3eaea82ff00d0a0da6242fcf3d5ffaa302658f",
+      "gzip_bytes": 3559314,
+      "brotli_bytes": 1208693
+    },
+    {
+      "path": "symbolic-backend.mjs",
+      "bytes": 1980131,
+      "sha256": "0799640c0ae43e28ce74c772c594a1e42c5100683204256a8954ea4804adfa6e",
+      "gzip_bytes": 549866,
+      "brotli_bytes": 439315
+    },
+    {
+      "path": "tree-sitter-macaulay2.wasm",
+      "bytes": 426031,
+      "sha256": "95a5381efa70936d97d117928b83dbd11233e94ac993ca3fa3440c3f1203f6f2",
+      "gzip_bytes": 33180,
+      "brotli_bytes": 20343
+    },
+    {
+      "path": "tree-sitter-magma.wasm",
+      "bytes": 550018,
+      "sha256": "250d40ba6a310a9a22500e23c109c58273a2977d0cb69562bde55d7e6d042fd6",
+      "gzip_bytes": 50374,
+      "brotli_bytes": 35337
+    },
+    {
+      "path": "tree-sitter-maple.wasm",
+      "bytes": 58311,
+      "sha256": "b911fbf41358fa95f473a1b576b3821575848803a8f399f216161907fbfc5b94",
+      "gzip_bytes": 12217,
+      "brotli_bytes": 9092
+    },
+    {
+      "path": "tree-sitter-matlab.wasm",
+      "bytes": 426521,
+      "sha256": "c28acb7241012e35309109d5dd6cbc03a48f06f2a91df62a81229b15cdb001e9",
+      "gzip_bytes": 63287,
+      "brotli_bytes": 48183
+    },
+    {
+      "path": "tree-sitter-python.wasm",
+      "bytes": 460569,
+      "sha256": "a5210b6ca91f2db9291b8289a836e4f2d90660a908b277ded3970abe359ba328",
+      "gzip_bytes": 69535,
+      "brotli_bytes": 49354
+    },
+    {
+      "path": "tree-sitter-sage.wasm",
+      "bytes": 556473,
+      "sha256": "1fe71d3483c75ef110b179126675745ac209170762860a9c04d446e79459e98f",
+      "gzip_bytes": 75256,
+      "brotli_bytes": 54588
+    },
+    {
+      "path": "tree-sitter-wolfram.wasm",
+      "bytes": 207072,
+      "sha256": "ab67efce8f32823f834d13d845a406be8209030a4b05f79bdc0b334b619f97e9",
+      "gzip_bytes": 22689,
+      "brotli_bytes": 14745
+    },
+    {
+      "path": "wasi-runtime.mjs",
+      "bytes": 29892,
+      "sha256": "dcdf8cfcef471bfd128c1627b8dd557b5db184e1d9b15a3ee2f843405219736a",
+      "gzip_bytes": 6759,
+      "brotli_bytes": 5891
+    },
+    {
+      "path": "wasm-capabilities-report.json",
+      "bytes": 529691,
+      "sha256": "1f000b26116a6fae90631b37f6090fd98ab6aea2e44990f8df3ee02a16ee2d54",
+      "gzip_bytes": 20474,
+      "brotli_bytes": 15894
+    },
+    {
+      "path": "wasm-capability-api.mjs",
+      "bytes": 8226,
+      "sha256": "9897fd3073f74af5d3c7aa983e8b968c84ef6ea8a295d535e64d02f37a2db243",
+      "gzip_bytes": 2546,
+      "brotli_bytes": 2196
+    },
+    {
+      "path": "wasm-pack-loader.mjs",
+      "bytes": 27797,
+      "sha256": "29f94396918a048656757466124c97b7f0f2213ae1485b81f9be70c739d36812",
+      "gzip_bytes": 6911,
+      "brotli_bytes": 6047
+    },
+    {
+      "path": "web-tree-sitter.wasm",
+      "bytes": 201037,
+      "sha256": "715cae35f31b7b03a13592bc5ac9039d5c6d2c2bda9f9e0c2b8abab77b3f64cc",
+      "gzip_bytes": 80527,
+      "brotli_bytes": 65748
+    }
+  ],
+  "payload_groups": [
+    {
+      "id": "eager-core",
+      "kind": "eager",
+      "dependencies": [],
+      "dependency_closure": [],
+      "identity": "sha256:7a716c346fcfad8f64c935fc6c4b72ea25653372088fd91471ef9c9d0fa1ee40",
+      "files": [
+        "baselib.js",
+        "compiler-frontend.mjs",
+        "compiler.js",
+        "dynamic-programs.json",
+        "ffi-production-closure.json",
+        "ffi-resource-backend.mjs",
+        "ffi-resource-manifest.json",
+        "flint-factor.wasm",
+        "hyperelliptic-auto-receipt-policy.json",
+        "lazy-modules.json",
+        "native-kernels/index.json",
+        "production-kernel-coverage.json",
+        "runtime/analytic-backend.mjs",
+        "runtime/auto-receipt-policy.mjs",
+        "runtime/capability-trace.mjs",
+        "runtime/compiler-worker.mjs",
+        "runtime/curve-backend.d.ts",
+        "runtime/curve-backend.mjs",
+        "runtime/dirichlet-group.mjs",
+        "runtime/dynamic-compiler.mjs",
+        "runtime/evaluator.mjs",
+        "runtime/index.mjs",
+        "runtime/kernel-worker.mjs",
+        "runtime/kernel.d.ts",
+        "runtime/kernel.mjs",
+        "runtime/lazy-modules.mjs",
+        "runtime/multivariate-backend.mjs",
+        "runtime/node-cli.mjs",
+        "runtime/node-kernel.mjs",
+        "runtime/node-worker-bootstrap.mjs",
+        "runtime/node-worker.mjs",
+        "runtime/number-field-zeta.mjs",
+        "runtime/numeric-backend.mjs",
+        "runtime/portable-exact.mjs",
+        "runtime/portable-matrix.mjs",
+        "runtime/portable-polynomial.mjs",
+        "serialization.mjs",
+        "stdlib.json",
+        "symbolic-backend.mjs",
+        "tree-sitter-python.wasm",
+        "tree-sitter-sage.wasm",
+        "wasi-runtime.mjs",
+        "wasm-capabilities-report.json",
+        "wasm-capability-api.mjs",
+        "wasm-pack-loader.mjs",
+        "web-tree-sitter.wasm"
+      ],
+      "compressed_delta": {
+        "bytes": 170251085,
+        "gzip_bytes": 17211271,
+        "brotli_bytes": 9686772
+      },
+      "maximum_compressed_delta": {
+        "gzip_bytes": 17600000,
+        "brotli_bytes": 9700000
+      }
+    },
+    {
+      "id": "release-source",
+      "kind": "support",
+      "dependencies": [],
+      "dependency_closure": [],
+      "identity": "sha256:7c106a9dfd800fa489b263753551853a89fc9f01b1782c74ee84342f88720342",
+      "files": [
+        "ffi-resource-adapter.c"
+      ],
+      "compressed_delta": {
+        "bytes": 741776,
+        "gzip_bytes": 31610,
+        "brotli_bytes": 18689
+      },
+      "maximum_compressed_delta": {
+        "gzip_bytes": 35000,
+        "brotli_bytes": 30000
+      }
+    },
+    {
+      "id": "algebraic",
+      "kind": "specialist",
+      "dependencies": [
+        "eager-core"
+      ],
+      "dependency_closure": [
+        "eager-core"
+      ],
+      "identity": "sha256:019e9dc896b53a8c3216f65e21c3d0664b0fc5f2c97032278dad8844ddc7252b",
+      "files": [
+        "flint-algebraic.wasm",
+        "runtime/algebraic.mjs"
+      ],
+      "compressed_delta": {
+        "bytes": 5051633,
+        "gzip_bytes": 2053715,
+        "brotli_bytes": 1652863
+      },
+      "maximum_compressed_delta": {
+        "gzip_bytes": 2200000,
+        "brotli_bytes": 1800000
+      }
+    },
+    {
+      "id": "m4ri",
+      "kind": "specialist",
+      "dependencies": [
+        "eager-core"
+      ],
+      "dependency_closure": [
+        "eager-core"
+      ],
+      "identity": "sha256:80a747e2f289099aa1a3db4012740c5cfee9181525924ee24ee32a665d0c82cf",
+      "files": [
+        "m4ri-resource-adapter.c",
+        "m4ri-resource-backend.mjs",
+        "m4ri-resource-manifest.json",
+        "m4ri-resource.wasm",
+        "runtime/m4ri.mjs"
+      ],
+      "compressed_delta": {
+        "bytes": 216983,
+        "gzip_bytes": 56481,
+        "brotli_bytes": 46699
+      },
+      "maximum_compressed_delta": {
+        "gzip_bytes": 75000,
+        "brotli_bytes": 60000
+      }
+    },
+    {
+      "id": "cminpack",
+      "kind": "specialist",
+      "dependencies": [
+        "eager-core"
+      ],
+      "dependency_closure": [
+        "eager-core"
+      ],
+      "identity": "sha256:25123797dc48d8a6353d50d975021039049be1f61141f2ff5e718c0dfac8fa67",
+      "files": [
+        "cminpack.wasm",
+        "numerical-backend.mjs"
+      ],
+      "compressed_delta": {
+        "bytes": 88886,
+        "gzip_bytes": 33423,
+        "brotli_bytes": 27817
+      },
+      "maximum_compressed_delta": {
+        "gzip_bytes": 35000,
+        "brotli_bytes": 30000
+      }
+    },
+    {
+      "id": "nlopt",
+      "kind": "specialist",
+      "dependencies": [
+        "eager-core"
+      ],
+      "dependency_closure": [
+        "eager-core"
+      ],
+      "identity": "sha256:6473c7dc106d61435d4c1ec7ef7526446be96b229e91e84cf45d5c24c95eb178",
+      "files": [
+        "nlopt-backend.mjs",
+        "nlopt-methods.wasm"
+      ],
+      "compressed_delta": {
+        "bytes": 105043,
+        "gzip_bytes": 38408,
+        "brotli_bytes": 31815
+      },
+      "maximum_compressed_delta": {
+        "gzip_bytes": 55000,
+        "brotli_bytes": 45000
+      }
+    },
+    {
+      "id": "compiled-flint",
+      "kind": "specialist",
+      "dependencies": [
+        "eager-core"
+      ],
+      "dependency_closure": [
+        "eager-core"
+      ],
+      "identity": "sha256:14bea01035255658eaa0d4c4ef0f239bec698d11af84fa8d52a74f8863a9acd7",
+      "files": [
+        "kernel-flint-resource-backend.mjs",
+        "native-kernels/kernel-flint.wasm"
+      ],
+      "compressed_delta": {
+        "bytes": 6047728,
+        "gzip_bytes": 2316081,
+        "brotli_bytes": 1816344
+      },
+      "maximum_compressed_delta": {
+        "gzip_bytes": 2500000,
+        "brotli_bytes": 1950000
+      }
+    },
+    {
+      "id": "compiled-gmp",
+      "kind": "specialist",
+      "dependencies": [
+        "eager-core"
+      ],
+      "dependency_closure": [
+        "eager-core"
+      ],
+      "identity": "sha256:cec8e97f609dd8f8ee188f69e0994d186129039f4e85bab302e5a81743bcda86",
+      "files": [
+        "native-kernels/kernel-gmp.wasm"
+      ],
+      "compressed_delta": {
+        "bytes": 1485919,
+        "gzip_bytes": 376463,
+        "brotli_bytes": 236423
+      },
+      "maximum_compressed_delta": {
+        "gzip_bytes": 550000,
+        "brotli_bytes": 320000
+      }
+    },
+    {
+      "id": "conway-data",
+      "kind": "specialist",
+      "dependencies": [
+        "eager-core"
+      ],
+      "dependency_closure": [
+        "eager-core"
+      ],
+      "identity": "sha256:381dbc20865754b1def948c15c14a6d41af10cf04911d348a5fbfafbad8d1bdb",
+      "files": [
+        "conway-polynomials.json",
+        "runtime/conway-data-worker.mjs",
+        "runtime/conway-data.mjs"
+      ],
+      "compressed_delta": {
+        "bytes": 1124351,
+        "gzip_bytes": 216767,
+        "brotli_bytes": 159093
+      },
+      "maximum_compressed_delta": {
+        "gzip_bytes": 225000,
+        "brotli_bytes": 170000
+      }
+    },
+    {
+      "id": "plotly",
+      "kind": "specialist",
+      "dependencies": [
+        "eager-core"
+      ],
+      "dependency_closure": [
+        "eager-core"
+      ],
+      "identity": "sha256:7d5d6d9f454dfbc0e8f7d8ebceb53daf9299a08112373081fec09ad781a07d27",
+      "files": [
+        "katex/fonts/KaTeX_AMS-Regular.woff2",
+        "katex/fonts/KaTeX_Caligraphic-Bold.woff2",
+        "katex/fonts/KaTeX_Caligraphic-Regular.woff2",
+        "katex/fonts/KaTeX_Fraktur-Bold.woff2",
+        "katex/fonts/KaTeX_Fraktur-Regular.woff2",
+        "katex/fonts/KaTeX_Main-Bold.woff2",
+        "katex/fonts/KaTeX_Main-BoldItalic.woff2",
+        "katex/fonts/KaTeX_Main-Italic.woff2",
+        "katex/fonts/KaTeX_Main-Regular.woff2",
+        "katex/fonts/KaTeX_Math-BoldItalic.woff2",
+        "katex/fonts/KaTeX_Math-Italic.woff2",
+        "katex/fonts/KaTeX_SansSerif-Bold.woff2",
+        "katex/fonts/KaTeX_SansSerif-Italic.woff2",
+        "katex/fonts/KaTeX_SansSerif-Regular.woff2",
+        "katex/fonts/KaTeX_Script-Regular.woff2",
+        "katex/fonts/KaTeX_Size1-Regular.woff2",
+        "katex/fonts/KaTeX_Size2-Regular.woff2",
+        "katex/fonts/KaTeX_Size3-Regular.woff2",
+        "katex/fonts/KaTeX_Size4-Regular.woff2",
+        "katex/fonts/KaTeX_Typewriter-Regular.woff2",
+        "katex/katex.min.css",
+        "katex/katex.min.js",
+        "plotly.min.js",
+        "runtime/plotly-renderer.d.ts",
+        "runtime/plotly-renderer.mjs"
+      ],
+      "compressed_delta": {
+        "bytes": 5418131,
+        "gzip_bytes": 1818947,
+        "brotli_bytes": 1427592
+      },
+      "maximum_compressed_delta": {
+        "gzip_bytes": 2000000,
+        "brotli_bytes": 1650000
+      }
+    },
+    {
+      "id": "polyglot-frontends",
+      "kind": "specialist",
+      "dependencies": [
+        "eager-core"
+      ],
+      "dependency_closure": [
+        "eager-core"
+      ],
+      "identity": "sha256:0706ec30b4c11602d8c3e6e99850f2ae81a3a2c5818e1dedcdc5862e411c3379",
+      "files": [
+        "foreign-frontend.mjs",
+        "tree-sitter-macaulay2.wasm",
+        "tree-sitter-magma.wasm",
+        "tree-sitter-maple.wasm",
+        "tree-sitter-matlab.wasm",
+        "tree-sitter-wolfram.wasm"
+      ],
+      "compressed_delta": {
+        "bytes": 1940042,
+        "gzip_bytes": 233902,
+        "brotli_bytes": 171823
+      },
+      "maximum_compressed_delta": {
+        "gzip_bytes": 1000000,
+        "brotli_bytes": 800000
+      }
+    },
+    {
+      "id": "numpy",
+      "kind": "specialist",
+      "dependencies": [
+        "eager-core"
+      ],
+      "dependency_closure": [
+        "eager-core"
+      ],
+      "identity": "sha256:9bdb8d0a190175a7b9747367c1a84f8ca506bb21dc905821faeefe06fec66150",
+      "files": [
+        "numpy-ts.mjs"
+      ],
+      "compressed_delta": {
+        "bytes": 2721597,
+        "gzip_bytes": 613827,
+        "brotli_bytes": 385818
+      },
+      "maximum_compressed_delta": {
+        "gzip_bytes": 675000,
+        "brotli_bytes": 430000
+      }
+    }
+  ],
+  "totals": {
+    "bytes": 195193174,
+    "gzip_bytes": 25000895,
+    "brotli_bytes": 15661748
+  }
+}

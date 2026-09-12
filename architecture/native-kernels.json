@@ -944,6 +944,32 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "numerical-statistics-sum-production",
+      "wasm_production": false,
+      "wasm_fallback_reason": "prepared-statistics-browser-storage-not-qualified",
+      "source": "src/lib/sagejs/numerics/statistics/_packed.py",
+      "functions": ["finite_sum"],
+      "semantic_domain": "owned finite binary64 observations with bounded partials and independently checked public descriptive statistics; explicit prepared native requests only",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript"],
+      "benchmark": "bench:numerics:prepared-statistics",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "numerical-statistics-centered-production",
+      "wasm_production": false,
+      "wasm_fallback_reason": "prepared-statistics-browser-storage-not-qualified",
+      "source": "src/lib/sagejs/numerics/statistics/_packed_centered.py",
+      "functions": ["prepare_centered", "prepare_products", "prepare_summary_checks"],
+      "semantic_domain": "owned finite binary64 centered deviations, normalized squares and independent residual preparation with checked capacities and nonfinite failure statuses; explicit prepared native requests only",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript"],
+      "benchmark": "bench:numerics:prepared-statistics",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "packed-binary64-witness",
       "source": "bench/cowasm/native/numerical_buffers.py",
       "functions": ["nbody_advance_energy", "matrix_multiply_repeated"],
