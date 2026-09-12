@@ -1,0 +1,152 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-reference-identity",
+  "title": "General Reference Identity",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Bounded identity-only maximal-order reference diagnostics with exact offline consistency checks",
+  "base_commit": "ee6f5e365ab6c34ac58d0b092dfb2948869f6c63",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/reference/identity/"
+  ],
+  "dependencies": [
+    "general-reference-repeat-report"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Offline exact rational basis and mutation fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "python3 -B bench/class-unit-groups/general-frontier/reference/identity/test_identity.py",
+    "pnpm test:changed -- --base ee6f5e365ab6c34ac58d0b092dfb2948869f6c63"
+  ],
+  "runs": [
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/identity/test_identity.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.294,
+      "started_at": "2026-09-12T19:43:34.226Z",
+      "commit": "ee6f5e365ab6c34ac58d0b092dfb2948869f6c63",
+      "workspace_fingerprint": "ec0c2805a391361077f86648d15b28e2da970b4aea3985b141aeb497021be3c7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base ee6f5e365ab6c34ac58d0b092dfb2948869f6c63",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.849,
+      "started_at": "2026-09-12T19:43:44.550Z",
+      "commit": "ee6f5e365ab6c34ac58d0b092dfb2948869f6c63",
+      "workspace_fingerprint": "ec0c2805a391361077f86648d15b28e2da970b4aea3985b141aeb497021be3c7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/identity/test_identity.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.322,
+      "started_at": "2026-09-12T19:46:49.663Z",
+      "commit": "992adda7f7e4390ed67fcb10ecd4b4f8789817bd",
+      "workspace_fingerprint": "0679140205476571e33fc9837b72011055fbfe22c514d858ddfa2bd7961f5553",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/identity/test_identity.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.343,
+      "started_at": "2026-09-12T19:47:16.725Z",
+      "commit": "992adda7f7e4390ed67fcb10ecd4b4f8789817bd",
+      "workspace_fingerprint": "8c63b31f6d5df470236f246d53bc3e7f7b8c715c5ae0e1df068277dea84250cf",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/identity/test_identity.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.323,
+      "started_at": "2026-09-12T19:53:37.543Z",
+      "commit": "ad5dcfb7936f3d3a88dc969792762a4711906298",
+      "workspace_fingerprint": "33f1ae62af31ae83c7bf98edc9d008d3e489bbf2e4589a90ad8e158c51c70e55",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base ee6f5e365ab6c34ac58d0b092dfb2948869f6c63",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.601,
+      "started_at": "2026-09-12T19:56:12.731Z",
+      "commit": "80e4262b015d5d88c14b9d6ab85edb843cd0a8f7",
+      "workspace_fingerprint": "be7bff90def1491f063e867cdd795a5a0039d7f21c039d24af46b4623112460e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base ee6f5e365ab6c34ac58d0b092dfb2948869f6c63",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 149.971,
+      "started_at": "2026-09-12T19:58:33.003Z",
+      "commit": "80e4262b015d5d88c14b9d6ab85edb843cd0a8f7",
+      "workspace_fingerprint": "be7bff90def1491f063e867cdd795a5a0039d7f21c039d24af46b4623112460e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/identity/test_identity.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.331,
+      "started_at": "2026-09-12T20:01:39.247Z",
+      "commit": "528e303e5dc125ea14e5c38312abf93d63007a63",
+      "workspace_fingerprint": "be7bff90def1491f063e867cdd795a5a0039d7f21c039d24af46b4623112460e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.722,
+      "started_at": "2026-09-12T20:02:22.676Z",
+      "commit": "cb671bb0aa28b74822b389d6afdbe7dd0f05984b",
+      "workspace_fingerprint": "be7bff90def1491f063e867cdd795a5a0039d7f21c039d24af46b4623112460e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1133.397,
+      "started_at": "2026-09-12T20:03:36.259Z",
+      "commit": "cb671bb0aa28b74822b389d6afdbe7dd0f05984b",
+      "workspace_fingerprint": "be7bff90def1491f063e867cdd795a5a0039d7f21c039d24af46b4623112460e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented a pinned, prepaid, one-shot 38-input identity-only PARI/Hecke diagnostic and exact offline order consistency checks. All 14 offline tests, full build, strict checks, native suite, and exact-base changed gate (222 unit files) pass at fingerprint be7bff90def1491f063e867cdd795a5a0039d7f21c039d24af46b4623112460e. Coordinator separately closed six real reference fixture processes for three fields with exact paired order agreement; closure build/general-frontier/stress-identity-preparation-v1/fixture-closure-verified.json in class-unit-rank-two-frontier has SHA256 45476e9c1633f7aa032cc8acdee07a7f5ef12d5f40417afd3b9da7196c86c0b0. This lane itself dispatched no CAS.",
+    "risks": [
+      "Earlier missing-dist and missing-native-adapter changed-gate failures are retained; full build and pnpm parallel:cache -- restore resolved them with verified content-addressed native artifacts. Coordinator retained fixture launch-preflight and closure-check failures as well.",
+      "Order consistency and reference agreement do not independently prove maximality, irreducibility, or distinct field admission.",
+      "Coordinator must enforce and prepay the external whole-driver deadline, runtime custody, and admitted controls before any dispatch."
+    ],
+    "next_steps": [
+      "Coordinator owns final review and PR draft/readiness transition; this lane does not mark ready.",
+      "Coordinator reviews frozen source, reserves the existing ledger, and stages immutable inputs without changing the 38 candidate selection."
+    ]
+  }
+}
