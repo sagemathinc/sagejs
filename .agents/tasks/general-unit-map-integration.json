@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Integrate authenticated unit-coordinate maps, corrected BF proof policy and bounded detached component replay with explicit ownership, strict typing, resource evidence and unchanged safety gates",
-  "base_commit": "eb0d53e2dd87bcd090d194e7edf168101a465864",
+  "base_commit": "c58d2febefa94920fe4d46a503220440dfdd9142",
   "claims": [
     "architecture/package-graph.json",
     "pyrightconfig.json",
@@ -34,6 +34,7 @@
     "general-class-unit-bdf-replay"
   ],
   "references": [
+    "Ownership baseline c58d2febe incorporates reviewed request-sequence tests3304cbf89. Their lane depends on this integration; record the merge here rather than adding a reverse dependency cycle. Full qualification remains against b1740b78722ea3c8f22aa1df97823a75e40bf78b, including these tests and all mathematical dependencies.",
     "Ownership baseline eb0d53e2d integrates reviewed detached generation/completion, shared payload decoder and resumed maps through2b68a8cf8. Full qualification still compares against b1740b78722ea3c8f22aa1df97823a75e40bf78b; source-lane receipts are not integrated qualification.",
     "Ownership baseline a67040ca4 includes reviewed main's inherited HTML conflict-marker repair 831523ff7 and focused receipts 03164ceef. Full qualification still compares against b1740b78722ea3c8f22aa1df97823a75e40bf78b, including all dependencies.",
     "Ownership baseline11a1b1eae records reviewed main c4c126d09, generic BF fixture code769679c77 and receipts1b578345d. This does not reset qualification: full changed-tree validation remains against b1740b78722ea3c8f22aa1df97823a75e40bf78b.",
@@ -353,6 +354,16 @@
       "started_at": "2026-09-12T08:50:40.873Z",
       "commit": "de26d2e2138106086410b161da208e9a6f33073b",
       "workspace_fingerprint": "625032db6b57eabbbf19b57b1dbab43fc1252ad10eef6c530f78f61f559b4682",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/build-input-partition.cjs test/modular-qexp-source-freeze.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.2,
+      "started_at": "2026-09-12T09:24:57.458Z",
+      "commit": "c58d2febefa94920fe4d46a503220440dfdd9142",
+      "workspace_fingerprint": "97c1e12ee414941373cf16658bf9c7af9f75c0a0ee2846dae39ff19193fefe46",
       "platform": "linux-x64"
     }
   ],

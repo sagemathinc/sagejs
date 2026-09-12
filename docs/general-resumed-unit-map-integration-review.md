@@ -151,8 +151,44 @@ no modular mathematics or oracle changed. All 15 build-partition/source-freeze
 tests pass, retaining validation-fingerprint invalidation for the exact contracts.
 These receipts preserve their actual pre-documentation workspace fingerprints.
 
-Current full-build/native/platform checks and complete M1 lifecycle/
-performance qualification remain required. Positive-rank
+At `de26d2e21`, the full build passed in 751.86 seconds, precompilation in
+368.48 seconds, strict checking of 391 modules in 73.36 seconds, and all 207
+portable files in 172.54 seconds. These share workspace fingerprint
+`625032db6b57eabbbf19b57b1dbab43fc1252ad10eef6c530f78f61f559b4682`.
+The build reused 41 kernel families; optional cminpack/NLopt WebAssembly builds
+were unprepared and skipped. Those capabilities are not thereby qualified.
+
+The full native gate **failed** after 172.68 seconds at the existing 96-by-96
+small-integer matrix timing guard: generated median 11.95 ms versus legacy
+0.16 ms exceeded the unchanged `3 * legacy + 5` ms allowance. Exact matrix
+products agreed before that assertion; later native files did not run. One
+isolated diagnostic of the identical fixture and artifacts subsequently passed
+in 2.53 seconds (generated median 0.11508 ms, legacy 0.15684 ms), retaining all
+seven samples. This does not replace the failed gate or establish its cause.
+No threshold, sample count, input, source or artifact was changed. Both the
+failure and isolated observation remain in backed-up campaign evidence.
+
+The test-only merge `c58d2febe` adds four fresh class-first/unit-first public
+request sequences for the real cubic $x^3-x^2-34x-57$ and mixed quartic
+$x^4-x^2-10$, and strengthens the two existing durable-resumption cases with
+exact class-coordinate/principality witnesses. All six corrected cases passed
+on the identical `de26d2e21` mathematical source through a pinned borrowed
+integration runtime, totaling 267.57 seconds with individual 180-second child
+caps. They preserve actual discovery counters, context/presentation/collector
+identity, compact unit coordinates and regulator cache identities. The initial
+test-only mixed integer/endpoint ordering failure remains recorded. These are
+focused source-identical diagnostics, not qualification of a separately built
+test branch or a new whole integration revision.
+
+Public regulator requests `100`/`200` designate working precision: the observed
+histories used 128/200 bits while the unchanged analytic absolute-tolerance
+default was 64 bits. The tests check exact positive overlapping enclosures;
+they do **not** claim 100/200-bit absolute accuracy. The exact request-sequence
+task contract contains only reviewed coordination/validation metadata and joins
+the build-input partition; unknown task metadata remains a build input.
+
+Current full native/platform checks, coordinated runtime repairs and complete
+M1 lifecycle/performance qualification remain required. Positive-rank
 ordinary inputs without a real embedding, higher-rank general maps, arbitrary
 detached factored membership and generic unconditional unit completion are still
 explicit gaps. Neither this source allowance nor PR readiness changes those facts.
