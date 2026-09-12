@@ -23,7 +23,9 @@ frozen = Record()
 frozen.value = 1
 runtime.object.freeze(frozen)
 for attempt in range(2):
-    rejected(lambda: getattr(frozen, "__dict__"))
+    frozen_namespace = frozen.__dict__
+    assert frozen_namespace is frozen.__dict__
+    rejected(lambda: frozen_namespace.__setitem__("value", 9))
     rejected(lambda: setattr(frozen, "value", 9))
     assert frozen.value == 1
     assert runtime.reflect.get(frozen, "value") == 1
