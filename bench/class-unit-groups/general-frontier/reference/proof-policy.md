@@ -63,9 +63,9 @@ equivalent to Hecke's absolute-radius enclosure.
 Offline validation adds `runner/test_batch_evidence.py` for both precisions and
 policies, early-member corruptions, missing/reordered/duplicate members, proof
 sum and policy splices, partial output, caps and historical v3 semantics. Static
-worker assertions are not live GP/Julia validation. The new worker source still
-requires separately authorized bounded live diagnostics and platform checks;
-M0 qualification and independent detached replay remain incomplete.
+worker assertions are not live GP/Julia validation. Live diagnostics require
+separate authorization; platform checks, M0 qualification and independent
+detached replay remain incomplete.
 
 Prepared optional live gate (never part of default offline tests):
 `persistent/local-smoke.py --batch-evidence-matrix --seconds 180 --output NEW_DIR
@@ -79,6 +79,41 @@ cleanup included in its 180-second deadline. No retry, environment build, or
 extra field is allowed. Completion records retained and toy-replayed output
 counts separately. These toy checks are not general independent completeness
 proofs and the local wall times are not controlled performance measurements.
+
+### Source-bound local result, 2026-09-12
+
+Source commit `478a94d3aca41d912fef731db17284f2f7105c36` passed exactly one
+authorized matrix process per engine: PARI 2.17.1 and Julia 1.12.7 / Hecke 0.40.0.
+Each completed all 24 requests, retained and toy-replayed all 36 outputs, and
+executed 18 unconditional proof iterations. Both processes closed; the driver's
+worker/runtime/project/manifest hashes matched before and after. No retry,
+installation or build occurred in these invocations. This is local correctness
+evidence, not complete dependency attestation, independent completeness replay,
+or controlled timing. Whole diagnostic walls were 0.419546908 seconds for PARI
+and 31.891281789 seconds for Hecke, including startup and toy replay.
+
+Raw source snapshots, requests, responses, decoded outputs and completion records
+are retained in backed-up campaign custody at
+`/home/user/sagejs-worktrees/class-unit-rank-two-frontier/build/general-frontier/reference-batch-evidence-live-v1/{pari,hecke}`.
+
+| Evidence | SHA-256 |
+| --- | --- |
+| PARI decoded 24 results / 36 outputs | `7df8a817b27301c3ebdd8ec190bf3d20a238ccbed4f7e5f5faef9ee382b3fd2a` |
+| PARI exact-array replay response | `c8c287bf72dafd069626be47e66828189a26330345152f58d6b16a8ed28149ef` |
+| Hecke decoded 24 results / 36 outputs | `e0eb73e27415505304ce9f5f31242a151f6c7d7bf32f9cf490e5d9b88e507b90` |
+| PARI worker | `62a0294836f9bda5c00ea7dd90dfecb43a72bf57f160c4b6d38964d80231093a` |
+| Hecke worker | `481d7fee854882eb09dfe35b6a2f32fe3c6b6df40916f0407aef4a59893b6ae7` |
+| Hecke all-member toy bootstrap | `7d0c1ebf7cbe3fd4b34aafc1849070601d473aee9524c495569fa8ea163d1b6a` |
+
+The existing environment used
+`/tmp/hecke-generator-witness-env-EvWEZU` and the separately prepared strict
+existing-image depot
+`/scratch/sagejs-runtime/general-class-unit-m0-hecke-repair-v1/depot`.
+All 67 offline runner tests and 20 persistent tests pass, as do CPython syntax,
+Ruff and strict Pyright checks for 389 modules. Exact-base `test:changed` passes
+merge invariants then fails because this narrow worktree has no built
+`dist/tools/compiler.js`; that failure is retained. Native/build/platform
+qualification is not inferred from the toy matrix, and this remains draft work.
 
 ## Complete-request boundary
 
