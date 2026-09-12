@@ -293,3 +293,20 @@ formal equality to a product of the certified generators. This is narrower
 than deciding arbitrary factored-element membership, and must be described
 as such. This follow-up is not implemented by the present changes and is not
 part of their passing test claims.
+
+### Current-main qualification at `9688e75e0`
+
+The full changed-tree run against `b1740b787` passed its current build,
+all 222 unit-test files and strict checking of 389 modules. It then failed
+`compiler/algebra.py` at the unchanged 60-second subprocess limit; the failed
+1,146.43-second receipt remains in the task contract. An isolated unchanged
+fixture reproduced the timeout. A separately supervised assertion-lookup
+trace completed the first 160 assertions in under one second and stalled on
+assertion 161, `test/algebra.py:255`: the large generic Pohlig–Hellman
+`discrete_log(book_target, book_generator)` example. This identifies the
+operation, not its root cause. No class/unit computation had started there,
+and no timeout or assertion was removed. The trace's own 60-second timeout
+is retained; it is diagnostic evidence, not a passing qualification.
+
+PR #219 remains draft until the complete gate succeeds. Earlier passing
+revisions and current focused tests do not substitute for that result.
