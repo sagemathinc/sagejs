@@ -5162,11 +5162,10 @@ def _builtins_getattr_impl(
             name,
         )
         if runtime.strict_equal(runtime.jstype(python_string_member), "function"):
-            return runtime.reflect.apply(
-                runtime.reflect.get(python_string_member, "bind"),
-                python_string_member,
-                [value],
-            )
+            bound = python_string_member.bind(value)
+            if name in ("split", "rsplit", "encode", "splitlines", "expandtabs"):
+                return ρσ_finish_bound_method(bound, python_string_member, value)
+            return bound
     if (
         runtime.strict_equal(name, "__next__")
         and not _builtins_member_is_function(value, "__next__")

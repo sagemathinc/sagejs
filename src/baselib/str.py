@@ -1047,12 +1047,12 @@ def _str_replace(
 
 def _str_split(
     string: Any,
-    separator: Any = runtime.undefined,
+    sep: Any = runtime.undefined,
     maxsplit: int = -1,
 ) -> Any:
     string = _native_string(string)
     maxsplit = int(maxsplit)
-    if separator is runtime.undefined or separator is None:
+    if sep is runtime.undefined or sep is None:
         parts = []
         position = 0
         while position < len(string):
@@ -1072,33 +1072,33 @@ def _str_split(
             position = end
         return parts
 
-    separator = _str_require_string(separator, "split")
-    if separator == "":
+    sep = _str_require_string(sep, "split")
+    if sep == "":
         raise ValueError("empty separator")
     if maxsplit == 0:
         return [string]
     parts = []
     position = 0
     while maxsplit < 0 or len(parts) < maxsplit:
-        found = string.indexOf(separator, position)
+        found = string.indexOf(sep, position)
         if found == -1:
             break
         parts.append(string[position:found])
-        position = found + len(separator)
+        position = found + len(sep)
     parts.append(string[position:])
     return parts
 
 
 def _str_rsplit(
     string: Any,
-    separator: Any = runtime.undefined,
+    sep: Any = runtime.undefined,
     maxsplit: int = -1,
 ) -> Any:
     string = _native_string(string)
     maxsplit = int(maxsplit)
     if maxsplit < 0:
-        return _str_split(string, separator)
-    if separator is runtime.undefined or separator is None:
+        return _str_split(string, sep)
+    if sep is runtime.undefined or sep is None:
         parts = []
         position = len(string) - 1
         while position >= 0 and _index_of(WHITESPACE, string[position]) != -1:
@@ -1114,13 +1114,13 @@ def _str_rsplit(
             parts.insert(0, string[: position + 1])
         return parts
     else:
-        separator = _str_require_string(separator, "rsplit")
-        if separator == "":
+        sep = _str_require_string(sep, "rsplit")
+        if sep == "":
             raise ValueError("empty separator")
-        parts = list(_native_split(string, separator))
+        parts = list(_native_split(string, sep))
     if len(parts) <= maxsplit + 1:
         return parts
-    head = _str_join(separator, parts[: len(parts) - maxsplit])
+    head = _str_join(sep, parts[: len(parts) - maxsplit])
     return [head] + parts[len(parts) - maxsplit :]
 
 
