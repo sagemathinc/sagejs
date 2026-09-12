@@ -1,0 +1,537 @@
+
+Sage.js build
+  stages:   8
+  expected: about 5m 27s on a warm Linux developer build
+  output:   one progress summary per stage; use SAGEJS_BUILD_VERBOSE=1 for child logs
+  compiler: source changes can require two self-hosting passes to reach a fixed point
+
+[build] [1/8] Compile the TypeScript runtime (expected about 15s)
+[build] TypeScript runtime compiled.
+[build] PASS 1/8: Compile the TypeScript runtime (1s); approximately 5m 12s remaining
+
+[build] [2/8] Bundle vendored language frontends (expected about 5s)
+[build] Bundled NumPy, symbolic, and foreign-language parser backends
+[build] PASS 2/8: Bundle vendored language frontends (13s); approximately 5m 07s remaining
+
+[build] [3/8] Converge the self-hosted compiler (expected about 55s)
+[build] still running 3/8 (Converge the self-hosted compiler); 15s in this stage
+[build] still running 3/8 (Converge the self-hosted compiler); 30s in this stage
+[build] still running 3/8 (Converge the self-hosted compiler); 45s in this stage
+[build] still running 3/8 (Converge the self-hosted compiler); 1m 00s in this stage
+[build] still running 3/8 (Converge the self-hosted compiler); 1m 15s in this stage
+[build] still running 3/8 (Converge the self-hosted compiler); 1m 30s in this stage
+[build] Self-hosted compiler converged in 2 passes (36.898s + 65.395s).
+[build] PASS 3/8: Converge the self-hosted compiler (1m 43s); approximately 4m 12s remaining
+
+[build] [4/8] Generate FFI and task-runtime boundaries (expected about 10s)
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 15s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 30s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 45s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 1m 00s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 1m 15s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 1m 30s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 1m 45s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 2m 00s in this stage
+[build] Synchronized 4 FFI declarations and 12 generated adapters. Built lightweight multiprocessing task runtime
+[build] PASS 4/8: Generate FFI and task-runtime boundaries (2m 09s); approximately 4m 02s remaining
+
+[build] [5/8] Precompile Python modules and Node runtimes (expected about 3m 10s)
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 1m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 1m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 1m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 1m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 2m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 2m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 2m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 2m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 3m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 3m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 3m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 3m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 4m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 4m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 4m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 4m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 5m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 5m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 5m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 5m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 6m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 6m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 6m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 6m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 7m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 7m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 7m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 7m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 8m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 8m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 8m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 8m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 9m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 9m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 9m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 9m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 10m 00s in this stage
+[build] Precompiled 94 standard-library modules and 66 baselib dependencies Cached compiler and Sage/Python runtimes for Node 26.5.1 (linux-arm64)
+[build] PASS 5/8: Precompile Python modules and Node runtimes (10m 01s); approximately 52s remaining
+
+[build] [6/8] Reconcile installed native addons and adapters (expected about 20s)
+[build] Native adapters: 0 current, 0 rebuilt, 5 optional/absent.
+[build] PASS 6/8: Reconcile installed native addons and adapters (0s); approximately 32s remaining
+
+[build] [7/8] Publish the production native-kernel pack (expected about 30s)
+[build] Skipped production kernels: the optional generated FLINT adapter is absent.
+[build] PASS 7/8: Publish the production native-kernel pack (0s); approximately 2s remaining
+
+[build] [8/8] Build the lazy cminpack and NLopt numerical reactors (expected about 2s)
+[build] detailed output from failed command:
+{
+  "schema": "sagejs.numerical-wasm-build/v1",
+  "source": {
+    "repository": "https://github.com/devernay/cminpack",
+    "revision": "32d343ac33ac297594b5ffac57741e5615b4bb07",
+    "archive": "https://codeload.github.com/devernay/cminpack/tar.gz/32d343ac33ac297594b5ffac57741e5615b4bb07",
+    "archive_sha256": "9900b69d8ff8822c9d67cecaebb8b83c9c9e2a81a92705b8ac5f2104c459b8ae",
+    "license_file": "CopyrightMINPACK.txt",
+    "license_sha256": "8887036b1039e299ebcc8b95a73ea1538df548393fb8462361c80bea605a4fbe",
+    "distributed_license_sha256": "c87b7f8ee88f6195e91743820c00354833583aef091b72e2d4a49c8e28e798a0",
+    "license": "MINPACK permissive notice",
+    "qualification": {
+      "cases": "examples/testdata/ssq.data",
+      "cases_sha256": "4486706a38af157667b9c2523a4c037d904cb9f0dc4828d01b78183c978d0392",
+      "lmdif_reference": "examples/ref/lmfdrvc.ref",
+      "lmdif_reference_sha256": "93cd86536c839b49931c57e4e6f9f976493e75336088fcafe91c42fa8448ee34",
+      "lmder_reference": "examples/ref/lmddrvc.ref",
+      "lmder_reference_sha256": "35b472d0f6210557b50cae2b555a51784f9b011b7742641ca3d15242fc65db5b"
+    }
+  },
+  "source_closure": {
+    "sha256": "9ab1162ed190ffe731c2f9ce78848045b59f0a9904e34b767746b063e7cb8d8e",
+    "inputs": [
+      {
+        "path": "<cminpack>/include/cminpack.h",
+        "sha256": "75538b4e14682e150d10a08b5aa2029d29cfc52095c78492606667bdb0973ada",
+        "bytes": 18716
+      },
+      {
+        "path": "<cminpack>/src/dpmpar.c",
+        "sha256": "ef255111dc84d1876faa381df78671fd9e27bcd8f12982457a167bcde7a0c811",
+        "bytes": 6439
+      },
+      {
+        "path": "<cminpack>/src/enorm.c",
+        "sha256": "47a6c5f754dbfc02b36ba57f5e552cf06d264aa2d4a5f7e15c99c44f4a4ca2c8",
+        "bytes": 8227
+      },
+      {
+        "path": "<cminpack>/src/fdjac2.c",
+        "sha256": "fcf1863876e8a6db56d7a2ea6412800d1c83d844466e0f1aef0ad0c3cadd2fc0",
+        "bytes": 3826
+      },
+      {
+        "path": "<cminpack>/src/lmder.c",
+        "sha256": "d323ec3cd70a88294101daf7e316c35ceee8455e43fded97914c76b2db21304f",
+        "bytes": 17226
+      },
+      {
+        "path": "<cminpack>/src/lmdif.c",
+        "sha256": "8c580dbb3ccbce1c660ce72b5120b296accbf9efbd335e4fabdfb6bb61a5ff3a",
+        "bytes": 17370
+      },
+      {
+        "path": "<cminpack>/src/lmpar.c",
+        "sha256": "fc4cbc2b272734f408547f05dd4841b8831f6790b3ef3f95a437215f6a5cc23a",
+        "bytes": 11163
+      },
+      {
+        "path": "<cminpack>/src/minpackP.h",
+        "sha256": "e69d3dde78e2724a74f0c94e328d38222aef85dd5f76dda49a3209d31eb4f58a",
+        "bytes": 1888
+      },
+      {
+        "path": "<cminpack>/src/qrfac.c",
+        "sha256": "42a6e138848606ebe45bee2ad2ed93c268e808f9502bd8dfc6879e6455158bad",
+        "bytes": 10811
+      },
+      {
+        "path": "<cminpack>/src/qrsolv.c",
+        "sha256": "72d2819a77c172070d4905b84bcb1f21aac6b9ae0d5138bf7bc343a84fe5dd4b",
+        "bytes": 7343
+      },
+      {
+        "path": "packages/flint-wasm/numerical/index.mjs",
+        "sha256": "17904a3eb812782836f1ffeb4c66eb0e030aca2a8e04356adaf9acdde0b77ec5",
+        "bytes": 18001
+      },
+      {
+        "path": "packages/flint-wasm/numerical/licenses/CopyrightMINPACK.txt",
+        "sha256": "c87b7f8ee88f6195e91743820c00354833583aef091b72e2d4a49c8e28e798a0",
+        "bytes": 2193
+      },
+      {
+        "path": "packages/flint-wasm/numerical/scripts/build.cjs",
+        "sha256": "c1909c62233570c072e82b7b0b488054163b18c57bf14f34aa40319ef48a0b2a",
+        "bytes": 11847
+      },
+      {
+        "path": "packages/flint-wasm/numerical/scripts/production-toolchain-identity.cjs",
+        "sha256": "b626c20d9bc4e1cd13cb301bbaa2d6d418b22fd796b8e7980bc140a7fa69fcb8",
+        "bytes": 1051
+      },
+      {
+        "path": "packages/flint-wasm/numerical/sources/cminpack-lock.json",
+        "sha256": "440a315f0b95c7fa340d9a23aa053449ca09c4741b159cd54bdd6ed8964c5dd2",
+        "bytes": 1145
+      },
+      {
+        "path": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
+        "sha256": "a6841d13c46370a2520bf076008e87fb93ef9c0c96c6a98d7b86bb9cb3d46965",
+        "bytes": 11651
+      }
+    ],
+    "license_verified": true
+  },
+  "toolchain": {
+    "identity": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
+    "builder": {
+      "identity": "a6beb3bcf3f181960b98a2c1952982f332629fb497a7835731d7fd099412154b",
+      "platform": "linux-arm64"
+    },
+    "target": "wasm32-wasip1",
+    "floating_point_contract": "off",
+    "compile_flags": [
+      "--target=wasm32-wasip1",
+      "--sysroot=<toolchain>/sdk/share/wasi-sysroot",
+      "-mexec-model=reactor",
+      "-O3",
+      "-ffp-contract=off",
+      "-fvisibility=hidden",
+      "-fno-strict-aliasing",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-ffile-prefix-map=<repository>=/sagejs/source",
+      "-fdebug-prefix-map=<repository>=/sagejs/source",
+      "-fmacro-prefix-map=<repository>=/sagejs/source",
+      "-ffile-prefix-map=<cminpack>=/sagejs/upstream/cminpack",
+      "-fdebug-prefix-map=<cminpack>=/sagejs/upstream/cminpack",
+      "-fmacro-prefix-map=<cminpack>=/sagejs/upstream/cminpack",
+      "-ffile-prefix-map=<toolchain>=/sagejs/toolchain",
+      "-fdebug-prefix-map=<toolchain>=/sagejs/toolchain",
+      "-fmacro-prefix-map=<toolchain>=/sagejs/toolchain",
+      "-Wno-comment",
+      "-DCMINPACK_NO_DLL",
+      "-I<cminpack>/include",
+      "-I<cminpack>/src",
+      "<repository>/packages/flint-wasm/numerical/src/cminpack-adapter.c",
+      "<cminpack>/src/dpmpar.c",
+      "<cminpack>/src/enorm.c",
+      "<cminpack>/src/fdjac2.c",
+      "<cminpack>/src/lmdif.c",
+      "<cminpack>/src/lmder.c",
+      "<cminpack>/src/lmpar.c",
+      "<cminpack>/src/qrfac.c",
+      "<cminpack>/src/qrsolv.c",
+      "-Wl,--allow-undefined",
+      "-Wl,--export=p3_alloc",
+      "-Wl,--export=p3_free",
+      "-Wl,--export=p3_live_allocations",
+      "-Wl,--export=p3_live_bytes",
+      "-Wl,--export=p3_lm_solve",
+      "-Wl,--export=p3_set_allocation_failure_after",
+      "-Wl,--export-memory",
+      "-Wl,--initial-memory=2097152",
+      "-Wl,--max-memory=134217728",
+      "-Wl,--gc-sections",
+      "-lm"
+    ]
+  },
+  "artifact": {
+    "path": "build/cminpack.wasm",
+    "sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5",
+    "bytes": 72155,
+    "gzip_bytes": 28940,
+    "brotli_bytes": 23884,
+    "imports": [
+      {
+        "module": "sagejs_p3",
+        "name": "evaluate",
+        "kind": "function"
+      }
+    ],
+    "exports": [
+      {
+        "name": "memory",
+        "kind": "memory"
+      },
+      {
+        "name": "_initialize",
+        "kind": "function"
+      },
+      {
+        "name": "p3_alloc",
+        "kind": "function"
+      },
+      {
+        "name": "p3_free",
+        "kind": "function"
+      },
+      {
+        "name": "p3_live_allocations",
+        "kind": "function"
+      },
+      {
+        "name": "p3_live_bytes",
+        "kind": "function"
+      },
+      {
+        "name": "p3_set_allocation_failure_after",
+        "kind": "function"
+      },
+      {
+        "name": "p3_lm_solve",
+        "kind": "function"
+      }
+    ],
+    "memory": {
+      "initial_bytes": 2097152,
+      "maximum_bytes": 134217728
+    }
+  },
+  "qualification_oracle": {
+    "path": "build/mgh-oracle.wasm",
+    "sha256": "1f513f438d5173affb47a78c271ed390a618f8eca5802007610ce02a5352fcb8",
+    "bytes": 100909,
+    "imports": [],
+    "exports": [
+      {
+        "name": "memory",
+        "kind": "memory"
+      },
+      {
+        "name": "_initialize",
+        "kind": "function"
+      },
+      {
+        "name": "mgh_alloc",
+        "kind": "function"
+      },
+      {
+        "name": "mgh_free",
+        "kind": "function"
+      },
+      {
+        "name": "mgh_initial",
+        "kind": "function"
+      },
+      {
+        "name": "mgh_residual",
+        "kind": "function"
+      },
+      {
+        "name": "mgh_jacobian",
+        "kind": "function"
+      }
+    ]
+  }
+}
+{
+  "schema": "sagejs.numerical-nlopt-build/v1",
+  "source": {
+    "repository": "https://github.com/stevengj/nlopt",
+    "revision": "6e6593f131ba3a38bc9edbed0a357bc01526e54b",
+    "version": "2.11.0-dev",
+    "archive": "https://codeload.github.com/stevengj/nlopt/tar.gz/6e6593f131ba3a38bc9edbed0a357bc01526e54b",
+    "archive_sha256": "268470455acee4b4460c809772c51312be042cd000c7746049dfa6191e64a0f1",
+    "license_file": "COPYING",
+    "license_sha256": "44039a06cc56e0e29e5c8563502ba143bd12bcd9163c00ffa2e1f15a7462cd07",
+    "distributed_license_sha256": "44039a06cc56e0e29e5c8563502ba143bd12bcd9163c00ffa2e1f15a7462cd07",
+    "license": "MIT plus permissive notices in selected algorithm sources",
+    "cmake_policy": {
+      "NLOPT_LUKSAN": false,
+      "NLOPT_CXX": false,
+      "selected_algorithms": [
+        "NLOPT_LN_NELDERMEAD"
+      ]
+    }
+  },
+  "source_closure": {
+    "sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+    "files": [
+      {
+        "path": "COPYING",
+        "sha256": "44039a06cc56e0e29e5c8563502ba143bd12bcd9163c00ffa2e1f15a7462cd07"
+      },
+      {
+        "path": "CMakeLists.txt",
+        "sha256": "fd66bab12c8f5f02b4e639419f2d6441c4176617bd197d91620cca0a75a98e86"
+      },
+      {
+        "path": "nlopt_config.h.in",
+        "sha256": "8f09bb8afa1faa781faf2be7dd7f8419a80786b82fe4abbb5bf22fc2125b40b8"
+      },
+      {
+        "path": "src/api/nlopt.h",
+        "sha256": "a608b1f91b9b1cca08e8488761f6f18fe721105abd034029a8f6d0aa3fd551d1"
+      },
+      {
+        "path": "src/algs/neldermead/README",
+        "sha256": "c7aea6f8fa8df1b1fa85bc18f126d34c07fe1205a45c9160059e73449099cec6"
+      },
+      {
+        "path": "src/algs/neldermead/neldermead.h",
+        "sha256": "0958069d5721645014260847a397172efa6bf949604694ae88df9502dfd1295d"
+      },
+      {
+        "path": "src/algs/neldermead/nldrmd.c",
+        "sha256": "f535c71a6710e46a7fa0d3675186eac260f565bda5be8681586b64ed54c07376"
+      },
+      {
+        "path": "src/util/nlopt-util.h",
+        "sha256": "4bd8af917ec81120ddf7ac9cf75c5230873a59b0c7e2feec3c57f76d92db1725"
+      },
+      {
+        "path": "src/util/redblack.h",
+        "sha256": "8cd3564149b2bb6ddcf9acab4b8daff03449d4ea7c6099bcdd37b2efcb0a3166"
+      },
+      {
+        "path": "src/util/redblack.c",
+        "sha256": "da5063670df2e2d85615cc072d7ebf877d208c82e2f384427944382f5f4af831"
+      },
+      {
+        "path": "src/util/rescale.c",
+        "sha256": "2681664ccc48d10d17ee2f4553dae62343bd47cd08b3be484496b22ef481abcb"
+      },
+      {
+        "path": "src/util/stop.c",
+        "sha256": "d96262bf61e3ed1169eee98e7b19699939b8c7859b7e8442680cbfdedc90d762"
+      },
+      {
+        "path": "generated/nlopt_config.h",
+        "sha256": "f369cf4d1dd8aed882c8dc8fda870c16bc0a1ceae39ec3defd080a534a53827d"
+      },
+      {
+        "path": "generated/sagejs_nlopt_silent_stdio.h",
+        "sha256": "faab1f097dc0eb0a99d0fcd125b3414271774010324eb89b72da23eb39f4c84f"
+      },
+      {
+        "path": "sagejs/src/adapter.c",
+        "sha256": "0c876a9606177a26d0c8c8baf09a2f567516de201708397be508e9e46103ba03"
+      }
+    ],
+    "compiled_sources": [
+      "src/algs/neldermead/nldrmd.c",
+      "src/util/stop.c",
+      "src/util/redblack.c",
+      "src/util/rescale.c"
+    ],
+    "rejected_source_patterns": [
+      "src/algs/luksan/",
+      "src/algs/esch/",
+      "src/algs/ags/"
+    ]
+  },
+  "toolchain": {
+    "identity": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
+    "builder": {
+      "identity": "a6beb3bcf3f181960b98a2c1952982f332629fb497a7835731d7fd099412154b",
+      "platform": "linux-arm64"
+    },
+    "target": "wasm32-wasip1",
+    "floating_point_contract": "off"
+  },
+  "artifact": {
+    "filename": "nlopt-methods.wasm",
+    "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+    "bytes": 72592,
+    "gzip_bytes": 29234,
+    "brotli_bytes": 23996,
+    "imports": [
+      {
+        "module": "sagejs_numerical_nlopt",
+        "name": "evaluate",
+        "kind": "function"
+      }
+    ],
+    "exports": [
+      {
+        "name": "memory",
+        "kind": "memory"
+      },
+      {
+        "name": "_initialize",
+        "kind": "function"
+      },
+      {
+        "name": "sagejs_nlopt_alloc",
+        "kind": "function"
+      },
+      {
+        "name": "sagejs_nlopt_free",
+        "kind": "function"
+      },
+      {
+        "name": "sagejs_nlopt_live_allocations",
+        "kind": "function"
+      },
+      {
+        "name": "sagejs_nlopt_live_bytes",
+        "kind": "function"
+      },
+      {
+        "name": "sagejs_nlopt_set_allocation_failure_after",
+        "kind": "function"
+      },
+      {
+        "name": "sagejs_nlopt_probe_callback",
+        "kind": "function"
+      },
+      {
+        "name": "sagejs_nlopt_solve",
+        "kind": "function"
+      }
+    ],
+    "initial_memory_bytes": 2097152,
+    "maximum_memory_bytes": 134217728
+  },
+  "methods": [
+    "nlopt-nelder-mead"
+  ],
+  "selection": "explicit-only"
+}
+Error: candidate commit is not an ancestor of HEAD: 4eb172220532b7ded167abce85cbc57fc9b0135f
+    at fail (/home/user/sagejs-numerical-binary64-main-20260912/src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/contracts.cjs:17:9)
+    at validateCandidateBindings (/home/user/sagejs-numerical-binary64-main-20260912/src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/contracts.cjs:498:30)
+    at loadCurrentContext (/home/user/sagejs-numerical-binary64-main-20260912/src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/contracts.cjs:614:3)
+    at main (/home/user/sagejs-numerical-binary64-main-20260912/src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs:48:19)
+    at Object.<anonymous> (/home/user/sagejs-numerical-binary64-main-20260912/src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs:87:28)
+    at Module._compile (node:internal/modules/cjs/loader:1934:14)
+    at Object..js (node:internal/modules/cjs/loader:2074:10)
+    at Module.load (node:internal/modules/cjs/loader:1656:32)
+    at Module._load (node:internal/modules/cjs/loader:1448:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+/home/user/sagejs-numerical-binary64-main-20260912/packages/flint-wasm/numerical/scripts/build-all.cjs:26
+    throw new Error(`${script} exited with ${result.status}`);
+    ^
+
+Error: /home/user/sagejs-numerical-binary64-main-20260912/src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs exited with 1
+    at run (/home/user/sagejs-numerical-binary64-main-20260912/packages/flint-wasm/numerical/scripts/build-all.cjs:26:11)
+    at Object.<anonymous> (/home/user/sagejs-numerical-binary64-main-20260912/packages/flint-wasm/numerical/scripts/build-all.cjs:32:1)
+    at Module._compile (node:internal/modules/cjs/loader:1934:14)
+    at Object..js (node:internal/modules/cjs/loader:2074:10)
+    at Module.load (node:internal/modules/cjs/loader:1656:32)
+    at Module._load (node:internal/modules/cjs/loader:1448:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47
+
+Node.js v26.5.1
+[build] FAILED: Error: Build command failed (status=1, signal=none): /home/user/.local/lib/node-v26.5.1-linux-arm64/bin/node /home/user/sagejs-numerical-binary64-main-20260912/packages/flint-wasm/numerical/scripts/build-all.cjs
+    at ChildProcess.<anonymous> (/home/user/sagejs-numerical-binary64-main-20260912/scripts/build.cjs:75:11)
+    at Object.onceWrapper (node:events:631:12)
+    at ChildProcess.emit (node:events:509:20)
+    at ChildProcess._handle.onexit (node:internal/child_process:294:12)

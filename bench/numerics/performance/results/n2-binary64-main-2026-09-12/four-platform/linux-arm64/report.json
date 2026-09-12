@@ -1,0 +1,73 @@
+{
+  "schema": "sagejs.numerical-binary64-host/v1",
+  "source": "c092f9fe7a923da053638569d51f41619b693bcf",
+  "started": "2026-09-12T07:14:02.317Z",
+  "platform": "linux",
+  "arch": "arm64",
+  "node": "v26.5.1",
+  "nodePath": "/home/user/.local/lib/node-v26.5.1-linux-arm64/bin/node",
+  "cpu": "Neoverse-N1",
+  "release": "7.0.0-1011-gcp",
+  "stages": [
+    {
+      "name": "build",
+      "args": [
+        "scripts/build.cjs"
+      ],
+      "elapsedMs": 850742,
+      "status": 1,
+      "signal": null,
+      "error": null,
+      "logSha256": "0e6693c1ff5ab7e4e18e068943f79769a2795635079139756a2bd11f0aa08ea5"
+    },
+    {
+      "name": "resume-stage-8",
+      "args": [
+        "-e",
+        "require('./scripts/build.cjs').buildLazyNumericalReactors().then(console.log).catch(e=>{console.error(e);process.exitCode=1})"
+      ],
+      "elapsedMs": 3393,
+      "status": 0,
+      "signal": null,
+      "error": null,
+      "logSha256": "412ca345ccf75bf9c0806bce695be8de808b79984251a7a54d202cf6101dd451"
+    },
+    {
+      "name": "focused",
+      "args": [
+        "--test",
+        "--test-concurrency=1",
+        "test/numerics/performance/packed-reductions.cjs",
+        "tools/native-kernel/test/float64-conditional.cjs"
+      ],
+      "elapsedMs": 27137,
+      "status": 0,
+      "signal": null,
+      "error": null,
+      "logSha256": "9f2ab84bd6f12729f377fb784e105bc3b8a3239eccc98bf8c1879793f769444e"
+    },
+    {
+      "name": "opportunity",
+      "args": [
+        "bench/numerics/performance/packed-sum.cjs",
+        "--output",
+        "/home/user/sagejs-numerical-binary64-main-20260912/build/numerical-binary64-qualification/opportunity.json"
+      ],
+      "elapsedMs": 7845,
+      "status": 0,
+      "signal": null,
+      "error": null,
+      "logSha256": "f1b984c95614b20e6cd79a8b87e3851f973932859016ed83fa8240b7c82969a6"
+    }
+  ],
+  "nodeSha256": "f2604c0e8dd64ae72f5b3c12534b0574e62a4832a085a73cec18dfd8e653522d",
+  "success": true,
+  "buildResume": {
+    "reason": "shallow Git history repaired; successful stages 1–7 retained, stage 8 rerun",
+    "priorFailureRetained": true
+  },
+  "finalSource": "c092f9fe7a923da053638569d51f41619b693bcf",
+  "finalClean": true,
+  "completed": "2026-09-12T07:32:37.873Z",
+  "previousError": "Error: build failed; see /home/user/sagejs-numerical-binary64-main-20260912/build/numerical-binary64-qualification/build.log"
+}

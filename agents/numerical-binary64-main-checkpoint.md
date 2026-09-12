@@ -102,9 +102,13 @@ The remaining optimizer, optimization-engine and algebraic-geometry gates pass
 when run explicitly. The source-bound optimizer inventory and q-expansion
 manifest's shared package-graph hash are regenerated, not copied from drafts.
 
-There is no current-source four-platform compiled qualification claim.
-Persistent hosts are coordinated through Discussion #104; other lanes'
-reservations and source trees must remain untouched.
+[Four-platform isolated-kernel qualification](../bench/numerics/performance/results/n2-binary64-main-2026-09-12/four-platform/README.md)
+now passes on the frozen clean source above: Linux x64 and Windows each pass
+6 focused tests with 3 explicit skips; Linux ARM64 and macOS ARM64 each pass
+8 with 1 explicit sanitizer skip. Original stage-8 provisioning failures and
+source-preserving resumes are retained for ARM and Mac. This does not qualify
+public query latency, full release builds, or npm/SEA distribution. All four
+host reservations have been handed back through Discussion #104.
 
 [Local opportunity measurements](../bench/numerics/performance/results/n2-binary64-main-2026-09-12/README.md)
 bind the clean source commit above. At 20,000 values, reused native summation
