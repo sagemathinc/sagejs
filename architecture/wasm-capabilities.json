@@ -5840,20 +5840,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The existing FLINT invariant-only Smith adapter is included in the production Wasm closure. Shared integral-morphism tests compare its factors with transformed Smith and Sage, including rectangular, zero and large-integer inputs.",
+      "wasm_declared": true,
+      "public_explanation": "Exact Smith invariant factors use the shared generated FLINT adapter, avoiding unnecessary unimodular transformation matrices. A correct source fallback remains for unavailable backends.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpz_matrix_snf_into",

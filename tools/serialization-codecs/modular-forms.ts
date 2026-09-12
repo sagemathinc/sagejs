@@ -228,6 +228,7 @@ function encodeOperator(value: unknown, context: EncodeContext): WireValue {
     case "AbelianVarietyHeckeOperator":
     case "ModularAbelianVarietyMap":
     case "AbelianVarietySerializationCertificate":
+    case "AbelianVarietyKernelComponents":
       return require("./modular-abelian-varieties").encodeModularAbelianOperator(value, context);
     default:
       throw new SageSerializationError("unsupported modular-symbol operator");
@@ -255,6 +256,7 @@ function decodeOperator(payload: WireValue, context: DecodeContext): unknown {
     case "AbelianVarietyHeckeOperator":
     case "ModularAbelianVarietyMap":
     case "AbelianVarietySerializationCertificate":
+    case "AbelianVarietyKernelComponents":
       return require("./modular-abelian-varieties").decodeModularAbelianOperator(data);
     default:
       throw new SageSerializationError(
@@ -421,6 +423,7 @@ const operatorCodec: SageCodec = {
     "AbelianVarietyHeckeOperator",
     "ModularAbelianVarietyMap",
     "AbelianVarietySerializationCertificate",
+    "AbelianVarietyKernelComponents",
   ].includes(
     kind(value) ?? "",
   ),

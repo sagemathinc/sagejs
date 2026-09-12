@@ -11,7 +11,7 @@
   "files": [
     {
       "path": "architecture/package-graph.json",
-      "sha256": "6a55bd534efadc8ca3926bfa59eaf11def72a0b14ffeb39d61078582e96b8d53"
+      "sha256": "c14f8802b5e07e51cdd69657281519bdcb1bf71b7cac65fae7db5270e5336a4c"
     },
     {
       "path": "bench/modular/qexp-correctness/README.md",
@@ -155,8 +155,8 @@
     },
     {
       "path": "tools/serialization-codecs/modular-forms.ts",
-      "sha256": "34beffa4e59c778fc2315377c4e1617e89aeb2f735026a0f5852a716e34c288b"
+      "sha256": "73f1d4cf3fdf160ded3e8de00de701390113f3e72f5b208eef809f279503baba"
     }
   ],
-  "bundle_sha256": "dc0aa8fa42c0e3a22393fcba1f8affd0a384ada93d3d80bcfb25fd9deeea4a89"
+  "bundle_sha256": "8c0b869dcab20bf4dbb80f3fe52d71274f4fd20504270bea3b302dc18febaf43"
 }
