@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Integrate authenticated unit-coordinate maps, corrected BF proof policy and bounded detached component replay with explicit ownership, strict typing, resource evidence and unchanged safety gates",
-  "base_commit": "8cc0919212467e3a16ef88a2f7f654fa3a2ea423",
+  "base_commit": "e45acc3ab72870ce1d9c82e55f87f66efe6d4ba4",
   "claims": [
     "architecture/package-graph.json",
     "pyrightconfig.json",
