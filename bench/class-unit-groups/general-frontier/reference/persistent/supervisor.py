@@ -289,6 +289,17 @@ def validate_hecke_shape(output, degree=None, bits=200):
     """Structural screening sanity only, not mathematical verification/replay."""
     try:
         result = json.loads(output)["result"]
+        schema = result["schema"]
+        if schema not in (
+            "sagejs-hecke-frontier-screen-v1",
+            "sagejs-hecke-frontier-screen-v2",
+        ):
+            return False
+        literal_product = schema == "sagejs-hecke-frontier-screen-v2"
+        if literal_product and result.get("witness_semantics") != (
+            "ideal-equals-principal-witness-times-literal-class-generator-product"
+        ):
+            return False
         compact = result["compact"]
         signature = compact["signature"]
         if not (
@@ -341,10 +352,17 @@ def validate_hecke_shape(output, degree=None, bits=200):
             )
 
         def decomposition(value):
+            witness_key = "generator_product_witness" if literal_product else "witness"
             return (
-                coordinates(value["coordinates"])
+                isinstance(value, dict)
+                and (
+                    set(value) == {"coordinates", "representative", witness_key}
+                    if literal_product
+                    else "generator_product_witness" not in value
+                )
+                and coordinates(value["coordinates"])
                 and ideal(value["representative"])
-                and factored(value["witness"])
+                and factored(value[witness_key])
             )
 
         units = compact["units"]

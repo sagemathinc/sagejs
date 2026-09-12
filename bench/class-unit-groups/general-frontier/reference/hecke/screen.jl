@@ -21,6 +21,23 @@ end
 
 group_coordinates(x) = [string(x[i]) for i in 1:ngens(parent(x))]
 
+function generator_product_witness(I, class_images, coordinates)
+    coordinates isa AbstractVector || throw(ArgumentError("coordinates must be a vector"))
+    length(coordinates) == length(class_images) ||
+        throw(ArgumentError("class coordinate count differs from generators"))
+    all(c -> (c isa Integer && !(c isa Bool)) || c isa ZZRingElem, coordinates) ||
+        throw(ArgumentError("class coordinates must be exact integers"))
+    exponents = ZZRingElem[1]
+    append!(exponents, (-ZZ(c) for c in coordinates))
+    # A map image may be reduced and is not the literal generator product.
+    # Keep the entire residual factored, including negative/zero coordinates.
+    residual = FacElem([I; class_images], exponents)
+    ok, witness = isempty(residual.fac) ? (true, FacElem(one(Hecke.nf(order(I))))) :
+                  is_principal_fac_elem(residual)
+    ok || error("literal class-generator residual was not principal")
+    return witness
+end
+
 function regulator_payload(units, bits)
     # Guard bits keep outward-rounded exported endpoints within the request.
     ball = regulator(units, bits + 8)
@@ -54,14 +71,11 @@ function one_fresh_case(coefficients, bits)
     function decompose(I)
         c = preimage(mC, I)
         representative = mC(c)
-        residual = FacElem([I, representative], [ZZ(1), ZZ(-1)])
-        # Hecke 0.39.22 reduce_ideal rejects the empty product after exact
-        # cancellation of identical ideals. Its witness is exactly one.
-        ok, witness = isempty(residual.fac) ? (true, FacElem(K(1))) : is_principal_fac_elem(residual)
-        ok || error("class residual was not principal")
+        witness = generator_product_witness(I, class_images,
+                                           [c[j] for j in 1:ngens(C)])
         return (coordinates=group_coordinates(c),
                 representative=ideal_payload(representative, K),
-                witness=compact_payload(witness, K))
+                generator_product_witness=compact_payload(witness, K))
     end
 
     probes = [ideal(O, 2, O(a)), ideal(O, 3, O(a + 1)), ideal(O, 5, O(a - 1))]
@@ -103,9 +117,10 @@ function frontier_case(id, coefficients, bits, iterations, seed)
         isempty(materialized) && error("compact materialization failed")
     end
     elapsed_ns = time_ns() - started
-    return (schema="sagejs-hecke-frontier-screen-v1", id=string(id), bits=bits,
+    return (schema="sagejs-hecke-frontier-screen-v2", id=string(id), bits=bits,
             iterations=iterations, seed=string(seed), elapsed_ns=string(elapsed_ns),
             boundary="persistent-process-fresh-field-complete-compact-screen",
+            witness_semantics="ideal-equals-principal-witness-times-literal-class-generator-product",
             proof_policy="conditional-grh", independent_replay=false,
             versions=(julia=string(VERSION), hecke=string(Base.pkgversion(Hecke)),
                       nemo=string(Base.pkgversion(Hecke.Nemo))), compact=compact)

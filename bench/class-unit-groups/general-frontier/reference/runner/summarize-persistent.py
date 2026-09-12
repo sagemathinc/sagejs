@@ -115,6 +115,12 @@ def normalize(receipt):
         if ns < 0:
             raise ValueError("negative worker duration")
         row["worker_nanoseconds"] = str(ns)
+        row["worker_schema"] = result["schema"]
+        row["witness_semantics"] = (
+            result["witness_semantics"]
+            if result["schema"] == "sagejs-hecke-frontier-screen-v2"
+            else "ideal-equals-principal-witness-times-returned-class-map-representative"
+        )
         row["regulator"] = compact["regulator"]
         row["julia_diagnostics"] = response.get("diagnostics")
         # @timed can include compiling frontier_case before its internal timer

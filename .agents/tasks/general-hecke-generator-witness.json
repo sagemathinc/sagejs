@@ -1,0 +1,90 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-hecke-generator-witness",
+  "title": "General Hecke Generator Witness",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Emit and validate Hecke v2 compact witnesses for literal exported class-generator coordinate products without reinterpreting retained v1 evidence",
+  "base_commit": "9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/reference/hecke/screen.jl",
+    "bench/class-unit-groups/general-frontier/reference/hecke/generator-witness-smoke.jl",
+    "bench/class-unit-groups/general-frontier/reference/hecke/generator-product-witnesses.md",
+    "bench/class-unit-groups/general-frontier/reference/runner/screen-batch.py",
+    "bench/class-unit-groups/general-frontier/reference/runner/summarize-persistent.py",
+    "bench/class-unit-groups/general-frontier/reference/persistent/supervisor.py",
+    "bench/class-unit-groups/general-frontier/reference/runner/test_hecke_witness_schema.py"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://raw.githubusercontent.com/thofma/Hecke.jl/v0.40.0/src/NumFieldOrd/NfOrd/Clgp/Map.jl"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Pinned Hecke 0.40.0 class-map source and exact small-field principal-ideal equality; distinguish local 0.39.22 smoke"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "python3 -B -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+    "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py"
+  ],
+  "runs": [
+    {
+      "command": "python3 -B -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.149,
+      "started_at": "2026-09-12T06:44:03.121Z",
+      "commit": "9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+      "workspace_fingerprint": "c88c8c03666e91d2403c53d5a93d7c745c73d33dbadcc3c6033e17f8d4590b64",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.792,
+      "started_at": "2026-09-12T06:44:31.618Z",
+      "commit": "9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+      "workspace_fingerprint": "c88c8c03666e91d2403c53d5a93d7c745c73d33dbadcc3c6033e17f8d4590b64",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.8,
+      "started_at": "2026-09-12T06:46:44.980Z",
+      "commit": "9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+      "workspace_fingerprint": "2673afa6a3c5e8b00102172a4492eb82f0a3001a32b4911c3ef696e28eb7ef50",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Hecke v2 emits a compact witness for the literal exported class-generator product using one factored principality call, preserves the reduced map image as diagnostic data, and keeps retained v1 representative-witness semantics separate through validation and normalization. Focused exact tests cover composite, negative, zero and malformed coordinates, a genuinely reduced C4 map image, and serialized witness mutations. No resource, sampling, regulator or PARI changes.",
+    "risks": [
+      "This is structural screening, conditional on GRH, not independent replay or qualified benchmark evidence; historical v1 timings do not measure the strengthened v2 work.",
+      "Local validation uses Julia 1.12.7, Hecke 0.39.22/Nemo 0.56.1 and retained Hecke 0.40.0 source revision 66af28e52682620edb302931fce3f9ac87fc4eb7 with the deployed dependency versions; it does not attest deployed-host caches or non-Linux platforms.",
+      "One existing persistent duplicate-response test failed intermittently before passing unchanged on rerun; the failed receipt is retained and no transport race fix is included.",
+      "Required native and broader build-dependent gates remain unmet in this unbuilt narrow worktree. Exact-base test:changed passed merge checks then failed on missing dist/vendor/tree-sitter-sage.wasm; architecture:check initially lacked dist/tools/cli. The accidental origin/main changed-check build was stopped after TypeScript compilation. Contract remains active, not review."
+    ],
+    "next_steps": [
+      "Integration should rerun the build-dependent unit/native/architecture gates and investigate the existing duplicate-response race separately.",
+      "Repin deployed worker source before any authorized controlled sampling; disclose v2's strengthened witness boundary and unchanged asymmetric regulator guarantees.",
+      "Broader matched class/unit-map probe coverage, 100/200-bit regulator qualification and repeated timing samples remain separate planned work."
+    ]
+  }
+}

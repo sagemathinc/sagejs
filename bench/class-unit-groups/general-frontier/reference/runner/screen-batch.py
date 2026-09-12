@@ -181,7 +181,20 @@ def validate_hecke_terminal(
             or expected_bits not in (100, 200)
             or type(expected_iterations) is not int
             or not 1 <= expected_iterations <= 10000
-            or result["schema"] != "sagejs-hecke-frontier-screen-v1"
+            or result["schema"]
+            not in (
+                "sagejs-hecke-frontier-screen-v1",
+                "sagejs-hecke-frontier-screen-v2",
+            )
+            or (
+                result["schema"] == "sagejs-hecke-frontier-screen-v2"
+                and (
+                    result.get("witness_semantics")
+                    != "ideal-equals-principal-witness-times-literal-class-generator-product"
+                    or result.get("proof_policy") != "conditional-grh"
+                    or result.get("independent_replay") is not False
+                )
+            )
             or result["id"] != label
             or type(result["bits"]) is not int
             or result["bits"] != expected_bits
