@@ -340,12 +340,25 @@ class UnicodeError(ValueError):
     pass
 
 
+def _unicode_codec_init(
+    self: Any, encoding: str, obj: Any, start: int, end: int, reason: str
+) -> None:
+    UnicodeError.__init__(self, encoding, obj, start, end, reason)
+    self.encoding = encoding
+    self.object = obj
+    self.start = start
+    self.end = end
+    self.reason = reason
+
+
 class UnicodeEncodeError(UnicodeError):
-    pass
+    def __init__(self, *args: Any) -> None:
+        _unicode_codec_init(self, *args)
 
 
 class UnicodeDecodeError(UnicodeError):
-    pass
+    def __init__(self, *args: Any) -> None:
+        _unicode_codec_init(self, *args)
 
 
 class UnicodeTranslateError(UnicodeError):

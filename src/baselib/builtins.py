@@ -3812,11 +3812,10 @@ def ρσ_ord(value: Any) -> _Int:
             + " found"
         )
     answer = value.charCodeAt(0)
-    if 0xD800 <= answer <= 0xDBFF:
+    if value.length == 2 and 0xD800 <= answer <= 0xDBFF:
         second = value.charCodeAt(1)
         if 0xDC00 <= second <= 0xDFFF:
             return (answer - 0xD800) * 0x400 + second - 0xDC00 + 0x10000
-        raise TypeError("string is missing the low surrogate char")
     if value.length != 1:
         raise TypeError(
             "ord() expected a character, but string of length "

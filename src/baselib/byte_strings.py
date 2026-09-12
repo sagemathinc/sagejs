@@ -531,11 +531,8 @@ class SageBytes:
         if normalised in ("latin-1", "latin1", "iso-8859-1"):
             return self._binary_string()
         if normalised == "punycode":
-            module = runtime.require_module("punycode")
-            decoder = runtime.reflect.get(module, "decode")
-            return runtime.reflect.apply(
-                decoder, runtime.undefined, [self._binary_string()]
-            )
+            module = __import__("sagejs._punycode", fromlist=["punycode_decode"])
+            return module.punycode_decode(self, errors)
         raise ValueError("unknown encoding: " + encoding)
 
     def find(
@@ -1465,10 +1462,8 @@ def _construct_bytes(
         elif normalised == "unicode-escape":
             values = _encode_unicode_escape(source)
         elif normalised == "punycode":
-            module = runtime.require_module("punycode")
-            encoder = runtime.reflect.get(module, "encode")
-            encoded = runtime.reflect.apply(encoder, runtime.undefined, [source])
-            values = _byte_values_from_binary_string(encoded)
+            module = __import__("sagejs._punycode", fromlist=["punycode_encode"])
+            return module.punycode_encode(source)
         elif normalised == "ascii":
             values = []
             for character in source:

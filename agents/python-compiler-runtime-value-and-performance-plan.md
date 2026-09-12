@@ -820,6 +820,12 @@ normalizer can serve as closure.
 
 ### M4 — Useful Python diagnostics across frontends
 
+M3 progress (2026-09-12): the portable raw Punycode codec repairs the pinned
+IDNA workflow on a freshly built Linux candidate without suppressing stderr.
+See `agents/python-idna-codec-handoff.md` for validation scope and the remaining
+general Unicode indexing, pyparsing traceback, and mpmath limitations. Do not
+extrapolate this selected-workflow result to the full package matrix or hosts.
+
 Finish exception semantics, executable-identity-bound source maps, Python
 frames, and structured output for the negative workflow corpus. Validate
 continued execution and widget/callback paths, not only batch stderr.
