@@ -9,6 +9,7 @@ from .capabilities import capabilities, plan, supports
 from .descriptive import correlation, covariance, describe, quantile
 from .distributions import Binomial, ChiSquare, Distribution, Normal, Poisson, StudentT
 from .inference import confidence_interval_mean, one_sample_t_test, two_sample_t_test
+from .prepared import StatisticsData
 from .regression import (
     cauchy_loss,
     huber_loss,
@@ -30,6 +31,7 @@ __all__ = [
     "Poisson",
     "RandomStream",
     "StatisticsResult",
+    "StatisticsData",
     "StudentT",
     "cauchy_loss",
     "capabilities",

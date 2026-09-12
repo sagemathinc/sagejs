@@ -21,6 +21,11 @@ regression, Huber regression, robust losses, independent checks, bounded traces,
 and semantic PlotSpec output. The same ordinary Python source runs in CPython
 and Sage.js.
 
+For repeated summaries of the same observations, see
+[owned statistics data](prepared-data.md). This explicit API separates setup
+from each fresh query; it does not change the ordinary `describe(iterable)`
+route or promise that an optional native kernel is installed.
+
 ## A first statistical workflow
 
 ```python
