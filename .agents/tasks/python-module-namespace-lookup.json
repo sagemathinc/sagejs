@@ -1,0 +1,63 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-module-namespace-lookup",
+  "title": "Python Module Namespace Lookup",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reduce live native object module namespace lookup overhead without changing binding semantics",
+  "base_commit": "cd4d959cf68b84326ff138eac3ee03682197e4f3",
+  "claims": [
+    "src/baselib/builtins.py",
+    "test/python-module-namespace-lookup.cjs",
+    "docs/reference/api.md",
+    "website/reference-data.json",
+    "website/reference.html"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/python-module-namespace-lookup.cjs test/python-exec-module-origin.cjs test/python-dynamic-imports.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.659,
+      "started_at": "2026-09-12T07:09:46.256Z",
+      "commit": "cd4d959cf68b84326ff138eac3ee03682197e4f3",
+      "workspace_fingerprint": "19047a20724d46f8c1978824a912b5c4fca0b50eb4576b1a2b44d85f71d9f473",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Native object module namespaces use direct live membership and reads, preserving generic fallback and access order. First frozen build passed, with 208 portable files, strict 387 modules, eight focused guards and four pinned workflows passing. Recorded run precedes contract handoff metadata; a final rebuild and direct checks qualify the final metadata without modifying this contract afterward.",
+    "risks": [
+      "The existing reflected-arithmetic hotpaths case fails identically on the prerequisite and candidate; assertions remain unchanged.",
+      "No controlled performance, browser, or four-platform speed claim. Complete compiler/integration campaigns remain pending.",
+      "A docs wrapper triggered an unnecessary rebuild after task receipt mutation. Its partial dist was quarantined; complete original dist was recovered from the same-worktree read-only snapshot with exact source/compiler/receipt hashes before final qualification."
+    ],
+    "next_steps": [
+      "Qualify the final frozen metadata and generated documentation with one full build followed by direct checks; publish results in the PR rather than rewriting this contract.",
+      "Integrate prerequisite PR 231 before this branch, then measure the live lookup candidate on a coordinated idle host before claiming improvement."
+    ]
+  }
+}
