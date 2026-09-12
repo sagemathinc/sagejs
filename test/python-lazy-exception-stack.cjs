@@ -86,6 +86,18 @@ try:
     raise created
 except ValueError as caught:
     assert caught is created
+try:
+    raise created
+except (KeyError, ValueError) as caught:
+    assert caught is created
+for handlers in [(ValueError, 3), (ValueError, (ValueError,))]:
+    try:
+        try:
+            raise created
+        except handlers:
+            raise AssertionError('invalid later handler was ignored')
+    except TypeError:
+        pass
 `, { filename: "<lazy-exception-stack>", libdir: join(__dirname, "../src/lib"),
         strict_python_scopes: true, exact_integer_literals: true,
         scoped_flags: { dict_literals: true, overload_getitem: true,

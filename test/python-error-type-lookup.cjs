@@ -70,6 +70,11 @@ assert trace == ["__sagejs_baselib_modules__", "sagejs._baselib.errors", "BaseEx
 errors["Exception"] = replacement
 assert not matches(RuntimeError(), exception)
 assert matches(RuntimeError(), replacement)
+trace.clear()
+assert matches(RuntimeError(), (exception, replacement))
+assert trace.count("BaseException") == 2, trace
+assert trace.count("Exception") == 2, trace
+assert not matches(RuntimeError(), ())
 for invalid in ((replacement, 3), (replacement, (replacement,))):
     try:
         matches(RuntimeError(), invalid)

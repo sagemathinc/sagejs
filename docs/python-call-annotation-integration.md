@@ -108,3 +108,22 @@ comparison, and do not close the previously reported cliff. Reproduce with
 `SAGEJS_EXCEPTION_VARIANT` select profiling subsets. The profile and timing
 campaigns are separate. Full source-current qualification follows these
 focused checks; no four-platform or package-speedup claim is made here.
+
+The argument-allocation follow-up (`2b35504f4`) copies the native variadic
+array straight into an independent public tuple, avoiding an intermediate
+decorated Python list and generic length/equality dispatch. Native-backed
+raise values bypass the foreign-error string-tag probe. Both modes pass
+regressions for argument identity, initializer reuse, foreign errors, and a
+throwing tag getter; strict checks pass for all 403 admitted modules. Separate
+local medians are 337–341 ms for construction, 290–291 ms for construction and
+catch, and 118–119 ms for re-raising, per 10,000 operations. The construction
+benchmark also reads argument length. These remain mechanism diagnostics,
+not updated CPython ratios.
+
+The preceding lazy-stack/boolean revision (`bf7c9c32e`) passed a full build,
+18 focused tests and the pinned pyparsing workflow. Those receipts do not
+qualify later edits. Tuple matching now avoids recursively revalidating each
+already-validated flat class; all entries still undergo live validation,
+including invalid entries following a successful match. No exception-class
+cache or mutation assumption is introduced. Final combined full-build,
+controlled benchmark and platform qualification remain outstanding.

@@ -1946,7 +1946,12 @@ def ρσ_exception_matches(value: Any, candidate: Any) -> bool:
                 raise TypeError(
                     "catching classes that do not inherit from BaseException is not allowed"
                 )
-            if ρσ_exception_matches(value, nested_candidate):
+            # This flat entry is already validated. Recursing would repeat
+            # both tuple detection and the live BaseException lookup.
+            if (
+                nested_candidate is _internal_error_type("Exception")
+                and runtime.instance_of(value, runtime.error)
+            ) or ρσ_instanceof_one(value, nested_candidate):
                 matched = True
         return matched
     if not _internal_is_exception_class(candidate):
