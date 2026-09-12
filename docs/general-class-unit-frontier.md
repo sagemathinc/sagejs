@@ -1,6 +1,219 @@
 # General class-and-unit frontier: campaign record
 
-## Scope and current status
+## Current checkpoint — 2026-09-12
+
+The latest user authorization adopts the full bounded M0–M5 plan at
+`09e9d35328bb3a42834aaf81699c95f99034446c`, whose plan-file SHA-256 is
+`aceadd86d81f796740e9fa1e02c5d1a57854453ecc0d1774f3f09bf2dcd14403`.
+The original two-campaign authorization below is retained as history, not a
+restriction replacing that later authorization. **Neither M0 nor M1 is complete;
+zero of the twelve optimization campaigns have started.** No general
+competitive performance claim is established.
+
+### Delivered work and open gates
+
+Follow-up after the approved extension: corpus PR #257 and dictionary
+reinitialization PR #256 are now merged into main `256419004`; the checkpoint
+branch has incorporated that main revision without altering the frozen baseline.
+The pinned Hecke 0.40.0 [developer proof-policy fixture](../bench/class-unit-groups/general-frontier/reference/runner/hecke-proof-policy-controls-20260912.json)
+now passes all 13 requests
+at both 100/200-bit settings (eight unconditional fresh computation iterations),
+including the existing exact toy witness and mutation checks. The successful
+attempt took 30.212 seconds and closed its process. Two earlier startup failures
+remain recorded: cached source-path mismatch and then an uncached `Test`
+dependency. Repair used an isolated scratch depot, not package upgrades or shared
+cache deletion. These are local correctness checks, not controlled timing,
+whole-batch replay, regulator equivalence or independent completeness proofs.
+Full-iteration follow-up [PR #273](https://github.com/sagemathinc/sagejs/pull/273)
+retains every compact result and proof-policy record in repeated batches. The
+PARI and Hecke developer matrices each pass 24 requests with all 36 outputs
+retained and toy-witness checked. After extracting the unchanged Hecke replay
+helper from its `Test` harness, exact source `878ff5e38` passes the fresh Hecke
+matrix in 26.232 seconds, closes its process and retains all ten captured
+source/runtime pins unchanged. Current offline checks comprise 68 runner and
+20 supervisor tests. This is not independent completeness replay, matched
+regulator guarantees or controlled performance evidence. PR #273 remains draft.
+
+Target readiness subsequently passed on the existing `opt` installations:
+PARI 2.15.4 and Hecke 0.40.0 each completed 24 requests, retained all 36 outputs
+and checked every output's toy witnesses. Whole diagnostic durations were
+0.338/24.920 seconds respectively, **not competitive timings**. Both processes
+closed. The final 9,213-entry runtime inventory equals the initial inventory
+byte-for-byte; its canonical SHA-256 is
+`b28e2a45ff551e966cdd9e2af294a0834210923a81321517e979b7fc77fb5269`.
+The source-stage verification also passes, services are inactive and the timing
+lock is released. The two failed preflight inventories remain retained: standalone
+OpenBLAS and FLINT inspection lacked Julia's preloaded dependencies. The final
+audit binds the pinned JLL loader sources and exact provider bytes/ELF names,
+explicitly distinguishing modeled preload edges from observed process mappings;
+no CAS environment or cache policy changed. No sentinel field has been dispatched
+at this readiness checkpoint. The table below retains the original checkpoint's
+PR states for chronology.
+
+| Work | Historical checkpoint evidence | Remaining obligation at that checkpoint |
+| --- | --- | --- |
+| Reference laboratory | [PR #217](https://github.com/sagemathinc/sagejs/pull/217), baseline `b1740b787`, merged | Matched repeated complete requests, not just discovery summaries |
+| Frozen coverage/performance/smoke fixtures | [PR #257](https://github.com/sagemathinc/sagejs/pull/257), `e03acf683`, non-draft with routine/platform CI green | 1,800/360/90 selection is not performance or mathematical qualification; stress/proof sets still need admission |
+| Shared maps and detached replay | [PR #219](https://github.com/sagemathinc/sagejs/pull/219), `2b0925ed8`, draft; nontrivial real-cubic and mixed-quartic request-sequence/replay work | Broad integration and platform checks, uncovered ranks/inputs/proof policies, and runtime prerequisites |
+| Explicit reference witnesses/proof policy | [PR #237](https://github.com/sagemathinc/sagejs/pull/237), `e55646d01`, draft | PARI's bounded developer fixture passes; Hecke's current attempt fails before mathematics because a required precompiled image is absent; matched live qualification remains open |
+| Canonical residue dictionary machinery | [PR #268](https://github.com/sagemathinc/sagejs/pull/268), storage `9db4572a9`, and [PR #269](https://github.com/sagemathinc/sagejs/pull/269), provider/evidence `662d08a10`, both draft | Ordinary-dictionary allocation, startup, source ownership and exact-source platform qualification; no allowance increase approved |
+
+PRs merged into the draft integration branch are not thereby merged into main.
+The merged corpus remains independently useful even while mathematical and
+runtime qualification is incomplete. Its frozen inputs retain unknown class
+numbers; selection is not conditioned on Sage.js success.
+
+The latest discovery inventory has 526 observations, 439 successful pairs and
+87 unpaired outcomes. The discovered expensive counts (152 at least one second,
+46 at least ten seconds) are **not** the plan's qualified faster-reference
+counts: repeated matched 100/200-bit complete requests, regulator guarantees,
+maps and independent replay still have gaps. The 36 additional stress candidates
+and unconditional preselection are proposals, not admitted finished cohorts.
+
+### What the larger-field baseline now shows
+
+**Final closure:** all 90 frozen identities are now accounted for: 28 capability
+gaps, 40 incomplete computations, 14 timeouts, two resource OOMs and six request
+errors. There are **zero complete public class-and-unit requests** on this old
+pre-M1 runtime. The [final accounting](../bench/class-unit-groups/general-frontier/reference/runner/smoke90-final-accounting.json)
+preserves every identity and status. All 257 continuation custody files match
+the remote inventory; independent review reproduced all suffix classifications
+and verified the original 26 terminals plus the externally recorded index-026
+OOM. Final runtime attestation passes. No failed field was retried. The service
+is inactive, its cgroup is gone and the timing reservation was released in
+[Discussion #104](https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18414501).
+The following partial-run observations are retained as history, not a claim
+that the job is still running or that the completion gates passed.
+
+The frozen pre-M1 generic baseline remains on `opt` in the original sequential
+90-field run, with a 600-second request limit, 4 GiB external memory cap and
+unchanged internal mathematical limits. An interrupted supervisor's OOM and
+all earlier failures remain recorded. A reviewed suffix adapter resumes only
+previously unattempted indices 027–089 under the original prepaid allowance;
+it does not retry the failed field or install newer mathematical code.
+
+The [source-bound partial observation](../bench/class-unit-groups/general-frontier/reference/runner/smoke-prefix-037-052-observation.json)
+records sixteen already terminal requests, indices 037–052. All 64 copied raw
+files matched the remote manifest, and embedded stdout/stderr hashes and
+cleanup flags were checked. Its eight unit-map capability gaps, four incomplete
+computations, two request errors and two timeouts are not complete public
+class-and-unit answers. This is not a final 90-field report or runtime attestation.
+
+Two small-discriminant quintics expose a particularly useful larger-cost case:
+
+| Polynomial | Context total | Recorded relation phase | Public terminal |
+| --- | ---: | ---: | --- |
+| $x^5+2x^3-15x^2+11x+5$ | 519.908 s | 1.236 s | Unit-coordinate capability gap |
+| $x^5-2x^4+11x^3-21x^2+12x-3$ | 535.759 s | 2.426 s | Unit-coordinate capability gap |
+
+Field construction takes about 0.075/0.070 seconds at the recorded boundaries;
+the long interval is inside the context request. Both contexts report
+conditional index-one completion under their recorded GRH assumptions after
+one saturation round, starting with index bounds 2 and 6 respectively. They
+have not independently replayed those claims, and the richer request lacks
+unit coordinates on this old runtime. Named phase timers account for only a
+small fraction of the total.
+The baseline's `_adaptive_saturation`, `_try_unit_saturation` and final
+certificate work lack exhaustive aggregate timers. They are candidates for
+the missing cost, **not yet measured attribution**. Neither discriminant
+factoring nor dictionary scans can be declared the cause from these receipts.
+
+Other frozen outcomes include exact-integer/float conversion limits,
+Belabas–Friedman analytic-certification thresholds exceeding the existing prime
+ceiling (not class-group generator bounds), exhausted regulator precision and
+a sextic that spends 448.807 seconds without isolating saturation index one.
+The latter records 49.995 seconds of relations and 126.425 seconds of analytic
+index work. This is evidence for general representation/certification work;
+it does not support optimizing only millisecond cubics or merely raising caps.
+
+### Bounded runtime prerequisite: gain and cost
+
+The dictionary candidate removes a demonstrated equality-scan obstruction in
+the algebra regression. Exact-source build, 25 focused tests and strict Python
+pass; the unchanged 60-second algebra test completes in 3.632 seconds versus
+the common-base control timing out. This is a developer runtime result, not a
+class/unit or PARI comparison. Direct exact-value tokens also avoid retaining a
+new token for every queried residue, including misses.
+
+The [versioned paired resource record](https://github.com/sagemathinc/sagejs/blob/662d08a10fbbe35a45df47f4e78eaf5a9d934642/bench/dict-canonical-domain/evidence/README.md)
+retains unfavorable observations: 10,000 ordinary dictionaries add about 3 MB
+more managed heap, small primitive workloads are slower, and maximum child RSS
+in the prepared build rises about 33%. Both startup observations fail the
+400 ms gate (407.7 ms control, 420.7 ms candidate). Core source remains
+907,863 / 903,000 bytes: failed. Later architecture and `test:changed` steps
+were not reached after that failure. Independent review recommends deferring
+an allowance increase and coordinating allocation/startup with the runtime
+owner. The four-hour representation approach is closed as an unqualified draft,
+not an excuse to start an unbounded runtime rewrite.
+
+### Budget checkpoint and approved reassessment
+
+On 2026-09-12 the user explicitly approved the proposed **16 additional
+aggregate active-agent hours for M0**. Its cumulative engineering ceiling is
+now **56 hours**, not a reset of the previous 40-hour allowance. The existing
+120 CPU-hour ceiling, frozen inputs, all acceptance criteria, M1 allowance,
+and optimization-campaign budgets remain unchanged. The four work packages
+below each retain their four-active-hour limit. Historical proposal wording
+below records the decision's origin; it is superseded only by this approval.
+The [machine-readable amendment](../bench/class-unit-groups/general-frontier/reference/runner/m0-effort-amendment-20260912.json)
+records the limits and original ledger pin. A subsequent conservative 200-second
+debit authorizes one off-host, 180-second Hecke proof-policy fixture after pinned
+environment repair. After the retained missing-`Test` startup failure, a second
+200-second debit authorized the successful third attempt. Following those debits,
+the ledger was
+96,972.300 / 432,000 seconds, SHA-256
+`d962927b498da8933565b2efedc77146c6679dc0adadd7843ee338b2df5d8c9c`.
+Compilation is separate, prior failures remain retained, and no controlled
+timing was launched by either debit.
+
+Subsequent bounded debits retain 400 seconds for the paired developer matrices,
+200 seconds for the post-helper Hecke matrix and 600 seconds for the two target
+readiness matrices including attestation and closure. The readiness-prepayment ledger
+is **98,172.300 / 432,000 seconds**, SHA-256
+`e0a5f221ad6a5cd810a0541c917090b67b93169f065595a9bd381ec6d42c14b3`.
+Both failed target preflights remain retained alongside the successful matrices.
+At the 17:42 UTC effort checkpoint, conservative aggregate estimates are
+**M0 43.5/56 hours and M1 31/40 hours**, with zero optimization campaigns begun.
+The former 11:25 UTC checkpoint and approval proposal below remain historical.
+
+At the 2026-09-12 11:25 UTC checkpoint, conservative aggregate active estimates
+are **M0 39.5/40 hours and M1 31/40 hours**. These retain prior rounded charges;
+queued builds/tests are excluded. The dictionary approach uses an estimated
+3.2 of its four aggregate active hours, including independent reviews.
+Controlled M0 accounting remains 96,572.300 / 432,000 seconds, about 26.83 of
+120 hours, with ledger SHA-256
+`7586c74c130cd24cc3cbfc48f316348749df915900aabc73016b25c5ff369cbd`.
+The running smoke suffix stays within the retained 55,000-second allowance;
+unused headroom is not authorization for other runs or refunds.
+
+The remaining M0 active allowance is reserved for existing-run custody and
+closure. The matched-reference, stress and unconditional gates cannot honestly
+be treated as complete within it. **The following is a proposal requiring user
+approval, not a budget change or dispatch authorization:** extend M0 by at most
+16 aggregate active agent-hours while retaining its existing 120 CPU-hour
+ceiling, every frozen cohort, failure and acceptance criterion.
+
+Use four bounded work packages, each at most four active hours:
+
+1. Repair the pinned Hecke environment off the timing host, then validate the
+   existing full-request/proof-policy adapters on the predeclared small controls.
+   Do not repeatedly rebuild caches on `opt` or retry failed mathematics silently.
+2. Resolve matched 100/200-bit output guarantees and all-iteration evidence;
+   run the existing selected panel with the required fresh samples and witnesses.
+   Unmatched regulator guarantees remain separately reported, never relabeled.
+3. Admit the remaining stress/unconditional cohorts using the existing frozen
+   selection and reserve policies. Publish unfilled strata if the bounded work
+   fails; do not replace hard inputs with easy Sage.js successes.
+4. Finish the initial phase/coverage report and independent review, then name
+   the first dominant shared campaign with its exact inputs and proof obligation.
+
+This proposed extension is an effort ceiling, not a promise of completing M0.
+Stop and reassess again if it fails. It does not spend an optimization campaign,
+raise the M1 or execution budget, relax source/startup limits, or authorize a
+second general engine. Do not launch M2 using an incomplete baseline disguised
+as qualification. Already authorized smoke execution may finish unchanged.
+
+## Historical opening scope and status
 
 The user adopted M0–M2 of `agents/general-class-unit-competitive-plan.md`
 (plan revision `09e9d3532`, PR #215). This campaign starts from main
