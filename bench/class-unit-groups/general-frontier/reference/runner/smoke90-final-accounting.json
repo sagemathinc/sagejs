@@ -1,0 +1,1453 @@
+{
+  "count": 90,
+  "requests": [
+    {
+      "request": {
+        "label": "10.0.1438478024887.1",
+        "coefficients": [
+          "11",
+          "1",
+          "34",
+          "10",
+          "40",
+          "2",
+          "8",
+          "-7",
+          "2",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "10.10.1148718338533.1",
+        "coefficients": [
+          "-1",
+          "2",
+          "19",
+          "8",
+          "-44",
+          "-18",
+          "35",
+          "9",
+          "-11",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "10.2.1008755079424.1",
+        "coefficients": [
+          "32",
+          "-32",
+          "-16",
+          "32",
+          "-8",
+          "-4",
+          "-4",
+          "8",
+          "-2",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "10.4.1003201279231.1",
+        "coefficients": [
+          "-1",
+          "5",
+          "9",
+          "6",
+          "-7",
+          "-10",
+          "7",
+          "-2",
+          "3",
+          "-3",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "10.4.1005171503071.2",
+        "coefficients": [
+          "4",
+          "-5",
+          "-12",
+          "9",
+          "3",
+          "-2",
+          "6",
+          "-3",
+          "-1",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "10.6.1031956070400000000000000.31",
+        "coefficients": [
+          "-55296",
+          "0",
+          "249570",
+          "0",
+          "-41400",
+          "0",
+          "2640",
+          "0",
+          "-80",
+          "0",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "10.8.1003438345279.1",
+        "coefficients": [
+          "1",
+          "5",
+          "-10",
+          "-5",
+          "32",
+          "-14",
+          "-28",
+          "22",
+          "2",
+          "-5",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "10.8.1003438345279.2",
+        "coefficients": [
+          "-17",
+          "-28",
+          "84",
+          "17",
+          "-77",
+          "2",
+          "20",
+          "4",
+          "-2",
+          "-3",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "10.8.1003445537459.1",
+        "coefficients": [
+          "1",
+          "-2",
+          "-7",
+          "12",
+          "13",
+          "-17",
+          "-4",
+          "8",
+          "-3",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "10.8.1005253234491.1",
+        "coefficients": [
+          "-1",
+          "-2",
+          "11",
+          "9",
+          "-29",
+          "-15",
+          "25",
+          "8",
+          "-9",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "2.0.107.1",
+        "coefficients": [
+          "27",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "2.0.123.1",
+        "coefficients": [
+          "31",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "2.0.132.1",
+        "coefficients": [
+          "33",
+          "0",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "2.0.87.1",
+        "coefficients": [
+          "22",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "2.0.88.1",
+        "coefficients": [
+          "22",
+          "0",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "2.2.104.1",
+        "coefficients": [
+          "-26",
+          "0",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "2.2.124.1",
+        "coefficients": [
+          "-31",
+          "0",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "2.2.28.1",
+        "coefficients": [
+          "-7",
+          "0",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "2.2.53.1",
+        "coefficients": [
+          "-13",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "2.2.89.1",
+        "coefficients": [
+          "-22",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "3.1.1002718428660.2",
+        "coefficients": [
+          "-73393658",
+          "-146523",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "3.1.1003588962376.2",
+        "coefficients": [
+          "-3310582",
+          "61567",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "3.1.1005907102200.3",
+        "coefficients": [
+          "-7353960",
+          "177570",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "3.3.1001042271441.1",
+        "coefficients": [
+          "-111169",
+          "-333507",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "3.3.1001926779700.4",
+        "coefficients": [
+          "-1195670",
+          "-125860",
+          "0",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "3.3.1001926779700.5",
+        "coefficients": [
+          "-449833",
+          "-41953",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "origin": "original"
+    },
+    {
+      "request": {
+        "label": "3.3.1001926779700.6",
+        "coefficients": [
+          "21701527",
+          "-167813",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "resource-oom",
+      "origin": "external-oom-addendum"
+    },
+    {
+      "request": {
+        "label": "3.3.1002718428660.1",
+        "coefficients": [
+          "-5845450",
+          "-152490",
+          "0",
+          "1"
+        ]
+      },
+      "status": "resource-oom",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "3.3.1005536260872.1",
+        "coefficients": [
+          "-16200096",
+          "-132066",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "3.3.1005536260872.2",
+        "coefficients": [
+          "-13185546",
+          "-106227",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "4.0.1000050737193.1",
+        "coefficients": [
+          "254728",
+          "3844",
+          "-70",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "request-error",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "4.0.1000056735233.1",
+        "coefficients": [
+          "71328",
+          "-548",
+          "549",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "4.0.1000075608937.1",
+        "coefficients": [
+          "389021",
+          "-1250",
+          "1251",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "4.0.1000086001849.1",
+        "coefficients": [
+          "531441",
+          "0",
+          "1061",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "4.0.1000097362529.1",
+        "coefficients": [
+          "65536",
+          "-256",
+          "-107",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "4.0.1000146638400.1",
+        "coefficients": [
+          "41769",
+          "0",
+          "834",
+          "0",
+          "1"
+        ]
+      },
+      "status": "request-error",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "4.0.1000208904385.1",
+        "coefficients": [
+          "82960",
+          "0",
+          "1207",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "4.0.1000245115136.1",
+        "coefficients": [
+          "101329",
+          "-11816",
+          "436",
+          "0",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "4.2.1002184223040.5",
+        "coefficients": [
+          "-16676660",
+          "0",
+          "2002",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "4.4.1000300030001.1",
+        "coefficients": [
+          "-249439",
+          "-79383",
+          "-3750",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "request-error",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "5.1.1000000.1",
+        "coefficients": [
+          "-12",
+          "-5",
+          "0",
+          "0",
+          "0",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "5.1.1000616.1",
+        "coefficients": [
+          "-9",
+          "-15",
+          "-11",
+          "-4",
+          "0",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "5.1.1000700.1",
+        "coefficients": [
+          "5",
+          "11",
+          "-15",
+          "2",
+          "0",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "5.1.1000704.1",
+        "coefficients": [
+          "6",
+          "-9",
+          "4",
+          "2",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "5.1.1000709.1",
+        "coefficients": [
+          "3",
+          "4",
+          "2",
+          "4",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "5.1.1000836.2",
+        "coefficients": [
+          "-3",
+          "12",
+          "-21",
+          "11",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "5.3.1000359.1",
+        "coefficients": [
+          "-9",
+          "6",
+          "14",
+          "-7",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "5.3.1001187.1",
+        "coefficients": [
+          "-3",
+          "0",
+          "3",
+          "-4",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "5.3.1001188.1",
+        "coefficients": [
+          "-4",
+          "-10",
+          "-4",
+          "-3",
+          "0",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "5.5.1019601.1",
+        "coefficients": [
+          "7",
+          "24",
+          "-1",
+          "-10",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "6.0.1000260638139.1",
+        "coefficients": [
+          "3737",
+          "-771",
+          "406",
+          "-164",
+          "10",
+          "0",
+          "1"
+        ]
+      },
+      "status": "request-error",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "6.0.1000465411095.1",
+        "coefficients": [
+          "1020",
+          "0",
+          "381",
+          "0",
+          "37",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "6.0.1000712609303.1",
+        "coefficients": [
+          "5567",
+          "-507",
+          "737",
+          "-9",
+          "38",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "6.2.1000123987968.2",
+        "coefficients": [
+          "130",
+          "144",
+          "36",
+          "-24",
+          "-12",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "6.2.1000499879808.1",
+        "coefficients": [
+          "-54",
+          "24",
+          "43",
+          "88",
+          "3",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "request-error",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "6.2.1000499879808.2",
+        "coefficients": [
+          "12",
+          "-108",
+          "168",
+          "-88",
+          "21",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "6.4.1000042200000.1",
+        "coefficients": [
+          "1045",
+          "-1824",
+          "855",
+          "0",
+          "-45",
+          "0",
+          "1"
+        ]
+      },
+      "status": "request-error",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "6.4.1000067088384.1",
+        "coefficients": [
+          "66",
+          "36",
+          "10",
+          "-8",
+          "-15",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "6.4.1000067088384.2",
+        "coefficients": [
+          "893",
+          "-934",
+          "61",
+          "12",
+          "-43",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "6.6.1000089136128.1",
+        "coefficients": [
+          "-2028",
+          "0",
+          "593",
+          "0",
+          "-50",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "7.1.1000604745000.1",
+        "coefficients": [
+          "-270",
+          "0",
+          "-63",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "7.1.1000604745000.2",
+        "coefficients": [
+          "-168",
+          "-28",
+          "70",
+          "0",
+          "-21",
+          "7",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "7.3.1000042200000.1",
+        "coefficients": [
+          "-2",
+          "16",
+          "-36",
+          "23",
+          "-16",
+          "3",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "7.3.1000188000000.1",
+        "coefficients": [
+          "-24",
+          "-48",
+          "126",
+          "-90",
+          "-5",
+          "21",
+          "-3",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "7.3.1000188000000.3",
+        "coefficients": [
+          "14",
+          "-49",
+          "72",
+          "-55",
+          "20",
+          "-3",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "7.3.1000600090000.1",
+        "coefficients": [
+          "-4",
+          "-20",
+          "0",
+          "-4",
+          "7",
+          "2",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "7.3.1001944944784.1",
+        "coefficients": [
+          "-16",
+          "-48",
+          "-12",
+          "-12",
+          "-9",
+          "11",
+          "-3",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "7.3.1002053052676.1",
+        "coefficients": [
+          "-2",
+          "-21",
+          "24",
+          "61",
+          "4",
+          "-1",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "7.5.1006568750000.1",
+        "coefficients": [
+          "-110",
+          "-40",
+          "170",
+          "100",
+          "-15",
+          "-13",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "7.7.1570186848832.1",
+        "coefficients": [
+          "-4",
+          "-56",
+          "0",
+          "56",
+          "0",
+          "-14",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "8.0.1047472664332962584338085707776000000.4",
+        "coefficients": [
+          "4791479696865225",
+          "0",
+          "12678884279100",
+          "0",
+          "8313264180",
+          "0",
+          "251940",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "8.2.1000815367923.2",
+        "coefficients": [
+          "-1893",
+          "-2076",
+          "-219",
+          "15",
+          "280",
+          "-11",
+          "-18",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "8.2.1001422547307.2",
+        "coefficients": [
+          "-11569",
+          "-2911",
+          "1682",
+          "-545",
+          "192",
+          "-24",
+          "-6",
+          "-3",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "8.2.1004919750000.2",
+        "coefficients": [
+          "-224",
+          "480",
+          "-408",
+          "110",
+          "39",
+          "-10",
+          "-12",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "8.2.1006096089088.3",
+        "coefficients": [
+          "-937",
+          "0",
+          "-332",
+          "0",
+          "146",
+          "0",
+          "-12",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "8.2.1006096089088.4",
+        "coefficients": [
+          "-937",
+          "0",
+          "-324",
+          "0",
+          "-50",
+          "0",
+          "-4",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "8.2.1006096089088.8",
+        "coefficients": [
+          "-937",
+          "0",
+          "964",
+          "0",
+          "-174",
+          "0",
+          "4",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "8.4.1009108647936.1",
+        "coefficients": [
+          "-47",
+          "-192",
+          "-240",
+          "-96",
+          "-14",
+          "0",
+          "0",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "8.6.1016424304200.1",
+        "coefficients": [
+          "-162",
+          "0",
+          "243",
+          "0",
+          "-72",
+          "0",
+          "-6",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "8.8.1019898010000.1",
+        "coefficients": [
+          "4",
+          "-18",
+          "-99",
+          "-46",
+          "82",
+          "20",
+          "-18",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "9.1.1049866478469.1",
+        "coefficients": [
+          "27",
+          "0",
+          "0",
+          "15",
+          "0",
+          "0",
+          "-3",
+          "0",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "9.1.1049866478469.6",
+        "coefficients": [
+          "-9",
+          "0",
+          "0",
+          "15",
+          "0",
+          "0",
+          "-6",
+          "0",
+          "0",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "9.3.1039723874496.1",
+        "coefficients": [
+          "-101",
+          "-112",
+          "47",
+          "43",
+          "9",
+          "30",
+          "10",
+          "-7",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "9.3.1039723874496.3",
+        "coefficients": [
+          "-23",
+          "-10",
+          "47",
+          "15",
+          "-17",
+          "-26",
+          "12",
+          "11",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "9.3.1039723874496.6",
+        "coefficients": [
+          "1",
+          "-20",
+          "49",
+          "-45",
+          "55",
+          "10",
+          "10",
+          "11",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "9.3.1042590744000.1",
+        "coefficients": [
+          "25",
+          "-65",
+          "46",
+          "-17",
+          "1",
+          "23",
+          "-9",
+          "10",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "9.3.1044141264576.1",
+        "coefficients": [
+          "3",
+          "18",
+          "-45",
+          "27",
+          "-27",
+          "18",
+          "-18",
+          "9",
+          "-3",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "9.5.1070165422144.2",
+        "coefficients": [
+          "-7",
+          "7",
+          "42",
+          "-64",
+          "9",
+          "13",
+          "-17",
+          "11",
+          "-3",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "9.7.1264540476096.2",
+        "coefficients": [
+          "53",
+          "81",
+          "-126",
+          "-135",
+          "81",
+          "81",
+          "-15",
+          "-18",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "origin": "continuation"
+    },
+    {
+      "request": {
+        "label": "9.9.1110796787008.1",
+        "coefficients": [
+          "1",
+          "3",
+          "-11",
+          "-18",
+          "24",
+          "33",
+          "-5",
+          "-11",
+          "0",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "origin": "continuation"
+    }
+  ],
+  "new_terminal_count": 63,
+  "terminal_accounting_complete": true,
+  "runtime_verified": true,
+  "performance_qualified": false,
+  "evidence_scope": "Frozen pre-M1 b1740 generic baseline; every request remains noncomplete. No matched competitive claim.",
+  "raw_accounting_sha256": "a3f9fd24549c6e46eae29310b11c0a321dc59098a6ad36e8c166bd02a32205d9",
+  "final_custody_inventory_sha256": "d6071453c77cd939f427dc426e8436e7e2ec40690d32d753140cb98f397bc2e6",
+  "runtime_after_sha256": "2960f5a6f2ef9f81c7c67705ff81a70c58f63ebc91c7570ba896c06a3ae37b67"
+}

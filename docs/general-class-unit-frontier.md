@@ -34,6 +34,19 @@ and unconditional preselection are proposals, not admitted finished cohorts.
 
 ### What the larger-field baseline now shows
 
+**Final closure:** all 90 frozen identities are now accounted for: 28 capability
+gaps, 40 incomplete computations, 14 timeouts, two resource OOMs and six request
+errors. There are **zero complete public class-and-unit requests** on this old
+pre-M1 runtime. The [final accounting](../bench/class-unit-groups/general-frontier/reference/runner/smoke90-final-accounting.json)
+preserves every identity and status. All 257 continuation custody files match
+the remote inventory; independent review reproduced all suffix classifications
+and verified the original 26 terminals plus the externally recorded index-026
+OOM. Final runtime attestation passes. No failed field was retried. The service
+is inactive, its cgroup is gone and the timing reservation was released in
+[Discussion #104](https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18414501).
+The following partial-run observations are retained as history, not a claim
+that the job is still running or that the completion gates passed.
+
 The frozen pre-M1 generic baseline remains on `opt` in the original sequential
 90-field run, with a 600-second request limit, 4 GiB external memory cap and
 unchanged internal mathematical limits. An interrupted supervisor's OOM and
@@ -95,7 +108,21 @@ an allowance increase and coordinating allocation/startup with the runtime
 owner. The four-hour representation approach is closed as an unqualified draft,
 not an excuse to start an unbounded runtime rewrite.
 
-### Budget checkpoint and proposed reassessment
+### Budget checkpoint and approved reassessment
+
+On 2026-09-12 the user explicitly approved the proposed **16 additional
+aggregate active-agent hours for M0**. Its cumulative engineering ceiling is
+now **56 hours**, not a reset of the previous 40-hour allowance. The existing
+120 CPU-hour ceiling, frozen inputs, all acceptance criteria, M1 allowance,
+and optimization-campaign budgets remain unchanged. The four work packages
+below each retain their four-active-hour limit. Historical proposal wording
+below records the decision's origin; it is superseded only by this approval.
+The [machine-readable amendment](../bench/class-unit-groups/general-frontier/reference/runner/m0-effort-amendment-20260912.json)
+records the limits and original ledger pin. A subsequent conservative 200-second
+debit authorizes one off-host, 180-second Hecke proof-policy fixture after pinned
+environment repair; the ledger is now 96,772.300 / 432,000 seconds. Compilation
+is separate, prior failures remain retained, and no controlled timing was
+launched by that debit.
 
 At the 2026-09-12 11:25 UTC checkpoint, conservative aggregate active estimates
 are **M0 39.5/40 hours and M1 31/40 hours**. These retain prior rounded charges;
