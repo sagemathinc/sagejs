@@ -193,18 +193,34 @@ integration:
   follow-up passes all platform and Chromium gates without a budget increase
   and is non-draft. Empty-class arity and initializer
   descriptor-wrapper behavior are still separate gaps.
-- [PR231](https://github.com/sagemathinc/sagejs/pull/231), `0f62af751`, moves four
+  Follow-up `47667d732` withdraws a prebuild constructor timing comparison:
+  both worker processes used the baseline compiler despite an in-process
+  candidate override. Frozen-build correctness and direct-emission evidence
+  remain valid. Always verify the actual worker artifact, not just its parent.
+- [PR231](https://github.com/sagemathinc/sagejs/pull/231), `cd4d959cf`, moves four
   duplicated low-level adapters into one counted shared bootstrap module,
   saving 3,001 core-source bytes. Build, 80 focused tests and strict checks pass.
   An exactly reproduced baseline architecture text-audit failure remains
-  recorded, not suppressed. No new exception-state behavior is included.
-- [PR234](https://github.com/sagemathinc/sagejs/pull/234), `dcc601312`, fixes
+  recorded, not suppressed. A stale source-freeze digest was corrected without
+  changing its inventory; current routine/platform/browser CI is green.
+  No new exception-state behavior is included.
+- [PR234](https://github.com/sagemathinc/sagejs/pull/234), `c5c6de504`, fixes
   duplicate property evaluation in resolved keyword/star calls and selected
-  string keyword metadata. It passes 206 portable files, 66 lowering tests and
-  four pinned package workflows. A later invalid-target oracle found a starred
-  argument evaluation-order regression; repair and requalification are underway.
-  It remains draft, and its benchmark was deferred before any VM execution.
-  No speedup is inferred from the baseline namespace-scan profile.
+  string keyword metadata. A new invalid-target oracle caught early callability
+  validation before starred arguments. The corrected full build passes 206
+  portable files, 77 focused/lowering tests and four pinned package workflows.
+  Controlled reversed-round measurements on the exact prior Node 26.7.0 binary
+  improve the 100-field owned keyword callback by 3.09–3.16x and remove its
+  field-count scaling. Ordinary calls/construction show no consistent gain;
+  CPython callback medians are below the policy noise floor, so this is not
+  cliff closure. Evidence is recorded in `da116b7ff`; current-head CI is pending.
+- [PR238](https://github.com/sagemathinc/sagejs/pull/238), `7f6fe11f6`, repairs
+  calls on compound expressions, preserving argument-before-invocation order.
+  Full build, 119 focused/package-infrastructure tests, 206 portable files and
+  strict checks pass. Its pyparsing gate remains unqualified; a paired
+  diagnostic reproduces the same inherited argument error on baseline and
+  candidate. A separate type-slot repair addresses instance-shadowed `__call__`;
+  neither change implies complete callable-protocol support.
 
 The complete package matrix on the main-based PR228 candidate remains **8/11,
 not qualified**: pyparsing, IDNA and mpmath are still failures on that branch.
