@@ -1,0 +1,13 @@
+Published 2 production kernel modules at ../../../../tmp/sagejs-multipack-sea-7VjCrk/published in 2 native packs (0.27 MiB total)
+{"seaFixtures":[{"scenario":"valid","result":{"sea":true,"exactPackExtracted":false,"sum":1,"node":"v26.8.1","platform":"linux","arch":"x64"},"executableBytes":157220036,"executableSha256":"0087f9b21a2f0e9e71739cc77b5db7e8112b50373420edc854aede6bc2baf75f"},{"scenario":"invalid","result":{"sea":true,"invalidManifestRejected":true},"executableBytes":157220036,"executableSha256":"11f53826aed109c33be68f5fb26fde89ac02b14f2bdbec7b302f1d3d63c92ba3"}]}
+{"packs":2,"numericalPublicAutoloadWithoutExactPack":true,"seaResourceExtractionWithoutExactPack":true,"corruptManifestsRejected":6,"exactBits":202}
+
+✔ relocated executable SEA isolates numerical native packs and rejects corruption (13794.11307ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13864.275432

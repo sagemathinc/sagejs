@@ -82,6 +82,11 @@ coordinated current-layout reader/version update and regression fixtures must
 preserve historical evidence. The owning lane was contacted in Discussion104;
 these files and historical receipts have deliberately not been edited here.
 
+The real executable pack fixture now passes on all four persistent platforms;
+see the [scoped receipts and verifier](../bench/numerics/performance/results/n2-multipack-sea-de1262a00/README.md).
+These reuse explicitly identified frontend/dependency inputs and remain distinct
+from full Sage.js npm/SEA qualification.
+
 After that integration: rebuild the complete catalog, run the full production
 and corruption suites, verify real npm/SEA installs on all four supported
 platforms, measure startup/payload/RSS, and integrate prepared-statistics

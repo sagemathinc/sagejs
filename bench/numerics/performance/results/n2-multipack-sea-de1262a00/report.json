@@ -1,0 +1,179 @@
+{
+  "schema": "sagejs.numerical-multipack-sea-fixtures/v1",
+  "sourceCommit": "de1262a00bbd6b0546c59ec69b8a4cdc5dc0724e",
+  "scope": "native publication, public native autoload, controlled SEA resource extraction, and real relocated executable native-pack fixtures; not full Sage.js product qualification",
+  "sourceInputs": {
+    "tools/resources.ts": "a69ce9399a069630d7619dc78d5de1fe1f7b8f59775c86859ae60b29b301f1a3",
+    "tools/runtime-bootstrap.ts": "841742bfd45dc6e51360be40a45340e9523c0477ec67af64f7d2f4e7a8785d95",
+    "tools/native-pack-layout.js": "5ce90cbc7f73ff475e6aa3520c690fccfae85fe45c4935c1d6a2fc9f4124324f",
+    "tools/native-kernel/production-pack.cjs": "a3f8706c569a2dc34aa523058e70b6f88bf0e2d5ea49bfff80d92f76a7dc0676",
+    "scripts/build-production-native-kernels.cjs": "d89751747c00a9a322bc7b5e29c3102abd9ac929cc5c75601436f007e0f1b569",
+    "scripts/build-sea.cjs": "97f95a055fcc2cf204248bdb6a7fff24a0f51044ffd7fedf481ff5cde7bcac64",
+    "test/numerics/performance/multipack-worker.cjs": "0eb3346c885c17a5fc2b094a6974be159f4430a00f07b2d724c3a97b49d454b5",
+    "test/numerics/performance/multipack-sea-fixture.cjs": "86fa46ab6c68b0b4d51697c2a3e050d17a4bb7ad6e0c351957dd4e0e4e119092",
+    "test/numerics/performance/multipack-sea.cjs": "22f87b18b0de4eec740da4f922e1aea7907a188b603cab06444aad2fa1c90c67",
+    "src/lib/sagejs/numerics/statistics/_packed.py": "ab4e7d798dec5a66ba1d90c394734b8cb83b281ea00b5865dc5d292fc7b24c9d",
+    "test/numerics/performance/prefix-free-pack.py": "b0e2803e85f039bbd33d055c193cb36e099ad9fcfd4ac2a3f3364f5b33bd0df6"
+  },
+  "compiledTools": {
+    "resources.js": "fe76bad6ad21edee4b6e4f8af9e79e448ff72964713e752e855d32627f318f33",
+    "runtime-bootstrap.js": "1e27f3cb3432b4e92e2fefe9205881518d98ddbd64c70687ff0dff1f86792d88",
+    "native-pack-layout.js": "068797da0ccc6b237775760e69b9dcf22e3ea5ca26f6db02e1448dd7e91e6bf2"
+  },
+  "dependencyPolicy": "Previously prepared host dependencies and compiler frontends reused read-only; generic compiled tools staged identically. No claim of a fresh full-source product build.",
+  "publicLatencyClassification": "unmeasured",
+  "platforms": [
+    {
+      "id": "linux-x64",
+      "classification": "fixture-pass",
+      "compilerFrontendSha256": "63607b3ee7c2ba13ed894b35add6a2ab80fc9bebaed952d449d77f9aac6f8126",
+      "log": "linux-x64.log",
+      "logSha256": "871e760985cece83c1575500b1060d2330c6da859600c63f94e83eaf9fbddf81",
+      "fixtures": [
+        {
+          "scenario": "valid",
+          "result": {
+            "sea": true,
+            "exactPackExtracted": false,
+            "sum": 1,
+            "node": "v26.8.1",
+            "platform": "linux",
+            "arch": "x64"
+          },
+          "executableBytes": 157220036,
+          "executableSha256": "0087f9b21a2f0e9e71739cc77b5db7e8112b50373420edc854aede6bc2baf75f"
+        },
+        {
+          "scenario": "invalid",
+          "result": {
+            "sea": true,
+            "invalidManifestRejected": true
+          },
+          "executableBytes": 157220036,
+          "executableSha256": "11f53826aed109c33be68f5fb26fde89ac02b14f2bdbec7b302f1d3d63c92ba3"
+        }
+      ],
+      "routing": {
+        "packs": 2,
+        "numericalPublicAutoloadWithoutExactPack": true,
+        "seaResourceExtractionWithoutExactPack": true,
+        "corruptManifestsRejected": 6,
+        "exactBits": 202
+      }
+    },
+    {
+      "id": "linux-arm64",
+      "classification": "fixture-pass",
+      "compilerFrontendSha256": "6168f6c2438e5846ff7447ad6a19bf89d686ea3f2cb1c34ed3755434f626b014",
+      "log": "linux-arm64.log",
+      "logSha256": "366b30c901b8b84958991074dd6cd7084097416261e184b0e6c0fac0aa57cb5a",
+      "fixtures": [
+        {
+          "scenario": "valid",
+          "result": {
+            "sea": true,
+            "exactPackExtracted": false,
+            "sum": 1,
+            "node": "v26.5.1",
+            "platform": "linux",
+            "arch": "arm64"
+          },
+          "executableBytes": 155012144,
+          "executableSha256": "6496fbe9e88c66a3be1c86d06d1e6af7b37ec9aa0cca772650e2fbed6842ad9b"
+        },
+        {
+          "scenario": "invalid",
+          "result": {
+            "sea": true,
+            "invalidManifestRejected": true
+          },
+          "executableBytes": 155012144,
+          "executableSha256": "1dbffe4a85aca3e2b5fd7ca51f9aed280e773eba4b6a42c0191faa30e2b976ab"
+        }
+      ],
+      "routing": {
+        "packs": 2,
+        "numericalPublicAutoloadWithoutExactPack": true,
+        "seaResourceExtractionWithoutExactPack": true,
+        "corruptManifestsRejected": 6,
+        "exactBits": 202
+      }
+    },
+    {
+      "id": "darwin-arm64",
+      "classification": "fixture-pass",
+      "compilerFrontendSha256": "63607b3ee7c2ba13ed894b35add6a2ab80fc9bebaed952d449d77f9aac6f8126",
+      "log": "darwin-arm64.log",
+      "logSha256": "fbd95b9fb4e7c85fef0e73cbbe98f86a49ba89a24558b2ac5c29362eccbf4bce",
+      "fixtures": [
+        {
+          "scenario": "valid",
+          "result": {
+            "sea": true,
+            "exactPackExtracted": false,
+            "sum": 1,
+            "node": "v26.5.0",
+            "platform": "darwin",
+            "arch": "arm64"
+          },
+          "executableBytes": 150396464,
+          "executableSha256": "e1677660aba2f18764a827f03ef507665b01e9fb1f277569b7f90fe34af24c7f"
+        },
+        {
+          "scenario": "invalid",
+          "result": {
+            "sea": true,
+            "invalidManifestRejected": true
+          },
+          "executableBytes": 150396480,
+          "executableSha256": "7ef325139044063c746b7a118034a5bb0fd68621df62d72026e0fad9f26b9681"
+        }
+      ],
+      "routing": {
+        "packs": 2,
+        "numericalPublicAutoloadWithoutExactPack": true,
+        "seaResourceExtractionWithoutExactPack": true,
+        "corruptManifestsRejected": 6,
+        "exactBits": 202
+      }
+    },
+    {
+      "id": "win32-x64",
+      "classification": "fixture-pass",
+      "compilerFrontendSha256": "037ff956ecdcceda5fca0528b40ed52194bf7737c5dbde19785415b8fc5012c3",
+      "log": "win32-x64.log",
+      "logSha256": "95c224d2a1f716141a05a6d9263dbc1774d1f41199741a95f6989cfa7e4cdcb7",
+      "fixtures": [
+        {
+          "scenario": "valid",
+          "result": {
+            "sea": true,
+            "exactPackExtracted": false,
+            "sum": 1,
+            "node": "v26.5.1",
+            "platform": "win32",
+            "arch": "x64"
+          },
+          "executableBytes": 110100808,
+          "executableSha256": "06b712b5f25831a9e632f01dcae72b2b881210a97365d88035dedafbe7df81e7"
+        },
+        {
+          "scenario": "invalid",
+          "result": {
+            "sea": true,
+            "invalidManifestRejected": true
+          },
+          "executableBytes": 110100296,
+          "executableSha256": "59f80b4525f9c90bab5ebf0c5c4b10e0edb90cf6133a93bf6039e199a096b8e1"
+        }
+      ],
+      "routing": {
+        "packs": 2,
+        "numericalPublicAutoloadWithoutExactPack": true,
+        "seaResourceExtractionWithoutExactPack": true,
+        "corruptManifestsRejected": 6,
+        "exactBits": 202
+      }
+    }
+  ]
+}
