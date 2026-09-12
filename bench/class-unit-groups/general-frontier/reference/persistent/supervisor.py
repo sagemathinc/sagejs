@@ -430,6 +430,7 @@ def validate_answer(engine, response, label, degree=None, bits=200, iterations=1
         False,
         expected_bits=bits,
         expected_iterations=iterations,
+        **({"expected_degree": degree} if engine == "pari" else {}),
     )
     if (
         engine == "hecke"
@@ -438,7 +439,9 @@ def validate_answer(engine, response, label, degree=None, bits=200, iterations=1
     ):
         return "shape-error"
     if engine == "pari" and any(
-        not line.startswith(("FRONTIER_RESULT|", "FRONTIER_COMPACT|"))
+        not line.startswith(
+            ("FRONTIER_RESULT|", "FRONTIER_COMPACT|", "FRONTIER_COMPACT_JSON|")
+        )
         for line in response["stdout"].splitlines()
         if line.strip()
     ):

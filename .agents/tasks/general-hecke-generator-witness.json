@@ -6,7 +6,7 @@
   "lane": "arithmetic-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Emit and validate Hecke v2 compact witnesses for literal exported class-generator coordinate products without reinterpreting retained v1 evidence",
+  "objective": "Emit and validate explicit PARI and Hecke v2 compact witnesses for literal exported class-generator coordinate products without reinterpreting retained native-text or v1 evidence; preserve approximate PARI regulator and final-iteration-only scope",
   "base_commit": "9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
   "claims": [
     "bench/class-unit-groups/general-frontier/reference/hecke/screen.jl",
@@ -15,7 +15,11 @@
     "bench/class-unit-groups/general-frontier/reference/runner/screen-batch.py",
     "bench/class-unit-groups/general-frontier/reference/runner/summarize-persistent.py",
     "bench/class-unit-groups/general-frontier/reference/persistent/supervisor.py",
-    "bench/class-unit-groups/general-frontier/reference/runner/test_hecke_witness_schema.py"
+    "bench/class-unit-groups/general-frontier/reference/runner/test_hecke_witness_schema.py",
+    "bench/class-unit-groups/general-frontier/reference/pari-screen.gp",
+    "bench/class-unit-groups/general-frontier/reference/pari-explicit-output-smoke.gp",
+    "bench/class-unit-groups/general-frontier/reference/pari-explicit-output.md",
+    "bench/class-unit-groups/general-frontier/reference/runner/test_pari_explicit_output.py"
   ],
   "dependencies": [],
   "references": [
@@ -25,7 +29,8 @@
     "strategy": "external-library",
     "fallback": "not-applicable",
     "oracles": [
-      "Pinned Hecke 0.40.0 class-map source and exact small-field principal-ideal equality; distinguish local 0.39.22 smoke"
+      "Pinned Hecke 0.40.0 class-map source and exact small-field principal-ideal equality; distinguish local 0.39.22 smoke",
+      "Installed primary PARI manual and bounded exact small-field serialization, literal ideal equation, reduction multiplier and torsion-coordinate regressions"
     ],
     "exceptions": []
   },
@@ -39,7 +44,8 @@
     "pnpm test:baselib:strict",
     "pnpm test:native",
     "python3 -B -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
-    "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py"
+    "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+    "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_pari_explicit_output.py"
   ],
   "runs": [
     {
@@ -141,17 +147,69 @@
       "commit": "4fd6d78907220d392e6564cc358fc62d425599ae",
       "workspace_fingerprint": "e7c192882bda3e1392efe9d29069d04f42df70d6472734a3c3e51827a6e64d1f",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.16,
+      "started_at": "2026-09-12T08:03:25.438Z",
+      "commit": "a53e1d1fa4b9f3323def269806f4f263f924af38",
+      "workspace_fingerprint": "dcbc518704746218e9ccc8c78c2898d4d383187a65f6c7d2d2c3ccafccb160fb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.718,
+      "started_at": "2026-09-12T08:03:26.255Z",
+      "commit": "a53e1d1fa4b9f3323def269806f4f263f924af38",
+      "workspace_fingerprint": "dcbc518704746218e9ccc8c78c2898d4d383187a65f6c7d2d2c3ccafccb160fb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_pari_explicit_output.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.114,
+      "started_at": "2026-09-12T08:03:29.640Z",
+      "commit": "a53e1d1fa4b9f3323def269806f4f263f924af38",
+      "workspace_fingerprint": "dcbc518704746218e9ccc8c78c2898d4d383187a65f6c7d2d2c3ccafccb160fb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base a53e1d1fa4b9f3323def269806f4f263f924af38",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.263,
+      "started_at": "2026-09-12T08:03:30.404Z",
+      "commit": "a53e1d1fa4b9f3323def269806f4f263f924af38",
+      "workspace_fingerprint": "dcbc518704746218e9ccc8c78c2898d4d383187a65f6c7d2d2c3ccafccb160fb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.542,
+      "started_at": "2026-09-12T08:03:50.780Z",
+      "commit": "a53e1d1fa4b9f3323def269806f4f263f924af38",
+      "workspace_fingerprint": "dcbc518704746218e9ccc8c78c2898d4d383187a65f6c7d2d2c3ccafccb160fb",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Hecke v2 emits a compact witness for the literal exported class-generator product using one factored principality call, preserves the reduced map image as diagnostic data, and keeps retained v1 representative-witness semantics separate through validation and normalization. Exact regressions pass 44 assertions on both local 0.39.22 and retained pinned 0.40.0 source. Fresh post-commit receipts pass 34 runner tests, 19 persistent tests, strict Python (389 modules), the pinned 0.40.0 exact regression, and local 0.39.22 transport smoke at 100/200 bits. No resource, sampling, regulator or PARI changes.",
+    "summary": "Hecke v2's completed literal-generator witness changes remain unchanged, including prior 44-assertion exact checks on local 0.39.22 and retained pinned 0.40.0. The PARI extension emits fixed-schema exact JSON with rational power-basis factors, ideal basis columns, native class order, torsion-first units, and retained reduction multipliers; strict versioned validation and normalization preserve legacy discovery meaning. PARI regulator remains approximate and only the final batch iteration is retained. Fresh offline receipts pass 42 runner tests (eight PARI test groups), 19 persistent tests, and strict Python (389 modules). Local PARI 2.17.1 passed exact rational/basis/foreign-POLMOD guards and emitted two strictly validated x^2+4 frames at 100/200 bits, but the full five-field and decoded mathematical replay remains PENDING after a test-only obsolete nfdiv call; it is corrected to nfeltdiv without an unapproved rerun. This is a draft transport implementation, not completed M0 qualification.",
     "risks": [
-      "This is structural screening, conditional on GRH, not independent replay or qualified benchmark evidence; historical v1 timings do not measure the strengthened v2 work.",
+      "This is structural screening, conditional on GRH, not independent replay or qualified benchmark evidence; historical native-text/v1 timings do not measure the strengthened v2 work. PARI stores only the final iteration and its regulator is not an enclosure.",
+      "PARI exact five-field and decoded JSON replay remains pending. Two initially authorized GP invocations stopped at startup/fixture syntax, and one explicitly authorized additional <=180-second invocation reached the basis guards and two rank-zero output frames before a test-only obsolete function name. All three failures are retained under rootlab build/general-frontier/pari-explicit-output-implementation-v1; their aggregate process elapsed time was 0.22747 seconds. The corrected nfeltdiv fixture has not been rerun; no acceptance or resource limit was relaxed.",
       "Local validation uses Julia 1.12.7, Hecke 0.39.22/Nemo 0.56.1 and retained Hecke 0.40.0 source revision 66af28e52682620edb302931fce3f9ac87fc4eb7 with the deployed dependency versions; it does not attest deployed-host caches or non-Linux platforms.",
       "One existing persistent duplicate-response test failed intermittently before passing unchanged on rerun; the failed receipt is retained and no transport race fix is included.",
       "Required native and broader build-dependent gates remain unmet in this unbuilt narrow worktree. Fresh exact-base test:changed passed merge checks then failed on missing dist/vendor/tree-sitter-sage.wasm; fresh architecture:check failed on the same missing asset. Architecture:check initially lacked dist/tools/cli. The accidental origin/main changed-check build was stopped after TypeScript compilation. Failed receipts are retained and the contract remains active, not review."
     ],
     "next_steps": [
+      "Review the corrected PARI exact smoke fixture before authorizing any further diagnostic; require all five fields, reduction-multiplier mutations, mixed torsion coordinates, and decoded JSON ideal/unit replay before accepting the full explicit mathematical transport.",
       "Integration should rerun the build-dependent unit/native/architecture gates and investigate the existing duplicate-response race separately.",
       "Repin deployed worker source before any authorized controlled sampling; disclose v2's strengthened witness boundary and unchanged asymmetric regulator guarantees.",
       "Broader matched class/unit-map probe coverage, 100/200-bit regulator qualification and repeated timing samples remain separate planned work."

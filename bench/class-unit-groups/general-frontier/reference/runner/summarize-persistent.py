@@ -97,6 +97,27 @@ def normalize(receipt):
             "guarantee": "working-precision-approximation",
             "text": regulator,
         }
+        row["worker_schema"] = "legacy-pari-native-text"
+        row["exact_compact_output"] = False
+        if any(
+            x.startswith("FRONTIER_COMPACT_JSON|")
+            for x in receipt["stdout"].splitlines()
+        ):
+            result = persistent.shared.parse_pari_compact(
+                receipt["stdout"], request_id, bits, iterations, len(coefficients) - 1
+            )
+            for key in (
+                "witness_semantics",
+                "class_generator_order",
+                "unit_generator_order",
+                "retained_iteration",
+                "batch_outputs_complete",
+            ):
+                row[key] = result[key]
+            row["worker_schema"] = result["schema"]
+            row["exact_compact_output"] = True
+            row["presentation_class_invariants"] = result["compact"]["class_invariants"]
+            row["regulator"] = result["compact"]["regulator"]
     else:
         response = json.loads(receipt["stdout"])
         result = response["result"]

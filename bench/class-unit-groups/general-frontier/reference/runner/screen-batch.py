@@ -21,9 +21,201 @@ import subprocess
 import tempfile
 import time
 from datetime import datetime, timezone
+from fractions import Fraction
 
 
 LIMIT = 120 * 3600
+PARI_SCHEMA = "sagejs-pari-frontier-screen-v2"
+PARI_SEMANTICS = "ideal-equals-principal-witness-times-literal-class-generator-product"
+
+
+def parse_pari_compact(output, label, bits=200, iterations=1, degree=None, seed=1):
+    """Strict v2 transport/shape checks, not mathematical certificate replay."""
+
+    def require(condition):
+        if not condition:
+            raise ValueError("invalid explicit PARI output")
+
+    def keys(value, expected):
+        require(isinstance(value, dict) and set(value) == set(expected.split()))
+
+    def distinct(pairs):
+        result = {}
+        for key, value in pairs:
+            require(key not in result)
+            result[key] = value
+        return result
+
+    def nonfinite(value):
+        raise ValueError("nonfinite JSON constant")
+
+    def integer(value):
+        require(isinstance(value, str) and re.fullmatch(r"0|-?[1-9][0-9]*", value))
+        return int(value)
+
+    def bounded(value, low, high):
+        require(type(value) is int and low <= value <= high)
+
+    def sequence(value, length):
+        require(isinstance(value, list) and len(value) == length)
+
+    require(len(output.encode()) <= 32 * 1024 * 1024)
+    lines = [line for line in output.splitlines() if line.strip()]
+    require(len(lines) == 2 and lines[0].startswith("FRONTIER_RESULT|"))
+    require(lines[1].startswith("FRONTIER_COMPACT_JSON|" + label + "|"))
+    summary = lines[0].split("|")
+    require(len(summary) == 11)
+    require(summary[1:4] == [label, str(bits), str(iterations)])
+    result = json.loads(
+        lines[1].split("|", 2)[2], object_pairs_hook=distinct, parse_constant=nonfinite
+    )
+    keys(
+        result,
+        "schema id bits iterations seed proof_policy independent_replay witness_semantics class_generator_order unit_generator_order element_basis ideal_basis_layout pari_version retained_iteration batch_outputs_complete compact",
+    )
+    require(result["schema"] == PARI_SCHEMA and result["id"] == label)
+    bounded(bits, 100, 200)
+    require(bits in (100, 200))
+    bounded(iterations, 1, 10000)
+    require(type(seed) is int and seed > 0)
+    for key, expected in (
+        ("bits", bits),
+        ("iterations", iterations),
+        ("retained_iteration", iterations),
+    ):
+        require(type(result[key]) is int and result[key] == expected)
+    require(integer(result["seed"]) == seed)
+    require(
+        result["proof_policy"] == "conditional-grh"
+        and result["independent_replay"] is False
+    )
+    require(result["witness_semantics"] == PARI_SEMANTICS)
+    require(result["class_generator_order"] == "pari-bnf.gen")
+    require(result["unit_generator_order"] == "torsion-first-then-bnfunits-free-order")
+    require(result["element_basis"] == "ascending-powers-of-input-generator")
+    require(result["ideal_basis_layout"] == "outer-array-of-basis-elements")
+    require(result["batch_outputs_complete"] is (iterations == 1))
+    sequence(result["pari_version"], 3)
+    for value in result["pari_version"]:
+        bounded(value, 0, 1000000)
+    compact = result["compact"]
+    keys(
+        compact,
+        "class_number class_invariants discriminant signature integral_basis class_generators class_coordinates class_decompositions class_power_witnesses unit_invariants torsion_order units unit_coordinates probes decompositions regulator",
+    )
+    signature = compact["signature"]
+    sequence(signature, 2)
+    for value in signature:
+        bounded(value, 0, 10)
+    n = signature[0] + 2 * signature[1]
+    require(2 <= n <= 10 and (degree is None or (type(degree) is int and degree == n)))
+    require(isinstance(compact["class_invariants"], list))
+    orders = [integer(value) for value in compact["class_invariants"]]
+    require(all(value > 1 for value in orders))
+    require(all(a % b == 0 for a, b in zip(orders, orders[1:])))
+    require(integer(compact["class_number"]) == math.prod(orders))
+    require(integer(compact["discriminant"]) != 0)
+    torsion = integer(compact["torsion_order"])
+    require(torsion > 0)
+    require(summary[5] == compact["class_number"] and json.loads(summary[6]) == orders)
+    require(
+        summary[7] == compact["discriminant"] and json.loads(summary[8]) == signature
+    )
+    require(summary[9] == compact["torsion_order"])
+    count, unit_count = len(orders), sum(signature)
+
+    def element(value):
+        sequence(value, n)
+        for coefficient in value:
+            require(
+                isinstance(coefficient, str)
+                and re.fullmatch(r"(?:0|-?[1-9][0-9]*)(?:/[1-9][0-9]*)?", coefficient)
+            )
+            require(str(Fraction(coefficient)) == coefficient)
+
+    def ideal(value):
+        sequence(value, n)
+        for basis_element in value:
+            element(basis_element)
+
+    def factored(value):
+        require(isinstance(value, list))
+        for factor in value:
+            keys(factor, "factor exponent")
+            element(factor["factor"])
+            require(any(c != "0" for c in factor["factor"]))
+            require(integer(factor["exponent"]) != 0)
+
+    def coordinates(value):
+        sequence(value, count)
+        require(all(0 <= integer(c) < d for c, d in zip(value, orders)))
+
+    def decomposition(value):
+        keys(value, "coordinates generator_product_witness")
+        coordinates(value["coordinates"])
+        factored(value["generator_product_witness"])
+
+    ideal(compact["integral_basis"])
+    for name in (
+        "class_generators",
+        "class_coordinates",
+        "class_decompositions",
+        "class_power_witnesses",
+    ):
+        sequence(compact[name], count)
+    for j in range(count):
+        ideal(compact["class_generators"][j])
+        coordinates(compact["class_coordinates"][j])
+        require(
+            compact["class_coordinates"][j] == [str(int(k == j)) for k in range(count)]
+        )
+        decomposition(compact["class_decompositions"][j])
+        require(
+            compact["class_decompositions"][j]["coordinates"]
+            == compact["class_coordinates"][j]
+        )
+        power = compact["class_power_witnesses"][j]
+        keys(power, "exponent witness")
+        require(integer(power["exponent"]) == orders[j])
+        factored(power["witness"])
+    sequence(compact["unit_invariants"], unit_count)
+    require(compact["unit_invariants"] == [str(torsion)] + ["0"] * (unit_count - 1))
+    sequence(compact["units"], unit_count)
+    sequence(compact["unit_coordinates"], unit_count)
+    for j in range(unit_count):
+        factored(compact["units"][j])
+        sequence(compact["unit_coordinates"][j], unit_count)
+        require(
+            compact["unit_coordinates"][j]
+            == [str(int(k == j)) for k in range(unit_count)]
+        )
+    sequence(compact["probes"], 3)
+    sequence(compact["decompositions"], 3)
+    for probe, answer in zip(compact["probes"], compact["decompositions"]):
+        ideal(probe)
+        decomposition(answer)
+    regulator = compact["regulator"]
+    keys(
+        regulator,
+        "guarantee requested_working_bits initial_working_bits value_precision_bits text fundamental_units_policy",
+    )
+    require(regulator["guarantee"] == "working-precision-approximation")
+    require(
+        type(regulator["requested_working_bits"]) is int
+        and regulator["requested_working_bits"] == bits
+    )
+    bounded(regulator["initial_working_bits"], bits, 1000000)
+    if regulator["value_precision_bits"] is not None:
+        bounded(regulator["value_precision_bits"], 1, 1000000)
+    require(regulator["fundamental_units_policy"] == "conditional-grh")
+    text = regulator["text"]
+    require(
+        isinstance(text, str)
+        and re.fullmatch(r"[0-9]+(?:\.[0-9]*)?(?:[Ee][+-]?[0-9]+)?", text)
+    )
+    require(any(c in "123456789" for c in text.split("E")[0].split("e")[0]))
+    require(summary[10] == text)
+    return result
 
 
 def save(path, value):
@@ -83,6 +275,8 @@ def validate_terminal(
     *,
     expected_bits=200,
     expected_iterations=1,
+    expected_degree=None,
+    expected_seed=1,
 ):
     if output_capped:
         return "output-limit"
@@ -92,7 +286,9 @@ def validate_terminal(
         line for line in output.splitlines() if line.startswith("FRONTIER_RESULT|")
     ]
     compact = [
-        line for line in output.splitlines() if line.startswith("FRONTIER_COMPACT|")
+        line
+        for line in output.splitlines()
+        if line.startswith(("FRONTIER_COMPACT|", "FRONTIER_COMPACT_JSON|"))
     ]
     fields = lines[0].split("|") if len(lines) == 1 else []
     valid_summary = (
@@ -128,10 +324,31 @@ def validate_terminal(
         or not lines[0].startswith(
             f"FRONTIER_RESULT|{label}|{expected_bits}|{expected_iterations}|"
         )
-        or not compact[0].startswith("FRONTIER_COMPACT|" + label + "|")
+        or not compact[0].startswith(
+            ("FRONTIER_COMPACT|" + label + "|", "FRONTIER_COMPACT_JSON|" + label + "|")
+        )
         or not compact[0].split("|", 2)[-1].strip()
     ):
         return "error"
+    if compact[0].startswith("FRONTIER_COMPACT_JSON|"):
+        try:
+            parse_pari_compact(
+                output,
+                label,
+                expected_bits,
+                expected_iterations,
+                expected_degree,
+                expected_seed,
+            )
+        except (
+            KeyError,
+            TypeError,
+            ValueError,
+            AttributeError,
+            RecursionError,
+            OverflowError,
+        ):
+            return "error"
     return "ok"
 
 
@@ -396,6 +613,11 @@ def main():
                 child.returncode,
                 status == "timeout",
                 output_capped,
+                **(
+                    {"expected_degree": len(coefficients) - 1}
+                    if args.engine == "pari"
+                    else {}
+                ),
             )
             receipt = {
                 "schema": "sagejs.general-frontier-" + args.engine + "-cost-screen.v1",
