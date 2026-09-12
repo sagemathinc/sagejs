@@ -462,9 +462,7 @@ class ModularAbelianVariety(sage.Parent):
         ambient_symbols = self.modular_symbols().ambient_module()
         ambient_operator = ambient_symbols.hecke_matrix(index)
         images = lattice_basis * ambient_operator
-        coordinates = lattice_basis.solve_left(images)
-        if coordinates * lattice_basis != images:
-            raise ArithmeticError("the homology lattice is not Hecke stable")
+        coordinates = self.lattice()._rational_coordinates(images)
         return _integral_matrix(coordinates, "integral homology Hecke matrix")
 
     def hecke_matrix(self, index: Any) -> Any:
@@ -516,9 +514,9 @@ class ModularAbelianVariety(sage.Parent):
                 matrix = _identity_matrix(sage.ZZ, 2 * self.dimension())
             else:
                 matrix = _integral_matrix(
-                    ambient.lattice()
-                    .basis_matrix()
-                    .solve_left(self.lattice().basis_matrix()),
+                    ambient.lattice()._rational_coordinates(
+                        self.lattice().basis_matrix()
+                    ),
                     "subvariety inclusion",
                 )
             self._inclusion_cache = _create_map(

@@ -145,7 +145,7 @@ def degeneracy_map(variety: Any, level: Any, index: Any = 1) -> Any:
             return answer
     images = variety.lattice().basis_matrix() * ambient_matrix
     matrix = _integral_matrix(
-        target.lattice().basis_matrix().solve_left(images), "geometric degeneracy map"
+        target.lattice()._rational_coordinates(images), "geometric degeneracy map"
     )
     answer = _create_map(variety, target, matrix, ("degeneracy", index))
     if source_level < target_level:

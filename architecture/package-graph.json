@@ -789,7 +789,7 @@
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 350000,
+      "max_source_bytes": 351000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic", "linear-algebra"],
       "files": [
         "src/baselib/dirichlet.py",
@@ -894,7 +894,7 @@
       "id": "modular-abelian-varieties",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 85000,
+      "max_source_bytes": 86500,
       "depends_on": [
         "core-runtime",
         "python-stdlib",
