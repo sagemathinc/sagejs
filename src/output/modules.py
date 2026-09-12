@@ -15,6 +15,7 @@ from ast_types import (
     AST_Call,
     AST_Class,
     AST_Import,
+    AST_Imports,
     AST_Lambda,
     AST_Seq,
     AST_String,
@@ -26,7 +27,7 @@ from ast_types import (
 )
 
 
-def control_flow_import_names(module):
+def control_flow_import_names(module, output=None):
     """Return module names that require runtime namespace resolution."""
     names = {}
     star_candidates = {}
@@ -62,6 +63,41 @@ def control_flow_import_names(module):
             return True
 
     module.walk(TreeWalker(detect_star_import))
+
+    if output:
+        output.private_lexical_import_names = {}
+        if (
+            output.options.private_compiler_import_reads
+            and not output.options.reuse_main_module
+            and not output.options.execution_namespace_module_id
+            and not output.options.module_cache_dir
+            and module.python_lexical_hygiene is False
+            and not has_module_star_import
+        ):
+            # Only immediate imports, not imports beneath control flow or a
+            # nested scope. AST_Imports is a transparent parser container.
+            for statement in module.body:
+                imports = (
+                    statement.imports
+                    if is_node_type(statement, AST_Imports)
+                    else [statement]
+                    if is_node_type(statement, AST_Import)
+                    else []
+                )
+                for imported in imports:
+                    local_names = (
+                        [
+                            arg.alias.name if arg.alias else arg.name
+                            for arg in imported.argnames
+                        ]
+                        if imported.argnames
+                        else [imported.alias.name]
+                        if imported.alias
+                        else [imported.key.split(".")[0]]
+                    )
+                    for name in local_names:
+                        if name in (module.python_scope_bindings or []):
+                            output.private_lexical_import_names[name] = True
 
     def collect(node, descend):
         if node is module:
@@ -862,7 +898,7 @@ def print_top_level(self, output):
     set_module_name(effective_module_id)
     is_main = self.module_id is "__main__"
     numeric_literal_pool = prepare_numeric_literal_pool(self, output)
-    output.module_control_flow_names = control_flow_import_names(self)
+    output.module_control_flow_names = control_flow_import_names(self, output)
 
     def write_docstrings():
         if (
@@ -905,7 +941,9 @@ def print_top_level(self, output):
 
                 prologue(self, output)
                 write_imports(self, output)
-                output.module_control_flow_names = control_flow_import_names(self)
+                output.module_control_flow_names = control_flow_import_names(
+                    self, output
+                )
                 set_module_name(effective_module_id)
                 output.newline()
                 output.indent()
@@ -944,7 +982,7 @@ def print_top_level(self, output):
             write_strict_directive()
             prologue(self, output)
             write_imports(self, output)
-            output.module_control_flow_names = control_flow_import_names(self)
+            output.module_control_flow_names = control_flow_import_names(self, output)
             set_module_name(effective_module_id)
             write_main_name(output, self.filename)
         else:
@@ -961,6 +999,9 @@ def print_top_level(self, output):
 
 def print_module(self, output):
     set_module_name(self.module_id)
+    # A cached module has no live AST to classify. Never retain the previous
+    # module's private import authority while emitting cached output.
+    output.private_lexical_import_names = {}
     # Cached modules contain rendered output and lightweight symbol metadata,
     # not a live AST. Their rendered variants already include the numeric
     # literal pool produced on the cache-writing pass.
@@ -968,7 +1009,7 @@ def print_module(self, output):
         [] if self.is_cached else prepare_numeric_literal_pool(self, output)
     )
     output.module_control_flow_names = (
-        {} if self.is_cached else control_flow_import_names(self)
+        {} if self.is_cached else control_flow_import_names(self, output)
     )
 
     def output_module(output):

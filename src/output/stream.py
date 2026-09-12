@@ -101,6 +101,8 @@ output_stream_defaults = {
     # and opt out of rich ordering without giving up Python container truth.
     "python_ordering": True,
     "python_attributes": False,
+    # Self-hosted JavaScript-dialect compiler only; never ordinary Python.
+    "private_compiler_import_reads": False,
     "pool_numeric_literals": False,
     "numeric_literal_pool_prefix": "",
     "baselib_module_id": "",
