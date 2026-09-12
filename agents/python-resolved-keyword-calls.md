@@ -82,3 +82,34 @@ Corrected, rebuilt standalone artifact SHA-256:
 `28ca53d43489e2bf40635ed3d94a89a8ba2a6e342db3062c156766f85ef17145`.
 This candidate does not include the separate internal-length `max` optimization
 in PR228, so its eventual comparison must not mix those effects.
+
+## Controlled corrected-candidate comparison
+
+On the idle, explicitly reserved `bench-1`, two reversed-order rounds compared
+base `c4c126d09`, candidate `c5c6de504` and CPython 3.14.4. Each launch performs
+three warmups and seven samples, checking results. Compilation/startup are
+outside the warm workload timing. All six launches and unchanged input hashes
+verified. The exact Node 26.7.0 executable matches the prior SHA256
+`ad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc`;
+the host's changed login default (26.5.1) was not used. Compilation used 26.8.1.
+
+Medians in milliseconds per 10,000 instance-owned keyword callback calls:
+
+| Other instance fields | Baseline rounds | Candidate rounds | Speedup rounds |
+| --- | --- | --- | --- |
+| 0 | 52.80 / 53.64 | 47.31 / 46.97 | 1.12 / 1.14 |
+| 10 | 58.77 / 60.13 | 45.77 / 45.95 | 1.28 / 1.31 |
+| 100 | 144.60 / 147.01 | 46.75 / 46.59 | 3.09 / 3.16 |
+
+This removes the observed namespace-size scaling on this selected path.
+CPython callback medians are below the policy's 1 ms floor; do not qualify their
+ratios or declare a performance cliff closed. Ordinary immediate/saved calls,
+construction and free/bound keyword controls have no consistent material gain.
+The bound keyword control remains about 96–109 times CPython in these rounds.
+No package-wide, cold-import, or combined-PR228 speedup is claimed.
+
+Raw checked report is retained locally at
+`/tmp/python-call-profile.vDw3Fr/paired-resolved-keywords-corrected.json` and on
+the host in `/home/user/python-call-baseline.vegju2/` with inputs and driver.
+Report SHA256: `5fea26f28fadcce7e957f254219cc27220532d0ce3c0a598a8dfa18e85bce69e`.
+The host was explicitly released after collection and copying the report.
