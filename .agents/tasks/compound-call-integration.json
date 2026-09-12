@@ -1,0 +1,61 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "compound-call-integration",
+  "title": "Compound Call Integration",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Qualify compound callable expressions with canonical type-slot resolution",
+  "base_commit": "7f6fe11f69695b0ccc79da25e6270d8b8179e2e5",
+  "claims": [
+    "src/baselib/builtins.py",
+    "test/fixtures/callable-type-slots.py",
+    "test/python-callable-type-slots.cjs",
+    "test/compound-call-type-slot-integration.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/sagemathinc/sagejs/pull/238",
+    "https://github.com/sagemathinc/sagejs/pull/242",
+    "Imported source/test files exactly from 50f971c8a3561038b5ad5ddddb9c6b94c1521904; upstream report remains on that commit."
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "node --test test/python-compound-callables.cjs test/python-callable-type-slots.cjs test/compound-call-type-slot-integration.cjs test/callable-slot-mutation.cjs test/python-prepared-method-call.cjs test/python-metaclass-dispatch.cjs",
+    "node scripts/run-test-tier.cjs portable",
+    "pnpm test:baselib:strict",
+    "pnpm merge:check",
+    "node scripts/generate-docs.cjs --check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Isolated combined candidate based on PR238 with exact PR242 runtime and regression imports. Contract deliberately remains active and frozen before the full build: parallel:run and review-status edits change artifact inputs. Direct qualification receipts are retained externally and reported to the integration owner.",
+    "risks": [
+      "No third-party package closure: inherited pyparsing 3.3.2 TypeError and original timeout remain documented on PR238.",
+      "Existing name-call and nonrepeatable keyword-call argument-order gaps remain outside scope.",
+      "Local Linux qualification is not four-platform or browser qualification.",
+      "Lane-mandated full integration remains declared but is not claimed by bounded focused/portable qualification."
+    ],
+    "next_steps": [
+      "Parent reviews exact source and artifact identities plus external qualification logs before advancing PR238.",
+      "Do not merge or change the original PR branches from this integration worktree."
+    ]
+  }
+}
