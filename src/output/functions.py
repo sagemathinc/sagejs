@@ -443,8 +443,8 @@ def has_annotations(self):
     return False
 
 
-def print_annotation_text(self, output, strip_first):
-    output.print("{")
+def print_annotation_text(self, output, strip_first, flat_pairs=False):
+    output.print("[" if flat_pairs else "{")
     wrote = False
 
     def write_argument(arg):
@@ -453,7 +453,7 @@ def print_annotation_text(self, output, strip_first):
             if wrote:
                 output.comma()
             output.print(JSON.stringify(arg.name))
-            output.print(":")
+            output.print("," if flat_pairs else ":")
             output.space()
             output.print(JSON.stringify(arg.annotation_text or arg.name))
             wrote = True
@@ -470,10 +470,10 @@ def print_annotation_text(self, output, strip_first):
     if self.return_annotation:
         if wrote:
             output.comma()
-        output.print('"return":')
+        output.print('"return",' if flat_pairs else '"return":')
         output.space()
         output.print(JSON.stringify(self.return_annotation_text or "Any"))
-    output.print("}")
+    output.print("]" if flat_pairs else "}")
 
 
 def function_annotation(self, output, strip_first, name):
@@ -531,13 +531,18 @@ def function_annotation(self, output, strip_first, name):
 
         def annotations():
             if not compiling_baselib:
-                output.print("ρσ_dict(")
+                output.print("ρσ_dict_literal(")
             if self.annotations is "future":
-                print_annotation_text(self, output, strip_first)
+                print_annotation_text(
+                    self,
+                    output,
+                    strip_first and compiling_baselib,
+                    not compiling_baselib,
+                )
                 if not compiling_baselib:
                     output.print(")")
                 return
-            output.print("{")
+            output.print("{" if compiling_baselib else "[")
             wrote = False
 
             def write_evaluated(arg):
@@ -546,12 +551,12 @@ def function_annotation(self, output, strip_first, name):
                     if wrote:
                         output.comma()
                     output.print(JSON.stringify(arg.name))
-                    output.print(":"), output.space()
+                    output.print(":" if compiling_baselib else ","), output.space()
                     arg.annotation.print(output)
                     wrote = True
 
             for index, arg in enumerate(self.argnames):
-                if not (strip_first and index is 0):
+                if not (compiling_baselib and strip_first and index is 0):
                     write_evaluated(arg)
             if self.argnames.starargs is not undefined:
                 write_evaluated(self.argnames.starargs)
@@ -562,9 +567,12 @@ def function_annotation(self, output, strip_first, name):
             if self.return_annotation:
                 if wrote:
                     output.comma()
-                output.print("return:"), output.space()
+                (
+                    output.print("return:" if compiling_baselib else '"return",'),
+                    output.space(),
+                )
                 self.return_annotation.print(output)
-            output.print("}")
+            output.print("}" if compiling_baselib else "]")
             if not compiling_baselib:
                 output.print(")")
 
@@ -574,7 +582,7 @@ def function_annotation(self, output, strip_first, name):
         # even when it is empty.  functools.wraps and many package-level
         # decorators copy it unconditionally.
         props.__annotations__ = lambda: output.print(
-            "{}" if compiling_baselib else "ρσ_dict()"
+            "{}" if compiling_baselib else "ρσ_dict_literal([])"
         )
 
     # Create __defaults__
