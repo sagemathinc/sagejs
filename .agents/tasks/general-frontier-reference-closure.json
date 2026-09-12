@@ -88,14 +88,55 @@
       "commit": "b321473c3dba7c795a52bc55dec626c70d4428bc",
       "workspace_fingerprint": "99bbfd8394193263c3d513cd32ab474e45635f7f1d0420857ae1da8a27b87108",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.2,
+      "started_at": "2026-09-12T20:38:08.526Z",
+      "commit": "4577b7ddf442f0b19dfa1ebe2936d434bc4d8fd8",
+      "workspace_fingerprint": "43546836b80495fba52a0cba9218c2db6f63bb39d1f2f255f759e5a94a778339",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/general-frontier/reference/evidence/m0-20260912/checkpoint.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.049,
+      "started_at": "2026-09-12T20:39:05.369Z",
+      "commit": "4577b7ddf442f0b19dfa1ebe2936d434bc4d8fd8",
+      "workspace_fingerprint": "43546836b80495fba52a0cba9218c2db6f63bb39d1f2f255f759e5a94a778339",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base b321473c3dba7c795a52bc55dec626c70d4428bc",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 132.638,
+      "started_at": "2026-09-12T20:39:06.051Z",
+      "commit": "4577b7ddf442f0b19dfa1ebe2936d434bc4d8fd8",
+      "workspace_fingerprint": "43546836b80495fba52a0cba9218c2db6f63bb39d1f2f255f759e5a94a778339",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 314.732,
+      "started_at": "2026-09-12T20:41:19.329Z",
+      "commit": "4577b7ddf442f0b19dfa1ebe2936d434bc4d8fd8",
+      "workspace_fingerprint": "43546836b80495fba52a0cba9218c2db6f63bb39d1f2f255f759e5a94a778339",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Records the closed168-sample rank-two reference wave, all360historical reference pairs,90unconditional reference pairs, and completed38-presentation order-only diagnostics without claiming M0 completion. Independent review reproduced the archived checkpoint and all11negative claim/budget mutations. Final strict,native,and exact-base changed gates pass at workspace fingerprint99bbfd8394193263c3d513cd32ab474e45635f7f1d0420857ae1da8a27b87108; changed gate includes242unitfiles and documentation checks.",
+    "summary": "Records the closed168-sample rank-two reference wave, all360historical reference pairs,90unconditional reference pairs, and completed38-presentation order-only diagnostics without claiming M0 completion. Independent review reproduced the archived checkpoint and all11negative claim/budget mutations. Post-source-commit strict,native,and exact-base changed gates pass at workspace fingerprint43546836b80495fba52a0cba9218c2db6f63bb39d1f2f255f759e5a94a778339; changed gate includes242unitfiles and documentation checks.",
     "risks": [
       "Raw receipts and full reproducers remain in backed-up campaign storage; the compact checkpoint contains custody pins and summary reproduction, not a standalone public archive or independent mathematical completeness proof.",
       "The fourteen-field wave is not the360-field qualification. Approximate PARI regulator and Hecke enclosure guarantees remain different; independent class/unit replay, stress-cost admission and global phase ranking remain open.",
-      "The checkpoint includes a timestamped active-effort estimate, not a final claim that later handoff consumes no effort. All safety limits, frozen populations and package budgets remain unchanged."
+      "The checkpoint includes a timestamped active-effort estimate, not a final claim that later handoff consumes no effort. All safety limits, frozen populations and package budgets remain unchanged.",
+      "Initial pre-commit receipts became stale when previously untracked evidence files were committed. All four gates were rerun on the committed source snapshot; older receipts remain intact."
     ],
     "next_steps": [
       "Merge only through the PR270 prerequisite stack after final-head checks and review; do not call this checkpoint M0 completion.",
