@@ -171,10 +171,12 @@ namespace. A proxy test executes the actual emitted loops to verify field
 order, getter/write interleaving, and null signatures; the CPython fixture also
 checks preservation of a same-spelled user local.
 
-An in-memory diagnostic compiler (not published build artifacts) passed 76
-dynamic-initializer and CST-lowerer tests, including both language modes and
-the CPython oracle. Paired direct emission used identical options and Brotli
-quality 11:
+The direct-emitter, CST-lowerer, and emitted-loop proxy checks used an in-memory
+diagnostic compiler. The pre-build kernel checks in that 76-test run instead
+loaded the existing compiler in separate workers; those passes are not
+candidate execution qualification. The subsequent frozen-build checks below
+did use the actual candidate artifacts. Paired direct emission used identical
+options and Brotli quality 11:
 
 | Program | Previous source | Loop source | Previous Brotli | Loop Brotli |
 | --- | ---: | ---: | ---: | ---: |
@@ -186,13 +188,15 @@ quality 11:
 The empty-class body excluding the fixed harness falls from 8,099 to 6,557
 bytes. These per-program measurements do not qualify aggregate browser size.
 
-A local diagnostic measured nine batches of 1,000 class definitions for each
-shape, with baseline followed by candidate in one process. Median milliseconds
-were empty 41.46 to 34.19, explicit 48.61 to 36.78, and inherited 36.53 to 23.72.
-Ranges overlapped substantially (empty 29.26–46.70 versus 28.63–41.76; explicit
-29.17–60.14 versus 28.98–58.90; inherited 25.73–59.20 versus 22.79–43.07).
-This checks for an obvious loop-allocation regression, not an isolated speedup
-or startup qualification.
+The previously reported kernel class-creation timing comparisons are
+**withdrawn**. Replacing the compiler export in the diagnostic parent process
+did not replace the compiler loaded by kernel workers: both timing groups used
+the existing baseline worker compiler. Their different timings therefore
+provide no candidate comparison, loop-allocation regression check, speedup
+evidence, or startup qualification. Future measurements must verify compiler
+identity inside the process or worker that actually executes the workload.
+The direct-emission/Brotli measurements and emitted-loop proxy checks above
+are unaffected by this diagnostic harness error.
 
 The frozen follow-up passed `pnpm build:check` in 11m 26s, with receipt completed
 at `2026-09-12T06:05:39.607Z`. Its actual artifacts passed all 107 tests in the
