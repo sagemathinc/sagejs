@@ -153,7 +153,10 @@ for values, status, expected in [${fullCorpus}]:
     output = [27.0, -31.0]
     assert finite_sum(values, [0.0] * len(values), output, len(values)) == status
     assert output == [expected, -31.0]
-    assert math.copysign(1.0, output[0]) == math.copysign(1.0, expected)
+    if expected == 0.0:
+        # The dynamic math.copysign wrapper currently ignores negative zero.
+        # Float repr uses the actual sign, independently of that wrapper.
+        assert repr(output[0]) == repr(expected)
 print("dynamic packed-sum witnesses passed")
 `, { language: "python", timeout: 120000 });
     assert.equal(result.error, undefined, JSON.stringify(result.error));

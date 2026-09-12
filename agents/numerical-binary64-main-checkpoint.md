@@ -110,6 +110,13 @@ source-preserving resumes are retained for ARM and Mac. This does not qualify
 public query latency, full release builds, or npm/SEA distribution. All four
 host reservations have been handed back through Discussion #104.
 
+A later test audit found that the inherited dynamic `math.copysign` wrapper
+ignores negative zero. The dynamic corpus now compares float representations
+for zero results, independently of that incorrect wrapper; all 200 cases pass
+again with native execution disabled. The native/JavaScript/Wasm raw-bit
+oracles are unchanged. This strengthens the test, not the summation algorithm,
+and does not claim the separate `math.copysign` defect is repaired.
+
 [Local opportunity measurements](../bench/numerics/performance/results/n2-binary64-main-2026-09-12/README.md)
 bind the clean source commit above. At 20,000 values, reused native summation
 measures 0.117 ms versus 0.115 ms for CPython's compiled `math.fsum`; packing
