@@ -54,6 +54,12 @@ def _identity_matrix(base_ring: Any, dimension: int) -> Any:
 
 def _clear_denominators(source: Any) -> tuple[Any, int]:
     """Return an integer scalar multiple with the same rational row space."""
+    # Most homology reductions already have integral entries. The exact bulk
+    # conversion avoids allocating one Rational per matrix entry in that case.
+    try:
+        return source.change_ring(sage.ZZ), 1
+    except (TypeError, ValueError):
+        pass
     denominator = 1
     for value in source.list():
         denominator = _lcm(denominator, _denominator(value))

@@ -143,6 +143,8 @@ class ModularAbelianVarietyMap:
         self._rank_cache = None
         self._smith_cache = None
         self._kernel_cache = None
+        self._kernel_lattice_cache = None
+        self._saturated_image_lattice_cache = None
         self._image_cache = None
         self._image_lattice_cache = None
 
@@ -161,10 +163,12 @@ class ModularAbelianVarietyMap:
         return self._rank_cache
 
     def kernel_lattice(self) -> Any:
-        basis = self._matrix.transpose().right_kernel_matrix()
-        return IntegralHomologyLattice(
-            basis, "connected kernel in domain homology", True
-        )
+        if self._kernel_lattice_cache is None:
+            basis = self._matrix.transpose().right_kernel_matrix()
+            self._kernel_lattice_cache = IntegralHomologyLattice(
+                basis, "connected kernel in domain homology", True
+            )
+        return self._kernel_lattice_cache
 
     def image_lattice(self) -> Any:
         if self._image_lattice_cache is None:
@@ -175,13 +179,14 @@ class ModularAbelianVarietyMap:
                 "integral image (not automatically saturated)",
                 basis == _integer_row_lattice_basis(saturated),
             )
+            self._saturated_image_lattice_cache = IntegralHomologyLattice(
+                saturated, "saturated image in target homology", True
+            )
         return self._image_lattice_cache
 
     def saturated_image_lattice(self) -> Any:
-        basis = _saturated_integer_intersection(self.image_lattice().basis_matrix())
-        return IntegralHomologyLattice(
-            basis, "saturated image in target homology", True
-        )
+        self.image_lattice()
+        return self._saturated_image_lattice_cache
 
     def _smith_invariants(self) -> Any:
         if self._smith_cache is None:

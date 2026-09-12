@@ -19,6 +19,10 @@ assert double.kernel()[1].dimension() == 0
 assert double.image().dimension() == 1
 assert not double.image_lattice().is_saturated()
 assert double.image_lattice() != double.saturated_image_lattice()
+assert double.image_lattice() is double.image_lattice()
+assert double.saturated_image_lattice() is double.saturated_image_lattice()
+assert double.kernel_lattice() is double.kernel_lattice()
+assert double.saturated_image_lattice().is_saturated()
 assert double([1, 2]) == vector(ZZ, [2, 4])
 assert not double.image_lattice().contains([1, 0])
 assert double.image_lattice().coordinates([2, 4]) == vector(ZZ, [1, 2])
