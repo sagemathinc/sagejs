@@ -16,6 +16,7 @@ const retired = "co" + "wasm";
 const auditPath = `scripts/audit-${retired}-dependency.cjs`;
 const historicalPaths = [
   "agents/python-compiler-runtime-value-and-performance-plan.md",
+  "agents/python-property-mutation-followup.md",
   "docs/general-class-unit-frontier.md",
 ];
 

@@ -14,6 +14,14 @@ build-input list. Their edits must still invalidate validation fingerprints,
 and both Git/archive partition tests cover them; no broad metadata exclusion
 or safety-limit change is introduced.
 
+The refreshed architecture run found one further provenance-only text match:
+`agents/python-property-mutation-followup.md` quotes this campaign's earlier
+dependency-audit failure. This is already present on main and introduces no
+build/runtime import. Its exact reviewed documentation path joins the existing
+historical-reference classification, with the actual file included in the
+provenance regression. New runtime files and unreviewed documentation remain
+rejected. The failed architecture receipt is retained.
+
 ## Architectural ownership
 
 `sagejs.number_fields.unit_coordinates` belongs to the existing lazy

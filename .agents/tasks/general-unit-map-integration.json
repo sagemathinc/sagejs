@@ -156,6 +156,16 @@
       "commit": "fe2918cf20305334678791845e505a9919523ad8",
       "workspace_fingerprint": "8dcc0b5e1252d1320efc337b84b99f02ce985b7c9c0efc850cdb4535c116bc44",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.562,
+      "started_at": "2026-09-12T06:09:31.560Z",
+      "commit": "9d8ae7b87286b0f5be6f3ee9c4742349d82ce666",
+      "workspace_fingerprint": "752ef8159c97f94ab790dff8e9c058f8a160b087a10f0a3a3ab4187cc9a09b8a",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

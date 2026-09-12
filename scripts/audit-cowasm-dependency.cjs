@@ -26,6 +26,7 @@ const allowed = [
   // audit failure. Neither introduces a build/runtime dependency. Keep these
   // exact paths: new code and other documentation remain fail-closed.
   /^agents\/python-compiler-runtime-value-and-performance-plan\.md$/,
+  /^agents\/python-property-mutation-followup\.md$/,
   /^docs\/general-class-unit-frontier\.md$/,
   // Build freshness classifies the retained benchmark runner as validation
   // input; these references do not load the retired toolchain or runtime.
