@@ -704,8 +704,16 @@ class NumericalResult:
             raise TypeError("result problem must be a NumericalProblem")
         if not isinstance(plan, NumericalPlan):
             raise TypeError("result plan must be a NumericalPlan")
-        if plan.problem.digest != problem.digest:
-            raise ValueError("result plan was resolved for a different problem")
+        # A solve normally carries the very same problem through its plan and
+        # result. Identity proves this binding without serializing and hashing
+        # that object twice. Distinct problems still require content equality;
+        # no digest is cached, and the serialized provenance is unchanged.
+        planned_problem = plan.problem
+        if planned_problem is not problem:
+            planned_digest = planned_problem.digest
+            problem_digest = problem.digest
+            if planned_digest != problem_digest:
+                raise ValueError("result plan was resolved for a different problem")
         if not isinstance(validation, NumericalValidation):
             raise TypeError("result validation must be a NumericalValidation")
         if not isinstance(success, bool):
