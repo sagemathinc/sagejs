@@ -4,9 +4,7 @@ from utils import noop
 from js import js_instanceof, js_new  # type: ignore
 from typing import Any, Dict
 
-
-def is_node_type(node, typ):
-    return js_instanceof(node, typ)
+is_node_type = js_instanceof
 
 
 # Basic classes
