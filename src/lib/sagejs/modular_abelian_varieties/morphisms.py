@@ -6,6 +6,7 @@ from copy import copy
 from typing import Any
 
 import sagejs as sage
+from sagejs.linear_algebra.integer_smith import preconditioned_elementary_divisors
 from sagejs.modular_abelian_varieties.lattices import (
     IntegralHomologyLattice,
     _global,
@@ -218,7 +219,9 @@ class ModularAbelianVarietyMap:
             # Only nonunit nonzero factors contribute to the finite group.
             # Zero factors record the free cokernel, not finite torsion.
             self._smith_cache = tuple(
-                abs(d) for d in self._matrix.elementary_divisors() if abs(d) > 1
+                abs(d)
+                for d in preconditioned_elementary_divisors(self._matrix)
+                if abs(d) > 1
             )
         return self._smith_cache
 

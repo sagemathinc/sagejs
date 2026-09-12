@@ -899,6 +899,7 @@
         "python-stdlib",
         "arithmetic",
         "linear-algebra",
+        "linear-algebra-algorithms",
         "modular-forms",
         "modular-form-expansions"
       ],

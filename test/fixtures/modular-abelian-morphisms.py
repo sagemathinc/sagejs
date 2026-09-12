@@ -242,4 +242,45 @@ for item in [
     assert restored == item
     if hasattr(restored, "verify"):
         assert restored.verify()
+
+# Modular-HNF preconditioning preserves all invariants, not only determinant.
+from sagejs.linear_algebra.integer_smith import (
+    _modular_hnf,
+    preconditioned_elementary_divisors,
+)
+
+for n in [16, 19]:
+    for scale in [1, 6, 2**90]:
+        D = diagonal_matrix(ZZ, [scale * (i + 1) for i in range(n)])
+        U = identity_matrix(ZZ, n)
+        V = identity_matrix(ZZ, n)
+        for i in range(n - 1):
+            U[i, i + 1] = (-1) ** i * (i + 7)
+            V[i + 1, i] = i + 3
+        A = U * D * V
+        bound = scale
+        for i in range(1, n + 1):
+            bound *= i
+        assert _modular_hnf(A, bound) == A.hermite_form()
+        assert preconditioned_elementary_divisors(A) == D.elementary_divisors()
+        assert (
+            preconditioned_elementary_divisors(A.transpose()) == D.elementary_divisors()
+        )
+for A in [matrix(ZZ, 16, 16), matrix(ZZ, 19, 16), identity_matrix(ZZ, 0)]:
+    assert preconditioned_elementary_divisors(A) == A.elementary_divisors()
+import sagejs.linear_algebra.integer_smith as smith_helpers
+
+original_modular_hnf = smith_helpers._modular_hnf
+
+
+def unavailable_modular_hnf(*args):
+    raise NotImplementedError("test a host without modular HNF")
+
+
+try:
+    smith_helpers._modular_hnf = unavailable_modular_hnf
+    A = 6 * identity_matrix(ZZ, 16)
+    assert preconditioned_elementary_divisors(A) == [6] * 16
+finally:
+    smith_helpers._modular_hnf = original_modular_hnf
 print("integral morphism geometry passed")

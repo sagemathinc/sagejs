@@ -51,6 +51,24 @@ reduction backend, foreign binding, or handwritten native code is added.
   avoids multiplying by large zero-filled projection matrices and adding
   a chain of intermediate maps. The public morphism model is unchanged.
 
+### Smith preconditioning by a proved annihilator
+
+For a nonsingular integral homology matrix $A$, let $e$ be the lcm of the
+denominators of $A^{-1}$. Then $eA^{-1}$ is integral, so $e\mathbf Z^n$
+lies in the row lattice of $A$. This proves that $e$ annihilates the
+cokernel and supplies the bound required by FLINT's modular HNF.
+Alternate row HNF and transposition, which preserve Smith invariants.
+Stop upon reaching a diagonal matrix, or after four passes; in either
+case run the ordinary Smith algorithm on the resulting equivalent matrix.
+Thus convergence is never assumed. Small, singular and rectangular matrices
+retain the general Smith path, as do hosts without the modular HNF adapter.
+
+The algorithm is ordinary Python using an existing portable FLINT binding.
+Its buffers are explicitly packed through `sagejs.runtime`, including in
+dynamic execution. No new C, FFI declaration or native kernel is needed.
+Regression matrices include unimodular shears, transposes, large integers,
+singular/rectangular cases, and an unavailable-adapter fallback.
+
 ## Qualification
 
 The shared native/browser regression corpus checks:

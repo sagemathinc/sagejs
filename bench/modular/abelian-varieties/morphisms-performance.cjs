@@ -17,7 +17,7 @@ const cases = process.argv[4] ? process.argv[4].split(",").map(value => {
 }) : [[389,false],[1009,false],[121,true],[242,true],[363,true]];
 const directory = "src/lib/sagejs/modular_abelian_varieties";
 const sources = [...readdirSync(path.join(root,directory)).filter(f=>f.endsWith(".py")).map(f=>`${directory}/${f}`),
-  "src/baselib/matrix.py", "src/baselib/modular.py"];
+  "src/lib/sagejs/linear_algebra/integer_smith.py", "src/baselib/matrix.py", "src/baselib/modular.py"];
 const report = { date: new Date().toISOString(), revision: execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8"}).trim(),
   host:{cpu:os.cpus()[0].model,platform:os.platform(),architecture:os.arch(),node:process.version},
   sourceSha256:Object.fromEntries(sources.map(f=>[f,createHash("sha256").update(readFileSync(path.join(root,f))).digest("hex")])),
