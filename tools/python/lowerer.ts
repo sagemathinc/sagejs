@@ -2214,7 +2214,7 @@ export class PythonCstLowerer {
       argnames: args,
       decorators: [],
       annotations: this.annotationsMode,
-      is_generator: this.containsNodeType(node, "yield"),
+      is_generator: this.containsYieldInScope(body),
       is_coroutine: false,
       is_lambda: true,
       is_expression: true,
@@ -2329,7 +2329,7 @@ export class PythonCstLowerer {
       // Sage.js implements Python coroutines with the generator protocol, so
       // an async function must be emitted as `function*` even when its only
       // suspension points are `await`, `async for`, or `async with`.
-      is_generator: isCoroutine || this.containsNodeType(node, "yield"),
+      is_generator: isCoroutine || this.containsYieldInScope(bodyNode),
       is_coroutine: isCoroutine,
       is_lambda: false,
       is_expression: false,
@@ -2391,14 +2391,44 @@ export class PythonCstLowerer {
     return { body: kept, docstrings };
   }
 
-  private containsNodeType(node: SyntaxNode, type: string): boolean {
+  private containsYieldInScope(node: SyntaxNode): boolean {
     const visit = (current: SyntaxNode): boolean => {
-      if (current !== node && (
+      if (current.type === "yield") return true;
+      // A definition's defaults (and decorators on its surrounding decorated
+      // definition) execute here, but its body belongs to the new scope.
+      if (
         current.type === "function_definition" ||
-        current.type === "lambda" ||
-        current.type === "class_definition"
-      )) return false;
-      if (current.type === type) return true;
+        current.type === "lambda"
+      ) {
+        const parameters = current.childForFieldName("parameters");
+        if (parameters?.namedChildren.some((parameter) => {
+          const value = parameter.childForFieldName("value");
+          const annotation = parameter.childForFieldName("type");
+          return !!(value && visit(value)) || !!(
+            this.annotationsMode && this.annotationsMode !== "future" &&
+            annotation && visit(annotation)
+          );
+        })) return true;
+        const returnType = current.childForFieldName("return_type");
+        return !!(this.annotationsMode && this.annotationsMode !== "future" &&
+          returnType && visit(returnType));
+      }
+      if (current.type === "class_definition") {
+        const bases = current.childForFieldName("superclasses");
+        return !!(bases && visit(bases));
+      }
+      if ([
+        "list_comprehension", "set_comprehension", "dictionary_comprehension",
+        "generator_expression",
+      ].includes(current.type)) {
+        // Only the first iterable executes in the enclosing scope. The
+        // implicit comprehension scope owns all other expressions.
+        const clause = current.namedChildren.find(
+          (child) => child.type === "for_in_clause",
+        );
+        const iterable = clause?.childForFieldName("right");
+        return !!(iterable && visit(iterable));
+      }
       return current.namedChildren.some(visit);
     };
     return visit(node);
