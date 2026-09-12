@@ -1,0 +1,87 @@
+"use strict";
+// Mechanism diagnostic, not a controlled before/after release benchmark.
+const { readFileSync } = require("node:fs");
+const { join } = require("node:path");
+const { createContext, runInContext } = require("node:vm");
+const { performance } = require("node:perf_hooks");
+const assert = require("node:assert/strict");
+const createCompiler = require("../dist/tools/compiler.js").default;
+const { createPythonCompilerFrontend } = require("../dist/tools/python/compiler-frontend.js");
+const root = join(__dirname, "..");
+const cases = ["construct", "construct_raise_catch", "raise_existing"];
+const selectedCase = process.env.SAGEJS_EXCEPTION_CASE;
+const selectedVariant = process.env.SAGEJS_EXCEPTION_VARIANT;
+assert.ok(!selectedCase || cases.includes(selectedCase));
+assert.ok(!selectedVariant || ["fallback", "lazy"].includes(selectedVariant));
+const source = `
+def construct(n):
+    total = 0
+    for i in range(n):
+        error = ValueError('probe')
+        total += len(error.args)
+    return total
+def construct_raise_catch(n):
+    total = 0
+    for i in range(n):
+        try:
+            raise ValueError('probe')
+        except Exception:
+            total += 1
+    return total
+def raise_existing(n):
+    error = ValueError('probe')
+    total = 0
+    for i in range(n):
+        try:
+            raise error
+        except Exception:
+            total += 1
+    return total
+`;
+(async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(source, { filename: "<exception-cost>",
+      libdir: join(root, "src/lib"), strict_python_scopes: true,
+      scoped_flags: { dict_literals: true, bound_methods: true } });
+    const output = new compiler.OutputStream({
+      baselib_plain: readFileSync(join(root, "dist/compiler/baselib-plain-pretty.js"), "utf8"),
+      private_scope: false, write_name: false, python_attributes: true,
+      python_truthiness: true, python_tuples: true,
+    });
+    ast.print(output);
+    const context = createContext({ require, process, Buffer, console,
+      __sagejs_runtime_require__: require });
+    runInContext(output.get(), context, { timeout: 30000 });
+    const hostError = runInContext("Error", context);
+    const capture = hostError.captureStackTrace;
+    assert.equal(typeof capture, "function");
+    const count = 10000;
+    const results = [];
+    try {
+      for (const order of [["fallback", "lazy"], ["lazy", "fallback"]]) {
+        for (const variant of order) {
+          if (selectedVariant && variant !== selectedVariant) continue;
+          hostError.captureStackTrace = variant === "lazy" ? capture : undefined;
+          for (const name of cases) {
+            if (selectedCase && name !== selectedCase) continue;
+            const fn = context.ρσ_modules.__main__[name];
+            for (let i = 0; i < 3; i++) assert.equal(Number(fn(count)), count);
+            const samplesMs = [];
+            for (let i = 0; i < 7; i++) {
+              const start = performance.now();
+              const answer = fn(count);
+              samplesMs.push(performance.now() - start);
+              assert.equal(Number(answer), count);
+            }
+            results.push({ variant, name, count, samplesMs });
+          }
+        }
+      }
+    } finally { hostError.captureStackTrace = capture; }
+    console.log(JSON.stringify({ node: process.version,
+      scope: "Same candidate, host capture API enabled vs forced fallback; warm in-process diagnostic, not historical baseline or CPython comparison",
+      results }, null, 2));
+  } finally { frontend.close(); }
+})().catch(error => { console.error(error); process.exitCode = 1; });

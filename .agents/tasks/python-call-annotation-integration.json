@@ -10,6 +10,9 @@
   "base_commit": "2564190042e003176ada3a71700f946ae992f973",
   "claims": [
     "src/baselib/builtins.py",
+    "src/baselib/errors.py",
+    "test/python-lazy-exception-stack.cjs",
+    "bench/python-exception-cost.cjs",
     "src/baselib/internal.py",
     "src/output/functions.py",
     ".agents/lanes.json",

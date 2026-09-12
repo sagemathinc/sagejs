@@ -71,9 +71,16 @@ class BaseException(runtime.error):
             if python_name is runtime.undefined
             else runtime.string(python_name)
         )
-        error = runtime.error(message)
-        error.name = self.name
-        self.stack = error.stack
+        capture = runtime.reflect.get(runtime.error, "captureStackTrace")
+        if runtime.strict_equal(runtime.jstype(capture), "function"):
+            # Capture the creation site now, but let the host format its stack
+            # lazily. Formatting every caught exception makes ordinary Python
+            # exception-based control flow unnecessarily expensive.
+            runtime.reflect.apply(capture, runtime.error, [self])
+        else:
+            error = runtime.error(message)
+            error.name = self.name
+            self.stack = error.stack
         # Until an embedding provides structured frame objects, the native
         # Error itself is our traceback-like carrier.  ``traceback.extract_tb``
         # understands its stack string.
