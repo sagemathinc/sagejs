@@ -11,6 +11,13 @@ before argument evaluation, so mutation in arguments cannot change the selected
 target. Saved methods, instance-owned functions and descriptor-returned
 functions keep their binding semantics.
 
+For a starred positional call, callable validation must happen **after** argument
+evaluation. The initial candidate resolved callability too early: a non-callable
+attribute incorrectly prevented starred-argument side effects. The follow-up
+uses the existing prepared invocation helper with a one-slot resolved target;
+attribute lookup stays before arguments, while callability checks stay after
+them. A minimized CPython oracle locks down both events before TypeError.
+
 The authoritative Python attribute predicate retains native namespace, internal,
 existential and other raw attribute exemptions. Constructor, explicit internal
 receiver and legacy call paths are unchanged. This does not delete the generic
@@ -33,7 +40,7 @@ form and preserve existing native string extensions' receiver ABI.
 
 ## Qualification
 
-The corrected frozen source passed a full rebuild in 10m 26s on Linux x64,
+The initial committed source passed a full rebuild in 10m 26s on Linux x64,
 Node 26.8.1. Receipt: `2026-09-12T06:23:42.771Z`.
 
 - 14 focused tests, including CPython 3.14.4 and Python/Sage-mode oracles.
@@ -50,6 +57,15 @@ to qualify this correction. Review caught native receiver and invalid helper
 keyword exposure before final qualification. No required assertion was removed.
 Core source is 902,938 / 903,000 bytes; no budget increase.
 
+Those checks did not cover the subsequently discovered non-callable starred
+target regression. The follow-up completed a fresh full build in 11m 55s,
+receipt `2026-09-12T06:58:53.094Z`, and passed all 77 focused/lowering tests,
+206 portable files, strict checks across 387 modules, merge inventories and
+generated documentation checks. All four selected pinned packaging, attrs,
+tomli and decorator workflows passed in non-artifact-only scope. The newly
+compiled standalone benchmark also passed its result-checking local preflight;
+concurrent local execution is not controlled performance evidence.
+
 ## Performance and remaining work
 
 The prior controlled baseline attributes 66.9% of the 100-field owned-callback
@@ -60,7 +76,9 @@ Do not claim a speedup, package performance improvement, compile-time benefit,
 or closed cliff until that comparison is recorded. Current-head platform/browser
 CI is also pending; keep the PR draft until readiness is established.
 
-Prepared standalone artifact SHA-256:
+Withdrawn pre-follow-up standalone artifact SHA-256 (do not benchmark):
 `c267f278adde868adb86707e531718b62ebf32cf9f5c72b7b1189284ff0eb1e0`.
+Corrected, rebuilt standalone artifact SHA-256:
+`28ca53d43489e2bf40635ed3d94a89a8ba2a6e342db3062c156766f85ef17145`.
 This candidate does not include the separate internal-length `max` optimization
 in PR228, so its eventual comparison must not mix those effects.

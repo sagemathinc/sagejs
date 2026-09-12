@@ -38,7 +38,9 @@ test("only immediate Python dot calls use prepared method lookup", () => {
   spread.is_array = true;
   const starArgs = [spread];
   starArgs.starargs = true;
-  assert.doesNotMatch(emit(call("obj", "method", starArgs)), /prepared_method|prepare_method/u);
+  const starred = emit(call("obj", "method", starArgs));
+  assert.match(starred, /ρσ_invoke_prepared_method\(\[ρσ_getattr_internal\(/u);
+  assert.doesNotMatch(starred, /ρσ_prepare_method_call|ρσ_resolve_callable/u);
 });
 
 const source = `

@@ -45,6 +45,30 @@ assert events == ["receiver", "lookup", "argument", ("call", 7)]
 events.clear()
 
 
+class NotCallable:
+    target = 3
+
+
+def invalid_receiver():
+    events.append("receiver")
+    return NotCallable()
+
+
+def starred_arguments():
+    events.append("arguments")
+    return []
+
+
+try:
+    invalid_receiver().target(*starred_arguments())
+except TypeError:
+    pass
+else:
+    raise AssertionError("noncallable target was accepted")
+assert events == ["receiver", "arguments"]
+events.clear()
+
+
 def replacement(value=0):
     return "replacement", value
 

@@ -1432,13 +1432,7 @@ def print_function_call(self, output):
                     output.comma()
                 a.print(output)
 
-        if (
-            not is_new
-            and not is_node_type(self, AST_ClassCall)
-            and not self.direct_call
-            and is_node_type(self.expression, AST_Dot)
-            and is_python_attribute_read(self.expression, output)
-        ):
+        if resolved_python_attribute:
             # Resolve and retain the attribute before evaluating arguments.
             # A per-call record remains valid across nested calls and mutation;
             # ordinary attribute reads still produce observable bound methods.
@@ -1487,6 +1481,10 @@ def print_function_call(self, output):
             print_new(True)
             print_function_name(True)
             output.comma()
+        elif resolved_python_attribute:
+            output.print("ρσ_invoke_prepared_method([")
+            self.expression.print(output)
+            output.print("], ")
         else:
             print_function_name(True)
             output.print(".apply(")
