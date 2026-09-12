@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Integrate authenticated unit-coordinate maps, corrected BF proof policy and bounded detached component replay with explicit ownership, strict typing, resource evidence and unchanged safety gates",
-  "base_commit": "e45acc3ab72870ce1d9c82e55f87f66efe6d4ba4",
+  "base_commit": "11a1b1eaece415de897cdf620302e4583b5dc202",
   "claims": [
     "architecture/package-graph.json",
     "pyrightconfig.json",
@@ -28,6 +28,7 @@
     "general-quartic-proof-fixtures"
   ],
   "references": [
+    "Ownership baseline11a1b1eae records reviewed main c4c126d09, generic BF fixture code769679c77 and receipts1b578345d. This does not reset qualification: full changed-tree validation remains against b1740b78722ea3c8f22aa1df97823a75e40bf78b.",
     "Mathematical dependency f531a6b640ce8344a9e595ba8bc602a24678bafe, merged as47746b60bcd1e5e1c141667413f397a5ad73a35e; integration does not claim its mathematical files",
     "Independent exact documentary audit correction e5288a49e and portable test metadata followup f06c92ca7",
     "Full integration validation compares against b1740b78722ea3c8f22aa1df97823a75e40bf78b rather than omitting merged dependencies",
