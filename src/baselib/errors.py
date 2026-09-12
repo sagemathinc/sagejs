@@ -16,14 +16,14 @@ NameError = runtime.reference_error
 def ρσ_exception_value(value: object) -> object:
     if runtime.strict_equal(runtime.jstype(value), "function"):
         value = runtime.reflect.construct(value, [])
+    if runtime.instance_of(value, runtime.error):
+        return value
     error_tag = runtime.reflect.apply(
         runtime.object.prototype.toString,
         value,
         [],
     )
-    if runtime.instance_of(value, runtime.error) or runtime.string(error_tag).endswith(
-        "Error]"
-    ):
+    if runtime.string(error_tag).endswith("Error]"):
         return value
     raise TypeError("exceptions must derive from BaseException")
 
@@ -57,10 +57,14 @@ def ρσ_positional_default(target_function: Any, from_end: int, name: str) -> A
 
 class BaseException(runtime.error):
     def __init__(self, *args: object) -> None:
-        self.args = runtime.math_tuple(list(args))
-        if len(args) == 0:
+        # The baselib variadic ABI supplies a fresh native argument array.
+        # Copy without Python list decoration before making the public tuple.
+        argument_values = runtime.reflect.apply(runtime.array.prototype.slice, args, [])
+        count = runtime.reflect.get(argument_values, "length")
+        self.args = runtime.math_tuple(argument_values)
+        if runtime.strict_equal(count, 0):
             message = ""
-        elif len(args) == 1:
+        elif runtime.strict_equal(count, 1):
             message = runtime.string(args[0])
         else:
             message = runtime.repr(self.args)

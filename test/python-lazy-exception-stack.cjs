@@ -16,6 +16,20 @@ for (const mode of ["python", "sage"]) {
       const ast = frontend.parse(`
 import sagejs.runtime as runtime
 formats = []
+assert ValueError().args == ()
+assert str(ValueError()) == ''
+assert ValueError(1, 'two').args == (1, 'two')
+assert str(ValueError(1, 'two')) == "(1, 'two')"
+payload = []
+first = ValueError(payload)
+second = ValueError(payload)
+assert first.args[0] is payload
+assert second.args[0] is payload
+payload.append(7)
+assert first.args == ([7],)
+BaseException.__init__(first, 'reset', 2)
+assert first.args == ('reset', 2)
+assert second.args == ([7],)
 assert bool(True) is True
 assert bool(False) is False
 assert bool(0) is False
@@ -85,6 +99,15 @@ except ValueError as caught:
       const context = createContext({ require, process, Buffer, console,
         __sagejs_runtime_require__: require });
       assert.doesNotThrow(() => runInContext(output.get(), context, { timeout: 30000 }));
+      const created = context.ρσ_modules.__main__.created;
+      Object.defineProperty(created, Symbol.toStringTag, {
+        get() { throw new Error("valid exceptions must not require a string tag"); },
+      });
+      const normalize = context.__sagejs_baselib_modules__["sagejs._baselib.errors"].ρσ_exception_value;
+      assert.equal(normalize(created), created);
+      const foreign = new Error("foreign-realm");
+      assert.equal(normalize(foreign), foreign);
+      assert.throws(() => normalize({}), /exceptions must derive/);
     } finally { frontend.close(); }
   });
 }
