@@ -1,6 +1,51 @@
 # No-Singular number fields: implementation audit
 
-Status: **Milestone N started; no production qualification claimed.**
+Status: **N1 implemented and locally validated; N2/N3/N5 incomplete.**
+
+## N1 completion
+
+The exact generic layer now supplies the roadmap's polynomial substrate over
+simple absolute number fields: canonical terms under all three global orders,
+arithmetic, bounded exact evaluation, simultaneous substitution,
+existing/new-coordinate homogenization, coefficient/term dictionaries and
+lists, derivatives, exact division, gcd/xgcd, squarefree layers and resultants.
+Explicit canonical serialization binds variables, order and normalized field
+presentation and reconstructs into the supplied parent. Different field
+presentations are not implicitly identified. Generator-name collisions fail
+before polynomial construction.
+
+`PolynomialField` guards coefficient ingress and sparse arithmetic results at
+4096 bits per rational numerator/denominator. Sparse workspaces bound terms,
+coordinate cells, exponents, work and cooperative time. Dense lists and
+Sylvester matrices have pre-allocation size checks. These do not interrupt a
+single foreign scalar operation; see [the exact envelope and intentional API
+restrictions](../docs/number-field-polynomials.md). Only
+`univariate.euclidean` is promoted in the number-field capability registry;
+ideal, geometry, generic Gröbner and irreducible factorization remain gated.
+
+Local Linux x64 validation:
+
+- Rebuilt self-hosting compiler to a fixed point and regenerated Sage/Python
+  runtime caches after the final bootstrap changes.
+- Expanded N1 fixture passes in both Python and Sage modes: five presentations,
+  three orders, overflow/allocation rejection, canonical and invalid packets,
+  explicit parent reconstruction and exact polynomial identities.
+- Independent SageMath 10.9.post1 witnesses cover term orders and a nontrivial
+  cubic-field quotient/remainder/resultant, checked under both proof settings.
+- Eight regression tests pass (finite-extension codecs/capabilities,
+  independent generic arithmetic and 108 pinned Gröbner cases, approximate,
+  cyclotomic and number-field scalar behavior).
+- The fenced Sage documentation example executes successfully.
+- Strict Python: 404 modules, zero errors. Full architecture check passes;
+  the new source stays within the existing 340,000-byte lazy allocation.
+
+The new tests caught and corrected a bootstrap dictionary-key conversion bug
+and a non-exact limit constant; their failure logs are retained separately.
+Logs use `n1-*` in `/home/user/sagejs-extension-qualification-20260912/`.
+Optimizer evidence identity is
+`31a4a82f08724df923a014a51fa037e12758567db7de1a87c041fcd2ef609434`.
+Those infrastructure assets remain local. No cross-platform N5 success,
+whole-roadmap completion, PR readiness or release is claimed by this checkpoint.
 
 PR #122 merged at `7ac59152591159cd2535f09ea8fb48fd9c19e8f8` on
 2026-09-12. The dedicated `agent/no-singular-number-fields` branch starts from

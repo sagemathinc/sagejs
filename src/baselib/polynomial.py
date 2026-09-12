@@ -4912,6 +4912,8 @@ class GenericPolynomialElement(sage.Element):
             values = tuple(values[0])
         if len(values) != self._parent.ngens():
             raise TypeError("polynomial evaluation needs one value per generator")
+        if self._parent._exact_context is not None:
+            return _generic_polynomial_module().evaluate(self, values)
         base = self._parent.base_ring()
         if (
             self._parent.ngens() == 1
@@ -4990,6 +4992,13 @@ class GenericPolynomialElement(sage.Element):
         return answer
 
     def coefficients(self, sparse: bool = False) -> list[Any]:
+        if self._parent._exact_context is not None:
+            if sparse:
+                terms = (
+                    reversed(self._terms) if self._parent.ngens() == 1 else self._terms
+                )
+                return [c for c, _e in terms]
+            return _generic_polynomial_module().dense_coefficients(self)
         if sparse:
             return [value for value in self.coefficients(False) if value != 0]
         if self._parent.ngens() != 1:
@@ -5010,8 +5019,21 @@ class GenericPolynomialElement(sage.Element):
     def subs(self, substitutions: Any = None, **kwds: Any) -> Any:
         return _generic_polynomial_module().substitute(self, substitutions, kwds)
 
-    def homogenize(self, variable: Any) -> Any:
+    def homogenize(self, variable: Any = "h") -> Any:
         return _generic_polynomial_module().homogenize(self, variable)
+
+    def dict(self) -> Any:
+        return _generic_polynomial_module().term_dictionary(self)
+
+    def leading_coefficient(self) -> Any:
+        if self._parent._exact_context is None:
+            raise NotImplementedError(
+                "leading term requires an exact number-field polynomial"
+            )
+        return self._terms[0][0] if self._terms else self._parent.base_ring()(0)
+
+    def monomials(self) -> Any:
+        return [self._parent._from_terms([(1, e)]) for _c, e in self._terms]
 
     def is_zero(self) -> bool:
         return len(self._terms) == 0
@@ -5327,10 +5349,8 @@ class GenericPolynomialRingParent(sage.Parent):
     ) -> GenericPolynomialElement:
         if isinstance(value, GenericPolynomialElement):
             return self._coercePolynomial(value)
-        if isinstance(value, dict):
-            return self._from_terms(
-                [(c, (e,) if isinstance(e, int) else e) for e, c in value.items()]
-            )
+        if hasattr(value, "items"):
+            return _generic_polynomial_module().from_dictionary(self, value)
         if isinstance(value, (list, tuple)):
             return self._from_coefficients(value)
         return self._constant(value)

@@ -18,9 +18,67 @@ from sagejs.polynomial_algorithms.generic_sparse_mpoly import (
 )
 from sagejs.polynomial_algorithms.univariate_field import monic_gcd, monic_xgcd
 
+MAX_BITS = 4096
+MAX_TERMS = 4096
+MAX_COORDINATE_CELLS = 65536
+MAX_HEIGHT = sage.ZZ(2) ** MAX_BITS
+
+
+class PolynomialField(ExactField):
+    """Bound inputs and results, including intermediate sparse coefficients."""
+
+    def coerce(self, value: Any) -> Any:
+        value = self.parent(value)
+        for coefficient in value.list():
+            if (
+                abs(coefficient.numerator()) >= MAX_HEIGHT
+                or coefficient.denominator() >= MAX_HEIGHT
+            ):
+                raise ValueError(
+                    "number-field polynomial coefficient height exceeds 4096 bits"
+                )
+        return value
+
+    def add(self, left: Any, right: Any) -> Any:
+        return self.coerce(self.coerce(left) + self.coerce(right))
+
+    def subtract(self, left: Any, right: Any) -> Any:
+        return self.coerce(self.coerce(left) - self.coerce(right))
+
+    def multiply(self, left: Any, right: Any) -> Any:
+        return self.coerce(self.coerce(left) * self.coerce(right))
+
+    def divide(self, left: Any, right: Any) -> Any:
+        return self.coerce(self.coerce(left) / self.coerce(right))
+
+    def inverse(self, value: Any) -> Any:
+        return self.divide(self.one(), value)
+
+
+class PolynomialContext(SparseContext):
+    def workspace(self) -> Any:
+        ring = super().workspace()
+        ring.budget.max_terms = min(
+            MAX_TERMS, MAX_COORDINATE_CELLS // self.field.degree
+        )
+        return ring
+
+    def polynomial(self, terms: Any) -> SparsePolynomial:
+        bounded = []
+        for term in terms:
+            if (
+                len(bounded) >= MAX_TERMS
+                or (len(bounded) + 1) * self.field.degree > MAX_COORDINATE_CELLS
+            ):
+                raise ValueError(
+                    "number-field polynomial term/coordinate allocation limit exceeded"
+                )
+            bounded.append(term)
+        return super().polynomial(bounded)
+
 
 def context(base: Any, variables: Any, order: str) -> SparseContext:
-    field = ExactField(base)
+    field = PolynomialField(base)
     if field.family != "number-field":
         raise NotImplementedError(
             "this exact sparse route requires a simple number field"
@@ -29,7 +87,49 @@ def context(base: Any, variables: Any, order: str) -> SparseContext:
         raise ValueError(
             "polynomial variable collides with the number-field generator name"
         )
-    return SparseContext(field, len(variables), order)
+    return PolynomialContext(field, len(variables), order)
+
+
+def dense_coefficients(value: Any) -> Any:
+    parent = _univariate(value)
+    if (value.degree() + 1) * parent.base_ring().degree() > MAX_COORDINATE_CELLS:
+        raise ValueError("number-field dense coefficient allocation limit exceeded")
+    answer = [parent.base_ring()(0) for _ in range(value.degree() + 1)]
+    for coefficient, exponents in value.terms():
+        answer[exponents[0]] = coefficient
+    return answer
+
+
+def encode(value: Any) -> Any:
+    """Explicit interchange, never an arithmetic representation."""
+    field = _sparse(value).context.field
+    return {
+        "abi": "sagejs.number-field-polynomial/v1",
+        "variables": list(value.parent().variable_names()),
+        "order": value.parent()._order,
+        "field": field.descriptor(),
+        "terms": [[field.encode(c), list(e)] for c, e in value.terms()],
+    }
+
+
+def decode(parent: Any, record: Any) -> Any:
+    field = parent._exact_context.field
+    if (
+        not isinstance(record, dict)
+        or set(record) != {"abi", "variables", "order", "field", "terms"}
+        or record["abi"] != "sagejs.number-field-polynomial/v1"
+        or record["variables"] != list(parent.variable_names())
+        or record["order"] != parent._order
+        or record["field"] != field.descriptor()
+    ):
+        raise ValueError("number-field polynomial presentation mismatch")
+    terms = record["terms"]
+    if not isinstance(terms, list) or len(terms) > MAX_TERMS:
+        raise ValueError("invalid polynomial term packet")
+    value = parent._from_terms([(field.decode(c), e) for c, e in terms])
+    if encode(value) != record:
+        raise ValueError("polynomial packet is not canonical")
+    return value
 
 
 def _sparse(value: Any) -> SparsePolynomial:
@@ -43,6 +143,22 @@ def _sparse(value: Any) -> SparsePolynomial:
 
 def multiply(left: Any, right: Any) -> Any:
     return left.parent()._from_terms(_sparse(left).multiply(_sparse(right)).terms())
+
+
+def evaluate(value: Any, coordinates: Any) -> Any:
+    return _sparse(value).evaluate(coordinates)
+
+
+def term_dictionary(value: Any) -> Any:
+    return {
+        (e[0] if value.parent().ngens() == 1 else tuple(e)): c for c, e in value.terms()
+    }
+
+
+def from_dictionary(parent: Any, value: Any) -> Any:
+    return parent._from_terms(
+        [(c, (e,) if isinstance(e, int) else e) for e, c in value.items()]
+    )
 
 
 def power(value: Any, exponent: Any) -> Any:
@@ -113,14 +229,24 @@ def substitute(value: Any, substitutions: Any, keywords: Any) -> Any:
 def homogenize(value: Any, variable: Any) -> Any:
     parent = value.parent()
     _sparse(value)
-    index = parent._generator_index(variable)
+    target = parent
+    names = list(parent.variable_names())
+    if isinstance(variable, str) and variable not in names:
+        target = sage.PolynomialRing(
+            parent.base_ring(), names + [variable], order=parent._order
+        )
+        index = len(names)
+    else:
+        index = parent._generator_index(variable)
     degree = value.total_degree()
     terms = []
     for coefficient, exponents in value.terms():
         powers = list(exponents)
+        if target is not parent:
+            powers.append(0)
         powers[index] += degree - sum(exponents)
         terms.append((coefficient, tuple(powers)))
-    return parent._from_terms(terms)
+    return target._from_terms(terms)
 
 
 def resultant(left: Any, right: Any) -> Any:
@@ -134,6 +260,8 @@ def resultant(left: Any, right: Any) -> Any:
     size = n + m
     if size > 64:
         raise ValueError("number-field resultant Sylvester dimension limit is 64")
+    if size * size * field.degree > MAX_COORDINATE_CELLS:
+        raise ValueError("number-field resultant coordinate allocation limit exceeded")
     started = monotonic()
     a, b = list(reversed(left.list())), list(reversed(right.list()))
     rows = [[field.zero()] * i + a + [field.zero()] * (m - i - 1) for i in range(m)] + [
@@ -150,11 +278,13 @@ def resultant(left: Any, right: Any) -> Any:
             rows[j], rows[pivot] = rows[pivot], rows[j]
             answer = -answer
         value = rows[j][j]
-        answer *= value
+        answer = field.multiply(answer, value)
         for i in range(j + 1, size):
-            ratio = rows[i][j] / value
+            ratio = field.divide(rows[i][j], value)
             for k in range(j + 1, size):
-                rows[i][k] -= ratio * rows[j][k]
+                rows[i][k] = field.subtract(
+                    rows[i][k], field.multiply(ratio, rows[j][k])
+                )
     return answer
 
 

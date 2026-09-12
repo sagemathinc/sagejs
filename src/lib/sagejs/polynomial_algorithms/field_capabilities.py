@@ -70,10 +70,13 @@ def field_capability(
     if field is not None:
         descriptor = field.descriptor()
         if field.family == "number-field":
-            # Scalar interchange is not a claim that K[x] or ideal dispatch
-            # is implemented. Promote each operation in its qualified phase.
-            reason = "number-field polynomial operations await Milestone N1/N2/N3"
-            resource_envelope = "exact-field scalar codec only"
+            supported = operation == "univariate.euclidean"
+            reason = (
+                "exact generic number-field Euclidean arithmetic"
+                if supported
+                else "number-field ideals and factorization await Milestone N2/N3"
+            )
+            resource_envelope = "N1: degree <= 4096, coefficient height <= 4096 bits, 65536 coordinate cells, cooperative 30-second operations"
         elif operation in ("geometry", "ideal", "groebner.packed-v1"):
             supported = field.family in _CORE_FAMILIES
             reason = (

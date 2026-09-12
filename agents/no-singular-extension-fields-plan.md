@@ -745,6 +745,13 @@ enter the integration branch.
 
 ### Phase N1: exact univariate and multivariate polynomial representation
 
+**Implemented on `agent/no-singular-number-fields` (local N1 acceptance).**
+See [the N1 user guide](../docs/number-field-polynomials.md) and
+[completion evidence](no-singular-number-fields-completion-audit.md).
+N2/N3 and N5 production qualification remain separate, unfinished gates.
+The documented N1 division API rejects non-exact `/` instead of constructing
+rational functions; `quo_rem` always provides exact quotient/remainder.
+
 1. Formalize the number-field implementation of the Phase E0 exact-field
    descriptor/codec, including normalized defining polynomial and power-basis
    coordinates.

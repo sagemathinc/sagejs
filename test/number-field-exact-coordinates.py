@@ -62,7 +62,7 @@ for f, inverse_coordinates in [
         bad_coordinates = pair + [0, 1] * (K.degree() - 1)
         rejected(lambda: field.from_coordinates(bad_coordinates))
     rejected(lambda: field.from_coordinates([1, 1]))
-    # Scalar availability must not prematurely promote any public operation.
+    # N1 promotes Euclidean arithmetic only, never N2/N3 algorithms.
     for operation in [
         "geometry",
         "ideal",
@@ -72,7 +72,7 @@ for f, inverse_coordinates in [
         "univariate.factor",
     ]:
         capability = field_capability(K, operation)
-        assert not capability["supported"]
+        assert capability["supported"] == (operation == "univariate.euclidean")
         assert capability["base_field_descriptor"]["family"] == "number-field"
 
 # Isomorphic but differently presented fields are not automatically identified.
