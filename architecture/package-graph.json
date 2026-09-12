@@ -1007,13 +1007,14 @@
         "http", "importlib", "io", "js", "json", "keyword", "math", "multiprocessing", "ntpath", "numbers",
         "operator", "os", "pathlib", "pdb", "pickle", "platform", "posixpath", "pprint", "pythonize", "random",
         "re", "reprlib", "sage", "sagejs_serialization", "shlex", "shutil", "socket", "string",
-        "sagejs._documentation_search", "sagejs._introspection", "sagejs._namespace", "sagejs._punycode", "sagejs.class_namespace", "sagejs.javascript", "sqlite3", "stat", "statistics", "struct", "subprocess", "sys", "tempfile", "textwrap", "threading", "time",
+        "sagejs._collection_helpers", "sagejs._documentation_search", "sagejs._introspection", "sagejs._namespace", "sagejs._punycode", "sagejs.class_namespace", "sagejs.javascript", "sqlite3", "stat", "statistics", "struct", "subprocess", "sys", "tempfile", "textwrap", "threading", "time",
         "tokenize", "traceback", "types", "unicodedata", "unittest", "urllib", "uuid", "warnings", "weakref", "xml", "zlib"
       ],
       "files": [
         "src/lib/sagejs/javascript.py",
         "src/lib/sagejs/class_namespace.py",
         "src/lib/sagejs/_documentation_search.py",
+        "src/lib/sagejs/_collection_helpers.py",
         "src/lib/sagejs/_introspection.py",
         "src/lib/sagejs/_namespace.py",
         "src/lib/sagejs/_punycode.py",

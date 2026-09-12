@@ -80,12 +80,24 @@ print("fast-ascii-large-ok")
 });
 
 const punycodeSource = String.raw`
+for value in (b"x", b"\xff", b"", b"ab", bytearray(b"x"), bytearray(b"\xff"), bytearray(b""), bytearray(b"ab")):
+    try:
+        print("byte-ordinal", type(value).__name__, repr(value), ord(value))
+    except TypeError as error:
+        print("byte-ordinal-error", type(value).__name__, repr(value), str(error))
 for text in ("\ud800", "\udfff", "\U0001f600", "\ud800A", "ab", ""):
     try:
         print("ordinal", [ord(c) for c in text], ord(text))
     except TypeError:
         print("ordinal-type-error", len(text))
 for kind, obj in ((UnicodeDecodeError, b"x"), (UnicodeEncodeError, "x")):
+    for count in (0, 1, 4, 6):
+        try:
+            kind(*([None] * count))
+        except TypeError as error:
+            print("unicode-arity", kind.__name__, count, str(error))
+        else:
+            raise AssertionError("invalid codec exception arity was accepted")
     error = kind("codec", obj, 0, 1, "reason")
     print("unicode-fields", error.encoding, error.object == obj, error.start, error.end, error.reason)
     error.start = 2

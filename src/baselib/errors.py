@@ -340,9 +340,12 @@ class UnicodeError(ValueError):
     pass
 
 
-def _unicode_codec_init(
-    self: Any, encoding: str, obj: Any, start: int, end: int, reason: str
-) -> None:
+def _unicode_codec_init(self: Any, *args: Any) -> None:
+    if len(args) != 5:
+        raise TypeError(
+            "function takes exactly 5 arguments (" + str(len(args)) + " given)"
+        )
+    encoding, obj, start, end, reason = args
     UnicodeError.__init__(self, encoding, obj, start, end, reason)
     self.encoding = encoding
     self.object = obj
