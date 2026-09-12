@@ -12,7 +12,7 @@ include("screen.jl")
         ("torsion-eight", [1, 0, 0, 0, 1], 1, 8, [0, 2]),
     ]
     for (id, coefficients, h, torsion, sig) in cases, bits in (100, 200)
-        result = frontier_case(id, coefficients, bits, 1, 17)
+        result = frontier_case(id, coefficients, bits, 1, 17, "conditional-grh")
         c = result.compact
         @test c.class_number == string(h)
         @test c.torsion_order == string(torsion)
@@ -25,12 +25,12 @@ include("screen.jl")
         @test c.regulator.guarantee == "absolute-radius-less-than-2^-bits"
         @test all(length(f.factor) == length(coefficients)-1 for u in c.units for f in u)
     end
-    batched = frontier_case("fresh-batch", [-2, 0, 1], 100, 2, 17)
+    batched = frontier_case("fresh-batch", [-2, 0, 1], 100, 2, 17, "conditional-grh")
     @test batched.iterations == 2
-    @test_throws ArgumentError frontier_case("bad-bits", [-2, 0, 1], 53, 1, 17)
-    @test_throws ArgumentError frontier_case("bad-batch", [-2, 0, 1], 100, 0, 17)
-    @test_throws ArgumentError frontier_case("nonmonic", [-2, 0, 2], 100, 1, 17)
-    request = "FRONTIER1\tprotocol\t100\t1\t17\t-2,0,1"
+    @test_throws ArgumentError frontier_case("bad-bits", [-2, 0, 1], 53, 1, 17, "conditional-grh")
+    @test_throws ArgumentError frontier_case("bad-batch", [-2, 0, 1], 100, 0, 17, "conditional-grh")
+    @test_throws ArgumentError frontier_case("nonmonic", [-2, 0, 2], 100, 1, 17, "conditional-grh")
+    request = "FRONTIER2\tprotocol\t100\t1\t17\tconditional-grh\t-2,0,1"
     output = IOBuffer()
     main(IOBuffer("not-a-request\n" * request * "\n"), output)
     responses = split(chomp(String(take!(output))), '\n')

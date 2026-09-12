@@ -48,8 +48,8 @@ frontier_json(value) = sprint(frontier_write_json, value)
 function parse_frontier_request(line::AbstractString)
     ncodeunits(line) <= 1048576 || throw(ArgumentError("request exceeds 1 MiB"))
     fields = split(line, '\t'; keepempty=true)
-    length(fields) == 6 || throw(ArgumentError("expected six tab-separated fields"))
-    fields[1] == "FRONTIER1" || throw(ArgumentError("unsupported protocol version"))
+    length(fields) == 7 || throw(ArgumentError("expected seven tab-separated fields"))
+    fields[1] == "FRONTIER2" || throw(ArgumentError("unsupported protocol version"))
     occursin(r"\A[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}\z", fields[2]) ||
         throw(ArgumentError("invalid request id"))
     all(occursin(r"\A(?:0|[1-9][0-9]*)\z", fields[i]) for i in 3:5) ||
@@ -59,10 +59,12 @@ function parse_frontier_request(line::AbstractString)
     bits, iterations, seed = something.(integers)
     bits in (100, 200) || throw(ArgumentError("precision must be 100 or 200"))
     1 <= iterations <= 100000 || throw(ArgumentError("invalid batch size"))
-    coefficients = split(fields[6], ','; keepempty=true)
+    proof_policy = String(fields[6])
+    proof_policy in ("conditional-grh", "unconditional") || throw(ArgumentError("invalid proof policy"))
+    coefficients = split(fields[7], ','; keepempty=true)
     length(coefficients) >= 3 || throw(ArgumentError("degree must be at least two"))
     all(occursin(r"\A-?(?:0|[1-9][0-9]*)\z", c) for c in coefficients) ||
         throw(ArgumentError("coefficients must be exact signed decimal integers"))
     return (id=String(fields[2]), bits=bits, iterations=iterations, seed=seed,
-            coefficients=String.(coefficients))
+            proof_policy=proof_policy, coefficients=String.(coefficients))
 end

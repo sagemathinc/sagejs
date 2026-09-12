@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 import unittest
+from types import SimpleNamespace
 
 
 HERE = Path(__file__).resolve().parent
@@ -86,6 +87,42 @@ class PersistentContracts(unittest.TestCase):
             for path in (self.root / "output").glob("*.json")
         }
 
+    def test_pari_marker_and_request_hash_retained_on_failure_and_interruption(self):
+        for interrupted in (False, True):
+            with self.subTest(interrupted=interrupted):
+                c = campaign(self.root)
+                c.engine = "pari"
+                c.state = state()
+                c.output.mkdir(exist_ok=True)
+                observed = []
+
+                def exchange(payload, seconds, marker):
+                    observed.append((payload, marker))
+                    if interrupted:
+                        raise supervisor.CoordinatorInterrupted()
+                    return {"status": "timeout", "stdout": "", "stderr": ""}
+
+                c.worker = SimpleNamespace(
+                    exchange=exchange, close=lambda: None, capture=(b"", b"")
+                )
+                name = "interrupted" if interrupted else "failed"
+                if interrupted:
+                    with self.assertRaises(supervisor.CoordinatorInterrupted):
+                        c.request(name, "sample", name, ["-2", "0", "1"], 1)
+                else:
+                    c.request(name, "sample", name, ["-2", "0", "1"], 1)
+                receipt = self.receipts()[name]
+                metadata = receipt["pending_reservation"] if interrupted else receipt
+                payload, marker = observed[0]
+                self.assertEqual(metadata["request_marker"], marker.decode())
+                self.assertEqual(
+                    metadata["request_sha256"],
+                    supervisor.hashlib.sha256(payload).hexdigest(),
+                )
+                self.assertIn(
+                    ("print(" + json.dumps(marker.decode()) + ");\n").encode(), payload
+                )
+
     def test_persistent_success_and_separate_warmup(self):
         campaign(self.root).run([record("first"), record("second")])
         receipts = self.receipts()
@@ -113,6 +150,31 @@ class PersistentContracts(unittest.TestCase):
         )
         self.assertIn("warmup-0002-00-warmup", receipts)
         self.assertFalse(alive(int((self.root / "pids.descendant").read_text())))
+
+    def test_unconditional_policy_survives_warmups_failures_and_restart(self):
+        campaign(self.root, proof_policy="unconditional", bits=100, iterations=2).run(
+            [record("timeout"), record("next")]
+        )
+        receipts = self.receipts()
+        for value in receipts.values():
+            self.assertEqual(value["requested_proof_policy"], "unconditional")
+        self.assertEqual(receipts["sample-0001-timeout"]["status"], "timeout")
+        self.assertEqual(receipts["sample-0001-next"]["status"], "ok")
+        for name in (
+            "warmup-0001-00-warmup",
+            "warmup-0002-00-warmup",
+            "sample-0001-next",
+        ):
+            value = receipts[name]
+            result = json.loads(value["stdout"])["result"]
+            self.assertEqual(result["proof_policy"], "unconditional")
+            self.assertEqual(
+                result["proof_execution"]["completed_iterations"], value["iterations"]
+            )
+            self.assertIs(result["proof_execution"]["unit_group_grh"], False)
+        self.assertIsNone(
+            json.loads((self.root / "ledger.json").read_text())["pending"]
+        )
 
     def test_crash_output_cap_and_duplicate_response_restart(self):
         campaign(self.root).run(
@@ -180,6 +242,10 @@ class PersistentContracts(unittest.TestCase):
         self.assertEqual(
             self.receipts()["sample-0001-timeout"]["status"], "interrupted"
         )
+        self.assertEqual(
+            self.receipts()["sample-0001-timeout"]["requested_proof_policy"],
+            "unconditional",
+        )
         for pid in (self.root / "pids").read_text().splitlines():
             self.assertFalse(alive(int(pid)))
         self.assertFalse(alive(int((self.root / "pids.descendant").read_text())))
@@ -221,6 +287,9 @@ class PersistentContracts(unittest.TestCase):
             {"samples": 0},
             {"samples": 6},
             {"samples": True},
+            {"proof_policy": True},
+            {"proof_policy": None},
+            {"proof_policy": "Unconditional"},
         ):
             with self.subTest(options=options), self.assertRaises(ValueError):
                 campaign(self.root, **options)
@@ -394,7 +463,9 @@ class PersistentContracts(unittest.TestCase):
 if __name__ == "__main__":
     if len(sys.argv) == 3 and sys.argv[1] == "--interrupt-driver":
         try:
-            campaign(Path(sys.argv[2]), seconds=30).run([record("timeout")])
+            campaign(Path(sys.argv[2]), seconds=30, proof_policy="unconditional").run(
+                [record("timeout")]
+            )
         except supervisor.CoordinatorInterrupted:
             sys.exit(73)
     else:

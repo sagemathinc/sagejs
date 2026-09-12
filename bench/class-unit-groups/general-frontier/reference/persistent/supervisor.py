@@ -272,16 +272,28 @@ def validate_measurement(bits, iterations, samples):
         raise ValueError("samples must be 1..5")
 
 
-def encode_request(engine, label, coefficients, bits, seed, iterations=1):
+def encode_request(
+    engine,
+    label,
+    coefficients,
+    bits,
+    seed,
+    iterations=1,
+    proof_policy="conditional-grh",
+):
     validate_measurement(bits, iterations, 1)
+    shared.validate_proof_policy(proof_policy)
+    shared.validate_case({"label": label, "coefficients": coefficients})
+    if engine not in ("pari", "hecke") or type(seed) is not int or seed < 1:
+        raise ValueError("invalid engine or seed")
     if engine == "hecke":
         return (
-            f"FRONTIER1\t{label}\t{bits}\t{iterations}\t{seed}\t"
+            f"FRONTIER2\t{label}\t{bits}\t{iterations}\t{seed}\t{proof_policy}\t"
             + ",".join(coefficients)
             + "\n"
         ).encode(), None
     marker = ("FRONTIER_DONE|" + uuid.uuid4().hex).encode()
-    command = f"frontier_case({json.dumps(label)},[{','.join(coefficients)}],{bits},{iterations},{seed});\n"
+    command = f"frontier_case({json.dumps(label)},[{','.join(coefficients)}],{bits},{iterations},{seed},{json.dumps(proof_policy)});\n"
     return (command + "print(" + json.dumps(marker.decode()) + ");\n").encode(), marker
 
 
@@ -289,6 +301,29 @@ def validate_hecke_shape(output, degree=None, bits=200):
     """Structural screening sanity only, not mathematical verification/replay."""
     try:
         result = json.loads(output)["result"]
+        schema = result["schema"]
+        if schema == "sagejs-hecke-frontier-screen-v4":
+            views = shared.batch_iteration_views(
+                result, "hecke", result["proof_policy"], result["iterations"]
+            )
+            return all(
+                validate_hecke_shape(json.dumps({"result": view}), degree, bits)
+                for view in views
+            )
+        if schema not in (
+            "sagejs-hecke-frontier-screen-v1",
+            "sagejs-hecke-frontier-screen-v2",
+            "sagejs-hecke-frontier-screen-v3",
+        ):
+            return False
+        literal_product = schema in (
+            "sagejs-hecke-frontier-screen-v2",
+            "sagejs-hecke-frontier-screen-v3",
+        )
+        if literal_product and result.get("witness_semantics") != (
+            "ideal-equals-principal-witness-times-literal-class-generator-product"
+        ):
+            return False
         compact = result["compact"]
         signature = compact["signature"]
         if not (
@@ -341,10 +376,17 @@ def validate_hecke_shape(output, degree=None, bits=200):
             )
 
         def decomposition(value):
+            witness_key = "generator_product_witness" if literal_product else "witness"
             return (
-                coordinates(value["coordinates"])
+                isinstance(value, dict)
+                and (
+                    set(value) == {"coordinates", "representative", witness_key}
+                    if literal_product
+                    else "generator_product_witness" not in value
+                )
+                and coordinates(value["coordinates"])
                 and ideal(value["representative"])
-                and factored(value["witness"])
+                and factored(value[witness_key])
             )
 
         units = compact["units"]
@@ -397,7 +439,18 @@ def validate_hecke_shape(output, degree=None, bits=200):
         return False
 
 
-def validate_answer(engine, response, label, degree=None, bits=200, iterations=1):
+def validate_answer(
+    engine,
+    response,
+    label,
+    degree=None,
+    bits=200,
+    iterations=1,
+    proof_policy="conditional-grh",
+    *,
+    require_current=False,
+):
+    shared.validate_proof_policy(proof_policy)
     if response["status"] != "ok":
         return response["status"]
     validator = (
@@ -412,6 +465,9 @@ def validate_answer(engine, response, label, degree=None, bits=200, iterations=1
         False,
         expected_bits=bits,
         expected_iterations=iterations,
+        expected_proof_policy=proof_policy,
+        require_current=require_current,
+        **({"expected_degree": degree} if engine == "pari" else {}),
     )
     if (
         engine == "hecke"
@@ -420,7 +476,9 @@ def validate_answer(engine, response, label, degree=None, bits=200, iterations=1
     ):
         return "shape-error"
     if engine == "pari" and any(
-        not line.startswith(("FRONTIER_RESULT|", "FRONTIER_COMPACT|"))
+        not line.startswith(
+            ("FRONTIER_RESULT|", "FRONTIER_COMPACT|", "FRONTIER_COMPACT_JSON|")
+        )
         for line in response["stdout"].splitlines()
         if line.strip()
     ):
@@ -444,8 +502,10 @@ class Campaign:
         bits=200,
         iterations=1,
         samples=1,
+        proof_policy="conditional-grh",
     ):
         validate_measurement(bits, iterations, samples)
+        self.proof_policy = shared.validate_proof_policy(proof_policy)
         self.ledger, self.output = Path(ledger), Path(output)
         self.engine, self.factory = engine, factory
         self.controls, self.provenance = controls, provenance
@@ -457,7 +517,15 @@ class Campaign:
         self.bits, self.iterations, self.samples = bits, iterations, samples
 
     def attempt(
-        self, name, stage, cap, operation, request=b"", record=None, sample=None
+        self,
+        name,
+        stage,
+        cap,
+        operation,
+        request=b"",
+        record=None,
+        sample=None,
+        request_marker=None,
     ):
         destination = self.output / (name + ".json")
         if destination.exists():
@@ -475,6 +543,7 @@ class Campaign:
             "output": str(destination),
             "started_at": datetime.now(timezone.utc).isoformat(),
             "request_sha256": hashlib.sha256(request).hexdigest(),
+            "request_marker": request_marker,
         }
         shared.save(self.ledger, self.state)
         started = time.monotonic()
@@ -484,7 +553,7 @@ class Campaign:
                 self.worker.close()
                 self.worker = None
             receipt = {
-                "schema": "sagejs.general-frontier-persistent-screen.v1",
+                "schema": "sagejs.general-frontier-persistent-screen.v2",
                 "engine": self.engine,
                 "stage": stage,
                 "attempt": name,
@@ -492,7 +561,7 @@ class Campaign:
                 "started_at": self.state["pending"]["started_at"],
                 "qualification_evidence": False,
                 "independent_replay": False,
-                "proof_policy": "conditional-grh",
+                "requested_proof_policy": self.proof_policy,
                 "boundary": "persistent-process-fresh-field-not-proven-warm-JIT",
                 "bits": self.bits if stage in ("sample", "warmup") else None,
                 "iterations": (self.iterations if stage == "sample" else 1)
@@ -509,6 +578,7 @@ class Campaign:
                 "controls": self.controls,
                 "provenance": self.provenance,
                 "request_sha256": hashlib.sha256(request).hexdigest(),
+                "request_marker": request_marker,
                 "cap_seconds": cap,
                 "wall_seconds": time.monotonic() - started,
                 **response,
@@ -535,7 +605,8 @@ class Campaign:
                 immutable_save(
                     destination,
                     {
-                        "schema": "sagejs.general-frontier-persistent-screen.v1",
+                        "schema": "sagejs.general-frontier-persistent-screen.v2",
+                        "requested_proof_policy": self.proof_policy,
                         "status": "interrupted",
                         "stage": stage,
                         "attempt": name,
@@ -595,13 +666,20 @@ class Campaign:
     def request(self, name, stage, label, coefficients, sample=None):
         iterations = self.iterations if stage == "sample" else 1
         payload, marker = encode_request(
-            self.engine, name, coefficients, self.bits, 1, iterations
+            self.engine, name, coefficients, self.bits, 1, iterations, self.proof_policy
         )
 
         def operation():
             answer = self.worker.exchange(payload, self.seconds, marker)
             answer["status"] = validate_answer(
-                self.engine, answer, name, len(coefficients) - 1, self.bits, iterations
+                self.engine,
+                answer,
+                name,
+                len(coefficients) - 1,
+                self.bits,
+                iterations,
+                self.proof_policy,
+                require_current=True,
             )
             return answer
 
@@ -613,6 +691,7 @@ class Campaign:
             payload,
             {"label": label, "coefficients": coefficients},
             sample,
+            marker.decode() if marker is not None else None,
         )
 
     def run(self, records):
@@ -633,6 +712,8 @@ class Campaign:
             immutable_save(
                 self.output / "run.json",
                 {
+                    "schema": "sagejs.general-frontier-persistent-request.v2",
+                    "requested_proof_policy": self.proof_policy,
                     "engine": self.engine,
                     "records": records,
                     "warmups": self.warmups,
@@ -674,7 +755,14 @@ class Campaign:
 
 
 def worker_factory(
-    engine, executable, worker, project=None, depot=None, output_cap=32 * 1024 * 1024
+    engine,
+    executable,
+    worker,
+    project=None,
+    depot=None,
+    output_cap=32 * 1024 * 1024,
+    *,
+    toy_replay=False,
 ):
     environment = dict(
         os.environ,
@@ -702,6 +790,8 @@ def worker_factory(
             worker.with_name("transport.jl"),
             HERE / "hecke-bootstrap.jl",
         ]
+        if toy_replay:
+            files.append(worker.with_name("toy-replay.jl"))
 
     hashes = {str(path): digest(path) for path in files}
 
@@ -732,6 +822,8 @@ def worker_factory(
                 str(worker),
                 marker.decode(),
             ]
+            if toy_replay:
+                command.append("--toy-replay")
             payload = b""
         return Worker(command, environment, engine, output_cap), payload
 
@@ -757,6 +849,9 @@ def main():
     parser.add_argument("--bits", type=int, default=200)
     parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--samples", type=int, default=1)
+    parser.add_argument(
+        "--proof-policy", choices=shared.PROOF_POLICIES, default="conditional-grh"
+    )
     args = parser.parse_args()
     validate_measurement(args.bits, args.iterations, args.samples)
     if not all(1 <= cap <= 600 for cap in (args.seconds, args.startup_seconds)):
@@ -782,6 +877,7 @@ def main():
         bits=args.bits,
         iterations=args.iterations,
         samples=args.samples,
+        proof_policy=args.proof_policy,
     ).run(records)
 
 

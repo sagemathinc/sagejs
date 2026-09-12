@@ -1,0 +1,308 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-hecke-generator-witness",
+  "title": "General Hecke Generator Witness",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Emit and validate explicit PARI and Hecke compact witnesses and v3 requested conditional-GRH/unconditional proof policy end-to-end, without reinterpreting retained native-text/v1/v2 evidence; preserve approximate PARI regulator, final-iteration-only scope, resource/accounting boundaries and draft qualification status",
+  "base_commit": "9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/reference/hecke/screen.jl",
+    "bench/class-unit-groups/general-frontier/reference/hecke/generator-witness-smoke.jl",
+    "bench/class-unit-groups/general-frontier/reference/hecke/generator-product-witnesses.md",
+    "bench/class-unit-groups/general-frontier/reference/runner/screen-batch.py",
+    "bench/class-unit-groups/general-frontier/reference/runner/summarize-persistent.py",
+    "bench/class-unit-groups/general-frontier/reference/persistent/supervisor.py",
+    "bench/class-unit-groups/general-frontier/reference/runner/test_hecke_witness_schema.py",
+    "bench/class-unit-groups/general-frontier/reference/pari-screen.gp",
+    "bench/class-unit-groups/general-frontier/reference/pari-explicit-output-smoke.gp",
+    "bench/class-unit-groups/general-frontier/reference/pari-explicit-output.md",
+    "bench/class-unit-groups/general-frontier/reference/runner/test_pari_explicit_output.py",
+    "bench/class-unit-groups/general-frontier/reference/persistent/hecke-bootstrap.jl",
+    "bench/class-unit-groups/general-frontier/reference/hecke/transport.jl",
+    "bench/class-unit-groups/general-frontier/reference/runner/summarize-screen.py",
+    "bench/class-unit-groups/general-frontier/reference/runner/pair-persistent.py",
+    "bench/class-unit-groups/general-frontier/reference/runner/test_proof_policy.py",
+    "bench/class-unit-groups/general-frontier/reference/proof-policy.md",
+    "bench/class-unit-groups/general-frontier/reference/runner/test_screen.py",
+    "bench/class-unit-groups/general-frontier/reference/runner/test_pair.py",
+    "bench/class-unit-groups/general-frontier/reference/runner/test_persistent_review.py",
+    "bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+    "bench/class-unit-groups/general-frontier/reference/persistent/fake-worker.py",
+    "bench/class-unit-groups/general-frontier/reference/persistent/local-smoke.py",
+    "bench/class-unit-groups/general-frontier/reference/hecke/transport-smoke.cjs",
+    "bench/class-unit-groups/general-frontier/reference/hecke/transport-smoke.jl",
+    "bench/class-unit-groups/general-frontier/reference/hecke/smoke.jl",
+    "bench/class-unit-groups/general-frontier/reference/runner/test.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://raw.githubusercontent.com/thofma/Hecke.jl/v0.40.0/src/NumFieldOrd/NfOrd/Clgp/Map.jl"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Pinned Hecke 0.40.0 class-map source and exact small-field principal-ideal equality; distinguish local 0.39.22 smoke",
+      "Installed primary PARI manual and bounded exact small-field serialization, literal ideal equation, reduction multiplier and torsion-coordinate regressions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "python3 -B -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+    "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+    "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_pari_explicit_output.py",
+    "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_proof_policy.py"
+  ],
+  "runs": [
+    {
+      "command": "python3 -B -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.149,
+      "started_at": "2026-09-12T06:44:03.121Z",
+      "commit": "9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+      "workspace_fingerprint": "c88c8c03666e91d2403c53d5a93d7c745c73d33dbadcc3c6033e17f8d4590b64",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.792,
+      "started_at": "2026-09-12T06:44:31.618Z",
+      "commit": "9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+      "workspace_fingerprint": "c88c8c03666e91d2403c53d5a93d7c745c73d33dbadcc3c6033e17f8d4590b64",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.8,
+      "started_at": "2026-09-12T06:46:44.980Z",
+      "commit": "9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+      "workspace_fingerprint": "2673afa6a3c5e8b00102172a4492eb82f0a3001a32b4911c3ef696e28eb7ef50",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.141,
+      "started_at": "2026-09-12T06:48:36.298Z",
+      "commit": "4fd6d78907220d392e6564cc358fc62d425599ae",
+      "workspace_fingerprint": "e7c192882bda3e1392efe9d29069d04f42df70d6472734a3c3e51827a6e64d1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.236,
+      "started_at": "2026-09-12T06:48:37.133Z",
+      "commit": "4fd6d78907220d392e6564cc358fc62d425599ae",
+      "workspace_fingerprint": "e7c192882bda3e1392efe9d29069d04f42df70d6472734a3c3e51827a6e64d1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 67.122,
+      "started_at": "2026-09-12T06:48:41.087Z",
+      "commit": "4fd6d78907220d392e6564cc358fc62d425599ae",
+      "workspace_fingerprint": "e7c192882bda3e1392efe9d29069d04f42df70d6472734a3c3e51827a6e64d1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env JULIA_PKG_PRECOMPILE_AUTO=0 JULIA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 /home/user/.julia/juliaup/julia-1.12.7+0.x64.linux.gnu/bin/julia --startup-file=no --compiled-modules=existing --pkgimages=existing --project=/tmp/hecke-generator-witness-env-EvWEZU -e using Hecke; @assert Base.pkgversion(Hecke) == v\"0.40.0\"; include(\"bench/class-unit-groups/general-frontier/reference/hecke/generator-witness-smoke.jl\")",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 270.349,
+      "started_at": "2026-09-12T06:49:49.077Z",
+      "commit": "4fd6d78907220d392e6564cc358fc62d425599ae",
+      "workspace_fingerprint": "e7c192882bda3e1392efe9d29069d04f42df70d6472734a3c3e51827a6e64d1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env JULIA_PKG_PRECOMPILE_AUTO=0 JULIA_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 JULIA=/home/user/.julia/juliaup/julia-1.12.7+0.x64.linux.gnu/bin/julia JULIA_PROJECT=/home/user/.local/share/sagejs-benchmarks/number-fields-julia node bench/class-unit-groups/general-frontier/reference/hecke/transport-smoke.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.376,
+      "started_at": "2026-09-12T06:54:20.572Z",
+      "commit": "4fd6d78907220d392e6564cc358fc62d425599ae",
+      "workspace_fingerprint": "e7c192882bda3e1392efe9d29069d04f42df70d6472734a3c3e51827a6e64d1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 6.848,
+      "started_at": "2026-09-12T06:54:45.743Z",
+      "commit": "4fd6d78907220d392e6564cc358fc62d425599ae",
+      "workspace_fingerprint": "e7c192882bda3e1392efe9d29069d04f42df70d6472734a3c3e51827a6e64d1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.404,
+      "started_at": "2026-09-12T06:54:53.381Z",
+      "commit": "4fd6d78907220d392e6564cc358fc62d425599ae",
+      "workspace_fingerprint": "e7c192882bda3e1392efe9d29069d04f42df70d6472734a3c3e51827a6e64d1f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.16,
+      "started_at": "2026-09-12T08:03:25.438Z",
+      "commit": "a53e1d1fa4b9f3323def269806f4f263f924af38",
+      "workspace_fingerprint": "dcbc518704746218e9ccc8c78c2898d4d383187a65f6c7d2d2c3ccafccb160fb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.718,
+      "started_at": "2026-09-12T08:03:26.255Z",
+      "commit": "a53e1d1fa4b9f3323def269806f4f263f924af38",
+      "workspace_fingerprint": "dcbc518704746218e9ccc8c78c2898d4d383187a65f6c7d2d2c3ccafccb160fb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_pari_explicit_output.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.114,
+      "started_at": "2026-09-12T08:03:29.640Z",
+      "commit": "a53e1d1fa4b9f3323def269806f4f263f924af38",
+      "workspace_fingerprint": "dcbc518704746218e9ccc8c78c2898d4d383187a65f6c7d2d2c3ccafccb160fb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base a53e1d1fa4b9f3323def269806f4f263f924af38",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.263,
+      "started_at": "2026-09-12T08:03:30.404Z",
+      "commit": "a53e1d1fa4b9f3323def269806f4f263f924af38",
+      "workspace_fingerprint": "dcbc518704746218e9ccc8c78c2898d4d383187a65f6c7d2d2c3ccafccb160fb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 61.542,
+      "started_at": "2026-09-12T08:03:50.780Z",
+      "commit": "a53e1d1fa4b9f3323def269806f4f263f924af38",
+      "workspace_fingerprint": "dcbc518704746218e9ccc8c78c2898d4d383187a65f6c7d2d2c3ccafccb160fb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.098,
+      "started_at": "2026-09-12T09:24:00.567Z",
+      "commit": "fe690b5a52c1ba0ed4fdd43eb00c6dfeafb726a1",
+      "workspace_fingerprint": "09568ee8ff3df7f0af6b9c482a71820845ee51b62fc20797459a70e9dff080aa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.478,
+      "started_at": "2026-09-12T09:24:02.344Z",
+      "commit": "fe690b5a52c1ba0ed4fdd43eb00c6dfeafb726a1",
+      "workspace_fingerprint": "09568ee8ff3df7f0af6b9c482a71820845ee51b62fc20797459a70e9dff080aa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env -u GP_ORACLE node --test bench/class-unit-groups/general-frontier/reference/runner/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.28,
+      "started_at": "2026-09-12T09:24:06.539Z",
+      "commit": "fe690b5a52c1ba0ed4fdd43eb00c6dfeafb726a1",
+      "workspace_fingerprint": "09568ee8ff3df7f0af6b9c482a71820845ee51b62fc20797459a70e9dff080aa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base fe690b5a52c1ba0ed4fdd43eb00c6dfeafb726a1",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.324,
+      "started_at": "2026-09-12T09:24:08.488Z",
+      "commit": "fe690b5a52c1ba0ed4fdd43eb00c6dfeafb726a1",
+      "workspace_fingerprint": "09568ee8ff3df7f0af6b9c482a71820845ee51b62fc20797459a70e9dff080aa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_proof_policy.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.009,
+      "started_at": "2026-09-12T09:25:30.836Z",
+      "commit": "fe690b5a52c1ba0ed4fdd43eb00c6dfeafb726a1",
+      "workspace_fingerprint": "09568ee8ff3df7f0af6b9c482a71820845ee51b62fc20797459a70e9dff080aa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_pari_explicit_output.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.117,
+      "started_at": "2026-09-12T09:25:32.511Z",
+      "commit": "fe690b5a52c1ba0ed4fdd43eb00c6dfeafb726a1",
+      "workspace_fingerprint": "09568ee8ff3df7f0af6b9c482a71820845ee51b62fc20797459a70e9dff080aa",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.001,
+      "started_at": "2026-09-12T09:25:33.311Z",
+      "commit": "fe690b5a52c1ba0ed4fdd43eb00c6dfeafb726a1",
+      "workspace_fingerprint": "09568ee8ff3df7f0af6b9c482a71820845ee51b62fc20797459a70e9dff080aa",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The explicit PARI/Hecke literal-generator witness boundary now has a v3 conditional-GRH/unconditional request option. Every unconditional iteration requires full PARI bnfcertify(b,0)==1 or both Hecke public GRH=false proof owners, with execution records joined through CLI, wire, receipts, validators, normalization and scalar pairing. Historical v1/v2 receipts retain conditional meaning; PARI regulator stays approximate and both engines retain only the final batch result. Fresh offline receipts pass 56 runner tests (14 new policy groups), 20 persistent tests, four direct Node tests with GP skipped, and strict Python (389 modules). After coordinator review, committed source c66710b760ada62eb99b12a7e22aec2301ed3533 passed all 13 local PARI 2.17.1 matrix requests/eight full certifications plus tiny decoded exact replay. The single authorized Hecke process failed before requests because its strict existing precompiled image was unavailable: zero of 13 requests completed, so Hecke live policy validation remains incomplete. Both processes closed with unchanged checked source/runtime pins and no retries/builds. Earlier pinned GP 2.15.4 compatibility evidence applies only to source 3600649e4. Full platform/build and M0 qualification remain draft.",
+    "risks": [
+      "This remains structural screening, not independent replay or qualified benchmark evidence. New v3 has local tiny PARI results only; Hecke live policy validation is explicitly incomplete. Historical native-text/v1 timings do not measure the strengthened explicit output or new proof work. PARI regulator is not an enclosure; neither worker retains all batch outputs.",
+      "The two authorized <=180-second processes on c66710b76 consumed 0.2320914429728873 seconds for GP (13 requests/eight certifications, reported certification stages total 2 ms) and 3.2422538839746267 seconds for Hecke (startup error/zero requests). Raw receipts are under rootlab build/general-frontier/unconditional-reference-policy-implementation-v1. PARI decoded SHA256 ecbe2f402beb5bc5681af47787e495413886e800f2ae37a5e81cbd8be5253d3a, replay SHA256 eb572d414f3ec171759798d75f76eab6bb94690f8d237856efafb92a5d72b46b; Hecke startup failure SHA256 21b0f75697ce82fb037b3a7b2c0c4e1bf346161b8a81d08f55481627826285cb. Required Hecke CacheFlags(use_pkgimages=false, debug_level=1, check_bounds=0, inline=true, opt_level=2) image was unavailable. No cache preparation, conditional/source compatibility rebranding, or retries followed. Runtime wrapper/real/library and Julia/project/manifest pins matched before/after, but are not full dependency attestation. Total active implementation/handoff effort approximately 46 minutes; all earlier failures remain retained.",
+      "The v3 implementation source checkpoint consumed approximately 41 active minutes from 2026-09-12 08:46:17 UTC, within the approved 90-minute checkpoint. No GP/Hecke, SSH, installs, builds, ledger mutations or host claims occurred. Exact-base changed validation again passed merge checks then failed on missing dist/vendor/tree-sitter-sage.wasm; this current failure is retained alongside all earlier failures.",
+      "All three initial GP failures remain retained (0.227469548 seconds total). Following full coordinator source review, an explicitly authorized final tranche allowed two further <=180-second invocations; one invocation completed both the full smoke and decoded exact-array replay in 0.123751382 seconds, so no fifth local process was needed. No acceptance, proof, or resource limit was relaxed. Receipts are under rootlab build/general-frontier/pari-explicit-output-implementation-v1/gp-invocation-4-authorized; decoded SHA256 ed7ff207a211792c60b465b3b68cd93e6c505d76d41cdb55abf6ee135c655ba7, replay SHA256 01e57d3ef57ef750dfa22fa69ac38c8606d5757f432157545fc57b3d63b1764f.",
+      "A separately authorized single-process compatibility check on reserved bench-1 also passes all 11 frames and 133 decoded exact-array assertions with GP 2.15.4 executable SHA256 c9673623cad2eaa7cfe402e7b7d833f1f703689a09837026b6386aaafba6deec, matching the reference executable pin. Exact source 3600649e46a14cbb1270e44921a28d15a615569c and executable were hash-checked before/after; process closed after 0.074055435 seconds. All 19 files/324525 bytes were copied and verified under rootlab build/general-frontier/pari-explicit-output-215-compat-v1/raw-stage (inventory SHA256 8b54e4f3caa6067d39102c2877b1ba000dfefb47ac1c1ae0e1976b3b36ac49ac). This is version compatibility evidence, not opt-host performance or full cross-platform qualification.",
+      "Local validation uses Julia 1.12.7, Hecke 0.39.22/Nemo 0.56.1 and retained Hecke 0.40.0 source revision 66af28e52682620edb302931fce3f9ac87fc4eb7 with the deployed dependency versions; it does not attest deployed-host caches or non-Linux platforms.",
+      "One existing persistent duplicate-response test failed intermittently before passing unchanged on rerun; the failed receipt is retained and no transport race fix is included.",
+      "Required native and broader build-dependent gates remain unmet in this unbuilt narrow worktree. Fresh exact-base test:changed passed merge checks then failed on missing dist/vendor/tree-sitter-sage.wasm; fresh architecture:check failed on the same missing asset. Architecture:check initially lacked dist/tools/cli. The accidental origin/main changed-check build was stopped after TypeScript compilation. Failed receipts are retained and the contract remains active, not review."
+    ],
+    "next_steps": [
+      "The allocated policy approach is closed with Hecke live validation incomplete. Do not retry, prepare caches or run more CAS without M0 reassessment and new coordinator authorization. Exact executed commands/runtime hashes and retained failure are under rootlab build/general-frontier/unconditional-reference-policy-implementation-v1; tiny equality checks are not independent completeness proof.",
+      "Integration should rerun the build-dependent unit/native/architecture gates and investigate the existing duplicate-response race separately.",
+      "Repin deployed worker source before any authorized controlled sampling; disclose v2's strengthened witness boundary and unchanged asymmetric regulator guarantees.",
+      "Broader matched class/unit-map probe coverage, 100/200-bit regulator qualification and repeated timing samples remain separate planned work."
+    ]
+  }
+}
