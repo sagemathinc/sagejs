@@ -1,0 +1,45 @@
+{
+  "schema": "sagejs.frozen-owned-dictionary-identity/v1",
+  "source_commit": "5fc42b72295d1c8883f029fabb26d8f8cd2fb0fe",
+  "source_pr": 265,
+  "build_workspace_sha256": "fc2f52f5941060106e1c82d16bf60ba882d15a3edf6a05df8c7e4ea2499cd2d9",
+  "build_completed_at": "2026-09-12T10:05:38.796Z",
+  "node": "26.8.1",
+  "node_sha256": "19235a9b678f84729464c52623f92de130a165452747c6826d3fdc13df3abcc3",
+  "namespace_source_sha256": "412ea79dfbe9b9127dcf4b6e92f6bdad7dba2786577059cda9449d486ffdcdbe",
+  "driver_sha256": "fa284b155a4c2b4dacbd3066b0cef903881f0e5d0f7c3ccaf1d9b8c40b7fc8b4",
+  "samples_file_sha256": "b977564e185acbeda87e70bb54443e88d23781b901cda8b1af940dd49cb1459b",
+  "profile_summary_file_sha256": "8c851a7239a3adc2b7431ee9e99e3f96dfbf311ecebe929af325da059786f457",
+  "build_receipt_file_sha256": "297e49c61a8797b6ccb06d3718d80e421e82f79899cc0da4e92085fc0860ceac",
+  "host": "bench-1",
+  "initial_census_utc": "2026-09-12T10:17:26Z",
+  "timing_census_utc": "2026-09-12T10:20:35Z",
+  "release_census_utc": "2026-09-12T10:22:24Z",
+  "foreign_node_processes_observed": 0,
+  "pre_timing_selection": {
+    "files": 20217,
+    "sha256": "3555b42f5fd6c49151ff0ae83d0ff2683bfa66d71e0c6d42d812b46e7c4454ab"
+  },
+  "expanded_post_run_selection": {
+    "files": 20389,
+    "sha256": "5bda217936dabc1bd08fe9f5be586f10eee5968655924f7d4e55b1cd2e5dbb12",
+    "includes_additionally": [
+      "dist/module-cache",
+      "dist/numerical",
+      "dist/vendor",
+      "dist/sagejs-version.json"
+    ]
+  },
+  "remote_guard_regressions": {
+    "pass": 4,
+    "fail": 0,
+    "modes": [
+      "python",
+      "sage"
+    ],
+    "includes_explicit_gc": true
+  },
+  "reservation": "https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18411236",
+  "release": "https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18411271",
+  "staging_failure": "Initial test attempt failed before timing because tools/math-dispatch loader was omitted; unchanged tools/scripts/architecture were staged and all four controls reran successfully."
+}

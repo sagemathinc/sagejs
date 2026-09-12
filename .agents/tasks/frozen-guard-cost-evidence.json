@@ -1,0 +1,116 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "frozen-guard-cost-evidence",
+  "title": "Frozen Guard Cost Evidence",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Preserve controlled frozen dictionary guard cost evidence without modifying qualified runtime sources",
+  "base_commit": "5fc42b72295d1c8883f029fabb26d8f8cd2fb0fe",
+  "claims": [
+    "bench/frozen-owned-dictionary/"
+  ],
+  "dependencies": [
+    "frozen-owned-dictionary"
+  ],
+  "references": [
+    "PR265 5fc42b722; controlled bench-1 reservation18411236 and release18411271"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Offline exact sample counts/order, driver hash, unrounded ratios, and profile arithmetic"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "node bench/frozen-owned-dictionary/verify.cjs",
+    "node scripts/generate-docs.cjs --check",
+    "git diff --check"
+  ],
+  "runs": [
+    {
+      "command": "node bench/frozen-owned-dictionary/verify.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.044,
+      "started_at": "2026-09-12T10:31:46.473Z",
+      "commit": "5fc42b72295d1c8883f029fabb26d8f8cd2fb0fe",
+      "workspace_fingerprint": "192647f98fb7126befed676192744f005eea745e4b5dbea8770c417f6de6181f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.201,
+      "started_at": "2026-09-12T10:31:47.427Z",
+      "commit": "5fc42b72295d1c8883f029fabb26d8f8cd2fb0fe",
+      "workspace_fingerprint": "192647f98fb7126befed676192744f005eea745e4b5dbea8770c417f6de6181f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.285,
+      "started_at": "2026-09-12T10:31:50.551Z",
+      "commit": "5fc42b72295d1c8883f029fabb26d8f8cd2fb0fe",
+      "workspace_fingerprint": "192647f98fb7126befed676192744f005eea745e4b5dbea8770c417f6de6181f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/frozen-owned-dictionary/verify.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.046,
+      "started_at": "2026-09-12T10:33:12.057Z",
+      "commit": "5fc42b72295d1c8883f029fabb26d8f8cd2fb0fe",
+      "workspace_fingerprint": "a665a698764f550015c0dfca2ca8a1b2e87e9c08cfcf907d37dfdbebb5e59bf7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/generate-docs.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.081,
+      "started_at": "2026-09-12T10:33:12.988Z",
+      "commit": "5fc42b72295d1c8883f029fabb26d8f8cd2fb0fe",
+      "workspace_fingerprint": "a665a698764f550015c0dfca2ca8a1b2e87e9c08cfcf907d37dfdbebb5e59bf7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.279,
+      "started_at": "2026-09-12T10:33:15.950Z",
+      "commit": "5fc42b72295d1c8883f029fabb26d8f8cd2fb0fe",
+      "workspace_fingerprint": "a665a698764f550015c0dfca2ca8a1b2e87e9c08cfcf907d37dfdbebb5e59bf7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Evidence-only controlled cost report for frozen PR265 runtime; preserves 84 controlled and 84 separate local samples, exact driver and snapshot identities, and a separate CPU profile summary. Task stays active: mandatory lane-wide runtime receipts are not relabeled as validation of this evidence head.",
+    "risks": [
+      "The guard-disabled baseline is diagnostic, not an independently correct product.",
+      "Material protected-write and first-exposure costs remain; no adoption, startup, allocation-byte, or four-platform qualification claim.",
+      "This evidence head is not the historical runtime build. The exact5fc42b722 source/artifact and its current receipt remain in the detached predecessor worktree."
+    ],
+    "next_steps": [
+      "Review the separately owned exact annotation-dictionary lowering proposal before any implementation.",
+      "Coordinator reviews evidence and head CI before guard adoption; no namespace or emitter claim is held here."
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "schema": "sagejs.frozen-owned-dictionary-profile/v1",
+  "measurement": "separate V8 CPU profile, not allocation bytes or timed ABBA evidence",
+  "command": "node --cpu-prof --cpu-prof-dir=profiles dist/guard-diagnostics/frozen-owned-cost-qualification.cjs owned_expose B",
+  "main_profile_sha256": "1496b55267498ffcf16163ed9b94cf9d4f9611c9783a1656294d134264686dd5",
+  "worker_profile_sha256": "fbc8401d596f3341a8f948d826608424af85365a8d0582b13b5bcd0b664c4500",
+  "worker_total_self_samples": 3301,
+  "registration": {
+    "self": 23,
+    "inclusive": 1523
+  },
+  "guard_installer": {
+    "self": 98,
+    "inclusive": 1279
+  },
+  "guard_installer_direct_children": [
+    {
+      "name": "rho_dict",
+      "self": 11,
+      "inclusive": 794
+    },
+    {
+      "name": "native_method_adapter",
+      "self": 9,
+      "inclusive": 150
+    },
+    {
+      "name": "math_tuple",
+      "self": 102,
+      "inclusive": 149
+    },
+    {
+      "name": "setattr",
+      "self": 36,
+      "inclusive": 60
+    },
+    {
+      "name": "function_code",
+      "self": 4,
+      "inclusive": 22
+    },
+    {
+      "name": "Iterable",
+      "self": 1,
+      "inclusive": 3
+    },
+    {
+      "name": "live_scope_dict",
+      "self": 3,
+      "inclusive": 3
+    }
+  ],
+  "profiled_run_samples_ms": [
+    253.11756134033203,
+    263.2443904876709,
+    252.36010551452637,
+    281.7261219024658,
+    262.0227336883545,
+    267.31085777282715,
+    243.05462837219238
+  ],
+  "emitted_witness": "Each of three typed functions per Map eagerly assigns __annotations__ = rho_dict({...}) plus tuple/code metadata; there are two Maps per namespace.",
+  "interpretation": "Annotation-dictionary construction is about 62% of sampled installer subtree CPU. The receiver adapter alone is about 12%; no claim about allocation bytes, GC cause, or an optimized candidate is made."
+}
