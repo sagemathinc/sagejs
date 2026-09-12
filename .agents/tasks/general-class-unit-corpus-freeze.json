@@ -4,7 +4,7 @@
   "id": "general-class-unit-corpus-freeze",
   "title": "General Class Unit Corpus Freeze",
   "lane": "integration",
-  "status": "review",
+  "status": "proposed",
   "owner": "user",
   "objective": "Freeze accepted 1800 field identities,360 performance membership and90 development smoke identities with offline source-bound validation; retain incomplete M0 qualification",
   "base_commit": "9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
@@ -14,6 +14,7 @@
   ],
   "dependencies": [],
   "references": [
+    "Ownership transferred 2026-09-12 to general-class-unit-corpus-independent on main 6c42dd093. This historical contract is parked as non-live proposed because the schema has no superseded status; no renewed work or current-main qualification is implied. PR236 remains an open draft and its source/receipts are preserved.",
     "Adopted complete M0-M5 plan aceadd86d81f796740e9fa1e02c5d1a57854453ecc0d1774f3f09bf2dcd14403; no effort reset",
     "Accepted panel98 witness766f3f33657504cc18a280db4bb758be3932f8350e2629d2a0a597eb157e5edb; generated admission d80fc3a0 and exact identity reconciliation5ea62a41"
   ],
