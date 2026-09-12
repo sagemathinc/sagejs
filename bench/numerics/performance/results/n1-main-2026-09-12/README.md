@@ -1,4 +1,4 @@
-# Main-based trace accounting: local paired evidence
+# Main-based trace accounting: paired evidence
 
 Baseline: `5b307b65fc350763abd52062e57f1c7a3666f925`.
 Candidate: `db7c806b072b6f1d181f92532b75f1d395428a42`.
@@ -42,16 +42,50 @@ policy still scans a bounded retained list.
 
 ## Limits
 
-This is local timing evidence, **not independent host confirmation**,
-release qualification, a SciPy speed comparison, or completion of N0/N1.
-The corresponding independent `bench-1` campaign is
-running separately. Do not pool different hosts or runtime versions.
+The preceding table is local timing evidence. The independent `bench-1`
+confirmation is below; do not pool different hosts or runtime versions.
+Neither campaign is release qualification, a SciPy speed comparison, or
+completion of N0/N1.
 
 All three public solver cases remain above their program latency targets.
 No reliable tail-latency, cold-import, peak-memory, million-event, or full
 optimization/ODE-domain claim follows from these samples. Process memory
 snapshots do not measure worker peaks. The initial corpus's remaining domains
 and the N2–N6 acceleration/qualification work remain open.
+
+## Independent persistent-host confirmation
+
+`bench-1` used its own fresh baseline/candidate checkouts and dependencies,
+Node 26.5.1 on Linux x64, and the same source, collector, workload, and policy
+identities. The shared checkout was untouched. The host was explicitly handed
+off by the Python lane; all builds and the passing accounting oracle finished
+before the serial A1/B1/B2/A2 timing blocks. CPU work was released afterward.
+The baseline and candidate both lacked optional native adapters/reactors and
+the collector explicitly disabled native selection, as in the local campaign.
+
+`bench1-{A1,B1,B2,A2}.json` retains all samples and startup/preparation records.
+`bench1-comparison.json` checks completion, exact source/compiler/workload
+identities, matching policies, seven samples/three warmups, recomputed medians,
+and identical observations in all 60 records. This confirms the observed gains
+without reclassifying any unmeasured route or changing a performance target.
+
+| Workload / trace policy | Baseline block medians (ms) | Candidate block medians (ms) |
+| --- | ---: | ---: |
+| Append 32 events / iterations | 931.08, 919.70 | 74.83, 81.53 |
+| Append 128 events / iterations | 14499.87, 14217.85 | 294.89, 306.11 |
+| Brent root / none | 47.54, 46.52 | 38.60, 39.99 |
+| Brent root / summary | 44.30, 45.61 | 36.52, 37.65 |
+| Brent root / iterations | 124.91, 123.49 | 58.64, 53.73 |
+| Bounded minimum / none | 46.64, 46.72 | 38.80, 38.78 |
+| Bounded minimum / summary | 118.48, 117.24 | 51.30, 57.53 |
+| Bounded minimum / iterations | 136.70, 134.42 | 54.62, 54.33 |
+| Classroom ODE / none | 181.31, 181.93 | 148.54, 144.97 |
+| Classroom ODE / summary | 175.16, 178.36 | 138.47, 142.70 |
+| Classroom ODE / iterations | 540.48, 539.59 | 204.10, 212.92 |
+
+The trace-only `none`/`summary` controls remain about 1–3 ms and show small
+mixed changes; they do not support a broad claim of universal improvement.
+The retained-event and public solver gains agree directionally on both hosts.
 
 ## Separate browser correctness and payload evidence
 

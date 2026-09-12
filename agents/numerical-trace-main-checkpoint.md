@@ -50,10 +50,13 @@ gzip is 17,185,965 bytes (limit 17,600,000) and Brotli is 9,673,209 bytes
 Run `node test/numerics/performance/trace-accounting-browser.mjs` to repeat
 the three-engine regression; missing browsers fail instead of qualifying.
 
-[Local paired evidence](../bench/numerics/performance/results/n1-main-2026-09-12/README.md)
-retains fresh main/candidate A1/B1/B2/A2 blocks and identical observations in
-all 60 workload/policy records. The independent persistent-host repeat is
-still running. Source receipts name `db7c806b`, not this evidence-only follow-up.
+[Paired evidence](../bench/numerics/performance/results/n1-main-2026-09-12/README.md)
+retains fresh main/candidate A1/B1/B2/A2 blocks on both the development host
+and independent `bench-1`, with identical observations in all 60 workload/policy
+records on each host. The independent repeat used Node 26.5.1, its own two
+fresh builds and dependencies, and no concurrent builds/tests or other-lane
+timings. Its complete accounting oracle also passes. Source receipts name
+`db7c806b`, not these evidence-only follow-ups.
 
 The broad architecture gate currently fails on the unchanged base-main
 `docs/general-class-unit-frontier.md` historical retired-toolchain mention. The numerical,
@@ -66,7 +69,8 @@ Use `bench/numerics/performance/run.cjs` with its committed-source and current-
 build checks. Retain censored batches, all samples and separately reported
 startup/preparation; never infer public speed from a kernel-only number.
 Run before/after blocks serially after builds and other tests finish. An
-independent quiet persistent-host repeat remains necessary to confirm gains.
+independent quiet persistent-host repeat confirms gains for these five cases;
+it does not qualify unmeasured workloads or platforms.
 
 ## Remaining program
 
