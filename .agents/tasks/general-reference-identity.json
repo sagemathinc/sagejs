@@ -75,6 +75,16 @@
       "commit": "992adda7f7e4390ed67fcb10ecd4b4f8789817bd",
       "workspace_fingerprint": "8c63b31f6d5df470236f246d53bc3e7f7b8c715c5ae0e1df068277dea84250cf",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/identity/test_identity.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.323,
+      "started_at": "2026-09-12T19:53:37.543Z",
+      "commit": "ad5dcfb7936f3d3a88dc969792762a4711906298",
+      "workspace_fingerprint": "33f1ae62af31ae83c7bf98edc9d008d3e489bbf2e4589a90ad8e158c51c70e55",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

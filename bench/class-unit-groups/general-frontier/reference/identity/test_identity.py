@@ -142,6 +142,26 @@ class ExactIdentity(unittest.TestCase):
 
 
 class FakeProcess(unittest.TestCase):
+    def test_pari_command_preserves_reference_resource_defaults(self):
+        command, environment, payload, marker = driver.request(
+            "pari", {"executable": "/usr/bin/gp"}, record()
+        )
+        self.assertEqual(
+            command,
+            [
+                "/usr/bin/gp",
+                "-fq",
+                "--default",
+                "parisizemax=2147483648",
+                "--default",
+                "nbthreads=1",
+                "--default",
+                "threadsizemax=2147483648",
+            ],
+        )
+        self.assertEqual(environment["OMP_NUM_THREADS"], "1")
+        self.assertIn(marker, payload)
+
     def test_raw_receipt_survives_checker_crash(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "raw.json"

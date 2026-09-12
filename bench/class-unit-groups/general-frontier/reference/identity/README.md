@@ -25,6 +25,11 @@ integer/rational strings, retaining exact signed discriminants and indices.
 
 ## What the offline checks establish
 
+The PARI launch preserves the existing reference worker defaults:
+`parisizemax=2147483648`, `nbthreads=1`, and `threadsizemax=2147483648`.
+These are not additional memory allowances: the same outer 4 GiB cgroup cap
+still governs the complete driver and child process.
+
 `check.py` checks dimensions and canonical rational syntax, nonsingular basis,
 containment of the equation order, multiplication closure, the exact index,
 the trace-form discriminant, and `disc(P) = index^2 * D`. A Sturm sequence checks

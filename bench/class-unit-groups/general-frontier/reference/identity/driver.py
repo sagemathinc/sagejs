@@ -160,7 +160,16 @@ def request(engine, runtime, record):
         JULIA_PKG_PRECOMPILE_AUTO="0",
     )
     if engine == "pari":
-        command = [runtime["executable"], "-q", "-f"]
+        command = [
+            runtime["executable"],
+            "-fq",
+            "--default",
+            "parisizemax=2147483648",
+            "--default",
+            "nbthreads=1",
+            "--default",
+            "threadsizemax=2147483648",
+        ]
         payload = (HERE / "pari.gp").read_bytes() + (
             "\nidentity_case("
             + json.dumps(label)
