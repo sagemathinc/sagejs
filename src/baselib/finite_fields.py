@@ -744,7 +744,7 @@ _residue_dict_coercion_prototype = runtime.object.getPrototypeOf(
     _residue_dict_coercion_model
 )
 _residue_dict_containers = __import__(
-    "sagejs._baselib.containers", fromlist=["containers"]
+    "sagejs._baselib.containers", None, None, ["containers"]
 )
 _residue_dict_container_equals = _residue_dict_containers.equals
 _residue_dict_descriptors = []

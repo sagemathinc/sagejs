@@ -85,3 +85,24 @@ the existing core-runtime allowance. This is an explicit qualification failure,
 not permission to increase a limit. The adopted campaign requires separate
 generated-code/resource evidence and review before any allowance change. All
 execution-memory, proof-verifier and timeout limits remain unchanged.
+
+### First executed candidate (not final qualification)
+
+The positional-import candidate built its own runtime in 643.88 developer
+seconds, with maximum child RSS 1,992,081,408 bytes (not simultaneous process-tree
+peak memory). The first keyword-import build failure is preserved: immutable
+stage zero emitted an older keyword-call convention during module declaration.
+The equivalent positional `__import__` avoids that bootstrap incompatibility.
+
+The first focused run lacked the optional FLINT addon. After ordinary native
+cache preparation, 21 of 22 tests passed; the remaining test's expression
+`type(key).__sagejs_float__ = True` was misparsed as a type-alias statement.
+Using a named class variable exercises the same mutation without that parser
+ambiguity. All 22 focused tests then passed, and the unchanged 60-second
+`compiler/algebra.py` gate passed in 3,787 ms. No failing receipt was discarded.
+
+These are local candidate observations, not four-platform qualification or a
+paired class/unit result. The independent resource review identified removable
+per-value token retention. A direct exact-value token revision and a fresh
+common-base resource control are the next bounded checks. The core source
+allowance still fails and has not been raised.

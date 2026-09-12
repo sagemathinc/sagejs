@@ -196,7 +196,8 @@ test("canonical residue guard rejects newly inherited numeric dispatch markers",
   await run(t, `
 key = GF(101)(1)
 descriptor = finite._residue_dict_probe(key)
-type(key).__sagejs_float__ = True
+cls = type(key)
+cls.__sagejs_float__ = True
 assert not finite._residue_dict_valid(descriptor.guard)
 assert finite._residue_dict_probe(GF(101)(2)) is False
 `);

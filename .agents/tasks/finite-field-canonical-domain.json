@@ -11,7 +11,8 @@
   "claims": [
     "src/baselib/finite_fields.py",
     "test/finite-field-canonical-domain.cjs",
-    "docs/finite-field-canonical-domain.md"
+    "docs/finite-field-canonical-domain.md",
+    "bench/dict-canonical-domain/measure.py"
   ],
   "dependencies": [
     "dict-canonical-domain"
@@ -36,7 +37,7 @@
     "macos-arm64": "required"
   },
   "validation": [
-    "/usr/bin/time -v pnpm build",
+    "python3 bench/dict-canonical-domain/measure.py build/general-frontier/dict-canonical-build-v3.resource.json pnpm build",
     "node --test test/dict-canonical-domain.cjs test/finite-field-canonical-domain.cjs test/dict-reinitialization-storage.cjs",
     "node --test --test-name-pattern=compiler/algebra.py test/compiler.test.cjs",
     "pnpm architecture:check",
@@ -62,6 +63,76 @@
       "started_at": "2026-09-12T10:01:04.560Z",
       "commit": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
       "workspace_fingerprint": "d35db149b508bf3c8dee58779863b1e24091fea29681bf8cdf8765f72b1ffe4e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/dict-canonical-domain/measure.py build/general-frontier/dict-canonical-build-v2.resource.json pnpm build",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 39.199,
+      "started_at": "2026-09-12T10:14:28.225Z",
+      "commit": "4f121742d8f46f919f1bd71fcf9f6e2787da16dc",
+      "workspace_fingerprint": "a54d3d87b7c4b702a43fb4d94b19d562b4d65cc7a6468cd47f1b99331fc62cd2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/dict-canonical-domain/measure.py build/general-frontier/dict-canonical-build-v3.resource.json pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 643.928,
+      "started_at": "2026-09-12T10:21:03.722Z",
+      "commit": "4f121742d8f46f919f1bd71fcf9f6e2787da16dc",
+      "workspace_fingerprint": "4fd1336a8106a8c61f87a2a95a43a4d1026a6da3b3474ac39ab50b1618311ca4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/dict-canonical-domain/measure.py build/general-frontier/dict-canonical-focused-v3.resource.json node --test test/dict-canonical-domain.cjs test/finite-field-canonical-domain.cjs test/dict-reinitialization-storage.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.709,
+      "started_at": "2026-09-12T10:32:07.484Z",
+      "commit": "4f121742d8f46f919f1bd71fcf9f6e2787da16dc",
+      "workspace_fingerprint": "4fd1336a8106a8c61f87a2a95a43a4d1026a6da3b3474ac39ab50b1618311ca4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:cache -- prepare",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.791,
+      "started_at": "2026-09-12T10:32:39.939Z",
+      "commit": "4f121742d8f46f919f1bd71fcf9f6e2787da16dc",
+      "workspace_fingerprint": "4fd1336a8106a8c61f87a2a95a43a4d1026a6da3b3474ac39ab50b1618311ca4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/dict-canonical-domain/measure.py build/general-frontier/dict-canonical-focused-v3-prepared.resource.json node --test test/dict-canonical-domain.cjs test/finite-field-canonical-domain.cjs test/dict-reinitialization-storage.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.01,
+      "started_at": "2026-09-12T10:33:27.266Z",
+      "commit": "4f121742d8f46f919f1bd71fcf9f6e2787da16dc",
+      "workspace_fingerprint": "4fd1336a8106a8c61f87a2a95a43a4d1026a6da3b3474ac39ab50b1618311ca4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/dict-canonical-domain/measure.py build/general-frontier/dict-canonical-focused-v3-testfix.resource.json node --test test/dict-canonical-domain.cjs test/finite-field-canonical-domain.cjs test/dict-reinitialization-storage.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.077,
+      "started_at": "2026-09-12T10:33:54.251Z",
+      "commit": "4f121742d8f46f919f1bd71fcf9f6e2787da16dc",
+      "workspace_fingerprint": "957ffeb872315dc638d46c497243176644c54360974ae3405a8a991cf0afc18a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/dict-canonical-domain/measure.py build/general-frontier/dict-canonical-algebra-v3.resource.json node --test --test-name-pattern=compiler/algebra.py test/compiler.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.161,
+      "started_at": "2026-09-12T10:33:59.972Z",
+      "commit": "4f121742d8f46f919f1bd71fcf9f6e2787da16dc",
+      "workspace_fingerprint": "957ffeb872315dc638d46c497243176644c54360974ae3405a8a991cf0afc18a",
       "platform": "linux-x64"
     }
   ],
