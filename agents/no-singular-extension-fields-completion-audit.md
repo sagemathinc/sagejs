@@ -625,6 +625,37 @@ The existing rational/prime-field Gröbner, Buchberger, elimination, quotient,
 and FGLM/solving fixtures also pass. Production Wasm and other platforms remain
 pending for this integrated source.
 
+The integrated production artifact at `96eae7c7c` is
+`sha256:d765b448719d83feb64b9fde8a7e7ccbfcad9a60c531daa21780f197fe2cb287`.
+The first link verifies unchanged imports and normalized export names/types
+across all 16 modules; thirteen generated FLINT source namespaces require
+their new hashes in the reviewed ABI list. Resuming packaging reuses only the
+binaries freshly linked from this same source, not the older candidate.
+The formerly failing nonsplit GF(4) production Node-Wasm batch passes in
+118,520 ms with unchanged algorithm and worker budgets. Full Node-Wasm and
+Chromium geometry corpora remain in progress, not yet qualification passes.
+
+Current-source fallback inventory has 266 portable N-API entries and 62 absent
+same-name methods referenced by source. Main's three additional dispositions
+and character-Hecke native-call sites explain the difference from the earlier
+snapshot; the public character-Hecke matrix/q-expansion paths explicitly
+select portable implementations when the native methods are absent. Absence
+from this raw inventory is not itself a claim of a missing public fallback.
+The generated main resource adapter gains exactly one function,
+`ffiIntegerLogSqrtBallsPrefixResource`, adding 1,555 bytes (429,090 to 430,645).
+Its bounded source-size ceiling becomes 432,000 bytes; the eager Wasm binary
+and authenticated topology limits are unchanged. Both generated-resource
+tests, including forced-GC lifetime cleanup, pass on the integrated artifact.
+
+All 108 independent Gröbner cases pass in production Node-Wasm and Chromium,
+as do the coefficient, multivariate, bounded-spill, and one-fetch specialist
+checks. Full geometry runs reach and pass the previously failing nonsplit
+GF(4) case on both targets. The new artifact is nevertheless **not qualified**:
+its eager-core Brotli total is 9,727,271 bytes against the unchanged 9,700,000
+cap. The report records 201,393,646 raw, 27,178,926 gzip, and 17,385,977 Brotli
+bytes overall. No eager-cap increase is included. Lossless compiler-cache
+packing is being evaluated separately from the frozen mathematical runs.
+
 ## Still required
 
 - F4 source-current native four-platform public tests, production Node-Wasm,

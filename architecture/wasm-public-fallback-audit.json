@@ -1,10 +1,10 @@
 {
   "schema": "sagejs.wasm-public-fallback-audit/v1",
   "backend_method_count": 538,
-  "portable_napi_capability_count": 263,
+  "portable_napi_capability_count": 266,
   "same_name_backend_method_count": 131,
-  "absent_same_name_backend_method_count": 132,
-  "absent_methods_directly_referenced_by_public_source_count": 60,
+  "absent_same_name_backend_method_count": 135,
+  "absent_methods_directly_referenced_by_public_source_count": 62,
   "absent_methods_directly_referenced_by_public_source": [
     "acbMatrix",
     "acbMatrixScalarMul",
@@ -61,6 +61,8 @@
     "maninRelationsRank",
     "maninRelationsRow",
     "matrixApproxEigensystem",
+    "p1ListCharacterHeckeImages",
+    "p1ListCharacterHeckeMatrix",
     "p1ListHigherWeightDegeneracyMatrix",
     "p1ListHigherWeightHeckeMatrix",
     "p1ListManinRelations",
