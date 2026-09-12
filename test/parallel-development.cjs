@@ -122,6 +122,10 @@ test("lane policy permits focused native and collateral claims", () => {
   assert.equal(laneAllowsClaim(lane, "packages/flint/src/p1.c"), true);
   assert.equal(laneAllowsClaim(lane, "bench/newspace.cjs"), true);
   assert.equal(laneAllowsClaim(lane, "src/baselib/graphics.py"), false);
+  assert.equal(laneAllowsClaim(lane, "website/reference.html"), true);
+  assert.equal(laneAllowsClaim(lane, "website/reference-data.json"), true);
+  assert.equal(laneAllowsClaim(lane, "website/app.mjs"), false);
+  assert.equal(laneAllowsClaim(lane, "website/"), false);
   assert.deepEqual(
     new Set(taskSchema.properties.lane.enum),
     new Set(lanes.keys()),
