@@ -84,6 +84,23 @@ assert result.class_group().invariants()==invariants
 assert result.unit_group().unit_rank==2 and result.unit_group().torsion.order==2
 assert result.context._live_artifacts.reusable is False
 assert coordinates._nonreusable_terminal(result)
+# Construct the public map from this exact resumed result, not the field cache.
+# Check these witnesses before deliberately replacing producer entry points.
+from sagejs.number_fields.class_group_maps import class_group_from_engine_result
+C=class_group_from_engine_result(result)
+order=K.maximal_order()
+assert C.invariants()==invariants and C.order()==h
+for index,ideal in enumerate(C.gens_ideals()):
+    generator=C.gen(index)
+    logarithm=C.discrete_log(ideal)
+    assert C(ideal)==generator and logarithm.coordinates==generator.coordinates()
+    assert logarithm.verify(ideal,C) and logarithm.principal_witness.verify(order)
+    assert not C.is_principal(ideal,proof=False)
+    power=ideal**invariants[index]
+    principal=C.principality(power)
+    assert principal.is_principal and principal.witness is not None
+    assert principal.witness.ideal==power and principal.witness.verify(order)
+print("resumed-class-maps-ok",case,flush=True)
 for export in [replay.export_terminal_components,replay.export_conditional_class_unit]:
     try: export(result)
     except coordinates.UnitCoordinateCapabilityError: pass
