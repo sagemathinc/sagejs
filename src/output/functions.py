@@ -866,7 +866,13 @@ def function_definition(
             output.newline()
             output.indent()
             output.spaced(
-                "var", "result", "=", "js_generator.apply(this,", "arguments)"
+                "var",
+                "result",
+                "=",
+                "js_generator.apply(this,"
+                if self.needs_handled_state is False
+                else "ρσ_handled_state.wrap(js_generator.apply(this,",
+                "arguments)" if self.needs_handled_state is False else "arguments))",
             )
             output.end_statement()
             # Native generator .constructor is a non-callable host object, not

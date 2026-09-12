@@ -15,6 +15,14 @@ const source = readFileSync(lowererPath, "utf8");
 const compiled = new Module(lowererPath, module);
 compiled.require = name => {
   if (["./contract", "./optimizer", "./semantic"].includes(name)) return {};
+  if (name === "./handled-state") {
+    const path = join(__dirname, "../tools/python/handled-state.ts");
+    const dependency = new Module(path, module);
+    dependency._compile(esbuild.transformSync(readFileSync(path, "utf8"), {
+      loader: "ts", format: "cjs", target: "es2022",
+    }).code, path);
+    return dependency.exports;
+  }
   throw new Error(`unexpected source-test dependency: ${name}`);
 };
 compiled._compile(esbuild.transformSync(source, {

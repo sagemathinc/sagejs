@@ -365,7 +365,26 @@ def print_with(self, output):
         output.indent(), output.spaced("if", "(ρσ_with_exception", "===", "undefined)")
         output.with_block(f_exit)
         output.space(), output.print("else"), output.space()
-        output.with_block(f_suppress)
+
+        def f_handled_exit():
+            output.indent()
+            output.print(
+                "const ρσ_with_handled = ρσ_handled_state.enter("
+                "ρσ_normalize_exception(ρσ_with_exception))"
+            )
+            output.end_statement()
+            output.indent(), output.print("try ")
+            output.with_block(f_suppress)
+            output.print(" finally ")
+
+            def f_restore():
+                output.indent()
+                output.print("ρσ_handled_state.leave(ρσ_with_handled)")
+                output.end_statement()
+
+            output.with_block(f_restore)
+
+        output.with_block(f_handled_exit)
 
     output.newline(), output.indent(), output.print("finally"), output.space()
     output.with_block(f_cleanup)
