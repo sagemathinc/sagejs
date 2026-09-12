@@ -11,7 +11,7 @@ investigation started at `d520ed4df`; the current integration baseline is
 | --- | --- |
 | N0 | Partial public-call corpus and profiles; complete scaling, startup, memory, route and platform matrix still required. |
 | N1 | Independent main-based trace PR #224 and result-binding PR #225 are non-draft. Both now have independent Linux x64 confirmation of their narrow gains; result statistics rows do not improve. Remaining bookkeeping, memory and public targets are open. |
-| N2 | Draft #232 isolates the private binary64 sum/compiler foundation on main, with local dynamic/native/Wasm/browser and sanitizer evidence. Four-platform qualification, prepared statistics and public packaging remain open. No 10 ms public-query pass. |
+| N2 | Non-draft #232 qualifies the isolated binary64 sum/compiler foundation on four persistent platforms, with additional local browser and sanitizer evidence. Draft #240 adds owned prepared statistics; its first clean-source local public query is 96 ms versus 5.7 s generic, with 1.5 s preparation. Public packaging, independent paired measurements and the 10 ms target remain open. |
 | N3 | Earlier typed LU, Eigen probes and packed validation are candidate evidence, not a qualified public backend or completed latency target. |
 | N4 | Earlier prepared scalar evaluators/root prototypes remain experimental; derivative/vector/external-solver integration and public targets remain open. |
 | N5 | Breadth and sustained-throughput qualification remain open. |
@@ -50,8 +50,30 @@ JavaScript, native code, emitted Wasm and three browser workers; focused tests
 also pass on Node 22.22.2 and 26.8.1, including standalone sanitizer checks.
 Local reused native summation of 20,000 values is 0.117 ms versus CPython
 `math.fsum` at 0.115 ms; fresh packing raises it to 0.293 ms. These are kernel
-opportunity measurements, not public `describe` performance. The PR remains
-draft pending current-source qualification; it changes no public dispatch.
+opportunity measurements, not public `describe` performance. Evidence head
+`fb98e46e3` retains four-platform frozen-source native correctness and checked
+kernel measurements. Linux x64 and Windows pass 6 focused tests with 3 explicit
+skips; Linux ARM64 and macOS ARM64 pass 8 with 1 sanitizer skip. The two
+additional Wasm tests require the optional prepared SDK. Original ARM shallow
+ancestry and Mac compression-metadata build failures remain alongside their
+source-preserving stage-8 resumes. The PR is now non-draft for its narrow
+foundation scope; it changes no public dispatch and does not qualify complete
+public distribution or a performance target.
+
+[PR #240](https://github.com/sagemathinc/sagejs/pull/240), frozen source
+`dca0b0873`, is a separate draft atop #232. It introduces copied, bounded
+`StatisticsData`, source-compiled stable centered reductions, and fresh public
+`describe` queries with independent checks. Its frozen local eight-stage build
+and 12 focused/domain tests pass without skips, including 296 rational-oracle
+cases through native/JS/isolated Wasm, three browser workers and sanitizers.
+The first clean-source development collector reports 20k-observation untraced
+queries at 5,686 ms generic, 4,216 ms prepared dynamic, and 96 ms prepared native;
+summary tracing gives 5,785 / 6,391 / 103 ms. Native preparation is separately
+1,489 / 1,213 ms. All values and validation match the same CPython source.
+These are sequential local measurements, not independent paired qualification:
+the slower/noisy dynamic row remains visible, and the 10 ms target is missed.
+Public browser fallback, Wasm prepared storage, setup, result construction,
+memory and packaging remain work, not hidden exclusions from a target pass.
 
 Earlier stacked drafts are preserved for source, experiments and review, but
 are not prerequisites to merge merely because a later draft depends on them.
