@@ -632,6 +632,188 @@ class IntegerModElement(FiniteFieldElement):
 _integer_mod_element_prototype = runtime.reflect.get(IntegerModElement, "prototype")
 
 
+def _residue_dict_descriptor_matches(owner: Any, name: str, expected: Any) -> bool:
+    """Compare raw descriptors without invoking a new getter or bound method."""
+    actual = runtime.object.getOwnPropertyDescriptor(owner, name)
+    if actual is runtime.undefined or expected is runtime.undefined:
+        return actual is expected
+    return (
+        runtime.reflect.get(actual, "value") is runtime.reflect.get(expected, "value")
+        and runtime.reflect.get(actual, "get") is runtime.reflect.get(expected, "get")
+        and runtime.reflect.get(actual, "set") is runtime.reflect.get(expected, "set")
+    )
+
+
+def _residue_dict_valid(domain: Any) -> bool:
+    """Witness the complete same-parent equality path, not cross-parent equality."""
+    global _residue_dict_provider_disabled
+    if _residue_dict_provider_disabled:
+        return False
+    if (
+        runtime.coercion_model is not _residue_dict_coercion_model
+        or runtime.object.getPrototypeOf(_residue_dict_coercion_model)
+        is not _residue_dict_coercion_prototype
+        or runtime.object.getPrototypeOf(_integer_mod_element_prototype)
+        is not _finite_field_element_prototype
+        or _residue_dict_containers.equals is not _residue_dict_container_equals
+    ):
+        _residue_dict_provider_disabled = True
+        return False
+    for witness in _residue_dict_descriptors:
+        if not _residue_dict_descriptor_matches(witness[0], witness[1], witness[2]):
+            _residue_dict_provider_disabled = True
+            return False
+    for witness in _residue_dict_prototype_chain:
+        if runtime.object.getPrototypeOf(witness[0]) is not witness[1]:
+            _residue_dict_provider_disabled = True
+            return False
+    return True
+
+
+def _residue_dict_probe(key: Any) -> Any:
+    """Admit immutable exact residues to a private canonical dictionary domain.
+
+    A domain is one parent identity; its token is the exact native integer
+    value. No per-value cache is retained. Distinct domains and native integer
+    keys may share tokens, so they require the dictionary's generic fallback.
+    Only keys entering dictionaries are frozen; arithmetic temporaries retain
+    their existing inexpensive construction path.
+    """
+    if key is None or runtime.jstype(key) != "object":
+        return None
+    prototype = runtime.object.getPrototypeOf(key)
+    if (
+        prototype is not _finite_field_element_prototype
+        and prototype is not _integer_mod_element_prototype
+    ):
+        return None
+    if not _residue_dict_valid(None):
+        return False
+    # Include dispatch markers such as __sagejs_float__, not only __eq__.
+    for name in runtime.reflect.apply(_residue_dict_own_keys, runtime.reflect, [key]):
+        if name != "_parent" and name != "_value":
+            return False
+    parent_slot = runtime.object.getOwnPropertyDescriptor(key, "_parent")
+    value_slot = runtime.object.getOwnPropertyDescriptor(key, "_value")
+    if parent_slot is runtime.undefined or value_slot is runtime.undefined:
+        return False
+    if (
+        runtime.reflect.get(parent_slot, "get") is not runtime.undefined
+        or runtime.reflect.get(value_slot, "get") is not runtime.undefined
+    ):
+        return False
+    parent = runtime.reflect.get(parent_slot, "value")
+    value = runtime.reflect.get(value_slot, "value")
+    if parent is None or runtime.jstype(parent) not in ("object", "function"):
+        return False
+    if runtime.jstype(value) != "bigint" and not (
+        runtime.jstype(value) == "number" and runtime.number.isSafeInteger(value)
+    ):
+        return False
+    # Public residues are immutable. Enforce the physical representation once
+    # a dictionary relies on it, including explicit object.__setattr__ bypasses.
+    runtime.object.freeze(key)
+    value = runtime.bigint(value)
+    domain = _residue_dict_domains.get(parent)
+    if domain is runtime.undefined:
+        domain = runtime.object.create(None)
+        domain.parent = parent
+        runtime.object.freeze(domain)
+        _residue_dict_domains.set(parent, domain)
+    descriptor = runtime.object.create(None)
+    descriptor.domain = domain
+    descriptor.token = value
+    descriptor.guard = domain
+    return descriptor
+
+
+# This is a private first-party provider, not a user-defined hash hook. Capture
+# original descriptors before any public dictionaries can certify this family.
+_residue_dict_provider_disabled = False
+_residue_dict_own_keys = runtime.reflect.get(runtime.reflect, "ownKeys")
+_residue_dict_domains = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+_residue_dict_coercion_model = runtime.coercion_model
+_residue_dict_coercion_prototype = runtime.object.getPrototypeOf(
+    _residue_dict_coercion_model
+)
+_residue_dict_containers = __import__(
+    "sagejs._baselib.containers", None, None, ["containers"]
+)
+_residue_dict_container_equals = _residue_dict_containers.equals
+_residue_dict_descriptors = []
+_residue_dict_prototype_chain = []
+_residue_dict_owner = _integer_mod_element_prototype
+while _residue_dict_owner is not None:
+    _residue_dict_next = runtime.object.getPrototypeOf(_residue_dict_owner)
+    _residue_dict_prototype_chain.append((_residue_dict_owner, _residue_dict_next))
+    _residue_dict_descriptors.append(
+        (
+            _residue_dict_owner,
+            "__sagejs_float__",
+            runtime.object.getOwnPropertyDescriptor(
+                _residue_dict_owner, "__sagejs_float__"
+            ),
+        )
+    )
+    _residue_dict_owner = _residue_dict_next
+# These flags affect containers._call_member without replacing the function.
+_residue_dict_equality_method = runtime.reflect.get(
+    _finite_field_element_prototype, "__eq__"
+)
+for _residue_dict_name in ("__staticmethod__", "__python_descriptor__"):
+    _residue_dict_descriptors.append(
+        (
+            _residue_dict_equality_method,
+            _residue_dict_name,
+            runtime.object.getOwnPropertyDescriptor(
+                _residue_dict_equality_method, _residue_dict_name
+            ),
+        )
+    )
+_residue_dict_same_parent_equality = runtime.reflect.get(
+    _finite_field_element_prototype, "_eq_"
+)
+_residue_dict_descriptors.append(
+    (
+        _residue_dict_same_parent_equality,
+        "call",
+        runtime.object.getOwnPropertyDescriptor(
+            _residue_dict_same_parent_equality, "call"
+        ),
+    )
+)
+for _residue_dict_owner in (
+    _residue_dict_coercion_model,
+    _residue_dict_coercion_prototype,
+):
+    _residue_dict_descriptors.append(
+        (
+            _residue_dict_owner,
+            "equals",
+            runtime.object.getOwnPropertyDescriptor(_residue_dict_owner, "equals"),
+        )
+    )
+for _residue_dict_prototype in (
+    _finite_field_element_prototype,
+    _integer_mod_element_prototype,
+):
+    for _residue_dict_name in ("__eq__", "_eq_", "__sagejs_dict_key__"):
+        _residue_dict_descriptors.append(
+            (
+                _residue_dict_prototype,
+                _residue_dict_name,
+                runtime.object.getOwnPropertyDescriptor(
+                    _residue_dict_prototype, _residue_dict_name
+                ),
+            )
+        )
+_residue_dict_containers._register_dict_canonical_provider(
+    _residue_dict_probe, _residue_dict_valid
+)
+
+
 @runtime.lightweight_math_class
 class FiniteFieldExtensionElement(sage.Element):
     def __init__(

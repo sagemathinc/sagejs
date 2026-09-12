@@ -1,0 +1,54 @@
+$ node scripts/parallel-development.cjs run finite-field-canonical-domain -- pnpm test:changed -- --base 9db4572a9bec6ff6ba5cc49b9c68290ee7e6cbb6
++ pnpm test:changed -- --base 9db4572a9bec6ff6ba5cc49b9c68290ee7e6cbb6
+$ node scripts/parallel-development.cjs changed -- --base 9db4572a9bec6ff6ba5cc49b9c68290ee7e6cbb6
+Changed files against 9db4572a9bec6ff6ba5cc49b9c68290ee7e6cbb6: 29
+  pnpm merge:check
+  pnpm build
+  pnpm test:unit
+  pnpm test:baselib:strict
+  pnpm test:compiler
+  pnpm test:integration
+  pnpm docs:check
++ pnpm merge:check
+$ node scripts/check-merge-invariants.cjs
+[merge-check] working-tree conflict and whitespace scan
+[merge-check] index conflict and whitespace scan
+[merge-check] co-located test metadata: 227 unit, 404 integration, 70 specialized
+[merge-check] logical package graph and source ownership
+Error: core-runtime owns 907863 source bytes, exceeding its 903000 byte bootstrap budget
+    at validateManifest (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/scripts/check-package-graph.cjs:159:13)
+    at run (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/scripts/check-package-graph.cjs:240:18)
+    at Object.<anonymous> (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/scripts/check-package-graph.cjs:252:5)
+    at Module._compile (node:internal/modules/cjs/loader:1934:14)
+    at Object..js (node:internal/modules/cjs/loader:2074:10)
+    at Module.load (node:internal/modules/cjs/loader:1656:32)
+    at Module._load (node:internal/modules/cjs/loader:1448:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47
+Error: logical package graph and source ownership failed with exit status 1
+    at run (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/scripts/check-merge-invariants.cjs:20:11)
+    at main (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/scripts/check-merge-invariants.cjs:63:5)
+    at Object.<anonymous> (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/scripts/check-merge-invariants.cjs:71:5)
+    at Module._compile (node:internal/modules/cjs/loader:1934:14)
+    at Object..js (node:internal/modules/cjs/loader:2074:10)
+    at Module.load (node:internal/modules/cjs/loader:1656:32)
+    at Module._load (node:internal/modules/cjs/loader:1448:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47
+[ELIFECYCLE] Command failed with exit code 1.
+Error: pnpm exited with status 1
+    at run (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/scripts/parallel-development.cjs:65:11)
+    at changedChecks (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/scripts/parallel-development.cjs:505:35)
+    at Object.<anonymous> (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/scripts/parallel-development.cjs:686:40)
+    at Module._compile (node:internal/modules/cjs/loader:1934:14)
+    at Object..js (node:internal/modules/cjs/loader:2074:10)
+    at Module.load (node:internal/modules/cjs/loader:1656:32)
+    at Module._load (node:internal/modules/cjs/loader:1448:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47
+[ELIFECYCLE] Command failed with exit code 1.
+Recorded finite-field-canonical-domain: pnpm test:changed -- --base 9db4572a9bec6ff6ba5cc49b9c68290ee7e6cbb6 (fail, 1.64s)
+[ELIFECYCLE] Command failed with exit code 1.

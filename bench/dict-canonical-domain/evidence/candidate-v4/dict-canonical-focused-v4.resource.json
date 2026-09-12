@@ -1,0 +1,19 @@
+{
+  "schema": "sagejs.developer-command-resource.v1",
+  "command": [
+    "node",
+    "--test",
+    "test/dict-canonical-domain.cjs",
+    "test/finite-field-canonical-domain.cjs",
+    "test/dict-reinitialization-storage.cjs"
+  ],
+  "platform": "Linux",
+  "returncode": 0,
+  "elapsed_seconds": 5.948514461982995,
+  "user_seconds": 18.498749,
+  "system_seconds": 1.425754,
+  "max_child_rss_bytes": 269746176,
+  "memory_scope": "maximum child RSS, not concurrent process-tree memory",
+  "allocation_count": null,
+  "controlled_timing": false
+}

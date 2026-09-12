@@ -1,0 +1,93 @@
+$ node scripts/parallel-development.cjs run dict-canonical-resource-control -- python3 /home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/bench/dict-canonical-domain/measure.py build/general-frontier/dict-control-build-v1.resource.json pnpm build
++ python3 /home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/bench/dict-canonical-domain/measure.py build/general-frontier/dict-control-build-v1.resource.json pnpm build
+$ node scripts/build.cjs
+
+Sage.js build
+  stages:   8
+  expected: about 5m 27s on a warm Linux developer build
+  output:   one progress summary per stage; use SAGEJS_BUILD_VERBOSE=1 for child logs
+  compiler: source changes can require two self-hosting passes to reach a fixed point
+
+[build] [1/8] Compile the TypeScript runtime (expected about 15s)
+[build] TypeScript runtime compiled.
+[build] PASS 1/8: Compile the TypeScript runtime (1s); approximately 5m 12s remaining
+
+[build] [2/8] Bundle vendored language frontends (expected about 5s)
+[build] Bundled NumPy, symbolic, and foreign-language parser backends
+[build] PASS 2/8: Bundle vendored language frontends (11s); approximately 5m 07s remaining
+
+[build] [3/8] Converge the self-hosted compiler (expected about 55s)
+[build] still running 3/8 (Converge the self-hosted compiler); 15s in this stage
+[build] still running 3/8 (Converge the self-hosted compiler); 30s in this stage
+[build] still running 3/8 (Converge the self-hosted compiler); 45s in this stage
+[build] still running 3/8 (Converge the self-hosted compiler); 1m 00s in this stage
+[build] Self-hosted compiler converged in 2 passes (27.028s + 47.643s).
+[build] PASS 3/8: Converge the self-hosted compiler (1m 15s); approximately 4m 12s remaining
+
+[build] [4/8] Generate FFI and task-runtime boundaries (expected about 10s)
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 15s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 30s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 45s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 1m 00s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 1m 15s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 1m 30s in this stage
+[build] Synchronized 4 FFI declarations and 12 generated adapters. Built lightweight multiprocessing task runtime
+[build] PASS 4/8: Generate FFI and task-runtime boundaries (1m 33s); approximately 4m 02s remaining
+
+[build] [5/8] Precompile Python modules and Node runtimes (expected about 3m 10s)
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 1m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 1m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 1m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 1m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 2m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 2m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 2m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 2m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 3m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 3m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 3m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 3m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 4m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 4m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 4m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 4m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 5m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 5m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 5m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 5m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 6m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 6m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 6m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 6m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 7m 00s in this stage
+[build] Precompiled 94 standard-library modules and 66 baselib dependencies Cached compiler and Sage/Python runtimes for Node 26.8.1 (linux-x64)
+[build] PASS 5/8: Precompile Python modules and Node runtimes (7m 13s); approximately 52s remaining
+
+[build] [6/8] Reconcile installed native addons and adapters (expected about 20s)
+[build] still running 6/8 (Reconcile installed native addons and adapters); 15s in this stage
+[build] still running 6/8 (Reconcile installed native addons and adapters); 30s in this stage
+[build] still running 6/8 (Reconcile installed native addons and adapters); 45s in this stage
+[build] Native adapters: 1 current, 4 rebuilt, 0 optional/absent.
+[build] PASS 6/8: Reconcile installed native addons and adapters (53s); approximately 32s remaining
+
+[build] [7/8] Publish the production native-kernel pack (expected about 30s)
+[build] still running 7/8 (Publish the production native-kernel pack); 15s in this stage
+[build] still running 7/8 (Publish the production native-kernel pack); 30s in this stage
+[build] still running 7/8 (Publish the production native-kernel pack); 45s in this stage
+[build] still running 7/8 (Publish the production native-kernel pack); 1m 00s in this stage
+[build] still running 7/8 (Publish the production native-kernel pack); 1m 15s in this stage
+[build] still running 7/8 (Publish the production native-kernel pack); 1m 30s in this stage
+[build] still running 7/8 (Publish the production native-kernel pack); 1m 45s in this stage
+[build] still running 7/8 (Publish the production native-kernel pack); 2m 00s in this stage
+[build] 41 kernel families: 0 reused, 41 rebuilt. Published 41 production kernel modules at dist/native-kernels in one 27.12 MiB native pack
+[build] PASS 7/8: Publish the production native-kernel pack (2m 12s); approximately 2s remaining
+
+[build] [8/8] Build the lazy cminpack and NLopt numerical reactors (expected about 2s)
+[build] Skipped optional numerical reactors: the reproducible Wasm toolchain is not prepared.
+[build] PASS 8/8: Build the lazy cminpack and NLopt numerical reactors (0s); approximately 0s remaining
+
+[build] PASS: complete in 13m 20s; wrote dist/build-receipt.json for safe reuse by pnpm test.
+Recorded dict-canonical-resource-control: python3 /home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/bench/dict-canonical-domain/measure.py build/general-frontier/dict-control-build-v1.resource.json pnpm build (pass, 800.25s)

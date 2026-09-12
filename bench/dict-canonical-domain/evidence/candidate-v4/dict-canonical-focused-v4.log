@@ -1,0 +1,33 @@
+✔ source: canonical metadata stays private and all storage paths maintain it (2.466529ms)
+✔ primitive-only insertions and misses do not enumerate retained keys (582.976828ms)
+✔ live homogeneous canonical operations have zero equality scans as sizes grow (782.852036ms)
+✔ mixed primitive and object equality works in both insertion orders (484.646284ms)
+✔ foreign domains scan but an equal replacement retains the original domain (547.172008ms)
+✔ native BigInt tokens may collide across domains and primitive keys (588.198636ms)
+✔ invalid guards suppress old normalized hits and misses in canonical and mixed tables (535.553151ms)
+✔ colliding untrusted structural tokens cannot create false hits or overwrite originals (431.938007ms)
+✔ literal, update, direct, copy, deletion and reinitialization share metadata (624.186187ms)
+✔ known scope construction and legacy native string writes remain correct (405.266665ms)
+✔ dict reinitialization preserves contents and storage (python) (1622.242278ms)
+✔ dict reinitialization preserves contents and storage (sage) (663.307457ms)
+✔ canonical exact-residue tokens cover machine and arbitrary-precision storage (743.843107ms)
+✔ canonical residue keys cannot change behind stored tokens (463.845339ms)
+✔ canonical residue admission fails closed after __eq__ replacement (423.4108ms)
+✔ canonical residue admission fails closed after _eq_ replacement (411.696573ms)
+✔ canonical residue admission fails closed after token-hook replacement (400.508505ms)
+✔ canonical residue admission guards coercion equality without invoking new accessors (389.746099ms)
+✔ inherited canonical hooks do not certify subclasses or instance overrides (433.679787ms)
+✔ canonical residue tokens unify safe number and bigint representations (382.337271ms)
+✔ canonical residue guard observes function dispatch flags and class markers (376.699693ms)
+✔ canonical residue guard rejects newly inherited numeric dispatch markers (361.219596ms)
+✔ canonical residue guard observes same-parent method call overrides (387.67127ms)
+✔ residue value tokens preserve mixed-domain and primitive collision semantics (528.379923ms)
+✔ residue misses do not populate a parent-local value cache (483.616794ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5908.961302

@@ -1,0 +1,151 @@
+{
+  "schema": "sagejs.dictionary-developer-resource.v1",
+  "controlled_timing": false,
+  "mode": "runtime",
+  "identities": {
+    "head": "38ccf7ac892b86cb721c4b68d2881d4dea8b25ac",
+    "source_sha256": {
+      "src/baselib/containers.py": "8fbfc7ada31c057c6f265440f8f5afbb78b72e34ab65fddc423f982968b2c2f7",
+      "src/baselib/finite_fields.py": "4674b2d15ebb7e857c1f8f702cc6a1334270086883143578c532ec4eb8693dd1"
+    },
+    "compiler_sha256": "80a1dcabee837724f8982108bd4a75e9043edda2f7738704ea4a644f140d2b78",
+    "build_receipt_sha256": "c1571d165f8330727753f652c8a2eb8aadaaea7748ec1635c0564f3b61ef0267",
+    "package_policy_sha256": "e7498ef824ccb6544860c1f10bb56f63cf40351036c0d12c95e65cf4e7e64def",
+    "script_sha256": "2ccf388707ab4762fb44b63e949f37cdabc851442388c9c80617e82998c72a7d",
+    "node": "v26.8.1",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "build_inspection": {
+    "current": true,
+    "reason": "artifact inputs and required outputs match; validation is separate",
+    "buildWorkspaceSha256": "a9b53e7a872e64c2c1e64f282aecb14257fb202a21fdb29f5b65c05e11ca56f9",
+    "validationWorkspaceSha256": "a9b53e7a872e64c2c1e64f282aecb14257fb202a21fdb29f5b65c05e11ca56f9",
+    "completedAt": "2026-09-12T11:05:09.734Z",
+    "durationMilliseconds": 829227
+  },
+  "qualification_note": "An invalidated build receipt is retained explicitly; this developer observation cannot substitute for final exact-tree build/platform qualification.",
+  "observations": [
+    {
+      "name": "primitive_work",
+      "size": 256,
+      "elapsed_ms": [
+        47.987358000000086,
+        15.184876000000031,
+        12.509236999999985
+      ]
+    },
+    {
+      "name": "primitive_work",
+      "size": 512,
+      "elapsed_ms": [
+        20.526614999999993,
+        14.865195999999969,
+        10.554487999999992
+      ]
+    },
+    {
+      "name": "primitive_work",
+      "size": 1024,
+      "elapsed_ms": [
+        17.437644999999975,
+        19.9543749999998,
+        17.7341550000001
+      ]
+    },
+    {
+      "name": "residue_work",
+      "size": 256,
+      "elapsed_ms": [
+        35.74484100000018,
+        32.016201999999794,
+        31.834520999999768
+      ]
+    },
+    {
+      "name": "residue_work",
+      "size": 512,
+      "elapsed_ms": [
+        54.74892600000021,
+        52.86227600000029,
+        54.20570600000019
+      ]
+    },
+    {
+      "name": "residue_work",
+      "size": 1024,
+      "elapsed_ms": [
+        98.61055399999987,
+        98.40998499999978,
+        95.46975500000008
+      ]
+    }
+  ],
+  "churn": [
+    {
+      "state": "before",
+      "memory": {
+        "rss": 267849728,
+        "heapTotal": 76599296,
+        "heapUsed": 39209160,
+        "external": 19974377,
+        "arrayBuffers": 347510
+      }
+    },
+    {
+      "state": "10000-live",
+      "memory": {
+        "rss": 268505088,
+        "heapTotal": 77127680,
+        "heapUsed": 46617768,
+        "external": 19974417,
+        "arrayBuffers": 347510
+      }
+    },
+    {
+      "state": "released",
+      "memory": {
+        "rss": 268505088,
+        "heapTotal": 70574080,
+        "heapUsed": 39523016,
+        "external": 19974417,
+        "arrayBuffers": 347510
+      }
+    }
+  ],
+  "misses": [
+    {
+      "state": "before",
+      "memory": {
+        "rss": 268505088,
+        "heapTotal": 70574080,
+        "heapUsed": 39507040,
+        "external": 19974417,
+        "arrayBuffers": 347510
+      }
+    },
+    {
+      "state": "8192-distinct",
+      "memory": {
+        "rss": 292622336,
+        "heapTotal": 101638144,
+        "heapUsed": 39686920,
+        "external": 19974417,
+        "arrayBuffers": 347510
+      }
+    },
+    {
+      "state": "24576-distinct",
+      "memory": {
+        "rss": 303230976,
+        "heapTotal": 110813184,
+        "heapUsed": 39994664,
+        "external": 19974417,
+        "arrayBuffers": 347510
+      }
+    }
+  ],
+  "allocation_count": null,
+  "memory_scope": "post-GC managed heap of one fresh process/evaluator, including compiler and caches; not exact allocation accounting",
+  "timing_scope": "local developer evaluation wall time including tiny call compilation; three repetitions, no statistical performance certification"
+}

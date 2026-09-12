@@ -1,0 +1,19 @@
+Startup budget (11 fresh-process samples, median)
+  bare Node:             27.8 ms
+  development sagejs empty:189.0 ms
+  development sagejs:    420.7 ms
+  measured load factor:  1.00x
+  normalized Sage.js:    420.7 ms
+  normalized empty:      189.0 ms
+  normalized budget:     400.0 ms
+  catastrophic ceiling:  1500.0 ms raw
+Error: Sage.js startup regression: 420.7 ms normalized exceeds 400.0 ms
+    at run (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/scripts/check-startup-budget.cjs:271:11)
+    at Object.<anonymous> (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/scripts/check-startup-budget.cjs:277:5)
+    at Module._compile (node:internal/modules/cjs/loader:1934:14)
+    at Object..js (node:internal/modules/cjs/loader:2074:10)
+    at Module.load (node:internal/modules/cjs/loader:1656:32)
+    at Module._load (node:internal/modules/cjs/loader:1448:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47

@@ -1,0 +1,88 @@
+{
+  "schema": "sagejs.dictionary-developer-resource.v1",
+  "controlled_timing": false,
+  "mode": "generated",
+  "identities": {
+    "head": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
+    "source_sha256": {
+      "src/baselib/containers.py": "4735cf4b99d4580fee8541fb8f7015eb8ff5b7a5258b2057a9f3dd8588d5d502",
+      "src/baselib/finite_fields.py": "e5735f6c1c043bc1c3ef53eb4bdb72283cb9a5b822096b1ad7ebcdf894a316aa"
+    },
+    "compiler_sha256": "752c25a5ca302d1377df106b4a7b5f140e5a32767b76507d2232691a2c3477e3",
+    "build_receipt_sha256": "8c886cf677d4f0697ff57ff45d9e324d8fce65b2a6ca976a845ab429054cfc63",
+    "package_policy_sha256": "e7498ef824ccb6544860c1f10bb56f63cf40351036c0d12c95e65cf4e7e64def",
+    "script_sha256": "2ccf388707ab4762fb44b63e949f37cdabc851442388c9c80617e82998c72a7d",
+    "node": "v26.8.1",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "build_inspection": {
+    "current": false,
+    "reason": "build inputs changed"
+  },
+  "qualification_note": "An invalidated build receipt is retained explicitly; this developer observation cannot substitute for final exact-tree build/platform qualification.",
+  "base": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
+  "rows": [
+    {
+      "name": "src/baselib/containers.py",
+      "revision": "base",
+      "source_bytes": 67842,
+      "source_sha256": "4735cf4b99d4580fee8541fb8f7015eb8ff5b7a5258b2057a9f3dd8588d5d502",
+      "emitted_module_bytes": 383394,
+      "emitted_module_sha256": "8ed030d3ad8c9b8361c57c4e2cdaf0fab2c6f347d54c7d2f49866c9d989fc976"
+    },
+    {
+      "name": "src/baselib/containers.py",
+      "revision": "candidate",
+      "source_bytes": 67842,
+      "source_sha256": "4735cf4b99d4580fee8541fb8f7015eb8ff5b7a5258b2057a9f3dd8588d5d502",
+      "emitted_module_bytes": 383394,
+      "emitted_module_sha256": "8ed030d3ad8c9b8361c57c4e2cdaf0fab2c6f347d54c7d2f49866c9d989fc976"
+    },
+    {
+      "name": "src/baselib/finite_fields.py",
+      "revision": "base",
+      "source_bytes": 85580,
+      "source_sha256": "e5735f6c1c043bc1c3ef53eb4bdb72283cb9a5b822096b1ad7ebcdf894a316aa",
+      "emitted_module_bytes": 410362,
+      "emitted_module_sha256": "05b1c80cd75f66c6aca97186c21540e75bf9fdc3131ab7c13b134eace2fe7ccf"
+    },
+    {
+      "name": "src/baselib/finite_fields.py",
+      "revision": "candidate",
+      "source_bytes": 85580,
+      "source_sha256": "e5735f6c1c043bc1c3ef53eb4bdb72283cb9a5b822096b1ad7ebcdf894a316aa",
+      "emitted_module_bytes": 410362,
+      "emitted_module_sha256": "05b1c80cd75f66c6aca97186c21540e75bf9fdc3131ab7c13b134eace2fe7ccf"
+    }
+  ],
+  "artifacts": [
+    {
+      "name": "dist/compiler/compiler.js",
+      "bytes": 3982571,
+      "sha256": "752c25a5ca302d1377df106b4a7b5f140e5a32767b76507d2232691a2c3477e3"
+    },
+    {
+      "name": "dist/compiler/baselib-plain-pretty.js",
+      "bytes": 13528603,
+      "sha256": "b03d0afc635e5714d121ada660d5c1b2497a1b1dbe9f42e6351ca12430d1a0b2"
+    },
+    {
+      "name": "dist/runtime-cache/compiler.bin",
+      "bytes": 2665912,
+      "sha256": "407600dcdf699bb4a0c9f04aa8ef52997aa0801c330c13dd7ab0d4b5de5c5747"
+    },
+    {
+      "name": "dist/runtime-cache/runtime-bootstrap-sage.bin",
+      "bytes": 8010544,
+      "sha256": "ca7d703595318efb5ac23289f58207814c8b403fc0512fdb3749e0a5bdac3530"
+    },
+    {
+      "name": "dist/runtime-cache/runtime-bootstrap-python.bin",
+      "bytes": 8010592,
+      "sha256": "54c81e4ece813ad4d14a8f87e0cdcb348a889b1228d1d14c3769246bf626720b"
+    }
+  ],
+  "emitted_boundary": "isolated modules, same candidate frontend/emitter and self.js module options; excludes whole-baselib facade wrappers",
+  "native_objects": "not applicable: no new native mathematical code or kernels"
+}

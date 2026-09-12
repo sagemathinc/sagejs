@@ -1,0 +1,16 @@
+{
+  "schema": "sagejs.developer-command-resource.v1",
+  "command": [
+    "pnpm",
+    "build"
+  ],
+  "platform": "Linux",
+  "returncode": 0,
+  "elapsed_seconds": 831.4984923169832,
+  "user_seconds": 1191.619428,
+  "system_seconds": 39.86661,
+  "max_child_rss_bytes": 2435702784,
+  "memory_scope": "maximum child RSS, not concurrent process-tree memory",
+  "allocation_count": null,
+  "controlled_timing": false
+}
