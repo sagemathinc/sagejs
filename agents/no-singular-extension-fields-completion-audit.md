@@ -1,6 +1,11 @@
 # No-Singular extension fields: implementation audit
 
-Status: **in progress; neither milestone is qualified or complete**.
+Status: **Milestone F native and production Node-Wasm/Chromium qualification
+passes; final CI/mobile gates remain pending. Milestone N has not started.**
+
+The source-current evidence is summarized in the final section below. Earlier
+checkpoints are historical, including their failed payload and timeout results;
+they must not be substituted for the current artifact's receipts.
 
 The implementation plan is [the extension-fields roadmap](no-singular-extension-fields-plan.md).
 The user authorized starting `agent/no-singular-extension-fields` on PR #114
@@ -656,14 +661,122 @@ cap. The report records 201,393,646 raw, 27,178,926 gzip, and 17,385,977 Brotli
 bytes overall. No eager-cap increase is included. Lossless compiler-cache
 packing is being evaluated separately from the frozen mathematical runs.
 
-## Still required
+## Current production qualification: runtime source `83836bbb8`
 
-- F4 source-current native four-platform public tests, production Node-Wasm,
-  Chromium and mobile qualification, and final capability/evidence records.
-- Complete the core operation-matrix coverage review, resource/failure tests,
-  and bounded F3 msolve investigation or evidence-backed deferral.
-- Merge Milestone F before beginning Milestone N.
-- Implement and qualify N, including exact number-field univariate
-  factorization and zero-dimensional decomposition, and its final audit.
+Runtime implementation is frozen at `83836bbb85daffeb8c30147571593b7392b2a2f7`.
+The follow-ups `7499cfdde` (distribution fixtures) and `7fba0fa77` (measured
+evidence and generated reference locations) do not change that implementation.
+Qualification checkout hashes are recorded explicitly below: they are **not**
+all identical Git heads. The remaining exact-candidate reconciliation must not
+be silently replaced by a claim that every platform ran at `7fba0fa77`.
 
-No Milestone F completion or release is claimed at this checkpoint.
+### Correctness and performance repairs
+
+- Browser compiler caches use lossless copy/splice packing, with exact output
+  round trips, bounded decoding, and preserved metadata-only module shells.
+- Dynamic browser compilation preserves `__name__`, `__file__`, and caller
+  module identity through the authenticated lazy compiler path.
+- Finite-field context/element resource caches search by object identity, not
+  mathematical equality. A Python regression rejects any equality invocation
+  while exercising MRU hits, eviction and retouch. The existing 32-context and
+  128-element bounds, spill order, and reconstruction behavior are unchanged.
+
+The last repair removes the dominant bookkeeping overhead in the late-session
+GF(4) nonsplit decomposition. That batch passes in 40,417 ms in Node-Wasm and
+35,792 ms in Chromium. Those are whole-batch observations, not an increased
+30-second constituent Gröbner-operation budget or a controlled performance
+benchmark. No mathematical timeout, proof requirement, or eager payload cap was
+relaxed to obtain these passes.
+
+### Native qualification
+
+| Target | Checkout | Public native checks | Portable |
+| --- | --- | --- | --- |
+| Linux x64 | `83836bbb8` | coefficient, polynomial, ideal, geometry, independent oracle, resource and lifecycle suites pass | 210/210 |
+| Linux ARM64 | `83836bbb8` | 19 pass; 2 supplementary live-Sage checks skip; lifecycle 2/2 | 210/210 |
+| macOS ARM64 | `7499cfdde` | 19 pass; 2 supplementary live-Sage checks skip; lifecycle 2/2; GF(9) distribution fixture passes | 210/210 |
+| Windows x64 | `83836bbb8` | 19 pass; 2 supplementary live-Sage checks skip; lifecycle 2/2 | 210/210 |
+
+All four targets execute the checked-in 108-case independent Sage Gröbner
+corpus. The two skips on hosts without Sage are additional live-oracle tests,
+not skips of the checked-in mathematical answers. Native Windows uses its
+native toolchain; no WSL/MSYS/MinGW user runtime was introduced.
+
+macOS completed source-build stages 1–7, but stage 8 rejected host-specific
+NLopt gzip metadata. The continuation installed and validated the canonical
+source-bound numerical product
+`sha256:34d2a7d9d41de743fdc51f0e1718b3ef43fbfee9607e44eab00bbafc81af118d`
+at `7499cfdde`, then completed the build receipt and all tests above. The first
+attempt at `83836bbb8` correctly rejected that product's commit mismatch.
+Neither failed attempt is claimed as a passing full build, and no numerical
+authentication check was weakened.
+
+The multivariate standalone C witness passes sanitizers on Linux x64 and its
+standalone Wasm build. These explicitly identify themselves as non-production
+witnesses, supplementing rather than replacing public-API qualification.
+
+### Production WebAssembly and distribution
+
+The canonical tested artifact is
+`sha256:1988e506a6d3fc5321561817f3882e5d9db25249ab991bdd2ae741bbc5e42a38`.
+The [machine-readable record](../bench/extension-fields/wasm-qualification-83836bbb8.json)
+records its source, timing, payload and distribution checks.
+
+- Full geometry: **29/29 batches** in production Node-Wasm (776,527 ms) and
+  Chromium Web Workers (712,726 ms), without development source overrides.
+- Independent Gröbner corpus: **108/108 cases** on each target, plus public
+  coefficient/multivariate, bounded-spill and authenticated specialist tests.
+- Forced-GC resource lifetime and browser dynamic compile/eval/exec/mpmath pass.
+- Fresh packed npm with optional native dependencies disabled passes public
+  Wasm GF(9) ideal, quotient, nilpotent, radical and affine-point operations.
+- Relocated Linux SEA distributions pass the shared GF(9) fixture and existing
+  distribution smoke. This is not a four-platform SEA release qualification.
+- **17 executable examples** pass in the algebraic-geometry and Gröbner guides.
+- Strict Python: **396 modules, zero errors**. Architecture and generated
+  documentation checks pass.
+
+The additional `pnpm test` attempt at `7fba0fa77` rebuilt successfully, but its
+startup phase measured 415.7 ms against the unchanged 400 ms limit and cancelled
+active sibling phases. A standalone repeat measured 405.9 ms; the frozen
+pre-fix baseline at `15bca0096` measured 419.8 ms on the same VM. These are retained
+failures, not a local full-routine pass. The GitHub Linux routine gate at
+`7fba0fa77` passed. The independently completed 210-file portable run above is
+not a receipt for the cancelled repeat.
+
+All payload/topology budgets pass: total 180,264,896 raw / 25,667,588 gzip /
+17,355,471 Brotli bytes; eager-core Brotli **9,696,765 <= 9,700,000 bytes**.
+The payload-report SHA256 is
+`24b0d9806643b7c8e0a39d0fab0622273a939c64dad41fd8bc1c499630f69cf9`.
+Desktop Firefox/WebKit were unavailable and are not claimed qualified.
+
+Logs and the immutable local artifact copy are retained under
+`/home/user/sagejs-extension-qualification-20260912/`. Principal logs are
+`linux-native-83836bbb8.log`, `arm64-83836bbb8.log`,
+`macos-7499cfdde-resume.log`, `windows-83836bbb8.log`,
+`node-geometry-83836bbb8.log`, `chromium-geometry-83836bbb8.log`,
+`npm-wasm-83836bbb8.log`, and `sea-83836bbb8-smoke.log`.
+
+### Remaining gates and follow-up
+
+- Routine and all three platform-smoke jobs at `7fba0fa77` pass in
+  [run 34679720388](https://github.com/sagemathinc/sagejs/actions/runs/34679720388).
+  [Chromium CI](https://github.com/sagemathinc/sagejs/actions/runs/34679720402)
+  also passes. The
+  [iPhone/iPad simulator run](https://github.com/sagemathinc/sagejs/actions/runs/34679720407)
+  passed, but its receipt names PR merge commit `ead7591d42956cff9626635767dd891fff232a07`
+  and artifact `sha256:3922594ee69fa695efbeb8c03ce53dd9ced18fbfc96d67536aa2a5df96a6fb1f`,
+  not the locally qualified artifact above. Retain the next simulator runtime
+  as a downloadable CI artifact and independently qualify those exact bytes.
+  Simulator compilation alone is not execution of the geometry corpus on iOS.
+  Chromium CI records the same `3922594e…` artifact as mobile. Comparing every
+  recorded payload file with the local `1988e506…` report shows that only
+  `compiler.js` has a different hash; all other payload file hashes agree.
+- Reconcile the plan's same-commit qualification requirement explicitly, finish
+  the capability/audit handoff, then mark #122 ready for the merge manager.
+- F3 is a separate optional bounded msolve investigation **after** initial F4;
+  it is not a prerequisite for Milestone F's merge. No extension msolve fast
+  path is enabled or claimed qualified.
+- After F merges, implement and qualify N, including exact number-field
+  univariate factorization, zero-dimensional decomposition and its final audit.
+
+No release is authorized or claimed. Milestone N remains unimplemented.
