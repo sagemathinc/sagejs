@@ -1,0 +1,141 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-generation-replay",
+  "title": "General Class Unit Generation Replay",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Independently replay capped exact Minkowski generating-base coverage without completeness authority",
+  "base_commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_generation_replay.py",
+    "test/general-class-unit-generation-replay.cjs",
+    "docs/number-field-class-unit-generation-replay.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/general-class-unit-competitive-plan.md: M1 independent generation premise",
+    "src/lib/sagejs/number_fields/class_group_factor_base.py: minkowski_bound and prime_ideal_norm_stream",
+    "src/lib/sagejs/number_fields/class_unit_replay.py: strict JSON and portable prime representation",
+    "Coordinator-approved base 3f5edf0ab; narrow source registration and census belong to integration"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython structural preflight",
+      "Sage.js exact fresh maximal order and prime decomposition on exposed fields",
+      "Minkowski generating-base theorem and rehashed mutation rejection"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/general-class-unit-generation-replay.cjs",
+    "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_generation_replay.py",
+    "pnpm test:changed -- --base 3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_generation_replay.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.28,
+      "started_at": "2026-09-11T14:32:57.842Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "8eabb5d3a7f0899f3feecc4d7ae0ca9ae03d3eec5e2efb220bff0d05abde3ace",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.677,
+      "started_at": "2026-09-11T14:34:11.169Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "75e12f9305dbe075d2688c65a5e14629e294dc11c2f6378f0720080dca91a3ee",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.475,
+      "started_at": "2026-09-11T14:36:05.059Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "75e12f9305dbe075d2688c65a5e14629e294dc11c2f6378f0720080dca91a3ee",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-generation-replay.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 38.106,
+      "started_at": "2026-09-11T14:42:30.887Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "75e12f9305dbe075d2688c65a5e14629e294dc11c2f6378f0720080dca91a3ee",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-generation-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.956,
+      "started_at": "2026-09-11T14:43:35.186Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "0ef4cff3e39bf85ae26b97d7f15c4be34091f01482304a377e9d36f0efe3a7f4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.331,
+      "started_at": "2026-09-11T14:44:21.113Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "0ef4cff3e39bf85ae26b97d7f15c4be34091f01482304a377e9d36f0efe3a7f4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_unit_generation_replay.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.272,
+      "started_at": "2026-09-11T14:45:33.342Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "0ef4cff3e39bf85ae26b97d7f15c4be34091f01482304a377e9d36f0efe3a7f4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.582,
+      "started_at": "2026-09-11T14:45:43.615Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "0ef4cff3e39bf85ae26b97d7f15c4be34091f01482304a377e9d36f0efe3a7f4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Bounded standalone verifier-owned exact Minkowski coverage; generation-only plain report, never class/unit completeness or live authority. Focused CPython plus fresh Sage.js degree-three/four tests pass, including omitted/duplicate/extra primes, wrong field/order/bound, rehashed tampering and resource declines. Local supported build passed in 11m23s; no performance or full qualification claim.",
+    "risks": [
+      "Full required native/changed-tree gates and non-Linux targets remain pending; no qualification claim.",
+      "Architecture check fails at unregistered catchall ownership: number-field-algorithms 1208723/1200000 bytes. Proper global-arithmetic ownership, strict registration and generated census are integration follow-ups; module is 8823 source bytes, 160 above remaining global allowance without genuine reuse or explicit review.",
+      "Serialization/arithmetic limits are not a wall-time or RSS bound; external supervision remains necessary."
+    ],
+    "next_steps": [
+      "Integrate only after independent review; preserve pending full changed-tree/native and cross-platform gates. Degree-ten support was tested structurally, not mathematically.",
+      "Compose only by independently decoded exact objects through _check_generating_base, never by accepting a prior report."
+    ]
+  }
+}

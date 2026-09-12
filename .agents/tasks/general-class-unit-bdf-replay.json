@@ -1,0 +1,273 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-bdf-replay",
+  "title": "General Class Unit Bdf Replay",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Independently replay bounded BDF generation and conditional completeness, and admit resumed original-field unit maps only through fresh owned replay",
+  "base_commit": "56972a7ffb030944620d3a4821d5c0297f48cd54",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_replay.py",
+    "src/lib/sagejs/number_fields/class_unit_generation_replay.py",
+    "src/lib/sagejs/number_fields/unit_coordinates.py",
+    "test/general-class-unit-bdf-replay.cjs",
+    "test/general-unit-resumed-map.cjs",
+    "docs/number-field-bdf-replay.md",
+    "docs/number-field-resumed-unit-map.md"
+  ],
+  "dependencies": [
+    "general-class-unit-replay-data"
+  ],
+  "references": [
+    "https://www.math.u-bordeaux.fr/~kbelabas/research/OnBach.pdf"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Exact nontrivial cubic/quartic witnesses, fresh BDF and BF replay, malformed-envelope and proper-subgroup rejection"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm exec pyright --project pyrightconfig.json src/lib/sagejs/number_fields/class_unit_replay.py src/lib/sagejs/number_fields/class_unit_generation_replay.py src/lib/sagejs/number_fields/unit_coordinates.py",
+    "node --test test/general-unit-resumed-map.cjs",
+    "node --test test/general-class-unit-bdf-replay.cjs test/general-class-unit-conditional-replay.cjs test/general-class-unit-generation-replay.cjs test/general-class-unit-detached-replay.cjs test/general-class-unit-replay-data.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 739.771,
+      "started_at": "2026-09-12T05:16:37.086Z",
+      "commit": "56972a7ffb030944620d3a4821d5c0297f48cd54",
+      "workspace_fingerprint": "be629b1a4556ef2e2c4d4581203f3be2f94824e3e7ff795ca89de469e9e79f5c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-bdf-replay.cjs test/general-class-unit-conditional-replay.cjs test/general-class-unit-generation-replay.cjs test/general-class-unit-detached-replay.cjs test/general-class-unit-replay-data.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 194.218,
+      "started_at": "2026-09-12T05:33:32.743Z",
+      "commit": "56972a7ffb030944620d3a4821d5c0297f48cd54",
+      "workspace_fingerprint": "bb8f6264af403adb65049a702b43ad65c475011931afe412b7099e3bb1733e24",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-bdf-replay.cjs test/general-class-unit-conditional-replay.cjs test/general-class-unit-generation-replay.cjs test/general-class-unit-detached-replay.cjs test/general-class-unit-replay-data.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 220.43,
+      "started_at": "2026-09-12T05:54:35.228Z",
+      "commit": "56972a7ffb030944620d3a4821d5c0297f48cd54",
+      "workspace_fingerprint": "800c8ba38eac73e5a6769e540674de3df7931f48e82ccce981bfbaf2687f80a0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.504,
+      "started_at": "2026-09-12T05:59:00.218Z",
+      "commit": "56972a7ffb030944620d3a4821d5c0297f48cd54",
+      "workspace_fingerprint": "800c8ba38eac73e5a6769e540674de3df7931f48e82ccce981bfbaf2687f80a0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 86.648,
+      "started_at": "2026-09-12T06:01:19.825Z",
+      "commit": "ecc07909dcbca9ae7a09fdb3555a269d60b94f37",
+      "workspace_fingerprint": "fe787df6f8c0042530d152e7ea915b9979d41b6404bdcb468ae766a59cc5f550",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --project pyrightconfig.json src/lib/sagejs/number_fields/class_unit_replay.py src/lib/sagejs/number_fields/class_unit_generation_replay.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.423,
+      "started_at": "2026-09-12T06:02:47.482Z",
+      "commit": "ecc07909dcbca9ae7a09fdb3555a269d60b94f37",
+      "workspace_fingerprint": "fe787df6f8c0042530d152e7ea915b9979d41b6404bdcb468ae766a59cc5f550",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-bdf-replay.cjs test/general-class-unit-conditional-replay.cjs test/general-class-unit-generation-replay.cjs test/general-class-unit-detached-replay.cjs test/general-class-unit-replay-data.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 236.922,
+      "started_at": "2026-09-12T06:02:50.774Z",
+      "commit": "ecc07909dcbca9ae7a09fdb3555a269d60b94f37",
+      "workspace_fingerprint": "fe787df6f8c0042530d152e7ea915b9979d41b6404bdcb468ae766a59cc5f550",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /home/user/sagejs-worktrees/class-unit-rank-two-frontier/bench/class-unit-groups/general-frontier/reference/runner/supervise.py 350 node --test test/general-class-unit-bdf-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 228.688,
+      "started_at": "2026-09-12T06:34:39.141Z",
+      "commit": "db95d1efe4782419bf0b0b7676c649dabcf80404",
+      "workspace_fingerprint": "fe787df6f8c0042530d152e7ea915b9979d41b6404bdcb468ae766a59cc5f550",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-unit-resumed-map.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 204.777,
+      "started_at": "2026-09-12T07:00:48.208Z",
+      "commit": "ff77e51366a807a58c4834c31a87e8da5e7fcfed",
+      "workspace_fingerprint": "fcada63305f19bcad9a784bf408ad62349b259f34575c71bdd5847d853a16902",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "timeout --kill-after=5s 180s node --test --test-name-pattern=nonempty durable quartic test/general-unit-resumed-map.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 128.449,
+      "started_at": "2026-09-12T07:06:06.779Z",
+      "commit": "ff77e51366a807a58c4834c31a87e8da5e7fcfed",
+      "workspace_fingerprint": "f96847a0c5ba0615a3a64d2555349c21ae621546710b75e3d7e345797d2e6a54",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "timeout --kill-after=5s 180s node --test --test-name-pattern=nonempty durable cubic test/general-unit-resumed-map.cjs",
+      "result": "fail",
+      "exit_code": 124,
+      "seconds": 180.191,
+      "started_at": "2026-09-12T07:10:12.788Z",
+      "commit": "ff77e51366a807a58c4834c31a87e8da5e7fcfed",
+      "workspace_fingerprint": "30be84febd0ec25a829adaf0b75eab5a41d040cd4bd40a50b855bc4f2f8089c9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-unit-resumed-map.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 202.918,
+      "started_at": "2026-09-12T07:15:31.796Z",
+      "commit": "ff77e51366a807a58c4834c31a87e8da5e7fcfed",
+      "workspace_fingerprint": "3894a393b4c75922aa5b940986a59fe017db2e927ceca315c052f903beeeb02a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-unit-resumed-map.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 204.083,
+      "started_at": "2026-09-12T07:21:19.663Z",
+      "commit": "ff77e51366a807a58c4834c31a87e8da5e7fcfed",
+      "workspace_fingerprint": "2bb39882d00149fce599172ac0316f2a5df7358cd2f6269d4482f586bfb6cfcc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-unit-resumed-map.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 177.367,
+      "started_at": "2026-09-12T07:27:07.059Z",
+      "commit": "ff77e51366a807a58c4834c31a87e8da5e7fcfed",
+      "workspace_fingerprint": "9320bd274f7473c1a07658e22669a2451251f02539eb3c9674bb4c300c82a458",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-unit-resumed-map.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 262.583,
+      "started_at": "2026-09-12T07:37:01.054Z",
+      "commit": "ff77e51366a807a58c4834c31a87e8da5e7fcfed",
+      "workspace_fingerprint": "a7660725f2b3100bbbd5f28ee33cb88c9f5cedc1e917a7fd5f276b377f66a461",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-unit-resumed-map.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 226.013,
+      "started_at": "2026-09-12T07:41:45.450Z",
+      "commit": "ff77e51366a807a58c4834c31a87e8da5e7fcfed",
+      "workspace_fingerprint": "a7660725f2b3100bbbd5f28ee33cb88c9f5cedc1e917a7fd5f276b377f66a461",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "timeout --kill-after=5s 180s pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.362,
+      "started_at": "2026-09-12T07:45:32.147Z",
+      "commit": "ff77e51366a807a58c4834c31a87e8da5e7fcfed",
+      "workspace_fingerprint": "a7660725f2b3100bbbd5f28ee33cb88c9f5cedc1e917a7fd5f276b377f66a461",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "timeout --kill-after=5s 180s node --test test/general-class-unit-conditional-replay.cjs test/general-unit-coordinates.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 150.98,
+      "started_at": "2026-09-12T07:46:30.160Z",
+      "commit": "ff77e51366a807a58c4834c31a87e8da5e7fcfed",
+      "workspace_fingerprint": "a7660725f2b3100bbbd5f28ee33cb88c9f5cedc1e917a7fd5f276b377f66a461",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 6.284,
+      "started_at": "2026-09-12T07:49:02.844Z",
+      "commit": "ff77e51366a807a58c4834c31a87e8da5e7fcfed",
+      "workspace_fingerprint": "a7660725f2b3100bbbd5f28ee33cb88c9f5cedc1e917a7fd5f276b377f66a461",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-unit-resumed-map.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 241.203,
+      "started_at": "2026-09-12T07:52:28.820Z",
+      "commit": "ff77e51366a807a58c4834c31a87e8da5e7fcfed",
+      "workspace_fingerprint": "4ed6241f8efa1767cbd0f0c87910dd4048583660904efd2068a5de78bfa9b488",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --project pyrightconfig.json src/lib/sagejs/number_fields/class_unit_replay.py src/lib/sagejs/number_fields/class_unit_generation_replay.py src/lib/sagejs/number_fields/unit_coordinates.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.038,
+      "started_at": "2026-09-12T07:57:22.841Z",
+      "commit": "ff77e51366a807a58c4834c31a87e8da5e7fcfed",
+      "workspace_fingerprint": "4ed6241f8efa1767cbd0f0c87910dd4048583660904efd2068a5de78bfa9b488",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Bounded BDF completeness now admits nonreusable terminal unit maps only through one fresh owned replay, then copies verified compact units and torsion into the original field. Final four-test lifecycle/subgroup suite passes at frozen source, as do six existing conditional/map tests and strict checking of 384 modules. Independent source review found no remaining authority blocker; runtime caps and public live export eligibility remain unchanged.",
+    "risks": [
+      "Package ownership, strict registry, source-inventory review and exact-revision broad build/native/platform qualification remain integration obligations; standalone architecture check fails pending ownership integration.",
+      "The positive/adversarial developer-host suite is not an expensive bridge or competitive performance measurement. Resumed admission intentionally declines outside the existing bounded replay envelope.",
+      "No exact-revision full build/native/platform qualification was run for this follow-up. PR 233 remains draft and this contract remains active pending integration gates.",
+      "The raw claim guard bounds eager producer-data copies but is not a peak-RSS proof. Public compact exporter hardening beyond its existing live eligibility contract was not broadened."
+    ],
+    "next_steps": [
+      "Integrate the resumed-map follow-up and shared replay owners with current main, preserving the exact proof policy and all decoder/runtime caps.",
+      "Review source/generated-code deltas using the integration compiler, register correct ownership, and complete broad build/native/platform qualification.",
+      "Retain rootlab build/general-frontier/m1-resumed-map-handoff-v1.md, the independent review and m1-resumed-map-failures-v1/ with its verified 55-file checksum manifest; do not replace stabilization failures with later successes."
+    ]
+  }
+}
