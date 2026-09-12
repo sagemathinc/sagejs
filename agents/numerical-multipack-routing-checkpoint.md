@@ -70,24 +70,29 @@ exact-library import or a measured whole-product startup/RSS improvement.
 
 ## Merge blockers and remaining qualification
 
-Class-group benchmark tooling hard-codes the old single-pack path:
+Class-group benchmark tooling now has explicit current-layout readers:
 
 - `bench/class-unit-groups/run-complex-cubic-frontier.cjs`
 - `bench/class-unit-groups/complex-cubic-frontier-holdout.cjs`
 - `bench/class-unit-groups/run-class-unit-corpus.cjs`
 - `bench/cubic-online-support-transcript.cjs`
 
-Its frozen v3 runtime-closure receipt format must not silently change. A
-coordinated current-layout reader/version update and regression fixtures must
-preserve historical evidence. The owning lane was contacted in Discussion104;
-these files and historical receipts have deliberately not been edited here.
+The new candidate runtime closure v4 hashes the entire v5 catalog tree and
+authenticates every pack's bytes, source routing and manifest; a standalone
+fallback in any pack is rejected. The selected pack is recorded separately and
+must agree with the complete catalog. An unused pack is still part of the
+runtime identity. Historical closure v3 keeps its original flat paths and
+producer behavior; no historical receipts, cohorts, timing ledgers or live
+optimizer-service files are changed. This narrow compatibility extension was
+announced in Discussion104 before editing the four readers. Regression tests
+exercise both schemas and the full freeze/qualification/disclosure gates.
 
 The real executable pack fixture now passes on all four persistent platforms;
 see the [scoped receipts and verifier](../bench/numerics/performance/results/n2-multipack-sea-de1262a00/README.md).
 These reuse explicitly identified frontend/dependency inputs and remain distinct
 from full Sage.js npm/SEA qualification.
 
-After that integration: rebuild the complete catalog, run the full production
+Still required: rebuild the complete catalog, run the full production
 and corruption suites, verify real npm/SEA installs on all four supported
 platforms, measure startup/payload/RSS, and integrate prepared-statistics
 descriptors from draft #240. The ARM result recorded in PR #259 predates this

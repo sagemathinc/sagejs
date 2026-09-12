@@ -9,6 +9,7 @@ const { readFileSync } = require("node:fs");
 const os = require("node:os");
 const { join, resolve } = require("node:path");
 const { performance } = require("node:perf_hooks");
+const nativeLayout = require("../tools/native-pack-layout.js");
 
 const logicalSource = "sagejs/number_fields/cubic_class_number_native.py";
 const median = (values) => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
@@ -20,7 +21,11 @@ function measure(root) {
   const sourceHash = createHash("sha256")
     .update(readFileSync(join(root, "src/lib", logicalSource))).digest("hex");
   assert.equal(record.sourceHash, sourceHash);
-  const wrapper = require(join(published, record.cacheKey, "index.cjs"));
+  assert.ok(["sagejs.native-cache/v4",nativeLayout.SCHEMA].includes(index.schema));
+  if (index.schema === nativeLayout.SCHEMA) assert.ok(nativeLayout.selectedPack(index,record));
+  const wrapper = require(index.schema === nativeLayout.SCHEMA
+    ? join(published,nativeLayout.modulePath(record))
+    : join(published, record.cacheKey, "index.cjs"));
   assert.equal(wrapper.sourceHash, sourceHash);
   const kernel = wrapper.certified_complex_cubic_class_group_v1;
   assert.equal(kernel.backendPolicy.kind, "fmpz");
