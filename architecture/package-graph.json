@@ -203,7 +203,7 @@
       "id": "linear-algebra",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 450000,
+      "max_source_bytes": 451000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py"
@@ -893,7 +893,7 @@
       "id": "modular-abelian-varieties",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 70000,
+      "max_source_bytes": 85000,
       "depends_on": [
         "core-runtime",
         "arithmetic",
@@ -906,7 +906,11 @@
       ],
       "files": [
         "src/lib/sagejs/modular_abelian_varieties/__init__.py",
-        "src/lib/sagejs/modular_abelian_varieties/abelian_variety.py"
+        "src/lib/sagejs/modular_abelian_varieties/abelian_variety.py",
+        "src/lib/sagejs/modular_abelian_varieties/lattices.py",
+        "src/lib/sagejs/modular_abelian_varieties/morphisms.py",
+        "src/lib/sagejs/modular_abelian_varieties/products.py",
+        "src/lib/sagejs/modular_abelian_varieties/degeneracy.py"
       ],
       "typescript_files": ["tools/serialization-codecs/modular-abelian-varieties.ts"],
       "prefixes": []
