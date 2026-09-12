@@ -336,6 +336,10 @@ print(
             "%%matlab\\n" +
             "x=arrayfun(@(x) x^2,[1 2;3 4]); size(x)"
           );
+          const punycode = await session.evaluate(
+            "print('bücher'.encode('punycode'))\\n" +
+            "print(b'bcher-kva'.decode('punycode'))"
+          );
           const nlopt = await session.evaluate(
             "from sagejs.numerics.optimization import minimize\\n" +
             "answer = minimize(\\n" +
@@ -353,6 +357,7 @@ print(
           return {
             python: { stdout: python.stdout, repr: python.repr },
             matlab: { stdout: matlab.stdout, repr: matlab.repr },
+            punycode: { stdout: punycode.stdout, stderr: punycode.stderr ?? '', repr: punycode.repr },
             nlopt: { stdout: nlopt.stdout, repr: nlopt.repr },
           };
         } finally {
@@ -366,6 +371,7 @@ print(
     assert.deepEqual(pythonModeProbe.result.value, {
       python: { stdout: "True\nZeroDivisionError\n", repr: "" },
       matlab: { stdout: "", repr: "(2, 2)" },
+      punycode: { stdout: "b'bcher-kva'\nbücher\n", stderr: "", repr: "" },
       nlopt: { stdout: "False False\n", repr: "" },
     });
     const publicExactSubspacesOnly = process.argv.includes(

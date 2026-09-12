@@ -3798,32 +3798,20 @@ def ρσ_ord(value: Any) -> _Int:
     if runtime.strict_equal(runtime.jstype(value), "object") and _builtins_has_member(
         value, "length"
     ):
-        if value.length != 1:
-            raise TypeError(
-                "ord() expected a character, but string of length "
-                + str(value.length)
-                + " found"
-            )
-        return value[0]
-    if value.length < 1 or value.length > 2:
-        raise TypeError(
-            "ord() expected a character, but string of length "
-            + str(value.length)
-            + " found"
-        )
-    answer = value.charCodeAt(0)
-    if 0xD800 <= answer <= 0xDBFF:
+        if value.length == 1:
+            return value[0]
+    elif value.length == 1:
+        return value.charCodeAt(0)
+    elif value.length == 2:
+        answer = value.charCodeAt(0)
         second = value.charCodeAt(1)
-        if 0xDC00 <= second <= 0xDFFF:
+        if 0xD800 <= answer <= 0xDBFF and 0xDC00 <= second <= 0xDFFF:
             return (answer - 0xD800) * 0x400 + second - 0xDC00 + 0x10000
-        raise TypeError("string is missing the low surrogate char")
-    if value.length != 1:
-        raise TypeError(
-            "ord() expected a character, but string of length "
-            + str(value.length)
-            + " found"
-        )
-    return answer
+    raise TypeError(
+        "ord() expected a character, but string of length "
+        + str(value.length)
+        + " found"
+    )
 
 
 def ρσ_chr(code: _Int) -> _Str:
