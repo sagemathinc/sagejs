@@ -991,14 +991,9 @@ def _print_legacy_class(self, output):
                 )
                 output.end_statement()
 
-    # Python executes a class body from top to bottom.  The JavaScript class
-    # representation emits methods as prototype properties, but their default
-    # arguments are still evaluated at definition time.  Emit the leading
-    # ordinary class-body statements before the first method/nested class so a
-    # default such as ``def f(self, value=SENTINEL)`` sees an earlier
-    # ``SENTINEL = object()`` assignment.  Remaining statements stay in the
-    # historical post-method section below; preserving arbitrary interleaving
-    # is a separate, larger class-namespace lowering concern.
+    # Class statements and method defaults execute in source order.  Keep the
+    # leading statements separate for the legacy bootstrap path, but never let
+    # a generated Python initializer overwrite a binding made by that body.
     early_statements = []
     for stmt in self.body:
         if is_node_type(stmt, AST_Method) or is_node_type(stmt, AST_Class):
@@ -1041,9 +1036,53 @@ def _print_legacy_class(self, output):
         (".__annotations_text__", ".__signature_annotations_text__"),
     ]
 
-    # actual methods
-    if not self.init:
-        # Create a default __init__ method
+    def emit_constructor_signature_copies(emit_copy):
+        if not output.options.python_attributes:
+            for attr in constructor_signature_attributes:
+                emit_copy(attr)
+            return
+        # Keep each read immediately before its write, in the original field
+        # order. Object.assign would copy unrelated fields and an object
+        # literal would eagerly read every getter before the first write.
+        output.indent()
+        output.print("for (var ρσ_init_attr of [")
+        for index, attr in enumerate(constructor_signature_attributes):
+            if index:
+                output.comma()
+            output.print(JSON.stringify(attr.slice(1)))
+        output.print("])")
+        output.space()
+        output.with_block(lambda: emit_copy("[ρσ_init_attr]"))
+
+    # A direct initializer followed only by side-effect-free method creation
+    # remains the winning binding. Ordinary statements, decorators, defaults,
+    # annotations, and descriptor definitions invalidate that proof. This is
+    # deliberately narrower than self.init, which also survives assignments
+    # and deletions that replace the declared method.
+    guaranteed_initializer = False
+    for stmt in self.body:
+        plain_method = (
+            is_node_type(stmt, AST_Method)
+            and not stmt.is_getter
+            and not stmt.is_setter
+            and not stmt.is_deleter
+            and not (stmt.decorators or []).length
+            and stmt.name.name not in self.nonlocal_names
+            and not has_prop(self["static"], stmt.name.name)
+            and not has_prop(self.classmethods, stmt.name.name)
+        )
+        if plain_method and stmt.name.name == "__init__":
+            guaranteed_initializer = True
+        elif (
+            not plain_method
+            or Object.keys(stmt.argnames.defaults).length
+            or (stmt.annotations and stmt.annotations != "future")
+        ):
+            guaranteed_initializer = False
+
+    def emit_default_initializer():
+        # Bootstrap methods have a receiver-style ABI; Python constructors use
+        # the existing descriptor-aware forwarding boundary.
         def f_default():
             if self.parent:
                 if output.options.python_attributes:
@@ -1098,11 +1137,11 @@ def _print_legacy_class(self, output):
             self.parent.print(output)
             output.print(".prototype.__init__")
             output.end_statement()
-            # The class call binder consults constructor metadata before the
-            # synthetic forwarding method runs.  Mirror the inherited
-            # initializer signature on both the forwarding method and class
-            # so keyword validation and binding remain exact.
-            for attr in constructor_signature_attributes:
+
+            # Preserve the forwarding method's inherited signature. Legacy
+            # class binders also need a class copy; Python class metadata is
+            # published once from the final winning initializer below.
+            def copy_forwarded_signature(attr):
                 output.indent()
                 self.name.print(output)
                 output.print(".prototype.__init__")
@@ -1112,12 +1151,15 @@ def _print_legacy_class(self, output):
                 self.parent.print(output)
                 output.print(".prototype.__init__" + attr)
                 output.end_statement()
-                output.indent()
-                self.name.print(output)
-                output.assign(attr)
-                self.name.print(output)
-                output.print(".prototype.__init__" + attr)
-                output.end_statement()
+                if not output.options.python_attributes:
+                    output.indent()
+                    self.name.print(output)
+                    output.assign(attr)
+                    self.name.print(output)
+                    output.print(".prototype.__init__" + attr)
+                    output.end_statement()
+
+            emit_constructor_signature_copies(copy_forwarded_signature)
             for source_attr, target_attr in constructor_annotation_attributes:
                 output.indent()
                 self.name.print(output)
@@ -1128,12 +1170,16 @@ def _print_legacy_class(self, output):
                 self.parent.print(output)
                 output.print(".prototype.__init__" + source_attr)
                 output.end_statement()
-                output.indent()
-                self.name.print(output)
-                output.assign(target_attr)
-                self.name.print(output)
-                output.print(".prototype.__init__" + source_attr)
-                output.end_statement()
+                if not output.options.python_attributes:
+                    output.indent()
+                    self.name.print(output)
+                    output.assign(target_attr)
+                    self.name.print(output)
+                    output.print(".prototype.__init__" + source_attr)
+                    output.end_statement()
+
+    if not output.options.python_attributes and not self.init:
+        emit_default_initializer()
 
     defined_methods = {}
 
@@ -1174,15 +1220,19 @@ def _print_legacy_class(self, output):
             define_method(stmt)
             defined_methods[stmt.name.name] = True
             sname = stmt.name.name
-            if sname is "__init__":
+            if sname is "__init__" and (
+                not output.options.python_attributes or guaranteed_initializer
+            ):
                 # Copy argument handling data so that kwarg interpolation works when calling the constructor
-                for attr in constructor_signature_attributes:
+                def copy_declared_signature(attr):
                     output.indent(), self.name.print(output), output.assign(attr)
                     (
                         self.name.print(output),
                         output.print(".prototype.__init__" + attr),
                         output.end_statement(),
                     )
+
+                emit_constructor_signature_copies(copy_declared_signature)
                 for source_attr, target_attr in constructor_annotation_attributes:
                     output.indent(), self.name.print(output), output.assign(target_attr)
                     (
@@ -1217,14 +1267,24 @@ def _print_legacy_class(self, output):
             print_class_statement(stmt)
             emitted_statements.append(stmt)
 
-    if not self.init and output.options.python_attributes:
-        output.indent()
-        output.print("ρσ_apply_custom_new_signature(")
-        self.name.print(output)
-        output.comma()
-        self.name.print(output)
-        output.print(".prototype.__init__)")
-        output.end_statement()
+    if output.options.python_attributes:
+        for stmt in self.statements:
+            if (
+                not is_node_type(stmt, AST_Method)
+                and emitted_statements.indexOf(stmt) is -1
+            ):
+                print_class_statement(stmt)
+                emitted_statements.append(stmt)
+        if not guaranteed_initializer:
+            # The completed namespace, not the presence of an AST_Method,
+            # decides whether an initializer was supplied. None and other
+            # noncallables fail when the class is called, not during creation.
+            output.indent()
+            output.print("if (!Object.prototype.hasOwnProperty.call(")
+            self.name.print(output)
+            output.print('.prototype, "__init__"))')
+            output.space()
+            output.with_block(emit_default_initializer)
 
     if defined_methods["__next__"]:
         class_def("next", False)
@@ -1327,7 +1387,7 @@ def _print_legacy_class(self, output):
             output.comma()
             self.bases[i].print(output)
         output.print(")"), output.end_statement()
-        if not self.init:
+        if not self.init and not output.options.python_attributes:
             # C3 mixin resolution can replace a synthetic initializer from an
             # empty primary base with an explicit initializer from a later
             # base.  Refresh the class-call contract from the winning method.
@@ -1349,6 +1409,75 @@ def _print_legacy_class(self, output):
                 self.name.print(output)
                 output.print(".prototype.__init__" + source_attr)
                 output.end_statement()
+
+    if output.options.python_attributes and not guaranteed_initializer:
+        # Assignment after a method definition and C3 resolution can both
+        # replace its initializer. Publish only the final binding's contract;
+        # actual class calls continue to bind against the live initializer.
+        output.indent()
+        output.print("var ρσ_init_signature = ρσ_live_initializer(")
+        self.name.print(output)
+        output.print(")")
+        output.end_statement()
+        output.indent()
+        output.print(
+            "var ρσ_init_explicit_self = ρσ_init_signature != null && "
+            "ρσ_init_signature.__python_descriptor__ === true && "
+            "ρσ_init_signature.__self__ === undefined && "
+            "ρσ_init_signature.__staticmethod__ !== true && "
+            "ρσ_init_signature.__sagejs_native_method__ !== true && "
+            "ρσ_init_signature.__sagejs_method_signature_excludes_self__ !== true"
+        )
+        output.end_statement()
+
+        def copy_winning_signature(attr):
+            output.indent()
+            self.name.print(output)
+            output.assign(attr)
+            output.print(
+                "ρσ_init_signature == null ? undefined : ρσ_init_signature" + attr
+            )
+            output.end_statement()
+
+        emit_constructor_signature_copies(copy_winning_signature)
+        output.indent()
+        output.print("if (ρσ_init_explicit_self && Array.isArray(")
+        self.name.print(output)
+        output.print(".__argnames__))")
+        output.space()
+
+        def normalize_initializer_signature():
+            output.indent()
+            self.name.print(output)
+            output.assign(".__argnames__")
+            self.name.print(output)
+            output.print(".__argnames__.slice(1)")
+            output.end_statement()
+            output.indent()
+            self.name.print(output)
+            output.assign(".__positional_only__")
+            output.print(
+                "ρσ_init_signature.__positional_only__ === true ? "
+                "ρσ_init_signature.__argnames__.length - 1 : "
+                "Math.max(0, (ρσ_init_signature.__positional_only__ || 0) - 1)"
+            )
+            output.end_statement()
+
+        output.with_block(normalize_initializer_signature)
+        for source_attr, target_attr in constructor_annotation_attributes:
+            output.indent()
+            self.name.print(output)
+            output.assign(target_attr)
+            output.print(
+                "ρσ_init_signature == null ? undefined : ρσ_init_signature"
+                + source_attr
+            )
+            output.end_statement()
+        output.indent()
+        output.print("ρσ_apply_custom_new_signature(")
+        self.name.print(output)
+        output.print(", ρσ_init_signature)")
+        output.end_statement()
 
     # Every Python class has ``__doc__``.  Keep the attribute present with a
     # value of ``None`` even when the class has no docstring; introspection
