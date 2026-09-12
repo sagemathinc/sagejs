@@ -43,8 +43,8 @@ checkout predated the character and $\Gamma_1$ object layers; their existing
 main checkmarks are retained below. P0 freeze receipts are historical evidence
 for their exact revisions, not qualification of every subsequent feature.
 
-The **modular abelian varieties: products, certified morphisms, finite kernels,
-isogenies, and degeneracy-labelled oldform copies** slice is implemented on
+The **modular abelian varieties: products, certified morphisms, finite kernels,****
+**isogenies, and degeneracy-labelled oldform copies** slice is implemented on
 `feature/modular-abelian-morphisms`,
 [PR #230](https://github.com/sagemathinc/sagejs/pull/230) (pending merge).
 Native, Node/Wasm and real
@@ -553,8 +553,11 @@ $401$ receipt ranges from $3\times$ to $10\times$ faster than SageMath.
   at composite levels (finer than full-Hecke isotypic decomposition).
 - [x] Sage differential tests, larger-level cold/warm benchmarks and
   native/browser parity for the new morphism slice.
+  At level $1009$, the integral $T_2-1$ workload takes $0.758$ s native,
+  $6.721$ s Node/Wasm, and $56.589$ s in Sage on the recorded host; the shared
+  Chromium corpus includes the formerly timing-out level-$389$ case.
 - [ ] Composite-level decomposition-isogeny performance parity with Sage:
-  the implemented slice is still $4.6$–$5.8\times$ slower on the measured
+  the implemented slice is still $4.8$–$5.9\times$ slower on the measured
   levels $121$, $242$, $363$, despite faster Hecke-map workloads. Exact receipts
   and separated timings: `bench/modular/abelian-varieties/morphisms-performance.md`.
 - [ ] Homomorphism and endomorphism rings of supported modular abelian
