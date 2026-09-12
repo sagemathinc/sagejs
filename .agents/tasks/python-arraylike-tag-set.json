@@ -59,7 +59,7 @@
     }
   ],
   "handoff": {
-    "summary": "Private native Set preserves all 15 arraylike tags and single observable tag evaluation; source grows by 203 bytes, with core runtime at 900091/903000 bytes. Fresh-main runtime build passed in 14m10s; strict baselib (393 modules), full architecture, and 63-case source/old/shipped differential oracle passed. Generated reference checks pass. Subsequent edits affect only test benchmark iteration count, docs, and task metadata; build receipt is historical, not current-head qualification. Old-base build was intentionally interrupted (143) for source-budget failure before rebasing to fresh main.",
+    "summary": "Private native Set preserves all 15 arraylike tags and single observable tag evaluation; source grows by 203 bytes, with core runtime at 900091/903000 bytes. Fresh-main runtime build passed in 14m10s; strict baselib (393 modules), full architecture, and 63-case source/old/shipped differential oracle passed. Generated reference checks pass. Subsequent edits affect only generated references and task metadata; build receipt is historical, not current-head qualification. Old-base build was intentionally interrupted (143) for source-budget failure before rebasing to fresh main.",
     "risks": [
       "Shared-host microbenchmarks are diagnostic only; no package speedup claim.",
       "Non-Linux platforms require CI qualification.",
