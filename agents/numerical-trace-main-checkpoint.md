@@ -39,11 +39,24 @@ FLINT addon and production native pack are absent). Fifteen existing domain
 tests pass, including Sage.js root/optimization/ODE contracts and a live SciPy
 ODE comparison. The symbolic Sage scalar-root test requires the optional FLINT
 addon, absent in both fresh baseline and candidate checkouts; its identical
-missing-addon failure is retained, not counted as a pass. Paired timing remains
-in progress; historical timings are not current-main receipts.
+missing-addon failure is retained, not counted as a pass.
+
+The complete oracle also passes through production public workers in Chromium,
+Firefox, and WebKit. The fresh production artifact authenticates as
+`sha256:3130056a8b9be7ae6c502f7889df84086dbe69c1262c625039c11a18b74ffd83`;
+its 15-module ABI review and unchanged payload/topology budgets pass. Eager-core
+gzip is 17,185,965 bytes (limit 17,600,000) and Brotli is 9,673,209 bytes
+(limit 9,700,000). This is a narrow margin, not permission to grow the budget.
+Run `node test/numerics/performance/trace-accounting-browser.mjs` to repeat
+the three-engine regression; missing browsers fail instead of qualifying.
+
+[Local paired evidence](../bench/numerics/performance/results/n1-main-2026-09-12/README.md)
+retains fresh main/candidate A1/B1/B2/A2 blocks and identical observations in
+all 60 workload/policy records. The independent persistent-host repeat is
+still running. Source receipts name `db7c806b`, not this evidence-only follow-up.
 
 The broad architecture gate currently fails on the unchanged base-main
-`docs/general-class-unit-frontier.md` historical CoWasm mention. The numerical,
+`docs/general-class-unit-frontier.md` historical retired-toolchain mention. The numerical,
 native, Wasm capability and resource checks preceding it pass. The optimizer
 inventory has been regenerated and verifies against the changed source.
 The remaining optimization-engine tests (34), memory validation and
