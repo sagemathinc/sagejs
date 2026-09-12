@@ -12,7 +12,45 @@ competitive performance claim is established.
 
 ### Delivered work and open gates
 
-| Work | Current evidence | Remaining obligation |
+Follow-up after the approved extension: corpus PR #257 and dictionary
+reinitialization PR #256 are now merged into main `256419004`; the checkpoint
+branch has incorporated that main revision without altering the frozen baseline.
+The pinned Hecke 0.40.0 [developer proof-policy fixture](../bench/class-unit-groups/general-frontier/reference/runner/hecke-proof-policy-controls-20260912.json)
+now passes all 13 requests
+at both 100/200-bit settings (eight unconditional fresh computation iterations),
+including the existing exact toy witness and mutation checks. The successful
+attempt took 30.212 seconds and closed its process. Two earlier startup failures
+remain recorded: cached source-path mismatch and then an uncached `Test`
+dependency. Repair used an isolated scratch depot, not package upgrades or shared
+cache deletion. These are local correctness checks, not controlled timing,
+whole-batch replay, regulator equivalence or independent completeness proofs.
+Full-iteration follow-up [PR #273](https://github.com/sagemathinc/sagejs/pull/273)
+retains every compact result and proof-policy record in repeated batches. The
+PARI and Hecke developer matrices each pass 24 requests with all 36 outputs
+retained and toy-witness checked. After extracting the unchanged Hecke replay
+helper from its `Test` harness, exact source `878ff5e38` passes the fresh Hecke
+matrix in 26.232 seconds, closes its process and retains all ten captured
+source/runtime pins unchanged. Current offline checks comprise 68 runner and
+20 supervisor tests. This is not independent completeness replay, matched
+regulator guarantees or controlled performance evidence. PR #273 remains draft.
+
+Target readiness subsequently passed on the existing `opt` installations:
+PARI 2.15.4 and Hecke 0.40.0 each completed 24 requests, retained all 36 outputs
+and checked every output's toy witnesses. Whole diagnostic durations were
+0.338/24.920 seconds respectively, **not competitive timings**. Both processes
+closed. The final 9,213-entry runtime inventory equals the initial inventory
+byte-for-byte; its canonical SHA-256 is
+`b28e2a45ff551e966cdd9e2af294a0834210923a81321517e979b7fc77fb5269`.
+The source-stage verification also passes, services are inactive and the timing
+lock is released. The two failed preflight inventories remain retained: standalone
+OpenBLAS and FLINT inspection lacked Julia's preloaded dependencies. The final
+audit binds the pinned JLL loader sources and exact provider bytes/ELF names,
+explicitly distinguishing modeled preload edges from observed process mappings;
+no CAS environment or cache policy changed. No sentinel field has been dispatched
+at this readiness checkpoint. The table below retains the original checkpoint's
+PR states for chronology.
+
+| Work | Historical checkpoint evidence | Remaining obligation at that checkpoint |
 | --- | --- | --- |
 | Reference laboratory | [PR #217](https://github.com/sagemathinc/sagejs/pull/217), baseline `b1740b787`, merged | Matched repeated complete requests, not just discovery summaries |
 | Frozen coverage/performance/smoke fixtures | [PR #257](https://github.com/sagemathinc/sagejs/pull/257), `e03acf683`, non-draft with routine/platform CI green | 1,800/360/90 selection is not performance or mathematical qualification; stress/proof sets still need admission |
@@ -21,7 +59,7 @@ competitive performance claim is established.
 | Canonical residue dictionary machinery | [PR #268](https://github.com/sagemathinc/sagejs/pull/268), storage `9db4572a9`, and [PR #269](https://github.com/sagemathinc/sagejs/pull/269), provider/evidence `662d08a10`, both draft | Ordinary-dictionary allocation, startup, source ownership and exact-source platform qualification; no allowance increase approved |
 
 PRs merged into the draft integration branch are not thereby merged into main.
-The ready corpus PR remains independently useful even while mathematical and
+The merged corpus remains independently useful even while mathematical and
 runtime qualification is incomplete. Its frozen inputs retain unknown class
 numbers; selection is not conditioned on Sage.js success.
 
@@ -120,9 +158,23 @@ below records the decision's origin; it is superseded only by this approval.
 The [machine-readable amendment](../bench/class-unit-groups/general-frontier/reference/runner/m0-effort-amendment-20260912.json)
 records the limits and original ledger pin. A subsequent conservative 200-second
 debit authorizes one off-host, 180-second Hecke proof-policy fixture after pinned
-environment repair; the ledger is now 96,772.300 / 432,000 seconds. Compilation
-is separate, prior failures remain retained, and no controlled timing was
-launched by that debit.
+environment repair. After the retained missing-`Test` startup failure, a second
+200-second debit authorized the successful third attempt. Following those debits,
+the ledger was
+96,972.300 / 432,000 seconds, SHA-256
+`d962927b498da8933565b2efedc77146c6679dc0adadd7843ee338b2df5d8c9c`.
+Compilation is separate, prior failures remain retained, and no controlled
+timing was launched by either debit.
+
+Subsequent bounded debits retain 400 seconds for the paired developer matrices,
+200 seconds for the post-helper Hecke matrix and 600 seconds for the two target
+readiness matrices including attestation and closure. The readiness-prepayment ledger
+is **98,172.300 / 432,000 seconds**, SHA-256
+`e0a5f221ad6a5cd810a0541c917090b67b93169f065595a9bd381ec6d42c14b3`.
+Both failed target preflights remain retained alongside the successful matrices.
+At the 17:42 UTC effort checkpoint, conservative aggregate estimates are
+**M0 43.5/56 hours and M1 31/40 hours**, with zero optimization campaigns begun.
+The former 11:25 UTC checkpoint and approval proposal below remain historical.
 
 At the 2026-09-12 11:25 UTC checkpoint, conservative aggregate active estimates
 are **M0 39.5/40 hours and M1 31/40 hours**. These retain prior rounded charges;

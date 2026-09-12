@@ -4,17 +4,15 @@
   "id": "class-unit-rank-two-frontier",
   "title": "Class Unit Rank Two Frontier",
   "lane": "arithmetic-algebra",
-  "status": "blocked",
+  "status": "active",
   "owner": "user",
-  "objective": "Publish the current general class-unit laboratory, partial smoke custody and bounded reassessment without extending budgets or claiming mathematical qualification",
-  "base_commit": "b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+  "objective": "Publish approved bounded M0 reassessment, final frozen smoke accounting and reference-readiness evidence without claiming mathematical qualification",
+  "base_commit": "2564190042e003176ada3a71700f946ae992f973",
   "claims": [
-    "bench/class-unit-groups/general-frontier/campaign.json",
-    "bench/class-unit-groups/general-frontier/reference/pari-screen.gp",
-    "bench/class-unit-groups/general-frontier/reference/sagejs-diagnostic.py",
-    "bench/class-unit-groups/general-frontier/reference/README.md",
-    "bench/class-unit-groups/general-frontier/reference/hecke/README.md",
-    "bench/class-unit-groups/general-frontier/reference/runner/",
+    "bench/class-unit-groups/general-frontier/reference/runner/hecke-proof-policy-controls-20260912.json",
+    "bench/class-unit-groups/general-frontier/reference/runner/m0-effort-amendment-20260912.json",
+    "bench/class-unit-groups/general-frontier/reference/runner/smoke-prefix-037-052-observation.json",
+    "bench/class-unit-groups/general-frontier/reference/runner/smoke90-final-accounting.json",
     "docs/general-class-unit-frontier.md"
   ],
   "dependencies": [
@@ -25,9 +23,9 @@
     "general-class-unit-exposure-inventory"
   ],
   "references": [
-    "Original laboratory scope base916baca462e85dd7767c5a328fa33b7ff4e0f54b is preserved in prior receipts; documentation follow-up uses merged PR217 headb1740b787 as its ownership base. No mathematical/runtime source changes in this checkpoint.",
+    "Original laboratory base916baca462e85dd7767c5a328fa33b7ff4e0f54b and frozen smoke runtimeb1740b787 are preserved in prior receipts. This documentation-only follow-up incorporated currentmain256419004 and uses that ownership base. Claims narrowed to actual checkpoint artifacts; no mathematical/runtime source changes relative to main.",
     "Latest user authorization adopts full M0-M5 plan09e9d35328bb3a42834aaf81699c95f99034446c. On2026-09-12 the user explicitly approved16 additional aggregate M0 active hours: cumulative ceiling56, with120CPUh, frozen inputs and all acceptance criteria unchanged. Four reassessment work packages each retain4activehours; no budget reset or M1 extension.",
-    "This post-merge documentation/data-only branch uses an explicit --task selector. Changed checks pass, but the arithmetic lane still requires fresh strict/native receipts. An attempted narrower validation list was rejected; required checks are restored and this checkpoint remains draft rather than waiving them."
+    "This documentation/data-only branch uses an explicit --task selector and retains all arithmetic-lane checks. Current-main full native, strict403, changed242 unit files and offline29 checks passed before the final readiness text refresh; exact final-workspace checks remain required before review. Independent review verified the summary against custody. No required check is waived."
   ],
   "architecture": {
     "strategy": "source-transparent-native",
@@ -49,7 +47,7 @@
   "validation": [
     "pnpm test:baselib:strict",
     "pnpm test:native",
-    "pnpm test:changed -- --base b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+    "pnpm test:changed -- --base 2564190042e003176ada3a71700f946ae992f973",
     "python3 -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py"
   ],
   "runs": [
@@ -182,19 +180,69 @@
       "commit": "fdc35c06f2db4550ea051cc7c21d1d25e33f4d78",
       "workspace_fingerprint": "4de3dc090c10b5cb7b2350c00b1e3178bee55585e8bf0f5fa6984b9bed8d46f3",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.416,
+      "started_at": "2026-09-12T17:29:13.141Z",
+      "commit": "0bb9a51ac77e34fcc94d61c2a04610756e3f2f09",
+      "workspace_fingerprint": "5f8ef4696c65ed3e6889663182b8e0d2793e426861420f79ac6c6eb4cf3fa548",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 984.485,
+      "started_at": "2026-09-12T17:35:20.856Z",
+      "commit": "0bb9a51ac77e34fcc94d61c2a04610756e3f2f09",
+      "workspace_fingerprint": "02ef9b5f17b69990cd0e4f517f6fdb3870b123b5b5d295d450b16ccd2de0b85b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.293,
+      "started_at": "2026-09-12T17:52:20.841Z",
+      "commit": "0bb9a51ac77e34fcc94d61c2a04610756e3f2f09",
+      "workspace_fingerprint": "02ef9b5f17b69990cd0e4f517f6fdb3870b123b5b5d295d450b16ccd2de0b85b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 2564190042e003176ada3a71700f946ae992f973",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 151.202,
+      "started_at": "2026-09-12T17:53:18.784Z",
+      "commit": "0bb9a51ac77e34fcc94d61c2a04610756e3f2f09",
+      "workspace_fingerprint": "02ef9b5f17b69990cd0e4f517f6fdb3870b123b5b5d295d450b16ccd2de0b85b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.107,
+      "started_at": "2026-09-12T17:55:50.633Z",
+      "commit": "0bb9a51ac77e34fcc94d61c2a04610756e3f2f09",
+      "workspace_fingerprint": "02ef9b5f17b69990cd0e4f517f6fdb3870b123b5b5d295d450b16ccd2de0b85b",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Documentation/data-only follow-up to merged PR217: current M0/M1/PR status,16 source-bound smoke observations with original raw hashes, broader-cost phase-accounting gaps, dictionary resource disposition, and an explicitly unapproved bounded M0 effort proposal. Independent review corrected conditional-proof wording and distinguished analytic-certification prime thresholds from class-group generator bounds. Historical laboratory receipts remain, with no new mathematical performance claim.",
+    "summary": "Documentation/data-only follow-up to merged PR217 and main256419004: approved cumulative56-hour M0 allowance with unchanged120CPUh/inputs/criteria; complete frozen90 baseline accounting/custody with zero complete requests on oldb1740; pinned Hecke13 and full-batch24/36 local/target readiness evidence; precise remaining M0/M1 gates. Independent review checked raw hashes and required stale pending-target wording to be refreshed. No mathematical source or performance qualification changes.",
     "risks": [
-      "M0 and M1 are incomplete; frozen coverage/performance/smoke selection does not qualify matched costs, stress/proof admissions or full results. The running90-field baseline lacks final custody and runtime attestation.",
+      "M0 and M1 are incomplete. Frozen90 baseline is closed and attested, with all failures retained; cohort selection and toy readiness do not qualify matched costs, stress/unconditional admissions, general maps or complete results.",
       "The16-row observation contains no complete public request. Two long quintic contexts report conditional index one without detached replay; missing aggregate timers prevent precise saturation/certificate attribution.",
-      "M0 is near its40 active-agent-hour ceiling; the proposed extension requires user approval. No CPU, source, timeout, memory, mathematical or verifier allowance was increased.",
-      "Dictionary PR268/269 remain draft with actual source/startup failures and allocation costs. Ready corpus PR257 is independent of those unqualified runtime changes."
+      "User approved16 additional aggregate M0 hours, cumulative56. The120CPUh ceiling and all frozen inputs/acceptance criteria remain unchanged; readiness prepayment totals98172.300seconds. PARI approximate regulator and Hecke enclosure remain unmatched; toy equations are not independent completeness proofs.",
+      "Dictionary PR268/269 remain draft with actual source/startup failures and allocation costs. Corpus PR257 is merged independently. Target dependency evidence explicitly labels source-modeled JLL preload edges; prior preflight failures are retained."
     ],
     "next_steps": [
-      "Complete only the already authorized frozen smoke job and bounded custody within retained allowances; preserve every timeout, capability gap and incomplete result.",
-      "Request an explicit M0 scope/effort decision before exceeding40 active hours or launching additional reference repair/qualification; do not reinterpret this report as approval.",
+      "Finish exact final-workspace documentation handoff checks, then make this narrow checkpoint non-draft; its publication is not completion of M0 or M1.",
+      "Within approved bounded work packages, screen the unchanged18 unconditional reference sentinels and resolve matched-reference/stress admission gaps; retain all failures and do not silently alter bounds or criteria.",
       "Resolve coordinated runtime resource and M1 exact-replay/platform gates before making complete class/unit or competitive performance claims."
     ]
   }
