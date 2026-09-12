@@ -59,8 +59,14 @@ publish an explicit product-to-Jacobian isogeny.
 - [x] Sage exact corpus (including $[2]$, diagonal maps, singular Hecke maps,
   $J_0(33)$, $J_0(44)$, prime powers, repeated copies and tampering).
 - [x] Native and browser shared positive/adversarial corpus.
-- [ ] Forced larger-level benchmarks, with construction/cold computation/warm
+- [x] Forced larger-level benchmarks, with construction/cold computation/warm
   reuse and identical mathematical outputs reported separately.
+
+Implemented in [PR #230](https://github.com/sagemathinc/sagejs/pull/230).
+See `docs/modular-abelian-morphisms.md` and
+`bench/modular/abelian-varieties/morphisms-performance.md`. Composite-level
+decomposition-isogeny performance parity with Sage remains a follow-up; the
+measured Hecke-map and decomposition workloads are explicitly separated.
 
 Use existing Hermite/Smith and exact matrix primitives; avoid expensive Smith
 transformation matrices when only invariant factors are needed. No new C math.

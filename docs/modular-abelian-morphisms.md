@@ -27,6 +27,9 @@ sage: diagonal.image().dimension()
 Indices are zero-based and factor order matters. Matrices act on row vectors;
 `f*g` means $f\circ g$, so its matrix is `g.matrix()*f.matrix()`.
 `E**r` constructs repeated products; `E**0` is the zero-dimensional product.
+For a sum of maps with different domain and codomain, supply the parented zero:
+`sum(maps, A.zero_morphism(B))`. A numerical scalar is only added as a multiple
+of the identity for endomorphisms.
 Products and kernel/image subvarieties expose `modular_symbols()` as a rational
 homology subspace/direct-sum view, not as a single ambient Manin presentation.
 Use the original factors for signed Manin-symbol computations.
@@ -120,6 +123,12 @@ unverified matrix. Maps, ordered products, and kernel/image varieties preserve
 their integral models. This slice does not add polarizations, periods, rational
 torsion-point algorithms, or component groups of Néron models; the finite kernel
 components above are different objects.
+
+See the [qualification and benchmark report](../bench/modular/abelian-varieties/morphisms-performance.md)
+for exact Sage comparisons and native/browser checks. The Hecke-map workloads
+are substantially faster than Sage in the measured larger cases, while the
+new composite-level decomposition isogenies remain slower; timings are
+reported separately.
 
 The following compact check is executed by the documentation test runner:
 
