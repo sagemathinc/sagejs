@@ -4,7 +4,7 @@
   "id": "general-stress-supplement",
   "title": "General Stress Supplement",
   "lane": "integration",
-  "status": "active",
+  "status": "proposed",
   "owner": "user",
   "objective": "Add a separately versioned 36-polynomial source-only stress supplement with exact elementary certificates and offline validation, preserving all frozen corpus memberships",
   "base_commit": "d4091f8c6e3c972bc293f441c12fedcafc26d224",
@@ -17,6 +17,7 @@
     "general-class-unit-corpus-freeze"
   ],
   "references": [
+    "Ownership transferred 2026-09-12 to general-class-unit-corpus-independent on main 6c42dd093. This historical contract is parked as non-live proposed because the schema has no superseded status; no renewed work or current-main qualification is implied. PR246 remains an open draft and its source/receipts are preserved.",
     "Reviewed rootlab build/general-frontier/m0-stress-proof-preselection-v1.md",
     "https://github.com/sagemathinc/sagejs/pull/246 (draft stacked on corpus-freeze PR 236)"
   ],
