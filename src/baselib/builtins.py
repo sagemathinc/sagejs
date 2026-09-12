@@ -9446,7 +9446,8 @@ def _builtins_object_setattr(
             _builtins_call_member(descriptor, "__set__", [self, value])
             return
     if not _builtins_store_instance_attribute(self, name, value):
-        runtime.reflect.set(self, name, value)
+        if not runtime.reflect.set(self, name, value):
+            raise AttributeError("object attribute '" + name + "' is read-only")
 
 
 @runtime.native_method
