@@ -143,11 +143,10 @@ def exit(status=None):
 
 
 def exc_info():
-    """Return information about the exception most recently being handled.
+    """Return information about the exception currently being handled.
 
-    Compiled exception handlers publish their normalized exception through a
-    shared runtime slot because lazy modules execute in separate JavaScript
-    closures.  Sage.js exceptions carry a native JavaScript stack rather
+    Compiled handlers and generator resume boundaries share a read-only runtime
+    accessor across module closures. Sage.js exceptions carry a native JavaScript stack rather
     than CPython frame objects.  The third tuple entry is therefore an empty
     traceback sequence: consumers can format the value and native stack,
     while frame-oriented tools see no invented Python frames instead of

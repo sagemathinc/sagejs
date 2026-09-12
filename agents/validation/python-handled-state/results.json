@@ -1,0 +1,1462 @@
+{
+  "schema": "sagejs.selective-handled-state-campaign/v1",
+  "host": "bench-1",
+  "reservation": "https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18410760",
+  "release": "https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18410799",
+  "census": {
+    "before": "Sat Sep 12 09:02:20 UTC 2026\n 09:02:20 up 3 days, 20:37,  1 user,  load average: 0.08, 0.08, 0.15\nArchitecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           48 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  8\nOn-line CPU(s) list:                     0-7\nVendor ID:                               AuthenticAMD\nModel name:                              AMD EPYC 7B13\nCPU family:                              25\nModel:                                   1\nThread(s) per core:                      1\nCore(s) per socket:                      8\nSocket(s):                               1\nStepping:                                0\nBogoMIPS:                                4900.00\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext ssbd ibrs ibpb stibp vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 clzero xsaveerptr arat umip vaes vpclmulqdq rdpid fsrm\nHypervisor vendor:                       KVM\nVirtualization type:                     full\nL1d cache:                               256 KiB (8 instances)\nL1i cache:                               256 KiB (8 instances)\nL2 cache:                                4 MiB (8 instances)\nL3 cache:                                32 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-7\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Mitigation; Safe RET\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Mitigation; Clear CPU buffers\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected\nad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc  /home/user/bin/node\n    PID %CPU COMMAND\n 461649  3.2 /usr/lib/systemd/systemd --user\n 461713  0.3 sshd: user [priv]\n      1  0.0 /usr/lib/systemd/systemd --system --deserialize=46\n 391875  0.0 /usr/bin/google_osconfig_agent\n 391874  0.0 /usr/lib/systemd/systemd-journald\n 391953  0.0 /usr/bin/google_guest_agent\n 391884  0.0 /sbin/multipathd -d -s\n 455732  0.0 [kworker/u32:0-iou_exit]\n 452114  0.0 [kworker/u32:2-iou_exit]\n 458900  0.0 [kworker/u32:3-flush-8:0]\n     16  0.0 [rcu_sched]\n",
+    "after": "Sat Sep 12 09:05:58 UTC 2026\n 09:05:58 up 3 days, 20:40,  1 user,  load average: 1.00, 0.60, 0.35\n    PID %CPU COMMAND\n 461649  0.0 /usr/lib/systemd/systemd --user\n      1  0.0 /usr/lib/systemd/systemd --system --deserialize=46\n 391875  0.0 /usr/bin/google_osconfig_agent\n 391874  0.0 /usr/lib/systemd/systemd-journald\n 391953  0.0 /usr/bin/google_guest_agent\n 391884  0.0 /sbin/multipathd -d -s\n 455732  0.0 [kworker/u32:0-events_power_efficient]\n 452114  0.0 [kworker/u32:2-events_power_efficient]\n 458900  0.0 [kworker/u32:3-iou_exit]\n     16  0.0 [rcu_sched]\n     98  0.0 [hwrng]\n"
+  },
+  "rawRecordSha256": {
+    "ab-a.json": "cb9bf4d0210d2ca141028ad651d6a6ae85465cc79b3473a55f0a8ded5a60293d",
+    "ab-b.json": "da43fe4ae230fce206c0e579dc4eda313664c958235c5a200bc2bc2d17e099d0",
+    "ba-b.json": "873a87638a1a9e399df6d85f74c77b0ffd33edd7964536f1bc885bca1280db06",
+    "ba-a.json": "034ea07c57158c0147801f9130ab0f13a373842e15b258e4bb586402d9cdcb3f"
+  },
+  "runs": [
+    {
+      "order": "ab-a",
+      "schema": "sagejs.handled-state-cost/v1",
+      "node": "v26.7.0",
+      "nodeSha256": "ad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc",
+      "artifact": {
+        "filename": "candidate-0.cjs",
+        "root": "/home/user/sagejs-worktrees/python-handled-state-ownership",
+        "commit": "1beda068edf2b4312efce29543b43ed59055f951",
+        "buildCompletedAt": "2026-09-12T08:03:23.651Z",
+        "inputs": {
+          "dist/compiler/compiler.js": "dc7b55222b17a80c365d6255ff4646982106ba7b447354682ad72285b23f8f67",
+          "dist/compiler/baselib-plain-pretty.js": "a7a8420fb279fc1a82205f9f608e4aec3818f1b8e6d0680b50e431edbec8cb22",
+          "dist/tools/python/lowerer.js": "11adc4c08ec342ecf77147ab36056c79c2ac3b170fba7a9a959c8d9cbc7a35a9",
+          "dist/build-receipt.json": "963ae12246ad1f133f7c024902515e83cbc1c257bc5fbd3f65002e6e5a89ac6c"
+        },
+        "sha256": "c3555c0b6efe5c04b0a2ede5381827dd8df7c5211d2c7ed129fe6ec71fcd8100",
+        "bytes": 24231257
+      },
+      "fixtureSha256": "dfa4f5d7f3af65b4497e02f6f1572a47d1c30762567dc4a9ee90a567b7d4bc72",
+      "driverSha256": "ac78e3a2fe7c1f271e82f9c17278482fe456d4cbeac57ead4878e9de1ab6e058",
+      "correctness": true,
+      "results": [
+        {
+          "name": "control",
+          "n": 1000000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.513892625
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.504914816
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.493892938
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.486292078
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.478554468
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.470859578
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.477840188
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.483035957
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.479614628
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.478915208
+            }
+          ]
+        },
+        {
+          "name": "calls",
+          "n": 1000000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.494128107
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.494370457
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.495636477
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.495769707
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.500355876
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.501649237
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.492798057
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.500832756
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.500917947
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.500480526
+            }
+          ]
+        },
+        {
+          "name": "plain_create",
+          "n": 20000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.368253626
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.339438678
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.363825325
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.336155808
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.337196438
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.364099866
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.337252777
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.349240387
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.337287807
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.29415728
+            }
+          ]
+        },
+        {
+          "name": "plain_resume",
+          "n": 500000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.591257181
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.586819171
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.579112191
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.58796835
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.579921331
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.578262641
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.59520439
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.588973971
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.585935941
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.582570371
+            }
+          ]
+        },
+        {
+          "name": "owned_create",
+          "n": 20000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.351106117
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.344760637
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.334764748
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.30106321
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.29828921
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.346901567
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.348695187
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.327135308
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.29280722
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.2963293
+            }
+          ]
+        },
+        {
+          "name": "owned_resume",
+          "n": 500000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.60160311
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.590223401
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.59253806
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.59730093
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.595371861
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.59417679
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.60120808
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.59628066
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.60143738
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.591930151
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": "ab-b",
+      "schema": "sagejs.handled-state-cost/v1",
+      "node": "v26.7.0",
+      "nodeSha256": "ad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc",
+      "artifact": {
+        "filename": "candidate-1.cjs",
+        "root": "/home/user/sagejs-worktrees/python-selective-handled-state",
+        "commit": "0d9dbc8e94d4616d0d180b5c0d08d6f7849426a4",
+        "buildCompletedAt": "2026-09-12T08:44:32.420Z",
+        "inputs": {
+          "dist/compiler/compiler.js": "d62bd6c219fac960edf3123718f2a88156f804cfa38d807a716cb745ef55bb2f",
+          "dist/compiler/baselib-plain-pretty.js": "fbc3db303605dd98778d852daefff281ff6ecb7cb054da5e014e660a16569c3a",
+          "dist/tools/python/lowerer.js": "fb0b3504ea42a6c6bb708926446baf30b25bf8f7240a3ba63a9daa9acf3a2797",
+          "dist/build-receipt.json": "fefd0cbeb2ee5cf6ba5679721d29c6db1692f73f924c24129dd44e6789763eb0"
+        },
+        "sha256": "f6ddf3ae3bf5ff245fd8554e242c3a6956218bf2335cd2d824d05516c4a1b0f8",
+        "bytes": 24227632
+      },
+      "fixtureSha256": "dfa4f5d7f3af65b4497e02f6f1572a47d1c30762567dc4a9ee90a567b7d4bc72",
+      "driverSha256": "ac78e3a2fe7c1f271e82f9c17278482fe456d4cbeac57ead4878e9de1ab6e058",
+      "correctness": true,
+      "results": [
+        {
+          "name": "control",
+          "n": 1000000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.537467584
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.523500875
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.499349697
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.498785647
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.498295897
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.498322387
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.489974227
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.493597527
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.497459937
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.500205316
+            }
+          ]
+        },
+        {
+          "name": "calls",
+          "n": 1000000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.500750277
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.499751437
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.505849576
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.507950876
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.503942386
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.502169297
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.502903367
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.499171856
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.499560087
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.501909366
+            }
+          ]
+        },
+        {
+          "name": "plain_create",
+          "n": 20000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.218629046
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.199707427
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.206204746
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.177920938
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.181124678
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.204397166
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.200501727
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.202930496
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.208702526
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.180017338
+            }
+          ]
+        },
+        {
+          "name": "plain_resume",
+          "n": 500000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.584237711
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.578029181
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.584920331
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.580581701
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.583336661
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.579313532
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.589147441
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.584424641
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.58824678
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.585613921
+            }
+          ]
+        },
+        {
+          "name": "owned_create",
+          "n": 20000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.359059626
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.354482876
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.430957721
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.324391838
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.29840024
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.377253006
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.340140058
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.350476447
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.616025749
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.30601192
+            }
+          ]
+        },
+        {
+          "name": "owned_resume",
+          "n": 500000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.629495518
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.628789238
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.639897937
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.631404958
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.622275409
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.625994039
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.625588068
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.622730119
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.618481848
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.623781569
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": "ba-b",
+      "schema": "sagejs.handled-state-cost/v1",
+      "node": "v26.7.0",
+      "nodeSha256": "ad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc",
+      "artifact": {
+        "filename": "candidate-1.cjs",
+        "root": "/home/user/sagejs-worktrees/python-selective-handled-state",
+        "commit": "0d9dbc8e94d4616d0d180b5c0d08d6f7849426a4",
+        "buildCompletedAt": "2026-09-12T08:44:32.420Z",
+        "inputs": {
+          "dist/compiler/compiler.js": "d62bd6c219fac960edf3123718f2a88156f804cfa38d807a716cb745ef55bb2f",
+          "dist/compiler/baselib-plain-pretty.js": "fbc3db303605dd98778d852daefff281ff6ecb7cb054da5e014e660a16569c3a",
+          "dist/tools/python/lowerer.js": "fb0b3504ea42a6c6bb708926446baf30b25bf8f7240a3ba63a9daa9acf3a2797",
+          "dist/build-receipt.json": "fefd0cbeb2ee5cf6ba5679721d29c6db1692f73f924c24129dd44e6789763eb0"
+        },
+        "sha256": "f6ddf3ae3bf5ff245fd8554e242c3a6956218bf2335cd2d824d05516c4a1b0f8",
+        "bytes": 24227632
+      },
+      "fixtureSha256": "dfa4f5d7f3af65b4497e02f6f1572a47d1c30762567dc4a9ee90a567b7d4bc72",
+      "driverSha256": "ac78e3a2fe7c1f271e82f9c17278482fe456d4cbeac57ead4878e9de1ab6e058",
+      "correctness": true,
+      "results": [
+        {
+          "name": "control",
+          "n": 1000000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.493991967
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.482252478
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.466675849
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.466722739
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.469717969
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.473069979
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.466861899
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.471461478
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.470853129
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.461078109
+            }
+          ]
+        },
+        {
+          "name": "calls",
+          "n": 1000000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.484389888
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.484596518
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.479900757
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.481404438
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.474343199
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.479139308
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.487980167
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.476945638
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.482557187
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.477076508
+            }
+          ]
+        },
+        {
+          "name": "plain_create",
+          "n": 20000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.212126786
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.202505347
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.201333497
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.176874478
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.183926367
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.204072896
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.199589357
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.203637767
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.204829916
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.178443408
+            }
+          ]
+        },
+        {
+          "name": "plain_resume",
+          "n": 500000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.572685412
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.574807352
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.570380582
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.568316402
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.573734072
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.566354292
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.568576052
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.573122152
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.570777612
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.567561713
+            }
+          ]
+        },
+        {
+          "name": "owned_create",
+          "n": 20000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.342333987
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.340801797
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.427123632
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.321136029
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.29135387
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.369777705
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.341208807
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.343156497
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.5974329
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.300445741
+            }
+          ]
+        },
+        {
+          "name": "owned_resume",
+          "n": 500000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.60375111
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.60148808
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.607830159
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.618300529
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.59531994
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.59534347
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.601441499
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.60022817
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.598969431
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.594192191
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": "ba-a",
+      "schema": "sagejs.handled-state-cost/v1",
+      "node": "v26.7.0",
+      "nodeSha256": "ad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc",
+      "artifact": {
+        "filename": "candidate-0.cjs",
+        "root": "/home/user/sagejs-worktrees/python-handled-state-ownership",
+        "commit": "1beda068edf2b4312efce29543b43ed59055f951",
+        "buildCompletedAt": "2026-09-12T08:03:23.651Z",
+        "inputs": {
+          "dist/compiler/compiler.js": "dc7b55222b17a80c365d6255ff4646982106ba7b447354682ad72285b23f8f67",
+          "dist/compiler/baselib-plain-pretty.js": "a7a8420fb279fc1a82205f9f608e4aec3818f1b8e6d0680b50e431edbec8cb22",
+          "dist/tools/python/lowerer.js": "11adc4c08ec342ecf77147ab36056c79c2ac3b170fba7a9a959c8d9cbc7a35a9",
+          "dist/build-receipt.json": "963ae12246ad1f133f7c024902515e83cbc1c257bc5fbd3f65002e6e5a89ac6c"
+        },
+        "sha256": "c3555c0b6efe5c04b0a2ede5381827dd8df7c5211d2c7ed129fe6ec71fcd8100",
+        "bytes": 24231257
+      },
+      "fixtureSha256": "dfa4f5d7f3af65b4497e02f6f1572a47d1c30762567dc4a9ee90a567b7d4bc72",
+      "driverSha256": "ac78e3a2fe7c1f271e82f9c17278482fe456d4cbeac57ead4878e9de1ab6e058",
+      "correctness": true,
+      "results": [
+        {
+          "name": "control",
+          "n": 1000000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.513317736
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.495836177
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.495384107
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.496449767
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.493522087
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.495686677
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.498079317
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.499474657
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.501631826
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.495177657
+            }
+          ]
+        },
+        {
+          "name": "calls",
+          "n": 1000000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.508264056
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.505311246
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.498088787
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.496567657
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.494902547
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.495074187
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.494515047
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.496033907
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.496537407
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.495572157
+            }
+          ]
+        },
+        {
+          "name": "plain_create",
+          "n": 20000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.366936085
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.337849637
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.370888165
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.332821228
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.330226938
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.364798616
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.334740358
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.341616017
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.321180088
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.281767311
+            }
+          ]
+        },
+        {
+          "name": "plain_resume",
+          "n": 500000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.587769381
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.582506411
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.59533015
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.5984413
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.58924054
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.588368681
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.585968171
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.588462731
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.58808319
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.580349272
+            }
+          ]
+        },
+        {
+          "name": "owned_create",
+          "n": 20000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.334768787
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.337692047
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.31282707
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.29819691
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.322683928
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.336201527
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.338056868
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.320744389
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.28899417
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.289391311
+            }
+          ]
+        },
+        {
+          "name": "owned_resume",
+          "n": 500000,
+          "samples": [
+            {
+              "iteration": 0,
+              "warmup": true,
+              "seconds": 0.612054129
+            },
+            {
+              "iteration": 1,
+              "warmup": true,
+              "seconds": 0.60485159
+            },
+            {
+              "iteration": 2,
+              "warmup": true,
+              "seconds": 0.608077899
+            },
+            {
+              "iteration": 3,
+              "warmup": false,
+              "seconds": 0.613484579
+            },
+            {
+              "iteration": 4,
+              "warmup": false,
+              "seconds": 0.61336262
+            },
+            {
+              "iteration": 5,
+              "warmup": false,
+              "seconds": 0.60955895
+            },
+            {
+              "iteration": 6,
+              "warmup": false,
+              "seconds": 0.610549379
+            },
+            {
+              "iteration": 7,
+              "warmup": false,
+              "seconds": 0.609690749
+            },
+            {
+              "iteration": 8,
+              "warmup": false,
+              "seconds": 0.607528579
+            },
+            {
+              "iteration": 9,
+              "warmup": false,
+              "seconds": 0.609707649
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

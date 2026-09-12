@@ -350,6 +350,7 @@ class AST_ListComprehension(AST_ForIn):
     "A list comprehension expression"
 
     properties = {
+        "needs_handled_state": "[bool?] False only for proven handler-free suspension",
         "clauses": "[object*] ordered `for` clauses with their following `if` filters",
         "condition": "[AST_Node] the `if` condition",
         "statement": "[AST_Node] statement to perform on each element before returning it",
@@ -544,6 +545,7 @@ class AST_Lambda(AST_Scope):
         "annotations": "[bool*] True iff this function should have annotations set",
         "is_generator": "[bool*] True iff this function is a generator",
         "is_coroutine": "[bool*] True iff this function was declared with async def",
+        "needs_handled_state": "[bool?] False only for proven handler-free suspension",
         "is_lambda": "[bool*] True iff this function is a Python lambda function",
         "is_expression": "[bool*] True iff this function is a function expression",
         "is_anonymous": "[bool*] True iff this function is an anonymous function",

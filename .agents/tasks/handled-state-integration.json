@@ -1,0 +1,67 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "handled-state-integration",
+  "title": "Handled State Integration",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Qualify handled-state ownership and selective wrapping with reviewed bootstrap and generator-scope prerequisites",
+  "base_commit": "c261d99740f2812cb74598df4ead2c73cb6eb720",
+  "claims": [
+    ".agents/lanes.json",
+    "agents/python-selective-handled-state.md",
+    "architecture/optimizer-opportunities.manifest.json",
+    "docs/optimizer-opportunities.md",
+    "bench/modular/qexp-correctness/source-freeze.json",
+    "docs/python-handled-state-integration.md",
+    "test/handled-state-integration.cjs",
+    "test/generator-definition-scope.cjs",
+    "website/reference-data.json",
+    "website/reference.html"
+  ],
+  "dependencies": [],
+  "references": [
+    "Original freshly fetched main: ce40da9413dc635a990c174bf594be816ca6d54b",
+    "PR247: 37e80f4681c4b0e9dae1510c36eefd015f7e42bc",
+    "PR244: 1beda068edf2b4312efce29543b43ed59055f951",
+    "PR249 stacked on PR244: 50d35b46c4bbc0cbd97d9b3e53eb66175bee3034",
+    "PR260: ce2aedd1faef253b281fd3a0a1553a88b12a1c90",
+    "base_commit is the assembled import foundation, NOT main. Parent approved explicit upstream imports and the two lowerer conflicts: scope-correct isGenerator drives both classification and proof metadata."
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm build",
+    "node --test test/python-handled-state.cjs test/handled-state-native.cjs test/python-selective-handled-state.cjs test/python-selective-handled-state-emission.cjs test/generator-definition-scope.cjs test/generator-definition-scope-runtime.cjs test/handled-state-integration.cjs test/shared-bootstrap-adapters.cjs",
+    "node scripts/generate-docs.cjs --check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Explicit main-plus-PR247/244/249/260 import foundation, with scope-correct generator classification shared by selective ownership metadata. The frozen executable source passed full build, focused, portable, strict, architecture, and docs checks. After qualification, root authorized only exact imported-report and lane-file claims plus the matching integration-lane permission. This permission-only metadata update makes the local build receipt historical; executable source and output hashes are unchanged. No receipt rewrite or local rebuild is claimed; CI must qualify the final head.",
+    "risks": [
+      "Plain generator creation evidence is about 40% better versus PR244 only; mixed owned tails and isolated variability remain, with no universal no-regression or pre-ownership recovery claim.",
+      "No true unwind traceback, chaining, asyncio scheduler, full-native, four-platform, browser, or package-closure qualification is implied.",
+      "Assembled import base is not main; root reviews and advances existing PR244 if appropriate. PR249 is not independently merged into a stack and described as main."
+    ],
+    "next_steps": [
+      "Report exact final source/artifact identities and direct validation receipts to root without self-merging or marking ready.",
+      "Preserve original PR worktrees, branch references, frozen task contracts, and artifacts."
+    ]
+  }
+}

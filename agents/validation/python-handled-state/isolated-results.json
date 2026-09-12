@@ -1,0 +1,806 @@
+{
+  "schema": "sagejs.selective-handled-state-isolated-campaign/v1",
+  "host": "bench-1",
+  "reservation": "https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18410841",
+  "release": "https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18410857",
+  "census": {
+    "before": "Sat Sep 12 09:15:51 UTC 2026\n 09:15:51 up 3 days, 20:50,  1 user,  load average: 0.00, 0.07, 0.17\nad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc  /home/user/bin/node\nc3555c0b6efe5c04b0a2ede5381827dd8df7c5211d2c7ed129fe6ec71fcd8100  candidate-0.cjs\nf6ddf3ae3bf5ff245fd8554e242c3a6956218bf2335cd2d824d05516c4a1b0f8  candidate-1.cjs\nac78e3a2fe7c1f271e82f9c17278482fe456d4cbeac57ead4878e9de1ab6e058  driver.cjs\ndfa4f5d7f3af65b4497e02f6f1572a47d1c30762567dc4a9ee90a567b7d4bc72  fixture.py\nd0b6110f169e67dbcc2422d43c05a651b47652cfc4430ccbebe7bd31e056f2bc  isolated-driver.cjs\n",
+    "after": "Sat Sep 12 09:18:06 UTC 2026\n 09:18:06 up 3 days, 20:53,  1 user,  load average: 0.94, 0.44, 0.30\nad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc  /home/user/bin/node\nc3555c0b6efe5c04b0a2ede5381827dd8df7c5211d2c7ed129fe6ec71fcd8100  candidate-0.cjs\nf6ddf3ae3bf5ff245fd8554e242c3a6956218bf2335cd2d824d05516c4a1b0f8  candidate-1.cjs\nac78e3a2fe7c1f271e82f9c17278482fe456d4cbeac57ead4878e9de1ab6e058  driver.cjs\ndfa4f5d7f3af65b4497e02f6f1572a47d1c30762567dc4a9ee90a567b7d4bc72  fixture.py\nd0b6110f169e67dbcc2422d43c05a651b47652cfc4430ccbebe7bd31e056f2bc  isolated-driver.cjs\n    PID %CPU COMMAND\n 463108  100 ps -eo pid,pcpu,args --sort=-pcpu\n 462813  0.0 /usr/lib/systemd/systemd --user\n      1  0.0 /usr/lib/systemd/systemd --system --deserialize=46\n 391875  0.0 /usr/bin/google_osconfig_agent\n 391874  0.0 /usr/lib/systemd/systemd-journald\n 391953  0.0 /usr/bin/google_guest_agent\n 391884  0.0 /sbin/multipathd -d -s\n"
+  },
+  "rawRecordSha256": {
+    "plain-ab-a.json": "2b2e9acb0f4cb5c10b0eacb1be1dc6b749a15122e1e4846935c1ff947b8f40c0",
+    "plain-ab-b.json": "b5b80de37e67f10d4d07e7406efa6f9d1f01f8ee24b3d174a92cf57fb15dee51",
+    "plain-ba-b.json": "cff0e936aced57ce7b6fc9b13f7b76817f9bbe8152e005f3edbc6172dc9df0b3",
+    "plain-ba-a.json": "3adfde7bd6ef4abd99a86fcc310b10c4dff1e24cd5d339e459508b1ad666b511",
+    "owned-ab-a.json": "3761b7366562559bbb9877a0725b5a2db5e3a11557fd54b792487c29de231704",
+    "owned-ab-b.json": "65385ce3c70bcf33ae62d3fd737431eeb29a8a8af39db7324149f33a3eb38748",
+    "owned-ba-b.json": "e10456899af5612fbb2b86e06b01ae374691bac8d7d6de4c5faae6cf6eff5009",
+    "owned-ba-a.json": "c479e96345150919888d150c464c13ece9178027232711227be7f1111e5f76cb"
+  },
+  "runs": [
+    {
+      "order": "ab-a",
+      "schema": "sagejs.handled-state-isolated-cost/v1",
+      "node": "v26.7.0",
+      "nodeSha256": "ad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc",
+      "artifact": {
+        "filename": "candidate-0.cjs",
+        "root": "/home/user/sagejs-worktrees/python-handled-state-ownership",
+        "commit": "1beda068edf2b4312efce29543b43ed59055f951",
+        "buildCompletedAt": "2026-09-12T08:03:23.651Z",
+        "inputs": {
+          "dist/compiler/compiler.js": "dc7b55222b17a80c365d6255ff4646982106ba7b447354682ad72285b23f8f67",
+          "dist/compiler/baselib-plain-pretty.js": "a7a8420fb279fc1a82205f9f608e4aec3818f1b8e6d0680b50e431edbec8cb22",
+          "dist/tools/python/lowerer.js": "11adc4c08ec342ecf77147ab36056c79c2ac3b170fba7a9a959c8d9cbc7a35a9",
+          "dist/build-receipt.json": "963ae12246ad1f133f7c024902515e83cbc1c257bc5fbd3f65002e6e5a89ac6c"
+        },
+        "sha256": "c3555c0b6efe5c04b0a2ede5381827dd8df7c5211d2c7ed129fe6ec71fcd8100",
+        "bytes": 24231257
+      },
+      "fixtureSha256": "dfa4f5d7f3af65b4497e02f6f1572a47d1c30762567dc4a9ee90a567b7d4bc72",
+      "mixedDriverSha256": "ac78e3a2fe7c1f271e82f9c17278482fe456d4cbeac57ead4878e9de1ab6e058",
+      "driverSha256": "d0b6110f169e67dbcc2422d43c05a651b47652cfc4430ccbebe7bd31e056f2bc",
+      "correctness": true,
+      "name": "plain_create",
+      "n": 20000,
+      "samples": [
+        {
+          "iteration": 0,
+          "warmup": true,
+          "seconds": 0.376233505,
+          "heapBefore": 94068464,
+          "heapAfter": 159813192
+        },
+        {
+          "iteration": 1,
+          "warmup": true,
+          "seconds": 0.328381758,
+          "heapBefore": 194804136,
+          "heapAfter": 271523176
+        },
+        {
+          "iteration": 2,
+          "warmup": true,
+          "seconds": 0.308940229,
+          "heapBefore": 177002416,
+          "heapAfter": 248892208
+        },
+        {
+          "iteration": 3,
+          "warmup": false,
+          "seconds": 0.327456448,
+          "heapBefore": 295705816,
+          "heapAfter": 356367312
+        },
+        {
+          "iteration": 4,
+          "warmup": false,
+          "seconds": 0.328098408,
+          "heapBefore": 387193600,
+          "heapAfter": 462282408
+        },
+        {
+          "iteration": 5,
+          "warmup": false,
+          "seconds": 0.360054766,
+          "heapBefore": 491858296,
+          "heapAfter": 558117712
+        },
+        {
+          "iteration": 6,
+          "warmup": false,
+          "seconds": 0.329537458,
+          "heapBefore": 608028768,
+          "heapAfter": 666693088
+        },
+        {
+          "iteration": 7,
+          "warmup": false,
+          "seconds": 0.552701843,
+          "heapBefore": 712862024,
+          "heapAfter": 243235992
+        },
+        {
+          "iteration": 8,
+          "warmup": false,
+          "seconds": 0.314384139,
+          "heapBefore": 283899632,
+          "heapAfter": 341966032
+        },
+        {
+          "iteration": 9,
+          "warmup": false,
+          "seconds": 0.284094231,
+          "heapBefore": 386820024,
+          "heapAfter": 444413208
+        }
+      ]
+    },
+    {
+      "order": "ab-b",
+      "schema": "sagejs.handled-state-isolated-cost/v1",
+      "node": "v26.7.0",
+      "nodeSha256": "ad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc",
+      "artifact": {
+        "filename": "candidate-1.cjs",
+        "root": "/home/user/sagejs-worktrees/python-selective-handled-state",
+        "commit": "0d9dbc8e94d4616d0d180b5c0d08d6f7849426a4",
+        "buildCompletedAt": "2026-09-12T08:44:32.420Z",
+        "inputs": {
+          "dist/compiler/compiler.js": "d62bd6c219fac960edf3123718f2a88156f804cfa38d807a716cb745ef55bb2f",
+          "dist/compiler/baselib-plain-pretty.js": "fbc3db303605dd98778d852daefff281ff6ecb7cb054da5e014e660a16569c3a",
+          "dist/tools/python/lowerer.js": "fb0b3504ea42a6c6bb708926446baf30b25bf8f7240a3ba63a9daa9acf3a2797",
+          "dist/build-receipt.json": "fefd0cbeb2ee5cf6ba5679721d29c6db1692f73f924c24129dd44e6789763eb0"
+        },
+        "sha256": "f6ddf3ae3bf5ff245fd8554e242c3a6956218bf2335cd2d824d05516c4a1b0f8",
+        "bytes": 24227632
+      },
+      "fixtureSha256": "dfa4f5d7f3af65b4497e02f6f1572a47d1c30762567dc4a9ee90a567b7d4bc72",
+      "mixedDriverSha256": "ac78e3a2fe7c1f271e82f9c17278482fe456d4cbeac57ead4878e9de1ab6e058",
+      "driverSha256": "d0b6110f169e67dbcc2422d43c05a651b47652cfc4430ccbebe7bd31e056f2bc",
+      "correctness": true,
+      "name": "plain_create",
+      "n": 20000,
+      "samples": [
+        {
+          "iteration": 0,
+          "warmup": true,
+          "seconds": 0.219312095,
+          "heapBefore": 94103400,
+          "heapAfter": 137690360
+        },
+        {
+          "iteration": 1,
+          "warmup": true,
+          "seconds": 0.200161097,
+          "heapBefore": 169325744,
+          "heapAfter": 207872432
+        },
+        {
+          "iteration": 2,
+          "warmup": true,
+          "seconds": 0.199121757,
+          "heapBefore": 253673456,
+          "heapAfter": 291406112
+        },
+        {
+          "iteration": 3,
+          "warmup": false,
+          "seconds": 0.174809998,
+          "heapBefore": 173529336,
+          "heapAfter": 210607936
+        },
+        {
+          "iteration": 4,
+          "warmup": false,
+          "seconds": 0.173207149,
+          "heapBefore": 257559712,
+          "heapAfter": 293097576
+        },
+        {
+          "iteration": 5,
+          "warmup": false,
+          "seconds": 0.198771817,
+          "heapBefore": 322400632,
+          "heapAfter": 360832944
+        },
+        {
+          "iteration": 6,
+          "warmup": false,
+          "seconds": 0.196058898,
+          "heapBefore": 407120728,
+          "heapAfter": 443357712
+        },
+        {
+          "iteration": 7,
+          "warmup": false,
+          "seconds": 0.200038237,
+          "heapBefore": 476239248,
+          "heapAfter": 515674192
+        },
+        {
+          "iteration": 8,
+          "warmup": false,
+          "seconds": 0.198227677,
+          "heapBefore": 561024520,
+          "heapAfter": 598091688
+        },
+        {
+          "iteration": 9,
+          "warmup": false,
+          "seconds": 0.173598768,
+          "heapBefore": 177177584,
+          "heapAfter": 214180768
+        }
+      ]
+    },
+    {
+      "order": "ba-b",
+      "schema": "sagejs.handled-state-isolated-cost/v1",
+      "node": "v26.7.0",
+      "nodeSha256": "ad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc",
+      "artifact": {
+        "filename": "candidate-1.cjs",
+        "root": "/home/user/sagejs-worktrees/python-selective-handled-state",
+        "commit": "0d9dbc8e94d4616d0d180b5c0d08d6f7849426a4",
+        "buildCompletedAt": "2026-09-12T08:44:32.420Z",
+        "inputs": {
+          "dist/compiler/compiler.js": "d62bd6c219fac960edf3123718f2a88156f804cfa38d807a716cb745ef55bb2f",
+          "dist/compiler/baselib-plain-pretty.js": "fbc3db303605dd98778d852daefff281ff6ecb7cb054da5e014e660a16569c3a",
+          "dist/tools/python/lowerer.js": "fb0b3504ea42a6c6bb708926446baf30b25bf8f7240a3ba63a9daa9acf3a2797",
+          "dist/build-receipt.json": "fefd0cbeb2ee5cf6ba5679721d29c6db1692f73f924c24129dd44e6789763eb0"
+        },
+        "sha256": "f6ddf3ae3bf5ff245fd8554e242c3a6956218bf2335cd2d824d05516c4a1b0f8",
+        "bytes": 24227632
+      },
+      "fixtureSha256": "dfa4f5d7f3af65b4497e02f6f1572a47d1c30762567dc4a9ee90a567b7d4bc72",
+      "mixedDriverSha256": "ac78e3a2fe7c1f271e82f9c17278482fe456d4cbeac57ead4878e9de1ab6e058",
+      "driverSha256": "d0b6110f169e67dbcc2422d43c05a651b47652cfc4430ccbebe7bd31e056f2bc",
+      "correctness": true,
+      "name": "plain_create",
+      "n": 20000,
+      "samples": [
+        {
+          "iteration": 0,
+          "warmup": true,
+          "seconds": 0.223911525,
+          "heapBefore": 94159112,
+          "heapAfter": 137786832
+        },
+        {
+          "iteration": 1,
+          "warmup": true,
+          "seconds": 0.200763857,
+          "heapBefore": 169501384,
+          "heapAfter": 207964272
+        },
+        {
+          "iteration": 2,
+          "warmup": true,
+          "seconds": 0.200849127,
+          "heapBefore": 253884776,
+          "heapAfter": 291549680
+        },
+        {
+          "iteration": 3,
+          "warmup": false,
+          "seconds": 0.176429859,
+          "heapBefore": 173652888,
+          "heapAfter": 210696720
+        },
+        {
+          "iteration": 4,
+          "warmup": false,
+          "seconds": 0.180815168,
+          "heapBefore": 257809904,
+          "heapAfter": 277747152
+        },
+        {
+          "iteration": 5,
+          "warmup": false,
+          "seconds": 0.201747826,
+          "heapBefore": 322821880,
+          "heapAfter": 361132240
+        },
+        {
+          "iteration": 6,
+          "warmup": false,
+          "seconds": 0.200182817,
+          "heapBefore": 407428808,
+          "heapAfter": 443638672
+        },
+        {
+          "iteration": 7,
+          "warmup": false,
+          "seconds": 0.200682746,
+          "heapBefore": 476769168,
+          "heapAfter": 516081680
+        },
+        {
+          "iteration": 8,
+          "warmup": false,
+          "seconds": 0.198882507,
+          "heapBefore": 561453960,
+          "heapAfter": 598442288
+        },
+        {
+          "iteration": 9,
+          "warmup": false,
+          "seconds": 0.176825738,
+          "heapBefore": 177577736,
+          "heapAfter": 214454320
+        }
+      ]
+    },
+    {
+      "order": "ba-a",
+      "schema": "sagejs.handled-state-isolated-cost/v1",
+      "node": "v26.7.0",
+      "nodeSha256": "ad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc",
+      "artifact": {
+        "filename": "candidate-0.cjs",
+        "root": "/home/user/sagejs-worktrees/python-handled-state-ownership",
+        "commit": "1beda068edf2b4312efce29543b43ed59055f951",
+        "buildCompletedAt": "2026-09-12T08:03:23.651Z",
+        "inputs": {
+          "dist/compiler/compiler.js": "dc7b55222b17a80c365d6255ff4646982106ba7b447354682ad72285b23f8f67",
+          "dist/compiler/baselib-plain-pretty.js": "a7a8420fb279fc1a82205f9f608e4aec3818f1b8e6d0680b50e431edbec8cb22",
+          "dist/tools/python/lowerer.js": "11adc4c08ec342ecf77147ab36056c79c2ac3b170fba7a9a959c8d9cbc7a35a9",
+          "dist/build-receipt.json": "963ae12246ad1f133f7c024902515e83cbc1c257bc5fbd3f65002e6e5a89ac6c"
+        },
+        "sha256": "c3555c0b6efe5c04b0a2ede5381827dd8df7c5211d2c7ed129fe6ec71fcd8100",
+        "bytes": 24231257
+      },
+      "fixtureSha256": "dfa4f5d7f3af65b4497e02f6f1572a47d1c30762567dc4a9ee90a567b7d4bc72",
+      "mixedDriverSha256": "ac78e3a2fe7c1f271e82f9c17278482fe456d4cbeac57ead4878e9de1ab6e058",
+      "driverSha256": "d0b6110f169e67dbcc2422d43c05a651b47652cfc4430ccbebe7bd31e056f2bc",
+      "correctness": true,
+      "name": "plain_create",
+      "n": 20000,
+      "samples": [
+        {
+          "iteration": 0,
+          "warmup": true,
+          "seconds": 0.382217984,
+          "heapBefore": 94201968,
+          "heapAfter": 159792672
+        },
+        {
+          "iteration": 1,
+          "warmup": true,
+          "seconds": 0.330150848,
+          "heapBefore": 194986816,
+          "heapAfter": 271679272
+        },
+        {
+          "iteration": 2,
+          "warmup": true,
+          "seconds": 0.318849418,
+          "heapBefore": 177461672,
+          "heapAfter": 249248712
+        },
+        {
+          "iteration": 3,
+          "warmup": false,
+          "seconds": 0.331572778,
+          "heapBefore": 277244176,
+          "heapAfter": 356801496
+        },
+        {
+          "iteration": 4,
+          "warmup": false,
+          "seconds": 0.340004858,
+          "heapBefore": 387748552,
+          "heapAfter": 447062488
+        },
+        {
+          "iteration": 5,
+          "warmup": false,
+          "seconds": 0.366541936,
+          "heapBefore": 492297584,
+          "heapAfter": 558519944
+        },
+        {
+          "iteration": 6,
+          "warmup": false,
+          "seconds": 0.335530558,
+          "heapBefore": 608550752,
+          "heapAfter": 667139072
+        },
+        {
+          "iteration": 7,
+          "warmup": false,
+          "seconds": 0.581619202,
+          "heapBefore": 713567248,
+          "heapAfter": 244051256
+        },
+        {
+          "iteration": 8,
+          "warmup": false,
+          "seconds": 0.318909428,
+          "heapBefore": 284758976,
+          "heapAfter": 342735000
+        },
+        {
+          "iteration": 9,
+          "warmup": false,
+          "seconds": 0.286553681,
+          "heapBefore": 387799376,
+          "heapAfter": 445301536
+        }
+      ]
+    },
+    {
+      "order": "ab-a",
+      "schema": "sagejs.handled-state-isolated-cost/v1",
+      "node": "v26.7.0",
+      "nodeSha256": "ad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc",
+      "artifact": {
+        "filename": "candidate-0.cjs",
+        "root": "/home/user/sagejs-worktrees/python-handled-state-ownership",
+        "commit": "1beda068edf2b4312efce29543b43ed59055f951",
+        "buildCompletedAt": "2026-09-12T08:03:23.651Z",
+        "inputs": {
+          "dist/compiler/compiler.js": "dc7b55222b17a80c365d6255ff4646982106ba7b447354682ad72285b23f8f67",
+          "dist/compiler/baselib-plain-pretty.js": "a7a8420fb279fc1a82205f9f608e4aec3818f1b8e6d0680b50e431edbec8cb22",
+          "dist/tools/python/lowerer.js": "11adc4c08ec342ecf77147ab36056c79c2ac3b170fba7a9a959c8d9cbc7a35a9",
+          "dist/build-receipt.json": "963ae12246ad1f133f7c024902515e83cbc1c257bc5fbd3f65002e6e5a89ac6c"
+        },
+        "sha256": "c3555c0b6efe5c04b0a2ede5381827dd8df7c5211d2c7ed129fe6ec71fcd8100",
+        "bytes": 24231257
+      },
+      "fixtureSha256": "dfa4f5d7f3af65b4497e02f6f1572a47d1c30762567dc4a9ee90a567b7d4bc72",
+      "mixedDriverSha256": "ac78e3a2fe7c1f271e82f9c17278482fe456d4cbeac57ead4878e9de1ab6e058",
+      "driverSha256": "d0b6110f169e67dbcc2422d43c05a651b47652cfc4430ccbebe7bd31e056f2bc",
+      "correctness": true,
+      "name": "owned_create",
+      "n": 20000,
+      "samples": [
+        {
+          "iteration": 0,
+          "warmup": true,
+          "seconds": 0.385306794,
+          "heapBefore": 94240144,
+          "heapAfter": 162887744
+        },
+        {
+          "iteration": 1,
+          "warmup": true,
+          "seconds": 0.358148007,
+          "heapBefore": 239288720,
+          "heapAfter": 303379520
+        },
+        {
+          "iteration": 2,
+          "warmup": true,
+          "seconds": 0.327336789,
+          "heapBefore": 237977432,
+          "heapAfter": 297903080
+        },
+        {
+          "iteration": 3,
+          "warmup": false,
+          "seconds": 0.348304416,
+          "heapBefore": 368234056,
+          "heapAfter": 435099720
+        },
+        {
+          "iteration": 4,
+          "warmup": false,
+          "seconds": 0.340129777,
+          "heapBefore": 523017408,
+          "heapAfter": 585437416
+        },
+        {
+          "iteration": 5,
+          "warmup": false,
+          "seconds": 0.330939469,
+          "heapBefore": 227938832,
+          "heapAfter": 290000896
+        },
+        {
+          "iteration": 6,
+          "warmup": false,
+          "seconds": 0.336668087,
+          "heapBefore": 372857752,
+          "heapAfter": 434254776
+        },
+        {
+          "iteration": 7,
+          "warmup": false,
+          "seconds": 0.342067437,
+          "heapBefore": 517768328,
+          "heapAfter": 578635696
+        },
+        {
+          "iteration": 8,
+          "warmup": false,
+          "seconds": 0.372454485,
+          "heapBefore": 662595232,
+          "heapAfter": 731347552
+        },
+        {
+          "iteration": 9,
+          "warmup": false,
+          "seconds": 0.533143795,
+          "heapBefore": 824245656,
+          "heapAfter": 304484272
+        }
+      ]
+    },
+    {
+      "order": "ab-b",
+      "schema": "sagejs.handled-state-isolated-cost/v1",
+      "node": "v26.7.0",
+      "nodeSha256": "ad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc",
+      "artifact": {
+        "filename": "candidate-1.cjs",
+        "root": "/home/user/sagejs-worktrees/python-selective-handled-state",
+        "commit": "0d9dbc8e94d4616d0d180b5c0d08d6f7849426a4",
+        "buildCompletedAt": "2026-09-12T08:44:32.420Z",
+        "inputs": {
+          "dist/compiler/compiler.js": "d62bd6c219fac960edf3123718f2a88156f804cfa38d807a716cb745ef55bb2f",
+          "dist/compiler/baselib-plain-pretty.js": "fbc3db303605dd98778d852daefff281ff6ecb7cb054da5e014e660a16569c3a",
+          "dist/tools/python/lowerer.js": "fb0b3504ea42a6c6bb708926446baf30b25bf8f7240a3ba63a9daa9acf3a2797",
+          "dist/build-receipt.json": "fefd0cbeb2ee5cf6ba5679721d29c6db1692f73f924c24129dd44e6789763eb0"
+        },
+        "sha256": "f6ddf3ae3bf5ff245fd8554e242c3a6956218bf2335cd2d824d05516c4a1b0f8",
+        "bytes": 24227632
+      },
+      "fixtureSha256": "dfa4f5d7f3af65b4497e02f6f1572a47d1c30762567dc4a9ee90a567b7d4bc72",
+      "mixedDriverSha256": "ac78e3a2fe7c1f271e82f9c17278482fe456d4cbeac57ead4878e9de1ab6e058",
+      "driverSha256": "d0b6110f169e67dbcc2422d43c05a651b47652cfc4430ccbebe7bd31e056f2bc",
+      "correctness": true,
+      "name": "owned_create",
+      "n": 20000,
+      "samples": [
+        {
+          "iteration": 0,
+          "warmup": true,
+          "seconds": 0.379062525,
+          "heapBefore": 94078392,
+          "heapAfter": 162732776
+        },
+        {
+          "iteration": 1,
+          "warmup": true,
+          "seconds": 0.348801347,
+          "heapBefore": 239159192,
+          "heapAfter": 303245424
+        },
+        {
+          "iteration": 2,
+          "warmup": true,
+          "seconds": 0.328786328,
+          "heapBefore": 238005960,
+          "heapAfter": 297883464
+        },
+        {
+          "iteration": 3,
+          "warmup": false,
+          "seconds": 0.348369617,
+          "heapBefore": 368335224,
+          "heapAfter": 435130536
+        },
+        {
+          "iteration": 4,
+          "warmup": false,
+          "seconds": 0.336460757,
+          "heapBefore": 523073872,
+          "heapAfter": 585350736
+        },
+        {
+          "iteration": 5,
+          "warmup": false,
+          "seconds": 0.337542367,
+          "heapBefore": 228419840,
+          "heapAfter": 290312448
+        },
+        {
+          "iteration": 6,
+          "warmup": false,
+          "seconds": 0.335683667,
+          "heapBefore": 373333312,
+          "heapAfter": 434715304
+        },
+        {
+          "iteration": 7,
+          "warmup": false,
+          "seconds": 0.336226487,
+          "heapBefore": 518241232,
+          "heapAfter": 579062912
+        },
+        {
+          "iteration": 8,
+          "warmup": false,
+          "seconds": 0.363335445,
+          "heapBefore": 663006056,
+          "heapAfter": 731716160
+        },
+        {
+          "iteration": 9,
+          "warmup": false,
+          "seconds": 0.44746263,
+          "heapBefore": 824561952,
+          "heapAfter": 304770304
+        }
+      ]
+    },
+    {
+      "order": "ba-b",
+      "schema": "sagejs.handled-state-isolated-cost/v1",
+      "node": "v26.7.0",
+      "nodeSha256": "ad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc",
+      "artifact": {
+        "filename": "candidate-1.cjs",
+        "root": "/home/user/sagejs-worktrees/python-selective-handled-state",
+        "commit": "0d9dbc8e94d4616d0d180b5c0d08d6f7849426a4",
+        "buildCompletedAt": "2026-09-12T08:44:32.420Z",
+        "inputs": {
+          "dist/compiler/compiler.js": "d62bd6c219fac960edf3123718f2a88156f804cfa38d807a716cb745ef55bb2f",
+          "dist/compiler/baselib-plain-pretty.js": "fbc3db303605dd98778d852daefff281ff6ecb7cb054da5e014e660a16569c3a",
+          "dist/tools/python/lowerer.js": "fb0b3504ea42a6c6bb708926446baf30b25bf8f7240a3ba63a9daa9acf3a2797",
+          "dist/build-receipt.json": "fefd0cbeb2ee5cf6ba5679721d29c6db1692f73f924c24129dd44e6789763eb0"
+        },
+        "sha256": "f6ddf3ae3bf5ff245fd8554e242c3a6956218bf2335cd2d824d05516c4a1b0f8",
+        "bytes": 24227632
+      },
+      "fixtureSha256": "dfa4f5d7f3af65b4497e02f6f1572a47d1c30762567dc4a9ee90a567b7d4bc72",
+      "mixedDriverSha256": "ac78e3a2fe7c1f271e82f9c17278482fe456d4cbeac57ead4878e9de1ab6e058",
+      "driverSha256": "d0b6110f169e67dbcc2422d43c05a651b47652cfc4430ccbebe7bd31e056f2bc",
+      "correctness": true,
+      "name": "owned_create",
+      "n": 20000,
+      "samples": [
+        {
+          "iteration": 0,
+          "warmup": true,
+          "seconds": 0.394517894,
+          "heapBefore": 94043112,
+          "heapAfter": 162766224
+        },
+        {
+          "iteration": 1,
+          "warmup": true,
+          "seconds": 0.345436247,
+          "heapBefore": 239220544,
+          "heapAfter": 303284392
+        },
+        {
+          "iteration": 2,
+          "warmup": true,
+          "seconds": 0.325582999,
+          "heapBefore": 237942576,
+          "heapAfter": 297819016
+        },
+        {
+          "iteration": 3,
+          "warmup": false,
+          "seconds": 0.356791256,
+          "heapBefore": 368111520,
+          "heapAfter": 434970416
+        },
+        {
+          "iteration": 4,
+          "warmup": false,
+          "seconds": 0.344360258,
+          "heapBefore": 522878216,
+          "heapAfter": 585174400
+        },
+        {
+          "iteration": 5,
+          "warmup": false,
+          "seconds": 0.338297277,
+          "heapBefore": 227947112,
+          "heapAfter": 289937224
+        },
+        {
+          "iteration": 6,
+          "warmup": false,
+          "seconds": 0.345542687,
+          "heapBefore": 372779848,
+          "heapAfter": 434255424
+        },
+        {
+          "iteration": 7,
+          "warmup": false,
+          "seconds": 0.348346767,
+          "heapBefore": 517740664,
+          "heapAfter": 578699720
+        },
+        {
+          "iteration": 8,
+          "warmup": false,
+          "seconds": 0.375748645,
+          "heapBefore": 662636776,
+          "heapAfter": 731373272
+        },
+        {
+          "iteration": 9,
+          "warmup": false,
+          "seconds": 0.471046009,
+          "heapBefore": 824136744,
+          "heapAfter": 303785448
+        }
+      ]
+    },
+    {
+      "order": "ba-a",
+      "schema": "sagejs.handled-state-isolated-cost/v1",
+      "node": "v26.7.0",
+      "nodeSha256": "ad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc",
+      "artifact": {
+        "filename": "candidate-0.cjs",
+        "root": "/home/user/sagejs-worktrees/python-handled-state-ownership",
+        "commit": "1beda068edf2b4312efce29543b43ed59055f951",
+        "buildCompletedAt": "2026-09-12T08:03:23.651Z",
+        "inputs": {
+          "dist/compiler/compiler.js": "dc7b55222b17a80c365d6255ff4646982106ba7b447354682ad72285b23f8f67",
+          "dist/compiler/baselib-plain-pretty.js": "a7a8420fb279fc1a82205f9f608e4aec3818f1b8e6d0680b50e431edbec8cb22",
+          "dist/tools/python/lowerer.js": "11adc4c08ec342ecf77147ab36056c79c2ac3b170fba7a9a959c8d9cbc7a35a9",
+          "dist/build-receipt.json": "963ae12246ad1f133f7c024902515e83cbc1c257bc5fbd3f65002e6e5a89ac6c"
+        },
+        "sha256": "c3555c0b6efe5c04b0a2ede5381827dd8df7c5211d2c7ed129fe6ec71fcd8100",
+        "bytes": 24231257
+      },
+      "fixtureSha256": "dfa4f5d7f3af65b4497e02f6f1572a47d1c30762567dc4a9ee90a567b7d4bc72",
+      "mixedDriverSha256": "ac78e3a2fe7c1f271e82f9c17278482fe456d4cbeac57ead4878e9de1ab6e058",
+      "driverSha256": "d0b6110f169e67dbcc2422d43c05a651b47652cfc4430ccbebe7bd31e056f2bc",
+      "correctness": true,
+      "name": "owned_create",
+      "n": 20000,
+      "samples": [
+        {
+          "iteration": 0,
+          "warmup": true,
+          "seconds": 0.383986544,
+          "heapBefore": 94182808,
+          "heapAfter": 162855552
+        },
+        {
+          "iteration": 1,
+          "warmup": true,
+          "seconds": 0.344655077,
+          "heapBefore": 239270096,
+          "heapAfter": 303387480
+        },
+        {
+          "iteration": 2,
+          "warmup": true,
+          "seconds": 0.326974529,
+          "heapBefore": 238106488,
+          "heapAfter": 297934928
+        },
+        {
+          "iteration": 3,
+          "warmup": false,
+          "seconds": 0.352519147,
+          "heapBefore": 368314864,
+          "heapAfter": 435085880
+        },
+        {
+          "iteration": 4,
+          "warmup": false,
+          "seconds": 0.335525897,
+          "heapBefore": 523024192,
+          "heapAfter": 585353488
+        },
+        {
+          "iteration": 5,
+          "warmup": false,
+          "seconds": 0.327682778,
+          "heapBefore": 228484032,
+          "heapAfter": 290420864
+        },
+        {
+          "iteration": 6,
+          "warmup": false,
+          "seconds": 0.336052087,
+          "heapBefore": 373471400,
+          "heapAfter": 434804400
+        },
+        {
+          "iteration": 7,
+          "warmup": false,
+          "seconds": 0.332695708,
+          "heapBefore": 518403488,
+          "heapAfter": 579165648
+        },
+        {
+          "iteration": 8,
+          "warmup": false,
+          "seconds": 0.370158675,
+          "heapBefore": 663248344,
+          "heapAfter": 731862256
+        },
+        {
+          "iteration": 9,
+          "warmup": false,
+          "seconds": 0.466098219,
+          "heapBefore": 824829968,
+          "heapAfter": 304925080
+        }
+      ]
+    }
+  ]
+}

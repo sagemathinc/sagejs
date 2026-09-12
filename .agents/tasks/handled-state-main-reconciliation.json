@@ -1,0 +1,54 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "handled-state-main-reconciliation",
+  "title": "Handled State Main Reconciliation",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reconcile handled-state candidate with current main and exact derived compiler provenance",
+  "base_commit": "6b286a713bda3c115c32e8bdd0c6e28141a47a2e",
+  "claims": [
+    "architecture/optimizer-opportunities.manifest.json",
+    "docs/optimizer-opportunities.md",
+    "docs/python-handled-state-main-reconciliation.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "Frozen handled-state candidate: ad529d2d9a2b74bd82482acf383108f9531abb9d",
+    "Freshly fetched main: 02a683d213072c3129da1f71e2aa47de447cfc4a",
+    "base_commit is the explicit assembled import, not a qualified build or main adoption. Only two generated optimizer conflicts; runtime source merged intact."
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Reconcile reviewed main with the handled-state candidate, retain current inventories, and regenerate optimizer provenance using a private TypeScript refresh. No runtime edits or full local rebuild. Focused results are partial diagnostics, not full merged-source qualification.",
+    "risks": [
+      "Main changes module resolution, native/FFI/browser integration and mathematical source; copied prior artifacts cannot qualify the complete merged source.",
+      "Original full-build receipt and artifacts remain preserved in the old detached worktree. This copy has no current full-build receipt.",
+      "No release/tag publication, readiness change or main merge is authorized. Generated optimizer assets remain local."
+    ],
+    "next_steps": [
+      "Root reviews exact merge/source delta and focused diagnostics before advancing PR244.",
+      "CI must build and qualify the final merged-source head."
+    ]
+  }
+}

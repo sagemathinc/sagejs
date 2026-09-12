@@ -806,10 +806,20 @@ def function_definition(
     javascript_name,
 ):
     as_expression = as_expression or self.is_expression or self.is_anonymous
+    expression_defaults = self.argnames.defaults
+    expression_default_keys = Object.keys(expression_defaults) if as_expression else []
     if as_expression:
         orig_indent = output.indentation()
         output.set_indentation(output.next_indent())
-        output.spaced("(function()", "{"), output.newline()
+        (
+            output.spaced(
+                "(function(ρσ_expression_defaults)"
+                if expression_default_keys.length
+                else "(function()",
+                "{",
+            ),
+            output.newline(),
+        )
         output.indent(), output.spaced("var", anonfunc, "="), output.space()
     prepared_namespace = output.prepared_namespace
     output.prepared_namespace = None
@@ -866,7 +876,13 @@ def function_definition(
             output.newline()
             output.indent()
             output.spaced(
-                "var", "result", "=", "js_generator.apply(this,", "arguments)"
+                "var",
+                "result",
+                "=",
+                "js_generator.apply(this,"
+                if self.needs_handled_state is False
+                else "ρσ_handled_state.wrap(js_generator.apply(this,",
+                "arguments)" if self.needs_handled_state is False else "arguments))",
             )
             output.end_statement()
             # Native generator .constructor is a non-callable host object, not
@@ -931,10 +947,38 @@ def function_definition(
     output.prepared_namespace = prepared_namespace
     if as_expression:
         output.end_statement()
-        function_annotation(self, output, strip_first, anonfunc)
+        # Defaults execute in the enclosing Python scope, not the synthetic
+        # metadata IIFE. In particular, yield/await must suspend that scope.
+        replacements = Object.create(None)
+        for index, key in enumerate(expression_default_keys):
+            replacements[key] = AST_SymbolRef(
+                {"name": "ρσ_expression_defaults[" + str(index) + "]"}
+            )
+        self.argnames.defaults = replacements
+        try:
+            function_annotation(self, output, strip_first, anonfunc)
+        finally:
+            self.argnames.defaults = expression_defaults
         output.indent(), output.spaced("return", anonfunc), output.end_statement()
         output.set_indentation(orig_indent)
-        output.indent(), output.print("})()")
+        output.indent(), output.print("})(")
+        if expression_default_keys.length:
+            output.print("[")
+            for index, key in enumerate(expression_default_keys):
+                if index:
+                    output.comma()
+                value = expression_defaults[key]
+                if is_node_type(value, AST_Seq):
+                    python_tuple = (
+                        output.options.python_attributes or output.options.python_tuples
+                    )
+                    output.print("ρσ_math_tuple([" if python_tuple else "[")
+                    value.print(output)
+                    output.print("])" if python_tuple else "]")
+                else:
+                    value.print(output)
+            output.print("]")
+        output.print(")")
 
 
 def print_function(output):
