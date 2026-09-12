@@ -120,6 +120,20 @@ campaign remains required. The structural result is narrower and tested:
 proved handler-free emitted generators no longer allocate ownership wrappers;
 owned/unknown generators still use the unchanged PR #244 mechanism.
 
+The subsequent reserved-host standalone campaign is retained in
+`agents/validation/python-handled-state/README.md` and `results.json`, with a
+reproduction driver and ordinary Python fixture. Exact #244/#249 A/B/B/A
+processes under Node 26.7.0 show 40.5%/40.0% lower plain-creation medians on the
+fixed 20,000-generator case. This is not a pre-ownership recovery comparison or
+full-package result. Owned-creation medians are higher with wide tails, so the
+campaign explicitly does not claim blanket no-regression or readiness. The
+earlier loaded-host observations above remain unqualified historical evidence.
+The separately reviewed fresh-process-per-creation-case followup repeats the
+plain gain (40.2%/40.7%); owned medians vary -1.3%/+3.7% without the earlier
+candidate-only tail excess. This supports phase sensitivity, not erasure of the
+original mixed results or proof of a particular GC explanation. Both complete
+raw datasets and drivers are retained; no runtime code was changed afterward.
+
 ## Required open defect discovered during diagnostics
 
 `test/fixtures/python-nested-yield-default-open.py` retains the full CPython

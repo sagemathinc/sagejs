@@ -1,0 +1,110 @@
+[
+  {
+    "name": "control",
+    "equal": true,
+    "bytes": [
+      798,
+      798
+    ],
+    "sha256": [
+      "cc4d73c43605c14eedc37400904d6d24def353bf53ac2cd3b6195ee17b33bb0b",
+      "cc4d73c43605c14eedc37400904d6d24def353bf53ac2cd3b6195ee17b33bb0b"
+    ]
+  },
+  {
+    "name": "calls",
+    "equal": true,
+    "bytes": [
+      793,
+      793
+    ],
+    "sha256": [
+      "685c7806a7d7aeff1de60048d69767cce5d1a09ab9d072ef99d2259f90958b86",
+      "685c7806a7d7aeff1de60048d69767cce5d1a09ab9d072ef99d2259f90958b86"
+    ]
+  },
+  {
+    "name": "plain_values",
+    "equal": false,
+    "bytes": [
+      1258,
+      1233
+    ],
+    "sha256": [
+      "85d232f681646eeeda1bcdae8aca085f16fd26723970670b7d196fd193c381c4",
+      "2521199cc48fcaa7eb0d94f5331ccfc8ada4655746233dc9d99daa570bcbb5c5"
+    ]
+  },
+  {
+    "name": "plain_create",
+    "equal": true,
+    "bytes": [
+      865,
+      865
+    ],
+    "sha256": [
+      "1a983811cf1dccc0ad51a99c787447eb8b0cf350cb75f7eecddfc1f271185628",
+      "1a983811cf1dccc0ad51a99c787447eb8b0cf350cb75f7eecddfc1f271185628"
+    ]
+  },
+  {
+    "name": "plain_resume",
+    "equal": true,
+    "bytes": [
+      1201,
+      1201
+    ],
+    "sha256": [
+      "9fe74ac9cebfce8bd4ae7683fbd1b254b7ae49ade7d4baaff8d9fe067140615c",
+      "9fe74ac9cebfce8bd4ae7683fbd1b254b7ae49ade7d4baaff8d9fe067140615c"
+    ]
+  },
+  {
+    "name": "owned_values",
+    "equal": true,
+    "bytes": [
+      2407,
+      2407
+    ],
+    "sha256": [
+      "430c6814006bd7e8e17832bb03cb1831dc285102e27e87ba28bc479218c575f5",
+      "430c6814006bd7e8e17832bb03cb1831dc285102e27e87ba28bc479218c575f5"
+    ]
+  },
+  {
+    "name": "owned_create",
+    "equal": true,
+    "bytes": [
+      871,
+      871
+    ],
+    "sha256": [
+      "be7f3fa9f12665227d110d265d2baa3d8fa981f67a060fcedd27dd93c0055f04",
+      "be7f3fa9f12665227d110d265d2baa3d8fa981f67a060fcedd27dd93c0055f04"
+    ]
+  },
+  {
+    "name": "owned_resume",
+    "equal": true,
+    "bytes": [
+      1201,
+      1201
+    ],
+    "sha256": [
+      "7df618df62fc49ce7bb7b9f5bb6b4456e898b29acf170861c12efaa6966ee116",
+      "7df618df62fc49ce7bb7b9f5bb6b4456e898b29acf170861c12efaa6966ee116"
+    ]
+  },
+  {
+    "name": "handled_state",
+    "equal": true,
+    "bytes": [
+      2773,
+      2773
+    ],
+    "sha256": [
+      "a150a5b2ca1ff3eb1afd9bb3ab5cf3b229dda76257cb8643421033d38d8a6c62",
+      "a150a5b2ca1ff3eb1afd9bb3ab5cf3b229dda76257cb8643421033d38d8a6c62"
+    ]
+  }
+]
