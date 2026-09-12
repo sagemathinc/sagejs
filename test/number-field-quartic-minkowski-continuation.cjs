@@ -57,6 +57,13 @@ cases = (
     ("complex-h4", x**4 - 4*x**3 + 4*x**2 - x + 6, (0, 2), 4),
 )
 
+def expect_unconditional_decline(request):
+    try:
+        request()
+        raise AssertionError("Minkowski generation removed the BF unit hypothesis")
+    except NotImplementedError as error:
+        assert "unconditional analytic unit completeness" in str(error)
+
 for proof in (False, True):
     for index, (_label, polynomial, signature, expected) in enumerate(cases):
         K = NumberField(polynomial, "a" + str(int(proof)) + str(index))
@@ -65,6 +72,14 @@ for proof in (False, True):
         assert not bounded.complete and bounded.certificate is None
         assert bounded.minkowski_factor_base_complete
         assert K.signature() == signature
+        if proof:
+            expect_unconditional_decline(lambda: K.class_number(proof=True))
+            expect_unconditional_decline(
+                lambda: class_unit_module.class_unit_context(
+                    K, proof=True, algorithm="minkowski"
+                )
+            )
+            continue
         assert K.class_number(proof=proof) == expected
         retained = class_unit_module.class_unit_context(
             K, proof=proof, algorithm="minkowski"
@@ -84,28 +99,32 @@ for proof in (False, True):
             retained_resources["dependency_lattice_lll_reductions"],
             tuple((stage.name, stage.state) for stage in retained.stages),
         )
-        expected_proof_status = (
-            "exact-unconditional"
-            if proof
-            else "exact-relations-conditional-grh"
-        )
         # The Minkowski plan proves generation of the factor base, but the
         # proof=False completion still uses the Belabas--Friedman GRH bound
         # for the analytic class/unit index-one decision.
-        assert retained.proof_status == expected_proof_status, (
+        assert retained.proof_status == "exact-relations-conditional-grh", (
             "retained-proof-status",
             proof,
             index,
             retained.proof_status,
         )
         assert retained.diagnostics["resources"]["proof_primes_completed"] == 0
+        expect_unconditional_decline(
+            lambda: class_unit_module.class_unit_context(
+                K, proof=True, algorithm="minkowski"
+            )
+        )
+        assert class_unit_module.class_unit_context(
+            K, proof=False, algorithm="minkowski"
+        ) is retained
+        assert retained.proof_status == "exact-relations-conditional-grh"
 
 # The direct factor-base logarithm is exactly the unit column in the retained
 # Smith presentation.  It preserves the generic logarithm and its principal
 # quotient witness without refactoring a prime already in the base.
 K = NumberField(x**4 - 2*x**3 - x**2 - 3*x + 1, "maps")
 result = class_unit_module.class_unit_context(
-    K, proof=True, algorithm="minkowski"
+    K, proof=False, algorithm="minkowski"
 )
 engine_group = result.class_group()
 direct_log = engine_group._factor_base_discrete_log
@@ -133,8 +152,10 @@ except (ArithmeticError, TypeError, ValueError):
 finally:
     engine_group._factor_base_discrete_log = direct_log
 
-group = K.class_group(proof=True)
+group = K.class_group(proof=False)
 assert group.invariants() == (2,) and group.verify()
+assert group.verify_proof_payload(group.proof_payload())
+expect_unconditional_decline(lambda: K.class_group(proof=True))
 assert group.verify_proof_payload(group.proof_payload())
 
 print("quartic-minkowski-continuation-ok")

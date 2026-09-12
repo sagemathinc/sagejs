@@ -35,6 +35,7 @@ import json
 
 from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
 from sagejs.number_fields.class_unit_analytic import (
+    AnalyticCertificationError,
     AnalyticPrecisionError,
     UnitSaturationIndexCertificate,
     ZetaLogResidueLimits,
@@ -148,9 +149,7 @@ def verify_generation(field, order, generators, class_number, evidence, status):
             "class_number": class_number,
             "theorem": "test conditional factor-base theorem",
         }
-        and status in (
-            "exact-unconditional", "exact-relations-conditional-grh"
-        )
+        and status == "exact-relations-conditional-grh"
     )
 
 zeta_limits = ZetaLogResidueLimits(
@@ -359,6 +358,9 @@ assert not failed_closed.complete
 assert failed_closed.evidence == ()
 
 full_subgroup = [FactoredNumberFieldElement.from_element(K, epsilon)]
+# This synthetic class-quotient order gives an index-two upper bound for a
+# full unit lattice.  The exact local obstruction checks the unit factor;
+# it does not certify a class number of two for this class-number-one field.
 class_two_evidence = dict(generation_evidence)
 class_two_evidence["class_number"] = 2
 full_index_certificate = certify_unit_saturation_index(
@@ -373,8 +375,19 @@ full_index_certificate = certify_unit_saturation_index(
     zeta_limits=zeta_limits,
     generation_evidence=class_two_evidence,
     generation_verifier=verify_generation,
-    proof_status="exact-unconditional",
+    proof_status="exact-relations-conditional-grh",
 )
+assert full_index_certificate.index_bound == 2
+try:
+    certify_unit_saturation_index(
+        K, O, full_subgroup, class_number=2, roots_of_unity=2,
+        generation_evidence=class_two_evidence,
+        generation_verifier=verify_generation,
+        proof_status="exact-unconditional",
+    )
+    raise AssertionError("local saturation fixture issued an unconditional BF bound")
+except AnalyticCertificationError as error:
+    assert "conditional on zeta GRH" in str(error)
 locally_obstructed = saturate_unit_lattice(
     K,
     O,
@@ -383,6 +396,7 @@ locally_obstructed = saturate_unit_lattice(
     coordinate_bound=1,
 )
 assert locally_obstructed.complete
+assert locally_obstructed.proof_status == "exact-unit-p-saturation-conditional-grh"
 assert locally_obstructed.evidence[0].outcome == "saturated"
 assert locally_obstructed.evidence[0].method == (
     "exact-finite-order-quotient-pth-power-obstruction"
