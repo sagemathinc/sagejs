@@ -12,7 +12,11 @@ function pnpmInvocation(
   } = {},
 ) {
   if (!npmExecPath) {
-    return { command: "pnpm", arguments: arguments_, shell: false };
+    return {
+      command: platform === "win32" ? "pnpm.cmd" : "pnpm",
+      arguments: arguments_,
+      shell: platform === "win32",
+    };
   }
 
   const extension = extname(npmExecPath).toLowerCase();
