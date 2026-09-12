@@ -324,6 +324,12 @@ try {
   );
 
   if (!pythonOnly) {
+    const extensionProgram = join(temporaryDirectory, "extension-distribution.py");
+    copyFileSync(join(root, "test/fixtures/extension-distribution.py"), extensionProgram);
+    assert.equal(
+      run(mathExecutable, extensionProgram),
+      "finite-extension distribution checks passed",
+    );
     const mathProgram = join(temporaryDirectory, "portable.sage");
     writeFileSync(
       mathProgram,

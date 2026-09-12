@@ -10,10 +10,11 @@
     "maximum_interrupt_latency_ms": 5000
   },
   "artifact_baseline": {
+    "evidence": "bench/extension-fields/payload-cb604c65e.json",
     "totals": {
-      "bytes": 187049102,
-      "gzip_bytes": 25160189,
-      "brotli_bytes": 15556467
+      "bytes": 169872974,
+      "gzip_bytes": 25354265,
+      "brotli_bytes": 16876678
     }
   },
   "artifact_topology_limits": {

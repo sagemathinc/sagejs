@@ -1,7 +1,6 @@
 ---
 title: "Morphisms, finite kernels, and isogenies"
 ---
-
 # Exact maps between modular abelian varieties
 
 This extends the [modular abelian variety models](modular-abelian-varieties.md)
@@ -149,3 +148,15 @@ assert loads(dumps(i0+i1)) == i0+i1
 
 The transfer construction and integral kernel description follow
 [Sage's modular-abelian-variety implementation](https://doc.sagemath.org/html/en/reference/modabvar/sage/modular/abvar/morphism.html).
+
+Composite-level decomposition now saturates small-rank images through the
+dual column lattice and computes transfers by batched Manin-generator
+reduction. The product isogeny stacks the exact factor inclusions, retaining
+a replayable construction certificate. These optimizations do not replace
+`image_lattice()` by its saturation or change the geometric kernel group.
+
+Large nonsingular isogeny matrices use exact modular-HNF preconditioning
+before Smith reduction. The denominator of the inverse supplies a proved
+cokernel annihilator; no guessed modulus or change to the map is involved.
+See the [performance report](../bench/modular/abelian-varieties/decomposition-performance.md)
+for Sage comparisons and the remaining small-level cold-setup gap.

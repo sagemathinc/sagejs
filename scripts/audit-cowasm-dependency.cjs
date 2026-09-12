@@ -17,6 +17,9 @@ const allowed = [
   /^\.agents\//,
   /^agents\/eliminate-cowasm-dependency-plan\.md$/,
   /^agents\/webassembly-production-parity-and-apps-plan\.md$/,
+  // Historical audit failures recorded by other lanes; no runtime imports.
+  /^agents\/python-property-mutation-followup\.md$/,
+  /^docs\/general-class-unit-frontier\.md$/,
   /^architecture\/(?:native-boundaries|native-code|native-kernels|wasm-capabilities)\.json$/,
   /^bench\/cowasm\//,
   // Benchmark provenance only; neither file imports the retired toolchain.

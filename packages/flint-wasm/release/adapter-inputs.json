@@ -1,10 +1,20 @@
 {
-  "schema": "sagejs.wasm-adapter-inputs/v2",
+  "schema": "sagejs.wasm-adapter-inputs/v3",
   "policy": "all-declared-wasm",
   "modules": {
     "flint": {
       "declaration": "flint",
       "ownershipDomain": "flint-gmp-mpfr-arb"
+    },
+    "flint-extension-multivariate": {
+      "declaration": "flint",
+      "ownershipDomain": "flint-extension-multivariate",
+      "functions": [
+        "fq_mpoly_binary", "fq_mpoly_cache_bytes", "fq_mpoly_context",
+        "fq_mpoly_copy", "fq_mpoly_equal", "fq_mpoly_factor_bytes",
+        "fq_mpoly_from_terms", "fq_mpoly_gcd", "fq_mpoly_neg",
+        "fq_mpoly_resultant", "fq_mpoly_term_bytes"
+      ]
     },
     "m4ri": {
       "declaration": "m4ri",

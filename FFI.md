@@ -391,6 +391,32 @@ clearly marked host-effect boundary, and richer status translation. Those
 features extend the schema and adapter library; they must not become ad hoc
 compiler branches for individual symbols.
 
+## Partitioned Wasm ownership closures
+
+`tools/ffi/wasm-closure.cjs` can assign disjoint parts of one declaration to
+separate Wasm ownership modules. Explicit selections name `library`, optional
+`module`, `ownershipDomain`, and `functionIds`. Module names are unique;
+function identities and inferred resource types cannot occur in two modules.
+Owner resources of borrowed views are included transitively. Shared copied-byte
+types also count as resources: define a distinct semantic type when independent
+reactors return byte regions. Identical C layouts do not permit sharing handles.
+
+The `sagejs.wasm-adapter-inputs/v3` closure input retains the
+`all-declared-wasm` policy. Each specialist module names its declaration and
+explicit `functions`; at most one module per declaration omits `functions`
+and receives all remaining Wasm functions. The union must include every
+declared-Wasm function in each selected library. Unsupported lowering, omitted
+functions, overlapping resources, and duplicate modules fail closed. Existing
+v2 whole-library inputs and v1 explicit-subset test inputs remain accepted.
+
+Generated artifacts are keyed by module, while declarations retain their
+library identity. A non-default module is recorded explicitly in the closure
+manifest. This generator facility alone does not enable a delivery group:
+linking, authenticated loading, complete runtime manifest composition, resource
+lifecycle tests, payload budgets, and production browser receipts are separate
+requirements. In particular, a standalone Wasm test is not evidence that a
+published browser bundle contains the module.
+
 ## Adding a binding
 
 1. Add or extend a `ffi/*.ffi.py` declaration.

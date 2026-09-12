@@ -37,6 +37,7 @@ napi_value sagejs_fq_equal(napi_env env, napi_callback_info info);
 napi_value sagejs_fq_is_zero(napi_env env, napi_callback_info info);
 napi_value sagejs_fq_is_one(napi_env env, napi_callback_info info);
 napi_value sagejs_fq_to_string(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_coordinates(napi_env env, napi_callback_info info);
 napi_value sagejs_fq_poly_constant(napi_env env, napi_callback_info info);
 napi_value sagejs_fq_poly_gen(napi_env env, napi_callback_info info);
 napi_value sagejs_fq_poly_add(napi_env env, napi_callback_info info);

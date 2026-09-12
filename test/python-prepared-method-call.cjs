@@ -5,6 +5,7 @@
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const { createSage } = require("../dist/tools/kernel.js");
 const createCompiler = require("../dist/tools/compiler.js").default;
 
@@ -202,8 +203,8 @@ print('prepared-method-call-ok')
 `;
 
 test("prepared method calls agree with CPython", async (context) => {
-  const python = spawnSync("python3", ["-c", source], { encoding: "utf8" });
-  assert.equal(python.status, 0, python.stderr);
+  const python = spawnSync(pythonExecutable(), ["-c", source], { encoding: "utf8" });
+  assert.equal(python.status, 0, python.stderr || String(python.error));
   const session = await createSage({ mode: "python" });
   context.after(() => session.close());
   const result = await session.evaluate(source);
@@ -234,8 +235,8 @@ print('callable-slot-replacement-ok')
 `],
 ]) {
   test(name, async (context) => {
-    const python = spawnSync("python3", ["-c", regression], { encoding: "utf8" });
-    assert.equal(python.status, 0, python.stderr);
+    const python = spawnSync(pythonExecutable(), ["-c", regression], { encoding: "utf8" });
+    assert.equal(python.status, 0, python.stderr || String(python.error));
     const session = await createSage({ mode: "python" });
     context.after(() => session.close());
     const result = await session.evaluate(regression);

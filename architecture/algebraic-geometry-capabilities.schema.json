@@ -19,6 +19,7 @@
     "$schema": { "type": "string" },
     "schema": { "const": "sagejs.algebraic-geometry-capabilities/v1" },
     "scope": { "type": "string", "minLength": 1 },
+    "qualification": { "type": "string", "minLength": 1 },
     "routing_key": {
       "type": "array",
       "minItems": 6,
@@ -26,7 +27,7 @@
       "items": { "type": "string" }
     },
     "supported_base_fields": { "type": "array", "minItems": 2 },
-    "deferred_base_fields": { "type": "array", "minItems": 2 },
+    "deferred_base_fields": { "type": "array", "minItems": 1 },
     "platforms": { "type": "array", "minItems": 6, "uniqueItems": true },
     "forbidden_runtime_dependencies": { "type": "array", "minItems": 5, "uniqueItems": true },
     "operations": {

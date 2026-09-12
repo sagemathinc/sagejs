@@ -5,6 +5,14 @@
 R = PolynomialRing(QQ, names=("x", "y"))
 x, y = R.gens()
 
+# Even when all coefficients are integral, a QQ quotient's minimal polynomial
+# belongs to QQ[t], including the portable matrix fallback.
+for constant in [QQ(1), QQ(1) / 2]:
+    quotient = R.ideal(x**2 - constant, y).quotient_ring(proof=True)
+    minimum = quotient.minimal_polynomial(quotient(x), "test_t")
+    assert minimum.parent().base_ring() is QQ
+    assert minimum.coefficients() == [-constant, QQ(0), QQ(1)]
+
 fat = R.ideal(x**3, y**2)
 assert fat.radical().is_equal(R.ideal(x, y))
 assert not fat.is_radical()
@@ -20,6 +28,10 @@ assert len(components) == 2
 assert components[0].intersection(components[1]).is_equal(product)
 assert all(component.dimension() == 0 for component in components)
 assert product.radical().is_equal(R.ideal(x**2 - 1, y))
+primes = product.associated_primes(proof=True)
+assert len(primes) == 2
+assert all(prime.is_radical(proof=True) for prime in primes)
+assert primes[0].intersection(primes[1]).is_equal(product.radical())
 
 # Two nonsplit residue fields remain distinct primary components over QQ.
 nonsplit = R.ideal((x**2 + 1) * (x**2 + 2), y - x)
@@ -27,6 +39,12 @@ nonsplit_components = nonsplit.primary_decomposition()
 assert len(nonsplit_components) == 2
 assert nonsplit_components[0].intersection(nonsplit_components[1]).is_equal(nonsplit)
 assert len(nonsplit.variety()) == 0
+nonsplit_primes = nonsplit.associated_primes(proof=True)
+assert len(nonsplit_primes) == 2
+assert all(
+    any(prime.is_equal(component) for component in nonsplit_components)
+    for prime in nonsplit_primes
+)
 
 F = GF(3)
 S = PolynomialRing(F, names=("u", "v"))
@@ -82,6 +100,7 @@ finally:
 unit = R.ideal(1)
 assert unit.radical().is_one()
 assert unit.primary_decomposition() == []
+assert unit.associated_primes() == []
 
 try:
     R.ideal(x).radical()

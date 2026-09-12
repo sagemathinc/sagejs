@@ -1,0 +1,36 @@
+{
+  "schema": "sagejs.extension-wasm-qualification/v1",
+  "status": "passed",
+  "runtime_source_commit": "83836bbb85daffeb8c30147571593b7392b2a2f7",
+  "distribution_test_commit": "7499cfddec1939ff5eeff05087c724a4e9961ffa",
+  "artifact_identity": "sha256:1988e506a6d3fc5321561817f3882e5d9db25249ab991bdd2ae741bbc5e42a38",
+  "host": {"platform": "linux-x64", "node": "26.8.1"},
+  "geometry_batches": {"node_wasm": 29, "chromium": 29},
+  "geometry_elapsed_ms": {"node_wasm": 776527.264047, "chromium": 712725.824124},
+  "independent_groebner_cases": {"node_wasm": 108, "chromium": 108},
+  "late_session_gf4_nonsplit_elapsed_ms": {"node_wasm": 40417, "chromium": 35792},
+  "checks": {
+    "public_coefficients_and_multivariates": "passed",
+    "bounded_spills_and_specialist_loading": "passed",
+    "forced_gc_lifetimes_node_and_chromium": "passed",
+    "browser_compile_eval_exec_mpmath": "passed",
+    "fresh_npm_without_optional_native_packages": "passed",
+    "relocated_linux_sea_distributions": "passed",
+    "executable_documentation": "17 examples in 2 documents passed"
+  },
+  "payload": {
+    "report_sha256": "24b0d9806643b7c8e0a39d0fab0622273a939c64dad41fd8bc1c499630f69cf9",
+    "total_bytes": 180264896,
+    "gzip_bytes": 25667588,
+    "brotli_bytes": 17355471,
+    "eager_core_brotli_bytes": 9696765,
+    "eager_core_brotli_limit": 9700000,
+    "all_topology_and_payload_budgets": "passed"
+  },
+  "notes": [
+    "Unchanged linked C/Wasm inputs were reused; Python, caches, runtime assets and authenticated packaging were rebuilt.",
+    "Timings are qualification observations, not controlled repeated performance benchmarks.",
+    "Firefox and desktop WebKit lifetime checks were skipped because those browsers were unavailable; neither is claimed qualified here.",
+    "This record does not attest the native four-platform or mobile simulator gates, and is not a release receipt."
+  ]
+}
