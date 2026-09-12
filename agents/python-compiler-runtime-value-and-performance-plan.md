@@ -213,7 +213,8 @@ integration:
   improve the 100-field owned keyword callback by 3.09–3.16x and remove its
   field-count scaling. Ordinary calls/construction show no consistent gain;
   CPython callback medians are below the policy noise floor, so this is not
-  cliff closure. Evidence is recorded in `da116b7ff`; current-head CI is pending.
+  cliff closure. Evidence is recorded in `da116b7ff`; current-head CI passed and
+  the PR is non-draft. This is not main integration.
 - [PR238](https://github.com/sagemathinc/sagejs/pull/238), `7f6fe11f6`, repairs
   calls on compound expressions, preserving argument-before-invocation order.
   Full build, 119 focused/package-infrastructure tests, 206 portable files and
@@ -221,6 +222,20 @@ integration:
   diagnostic reproduces the same inherited argument error on baseline and
   candidate. A separate type-slot repair addresses instance-shadowed `__call__`;
   neither change implies complete callable-protocol support.
+- [PR242](https://github.com/sagemathinc/sagejs/pull/242), `50f971c8a`, resolves
+  non-function callable objects through their type's `__call__` slot rather
+  than ordinary instance lookup. Full build, 33 focused tests, 206 portable
+  files and strict checks pass. The compound-expression slice depends on this
+  repair for instance-shadowing correctness. Existing name-call evaluation
+  order gaps remain separate; do not claim complete callable semantics.
+- [PR244](https://github.com/sagemathinc/sagejs/pull/244), `1beda068e`, implements
+  handled-exception ownership, explicitly based on PR231. Twenty CPython
+  cases pass in both Python and Sage modes, alongside reusable-session and raw
+  generator-method checks, 208 portable files and strict checks after a full
+  build. It does not implement true unwind tracebacks, chaining, or an asyncio
+  scheduler. Local observations show generator creation and resume overhead;
+  investigate conservatively omitting wrappers for generators that cannot
+  suspend while owning handled state, retaining wrapping whenever uncertain.
 
 The complete package matrix on the main-based PR228 candidate remains **8/11,
 not qualified**: pyparsing, IDNA and mpmath are still failures on that branch.
@@ -230,8 +245,63 @@ versus milliseconds for the selected numerical operations. Those profiled local
 observations are not controlled timing evidence and do not replace its failed
 30-second gate. Developer cold compilation and shipped lazy-precompiled package
 startup need separate qualification; shipping precompiled modules would not
-close the compiler cliff. Module-name resolution is a measured investigation
-target, not yet a demonstrated optimization.
+close the compiler cliff.
+
+The PR241 namespace-lookup candidate (`649d880b4`, based on PR231) reduces an
+isolated live-object lookup workload by 10.8–11.5% in a controlled comparison.
+It does **not** demonstrate a useful mpmath cold-import gain: the paired
+baseline/candidate both fail the unchanged 30-second gate. Separate non-gating
+90-second diagnostics measure approximately 45.8 seconds baseline and
+44.8–45.5 seconds candidate, with millisecond numerical operations. Retain this
+negative package result; helper speed is not package qualification. Benchmark
+identities and provisioning corrections are recorded on PR241.
+
+A temporary combined-source audit of the open slices reaches 903,099 bytes
+against the unchanged 903,000-byte core budget. Individually passing PRs do not
+establish that the combined stack fits. Shared adapter-metadata deduplication
+is a concrete follow-up, not permission to increase the budget or a substitute
+for rebuilding and qualifying the actual integrated candidate.
+
+**Later 2026-09-12 checkpoint (supersedes the branch-local totals above):**
+
+- The main-based generator-definition repair, PR260 (`e342f9f83`, derived
+  provenance follow-up `ce2aedd1f`), passes the complete adopted corpus:
+  **533 passes, the same three reviewed differences, zero required failures**.
+  All eleven package workflows were attempted: **10 pass, mpmath times out**
+  at the unchanged 30-second gate. This demonstrates the combined pyparsing
+  and IDNA repairs; it does not qualify mpmath or all fourteen program gates.
+  Definition defaults that suspend now belong to the enclosing scope, including
+  lambda metadata/default capture. Full build, 82 focused checks, strict checks,
+  and the regenerated architecture census pass. Missing native dependencies
+  still prevent claiming the broader mathematical suites passed locally.
+- PR248 (`6b692cde7`) removes a private compiler AST-predicate wrapper.
+  Controlled, fresh-process compiler-only mpmath imports improve by 6.8–6.9%
+  (roughly 46 to 43 seconds). Both candidates still fail the 30-second gate.
+  Pinned inputs, empty caches and exact compiler identities are recorded in
+  `docs/python-ast-instanceof-cold/`. Next investigate repeated compiler import
+  resolution without weakening missing-name, mutation or public Python behavior.
+- PR249 (`50d35b46c`) conservatively omits handled-state wrappers only when
+  suspension cannot own a handler. Plain generator creation is about 40% faster
+  than PR244 in both mixed and isolated controlled experiments. Mixed-workload
+  owned-generator tails worsened; isolated owned medians varied -1.3%/+3.7%.
+  Both experiments and all 320 samples remain in
+  `agents/validation/python-handled-state/`. This is neither proof of a GC cause
+  nor universal non-regression, and there is no pre-ownership recovery claim.
+  Qualify PR244 and PR249 together before adoption.
+- PR247 (`37e80f468`) saves 560 bootstrap bytes by sharing ordered metadata
+  copying. The actual provisional main + PR247 + PR244/249 source assembly fits
+  at 902,078/903,000 bytes; its full combined build is still pending. Preserve
+  the unchanged limit and remeasure as more slices are assembled.
+- PR241 now has an actual main integration (`419a10fb1`): full build, 16 focused
+  checks, 210 portable files and strict checks pass, with all 323 main API catalog
+  entries preserved. The negative cold-import result above remains applicable;
+  generated-reference reconciliation is not a performance improvement.
+
+These are candidate-specific observations, not a declaration that every PR has
+landed in main. Preserve exact integration ancestry and CI identities. The next
+critical work is package cold compilation, combined exception-state qualification,
+and the remaining general call/construction cliffs; do not reset priorities to
+collecting more suite names now that the adopted failures are repaired.
 
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a

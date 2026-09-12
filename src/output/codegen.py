@@ -1189,6 +1189,19 @@ def generate_code():
             output.print("(")
         if check_unbound:
             output.print("ρσ_check_unbound(")
+        private_import_read = (
+            module_name_fallback
+            and not self.python_identifier
+            and output.options.private_compiler_import_reads
+            and output.private_lexical_import_names
+            and output.private_lexical_import_names[self.name]
+        )
+        if private_import_read:
+            # Private compiler module exports are nonconfigurable accessors
+            # over these exact cells. Missing cells still need full fallback.
+            output.print("(ρσ_is_missing_binding(")
+            output.print_name(name)
+            output.print(") ? ")
         if module_name_fallback:
             output.print("ρσ_resolve_module_name(")
         if module_name_fallback and self.python_identifier and not python_binding:
@@ -1213,6 +1226,10 @@ def generate_code():
                 '(typeof __builtins__ !== "undefined" ? __builtins__ : '
                 "(ρσ_modules.builtins || globalThis)))"
             )
+        if private_import_read:
+            output.print(" : ")
+            output.print_name(name)
+            output.print(")")
         if check_unbound:
             output.comma()
             output.print(JSON.stringify(self.name))

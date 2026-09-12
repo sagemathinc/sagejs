@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dict-reinitialization-storage",
+  "title": "Dict Reinitialization Storage",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Preserve dictionary contents and storage identity during explicit dict initialization",
+  "base_commit": "6c42dd0938deaf3e13c7c681f4206d7199ad89ef",
+  "claims": [
+    "src/baselib/containers.py",
+    "test/dict-reinitialization-storage.cjs",
+    "test/fixtures/dict-reinitialization-storage.py",
+    "test/fixtures/dict-explicit-new-gap.py",
+    "docs/dict-reinitialization-storage.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython explicit dict.__init__ update and subclass method bypass behavior"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Preserve existing dictionary storage during explicit initialization; active metadata frozen for final direct-build/read-only qualification.",
+    "risks": ["Explicit dict.__new__ allocation still has a separate retained regression probe; this initializer-only change does not fix that entrypoint.", "This is a prerequisite for owner-aware shallow instance freeze, not a full freeze repair."],
+    "next_steps": ["Complete final direct build and read-only tests, recording exact source-bound results on the PR.", "Repair the retained allocation entrypoint and qualify owner-aware dictionary mutation guards separately."]
+  }
+}

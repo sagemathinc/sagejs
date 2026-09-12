@@ -3378,23 +3378,28 @@ def ρσ_real_literal(text: _Str) -> Any:
     return runtime.real_literal(text)
 
 
-_BUILTINS_ARRAYLIKE_TAGS = [
-    "[object Int8Array]",
-    "[object Uint8Array]",
-    "[object Uint8ClampedArray]",
-    "[object Int16Array]",
-    "[object Uint16Array]",
-    "[object Int32Array]",
-    "[object Uint32Array]",
-    "[object Float32Array]",
-    "[object Float64Array]",
-    "[object BigInt64Array]",
-    "[object BigUint64Array]",
-    "[object HTMLCollection]",
-    "[object NodeList]",
-    "[object NamedNodeMap]",
-    "[object TouchList]",
-]
+_BUILTINS_ARRAYLIKE_TAGS = runtime.reflect.construct(
+    runtime.set_class,
+    [
+        [
+            "[object Int8Array]",
+            "[object Uint8Array]",
+            "[object Uint8ClampedArray]",
+            "[object Int16Array]",
+            "[object Uint16Array]",
+            "[object Int32Array]",
+            "[object Uint32Array]",
+            "[object Float32Array]",
+            "[object Float64Array]",
+            "[object BigInt64Array]",
+            "[object BigUint64Array]",
+            "[object HTMLCollection]",
+            "[object NodeList]",
+            "[object NamedNodeMap]",
+            "[object TouchList]",
+        ]
+    ],
+)
 
 
 def ρσ_arraylike(value: Any) -> _Bool:
@@ -3405,7 +3410,7 @@ def ρσ_arraylike(value: Any) -> _Bool:
     if value is None or value is runtime.undefined:
         return False
     tag = runtime.reflect.apply(runtime.object.prototype.toString, value, [])
-    return tag in _BUILTINS_ARRAYLIKE_TAGS
+    return _BUILTINS_ARRAYLIKE_TAGS.has(tag)
 
 
 def options_object(target: Any) -> Any:
@@ -3701,10 +3706,10 @@ def ρσ_vars(item: Any = _BUILTINS_MISSING) -> Any:
 
 
 def ρσ_resolve_callable(value: Any) -> Any:
-    """Return a host function or an object's bound `__call__` method."""
+    """Return a host function or an object's bound type-level `__call__`."""
     if runtime.strict_equal(runtime.jstype(value), "function"):
         return value
-    call_target = ρσ_getattr_internal(value, "__call__", runtime.undefined)
+    call_target = ρσ_get_type_slot(value, "__call__")
     if call_target is runtime.undefined:
         raise TypeError(
             "'" + _builtins_callable_name(ρσ_type(value)) + "' object is not callable"
@@ -5764,9 +5769,20 @@ def ρσ_resolve_module_name(
         cleared_exception is not runtime.undefined and value is cleared_exception
     )
     declared_in_module = False
-    if module_namespace is not None and _builtins_has_member(module_namespace, name):
+    native_namespace = runtime.strict_equal(runtime.jstype(module_namespace), "object")
+    # Object namespaces need neither primitive boxing nor function metadata
+    # synthesis. Keep has-before-get, including Proxy traps and live accessors.
+    if module_namespace is not None and (
+        runtime.reflect.has(module_namespace, name)
+        if native_namespace
+        else _builtins_has_member(module_namespace, name)
+    ):
         declared_in_module = True
-        module_value = _builtins_get_member(module_namespace, name)
+        module_value = (
+            runtime.native_get(module_namespace, name)
+            if native_namespace
+            else _builtins_get_member(module_namespace, name)
+        )
         if (
             module_value is not runtime.undefined
             and module_value is not cleared_exception
@@ -9446,7 +9462,8 @@ def _builtins_object_setattr(
             _builtins_call_member(descriptor, "__set__", [self, value])
             return
     if not _builtins_store_instance_attribute(self, name, value):
-        runtime.reflect.set(self, name, value)
+        if not runtime.reflect.set(self, name, value):
+            raise AttributeError("object attribute '" + name + "' is read-only")
 
 
 @runtime.native_method

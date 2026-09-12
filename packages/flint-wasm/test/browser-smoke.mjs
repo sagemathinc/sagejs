@@ -434,10 +434,10 @@ print(
       "1 True\nTrue",
     );
     await runSource(
-      "AffineSpace(GF(4, 'a'), 2)",
-      "Error: algebraic geometry currently supports QQ and " +
-        "prime GF(p); finite extensions and number fields are planned in " +
-        "agents/no-singular-extension-fields-plan.md",
+      "K = GF(4, 'a')\nA = AffineSpace(K, 2, names=('x', 'y'))\n" +
+        "x, y = A.gens()\nX = A.subscheme([y-x^2-K.gen()])\n" +
+        "print(len(X.rational_points()), X.is_smooth())",
+      "4 True\n",
     );
     await runSource(
       "R.<x> = QQ[]\nx^2 - 2*x + 1",

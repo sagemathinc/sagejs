@@ -482,6 +482,13 @@ async function compile(
   } catch (_error) {}
 
   try {
+    // Only private self-hosting opts in. Ordinary Python and baselib retain
+    // authoritative namespace reads; the immutable seed lacks this option.
+    new PyLang.OutputStream({ private_compiler_import_reads: true });
+    output_options.private_compiler_import_reads = true;
+  } catch (_error) {}
+
+  try {
     // Compiler implementation modules do not shadow the literal constructors.
     // Hoist their immutable numeric constants once per module instead of
     // parsing them again on every emitter operation. Do not change baselib

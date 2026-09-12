@@ -3,15 +3,15 @@
 Status: in progress, 2026-09-12. This is the authoritative program direction,
 now brought onto main independently of the experimental PR stack. Initial
 investigation started at `d520ed4df`; the current integration baseline is
-`c4c126d09`. No priority latency target has been qualified as met.
+`6c42dd093`. No priority latency target has been qualified as met.
 
 ## Current integration and evidence
 
 | Milestone | Current status |
 | --- | --- |
 | N0 | Partial public-call corpus and profiles; complete scaling, startup, memory, route and platform matrix still required. |
-| N1 | Independent main-based trace PR #224 and result-binding PR #225 are non-draft. Both now have independent Linux x64 confirmation of their narrow gains; result statistics rows do not improve. Remaining bookkeeping, memory and public targets are open. |
-| N2 | Non-draft #232 qualifies the isolated binary64 sum/compiler foundation on four persistent platforms, with additional local browser and sanitizer evidence. Draft #240 adds owned prepared statistics; its first clean-source local public query is 96 ms versus 5.7 s generic, with 1.5 s preparation. Public packaging, independent paired measurements and the 10 ms target remain open. |
+| N1 | Trace #224 and result-binding #225 are merged, with independent Linux x64 confirmation of their narrow gains; result statistics rows do not improve. Draft #251 specializes exact JSON leaves with independent source-body evidence; integration with current main now passes the real-browser module-identity corpus. Its local routine startup gate still fails. Memory and public targets remain open. |
+| N2 | Merged #232 qualifies the isolated binary64 sum/compiler foundation on four persistent platforms, plus local browser and sanitizer evidence. Draft #240 adds owned prepared statistics: an independent Linux public query is 82 ms versus 5.0 s generic, with 1.1 s preparation. Public fallback packaging now passes; installed native/Wasm storage, paired qualification, startup and the 10 ms target remain open. |
 | N3 | Earlier typed LU, Eigen probes and packed validation are candidate evidence, not a qualified public backend or completed latency target. |
 | N4 | Earlier prepared scalar evaluators/root prototypes remain experimental; derivative/vector/external-solver integration and public targets remain open. |
 | N5 | Breadth and sustained-throughput qualification remain open. |
@@ -56,12 +56,12 @@ kernel measurements. Linux x64 and Windows pass 6 focused tests with 3 explicit
 skips; Linux ARM64 and macOS ARM64 pass 8 with 1 sanitizer skip. The two
 additional Wasm tests require the optional prepared SDK. Original ARM shallow
 ancestry and Mac compression-metadata build failures remain alongside their
-source-preserving stage-8 resumes. The PR is now non-draft for its narrow
+source-preserving stage-8 resumes. The PR merged for its narrow
 foundation scope; it changes no public dispatch and does not qualify complete
 public distribution or a performance target.
 
 [PR #240](https://github.com/sagemathinc/sagejs/pull/240), frozen source
-`dca0b0873`, is a separate draft atop #232. It introduces copied, bounded
+`dca0b0873`, is a separate draft now retargeted to main after #232 merged. It introduces copied, bounded
 `StatisticsData`, source-compiled stable centered reductions, and fresh public
 `describe` queries with independent checks. Its frozen local eight-stage build
 and 12 focused/domain tests pass without skips, including 296 rational-oracle
@@ -72,8 +72,63 @@ summary tracing gives 5,785 / 6,391 / 103 ms. Native preparation is separately
 1,489 / 1,213 ms. All values and validation match the same CPython source.
 These are sequential local measurements, not independent paired qualification:
 the slower/noisy dynamic row remains visible, and the 10 ms target is missed.
-Public browser fallback, Wasm prepared storage, setup, result construction,
-memory and packaging remain work, not hidden exclusions from a target pass.
+An independent reserved Linux x64 run of that same clean source records
+82 / 93 ms prepared-native queries without/with summary tracing, versus
+4,953 / 4,797 ms generic; preparation costs 1,071 / 1,255 ms. All values and
+validation match CPython. These confirm an independent observation, not paired
+target qualification: the fixed sequential order and 10 ms miss remain explicit.
+
+Packaging follow-up `32922c911` includes the function-local helper import in
+the browser closure. Public fallback passes the full ownership/failure corpus
+in Chromium, Firefox and WebKit, and the routine cross-domain browser suite.
+Its clean eight-stage root build passes in 13m17s; 11 focused/domain tests pass
+with one opt-in sanitizer skip, and the separate sanitizer-enabled centered
+run passes all four tests without skips. The earlier artifact passes unchanged
+payload budgets but is not relabeled with the follow-up commit. Browser
+startup still eagerly loads exact backends before statistics is requested;
+statistics adds no further exact-library downloads, but that is not lightweight
+startup. Installed native packaging, prepared Wasm storage, setup, result
+construction and memory remain open, not excluded from a target pass.
+
+[Draft PR #251](https://github.com/sagemathinc/sagejs/pull/251), source
+`c3c34f8c8`, addresses one result-construction cost in ordinary Python. On quiet
+Linux x64, actual baseline/candidate function bodies compiled into one runtime
+take 14.95–16.15 / 6.53–7.21 ms for 514 float leaves, and 7.49–7.52 /
+3.70–3.72 ms for integer leaves. Each case uses A/B/B/A, three warmups and seven
+samples per round; detached values match. CPython remains substantially faster.
+These are internal materializer measurements, not public solver targets.
+Node/CPython and domain/contract tests pass 12/12, and strict Python passes
+387 modules. Its public browser test exposes precompiled/session module identity
+divergence: a session-defined `collections.abc.Mapping` subclass is rejected by
+the JSON module, and both JSON and unchanged statistics modules hold a different
+`math` object from session imports. The failing witness remains intact and the
+PR initially stayed draft pending [runtime coordination](https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18410733).
+
+Current-main integration `d8e65e466` on `02a683d21` resolves that old artifact's
+module-identity failure using main's existing runtime-module ownership support.
+No compiler/worker workaround is added. A fresh eight-stage root build and
+production Wasm assembly pass; all twelve combinations of three engines,
+Python/Sage and isolated/portable workers pass the new public identity tests.
+The complete JSON corpus passes all three engines, alongside Chromium's
+68-module numerical-domain witnesses and dynamic-code tests. Strict Python
+passes 403 modules. The original timing receipts retain their old runtime
+identity; they are not new integration timings. Functional routine phases pass,
+but the unchanged local startup gate fails at 409.5ms versus 400ms. The PR
+remains draft; independent exact-source ARM64 qualification is underway.
+
+Packaging is a separate N2 prerequisite, not a completed numerical target.
+[PR #259](https://github.com/sagemathinc/sagejs/pull/259) is the non-draft
+prefix-free aggregate foundation; [draft #262](https://github.com/sagemathinc/sagejs/pull/262)
+separates pure binary64 and exact-dependency production packs. Its four-platform
+small executable loader fixtures pass, but are not whole-product receipts.
+At `e4d066c38`, the full local graph-enabled build, both real product SEAs,
+general SEA smoke and public CMinpack/NLopt SEA tests pass. The platform npm
+archive builds; ordinary root prepack fails the unchanged startup gate at
+411ms, and an unchanged quiet retry fails at 409ms. No prepack bypass or budget
+increase is used. Full installed npm/four-platform product qualification,
+prepared-statistics descriptors, source-current backend qualification and
+startup/payload/RSS measurements remain open. Small addon sizes alone do not
+prove a public startup or memory improvement.
 
 Earlier stacked drafts are preserved for source, experiments and review, but
 are not prerequisites to merge merely because a later draft depends on them.
