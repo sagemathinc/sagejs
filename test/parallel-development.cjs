@@ -132,6 +132,13 @@ test("lane policy permits focused native and collateral claims", () => {
   );
 });
 
+test("compiler runtime claims include only the lazy namespace module", () => {
+  const lane = lanes.get("compiler-runtime");
+  assert.equal(laneAllowsClaim(lane, "src/lib/sagejs/_namespace.py"), true);
+  assert.equal(laneAllowsClaim(lane, "src/lib/sagejs/"), false);
+  assert.equal(laneAllowsClaim(lane, "src/lib/sagejs/number_fields.py"), false);
+});
+
 test("task contracts enforce lane checks and Windows native policy", () => {
   assert.deepEqual(validateTask(task(), "modsym-newspace.json"), []);
   const errors = validateTask(
