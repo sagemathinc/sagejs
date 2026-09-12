@@ -1187,6 +1187,132 @@ def set_wrap(native_set: Any) -> SageSet:
     return answer
 
 
+_DICT_EMPTY = 0
+_DICT_PRIMITIVE = 1
+_DICT_CANONICAL = 2
+_DICT_GENERAL = 3
+_DICT_CANONICAL_PROVIDERS = _new_array()
+_DICT_METADATA = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+
+
+# Imported by first-party providers through the lexical runtime module registry.
+def _register_dict_canonical_provider(probe: Any, valid: Any) -> None:  # pyright: ignore[reportUnusedFunction]
+    """Register a private first-party canonical family, not a public hash hook.
+
+    `probe(key)` returns a native `{domain, token, guard}` descriptor, None
+    for an unrecognized key, or False for a recognized but invalid family.
+    `valid(guard)` must remain true only for the original immutable equality
+    contract. Tokens are stable native identities or values canonical within
+    their domain; they need not be disjoint across domains or primitive keys.
+    Domain, guard and provider comparisons use native identity.
+    """
+    if not runtime.strict_equal(
+        runtime.jstype(probe), "function"
+    ) or not runtime.strict_equal(runtime.jstype(valid), "function"):
+        raise TypeError("canonical dictionary providers require two functions")
+    for provider in _DICT_CANONICAL_PROVIDERS:
+        if provider.probe is probe and provider.valid is valid:
+            return
+    provider = runtime.object.create(None)
+    provider.probe = probe
+    provider.valid = valid
+    _DICT_CANONICAL_PROVIDERS.push(provider)
+
+
+def _dict_primitive_key(key: Any) -> bool:
+    kind = runtime.jstype(key)
+    return (
+        key is None
+        or key is runtime.undefined
+        or runtime.strict_equal(kind, "string")
+        or runtime.strict_equal(kind, "number")
+        or runtime.strict_equal(kind, "bigint")
+        or runtime.strict_equal(kind, "boolean")
+        or runtime.strict_equal(kind, "symbol")
+    )
+
+
+def _dict_guard_valid(provider: Any, guard: Any) -> bool:
+    return runtime.reflect.apply(provider.valid, runtime.undefined, [guard]) is True
+
+
+def _dict_probe_key(key: Any) -> Any:
+    if _dict_primitive_key(key):
+        return None
+    for provider in _DICT_CANONICAL_PROVIDERS:
+        descriptor = runtime.reflect.apply(provider.probe, runtime.undefined, [key])
+        if descriptor is False:
+            return False
+        if descriptor is not None and descriptor is not runtime.undefined:
+            if (
+                not runtime.strict_equal(runtime.jstype(descriptor), "object")
+                or descriptor.domain is None
+                or descriptor.domain is runtime.undefined
+                or descriptor.token is None
+                or descriptor.token is runtime.undefined
+                or descriptor.guard is None
+                or descriptor.guard is runtime.undefined
+            ):
+                raise TypeError("invalid private canonical dictionary descriptor")
+            if not _dict_guard_valid(provider, descriptor.guard):
+                return False
+            return [provider, descriptor]
+    return None
+
+
+def _dict_reset_metadata(mapping: Any) -> Any:
+    metadata = runtime.object.create(None)
+    metadata.state = _DICT_EMPTY
+    metadata.size = 0
+    metadata.provider = None
+    metadata.domain = None
+    metadata.guard = None
+    _DICT_METADATA.set(mapping, metadata)
+    return metadata
+
+
+def _dict_general_metadata(metadata: Any) -> None:
+    metadata.state = _DICT_GENERAL
+    metadata.provider = None
+    metadata.domain = None
+    metadata.guard = None
+
+
+def _dict_metadata(mapping: Any) -> Any:
+    size = mapping.jsmap.size
+    metadata = _DICT_METADATA.get(mapping)
+    if metadata is runtime.undefined:
+        metadata = _dict_reset_metadata(mapping)
+        if size:
+            _dict_general_metadata(metadata)
+        metadata.size = size
+    elif metadata.size != size:
+        # Unindexed native writes cannot certify a homogeneous object domain.
+        # The owned namespace constructors publish primitive metadata explicitly.
+        if size:
+            _dict_general_metadata(metadata)
+        else:
+            metadata = _dict_reset_metadata(mapping)
+        metadata.size = size
+    if metadata.state == _DICT_CANONICAL and not _dict_guard_valid(
+        metadata.provider, metadata.guard
+    ):
+        _dict_general_metadata(metadata)
+    return metadata
+
+
+def _dict_same_domain(metadata: Any, probe: Any) -> bool:
+    return (
+        probe is not None
+        and probe is not False
+        and metadata.provider is probe[0]
+        and metadata.domain is probe[1].domain
+        and metadata.guard is probe[1].guard
+    )
+
+
 def _dict_normalize_key(key: Any) -> Any:
     # Attribute dictionaries, keyword arguments, globals, and most JSON-like
     # Python mappings overwhelmingly use primitive string keys.  Their native
@@ -1216,31 +1342,103 @@ def _dict_normalize_key(key: Any) -> Any:
     return key
 
 
-def _dict_resolve_key(mapping: Any, key: Any) -> Any:
+def _dict_resolve_key(mapping: Any, key: Any, probe: Any = _CONTAINERS_MISSING) -> Any:
     """Return the stored identity for an equal Python key.
 
-    Native JavaScript `Map` compares objects by identity, whereas Python
-    dictionaries use `__hash__` followed by `__eq__`.  Keep the fast
-    primitive and identity paths, then scan existing keys for an equal object
-    only after an identity miss.  Besides structural tuple keys, this is
-    required for cross-type numeric equality such as `mpf(0) == 0`.  This
-    is intentionally a correctness-first fallback; a hash-bucket index can
-    replace the scan when object-key workloads warrant it.
+    Only a live homogeneous canonical contract permits a negative object-key
+    shortcut. Distinct domains do not imply inequality. An uncertified token
+    hit must also compare retained original keys, including after invalidation.
     """
-    normalized_key = _dict_normalize_key(key)
+    metadata = _dict_metadata(mapping)
+    state = metadata.state
+    if probe is _CONTAINERS_MISSING:
+        probe = _dict_probe_key(key)
+    normalized_key = (
+        key
+        if probe is False
+        else _dict_normalize_key(key)
+        if probe is None
+        else probe[1].token
+    )
     if mapping.jsmap.has(normalized_key):
-        return normalized_key
-    key_type = runtime.jstype(key)
-    if (
-        (runtime.array.isArray(key) and runtime.object.isFrozen(key))
-        or runtime.strict_equal(key_type, "object")
-        or runtime.strict_equal(key_type, "function")
+        original = mapping.keymap.get(normalized_key)
+        if (
+            original is key
+            or (_dict_primitive_key(original) and _dict_primitive_key(key))
+            or (state == _DICT_CANONICAL and _dict_same_domain(metadata, probe))
+        ):
+            return normalized_key
+        if probe is not None and probe is not False:
+            retained_probe = _dict_probe_key(original)
+            if (
+                retained_probe is not None
+                and retained_probe is not False
+                and retained_probe[0] is probe[0]
+                and retained_probe[1].domain is probe[1].domain
+                and retained_probe[1].guard is probe[1].guard
+                and retained_probe[1].token is normalized_key
+            ):
+                return normalized_key
+        if equals(original, key):
+            return normalized_key
+    elif (
+        state == _DICT_EMPTY
+        or (state == _DICT_PRIMITIVE and _dict_primitive_key(key))
+        or (state == _DICT_CANONICAL and _dict_same_domain(metadata, probe))
     ):
-        for candidate in mapping.jsmap.keys():
-            original = mapping.keymap.get(candidate)
-            if equals(original, key):
-                return candidate
-    return normalized_key
+        return normalized_key
+    for candidate in mapping.jsmap.keys():
+        if candidate is normalized_key:
+            continue
+        original = mapping.keymap.get(candidate)
+        if original is key or equals(original, key):
+            return candidate
+    # A changed/untrusted structural hook may collide without equality. Never
+    # return that occupied identity as an apparent hit or overwrite its value.
+    if not mapping.jsmap.has(normalized_key):
+        return normalized_key
+    if not mapping.jsmap.has(key):
+        return key
+    return runtime.object.create(None)
+
+
+def _dict_store_resolved(
+    mapping: Any, key: Any, value: Any, resolved: Any, probe: Any
+) -> None:
+    if not mapping.jsmap.has(resolved):
+        metadata = _dict_metadata(mapping)
+        state = metadata.state
+        primitive = _dict_primitive_key(key)
+        canonical = (
+            probe is not None
+            and probe is not False
+            and _dict_guard_valid(probe[0], probe[1].guard)
+        )
+        if state == _DICT_EMPTY:
+            if primitive:
+                metadata.state = _DICT_PRIMITIVE
+            elif canonical and probe is not None and probe is not False:
+                metadata.state = _DICT_CANONICAL
+                metadata.provider = probe[0]
+                metadata.domain = probe[1].domain
+                metadata.guard = probe[1].guard
+            else:
+                _dict_general_metadata(metadata)
+        elif (state == _DICT_PRIMITIVE and not primitive) or (
+            state == _DICT_CANONICAL
+            and (not canonical or not _dict_same_domain(metadata, probe))
+        ):
+            _dict_general_metadata(metadata)
+        mapping.keymap.set(resolved, key)
+    mapping.jsmap.set(resolved, value)
+    _DICT_METADATA.get(mapping).size = mapping.jsmap.size
+
+
+def _dict_after_delete(mapping: Any) -> None:
+    if mapping.jsmap.size == 0:
+        _dict_reset_metadata(mapping)
+    else:
+        _DICT_METADATA.get(mapping).size = mapping.jsmap.size
 
 
 class _DictView:
@@ -1328,20 +1526,19 @@ class _DictView:
 
 def _dict_storage_setitem(mapping: Any, key: Any, value: Any) -> None:
     """Set an item without dispatching to a dict subclass override."""
-    key_type = runtime.jstype(key)
-    if runtime.strict_equal(key_type, "string"):
-        normalized_key = key
-    elif runtime.strict_equal(key_type, "number"):
-        normalized_key = _numeric_key(key)
-    elif runtime.strict_equal(key_type, "bigint"):
-        normalized_key = runtime.normalize_integer(key)
-    elif runtime.strict_equal(key_type, "boolean"):
-        normalized_key = 1 if key else 0
-    else:
-        normalized_key = _dict_resolve_key(mapping, key)
-    if not mapping.jsmap.has(normalized_key):
-        mapping.keymap.set(normalized_key, key)
-    mapping.jsmap.set(normalized_key, value)
+    if _dict_primitive_key(key):
+        metadata = _dict_metadata(mapping)
+        if metadata.state == _DICT_EMPTY or metadata.state == _DICT_PRIMITIVE:
+            normalized_key = _dict_normalize_key(key)
+            if not mapping.jsmap.has(normalized_key):
+                mapping.keymap.set(normalized_key, key)
+            mapping.jsmap.set(normalized_key, value)
+            metadata.state = _DICT_PRIMITIVE
+            metadata.size = mapping.jsmap.size
+            return
+    probe = _dict_probe_key(key)
+    normalized_key = _dict_resolve_key(mapping, key, probe)
+    _dict_store_resolved(mapping, key, value, normalized_key, probe)
 
 
 # Stable generated-runtime name used by the exact-dict item-assignment path.
@@ -1368,6 +1565,7 @@ class SageDict:
         if not _has_own(self, "jsmap"):
             self.jsmap = _new_map()
             self.keymap = _new_map()
+            _dict_reset_metadata(self)
         if iterable is not runtime.undefined:
             _dict_update(self, iterable)
         if len(keywords):
@@ -1413,6 +1611,7 @@ class SageDict:
             raise KeyError(key)
         _native_delete(self.jsmap, normalized_key)
         _native_delete(self.keymap, normalized_key)
+        _dict_after_delete(self)
 
     def __getitem__(self, key: Any) -> Any:
         normalized_key = _dict_resolve_key(self, key)
@@ -1427,11 +1626,16 @@ class SageDict:
     def clear(self) -> None:
         self.jsmap.clear()
         self.keymap.clear()
+        _dict_reset_metadata(self)
 
     def copy(self) -> SageDict:
+        metadata = _dict_metadata(self)
         answer = runtime.object.create(runtime.object.getPrototypeOf(self))
         answer.jsmap = runtime.reflect.construct(runtime.map_class, [self.jsmap])
         answer.keymap = runtime.reflect.construct(runtime.map_class, [self.keymap])
+        _DICT_METADATA.set(
+            answer, runtime.object.assign(runtime.object.create(None), metadata)
+        )
         return answer
 
     def keys(self) -> Any:
@@ -1461,10 +1665,10 @@ class SageDict:
         key: Any,
         default_value: Any = None,
     ) -> Any:
-        normalized_key = _dict_resolve_key(self, key)
+        probe = _dict_probe_key(key)
+        normalized_key = _dict_resolve_key(self, key, probe)
         if not self.jsmap.has(normalized_key):
-            self.keymap.set(normalized_key, key)
-            self.jsmap.set(normalized_key, default_value)
+            _dict_store_resolved(self, key, default_value, normalized_key, probe)
             return default_value
         return self.jsmap.get(normalized_key)
 
@@ -1494,6 +1698,7 @@ class SageDict:
             return default_value
         _native_delete(self.jsmap, normalized_key)
         _native_delete(self.keymap, normalized_key)
+        _dict_after_delete(self)
         return answer
 
     def popitem(self) -> Any:
@@ -1503,6 +1708,7 @@ class SageDict:
         _native_delete(self.jsmap, result.value[0])
         key = self.keymap.get(result.value[0])
         _native_delete(self.keymap, result.value[0])
+        _dict_after_delete(self)
         return runtime.math_tuple([key, result.value[1]])
 
     def update(
@@ -1634,8 +1840,7 @@ class _LiveScopeDict(SageDict):
         )
 
     def _refresh(self) -> None:
-        self.jsmap.clear()
-        self.keymap.clear()
+        SageDict.clear(self)
         for key in runtime.object.keys(self._scope):
             value = runtime.reflect.get(self._scope, key)
             if not _containers_is_missing_binding(value):
@@ -1824,6 +2029,7 @@ def ρσ_dict(
     answer = runtime.object.create(runtime.reflect.get(SageDict, "prototype"))
     answer.jsmap = _new_map()
     answer.keymap = _new_map()
+    _dict_reset_metadata(answer)
     if iterable is not runtime.undefined:
         SageDict.update(answer, iterable)
     if len(keywords):
@@ -1836,6 +2042,7 @@ def ρσ_dict_literal(items: Any) -> SageDict:
     answer = runtime.object.create(runtime.reflect.get(SageDict, "prototype"))
     answer.jsmap = _new_map()
     answer.keymap = _new_map()
+    _dict_reset_metadata(answer)
     index = 0
     while index < items.length:
         _dict_storage_setitem(
@@ -1865,6 +2072,9 @@ def ρσ_scope_dict(values: Any) -> SageDict:
             # member in a compiler-generated class or scope namespace.
             answer.jsmap.set(key, values[key])
             answer.keymap.set(key, key)
+    metadata = _DICT_METADATA.get(answer)
+    metadata.state = _DICT_PRIMITIVE if answer.jsmap.size else _DICT_EMPTY
+    metadata.size = answer.jsmap.size
     return answer
 
 

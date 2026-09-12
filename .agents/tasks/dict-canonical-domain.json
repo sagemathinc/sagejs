@@ -1,0 +1,134 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "dict-canonical-domain",
+  "title": "Dict Canonical Domain",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Bounded M1 homogeneous canonical dictionary domains with equality-safe invalidation; preserve heterogeneous Python equality and stable map storage",
+  "base_commit": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
+  "claims": [
+    "src/baselib/containers.py",
+    "test/dict-canonical-domain.cjs",
+    "docs/dict-canonical-domain.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython equality semantics, adversarial mixed-key and mutation tests, operation counts, unchanged algebra timeout gate"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "node --test --test-name-pattern=^source: test/dict-canonical-domain.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:packages"
+  ],
+  "runs": [
+    {
+      "command": "node --test --test-name-pattern=^source: test/dict-canonical-domain.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.112,
+      "started_at": "2026-09-12T10:08:08.752Z",
+      "commit": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
+      "workspace_fingerprint": "17f477ae599df4e7d69cdaecb5e404914e94afd2a035141a0b532c5b8de4f292",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.45,
+      "started_at": "2026-09-12T10:09:12.700Z",
+      "commit": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
+      "workspace_fingerprint": "6acd47a5f9ca64cf7819fe5b5fcd3f9b433ea7d945e859658910d9f385265b52",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=^source: test/dict-canonical-domain.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.107,
+      "started_at": "2026-09-12T10:10:42.495Z",
+      "commit": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
+      "workspace_fingerprint": "9ef8ea214cf7bc20ad2de5c92633c0abb01af150936582e844288781f4792a8b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.586,
+      "started_at": "2026-09-12T10:10:43.248Z",
+      "commit": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
+      "workspace_fingerprint": "9ef8ea214cf7bc20ad2de5c92633c0abb01af150936582e844288781f4792a8b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:packages",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.579,
+      "started_at": "2026-09-12T10:12:17.187Z",
+      "commit": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
+      "workspace_fingerprint": "9ef8ea214cf7bc20ad2de5c92633c0abb01af150936582e844288781f4792a8b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=^source: test/dict-canonical-domain.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.114,
+      "started_at": "2026-09-12T10:28:16.203Z",
+      "commit": "d27c1b123d699de33b0a0502206e3d356515d090",
+      "workspace_fingerprint": "5626d827be21712bbeec51f847405dcf52bb83af9f66436b428d5c4832451113",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=^source: test/dict-canonical-domain.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.109,
+      "started_at": "2026-09-12T10:29:12.734Z",
+      "commit": "d27c1b123d699de33b0a0502206e3d356515d090",
+      "workspace_fingerprint": "9515b029b7bf3b6577e0377961da731e9fb9f4c715392bb30faee97449a1a56c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check test/dict-canonical-domain.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.029,
+      "started_at": "2026-09-12T10:29:13.498Z",
+      "commit": "d27c1b123d699de33b0a0502206e3d356515d090",
+      "workspace_fingerprint": "9515b029b7bf3b6577e0377961da731e9fb9f4c715392bb30faee97449a1a56c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Source-only guarded dictionary-domain candidate: private provider API, WeakMap metadata, checked token hits, mixed equality fallback, original-key retention and shared mutation paths. Follow-up clarifies stable native-value tokens and adds a BigInt collision regression; no storage algorithm changes. This lane does not claim runtime qualification or merge-readiness; combined provider/runtime qualification belongs to the coordinator.",
+    "risks": [
+      "Initial d27c1b123 candidate core-runtime source was 907726 bytes versus the unchanged 903000 allowance (base 900094, growth 7632): architecture:packages and test:changed's merge gate failed. The doc/test follow-up ran only source guard and Node syntax checks; prior strict/resource receipts do not qualify this new workspace. No build or allowance, mathematical, execution-memory or timeout change was made.",
+      "Runtime protocol tests and operation counts are authored but require a fresh same-source combined containers/provider build; no borrowed runtime receipt is accepted.",
+      "Existing native namespace writes conservatively fall back to GENERAL on size changes; arbitrary private-map mutation is not a supported API."
+    ],
+    "next_steps": [
+      "Coordinator integrates this exact storage commit with the separately owned residue provider, then performs normal combined build and explicit generated-code/resource reassessment with the source gate recorded as failed.",
+      "Run canonical-domain/provider, stable-map, compiler and integration regressions and the unchanged 60-second algebra gate before any speed or readiness claim."
+    ]
+  }
+}
