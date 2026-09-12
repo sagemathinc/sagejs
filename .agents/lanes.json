@@ -4,6 +4,8 @@
     "test/",
     "bench/",
     "docs/",
+    "website/reference.html",
+    "website/reference-data.json",
     "agents/hyperelliptic-magma-pari-performance-plan.md",
     "agents/hyperelliptic-magma-pari-performance-completion-audit.md",
     "upstream-tests/sage/"
