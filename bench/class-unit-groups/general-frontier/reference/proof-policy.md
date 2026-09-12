@@ -5,6 +5,81 @@ qualification or detached certificate verification. Both CLIs accept
 `--proof-policy conditional-grh|unconditional`; the default is conditional, but
 every new request serializes its chosen policy explicitly.
 
+## Whole-batch retention (v4)
+
+New multi-iteration requests emit `sagejs-pari-frontier-screen-v4` or
+`sagejs-hecke-frontier-screen-v4`. Single iterations still use v3. Historical
+v3 batches keep their documented last-only meaning; they are not upgraded.
+The v2 descriptions in the separate explicit-output and witness documents are
+historical format introductions; this document specifies the current policy.
+
+V4 retains the v3 header and last `compact` summary, adds
+`seed_scope="once-per-batch"` and an ordered `iteration_outputs` array, and sets
+`batch_outputs_complete=true`. Each array member has exactly `iteration`
+(contiguous integers 1 through N), `compact`, and `proof_execution`. The last
+member's compact object must equal the header summary. Every member is strictly
+validated, including all exact leaves and witness dimensions, under the same
+request precision, proof policy and source-bound computation. Exact scalar
+summaries must agree across iterations, but generators and witnesses need not
+be identical. Aggregate proof durations must equal the sum of the individual
+records. Each unconditional record attests one full proof execution; conditional
+records remain null. This is execution evidence, not independent proof replay.
+
+Every iteration still constructs fresh field/bnf state. The seed initializes the
+batch once, not each member separately; ordinal metadata must not be interpreted
+as an independently seeded singleton request. Only ordinary compact data or its
+serialization is retained, never previous live mathematical contexts.
+
+Retained entry serialization occurs inside the aggregate worker timer. PARI also
+assembles the final v4 envelope inside that timer; its singleton v3 envelope
+boundary is unchanged. Hecke retains its existing final transport-envelope
+serialization outside the timer, with each entry's complete compact
+materialization inside. No per-iteration durations are invented from the batch
+average. Neither format measures cached-answer retrieval.
+
+Both producers count retained serialized entry bytes, the duplicated last
+compact summary, and 64 KiB reserved envelope headroom against the existing
+32 MiB response cap. A producer guard raises `batch output limit`; the outcome
+is a retained error, not a truncated successful batch. The receiver's independent
+output cap, process memory limit and cleanup rules remain unchanged. Very large
+compact outputs can therefore decline, and no automatic smaller-batch retry is
+authorized. Failed or partial batches are not normalized as successful members.
+
+The receiver uses internal singleton *validation views* to reuse the existing
+strict v3 compact validators. These views are neither emitted measurements nor
+claims of per-iteration RNG resets. Normalized v4 rows retain every original
+entry, the seed scope, and each engine's unchanged regulator guarantee. The
+single-sample discovery pairer remains single-sample and unqualified; this patch
+does not invent a repeated-timing qualification report or matching enclosures.
+
+For future controlled sampling, predeclare per-engine batch counts from existing
+discovery so tiny fresh batches contain at least one second of timed work. A
+completed batch below that duration stays below-duration evidence; it is not a
+license to retry without reservation. Seconds-scale cases can use v3 singletons
+with at least three fresh samples. Keep 100/200-bit requests and unconditional
+controls explicit. PARI's working-precision regulator is still not mathematically
+equivalent to Hecke's absolute-radius enclosure.
+
+Offline validation adds `runner/test_batch_evidence.py` for both precisions and
+policies, early-member corruptions, missing/reordered/duplicate members, proof
+sum and policy splices, partial output, caps and historical v3 semantics. Static
+worker assertions are not live GP/Julia validation. The new worker source still
+requires separately authorized bounded live diagnostics and platform checks;
+M0 qualification and independent detached replay remain incomplete.
+
+Prepared optional live gate (never part of default offline tests):
+`persistent/local-smoke.py --batch-evidence-matrix --seconds 180 --output NEW_DIR
+--local-uncontrolled`, with explicit engine/executable/worker and the already
+provisioned Hecke project/depot. This predeclares exactly 24 requests: the existing
+three toy fields, both proof policies, both precisions, each once as v3 singleton
+and once as v4 two-iteration batch. All 36 compact outputs receive the existing
+decoded exact toy equations/mutation checks; 18 iterations use unconditional
+proof. Each engine uses one process, with startup and five seconds reserved
+cleanup included in its 180-second deadline. No retry, environment build, or
+extra field is allowed. Completion records retained and toy-replayed output
+counts separately. These toy checks are not general independent completeness
+proofs and the local wall times are not controlled performance measurements.
+
 ## Complete-request boundary
 
 Every iteration constructs a fresh field and performs all requested work. The
@@ -29,7 +104,7 @@ calls to reviewed source. They are not independent proof replay.
 
 ## Explicit versions and execution records
 
-Both policies now emit `sagejs-pari-frontier-screen-v3` or
+The original explicit-policy v3 introduction emitted `sagejs-pari-frontier-screen-v3` or
 `sagejs-hecke-frontier-screen-v3`. Exact compact leaves, class-generator order,
 literal-product witness semantics and torsion-first unit coordinates are
 unchanged. PARI still uses its scalar result plus `FRONTIER_COMPACT_JSON` frame.

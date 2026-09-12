@@ -302,6 +302,14 @@ def validate_hecke_shape(output, degree=None, bits=200):
     try:
         result = json.loads(output)["result"]
         schema = result["schema"]
+        if schema == "sagejs-hecke-frontier-screen-v4":
+            views = shared.batch_iteration_views(
+                result, "hecke", result["proof_policy"], result["iterations"]
+            )
+            return all(
+                validate_hecke_shape(json.dumps({"result": view}), degree, bits)
+                for view in views
+            )
         if schema not in (
             "sagejs-hecke-frontier-screen-v1",
             "sagejs-hecke-frontier-screen-v2",

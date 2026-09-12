@@ -15,7 +15,16 @@ for line in eachline(stdin)
         id = request.id
         measured = @timed frontier_case(request.id, request.coefficients,
                                         request.bits, request.iterations, request.seed, request.proof_policy)
-        toy = toy_replay ? replay_toy_payload(measured.value, request.coefficients) : nothing
+        toy = if !toy_replay
+            nothing
+        elseif measured.value.schema == "sagejs-hecke-frontier-screen-v4"
+            (scope="test-only-every-batch-output-not-independent-proof",
+             iteration_checks=[(iteration=entry.iteration,
+                checks=replay_toy_payload((compact=entry.compact,), request.coefficients))
+                for entry in measured.value.iteration_outputs])
+        else
+            replay_toy_payload(measured.value, request.coefficients)
+        end
         println(frontier_json((status="ok", result=measured.value,
             diagnostics=(scope="frontier_case-only-not-final-envelope-serialization",
                          julia_compile_seconds=string(measured.compile_time),

@@ -24,7 +24,7 @@ TOY_FIELDS = (
 )
 
 
-def matrix_requests():
+def matrix_requests(batch_evidence=False):
     requests = []
     for policy in supervisor.shared.PROOF_POLICIES:
         for bits in (100, 200):
@@ -44,10 +44,81 @@ def matrix_requests():
                         ),
                     )
                 )
-    requests.append(
-        dict(requests[7], label="proof-unconditional-batch", bits=100, iterations=2)
-    )
+    if batch_evidence:
+        requests += [
+            dict(r, label=r["label"] + "-batch", iterations=2) for r in requests
+        ]
+    else:
+        requests.append(
+            dict(requests[7], label="proof-unconditional-batch", bits=100, iterations=2)
+        )
     return requests
+
+
+def retained_compacts(result):
+    """Only after full answer validation; preserve original member ordinals."""
+    if result["schema"].endswith("-v4"):
+        return [entry["compact"] for entry in result["iteration_outputs"]]
+    return [result["compact"]]
+
+
+def pari_toy_commands(decoded, declared, make_commands):
+    commands = []
+    for result, request in zip(decoded, declared, strict=True):
+        for compact in retained_compacts(result):
+            # These are exact-array replay inputs, never timing receipts.
+            commands += make_commands(
+                dict(result, compact=compact),
+                request["coefficients"],
+                native_identity=False,
+            )
+    return commands
+
+
+def validate_toy_checks(toy, compact):
+    count = len(compact["class_generators"])
+    if (
+        not isinstance(toy, dict)
+        or set(toy)
+        != {"scope", "literal_equations", "rejected_mutations", "class_powers", "units"}
+        or any(
+            type(toy[key]) is not int
+            for key in (
+                "literal_equations",
+                "rejected_mutations",
+                "class_powers",
+                "units",
+            )
+        )
+        or toy["scope"] != "test-only-decoded-exact-payload-not-independent-proof"
+        or toy["literal_equations"] != count + 3
+        or toy["rejected_mutations"] != count + 3
+        or toy["class_powers"] != count
+        or toy["units"] != sum(compact["signature"])
+    ):
+        raise ValueError("missing declared decoded toy checks")
+
+
+def validate_hecke_toys(result, toy):
+    if result["schema"].endswith("-v4"):
+        if (
+            set(toy) != {"scope", "iteration_checks"}
+            or toy["scope"] != "test-only-every-batch-output-not-independent-proof"
+            or len(toy["iteration_checks"]) != result["iterations"]
+        ):
+            raise ValueError("missing batch toy replay")
+        for ordinal, (compact, record) in enumerate(
+            zip(retained_compacts(result), toy["iteration_checks"]), 1
+        ):
+            if (
+                set(record) != {"iteration", "checks"}
+                or type(record["iteration"]) is not int
+                or record["iteration"] != ordinal
+            ):
+                raise ValueError("toy replay ordinal mismatch")
+            validate_toy_checks(record["checks"], compact)
+    else:
+        validate_toy_checks(toy, result["compact"])
 
 
 def proof_matrix(args):
@@ -59,7 +130,7 @@ def proof_matrix(args):
     args.output.mkdir(parents=True, exist_ok=False)
     started = time.monotonic()
     worker = None
-    status, completed, decoded = "error", 0, []
+    status, completed, decoded, replayed_outputs = "error", 0, [], 0
 
     def save(name, value):
         supervisor.immutable_save(args.output / (name + ".json"), value)
@@ -90,7 +161,7 @@ def proof_matrix(args):
         provenance["diagnostic_sha256"] = {
             str(p): supervisor.digest(p) for p in sources
         }
-        declared = matrix_requests()
+        declared = matrix_requests(getattr(args, "batch_evidence_matrix", False))
         save(
             "inputs",
             dict(
@@ -102,6 +173,7 @@ def proof_matrix(args):
                 cleanup_reserved_seconds=5,
                 qualification_evidence=False,
                 independent_replay=False,
+                retained_output_count=sum(r["iterations"] for r in declared),
                 controls="local-uncontrolled-correctness-only",
                 one_process=True,
                 source_text={
@@ -173,18 +245,11 @@ def proof_matrix(args):
                 answer = supervisor.shared.strict_json(response["stdout"])
                 result = answer["result"]
                 toy = answer["diagnostics"]["toy_replay"]
-                count = len(result["compact"]["class_generators"])
-                if (
-                    toy["scope"]
-                    != "test-only-decoded-exact-payload-not-independent-proof"
-                    or toy["literal_equations"] != count + 3
-                    or toy["rejected_mutations"] != count + 3
-                    or toy["class_powers"] != count
-                    or toy["units"] != sum(result["compact"]["signature"])
-                ):
-                    raise ValueError("missing declared decoded toy checks")
+                validate_hecke_toys(result, toy)
+                replayed_outputs += len(retained_compacts(result))
             if any(
-                result["compact"][key] != expected
+                compact[key] != expected
+                for compact in retained_compacts(result)
                 for key, expected in request["expected"].items()
             ):
                 raise ValueError("tiny exact abstract invariant disagrees")
@@ -200,10 +265,7 @@ def proof_matrix(args):
             commands = [
                 f"read({json.dumps(str(HERE.parent / 'pari-explicit-output-smoke.gp'))});"
             ]
-            for result, request in zip(decoded, declared):
-                commands += replay.replay_commands(
-                    result, request["coefficients"], native_identity=False
-                )
+            commands += pari_toy_commands(decoded, declared, replay.replay_commands)
             commands += [
                 'print("FRONTIER_TOY_REPLAY|ok");',
                 'print("FRONTIER_TOY_DONE");',
@@ -218,6 +280,7 @@ def proof_matrix(args):
                 or response["stdout"] != "FRONTIER_TOY_REPLAY|ok\n"
             ):
                 raise ValueError("decoded exact toy replay failed")
+            replayed_outputs = sum(len(retained_compacts(r)) for r in decoded)
         if any(
             supervisor.digest(p) != h
             for p, h in {
@@ -238,6 +301,8 @@ def proof_matrix(args):
             dict(
                 status=status,
                 completed_requests=completed,
+                retained_outputs=sum(len(retained_compacts(r)) for r in decoded),
+                toy_replayed_outputs=replayed_outputs,
                 elapsed_seconds=time.monotonic() - started,
                 process_closed=worker is None or worker.child is None,
                 qualification_evidence=False,
@@ -271,11 +336,12 @@ def main():
         default="conditional-grh",
     )
     parser.add_argument("--proof-policy-matrix", action="store_true")
+    parser.add_argument("--batch-evidence-matrix", action="store_true")
     parser.add_argument("--seconds", type=int, default=180)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--local-uncontrolled", action="store_true", required=True)
     args = parser.parse_args()
-    if args.proof_policy_matrix:
+    if args.proof_policy_matrix or args.batch_evidence_matrix:
         proof_matrix(args)
         return
     factory, provenance = supervisor.worker_factory(

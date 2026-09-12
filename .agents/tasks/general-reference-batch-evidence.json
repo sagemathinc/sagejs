@@ -1,0 +1,96 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-reference-batch-evidence",
+  "title": "General Reference Batch Evidence",
+  "lane": "arithmetic-algebra",
+  "status": "blocked",
+  "owner": "user",
+  "objective": "Retain every fresh reference batch compact output within existing caps with strict source-bound validation; retain unmatched regulator guarantees",
+  "base_commit": "e55646d011b94bbca1db8e7139fee88d7774c92e",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/reference/pari-screen.gp",
+    "bench/class-unit-groups/general-frontier/reference/hecke/screen.jl",
+    "bench/class-unit-groups/general-frontier/reference/runner/screen-batch.py",
+    "bench/class-unit-groups/general-frontier/reference/runner/summarize-persistent.py",
+    "bench/class-unit-groups/general-frontier/reference/runner/summarize-screen.py",
+    "bench/class-unit-groups/general-frontier/reference/persistent/supervisor.py",
+    "bench/class-unit-groups/general-frontier/reference/persistent/local-smoke.py",
+    "bench/class-unit-groups/general-frontier/reference/persistent/hecke-bootstrap.jl",
+    "bench/class-unit-groups/general-frontier/reference/runner/test_batch_evidence.py",
+    "bench/class-unit-groups/general-frontier/reference/proof-policy.md"
+  ],
+  "dependencies": [
+    "general-hecke-generator-witness"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Offline exact schema mutations and pinned source review; live CAS qualification pending coordinator authorization"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "python3 -B -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+    "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+    "pnpm test:changed -- --base e55646d011b94bbca1db8e7139fee88d7774c92e"
+  ],
+  "runs": [
+    {
+      "command": "python3 -B -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.057,
+      "started_at": "2026-09-12T17:19:33.723Z",
+      "commit": "e55646d011b94bbca1db8e7139fee88d7774c92e",
+      "workspace_fingerprint": "90f5e4364393d704e9beb961513c4b88a00c7e83d0f654b0f29243b90959d3ae",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.877,
+      "started_at": "2026-09-12T17:19:35.422Z",
+      "commit": "e55646d011b94bbca1db8e7139fee88d7774c92e",
+      "workspace_fingerprint": "90f5e4364393d704e9beb961513c4b88a00c7e83d0f654b0f29243b90959d3ae",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base e55646d011b94bbca1db8e7139fee88d7774c92e",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.789,
+      "started_at": "2026-09-12T17:19:38.926Z",
+      "commit": "e55646d011b94bbca1db8e7139fee88d7774c92e",
+      "workspace_fingerprint": "90f5e4364393d704e9beb961513c4b88a00c7e83d0f654b0f29243b90959d3ae",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Source-only v4 batches retain and validate each fresh compact/proof output within existing output and memory limits. V3 singleton and historical last-only formats retain their meanings. Normalization preserves every member; singleton discovery pairing stays unchanged and regulators remain explicitly unmatched. New optional one-process 180-second diagnostic predeclares 24 requests/36 compact toy replays/18 unconditional iterations per engine. Offline tests pass, but live CAS and platform/build qualification are pending; draft only.",
+    "risks": [
+      "This is reference evidence plumbing, not independent completeness proof or performance qualification. PARI remains a working-precision regulator approximation and Hecke retains its stronger absolute-radius enclosure.",
+      "No GP or Julia execution has yet validated v4 source. Prepared bounded diagnostic must be prepaid and authorized by the coordinator; no retry or environment build is implicit.",
+      "No native or full build was requested or run in this narrow worktree. Required native/platform gates remain pending and no resource allowances were changed.",
+      "Exact-base test:changed passed merge invariants then failed before the unit suite on missing dist/tools/compiler.js in this intentionally unbuilt worktree. The failed receipt is retained; no native/build gate is waived.",
+      "PARI batch envelope assembly is inside the worker timer; Hecke final transport envelope retains its historical outside-timer boundary. Each engine materializes every compact member inside its timer. The timing distinction is documented.",
+      "pnpm parallel:new used --no-install; the first required pnpm parallel:check nevertheless provisioned the pinned local dependency graph with 144 reused packages and zero downloads. Native builds were deferred."
+    ],
+    "next_steps": [
+      "Coordinator-reviewed source must pass the fixed optional live matrix on existing pinned PARI/Hecke environments, retaining all successes/failures and all 36 toy replays.",
+      "Obtain fresh strict/native/platform and exact-base changed receipts before marking non-draft or review; preserve existing failures and historical evidence.",
+      "Predeclare controlled per-engine batch counts and independent repetitions separately, retain below-duration/censored samples, and do not feed v4 batch reports into the singleton discovery pairer."
+    ]
+  }
+}
