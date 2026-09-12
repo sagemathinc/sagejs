@@ -1,0 +1,72 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-reference-identity",
+  "title": "General Reference Identity",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Bounded identity-only maximal-order reference diagnostics with exact offline consistency checks",
+  "base_commit": "ee6f5e365ab6c34ac58d0b092dfb2948869f6c63",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/reference/identity/"
+  ],
+  "dependencies": [
+    "general-reference-repeat-report"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Offline exact rational basis and mutation fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "python3 -B bench/class-unit-groups/general-frontier/reference/identity/test_identity.py",
+    "pnpm test:changed -- --base ee6f5e365ab6c34ac58d0b092dfb2948869f6c63"
+  ],
+  "runs": [
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/identity/test_identity.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.294,
+      "started_at": "2026-09-12T19:43:34.226Z",
+      "commit": "ee6f5e365ab6c34ac58d0b092dfb2948869f6c63",
+      "workspace_fingerprint": "ec0c2805a391361077f86648d15b28e2da970b4aea3985b141aeb497021be3c7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base ee6f5e365ab6c34ac58d0b092dfb2948869f6c63",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.849,
+      "started_at": "2026-09-12T19:43:44.550Z",
+      "commit": "ee6f5e365ab6c34ac58d0b092dfb2948869f6c63",
+      "workspace_fingerprint": "ec0c2805a391361077f86648d15b28e2da970b4aea3985b141aeb497021be3c7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented a pinned, prepaid, one-shot 38-input identity-only PARI/Hecke diagnostic, exact offline order consistency checks, and 11 passing offline tests. No CAS execution or target dispatch occurred.",
+    "risks": [
+      "Exact-base changed validation failed because this fresh worktree has no dist/tools/compiler.js; strict/native broad validation and actual pinned CAS runtime fixtures remain outstanding.",
+      "Order consistency and reference agreement do not independently prove maximality, irreducibility, or distinct field admission.",
+      "Coordinator must enforce and prepay the external whole-driver deadline, runtime custody, and admitted controls before any dispatch."
+    ],
+    "next_steps": [
+      "Keep PR draft until broad validation and reviewed separately admitted runtime fixtures pass.",
+      "Coordinator reviews frozen source, reserves the existing ledger, and stages immutable inputs without changing the 38 candidate selection."
+    ]
+  }
+}
