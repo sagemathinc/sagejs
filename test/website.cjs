@@ -57,6 +57,12 @@ const referenceScript = fs.readFileSync(
   path.join(website, "reference.js"), "utf8",
 );
 
+test("reference HTML has one body and no unresolved merge markers", () => {
+  assert.doesNotMatch(referenceHtml, /^(?:<{7}(?: |$)|={7}$|>{7}(?: |$)|\|{7}(?: |$))/m);
+  assert.equal((referenceHtml.match(/<body\b[^>]*>/gi) || []).length, 1);
+  assert.equal((referenceHtml.match(/<\/body\s*>/gi) || []).length, 1);
+});
+
 test("dashboard data has a stable, complete schema", () => {
   assert.equal(payload.schemaVersion, 2);
   assert.match(payload.updated, /^\d{4}-\d{2}-\d{2}$/);
