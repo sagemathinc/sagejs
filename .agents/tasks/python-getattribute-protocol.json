@@ -1,0 +1,60 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-getattribute-protocol",
+  "title": "Python Getattribute Protocol",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Specify and diagnose user getattribute interception and default object lookup without touching frozen runtime",
+  "base_commit": "02a683d213072c3129da1f71e2aa47de447cfc4a",
+  "claims": [
+    "test/fixtures/python-getattribute-protocol.py",
+    "test/python-getattribute-protocol.cjs",
+    "docs/python-getattribute-protocol.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython 3.14.4 exact observations in Python and Sage sessions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_LOOKUP_ORACLE_ROOT=/home/user/sagejs-worktrees/python-module-namespace-integration node test/python-getattribute-protocol.cjs --report",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.752,
+      "started_at": "2026-09-12T11:13:46.783Z",
+      "commit": "02a683d213072c3129da1f71e2aa47de447cfc4a",
+      "workspace_fingerprint": "ceb29198d83ca6f03500926fb7ac5d2b997ed94e25a65f48b1c17bc16ef75f10",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Narrow diagnosis and strict differential fixture for user attribute interception; 14 cases, 12 differences per mode on frozen 419a artifact. No runtime edits or build.",
+    "risks": [
+      "Report mode collects evidence and is not a compatibility pass; default strict invocation remains failing.",
+      "The standard lane build and integration validations remain unperformed; this checkpoint is not ready for feature adoption."
+    ],
+    "next_steps": [
+      "Separate the default descriptor resolver from public interception and fallback.",
+      "Preserve and measure the no-hook prepared method path; coordinate builtins ownership before implementation."
+    ]
+  }
+}
