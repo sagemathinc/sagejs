@@ -21,6 +21,7 @@ var {
 
 const COMPILER_BASELIB_MODULES = new Set([
   "__future__.py",
+  "bootstrap_shared.py",
   "builtins.py",
   "compiler_bootstrap.py",
   "containers.py",
@@ -92,6 +93,8 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
   items.sort(function (left, right) {
     if (left === "runtime_primitives.py") return -1;
     if (right === "runtime_primitives.py") return 1;
+    if (left === "bootstrap_shared.py") return -1;
+    if (right === "bootstrap_shared.py") return 1;
     if (left === "builtins.py") return -1;
     if (right === "builtins.py") return 1;
     return left.localeCompare(right);
@@ -228,7 +231,8 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
     // values later in the same deterministic sequence.
     modules.sort(function (left, right) {
       const priority = function (module) {
-        if (module.filename === "runtime_primitives.py") return 0;
+        if (module.filename === "runtime_primitives.py") return -1;
+        if (module.filename === "bootstrap_shared.py") return 0;
         if (
           module.filename === "sagejs_bootstrap.py" ||
           module.filename === "compiler_bootstrap.py"
