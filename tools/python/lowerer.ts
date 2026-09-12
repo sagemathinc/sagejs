@@ -2176,7 +2176,7 @@ export class PythonCstLowerer {
   private lowerLambda(node: SyntaxNode): any {
     const parameters = node.childForFieldName("parameters");
     const body = this.field(node, "body");
-    const isGenerator = this.containsNodeType(node, "yield");
+    const isGenerator = this.containsYieldInScope(body);
     const args = parameters ? this.lowerParameters(parameters) : this.emptyParameters();
     const inherited = this.functionFrames.at(-1);
     const globals = new Set<string>();
@@ -2261,7 +2261,7 @@ export class PythonCstLowerer {
     const returnAnnotationText = returnType ? returnType.text : null;
     const bodyNode = this.field(node, "body");
     const isCoroutine = node.children.some((part) => part.text === "async");
-    const isGenerator = isCoroutine || this.containsNodeType(node, "yield");
+    const isGenerator = isCoroutine || this.containsYieldInScope(bodyNode);
     const methodDecoratorNames = decorators.map((decorator) =>
       decorator.expression?.property ?? decorator.expression?.name
     );
@@ -2382,14 +2382,44 @@ export class PythonCstLowerer {
     return { body: kept, docstrings };
   }
 
-  private containsNodeType(node: SyntaxNode, type: string): boolean {
+  private containsYieldInScope(node: SyntaxNode): boolean {
     const visit = (current: SyntaxNode): boolean => {
-      if (current !== node && (
+      if (current.type === "yield") return true;
+      // A definition's defaults (and decorators on its surrounding decorated
+      // definition) execute here, but its body belongs to the new scope.
+      if (
         current.type === "function_definition" ||
-        current.type === "lambda" ||
-        current.type === "class_definition"
-      )) return false;
-      if (current.type === type) return true;
+        current.type === "lambda"
+      ) {
+        const parameters = current.childForFieldName("parameters");
+        if (parameters?.namedChildren.some((parameter) => {
+          const value = parameter.childForFieldName("value");
+          const annotation = parameter.childForFieldName("type");
+          return !!(value && visit(value)) || !!(
+            this.annotationsMode && this.annotationsMode !== "future" &&
+            annotation && visit(annotation)
+          );
+        })) return true;
+        const returnType = current.childForFieldName("return_type");
+        return !!(this.annotationsMode && this.annotationsMode !== "future" &&
+          returnType && visit(returnType));
+      }
+      if (current.type === "class_definition") {
+        const bases = current.childForFieldName("superclasses");
+        return !!(bases && visit(bases));
+      }
+      if ([
+        "list_comprehension", "set_comprehension", "dictionary_comprehension",
+        "generator_expression",
+      ].includes(current.type)) {
+        // Only the first iterable executes in the enclosing scope. The
+        // implicit comprehension scope owns all other expressions.
+        const clause = current.namedChildren.find(
+          (child) => child.type === "for_in_clause",
+        );
+        const iterable = clause?.childForFieldName("right");
+        return !!(iterable && visit(iterable));
+      }
       return current.namedChildren.some(visit);
     };
     return visit(node);
