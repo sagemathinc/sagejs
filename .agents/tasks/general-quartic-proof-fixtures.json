@@ -101,10 +101,60 @@
       "commit": "fe2918cf20305334678791845e505a9919523ad8",
       "workspace_fingerprint": "9e9850e3d1b28a108a48ed304d78e29c725321dc524e5ac6bce0d958daec63f6",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-concurrency=1 test/number-field-class-unit-auto-preflight.cjs test/number-field-quartic-class-number-projection.cjs test/number-field-quartic-minkowski-continuation.cjs test/number-field-quartic-minkowski-class-number.cjs test/number-field-quartic-minkowski-public-class-group.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 272.271,
+      "started_at": "2026-09-12T05:40:50.725Z",
+      "commit": "769679c773d56c8d351416fdcd9b026d7e81aa84",
+      "workspace_fingerprint": "815f959af2909d574ce70814f908e09f4d27b028734db55bc10bc566858ac076",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-concurrency=1 test/number-field-class-unit-bf-proof-policy.cjs test/number-field-class-unit-zero-factor-preflight.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.552,
+      "started_at": "2026-09-12T05:45:23.664Z",
+      "commit": "769679c773d56c8d351416fdcd9b026d7e81aa84",
+      "workspace_fingerprint": "815f959af2909d574ce70814f908e09f4d27b028734db55bc10bc566858ac076",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-context.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.439,
+      "started_at": "2026-09-12T05:46:04.909Z",
+      "commit": "769679c773d56c8d351416fdcd9b026d7e81aa84",
+      "workspace_fingerprint": "815f959af2909d574ce70814f908e09f4d27b028734db55bc10bc566858ac076",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.359,
+      "started_at": "2026-09-12T05:46:21.038Z",
+      "commit": "769679c773d56c8d351416fdcd9b026d7e81aa84",
+      "workspace_fingerprint": "815f959af2909d574ce70814f908e09f4d27b028734db55bc10bc566858ac076",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.04,
+      "started_at": "2026-09-12T05:47:20.098Z",
+      "commit": "769679c773d56c8d351416fdcd9b026d7e81aa84",
+      "workspace_fingerprint": "815f959af2909d574ce70814f908e09f4d27b028734db55bc10bc566858ac076",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Corrected four remaining generic BF proof-mode fixtures without changing production mathematics. Retained all nontrivial conditional invariants, exact map and saturation checks; added fresh/cached unconditional declines and preserved independent exact scalar and principal-Minkowski h=1 controls. The public-call scan and a separate direct-certificate scan found the additional context constructor mismatch. Pre-commit focused runs pass: seven cubic/quartic tests, four context/checkpoint tests, two BF/zero-base controls, and strict Python checks. Post-commit receipts follow separately.",
+    "summary": "Code commit 769679c77 corrects four remaining generic BF proof-mode fixtures without changing production mathematics. Retained all nontrivial conditional invariants, exact map and saturation checks; added fresh/cached unconditional declines and preserved independent exact scalar and principal-Minkowski h=1 controls. The public-call scan and separate direct-certificate scan found the context constructor mismatch. Post-commit runs pass all 13 selected integration tests: seven cubic/quartic tests in 272.27 seconds, two BF/zero-base controls in 40.55 seconds, and four context/checkpoint tests in 15.44 seconds. Strict Python passes all 384 modules with zero errors in 58.36 seconds; git diff --check passes. These receipts share workspace fingerprint 815f959af2909d574ce70814f908e09f4d27b028734db55bc10bc566858ac076. The lane remains active only because required full native/integration/platform qualification belongs to integration and was not run or waived here.",
     "risks": [
       "Full integration, native, and non-Linux qualification remain with the integration lane. This bounded test-only task does not run full native/build suites or waive their contract requirements.",
       "A static fixture audit is not a claim that all integration files have run. Generic unconditional BF class/unit completion remains unsupported.",
