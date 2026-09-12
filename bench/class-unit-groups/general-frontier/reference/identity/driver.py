@@ -217,18 +217,20 @@ def run_process(
             "stderr": bytes(errors).decode("utf-8", "replace"),
         }
     except (OSError, ValueError) as error:
-        answer = {"status": "infrastructure-error", "stdout": "", "stderr": str(error)}
+        output, errors = getattr(worker, "capture", (b"", b""))
+        answer = {
+            "status": "infrastructure-error",
+            "stdout": bytes(output).decode("utf-8", "replace"),
+            "stderr": bytes(errors).decode("utf-8", "replace"),
+            "infrastructure_error": str(error),
+        }
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, old_handler)
         try:
             worker.close()
         except Exception as error:
-            answer = {
-                "status": "cleanup-error",
-                "stdout": answer.get("stdout", ""),
-                "stderr": str(error),
-            }
+            answer.update(status="cleanup-error", cleanup_error=str(error))
     answer.update(
         whole_process_and_cleanup_seconds=time.monotonic() - started,
         process_closed=worker.child is None,
@@ -237,6 +239,25 @@ def run_process(
         command=command,
     )
     return answer
+
+
+def retain_and_validate(path, receipt):
+    """Durably retain raw transport evidence before any exact checking."""
+    save(path, receipt)
+    if receipt["status"] != "ok":
+        return None
+    validation = {"raw_receipt_sha256": sha(path.read_bytes())}
+    try:
+        value = check.strict_json(receipt["stdout"])
+        validation["consistency"] = check.validate(
+            receipt["record"], value, receipt["engine"]
+        )
+        validation["status"] = "consistent-output"
+    except (ValueError, KeyError, TypeError, ZeroDivisionError) as error:
+        value = None
+        validation.update(status="invalid-output", error=str(error))
+    save(path.with_name(path.stem + "-validation.json"), validation)
+    return value
 
 
 def execute(input_path, admission_path, ledger_path, output):
@@ -281,19 +302,11 @@ def execute(input_path, admission_path, ledger_path, output):
                     "independent_maximality_replay": False,
                     **answer,
                 }
-                if answer["status"] == "ok":
-                    try:
-                        value = check.strict_json(answer["stdout"])
-                        receipt["consistency"] = check.validate(record, value, engine)
-                        accepted[engine] = value
-                    except (
-                        ValueError,
-                        KeyError,
-                        TypeError,
-                        ZeroDivisionError,
-                    ) as error:
-                        receipt.update(status="invalid-output", error=str(error))
-                save(output / f"{number:02}-{engine}.json", receipt)
+                value = retain_and_validate(
+                    output / f"{number:02}-{engine}.json", receipt
+                )
+                if value is not None:
+                    accepted[engine] = value
                 if answer["status"] in ("interrupted", "cleanup-error"):
                     return
             if set(accepted) == {"pari", "hecke"}:

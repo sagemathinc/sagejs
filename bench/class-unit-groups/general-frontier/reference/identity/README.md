@@ -15,7 +15,12 @@ a budget, or run a class/unit algorithm. The two emitters are deliberately small
   denominator with one `/`, never Julia's alternative `//` spelling.
 
 The output basis consists of rows in the original defining power basis. The
-PARI emitter rejects a changed defining polynomial. Both emitters use canonical
+raw engine receipt is fsynced and exclusively published before exact checking.
+A separate `*-validation.json` artifact binds its raw receipt hash; a missing
+validation artifact means checking did not finish, never success. Infrastructure
+and cleanup diagnostics are separate from retained CAS stdout and stderr.
+
+The PARI emitter rejects a changed defining polynomial. Both emitters use canonical
 integer/rational strings, retaining exact signed discriminants and indices.
 
 ## What the offline checks establish

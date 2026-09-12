@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import check
 import driver
@@ -141,6 +142,45 @@ class ExactIdentity(unittest.TestCase):
 
 
 class FakeProcess(unittest.TestCase):
+    def test_raw_receipt_survives_checker_crash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "raw.json"
+            receipt = {
+                "status": "ok",
+                "stdout": json.dumps(fixture()),
+                "record": record(),
+                "engine": "pari",
+            }
+            with patch.object(
+                check, "validate", side_effect=RuntimeError("checker crash")
+            ):
+                with self.assertRaises(RuntimeError):
+                    driver.retain_and_validate(path, receipt)
+            self.assertEqual(json.loads(path.read_text()), receipt)
+            self.assertFalse(path.with_name("raw-validation.json").exists())
+
+    def test_infrastructure_and_cleanup_preserve_capture(self):
+        class BrokenWorker:
+            child = None
+            capture = (b"partial output", b"CAS diagnostic")
+
+            def __init__(self, *args):
+                pass
+
+            def start(self, *args):
+                raise OSError("transport failure")
+
+            def close(self):
+                raise RuntimeError("cleanup failure")
+
+        with patch.object(driver.process, "Worker", BrokenWorker):
+            answer = driver.run_process([], {}, b"", b"marker", seconds=1)
+        self.assertEqual(answer["status"], "cleanup-error")
+        self.assertEqual(answer["stdout"], "partial output")
+        self.assertEqual(answer["stderr"], "CAS diagnostic")
+        self.assertEqual(answer["infrastructure_error"], "transport failure")
+        self.assertEqual(answer["cleanup_error"], "cleanup failure")
+
     def test_success_timeout_overflow_and_missing_executable(self):
         marker = b"IDENTITY_DONE|" + b"a" * 32
         code = 'import sys; marker=sys.stdin.readline().strip(); print("{}"); print(marker); sys.stdout.flush(); sys.stdin.read()'
