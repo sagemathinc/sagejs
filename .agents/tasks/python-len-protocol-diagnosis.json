@@ -1,0 +1,60 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-len-protocol-diagnosis",
+  "title": "Python Len Protocol Diagnosis",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Characterize public len protocol and private host-length dependencies without changing core behavior",
+  "base_commit": "02a683d213072c3129da1f71e2aa47de447cfc4a",
+  "claims": [
+    "test/python-len-protocol-diagnosis.cjs",
+    "test/fixtures/python-len-protocol-diagnosis.py",
+    "docs/python-len-protocol-diagnosis.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython 3.14 and qualified Sage.js artifact 419a10fb1"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_LEN_DIAGNOSIS_ROOT=/home/user/sagejs-worktrees/python-module-namespace-integration node test/python-len-protocol-diagnosis.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.045,
+      "started_at": "2026-09-12T10:17:39.802Z",
+      "commit": "02a683d213072c3129da1f71e2aa47de447cfc4a",
+      "workspace_fingerprint": "3c7657fbe7b167d5106abfd25096019f271027b2554841a23adf8acd24454ca4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Tests/docs-only diagnosis: 22 CPython 3.14 comparisons and 11 host probes against read-only qualified artifact 419a10fb1; no core edits or builds. Thirteen differences include length protocol failures and surrogate representation collapse.",
+    "risks": [
+      "Reporting diagnostic success does not mean public semantics match CPython.",
+      "Standard lane build/compiler/integration validation was intentionally not run: this task prohibits builds and relies on an explicitly identified historical artifact."
+    ],
+    "next_steps": [
+      "Review public/private len split before changing the shared helper.",
+      "Treat Unicode representation as a separately scoped correctness decision."
+    ]
+  }
+}
