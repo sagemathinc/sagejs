@@ -155,6 +155,20 @@ matches the production catalog; another pack path or wrong hash remains rejected
 by regression tests. Exact-library and renderer checks remain active.
 The first full corpus fed through stdin rejected a `Convertible` instance;
 file execution passes, as does a smaller stdin conversion probe. This unresolved
-stdin-corpus finding is not erased or claimed repaired by using file execution.
+stdin-corpus finding was subsequently localized to REPL input framing: blank
+lines inside the class submit it before its second method, with inconsistent
+indentation on the remaining method. It is not a native arithmetic or float
+conversion defect. Complete-program file execution is the packaging witness;
+the CLI's piped-program framing remains unchanged.
 The initial post-build run also omitted the reused native-prefix environment;
 its compile-fixture failure is distinct from the corrected descriptor failure.
+
+The corrected source completes another full build in 7m50s, reusing all 43
+families. Its runtime source is `85b374462`, with only the plan documentation
+advanced to `852544c9c` while building; no runtime bytes changed. All 14 pack
+tests pass again. Routine validation then finds a brittle negative-test fixture
+in `wasm-capabilities.cjs`: selecting the first fallback now picks an explicitly
+excluded statistics kernel, correctly triggering the aggregate-coverage guard
+before the expected receipt guard. Select an actual production-pack fallback
+for the receipt test and separately assert rejection for both excluded
+statistics descriptors. No capability is promoted and no guard is relaxed.

@@ -106,13 +106,27 @@ test("shared mathematical cores cannot contain Node-API symbols", () => {
 test("compiled and shared capabilities cannot claim unreceipted availability", () => {
   const changed = structuredClone(manifest);
   const kernel = changed.capabilities.find((entry) =>
-    entry.kind === "production-kernel" && entry.status === "fallback"
+    entry.kind === "production-kernel" && entry.status === "fallback" &&
+    entry.compiled_coverage?.production_pack === true
   );
+  assert.ok(kernel, "requires a receipted production-pack fallback fixture");
   kernel.status = "available";
   assert.throws(
     () => validateManifest(changed),
     /production capability receipt and availability status disagree/,
   );
+});
+
+test("excluded prepared statistics cannot claim production Wasm availability", () => {
+  for (const id of ["numerical-statistics-sum-production", "numerical-statistics-centered-production"]) {
+    const changed = structuredClone(manifest);
+    const kernel = changed.capabilities.find(entry => entry.id === "kernel:" + id);
+    assert.ok(kernel);
+    assert.equal(kernel.compiled_coverage.production_pack, false);
+    kernel.status = "available";
+    assert.throws(() => validateManifest(changed),
+      /aggregate status disagrees with production kernel coverage/);
+  }
 });
 
 test("public workflow aliases contain only exact reviewed capability IDs", () => {
