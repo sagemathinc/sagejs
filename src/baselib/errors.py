@@ -57,11 +57,11 @@ def ρσ_positional_default(target_function: Any, from_end: int, name: str) -> A
 
 class BaseException(runtime.error):
     def __init__(self, *args: object) -> None:
-        # The baselib variadic ABI supplies a fresh native argument array.
-        # Copy without Python list decoration before making the public tuple.
-        argument_values = runtime.reflect.apply(runtime.array.prototype.slice, args, [])
-        count = runtime.reflect.get(argument_values, "length")
-        self.args = runtime.math_tuple(argument_values)
+        # The baselib variadic ABI already copies arguments into a fresh
+        # native array. Transfer that array to the tuple finalizer: copying
+        # it again adds allocation without protecting any caller-owned data.
+        count = runtime.reflect.get(args, "length")
+        self.args = runtime.reflect.apply(runtime.math_tuple, runtime.undefined, [args])
         if runtime.strict_equal(count, 0):
             message = ""
         elif runtime.strict_equal(count, 1):

@@ -30,6 +30,15 @@ assert first.args == ([7],)
 BaseException.__init__(first, 'reset', 2)
 assert first.args == ('reset', 2)
 assert second.args == ([7],)
+supplied = [1, 2]
+transferred = ValueError(*supplied)
+assert transferred.args == (1, 2)
+supplied.append(3)
+assert transferred.args == (1, 2)
+BaseException.__init__(transferred, *supplied)
+assert transferred.args == (1, 2, 3)
+supplied[0] = 9
+assert transferred.args == (1, 2, 3)
 assert bool(True) is True
 assert bool(False) is False
 assert bool(0) is False
