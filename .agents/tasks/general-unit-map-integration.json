@@ -304,6 +304,56 @@
       "commit": "eb0d53e2dd87bcd090d194e7edf168101a465864",
       "workspace_fingerprint": "dfc3c3718be6b11c4ca3ba68233a9f98e5ece3d00f403a3c3b9ccfd65ed2cee8",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 751.86,
+      "started_at": "2026-09-12T08:27:19.553Z",
+      "commit": "de26d2e2138106086410b161da208e9a6f33073b",
+      "workspace_fingerprint": "625032db6b57eabbbf19b57b1dbab43fc1252ad10eef6c530f78f61f559b4682",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm python:precompile:run",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 368.482,
+      "started_at": "2026-09-12T08:39:52.161Z",
+      "commit": "de26d2e2138106086410b161da208e9a6f33073b",
+      "workspace_fingerprint": "625032db6b57eabbbf19b57b1dbab43fc1252ad10eef6c530f78f61f559b4682",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 73.357,
+      "started_at": "2026-09-12T08:46:01.547Z",
+      "commit": "de26d2e2138106086410b161da208e9a6f33073b",
+      "workspace_fingerprint": "625032db6b57eabbbf19b57b1dbab43fc1252ad10eef6c530f78f61f559b4682",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 172.542,
+      "started_at": "2026-09-12T08:47:15.617Z",
+      "commit": "de26d2e2138106086410b161da208e9a6f33073b",
+      "workspace_fingerprint": "625032db6b57eabbbf19b57b1dbab43fc1252ad10eef6c530f78f61f559b4682",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 172.675,
+      "started_at": "2026-09-12T08:50:40.873Z",
+      "commit": "de26d2e2138106086410b161da208e9a6f33073b",
+      "workspace_fingerprint": "625032db6b57eabbbf19b57b1dbab43fc1252ad10eef6c530f78f61f559b4682",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
