@@ -159,6 +159,72 @@ plus a fresh 533/3/0 corpus and four package workflows. PR216 is ready for
 non-draft CI/integration review. The prior failed runs and all remaining
 CPython-relative cliffs stay recorded; this does not complete the broader plan.
 
+**2026-09-12 implementation checkpoint:** freshly fetched main is `c4c126d09`.
+PR216 really is integrated through `5b307b65f`; the draft/readiness observations
+above are historical. PR222 subsequently integrated property-mutation protocol
+repairs and lazy collection helper corrections. The preserved original worktree
+has not been reset or swept into these PRs.
+
+The next slices are deliberately separate, and their open PR status is not main
+integration:
+
+- [PR223](https://github.com/sagemathinc/sagejs/pull/223), `188e4a1a8`, implements
+  portable raw Punycode and repairs Unicode exception argument validation.
+  Its source-current full adopted corpus passes 533 cases with the same three
+  reviewed runtime/GC differences and zero required failures. Selected attrs,
+  IDNA and Tomli workflows pass. All current-head CI is green; it remains open
+  at this checkpoint.
+- [PR227](https://github.com/sagemathinc/sagejs/pull/227), `6e1263032`, adds
+  executable-identity-bound source attribution for Node Python CLI and fresh/
+  local-cached modules. Full build, 35 focused tests, a pinned pyparsing workflow
+  and platform/browser CI pass. It deliberately retains unmapped frames and
+  capture-stack limitations. This is not Python traceback unwinding, browser/
+  kernel diagnostics, or M4 completion.
+- [PR228](https://github.com/sagemathinc/sagejs/pull/228), `f437e0221`, removes
+  generic Python `max` machinery from internal keyword-packet length sizing.
+  Two controlled reversed-order rounds show 28–29% less time for keyword
+  function calls and 19–20% for keyword method calls. Remaining CPython gaps
+  are approximately 43–45x and 88–89x: still open cliffs. All current-head CI
+  is green. Do not substitute this comparison for the earlier packaging or
+  constructor measurements.
+- [PR226](https://github.com/sagemathinc/sagejs/pull/226), `2ed4a2635`, preserves
+  assigned class-body initializers and compacts ordered signature publication.
+  The first candidate exceeded the unchanged browser topology budget; the
+  follow-up passes all platform and Chromium gates without a budget increase
+  and is non-draft. Empty-class arity and initializer
+  descriptor-wrapper behavior are still separate gaps.
+- [PR231](https://github.com/sagemathinc/sagejs/pull/231), `0f62af751`, moves four
+  duplicated low-level adapters into one counted shared bootstrap module,
+  saving 3,001 core-source bytes. Build, 80 focused tests and strict checks pass.
+  An exactly reproduced baseline architecture text-audit failure remains
+  recorded, not suppressed. No new exception-state behavior is included.
+- [PR234](https://github.com/sagemathinc/sagejs/pull/234), `dcc601312`, fixes
+  duplicate property evaluation in resolved keyword/star calls and selected
+  string keyword metadata. It passes 206 portable files, 66 lowering tests and
+  four pinned package workflows. A later invalid-target oracle found a starred
+  argument evaluation-order regression; repair and requalification are underway.
+  It remains draft, and its benchmark was deferred before any VM execution.
+  No speedup is inferred from the baseline namespace-scan profile.
+
+The complete package matrix on the main-based PR228 candidate remains **8/11,
+not qualified**: pyparsing, IDNA and mpmath are still failures on that branch.
+The separate PR227/223 improvements must be integrated and checked together.
+A single non-gating mpmath diagnostic isolates roughly 53 seconds of cold import
+versus milliseconds for the selected numerical operations. Those profiled local
+observations are not controlled timing evidence and do not replace its failed
+30-second gate. Developer cold compilation and shipped lazy-precompiled package
+startup need separate qualification; shipping precompiled modules would not
+close the compiler cliff. Module-name resolution is a measured investigation
+target, not yet a demonstrated optimization.
+
+Continue next with integration-aware qualification, the receiver-lookup campaign,
+and true handled-exception ownership. Generator/coroutine suspension makes a
+single global active-exception pointer unsafe: preserve owned handlers while
+rebasing handler-free resumables on each caller. Review state-only continuation
+boundaries separately from traceback chains and exception chaining; avoid work
+on every ordinary function call. Keep source budgets unchanged and account for
+all helpers. The remaining M3–M6 acceptance requirements below still apply.
+
 Existing assets to reuse:
 
 - `scripts/audit-python-grammar.cjs`
