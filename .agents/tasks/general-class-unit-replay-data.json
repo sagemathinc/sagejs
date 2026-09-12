@@ -121,16 +121,88 @@
       "commit": "d5d62102ae7ceb61c455563020ab9e68e13296a5",
       "workspace_fingerprint": "2b9bc4906f0d092f3bbfed442eff77c43cfeebef4f2424150c7e604e2ab328a6",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-replay-data.cjs test/general-class-unit-detached-replay.cjs test/general-class-unit-generation-replay.cjs test/general-class-unit-conditional-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 152.465,
+      "started_at": "2026-09-12T05:08:58.439Z",
+      "commit": "56972a7ffb030944620d3a4821d5c0297f48cd54",
+      "workspace_fingerprint": "2aca96bb1681dc77fded379e7bcb90964a0664c05b3a6e8266de972f9188a05f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 59.256,
+      "started_at": "2026-09-12T05:11:31.570Z",
+      "commit": "56972a7ffb030944620d3a4821d5c0297f48cd54",
+      "workspace_fingerprint": "2aca96bb1681dc77fded379e7bcb90964a0664c05b3a6e8266de972f9188a05f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --project pyrightconfig.json src/lib/sagejs/number_fields/class_unit_replay.py src/lib/sagejs/number_fields/class_unit_generation_replay.py src/lib/sagejs/number_fields/_class_unit_replay_data.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.774,
+      "started_at": "2026-09-12T05:12:31.494Z",
+      "commit": "56972a7ffb030944620d3a4821d5c0297f48cd54",
+      "workspace_fingerprint": "2aca96bb1681dc77fded379e7bcb90964a0664c05b3a6e8266de972f9188a05f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node /home/user/sagejs-worktrees/class-unit-rank-two-frontier/build/general-frontier/replay-generated-resource-probe-v1.cjs /home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/general-class-unit-replay-data sagejs.number_fields.class_unit_replay sagejs.number_fields.class_unit_generation_replay sagejs.number_fields._class_unit_replay_data",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.52,
+      "started_at": "2026-09-12T05:12:40.728Z",
+      "commit": "56972a7ffb030944620d3a4821d5c0297f48cd54",
+      "workspace_fingerprint": "2aca96bb1681dc77fded379e7bcb90964a0664c05b3a6e8266de972f9188a05f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.45,
+      "started_at": "2026-09-12T05:13:02.831Z",
+      "commit": "56972a7ffb030944620d3a4821d5c0297f48cd54",
+      "workspace_fingerprint": "2aca96bb1681dc77fded379e7bcb90964a0664c05b3a6e8266de972f9188a05f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base d5d62102ae7ceb61c455563020ab9e68e13296a5",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.391,
+      "started_at": "2026-09-12T05:13:22.189Z",
+      "commit": "56972a7ffb030944620d3a4821d5c0297f48cd54",
+      "workspace_fingerprint": "2aca96bb1681dc77fded379e7bcb90964a0664c05b3a6e8266de972f9188a05f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node -e const fs=require(\"node:fs\");const{Workspace,PositionEncoding}=require(\"@astral-sh/ruff-wasm-nodejs\");const ruff=new Workspace({\"target-version\":\"py311\",lint:{select:[\"E4\",\"E7\",\"E9\",\"F\",\"I\",\"B\",\"ANN\"],ignore:[\"ANN401\"]}},PositionEncoding.Utf16);let failed=false;for(const file of process.argv.slice(1)){const diagnostics=ruff.check(fs.readFileSync(file,\"utf8\"));if(diagnostics.length){failed=true;console.log(file,diagnostics);}}if(failed)process.exit(1);console.log(\"All three replay files pass strict Ruff checks.\"); src/lib/sagejs/number_fields/class_unit_replay.py src/lib/sagejs/number_fields/class_unit_generation_replay.py src/lib/sagejs/number_fields/_class_unit_replay_data.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.925,
+      "started_at": "2026-09-12T05:13:45.880Z",
+      "commit": "56972a7ffb030944620d3a4821d5c0297f48cd54",
+      "workspace_fingerprint": "2aca96bb1681dc77fded379e7bcb90964a0664c05b3a6e8266de972f9188a05f",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
     "summary": "Factored shared portable field/order/prime preflight and fresh exact reconstruction into _class_unit_replay_data.py without widening component degree-four/base-32 or generation degree-ten/base-128 policies. Kept JSON proof-scalar behavior and the existing exact/analytic authority pipeline. Added CPython/Sage.js boundary and cold-import regressions; retained the dependency's real index-eight rejection. All ten focused tests and registered plus explicit per-file strict checks pass. Total replay Python is 36,538 bytes (2,312 fewer); fresh canonical JS is 265,456 bytes (16,670 more), all three files counted. The full standalone build passed; a serial probe after rebuilding reconfirmed all three canonical-template hashes and byte counts.",
     "risks": [
+      "The build-receipt policy does not yet classify this new task contract as validation-only. Recording task receipts invalidates inspectSourceBuildReceipt despite unchanged mathematical/compiler source; integrate the exact metadata classification rather than rebuilding solely for receipt churn.",
       "Generation and shared replay data remain deliberately unregistered in integration-owned package and strict-module registries. Current catch-all package attribution fails its source budget, so architecture/changed gates are not green despite the successful standalone build.",
       "Correct global-arithmetic source attribution is 1,736,795 bytes, 6,795 above the unchanged 1,730,000 allowance. Generated JS grows despite the Python saving; this is not a runtime or generated-size optimization claim.",
       "The arithmetic-algebra lane requires pnpm test:native. The coordinator explicitly reserved broad native/full-suite validation for integration, so this contract remains active rather than claiming a fresh review receipt. No Windows/portable or SSH qualification was run."
     ],
     "next_steps": [
+      "Classify .agents/tasks/general-class-unit-replay-data.json as validation-only in the integration-owned build receipt policy, together with other newly introduced campaign contracts as appropriate.",
       "Integrate after d5d62102ae7ceb61c455563020ab9e68e13296a5; the only changes to existing detached/conditional tests are their CPython package search paths.",
       "Register class_unit_generation_replay and _class_unit_replay_data under number-field-global-arithmetic and in pyrightconfig.json; explicitly review any residual source allowance without changing arithmetic limits.",
       "Run the integration build, architecture, changed/full native and portable/Windows gates against final integrated sources, preserving the failed lane receipts. Supply the missing lane receipt before marking review or complete."
