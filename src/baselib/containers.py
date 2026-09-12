@@ -1363,8 +1363,11 @@ class SageDict:
         iterable: Any = runtime.undefined,
         **keywords: Any,
     ) -> None:
-        self.jsmap = _new_map()
-        self.keymap = _new_map()
+        # Reinitialization is an update, not a replacement of existing storage.
+        # Keep live views and instance-owned namespace aliases authoritative.
+        if not _has_own(self, "jsmap"):
+            self.jsmap = _new_map()
+            self.keymap = _new_map()
         if iterable is not runtime.undefined:
             _dict_update(self, iterable)
         if len(keywords):
