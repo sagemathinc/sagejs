@@ -1,0 +1,6 @@
+$ pnpm run format:python:check && node scripts/check-strict-baselib.cjs
+$ node scripts/python-docstring-markdown.cjs --check && node scripts/format-python.cjs --check
+Markdown docstrings checked (866 files, 0 changed).
+Ruff 0.16.0 formatting is current (866 files).
+0 errors, 0 warnings, 0 informations
+Strict Python library passed CPython syntax, Ruff 0.16.0, and Pyright checks (393 modules).

@@ -1,0 +1,18 @@
+{
+  "schema": "sagejs.developer-command-resource.v1",
+  "command": [
+    "node",
+    "--test",
+    "--test-name-pattern=compiler/algebra.py",
+    "test/compiler.test.cjs"
+  ],
+  "platform": "Linux",
+  "returncode": 0,
+  "elapsed_seconds": 3.9656287679681554,
+  "user_seconds": 5.565284,
+  "system_seconds": 0.48985999999999996,
+  "max_child_rss_bytes": 329314304,
+  "memory_scope": "maximum child RSS, not concurrent process-tree memory",
+  "allocation_count": null,
+  "controlled_timing": false
+}

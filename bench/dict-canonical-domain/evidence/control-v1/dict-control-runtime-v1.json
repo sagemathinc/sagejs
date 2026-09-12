@@ -1,0 +1,147 @@
+{
+  "schema": "sagejs.dictionary-developer-resource.v1",
+  "controlled_timing": false,
+  "mode": "runtime",
+  "identities": {
+    "head": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
+    "source_sha256": {
+      "src/baselib/containers.py": "4735cf4b99d4580fee8541fb8f7015eb8ff5b7a5258b2057a9f3dd8588d5d502",
+      "src/baselib/finite_fields.py": "e5735f6c1c043bc1c3ef53eb4bdb72283cb9a5b822096b1ad7ebcdf894a316aa"
+    },
+    "compiler_sha256": "752c25a5ca302d1377df106b4a7b5f140e5a32767b76507d2232691a2c3477e3",
+    "build_receipt_sha256": "8c886cf677d4f0697ff57ff45d9e324d8fce65b2a6ca976a845ab429054cfc63",
+    "package_policy_sha256": "e7498ef824ccb6544860c1f10bb56f63cf40351036c0d12c95e65cf4e7e64def",
+    "script_sha256": "2ccf388707ab4762fb44b63e949f37cdabc851442388c9c80617e82998c72a7d",
+    "node": "v26.8.1",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "build_inspection": {
+    "current": false,
+    "reason": "build inputs changed"
+  },
+  "qualification_note": "An invalidated build receipt is retained explicitly; this developer observation cannot substitute for final exact-tree build/platform qualification.",
+  "observations": [
+    {
+      "name": "primitive_work",
+      "size": 256,
+      "elapsed_ms": [
+        11.401086999999961,
+        10.296386999999868,
+        10.863687000000027
+      ]
+    },
+    {
+      "name": "primitive_work",
+      "size": 512,
+      "elapsed_ms": [
+        10.591686999999865,
+        10.595008000000007,
+        12.355326000000105
+      ]
+    },
+    {
+      "name": "primitive_work",
+      "size": 1024,
+      "elapsed_ms": [
+        23.974303999999847,
+        14.130585999999994,
+        14.911284999999907
+      ]
+    },
+    {
+      "name": "residue_work",
+      "size": 256,
+      "elapsed_ms": [
+        457.0486599999999,
+        419.0434,
+        419.3360990000001
+      ]
+    },
+    {
+      "name": "residue_work",
+      "size": 512,
+      "elapsed_ms": [
+        1684.7490159999998,
+        1728.5347650000003,
+        1668.1128210000006
+      ]
+    },
+    {
+      "name": "residue_work",
+      "size": 1024,
+      "elapsed_ms": [
+        6512.142925999999,
+        6586.073176999998,
+        6492.848961
+      ]
+    }
+  ],
+  "churn": [
+    {
+      "state": "before",
+      "memory": {
+        "rss": 272719872,
+        "heapTotal": 78565376,
+        "heapUsed": 41100304,
+        "external": 19917474,
+        "arrayBuffers": 347510
+      }
+    },
+    {
+      "state": "10000-live",
+      "memory": {
+        "rss": 275079168,
+        "heapTotal": 81448960,
+        "heapUsed": 45463152,
+        "external": 19917514,
+        "arrayBuffers": 347510
+      }
+    },
+    {
+      "state": "released",
+      "memory": {
+        "rss": 275079168,
+        "heapTotal": 78565376,
+        "heapUsed": 41172504,
+        "external": 19917514,
+        "arrayBuffers": 347510
+      }
+    }
+  ],
+  "misses": [
+    {
+      "state": "before",
+      "memory": {
+        "rss": 275079168,
+        "heapTotal": 78565376,
+        "heapUsed": 41172744,
+        "external": 19917514,
+        "arrayBuffers": 347510
+      }
+    },
+    {
+      "state": "8192-distinct",
+      "memory": {
+        "rss": 275939328,
+        "heapTotal": 79290368,
+        "heapUsed": 43131872,
+        "external": 19917514,
+        "arrayBuffers": 347510
+      }
+    },
+    {
+      "state": "24576-distinct",
+      "memory": {
+        "rss": 276594688,
+        "heapTotal": 81321984,
+        "heapUsed": 46648608,
+        "external": 19917514,
+        "arrayBuffers": 347510
+      }
+    }
+  ],
+  "allocation_count": null,
+  "memory_scope": "post-GC managed heap of one fresh process/evaluator, including compiler and caches; not exact allocation accounting",
+  "timing_scope": "local developer evaluation wall time including tiny call compilation; three repetitions, no statistical performance certification"
+}

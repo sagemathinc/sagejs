@@ -673,9 +673,9 @@ def _residue_dict_valid(domain: Any) -> bool:
 def _residue_dict_probe(key: Any) -> Any:
     """Admit immutable exact residues to a private canonical dictionary domain.
 
-    A domain is one parent identity, with an independent, append-only token
-    table. It never uses the exposed `_dict_keys` cache. Distinct domains say
-    nothing about equality and must take the dictionary's generic fallback.
+    A domain is one parent identity; its token is the exact native integer
+    value. No per-value cache is retained. Distinct domains and native integer
+    keys may share tokens, so they require the dictionary's generic fallback.
     Only keys entering dictionaries are frozen; arithmetic temporaries retain
     their existing inexpensive construction path.
     """
@@ -718,16 +718,11 @@ def _residue_dict_probe(key: Any) -> Any:
     if domain is runtime.undefined:
         domain = runtime.object.create(None)
         domain.parent = parent
-        domain.tokens = runtime.reflect.construct(runtime.map_class, [])
         runtime.object.freeze(domain)
         _residue_dict_domains.set(parent, domain)
-    token = domain.tokens.get(value)
-    if token is runtime.undefined:
-        token = runtime.object.freeze(runtime.object.create(None))
-        domain.tokens.set(value, token)
     descriptor = runtime.object.create(None)
     descriptor.domain = domain
-    descriptor.token = token
+    descriptor.token = value
     descriptor.guard = domain
     return descriptor
 

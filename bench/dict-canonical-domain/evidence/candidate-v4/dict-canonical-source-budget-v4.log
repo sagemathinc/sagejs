@@ -1,0 +1,17 @@
+$ node scripts/parallel-development.cjs run finite-field-canonical-domain -- pnpm architecture:packages
++ pnpm architecture:packages
+$ node scripts/check-package-graph.cjs
+Error: core-runtime owns 907863 source bytes, exceeding its 903000 byte bootstrap budget
+    at validateManifest (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/scripts/check-package-graph.cjs:159:13)
+    at run (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/scripts/check-package-graph.cjs:240:18)
+    at Object.<anonymous> (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/finite-field-canonical-domain/scripts/check-package-graph.cjs:252:5)
+    at Module._compile (node:internal/modules/cjs/loader:1934:14)
+    at Object..js (node:internal/modules/cjs/loader:2074:10)
+    at Module.load (node:internal/modules/cjs/loader:1656:32)
+    at Module._load (node:internal/modules/cjs/loader:1448:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47
+[ELIFECYCLE] Command failed with exit code 1.
+Recorded finite-field-canonical-domain: pnpm architecture:packages (fail, 0.59s)
+[ELIFECYCLE] Command failed with exit code 1.

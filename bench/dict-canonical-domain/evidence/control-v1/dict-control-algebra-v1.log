@@ -1,0 +1,30 @@
+✖ compiler/algebra.py (61915.635841ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 62207.539564
+
+✖ failing tests:
+
+test at test/compiler.test.cjs:21:3
+✖ compiler/algebra.py (61915.635841ms)
+  Error: spawnSync /opt/cocalc/bin/node ETIMEDOUT
+      at Object.spawnSync (node:internal/child_process:1144:20)
+      at spawnSync (node:child_process:928:24)
+      at Object.run (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/dict-canonical-resource-control/dist/tools/test.js:125:57)
+      at TestContext.<anonymous> (/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/dict-canonical-resource-control/test/compiler.test.cjs:22:28)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    errno: -110,
+    code: 'ETIMEDOUT',
+    syscall: 'spawnSync /opt/cocalc/bin/node',
+    path: '/opt/cocalc/bin/node',
+    spawnargs: [ '/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/dict-canonical-resource-control/scripts/run-compiler-fixture.cjs', '/tmp/algebra.py.js', '/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/dict-canonical-resource-control/dist/compiler', '/home/user/sagejs-worktrees/class-unit-rank-two-frontier-worktrees/dict-canonical-resource-control/test' ],
+    generatedJavaScript: '/tmp/algebra.py.js'
+  }

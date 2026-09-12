@@ -213,3 +213,63 @@ assert not finite._residue_dict_valid(descriptor.guard)
 assert finite._residue_dict_probe(GF(101)(2)) is False
 `);
 });
+
+test("residue value tokens preserve mixed-domain and primitive collision semantics", async (t) => {
+  await run(t, `
+parents = [GF(101), Zmod(101), GF(103)]
+values = [runtime.bigint(1)] + [parent(1) for parent in parents]
+for value in values[1:]:
+    assert finite._residue_dict_probe(value).token is values[0]
+assert values[1] != values[3]
+for reverse in (False, True):
+    ordered = list(reversed(values)) if reverse else values
+    for offset in range(len(ordered)):
+        keys = ordered[offset:] + ordered[:offset]
+        mapping = {}
+        expected = []
+        # A linear original-key oracle, independent of dictionary tokens.
+        for index, key in enumerate(keys):
+            for row in expected:
+                if row[0] is key or row[0] == key:
+                    row[1] = index
+                    break
+            else:
+                expected.append([key, index])
+            mapping[key] = index
+        assert len(mapping) == len(expected)
+        for index, row in enumerate(expected):
+            assert list(mapping)[index] is row[0]
+        for key in keys:
+            for row in expected:
+                if row[0] is key or row[0] == key:
+                    assert mapping[key] == row[1]
+                    break
+        assert parents[0](2) not in mapping
+        assert parents[2](2) not in mapping
+
+mapping = {parents[0](1): "first", parents[0](2): "second"}
+mapping[runtime.bigint(0)] = "zero"
+cls = type(parents[0](1))
+cls.__eq__ = lambda self, other: True
+assert mapping[parents[0](2)] == "first"
+assert mapping[parents[0](99)] == "first"
+`);
+});
+
+test("residue misses do not populate a parent-local value cache", async (t) => {
+  await run(t, `
+parent = GF(65521)
+parent._dict_keys.clear()
+mapping = {parent(0): "zero"}
+descriptor = finite._residue_dict_probe(parent(0))
+assert runtime.reflect.ownKeys(descriptor.domain) == ["parent"]
+assert runtime.jstype(descriptor.token) == "bigint"
+for value in range(1, 2049):
+    assert parent(value) not in mapping
+assert parent._dict_keys.size == 0
+assert runtime.reflect.ownKeys(descriptor.domain) == ["parent"]
+assert len(mapping) == 1
+mapping.clear()
+assert parent._dict_keys.size == 0
+`);
+});

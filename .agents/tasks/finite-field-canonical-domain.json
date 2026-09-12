@@ -4,22 +4,22 @@
   "id": "finite-field-canonical-domain",
   "title": "Finite Field Canonical Domain",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "blocked",
   "owner": "user",
   "objective": "Provide exact finite residue canonical dictionary domains and guards for the bounded M1 dictionary lane",
-  "base_commit": "d27c1b123d699de33b0a0502206e3d356515d090",
+  "base_commit": "9db4572a9bec6ff6ba5cc49b9c68290ee7e6cbb6",
   "claims": [
     "src/baselib/finite_fields.py",
     "test/finite-field-canonical-domain.cjs",
     "docs/finite-field-canonical-domain.md",
-    "bench/dict-canonical-domain/measure.py"
+    "bench/dict-canonical-domain/"
   ],
   "dependencies": [
     "dict-canonical-domain"
   ],
   "references": [
-    "Original common source base0c2945e1de400b0ee66150ae523491f7c712ce0a; exact storage candidate d27c1b123d699de33b0a0502206e3d356515d090 is now the provider ownership base, not a claim that source-budget or runtime qualification passed.",
-    "Bounded M1 canonical-domain approach: at most4 aggregate active agent hours, including the storage/provider and independent review. Existing core source allowance remains903000; storage candidate907726 explicitly exceeds it. No execution-memory, mathematical, verifier or timeout limits change.",
+    "Original common source base0c2945e1de400b0ee66150ae523491f7c712ce0a; exact storage candidate9db4572a9bec6ff6ba5cc49b9c68290ee7e6cbb6 is now the provider ownership base, not a claim that source-budget or runtime qualification passed.",
+    "Bounded M1 canonical-domain approach: at most4 aggregate active agent hours, including the storage/provider and independent review. Current core source907863 exceeds the unchanged903000 allowance. The approach is closed as an unqualified draft pending allocator/startup integration, not a completed M1 gate. No execution-memory, mathematical, verifier or timeout limits change.",
     "Independent safety note: /home/user/sagejs-worktrees/class-unit-rank-two-frontier/build/general-frontier/finite-residue-canonical-domain-safety-review-v1.md; original old-runtime immutability diagnostic retained separately and is not new-provider qualification."
   ],
   "architecture": {
@@ -37,7 +37,7 @@
     "macos-arm64": "required"
   },
   "validation": [
-    "python3 bench/dict-canonical-domain/measure.py build/general-frontier/dict-canonical-build-v3.resource.json pnpm build",
+    "python3 bench/dict-canonical-domain/measure.py build/general-frontier/dict-canonical-build-v4.resource.json pnpm build",
     "node --test test/dict-canonical-domain.cjs test/finite-field-canonical-domain.cjs test/dict-reinitialization-storage.cjs",
     "node --test --test-name-pattern=compiler/algebra.py test/compiler.test.cjs",
     "pnpm architecture:check",
@@ -134,16 +134,59 @@
       "commit": "4f121742d8f46f919f1bd71fcf9f6e2787da16dc",
       "workspace_fingerprint": "957ffeb872315dc638d46c497243176644c54360974ae3405a8a991cf0afc18a",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:packages",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.589,
+      "started_at": "2026-09-12T10:46:36.987Z",
+      "commit": "38ccf7ac892b86cb721c4b68d2881d4dea8b25ac",
+      "workspace_fingerprint": "1d693e4be8b83be70c5a5a101e867d05e2b1b8f78d7ef5549aab2e9103f51ade",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bash -c \nset -o pipefail\npython3 bench/dict-canonical-domain/measure.py build/general-frontier/dict-canonical-build-v4.resource.json pnpm build 2>&1 | tee build/general-frontier/dict-canonical-build-v4.log\nif [ \"${PIPESTATUS[0]}\" -ne 0 ]; then exit 1; fi\npython3 bench/dict-canonical-domain/measure.py build/general-frontier/dict-canonical-focused-v4.resource.json node --test test/dict-canonical-domain.cjs test/finite-field-canonical-domain.cjs test/dict-reinitialization-storage.cjs 2>&1 | tee build/general-frontier/dict-canonical-focused-v4.log\nif [ \"${PIPESTATUS[0]}\" -ne 0 ]; then exit 1; fi\nqualification_status=0\npython3 bench/dict-canonical-domain/measure.py build/general-frontier/dict-canonical-algebra-v4.resource.json node --test --test-name-pattern=compiler/algebra.py test/compiler.test.cjs 2>&1 | tee build/general-frontier/dict-canonical-algebra-v4.log\nif [ \"${PIPESTATUS[0]}\" -ne 0 ]; then qualification_status=1; fi\nnode bench/dict-canonical-domain/resources.cjs . generated | tee build/general-frontier/dict-canonical-generated-v4.json\nif [ \"${PIPESTATUS[0]}\" -ne 0 ]; then qualification_status=1; fi\nnode --expose-gc bench/dict-canonical-domain/resources.cjs . runtime | tee build/general-frontier/dict-canonical-runtime-v4.json\nif [ \"${PIPESTATUS[0]}\" -ne 0 ]; then qualification_status=1; fi\nnode scripts/check-startup-budget.cjs 2>&1 | tee build/general-frontier/dict-canonical-startup-v4.log\nif [ \"${PIPESTATUS[0]}\" -ne 0 ]; then qualification_status=1; fi\npnpm test:baselib:strict 2>&1 | tee build/general-frontier/dict-canonical-strict-v4.log\nif [ \"${PIPESTATUS[0]}\" -ne 0 ]; then qualification_status=1; fi\npnpm architecture:check 2>&1 | tee build/general-frontier/dict-canonical-architecture-v4.log\nif [ \"${PIPESTATUS[0]}\" -ne 0 ]; then qualification_status=1; fi\nexit \"$qualification_status\"\n",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 923.061,
+      "started_at": "2026-09-12T10:51:19.070Z",
+      "commit": "38ccf7ac892b86cb721c4b68d2881d4dea8b25ac",
+      "workspace_fingerprint": "1d693e4be8b83be70c5a5a101e867d05e2b1b8f78d7ef5549aab2e9103f51ade",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 9db4572a9bec6ff6ba5cc49b9c68290ee7e6cbb6",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.645,
+      "started_at": "2026-09-12T11:20:57.684Z",
+      "commit": "38ccf7ac892b86cb721c4b68d2881d4dea8b25ac",
+      "workspace_fingerprint": "704fefb898fce53fe4a1461d64da5f3e7e9f5f77707c0b91c70d03e319b7dae9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bash -c node --check bench/dict-canonical-domain/resources.cjs && git diff --check && pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.708,
+      "started_at": "2026-09-12T11:21:33.961Z",
+      "commit": "38ccf7ac892b86cb721c4b68d2881d4dea8b25ac",
+      "workspace_fingerprint": "c2170ff0f74b7426a2a4efc76f80d3940e239287aa84155ce9b05fe07f5200bd",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Source candidate for guarded exact-residue dictionary domains. Combined same-source runtime and resource qualification is pending; this is not merge-ready or a class/unit speedup claim.",
+    "summary": "Frozen direct-BigInt-token candidate passed its own prepared build,25 focused checks, strict Python, and unchanged algebra60s gate in3.632s. Paired source-pinned developer resource evidence and independent reviews are versioned under bench/dict-canonical-domain/evidence. Ordinary dictionary allocation, startup, source allowance and platform gates remain unresolved; retain this bounded experiment as draft, not merge-ready or a class/unit speedup claim.",
     "risks": [
-      "Companion core-runtime source exceeds its existing allowance. Separate generated-code/resource evidence and review must resolve that failed gate before publication.",
-      "Old-runtime tests exposed explicit object-setattr and reinitialization bypasses. The new provider freezes only admitted keys and guards the exact original dispatch; new-provider execution remains pending."
+      "Core source907863/903000 and startup420.7/400ms fail. Control startup407.7/400ms also fails; this is not a waiver. Architecture stops at package ownership; subsequent architecture gates were not run.",
+      "The10,000 ordinary-dictionary diagnostic retains roughly70% more incremental managed heap; build maximum-child RSS rises32.7%. Small primitive-work medians also rise. Independent resource review defers any allowance increase.",
+      "Only Node26 Linuxx64 execution is recorded. Full integration/native and other-platform qualification are pending. Control whole-tree receipt was invalidated by appended task metadata; raw observations retain current:false and are not final product qualification.",
+      "Evidence binds exact source/artifact hashes from the pre-handoff build; later evidence/task commits do not qualify themselves with that historical build receipt."
     ],
     "next_steps": [
-      "Build the exact combined candidate without modifying source caps, record generated-code/build/memory evidence, execute both focused suites and the unchanged60-second algebra gate, then reassess source layout or reviewed allowance."
+      "Coordinate private dictionary metadata allocation with the released containers.py allocator owner; preserve original-key collision checks, homogeneous-domain guards, mutation and size-mismatch safety.",
+      "Resolve startup/source-budget disposition using a coherent reviewed follow-up, then rebuild/retest exact integrated source on all supported targets. Do not broaden or restart the four-hour representation approach silently."
     ]
   }
 }

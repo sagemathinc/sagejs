@@ -1,0 +1,92 @@
+{
+  "schema": "sagejs.dictionary-developer-resource.v1",
+  "controlled_timing": false,
+  "mode": "generated",
+  "identities": {
+    "head": "38ccf7ac892b86cb721c4b68d2881d4dea8b25ac",
+    "source_sha256": {
+      "src/baselib/containers.py": "8fbfc7ada31c057c6f265440f8f5afbb78b72e34ab65fddc423f982968b2c2f7",
+      "src/baselib/finite_fields.py": "4674b2d15ebb7e857c1f8f702cc6a1334270086883143578c532ec4eb8693dd1"
+    },
+    "compiler_sha256": "80a1dcabee837724f8982108bd4a75e9043edda2f7738704ea4a644f140d2b78",
+    "build_receipt_sha256": "c1571d165f8330727753f652c8a2eb8aadaaea7748ec1635c0564f3b61ef0267",
+    "package_policy_sha256": "e7498ef824ccb6544860c1f10bb56f63cf40351036c0d12c95e65cf4e7e64def",
+    "script_sha256": "2ccf388707ab4762fb44b63e949f37cdabc851442388c9c80617e82998c72a7d",
+    "node": "v26.8.1",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "build_inspection": {
+    "current": true,
+    "reason": "artifact inputs and required outputs match; validation is separate",
+    "buildWorkspaceSha256": "a9b53e7a872e64c2c1e64f282aecb14257fb202a21fdb29f5b65c05e11ca56f9",
+    "validationWorkspaceSha256": "a9b53e7a872e64c2c1e64f282aecb14257fb202a21fdb29f5b65c05e11ca56f9",
+    "completedAt": "2026-09-12T11:05:09.734Z",
+    "durationMilliseconds": 829227
+  },
+  "qualification_note": "An invalidated build receipt is retained explicitly; this developer observation cannot substitute for final exact-tree build/platform qualification.",
+  "base": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
+  "rows": [
+    {
+      "name": "src/baselib/containers.py",
+      "revision": "base",
+      "source_bytes": 67842,
+      "source_sha256": "4735cf4b99d4580fee8541fb8f7015eb8ff5b7a5258b2057a9f3dd8588d5d502",
+      "emitted_module_bytes": 383394,
+      "emitted_module_sha256": "8ed030d3ad8c9b8361c57c4e2cdaf0fab2c6f347d54c7d2f49866c9d989fc976"
+    },
+    {
+      "name": "src/baselib/containers.py",
+      "revision": "candidate",
+      "source_bytes": 75611,
+      "source_sha256": "8fbfc7ada31c057c6f265440f8f5afbb78b72e34ab65fddc423f982968b2c2f7",
+      "emitted_module_bytes": 403966,
+      "emitted_module_sha256": "20ef8778f10aa982eba67e0fa385be1dcaf027bd97a569c1b05af7d63dbb7c0c"
+    },
+    {
+      "name": "src/baselib/finite_fields.py",
+      "revision": "base",
+      "source_bytes": 85580,
+      "source_sha256": "e5735f6c1c043bc1c3ef53eb4bdb72283cb9a5b822096b1ad7ebcdf894a316aa",
+      "emitted_module_bytes": 410362,
+      "emitted_module_sha256": "05b1c80cd75f66c6aca97186c21540e75bf9fdc3131ab7c13b134eace2fe7ccf"
+    },
+    {
+      "name": "src/baselib/finite_fields.py",
+      "revision": "candidate",
+      "source_bytes": 92889,
+      "source_sha256": "4674b2d15ebb7e857c1f8f702cc6a1334270086883143578c532ec4eb8693dd1",
+      "emitted_module_bytes": 424618,
+      "emitted_module_sha256": "73363f6f19d4b870a59eeef25433abb58b6225b349fa4c84ac3791de6f366207"
+    }
+  ],
+  "artifacts": [
+    {
+      "name": "dist/compiler/compiler.js",
+      "bytes": 4003450,
+      "sha256": "80a1dcabee837724f8982108bd4a75e9043edda2f7738704ea4a644f140d2b78"
+    },
+    {
+      "name": "dist/compiler/baselib-plain-pretty.js",
+      "bytes": 13569108,
+      "sha256": "bd9e92d47fdc89cde9ca22323f576be739908c9372b8e5a5ad2e5e679efddb68"
+    },
+    {
+      "name": "dist/runtime-cache/compiler.bin",
+      "bytes": 2680640,
+      "sha256": "78c32104e0cd72b0cad53673f57cc207ac1dd4da0bd9b7985debffc8e272451d"
+    },
+    {
+      "name": "dist/runtime-cache/runtime-bootstrap-sage.bin",
+      "bytes": 8045480,
+      "sha256": "0b9ccbe5f417d2ccace684dc3b62b512017378d203a65fe2b46757625659057f"
+    },
+    {
+      "name": "dist/runtime-cache/runtime-bootstrap-python.bin",
+      "bytes": 8045528,
+      "sha256": "76f550b2886c875e98ce1293c9bb65fa805771e3a13924915ceca8e5c978fa25"
+    }
+  ],
+  "emitted_boundary": "isolated modules, same candidate frontend/emitter and self.js module options; excludes whole-baselib facade wrappers",
+  "native_objects": "not applicable: no new native mathematical code or kernels"
+}

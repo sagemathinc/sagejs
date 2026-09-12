@@ -15,7 +15,7 @@ $$
 \quad\Longleftrightarrow\quad a=b.
 $$
 
-Safe machine integers are converted to exact `BigInt` before interning, so
+Safe machine integers are converted to exact `BigInt` before admission, so
 equal machine and arbitrary-precision representations have the same token.
 Different parent identities do **not** establish inequality: those lookups
 retain the dictionary's generic equality scan. Extension-field elements and
@@ -25,9 +25,13 @@ The private provider is registered with
 `sagejs._baselib.containers._register_dict_canonical_provider(probe, valid)`.
 A successful probe returns a native descriptor with `domain`, `token`, and
 `guard`; `None` means unrecognized, while `False` means recognized but unsafe.
-Tokens are opaque objects in a private, append-only parent-local table reached
-through a weak parent index. The public `_dict_keys` cache is not proof
-authority; clearing or replacing it cannot invalidate these private tokens.
+Tokens are exact native BigInt values, with no per-value interning table.
+Private parent domains are reached through a weak parent index. The public
+`_dict_keys` cache is not proof authority; clearing or replacing it cannot
+invalidate these value tokens. Equal tokens across different domains, or
+between a domain and an ordinary integer key, do not establish equality.
+Those collisions still compare the original keys. Distinct lookup misses do
+not accumulate token objects or residue entries in a parent-local cache.
 
 ## Immutability and mutation guards
 
@@ -106,3 +110,29 @@ paired class/unit result. The independent resource review identified removable
 per-value token retention. A direct exact-value token revision and a fresh
 common-base resource control are the next bounded checks. The core source
 allowance still fails and has not been raised.
+
+### Direct-value revision: executed, not merge-ready
+
+The revision whose finite-field source SHA-256 is
+`4674b2d15ebb7e857c1f8f702cc6a1334270086883143578c532ec4eb8693dd1`
+passed its own prepared build, all 25 focused checks, the unchanged algebra
+gate in 3,632 ms, and strict Python checks. The storage source is exactly
+`9db4572a9bec6ff6ba5cc49b9c68290ee7e6cbb6`. This closes the earlier pending
+value-token execution check; it does not transfer the earlier opaque-token
+results to a new source without execution.
+
+The [paired developer resource record](../bench/dict-canonical-domain/evidence/README.md)
+retains the costs as well as the gains. The unchanged common-base algebra
+control times out. Residue dictionary work scales much better, and distinct
+misses no longer build the new parent-local token table. However, small
+primitive workloads are slower in these observations, private dictionary
+metadata increases retained managed heap, and build maximum-child RSS rises.
+Both source snapshots fail the 400 ms startup gate; the candidate also fails
+the unchanged 903,000-byte core source allowance at 907,863 bytes.
+
+Disposition: keep this source as a draft experiment. Do not raise the source
+allowance, claim no speed regression, or promote the general class/unit PR
+using this evidence. Reconcile ordinary dictionary allocation and the failed
+startup gate with the shared-runtime owners before exact-source integration
+and all-platform qualification. No numerical bound, timeout, memory cap, proof
+policy, or corpus membership changed.
