@@ -1,0 +1,62 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-object-setattr-failure",
+  "title": "Python Object Setattr Failure",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make object.__setattr__ reject unsuccessful host writes while preserving descriptor precedence",
+  "base_commit": "ce40da9413dc635a990c174bf594be816ca6d54b",
+  "claims": [
+    "src/baselib/builtins.py",
+    "test/python-object-setattr-failure.cjs",
+    "docs/python-object-setattr-failure.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Ordinary setattr for native host writes; CPython for descriptor precedence and setter exceptions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "node test/python-object-setattr-failure.cjs",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_OBJECT_SETATTR_COMPILER_ROOT=/home/user/sagejs-worktrees/python-keyword-length-max-worktrees/python-arraylike-tag-set node test/python-object-setattr-failure.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.943,
+      "started_at": "2026-09-12T09:39:20.582Z",
+      "commit": "ce40da9413dc635a990c174bf594be816ca6d54b",
+      "workspace_fingerprint": "e718c97f9797f90bb190a20114022c6b8abd6a083df51c516ad321fbd3555079",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The final object.__setattr__ host fallback checks Reflect.set false and raises the existing ordinary-setattr AttributeError. Descriptor precedence, successful setter returns, thrown identities, and owned storage are unchanged. Three-line implementation diff adds 89 bytes; core source preflight is 899959/903000 bytes. The source oracle reproduces old silent failures and passes against corrected source before the frozen full build.",
+    "risks": [
+      "Host freezing has no direct CPython equivalent; existing ordinary setattr supplies the host-write failure oracle.",
+      "This does not change namespace freezing policy or add global Reflect hooks."
+    ],
+    "next_steps": [
+      "Qualify the frozen source with a full build, focused, portable, and strict suites; keep draft pending CI."
+    ]
+  }
+}
