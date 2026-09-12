@@ -83,14 +83,23 @@ def _saturated_integer_intersection(rational_basis: Any) -> Any:
     columns = rational_basis.ncols()
     if rational_basis.nrows() == 0:
         return _zero_matrix(sage.ZZ, 0, columns)
-    equations = rational_basis.change_ring(sage.QQ).right_kernel_matrix()
-    integer_equations, _denominator_value = _clear_denominators(equations)
-    lattice = integer_equations.right_kernel_matrix()
-    if lattice.nrows() != rational_basis.rank():
-        raise ArithmeticError("saturated lattice rank is inconsistent")
-    if lattice.change_ring(sage.QQ).row_space() != rational_basis.row_space():
-        raise ArithmeticError("saturated lattice spans the wrong rational space")
-    return lattice
+    # An integral RREF has a unit pivot minor, so its rows already span the
+    # entire intersection with Z^m. This is common for ambient cuspidal
+    # homology and avoids constructing its two complementary kernels.
+    reduced = rational_basis.row_space().basis_matrix()
+    try:
+        return reduced.change_ring(sage.ZZ)
+    except (TypeError, ValueError):
+        pass
+    # Write B in RREF, with r unit pivot columns. Its column lattice L lies
+    # in QQ^r and contains ZZ^r. The rows x for which x*B is integral form
+    # precisely the dual lattice L^*. If H is a row basis for L, a basis for
+    # L^* is H^(-T). This uses an n-by-r HNF and an r-by-r inverse instead
+    # of materializing an (n-r)-by-n complementary kernel twice.
+    column_lattice = _rational_row_lattice_basis(reduced.transpose())
+    dual = column_lattice.inverse().transpose()
+    lattice = _integral_matrix(dual * reduced, "saturated intersection")
+    return _integer_row_lattice_basis(lattice)
 
 
 def _integer_row_lattice_basis(source: Any) -> Any:

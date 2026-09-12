@@ -6,6 +6,7 @@ from copy import copy
 from typing import Any
 
 import sagejs as sage
+from sagejs.linear_algebra.integer_smith import preconditioned_elementary_divisors
 from sagejs.modular_abelian_varieties.lattices import (
     IntegralHomologyLattice,
     _global,
@@ -13,6 +14,7 @@ from sagejs.modular_abelian_varieties.lattices import (
     _integral_matrix,
     _is_integrally_surjective,
     _saturated_integer_intersection,
+    _stack,
     _zero_matrix,
 )
 
@@ -26,6 +28,25 @@ def _sealed(matrix: Any) -> Any:
 def _create_map(domain: Any, codomain: Any, matrix: Any, recipe: Any) -> Any:
     """Internal constructor: callers supply a geometric construction, not a flag."""
     return _ConstructedMorphism(domain, codomain, matrix, recipe)
+
+
+def _product_map(domain: Any, codomain: Any, maps: Any) -> Any:
+    """Assemble maps from product factors by stacking their integral rows."""
+    from sagejs.modular_abelian_varieties.products import ProductAbelianVariety
+
+    if not isinstance(domain, ProductAbelianVariety):
+        raise TypeError("a product map requires an ordered product domain")
+    maps = tuple(maps)
+    factors = domain.factors()
+    if len(maps) != len(factors):
+        raise ValueError("a product map needs one map per factor")
+    for factor, morphism in zip(factors, maps, strict=True):
+        if not isinstance(morphism, ModularAbelianVarietyMap):
+            raise TypeError("product factors require certified morphisms")
+        if morphism.domain() != factor or morphism.codomain() != codomain:
+            raise ValueError("product factor morphism endpoints do not match")
+    matrix = _stack([m.matrix() for m in maps], 2 * codomain.dimension(), sage.ZZ)
+    return _create_map(domain, codomain, matrix, ("product", maps))
 
 
 class FiniteKernelComponents:
@@ -176,19 +197,21 @@ class ModularAbelianVarietyMap:
     def image_lattice(self) -> Any:
         if self._image_lattice_cache is None:
             basis = _integer_row_lattice_basis(self._matrix)
-            saturated = _saturated_integer_intersection(basis)
+            saturated = self.saturated_image_lattice().basis_matrix()
             self._image_lattice_cache = IntegralHomologyLattice(
                 basis,
                 "integral image (not automatically saturated)",
                 basis == _integer_row_lattice_basis(saturated),
             )
-            self._saturated_image_lattice_cache = IntegralHomologyLattice(
-                saturated, "saturated image in target homology", True
-            )
         return self._image_lattice_cache
 
     def saturated_image_lattice(self) -> Any:
-        self.image_lattice()
+        if self._saturated_image_lattice_cache is None:
+            self._saturated_image_lattice_cache = IntegralHomologyLattice(
+                _saturated_integer_intersection(self._matrix),
+                "saturated image in target homology",
+                True,
+            )
         return self._saturated_image_lattice_cache
 
     def _smith_invariants(self) -> Any:
@@ -196,7 +219,9 @@ class ModularAbelianVarietyMap:
             # Only nonunit nonzero factors contribute to the finite group.
             # Zero factors record the free cokernel, not finite torsion.
             self._smith_cache = tuple(
-                abs(d) for d in self._matrix.elementary_divisors() if abs(d) > 1
+                abs(d)
+                for d in preconditioned_elementary_divisors(self._matrix)
+                if abs(d) > 1
             )
         return self._smith_cache
 
@@ -406,6 +431,11 @@ def replay_map(domain: Any, codomain: Any, recipe: Any, seen: Any = None) -> Any
         result = domain.projection(recipe[1])
     elif tag == "degeneracy" and len(recipe) == 2:
         result = domain.degeneracy_map(codomain.level(), recipe[1])
+    elif tag == "product" and len(recipe) == 2:
+        maps = recipe[1]
+        if not all(m._verify_graph(seen) for m in maps):
+            raise ValueError("invalid product-factor morphism certificate")
+        result = _product_map(domain, codomain, maps)
     elif tag in ["sum", "compose", "scale"] and len(recipe) == 3:
         left, right = recipe[1:]
         if not left._verify_graph(seen) or (

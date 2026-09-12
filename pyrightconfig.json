@@ -248,6 +248,7 @@
     "src/lib/sagejs/linear_algebra/matrix_selection.py",
     "src/lib/sagejs/linear_algebra/matrix_predicates.py",
     "src/lib/sagejs/linear_algebra/matrix_subspaces.py",
+    "src/lib/sagejs/linear_algebra/integer_smith.py",
     "src/lib/sagejs/linear_algebra/matrix_subspaces_public.py",
     "src/lib/sagejs/linear_algebra/matrix_vector.py",
     "src/lib/sagejs/linear_algebra/matrix_vector_public.py",
