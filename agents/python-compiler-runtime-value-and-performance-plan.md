@@ -262,6 +262,47 @@ establish that the combined stack fits. Shared adapter-metadata deduplication
 is a concrete follow-up, not permission to increase the budget or a substitute
 for rebuilding and qualifying the actual integrated candidate.
 
+**Later 2026-09-12 checkpoint (supersedes the branch-local totals above):**
+
+- The main-based generator-definition repair, PR260 (`e342f9f83`, derived
+  provenance follow-up `ce2aedd1f`), passes the complete adopted corpus:
+  **533 passes, the same three reviewed differences, zero required failures**.
+  All eleven package workflows were attempted: **10 pass, mpmath times out**
+  at the unchanged 30-second gate. This demonstrates the combined pyparsing
+  and IDNA repairs; it does not qualify mpmath or all fourteen program gates.
+  Definition defaults that suspend now belong to the enclosing scope, including
+  lambda metadata/default capture. Full build, 82 focused checks, strict checks,
+  and the regenerated architecture census pass. Missing native dependencies
+  still prevent claiming the broader mathematical suites passed locally.
+- PR248 (`6b692cde7`) removes a private compiler AST-predicate wrapper.
+  Controlled, fresh-process compiler-only mpmath imports improve by 6.8–6.9%
+  (roughly 46 to 43 seconds). Both candidates still fail the 30-second gate.
+  Pinned inputs, empty caches and exact compiler identities are recorded in
+  `docs/python-ast-instanceof-cold/`. Next investigate repeated compiler import
+  resolution without weakening missing-name, mutation or public Python behavior.
+- PR249 (`50d35b46c`) conservatively omits handled-state wrappers only when
+  suspension cannot own a handler. Plain generator creation is about 40% faster
+  than PR244 in both mixed and isolated controlled experiments. Mixed-workload
+  owned-generator tails worsened; isolated owned medians varied -1.3%/+3.7%.
+  Both experiments and all 320 samples remain in
+  `agents/validation/python-handled-state/`. This is neither proof of a GC cause
+  nor universal non-regression, and there is no pre-ownership recovery claim.
+  Qualify PR244 and PR249 together before adoption.
+- PR247 (`37e80f468`) saves 560 bootstrap bytes by sharing ordered metadata
+  copying. The actual provisional main + PR247 + PR244/249 source assembly fits
+  at 902,078/903,000 bytes; its full combined build is still pending. Preserve
+  the unchanged limit and remeasure as more slices are assembled.
+- PR241 now has an actual main integration (`419a10fb1`): full build, 16 focused
+  checks, 210 portable files and strict checks pass, with all 323 main API catalog
+  entries preserved. The negative cold-import result above remains applicable;
+  generated-reference reconciliation is not a performance improvement.
+
+These are candidate-specific observations, not a declaration that every PR has
+landed in main. Preserve exact integration ancestry and CI identities. The next
+critical work is package cold compilation, combined exception-state qualification,
+and the remaining general call/construction cliffs; do not reset priorities to
+collecting more suite names now that the adopted failures are repaired.
+
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a
 single global active-exception pointer unsafe: preserve owned handlers while
