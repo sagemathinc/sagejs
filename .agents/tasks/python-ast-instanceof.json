@@ -10,7 +10,8 @@
   "base_commit": "c4c126d09ba4f5c2fb30001fd8b561b24105d80f",
   "claims": [
     "src/ast_types.py",
-    "test/python-ast-instanceof.cjs"
+    "test/python-ast-instanceof.cjs",
+    "docs/python-ast-instanceof-cold/"
   ],
   "dependencies": [],
   "references": [],
