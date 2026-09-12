@@ -2,6 +2,18 @@
 
 Status: integration in progress; not a completed qualification receipt.
 
+September 12 refresh: the full changed-tree run on `fe2918cf2` failed at the
+remaining quartic unconditional BF expectation. Dependency `769679c77`
+corrects four related fixtures without changing production mathematics; its
+audit is in [the generic proof-mode fixture review](number-field-generic-proof-fixture-audit.md).
+Focused positive conditional and negative unconditional controls passed in
+that lane. The integration is being refreshed against main `c4c126d09` before
+another full qualification run; earlier passes do not qualify this revision.
+The two exact test-only fixture contracts join the reviewed validation-only
+build-input list. Their edits must still invalidate validation fingerprints,
+and both Git/archive partition tests cover them; no broad metadata exclusion
+or safety-limit change is introduced.
+
 ## Architectural ownership
 
 `sagejs.number_fields.unit_coordinates` belongs to the existing lazy

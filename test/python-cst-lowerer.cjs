@@ -240,6 +240,22 @@ def recurrence(n, field):
   }
 });
 
+test("explicit duplicate keywords are syntax errors, unlike mapping unpacking", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    for (const source of ["f(a=1, a=2)", "f(a=1, **mapping, a=2)"]) {
+      assert.throws(() => frontend.parse(source, parserOptions),
+        /keyword argument repeated: a/);
+    }
+    for (const source of ["f(a=1, **mapping)", "f(**left, **right)"]) {
+      assert.doesNotThrow(() => frontend.parse(source, parserOptions));
+    }
+  } finally {
+    frontend.close();
+  }
+});
+
 test("starred set displays lower to valid JavaScript spread", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");
@@ -740,7 +756,7 @@ test("class-body global declarations bind the isolated module cell", async () =>
     );
     assert.match(
       javascript,
-      /ρσ_getattr_internal\([^;\n]*\$ρσ\$py\$runtime[^;\n]*"native_get"/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\([^;\n]*\$ρσ\$py\$runtime[^;\n]*"native_get"\), \[/,
     );
     assert.doesNotMatch(javascript, /\$ρσ\$py\$answer = target\[property_name\]/);
   } finally {
@@ -954,10 +970,14 @@ test("leading class assignments are available to method defaults", async () => {
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.ok(
-      javascript.indexOf("Example.prototype.sentinel = marker") <
-        javascript.indexOf("Example.prototype.method.__defaults__"),
-    );
+    const assignment = javascript.indexOf("Example.prototype.sentinel =");
+    const method = javascript.indexOf("Example.prototype.method =");
+    assert.ok(assignment >= 0 && method > assignment);
+    assert.match(javascript,
+      /Example\.prototype\.method = ρσ_class_header_\d+_method_\d+\(\[ρσ_check_unbound\(\$ρσ\$py\$Example\.prototype\.sentinel/);
+    const preparedAssignment = javascript.indexOf('bindings["sentinel"] =');
+    const preparedMethod = javascript.indexOf('bindings["method"] =');
+    assert.ok(preparedAssignment >= 0 && preparedMethod > preparedAssignment);
   } finally {
     frontend.close();
   }
@@ -1025,11 +1045,11 @@ test("formatted strings invoke format on their template value", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /\ρσ_getattr_internal\("\{!r\}", "format"/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\("\{!r\}", "format"\), \[ρσ_check_unbound\(ρσ_resolve_module_name\(void 0, "value"/,
     );
     assert.doesNotMatch(
       javascript,
-      /\ρσ_getattr_internal\(ρσ_str, "format"/,
+      /(?:ρσ_getattr_internal|ρσ_prepare_method_call)\(ρσ_str, "format"/,
     );
   } finally {
     frontend.close();
@@ -1099,8 +1119,10 @@ test("generator methods shift an explicit descriptor receiver before iteration",
     ast.print(output);
     const javascript = output.get();
     const receiverShift =
-      /Values\.prototype\.items = function[^]*?if \(\(this === globalThis \|\| this == null\)[^]*?function\* js_generator/;
+      /function ρσ_method_items[^]*?if \(\(this === globalThis \|\| this == null\)[^]*?function\* js_generator/;
     assert.match(javascript, receiverShift);
+    assert.match(javascript, /Values\.prototype\.items = ρσ_class_header_\d+_method_\d+\(\[\]\)/);
+    assert.equal((javascript.match(/function\* js_generator/g) ?? []).length, 1);
   } finally {
     frontend.close();
   }
@@ -1124,7 +1146,7 @@ test("dotted callable instances resolve through __call__", async () => {
     );
     assert.match(
       javascript,
-      /ρσ_resolve_callable\(ρσ_getattr_internal\(package, "factory", ρσ_getattr_missing\)\)/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\(package, "factory"\), \[ρσ_resolve_callable\(Integer\)\("1"\)\]\)/,
     );
   } finally {
     frontend.close();
@@ -1253,9 +1275,11 @@ test("reserved Python class names stay mangled in method metadata", async () => 
     const javascript = output.get();
     assert.match(
       javascript,
-      /\$ρσ\$py\$default\.prototype\.__init__\.__name__/,
+      /\$ρσ\$py\$default\.prototype\.__init__ = ρσ_class_header_\d+_method_\d+\(\[\]\)/,
     );
+    assert.match(javascript, /ρσ_anonfunc\.__name__ = "__init__"/);
     assert.doesNotMatch(javascript, /(?:^|[^\w$])default\.prototype/);
+    assert.doesNotThrow(() => new Script(javascript));
   } finally {
     frontend.close();
   }
@@ -1300,10 +1324,11 @@ test("explicit class metaclasses are lowered before decorators", async () => {
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.match(
-      javascript,
-      /ρσ_apply_metaclass\(\$ρσ\$py\$Meta, "Example"/,
-    );
+    const prepare = javascript.indexOf('ρσ_prepare_class("Example"');
+    const store = javascript.indexOf('.bindings["answer"] = ', prepare);
+    const finish = javascript.indexOf(".finish()", store);
+    assert.ok(prepare >= 0 && store > prepare && finish > store);
+    assert.match(javascript, /ρσ_class_header_\d+ = .*\$ρσ\$py\$Meta\]/);
   } finally {
     frontend.close();
   }
@@ -1321,9 +1346,9 @@ test("parameterized builtin bases lower to their runtime origins", async () => {
     assert.equal(definition.parent.name, "list");
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
-    assert.ok(output.get().includes(
-      `ρσ_extends($ρσ$py$Entries, ${checkedModuleRead("list")})`,
-    ));
+    const javascript = output.get();
+    assert.equal(javascript.split(checkedModuleRead("list")).length - 1, 1);
+    assert.match(javascript, /ρσ_extends\(\$ρσ\$py\$Entries, ρσ_class_header_\d+\[1\]\[0\]\)/);
   } finally {
     frontend.close();
   }
@@ -1753,7 +1778,7 @@ test("same-class static calls are not guessed to be unbound methods", async () =
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(\$ρσ\$py\$Config, "name", ρσ_getattr_missing\)/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\(\$ρσ\$py\$Config, "name"\), \[\$ρσ\$py\$value\]\)/,
     );
     assert.doesNotMatch(
       javascript,
@@ -1782,10 +1807,12 @@ test("callable class variables retain runtime descriptor lookup", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(\$ρσ\$py\$Config, "selected", ρσ_getattr_missing\)/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\(\$ρσ\$py\$Config, "selected"\), \[\]\)/,
     );
     assert.doesNotMatch(javascript, /Config\.prototype\.selected\(\)/);
-    assert.match(javascript, /delete this\.selected/);
+    // Binding no longer installs inherited methods on the instance, so a
+    // subclass override must not need constructor-time cache cleanup.
+    assert.doesNotMatch(javascript, /delete this\.selected|__bind_methods__/);
   } finally {
     frontend.close();
   }

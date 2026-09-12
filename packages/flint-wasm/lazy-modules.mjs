@@ -167,6 +167,19 @@ export function installLazyModuleLoader(
   if (typeof evaluate !== "function") {
     throw new TypeError("lazy module evaluator must be callable");
   }
+  // The loader owns module identity as well as import caching. Seed bootstrap
+  // modules before user code runs, and use install so evaluator teardown
+  // restores the previous runtime's registry.
+  const moduleNamespaces = new WeakSet();
+  for (const registry of [globalObject.ρσ_modules, globalObject.__sagejs_baselib_modules__]) {
+    for (const namespace of Object.values(registry ?? {})) {
+      if (namespace !== null &&
+          (typeof namespace === "object" || typeof namespace === "function")) {
+        moduleNamespaces.add(namespace);
+      }
+    }
+  }
+  install("__sagejs_module_namespaces__", moduleNamespaces);
   const load = function loadLazyModule(name) {
     if (!canonicalName(name)) {
       throw new TypeError(`invalid lazy module name ${JSON.stringify(name)}`);
@@ -189,6 +202,7 @@ export function installLazyModuleLoader(
       return registry[name];
     }
     const namespace = Object.create(null);
+    moduleNamespaces.add(namespace);
     registry[name] = namespace;
     if (parent !== undefined && childName) parent[childName] = namespace;
     const previous = globalObject.__sagejs_current_module_namespace__;
@@ -224,6 +238,7 @@ export function installLazyModuleLoader(
         installed !== null &&
         (typeof installed === "object" || typeof installed === "function")
       ) {
+        moduleNamespaces.add(installed);
         const prefix = `${name}.`;
         for (const registeredName of Object.keys(registry)) {
           if (!registeredName.startsWith(prefix)) continue;

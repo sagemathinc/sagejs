@@ -205,6 +205,7 @@ function encode(value: unknown, ancestors = new Set<unknown>()): EncodedValue {
     for (const name of [
       "__argnames__",
       "__defaults__",
+      "__kwdefaults__",
       "__handles_kwarg_interpolation__",
       "__kwonly__",
       "__varkw__",

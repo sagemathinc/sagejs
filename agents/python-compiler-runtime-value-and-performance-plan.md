@@ -114,6 +114,51 @@ Reconcile it against source, artifacts, PR bases, and current tests before codin
   are useful leads. Historical comparisons were provisional; independent
   confirmation and remaining CPython-relative cliffs are still work.
 
+**2026-09-11 integration update:** #208 integrated the isolated #192/#194 harness
+changes into main at `d654e3d45`, without their draft runtime ancestors. Fresh
+main qualification records 518 passes, three reviewed outcomes, and fifteen
+required assertion failures across 536 cases. All original/extracted/manifest
+raw outcomes match; four-platform routine/smoke CI passed. This supersedes the
+main-integration observation above, not the historical stack's distinct results.
+The canonical type-ownership slice is now being qualified directly on that
+main baseline; see `agents/python-canonical-instance-type.md`. The preserved
+original worktree and the remaining draft stack are not thereby qualified.
+
+**2026-09-11 adopted-failure campaign checkpoint:** the clean combined stack at
+`5b7f4ddc5` passes the unchanged 536-case corpus: 533 passes, three reviewed
+differences and zero required failures. Four pinned package workflows and the
+focused cross-feature checks also pass. This closes the original fifteen
+required failures on that candidate, not on main and not across all upstream
+tests. PR214 is non-draft with successful routine/Chromium CI; PR216 remains
+draft pending combined qualification and its cold-import correction.
+
+The controlled campaign demonstrates common-call/construction improvements of
+1.23–1.88x, but warm packaging remains about 228x CPython and cold packaging is
+26% slower than the retained baseline. Treat these as open performance cliffs,
+not completed M5 gates. Profiles identify duplicated prepared/legacy class
+method emission as the main added cold cost. Correct that shared mechanism and
+repeat paired measurements before broadening adoption. The private compiler
+artifact has a separately focused-tested size correction; it does not establish
+that the cold regression is fixed. Exact candidates, receipts and remaining
+qualification work are recorded in `agents/python-object-call-protocols.md`.
+
+**Subsequent shared-emission checkpoint:** `c99e6067a` preserves the 533/3/0
+corpus result and four package workflows. Direct pairing with the previous
+candidate reduces packaging cold time 17.0% and first-import time 19.7%, while
+retaining common-call gains. The original-baseline cold/import gaps are now
+about 5%, not zero; warm packaging remains about 228x CPython. The compiled-size
+gate is repaired. All portable checks pass after the test-only `c40561c4e`, but
+startup remains over its unchanged 400 ms gate (409.7 ms, then 400.2 ms).
+PR216 remains draft. Reliable startup headroom and a passing complete routine
+are the next readiness work; do not hide this behind the successful semantic
+and package campaign or expand adoption before resolving it.
+
+**Readiness update:** `4d8909d33` defers capability-catalogue loading until first
+query and passes the complete routine, including the unchanged startup gate,
+plus a fresh 533/3/0 corpus and four package workflows. PR216 is ready for
+non-draft CI/integration review. The prior failed runs and all remaining
+CPython-relative cliffs stay recorded; this does not complete the broader plan.
+
 Existing assets to reuse:
 
 - `scripts/audit-python-grammar.cjs`
@@ -121,7 +166,7 @@ Existing assets to reuse:
 - `scripts/run-python-compat.cjs` and `upstream-tests/python-compat/`
 - `scripts/run-pure-python-packages.cjs`, package phase/suite helpers, and
   `upstream-tests/python-packages/`
-- `bench/python-compat/` and the behavior-checked `bench/cowasm/` workloads
+- `bench/python-compat/` and the legacy workloads linked from its README
 - compiler/runtime focused tests, build receipts, package/source budgets,
   startup gates, and the existing optimizer-development tooling
 

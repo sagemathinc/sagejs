@@ -1,0 +1,247 @@
+def raises(kind, function, *args):
+    try:
+        function(*args)
+    except kind:
+        return
+    raise AssertionError("expected exception")
+
+
+class Counter:
+    def __init__(self):
+        self.value = 1
+
+    @property
+    def item(self):
+        """Current counter value."""
+        return self.value
+
+    @item.setter
+    def item(self, value):
+        self.value = value
+
+    @item.deleter
+    def item(self):
+        self.value = -1
+
+
+counter = Counter()
+descriptor = Counter.item
+assert type(descriptor) is property
+assert Counter.item is descriptor
+assert Counter.__dict__["item"] is descriptor
+assert descriptor.__get__(None, Counter) is descriptor
+assert descriptor.__doc__ == "Current counter value."
+assert descriptor.fget.__doc__ == descriptor.__doc__
+assert descriptor.fget(counter) == 1
+descriptor.fset(counter, 3)
+assert counter.item == 3
+descriptor.fdel(counter)
+assert counter.item == -1
+counter.item = 4
+assert counter.item == 4
+del counter.item
+assert counter.item == -1
+object.__setattr__(counter, "item", 5)
+assert counter.item == 5
+
+# Exposing or replacing the instance dictionary must not redirect data slots
+# into dictionary entries, even when the supplied mapping shadows their names.
+namespace = counter.__dict__
+namespace["item"] = 99
+counter.item = 6
+assert counter.item == 6 and namespace["value"] == 6
+assert namespace["item"] == 99
+object.__setattr__(counter, "item", 7)
+assert counter.item == 7 and namespace["value"] == 7
+counter.__dict__ = {"value": 8, "item": 100}
+counter.item = 9
+assert counter.item == 9 and counter.__dict__["item"] == 100
+
+
+class Child(Counter):
+    pass
+
+
+assert Child.item is descriptor
+inherited_counter = Child()
+del inherited_counter.item
+assert inherited_counter.value == -1
+inherited_counter.item = 5
+object.__delattr__(inherited_counter, "item")
+assert inherited_counter.value == -1
+
+
+class ReadOnly:
+    @property
+    def value(self):
+        return 5
+
+
+assert ReadOnly.value.fset is None
+assert ReadOnly.value.fdel is None
+raises(AttributeError, setattr, ReadOnly(), "value", 1)
+readonly = ReadOnly()
+raises(AttributeError, object.__setattr__, readonly, "value", 1)
+readonly.__dict__["value"] = 99
+raises(AttributeError, setattr, readonly, "value", 1)
+raises(AttributeError, object.__setattr__, readonly, "value", 1)
+assert readonly.value == 5 and readonly.__dict__["value"] == 99
+
+
+class MutableProperty:
+    @property
+    def value(self):
+        return 11
+
+    @value.deleter
+    def value(self):
+        self.deleted = True
+
+
+class InheritedProperty(MutableProperty):
+    pass
+
+
+mutable = MutableProperty()
+child = InheritedProperty()
+saved = MutableProperty.value
+assert InheritedProperty.value is saved
+mutable.__dict__["value"] = 12
+child.__dict__["value"] = 14
+assert mutable.value == child.value == 11
+del MutableProperty.value
+assert not hasattr(MutableProperty, "value")
+assert not hasattr(InheritedProperty, "value")
+assert mutable.value == 12 and child.value == 14
+mutable.value = 13
+assert mutable.__dict__["value"] == 13
+del mutable.value
+assert "value" not in mutable.__dict__ and not hasattr(mutable, "deleted")
+assert saved.__get__(mutable, MutableProperty) == 11
+saved.__delete__(mutable)
+assert mutable.deleted
+MutableProperty.value = saved
+assert MutableProperty.value is saved and InheritedProperty.value is saved
+assert mutable.value == child.value == 11
+MutableProperty.value = 17
+assert MutableProperty.value == mutable.value == 17
+assert child.value == 14
+
+
+class DeleterBase:
+    @property
+    def field(self):
+        return 1
+
+    @field.deleter
+    def field(self):
+        self.deleted = True
+
+
+class DeleterChild(DeleterBase):
+    pass
+
+
+class GetterOnlyChild(DeleterBase):
+    @property
+    def field(self):
+        return 7
+
+
+getter_only = GetterOnlyChild()
+raises(AttributeError, delattr, getter_only, "field")
+raises(AttributeError, object.__delattr__, getter_only, "field")
+assert getter_only.field == 7 and not hasattr(getter_only, "deleted")
+getter_only.__dict__["field"] = 99
+raises(AttributeError, delattr, getter_only, "field")
+raises(AttributeError, object.__delattr__, getter_only, "field")
+assert getter_only.field == 7 and getter_only.__dict__["field"] == 99
+saved_getter_only = GetterOnlyChild.field
+assert saved_getter_only.fdel is None
+GetterOnlyChild.field = saved_getter_only
+raises(AttributeError, delattr, getter_only, "field")
+raises(AttributeError, object.__delattr__, getter_only, "field")
+assert getter_only.field == 7 and getter_only.__dict__["field"] == 99
+
+
+DeleterChild.field = 2
+overridden = DeleterChild()
+overridden.field = 3
+del overridden.field
+assert overridden.field == 2 and not hasattr(overridden, "deleted")
+overridden.field = 4
+object.__delattr__(overridden, "field")
+assert overridden.field == 2 and not hasattr(overridden, "deleted")
+InheritedProperty.value = saved
+assert InheritedProperty.value is saved and child.value == 11
+del InheritedProperty.value
+assert child.value == 14
+
+
+class OptionalGetter:
+    @property
+    def value(self, fallback=12):
+        return fallback
+
+    @property
+    def keyword(self, *, fallback=5):
+        return fallback
+
+
+optional = OptionalGetter()
+assert optional.value == 12 and optional.keyword == 5
+OptionalGetter.value.fget.__defaults__ = (13,)
+OptionalGetter.keyword.fget.__kwdefaults__["fallback"] = 6
+assert optional.value == 13 and optional.keyword == 6
+
+
+def replacement(self):
+    """Replacement getter."""
+    return 9
+
+
+assert descriptor.getter(replacement).__doc__ == "Replacement getter."
+assert descriptor.setter(None).getter(replacement).__doc__ == "Replacement getter."
+assert property(replacement, doc="explicit").getter(None).__doc__ == "explicit"
+assert property().__doc__ is None
+raises(TypeError, property, None, None, None, None, None)
+
+
+class Missing:
+    def __get__(self, instance, owner):
+        raise AttributeError("descriptor missing")
+
+
+class MissingData(Missing):
+    def __set__(self, instance, value):
+        raise ValueError("not writable")
+
+
+class Fallback:
+    plain = Missing()
+    data = MissingData()
+
+    @property
+    def native(self):
+        raise AttributeError("property missing")
+
+    def __getattr__(self, name):
+        if name == "absent":
+            raise AttributeError(name)
+        return "fallback " + name
+
+
+fallback = Fallback()
+assert fallback.plain == "fallback plain"
+assert fallback.data == "fallback data"
+assert fallback.native == "fallback native"
+assert getattr(fallback, "absent", 42) == 42
+
+
+class NoFallback:
+    value = Missing()
+
+
+assert getattr(NoFallback(), "value", 42) == 42
+raises(AttributeError, getattr, NoFallback(), "value")
+print("property-protocol-ok")

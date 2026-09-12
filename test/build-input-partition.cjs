@@ -59,6 +59,8 @@ const generalFrontierValidationPaths = [
   ".agents/tasks/general-unit-map-integration.json",
   ".agents/tasks/general-class-unit-bf-proof-policy.json",
   ".agents/tasks/general-class-unit-component-replay.json",
+  ".agents/tasks/general-class-unit-projection-proof-fixture.json",
+  ".agents/tasks/general-quartic-proof-fixtures.json",
 ];
 
 function fixture(context, git = false) {

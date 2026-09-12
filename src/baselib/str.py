@@ -312,9 +312,15 @@ def _apply_formatting(
         format_type,
     ) = match[1:]
 
+    string_value = _value_type_is(original, "string")
+    if string_value:
+        if format_type and format_type != "s":
+            raise ValueError("Unknown format code '" + format_type + "' for str")
+        if sign or alternate or grouping:
+            raise ValueError("Invalid format specifier for str")
     if zero_pad:
         fill = fill or "0"
-        align = align or "="
+        align = align or ("<" if string_value else "=")
     else:
         fill = fill or " "
 
@@ -329,6 +335,8 @@ def _apply_formatting(
     is_numeric = integer_value or not runtime.is_nan(numeric_value)
     precision = runtime.parse_int(precision_text, 10)
     lower_type = _lower(format_type or "")
+    if integer_value and precision_text and lower_type not in ("e", "f", "g", "%"):
+        raise ValueError("Precision not allowed in integer format specifier")
     value = original
     integer_sign = ""
     integer_prefix = ""
@@ -363,7 +371,7 @@ def _apply_formatting(
             value = integer_sign + integer_prefix + integer_digits
     elif lower_type in ("e", "f", "g", "%"):
         is_numeric = True
-        value = runtime.parse_float(original)
+        value = runtime.number(float(original))
         digits = 6 if runtime.is_nan(precision) else precision
         if lower_type == "e":
             value = value.toExponential(digits)
@@ -400,7 +408,7 @@ def _apply_formatting(
         if lower_type == "s":
             if not _value_type_is(original, "string"):
                 raise ValueError("Unknown format code 's' for object")
-            if sign or alternate or grouping or zero_pad:
+            if sign or alternate or grouping:
                 raise ValueError("Invalid format specifier for str")
             is_numeric = False
         elif not format_type and integer_value:
@@ -468,6 +476,32 @@ def _apply_formatting(
     return value
 
 
+def format(value: Any, format_spec: _Str = "") -> _Str:
+    """Format a value using its type's `__format__` slot."""
+    if not isinstance(format_spec, str):  # pyright: ignore[reportArgumentType]
+        raise TypeError("format() argument 2 must be str")
+    modules = runtime.reflect.get(runtime.global_object, "__sagejs_baselib_modules__")
+    builtins_module = runtime.reflect.get(modules, "sagejs._baselib.builtins")
+    lookup = runtime.reflect.get(builtins_module, "ρσ_get_type_slot")
+    slot = runtime.reflect.apply(lookup, runtime.undefined, [value, "__format__"])
+    if slot is not runtime.undefined:
+        answer = slot(format_spec)
+        if not isinstance(answer, str):  # pyright: ignore[reportArgumentType]
+            raise TypeError("__format__ must return a str")
+        return answer
+    specification = _native_string(format_spec)
+    if not specification:
+        return ρσ_str(value)
+    if isinstance(value, str):  # pyright: ignore[reportArgumentType]
+        value = _native_string(value)
+    elif isinstance(value, int):
+        if _value_type_is(value, "object") and specification[-1] not in "eEfFgG%":
+            value = runtime.reflect.apply(runtime.number.prototype.valueOf, value, [])
+    elif not isinstance(value, float):
+        raise TypeError("unsupported format string passed to object.__format__")
+    return _apply_formatting(value, specification)
+
+
 def _resolve_field(path: _Str, value: Any) -> Any:
     position = 0
     while position < len(path):
@@ -480,7 +514,12 @@ def _resolve_field(path: _Str, value: Any) -> Any:
             key = path[position:end]
             if _string_call(key, "match", runtime.regexp(r"^\d+$")) is not None:
                 key = runtime.parse_int(key, 10)
-            value = value[key]
+            modules = runtime.reflect.get(
+                runtime.global_object, "__sagejs_baselib_modules__"
+            )
+            internal = runtime.reflect.get(modules, "sagejs._baselib.internal")
+            getitem = runtime.reflect.get(internal, "ρσ_getitem")
+            value = runtime.reflect.apply(getitem, runtime.undefined, [value, key])
             position = end + 1
         else:
             while end < len(path) and path[end] not in ".[":
@@ -552,7 +591,6 @@ def string_format(
                 if index >= len(format_args):
                     raise IndexError(root)
                 value = format_args[index]
-            value = _resolve_field(key[root_end:], value)
         else:
             automatic = True
             if manual:
@@ -564,6 +602,7 @@ def string_format(
                 raise IndexError("Not enough arguments to match template: " + template)
             value = format_args[next_index]
             next_index += 1
+        value = _resolve_field(key[root_end:], value)
         if conversion == "r":
             formatted_value = ρσ_repr(value)
         elif conversion == "s":
@@ -594,9 +633,9 @@ def string_format(
                     specification[spec_position + 1 : spec_end - 1]
                 )
                 spec_position = spec_end
-            answer = _apply_formatting(formatted_value, resolved_specification)
+            answer = format(formatted_value, resolved_specification)
         else:
-            answer = ρσ_str(formatted_value)
+            answer = format(formatted_value)
         if show_key:
             answer = key + "=" + answer
         return answer
@@ -1405,43 +1444,46 @@ def _define_string_method(
     runtime.reflect.set(ρσ_str, name, implementation)
 
 
-_define_string_method("format", string_format)
-_define_string_method("__mod__", _str_percent_format)
-_define_string_method("capitalize", _str_capitalize)
-_define_string_method("center", _str_center)
-_define_string_method("count", _str_count)
-_define_string_method("encode", _str_encode)
-_define_string_method("endswith", _str_endswith)
-_define_string_method("startswith", _str_startswith)
-_define_string_method("find", _str_find)
-_define_string_method("rfind", _str_rfind)
-_define_string_method("index", _str_index)
-_define_string_method("rindex", _str_rindex)
-_define_string_method("islower", _str_islower)
-_define_string_method("isupper", _str_isupper)
-_define_string_method("isspace", _str_isspace)
-_define_string_method("isalpha", _str_isalpha)
-_define_string_method("isdigit", _str_isdigit)
-_define_string_method("isidentifier", _str_isidentifier)
-_define_string_method("join", _str_join)
-_define_string_method("ljust", _str_ljust)
-_define_string_method("rjust", _str_rjust)
-_define_string_method("lower", _str_lower)
-_define_string_method("upper", _str_upper)
-_define_string_method("title", _str_title)
-_define_string_method("expandtabs", _str_expandtabs)
-_define_string_method("lstrip", _str_lstrip)
-_define_string_method("rstrip", _str_rstrip)
-_define_string_method("strip", _str_strip)
-_define_string_method("translate", _str_translate)
-_define_string_method("partition", _str_partition)
-_define_string_method("rpartition", _str_rpartition)
-_define_string_method("replace", _str_replace)
-_define_string_method("split", _str_split)
-_define_string_method("rsplit", _str_rsplit)
-_define_string_method("splitlines", _str_splitlines)
-_define_string_method("swapcase", _str_swapcase)
-_define_string_method("zfill", _str_zfill)
+for _string_name, _string_implementation in [
+    ("format", string_format),
+    ("__mod__", _str_percent_format),
+    ("capitalize", _str_capitalize),
+    ("center", _str_center),
+    ("count", _str_count),
+    ("encode", _str_encode),
+    ("endswith", _str_endswith),
+    ("startswith", _str_startswith),
+    ("find", _str_find),
+    ("rfind", _str_rfind),
+    ("index", _str_index),
+    ("rindex", _str_rindex),
+    ("islower", _str_islower),
+    ("isupper", _str_isupper),
+    ("isspace", _str_isspace),
+    ("isalpha", _str_isalpha),
+    ("isdigit", _str_isdigit),
+    ("isidentifier", _str_isidentifier),
+    ("join", _str_join),
+    ("ljust", _str_ljust),
+    ("rjust", _str_rjust),
+    ("lower", _str_lower),
+    ("upper", _str_upper),
+    ("title", _str_title),
+    ("expandtabs", _str_expandtabs),
+    ("lstrip", _str_lstrip),
+    ("rstrip", _str_rstrip),
+    ("strip", _str_strip),
+    ("translate", _str_translate),
+    ("partition", _str_partition),
+    ("rpartition", _str_rpartition),
+    ("replace", _str_replace),
+    ("split", _str_split),
+    ("rsplit", _str_rsplit),
+    ("splitlines", _str_splitlines),
+    ("swapcase", _str_swapcase),
+    ("zfill", _str_zfill),
+]:
+    _define_string_method(_string_name, _string_implementation)
 
 runtime.reflect.set(_str_maketrans, "__staticmethod__", True)
 runtime.reflect.set(ρσ_str, "maketrans", _str_maketrans)

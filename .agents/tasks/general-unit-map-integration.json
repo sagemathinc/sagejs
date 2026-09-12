@@ -24,7 +24,8 @@
     "general-unit-coordinate-map",
     "general-class-unit-bf-proof-policy",
     "general-class-unit-component-replay",
-    "general-class-unit-projection-proof-fixture"
+    "general-class-unit-projection-proof-fixture",
+    "general-quartic-proof-fixtures"
   ],
   "references": [
     "Mathematical dependency f531a6b640ce8344a9e595ba8bc602a24678bafe, merged as47746b60bcd1e5e1c141667413f397a5ad73a35e; integration does not claim its mathematical files",

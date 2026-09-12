@@ -6,6 +6,9 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const esbuild = require("esbuild");
 const { browserModuleCache } = require("./browser-module-cache.cjs");
+const { CORE_STANDALONE_MODULES } = require(
+  "../../../tools/standalone-library.cjs",
+);
 const { loadRegistry } = require("../../../tools/ffi/declarations.cjs");
 const {
   generatedWasmResourceAdapter,
@@ -946,7 +949,7 @@ function requireBrowserModuleCache(name) {
   );
 }
 
-for (const name of browserAdditionalModules) {
+for (const name of new Set([...browserAdditionalModules, ...CORE_STANDALONE_MODULES])) {
   requireBrowserModuleCache(name);
 }
 
@@ -983,6 +986,7 @@ fs.writeFileSync(
   JSON.stringify({
     modules: standardLibraryModules,
     preload: browserAdditionalModules,
+    coreStandalone: CORE_STANDALONE_MODULES,
   }),
 );
 fs.copyFileSync(lazyModulesSource, lazyModulesOutput);

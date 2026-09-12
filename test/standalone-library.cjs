@@ -9,8 +9,22 @@ const {
   BASELIB_STANDALONE_MODULES,
   MATRIX_STANDALONE_MODULES,
   GROEBNER_STANDALONE_MODULES,
+  CORE_STANDALONE_MODULES,
   moduleClosure,
 } = require("../tools/standalone-library.cjs");
+
+test("Node compiler resources retain the authoritative standalone core", () => {
+  const { coreStandaloneModules } = require("../dist/tools/standalone-resources.js");
+  assert.deepEqual(coreStandaloneModules(), CORE_STANDALONE_MODULES);
+});
+
+test("implicit standalone core includes literal default-import dependencies", () => {
+  for (const name of ["sagejs._introspection", "sagejs._documentation_search", "sagejs.class_namespace", "inspect"]) {
+    assert(CORE_STANDALONE_MODULES.includes(name), name);
+    assert(BASELIB_STANDALONE_MODULES.includes(name) || name === "inspect", name);
+  }
+  assert(!CORE_STANDALONE_MODULES.includes("sagejs.special_functions"));
+});
 
 test("matrix standalone modules follow literal lazy imports", () => {
   assert(BASELIB_STANDALONE_MODULES.includes("random"));

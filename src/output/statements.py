@@ -168,7 +168,12 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
 
             def clear_exception_target():
                 output.indent()
-                if class_exception_target:
+                prepared = output.prepared_namespace
+                if class_exception_target and prepared:
+                    output.print(prepared.state + ".delete_name(")
+                    output.print(JSON.stringify(node.argname.name))
+                    output.print(")")
+                elif class_exception_target:
                     output.print("delete")
                     output.space()
                     node.argname.print(output)
