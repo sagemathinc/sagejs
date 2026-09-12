@@ -103,6 +103,19 @@ portable compile/eval/exec and mpmath regressions pass. Node contract/gallery
 regressions pass 15/15 without skips. These checks resolve the original browser
 draft gate; they are correctness evidence, not new browser timing measurements.
 
+At `d8e65e466`, the complete ordinary local `pnpm test` run passes its
+functional phases, then fails the unchanged startup gate at 409.5ms normalized
+versus 400ms (empty CLI 185.0ms). This is retained as a failure, not waived
+because the JSON module is lazy or the browser tests pass. The PR remains draft.
+An exact-source ARM64 build/routine run is being collected independently; it
+does not substitute for diagnosis of the local startup miss.
+
+The four content-addressed optimizer-inventory assets for logical snapshot
+`99c4c7469ecd80e2d24032d6e2ac077df54326975d020b7b6c46e5346a184fdc`
+are now published. Their remote SHA-256 digests and sizes match the manifest.
+This is infrastructure evidence only, created with `--latest=false`; the
+published product Latest pointer is unchanged.
+
 General four-platform product performance, memory, startup and the program
 targets remain separate open gates. No compiler, dictionary-runtime, native
 prefix, product release or shipping ownership is taken by this change.
