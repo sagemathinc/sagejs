@@ -74,3 +74,11 @@ lookup remain unfixed in both modes. Strict Python and formatting checks pass.
 These are source-emitter and focused runtime checks using the rebuilt compiler
 with the earlier built runtime. They do not replace a new full-build or
 cross-platform receipt for this follow-up, or the open performance review.
+
+The legacy compiler run completed with 17 passes, 34 explicitly marked skips,
+and 15 missing-addon errors, all naming `sagejs_flint.node`. These are missing
+native qualification prerequisites, not passing mathematics tests. The broad
+architecture check also requires a refreshed optimizer opportunity manifest
+for the changed compiler; it currently rejects its stale input identity.
+The imported planning note's obsolete benchmark staging path was removed
+without changing audit rules or its retained helper hash.

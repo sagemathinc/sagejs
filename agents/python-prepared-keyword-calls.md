@@ -139,11 +139,12 @@ profiles separate from timings. Retained SHA256 values:
 - `campaign.cjs`: `b6de840940881f78867c92e9386f72fea777e3442906b9142006b01b63e522b1`
 - historical `standalone-host.cjs`: `44c30afc74422b06ca64f064f7946830751c28fc2ef490355ad7c9b94b2bb8c7`
 
-The local profile directory lacks its nested standalone-host copy, but the
-fresh main checkout's `bench/cowasm/standalone-host.cjs` matches the recorded
-SHA256 exactly and can supply that file when staging. No host is reserved yet.
-Reserve only after fresh Discussion/idle checks and exact control artifacts
-are ready. Keep counts, correctness checks, warmups/seven samples and reversed
+The original local profile directory lacked its nested standalone-host copy.
+Any new campaign must stage a retained `standalone-host.cjs` whose bytes match
+the recorded SHA256 above, rather than assume a historical checkout path still
+identifies the right helper. Reserve a host only after fresh Discussion/idle
+checks and exact control artifacts are ready. Keep counts, correctness checks,
+warmups/seven samples and reversed
 fresh-process orders; preserve every failure and sample. Record actual
 compiler/baselib/output/Node identities, startup exclusion and heap/profile
 scope. No package-wide, construction, pre-ownership recovery, or cliff-closure
