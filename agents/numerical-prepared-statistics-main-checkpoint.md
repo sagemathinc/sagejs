@@ -179,3 +179,20 @@ but fails the unchanged startup gate: 405.7 ms raw, 404.2 ms normalized, versus
 400 ms. No repeated retry is counted as erasing that miss. The branch remains
 draft at this gate; independent current-source qualification and attribution
 against the main/control startup observations remain required.
+
+An attribution-only interleaved fresh-process panel at
+2026-09-12T19:13:49Z compares control `75a6d869a` (runtime `d3c436020`)
+against candidate `63959dd99` (runtime `85b374462`) under Node 26.8.1.
+Eleven samples per group alternate Node/control/candidate and reverse order;
+every Sage process checks the exact result of `print(2^100)`. Median bare Node
+is 26.711 ms, control 397.532 ms, and candidate 395.310 ms. This small panel
+does not establish a regression attributable to prepared statistics, but does
+not supersede the failed routine gate or qualify an improvement. Both variants
+are close to the gate. There was no retry-until-green or budget adjustment.
+Raw milliseconds, rounded to three decimals:
+
+```text
+Node: 27.064 25.448 28.283 30.207 26.711 25.031 26.435 26.685 29.926 32.204 25.939
+Control: 481.202 389.626 392.204 389.723 384.178 391.974 407.547 398.180 397.532 399.283 400.522
+Candidate: 395.952 395.310 409.172 396.748 389.768 387.886 394.590 397.629 393.907 404.994 394.384
+```

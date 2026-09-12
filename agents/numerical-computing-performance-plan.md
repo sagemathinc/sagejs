@@ -160,10 +160,15 @@ Strict loading exposed an omitted third decorated helper; the corrected
 descriptor registers all three differential-tested functions. The dependency
 guard now accepts one absolute pack path with its authenticated digest, not
 every artifact sharing the pack basename. Strict Python, architecture, six
-domain tests and separate sanitizer checks pass. A fresh full frozen-source
-build, installed packages and platform qualification remain pending. The full
-stdin corpus's `Convertible` failure remains unresolved even though file
-execution and a smaller stdin conversion probe pass. Browser prepared-native
+domain tests and separate sanitizer checks pass. The corrected runtime source
+completes a full build in 7m50s and passes the 14 pack tests again. Ordinary
+routine validation passes the portable suite but fails startup at 404.2 ms
+normalized against the unchanged 400 ms gate; installed packages and platform
+qualification remain pending. One interleaved control/candidate diagnostic
+observes 397.5/395.3 ms medians, not evidence of a candidate startup regression
+and not a replacement qualification pass. The full stdin corpus's `Convertible`
+failure is localized to REPL blank-line class submission, not native conversion;
+complete-program file execution remains the packaging witness. Browser prepared-native
 storage is explicitly excluded and retains the checked dynamic fallback.
 Historical 82–103 ms observations are not new-source timing evidence; the
 10 ms target remains unmet. This is an integration prerequisite, not N2 exit.
