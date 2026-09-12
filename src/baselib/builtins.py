@@ -2776,6 +2776,10 @@ def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
 
 
 def ρσ_bool(value: Any) -> _Bool:
+    if value is True:
+        return True
+    if value is False:
+        return False
     if value is None or value is runtime.undefined:
         return False
     value_type = runtime.jstype(value)

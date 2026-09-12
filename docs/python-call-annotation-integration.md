@@ -82,3 +82,29 @@ architecture check also requires a refreshed optimizer opportunity manifest
 for the changed compiler; it currently rejects its stale input identity.
 The imported planning note's obsolete benchmark staging path was removed
 without changing audit rules or its retained helper hash.
+
+## Exception-cost mechanism experiments
+
+The exception initializer used to format every stack immediately. The new
+host-capability path captures creation-site frames with `captureStackTrace`
+without forcing formatting; hosts lacking that API retain the old fallback.
+Focused standalone checks in both modes cover format-once behavior, assigned
+stacks, original creation frames, identity, arguments, and forced fallback.
+
+A subsequent profile found generic truth conversion costly in the exception
+path. Exact `True`/`False` values now return directly, without invoking the
+general representation lookup. Object truth hooks and numeric truth values
+retain their previous behavior; the regression checks include `__bool__`
+precedence over `__len__`.
+
+Local Node 26.8.1 diagnostics (10,000 iterations, three warmups, seven samples,
+two reversed variant orders) measured construction-and-catch at 615–621 ms on
+the forced eager fallback and 498–499 ms with lazy capture. After the boolean
+fast path, a separate local run measured 375–376 ms; re-raising an existing
+exception fell from approximately 190–191 ms to 121–122 ms. These are local
+mechanism experiments, not an independent controlled before/after or CPython
+comparison, and do not close the previously reported cliff. Reproduce with
+`node bench/python-exception-cost.cjs`; optional `SAGEJS_EXCEPTION_CASE` and
+`SAGEJS_EXCEPTION_VARIANT` select profiling subsets. The profile and timing
+campaigns are separate. Full source-current qualification follows these
+focused checks; no four-platform or package-speedup claim is made here.
