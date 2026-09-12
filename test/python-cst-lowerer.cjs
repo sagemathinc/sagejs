@@ -1142,7 +1142,7 @@ test("dotted callable instances resolve through __call__", async () => {
     const javascript = normalizeCheckedModuleReads(output.get(), ["package"]);
     assert.match(
       javascript,
-      /ρσ_interpolate_kwargs\(undefined, ρσ_getattr_internal\(package, "marker", ρσ_getattr_missing\)/,
+      /ρσ_invoke_prepared_keywords\(ρσ_prepare_method_call\(package, "marker"\),/,
     );
     assert.match(
       javascript,
@@ -1857,7 +1857,7 @@ test("keyword instance calls retain live descriptor lookup", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_interpolate_kwargs\(undefined, ρσ_getattr_internal\(\(new \$ρσ\$py\$Dynamic\), "compute", ρσ_getattr_missing\)/,
+      /ρσ_invoke_prepared_keywords\(ρσ_prepare_method_call\(new \$ρσ\$py\$Dynamic, "compute"\),/,
     );
     assert.doesNotMatch(javascript, /ρσ_expr_temp\.compute/);
     assert.equal((javascript.match(/new \$ρσ\$py\$Dynamic\b/g) || []).length, 1);

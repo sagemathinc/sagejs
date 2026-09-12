@@ -705,20 +705,25 @@ def _builtins_call_member(
     return runtime.reflect.apply(method, value, call_args)
 
 
+def _builtins_set_python_type(value: Any, python_type: Any) -> None:
+    runtime.object.defineProperty(
+        value,
+        "__python_type__",
+        {"value": python_type, "writable": True, "configurable": True},
+    )
+
+
 def _builtins_bind_python_function(
     target: Any,
     receiver: Any,
 ) -> Any:
-    bind_arguments = runtime.reflect.construct(runtime.array, [])
-    bind_arguments.push(runtime.undefined)
-    bind_arguments.push(receiver)
+    bind_arguments = runtime.array.of(receiver)
     if (
-        _builtins_get_member(target, "__sagejs_native_method__") is True
-        or _builtins_get_member(target, "__sagejs_method_signature_excludes_self__")
-        is True
+        _builtins_get_member(target, "__sagejs_native_method__") is not True
+        and _builtins_get_member(target, "__sagejs_method_signature_excludes_self__")
+        is not True
     ):
-        bind_arguments = runtime.reflect.construct(runtime.array, [])
-        bind_arguments.push(receiver)
+        bind_arguments.unshift(runtime.undefined)
     bound = runtime.reflect.apply(
         runtime.reflect.get(target, "bind"),
         target,
@@ -741,6 +746,11 @@ def _builtins_bind_python_function(
                 [1],
             ),
         )
+        positional_only = runtime.reflect.get(bound, "__positional_only__")
+        if positional_only is not True and positional_only is not runtime.undefined:
+            runtime.reflect.set(
+                bound, "__positional_only__", runtime.math.max(0, positional_only - 1)
+            )
     return bound
 
 
@@ -5968,15 +5978,7 @@ def _builtins_function_with_globals(
             return _builtins_function_with_globals(result, global_namespace)
         return result
 
-    runtime.object.defineProperty(
-        rebound,
-        "__python_type__",
-        {
-            "value": ρσ_function_type,
-            "writable": True,
-            "configurable": True,
-        },
-    )
+    _builtins_set_python_type(rebound, ρσ_function_type)
     runtime.reflect.set(rebound, "__python_descriptor__", True)
     runtime.object.defineProperty(
         rebound,
@@ -6874,11 +6876,7 @@ def ρσ_type(*values: Any) -> Any:
                     [dynamic_class, bases],
                 ),
             )
-        runtime.object.defineProperty(
-            dynamic_class,
-            "__python_type__",
-            {"value": ρσ_type, "writable": True, "configurable": True},
-        )
+        _builtins_set_python_type(dynamic_class, ρσ_type)
         runtime.set_class_repr(dynamic_class, "<class '" + class_name + "'>")
         ρσ_apply_custom_new_signature(
             dynamic_class,
@@ -7033,11 +7031,7 @@ def _builtins_apply_metaclass_namespace(
     # metaclass while `metaclass.__init__` runs.  Publish that relationship
     # before invoking the initializer so `super()` inside a metaclass
     # `__init__` follows the metaclass MRO (traitlets relies on this).
-    runtime.object.defineProperty(
-        created,
-        "__python_type__",
-        {"value": metaclass, "writable": True, "configurable": True},
-    )
+    _builtins_set_python_type(created, metaclass)
     _builtins_class_metaclasses.set(created, metaclass)
     initializer = _builtins_get_member(
         _builtins_get_member(metaclass, "prototype"),
@@ -9320,11 +9314,7 @@ _builtins_set_type_metadata(ρσ_bool, "bool")
 _builtins_set_type_metadata(ρσ_float, "float")
 _builtins_set_type_metadata(runtime.function_class, "function")
 for builtin_numeric_type in (ρσ_int, ρσ_bool, ρσ_float, ρσ_type):
-    runtime.object.defineProperty(
-        builtin_numeric_type,
-        "__python_type__",
-        {"value": ρσ_type, "writable": True, "configurable": True},
-    )
+    _builtins_set_python_type(builtin_numeric_type, ρσ_type)
 runtime.reflect.set(runtime.function_class, "__python_type__", ρσ_type)
 runtime.set_class_repr(ρσ_tuple, "<class 'tuple'>")
 runtime.set_class_repr(ρσ_property, "<class 'property'>")
@@ -9336,11 +9326,7 @@ for builtin_factory_type in (ρσ_tuple, ρσ_property):
     # baselib functions receive lazy function metadata, so replace that marker
     # explicitly instead of letting class inheritance mistake the factory for
     # a custom metaclass.
-    runtime.object.defineProperty(
-        builtin_factory_type,
-        "__python_type__",
-        {"value": ρσ_type, "writable": True, "configurable": True},
-    )
+    _builtins_set_python_type(builtin_factory_type, ρσ_type)
 runtime.reflect.set(
     runtime.reflect.get(SageProperty, "prototype"),
     "__python_type__",
@@ -9446,7 +9432,8 @@ def _builtins_object_setattr(
             _builtins_call_member(descriptor, "__set__", [self, value])
             return
     if not _builtins_store_instance_attribute(self, name, value):
-        runtime.reflect.set(self, name, value)
+        if not runtime.reflect.set(self, name, value):
+            raise AttributeError("object attribute '" + name + "' is read-only")
 
 
 @runtime.native_method
@@ -9523,11 +9510,7 @@ runtime.reflect.set(ρσ_range, "prototype", runtime.reflect.get(_Range, "protot
 runtime.reflect.set(
     runtime.reflect.get(_Range, "prototype"), "__python_type__", ρσ_range
 )
-runtime.object.defineProperty(
-    ρσ_range,
-    "__python_type__",
-    {"value": ρσ_type, "writable": True, "configurable": True},
-)
+_builtins_set_python_type(ρσ_range, ρσ_type)
 runtime.set_class_repr(ρσ_range, "<class 'range'>")
 _builtins_set_type_metadata(ρσ_range, "range")
 

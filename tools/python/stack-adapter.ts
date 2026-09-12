@@ -26,7 +26,8 @@ function capture(error: Error | null, boundary?: Function): readonly unknown[] {
     // caller. This exemption applies ONLY to current-stack collection, never
     // to an exception stack (where dropping helpers could hide a body failure).
     if (currentStack && frames.length === 0 &&
-        (name === "ρσ_interpolate_kwargs" || name === "ρσ_invoke_prepared_method") &&
+        (name === "ρσ_interpolate_kwargs" || name === "ρσ_invoke_prepared_method" ||
+         name === "_internal_bind_kwargs" || name === "ρσ_invoke_prepared_keywords") &&
         match && /^sagejs\/runtime-bootstrap-(python|sage)\.js$/.test(match[1])) continue;
     const executable = match ? executables.get(match[1]) : undefined;
     if (executable && match) {

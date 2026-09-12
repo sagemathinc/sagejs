@@ -1,0 +1,76 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-prepared-keyword-implementation",
+  "title": "Prepared immediate keyword calls",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Share strict keyword binding with captured ordinary method descriptors while preserving required baseline defects and the existing core budget",
+  "base_commit": "a58feb41619f62b86a70ea30a05eaea325d0f96e",
+  "claims": [
+    "src/baselib/builtins.py",
+    "src/baselib/internal.py",
+    "src/output/functions.py",
+    "docs/python-prepared-keyword-calls.md",
+    "docs/reference/api.md",
+    "website/reference-data.json",
+    "website/reference.html",
+    "test/python-prepared-keyword-calls.cjs",
+    "test/python-prepared-keyword-source.cjs",
+    "test/python-prepared-method-call.cjs",
+    "test/python-resolved-keyword-calls.cjs",
+    "test/python-cst-lowerer.cjs",
+    "test/python-stack-adapter.cjs",
+    "test/python-prepared-keyword-traceback.cjs",
+    "test/fixtures/prepared-keyword-traceback.py",
+    "tools/python/stack-adapter.ts",
+    "test/python-error-type-lookup.cjs",
+    "test/python-type-marker-installer.cjs",
+    "test/fixtures/prepared-keyword-calls.py"
+  ],
+  "dependencies": [],
+  "references": [
+    "Clean main02a683d21 prerequisite imports: PR238550b635ed, PR24737e80f468, PR26424e19608c",
+    "Integration coordinator released builtins/internal/emitter claims and reviewed source changes before qualification",
+    "agents/python-prepared-keyword-calls.md"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": ["CPython", "JavaScript"],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "pnpm build:check",
+    "pnpm test:baselib:strict",
+    "node scripts/run-test-tier.cjs portable",
+    "node --test test/python-prepared-method-call.cjs test/python-prepared-keyword-calls.cjs test/python-runtime-hotpaths.cjs test/shared-bootstrap-adapters.cjs",
+    "node scripts/check-package-graph.cjs",
+    "node scripts/generate-docs.cjs --check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Corrected frozen runtime build passed; portable218, strict403, selected source-qualified pyparsing pass. Focused115/116 retains baseline divmod; required oracles40/46 retain three known gaps in both modes. Compiler17pass/15missing-FLINT failures/34skip. Post-build generated documentation and this honest contract update invalidate the local receipt; final-head CI remains required. Controlled performance campaign pending; no speedup claim.",
+    "risks": [
+      "Required mapping keyword order, sole-star order and custom getattribute defects remain unfixed; original four baseline minima stay tracked.",
+      "Bootstrap and stage-zero native adapter positional-only metadata normalization is not implemented here.",
+      "Local core899355/903000; independent all-open source census910686 exceeds budget and is not this candidate's qualification.",
+      "No annotation dictionary emission optimization or native exception ABI expansion."
+    ],
+    "next_steps": [
+      "Requalify the documentation/metadata-final head in CI; retain historical exact-runtime receipts without claiming current final-head qualification.",
+      "Complete controlled current-source comparison before claiming speedup, retaining all samples and actual owned-case call counts.",
+      "Repair mapping order, sole-star order, custom attribute lookup and native adapter positional-only metadata in separate scoped work."
+    ]
+  }
+}

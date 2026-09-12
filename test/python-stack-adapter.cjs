@@ -27,23 +27,41 @@ test("opaque URLs accept reusable bytecode and preserve rejected-bytecode signal
   assert.equal(rejected.runInThisContext(), 42);
 });
 
-test("only initial known current-stack invocation trampolines can disappear", () => {
+for (const mode of ["python", "sage"]) {
+test(`${mode}: only initial known current-stack invocation trampolines can disappear`, () => {
+  const helpers = ["ρσ_interpolate_kwargs", "ρσ_invoke_prepared_method",
+    "_internal_bind_kwargs", "ρσ_invoke_prepared_keywords"];
   new Script("function extract_stack(){return globalThis.__sagejs_capture_python_frames__(null,extract_stack)};" +
-    "function ρσ_interpolate_kwargs(){return extract_stack()};" +
+    "function _internal_bind_kwargs(){return extract_stack()};" +
+    "function ρσ_interpolate_kwargs(){return _internal_bind_kwargs()};" +
+    "function ρσ_invoke_prepared_keywords(){return _internal_bind_kwargs()};" +
     "function ρσ_invoke_prepared_method(){return extract_stack()}",
-  { filename: "sagejs/runtime-bootstrap-python.js" }).runInThisContext();
-  for (const helper of ["ρσ_interpolate_kwargs", "ρσ_invoke_prepared_method"]) {
+  { filename: `sagejs/runtime-bootstrap-${mode}.js` }).runInThisContext();
+  for (const helper of helpers) {
     const generated = `globalThis.adapterFrames = ${helper}();`;
     mapped(generated, generated.indexOf(helper), generated.length - 1).runInThisContext();
     assert.equal(globalThis.adapterFrames.at(-1).provenance, "python-source");
   }
-  new Script("function ρσ_interpolate_kwargs(){throw new Error('helper failure')};" +
-    "try {ρσ_interpolate_kwargs()} catch(e){globalThis.adapterFailure=e}",
-  { filename: "sagejs/runtime-bootstrap-python.js" }).runInThisContext();
-  const failure = globalThis.__sagejs_capture_python_frames__(globalThis.adapterFailure, null).at(-1);
-  assert.equal(failure.name, "ρσ_interpolate_kwargs");
-  assert.equal(failure.provenance, "native-stack");
+  for (const helper of helpers) {
+    new Script(`function ${helper}(){throw new Error('helper failure')};` +
+      `try {${helper}()} catch(e){globalThis.adapterFailure=e}`,
+    { filename: `sagejs/runtime-bootstrap-${mode}.js` }).runInThisContext();
+    const failure = globalThis.__sagejs_capture_python_frames__(globalThis.adapterFailure, null).at(-1);
+    assert.equal(failure.name, helper);
+    assert.equal(failure.provenance, "native-stack");
+
+    new Script(`function ${helper}(){return extract_stack()};globalThis.adapterFrames=${helper}()`,
+      { filename: "user.js" }).runInThisContext();
+    assert.equal(globalThis.adapterFrames.at(-1).filename, "user.js");
+    assert.equal(globalThis.adapterFrames.at(-1).name, helper);
+
+    const generated = `function ${helper}(){return extract_stack()};globalThis.adapterFrames=${helper}()`;
+    mapped(generated, 0, generated.length).runInThisContext();
+    assert.equal(globalThis.adapterFrames.at(-1).provenance, "python-source");
+    assert.match(globalThis.adapterFrames.at(-1).raw, new RegExp(helper));
+  }
 });
+}
 
 test("unmapped and excluded exception body frames are both retained", () => {
   for (const excluded of [false, true]) {

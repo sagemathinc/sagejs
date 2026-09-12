@@ -3,9 +3,11 @@
 from __python__ import hash_literals
 
 from ast_types import (
+    AST_Binary,
     AST_Call,
     AST_Class,
     AST_ClassCall,
+    AST_Conditional,
     AST_Dot,
     AST_ItemAccess,
     AST_Lambda,
@@ -17,6 +19,7 @@ from ast_types import (
     AST_Sub,
     AST_SymbolRef,
     AST_Toplevel,
+    AST_Unary,
     has_calls,
     is_node_type,
 )
@@ -1419,6 +1422,32 @@ def print_function_call(self, output):
         and is_python_attribute_read(self.expression, output)
     )
 
+    if (
+        output.options.python_attributes
+        and not has_kwargs
+        and not is_new
+        and not is_node_type(self, AST_ClassCall)
+        and not self.direct_call
+        and (
+            is_node_type(self.expression, AST_Binary)
+            or is_node_type(self.expression, AST_Conditional)
+            or is_node_type(self.expression, AST_Unary)
+            or is_node_type(self.expression, AST_Seq)
+        )
+    ):
+        # Compound expressions produce callable values, including instances
+        # whose __call__ is inherited. Resolve only after evaluating arguments:
+        # an invalid target must not suppress argument side effects or errors.
+        output.print("ρσ_invoke_prepared_method([(")
+        self.expression.print(output)
+        output.print(")], ")
+        if self.args.length:
+            print_positional_args()
+        else:
+            output.print("[]")
+        output.print(")")
+        return
+
     if is_new and not self.args.length and not has_kwargs and not self.args.starargs:
         output.print("new"), output.space()
         print_function_name()
@@ -1464,8 +1493,21 @@ def print_function_call(self, output):
             output.comma(),
         )
 
+    prepared_keywords = has_kwargs and resolved_python_attribute
+    if prepared_keywords:
+        for argument in self.args:
+            if argument.is_array:
+                prepared_keywords = False
+                break
+
     if has_kwargs:
-        if is_new:
+        if prepared_keywords:
+            output.print("ρσ_invoke_prepared_keywords(ρσ_prepare_method_call(")
+            self.expression.expression.print(output)
+            output.comma()
+            output.print(JSON.stringify(self.expression.property))
+            output.print(")")
+        elif is_new:
             print_new(False)
         else:
             output.print(
@@ -1474,7 +1516,8 @@ def print_function_call(self, output):
                 else "ρσ_interpolate_kwargs_legacy("
             )
             do_print_this()
-        print_function_name(True)
+        if not prepared_keywords:
+            print_function_name(True)
         output.comma()
     else:
         if is_new:
