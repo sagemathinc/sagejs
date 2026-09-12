@@ -665,6 +665,12 @@ Acceptance:
 
 ### Phase F3: auxiliary-variable msolve fast-path experiment
 
+The first bounded tranche is complete: see the
+[full-block export investigation](extension-fields-msolve-block-investigation.md).
+All 36 degrevlex cases from the independent finite-field corpus decode exactly,
+but the exposed API supplies no transformation provenance. Production
+acceleration is deferred; no automatic route or performance gain is claimed.
+
 This optional investigation follows initial Phase F4 qualification of the
 direct exact implementation. Its phase identifier is retained for references;
 it is not a prerequisite for F4 or Milestone F's merge. Cap the investigation

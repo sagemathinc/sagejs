@@ -874,6 +874,10 @@ Retained logs in `/home/user/sagejs-extension-qualification-20260912/` include
 All declared finite-extension capabilities retain their documented exact-field,
 order and resource envelopes. No extension-field msolve fast path is enabled;
 F3 remains a separate optional investigation, not a missing F merge gate.
+The [bounded F3 investigation](extension-fields-msolve-block-investigation.md)
+subsequently confirmed full prime-characteristic block export on 36 independent
+degrevlex examples. It defers acceleration because the exposed API lacks the
+required transformation provenance; no new production path is shipped.
 The merge manager owns merging #122. Milestone N, including exact number-field
 factorization and zero-dimensional decomposition, starts only after that merge.
 No number-field qualification or release is claimed.
