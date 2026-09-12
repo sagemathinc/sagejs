@@ -16,6 +16,7 @@ const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const layout = require("../tools/native-pack-layout.js");
 
 const root = join(__dirname, "..");
 const published = join(root, "dist", "native-kernels");
@@ -34,9 +35,11 @@ const {
 } = require("../tools/native-kernel/production-pack.cjs");
 
 function copyPublishedPack(directory) {
-  cpSync(join(published, "pack"), join(directory, "pack"), {
-    recursive: true,
-  });
+  const index = JSON.parse(readFileSync(join(published, "index.json"), "utf8"));
+  for (const pack of index.packs) {
+    const base = join(layout.packDirectory(pack.packKey), "pack");
+    cpSync(join(published, base), join(directory, base), { recursive: true });
+  }
 }
 
 function runWithCache(cache, source, required = true) {
@@ -111,26 +114,26 @@ test("all production native kernels are published and autoloadable", () => {
     "utf8",
   ));
   const index = JSON.parse(readFileSync(join(published, "index.json"), "utf8"));
-  assert.equal(index.schema, "sagejs.native-cache/v4");
+  assert.equal(index.schema, layout.SCHEMA);
   assert.equal(index.complete, true);
-  assert.equal(index.packs.length, 1);
-  assert.equal(index.packs[0].packAbi, NATIVE_PACK_ABI_VERSION);
+  assert.ok(index.packs.length >= 1);
+  layout.catalogPaths(index);
   assert.equal(NATIVE_KERNEL_ABI_VERSION, NATIVE_ABI_VERSION);
   assert.equal(NATIVE_KERNEL_ASSET_ABI_VERSION, NATIVE_ABI_VERSION);
-  const packPath = join(published, "pack", PACK_FILENAME);
-  const packManifest = JSON.parse(readFileSync(
-    join(published, "pack", "index.json"),
-    "utf8",
-  ));
-  const pack = require(packPath);
-  assert.equal(pack.__sagejsPackAbi, NATIVE_PACK_ABI_VERSION);
-  assert.equal(pack.__sagejsPackIdentity, index.packs[0].packKey);
-  assert.equal(packManifest.packKey, index.packs[0].packKey);
-  assert.equal(packManifest.bytes, statSync(packPath).size);
-  assert.match(
-    packManifest.identity?.builderFingerprint ?? "",
-    /^[a-f0-9]{64}$/,
-  );
+  const packs = new Map();
+  for (const record of index.packs) {
+    assert.equal(record.packAbi, NATIVE_PACK_ABI_VERSION);
+    const base = join(published, layout.packDirectory(record.packKey), "pack");
+    const packPath = join(base, PACK_FILENAME);
+    const packManifest = JSON.parse(readFileSync(join(base,"index.json"),"utf8"));
+    const pack = require(packPath);
+    assert.equal(pack.__sagejsPackAbi,NATIVE_PACK_ABI_VERSION);
+    assert.equal(pack.__sagejsPackIdentity,record.packKey);
+    assert.equal(packManifest.packKey,record.packKey);
+    assert.equal(packManifest.bytes,statSync(packPath).size);
+    assert.match(packManifest.identity?.builderFingerprint ?? "",/^[a-f0-9]{64}$/);
+    packs.set(record.packKey,pack);
+  }
   const production = manifest.kernels.filter((kernel) =>
     kernel.id.endsWith("-production"),
   );
@@ -143,17 +146,19 @@ test("all production native kernels are published and autoloadable", () => {
     assert.match(record?.cacheKey ?? "", /^[a-f0-9]{64}$/);
     assert.equal(record?.nativeAbi, NATIVE_ABI_VERSION);
     assert.match(record?.moduleIdentity ?? "", /^[a-f0-9]{16}$/);
-    assert.equal(record?.packKey, index.packs[0].packKey);
+    assert.ok(layout.selectedPack(index,record));
+    const pack = packs.get(record.packKey);
     assert.ok(Array.isArray(record?.foreignDeclarations));
-    assert.ok(existsSync(join(published, record.cacheKey, "index.cjs")));
+    assert.ok(existsSync(join(published, layout.modulePath(record))));
     assert.equal(existsSync(join(
       published,
+      layout.packDirectory(record.packKey),
       record.cacheKey,
       "build",
       "Release",
       "sagejs_native_kernel.node",
     )), false, "production publishing must not copy standalone addons");
-    const wrapper = require(join(published, record.cacheKey, "index.cjs"));
+    const wrapper = require(join(published, layout.modulePath(record)));
     const standalone = require(join(
       root,
       "packages",
@@ -238,10 +243,10 @@ test("the complex-cubic pack authenticates only lexical same-source private help
   const index = JSON.parse(readFileSync(join(published, "index.json"), "utf8"));
   const record = index.logicalSources[logicalSource];
   assert.deepEqual(record.privateFunctions, expected);
-  const wrapper = require(join(published, record.cacheKey, "index.cjs"));
+  const wrapper = require(join(published, layout.modulePath(record)));
   assert.deepEqual(wrapper.privateFunctions, expected);
   const packManifest = JSON.parse(readFileSync(
-    join(published, "pack", "index.json"),
+    join(published, layout.packDirectory(record.packKey), "pack", "index.json"),
     "utf8",
   ));
   const packed = packManifest.kernels.find((entry) =>
@@ -375,8 +380,8 @@ test("stale FFI declaration metadata fails before a native wrapper loads", () =>
 
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-stale-native-"));
   try {
-    const sourceDirectory = join(published, record.cacheKey);
-    const targetDirectory = join(temporary, record.cacheKey);
+    const sourceDirectory = join(published, layout.packDirectory(record.packKey), record.cacheKey);
+    const targetDirectory = join(temporary, layout.packDirectory(record.packKey), record.cacheKey);
     cpSync(sourceDirectory, targetDirectory, { recursive: true });
     copyPublishedPack(temporary);
     const wrapperPath = join(targetDirectory, "index.cjs");
@@ -387,9 +392,9 @@ test("stale FFI declaration metadata fails before a native wrapper loads", () =>
       wrapperSource.replaceAll(currentIdentity, staleIdentity),
     );
     writeFileSync(join(temporary, "index.json"), `${JSON.stringify({
-      schema: "sagejs.native-cache/v3",
+      ...index,
       sources: {},
-      logicalSources: { [logicalSource]: record },
+      logicalSources: { ...index.logicalSources, [logicalSource]: record },
     }, null, 2)}\n`);
 
     const source = [
@@ -416,8 +421,8 @@ test("stale compiler ABI metadata fails before a native wrapper loads", () => {
 
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-stale-native-abi-"));
   try {
-    const sourceDirectory = join(published, record.cacheKey);
-    const targetDirectory = join(temporary, record.cacheKey);
+    const sourceDirectory = join(published, layout.packDirectory(record.packKey), record.cacheKey);
+    const targetDirectory = join(temporary, layout.packDirectory(record.packKey), record.cacheKey);
     cpSync(sourceDirectory, targetDirectory, { recursive: true });
     copyPublishedPack(temporary);
     const wrapperPath = join(targetDirectory, "index.cjs");
@@ -430,9 +435,9 @@ test("stale compiler ABI metadata fails before a native wrapper loads", () => {
     );
     record.nativeAbi = staleAbi;
     writeFileSync(join(temporary, "index.json"), `${JSON.stringify({
-      schema: "sagejs.native-cache/v3",
+      ...index,
       sources: {},
-      logicalSources: { [logicalSource]: record },
+      logicalSources: { ...index.logicalSources, [logicalSource]: record },
     }, null, 2)}\n`);
 
     const source = [

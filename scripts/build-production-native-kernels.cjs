@@ -20,7 +20,9 @@ const {
 const {
   PACK_FILENAME,
   buildProductionPack,
+  isPrefixFreePack,
 } = require("../tools/native-kernel/production-pack.cjs");
+const layout = require("../tools/native-pack-layout.js");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 const {
   descriptorSelectionReceipts,
@@ -257,35 +259,49 @@ async function main() {
   const missingCapabilities = compiledProduction.flatMap(
     (item) => item.missingCapabilities,
   );
+  return publishProductionKernels({ ...options, built, missingCapabilities,
+    expectedKernels: production.length });
+}
 
-  const pack = await buildProductionPack({
-    items: built,
-    cacheRoot: options.cacheRoot,
-  });
+async function publishProductionKernels({ built, missingCapabilities = [],
+    expectedKernels = built.length, cacheRoot, outputRoot }) {
+  const options = { cacheRoot, outputRoot };
+  // Dependency isolation is determined from the lowered source bodies, not
+  // descriptor names. A mixed family remains with the exact dependency pack.
+  const groups = [built.filter((item) => isPrefixFreePack([item])),
+    built.filter((item) => !isPrefixFreePack([item]))].filter((items) => items.length);
+  const packs = [];
+  const packByKernel = new Map();
+  for (const items of groups) {
+    const pack = await buildProductionPack({ items, cacheRoot: options.cacheRoot });
+    packs.push(pack);
+    for (const item of items) packByKernel.set(item.cacheKey, pack);
+  }
 
   // Publish only runtime inputs. The persistent build cache retains each
   // standalone addon for dynamic development and differential testing. A
-  // production runtime ships one content-addressed mathematics pack instead.
+  // production runtime ships separately loadable content-addressed packs.
   rmSync(options.outputRoot, { recursive: true, force: true });
   mkdirSync(options.outputRoot, { recursive: true });
   const index = {
-    schema: "sagejs.native-cache/v4",
+    schema: layout.SCHEMA,
     complete:
-      built.length === production.length && missingCapabilities.length === 0,
-    expectedKernels: production.length,
+      built.length === expectedKernels && missingCapabilities.length === 0,
+    expectedKernels,
     missingCapabilities,
-    packs: [{
+    packs: packs.map((pack) => ({
       packKey: pack.packKey,
       packAbi: pack.manifest.packAbi,
       nativeAbi: pack.manifest.nativeAbi,
       bytes: pack.manifest.bytes,
       sha256: pack.manifest.sha256,
       kernels: pack.manifest.kernels.map((kernel) => kernel.cacheKey),
-    }],
+    })),
     sources: {},
     logicalSources: {},
   };
   for (const item of built) {
+    const pack = packByKernel.get(item.cacheKey);
     const sourceRecord = {
       cacheKey: item.cacheKey,
       moduleIdentity: item.moduleIdentity,
@@ -298,17 +314,20 @@ async function main() {
     };
     index.sources[item.absoluteSource] = sourceRecord;
     index.logicalSources[item.logicalSource] = sourceRecord;
-    const destination = join(options.outputRoot, item.cacheKey);
+    const destination = join(options.outputRoot, layout.packDirectory(pack.packKey), item.cacheKey);
     mkdirSync(destination, { recursive: true });
     copyFileSync(
       join(item.outputPath, "index.cjs"),
       join(destination, "index.cjs"),
     );
   }
-  const packDestination = join(options.outputRoot, "pack");
-  mkdirSync(packDestination, { recursive: true });
-  copyFileSync(pack.addonPath, join(packDestination, PACK_FILENAME));
-  copyFileSync(pack.manifestPath, join(packDestination, "index.json"));
+  for (const pack of packs) {
+    const packDestination = join(options.outputRoot, layout.packDirectory(pack.packKey), "pack");
+    mkdirSync(packDestination, { recursive: true });
+    copyFileSync(pack.addonPath, join(packDestination, PACK_FILENAME));
+    copyFileSync(pack.manifestPath, join(packDestination, "index.json"));
+  }
+  if (index.complete) layout.catalogPaths(index);
   const standaloneAddons = built.map((item) => ({
     source: item.logicalSource,
     bytes: statSync(join(
@@ -330,9 +349,9 @@ async function main() {
     architecture: process.arch,
     kernels: built.length,
     standaloneBytes,
-    packBytes: pack.manifest.bytes,
-    savedBytes: standaloneBytes - pack.manifest.bytes,
-    packToStandaloneRatio: pack.manifest.bytes / standaloneBytes,
+    packBytes: packs.reduce((total, pack) => total + pack.manifest.bytes, 0),
+    savedBytes: standaloneBytes - packs.reduce((total, pack) => total + pack.manifest.bytes, 0),
+    packToStandaloneRatio: packs.reduce((total, pack) => total + pack.manifest.bytes, 0) / standaloneBytes,
     largestStandaloneAddons: standaloneAddons.slice(0, 10),
   };
   writeFileSync(
@@ -345,9 +364,10 @@ async function main() {
   );
   process.stdout.write(
     `Published ${built.length} production kernel modules at ` +
-      `${relative(root, options.outputRoot)} in one ` +
-      `${(pack.manifest.bytes / 2 ** 20).toFixed(2)} MiB native pack\n`,
+      `${relative(root, options.outputRoot)} in ${packs.length} native packs ` +
+      `(${(sizeReport.packBytes / 2 ** 20).toFixed(2)} MiB total)\n`,
   );
+  return { index, sizeReport };
 }
 
 if (require.main === module) {
@@ -358,6 +378,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  publishProductionKernels,
   availableProductionFunctions,
   functionsWithoutUnavailableLibraries,
   unavailableOptionalLibrary,

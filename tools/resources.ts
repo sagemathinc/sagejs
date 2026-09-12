@@ -22,6 +22,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { measureInitialization } from "./timing";
 import { configureImmutableUInt64KernelWrapper } from "./immutable-uint64-capsule";
+import * as nativePackLayout from "./native-pack-layout.js";
 
 const VIRTUAL_ROOT = normalize("/__sagejs_sea__");
 const COMPILER_ASSET = "compiler/compiler.js";
@@ -56,9 +57,6 @@ const KERNEL_WORKER_ASSET = "worker/kernel-worker.cjs";
 const MULTIPROCESSING_WORKER_ASSET = "worker/multiprocessing-worker.cjs";
 const VENDOR_ASSET_PREFIX = "vendor/";
 const NATIVE_KERNEL_ASSET_PREFIX = "native-kernels/";
-const NATIVE_KERNEL_PACK_ASSET =
-  "native-kernels/pack/sagejs_native_kernel_pack.node";
-const NATIVE_KERNEL_PACK_MANIFEST_ASSET = "native-kernels/pack/index.json";
 const NATIVE_KERNEL_PACK_ABI_VERSION = 1;
 // This is the embedded-asset half of `NATIVE_ABI_VERSION` in
 // `tools/native-kernel/c-backend.cjs`. Production-kernel tests ratchet it to
@@ -280,19 +278,19 @@ export function loadPrecompiledNativeKernel(
   if (cached !== undefined) return cached;
   return measureInitialization("native-kernel", sourceLabel, () => {
     const relativeModule = key.slice(NATIVE_KERNEL_ASSET_PREFIX.length);
-    const cacheKey = relativeModule.slice(0, -"/index.cjs".length);
-    if (!/^[a-f0-9]{64}$/.test(cacheKey)) {
-      throw new Error(`invalid embedded native kernel key ${cacheKey}`);
-    }
+    const { cacheKey, packKey } = nativePackLayout.parseModulePath(relativeModule);
+    const relativePack = nativePackLayout.packDirectory(packKey);
+    const packAsset = `${NATIVE_KERNEL_ASSET_PREFIX}${relativePack}/pack/${nativePackLayout.PACK_FILENAME}`;
+    const manifestAsset = `${NATIVE_KERNEL_ASSET_PREFIX}${relativePack}/pack/index.json`;
     if (
-      !hasAsset(NATIVE_KERNEL_PACK_ASSET) ||
-      !hasAsset(NATIVE_KERNEL_PACK_MANIFEST_ASSET)
+      !hasAsset(packAsset) ||
+      !hasAsset(manifestAsset)
     ) {
       throw new Error("production native mathematics pack is not embedded");
     }
-    const packBytes = Buffer.from(getAsset(NATIVE_KERNEL_PACK_ASSET));
+    const packBytes = Buffer.from(getAsset(packAsset));
     const manifest = JSON.parse(
-      assetText(NATIVE_KERNEL_PACK_MANIFEST_ASSET),
+      assetText(manifestAsset),
     );
     const kernel = Array.isArray(manifest?.kernels)
       ? manifest.kernels.find(
@@ -304,6 +302,7 @@ export function loadPrecompiledNativeKernel(
       : undefined;
     if (
       manifest?.schema !== "sagejs.native-pack/v2" ||
+      manifest.packKey !== packKey ||
       manifest.packAbi !== NATIVE_KERNEL_PACK_ABI_VERSION ||
       manifest.nativeAbi !== NATIVE_KERNEL_ASSET_ABI_VERSION ||
       manifest.platform !== process.platform ||
@@ -319,12 +318,14 @@ export function loadPrecompiledNativeKernel(
     const outputDirectory = join(
       temporaryDirectory,
       "native-kernels",
+      relativePack,
       cacheKey,
     );
     const outputModule = join(outputDirectory, "index.cjs");
     const outputPack = join(
       temporaryDirectory,
       "native-kernels",
+      relativePack,
       "pack",
       "sagejs_native_kernel_pack.node",
     );
