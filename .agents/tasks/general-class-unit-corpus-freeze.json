@@ -1,0 +1,155 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-corpus-freeze",
+  "title": "General Class Unit Corpus Freeze",
+  "lane": "integration",
+  "status": "proposed",
+  "owner": "user",
+  "objective": "Freeze accepted 1800 field identities,360 performance membership and90 development smoke identities with offline source-bound validation; retain incomplete M0 qualification",
+  "base_commit": "9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/corpus/frozen/",
+    "docs/general-class-unit-corpus-v1.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "Ownership transferred 2026-09-12 to general-class-unit-corpus-independent on main 6c42dd093. This historical contract is parked as non-live proposed because the schema has no superseded status; no renewed work or current-main qualification is implied. PR236 remains an open draft and its source/receipts are preserved.",
+    "Adopted complete M0-M5 plan aceadd86d81f796740e9fa1e02c5d1a57854453ecc0d1774f3f09bf2dcd14403; no effort reset",
+    "Accepted panel98 witness766f3f33657504cc18a280db4bb758be3932f8350e2629d2a0a597eb157e5edb; generated admission d80fc3a0 and exact identity reconciliation5ea62a41"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test bench/class-unit-groups/general-frontier/corpus/frozen/freeze.test.cjs",
+    "node bench/class-unit-groups/general-frontier/corpus/frozen/freeze.cjs check",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:changed -- --base 9688e75e05920ab10f5f8ebe2b4ea2df06e683a9"
+  ],
+  "runs": [
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/frozen/freeze.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.385,
+      "started_at": "2026-09-12T06:28:40.952Z",
+      "commit": "9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+      "workspace_fingerprint": "e94d71849a45f2c067bc6f171a74e0994e273ddba18cee62abd54a0a1f9cdade",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/general-frontier/corpus/frozen/freeze.cjs check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.171,
+      "started_at": "2026-09-12T06:28:43.069Z",
+      "commit": "9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+      "workspace_fingerprint": "e94d71849a45f2c067bc6f171a74e0994e273ddba18cee62abd54a0a1f9cdade",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.509,
+      "started_at": "2026-09-12T06:30:54.421Z",
+      "commit": "620a27151bac590ba8e0fe9f42515211bcb714e6",
+      "workspace_fingerprint": "1b7fb1fbf6243c4d2e70a4127aea35fdadbb68282922ab97ab41ada37743c9e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 6.197,
+      "started_at": "2026-09-12T06:44:00.862Z",
+      "commit": "620a27151bac590ba8e0fe9f42515211bcb714e6",
+      "workspace_fingerprint": "1b7fb1fbf6243c4d2e70a4127aea35fdadbb68282922ab97ab41ada37743c9e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1133.302,
+      "started_at": "2026-09-12T06:51:27.275Z",
+      "commit": "620a27151bac590ba8e0fe9f42515211bcb714e6",
+      "workspace_fingerprint": "1b7fb1fbf6243c4d2e70a4127aea35fdadbb68282922ab97ab41ada37743c9e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.852,
+      "started_at": "2026-09-12T07:10:21.349Z",
+      "commit": "620a27151bac590ba8e0fe9f42515211bcb714e6",
+      "workspace_fingerprint": "1b7fb1fbf6243c4d2e70a4127aea35fdadbb68282922ab97ab41ada37743c9e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.711,
+      "started_at": "2026-09-12T07:10:35.021Z",
+      "commit": "620a27151bac590ba8e0fe9f42515211bcb714e6",
+      "workspace_fingerprint": "1b7fb1fbf6243c4d2e70a4127aea35fdadbb68282922ab97ab41ada37743c9e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 109.151,
+      "started_at": "2026-09-12T07:11:33.382Z",
+      "commit": "620a27151bac590ba8e0fe9f42515211bcb714e6",
+      "workspace_fingerprint": "1b7fb1fbf6243c4d2e70a4127aea35fdadbb68282922ab97ab41ada37743c9e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/frozen/freeze.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.224,
+      "started_at": "2026-09-12T07:22:29.637Z",
+      "commit": "620a27151bac590ba8e0fe9f42515211bcb714e6",
+      "workspace_fingerprint": "1b7fb1fbf6243c4d2e70a4127aea35fdadbb68282922ab97ab41ada37743c9e1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/general-frontier/corpus/frozen/freeze.cjs check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.161,
+      "started_at": "2026-09-12T07:22:31.528Z",
+      "commit": "620a27151bac590ba8e0fe9f42515211bcb714e6",
+      "workspace_fingerprint": "1b7fb1fbf6243c4d2e70a4127aea35fdadbb68282922ab97ab41ada37743c9e1",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Frozen 1800 degree-2–10 field identities, nested360 performance members and90 development smoke members, with pinned accepted discovery evidence and offline mutation/request tests. All six declared Linux validation commands pass on the final source fingerprint; prior missing-build/addon failures are retained. This qualifies membership packaging, not M0 completion or performance.",
+    "risks": [
+      "PR236 is stacked on the still-draft unit-map integration PR219; do not merge it into that feature branch as though the stack were qualified on main.",
+      "Matched repeated100/200-bit baselines, stress90, unconditional90 and public raw-evidence custody remain incomplete; the frozen manifest records M0/performance qualification as false.",
+      "These receipts are Linux x64 only. Cross-platform CI remains a separate gate. No source/resource/proof limits were raised."
+    ],
+    "next_steps": [
+      "Complete integration/platform review, then retarget the stacked PR to main once its prerequisite has landed and refresh validation as required.",
+      "Preserve exact memberships and prior failures while completing M0 measurements; the ongoing smoke run uses development inputs only."
+    ]
+  }
+}
