@@ -3378,23 +3378,28 @@ def ρσ_real_literal(text: _Str) -> Any:
     return runtime.real_literal(text)
 
 
-_BUILTINS_ARRAYLIKE_TAGS = [
-    "[object Int8Array]",
-    "[object Uint8Array]",
-    "[object Uint8ClampedArray]",
-    "[object Int16Array]",
-    "[object Uint16Array]",
-    "[object Int32Array]",
-    "[object Uint32Array]",
-    "[object Float32Array]",
-    "[object Float64Array]",
-    "[object BigInt64Array]",
-    "[object BigUint64Array]",
-    "[object HTMLCollection]",
-    "[object NodeList]",
-    "[object NamedNodeMap]",
-    "[object TouchList]",
-]
+_BUILTINS_ARRAYLIKE_TAGS = runtime.reflect.construct(
+    runtime.set_class,
+    [
+        [
+            "[object Int8Array]",
+            "[object Uint8Array]",
+            "[object Uint8ClampedArray]",
+            "[object Int16Array]",
+            "[object Uint16Array]",
+            "[object Int32Array]",
+            "[object Uint32Array]",
+            "[object Float32Array]",
+            "[object Float64Array]",
+            "[object BigInt64Array]",
+            "[object BigUint64Array]",
+            "[object HTMLCollection]",
+            "[object NodeList]",
+            "[object NamedNodeMap]",
+            "[object TouchList]",
+        ]
+    ],
+)
 
 
 def ρσ_arraylike(value: Any) -> _Bool:
@@ -3405,7 +3410,7 @@ def ρσ_arraylike(value: Any) -> _Bool:
     if value is None or value is runtime.undefined:
         return False
     tag = runtime.reflect.apply(runtime.object.prototype.toString, value, [])
-    return tag in _BUILTINS_ARRAYLIKE_TAGS
+    return _BUILTINS_ARRAYLIKE_TAGS.has(tag)
 
 
 def options_object(target: Any) -> Any:
