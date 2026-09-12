@@ -42,7 +42,19 @@ const {
 } = require("../../scripts/package-qualification/numerical-smoke.cjs");
 const {
   cleanupQualification,
+  expectedPublicVersion,
 } = require("../../scripts/test-npm-package.cjs");
+
+test("public version expectations use release platform names rather than Node ABI names", () => {
+  for (const target of ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]) {
+    assert.equal(expectedPublicVersion(target, "0.8.0", "2026-09-04"),
+      `Sage.js v0.8.0 [${target}], Release Date: 2026-09-04`);
+  }
+  for (const target of ["darwin-arm64", "win32-x64", "unknown", "toString"]) {
+    assert.throws(() => expectedPublicVersion(target, "0.8.0", "2026-09-04"),
+      /unsupported public version target/);
+  }
+});
 
 const sourceManifest = JSON.parse(
   readFileSync(join(__dirname, "..", "..", "package.json"), "utf8"),

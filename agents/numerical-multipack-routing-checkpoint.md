@@ -198,3 +198,48 @@ An architecture run launched during compiler convergence failed with an
 `parallel:check` cannot select this integration worktree's task because it sees
 416 live records. Other lanes' records are not modified to hide that tooling
 failure. No four-platform full-product or public-latency target is claimed.
+
+## Frozen Linux ARM64 full-package qualification
+
+The persistent `bench-arm` run at exact source
+`d3c436020f79e11ecc8b0c1eccbb2e3e312f7bd7` finishes successfully. The full
+native-enabled build publishes all 41 families in two packs (20.76 MiB).
+All 12 production/catalog/closure/multipack tests pass; ordinary prepack passes
+the routine suite, including startup, in 3m35s. Both real SEAs, general and
+public numerical SEA smokes, platform packaging, fresh npm installation,
+lazy numerical resources and relocation pass. The runner exits zero and its
+host reservation is released. These are functional receipts, not timings that
+qualify public numerical latency.
+
+| ARM64 artifact | SHA-256 |
+| --- | --- |
+| Sage.js SEA | `a782083cbe989a174ec8180afa38bf53c100c02d112551512f66dfccaa6f5684` |
+| SagePython SEA | `ccadd0d1fc34f56322f30c0509f1b102d13c07e8a7c11a355b0f040aa0068321` |
+| Root npm archive | `050db550f79c5600d651eb9a524b7c8edc713be49840c6dfa08d190491e5ff58` |
+| Platform npm archive | `d7e16256ae7a18fbe5b053b59dc645b7956672eb09fa1f107378e1c71e044ad6` |
+
+Earlier attempts are retained separately: a dependency prefix alone did not
+enable optional host adapters, and the reused eclib source needed the current
+repository's checked FLINT patch before building the adapter. The successful
+attempt builds adapters explicitly without rebuilding or modifying shared
+native-library prefixes. Mac and Windows full packaging remain in progress.
+
+The macOS run subsequently passes its native-enabled build, all 12 pack tests,
+ordinary routine prepack (4m08s), both SEAs and their general/public numerical
+smokes. The fresh installed CommonJS check stops because it expects
+`darwin-arm64` in `version()`, whereas the product correctly returns its
+documented release-platform spelling `macos-arm64`. The checker is corrected
+to use the canonical release target, with all four spellings and invalid Node
+ABI aliases covered by a focused regression. All 18 package-qualification
+helper tests pass. This does not change any mathematical or runtime artifact;
+the original install failure is retained, and remaining installed/relocation
+checks must still run with the corrected checker.
+
+Windows native build and all 12 pack tests pass. Ordinary prepack first finds
+missing `xz`; the upstream native XZ 5.8.3 archive is verified against GitHub's
+SHA-256 `8d0048ee51177b11ef1613959c2a268c951f4e7f6fb3706e681e00e34bb6d5e3`
+and extracted into the task-local `numerical-tools` directory, without changing
+system PATH. The next attempt finds a test defaulting to `python3`; setting its
+supported `PYTHON` override to the existing Python 3.13 executable passes that
+focused test. The ordinary portable suite then passes. The attempts remain
+separate logs; no gate is bypassed and no files are deleted.
