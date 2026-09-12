@@ -9,7 +9,12 @@ const assert = require("node:assert/strict");
 const root = path.resolve(__dirname, "../../..");
 const output = process.argv[2];
 const samples = Number(process.argv[3] || 3);
-if (!output || !Number.isSafeInteger(samples) || samples < 1) throw Error("usage: node morphisms-performance.cjs OUTPUT.json [SAMPLES]");
+if (!output || !Number.isSafeInteger(samples) || samples < 1) throw Error("usage: node morphisms-performance.cjs OUTPUT.json [SAMPLES] [DECOMPOSITION_LEVELS]");
+const cases = process.argv[4] ? process.argv[4].split(",").map(value => {
+  const level = Number(value);
+  if (!Number.isSafeInteger(level) || level <= 0) throw Error("invalid decomposition level");
+  return [level, true];
+}) : [[389,false],[1009,false],[121,true],[242,true],[363,true]];
 const directory = "src/lib/sagejs/modular_abelian_varieties";
 const sources = [...readdirSync(path.join(root,directory)).filter(f=>f.endsWith(".py")).map(f=>`${directory}/${f}`),
   "src/baselib/matrix.py", "src/baselib/modular.py"];
@@ -21,7 +26,7 @@ const report = { date: new Date().toISOString(), revision: execFileSync("git",["
 const save = () => writeFileSync(output,JSON.stringify(report,null,2)+"\n");
 const expected = new Map();
 save();
-for (const [level,decomposition] of [[389,false],[1009,false],[121,true],[242,true],[363,true]]) {
+for (const [level,decomposition] of cases) {
   for(let sample=0;sample<samples;sample++) for(const system of ["sagejs","sage"]) {
     const executable = system === "sagejs" ? process.execPath : (process.env.SAGE_ORACLE || "/home/user/bin/sage");
     const args=system==="sagejs"?[path.join(__dirname,"morphisms-sagejs.cjs")]:["-python",path.join(__dirname,"morphisms-sage.py")];

@@ -1,6 +1,57 @@
 """Shared native/browser public-API corpus for integral morphism geometry."""
 
 J = J0(11)
+from sagejs.modular_abelian_varieties.lattices import (
+    _clear_denominators,
+    _saturated_integer_intersection,
+)
+
+# The column-lattice dual algorithm agrees with the independent double-kernel
+# construction, including coupled denominators and dependent generators.
+for rows in range(6):
+    for columns in range(1, 9):
+        B = matrix(
+            QQ,
+            rows,
+            columns,
+            [
+                QQ(((i + 2) * (j + 3) + i * i * j) % 13 - 6) / (j % 3 + 1)
+                for i in range(rows)
+                for j in range(columns)
+            ],
+        )
+        equations, denominator = _clear_denominators(B.right_kernel_matrix())
+        reference = equations.right_kernel_matrix().hermite_form(
+            include_zero_rows=False
+        )
+        actual = _saturated_integer_intersection(B)
+        assert actual == reference, (rows, columns)
+        assert _saturated_integer_intersection(actual) == actual
+coupled = matrix(QQ, [[1, 0, 1 / 2], [0, 1, 1 / 2]])
+assert _saturated_integer_intersection(coupled) == matrix(ZZ, [[1, 1, 1], [0, 2, 1]])
+
+# Independently reduce translated paths instead of counting projective
+# generators. Level 11 also exercises the public change of E1 basis.
+from sagejs.modular_abelian_varieties.degeneracy import _lift, _multiply, _transfer
+
+for M, N in [(11, 22), (37, 74)]:
+    source, target = ModularSymbols(M), ModularSymbols(N)
+    lifts = [_lift(c, d, M) for c, d in source.p1list().list()]
+    source_rows = matrix(
+        QQ, [source.modular_symbol((g[1], g[3]), (g[0], g[2])).vector() for g in lifts]
+    )
+    pivots = list(source_rows.transpose().pivots())
+    cosets = [_lift(c, d, N) for c, d in target.p1list().list() if c % M == 0]
+    images = []
+    for i in pivots:
+        image = vector(QQ, [0] * target.dimension())
+        for h in cosets:
+            a, b, c, d = _multiply(h, lifts[i])
+            image += target.modular_symbol((b, d), (a, c)).vector()
+        images.append(image)
+    expected = source_rows.matrix_from_rows(pivots).solve_right(matrix(QQ, images))
+    assert _transfer(source, target) == expected
+
 # Packed rational numerators are a word buffer, not a Python entry list.
 integral_rationals = matrix(QQ, [[2**90, 0], [0, 3]])
 assert integral_rationals.change_ring(ZZ).change_ring(QQ) == integral_rationals
@@ -140,6 +191,13 @@ for N in [22, 33, 44]:
     assert sum(c.dimension() for c in decomposition) == J0(N).dimension()
     assert decomposition.isogeny().is_isogeny()
     assert decomposition.isogeny().verify()
+    explicit = decomposition.isogeny().domain().zero_morphism(J0(N))
+    for i, item in enumerate(decomposition):
+        explicit += (
+            item.variety().inclusion_map()
+            * decomposition.isogeny().domain().projection(i)
+        )
+    assert decomposition.isogeny() == explicit
     labels = [(c.source_level(), c.degeneracy_index()) for c in decomposition]
     assert (11, 1) in labels and (11, N // 11) in labels
 old_copy = J0(22).oldform_decomposition()[0].variety()

@@ -14,7 +14,7 @@ from sagejs.modular_abelian_varieties.abelian_variety import (
     _positive_integer,
 )
 from sagejs.modular_abelian_varieties.lattices import _gcd
-from sagejs.modular_abelian_varieties.morphisms import _create_map
+from sagejs.modular_abelian_varieties.morphisms import _create_map, _product_map
 
 
 def _bezout(a: int, b: int) -> tuple[int, int]:
@@ -46,7 +46,28 @@ def _multiply(left: Any, right: Any) -> tuple[Any, ...]:
 
 def _path(space: Any, matrix: Any) -> Any:
     a, b, c, d = matrix
-    return space.modular_symbol((b, d), (a, c)).vector()
+    return space.p1list().reduce_path((b, d), (a, c))
+
+
+_manin_coordinates: dict[int, Any] = {}
+
+
+def _manin_coordinate_data(space: Any) -> Any:
+    """Translate the small triple-Manin basis to the geometric E1 basis."""
+    level = space.level()
+    if level not in _manin_coordinates:
+        line = space.p1list()
+        presentation = line.higher_weight_presentation(2, 0)
+        pairs = line.list()
+        lifts = [
+            _lift(pairs[i][0], pairs[i][1], level)
+            for i in presentation.basis_generators()
+        ]
+        coordinates = _global("matrix")(sage.QQ, [_path(space, g) for g in lifts])
+        if coordinates.rank() != space.dimension():
+            raise ArithmeticError("Manin generators do not span geometric homology")
+        _manin_coordinates[level] = (presentation, lifts, coordinates)
+    return _manin_coordinates[level]
 
 
 def _transfer(source: Any, target: Any) -> Any:
@@ -61,21 +82,24 @@ def _transfer(source: Any, target: Any) -> Any:
     degree = len(target.p1list()) // len(source.p1list())
     if len(cosets) != degree:
         raise ArithmeticError("degeneracy coset count does not equal covering degree")
-    lifts = [_lift(c, d, M) for c, d in source.p1list().list()]
-    reductions = _global("matrix")(sage.QQ, [_path(source, g) for g in lifts])
-    pivots = list(reductions.transpose().pivots())
-    if len(pivots) != source.dimension():
-        raise ArithmeticError("Manin generator paths do not span the source")
-    images = []
-    for i in pivots:
-        row = _global("vector")(sage.QQ, [0] * target.dimension())
+    _, lifts, reductions = _manin_coordinate_data(source)
+    presentation, _, target_coordinates = _manin_coordinate_data(target)
+    line = target.p1list()
+    counts = _global("matrix")(sage.QQ, len(lifts), len(line))
+    for i, lift in enumerate(lifts):
         for h in cosets:
-            row += _path(target, _multiply(h, lifts[i]))
-        images.append(row)
-    image_matrix = _global("matrix")(
-        sage.QQ, len(pivots), target.dimension(), [c for row in images for c in row]
+            _, _, c, d = _multiply(h, lift)
+            j = line.index(c, d)
+            counts[i, j] += 1
+    image_matrix = counts * presentation.reduction_matrix() * target_coordinates
+    image_matrix = reductions.solve_right(image_matrix)
+    change = source._ambient_change_of_basis()
+    if change is not None:
+        image_matrix = change.transpose() * image_matrix
+    change = target._ambient_change_of_basis()
+    return (
+        image_matrix if change is None else image_matrix * change.inverse().transpose()
     )
-    return reductions.matrix_from_rows(pivots).solve_right(image_matrix)
 
 
 _ambient_maps: dict[tuple[int, int, int], Any] = {}
@@ -166,7 +190,10 @@ class OldformCopy:
 
     def variety(self) -> Any:
         if self._variety is None:
-            self._variety = self._map.image()
+            if self.source_level() == self._map.codomain().level():
+                self._variety = self._source
+            else:
+                self._variety = self._map.image()
         return self._variety
 
     def dimension(self) -> int:
@@ -204,9 +231,11 @@ class OldformDecomposition:
             from sagejs.modular_abelian_varieties.products import ProductAbelianVariety
 
             product = ProductAbelianVariety([c.variety() for c in self._copies])
-            morphism = product.zero_morphism(self._ambient)
-            for i, copy in enumerate(self._copies):
-                morphism += copy.variety().inclusion_map() * product.projection(i)
+            morphism = _product_map(
+                product,
+                self._ambient,
+                [c.variety().inclusion_map() for c in self._copies],
+            )
             if not morphism.is_isogeny():
                 raise ArithmeticError(
                     "labelled oldform copies do not span the Jacobian"
