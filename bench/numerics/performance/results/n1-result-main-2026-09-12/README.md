@@ -45,6 +45,55 @@ or serialization on explicit export. Initial calls and preparation are separate
 observations, not isolated cold-import measurements; memory snapshots are not
 worker peak-RSS or a sustained-memory qualification.
 
+## Independent persistent Linux x64 confirmation
+
+`bench1-*.json` retains a second serial A1/B1/B2/A2 experiment on the reserved
+`bench-1` host (EPYC 7B13, Node 26.5.1). The candidate received a fresh full
+build and passed both focused result-binding tests before collection; the
+unchanged, already-built baseline was reused. Both source trees remained clean.
+Host load at block starts was 0.65, 1.00, 1.00 and 1.00. Other lanes respected
+the reservation; no other numerical work ran there during collection. The
+host was explicitly released after all four blocks completed and were copied.
+
+| Workload / trace | Baseline block medians (ms) | Candidate block medians (ms) |
+| --- | ---: | ---: |
+| Brent root / none | 51.03, 50.78 | 41.49, 36.27 |
+| Brent root / summary | 44.97, 44.90 | 29.71, 31.45 |
+| Bounded minimum / none | 46.23, 47.63 | 32.72, 33.62 |
+| Bounded minimum / summary | 115.76, 116.66 | 101.60, 105.54 |
+| Dense solve 16 / none | 1747.06, 1733.45 | 1685.31, 1649.62 |
+| Dense solve 16 / summary | 1722.44, 1764.49 | 1685.87, 1661.66 |
+| FFT 256 / none | 4668.46, 4639.16 | 4623.17, 4610.78 |
+| FFT 256 / summary | 4669.31, 4650.21 | 4619.11, 4621.72 |
+| Describe 20,000 / none | 4708.53, 4687.69 | 4715.43, 4809.29 |
+| Describe 20,000 / summary | 5207.09, 4766.79 | 5367.58, 4873.62 |
+
+This independently confirms the scalar fixed-cost improvement, not a broad
+numerical speedup: root/minimum block ranges separate while all 40 observations
+agree exactly. Dense/FFT gains are small relative to their outstanding total
+cost. Statistics does **not** improve in this experiment; its candidate medians
+are slightly worse and summary-mode variation remains visible even on this
+otherwise quiet host. Those rows are retained, not relabeled as wins. This
+change does not meet any public latency target or accelerate arithmetic; phase
+profiling and the separate statistics slice remain necessary.
+
+`compare-blocks.cjs` recomputes every median and verifies complete blocks,
+unique workloads, exact source/build identities, unchanged compiler/runtime,
+collector/workload hashes, execution policy and all observations. It works on
+both experiments and rejects corrupt status, source/hash, median, observation,
+sample and missing-row witnesses. Reproduce the retained machine comparison:
+
+```sh
+cd bench/numerics/performance/results/n1-result-main-2026-09-12
+node compare-blocks.cjs bench1
+```
+
+The initial remote preparation script accidentally supplied three nonexistent
+workload IDs. Argument parsing rejected that invocation before any timed case
+or result file existed. The build/tests were not repeated; a corrected,
+collect-only invocation produced the four complete retained blocks. This is
+an operator error, not a failed numerical observation or a discarded slow run.
+
 ## Source-only portability
 
 `source-linux-arm64.json` and `source-win32-x64.json` record the independent
