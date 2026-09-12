@@ -8,10 +8,10 @@ const { runInNewContext } = require("node:vm");
 const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
-const names = ["ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
+const names = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
   "ρσ_check_interrupt", "ρσ_normalize_exception"];
 
-// Exercise the unchanged native ABI bodies directly; full self-hosted/module
+// Exercise the native ABI bodies directly; full self-hosted/module
 // linkage remains a separate build qualification, not implied by this test.
 function context() {
   const declarations = [...source.matchAll(/^def (\S+)\(([^)]*)\):[^]*?return r"""%js ([^]*?)"""/gm)]
@@ -21,7 +21,7 @@ function context() {
   return runInNewContext(`${declarations.join("\n")}; ({${names.join(",")}, globalThis})`, globals);
 }
 
-test("shared bootstrap has exactly the four moved adapters and unique ownership", () => {
+test("shared bootstrap has four adapters and one shared metadata copier", () => {
   assert.deepEqual([...source.matchAll(/^def (\S+)\(/gm)].map((match) => match[1]), names);
   for (const filename of ["compiler_bootstrap.py", "sagejs_bootstrap.py"]) {
     const previous = readFileSync(join(root, "src/baselib", filename), "utf8");
@@ -59,6 +59,117 @@ test("shared receiver adapters preserve binding, metadata getters, and cache ide
   assert.equal(api.ρσ_unbound_method_adapter(host), unbound);
   defaults = [11];
   assert.equal(unbound.__defaults__, defaults);
+});
+
+const metadataFields = [
+  "__annotations__", "__annotations_text__", "__code__", "__defaults__",
+  "__doc__", "__globals__", "__handles_kwarg_interpolation__", "__kwdefaults__",
+  "__kwonly__", "__module__", "__name__", "__positional_only__", "__python_type__",
+  "__qualname__", "__varargs__", "__varkw__",
+];
+
+test("metadata copier preserves per-field descriptor/read/write order", () => {
+  const api = context();
+  const events = [];
+  const values = Object.fromEntries(metadataFields.map((name, index) => [name, index]));
+  const getter = () => { throw new Error("live defaults must not be read while copying"); };
+  Object.defineProperty(values, "__defaults__", {get: getter, configurable: false});
+  const target = new Proxy(values, {
+    getOwnPropertyDescriptor(object, name) {
+      events.push(["descriptor", name]);
+      return Reflect.getOwnPropertyDescriptor(object, name);
+    },
+    get(object, name) {
+      events.push(["get", name]);
+      return Reflect.get(object, name);
+    },
+  });
+  const copied = {};
+  const method = new Proxy(copied, {
+    set(object, name, value) {
+      events.push(["set", name]);
+      return Reflect.set(object, name, value);
+    },
+    defineProperty(object, name, descriptor) {
+      events.push(["define", name]);
+      return Reflect.defineProperty(object, name, descriptor);
+    },
+  });
+  api.ρσ_copy_method_metadata(method, target);
+  assert.deepEqual(events, metadataFields.flatMap(name => name === "__defaults__"
+    ? [["descriptor", name], ["define", name]]
+    : [["descriptor", name], ["get", name], ["set", name]]));
+  assert.deepEqual(Object.getOwnPropertyDescriptor(copied, "__defaults__"),
+    Object.getOwnPropertyDescriptor(values, "__defaults__"));
+  for (const name of metadataFields.filter(name => name !== "__defaults__")) {
+    assert.equal(copied[name], values[name]);
+  }
+});
+
+test("metadata copying propagates descriptor and destination failures in order", () => {
+  const api = context();
+  for (const failure of ["descriptor", "write"]) {
+    const events = [];
+    const error = new Error(failure);
+    const target = new Proxy({}, {
+      getOwnPropertyDescriptor(object, name) {
+        events.push(["descriptor", name]);
+        if (failure === "descriptor" && name === "__code__") throw error;
+        return Reflect.getOwnPropertyDescriptor(object, name);
+      },
+      get(object, name) { events.push(["get", name]); return name; },
+    });
+    const method = new Proxy({}, {
+      set(object, name, value) {
+        events.push(["set", name]);
+        if (failure === "write" && name === "__code__") throw error;
+        return Reflect.set(object, name, value);
+      },
+    });
+    assert.throws(() => api.ρσ_copy_method_metadata(method, target), value => value === error);
+    const prefix = metadataFields.slice(0, 2).flatMap(name =>
+      [["descriptor", name], ["get", name], ["set", name]]);
+    assert.deepEqual(events, prefix.concat(failure === "descriptor"
+      ? [["descriptor", "__code__"]]
+      : [["descriptor", "__code__"], ["get", "__code__"], ["set", "__code__"]]));
+  }
+});
+
+test("adapter argument names precede metadata and unbound cache publication follows it", () => {
+  const api = context();
+  for (const kind of ["native", "unbound"]) {
+    const events = [];
+    function original() {}
+    original.__argnames__ = kind === "native" ? ["self", "value"] : ["value"];
+    const target = new Proxy(original, {
+      get(object, name) { events.push(["get", name]); return Reflect.get(object, name); },
+      getOwnPropertyDescriptor(object, name) {
+        events.push(["descriptor", name]);
+        return Reflect.getOwnPropertyDescriptor(object, name);
+      },
+      set(object, name, value) {
+        events.push(["set", name]);
+        assert.equal(name, "__sagejs_unbound_adapter__");
+        assert.equal(value.__func__, target);
+        assert.equal(value.__python_descriptor__, true);
+        return Reflect.set(object, name, value);
+      },
+    });
+    const adapter = api[kind === "native" ? "ρσ_native_method_adapter" : "ρσ_unbound_method_adapter"](target);
+    const expected = kind === "unbound" ? [["get", "__sagejs_unbound_adapter__"]] : [];
+    expected.push(["get", "__argnames__"], ["get", "__argnames__"]);
+    expected.push(...metadataFields.flatMap(name => [["descriptor", name], ["get", name]]));
+    if (kind === "unbound") expected.push(["set", "__sagejs_unbound_adapter__"]);
+    assert.deepEqual(events, expected);
+    assert.deepEqual(Array.from(adapter.__argnames__), kind === "native" ? ["value"] : ["self", "value"]);
+    events.length = 0;
+    if (kind === "unbound") {
+      assert.equal(api.ρσ_unbound_method_adapter(target), adapter);
+      assert.deepEqual(events, [["get", "__sagejs_unbound_adapter__"], ["get", "__sagejs_unbound_adapter__"]]);
+    } else {
+      assert.equal(adapter.__sagejs_native_method__, true);
+    }
+  }
 });
 
 test("shared interruption adapters retain native errors and consume interrupt flags", () => {
