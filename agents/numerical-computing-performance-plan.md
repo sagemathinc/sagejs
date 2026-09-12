@@ -152,6 +152,22 @@ fresh identity-bound tests and evidence. Historical links below remain pinned
 to their source revision when the documents have not landed on main. They are
 not evidence of current defaults, a release, or acceptance completion.
 
+[Draft #276](https://github.com/sagemathinc/sagejs/pull/276), source
+`85b374462`, carries prepared statistics onto the #262 production-pack boundary.
+All 14 current production/catalog/closure/multipack tests pass, including the
+full public owned-data corpus from a file with only the numerical pack present.
+Strict loading exposed an omitted third decorated helper; the corrected
+descriptor registers all three differential-tested functions. The dependency
+guard now accepts one absolute pack path with its authenticated digest, not
+every artifact sharing the pack basename. Strict Python, architecture, six
+domain tests and separate sanitizer checks pass. A fresh full frozen-source
+build, installed packages and platform qualification remain pending. The full
+stdin corpus's `Convertible` failure remains unresolved even though file
+execution and a smaller stdin conversion probe pass. Browser prepared-native
+storage is explicitly excluded and retains the checked dynamic fallback.
+Historical 82–103 ms observations are not new-source timing evidence; the
+10 ms target remains unmet. This is an integration prerequisite, not N2 exit.
+
 ## Objective and scope
 
 Make the **existing supported numerical laboratory** fast enough for interactive
