@@ -172,3 +172,10 @@ excluded statistics kernel, correctly triggering the aggregate-coverage guard
 before the expected receipt guard. Select an actual production-pack fallback
 for the receipt test and separately assert rejection for both excluded
 statistics descriptors. No capability is promoted and no guard is relaxed.
+
+All 16 capability tests pass after that fixture correction. The next ordinary
+routine run passes its functional phases, including the complete portable suite,
+but fails the unchanged startup gate: 405.7 ms raw, 404.2 ms normalized, versus
+400 ms. No repeated retry is counted as erasing that miss. The branch remains
+draft at this gate; independent current-source qualification and attribution
+against the main/control startup observations remain required.
