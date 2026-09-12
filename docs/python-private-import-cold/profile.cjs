@@ -1,0 +1,13 @@
+const fs=require('fs'),cp=require('child_process'),path=require('path'),crypto=require('crypto');
+const root=__dirname,sha=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+if(sha(process.execPath)!=='ad19784f7e90ba789a099eccba77ede8dc90a778c424f1c10a70fed3ff903fdc')throw Error('wrong Node');
+const compiler=path.join(root,'candidate/dist/compiler/compiler.js');
+if(sha(compiler)!=='3a4f8c162b35ba63b49be64853046a74d8f2e6abbe3a0877b711e1674f5d8f3b')throw Error('wrong compiler');
+const scratch=fs.mkdtempSync(path.join(root,'profile-cache-'));fs.mkdirSync(path.join(scratch,'empty-precompiled'));
+const env={PATH:'/usr/bin:/bin',HOME:scratch,USERPROFILE:scratch,APPDATA:scratch,LOCALAPPDATA:scratch,XDG_CACHE_HOME:scratch,TMPDIR:scratch,TEMP:scratch,TMP:scratch,LANG:'C.UTF-8',LC_ALL:'C.UTF-8',TZ:'UTC',SAGEJS_MODULE_CACHE_AUTO_CLEANUP:'0',SAGEJS_PRECOMPILED_MODULE_CACHE_DIR:path.join(scratch,'empty-precompiled')};
+const before=cp.execFileSync('ps',['-eo','pid,comm,pcpu','--sort=-pcpu'],{encoding:'utf8'});
+const r=cp.spawnSync(process.execPath,['--cpu-prof','--cpu-prof-dir='+root,'--cpu-prof-name=candidate.cpuprofile',path.join(root,'candidate/bin/sagejs-source.cjs'),'--python',path.join(root,'phase.py')],{cwd:scratch,env,encoding:'utf8',timeout:90000,killSignal:'SIGKILL',maxBuffer:1048576});
+const report={scope:'single separately labeled candidate cold CPU diagnostic, NOT timing sample or gate retry',node:process.version,compilerHash:sha(compiler),scratch,before,status:r.status,signal:r.signal,error:r.error?.code,stdout:r.stdout,stderr:r.stderr};
+fs.writeFileSync(path.join(root,'profile-report.json'),JSON.stringify(report,null,2));
+if(r.status!==0||!r.stdout.includes('PHASE complete'))throw Error('profile failed');
+console.log(JSON.stringify(report));

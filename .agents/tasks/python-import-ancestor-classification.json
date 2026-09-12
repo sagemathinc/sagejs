@@ -14,7 +14,8 @@
     "src/output/stream.py",
     "tools/self.js",
     "test/python-import-ancestor-classification.cjs",
-    "docs/python-private-import-reads.md"
+    "docs/python-private-import-reads.md",
+    "docs/python-private-import-cold/"
   ],
   "dependencies": ["python-ast-instanceof"],
   "references": ["https://github.com/sagemathinc/sagejs/pull/248"],

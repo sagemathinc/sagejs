@@ -29,3 +29,10 @@ PR248's direct AST predicate binding is a prerequisite for the candidate
 performance comparison. Bootstrap diagnostics alone are not a speed claim:
 the extra missing-binding predicate can consume some of the saved lookup cost.
 Promotion requires measured benefit and full candidate qualification.
+
+The subsequent controlled compiler-only experiment measured approximately
+17% lower cold mpmath import latency with this option enabled. Both unchanged
+30-second gates still timed out. See [the evidence record](python-private-import-cold/README.md)
+for exact source identities, the option-disabled causal control, both execution
+orders, qualification boundaries, and the separate CPU diagnostic. This is
+not whole-product qualification or a closed performance cliff.
