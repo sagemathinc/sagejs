@@ -95,6 +95,26 @@
       "commit": "2a4719e2d8fb0ca6a8debc80d3410e33da3172d9",
       "workspace_fingerprint": "2dad361e557838aa2d706f02b4a7ef44e18310790c0b7b985c85a9d1f1d52d5c",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_review_repeats.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.553,
+      "started_at": "2026-09-12T18:40:51.675Z",
+      "commit": "e1efe5f672179e96c4537a1f83baf167594bf2dd",
+      "workspace_fingerprint": "00aa316076dd9f6dde6c4ea3ddf348e65545252ea84ab36ca275283a0ff82146",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_batch_evidence.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.292,
+      "started_at": "2026-09-12T18:40:52.860Z",
+      "commit": "e1efe5f672179e96c4537a1f83baf167594bf2dd",
+      "workspace_fingerprint": "00aa316076dd9f6dde6c4ea3ddf348e65545252ea84ab36ca275283a0ff82146",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

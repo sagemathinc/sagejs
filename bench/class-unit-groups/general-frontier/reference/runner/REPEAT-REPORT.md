@@ -12,7 +12,8 @@ is included once in the report's `samples[].row.iteration_outputs`.
 Before dispatch, freeze a JSON plan with schema
 `sagejs.reference-repeat-plan.v1`, `controls`, and `runs`.
 Each run has a unique `id`, a predeclared `timing_class` (`tiny` or `seconds`),
-and a `request` containing exactly these existing supervisor run fields:
+an explicit `min_worker_nanoseconds` integer, its full `controls` object, and
+a `request` containing exactly these existing supervisor run fields:
 
 ```
 engine, bits, iterations, samples, seed, requested_proof_policy,
@@ -25,8 +26,17 @@ proof policy, frozen label/coefficient records, and the pinned single-thread
 provenance including source/runtime SHA-256 values. Both engines and both
 precisions must be declared for every field/policy, without duplicate cells.
 Iteration counts may differ between engines; the whole request is bound.
-`controls` is the exact expected receipt controls object, including hostname,
-affinity `[2]`, memory maximum 4294967296, and swap maximum 0.
+Top-level `controls` contains only the common hostname, affinity `[2]`, memory
+maximum 4294967296, and swap maximum 0. Each run's `controls` is the exact full
+expected receipt object, including that run's nonempty `cgroup` string. Its
+common fields must agree with the top-level object. Different serial runs
+normally have different systemd units; those exact per-run identities are
+bound, never translated to one global unit.
+
+`min_worker_nanoseconds` is nonnegative and must be at least 1000000000 for
+`tiny` runs. For a seconds-scale campaign requiring one second in every sample,
+declare 1000000000 explicitly for those runs too. This is distinct from the
+three-sample minimum, and no observed timing silently changes either policy.
 
 After execution, create a separate custody JSON:
 
@@ -45,6 +55,8 @@ After execution, create a separate custody JSON:
 
 Directories are relative to the custody file. Missing runs may be omitted;
 they remain in the declared denominator. Source receipts are never changed.
+Duplicate JSON keys and nonfinite JSON numbers are rejected in the plan,
+custody CLI input, and source receipt files using the existing strict decoder.
 Run hashes are necessarily postexecution custody, **not** predeclaration.
 The coordinator must establish plan chronology and authenticated custody
 externally. This tool sets `predeclaration_chronology_authenticated=false`.
@@ -89,3 +101,9 @@ enclosure. Both 100/200 requests are recorded without pretending those numerical
 guarantees coincide. No minimum is labelled a matched certified-regulator cost.
 Qualification, independent replay, regulator equivalence, and warm-JIT
 qualification flags remain false. This report alone does not pass M0.
+
+The `fields` section additionally checks exact summaries across both precisions
+for each field/policy. `complete_eligible_exact_summary_panel` requires all
+declared samples and cross-precision agreement: internally consistent 100-bit
+and 200-bit runs cannot conceal disagreement with one another. This remains
+only a sampling/summary label, not proof or mathematical qualification.

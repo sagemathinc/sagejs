@@ -48,7 +48,16 @@ class Repeats(unittest.TestCase):
                     provenance={"threads": 1, "sha256": {"fixture": "a" * 64}},
                 )
                 self.plan["runs"].append(
-                    dict(id=name, request=request, timing_class="seconds")
+                    dict(
+                        id=name,
+                        request=request,
+                        timing_class="seconds",
+                        min_worker_nanoseconds=0,
+                        controls={
+                            **self.plan["controls"],
+                            "cgroup": f"/fixture/{name}.service",
+                        },
+                    )
                 )
                 raw = json.dumps(
                     dict(
@@ -74,7 +83,7 @@ class Repeats(unittest.TestCase):
                         sample=sample,
                         request_id=value["id"],
                         provenance=request["provenance"],
-                        controls=self.plan["controls"],
+                        controls=self.plan["runs"][-1]["controls"],
                         boundary="persistent-process-fresh-field-not-proven-warm-JIT",
                         stdout=fixtures.policy_tests.output(engine, value),
                     )
@@ -137,9 +146,54 @@ class Repeats(unittest.TestCase):
 
     def test_tiny_duration_uses_worker_not_outer_wall(self):
         self.plan["runs"][0]["timing_class"] = "tiny"
+        self.plan["runs"][0]["min_worker_nanoseconds"] = 10**9
         self.mutate(lambda r: r.update(wall_seconds=1000), "pari-100")
         report = self.run_review()
-        self.assertEqual(report["rejection_counts"]["inadequate-tiny-duration"], 3)
+        self.assertEqual(report["rejection_counts"]["inadequate-worker-duration"], 3)
+
+    def test_distinct_legitimate_units_pass_and_wrong_unit_rejects(self):
+        self.assertEqual(self.run_review()["eligible_samples"], 12)
+        self.mutate(lambda r: r["controls"].update(cgroup="/wrong.service"))
+        self.assertEqual(self.run_review()["rejection_counts"]["unmatched-controls"], 1)
+
+    def test_seconds_explicit_minimum_is_enforced(self):
+        self.plan["runs"][0]["min_worker_nanoseconds"] = 10**9
+        report = self.run_review()
+        self.assertEqual(report["rejection_counts"]["inadequate-worker-duration"], 3)
+
+    def test_cross_precision_disagreement_blocks_complete_panel(self):
+        for engine in ("pari", "hecke"):
+            for sample in range(1, 4):
+
+                def change(r):
+                    value = fixtures.fixture(engine, "unconditional", 200, 2)
+                    value["id"] = r["request_id"]
+                    value["compact"]["discriminant"] = "-24"
+                    for member in value["iteration_outputs"]:
+                        member["compact"]["discriminant"] = "-24"
+                    r["stdout"] = fixtures.policy_tests.output(engine, value)
+
+                self.mutate(change, f"{engine}-200", sample)
+        report = self.run_review()
+        self.assertTrue(
+            all(p["complete_eligible_exact_summary_pair"] for p in report["pairs"])
+        )
+        self.assertFalse(
+            report["fields"][0]["all_retained_cross_precision_exact_summaries_agree"]
+        )
+        self.assertFalse(report["complete_eligible_exact_summary_panel"])
+
+    def test_duplicate_and_nonfinite_json_fail_closed(self):
+        for raw in ('{"x":1,"x":2}', '{"x":NaN}', '{"x":1e999}'):
+            with self.assertRaises(ValueError):
+                repeats.strict_json(raw)
+        path = self.root / "hecke-100/sample-1.json"
+        path.write_text(
+            path.read_text().replace(
+                '"status": "ok"', '"status": "ok", "status": "ok"', 1
+            )
+        )
+        self.assertEqual(self.run_review()["rejection_counts"]["rejected-run"], 3)
 
     def test_post_execution_request_change_cannot_reclassify(self):
         self.plan["runs"][0]["request"]["iterations"] = 3

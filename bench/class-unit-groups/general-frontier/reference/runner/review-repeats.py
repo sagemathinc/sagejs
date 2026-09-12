@@ -37,6 +37,13 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def strict_json(data):
+    value = normalizer.persistent.shared.strict_json(data)
+    # Also reject finite-syntax exponent overflow such as 1e999.
+    json.dumps(value, allow_nan=False)
+    return value
+
+
 def summary(compact):
     return {
         key: sorted(int(v) for v in compact[key] if int(v) > 1)
@@ -47,7 +54,8 @@ def summary(compact):
 
 
 def review(plan_bytes, custody, base=Path(".")):
-    plan = json.loads(plan_bytes)
+    plan = strict_json(plan_bytes)
+    json.dumps(custody, allow_nan=False)
     if plan.get("schema") != "sagejs.reference-repeat-plan.v1":
         raise ValueError("unknown repeat plan")
     if custody.get("schema") != "sagejs.reference-repeat-custody.v1" or custody.get(
@@ -56,7 +64,8 @@ def review(plan_bytes, custody, base=Path(".")):
         raise ValueError("custody does not bind predeclared plan")
     controls = plan["controls"]
     if (
-        not controls.get("hostname")
+        set(controls) != {"hostname", "affinity", "memory_max", "swap_max"}
+        or not controls.get("hostname")
         or controls.get("affinity") != [2]
         or controls.get("memory_max") != 4294967296
         or controls.get("swap_max") != 0
@@ -85,6 +94,20 @@ def review(plan_bytes, custody, base=Path(".")):
             raise ValueError("unsupported engine or seed")
         if entry["timing_class"] not in ("tiny", "seconds"):
             raise ValueError("timing class must be predeclared")
+        run_controls = entry["controls"]
+        if (
+            not isinstance(run_controls.get("cgroup"), str)
+            or not run_controls["cgroup"]
+            or any(run_controls.get(k) != v for k, v in controls.items())
+        ):
+            raise ValueError("run controls must bind cgroup and common controls")
+        minimum = entry["min_worker_nanoseconds"]
+        if (
+            type(minimum) is not int
+            or minimum < 0
+            or (entry["timing_class"] == "tiny" and minimum < 10**9)
+        ):
+            raise ValueError("invalid declared worker duration threshold")
         provenance = request["provenance"]
         if provenance.get("threads") != 1 or not provenance.get("sha256"):
             raise ValueError("missing pinned single-thread runtime")
@@ -137,10 +160,12 @@ def review(plan_bytes, custody, base=Path(".")):
                     result["files"].append(
                         {"path": str(path), "sha256": digest(path.read_bytes())}
                     )
+                for item in result["files"]:
+                    strict_json(Path(item["path"]).read_bytes())
                 raw = (directory / "run.json").read_bytes()
                 if digest(raw) != location["run_sha256"]:
                     raise ValueError("run custody hash mismatch")
-                actual = json.loads(raw)
+                actual = strict_json(raw)
                 if any(actual.get(k) != request[k] for k in REQUEST_KEYS):
                     raise ValueError("run differs from predeclared request")
                 report = normalizer.summarize(directory)
@@ -164,7 +189,7 @@ def review(plan_bytes, custody, base=Path(".")):
                         for f in result["files"]
                         if f["sha256"] == row["receipt_sha256"]
                     )
-                    receipt = json.loads(Path(source["path"]).read_bytes())
+                    receipt = strict_json(Path(source["path"]).read_bytes())
                     if request["engine"] == "pari":
                         value = normalizer.persistent.shared.parse_pari_compact(
                             receipt["stdout"],
@@ -175,7 +200,7 @@ def review(plan_bytes, custody, base=Path(".")):
                             proof_policy=row["proof_policy"],
                         )
                     else:
-                        value = json.loads(receipt["stdout"])["result"]
+                        value = strict_json(receipt["stdout"])["result"]
                     row["iteration_outputs"] = [
                         {
                             "iteration": 1,
@@ -211,7 +236,7 @@ def review(plan_bytes, custody, base=Path(".")):
                 elif row["status"] != "ok":
                     reasons.append(row["status"])
                 else:
-                    if row["controls"] != controls:
+                    if row["controls"] != entry["controls"]:
                         reasons.append("unmatched-controls")
                     if (
                         row["producer_boundary"]
@@ -223,11 +248,8 @@ def review(plan_bytes, custody, base=Path(".")):
                         or "iteration_outputs" not in row
                     ):
                         reasons.append("missing-retained-batch")
-                    if (
-                        entry["timing_class"] == "tiny"
-                        and int(row["worker_nanoseconds"]) < 10**9
-                    ):
-                        reasons.append("inadequate-tiny-duration")
+                    if int(row["worker_nanoseconds"]) < entry["min_worker_nanoseconds"]:
+                        reasons.append("inadequate-worker-duration")
                     if entry["timing_class"] == "seconds" and request["samples"] < 3:
                         reasons.append("insufficient-declared-samples")
                 cells.append(
@@ -291,6 +313,25 @@ def review(plan_bytes, custody, base=Path(".")):
                 and all(s == summaries[0] for s in summaries),
             }
         )
+    fields = []
+    for label, policy in sorted({(c["label"], c["policy"]) for c in cells}):
+        group = [c for c in cells if (c["label"], c["policy"]) == (label, policy)]
+        summaries = [
+            summary(m["compact"])
+            for c in group
+            if c["row"] is not None
+            for m in c["row"].get("iteration_outputs", [])
+        ]
+        agree = bool(summaries) and all(s == summaries[0] for s in summaries)
+        fields.append(
+            {
+                "label": label,
+                "policy": policy,
+                "all_retained_cross_precision_exact_summaries_agree": agree,
+                "complete_eligible_cross_precision_exact_summary_pair": agree
+                and all(c["sampling_eligible"] for c in group),
+            }
+        )
     return {
         "schema": "sagejs.reference-repeat-review.v1",
         "plan_sha256": digest(plan_bytes),
@@ -307,6 +348,10 @@ def review(plan_bytes, custody, base=Path(".")):
         "runs": runs,
         "samples": cells,
         "pairs": pairs,
+        "fields": fields,
+        "complete_eligible_exact_summary_panel": all(
+            f["complete_eligible_cross_precision_exact_summary_pair"] for f in fields
+        ),
     }
 
 
@@ -318,7 +363,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     report = review(
         args.plan.read_bytes(),
-        json.loads(args.custody.read_bytes()),
+        strict_json(args.custody.read_bytes()),
         args.custody.parent,
     )
     with args.output.open("x") as output:
