@@ -1,5 +1,5 @@
 \\ M0 reference screening, not a detached certificate verifier.
-\\ Invoke frontier_case(id, ascending_coefficients, bits, iterations, seed).
+\\ Invoke frontier_case(id, ascending_coefficients, bits, iterations, seed, proof_policy).
 \\ Every iteration constructs fresh bnf state; no b.fu or nffactorback.
 
 frontier_json_array(items) = Str("[", strjoin(items, ","), "]");
@@ -71,7 +71,7 @@ frontier_unit_coordinates(coordinates) = {
   return(vector(#p, j, coordinates[p[j]]));
 };
 
-frontier_json_compact(b, u, unit_coordinates, class_coordinates, class_powers, probes, decompositions, bits, initial_bits, regulator_text) = {
+frontier_json_compact(b, u, unit_coordinates, class_coordinates, class_powers, probes, decompositions, bits, initial_bits, regulator_text, proof_policy) = {
   my(n = poldegree(b.pol), m = #u[1], p = frontier_unit_permutation(m), basis = b.zk,
      reg_precision = if(type(b.reg) == "t_REAL", Str(bitprecision(b.reg)), "null"));
   return(frontier_json_object([
@@ -99,20 +99,25 @@ frontier_json_compact(b, u, unit_coordinates, class_coordinates, class_powers, p
       frontier_json_key("initial_working_bits", Str(initial_bits)),
       frontier_json_key("value_precision_bits", reg_precision),
       frontier_json_key("text", Str("\"", regulator_text, "\"")),
-      "\"fundamental_units_policy\":\"conditional-grh\""
+      frontier_json_key("fundamental_units_policy", Str("\"", proof_policy, "\""))
     ]))
   ]));
 };
 
-frontier_json_envelope(id, bits, iterations, seed, compact) = {
+frontier_json_envelope(id, bits, iterations, seed, compact, proof_policy, certification_ms) = {
   my(v = version());
   return(frontier_json_object([
-    "\"schema\":\"sagejs-pari-frontier-screen-v2\"",
+    "\"schema\":\"sagejs-pari-frontier-screen-v3\"",
     frontier_json_key("id", Str("\"", id, "\"")),
     frontier_json_key("bits", Str(bits)),
     frontier_json_key("iterations", Str(iterations)),
     frontier_json_key("seed", frontier_json_integer(seed)),
-    "\"proof_policy\":\"conditional-grh\"", "\"independent_replay\":false",
+    frontier_json_key("proof_policy", Str("\"", proof_policy, "\"")),
+    frontier_json_key("proof_execution", if(proof_policy == "conditional-grh", "null", frontier_json_object([
+      "\"method\":\"pari-bnfcertify-full\"", "\"flag\":0", "\"last_return\":\"1\"",
+      frontier_json_key("completed_iterations", Str(iterations)),
+      frontier_json_key("certification_milliseconds", frontier_json_integer(certification_ms))
+    ]))), "\"independent_replay\":false",
     "\"witness_semantics\":\"ideal-equals-principal-witness-times-literal-class-generator-product\"",
     "\"class_generator_order\":\"pari-bnf.gen\"",
     "\"unit_generator_order\":\"torsion-first-then-bnfunits-free-order\"",
@@ -134,9 +139,10 @@ frontier_class_power(b, j) = {
   return(concat(reduced[2]~, answer[2]~)~);
 };
 
-frontier_case(id, coefficients, bits, iterations, seed) = {
+frontier_case(id, coefficients, bits, iterations, seed, proof_policy) = {
   my(started, elapsed, polynomial, b, u, unit_coordinates, class_coordinates,
-     probes, decompositions, materialized, class_powers, initial_bits, regulator_text, characters);
+     probes, decompositions, materialized, class_powers, initial_bits, regulator_text, characters,
+     certification_ms = 0, certification_started, certified);
   if(type(id) != "t_STR" || #id == 0, error("invalid request id"));
   characters = Vecsmall(id);
   for(j = 1, #characters,
@@ -145,6 +151,7 @@ frontier_case(id, coefficients, bits, iterations, seed) = {
   if(type(bits) != "t_INT" || (bits != 100 && bits != 200), error("precision must be 100 or 200"));
   if(type(iterations) != "t_INT" || iterations < 1 || iterations > 10000, error("invalid batch size"));
   if(type(seed) != "t_INT" || seed < 1, error("invalid seed"));
+  if(type(proof_policy) != "t_STR" || (proof_policy != "conditional-grh" && proof_policy != "unconditional"), error("invalid proof policy"));
   default(realbitprecision, bits);
   initial_bits = default(realbitprecision);
   setrand(seed);
@@ -152,6 +159,12 @@ frontier_case(id, coefficients, bits, iterations, seed) = {
   for(iteration = 1, iterations,
     polynomial = Polrev(coefficients);
     b = bnfinit(polynomial, 1);
+    if(proof_policy == "unconditional",
+      certification_started = getwalltime();
+      certified = bnfcertify(b, 0);
+      certification_ms += getwalltime() - certification_started;
+      if(type(certified) != "t_INT" || certified != 1, error("full bnf certification failed"))
+    );
     u = bnfunits(b);
     unit_coordinates = vector(#u[1], j, bnfisunit(b, u[1][j], u));
     for(j = 1, #u[1],
@@ -173,11 +186,11 @@ frontier_case(id, coefficients, bits, iterations, seed) = {
     if(type(b.reg) != "t_REAL" && type(b.reg) != "t_INT" && type(b.reg) != "t_FRAC", error("invalid regulator scalar"));
     regulator_text = Str(b.reg);
     materialized = frontier_json_compact(b, u, unit_coordinates, class_coordinates,
-      class_powers, probes, decompositions, bits, initial_bits, regulator_text);
+      class_powers, probes, decompositions, bits, initial_bits, regulator_text, proof_policy);
   );
   elapsed = getwalltime() - started;
   print("FRONTIER_RESULT|", id, "|", bits, "|", iterations, "|", elapsed,
         "|", b.no, "|", b.cyc, "|", b.disc, "|", b.sign, "|", b.tu[1],
         "|", regulator_text);
-  print("FRONTIER_COMPACT_JSON|", id, "|", frontier_json_envelope(id, bits, iterations, seed, materialized));
+  print("FRONTIER_COMPACT_JSON|", id, "|", frontier_json_envelope(id, bits, iterations, seed, materialized, proof_policy, certification_ms));
 };

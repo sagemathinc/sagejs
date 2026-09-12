@@ -41,7 +41,7 @@ def fixture(n=2, orders=(2,), iterations=1):
     ]
     identity = {"coordinates": ["0"] * len(orders), "generator_product_witness": []}
     return {
-        "schema": screen.PARI_SCHEMA,
+        "schema": "sagejs-pari-frontier-screen-v2",
         "id": "field",
         "bits": 200,
         "iterations": iterations,
@@ -345,18 +345,21 @@ def gp_vector(value):
     return value
 
 
-def replay_commands(result, coefficients):
+def replay_commands(result, coefficients, native_identity=True):
     c = result["compact"]
     n = len(coefficients) - 1
     basis = gp_vector(c["integral_basis"])
     generators = gp_vector(c["class_generators"])
-    commands = [
-        f"default(realbitprecision,{result['bits']}); setrand(1); b=bnfinit(Polrev({gp_vector(coefficients)}),1);",
-        f'z={basis}; frontier_assert(vector({n},j,frontier_decode_element(b,z[j])) == vector({n},j,Mod(b.zk[j],b.pol)),"decoded order basis");',
-    ]
-    commands.append(
-        f'gs={generators}; frontier_assert(vector(#gs,j,frontier_decode_ideal(b,gs[j])) == b.gen,"native generator order");'
-    )
+    if native_identity:
+        commands = [
+            f"default(realbitprecision,{result['bits']}); setrand(1); b=bnfinit(Polrev({gp_vector(coefficients)}),1);",
+            f'z={basis}; frontier_assert(vector({n},j,frontier_decode_element(b,z[j])) == vector({n},j,Mod(b.zk[j],b.pol)),"decoded order basis");',
+            f'gs={generators}; frontier_assert(vector(#gs,j,frontier_decode_ideal(b,gs[j])) == b.gen,"native generator order");',
+        ]
+    else:
+        # Only exact equations over this field, never compare generators from
+        # independently computed presentations or run another class group.
+        commands = [f"b=nfinit(Polrev({gp_vector(coefficients)})); gs={generators};"]
 
     def factors(value):
         return gp_vector([[f["factor"], f["exponent"]] for f in value])
@@ -374,8 +377,20 @@ def replay_commands(result, coefficients):
         )
     for j, power in enumerate(c["class_power_witnesses"], 1):
         commands.append(
-            f'frontier_assert(idealpow(b,b.gen[{j}],{power["exponent"]}) == idealhnf(b,frontier_decode_factored(b,{factors(power["witness"])})),"decoded class power");'
+            f'frontier_assert(idealpow(b,frontier_decode_ideal(b,gs[{j}]),{power["exponent"]}) == idealhnf(b,frontier_decode_factored(b,{factors(power["witness"])})),"decoded class power");'
         )
+    if not native_identity:
+        for unit in c["units"]:
+            commands.append(
+                f'v=frontier_decode_factored(b,{factors(unit)}); frontier_assert(denominator(nfalgtobasis(b,v)) == 1 && abs(nfeltnorm(b,v)) == 1,"decoded integral unit");'
+            )
+        commands.append(
+            f'v=frontier_decode_factored(b,{factors(c["units"][0])}); frontier_assert(nfbasistoalg(b,nfeltpow(b,v,{c["torsion_order"]})) == Mod(1,b.pol),"decoded torsion power");'
+        )
+        commands.append(
+            f'for(j=1,{c["torsion_order"]}-1,frontier_assert(nfbasistoalg(b,nfeltpow(b,v,j)) != Mod(1,b.pol),"decoded torsion order"));'
+        )
+        return commands
     commands.append("u=bnfunits(b);")
     permutation = [len(c["units"])] + list(range(1, len(c["units"])))
     for j, native_j in enumerate(permutation):

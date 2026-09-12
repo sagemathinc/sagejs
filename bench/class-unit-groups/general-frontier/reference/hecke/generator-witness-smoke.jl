@@ -1,6 +1,6 @@
 # Local exact regression, not a benchmark or deployed-version qualification.
 using Test
-include("screen.jl")
+isdefined(@__MODULE__, :frontier_case) || include("screen.jl")
 
 function exact_rational(text)
     parts = split(text, "//")
@@ -35,6 +35,47 @@ function checks_equation(K, I, generators, coordinates, payload)
            decode_compact(K, payload) * literal_product(order(I), generators, coordinates)
 end
 
+function replay_toy_payload(result, coefficients)
+    # Test-only decoded exact-array checks, outside the worker timer. No group
+    # recomputation, identical-generator assumption or completeness proof.
+    values = parse.(BigInt, string.(coefficients))
+    values in ([5, 0, 1], [-2, 0, 1], [1, 0, 0, 0, 1]) ||
+        error("toy replay accepts only the three declared small fields")
+    R, x = polynomial_ring(QQ, "x")
+    K, a = number_field(R(QQ.(values)), "toy"; cached=false)
+    O = maximal_order(K)
+    compact = result.compact
+    decode_ideal(rows) = ideal(O, [O(decode_element(K, row)) for row in rows])
+    generators = decode_ideal.(compact.class_generators)
+    equations = 0
+    for (rows, answer) in zip([compact.probes; compact.class_generators],
+                              [compact.decompositions; compact.class_decompositions])
+        I = decode_ideal(rows)
+        coordinates = parse.(BigInt, answer.coordinates)
+        checks_equation(K, I, generators, coordinates, answer.generator_product_witness) ||
+            error("decoded literal ideal equation failed")
+        changed = [answer.generator_product_witness; (factor=["2"; fill("0", degree(K)-1)], exponent="1")]
+        !checks_equation(K, I, generators, coordinates, changed) || error("toy mutation accepted")
+        equations += 1
+    end
+    for (I, power) in zip(generators, compact.class_power_witnesses)
+        fractional_ideal(I)^parse(Int, power.exponent) ==
+            decode_compact(K, power.witness) * fractional_ideal(ideal(O, 1)) ||
+            error("decoded class-power equation failed")
+    end
+    units = [decode_compact(K, payload) for payload in compact.units]
+    for u in units
+        abs(norm(O(u))) == 1 || error("decoded element is not an integral unit")
+    end
+    torsion = parse(Int, compact.torsion_order)
+    units[1]^torsion == 1 || error("decoded torsion power failed")
+    all(units[1]^j != 1 for j in 1:torsion-1) || error("decoded torsion order failed")
+    return (scope="test-only-decoded-exact-payload-not-independent-proof",
+            literal_equations=equations, rejected_mutations=equations,
+            class_powers=length(generators), units=length(units))
+end
+
+if get(ENV, "SAGEJS_FRONTIER_TOY_REPLAY", "0") != "1"
 @testset "literal Hecke class-generator witnesses" begin
     Random.seed!(17)
     R, x = polynomial_ring(QQ, "x")
@@ -90,9 +131,9 @@ end
     @test checks_equation(K, identity, empty_generators, [],
                          compact_payload(generator_product_witness(identity, empty_generators, []), K))
 
-    # Exercise the actual serialized v2 producer, not only the residual helper.
-    result = frontier_case("literal-product", [21, 0, 1], 100, 1, 17)
-    @test result.schema == "sagejs-hecke-frontier-screen-v2"
+    # Exercise the actual serialized producer, not only the residual helper.
+    result = frontier_case("literal-product", [21, 0, 1], 100, 1, 17, "conditional-grh")
+    @test result.schema == "sagejs-hecke-frontier-screen-v3"
     @test result.witness_semantics == "ideal-equals-principal-witness-times-literal-class-generator-product"
     @test result.independent_replay == false
     @test result.proof_policy == "conditional-grh"
@@ -111,3 +152,4 @@ end
 
 println("generator-witness-smoke versions: Julia=", VERSION,
         " Hecke=", Base.pkgversion(Hecke), " Nemo=", Base.pkgversion(Hecke.Nemo))
+end

@@ -31,9 +31,9 @@ assert.deepEqual(sample, {
 
 const responses = run([path.join(__dirname, "screen.jl")], [
   "not-a-request",
-  "FRONTIER1\tbad-number\t100\t1\t17\t-2,run(`false`),1",
-  "FRONTIER1\tquadratic-100\t100\t1\t17\t-2,0,1",
-  "FRONTIER1\tquadratic-200\t200\t1\t17\t-2,0,1",
+  "FRONTIER2\tbad-number\t100\t1\t17\tconditional-grh\t-2,run(`false`),1",
+  "FRONTIER2\tquadratic-100\t100\t1\t17\tconditional-grh\t-2,0,1",
+  "FRONTIER2\tquadratic-200\t200\t1\t17\tconditional-grh\t-2,0,1",
   "",
 ].join("\n"));
 assert.equal(responses.length, 4);
@@ -44,6 +44,10 @@ for (const [offset, bits] of [[2, 100], [3, 200]]) {
   assert.equal(status, "ok");
   assert.equal(result.bits, bits);
   assert.equal(result.independent_replay, false);
+  assert.equal(result.schema, "sagejs-hecke-frontier-screen-v3");
+  assert.equal(result.proof_policy, "conditional-grh");
+  assert.equal(result.proof_execution, null);
+  assert.equal(result.compact.regulator.fundamental_units_policy, "conditional-grh");
   assert.match(result.elapsed_ns, /^[0-9]+$/);
   assert.equal(result.compact.class_number, "1");
   assert.equal(result.compact.torsion_order, "2");

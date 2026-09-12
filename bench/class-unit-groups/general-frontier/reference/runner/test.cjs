@@ -54,11 +54,11 @@ test("PARI compact screening across signatures and exact small power witnesses",
       ? { LD_LIBRARY_PATH: process.env.GP_LIBRARY_PATH } : {}) },
     input: `read(${JSON.stringify(source)});
 if(default(nbthreads)!=1,error("thread count"));
-frontier_case("q23",[23,0,1],100,1,1);
-frontier_case("c49",[1,-2,-1,1],100,1,1);
-frontier_case("q283",[-1,-1,0,0,1],200,1,1);
-frontier_case("q725",[1,1,-3,-1,1],200,1,1);
-frontier_case("q-torsion8",[1,0,0,0,1],100,1,1);
+frontier_case("q23",[23,0,1],100,1,1,"conditional-grh");
+frontier_case("c49",[1,-2,-1,1],100,1,1,"conditional-grh");
+frontier_case("q283",[-1,-1,0,0,1],200,1,1,"conditional-grh");
+frontier_case("q725",[1,1,-3,-1,1],200,1,1,"conditional-grh");
+frontier_case("q-torsion8",[1,0,0,0,1],100,1,1,"conditional-grh");
 b=bnfinit(x^2+23,1);w=frontier_class_power(b,1);
 if(idealhnf(b,nffactorback(b,w))!=idealpow(b,b.gen[1],b.cyc[1]),error("power identity"));
 print("SMALL_EXACT_IDENTITY_OK");

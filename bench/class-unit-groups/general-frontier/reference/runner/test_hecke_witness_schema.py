@@ -125,7 +125,7 @@ class WitnessSchemas(unittest.TestCase):
             self.assertEqual(check(value), "ok")
 
     def test_unknown_or_spliced_versions_fail(self):
-        for version in (0, 3, "unknown"):
+        for version in (0, 4, "unknown"):
             value = answer()
             value["result"]["schema"] = f"sagejs-hecke-frontier-screen-v{version}"
             self.assertNotEqual(check(value), "ok")

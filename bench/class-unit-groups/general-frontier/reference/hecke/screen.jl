@@ -38,7 +38,7 @@ function generator_product_witness(I, class_images, coordinates)
     return witness
 end
 
-function regulator_payload(units, bits)
+function regulator_payload(units, bits, proof_policy)
     # Guard bits keep outward-rounded exported endpoints within the request.
     ball = regulator(units, bits + 8)
     lo, hi = setprecision(BigFloat, max(precision(parent(ball)), bits + 64)) do
@@ -49,18 +49,23 @@ function regulator_payload(units, bits)
         error("exported regulator enclosure is too wide")
     return (guarantee="absolute-radius-less-than-2^-bits", bits=bits,
             lower=string(lo), upper=string(hi), display=string(ball),
-            fundamental_units_policy="conditional-grh")
+            fundamental_units_policy=proof_policy)
 end
 
-function one_fresh_case(coefficients, bits)
+function one_fresh_case(coefficients, bits, proof_policy)
     R, x = polynomial_ring(QQ, "x")
     polynomial = R([QQ(parse(BigInt, string(c))) for c in coefficients])
     degree(polynomial) >= 2 || throw(ArgumentError("degree must be at least two"))
     isone(leading_coefficient(polynomial)) || throw(ArgumentError("polynomial must be monic"))
     K, a = number_field(polynomial, "a"; cached=false)
     O = maximal_order(K)
-    C, mC = class_group(O; GRH=true)
-    U, mU = unit_group_fac_elem(O; GRH=true)
+    grh = proof_policy == "conditional-grh"
+    class_started = time_ns()
+    C, mC = class_group(O; GRH=grh)
+    class_ns = time_ns() - class_started
+    unit_started = time_ns()
+    U, mU = unit_group_fac_elem(O; GRH=grh)
+    unit_ns = time_ns() - unit_started
     class_images = [mC(C[i]) for i in 1:ngens(C)]
     units = [mU(U[i]) for i in 1:ngens(U)]
     unit_coordinates = [preimage(mU, u) for u in units]
@@ -98,30 +103,41 @@ function one_fresh_case(coefficients, bits)
         unit_invariants=string.(elementary_divisors(U)), torsion_order=string(order(U[1])),
         units=compact_payload.(units, Ref(K)), unit_coordinates=group_coordinates.(unit_coordinates),
         probes=[ideal_payload(I, K) for I in probes], decompositions=decompositions,
-        regulator=regulator_payload(units[2:end], bits),
+        regulator=regulator_payload(units[2:end], bits, proof_policy),
     )
     # Materialize exact compact data inside the timed boundary. No evaluate().
     materialized = frontier_json(result)
-    return result, materialized
+    return result, materialized, class_ns, unit_ns
 end
 
-function frontier_case(id, coefficients, bits, iterations, seed)
+function frontier_case(id, coefficients, bits, iterations, seed, proof_policy)
     bits in (100, 200) || throw(ArgumentError("precision must be 100 or 200"))
     1 <= iterations <= 100000 || throw(ArgumentError("invalid batch size"))
+    proof_policy isa AbstractString && proof_policy in ("conditional-grh", "unconditional") ||
+        throw(ArgumentError("invalid proof policy"))
     Random.seed!(seed)
     compact = nothing
     materialized = ""
+    class_ns = UInt64(0)
+    unit_ns = UInt64(0)
     started = time_ns()
     for _ in 1:iterations
-        compact, materialized = one_fresh_case(coefficients, bits)
+        compact, materialized, class_call_ns, unit_call_ns = one_fresh_case(coefficients, bits, proof_policy)
+        class_ns += class_call_ns
+        unit_ns += unit_call_ns
         isempty(materialized) && error("compact materialization failed")
     end
     elapsed_ns = time_ns() - started
-    return (schema="sagejs-hecke-frontier-screen-v2", id=string(id), bits=bits,
+    proof_execution = proof_policy == "conditional-grh" ? nothing :
+        (method="hecke-class-and-unit-grh-false", class_group_grh=false,
+         unit_group_grh=false, completed_iterations=iterations,
+         class_group_call_nanoseconds=string(class_ns), unit_group_call_nanoseconds=string(unit_ns))
+    return (schema="sagejs-hecke-frontier-screen-v3", id=string(id), bits=bits,
             iterations=iterations, seed=string(seed), elapsed_ns=string(elapsed_ns),
             boundary="persistent-process-fresh-field-complete-compact-screen",
             witness_semantics="ideal-equals-principal-witness-times-literal-class-generator-product",
-            proof_policy="conditional-grh", independent_replay=false,
+            proof_policy=proof_policy, proof_execution=proof_execution, independent_replay=false,
+            retained_iteration=iterations, batch_outputs_complete=iterations == 1,
             versions=(julia=string(VERSION), hecke=string(Base.pkgversion(Hecke)),
                       nemo=string(Base.pkgversion(Hecke.Nemo))), compact=compact)
 end
@@ -134,7 +150,7 @@ function main(input=stdin, output=stdout)
             request = parse_frontier_request(line)
             id = request.id
             result = frontier_case(request.id, request.coefficients, request.bits,
-                                   request.iterations, request.seed)
+                                   request.iterations, request.seed, request.proof_policy)
             println(output, frontier_json((status="ok", result=result)))
         catch err
             println(output, frontier_json((status="error", id=id, error=sprint(showerror, err))))

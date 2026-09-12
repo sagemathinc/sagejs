@@ -60,7 +60,7 @@ frontier_explicit_smoke() = {
       frontier_assert(reduced[1] != literal, "composite class ideal did not reduce")
     );
     forstep(bits = 100, 200, 100,
-      frontier_case(Str("explicit-", k, "-", bits), vector(poldegree(polynomials[k]) + 1, j, polcoef(polynomials[k], j - 1)), bits, 1, 1)
+      frontier_case(Str("explicit-", k, "-", bits), vector(poldegree(polynomials[k]) + 1, j, polcoef(polynomials[k], j - 1)), bits, 1, 1, "conditional-grh")
     )
   );
   frontier_assert(mutations > 0, "no nontrivial reduction multiplier exercised");
@@ -75,7 +75,7 @@ frontier_explicit_smoke() = {
   frontier_assert(nffactorback(b, vector(#p, j, nffactorback(b, u[1][p[j]])), exported) == expanded, "mixed exported coordinate replay");
   frontier_assert(nffactorback(b, vector(#p, j, nffactorback(b, u[1][p[j]])), Vec(native)) != expanded, "unpermuted mixed coordinates were invisible");
   print("FRONTIER_TEST|mixed-torsion-coordinate-permutation|ok");
-  frontier_case("explicit-batch", [4, 0, 1], 100, 2, 1);
+  frontier_case("explicit-batch", [4, 0, 1], 100, 2, 1, "conditional-grh");
   print("FRONTIER_TEST|version|", version());
   print("FRONTIER_TEST|complete|ok");
 };

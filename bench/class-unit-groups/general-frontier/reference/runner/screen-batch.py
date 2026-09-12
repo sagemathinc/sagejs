@@ -25,12 +25,127 @@ from fractions import Fraction
 
 
 LIMIT = 120 * 3600
-PARI_SCHEMA = "sagejs-pari-frontier-screen-v2"
+PARI_SCHEMA = "sagejs-pari-frontier-screen-v3"
+PROOF_POLICIES = ("conditional-grh", "unconditional")
 PARI_SEMANTICS = "ideal-equals-principal-witness-times-literal-class-generator-product"
 
 
-def parse_pari_compact(output, label, bits=200, iterations=1, degree=None, seed=1):
-    """Strict v2 transport/shape checks, not mathematical certificate replay."""
+def validate_proof_policy(policy):
+    if not isinstance(policy, str) or policy not in PROOF_POLICIES:
+        raise ValueError("invalid requested proof policy")
+    return policy
+
+
+def strict_json(text):
+    def distinct(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate JSON key")
+            result[key] = value
+        return result
+
+    def nonfinite(value):
+        raise ValueError("nonfinite JSON constant")
+
+    return json.loads(text, object_pairs_hook=distinct, parse_constant=nonfinite)
+
+
+def validate_proof_execution(result, engine, policy, iterations):
+    """Validate claimed execution, not an independent mathematical certificate."""
+    validate_proof_policy(policy)
+    current = result.get("schema") == f"sagejs-{engine}-frontier-screen-v3"
+    if not current:
+        if (
+            policy != "conditional-grh"
+            or result.get("proof_policy", "conditional-grh") != policy
+            or "proof_execution" in result
+            or result.get("compact", {})
+            .get("regulator", {})
+            .get("fundamental_units_policy", "conditional-grh")
+            != policy
+        ):
+            raise ValueError("historical output is conditional only")
+        return
+    if (
+        result.get("proof_policy") != policy
+        or result.get("independent_replay") is not False
+    ):
+        raise ValueError("worker proof policy mismatch")
+    if result["compact"]["regulator"].get("fundamental_units_policy") != policy:
+        raise ValueError("regulator fundamental-unit policy mismatch")
+    if (
+        type(result.get("retained_iteration")) is not int
+        or result["retained_iteration"] != iterations
+    ):
+        raise ValueError("retained iteration mismatch")
+    if result.get("batch_outputs_complete") is not (iterations == 1):
+        raise ValueError("batch retention mismatch")
+    execution = result["proof_execution"]
+    if policy == "conditional-grh":
+        if execution is not None:
+            raise ValueError("conditional output must not claim proof execution")
+        return
+    expected = (
+        "method flag last_return completed_iterations certification_milliseconds"
+        if engine == "pari"
+        else "method class_group_grh unit_group_grh completed_iterations class_group_call_nanoseconds unit_group_call_nanoseconds"
+    )
+    if not isinstance(execution, dict) or set(execution) != set(expected.split()):
+        raise ValueError("invalid proof execution fields")
+    if (
+        type(execution["completed_iterations"]) is not int
+        or execution["completed_iterations"] != iterations
+    ):
+        raise ValueError("incomplete proof iterations")
+    if engine == "pari":
+        if (
+            execution["method"] != "pari-bnfcertify-full"
+            or type(execution["flag"]) is not int
+            or execution["flag"] != 0
+            or execution["last_return"] != "1"
+        ):
+            raise ValueError("full bnfcertify result required")
+        durations = ("certification_milliseconds",)
+    else:
+        if (
+            execution["method"] != "hecke-class-and-unit-grh-false"
+            or execution["class_group_grh"] is not False
+            or execution["unit_group_grh"] is not False
+        ):
+            raise ValueError("both Hecke proof owners must be unconditional")
+        durations = ("class_group_call_nanoseconds", "unit_group_call_nanoseconds")
+    for name in durations:
+        value = execution[name]
+        if not isinstance(value, str) or not re.fullmatch(r"0|[1-9][0-9]*", value):
+            raise ValueError("proof duration must be a canonical nonnegative integer")
+
+
+def receipt_policy(receipt):
+    """New requests are explicit; old receipts are never upgraded."""
+    schema = receipt.get("schema", "")
+    if schema.endswith(("persistent-screen.v2", "cost-screen.v2")):
+        policy = validate_proof_policy(receipt["requested_proof_policy"])
+        if "proof_policy" in receipt and receipt["proof_policy"] != policy:
+            raise ValueError("receipt completed/requested policy mismatch")
+        return policy
+    if "requested_proof_policy" in receipt:
+        raise ValueError("historical receipt has a new request-policy field")
+    if receipt.get("proof_policy", "conditional-grh") != "conditional-grh":
+        raise ValueError("historical receipt cannot claim unconditional proof")
+    return "conditional-grh"
+
+
+def parse_pari_compact(
+    output,
+    label,
+    bits=200,
+    iterations=1,
+    degree=None,
+    seed=1,
+    proof_policy="conditional-grh",
+):
+    """Strict versioned transport/shape checks, not certificate replay."""
 
     def require(condition):
         if not condition:
@@ -71,9 +186,14 @@ def parse_pari_compact(output, label, bits=200, iterations=1, degree=None, seed=
     )
     keys(
         result,
-        "schema id bits iterations seed proof_policy independent_replay witness_semantics class_generator_order unit_generator_order element_basis ideal_basis_layout pari_version retained_iteration batch_outputs_complete compact",
+        "schema id bits iterations seed proof_policy independent_replay witness_semantics class_generator_order unit_generator_order element_basis ideal_basis_layout pari_version retained_iteration batch_outputs_complete compact"
+        + (" proof_execution" if result.get("schema") == PARI_SCHEMA else ""),
     )
-    require(result["schema"] == PARI_SCHEMA and result["id"] == label)
+    require(
+        result["schema"] in (PARI_SCHEMA, "sagejs-pari-frontier-screen-v2")
+        and result["id"] == label
+    )
+    validate_proof_execution(result, "pari", proof_policy, iterations)
     bounded(bits, 100, 200)
     require(bits in (100, 200))
     bounded(iterations, 1, 10000)
@@ -86,8 +206,7 @@ def parse_pari_compact(output, label, bits=200, iterations=1, degree=None, seed=
         require(type(result[key]) is int and result[key] == expected)
     require(integer(result["seed"]) == seed)
     require(
-        result["proof_policy"] == "conditional-grh"
-        and result["independent_replay"] is False
+        result["proof_policy"] == proof_policy and result["independent_replay"] is False
     )
     require(result["witness_semantics"] == PARI_SEMANTICS)
     require(result["class_generator_order"] == "pari-bnf.gen")
@@ -207,7 +326,7 @@ def parse_pari_compact(output, label, bits=200, iterations=1, degree=None, seed=
     bounded(regulator["initial_working_bits"], bits, 1000000)
     if regulator["value_precision_bits"] is not None:
         bounded(regulator["value_precision_bits"], 1, 1000000)
-    require(regulator["fundamental_units_policy"] == "conditional-grh")
+    require(regulator["fundamental_units_policy"] == proof_policy)
     text = regulator["text"]
     require(
         isinstance(text, str)
@@ -277,6 +396,8 @@ def validate_terminal(
     expected_iterations=1,
     expected_degree=None,
     expected_seed=1,
+    expected_proof_policy="conditional-grh",
+    require_current=False,
 ):
     if output_capped:
         return "output-limit"
@@ -332,14 +453,17 @@ def validate_terminal(
         return "error"
     if compact[0].startswith("FRONTIER_COMPACT_JSON|"):
         try:
-            parse_pari_compact(
+            parsed = parse_pari_compact(
                 output,
                 label,
                 expected_bits,
                 expected_iterations,
                 expected_degree,
                 expected_seed,
+                expected_proof_policy,
             )
+            if require_current and parsed["schema"] != PARI_SCHEMA:
+                return "error"
         except (
             KeyError,
             TypeError,
@@ -349,6 +473,8 @@ def validate_terminal(
             OverflowError,
         ):
             return "error"
+    elif expected_proof_policy != "conditional-grh" or require_current:
+        return "error"
     return "ok"
 
 
@@ -381,6 +507,9 @@ def validate_hecke_terminal(
     *,
     expected_bits=200,
     expected_iterations=1,
+    expected_seed=1,
+    expected_proof_policy="conditional-grh",
+    require_current=False,
 ):
     if output_capped:
         return "output-limit"
@@ -389,9 +518,41 @@ def validate_hecke_terminal(
     if returncode != 0 or errors.strip():
         return "error"
     try:
-        answer = json.loads(output)
+        answer = strict_json(output)
         result = answer["result"]
+        if (
+            require_current
+            and result.get("schema") != "sagejs-hecke-frontier-screen-v3"
+        ):
+            return "error"
         compact = result["compact"]
+        validate_proof_execution(
+            result, "hecke", expected_proof_policy, expected_iterations
+        )
+        if result["schema"] == "sagejs-hecke-frontier-screen-v3":
+            if set(result) != set(
+                "schema id bits iterations seed elapsed_ns boundary witness_semantics proof_policy proof_execution independent_replay retained_iteration batch_outputs_complete versions compact".split()
+            ):
+                return "error"
+            if result["seed"] != str(expected_seed):
+                return "error"
+            if (
+                result["boundary"]
+                != "persistent-process-fresh-field-complete-compact-screen"
+            ):
+                return "error"
+            if (
+                not isinstance(result["versions"], dict)
+                or set(result["versions"]) != {"julia", "hecke", "nemo"}
+                or not all(
+                    isinstance(v, str) and v for v in result["versions"].values()
+                )
+            ):
+                return "error"
+            if set(compact["regulator"]) != set(
+                "guarantee bits lower upper display fundamental_units_policy".split()
+            ):
+                return "error"
         if (
             answer["status"] != "ok"
             or type(expected_bits) is not int
@@ -402,13 +563,18 @@ def validate_hecke_terminal(
             not in (
                 "sagejs-hecke-frontier-screen-v1",
                 "sagejs-hecke-frontier-screen-v2",
+                "sagejs-hecke-frontier-screen-v3",
             )
             or (
-                result["schema"] == "sagejs-hecke-frontier-screen-v2"
+                result["schema"]
+                in (
+                    "sagejs-hecke-frontier-screen-v2",
+                    "sagejs-hecke-frontier-screen-v3",
+                )
                 and (
                     result.get("witness_semantics")
                     != "ideal-equals-principal-witness-times-literal-class-generator-product"
-                    or result.get("proof_policy") != "conditional-grh"
+                    or result.get("proof_policy") != expected_proof_policy
                     or result.get("independent_replay") is not False
                 )
             )
@@ -427,9 +593,39 @@ def validate_hecke_terminal(
             or not compact["units"]
         ):
             return "error"
-    except (KeyError, TypeError, ValueError):
+    except (
+        KeyError,
+        TypeError,
+        ValueError,
+        AttributeError,
+        RecursionError,
+        OverflowError,
+    ):
         return "error"
     return "ok"
+
+
+def encode_fresh_request(engine, worker_text, label, coefficients, proof_policy):
+    validate_proof_policy(proof_policy)
+    validate_case({"label": label, "coefficients": coefficients})
+    if engine == "pari":
+        return (
+            worker_text
+            + "\nfrontier_case("
+            + json.dumps(label)
+            + ",["
+            + ",".join(coefficients)
+            + "],200,1,1,"
+            + json.dumps(proof_policy)
+            + ");\n"
+        )
+    if engine == "hecke":
+        return (
+            f"FRONTIER2\t{label}\t200\t1\t1\t{proof_policy}\t"
+            + ",".join(coefficients)
+            + "\n"
+        )
+    raise ValueError("invalid engine")
 
 
 def main():
@@ -444,6 +640,9 @@ def main():
     parser.add_argument("--depot", type=Path)
     parser.add_argument("--worker", type=Path, required=True)
     parser.add_argument("--seconds", type=int, default=60)
+    parser.add_argument(
+        "--proof-policy", choices=PROOF_POLICIES, default="conditional-grh"
+    )
     args = parser.parse_args()
     if args.engine == "pari" and not args.gp:
         raise ValueError("PARI screen requires --gp")
@@ -518,16 +717,9 @@ def main():
             destination = args.output / (label + ".json")
             if destination.exists():
                 raise ValueError("refusing to overwrite a previous attempt")
-            request = worker_text + "\nfrontier_case(" + json.dumps(label) + ",["
-            request += ",".join(coefficients) + "],200,1,1);\n"
-            if args.engine == "hecke":
-                request = (
-                    "FRONTIER1\t"
-                    + label
-                    + "\t200\t1\t1\t"
-                    + ",".join(coefficients)
-                    + "\n"
-                )
+            request = encode_fresh_request(
+                args.engine, worker_text, label, coefficients, args.proof_policy
+            )
             reservation = args.seconds + 10
             validate_state(state, reservation)
             state["pending"] = {
@@ -582,6 +774,8 @@ def main():
                     child.communicate(request, timeout=args.seconds)
                 except subprocess.TimeoutExpired:
                     status = "timeout"
+                except InterruptedError:
+                    status = "interrupted"
                 finally:
                     try:
                         os.killpg(child.pid, signal.SIGKILL)
@@ -606,24 +800,35 @@ def main():
             validator = (
                 validate_terminal if args.engine == "pari" else validate_hecke_terminal
             )
-            status = validator(
-                output,
-                errors,
-                label,
-                child.returncode,
-                status == "timeout",
-                output_capped,
-                **(
-                    {"expected_degree": len(coefficients) - 1}
-                    if args.engine == "pari"
-                    else {}
-                ),
+            interrupted_attempt = status == "interrupted"
+            status = (
+                "interrupted"
+                if interrupted_attempt
+                else validator(
+                    output,
+                    errors,
+                    label,
+                    child.returncode,
+                    status == "timeout",
+                    output_capped,
+                    expected_proof_policy=args.proof_policy,
+                    require_current=True,
+                    **(
+                        {"expected_degree": len(coefficients) - 1}
+                        if args.engine == "pari"
+                        else {}
+                    ),
+                )
             )
             receipt = {
-                "schema": "sagejs.general-frontier-" + args.engine + "-cost-screen.v1",
+                "schema": "sagejs.general-frontier-" + args.engine + "-cost-screen.v2",
                 "engine": args.engine,
                 "qualification_evidence": False,
                 "label": label,
+                "request_id": label,
+                "bits": 200,
+                "iterations": 1,
+                "seed": "1",
                 "coefficients": coefficients,
                 "status": status,
                 "regulator_guarantee": "PARI-working-precision-approximation-not-enclosure"
@@ -638,7 +843,7 @@ def main():
                 "runner_sha256": runner_sha256,
                 "input_sha256": input_sha256,
                 "controls": controls,
-                "proof_policy": "conditional-grh",
+                "requested_proof_policy": args.proof_policy,
                 "captured_at": datetime.now(timezone.utc).isoformat(),
                 "worker_sha256": hashlib.sha256(worker_text.encode()).hexdigest(),
                 "request_sha256": hashlib.sha256(request.encode()).hexdigest(),
@@ -650,6 +855,10 @@ def main():
                 "stderr": errors,
             }
             save(destination, receipt)
+            if interrupted_attempt:
+                raise InterruptedError(
+                    "interrupted receipt retained; reservation remains pending"
+                )
             # Include parsing and receipt publication plus one second reserved
             # for ledger bookkeeping. Wall-time overrun remains visible and
             # leaves the reservation pending rather than silently continuing.
