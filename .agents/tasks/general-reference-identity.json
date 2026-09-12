@@ -85,12 +85,32 @@
       "commit": "ad5dcfb7936f3d3a88dc969792762a4711906298",
       "workspace_fingerprint": "33f1ae62af31ae83c7bf98edc9d008d3e489bbf2e4589a90ad8e158c51c70e55",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base ee6f5e365ab6c34ac58d0b092dfb2948869f6c63",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.601,
+      "started_at": "2026-09-12T19:56:12.731Z",
+      "commit": "80e4262b015d5d88c14b9d6ab85edb843cd0a8f7",
+      "workspace_fingerprint": "be7bff90def1491f063e867cdd795a5a0039d7f21c039d24af46b4623112460e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base ee6f5e365ab6c34ac58d0b092dfb2948869f6c63",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 149.971,
+      "started_at": "2026-09-12T19:58:33.003Z",
+      "commit": "80e4262b015d5d88c14b9d6ab85edb843cd0a8f7",
+      "workspace_fingerprint": "be7bff90def1491f063e867cdd795a5a0039d7f21c039d24af46b4623112460e",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Implemented a pinned, prepaid, one-shot 38-input identity-only PARI/Hecke diagnostic, exact offline order consistency checks, and 11 passing offline tests. No CAS execution or target dispatch occurred.",
+    "summary": "Implemented a pinned, prepaid, one-shot 38-input identity-only PARI/Hecke diagnostic and exact offline order consistency checks. All 14 offline tests, full local build, and exact-base changed gate (222 unit files) pass. No CAS execution or target dispatch occurred.",
     "risks": [
-      "Exact-base changed validation failed because this fresh worktree has no dist/tools/compiler.js; strict/native broad validation and actual pinned CAS runtime fixtures remain outstanding.",
+      "Earlier missing-dist and missing-native-adapter changed-gate failures are retained; full build and supported content-addressed cache restore resolved them. Strict/native lane validation and actual pinned CAS runtime fixtures remain outstanding.",
       "Order consistency and reference agreement do not independently prove maximality, irreducibility, or distinct field admission.",
       "Coordinator must enforce and prepay the external whole-driver deadline, runtime custody, and admitted controls before any dispatch."
     ],
