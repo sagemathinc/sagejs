@@ -10,7 +10,7 @@ investigation started at `d520ed4df`; the current integration baseline is
 | Milestone | Current status |
 | --- | --- |
 | N0 | Partial public-call corpus and profiles; complete scaling, startup, memory, route and platform matrix still required. |
-| N1 | Trace #224 and result-binding #225 are merged, with independent Linux x64 confirmation of their narrow gains; result statistics rows do not improve. Draft #251 specializes exact JSON leaves with independent source-body evidence, but its real-browser Mapping-subclass test exposes a module-identity blocker. Memory and public targets remain open. |
+| N1 | Trace #224 and result-binding #225 are merged, with independent Linux x64 confirmation of their narrow gains; result statistics rows do not improve. Draft #251 specializes exact JSON leaves with independent source-body evidence; integration with current main now passes the real-browser module-identity corpus. Its local routine startup gate still fails. Memory and public targets remain open. |
 | N2 | Merged #232 qualifies the isolated binary64 sum/compiler foundation on four persistent platforms, plus local browser and sanitizer evidence. Draft #240 adds owned prepared statistics: an independent Linux public query is 82 ms versus 5.0 s generic, with 1.1 s preparation. Public fallback packaging now passes; installed native/Wasm storage, paired qualification, startup and the 10 ms target remain open. |
 | N3 | Earlier typed LU, Eigen probes and packed validation are candidate evidence, not a qualified public backend or completed latency target. |
 | N4 | Earlier prepared scalar evaluators/root prototypes remain experimental; derivative/vector/external-solver integration and public targets remain open. |
@@ -102,7 +102,33 @@ Node/CPython and domain/contract tests pass 12/12, and strict Python passes
 divergence: a session-defined `collections.abc.Mapping` subclass is rejected by
 the JSON module, and both JSON and unchanged statistics modules hold a different
 `math` object from session imports. The failing witness remains intact and the
-PR stays draft pending [runtime coordination](https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18410733).
+PR initially stayed draft pending [runtime coordination](https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18410733).
+
+Current-main integration `d8e65e466` on `02a683d21` resolves that old artifact's
+module-identity failure using main's existing runtime-module ownership support.
+No compiler/worker workaround is added. A fresh eight-stage root build and
+production Wasm assembly pass; all twelve combinations of three engines,
+Python/Sage and isolated/portable workers pass the new public identity tests.
+The complete JSON corpus passes all three engines, alongside Chromium's
+68-module numerical-domain witnesses and dynamic-code tests. Strict Python
+passes 403 modules. The original timing receipts retain their old runtime
+identity; they are not new integration timings. Functional routine phases pass,
+but the unchanged local startup gate fails at 409.5ms versus 400ms. The PR
+remains draft; independent exact-source ARM64 qualification is underway.
+
+Packaging is a separate N2 prerequisite, not a completed numerical target.
+[PR #259](https://github.com/sagemathinc/sagejs/pull/259) is the non-draft
+prefix-free aggregate foundation; [draft #262](https://github.com/sagemathinc/sagejs/pull/262)
+separates pure binary64 and exact-dependency production packs. Its four-platform
+small executable loader fixtures pass, but are not whole-product receipts.
+At `e4d066c38`, the full local graph-enabled build, both real product SEAs,
+general SEA smoke and public CMinpack/NLopt SEA tests pass. The platform npm
+archive builds; ordinary root prepack fails the unchanged startup gate at
+411ms, and an unchanged quiet retry fails at 409ms. No prepack bypass or budget
+increase is used. Full installed npm/four-platform product qualification,
+prepared-statistics descriptors, source-current backend qualification and
+startup/payload/RSS measurements remain open. Small addon sizes alone do not
+prove a public startup or memory improvement.
 
 Earlier stacked drafts are preserved for source, experiments and review, but
 are not prerequisites to merge merely because a later draft depends on them.
