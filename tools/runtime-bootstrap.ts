@@ -18,6 +18,8 @@ import { markModuleCacheInUse } from "./cache-lease";
 import { atomicWriteCacheFileSync } from "./cache-file";
 import type { Compiler } from "./compiler";
 import dynamicCode from "./dynamic-code";
+import * as nativePackLayout from "./native-pack-layout.js";
+
 import {
   importJavaScriptModule,
   requireJavaScriptModule,
@@ -865,29 +867,22 @@ export function runRuntimeBootstrap(
         (logicalSourceKey === undefined
           ? undefined
           : index?.logicalSources?.[logicalSourceKey]);
-      const pack = index?.schema === "sagejs.native-cache/v4" &&
-          Array.isArray(index?.packs)
-        ? index.packs.find(
-          (candidate: any) => candidate?.packKey === record?.packKey,
-        )
-        : undefined;
+      const pack = nativePackLayout.selectedPack(index, record);
       if (
         ![
           "sagejs.native-cache/v3",
-          "sagejs.native-cache/v4",
+          nativePackLayout.SCHEMA,
         ].includes(index?.schema) ||
         record?.sourceHash !== sourceHash ||
         !/^[a-f0-9]{64}$/.test(record?.cacheKey ?? "") ||
-        (index?.schema === "sagejs.native-cache/v4" &&
-          (index?.complete !== true ||
-            !/^[a-f0-9]{64}$/.test(record?.packKey ?? "") ||
-            !Array.isArray(pack?.kernels) ||
-            !pack.kernels.includes(record.cacheKey)))
+        (index?.schema === nativePackLayout.SCHEMA && pack === undefined)
       ) {
         continue;
       }
       try {
-        const modulePath = join(cacheRoot, record.cacheKey, "index.cjs");
+        const modulePath = index.schema === nativePackLayout.SCHEMA
+          ? join(cacheRoot, nativePackLayout.modulePath(record))
+          : join(cacheRoot, record.cacheKey, "index.cjs");
         const loaded = loadPrecompiledNativeKernel(modulePath, sourcePath) as
           Record<string, unknown>;
         const indexCompatibility = validatedNativeCompatibility(

@@ -10,6 +10,8 @@ const {
   NATIVE_MATH_DEPENDENCY_VERSIONS,
 } = require("../../scripts/native-math-profile.cjs");
 const { inspectBuildReceipt } = require("../../scripts/build-receipt.cjs");
+const nativeLayout = require("../../tools/native-pack-layout.js");
+const { currentCatalogClosure } = require("./native-pack-runtime-closure.cjs");
 
 const {
   SCHEMA,
@@ -508,11 +510,16 @@ function sourceRuntimeArtifacts(executable) {
   }
   const nativeIndexFile = path.join(ROOT, "dist/native-kernels/index.json");
   const nativeIndex = JSON.parse(fs.readFileSync(nativeIndexFile, "utf8"));
-  const pack = nativeIndex.packs?.[0];
-  const packFile = path.join(ROOT, "dist/native-kernels/pack/sagejs_native_kernel_pack.node");
-  if (!pack || !fs.existsSync(packFile) || fs.statSync(packFile).size !== pack.bytes ||
-      sha256File(packFile) !== pack.sha256) {
-    throw new Error("production native-kernel pack disagrees with its authenticated index");
+  if (nativeIndex.schema === nativeLayout.SCHEMA) {
+    currentCatalogClosure(ROOT);
+  } else {
+    const pack = nativeIndex.packs?.[0];
+    const packFile = path.join(ROOT, "dist/native-kernels/pack/sagejs_native_kernel_pack.node");
+    if (nativeIndex.schema !== "sagejs.native-cache/v4" || !pack ||
+        !fs.existsSync(packFile) || fs.statSync(packFile).size !== pack.bytes ||
+        sha256File(packFile) !== pack.sha256) {
+      throw new Error("production native-kernel pack disagrees with its authenticated index");
+    }
   }
   return [
     fileArtifact("source-launcher", executable),

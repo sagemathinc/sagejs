@@ -1,10 +1,12 @@
 "use strict";
 
 const { buildSync } = require("esbuild");
+const nativePackLayout = require("../tools/native-pack-layout.js");
 const {
   chmodSync,
   copyFileSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -74,13 +76,13 @@ const graphFfiAddon = join(
   "sagejs_igraph_ffi.node",
 );
 const graphFfiManifest = join(dirname(graphFfiAddon), "manifest.json");
-const productionPackAddon = join(
-  root,
-  "dist",
-  "native-kernels",
-  "pack",
-  "sagejs_native_kernel_pack.node",
-);
+function productionPackAddons() {
+  const directory = join(root, "dist", "native-kernels");
+  const index = JSON.parse(readFileSync(join(directory, "index.json"), "utf8"));
+  return nativePackLayout.catalogPaths(index)
+    .filter((filename) => filename.endsWith(`/${nativePackLayout.PACK_FILENAME}`))
+    .map((filename) => join(directory, filename));
+}
 const numericalBackendArtifact = join(
   root,
   "dist",
@@ -390,40 +392,19 @@ function collectNativeKernelAssets() {
   const directory = join(root, "dist", "native-kernels");
   if (!existsSync(directory)) return {};
   const index = JSON.parse(readFileSync(join(directory, "index.json"), "utf8"));
-  if (
-    index.schema !== "sagejs.native-cache/v4" ||
-    index.complete !== true ||
-    !Array.isArray(index.packs) ||
-    index.packs.length !== 1
-  ) {
-    throw new Error(
-      "SEA releases require one complete production native mathematics pack",
-    );
-  }
   const assets = {};
-  const visit = (current, prefix = "") => {
-    for (const entry of readdirSync(current, { withFileTypes: true })) {
-      const relativeName = prefix ? `${prefix}/${entry.name}` : entry.name;
-      const filename = join(current, entry.name);
-      if (entry.isDirectory()) {
-        visit(filename, relativeName);
-      } else if (
-        entry.isFile() &&
-        (relativeName === "index.json" ||
-          relativeName.endsWith("/index.cjs") ||
-          relativeName === "pack/index.json" ||
-          relativeName === "pack/sagejs_native_kernel_pack.node")
-      ) {
-        assets[`native-kernels/${relativeName}`] = filename;
+  for (const relativeName of nativePackLayout.catalogPaths(index)) {
+    const filename = join(directory, relativeName);
+    let current = directory;
+    const components = relativeName.split("/");
+    for (let position = 0; position < components.length; position += 1) {
+      current = join(current, components[position]);
+      const status = lstatSync(current);
+      if (position === components.length - 1 ? !status.isFile() : !status.isDirectory()) {
+        throw new Error(`production native pack asset has an invalid file path: ${relativeName}`);
       }
     }
-  };
-  visit(directory);
-  if (
-    !("native-kernels/pack/index.json" in assets) ||
-    !("native-kernels/pack/sagejs_native_kernel_pack.node" in assets)
-  ) {
-    throw new Error("production native mathematics pack is incomplete");
+    assets[`native-kernels/${relativeName}`] = filename;
   }
   return assets;
 }
@@ -491,7 +472,7 @@ function buildExecutable(name, withFlint, seaNode) {
     for (const [filename, label] of [
       [flintAddon, "FLINT addon"],
       [flintFfiAddon, "generated FLINT FFI addon"],
-      [productionPackAddon, "production native-kernel pack"],
+      ...productionPackAddons().map((filename) => [filename, "production native-kernel pack"]),
     ]) {
       assertLinuxProcessLifetimeAddon(filename, label);
     }
@@ -713,7 +694,7 @@ try {
         flintFfiAddon,
         graphAddon,
         graphFfiAddon,
-        productionPackAddon,
+        ...productionPackAddons(),
       ]
       : []),
   ]);

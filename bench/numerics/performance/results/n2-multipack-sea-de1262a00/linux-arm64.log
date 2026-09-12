@@ -1,0 +1,16 @@
+fe76bad6ad21edee4b6e4f8af9e79e448ff72964713e752e855d32627f318f33  dist/tools/resources.js
+068797da0ccc6b237775760e69b9dcf22e3ea5ca26f6db02e1448dd7e91e6bf2  dist/tools/native-pack-layout.js
+1e27f3cb3432b4e92e2fefe9205881518d98ddbd64c70687ff0dff1f86792d88  dist/tools/runtime-bootstrap.js
+Published 2 production kernel modules at ../../../tmp/sagejs-multipack-sea-1oGPGv/published in 2 native packs (0.19 MiB total)
+{"seaFixtures":[{"scenario":"valid","result":{"sea":true,"exactPackExtracted":false,"sum":1,"node":"v26.5.1","platform":"linux","arch":"arm64"},"executableBytes":155012144,"executableSha256":"6496fbe9e88c66a3be1c86d06d1e6af7b37ec9aa0cca772650e2fbed6842ad9b"},{"scenario":"invalid","result":{"sea":true,"invalidManifestRejected":true},"executableBytes":155012144,"executableSha256":"1dbffe4a85aca3e2b5fd7ca51f9aed280e773eba4b6a42c0191faa30e2b976ab"}]}
+{"packs":2,"numericalPublicAutoloadWithoutExactPack":true,"seaResourceExtractionWithoutExactPack":true,"corruptManifestsRejected":6,"exactBits":202}
+
+✔ relocated executable SEA isolates numerical native packs and rejects corruption (44416.530578ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 44485.775449

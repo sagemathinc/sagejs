@@ -1,0 +1,16 @@
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+Published 2 production kernel modules at ..\AppData\Local\Temp\sagejs-multipack-sea-03jCZI\published in 2 native packs (0.15 MiB total)
+{"seaFixtures":[{"scenario":"valid","result":{"sea":true,"exactPackExtracted":false,"sum":1,"node":"v26.5.1","platform":"win32","arch":"x64"},"executableBytes":110100808,"executableSha256":"06b712b5f25831a9e632f01dcae72b2b881210a97365d88035dedafbe7df81e7"},{"scenario":"invalid","result":{"sea":true,"invalidManifestRejected":true},"executableBytes":110100296,"executableSha256":"59f80b4525f9c90bab5ebf0c5c4b10e0edb90cf6133a93bf6039e199a096b8e1"}]}
+{"packs":2,"numericalPublicAutoloadWithoutExactPack":true,"seaResourceExtractionWithoutExactPack":true,"corruptManifestsRejected":6,"exactBits":202}
+
+✔ relocated executable SEA isolates numerical native packs and rejects corruption (51944.4798ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 52058.0798

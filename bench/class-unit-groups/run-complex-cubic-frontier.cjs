@@ -7,6 +7,8 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { inspectBuildReceipt } = require("../../scripts/build-receipt.cjs");
+const nativeLayout = require("../../tools/native-pack-layout.js");
+const { currentCatalogClosure, CURRENT_CLOSURE, LEGACY_CLOSURE } = require("./native-pack-runtime-closure.cjs");
 
 const {
   ADAPTER_SCHEMA,
@@ -502,24 +504,30 @@ function candidateRuntimeClosure(root = ROOT, sagejsIntegerBackend = "auto") {
   );
   const source = path.join(root, "src/lib/sagejs/number_fields/cubic_class_number_native.py");
   const selected = cacheIndex?.sources?.[source];
+  const catalogClosure = cacheIndex?.schema === nativeLayout.SCHEMA
+    ? currentCatalogClosure(root) : undefined;
   const selectedPack = cacheIndex?.packs?.find(
     (pack) => pack?.packKey === selected?.packKey,
   );
   if (
-    cacheIndex?.schema !== "sagejs.native-cache/v4" ||
+    !["sagejs.native-cache/v4",nativeLayout.SCHEMA].includes(cacheIndex?.schema) ||
     cacheIndex?.complete !== true ||
     !selected ||
     !/^[0-9a-f]{64}$/.test(selected.cacheKey || "") ||
     !/^[0-9a-f]{64}$/.test(selected.packKey || "") ||
     !Array.isArray(selectedPack?.kernels) ||
-    !selectedPack.kernels.includes(selected.cacheKey)
+    !selectedPack.kernels.includes(selected.cacheKey) ||
+    (catalogClosure && canonicalJson(selected) !== canonicalJson(
+      cacheIndex.logicalSources["sagejs/number_fields/cubic_class_number_native.py"]))
   ) {
     throw new Error(
       "candidate runtime closure has no production-packed cubic class-group kernel",
     );
   }
+  const packBase = catalogClosure ? nativeLayout.packDirectory(selected.packKey) : "";
   const standaloneAddonName = path.posix.join(
     cacheRoot,
+    packBase,
     selected.cacheKey,
     "build/Release/sagejs_native_kernel.node",
   );
@@ -621,9 +629,10 @@ function candidateRuntimeClosure(root = ROOT, sagejsIntegerBackend = "auto") {
   hash.update("flint-package-resolution\0");
   hash.update(canonicalJson(flintResolution));
   hash.update("\0");
-  const packManifestName = path.posix.join(cacheRoot, "pack/index.json");
+  const packManifestName = path.posix.join(cacheRoot, packBase, "pack/index.json");
   const packName = path.posix.join(
     cacheRoot,
+    packBase,
     "pack/sagejs_native_kernel_pack.node",
   );
   const packFilename = path.join(root, packName);
@@ -645,10 +654,14 @@ function candidateRuntimeClosure(root = ROOT, sagejsIntegerBackend = "auto") {
     throw new Error("candidate runtime closure rejects an inconsistent production native pack");
   }
   for (const name of [
-    path.posix.join(cacheRoot, "index.json"),
-    path.posix.join(cacheRoot, selected.cacheKey, "index.cjs"),
-    packManifestName,
-    packName,
+    // All v5 wrappers, manifests and packs participate, including packs not
+    // selected by the initial cubic import. Historical v3 hashing is unchanged.
+    ...(catalogClosure ? [cacheRoot] : [
+      path.posix.join(cacheRoot, "index.json"),
+      path.posix.join(cacheRoot, selected.cacheKey, "index.cjs"),
+      packManifestName,
+      packName,
+    ]),
     "packages/flint/package.json",
     "packages/flint/index.cjs",
     flintManifestName,
@@ -666,7 +679,8 @@ function candidateRuntimeClosure(root = ROOT, sagejsIntegerBackend = "auto") {
   hash.update("\0");
 
   return {
-    schema: "sagejs.benchmark/complex-cubic-candidate-runtime-closure-v3",
+    schema: catalogClosure ? CURRENT_CLOSURE : LEGACY_CLOSURE,
+    ...(catalogClosure ? {native_pack_catalog:catalogClosure} : {}),
     sha256: hash.digest("hex"),
     file_count: fileCount,
     total_bytes: String(totalBytes),
