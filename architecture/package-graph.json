@@ -470,7 +470,7 @@
       "id": "polynomial-algorithms",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 260000,
+      "max_source_bytes": 325000,
       "depends_on": [
         "core-runtime",
         "native-integration",

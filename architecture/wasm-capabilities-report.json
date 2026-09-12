@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "de6c94ab36689640d71f806f30dbe5a1e20c8ed2207e7fb320643e4eddcc8ae7",
+  "source_sha256": "8395edb804df508a081d68be7684d6cb5ba37d7f9705069aeab71e1eed5cf89a",
   "counts": {
-    "total": 1091,
+    "total": 1106,
     "by_kind": {
-      "declared-ffi-function": 469,
-      "declared-ffi-resource": 34,
-      "napi-export": 357,
+      "declared-ffi-function": 480,
+      "declared-ffi-resource": 37,
+      "napi-export": 358,
       "production-kernel": 55,
       "runtime-intrinsic": 148,
       "specialist-capability": 28
@@ -15,14 +15,14 @@
     "by_disposition": {
       "compiled-source": 55,
       "desktop-only": 47,
-      "generated-wasm": 365,
-      "portable-fallback": 574,
+      "generated-wasm": 379,
+      "portable-fallback": 575,
       "shared-core": 50
     },
     "by_status": {
-      "available": 611,
+      "available": 625,
       "desktop-only": 47,
-      "fallback": 433
+      "fallback": 434
     }
   },
   "workflow_aliases": {
@@ -663,6 +663,42 @@
         "sagejs.ffi.flint"
       ],
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly_bytes",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly_context",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi-resource:flint:fq_polynomial",
@@ -4654,6 +4690,138 @@
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
+      "id": "ffi:flint:fq_mpoly_binary",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_cache_bytes",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_context",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_copy",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_equal",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_factor_bytes",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_from_terms",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_gcd",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_neg",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_resultant",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_term_bytes",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
       "id": "ffi:flint:fq_polynomial",
       "family": "flint",
       "disposition": "generated-wasm",
@@ -7925,6 +8093,18 @@
         "src/baselib/finite_fields.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqCoordinates",
+      "family": "extension-fields",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/finite_fields.py"
+      ],
+      "explanation": "Exact power-basis polynomial conversion uses generated FLINT resources in Wasm."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqDiv",

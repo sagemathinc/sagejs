@@ -1826,8 +1826,12 @@ test("dependency keys include explicit archivers and external vcpkg executables"
 
 test("a custom prefix skips only its package during cache restore", () => {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-native-prefix-test-"));
-  const previous = process.env.SAGEJS_FLINT_PREFIX;
+  const prefixNames = ["SAGEJS_FLINT_PREFIX", "SAGEJS_FFLAS_PREFIX", "SAGEJS_GRAPH_PREFIX"];
+  const previous = prefixNames.map((name) => process.env[name]);
   try {
+    // Qualification may reuse all three dependency prefixes. This fixture
+    // deliberately tests the FLINT-only case, independent of the host setup.
+    for (const name of prefixNames) delete process.env[name];
     process.env.SAGEJS_FLINT_PREFIX = join(directory, "external-flint");
     const results = restoreNativePackages(
       resolve(__dirname, ".."),
@@ -1849,8 +1853,10 @@ test("a custom prefix skips only its package during cache restore", () => {
       ],
     );
   } finally {
-    if (previous === undefined) delete process.env.SAGEJS_FLINT_PREFIX;
-    else process.env.SAGEJS_FLINT_PREFIX = previous;
+    prefixNames.forEach((name, index) => {
+      if (previous[index] === undefined) delete process.env[name];
+      else process.env[name] = previous[index];
+    });
     rmSync(directory, { recursive: true, force: true });
   }
 });

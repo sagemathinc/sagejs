@@ -60,9 +60,12 @@ test("the browser worker uses the authoritative Tree-sitter frontend", async () 
     sageGrammar: readFileSync(
       join(root, "dist", "vendor", "tree-sitter-sage.wasm"),
     ),
-    standardLibrary: {
-      coreStandalone: ["implicit_support"],
-      modules: {
+    standardLibrary: { coreStandalone: ["implicit_support"], modules: {
+      lazy_parent: {
+        package: true,
+        source: "value = 7\n",
+        cache: {signature: require("node:crypto").createHash("sha1").update("value = 7\n").digest("hex")},
+      },
         implicit_support: {
           source: "support_value = 7\n",
           cache: { signature: "browser-support-fixture" },
@@ -91,6 +94,25 @@ test("the browser worker uses the authoritative Tree-sitter frontend", async () 
       });
       ast.print(output);
       assert.match(output.get(), /ρσ_operator_pow/);
+      const lazy = frontend.parse("from lazy_parent import child as selected\n", {
+        filename: "<browser-lazy-from-import>",
+        basedir: "__stdlib__", libdir: "__stdlib__",
+        import_dirs: ["__stdlib__"],
+        runtime_module_names: ["lazy_parent", "lazy_parent.child"],
+      });
+      assert.equal(lazy.imports.lazy_parent.dynamic, true,
+        "available package metadata must not override authenticated runtime ownership");
+      const lazyOutput = new compiler.OutputStream({omit_baselib: true, beautify: true});
+      lazy.print(lazyOutput);
+      assert.match(lazyOutput.get(), /__import__\("lazy_parent"/);
+      assert.doesNotMatch(lazyOutput.get(), /ρσ_modules(?:\.lazy_parent|\["lazy_parent"\]) = Object\.create/);
+      const ordinary = frontend.parse("from lazy_parent import value\n", {
+        filename: "<browser-static-import>",
+        basedir: "__stdlib__", libdir: "__stdlib__",
+        import_dirs: ["__stdlib__"], runtime_module_names: ["other_package"],
+      });
+      assert.notEqual(ordinary.imports.lazy_parent.dynamic, true,
+        "unlisted source modules must retain ordinary compilation");
       assert.match(output.get(), /support_value/);
       const dynamicAst = frontend.parse("answer = 2^8", {
         filename: "<browser-dynamic-test>",

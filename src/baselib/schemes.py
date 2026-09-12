@@ -62,17 +62,11 @@ def _require_supported_geometry_field(base: Any) -> Any:
     Geometry deliberately asks only public field questions. Extension-field
     representations and backend tags never enter this module.
     """
-    if base is sage.QQ:
-        return base
-    if hasattr(base, "is_field") and not bool(base.is_field()):
-        raise TypeError("the base ring of a scheme must be a field")
-    if hasattr(base, "is_prime_field") and bool(base.is_prime_field()):
-        return base
-    raise NotImplementedError(
-        "algebraic geometry currently supports QQ and prime GF(p); "
-        "finite extensions and number fields are planned in "
-        "agents/no-singular-extension-fields-plan.md"
+    capabilities = __import__(
+        "sagejs.polynomial_algorithms.field_capabilities",
+        fromlist=["require_field_operation"],
     )
+    return capabilities.require_field_operation(base, "geometry")
 
 
 def _construction_arguments(
@@ -249,19 +243,8 @@ class AffineSpaceParent(sage.Parent):
         return isinstance(value, AffinePoint) and value.ambient_space() is self
 
     def rational_points(self, max_points: int = 100000) -> list[AffinePoint]:
-        if not hasattr(self._base, "is_prime_field") or not bool(
-            self._base.is_prime_field()
-        ):
-            raise NotImplementedError(
-                "affine point enumeration requires a prime finite field"
-            )
-        count = int(self._base.cardinality()) ** self._dimension
-        if count > max_points:
-            raise OverflowError(
-                "affine point enumeration exceeds the "
-                + str(max_points)
-                + "-point limit"
-            )
+        enumeration = __import__("sagejs.schemes.enumeration", fromlist=["point_count"])
+        enumeration.point_count(self._base, self._dimension, False, max_points)
         return [self(*values) for values in _point_product(self._base, self._dimension)]
 
     points = rational_points
@@ -662,20 +645,8 @@ class ProjectiveSpaceParent(sage.Parent):
         return isinstance(value, ProjectivePoint) and value.ambient_space() is self
 
     def rational_points(self, max_points: int = 100000) -> list[ProjectivePoint]:
-        if not hasattr(self._base, "is_prime_field") or not bool(
-            self._base.is_prime_field()
-        ):
-            raise NotImplementedError(
-                "projective point enumeration requires a prime finite field"
-            )
-        order = int(self._base.cardinality())
-        count = (order ** (self._dimension + 1) - 1) // (order - 1)
-        if count > max_points:
-            raise OverflowError(
-                "projective point enumeration exceeds the "
-                + str(max_points)
-                + "-point limit"
-            )
+        enumeration = __import__("sagejs.schemes.enumeration", fromlist=["point_count"])
+        enumeration.point_count(self._base, self._dimension, True, max_points)
         answer = []
         zero = self._base(0)
         one = self._base(1)

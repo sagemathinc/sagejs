@@ -84,6 +84,11 @@ test("native dependency assets have stable platform and source identities", () =
 });
 
 test("verified native dependency bundles relocate all package prefixes", () => {
+  const prefixNames = packages.map((name) => `SAGEJS_${name.toUpperCase()}_PREFIX`);
+  const previous = prefixNames.map((name) => process.env[name]);
+  // These are synthetic installed prefixes, not the host's explicitly reused
+  // dependency trees (which correctly opt out of prebuilt-current detection).
+  for (const name of prefixNames) delete process.env[name];
   const { directory, targets } = fixture();
   try {
     const output = join(directory, "output");
@@ -148,6 +153,10 @@ test("verified native dependency bundles relocate all package prefixes", () => {
       /SHA-256/,
     );
   } finally {
+    prefixNames.forEach((name, index) => {
+      if (previous[index] === undefined) delete process.env[name];
+      else process.env[name] = previous[index];
+    });
     rmSync(directory, { force: true, recursive: true });
   }
 });

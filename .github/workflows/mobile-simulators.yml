@@ -107,6 +107,13 @@ jobs:
           pnpm build
           pnpm --dir packages/flint-wasm build
           node packages/flint-wasm/scripts/production-receipt.cjs validate
+      - name: Preserve the exact portable runtime for independent qualification
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-mobile-portable-runtime
+          path: packages/flint-wasm/dist
+          if-no-files-found: error
+          retention-days: 7
       - name: Prepare and independently verify the signed mobile closure
         run: |
           pnpm --dir apps/sagejs-mobile install --frozen-lockfile --ignore-workspace
