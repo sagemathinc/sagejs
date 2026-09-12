@@ -4,7 +4,7 @@
   "id": "class-unit-rank-two-frontier",
   "title": "Class Unit Rank Two Frontier",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Publish approved bounded M0 reassessment, final frozen smoke accounting and reference-readiness evidence without claiming mathematical qualification",
   "base_commit": "2564190042e003176ada3a71700f946ae992f973",
@@ -25,7 +25,7 @@
   "references": [
     "Original laboratory base916baca462e85dd7767c5a328fa33b7ff4e0f54b and frozen smoke runtimeb1740b787 are preserved in prior receipts. This documentation-only follow-up incorporated currentmain256419004 and uses that ownership base. Claims narrowed to actual checkpoint artifacts; no mathematical/runtime source changes relative to main.",
     "Latest user authorization adopts full M0-M5 plan09e9d35328bb3a42834aaf81699c95f99034446c. On2026-09-12 the user explicitly approved16 additional aggregate M0 active hours: cumulative ceiling56, with120CPUh, frozen inputs and all acceptance criteria unchanged. Four reassessment work packages each retain4activehours; no budget reset or M1 extension.",
-    "This documentation/data-only branch uses an explicit --task selector and retains all arithmetic-lane checks. Current-main full native, strict403, changed242 unit files and offline29 checks passed before the final readiness text refresh; exact final-workspace checks remain required before review. Independent review verified the summary against custody. No required check is waived."
+    "This documentation/data-only branch uses an explicit --task selector and retains all arithmetic-lane checks. All required checks passed on exact committed43ed1752065ca9d5a25be33251e715f818c288f7: full native318.866s, strict403 modules55.469s, changed242 unit files plus merge/docs134.102s, offline29 tests0.10s. Current fingerprint49a46d6cc961eb7ea076ce969f95b9470f521b5877c8c9380c408314a85c6d23 is retained by this metadata-only handoff. Independent review verified the summary against custody. No required check is waived."
   ],
   "architecture": {
     "strategy": "source-transparent-native",
@@ -230,6 +230,46 @@
       "commit": "0bb9a51ac77e34fcc94d61c2a04610756e3f2f09",
       "workspace_fingerprint": "02ef9b5f17b69990cd0e4f517f6fdb3870b123b5b5d295d450b16ccd2de0b85b",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 318.866,
+      "started_at": "2026-09-12T18:11:04.267Z",
+      "commit": "43ed1752065ca9d5a25be33251e715f818c288f7",
+      "workspace_fingerprint": "49a46d6cc961eb7ea076ce969f95b9470f521b5877c8c9380c408314a85c6d23",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.469,
+      "started_at": "2026-09-12T18:16:23.796Z",
+      "commit": "43ed1752065ca9d5a25be33251e715f818c288f7",
+      "workspace_fingerprint": "49a46d6cc961eb7ea076ce969f95b9470f521b5877c8c9380c408314a85c6d23",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 2564190042e003176ada3a71700f946ae992f973",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 134.101,
+      "started_at": "2026-09-12T18:17:19.925Z",
+      "commit": "43ed1752065ca9d5a25be33251e715f818c288f7",
+      "workspace_fingerprint": "49a46d6cc961eb7ea076ce969f95b9470f521b5877c8c9380c408314a85c6d23",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.101,
+      "started_at": "2026-09-12T18:19:34.666Z",
+      "commit": "43ed1752065ca9d5a25be33251e715f818c288f7",
+      "workspace_fingerprint": "49a46d6cc961eb7ea076ce969f95b9470f521b5877c8c9380c408314a85c6d23",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -241,8 +281,8 @@
       "Dictionary PR268/269 remain draft with actual source/startup failures and allocation costs. Corpus PR257 is merged independently. Target dependency evidence explicitly labels source-modeled JLL preload edges; prior preflight failures are retained."
     ],
     "next_steps": [
-      "Finish exact final-workspace documentation handoff checks, then make this narrow checkpoint non-draft; its publication is not completion of M0 or M1.",
-      "Within approved bounded work packages, screen the unchanged18 unconditional reference sentinels and resolve matched-reference/stress admission gaps; retain all failures and do not silently alter bounds or criteria.",
+      "All exact-commit handoff checks passed; make this independently reviewed narrow checkpoint non-draft for merge-manager review. Its publication is not completion of M0 or M1.",
+      "Operationally the unchanged18 unconditional reference sentinels have now closed with18 paired exact-summary agreements and unchanged runtime inventory; publish their separate evidence and continue remaining72 fixed primaries within approved work packages. Resolve matched-reference/stress admission gaps without silently altering bounds or criteria.",
       "Resolve coordinated runtime resource and M1 exact-replay/platform gates before making complete class/unit or competitive performance claims."
     ]
   }
