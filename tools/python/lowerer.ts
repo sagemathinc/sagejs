@@ -3592,7 +3592,6 @@ export class PythonCstLowerer {
     const args: any[] = [];
     (args as any).kwargs = [];
     (args as any).kwarg_items = [];
-    (args as any).keyword_groups = [];
     (args as any).starargs = false;
     const argumentsNode = this.field(node, "arguments");
     const argumentNodes = argumentsNode.type === "argument_list"
@@ -3617,6 +3616,7 @@ export class PythonCstLowerer {
         ]);
       } else if (argument.type === "dictionary_splat") {
         sawDictionarySplat = true;
+        (args as any).keyword_groups ??= [];
         (args as any).keyword_groups.push({
           kind: "mapping", index: (args as any).kwarg_items.length,
         });

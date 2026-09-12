@@ -25,7 +25,9 @@ between explicit keywords does not split that keyword group: Python evaluates
 the positional argument vector separately. There are no duplicated AST nodes
 and the existing AST walker visits each expression once.
 
-`lowerCall` records groups while reading the CST. The only other explicit-call
+`lowerCall` records groups lazily when the first explicit keyword or mapping
+appears. No-keyword calls, including positional-only and starred-only calls,
+have no `keyword_groups` property and allocate no metadata array. The only other explicit-call
 keyword append found in the producer audit is `lowerSageGeneratorAssignment`;
 it now uses the same append method so its synthesized `names=` belongs to the
 last explicit group or starts a new group after a mapping. Parameter-declaration

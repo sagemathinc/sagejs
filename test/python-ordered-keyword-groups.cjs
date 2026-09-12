@@ -52,6 +52,7 @@ async function main() {
       "f(**effect(1), a=effect(2), b=effect(3))",
       "f(a=effect(1), *effect(2), b=effect(3))",
       "f(**effect(1), **effect(2))", "f(a=effect(1))", "f()",
+      "f(effect(1))", "f(*effect(1))",
     ];
     const oracle = spawnSync(pythonExecutable(), ["-c", `
 import ast, json, sys
@@ -78,11 +79,14 @@ print(json.dumps(result))
     cases.forEach((source, index) => {
       const ast = lower(source);
       const call = calls(ast, "f")[0];
-      assert.deepEqual(call.args.keyword_groups, expected[index], source);
+      const groups = expected[index].length ? expected[index] : undefined;
+      assert.deepEqual(call.args.keyword_groups, groups, source);
+      assert.equal(Object.hasOwn(call.args, "keyword_groups"), groups !== undefined,
+        "no-keyword calls must not allocate an empty metadata sidecar");
       assert.equal(calls(ast, "effect").length, (source.match(/effect\(/g) || []).length,
         "order metadata must not introduce a second expression traversal");
-      assert.deepEqual(call.clone().args.keyword_groups, expected[index]);
-      assert.deepEqual(JSON.parse(JSON.stringify(call.args.keyword_groups)), expected[index]);
+      assert.deepEqual(call.clone().args.keyword_groups, groups);
+      if (groups) assert.deepEqual(JSON.parse(JSON.stringify(call.args.keyword_groups)), groups);
     });
     for (const expression of ["Factory(a=effect(1), **effect(2))", "Factory(**effect(1), a=effect(2))"]) {
       const ast = lower(`R.<x> = ${expression}\n`, sage);
