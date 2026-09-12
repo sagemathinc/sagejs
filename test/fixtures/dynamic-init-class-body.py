@@ -247,4 +247,16 @@ except TypeError:
 else:
     raise AssertionError("non-None initializer return accepted")
 
+
+def check_metadata_loop_name():
+    ρσ_init_attr = "user-local"
+
+    class MetadataLoop:
+        pass
+
+    assert ρσ_init_attr == "user-local"
+    assert "ρσ_init_attr" not in vars(MetadataLoop)
+
+
+check_metadata_loop_name()
 print("dynamic-init-class-body-ok")

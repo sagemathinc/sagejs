@@ -1036,6 +1036,24 @@ def _print_legacy_class(self, output):
         (".__annotations_text__", ".__signature_annotations_text__"),
     ]
 
+    def emit_constructor_signature_copies(emit_copy):
+        if not output.options.python_attributes:
+            for attr in constructor_signature_attributes:
+                emit_copy(attr)
+            return
+        # Keep each read immediately before its write, in the original field
+        # order. Object.assign would copy unrelated fields and an object
+        # literal would eagerly read every getter before the first write.
+        output.indent()
+        output.print("for (var ρσ_init_attr of [")
+        for index, attr in enumerate(constructor_signature_attributes):
+            if index:
+                output.comma()
+            output.print(JSON.stringify(attr.slice(1)))
+        output.print("])")
+        output.space()
+        output.with_block(lambda: emit_copy("[ρσ_init_attr]"))
+
     # A direct initializer followed only by side-effect-free method creation
     # remains the winning binding. Ordinary statements, decorators, defaults,
     # annotations, and descriptor definitions invalidate that proof. This is
@@ -1119,10 +1137,11 @@ def _print_legacy_class(self, output):
             self.parent.print(output)
             output.print(".prototype.__init__")
             output.end_statement()
+
             # Preserve the forwarding method's inherited signature. Legacy
             # class binders also need a class copy; Python class metadata is
             # published once from the final winning initializer below.
-            for attr in constructor_signature_attributes:
+            def copy_forwarded_signature(attr):
                 output.indent()
                 self.name.print(output)
                 output.print(".prototype.__init__")
@@ -1139,6 +1158,8 @@ def _print_legacy_class(self, output):
                     self.name.print(output)
                     output.print(".prototype.__init__" + attr)
                     output.end_statement()
+
+            emit_constructor_signature_copies(copy_forwarded_signature)
             for source_attr, target_attr in constructor_annotation_attributes:
                 output.indent()
                 self.name.print(output)
@@ -1203,13 +1224,15 @@ def _print_legacy_class(self, output):
                 not output.options.python_attributes or guaranteed_initializer
             ):
                 # Copy argument handling data so that kwarg interpolation works when calling the constructor
-                for attr in constructor_signature_attributes:
+                def copy_declared_signature(attr):
                     output.indent(), self.name.print(output), output.assign(attr)
                     (
                         self.name.print(output),
                         output.print(".prototype.__init__" + attr),
                         output.end_statement(),
                     )
+
+                emit_constructor_signature_copies(copy_declared_signature)
                 for source_attr, target_attr in constructor_annotation_attributes:
                     output.indent(), self.name.print(output), output.assign(target_attr)
                     (
@@ -1406,7 +1429,8 @@ def _print_legacy_class(self, output):
             "ρσ_init_signature.__sagejs_method_signature_excludes_self__ !== true"
         )
         output.end_statement()
-        for attr in constructor_signature_attributes:
+
+        def copy_winning_signature(attr):
             output.indent()
             self.name.print(output)
             output.assign(attr)
@@ -1414,6 +1438,8 @@ def _print_legacy_class(self, output):
                 "ρσ_init_signature == null ? undefined : ρσ_init_signature" + attr
             )
             output.end_statement()
+
+        emit_constructor_signature_copies(copy_winning_signature)
         output.indent()
         output.print("if (ρσ_init_explicit_self && Array.isArray(")
         self.name.print(output)
