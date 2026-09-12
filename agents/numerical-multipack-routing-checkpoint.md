@@ -278,3 +278,25 @@ deleted. The current local controller is
 `/tmp/sagejs-multipack-d3c436020-windows-required.log`, with a 45-minute ceiling
 and a 1.5 GiB free-space check before each stage. Inspect it before resuming or
 launching another host job. Earlier attempts remain in their separate logs.
+
+Windows required-reactor recovery now passes full build, 12 pack tests,
+ordinary prepack, both SEAs, and general/public numerical SEA tests. Platform
+packaging initially fails because direct invocation has no `npm_execpath` and
+cannot spawn bare `pnpm` on Windows. Explicitly selecting the installed command
+shim completes packaging without rebuilding runtime artifacts. Follow-up
+`ef812d50f` fixes that helper default with five passing regression tests.
+The separate checker `94c872832` passes fresh npm installation, public APIs,
+lazy numerical resources and relocated SEA against the frozen `d3c436020`
+archives. Runtime source remains clean. The retained install is
+`C:/Users/user/AppData/Local/Temp/sagejs-npm-windows-x64-jIkCdg`.
+
+Windows artifact SHA-256:
+
+- Sage.js: `35f0a21f69cb0680753cda1c74af44ab3ebe91617d971dccb6f3738cd753103c`
+- SagePython: `d0d4e86d6c45e3e3c53fbb33b82834e21fbf4818f788bed1fcb417fc220e86d7`
+- Root TGZ: `5363a978c60d6128c9d8eb2b162aae62594a0011656c71f47e7beafa111e6226`
+- Platform TGZ: `263c90940d1763a9dbeaa39cfb2eb5e1f14c43409e4150f0dc9fb006e3ce2fde`
+
+This completes four-platform functional packaging evidence for the frozen
+runtime with explicitly separate checker identities, not public latency targets
+or qualification of a newly rebuilt PR tip. No numerical default is promoted.
