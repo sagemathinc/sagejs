@@ -1033,7 +1033,7 @@ def ρσ_interpolate_kwargs(
 
     keyword_object = supplied_args.pop()
     if _internal_get_member(target_function, "__handles_kwarg_interpolation__"):
-        argument_count = max(supplied_args.length, argnames.length)
+        argument_count = runtime.math.max(supplied_args.length, argnames.length)
         call_args = runtime.reflect.construct(runtime.array, [argument_count + 1])
         call_args[argument_count] = keyword_object
         for index in range(argument_count):

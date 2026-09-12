@@ -4361,7 +4361,9 @@ class Matrix(sage.Element):
                     base,
                     self.nrows(),
                     self.ncols(),
-                )._from_integer_values(self._rational_numerators())
+                )._from_integer_values(
+                    _integer_buffer_values(self._rational_numerators())
+                )
             return matrix(base, self.nrows(), self.ncols(), self.list())
         if (
             self.base_ring() is sage.ZZ
@@ -6501,7 +6503,18 @@ class Matrix(sage.Element):
         return self._howell_cache
 
     def elementary_divisors(self, algorithm: Any = None) -> list[Any]:
-        diagonal = self.smith_form()[0].diagonal()
+        if self.base_ring() is not sage.ZZ:
+            raise TypeError("elementary divisors currently require an integer matrix")
+        if _flint_backend_has_function("ffiFmpzMatrixSnf"):
+            # Invariant factors do not require the two unimodular transforms.
+            # Those transforms can have much larger coefficients than the SNF.
+            ffi = _flint_ffi_module()
+            result = self._parent._from_fmpz_matrix_resource(
+                ffi.fmpz_matrix_snf(self._integer_resource())
+            )
+            diagonal = result.diagonal()
+        else:
+            diagonal = self.smith_form()[0].diagonal()
         while len(diagonal) < self.nrows():
             diagonal.append(0)
         return diagonal

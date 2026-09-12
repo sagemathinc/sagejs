@@ -44,9 +44,10 @@ the focused results above describe that final implementation. They are not a
 fresh full-routine or four-platform qualification receipt.
 
 `pnpm architecture:check` failed at the existing forbidden-dependency text
-check: `docs/general-class-unit-frontier.md:280` contains a historical `cowasm`
-reference. The same text is present on the base revision. That other lane's
-document was left untouched; do not report the whole architecture gate green.
+check: `docs/general-class-unit-frontier.md:280` contained a historical
+dependency-name reference. The same text was present on the base revision.
+That other lane's document was left untouched in that pass; do not report its
+whole architecture gate green.
 
 Independent source review caught the inherited-descriptor materialization
 caller invariant. Both direct deletion and saved property objects must use the

@@ -6,6 +6,9 @@ terms; see `PYLANG-BSD-3-CLAUSE.txt` and individual source headers.
 
 The combined Sage.js distribution is released under GPL-3.0-only.
 
+The portable Punycode codec adapts CPython's PSF-licensed implementation;
+see `CPYTHON-PUNYCODE-NOTICE.md` and `CPYTHON-LICENSE.txt`.
+
 The optional graph addon statically links the GPL-2.0-or-later igraph 1.0.1
 library and its bundled Bliss implementation; see `IGRAPH-GPL-NOTICE.md`.
 

@@ -292,7 +292,7 @@ test("the initial scope rejects unsupported defining data", async (t) => {
   assert.equal(result.stdout.trim(), "[True, True, True, True]");
 });
 
-test("serialization never replaces a noncanonical homology map", async (t) => {
+test("serialization replays certified maps without replacing their matrices", async (t) => {
   const session = await createSage();
   t.after(() => session.close());
   await session.evaluate([
@@ -303,17 +303,21 @@ test("serialization never replaces a noncanonical homology map", async (t) => {
     "i = A.embedded_subvariety().inclusion_map()",
     "assert loads(dumps(i)).matrix() == i.matrix()",
     "assert loads(dumps(q)).matrix() == q.matrix()",
-    "doubled = ModularAbelianVarietyMap(J, A, 2*q.matrix(), 'doubled quotient')",
+    "doubled = ModularAbelianVarietyMap(J, A, 2*q.matrix(), generators=[q])",
+    "assert loads(dumps(doubled)).matrix() == 2*q.matrix()",
+    "doubled._recipe = ('quotient',)",
   ].join("\n"));
   await assert.rejects(
     session.evaluate("dumps(doubled)"),
-    /only canonical homology maps.*matrix differs/,
+    /invalid morphism construction certificate/,
   );
   await session.evaluate([
     "wrong_target = ModularAbelianVarietyMap(J, J0(33), matrix(ZZ, 4, 6), 'wrong target')",
+    "assert loads(dumps(wrong_target)).matrix() == matrix(ZZ, 4, 6)",
+    "wrong_target._recipe = ('quotient',)",
   ].join("\n"));
   await assert.rejects(
     session.evaluate("dumps(wrong_target)"),
-    /only canonical homology maps.*codomain differs/,
+    /quotient_map.*only defined/,
   );
 });

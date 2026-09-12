@@ -1,0 +1,120 @@
+{
+  "schema": "sagejs.numerical-binary64-host/v1",
+  "source": "c092f9fe7a923da053638569d51f41619b693bcf",
+  "started": "2026-09-12T07:23:58.242Z",
+  "platform": "darwin",
+  "arch": "arm64",
+  "node": "v26.5.0",
+  "nodePath": "/opt/homebrew/Cellar/node/26.5.0/bin/node",
+  "cpu": "Apple M1 Max",
+  "release": "25.4.0",
+  "stages": [
+    {
+      "name": "build",
+      "args": [
+        "scripts/build.cjs"
+      ],
+      "elapsedMs": 1058280,
+      "status": 1,
+      "signal": null,
+      "error": null,
+      "logSha256": "4ab83d7201f805ea3a7970986b3b9fa206bc44d3132a2822b57be0e3de098404"
+    },
+    {
+      "name": "resume-stage-8",
+      "args": [
+        "-e",
+        "require('./scripts/build.cjs').buildLazyNumericalReactors().then(console.log).catch(e=>{console.error(e);process.exitCode=1})"
+      ],
+      "elapsedMs": 313,
+      "status": 0,
+      "signal": null,
+      "error": null,
+      "logSha256": "b62fc0ac2f4523dc88ec0949e827df2231cd4170042ba16a429b646eaca8dfea"
+    },
+    {
+      "name": "focused",
+      "args": [
+        "--test",
+        "--test-concurrency=1",
+        "test/numerics/performance/packed-reductions.cjs",
+        "tools/native-kernel/test/float64-conditional.cjs"
+      ],
+      "elapsedMs": 40571,
+      "status": 0,
+      "signal": null,
+      "error": null,
+      "logSha256": "a5cf8fa06049d329db50b3edaec1069358593bd2cef26af6a68b4466cdfe1942"
+    },
+    {
+      "name": "opportunity",
+      "args": [
+        "bench/numerics/performance/packed-sum.cjs",
+        "--output",
+        "/Users/sage/sagejs-numerical-binary64-main-20260912/build/numerical-binary64-qualification/opportunity.json"
+      ],
+      "elapsedMs": 11011,
+      "status": 0,
+      "signal": null,
+      "error": null,
+      "logSha256": "dc563d611346ea34fdfc639012b197f717d81cfde69bbed83eb6cdb28b41c5ff"
+    }
+  ],
+  "nodeSha256": "19fa44ac565968cd4dbf38277854c829e441598f0872223881002efb471b40e9",
+  "success": true,
+  "canonicalProduct": {
+    "schema": "sagejs.numerical-runtime-product/v1",
+    "source_commit": "c092f9fe7a923da053638569d51f41619b693bcf",
+    "files": [
+      {
+        "path": "node/backend.cjs",
+        "bytes": 17964,
+        "sha256": "9474efceb4f027c1eb0cabf5ab4dd7e6e01bdcb959c9ba47e7f457a0144544f1"
+      },
+      {
+        "path": "node/cminpack.wasm",
+        "bytes": 72155,
+        "sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5"
+      },
+      {
+        "path": "node/nlopt-backend.cjs",
+        "bytes": 33698,
+        "sha256": "ca2a60e924ca6ef6364a477b653e948a293e6fce3104df64d084ae052c5b4b8c"
+      },
+      {
+        "path": "node/nlopt-methods.wasm",
+        "bytes": 72592,
+        "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb"
+      },
+      {
+        "path": "browser/numerical-backend.mjs",
+        "bytes": 16731,
+        "sha256": "b6edfb2453a519a61e68a371d3ef79b95fe44efd0f46219b8e8131d9f3d9de6f"
+      },
+      {
+        "path": "browser/cminpack.wasm",
+        "bytes": 72155,
+        "sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5"
+      },
+      {
+        "path": "browser/nlopt-backend.mjs",
+        "bytes": 32451,
+        "sha256": "7f9c36c4fa8fd9c6fa1770f4797aec0cc4f3200523b59272268205415731f9c0"
+      },
+      {
+        "path": "browser/nlopt-methods.wasm",
+        "bytes": 72592,
+        "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb"
+      }
+    ],
+    "identity": "sha256:8d4f529c85793565b48ab09f3e34717e8f5f563253e53fcdf3fb0b21fafd2410"
+  },
+  "buildResume": {
+    "reason": "host compression metadata mismatch; successful stages 1–7 retained, authenticated source-bound canonical numerical product installed by existing stage 8",
+    "priorFailureRetained": true
+  },
+  "finalSource": "c092f9fe7a923da053638569d51f41619b693bcf",
+  "finalClean": true,
+  "completed": "2026-09-12T07:45:44.896Z",
+  "previousError": "Error: build failed; see /Users/sage/sagejs-numerical-binary64-main-20260912/build/numerical-binary64-qualification/build.log"
+}

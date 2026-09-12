@@ -9,6 +9,8 @@ import { dirname, join, normalize, resolve } from "path";
 import { mkdirSync, realpathSync, writeFileSync } from "fs";
 import { readFile } from "fs/promises";
 import { Script } from "vm";
+import { PythonSourceMap, PythonSourceMapCollector } from "./python/source-map";
+import { mappedPythonScript } from "./python/stack-adapter";
 import { getImportDirs, once } from "./utils";
 import createCompiler from "./compiler";
 import { expandSageLoads } from "./sage-source";
@@ -194,7 +196,7 @@ export default async function Compile({
     });
   }
 
-  function writeOutput(output: string, sourceFilename: string) {
+  function writeOutput(output: string, sourceFilename: string, source?: string, map?: PythonSourceMap) {
     if (argv.output) {
       if (argv.output == "/dev/stdout") {
         // Node's filesystem module doesn't write directly to /dev/stdout
@@ -211,7 +213,7 @@ export default async function Compile({
       // Compiling the generated JavaScript is a host/compiler operation, not
       // evidence that Python began executing. Attach provenance only around
       // the actual evaluation boundary below.
-      const script = new Script(output);
+      const script = map ? mappedPythonScript(output, source!, map) : new Script(output);
       try {
         script.runInThisContext();
       } catch (error) {
@@ -309,9 +311,12 @@ export default async function Compile({
       );
     }
 
+    const filename = sourceFilename || argv.filename_for_stdin || "<stdin>";
+    const collector = argv.execute && !argv.sage && !foreignFrontend && !includeAdvancedInStandalone
+      ? new PythonSourceMapCollector(code, filename) : undefined;
     let output;
     try {
-      output = new PyLang.OutputStream(outputOptions);
+      output = new PyLang.OutputStream({ ...outputOptions, source_map: collector });
     } catch (err) {
       if (err instanceof PyLang.DefaultsError) {
         console.error(err.message);
@@ -325,7 +330,7 @@ export default async function Compile({
     });
 
     output = output.get();
-    writeOutput(output, sourceFilename || argv.filename_for_stdin || "<stdin>");
+    writeOutput(output, filename, code, collector?.finish(output));
   }
 
   if (argv.comments) {

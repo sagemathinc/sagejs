@@ -9,8 +9,8 @@ It compares the current implementation with functionality available in
 SageMath, psage, Magma, and PARI/GP, and gives each missing area an explicit
 definition of done.
 
-The next foundation milestone is **general exact $q$-expansion bases by two
-independent routes**:
+The completed P0 foundation provides **general exact $q$-expansion bases by two
+independent routes**, within the explicitly documented domains:
 
 1. reconstruction from exact modular symbols and their Hecke action; and
 2. constructive formulas for known modular forms, followed by exact
@@ -35,6 +35,32 @@ classical API.
   comparison system. Correctness alone does not imply competitiveness.
 - The checklist describes mathematical capabilities, not parity with every
   incidental method name in another system.
+
+### Reconciliation: 2026-09-12
+
+Reconciled against main `c4c126d09`, including merged PR #201. The old local
+checkout predated the character and $\Gamma_1$ object layers; their existing
+main checkmarks are retained below. P0 freeze receipts are historical evidence
+for their exact revisions, not qualification of every subsequent feature.
+
+The **modular abelian varieties: products, certified morphisms, finite kernels,
+isogenies, and degeneracy-labelled oldform copies** slice is implemented on
+`feature/modular-abelian-morphisms`,
+[PR #230](https://github.com/sagemathinc/sagejs/pull/230) (pending merge).
+Native, Node/Wasm and real
+Chromium execute the same exact positive/adversarial corpus. See
+`docs/modular-abelian-morphisms.md`; this does not implement entire Hom rings,
+rational torsion points, or Néron component groups of newform quotients.
+
+- [x] Portable character Hecke action and exact cyclotomic factorization for
+  browser character-newform decomposition; shared native/Node-Wasm/Chromium
+  tests include a cubic eigenpacket over a degree-four cyclotomic field
+  (`test/portable-cyclotomic-factor.cjs` and
+  `packages/flint-wasm/test/character-hecke-support.mjs`).
+- [x] Direct exact cyclotomic row-basis reconstruction replacing the
+  double-kernel $\Gamma_1$ memory cliff (`docs/gamma1-modular-forms.md`).
+- [ ] Large-degree portable factorization performance parity with native CAS;
+  correctness of the Trager fallback does not establish this.
 
 ## Current Sage.js foundation
 
@@ -449,8 +475,9 @@ $401$ receipt ranges from $3\times$ to $10\times$ faster than SageMath.
 - [ ] Level-raising degeneracy maps.
 - [ ] Character-valued lowering maps for imprimitive characters.
 - [ ] General exact coefficient rings and reduction modulo prime ideals.
-- [ ] Integral structures and saturated lattices in rational modular-symbol
-  spaces.
+- [x] Saturated integral homology for the implemented weight-$2$
+  $\Gamma_0/\QQ$ modular-abelian-variety models.
+- [ ] Extend integral structures to general rational modular-symbol spaces.
 - [ ] Period maps from integral modular symbols to modular abelian varieties.
 
 ## P1: Brandt, supersingular, and modular-Jacobian completion
@@ -480,8 +507,11 @@ $401$ receipt ranges from $3\times$ to $10\times$ faster than SageMath.
   $q$-expansion bases when the character modulus is divisible by $16$.
 - [ ] Complete half-integral-weight modular-form spaces outside the initial
   Basmaji domain, including Eisenstein and arbitrary supported level cases.
-- [ ] Kohnen plus and new subspaces.
-- [ ] Shimura/Kohnen correspondence to integral weight.
+- [x] Certified Kohnen-plus coefficient kernels in the initial domain.
+- [ ] General Kohnen new subspaces and plus spaces outside that domain.
+- [x] Certified cuspidal Shimura lifts in the initial trivial-character
+  target domain (see the P0B bounds above).
+- [ ] Complete the Shimura/Kohnen correspondence beyond that domain.
 - [x] Exact $T_{p^2}$ matrices at odd good primes in the initial Basmaji
   domain, plus coefficient-formula action on arbitrary exact expansions.
 - [ ] Bad-prime and general-index Hecke operators and half-integral
@@ -502,7 +532,34 @@ $401$ receipt ranges from $3\times$ to $10\times$ faster than SageMath.
 
 ## P2: modular abelian varieties and modular curves
 
-- [ ] Construct $A_f=J_0(N)/I_fJ_0(N)$ from a weight-$2$ newform constituent.
+- [x] `J0(N)`, saturated integral homology, exact Hecke action and rational
+  Hecke-isotypic decomposition in weight $2$ over $\QQ$.
+- [x] Construct $A_f=J_0(N)/I_fJ_0(N)$ from a weight-$2$ newform constituent,
+  retaining the distinction between the connected quotient lattice and the
+  embedded constituent lattice.
+- [x] Canonical integral inclusions and connected quotient maps, with
+  construction-authenticated serialization and Sage/Magma fixtures
+  (`docs/modular-abelian-varieties.md`, `test/modular-abelian-varieties.cjs`).
+- [x] Larger-level decomposition and quotient benchmark receipts against
+  Sage, including levels $1009$ and $2003$
+  (`bench/modular/abelian-varieties/`). These cover the prior slice, not the
+  new morphism workloads below.
+- [x] Products, identities, composition, addition and certified explicit
+  homology matrices; arbitrary integral matrices are not morphism proofs.
+- [x] Connected kernel varieties, finite geometric kernel-component groups,
+  and nonsaturated integral image lattices.
+- [x] Isogeny certification, Smith kernel invariants and exact degrees.
+- [x] Explicit raising/lowering degeneracy maps and labelled oldform copies
+  at composite levels (finer than full-Hecke isotypic decomposition).
+- [x] Sage differential tests, larger-level cold/warm benchmarks and
+  native/browser parity for the new morphism slice.
+  At level $1009$, the integral $T_2-1$ workload takes $0.758$ s native,
+  $6.721$ s Node/Wasm, and $56.589$ s in Sage on the recorded host; the shared
+  Chromium corpus includes the formerly timing-out level-$389$ case.
+- [ ] Composite-level decomposition-isogeny performance parity with Sage:
+  the implemented slice is still $4.8$–$5.9\times$ slower on the measured
+  levels $121$, $242$, $363$, despite faster Hecke-map workloads. Exact receipts
+  and separated timings: `bench/modular/abelian-varieties/morphisms-performance.md`.
 - [ ] Homomorphism and endomorphism rings of supported modular abelian
   varieties.
 - [ ] Rational torsion and finite subgroup schemes in the supported domain.

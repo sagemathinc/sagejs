@@ -3987,7 +3987,7 @@ def fmpz_matrix_hnf_prefix_into(
     ],
     effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
     result=Status(1, exception=RuntimeError, message="integer matrix SNF failed"),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_snf(source: FmpzMatrix) -> FmpzMatrix: ...
 

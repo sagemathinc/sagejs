@@ -67,6 +67,10 @@
   benchmark when performance motivates the work.
 - Run `pnpm architecture:check` for architecture, native compiler, or native
   mathematical changes.
+- For numerical performance work, follow the
+  [numerical computing performance program](agents/numerical-computing-performance-plan.md).
+  Kernel timings and historical draft evidence do not qualify public latency
+  targets or authorize new automatic backend defaults.
 
 ## Parallel projects
 
