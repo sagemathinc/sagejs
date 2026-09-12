@@ -562,15 +562,19 @@ $401$ receipt ranges from $3\times$ to $10\times$ faster than SageMath.
   $16.994$ s, versus Sage's $21.614$ s and $21.756$ s, with every integral
   kernel invariant matching. Native, Node/Wasm and Chromium regressions pass.
 - [ ] Universal composite-level decomposition-isogeny performance parity:
-  cold totals at levels $121$, $242$, $363$ still take $3.99$, $3.14$,
-  $2.70\times$ Sage's time. Large-level construction alone also remains slower;
+  batched-access cold totals at levels $121$, $242$, $363$ still take $3.73$,
+  $2.73$, $2.29\times$ Sage's time. At $726$ and $1089$, three-run native
+  totals are now $8.837$ s and $9.010$ s versus Sage's $16.544$ s and $17.504$ s.
+  Large-level construction alone also remains slightly slower;
   faster Smith reduction wins the complete large-level workload. Exact
   receipts and phase timings:
   `bench/modular/abelian-varieties/decomposition-performance.md`.
 - [ ] Large-composite-level browser throughput qualification. The native
-  speedup is not a Wasm speedup claim: the level-$726$ portable diagnostic
-  exceeded its $120$ s limit, despite passing the shared Chromium correctness
-  corpus and the smaller exact portable decomposition comparison.
+  speedup is not a large-level Wasm speedup claim: batching gives an
+  exact-checked three-run level-$242$ median of $6.336$ s, but level $726$
+  still exceeds $120$ s; level $1089$ was not reached. The shared Node/Wasm
+  and Chromium correctness corpus passes. See the batched-access receipts
+  in `bench/modular/abelian-varieties/decomposition-performance.md`.
 - [ ] Homomorphism and endomorphism rings of supported modular abelian
   varieties.
 - [ ] Rational torsion and finite subgroup schemes in the supported domain.

@@ -1,6 +1,46 @@
 # Integral decomposition-isogeny performance
 
-## Native comparison
+## Batched portable matrix access follow-up
+
+The follow-up removes scalar resource traffic without changing the exact
+algorithms: rectangular solves export their RREF entries once, and geometric
+transfers accumulate integer counts before constructing a rational matrix.
+On the preceding portable artifact, a level-726 homology coordinate solve
+took 4.06 s although RREF took 0.034 s; assembling transfer counts from level
+33 to 726 took 16.15 s although the two matrix products took 0.27 s combined.
+These phase probes motivated the changes; they are not whole-workload medians.
+
+[`decomposition-batched-linux-x64.json`](decomposition-batched-linux-x64.json)
+records three sequential fresh runs per system, after all owned builds and
+tests finished. The source hashes identify the tested working tree based on
+`02a683d21`; startup is excluded and no library warmup is performed.
+
+| Level | Sage.js construction | Sage.js Smith + rank | Sage.js total | Sage total | Sage.js / Sage |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 121 | 0.773 | 0.002 | 0.775 | 0.208 | 3.73 |
+| 242 | 1.476 | 0.048 | 1.524 | 0.558 | 2.73 |
+| 363 | 1.837 | 0.075 | 1.911 | 0.835 | 2.29 |
+| 726 | 7.955 | 0.857 | 8.837 | 16.544 | 0.53 |
+| 1089 | 8.160 | 0.850 | 9.010 | 17.504 | 0.51 |
+
+All 30 records match the exact dimensions, ranks and nonunit Smith invariants.
+The full large-level workload is 1.87–1.94 times faster than Sage, but small
+levels remain slower and large-level construction alone is still slightly
+slower. Historical timings below were collected separately on a shared host;
+use the contemporaneous Sage comparisons above, not a ratio between campaigns.
+
+Portable receipt:
+[`decomposition-batched-wasm-linux-x64.json`](decomposition-batched-wasm-linux-x64.json),
+artifact `sha256:d2aa066d16fdcd33d7aba29879a5e5568f1a8129493d4a6c1750814fc81aeb8d`.
+Level 242 has three exact-checked runs with median 6.336 s. Level 726 still
+exceeds the 120 s evaluation limit; the receipt retains that failure and
+the harness stops before level 1089. Do not interpret the requested sample
+count as completed samples for those levels. All 13 native tests, both
+Node/Wasm tests and the shared real-Chromium corpus pass, including multiple
+right sides, free variables, inconsistent systems and empty rectangular solves.
+Large-level portable throughput remains open despite the native speedup.
+
+## Earlier native comparison (PR 243)
 
 Source: `abced86d3` (full commit and source hashes in the receipt). The receipt
 [`decomposition-performance-linux-x64.json`](decomposition-performance-linux-x64.json)
