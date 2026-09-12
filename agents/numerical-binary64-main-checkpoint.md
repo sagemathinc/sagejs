@@ -51,7 +51,7 @@ public input conversion, sorting, independent statistics validation, structured
 results, tracing and sustained memory; they cannot establish the `describe`
 10 ms target. Quiet paired public qualification remains future work.
 
-The fresh eight-stage build passes; production exact-native packs are explicitly
+At source commit `c092f9fe7`, the fresh eight-stage build passes; production exact-native packs are explicitly
 skipped because this checkout lacks the optional FLINT adapter. CPython corpus,
 formatting and strict Python (388 modules, zero errors) pass. All nine focused
 tests pass without skips on both Node 26.8.1 and 22.22.2, including prefix-free
@@ -68,8 +68,8 @@ same assertion fails on unchanged `5b307b65f`, whose relevant compiler sources
 match `c4c126d09`. The corrected regression instead verifies the helper remains
 private and checks the actual public caller's separate status/result names.
 It does not restore the obsolete export or change native mathematical code.
-The final full build passes after that test edit, and its artifact receipt is
-current. The broad compiler fixture suite reports 17 passes, 28 declared
+The final full build passes after that test edit, and its artifact receipt
+matches that source. The broad compiler fixture suite reports 17 passes, 28 declared
 historical/disabled skips and nine failures, all requesting the absent
 `sagejs_flint.node` addon. That is not a full compiler-suite pass; the numerical
 foundation's prefix-free target tests and the mixed-prefix regressions above
@@ -86,6 +86,14 @@ manifest's shared package-graph hash are regenerated, not copied from drafts.
 There is no current-source four-platform compiled qualification claim.
 Persistent hosts are coordinated through Discussion #104; other lanes'
 reservations and source trees must remain untouched.
+
+[Local opportunity measurements](../bench/numerics/performance/results/n2-binary64-main-2026-09-12/README.md)
+bind the clean source commit above. At 20,000 values, reused native summation
+measures 0.117 ms versus 0.115 ms for CPython's compiled `math.fsum`; packing
+and allocating raises the native measurement to 0.293 ms. This is one local
+kernel campaign, not independently confirmed public-query performance. Raw
+batches, loop/clock controls, setup and artifact identity are retained. The
+14,504-byte addon is not the whole runtime or a browser-payload measurement.
 
 ## Remaining N2 work
 
