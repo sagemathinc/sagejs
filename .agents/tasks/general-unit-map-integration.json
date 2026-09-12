@@ -208,6 +208,46 @@
       "commit": "6fac13fbb51b6f23a11645831cdc87e41090ca80",
       "workspace_fingerprint": "93848ad06584b080cd71783ed5c82a7f251c83992fdf245218b793a0dfbf1299",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration:run",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 896.313,
+      "started_at": "2026-09-12T07:05:27.091Z",
+      "commit": "53616619602d8efcbbd6887e502f436f74c46047",
+      "workspace_fingerprint": "93848ad06584b080cd71783ed5c82a7f251c83992fdf245218b793a0dfbf1299",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm python:precompile:run",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 287.329,
+      "started_at": "2026-09-12T07:25:11.837Z",
+      "commit": "53616619602d8efcbbd6887e502f436f74c46047",
+      "workspace_fingerprint": "93848ad06584b080cd71783ed5c82a7f251c83992fdf245218b793a0dfbf1299",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=precompiled OM worker test/number-field-om-auto-selector.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.871,
+      "started_at": "2026-09-12T07:29:59.807Z",
+      "commit": "53616619602d8efcbbd6887e502f436f74c46047",
+      "workspace_fingerprint": "93848ad06584b080cd71783ed5c82a7f251c83992fdf245218b793a0dfbf1299",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration:run",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1153.504,
+      "started_at": "2026-09-12T07:30:04.345Z",
+      "commit": "53616619602d8efcbbd6887e502f436f74c46047",
+      "workspace_fingerprint": "93848ad06584b080cd71783ed5c82a7f251c83992fdf245218b793a0dfbf1299",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
