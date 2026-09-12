@@ -137,3 +137,46 @@ initialization first among sampled functions; it includes compiler setup and
 is not a warm-only percentage attribution. The remaining exception cliff and
 cross-platform qualification are open; PR #272 retains its other documented
 integration gaps and remains draft.
+
+### Host-realm attribution correction
+
+The original microdiagnostic used `vm.runInContext`; production Node bootstrap
+uses `Script.runInThisContext`. The former imposes substantially different
+global lookup costs. On the same local candidate, moving only the diagnostic
+to the host realm changes construction/catch from approximately 290 ms to
+83 ms per 10,000 operations, and re-raising from 119 ms to 12 ms. These are
+different execution configurations, **not an additional runtime speedup**.
+The diagnostic now defaults to the host realm; `SAGEJS_EXCEPTION_REALM=vm`
+and `SAGEJS_EXCEPTION_PRIVATE_SCOPE=1` expose the attribution alternatives.
+
+An explicit `SAGEJS_EXCEPTION_VARIANT=no-capture-diagnostic` ablation measures
+about 27 ms/10,000 construction/catch operations in the host realm. It drops
+frames, is marked semantically invalid in the report, and is never a runtime
+option or accepted performance result. This attributes roughly 56 ms of the
+83 ms to native creation-stack capture. Removing the second argument-array
+copy passes aliasing/reinitialization tests but produces no timing improvement
+outside local noise; do not claim otherwise.
+
+A fresh-process bench-1 comparison (Node 26.7.0, CPython 3.14.4, AMD EPYC 7B13,
+100,000 operations, three warmups/seven samples, reversed runtime orders)
+measured the current standalone host-realm candidate as follows:
+
+| Workload | Sage.js median, two rounds | CPython median, two rounds |
+| --- | --- | --- |
+| Construct and read argument length | 1015 / 1000 ms | 10.40 / 10.04 ms |
+| Construct, raise, catch | 1083 / 1087 ms | 13.15 / 12.97 ms |
+
+The remaining construction/catch gap is about **82–84x**, not closed. This
+compares the current candidate with CPython, not historical runtime revisions;
+do not divide it into older ratios to infer a speedup. Re-raising is excluded
+because CPython accumulates traceback entries, unlike the current Sage.js
+traceback carrier. Inputs, executable hashes and raw samples are retained at
+`/home/user/sagejs-exception-host-pair.7QyZmd` on bench-1 and
+`/tmp/sagejs-exception-host-pair.BYL1KZ` locally. The generated candidate is
+bound by its content hash in `report.json`. This is standalone throughput,
+not packaged runtime, startup, browser or four-platform qualification.
+
+Closing the remaining capture-dominated cliff requires a correct cheaper
+traceback representation (for example executable-identity-bound logical Python
+frames), not suppressing stacks or postponing capture until their creation
+frames are lost. That architectural work remains open.
