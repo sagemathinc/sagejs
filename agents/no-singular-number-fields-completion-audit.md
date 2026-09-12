@@ -66,6 +66,34 @@ its infrastructure assets are retained locally under `build/optimizer-developmen
 and have not been published by this slice. Fresh remote evidence retrieval
 remains a handoff requirement; no product release is created.
 
+## N1 polynomial implementation checkpoint (not yet qualified)
+
+The shared approximate polynomial classes are generalized to generic classes,
+retaining their previous approximate/cyclotomic routes. Simple number fields
+use canonical exact sparse terms and the existing bounded sparse engine.
+Exact division, gcd/xgcd, derivatives, Sylvester resultants, squarefree layers,
+simultaneous substitution and existing-coordinate homogenization now have
+focused runtime fixtures over five field presentations and three term orders.
+SageMath 10.9.post1 independently confirms the resultant/squarefree examples
+and the three distinct monomial-order witnesses.
+
+The first runtime pass caught a missing coercion division hook; a subsequent
+pass caught keyword-boundary conversion. Both are fixed. All seven focused
+tests then pass, including approximate, cyclotomic and finite-extension
+regressions. The eight-stage build passed before the division-hook fix; the
+compiler and runtime caches were rebuilt after that fix. This is local Linux
+x64 evidence only, not production portability qualification.
+
+The new lazy module brings polynomial-algorithms to 332,830 source bytes;
+its reviewed lazy source allocation grows to 340,000, without changing eager
+or compressed artifact limits. Remaining N1 work includes coefficient-height
+and allocation guards, broader public API/serialization review and fixtures.
+N2/N3 remain disabled. Strict Python passes for 404 modules, and the full
+architecture check passes after source-derived evidence regeneration. The
+native inventory diff adds only polynomial.py as an existing export consumer;
+no new handwritten native code is introduced. Optimizer evidence remains
+local, with identity `d70ec656ca6f6971509f7f20f22c8bd80b960083d12f43766d17350f7881d07a`.
+
 ## Baseline and qualification caveats
 
 The integrated main audit records eight legacy full-corpus failures: one

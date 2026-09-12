@@ -4816,33 +4816,35 @@ def _approximate_term_precedes(left: Any, right: Any) -> bool:
 
 @runtime.callable_instance_class
 @runtime.lightweight_math_class
-class ApproximatePolynomialElement(sage.Element):
+class GenericPolynomialElement(sage.Element):
     """A sparse polynomial over a generic exact or approximate field."""
 
     def __init__(
         self,
-        parent: ApproximatePolynomialRingParent,
+        parent: GenericPolynomialRingParent,
         terms: list[Any],
     ) -> None:
         self._parent = parent
-        self._terms = _normalize_approximate_terms(
-            parent.base_ring(), parent.ngens(), terms
+        self._terms = (
+            parent._exact_context.polynomial(terms).terms()
+            if parent._exact_context is not None
+            else _normalize_approximate_terms(parent.base_ring(), parent.ngens(), terms)
         )
         runtime.object.freeze(self)
 
-    def _new(self, terms: list[Any]) -> ApproximatePolynomialElement:
-        return ApproximatePolynomialElement(self._parent, terms)
+    def _new(self, terms: list[Any]) -> GenericPolynomialElement:
+        return GenericPolynomialElement(self._parent, terms)
 
     def _add_(
         self,
-        other: ApproximatePolynomialElement,
-    ) -> ApproximatePolynomialElement:
+        other: GenericPolynomialElement,
+    ) -> GenericPolynomialElement:
         return self._new(self._terms + other._terms)
 
     def _sub_(
         self,
-        other: ApproximatePolynomialElement,
-    ) -> ApproximatePolynomialElement:
+        other: GenericPolynomialElement,
+    ) -> GenericPolynomialElement:
         terms = list(self._terms)
         for coefficient, exponents in other._terms:
             terms.append([-coefficient, exponents])
@@ -4850,8 +4852,10 @@ class ApproximatePolynomialElement(sage.Element):
 
     def _mul_(
         self,
-        other: ApproximatePolynomialElement,
-    ) -> ApproximatePolynomialElement:
+        other: GenericPolynomialElement,
+    ) -> GenericPolynomialElement:
+        if self._parent._exact_context is not None:
+            return _generic_polynomial_module().multiply(self, other)
         terms = []
         for left_coefficient, left_exponents in self._terms:
             for right_coefficient, right_exponents in other._terms:
@@ -4875,13 +4879,15 @@ class ApproximatePolynomialElement(sage.Element):
     def __mul__(self, other: object) -> Any:
         return runtime.coercion_model.binOp("mul", self, other)
 
-    def __neg__(self) -> ApproximatePolynomialElement:
+    def __neg__(self) -> GenericPolynomialElement:
         terms = []
         for coefficient, exponents in self._terms:
             terms.append([-coefficient, exponents])
         return self._new(terms)
 
-    def __pow__(self, exponent: int) -> ApproximatePolynomialElement:
+    def __pow__(self, exponent: int) -> GenericPolynomialElement:
+        if self._parent._exact_context is not None:
+            return _generic_polynomial_module().power(self, exponent)
         exponent = runtime.integer_bigint(exponent)
         if exponent < 0:
             raise ValueError("negative polynomial exponent")
@@ -4895,7 +4901,7 @@ class ApproximatePolynomialElement(sage.Element):
                 power = power._mul_(power)
         return answer
 
-    def _eq_(self, other: ApproximatePolynomialElement) -> bool:
+    def _eq_(self, other: GenericPolynomialElement) -> bool:
         return len(self._sub_(other)._terms) == 0
 
     def __eq__(self, other: object) -> bool:
@@ -4998,7 +5004,56 @@ class ApproximatePolynomialElement(sage.Element):
     def list(self) -> list[Any]:
         return self.coefficients()
 
+    def terms(self) -> Any:
+        return tuple((c, tuple(e)) for c, e in self._terms)
+
+    def subs(self, substitutions: Any = None, **kwds: Any) -> Any:
+        return _generic_polynomial_module().substitute(self, substitutions, kwds)
+
+    def homogenize(self, variable: Any) -> Any:
+        return _generic_polynomial_module().homogenize(self, variable)
+
+    def is_zero(self) -> bool:
+        return len(self._terms) == 0
+
+    def __bool__(self) -> bool:
+        return not self.is_zero()
+
+    def quo_rem(self, other: Any) -> Any:
+        return _generic_polynomial_module().divide(self, self._parent(other))
+
+    def _truediv_(self, other: Any) -> Any:
+        quotient, remainder = self.quo_rem(other)
+        if remainder:
+            raise ArithmeticError("polynomial division is not exact")
+        return quotient
+
+    def __truediv__(self, other: Any) -> Any:
+        return runtime.coercion_model.binOp("truediv", self, other)
+
+    def __mod__(self, other: Any) -> Any:
+        return self.quo_rem(other)[1]
+
+    def gcd(self, other: Any) -> Any:
+        return _generic_polynomial_module().gcd(self, self._parent(other))
+
+    def xgcd(self, other: Any) -> Any:
+        return _generic_polynomial_module().xgcd(self, self._parent(other))
+
+    def derivative(self, variable: Any = None) -> Any:
+        return _generic_polynomial_module().derivative(self, variable)
+
+    def resultant(self, other: Any) -> Any:
+        return _generic_polynomial_module().resultant(self, self._parent(other))
+
+    def squarefree_decomposition(self) -> Any:
+        return _generic_polynomial_module().squarefree(self)
+
     def factor(self) -> sage.Factorization:
+        if self._parent._exact_context is not None:
+            raise NotImplementedError(
+                "number-field factorization requires Milestone N3"
+            )
         if (
             self._parent.ngens() == 1
             and self._parent.base_ring()._kind == "CyclotomicField"
@@ -5033,7 +5088,7 @@ class ApproximatePolynomialElement(sage.Element):
                         terms.append([coefficient, [index]])
                 factors.append(
                     [
-                        ApproximatePolynomialElement(self._parent, terms),
+                        GenericPolynomialElement(self._parent, terms),
                         exponent,
                     ]
                 )
@@ -5088,6 +5143,8 @@ class ApproximatePolynomialElement(sage.Element):
             ):
                 index += 1
             ordered.insert(index, term)
+        if self._parent._exact_context is not None:
+            ordered = list(self._terms)
         base = self._parent.base_ring()
         zero = base(0)
         one = base(1)
@@ -5139,7 +5196,7 @@ class ApproximatePolynomialElement(sage.Element):
 
 
 @runtime.callable_instance_class
-class ApproximatePolynomialRingParent(sage.Parent):
+class GenericPolynomialRingParent(sage.Parent):
     """A cached sparse polynomial parent over a generic field."""
 
     def __init__(
@@ -5153,6 +5210,11 @@ class ApproximatePolynomialRingParent(sage.Parent):
         self._variables = runtime.math_tuple(variables)
         self._order = order
         self._sparse = sparse
+        self._exact_context = (
+            _generic_polynomial_module().context(base, variables, order)
+            if base._kind == "NumberField"
+            else None
+        )
         if len(variables) == 1:
             self._name = (
                 ("Sparse " if sparse else "")
@@ -5195,13 +5257,13 @@ class ApproximatePolynomialRingParent(sage.Parent):
     def ngens(self) -> int:
         return len(self._variables)
 
-    def gen(self, index: int = 0) -> ApproximatePolynomialElement:
+    def gen(self, index: int = 0) -> GenericPolynomialElement:
         index = int(index)
         if index < 0 or index >= self.ngens():
             raise IndexError("generator index out of range")
         exponents = [0] * self.ngens()
         exponents[index] = 1
-        return ApproximatePolynomialElement(self, [[self._base(1), exponents]])
+        return GenericPolynomialElement(self, [[self._base(1), exponents]])
 
     def gens(self) -> Any:
         answer = []
@@ -5218,7 +5280,7 @@ class ApproximatePolynomialRingParent(sage.Parent):
     def _first_ngens(
         self,
         count: int,
-    ) -> list[ApproximatePolynomialElement]:
+    ) -> list[GenericPolynomialElement]:
         if count > self.ngens():
             raise ValueError("not enough polynomial generators")
         answer = []
@@ -5232,37 +5294,55 @@ class ApproximatePolynomialRingParent(sage.Parent):
                 return index
         raise ValueError("not a generator of this polynomial ring")
 
-    def _constant(self, value: Any) -> ApproximatePolynomialElement:
-        return ApproximatePolynomialElement(
-            self, [[self._base(value), [0] * self.ngens()]]
-        )
+    def _constant(self, value: Any) -> GenericPolynomialElement:
+        return GenericPolynomialElement(self, [[self._base(value), [0] * self.ngens()]])
+
+    def _from_terms(self, terms: Any) -> GenericPolynomialElement:
+        return GenericPolynomialElement(self, terms)
+
+    def _from_coefficients(self, coefficients: Any) -> GenericPolynomialElement:
+        if self.ngens() != 1:
+            raise TypeError("coefficient lists require a univariate ring")
+        return self._from_terms([(c, (i,)) for i, c in enumerate(coefficients)])
 
     def _coercePolynomial(
         self,
         value: Any,
-    ) -> ApproximatePolynomialElement:
-        if not isinstance(value, ApproximatePolynomialElement):
-            raise TypeError("expected an approximate polynomial")
+    ) -> GenericPolynomialElement:
+        if not isinstance(value, GenericPolynomialElement):
+            raise TypeError("expected a generic polynomial")
         if value._parent is self:
             return value
         source = value._parent
         if source.variable_names() != self.variable_names():
-            raise TypeError("incompatible approximate polynomial rings")
+            raise TypeError("incompatible generic polynomial rings")
         terms = []
         for coefficient, exponents in value._terms:
             terms.append([self._base(coefficient), exponents])
-        return ApproximatePolynomialElement(self, terms)
+        return GenericPolynomialElement(self, terms)
 
     def __call__(
         self,
         value: Any = 0,
-    ) -> ApproximatePolynomialElement:
-        if isinstance(value, ApproximatePolynomialElement):
+    ) -> GenericPolynomialElement:
+        if isinstance(value, GenericPolynomialElement):
             return self._coercePolynomial(value)
+        if isinstance(value, dict):
+            return self._from_terms(
+                [(c, (e,) if isinstance(e, int) else e) for e, c in value.items()]
+            )
+        if isinstance(value, (list, tuple)):
+            return self._from_coefficients(value)
         return self._constant(value)
 
     def __contains__(self, value: object) -> bool:
-        return isinstance(value, ApproximatePolynomialElement) and value._parent is self
+        return isinstance(value, GenericPolynomialElement) and value._parent is self
+
+
+def _generic_polynomial_module() -> Any:
+    return __import__(
+        "sagejs.polynomial_algorithms.generic_public", fromlist=["context"]
+    )
 
 
 @runtime.callable_instance_class
@@ -6107,7 +6187,7 @@ def _multivariate_polynomial_ring(
     variables: list[str],
     order: str,
 ) -> Any:
-    approximate = base._kind in ["RealField", "RDF"]
+    approximate = base._kind in ["RealField", "RDF", "NumberField"]
     if (
         base._kind not in ["ZZ", "QQ"]
         and base._kind not in ["GF", "GF_EXTENSION", "ZMOD"]
@@ -6125,7 +6205,7 @@ def _multivariate_polynomial_ring(
     parent = by_variable.get(cache_key)
     if parent is runtime.undefined:
         if approximate:
-            parent = ApproximatePolynomialRingParent(base, variables, order)
+            parent = GenericPolynomialRingParent(base, variables, order)
         else:
             parent = MultivariatePolynomialRingParent(base, variables, order)
         by_variable.set(cache_key, parent)
@@ -6200,6 +6280,7 @@ def PolynomialRing(
             "AA",
             "QQBAR",
             "CyclotomicField",
+            "NumberField",
         ]
     ):
         raise TypeError(
@@ -6217,6 +6298,8 @@ def PolynomialRing(
         by_variable = runtime.map()
         ρσ_polynomial_ring_cache.set(base, by_variable)
     cache_key = variable + ("|sparse" if sparse else "|dense")
+    if base._kind == "NumberField":
+        cache_key += "|" + order
     parent = by_variable.get(cache_key)
     if parent is runtime.undefined:
         if base._kind in [
@@ -6225,8 +6308,9 @@ def PolynomialRing(
             "AA",
             "QQBAR",
             "CyclotomicField",
+            "NumberField",
         ]:
-            parent = ApproximatePolynomialRingParent(base, [variable], order, sparse)
+            parent = GenericPolynomialRingParent(base, [variable], order, sparse)
         else:
             parent = PolynomialRingParent(base, variable, sparse)
         by_variable.set(cache_key, parent)
@@ -6295,7 +6379,7 @@ def _euler_2x2_value(
     x_value: Any,
     y_value: Any,
 ) -> Any:
-    if isinstance(callable_value, ApproximatePolynomialElement):
+    if isinstance(callable_value, GenericPolynomialElement):
         return callable_value(t_value, x_value, y_value)
     return callable_value([t_value, x_value, y_value])
 

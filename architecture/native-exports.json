@@ -5036,6 +5036,7 @@
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/builtins.py",
+        "src/baselib/polynomial.py",
         "src/lib/sagejs/hyperelliptic_curves/periods.py",
         "test/browser-wasm-resource-fallbacks.cjs",
         "test/native-kernel.cjs"
