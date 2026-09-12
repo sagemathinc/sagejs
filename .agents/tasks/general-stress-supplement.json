@@ -17,7 +17,8 @@
     "general-class-unit-corpus-freeze"
   ],
   "references": [
-    "Reviewed rootlab build/general-frontier/m0-stress-proof-preselection-v1.md"
+    "Reviewed rootlab build/general-frontier/m0-stress-proof-preselection-v1.md",
+    "https://github.com/sagemathinc/sagejs/pull/246 (draft stacked on corpus-freeze PR 236)"
   ],
   "architecture": {
     "strategy": "dynamic-python",
@@ -111,6 +112,66 @@
       "started_at": "2026-09-12T08:27:32.435Z",
       "commit": "d4091f8c6e3c972bc293f441c12fedcafc26d224",
       "workspace_fingerprint": "58534c15aef068e0305bbe8ec2059e232f6cc66d8e1d7dc847212ccebcbe8f41",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/class-unit-groups/general-frontier/corpus/test_stress_supplement.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.264,
+      "started_at": "2026-09-12T08:29:32.746Z",
+      "commit": "de0f3789a93729659709494769568c0bfbd6fbcd",
+      "workspace_fingerprint": "d9ae28c3d5cb7ca543b80307a88ba2d6c2242bdcc77157f7a1581c9b372fa208",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/class-unit-groups/general-frontier/corpus/test_rank_two_supplement.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.205,
+      "started_at": "2026-09-12T08:29:33.219Z",
+      "commit": "de0f3789a93729659709494769568c0bfbd6fbcd",
+      "workspace_fingerprint": "d9ae28c3d5cb7ca543b80307a88ba2d6c2242bdcc77157f7a1581c9b372fa208",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/frozen/freeze.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.321,
+      "started_at": "2026-09-12T08:29:33.634Z",
+      "commit": "de0f3789a93729659709494769568c0bfbd6fbcd",
+      "workspace_fingerprint": "d9ae28c3d5cb7ca543b80307a88ba2d6c2242bdcc77157f7a1581c9b372fa208",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.923,
+      "started_at": "2026-09-12T08:29:35.167Z",
+      "commit": "de0f3789a93729659709494769568c0bfbd6fbcd",
+      "workspace_fingerprint": "d9ae28c3d5cb7ca543b80307a88ba2d6c2242bdcc77157f7a1581c9b372fa208",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/parallel-development.cjs changed --base d4091f8c6e3c972bc293f441c12fedcafc26d224 --list",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.131,
+      "started_at": "2026-09-12T08:29:39.298Z",
+      "commit": "de0f3789a93729659709494769568c0bfbd6fbcd",
+      "workspace_fingerprint": "d9ae28c3d5cb7ca543b80307a88ba2d6c2242bdcc77157f7a1581c9b372fa208",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 75.963,
+      "started_at": "2026-09-12T08:29:39.643Z",
+      "commit": "de0f3789a93729659709494769568c0bfbd6fbcd",
+      "workspace_fingerprint": "d9ae28c3d5cb7ca543b80307a88ba2d6c2242bdcc77157f7a1581c9b372fa208",
       "platform": "linux-x64"
     }
   ],
