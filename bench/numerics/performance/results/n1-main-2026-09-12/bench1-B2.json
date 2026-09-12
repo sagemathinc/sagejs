@@ -1,0 +1,550 @@
+{
+  "schema": "sagejs.numerics.performance/v1",
+  "classification": "provisional-single-run",
+  "collected_at": "2026-09-12T05:10:28.444Z",
+  "source": {
+    "repository": {
+      "commit": "db7c806b072b6f1d181f92532b75f1d395428a42",
+      "tree": "9b7bb29d89c382519636f3baa2d42f2d629ae287",
+      "clean": true,
+      "status_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "numerics": {
+      "path": "src/lib/sagejs/numerics",
+      "sha256": "5b2cd732980548de32d469570ab618dc9ff53aa6daf9af5fefed679f0d1e29f1",
+      "bytes": 1945136,
+      "files": 94
+    },
+    "compiler_runtime": {
+      "path": "src/baselib",
+      "sha256": "a3c77e811dc5795a2d04f4e078de693487c5e5f6d3d7a6e326e7da72cd842c22",
+      "bytes": 3997312,
+      "files": 49
+    }
+  },
+  "collector_sha256": "39e005347d5f8f3ed4401dfa4e07e8b29d17555e51e732c30e23066b4fbc6591",
+  "workload_sha256": "2b9bf1d990516352347197cb2d14597b2f3b6595d0d1cfb42d4563986c032664",
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "cpu": "AMD EPYC 7B13",
+    "node": "v26.5.1",
+    "load_average": [
+      1.06,
+      1.07,
+      1.01
+    ]
+  },
+  "policy": {
+    "runtime": "sagejs",
+    "cases": [
+      "trace-32",
+      "trace-128",
+      "root-brent",
+      "bounded-minimum",
+      "ode-classroom"
+    ],
+    "levels": [
+      "none",
+      "summary",
+      "iterations"
+    ],
+    "warmups": 3,
+    "samples": 7,
+    "timeout": 600000,
+    "native_disabled": true,
+    "timed_scope": "public solve including validation and result construction",
+    "extra_assertions_outside_timing": true,
+    "trace_collection_separate_cases": true,
+    "sample_qualified": true,
+    "memory_scope": "Node process snapshots only; not isolated peaks",
+    "unresolved": [
+      "paired quiet-host confirmation",
+      "phase profiles",
+      "cold import isolation",
+      "browser and four-platform coverage",
+      "SciPy comparison",
+      "native/library route variants"
+    ]
+  },
+  "memory_before": {
+    "rss": 66306048,
+    "heapTotal": 8523776,
+    "heapUsed": 5459976,
+    "external": 2366756,
+    "arrayBuffers": 260138
+  },
+  "records": [
+    {
+      "case": "trace-32",
+      "durations_ms": [
+        1.4507770538330078,
+        1.6171932220458984,
+        1.6570091247558594,
+        1.4488697052001953,
+        1.3186931610107422,
+        1.3606548309326172,
+        1.3425350189208984
+      ],
+      "first_call_ms": 3.3500194549560547,
+      "median_ms": 1.4488697052001953,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 0,
+        "independent_error": 0,
+        "iterations": 32,
+        "method": "semantic-trace-append",
+        "success": true,
+        "trace_bytes": 2,
+        "trace_events": 0
+      },
+      "preparation_ms": 132.97319412231445,
+      "samples": 7,
+      "trace": "none",
+      "warmups": 3,
+      "batch_wall_ms": 198.40758699999992
+    },
+    {
+      "case": "trace-32",
+      "durations_ms": [
+        1.6150474548339844,
+        4.178762435913086,
+        1.1758804321289062,
+        1.203775405883789,
+        1.1625289916992188,
+        1.096963882446289,
+        1.1658668518066406
+      ],
+      "first_call_ms": 1.552581787109375,
+      "median_ms": 1.1758804321289062,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 0,
+        "independent_error": 0,
+        "iterations": 32,
+        "method": "semantic-trace-append",
+        "success": true,
+        "trace_bytes": 2,
+        "trace_events": 0
+      },
+      "preparation_ms": 0.4870891571044922,
+      "samples": 7,
+      "trace": "summary",
+      "warmups": 3,
+      "batch_wall_ms": 49.85775700000022
+    },
+    {
+      "case": "trace-32",
+      "durations_ms": [
+        89.40529823303223,
+        84.84601974487305,
+        83.38069915771484,
+        77.94833183288574,
+        81.52961730957031,
+        75.91700553894043,
+        77.02159881591797
+      ],
+      "first_call_ms": 122.52044677734375,
+      "median_ms": 81.52961730957031,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 0,
+        "independent_error": 0,
+        "iterations": 32,
+        "method": "semantic-trace-append",
+        "success": true,
+        "trace_bytes": 5581,
+        "trace_events": 32
+      },
+      "preparation_ms": 0.5123615264892578,
+      "samples": 7,
+      "trace": "iterations",
+      "warmups": 3,
+      "batch_wall_ms": 1864.9407969999997
+    },
+    {
+      "case": "trace-128",
+      "durations_ms": [
+        3.2601356506347656,
+        3.063201904296875,
+        3.1135082244873047,
+        2.9757022857666016,
+        2.9032230377197266,
+        2.8769969940185547,
+        2.7952194213867188
+      ],
+      "first_call_ms": 3.0820369720458984,
+      "median_ms": 2.9757022857666016,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 0,
+        "independent_error": 0,
+        "iterations": 128,
+        "method": "semantic-trace-append",
+        "success": true,
+        "trace_bytes": 2,
+        "trace_events": 0
+      },
+      "preparation_ms": 0.3561973571777344,
+      "samples": 7,
+      "trace": "none",
+      "warmups": 3,
+      "batch_wall_ms": 57.5877559999999
+    },
+    {
+      "case": "trace-128",
+      "durations_ms": [
+        3.1735897064208984,
+        3.051280975341797,
+        3.1409263610839844,
+        3.2460689544677734,
+        3.0107498168945312,
+        3.1425952911376953,
+        3.141641616821289
+      ],
+      "first_call_ms": 3.2837390899658203,
+      "median_ms": 3.141641616821289,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 0,
+        "independent_error": 0,
+        "iterations": 128,
+        "method": "semantic-trace-append",
+        "success": true,
+        "trace_bytes": 2,
+        "trace_events": 0
+      },
+      "preparation_ms": 0.3705024719238281,
+      "samples": 7,
+      "trace": "summary",
+      "warmups": 3,
+      "batch_wall_ms": 60.59860600000047
+    },
+    {
+      "case": "trace-128",
+      "durations_ms": [
+        308.5289001464844,
+        306.8373203277588,
+        306.110143661499,
+        302.5927543640137,
+        293.0607795715332,
+        301.03540420532227,
+        306.16044998168945
+      ],
+      "first_call_ms": 316.0686492919922,
+      "median_ms": 306.110143661499,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 0,
+        "independent_error": 0,
+        "iterations": 128,
+        "method": "semantic-trace-append",
+        "success": true,
+        "trace_bytes": 22437,
+        "trace_events": 128
+      },
+      "preparation_ms": 0.3294944763183594,
+      "samples": 7,
+      "trace": "iterations",
+      "warmups": 3,
+      "batch_wall_ms": 6406.200559000001
+    },
+    {
+      "case": "root-brent",
+      "durations_ms": [
+        40.37880897521973,
+        45.28689384460449,
+        39.98613357543945,
+        39.28804397583008,
+        52.94942855834961,
+        39.77370262145996,
+        38.31887245178223
+      ],
+      "first_call_ms": 62.78514862060547,
+      "median_ms": 39.98613357543945,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 8,
+        "independent_error": 4.773959005888173e-15,
+        "iterations": 6,
+        "method": "brent",
+        "status": "converged",
+        "success": true,
+        "trace_bytes": 1191,
+        "trace_events": 3,
+        "truth_level": "validated_approximate"
+      },
+      "preparation_ms": 0.1723766326904297,
+      "samples": 7,
+      "trace": "none",
+      "warmups": 3,
+      "batch_wall_ms": 615.1670790000007
+    },
+    {
+      "case": "root-brent",
+      "durations_ms": [
+        47.95026779174805,
+        37.64748573303223,
+        37.97149658203125,
+        43.62201690673828,
+        36.379337310791016,
+        36.15832328796387,
+        36.7283821105957
+      ],
+      "first_call_ms": 38.62428665161133,
+      "median_ms": 37.64748573303223,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 8,
+        "independent_error": 4.773959005888173e-15,
+        "iterations": 6,
+        "method": "brent",
+        "status": "converged",
+        "success": true,
+        "trace_bytes": 1191,
+        "trace_events": 3,
+        "truth_level": "validated_approximate"
+      },
+      "preparation_ms": 0.14710426330566406,
+      "samples": 7,
+      "trace": "summary",
+      "warmups": 3,
+      "batch_wall_ms": 556.7695940000012
+    },
+    {
+      "case": "root-brent",
+      "durations_ms": [
+        53.733110427856445,
+        52.69575119018555,
+        60.11247634887695,
+        53.59172821044922,
+        63.36569786071777,
+        52.78205871582031,
+        59.11755561828613
+      ],
+      "first_call_ms": 52.91318893432617,
+      "median_ms": 53.733110427856445,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 8,
+        "independent_error": 4.773959005888173e-15,
+        "iterations": 6,
+        "method": "brent",
+        "status": "converged",
+        "success": true,
+        "trace_bytes": 2951,
+        "trace_events": 9,
+        "truth_level": "validated_approximate"
+      },
+      "preparation_ms": 0.12803077697753906,
+      "samples": 7,
+      "trace": "iterations",
+      "warmups": 3,
+      "batch_wall_ms": 866.3207819999989
+    },
+    {
+      "case": "bounded-minimum",
+      "durations_ms": [
+        45.87817192077637,
+        38.78426551818848,
+        39.194583892822266,
+        38.65528106689453,
+        38.76304626464844,
+        38.81072998046875,
+        37.98556327819824
+      ],
+      "first_call_ms": 51.66912078857422,
+      "median_ms": 38.78426551818848,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 11,
+        "independent_error": 0,
+        "iterations": 6,
+        "method": "bounded-brent",
+        "status": "converged",
+        "success": true,
+        "trace_bytes": 1233,
+        "trace_events": 3,
+        "truth_level": "validated_approximate"
+      },
+      "preparation_ms": 33.7831974029541,
+      "samples": 7,
+      "trace": "none",
+      "warmups": 3,
+      "batch_wall_ms": 627.4663779999992
+    },
+    {
+      "case": "bounded-minimum",
+      "durations_ms": [
+        57.90400505065918,
+        51.532745361328125,
+        65.42420387268066,
+        52.147865295410156,
+        57.53135681152344,
+        51.33795738220215,
+        63.47465515136719
+      ],
+      "first_call_ms": 52.544593811035156,
+      "median_ms": 57.53135681152344,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 11,
+        "independent_error": 0,
+        "iterations": 6,
+        "method": "bounded-brent",
+        "status": "converged",
+        "success": true,
+        "trace_bytes": 2637,
+        "trace_events": 8,
+        "truth_level": "validated_approximate"
+      },
+      "preparation_ms": 0.9493827819824219,
+      "samples": 7,
+      "trace": "summary",
+      "warmups": 3,
+      "batch_wall_ms": 848.5904439999995
+    },
+    {
+      "case": "bounded-minimum",
+      "durations_ms": [
+        54.325103759765625,
+        60.537099838256836,
+        54.07428741455078,
+        65.64164161682129,
+        53.91287803649902,
+        61.04636192321777,
+        54.308176040649414
+      ],
+      "first_call_ms": 54.86702919006348,
+      "median_ms": 54.325103759765625,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 11,
+        "independent_error": 0,
+        "iterations": 6,
+        "method": "bounded-brent",
+        "status": "converged",
+        "success": true,
+        "trace_bytes": 2942,
+        "trace_events": 9,
+        "truth_level": "validated_approximate"
+      },
+      "preparation_ms": 0.1270771026611328,
+      "samples": 7,
+      "trace": "iterations",
+      "warmups": 3,
+      "batch_wall_ms": 888.8427209999991
+    },
+    {
+      "case": "ode-classroom",
+      "durations_ms": [
+        151.99732780456543,
+        144.8080539703369,
+        151.80730819702148,
+        144.96636390686035,
+        149.77240562438965,
+        143.1436538696289,
+        134.46521759033203
+      ],
+      "first_call_ms": 208.2991600036621,
+      "median_ms": 144.96636390686035,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 50,
+        "independent_error": 4.6961655453259255e-8,
+        "iterations": 8,
+        "method": "rk45",
+        "status": "converged",
+        "success": true,
+        "trace_bytes": 2569,
+        "trace_events": 3,
+        "truth_level": "validated_approximate"
+      },
+      "preparation_ms": 44.20208930969238,
+      "samples": 7,
+      "trace": "none",
+      "warmups": 3,
+      "batch_wall_ms": 1941.7499419999986
+    },
+    {
+      "case": "ode-classroom",
+      "durations_ms": [
+        150.62952041625977,
+        141.87026023864746,
+        150.4504680633545,
+        141.08991622924805,
+        149.06764030456543,
+        142.7001953125,
+        133.12792778015137
+      ],
+      "first_call_ms": 133.19134712219238,
+      "median_ms": 142.7001953125,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 50,
+        "independent_error": 4.6961655453259255e-8,
+        "iterations": 8,
+        "method": "rk45",
+        "status": "converged",
+        "success": true,
+        "trace_bytes": 2569,
+        "trace_events": 3,
+        "truth_level": "validated_approximate"
+      },
+      "preparation_ms": 0.14352798461914062,
+      "samples": 7,
+      "trace": "summary",
+      "warmups": 3,
+      "batch_wall_ms": 1782.8178829999997
+    },
+    {
+      "case": "ode-classroom",
+      "durations_ms": [
+        212.9199504852295,
+        202.21614837646484,
+        217.5273895263672,
+        206.03322982788086,
+        220.86572647094727,
+        207.18121528625488,
+        215.20566940307617
+      ],
+      "first_call_ms": 205.1529884338379,
+      "median_ms": 212.9199504852295,
+      "observation": {
+        "backend": "ordinary-python",
+        "evaluations": 50,
+        "independent_error": 4.6961655453259255e-8,
+        "iterations": 8,
+        "method": "rk45",
+        "status": "converged",
+        "success": true,
+        "trace_bytes": 5484,
+        "trace_events": 11,
+        "truth_level": "validated_approximate"
+      },
+      "preparation_ms": 0.13899803161621094,
+      "samples": 7,
+      "trace": "iterations",
+      "warmups": 3,
+      "batch_wall_ms": 2728.681959999998
+    }
+  ],
+  "complete": true,
+  "build": {
+    "completed_at": "2026-09-12T04:53:58.883Z",
+    "dist": {
+      "path": "dist",
+      "sha256": "2b71308506ebd438c694e6c4d9ed1859014f8f3e04ccfbe5d2f56ba9a006deb8",
+      "bytes": 179094658,
+      "files": 521
+    }
+  },
+  "session_startup_ms": 348.0739679999999,
+  "memory_after": {
+    "rss": 411951104,
+    "heapTotal": 9740288,
+    "heapUsed": 7635632,
+    "external": 4865076,
+    "arrayBuffers": 2599505
+  }
+}
