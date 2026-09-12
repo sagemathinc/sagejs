@@ -87,12 +87,42 @@
       "commit": "0c2945e1de400b0ee66150ae523491f7c712ce0a",
       "workspace_fingerprint": "9ef8ea214cf7bc20ad2de5c92633c0abb01af150936582e844288781f4792a8b",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=^source: test/dict-canonical-domain.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.114,
+      "started_at": "2026-09-12T10:28:16.203Z",
+      "commit": "d27c1b123d699de33b0a0502206e3d356515d090",
+      "workspace_fingerprint": "5626d827be21712bbeec51f847405dcf52bb83af9f66436b428d5c4832451113",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=^source: test/dict-canonical-domain.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.109,
+      "started_at": "2026-09-12T10:29:12.734Z",
+      "commit": "d27c1b123d699de33b0a0502206e3d356515d090",
+      "workspace_fingerprint": "9515b029b7bf3b6577e0377961da731e9fb9f4c715392bb30faee97449a1a56c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check test/dict-canonical-domain.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.029,
+      "started_at": "2026-09-12T10:29:13.498Z",
+      "commit": "d27c1b123d699de33b0a0502206e3d356515d090",
+      "workspace_fingerprint": "9515b029b7bf3b6577e0377961da731e9fb9f4c715392bb30faee97449a1a56c",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Source-only guarded dictionary-domain candidate: private provider API, WeakMap metadata, checked token hits, mixed equality fallback, original-key retention and shared mutation paths. This is not runtime-qualified or merge-ready; combined provider/runtime qualification belongs to the coordinator.",
+    "summary": "Source-only guarded dictionary-domain candidate: private provider API, WeakMap metadata, checked token hits, mixed equality fallback, original-key retention and shared mutation paths. Follow-up clarifies stable native-value tokens and adds a BigInt collision regression; no storage algorithm changes. This lane does not claim runtime qualification or merge-readiness; combined provider/runtime qualification belongs to the coordinator.",
     "risks": [
-      "Formatted core-runtime source is 907726 bytes versus the unchanged 903000 allowance (base 900094, growth 7632): architecture:packages and test:changed's merge gate fail. No build or allowance, mathematical, execution-memory or timeout change was made.",
+      "Initial d27c1b123 candidate core-runtime source was 907726 bytes versus the unchanged 903000 allowance (base 900094, growth 7632): architecture:packages and test:changed's merge gate failed. The doc/test follow-up ran only source guard and Node syntax checks; prior strict/resource receipts do not qualify this new workspace. No build or allowance, mathematical, execution-memory or timeout change was made.",
       "Runtime protocol tests and operation counts are authored but require a fresh same-source combined containers/provider build; no borrowed runtime receipt is accepted.",
       "Existing native namespace writes conservatively fall back to GENERAL on size changes; arbitrary private-map mutation is not a supported API."
     ],
