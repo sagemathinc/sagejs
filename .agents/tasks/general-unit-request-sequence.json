@@ -1,0 +1,110 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-unit-request-sequence",
+  "title": "General Unit Request Sequence",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Qualify shared rank-two public request sequences and exact resumed class maps without production changes",
+  "base_commit": "de26d2e2138106086410b161da208e9a6f33073b",
+  "claims": [
+    "test/general-unit-request-sequence.cjs",
+    "test/general-unit-resumed-map.cjs"
+  ],
+  "dependencies": [
+    "general-unit-map-integration"
+  ],
+  "references": [
+    "Parent-approved M1 delta: rootlab build/general-frontier/m1-exit-audit-delta-v2.md",
+    "Backed-up focused receipts and initial failure: rootlab build/general-frontier/m1-request-sequence-v1/README.md",
+    "Six corrected focused cases used the identical de26d2e21 source through the current borrowed integration runtime; this is not a build or native qualification of this lane."
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Exact class-map principality witnesses and rigorous regulator/unit identities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm merge:check",
+    "node --check test/general-unit-request-sequence.cjs",
+    "node --check test/general-unit-resumed-map.cjs",
+    "node --test --test-concurrency=1 test/general-unit-request-sequence.cjs test/general-unit-resumed-map.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.652,
+      "started_at": "2026-09-12T08:58:16.524Z",
+      "commit": "de26d2e2138106086410b161da208e9a6f33073b",
+      "workspace_fingerprint": "0cf35f89105e2e279a1ddec38f8a124ce18a79e4bec17fd2f7c8b510553dd724",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.763,
+      "started_at": "2026-09-12T09:03:45.347Z",
+      "commit": "de26d2e2138106086410b161da208e9a6f33073b",
+      "workspace_fingerprint": "f328ab24be2359e52d585e8634e10cb62a5a0a48875d7610faf07075e333f89d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check test/general-unit-request-sequence.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.034,
+      "started_at": "2026-09-12T09:05:41.253Z",
+      "commit": "de26d2e2138106086410b161da208e9a6f33073b",
+      "workspace_fingerprint": "f328ab24be2359e52d585e8634e10cb62a5a0a48875d7610faf07075e333f89d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check test/general-unit-resumed-map.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.031,
+      "started_at": "2026-09-12T09:05:41.943Z",
+      "commit": "de26d2e2138106086410b161da208e9a6f33073b",
+      "workspace_fingerprint": "f328ab24be2359e52d585e8634e10cb62a5a0a48875d7610faf07075e333f89d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.616,
+      "started_at": "2026-09-12T09:05:42.627Z",
+      "commit": "de26d2e2138106086410b161da208e9a6f33073b",
+      "workspace_fingerprint": "f328ab24be2359e52d585e8634e10cb62a5a0a48875d7610faf07075e333f89d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Test-only M1 request lifecycle slice: four fresh rank-two field/order sequences preserve real discovery counters and exact shared context/presentation/collector while serving class maps, compact unit maps and public regulator requests. Two durable fresh-process resumption regressions now check exact class-coordinate and principality witnesses before the existing unit-map replay checks. All six corrected cases passed on source-identical borrowed integration runtime; source fingerprints and exact intervals are retained in backed-up evidence. Strict 391-module, merge and Node syntax checks pass in this lane.",
+    "risks": [
+      "The lane has no dist build. Borrowed integration-runtime diagnostics do not establish lane build, full suite, native/platform, smoke or competitive qualification; keep the stacked PR draft.",
+      "Initial cubic test failed on mixed int/RationalEndpoint ordering; the complete failure is retained. Parent reviewed the endpoint-only test correction before one corrected six-case pass; no production code or cap changed.",
+      "Regulator requests 100/200 specify working precision. Actual returned 128/200-bit histories and exact bounds are recorded; the unchanged analytic default absolute tolerance is 64 bits, not claimed 100/200-bit absolute accuracy.",
+      "Generic unconditional upgrades, arbitrary detached factored membership and broader complex/rank/degree replay capabilities remain outside this test-only slice."
+    ],
+    "next_steps": [
+      "Integrate the two tests into the general-unit-map-integration branch and run current normal-root focused/full/native/platform qualification after coordinated runtime prerequisites; preserve the existing individual 180-second child caps.",
+      "Bind these focused passes to the eventual frozen smoke outcome and explicit M1 exit report without promoting borrowed-source diagnostics or source-only fixtures to broader qualification."
+    ]
+  }
+}
