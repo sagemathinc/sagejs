@@ -4,7 +4,7 @@
   "id": "general-reference-repeat-report",
   "title": "General Reference Repeat Report",
   "lane": "arithmetic-algebra",
-  "status": "blocked",
+  "status": "review",
   "owner": "user",
   "objective": "Adjudicate predeclared retained reference batches without asserting numerical equivalence or certification",
   "base_commit": "2a4719e2d8fb0ca6a8debc80d3410e33da3172d9",
@@ -34,6 +34,7 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "pnpm test:changed -- --base 2a4719e2d8fb0ca6a8debc80d3410e33da3172d9",
     "pnpm test:baselib:strict",
     "pnpm test:native",
     "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_review_repeats.py",
@@ -180,18 +181,79 @@
       "commit": "1d57381352f86eb79ca74e167c13a5740c8e5f73",
       "workspace_fingerprint": "ce53a0aaac905d42ab9c4b54b779b5c8cd397d493c5a6afe4c9bbecd6d04b175",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 537.357,
+      "started_at": "2026-09-12T19:08:57.149Z",
+      "commit": "b63c46d044f7c41e72b5f2acd270895c4bdabbeb",
+      "workspace_fingerprint": "655e93cefddfd6a4f8784dc365902ab3679b9350a30fe307c15393a206b25a05",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.651,
+      "started_at": "2026-09-12T19:18:04.672Z",
+      "commit": "b63c46d044f7c41e72b5f2acd270895c4bdabbeb",
+      "workspace_fingerprint": "655e93cefddfd6a4f8784dc365902ab3679b9350a30fe307c15393a206b25a05",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_review_repeats.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.558,
+      "started_at": "2026-09-12T19:19:22.382Z",
+      "commit": "b63c46d044f7c41e72b5f2acd270895c4bdabbeb",
+      "workspace_fingerprint": "655e93cefddfd6a4f8784dc365902ab3679b9350a30fe307c15393a206b25a05",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.972,
+      "started_at": "2026-09-12T19:19:23.590Z",
+      "commit": "b63c46d044f7c41e72b5f2acd270895c4bdabbeb",
+      "workspace_fingerprint": "655e93cefddfd6a4f8784dc365902ab3679b9350a30fe307c15393a206b25a05",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/runner/test_batch_evidence.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.203,
+      "started_at": "2026-09-12T19:19:27.213Z",
+      "commit": "b63c46d044f7c41e72b5f2acd270895c4bdabbeb",
+      "workspace_fingerprint": "655e93cefddfd6a4f8784dc365902ab3679b9350a30fe307c15393a206b25a05",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 2a4719e2d8fb0ca6a8debc80d3410e33da3172d9",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 141.203,
+      "started_at": "2026-09-12T19:19:28.054Z",
+      "commit": "b63c46d044f7c41e72b5f2acd270895c4bdabbeb",
+      "workspace_fingerprint": "655e93cefddfd6a4f8784dc365902ab3679b9350a30fe307c15393a206b25a05",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Separate offline retained-batch repeat adjudicator binds a predispatch request plan to postexecution custody, validates all retained members, retains censored denominators, and reports per-engine repeated timing without claiming certification or equivalent regulators. Legacy discovery pairer is unchanged.",
+    "summary": "Separate offline retained-batch repeat adjudicator binds predispatch request plans to postexecution custody, validates complete retained members, exact request bytes and per-run caps/controls, and preserves censored denominators without claiming certification or equivalent regulators. PARI completion nonce retention leaves execution and scheduling unchanged. All six required validation commands now have fresh passing receipts at b63c46d044f7c41e72b5f2acd270895c4bdabbeb and workspace fingerprint 655e93cefddfd6a4f8784dc365902ab3679b9350a30fe307c15393a206b25a05: native, strict, 19 report tests, 21 supervisor tests, 12 batch tests, and exact-base changed checks including 222 unit files. Legacy discovery pairer is unchanged.",
     "risks": [
       "Independent replay, authenticated predeclaration chronology, and warm-JIT qualification remain explicitly false.",
       "PARI approximate regulators and Hecke enclosures remain different numerical guarantees.",
-      "Focused Python regressions and merge invariants pass; the broader Node unit/build validation was not run in this bounded slice. Keep PR draft pending integration validation."
+      "The initial focused-only validation limitation is superseded by the completed local build and six fresh passing validation receipts. Native passed in 537.357 seconds, strict in 54.651 seconds, and exact-base changed checks in 141.203 seconds. Final-head GitHub/platform checks and merge-stack review remain coordinator-owned; no readiness flag was changed.",
+      "Historical PARI receipts without retained completion markers cannot satisfy the new exact transport-hash admission check and are not rewritten. This validation work did not launch a reference CAS benchmark, touch opt, or change the measurement ledger."
     ],
     "next_steps": [
       "Review the predeclared-plan/postexecution-custody interface and report labels before using coordinator-owned receipts.",
-      "Integrate after prerequisite PR273 and run broader required validation before marking ready. No CAS or measurement jobs were dispatched."
+      "Inspect final-head CI and the intentional PR275 to PR273 prerequisite stack before marking ready. All local required checks now pass; no CAS or measurement jobs were dispatched by this lane."
     ]
   }
 }
