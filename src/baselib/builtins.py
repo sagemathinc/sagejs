@@ -3755,21 +3755,6 @@ def _builtins_is_python_class(value: Any) -> _Bool:
     return _builtins_get_member(value, "__python_type__") is ρσ_type
 
 
-def _builtins_prototype_member(
-    prototype: Any,
-    name: _Str,
-) -> Any:
-    current = prototype
-    while current is not None and current is not runtime.undefined:
-        descriptor = runtime.object.getOwnPropertyDescriptor(current, name)
-        if descriptor is not runtime.undefined:
-            # Do not invoke a property getter while merely inspecting docs.
-            # Ordinary Python methods are stored as descriptor values.
-            return runtime.reflect.get(descriptor, "value")
-        current = runtime.object.getPrototypeOf(current)
-    return runtime.undefined
-
-
 def ρσ_help(item: Any = runtime.undefined) -> None:
     """Print concise Python-style help derived from Sage.js metadata."""
     module = _builtins_default_import(
@@ -7201,6 +7186,13 @@ def ρσ_issubclass(cls: Any, candidates: Any) -> _Bool:
     )
 
 
+def _builtins_optional_attribute(value: Any, name: _Str) -> Any:
+    try:
+        return ρσ_getattr_internal(value, name, runtime.undefined)
+    except AttributeError:
+        return runtime.undefined
+
+
 def ρσ_divmod(left: Any, right: Any) -> Any:
     if (
         runtime.strict_equal(runtime.jstype(left), "number")
@@ -7213,54 +7205,39 @@ def ρσ_divmod(left: Any, right: Any) -> Any:
         quotient = runtime.math.floor(runtime.native_div(left, right))
         remainder = runtime.native_sub(left, runtime.native_mul(quotient, right))
         return runtime.math_tuple([quotient, remainder])
-    left_class = _builtins_get_member(left, "constructor")
-    right_class = _builtins_get_member(right, "constructor")
-    right_reflected_descriptor = runtime.object.getOwnPropertyDescriptor(
-        _builtins_get_member(right_class, "prototype"),
-        "__rdivmod__",
-    )
-    right_reflected = (
-        runtime.undefined
-        if right_reflected_descriptor is runtime.undefined
-        else runtime.reflect.get(right_reflected_descriptor, "value")
-    )
-    left_reflected = _builtins_prototype_member(
-        _builtins_get_member(left_class, "prototype"),
-        "__rdivmod__",
-    )
-    left_direct = _builtins_get_special_member(left, "__divmod__")
-    right_reflected_selected = _builtins_get_special_member(right, "__rdivmod__")
-    right_reflected_function = _builtins_get_member(right_reflected, "__func__")
-    if right_reflected_function is runtime.undefined:
-        right_reflected_function = right_reflected
-    left_reflected_function = _builtins_get_member(left_reflected, "__func__")
-    if left_reflected_function is runtime.undefined:
-        left_reflected_function = left_reflected
-    reflected_first = (
+    left_class = _builtins_attribute_owner(left)
+    right_class = _builtins_attribute_owner(right)
+    reflected_first = False
+    if (
         _builtins_is_python_class(left_class)
         and _builtins_is_python_class(right_class)
         and left_class is not right_class
         and ρσ_issubclass(right_class, left_class)
-        and right_reflected_descriptor is not runtime.undefined
-        and right_reflected_function is not left_reflected_function
-        and right_reflected_selected is not runtime.undefined
-    )
+    ):
+        right_reflected = _builtins_optional_attribute(right_class, "__rdivmod__")
+        if right_reflected is not runtime.undefined:
+            left_reflected = _builtins_optional_attribute(left_class, "__rdivmod__")
+            reflected_first = left_reflected is runtime.undefined or (
+                left_reflected is not right_reflected
+                and left_reflected != right_reflected
+            )
     if reflected_first:
-        result = _builtins_call_selected_special(
-            right, right_reflected_selected, [left]
-        )
+        method = _builtins_get_special_member(right, "__rdivmod__")
+        if method is not runtime.undefined:
+            result = _builtins_call_selected_special(right, method, [left])
+            if result is not NotImplemented:
+                return result
+    method = _builtins_get_special_member(left, "__divmod__")
+    if method is not runtime.undefined:
+        result = _builtins_call_selected_special(left, method, [right])
         if result is not NotImplemented:
             return result
-    if left_direct is not runtime.undefined:
-        result = _builtins_call_selected_special(left, left_direct, [right])
-        if result is not NotImplemented:
-            return result
-    if not reflected_first and right_reflected_selected is not runtime.undefined:
-        result = _builtins_call_selected_special(
-            right, right_reflected_selected, [left]
-        )
-        if result is not NotImplemented:
-            return result
+    if left_class is not right_class and not reflected_first:
+        method = _builtins_get_special_member(right, "__rdivmod__")
+        if method is not runtime.undefined:
+            result = _builtins_call_selected_special(right, method, [left])
+            if result is not NotImplemented:
+                return result
     if runtime.equals(right, 0):
         raise runtime.zero_division_error("integer division or modulo by zero")
     quotient = ρσ_operator_floordiv(left, right)
