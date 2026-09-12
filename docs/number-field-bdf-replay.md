@@ -70,8 +70,9 @@ not a class/unit certificate or a live map/context token.
 ## Limits and qualification
 
 No arithmetic limit is raised. Generation remains degree 2–10, bound and
-rational primes at most 1000, at most 128 input/required ideals and 16 MiB
-estimated plan-record memory. Completion retains degree at most four, 32
+rational prime values at most 1000, a plan cap of 500 rational primes and
+5000 prime ideals, at most 128 input/required ideals, and 16 MiB estimated
+plan-record memory. Completion retains degree at most four, 32
 factor-base primes, 128 relations, 32-bit defining coefficients, 128-bit
 discriminants and the existing compact-product limits. The existing analytic
 precision, prime and refinement ceilings remain the sole analytic policy.
@@ -134,9 +135,17 @@ measured the following. The normalization is exactly the packaged
 Relative to the shared-data factoring baseline this adds 3,628 Python bytes
 and 15,799 canonical JavaScript bytes. No native core/object or foreign export
 is added. Existing native arena and analytic work limits are unchanged;
-fresh integrated build time, peak memory and platform qualification remain
+fresh integrated build time, enforced process-tree memory qualification and platform checks remain
 pending. The earlier 739.77-second implementation build predates the lazy
 import fix and is not claimed as the final source's build receipt.
+
+A subsequent unchanged-source POSIX-supervised run of the three BDF-specific
+tests passed in 228.65 seconds (223.53 user CPU seconds and 1.60 system CPU
+seconds). Reaped-child `ru_maxrss` was 701,776 KiB, about 685 MiB. This is
+propagated child high-water accounting, not the simultaneous process-tree peak
+and not a 4 GiB memory-enforced qualification. The existing 300-second test
+limit stayed unchanged; the outer supervisor allowed 350 seconds. This local
+run is a resource diagnostic, not a controlled performance measurement.
 
 Package ownership/strict registration for the new replay modules and explicit
 source-inventory review belong to the integration lane. The standalone

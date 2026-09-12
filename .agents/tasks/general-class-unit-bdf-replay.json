@@ -110,6 +110,16 @@
       "commit": "ecc07909dcbca9ae7a09fdb3555a269d60b94f37",
       "workspace_fingerprint": "fe787df6f8c0042530d152e7ea915b9979d41b6404bdcb468ae766a59cc5f550",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /home/user/sagejs-worktrees/class-unit-rank-two-frontier/bench/class-unit-groups/general-frontier/reference/runner/supervise.py 350 node --test test/general-class-unit-bdf-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 228.688,
+      "started_at": "2026-09-12T06:34:39.141Z",
+      "commit": "db95d1efe4782419bf0b0b7676c649dabcf80404",
+      "workspace_fingerprint": "fe787df6f8c0042530d152e7ea915b9979d41b6404bdcb468ae766a59cc5f550",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
