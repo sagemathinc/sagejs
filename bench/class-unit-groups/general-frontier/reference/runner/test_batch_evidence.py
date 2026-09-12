@@ -1,8 +1,11 @@
 """Offline whole-batch retention contracts; no CAS or mathematical proof claim."""
 
 import copy
+import hashlib
 import json
 from pathlib import Path
+import sys
+import tempfile
 import unittest
 from unittest import mock
 
@@ -38,6 +41,48 @@ def check(engine, value, policy="conditional-grh", bits=200, iterations=3):
 
 
 class BatchEvidence(unittest.TestCase):
+    def test_pure_toy_helper_preserves_reviewed_body_and_transitive_pin(self):
+        root = Path(__file__).resolve().parents[1]
+        helper = root / "hecke/toy-replay.jl"
+        # Exact moved 72-line function block from source 478a94d3a, not a rewrite.
+        self.assertEqual(
+            hashlib.sha256(helper.read_bytes()).hexdigest(),
+            "e60e9231e845d03861deff56db642a1d6f23be2a1e847a939054a5b44b691123",
+        )
+        self.assertNotIn("using Test", helper.read_text())
+        bootstrap = (root / "persistent/hecke-bootstrap.jl").read_text()
+        self.assertIn('"toy-replay.jl"', bootstrap)
+        self.assertNotIn('"generator-witness-smoke.jl"', bootstrap)
+        standalone = (root / "hecke/generator-witness-smoke.jl").read_text()
+        self.assertIn("using Test", standalone)
+        self.assertIn('include("toy-replay.jl")', standalone)
+        self.assertIn('@testset "literal Hecke class-generator witnesses"', standalone)
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            for name in (
+                "screen.jl",
+                "transport.jl",
+                "toy-replay.jl",
+                "Project.toml",
+                "Manifest.toml",
+            ):
+                (directory / name).write_text("offline fixture")
+            factory, provenance = supervisor.worker_factory(
+                "hecke",
+                Path(sys.executable),
+                directory / "screen.jl",
+                directory,
+                directory,
+                toy_replay=True,
+            )
+            self.assertIn(str(directory / "toy-replay.jl"), provenance["sha256"])
+            self.assertNotIn(
+                str(directory / "generator-witness-smoke.jl"), provenance["sha256"]
+            )
+            (directory / "toy-replay.jl").write_text("changed fixture")
+            with self.assertRaisesRegex(ValueError, "changed after provenance"):
+                factory(b"offline-marker")
+
     def test_live_matrix_is_frozen_and_replays_all_thirty_six_outputs(self):
         smoke = policy_tests.local_smoke
         requests = smoke.matrix_requests(batch_evidence=True)

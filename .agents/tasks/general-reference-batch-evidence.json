@@ -11,6 +11,8 @@
   "claims": [
     "bench/class-unit-groups/general-frontier/reference/pari-screen.gp",
     "bench/class-unit-groups/general-frontier/reference/hecke/screen.jl",
+    "bench/class-unit-groups/general-frontier/reference/hecke/generator-witness-smoke.jl",
+    "bench/class-unit-groups/general-frontier/reference/hecke/toy-replay.jl",
     "bench/class-unit-groups/general-frontier/reference/runner/screen-batch.py",
     "bench/class-unit-groups/general-frontier/reference/runner/summarize-persistent.py",
     "bench/class-unit-groups/general-frontier/reference/runner/summarize-screen.py",
@@ -85,6 +87,26 @@
       "commit": "478a94d3aca41d912fef731db17284f2f7105c36",
       "workspace_fingerprint": "95cad8236774dd74092607d71867678d60730e2f34486abd14cf33affbdb2e07",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.122,
+      "started_at": "2026-09-12T17:30:51.675Z",
+      "commit": "03c4f38a6cafc7a962c152361a79c2afce8e3f79",
+      "workspace_fingerprint": "92d44725fe310539d5ac594ba0f2c85ef2fd3dda410912e1c5d91d741fbf0602",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -B bench/class-unit-groups/general-frontier/reference/persistent/test_supervisor.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.059,
+      "started_at": "2026-09-12T17:30:53.450Z",
+      "commit": "03c4f38a6cafc7a962c152361a79c2afce8e3f79",
+      "workspace_fingerprint": "92d44725fe310539d5ac594ba0f2c85ef2fd3dda410912e1c5d91d741fbf0602",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
@@ -93,6 +115,7 @@
       "This is reference evidence plumbing, not independent completeness proof or performance qualification. PARI remains a working-precision regulator approximation and Hecke retains its stronger absolute-radius enclosure.",
       "The coordinator prepaid 400 seconds for one <=180-second matrix per reference. Actual whole diagnostic walls were 0.419546908 seconds for GP and 31.891281789 seconds for Hecke; all 24 requests and 36 toy replays per engine passed with processes closed and driver source/runtime pins unchanged. Raw custody is rootlab build/general-frontier/reference-batch-evidence-live-v1. No retry or additional CAS remains authorized.",
       "No native or full build was requested or run in this narrow worktree. Required native/platform gates remain pending and no resource allowances were changed.",
+      "The follow-up pure toy-replay helper split preserves the exact reviewed arithmetic block and all standalone Test testsets, but changes bootstrap/provenance source. Its 68 runner and 20 supervisor tests pass; live evidence on 478a94d remains historical until the split passes its separately prepaid gate. Deployment source inventories must include hecke/toy-replay.jl.",
       "Exact-base test:changed passed merge invariants then failed before the unit suite on missing dist/tools/compiler.js in this intentionally unbuilt worktree. The failed receipt is retained; no native/build gate is waived.",
       "PARI batch envelope assembly is inside the worker timer; Hecke final transport envelope retains its historical outside-timer boundary. Each engine materializes every compact member inside its timer. The timing distinction is documented.",
       "pnpm parallel:new used --no-install; the first required pnpm parallel:check nevertheless provisioned the pinned local dependency graph with 144 reused packages and zero downloads. Native builds were deferred."

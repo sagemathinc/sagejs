@@ -780,7 +780,7 @@ def worker_factory(
             HERE / "hecke-bootstrap.jl",
         ]
         if toy_replay:
-            files.append(worker.with_name("generator-witness-smoke.jl"))
+            files.append(worker.with_name("toy-replay.jl"))
 
     hashes = {str(path): digest(path) for path in files}
 

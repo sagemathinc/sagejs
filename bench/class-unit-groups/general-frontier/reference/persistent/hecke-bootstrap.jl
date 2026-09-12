@@ -2,8 +2,7 @@
 include(ARGS[1])
 toy_replay = length(ARGS) == 3 && ARGS[3] == "--toy-replay"
 if toy_replay
-    ENV["SAGEJS_FRONTIER_TOY_REPLAY"] = "1"
-    include(joinpath(dirname(ARGS[1]), "generator-witness-smoke.jl"))
+    include(joinpath(dirname(ARGS[1]), "toy-replay.jl"))
 end
 println(ARGS[2])
 flush(stdout)

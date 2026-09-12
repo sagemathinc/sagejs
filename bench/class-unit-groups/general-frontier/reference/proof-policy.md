@@ -115,6 +115,18 @@ merge invariants then fails because this narrow worktree has no built
 `dist/tools/compiler.js`; that failure is retained. Native/build/platform
 qualification is not inferred from the toy matrix, and this remains draft work.
 
+The subsequent pure-helper split moves the exact toy arithmetic functions into
+`hecke/toy-replay.jl` without edits (SHA-256
+`e60e9231e845d03861deff56db642a1d6f23be2a1e847a939054a5b44b691123`).
+The standalone regression still imports `Test` and retains its entire testset;
+the diagnostic bootstrap loads only the pure helper. The worker factory pins
+that transitive helper and includes its source in diagnostic custody, rejecting
+a change between factory preparation and process construction. This removes an
+unneeded test-framework cache dependency without disabling any toy checks or
+changing Julia's strict existing-image policy. Historical live results above
+remain tied to the pre-split source; the split requires its own authorized live
+gate before making any new runtime claim.
+
 ## Complete-request boundary
 
 Every iteration constructs a fresh field and performs all requested work. The
