@@ -1,0 +1,84 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-annotation-dictionary-oracle",
+  "title": "Python Annotation Dictionary Oracle",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Preserve annotation dictionary semantic and emission oracles before a separately owned flat-pair lowering proposal",
+  "base_commit": "02a683d213072c3129da1f71e2aa47de447cfc4a",
+  "claims": [
+    "test/python-annotation-dictionary-oracle.cjs",
+    "test/fixtures/python-annotation-dictionary-future.py",
+    "test/fixtures/python-annotation-dictionary-evaluated.py",
+    "docs/python-annotation-dictionary-proposal.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/sagemathinc/sagejs/discussions/104",
+    "https://github.com/sagemathinc/sagejs/pull/266"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/python-annotation-dictionary-oracle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.158,
+      "started_at": "2026-09-12T11:14:25.730Z",
+      "commit": "02a683d213072c3129da1f71e2aa47de447cfc4a",
+      "workspace_fingerprint": "72959d442165348a0a1b95613364d7b8823f745f1ad6cc1736446c5510495056",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/python-annotation-dictionary-oracle.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.166,
+      "started_at": "2026-09-12T11:15:13.724Z",
+      "commit": "02a683d213072c3129da1f71e2aa47de447cfc4a",
+      "workspace_fingerprint": "df1815d5a456034643f6fff0dd926f6c8356da8c6181bb611b61cfc007916bd5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.635,
+      "started_at": "2026-09-12T11:15:14.539Z",
+      "commit": "02a683d213072c3129da1f71e2aa47de447cfc4a",
+      "workspace_fingerprint": "df1815d5a456034643f6fff0dd926f6c8356da8c6181bb611b61cfc007916bd5",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Tests-only proposal checkpoint. CPython 3.14.4 oracles and copied419a raw baselib emission checks pass; all four public candidate cases retain missing __proto__ failures. No source edits or full build; mandatory compiler-runtime build checks remain pending, not waived.",
+    "risks": [
+      "Copied419a artifacts were historical diagnostic inputs; accidental docs wrapper build was aborted and local dist is now contaminated. Original419a untouched; direct docs inventory validation failed.",
+      "Annotated method self failure is retained but masked by earlier special-key failure in combined fixture.",
+      "Explicit legacy eager mode is not CPython 3.14 deferred default compatibility."
+    ],
+    "next_steps": [
+      "Compiler owner reviews bounded flat-pair strategy before source changes.",
+      "Add isolated method and emitted public flat-pair negative-mutant checks with implementation.",
+      "Run own exact-source full qualification only after implementation authority."
+    ]
+  }
+}
