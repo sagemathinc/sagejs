@@ -38,6 +38,7 @@ p0, p1 = P.projection(0), P.projection(1)
 assert p0 * i0 == identity and p0 * i1 == J.zero_morphism()
 assert i0 * p0 + i1 * p1 == P.identity_morphism()
 diagonal = i0 + i1
+assert sum([i0, i1], J.zero_morphism(P)) == diagonal
 assert diagonal.is_injective()
 assert diagonal.image().dimension() == 1
 assert (p0 + p1).kernel()[1].dimension() == 1
@@ -96,6 +97,12 @@ T = J0(37).hecke_morphism(2)
 assert T.rank() == 2 and T.connected_kernel().dimension() == 1
 assert T.component_group().order() >= 1
 assert T.image().inclusion_map().verify()
+
+# This formerly exceeded two minutes in Wasm in portable integral rank and
+# transformed Smith. Pin the geometric answer from Sage, not timing.
+large_hecke = J0(389).hecke_morphism(2) - 1
+assert large_hecke.rank() == 64
+assert large_hecke.component_group().invariants() == (2,) * 8 + (30, 30)
 
 for low, high in [(11, 22), (11, 33), (11, 44), (11, 121)]:
     for d in divisors(high // low):

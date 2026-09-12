@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "b8567473f0e8370e254b5c6396d91e14ed475f9691720be01ed5306b11b38325",
+  "source_sha256": "de6c94ab36689640d71f806f30dbe5a1e20c8ed2207e7fb320643e4eddcc8ae7",
   "counts": {
     "total": 1091,
     "by_kind": {
@@ -15,14 +15,14 @@
     "by_disposition": {
       "compiled-source": 55,
       "desktop-only": 47,
-      "generated-wasm": 364,
-      "portable-fallback": 575,
+      "generated-wasm": 365,
+      "portable-fallback": 574,
       "shared-core": 50
     },
     "by_status": {
-      "available": 610,
+      "available": 611,
       "desktop-only": 47,
-      "fallback": 434
+      "fallback": 433
     }
   },
   "workflow_aliases": {
@@ -3324,14 +3324,14 @@
     {
       "id": "ffi:flint:fmpz_matrix_snf",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "Exact Smith invariant factors use the shared generated FLINT adapter, avoiding unnecessary unimodular transformation matrices. A correct source fallback remains for unavailable backends."
     },
     {
       "id": "ffi:flint:fmpz_matrix_snf_into",

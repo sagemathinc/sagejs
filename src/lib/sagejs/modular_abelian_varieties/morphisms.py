@@ -159,7 +159,10 @@ class ModularAbelianVarietyMap:
 
     def rank(self) -> int:
         if self._rank_cache is None:
-            self._rank_cache = self._matrix.rank()
+            # Rank is rational: use the exact QQ matrix path in every runtime.
+            # Portable ZZ rank can fall back to division-free elimination with
+            # severe coefficient growth even for modest homology matrices.
+            self._rank_cache = self._matrix.change_ring(sage.QQ).rank()
         return self._rank_cache
 
     def kernel_lattice(self) -> Any:

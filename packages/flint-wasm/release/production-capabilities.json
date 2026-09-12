@@ -209,6 +209,7 @@
         "ffi:flint:fmpz_matrix_serialize",
         "ffi:flint:fmpz_matrix_set_block",
         "ffi:flint:fmpz_matrix_set_entry",
+        "ffi:flint:fmpz_matrix_snf",
         "ffi:flint:fmpz_matrix_stack",
         "ffi:flint:fmpz_matrix_submatrix",
         "ffi:flint:fmpz_matrix_swap_columns",
