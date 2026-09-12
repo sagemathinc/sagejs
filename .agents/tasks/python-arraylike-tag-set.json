@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-arraylike-tag-set",
+  "title": "Python Arraylike Tag Set",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Remove generic list membership from internal arraylike tag classification without changing recognized values or tag evaluation",
+  "base_commit": "c4c126d09ba4f5c2fb30001fd8b561b24105d80f",
+  "claims": [
+    "src/baselib/builtins.py",
+    "test/python-arraylike-tag-set.cjs",
+    "docs/python-arraylike-tag-set.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "fail",
+      "exit_code": 143,
+      "seconds": 155.352,
+      "started_at": "2026-09-12T08:34:11.804Z",
+      "commit": "c4c126d09ba4f5c2fb30001fd8b561b24105d80f",
+      "workspace_fingerprint": "50ca1b625a851ad93a05570ebfdd62519319829a2a3595c602d7ffb30755205e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
