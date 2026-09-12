@@ -98,3 +98,27 @@ platforms, measure startup/payload/RSS, and integrate prepared-statistics
 descriptors from draft #240. The ARM result recorded in PR #259 predates this
 routing change and is not claimed as its qualification. Public statistics still
 misses its 10 ms target; no N0–N6 milestone is declared complete here.
+
+## Full-catalog integration checkpoint
+
+The first full local build at `4291d2368` passed stages 1–7, including all 41
+production kernel families. Its v5 catalog is complete and authenticates through
+the new benchmark reader. The one-family dependency-free pack is 26,856 bytes;
+the 40-family exact pack is 28,489,560 bytes. These are addon file sizes, not
+compressed product payload or measured startup/RSS savings.
+
+Stage 8 correctly stopped because the previously qualified NLopt manifest
+bound the old `tools/resources.ts`. The integration updates that reviewed hash,
+adds its new `tools/native-pack-layout.js` dependency, and explicitly returns
+the manifest to `pending_source_current_requalification`. The NLopt algorithm,
+adapter, Wasm bytes and historical `qualification-v1.json` are unchanged.
+Ordinary pending-state verification passes; `--require-qualified` still rejects.
+All 35 focused NLopt backend/ABI/promotion tests pass. This is not promotion or
+release qualification; a subsequent complete build and source-current release
+evidence are still required. Architecture and strict Python (393 modules) pass.
+
+Earlier attempts remain visible: unsupported test-tier declarations initially
+blocked build startup and were corrected in `4291d2368`; an extra Node 22
+holdout test was scheduled during module-cache reconstruction and failed on
+the absent runtime cache (16 passed, one failed). That run is not claimed as
+qualification and is rerun only after the cache is stable.
