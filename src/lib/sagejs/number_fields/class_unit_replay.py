@@ -434,6 +434,7 @@ def _replay_component_payload(payload: dict[str, Any]) -> tuple[Any, ...]:
 
 
 COMPLETION_SCHEMA = "sagejs.number-fields/class-unit-conditional-completion-v1"
+BDF_COMPLETION_SCHEMA = "sagejs.number-fields/class-unit-conditional-completion-v2"
 COMPACT_INDEX_SCHEMA = "sagejs.number-fields/compact-bf-index-v1"
 
 
@@ -444,17 +445,40 @@ def _sealed(body: dict[str, Any]) -> dict[str, Any]:
 
 
 def _preflight_completion(payload: dict[str, Any]) -> None:
-    _keys(payload, "schema components generation analytic content_sha256")
-    _require(payload["schema"] == COMPLETION_SCHEMA, "unknown completion schema")
+    bdf = payload.get("schema") == BDF_COMPLETION_SCHEMA
+    _keys(
+        payload,
+        "schema components generation analytic content_sha256"
+        + (" assumptions" if bdf else ""),
+    )
+    _require(
+        payload["schema"] in (COMPLETION_SCHEMA, BDF_COMPLETION_SCHEMA),
+        "unknown completion schema",
+    )
     body = dict(payload)
     digest = body.pop("content_sha256")
     _require(type(digest) is str and _hash(body) == digest, "completion hash mismatch")
     components = _decode(_json(payload["components"]))
     _preflight(components)
     from sagejs.number_fields import class_unit_generation_replay as generation
+    from sagejs.number_fields.class_group_proof_contracts import (
+        BDF_CLASS_CHARACTER_GRH,
+        BELABAS_FRIEDMAN_ZETA_GRH,
+    )
 
     generation_payload = _decode(_json(payload["generation"]))
     generation._preflight(generation_payload)
+    _require(
+        generation_payload["schema"]
+        == (generation.BDF_SCHEMA if bdf else generation.SCHEMA),
+        "completion and generation versions differ",
+    )
+    if bdf:
+        _require(
+            payload["assumptions"]
+            == sorted([BDF_CLASS_CHARACTER_GRH, BELABAS_FRIEDMAN_ZETA_GRH]),
+            "conditional theorem hypotheses differ",
+        )
     _require(
         generation_payload["field_order"] == components["field_order"]
         and generation_payload["factor_base"] == components["factor_base"],
@@ -529,26 +553,48 @@ def _preflight_completion(payload: dict[str, Any]) -> None:
     )
 
 
-def export_conditional_class_unit(source: Any) -> str:
+def export_conditional_class_unit(
+    source: Any, *, generation_theorem: str = "minkowski"
+) -> str:
     """Bind compact terminal claims for independent conditional replay.
 
     This format is distinct from the ordinary-coordinate v1 index certificate.
     Export does not establish detached completeness; the receiver rechecks it.
+    Explicit `generation_theorem="bdf"` emits v2 with both named hypotheses.
     """
+    _require(
+        generation_theorem in ("minkowski", "bdf"),
+        "unsupported generation theorem",
+    )
     from sagejs.number_fields import class_group_factor_base as bases
     from sagejs.number_fields import class_unit_generation_replay as generation
+    from sagejs.number_fields.class_group_proof_contracts import (
+        BDF_CLASS_CHARACTER_GRH,
+        BELABAS_FRIEDMAN_ZETA_GRH,
+    )
     from sagejs.number_fields.unit_coordinates import _recognized_authority
 
     components = _decode(export_terminal_components(source))
     order, _, evidence = _recognized_authority(source)
-    generating_base = _sealed(
-        {
-            "schema": generation.SCHEMA,
-            "field_order": components["field_order"],
-            "factor_base": components["factor_base"],
-            "claimed_minkowski_bound": bases.minkowski_bound(order).bound,
-        }
-    )
+    bdf = generation_theorem == "bdf"
+    generation_body: dict[str, Any] = {
+        "schema": generation.BDF_SCHEMA if bdf else generation.SCHEMA,
+        "field_order": components["field_order"],
+        "factor_base": components["factor_base"],
+    }
+    if bdf:
+        generation_body.update(
+            {
+                "theorem": "bdf",
+                "assumptions": [BDF_CLASS_CHARACTER_GRH],
+                "claimed_bound": bases.bdf_bound(
+                    order, max_bound=generation.MAX_BOUND
+                ).bound,
+            }
+        )
+    else:
+        generation_body["claimed_minkowski_bound"] = bases.minkowski_bound(order).bound
+    generating_base = _sealed(generation_body)
     certificate = evidence._analytic_certificate
     analytic = {
         "schema": COMPACT_INDEX_SCHEMA,
@@ -558,23 +604,24 @@ def export_conditional_class_unit(source: Any) -> str:
         "index_bound": certificate.index_bound,
         "analytic_proof": certificate.analytic_proof,
     }
-    text = _json(
-        _sealed(
-            {
-                "schema": COMPLETION_SCHEMA,
-                "components": components,
-                "generation": generating_base,
-                "analytic": analytic,
-            }
+    body: dict[str, Any] = {
+        "schema": BDF_COMPLETION_SCHEMA if bdf else COMPLETION_SCHEMA,
+        "components": components,
+        "generation": generating_base,
+        "analytic": analytic,
+    }
+    if bdf:
+        body["assumptions"] = sorted(
+            [BDF_CLASS_CHARACTER_GRH, BELABAS_FRIEDMAN_ZETA_GRH]
         )
-    )
+    text = _json(_sealed(body))
     _preflight_completion(_decode(text, proof_scalars=True))
     _recognized_authority(source)
     return text
 
 
 def replay_conditional_class_unit(text: str) -> dict[str, Any]:
-    """Prove bounded class/unit completeness conditional on explicit zeta GRH.
+    """Prove bounded completeness under the envelope's explicit hypotheses.
 
     Returns detached evidence only, never a producer context or map token.
     Every exact and analytic check is recomputed on verifier-owned objects.
@@ -589,6 +636,7 @@ def replay_conditional_class_unit(text: str) -> dict[str, Any]:
     from sagejs.number_fields import class_unit_generation_replay as generation
     from sagejs.number_fields.class_group_proof_contracts import (
         BELABAS_FRIEDMAN_ZETA_GRH,
+        analytic_class_unit_assumptions,
     )
 
     checked_generation = generation._check_generating_base(
@@ -596,9 +644,16 @@ def replay_conditional_class_unit(text: str) -> dict[str, Any]:
     )
     if checked_generation["status"] == "resource-limit":
         raise ComponentReplayResourceError("generating-base replay exceeded its policy")
+    bdf = payload["schema"] == BDF_COMPLETION_SCHEMA
+    assumptions = list(
+        analytic_class_unit_assumptions(
+            checked_generation["bound_evidence"]["theorem"],
+            tuple(checked_generation["assumptions"]),
+        )
+    )
     _require(
-        checked_generation["assumptions"] == [],
-        "only unconditional generation is supported by this envelope",
+        assumptions == (payload["assumptions"] if bdf else [BELABAS_FRIEDMAN_ZETA_GRH]),
+        "fresh completion hypotheses differ",
     )
     _require(
         checked_generation["generation_verified"] is True,
@@ -626,10 +681,12 @@ def replay_conditional_class_unit(text: str) -> dict[str, Any]:
         "fresh compact BF proof is not the claimed index one",
     )
     return {
-        "schema": "sagejs.number-fields/class-unit-conditional-report-v1",
+        "schema": "sagejs.number-fields/class-unit-conditional-report-v2"
+        if bdf
+        else "sagejs.number-fields/class-unit-conditional-report-v1",
         "complete": True,
         "proof_status": "exact-relations-conditional-grh",
-        "assumptions": [BELABAS_FRIEDMAN_ZETA_GRH],
+        "assumptions": assumptions,
         "content_sha256": payload["content_sha256"],
         "field_order": components["field_order"],
         "class_number": presentation.order,
