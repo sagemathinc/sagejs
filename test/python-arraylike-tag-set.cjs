@@ -86,7 +86,7 @@ async function main() {
     if (process.argv.includes("--benchmark")) {
       const workloads = { miss: {}, lateTag: { [Symbol.toStringTag]: "TouchList" },
         typedArray: new Float64Array(2), array: [], string: "abc" };
-      const iterations = 300000;
+      const iterations = 30000;
       function time(fn, value) {
         let count = 0;
         const start = performance.now();

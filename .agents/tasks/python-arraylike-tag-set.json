@@ -7,18 +7,22 @@
   "status": "active",
   "owner": "user",
   "objective": "Remove generic list membership from internal arraylike tag classification without changing recognized values or tag evaluation",
-  "base_commit": "c4c126d09ba4f5c2fb30001fd8b561b24105d80f",
+  "base_commit": "6c42dd0938deaf3e13c7c681f4206d7199ad89ef",
   "claims": [
     "src/baselib/builtins.py",
     "test/python-arraylike-tag-set.cjs",
-    "docs/python-arraylike-tag-set.md"
+    "docs/python-arraylike-tag-set.md",
+    "website/reference-data.json",
+    "website/reference.html"
   ],
   "dependencies": [],
   "references": [],
   "architecture": {
     "strategy": "dynamic-python",
     "fallback": "not-applicable",
-    "oracles": [],
+    "oracles": [
+      "Compiled preceding list-membership implementation and pinned host-tag observations"
+    ],
     "exceptions": []
   },
   "platforms": {
@@ -42,11 +46,28 @@
       "commit": "c4c126d09ba4f5c2fb30001fd8b561b24105d80f",
       "workspace_fingerprint": "50ca1b625a851ad93a05570ebfdd62519319829a2a3595c602d7ffb30755205e",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node test/python-arraylike-tag-set.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.329,
+      "started_at": "2026-09-12T08:58:43.160Z",
+      "commit": "46439b6d4e42226c07b0b95f2c41318d9bb10fd8",
+      "workspace_fingerprint": "4158988233639ae400d33c7459a75781a90eb133a73dfdb28855ce17ab32ef78",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Private native Set preserves all 15 arraylike tags and single observable tag evaluation; source grows by 203 bytes, with core runtime at 900091/903000 bytes. Fresh-main runtime build passed in 14m10s; strict baselib (393 modules), full architecture, and 63-case source/old/shipped differential oracle passed. Generated reference checks pass. Subsequent edits affect only test benchmark iteration count, docs, and task metadata; build receipt is historical, not current-head qualification. Old-base build was intentionally interrupted (143) for source-budget failure before rebasing to fresh main.",
+    "risks": [
+      "Shared-host microbenchmarks are diagnostic only; no package speedup claim.",
+      "Non-Linux platforms require CI qualification.",
+      "Full unit, compiler, and integration suites encounter the absent optional FLINT addon.",
+      "The unrelated dictionary-emitter shape assertion rejects call(this) in embedded traceback factories."
+    ],
+    "next_steps": [
+      "Qualify broad mathematical suites on a host with FLINT and complete cross-platform CI."
+    ]
   }
 }

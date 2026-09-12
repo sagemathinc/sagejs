@@ -23,7 +23,7 @@ short circuit. Browser DOM instances are represented by their observable tag
 contract; the test does not claim a real-browser DOM run.
 
 For a reproducible diagnostic microbenchmark, append `--benchmark`: three warmup
-rounds followed by nine alternating old/new pairs of 300,000 calls per workload,
+rounds followed by nine alternating old/new pairs of 30,000 calls per workload,
 with output equality checked and every timing reported alongside host details.
 The old variant is compiled from the identical function with the previous fixed
 list initializer and membership expression. Both variants use the same compiler
