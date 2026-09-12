@@ -43,3 +43,23 @@ An exact scalar class-number certificate does not certify fundamental units.
 A future independently verified class-only map adapter could use exact class
 number and relation/presentation evidence without solving unit completeness;
 that remains a separate product capability, not a premise of this regression.
+
+## Public map proof-regime regression
+
+`test/number-field-class-group-maps-proof.cjs` also retains the sextic
+$x^6-x-1$ and cubic $x^3+4x-1$, with class numbers 1 and 2, respectively.
+Their public maps are tested under explicit conditional completion, including
+prime schema rejection and the distinction between unconditional Minkowski
+generation and conditional analytic completeness. Fresh and cached requests
+for unconditional class groups or combined groups must decline with the
+specific missing non-BF completeness diagnostic. Their conditional payloads
+must still verify afterward. No production algorithm or proof label changes.
+
+The earlier independent Minkowski-stream adapter fixture retains unconditional
+payload validation, proof-progress completeness/count assertions, and ideal
+and principal-witness schema mutations. That fixture uses explicit test doubles
+for engine/saturation authority; it is an adapter regression, not a new proof
+of a public field computation. A minimal direct-replay fixture checks the
+100,000 bound guard: 100,001 is rejected before enumeration, while otherwise
+identical metadata at 100,000 reaches an enumeration marker. Thus this resource
+check does not depend on claiming unavailable unconditional units.
