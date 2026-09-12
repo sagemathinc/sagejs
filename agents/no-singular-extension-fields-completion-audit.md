@@ -1,7 +1,7 @@
 # No-Singular extension fields: implementation audit
 
-Status: **Milestone F native and production Node-Wasm/Chromium qualification
-passes; final CI/mobile gates remain pending. Milestone N has not started.**
+Status: **Milestone F production qualification is complete at `077b64861`;
+ready for merge-manager review. Milestone N has not started.**
 
 The source-current evidence is summarized in the final section below. Earlier
 checkpoints are historical, including their failed payload and timeout results;
@@ -10,8 +10,8 @@ they must not be substituted for the current artifact's receipts.
 The implementation plan is [the extension-fields roadmap](no-singular-extension-fields-plan.md).
 The user authorized starting `agent/no-singular-extension-fields` on PR #114
 at `5b6ffb5075fabd1f040cbf2553d34837ff8e3da5`, leaving its merge to the release
-manager. [PR #122](https://github.com/sagemathinc/sagejs/pull/122) is the stacked
-draft. No release is authorized by this task.
+manager. [PR #122](https://github.com/sagemathinc/sagejs/pull/122) carries
+Milestone F. No release is authorized by this task.
 
 ## E0 progress
 
@@ -749,6 +749,30 @@ The payload-report SHA256 is
 `24b0d9806643b7c8e0a39d0fab0622273a939c64dad41fd8bc1c499630f69cf9`.
 Desktop Firefox/WebKit were unavailable and are not claimed qualified.
 
+### Operation-matrix coverage review
+
+All 25 entries in `architecture/algebraic-geometry-capabilities.json` have
+genuine extension-coefficient exercises in the shared native/Wasm corpus:
+
+| Matrix entries | Executable evidence |
+| --- | --- |
+| Polynomial evaluation, substitution, differentiation, homogenization | `test/extension-multivariate.py`: seven fields, three orders, including characteristic 4,294,967,291 |
+| Quotient arithmetic and linear algebra | `test/extension-ideals.py`: five fields, three orders, both proof policies, matrices/coordinates/minimal polynomials/FGLM |
+| Ideal intersection, colon, saturation and Hilbert data | `test/extension-geometry.py`: scheme intersections, exact colons/saturation and homogeneous Hilbert checks over GF(4), GF(9), GF(27) |
+| Affine spaces, schemes and rational points | Same geometry fixture: point membership, dimension, union/intersection and full-cardinality enumeration preflight |
+| Projective spaces, schemes, patches and closure | Same fixture: normalization under all nonzero scalars, projective conic, closure and affine patch |
+| Morphism evaluation/composition, graph/fiber/preimage and image closure | Same fixture: affine parametrization/projection, graph and exact image ideal, plus projective automorphism |
+| Jacobian tangent spaces and singular subschemes | Same fixture: smooth parabola and characteristic-p nonreduced hypersurface with zero derivative |
+| Plane curves and arithmetic genus | Same fixture: projective conic, genus, degree, tangent line and Hilbert polynomial |
+| Zero-dimensional radical and primary decomposition | `test/extension-zero-dimensional.py` and independent `test/extension-geometry-oracles.py`: Frobenius, nonreduced, split/nonsplit and separator cases |
+
+This is coverage of each declared operation and its documented scope, not a
+claim of exhaustive testing of every field/ideal. Rejection, parent ownership,
+codec canonicality and resource failures are separately exercised by the
+coefficient/capability, sparse-packet and lifetime suites. Global and explicit
+proof choices never authorize an uncertified extension-field result. No
+extension-field msolve path has been enabled.
+
 Logs and the immutable local artifact copy are retained under
 `/home/user/sagejs-extension-qualification-20260912/`. Principal logs are
 `linux-native-83836bbb8.log`, `arm64-83836bbb8.log`,
@@ -756,7 +780,7 @@ Logs and the immutable local artifact copy are retained under
 `node-geometry-83836bbb8.log`, `chromium-geometry-83836bbb8.log`,
 `npm-wasm-83836bbb8.log`, and `sea-83836bbb8-smoke.log`.
 
-### Remaining gates and follow-up
+### Historical remaining gates at `7fba0fa77`
 
 - Routine and all three platform-smoke jobs at `7fba0fa77` pass in
   [run 34679720388](https://github.com/sagemathinc/sagejs/actions/runs/34679720388).
@@ -780,3 +804,76 @@ Logs and the immutable local artifact copy are retained under
   univariate factorization, zero-dimensional decomposition and its final audit.
 
 No release is authorized or claimed. Milestone N remains unimplemented.
+
+## Final Milestone F qualification at `077b64861`
+
+The [machine-readable qualification record](extension-fields-qualification-077b64861.json)
+supersedes the pending gates above. Runtime implementation is frozen at
+`83836bbb85daffeb8c30147571593b7392b2a2f7`; subsequent candidate changes add
+distribution tests, workflow artifact retention, generated reference locations
+and evidence. The handoff after `077b64861` changes documentation and capability
+qualification metadata only, not mathematical or runtime code.
+
+All four native hosts checked out **`077b648611cf49c9112588fa873977342a76ae9c`**,
+completed the full eight-stage source build, and passed **210/210 portable
+files**, **2/2 lifecycle tests**, the shared GF(9) distribution fixture and the
+public finite-extension suites. Linux x64 passes all 21 public tests; ARM64
+Linux, ARM64 macOS and native Windows x64 pass 19 with the same two optional
+live-Sage skips described above. Every host executes the checked-in 108-case
+independent corpus. macOS stage 8 validates the source-current canonical
+numerical product `sha256:19ad140e37f7f71776b96140f8e9c1c862e8a78bfa7d7f745634e13220d10887`;
+no source check or resource limit is bypassed.
+
+The final canonical portable artifact is
+**`sha256:3922594ee69fa695efbeb8c03ce53dd9ced18fbfc96d67536aa2a5df96a6fb1f`**.
+It was retained from the successful mobile workflow, receipt-validated, then
+independently executed without development source overrides:
+
+- Production Node-Wasm: all **29 geometry batches** and **108 independent
+  Gröbner cases**, with coefficient, multivariate and capability tests.
+- Production Chromium: the same **29 batches / 108 cases**, worker resource
+  lifetime, authenticated routes and dynamic compile/eval/exec/mpmath.
+- Fresh packed npm, with optional native packages disabled: public entry
+  points, CLI verification and the shared GF(9) geometry distribution fixture.
+- iPhone 16 Pro and iPad Pro 11-inch (M4): exact-artifact simulator application
+  builds. This does **not** claim execution of the full geometry corpus on iOS.
+
+The mobile receipt names PR merge `0adaf27ffbb0c6e4c660488ce3cd0d8bf53343d0`.
+Its tree and candidate `077b64861`'s tree are identically
+`b3bb70f01ee29f462134e80b75ccb7be18be6086`. The retained artifact's source-closure
+hash is `3ce33cf6c564e262a7016cb448d45642acfddccf0dbfe09bbbf96eea6e847f39`.
+Its payload differs from the earlier `1988e506…` artifact only in newline
+placement in `compiler.js`; every other payload file has the same hash.
+Nevertheless, the exact new bytes received the full qualification above.
+All payload budgets pass, including **9,696,733 eager Brotli bytes <= 9,700,000**.
+Firefox and desktop WebKit remain unqualified, not silently counted as passes.
+
+The supported **`pnpm build:sea:reuse`** command and relocated Linux SEA smoke
+pass, including GF(9) and the unchanged cold-mpmath gate. An initial direct
+low-level builder invocation omitted required Python precompilation and failed
+that timing gate; the supported command prepares 436 lazy modules and 8 dynamic
+programs before packaging. No timeout was raised. This is not a SEA release.
+Strict Python passes with **396 modules / zero errors**, architecture passes,
+and **17 executable documentation examples** pass on this candidate.
+
+GitHub confirmation is green:
+[routine and native platform smoke](https://github.com/sagemathinc/sagejs/actions/runs/34680927354),
+[Chromium](https://github.com/sagemathinc/sagejs/actions/runs/34680927368), and
+[mobile](https://github.com/sagemathinc/sagejs/actions/runs/34680927349).
+The local full-routine startup timing failure documented above remains a
+failure; these independent successful checks do not relabel it.
+
+Retained logs in `/home/user/sagejs-extension-qualification-20260912/` include
+`build-077b64861.log`, `linux-native-077b64861.log`,
+`linux-portable-077b64861.log`, `arm64-077b64861.log`,
+`windows-077b64861.log`, `macos-077b64861.log`,
+`node-mobile-artifact-077b64861.log`, `chromium-mobile-artifact-077b64861.log`,
+`node-mobile-core-077b64861.log`, `chromium-mobile-core-077b64861.log`,
+`npm-mobile-artifact-077b64861.log` and `sea-077b64861-prepared-smoke.log`.
+
+All declared finite-extension capabilities retain their documented exact-field,
+order and resource envelopes. No extension-field msolve fast path is enabled;
+F3 remains a separate optional investigation, not a missing F merge gate.
+The merge manager owns merging #122. Milestone N, including exact number-field
+factorization and zero-dimensional decomposition, starts only after that merge.
+No number-field qualification or release is claimed.

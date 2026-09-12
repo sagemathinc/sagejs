@@ -2,7 +2,7 @@
   "$schema": "./algebraic-geometry-capabilities.schema.json",
   "schema": "sagejs.algebraic-geometry-capabilities/v1",
   "scope": "exact embedded affine and projective schemes without Singular",
-  "qualification": "GF(p^d) operations implemented; full source-current platform qualification pending Milestone F4",
+  "qualification": "GF(p^d) Milestone F qualified at 077b64861; see agents/extension-fields-qualification-077b64861.json and agents/no-singular-extension-fields-completion-audit.md for domains, exact artifact identity, evidence and limitations",
   "routing_key": [
     "operation",
     "base_field_descriptor",

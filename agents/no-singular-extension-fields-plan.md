@@ -1043,34 +1043,39 @@ tests until handoff.
 
 ## Definition of done: Milestone F
 
-- [ ] `GF(p^d)` multivariate construction, arithmetic, and storage-neutral
+Qualified at `077b64861`; see the [final audit](no-singular-extension-fields-completion-audit.md)
+and [machine-readable evidence](extension-fields-qualification-077b64861.json).
+Merge remains owned by the merge manager. No extension msolve path is shipped;
+the fast-path condition below is satisfied by retaining the exact fallback.
+
+- [x] `GF(p^d)` multivariate construction, arithmetic, and storage-neutral
       sparse terms work on native, Node-Wasm, and production Chromium.
-- [ ] The common characteristic bound is explicit and tested at its boundary;
+- [x] The common characteristic bound is explicit and tested at its boundary;
       unsupported inputs never truncate or change interpretation across hosts.
-- [ ] Reused mathematical cache entries reconstruct values in the requesting
+- [x] Reused mathematical cache entries reconstruct values in the requesting
       parent; generator renaming never leaks another parent's objects.
-- [ ] Multivariate polynomial ideals over validated `GF(p^d)` parents work in
+- [x] Multivariate polynomial ideals over validated `GF(p^d)` parents work in
       `lex`, `deglex`, and `degrevlex`.
-- [ ] Exact Gröbner certificates and normal forms are field-representation
+- [x] Exact Gröbner certificates and normal forms are field-representation
       neutral.
-- [ ] Every applicable core algebraic-geometry operation has a `GF(p^d)` test
+- [x] Every applicable core algebraic-geometry operation has a `GF(p^d)` test
       and capability record.
-- [ ] Bounded rational-point enumeration uses `q = p^d` and fails before
+- [x] Bounded rational-point enumeration uses `q = p^d` and fails before
       infeasible allocation.
-- [ ] Canonical finite-field enumeration returns each of the `q` elements
+- [x] Canonical finite-field enumeration returns each of the `q` elements
       exactly once without assuming the defining generator is primitive.
-- [ ] Zero-dimensional radical and primary decomposition exactly recompose.
-- [ ] Squarefree decomposition correctly applies inverse Frobenius to
+- [x] Zero-dimensional radical and primary decomposition exactly recompose.
+- [x] Squarefree decomposition correctly applies inverse Frobenius to
       extension coefficients, including derivative-zero polynomials.
-- [ ] Direct exact behavior is identical across native and Wasm targets.
-- [ ] Any msolve fast path is block-order correct, independently verified,
+- [x] Direct exact behavior is identical across native and Wasm targets.
+- [x] Any msolve fast path is block-order correct, independently verified,
       receipt-bounded, and optional.
-- [ ] Four native platforms plus production browser qualification pass on one
+- [x] Four native platforms plus production browser qualification pass on one
       commit.
-- [ ] Exact-runtime iPhone and iPad simulator checks pass on that commit.
-- [ ] The canonical Wasm artifact and every lazy specialist group have
+- [x] Exact-runtime iPhone and iPad simulator checks pass on that commit.
+- [x] The canonical Wasm artifact and every lazy specialist group have
       authenticated identities and reviewed compressed-size budgets.
-- [ ] Documentation clearly distinguishes field presentation, rational
+- [x] Documentation clearly distinguishes field presentation, rational
       points, geometric points, and residue extensions.
 
 ## Definition of done: Milestone N

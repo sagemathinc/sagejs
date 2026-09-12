@@ -12,9 +12,10 @@ This is an intentionally focused first layer. It preserves nilpotents and
 scheme structure, and it rejects computations whose hypotheses are not yet
 implemented instead of silently treating every scheme as a reduced variety.
 
-Finite-extension operations are implemented on the development branch;
-source-current platform qualification is tracked separately in the
-[extension-fields roadmap](../agents/no-singular-extension-fields-plan.md).
+Finite-extension operations are qualified at development commit `077b64861`
+on four native platforms, production Node-Wasm and Chromium. The
+[qualification audit](../agents/no-singular-extension-fields-completion-audit.md)
+records the exact portable artifact, simulator-build scope and resource limits.
 This does not claim availability in an older published npm/browser release.
 
 ## Five-minute tour
