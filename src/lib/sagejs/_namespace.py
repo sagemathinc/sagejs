@@ -27,6 +27,118 @@ _core: Any = runtime.reflect.get(
     "sagejs._baselib.builtins",
 )
 _MISSING = object()
+_frozen_instance_dicts: Any = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+_namespace_owners: Any = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+_instance_owner_refs: Any = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+_weakmap_get: Any = runtime.reflect.get(_namespace_owners, "get")
+_weakref_deref: Any = runtime.reflect.get(
+    runtime.reflect.get(runtime.weak_ref_class, "prototype"), "deref"
+)
+_instance_namespaces: Any = runtime.reflect.get(_core, "_builtins_instance_namespaces")
+_array_splice: Any = runtime.reflect.get(runtime.array.prototype, "splice")
+
+
+def _check_namespace_mutation(namespace: Any) -> None:
+    """Keep only live, attached weak owners in the mutation guard."""
+    owners = runtime.reflect.apply(_weakmap_get, _namespace_owners, [namespace])
+    index = 0
+    while runtime.native_lt(index, runtime.native_get(owners, "length")):
+        reference = runtime.native_get(owners, index)
+        owner = runtime.reflect.apply(_weakref_deref, reference, [])
+        if owner is runtime.undefined or (
+            runtime.reflect.apply(_weakmap_get, _instance_namespaces, [owner])
+            is not namespace
+            and runtime.reflect.apply(_weakmap_get, _frozen_instance_dicts, [owner])
+            is not namespace
+        ):
+            runtime.reflect.apply(_array_splice, owners, [index, 1])
+        elif runtime.object.isFrozen(owner):
+            raise TypeError("cannot mutate the dictionary of a frozen instance")
+        else:
+            index = runtime.native_add(index, 1)
+
+
+def _guard_namespace_map(namespace: Any, storage: Any) -> None:
+    native_set = runtime.reflect.get(storage, "set")
+    native_delete = runtime.reflect.get(storage, "delete")
+    native_clear = runtime.reflect.get(storage, "clear")
+
+    def set_item(receiver: Any, key: Any, member: Any) -> Any:
+        _check_namespace_mutation(namespace)
+        return runtime.reflect.apply(native_set, receiver, [key, member])
+
+    def delete_item(receiver: Any, key: Any) -> Any:
+        _check_namespace_mutation(namespace)
+        return runtime.reflect.apply(native_delete, receiver, [key])
+
+    def clear_items(receiver: Any) -> Any:
+        _check_namespace_mutation(namespace)
+        return runtime.reflect.apply(native_clear, receiver, [])
+
+    for name, method in (
+        ("set", set_item),
+        ("delete", delete_item),
+        ("clear", clear_items),
+    ):
+        descriptor = runtime.object.create(None)
+        descriptor.value = runtime.native_method_adapter(method)
+        runtime.object.defineProperty(storage, name, descriptor)
+
+
+def _register_namespace_owner(value: Any, namespace: Any) -> None:
+    """Guard exposed storage without changing never-exposed dictionary writes."""
+    if not _namespace_owners.has(namespace):
+        # Validate both Maps before installing any immutable method wrappers.
+        for storage in (namespace.keymap, namespace.jsmap):
+            for name in ("set", "delete", "clear"):
+                descriptor = runtime.object.getOwnPropertyDescriptor(storage, name)
+                if (
+                    descriptor is runtime.undefined
+                    and not runtime.object.isExtensible(storage)
+                ) or (
+                    descriptor is not runtime.undefined and not descriptor.configurable
+                ):
+                    raise TypeError("cannot guard nonconfigurable dictionary storage")
+        _namespace_owners.set(namespace, [])
+        _guard_namespace_map(namespace, namespace.keymap)
+        _guard_namespace_map(namespace, namespace.jsmap)
+    reference = _instance_owner_refs.get(value)
+    if reference is runtime.undefined:
+        reference = runtime.reflect.construct(runtime.weak_ref_class, [value])
+        _instance_owner_refs.set(value, reference)
+    owners = _namespace_owners.get(namespace)
+    if reference not in owners:
+        owners.append(reference)
+
+
+def _frozen_instance_dict(value: Any) -> Any:
+    """Expose permanently fixed own data fields without inventing a bridge."""
+    cached = _frozen_instance_dicts.get(value)
+    if cached is not runtime.undefined:
+        return cached
+    fields = _stored_fields(value)
+    if fields is not None:
+        for name in fields:
+            descriptor = runtime.object.getOwnPropertyDescriptor(value, name)
+            if descriptor is not runtime.undefined and (
+                runtime.object.getOwnPropertyDescriptor(descriptor, "value")
+                is runtime.undefined
+            ):
+                # Explicit host accessors can change despite Object.freeze.
+                # Do not expose a stale snapshot or invoke their getters here.
+                raise TypeError("cannot expose frozen host accessor storage")
+    namespace = _instance_namespace(value)
+    if namespace is None:
+        namespace = dict()
+    _register_namespace_owner(value, namespace)
+    _frozen_instance_dicts.set(value, namespace)
+    return namespace
 
 
 def _native_member(value: Any, name: str) -> Any:
@@ -48,6 +160,8 @@ def _stored_fields(value: Any) -> Any:
 
 
 def _change_instance_class(value: Any, owner: Any) -> None:
+    if runtime.object.isFrozen(value):
+        raise TypeError("cannot change the class of a frozen instance")
     prototype = runtime.reflect.get(owner, "prototype")
     if not _core._builtins_instance_namespaces.has(value):
         runtime.object.setPrototypeOf(value, prototype)
@@ -94,6 +208,8 @@ def _delete_instance_dict(descriptor: Any, instance: Any) -> None:
 def _instance_dict(value: Any) -> Any:
     namespace = _stored_namespace(value)
     if namespace is None:
+        if runtime.object.isFrozen(value):
+            return _frozen_instance_dict(value)
         namespace = _instance_namespace(value)
         if namespace is None:
             namespace = dict()
@@ -127,17 +243,31 @@ def _replace_instance_namespace(value: Any, namespace: Any) -> None:
     enumeration still describes the host layout, not the Python namespace.
     Native private own fields were never registered and remain untouched.
     """
+    if runtime.object.isFrozen(value):
+        raise TypeError("cannot replace the dictionary of a frozen instance")
+    exposed = _core._builtins_instance_namespaces.has(value)
+    if not exposed and not runtime.object.isExtensible(value):
+        raise TypeError("cannot expose the dictionary of a nonextensible instance")
     fields = _stored_fields(value)
+    if fields is not None:
+        for name in fields:
+            descriptor = runtime.object.getOwnPropertyDescriptor(value, name)
+            if descriptor is not runtime.undefined and not descriptor.configurable:
+                raise TypeError("cannot move a nonconfigurable instance attribute")
+    if namespace is not None:
+        _register_namespace_owner(value, namespace)
+    # For ordinary registered instances, the preflight establishes that all
+    # field deletions can succeed. Install the bridge before publishing storage:
+    # a failed host prototype operation must not change namespace authority.
+    if not exposed:
+        _core.ρσ_bridge_instance_namespace(value)
     if fields is not None:
         for name in fields:
             runtime.reflect.deleteProperty(value, name)
         fields.clear()
-    exposed = _core._builtins_instance_namespaces.has(value)
     _core._builtins_instance_namespaces.set(
         value, runtime.undefined if namespace is None else namespace
     )
-    if not exposed:
-        _core.ρσ_bridge_instance_namespace(value)
 
 
 def _copy_instance_namespace(source: Any, target: Any) -> None:
@@ -308,8 +438,9 @@ def _delete_instance_attribute(value: Any, name: str) -> bool:
     if namespace is None:
         fields = _stored_fields(value)
         if fields is not None and fields.has(name):
+            if not runtime.reflect.deleteProperty(value, name):
+                raise TypeError("cannot delete a nonconfigurable instance attribute")
             runtime.reflect.apply(runtime.reflect.get(fields, "delete"), fields, [name])
-            runtime.reflect.deleteProperty(value, name)
             return True
     if namespace is None:
         raise AttributeError("object has no attribute '" + name + "'")
