@@ -412,7 +412,7 @@ still decline rather than inheriting PARI's nonfatal unit omission.
 ### 5. Belabas--Friedman encloses the zeta residue under GRH
 
 Let $\kappa_K$ be the residue of $\zeta_K(s)$ at $s=1$. The program first uses
-the fixed cutoff $X=997$. If every exact algebraic and interval check succeeds
+the fixed cutoff $X=999$. If every exact algebraic and interval check succeeds
 but the resulting enclosure cannot yet distinguish the positive integral
 index from $2$, it makes one bounded refinement at $X=1494$. The retry rebuilds
 the Euler plan and rigorous enclosure from scratch in the same resident arena;
@@ -440,14 +440,26 @@ $$
 \right),
 $$
 
-where $n=[K:\mathbb Q]=3$ here.
+where $n=[K:\mathbb Q]=3$ here. The finite expression is
+
+$$
+f_K(X)=\frac{3\bigl(B_K(X)-B_K(X/9)\bigr)}{2\sqrt X\log(3X)}.
+$$
+
+The planner requires a cutoff divisible by $9$, so its integer `X // 9`
+equals the real scale $X/9$ in both the logarithmic and square-root weights.
+Rounding only the enumeration boundary is different from rounding these
+continuous weights. The former initial cutoff $997$ did not satisfy this
+contract; the [exact scale audit](cubic-analytic-schedule.md) records the
+discrepancy and its correction. No wrong class number was observed in that
+audit, but agreement with an oracle does not repair a proof-contract gap.
 
 The implementation evaluates the finite expression and this error bound with
 outward-rounded dyadic intervals. Both cutoffs use the identical strict
 index-one criterion below. Thus $X=1494$ is only a bounded proof-search
 schedule, not an additional mathematical assumption. LMFDB field
 `3.1.93074700.2`, defined by $x^3-5570$, exercises the refinement: the native
-program obtains the same exact $C_{42}$ presentation and unit at $X=997$, then
+program obtains the same exact $C_{42}$ presentation and unit at $X=999$, then
 publishes only after the $X=1494$ enclosure proves index one.
 
 ### 6. The analytic class-number formula proves both indices are one

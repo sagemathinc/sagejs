@@ -68,7 +68,7 @@ try {
 function workerRuntimeContext(context) {
   const fields = [
     "kind", "target", "targetConfig", "directory", "installedRoot",
-    "platformRoot", "version", "ownedDirectory", "executable",
+    "platformRoot", "version", "ownedDirectory", "executable", "memoryBarrier",
   ];
   return Object.fromEntries(fields
     .filter((name) => context[name] !== undefined)
@@ -276,8 +276,8 @@ function hasSourcePosition(output) {
   return /(?:line|row)\s+\d+|\b\d+:\d+\b/i.test(output);
 }
 
-async function runParserGuards() {
-  if (runNode !== null) return runInstalledParserGuards();
+async function runParserGuards(context) {
+  if (runNode !== null) return runInstalledParserGuards(context);
   const started = performance.now();
   // A relocated SEA cannot expose its frontend objects to this host process,
   // so ask its CLI to print the lowered Sage source while it evaluates the
@@ -286,12 +286,12 @@ async function runParserGuards() {
   // intended runtime entry points.
   const languageOptions = {
     timeout: 180_000,
-    emitSage: runtimeContext?.kind === "relocated-sea",
+    emitSage: context?.kind === "relocated-sea",
   };
   const records = [];
   for (const [language, source, expectedName, expectedMessage] of PARSER_GUARDS) {
     const result = await runPackageAsync(
-      runLanguageName, runtimeContext, source, language, languageOptions,
+      runLanguageName, context, source, language, languageOptions,
     );
     const output = `${result.stdout}\n${result.stderr}`;
     records.push({
@@ -309,7 +309,7 @@ async function runParserGuards() {
   const safe = [];
   for (const [language, source] of safePrograms) {
     const result = await runPackageAsync(
-      runLanguageName, runtimeContext, source, language, languageOptions,
+      runLanguageName, context, source, language, languageOptions,
     );
     checkProcess(result, `${language} safe parser witness`);
     safe.push(result.stdout);
@@ -317,7 +317,7 @@ async function runParserGuards() {
   return { raw: { records, safe }, kernelMs: performance.now() - started };
 }
 
-async function runInstalledParserGuards() {
+async function runInstalledParserGuards(context) {
   const started = performance.now();
   const program = String.raw`
 "use strict";
@@ -354,30 +354,30 @@ const cases = ${JSON.stringify(PARSER_GUARDS)};
 })().catch((error) => { console.error(error?.stack ?? error); process.exitCode = 1; });
 `;
   const result = checkProcess(await runPackageAsync(
-    runNodeName, runtimeContext, program, { timeout: 180_000 },
+    runNodeName, context, program, { timeout: 180_000 },
   ),
     "installed parser guard witness");
   return { raw: internals.parseEvaluation(result), kernelMs: performance.now() - started };
 }
 
-async function runMatlabShapes() {
+async function runMatlabShapes(context) {
   const started = performance.now();
   const shapes = {};
   for (const [name, source] of Object.entries(MATLAB_SHAPES)) {
     shapes[name] = parseShape(await runPackageAsync(
-      runLanguageName, runtimeContext, source, "matlab", { timeout: 180_000 },
+      runLanguageName, context, source, "matlab", { timeout: 180_000 },
     ), name);
   }
   return { raw: { shapes }, kernelMs: performance.now() - started };
 }
 
-async function evaluate(sample) {
-  if (sample.id === "p6-multilingual-parser-fail-closed") return runParserGuards();
-  if (sample.id === "p6-matlab-vector-shapes") return runMatlabShapes();
+async function evaluate(sample, context) {
+  if (sample.id === "p6-multilingual-parser-fail-closed") return runParserGuards(context);
+  if (sample.id === "p6-matlab-vector-shapes") return runMatlabShapes(context);
   const started = performance.now();
   const result = await runPackageAsync(
     runPythonName,
-    runtimeContext,
+    context,
     internals.sourceFor(sample.id, sample.input),
     { timeout: 180_000 },
   );
@@ -504,7 +504,8 @@ module.exports = {
 
   async runCase(sample) {
     if (runtimeContext === null) throw new Error("package qualification adapter is not initialized");
-    return internals.normalizeEvaluated(sample, await evaluate(sample));
+    const context = { ...runtimeContext, memoryBarrier: sample.memory_barrier };
+    return internals.normalizeEvaluated(sample, await evaluate(sample, context));
   },
 
   close,

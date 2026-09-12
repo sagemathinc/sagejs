@@ -1256,6 +1256,8 @@ const FMPZ_OPERATION_KINDS = new Set([
   "integer.vector.set",
   "integer.vector.submul",
   "integer.vector.swap",
+  "loop.break",
+  "loop.continue",
   "native.call",
   "range.validate_step",
   "raise",
@@ -1284,12 +1286,17 @@ const FMPZ_FFI_DECLARATIONS = new Set([
   "flint:number_field_analysis_resource_project",
   "flint:number_field_analysis_resource_project_proof",
   "flint:integer_log_sqrt_balls_resource",
+  "flint:integer_log_sqrt_balls_prefix_resource",
   "flint:positive_rational_log_balls_resource",
   "flint:fmpz_matrix_hnf_into",
+  "flint:fmpz_matrix_hnf_prefix_into",
   "flint:fmpz_matrix_hnf_transform",
+  "flint:fmpz_matrix_hnf_transform_prefix",
   "flint:fmpz_matrix_lll_transform",
+  "flint:fmpz_matrix_lll_transform_prefix",
   "flint:fmpz_matrix_snf",
   "flint:fmpz_matrix_snf_into",
+  "flint:fmpz_matrix_snf_prefix_into",
 ]);
 
 const FMPZ_RESOURCE_IDS = new Set([
@@ -1507,7 +1514,11 @@ function inspectFmpzFunction(fn) {
       borrowedAggregateParameter(param)
     ) &&
     fn.locals.every((local) =>
-      ["Integer", "uint64", "bool", "UInt64Buffer"].includes(local.type)
+      ["Integer", "uint64", "bool", "UInt64Buffer"].includes(local.type) ||
+      (fmpzResourceTypes.has(local.type) && fn.params.some((param) =>
+        param.type === local.type &&
+        param.name === (fn.resourceAliases || {})[local.name]
+      ))
     )
   ) {
     return {

@@ -1,6 +1,42 @@
 {
   "format": 2,
   "tests": {
+    "sys1.py": {
+      "expectedStatus": "output-mismatch",
+      "reason": "Sage.js reports its own implementation name, sagejs; the unchanged upstream test permits only cpython or micropython. The sole output difference is that name whitelist (True becomes False), with successful exit and empty stderr. Spoofing CPython can select unsupported implementation-specific package behavior.",
+      "reference": {
+        "implementation": "CPython",
+        "version": "3.14.4"
+      },
+      "evidence": {
+        "schema": "sagejs.python-case-evidence/v1",
+        "sourceSha256": "7815d228bb2909e7bab38bc6e2f4e63faae65133cfb68c0a5eaf9aa0fac30bd0",
+        "normalization": "crlf-to-lf-bytes",
+        "oracle": {
+          "exitCode": 0,
+          "signal": null,
+          "timedOut": false,
+          "errorCode": null,
+          "errorMessage": null,
+          "outputSha256": "ef68b1382d1c77bba79fd8c3beb0c291e72b41b8a2ddb108fe7c49541a394b13",
+          "stdoutSha256": "ef68b1382d1c77bba79fd8c3beb0c291e72b41b8a2ddb108fe7c49541a394b13",
+          "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "subject": {
+          "exitCode": 0,
+          "signal": null,
+          "timedOut": false,
+          "errorCode": null,
+          "errorMessage": null,
+          "outputSha256": "5cdacdd09dfb37e0a9f96ee43a09658525165a7aac81eaf6c11d0c7bc4b58daa",
+          "stdoutSha256": "5cdacdd09dfb37e0a9f96ee43a09658525165a7aac81eaf6c11d0c7bc4b58daa",
+          "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "reviewedAt": "2026-09-05",
+      "documentation": "docs/python-compatibility.md",
+      "reconsiderWhen": "The upstream test accepts independent implementation names or the reviewed source/outcome changes."
+    },
     "weakref_finalize_collect.py": {
       "expectedStatus": "output-mismatch",
       "reason": "V8 finalizers are deliberately asynchronous and nondeterministic; gc.collect() cannot force a FinalizationRegistry callback; the final callback may run at process exit or remain deferred, with both observed outputs explicitly fingerprinted",

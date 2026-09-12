@@ -11,7 +11,7 @@
   "files": [
     {
       "path": "architecture/package-graph.json",
-      "sha256": "db0b7c0fa406802e9e5c3a12f9a22c38c0042ec9a29438df4c809d8aa7dc03a3"
+      "sha256": "1e59080f9c2586bbb65e4a506a765a508cbd89197df5b1e5bc391cf167fddfa4"
     },
     {
       "path": "bench/modular/qexp-correctness/README.md",
@@ -43,7 +43,7 @@
     },
     {
       "path": "bench/modular/qexp-correctness/source-freeze.cjs",
-      "sha256": "4bf5018b081945b30558f7889a4df8fa214dc5cc560f8aa06c5890b86b00a96a"
+      "sha256": "6f9d65e3bc8987bc9df276104b38f6edc115a1ecff7471790cd8970545d2713a"
     },
     {
       "path": "docs/index.md",
@@ -55,7 +55,7 @@
     },
     {
       "path": "docs/gamma1-modular-forms.md",
-      "sha256": "bc3ee78d54cd4f00435a03b00fcc048f88b133a3d9bd4da8511cfd62684ae75a"
+      "sha256": "f6c979e5f31094b889ad85ab5faf1e3a2304211f9ae929eb49ebdfba2137e4f6"
     },
     {
       "path": "docs/modular-form-q-expansions.md",
@@ -67,11 +67,15 @@
     },
     {
       "path": "src/baselib/modular.py",
-      "sha256": "95f5ffa7ab118e40dd8f65c3342f61bdcdc886bfef377f3216a62940a3737d9a"
+      "sha256": "569be50b927a9ac8b0b8746e1dd04b56314da4db07bf9e923e2ac19e114d904b"
     },
     {
       "path": "src/lib/sagejs/modular_forms/__init__.py",
       "sha256": "16dc0beff34beeed89a117e8189458bd28da42a93623510ac3be4b1c1064e423"
+    },
+    {
+      "path": "src/lib/sagejs/modular_forms/character_hecke.py",
+      "sha256": "823f76f4c4ae4ab48db1b5f5da4fcade499695eb703c81868129968cba07d15a"
     },
     {
       "path": "src/lib/sagejs/modular_forms/eta_products.py",
@@ -87,7 +91,7 @@
     },
     {
       "path": "src/lib/sagejs/modular_forms/newforms.py",
-      "sha256": "2cda5e2f053c21ac70ddd085d67b43cf5d1cbf042667005c15b3f94d02655428"
+      "sha256": "6edb18c8f53263cb6895877060c2b30ce8a0a33b723685f158c69d862cc60b80"
     },
     {
       "path": "src/lib/sagejs/modular_forms/object_layer.py",
@@ -127,11 +131,15 @@
     },
     {
       "path": "test/modular-qexp-source-freeze.cjs",
-      "sha256": "8c45645f2ae8bfd01f50e1f165a8344b72b1d1b29ca56d93072b14cf7101cb77"
+      "sha256": "8a1cfff34eb05aa422f565a44b3764a953e3f16b2ab7920cb2fa8f83dae5a920"
     },
     {
       "path": "test/modular.cjs",
       "sha256": "0bf6339fa0a1f423d1f0b4ddc8a4b609b7c8b6915d609681558fb85874e60108"
+    },
+    {
+      "path": "test/portable-character-hecke.cjs",
+      "sha256": "18c5c7771cff66cfb1377fa7f52a58dfaff999ce4473702bb1f9b95d632a7e3e"
     },
     {
       "path": "test/qexp-algebra.cjs",
@@ -150,5 +158,5 @@
       "sha256": "34beffa4e59c778fc2315377c4e1617e89aeb2f735026a0f5852a716e34c288b"
     }
   ],
-  "bundle_sha256": "e07e45c90fe0f113220cdc1ae28a53a65d73cb2a11b4a7403cd8896e94be428d"
+  "bundle_sha256": "c6bd92b3e206507c2114962ae5f4185a18359fb089e49f3115323d20709fb825"
 }

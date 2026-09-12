@@ -1,0 +1,109 @@
+{
+  "schema": "sagejs.python-suite-source/v1",
+  "repository": "https://github.com/pypy/pypy",
+  "revision": "194f9f44b50552d75484d67cda6e2b36607dee0c",
+  "tag": "release-pypy3.11-v7.3.23",
+  "license": "MIT",
+  "selection": "Four manually reviewed dependency-free tests. Each upstream function span is byte-identical; one separately identified local invocation suffix makes it an executable assertion program. No upstream module harness or unrelated function is executed.",
+  "licenseReview": "Pinned root LICENSE explicitly covers pypy/. Selected source spans/files contain no overriding notice; no LICENSE/COPYING/NOTICE exists in their ancestor directories. Complete pinned license and copyright-holder list retained.",
+  "files": [
+    {
+      "upstreamPath": "pypy/objspace/test/apptest_binop_overriding.py",
+      "path": "selected/test_overriding_base_binop_explict.py",
+      "bytes": 565,
+      "sha256": "6c4da07f8f99e4c6e8a85a458eb55b6914df71e5573e6d81b5c99c7dc865c68b",
+      "upstreamFileSha256": "4c53e1633b1869b22eab8c55be7539c0bb788bebb056af2c1108942280140386",
+      "selection": {
+        "kind": "whole-file",
+        "test": "test_overriding_base_binop_explict",
+        "byteStart": 0,
+        "byteEndExclusive": 527,
+        "startLine": 1,
+        "endLineInclusive": 16,
+        "bytes": 527,
+        "sha256": "4c53e1633b1869b22eab8c55be7539c0bb788bebb056af2c1108942280140386"
+      },
+      "adapter": {
+        "origin": "Sage.js local invocation-only harness; not upstream test text",
+        "source": "\ntest_overriding_base_binop_explict()\n",
+        "bytes": 38,
+        "sha256": "49b1fdf774f8af0da3e0b523771b3f5a2459dfca13971e98f45b219b0dd8d673"
+      }
+    },
+    {
+      "upstreamPath": "pypy/objspace/test/apptest_descriptor.py",
+      "path": "selected/test_non_data_descr.py",
+      "bytes": 219,
+      "sha256": "1dcdbc380d31d9e22972cce6c19e818c03c3c5e07a56987412f0aa20b0bf7fb4",
+      "upstreamFileSha256": "a4fd091bbe06897341f5e3f0979d96dd92e78d36d312119d26284cf2a890b6bb",
+      "selection": {
+        "kind": "unchanged-function-span",
+        "test": "test_non_data_descr",
+        "byteStart": 0,
+        "byteEndExclusive": 196,
+        "startLine": 1,
+        "endLineInclusive": 11,
+        "bytes": 196,
+        "sha256": "82328205e66750a2f19db63f29f0b83c237feca67a1c153417974cbf1e46e2b8"
+      },
+      "adapter": {
+        "origin": "Sage.js local invocation-only harness; not upstream test text",
+        "source": "\ntest_non_data_descr()\n",
+        "bytes": 23,
+        "sha256": "af47e0211fb07542a424514ec8bb06b8359227731a2fe206e382d7b45af6accd"
+      }
+    },
+    {
+      "upstreamPath": "pypy/objspace/test/apptest_descriptor.py",
+      "path": "selected/test_set_without_get.py",
+      "bytes": 360,
+      "sha256": "9644bcdf27f2cc254e244bd581efce36bd1372fa62dbe513c90dfad25991fa6d",
+      "upstreamFileSha256": "a4fd091bbe06897341f5e3f0979d96dd92e78d36d312119d26284cf2a890b6bb",
+      "selection": {
+        "kind": "unchanged-function-span",
+        "test": "test_set_without_get",
+        "byteStart": 196,
+        "byteEndExclusive": 532,
+        "startLine": 12,
+        "endLineInclusive": 29,
+        "bytes": 336,
+        "sha256": "4d3c3d226e0c278886726d63f165b0ca3612ea68a5ecdfb4a657035cf04cdb5f"
+      },
+      "adapter": {
+        "origin": "Sage.js local invocation-only harness; not upstream test text",
+        "source": "\ntest_set_without_get()\n",
+        "bytes": 24,
+        "sha256": "c8bd6ade14904eb52d0c5e23052e2c61ae1e49f893c14dcaee395d532460a629"
+      }
+    },
+    {
+      "upstreamPath": "pypy/interpreter/test/apptest_nestedscope.py",
+      "path": "selected/test_nested_scope4.py",
+      "bytes": 207,
+      "sha256": "566bd063cc93590d108bfaa355f975b452525a5a8286e3be1f89061e7137440e",
+      "upstreamFileSha256": "98c3c3aaa2b6db67a3a4ca49d025b986ee8470c551498144e8b738012f8cffd0",
+      "selection": {
+        "kind": "unchanged-function-span",
+        "test": "test_nested_scope4",
+        "byteStart": 340,
+        "byteEndExclusive": 525,
+        "startLine": 23,
+        "endLineInclusive": 33,
+        "bytes": 185,
+        "sha256": "16808d177cf75303066396769b42d50afc8e0a348e4cfbfed203c910c256cc9e"
+      },
+      "adapter": {
+        "origin": "Sage.js local invocation-only harness; not upstream test text",
+        "source": "\ntest_nested_scope4()\n",
+        "bytes": 22,
+        "sha256": "1a01ca9e9c8e06cbfb0b8421a640edc8dc74eb84a2f73077855afdb8de013f0e"
+      }
+    },
+    {
+      "upstreamPath": "LICENSE",
+      "path": "LICENSE",
+      "bytes": 13153,
+      "sha256": "91daea87f7562e0f8d5badc3b0e1f8398fe715f619a651a17950db4af1732fed"
+    }
+  ]
+}

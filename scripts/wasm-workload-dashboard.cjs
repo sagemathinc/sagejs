@@ -529,6 +529,80 @@ function consumePerformanceReceipt(receipt, context, filename) {
   return true;
 }
 
+// Acceptance extracts execution/route and interrupt-safety evidence from the
+// benchmark workload corpus. It does not replace mathematical parity or the
+// separate process-tree memory/security qualification. Keep a distinct schema:
+// a one-pass acceptance observation is not a timing baseline.
+const ACCEPTANCE_SCHEMA = "sagejs.browser-wasm-workload-acceptance/v1";
+function validateAcceptanceReceipt(receipt, { workloads, workloadIdentity, budgetIdentity, maximumInterruptLatencyMs }) {
+  if (!Array.isArray(workloads) || !workloads.length || !/^sha256:[a-f0-9]{64}$/.test(workloadIdentity ?? "") ||
+      !/^sha256:[a-f0-9]{64}$/.test(budgetIdentity ?? "")) throw new Error("invalid expected acceptance inputs");
+  if (receipt?.schema !== ACCEPTANCE_SCHEMA || receipt.status !== "passed" ||
+      receipt.runtime?.kind !== "browser-wasm" || !BROWSER_ENGINES.has(receipt.runtime.engine) ||
+      !/^[a-f0-9]{40}$/.test(receipt.source_revision ?? "") ||
+      !/^sha256:[a-f0-9]{64}$/.test(receipt.artifact_identity ?? "") ||
+      !/^sha256:[a-f0-9]{64}$/.test(receipt.build_receipt_identity ?? "")) throw new Error("invalid workload acceptance identity or status");
+  if (receipt.workload_identity !== workloadIdentity || receipt.safety_budget_identity !== budgetIdentity) {
+    throw new Error("workload acceptance does not match current workload/budget identity");
+  }
+  if (!Number.isFinite(maximumInterruptLatencyMs) || maximumInterruptLatencyMs <= 0 ||
+      receipt.interrupt?.rejected !== true || !Number.isFinite(receipt.interrupt.latency_ms) ||
+      receipt.interrupt.latency_ms < 0 || receipt.interrupt.latency_ms > maximumInterruptLatencyMs) {
+    throw new Error("workload acceptance interrupt safety ceiling failed");
+  }
+  const selection = receipt.workload_selection;
+  if (!selection || !["complete", "shard"].includes(selection.kind)) throw new Error("invalid acceptance selection");
+  let selected = workloads;
+  if (selection.kind === "shard") {
+    const { index, count } = selection;
+    if (!Number.isSafeInteger(index) || !Number.isSafeInteger(count) || count < 1 || count > workloads.length || index < 1 || index > count) {
+      throw new Error("invalid acceptance shard");
+    }
+    selected = workloads.filter((_, position) => position % count === index - 1);
+  }
+  const ids = selected.map((item) => item.id);
+  if (!sameJson(selection.case_ids, ids) || !plainObject(receipt.operations) ||
+      !sameJson(Object.keys(receipt.operations).sort(), [...ids].sort())) throw new Error("acceptance selection does not account for every selected workload");
+  const distribution = (values) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    return { minimum: sorted[0], median: sorted[Math.floor(sorted.length / 2)], maximum: sorted.at(-1), samples: values };
+  };
+  return selected.map((workload) => {
+    const operation = receipt.operations[workload.id];
+    if (operation?.status !== "passed" || operation.family !== workload.family ||
+        !sameJson(operation.required_capability_routes, workload.requires)) throw new Error(`acceptance definition mismatch: ${workload.id}`);
+    const samples = [];
+    for (const temperature of ["cold", "warm"]) {
+      const summary = operation.instrumentation?.[temperature];
+      if (summary?.samples?.length !== 1) throw new Error(`acceptance requires one ${temperature} execution: ${workload.id}`);
+      normalizePerformanceInstrumentation(summary, workload.requires, `${workload.id} ${temperature} acceptance`);
+      samples.push(normalizeRawInstrumentation(summary.samples[0], `${workload.id} ${temperature}`));
+    }
+    // Inspect both phases, including unexpected cold-only portable computation.
+    return { id: workload.id, routes: aggregateRoutes(samples),
+      boundary_crossings: distribution(samples.map((item) => item.boundary_crossings)),
+      copied_bytes: distribution(samples.map((item) => item.copied_bytes)) };
+  });
+}
+
+function consumeAcceptanceReceipt(receipt, context, filename) {
+  if (receipt.schema !== ACCEPTANCE_SCHEMA) return false;
+  const { policy, workloadByKey, observations, ambiguous, revisions, acceptanceBudget } = context;
+  const workloads = [...workloadByKey.values()].filter((item) => item.key.startsWith("performance:")).map((item) => ({
+    id: item.key.slice("performance:".length), family: item.family, requires: item.requirements,
+  }));
+  const records = validateAcceptanceReceipt(receipt, {
+    workloads, workloadIdentity: context.performanceIdentity,
+    budgetIdentity: `sha256:${acceptanceBudget.sha256}`,
+    maximumInterruptLatencyMs: acceptanceBudget.document.thresholds?.maximum_interrupt_latency_ms,
+  });
+  receiptRevision(receipt, policy, revisions);
+  for (const { id, ...observation } of records) storeObservation(observations, ambiguous, `performance:${id}`, receipt.runtime.engine, {
+    receipt: filename, ...observation,
+  });
+  return true;
+}
+
 function capabilityRouteClass(route, capability) {
   if (route === "shared-runtime-js") return "portable-orchestration";
   if (route === "portable-fallback") return "portable-computation";
@@ -615,6 +689,11 @@ function buildDashboard(options = {}) {
     performance: readDocument(path.join(root, "bench", "browser-wasm-performance-cases.json")),
   };
   const policy = validatePolicy(inputs.policy.document);
+  if (options.expectedSourceRevision !== undefined && !/^[a-f0-9]{40}$/.test(options.expectedSourceRevision)) throw new Error("expected source revision must be a full commit ID");
+  if (options.acceptanceOnly && !options.expectedSourceRevision) throw new Error("acceptance-only enforcement needs an exact expected source revision");
+  const receiptPolicy = options.expectedSourceRevision ? { ...policy, trusted_telemetry: {
+    ...policy.trusted_telemetry, source_revision_policy: "exact", expected_source_revision: options.expectedSourceRevision,
+  } } : policy;
   const capabilityById = validateCapabilityReport(inputs.capabilities.document);
   const kernelById = validateKernelCoverage(inputs.kernels.document);
   const workloads = normalizeWorkloads(
@@ -630,10 +709,11 @@ function buildDashboard(options = {}) {
   const acceptedReceipts = [];
   const revisions = new Set();
   const contextBase = {
-    policy,
+    policy: receiptPolicy,
     parityIdentity: sha256(JSON.stringify(inputs.parity.document)),
     performanceIdentity: `sha256:${inputs.performance.sha256}`,
     workloadByKey,
+    acceptanceBudget: options.acceptanceBudget ?? readDocument(path.join(root, "bench", "browser-wasm-budget.json")),
   };
   for (const filename of receiptFiles(root, policy, options)) {
     try {
@@ -651,7 +731,8 @@ function buildDashboard(options = {}) {
         revisions: stagedRevisions,
       };
       const accepted = consumeParityReceipt(input.document, stagedContext, filename) ||
-        consumePerformanceReceipt(input.document, stagedContext, filename);
+        (!options.acceptanceOnly && consumePerformanceReceipt(input.document, stagedContext, filename)) ||
+        consumeAcceptanceReceipt(input.document, stagedContext, filename);
       if (!accepted) throw new Error("unsupported route receipt schema");
       const conflicts = [...stagedObservations.keys()].filter((key) =>
         observations.has(key) || ambiguous.has(key));
@@ -783,6 +864,11 @@ function buildDashboard(options = {}) {
       : "incomplete";
   return {
     schema: "sagejs.wasm-workload-dashboard/v1",
+    ...(options.acceptanceOnly ? { acceptance_contract: {
+      schema: ACCEPTANCE_SCHEMA, expected_source_revision: options.expectedSourceRevision,
+      safety_budget_identity: `sha256:${contextBase.acceptanceBudget.sha256}`,
+      performance_reports_authorize_routes: false,
+    } } : {}),
     status: overallStatus,
     policy_result: {
       heavy_workloads: heavy.length,
@@ -882,6 +968,13 @@ function main(argv = process.argv.slice(2)) {
   const receiptPaths = argumentValues(argv, "--receipt").map((item) => path.resolve(item));
   const directoryValues = argumentValues(argv, "--receipts-dir");
   const options = { root, receiptPaths };
+  options.acceptanceOnly = argv.includes("--acceptance-only");
+  options.expectedSourceRevision = argumentValues(argv, "--source-revision").at(-1) ??
+    (options.acceptanceOnly ? process.env.GITHUB_SHA : undefined);
+  if (argv.includes("--explicit-receipts-only")) {
+    if (directoryValues.length) throw new Error("explicit receipts cannot include receipt directories");
+    options.receiptDirectories = [];
+  }
   if (directoryValues.length) {
     options.receiptDirectories = directoryValues.map((item) => path.resolve(item));
   }
@@ -922,6 +1015,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  ACCEPTANCE_SCHEMA,
   ROUTE_CLASSES,
   buildDashboard,
   main,
@@ -930,4 +1024,5 @@ module.exports = {
   normalizeRawInstrumentation,
   sha256,
   validatePolicy,
+  validateAcceptanceReceipt,
 };

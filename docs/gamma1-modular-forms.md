@@ -23,6 +23,57 @@ sage: M.q_expansion_basis()
 of all nebentypus components of the correct parity, rather than a space with
 one distinguished character.
 
+## Browser cusp forms and Hecke operators
+
+The browser uses an exact portable character-Hecke implementation when the
+native accelerator is unavailable. In particular, this cusp/newform example
+does not require a native Node.js backend:
+
+```sage
+sage: S = CuspForms(Gamma1(13), 2, prec=8)
+sage: S.q_expansion_basis()
+[q - 4*q^3 - q^4 + 3*q^5 + 6*q^6 + O(q^8), q^2 - 2*q^3 - q^4 + 2*q^5 + 2*q^6 + O(q^8)]
+sage: S.hecke_matrix(2)
+[ 0 -3]
+[ 1 -3]
+sage: len(S.newforms())
+1
+sage: S.q_expansion_basis_certificate().verify()
+True
+```
+
+The portable path includes character factors and bad-prime operators; it uses
+the same exact coefficient fields and public objects as native execution.
+It is not a promise of native-speed browser performance, and existing browser
+presentation-size guards still apply.
+Cyclotomic polynomial factorization has an exact portable Trager path, enabling
+higher-dimensional character decomposition without the native number-field
+factorization adapter. It squarefree-splits the input, searches for a separating
+shift, factors the rational Galois norm, and recovers factors by exact gcd.
+Repeated factors, nonrational units, and rational denominators are retained.
+This is a general algorithm, not a bounded search for linear roots; its rational
+norm degree grows by the coefficient-field degree, so large examples can still
+be expensive in the browser.
+
+For example, this factors over the declared exact field in both Node and Wasm:
+
+```python
+K = CyclotomicField(5)
+R = PolynomialRing(K, 'x')
+x = R.gen()
+f = (K.gen()/3) * (x^5 - 1)^2
+F = f.factor()
+assert F.value() == f
+assert len(F) == 5
+assert all(g.degree() == 1 and e == 2 for g, e in F)
+```
+
+The separating-norm step follows the classical Trager reduction (see also the
+[squarefree-norm documentation](https://docs.sympy.org/latest/modules/polys/reference.html#sympy.polys.polytools.sqf_norm)).
+Exact reconstruction checks the result, while irreducibility is certified by
+the squarefree norm and its irreducible rational factors—not inferred from
+reconstruction alone.
+
 ## Exact character-orbit descent
 
 The implementation uses

@@ -1,5 +1,6 @@
 {
   "imports": [
+    "sagejs.polynomial_algorithms.cyclotomic_factor",
     "conway_polynomials",
     "ipywidgets",
     "glob",
@@ -50,6 +51,7 @@
     "sagejs.modular_abelian_varieties.abelian_variety",
     "sagejs.modular_forms",
     "sagejs.modular_forms.brandt",
+    "sagejs.modular_forms.character_hecke",
     "sagejs.modular_forms.component_groups",
     "sagejs.modular_forms.eta_products",
     "sagejs.modular_forms.gamma1",
@@ -108,6 +110,7 @@
     "sagejs.number_fields.prime_ideals",
     "sagejs.number_fields.quadratic_characters",
     "sagejs.number_fields.riemann_zeta",
+    "sagejs.special_functions",
     "sagejs.number_fields.units",
     "sagejs.number_fields.zeta_coefficient_kernel",
     "sagejs.number_fields.zeta_coefficients",
@@ -132,6 +135,7 @@
     "sagejs.quaternion_algebras.class_set",
     "sagejs.quaternion_algebras.ideals",
     "traceback",
+    "unittest",
     "unicodedata"
   ],
   "dynamicWarmups": [

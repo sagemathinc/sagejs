@@ -44,7 +44,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 890000,
+      "max_source_bytes": 903000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -313,7 +313,7 @@
       "id": "complex-cubic-native-program",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 420000,
+      "max_source_bytes": 485000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -407,6 +407,16 @@
       "prefixes": []
     },
     {
+      "id": "analytic-special-functions",
+      "layer": 8,
+      "startup": "lazy",
+      "max_source_bytes": 10000,
+      "depends_on": ["core-runtime", "python-stdlib", "numeric-compat", "number-field-zeta-functions"],
+      "modules": ["sagejs.special_functions"],
+      "files": ["src/lib/sagejs/special_functions.py"],
+      "prefixes": []
+    },
+    {
       "id": "number-field-global-arithmetic",
       "layer": 7,
       "startup": "lazy",
@@ -459,7 +469,7 @@
       "id": "polynomial-algorithms",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 318000,
+      "max_source_bytes": 325000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -812,6 +822,16 @@
       "prefixes": []
     },
     {
+      "id": "modular-character-hecke",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 8000,
+      "depends_on": ["core-runtime", "modular-forms", "linear-algebra"],
+      "modules": ["sagejs.modular_forms.character_hecke"],
+      "files": ["src/lib/sagejs/modular_forms/character_hecke.py"],
+      "prefixes": []
+    },
+    {
       "id": "modular-form-qexp-algebra",
       "layer": 6,
       "startup": "lazy",
@@ -987,11 +1007,16 @@
         "http", "importlib", "io", "js", "json", "keyword", "math", "multiprocessing", "ntpath", "numbers",
         "operator", "os", "pathlib", "pdb", "pickle", "platform", "posixpath", "pprint", "pythonize", "random",
         "re", "reprlib", "sage", "sagejs_serialization", "shlex", "shutil", "socket", "string",
-        "sagejs.javascript", "sqlite3", "stat", "statistics", "struct", "subprocess", "sys", "tempfile", "textwrap", "threading", "time",
+        "sagejs._collection_helpers", "sagejs._documentation_search", "sagejs._introspection", "sagejs._namespace", "sagejs.class_namespace", "sagejs.javascript", "sqlite3", "stat", "statistics", "struct", "subprocess", "sys", "tempfile", "textwrap", "threading", "time",
         "tokenize", "traceback", "types", "unicodedata", "unittest", "urllib", "uuid", "warnings", "weakref", "xml", "zlib"
       ],
       "files": [
         "src/lib/sagejs/javascript.py",
+        "src/lib/sagejs/class_namespace.py",
+        "src/lib/sagejs/_documentation_search.py",
+        "src/lib/sagejs/_collection_helpers.py",
+        "src/lib/sagejs/_introspection.py",
+        "src/lib/sagejs/_namespace.py",
         "src/lib/_dummy_thread.py", "src/lib/_thread.py", "src/lib/abc.py", "src/lib/aes.py", "src/lib/annotationlib.py", "src/lib/argparse.py", "src/lib/array.py", "src/lib/ast.py", "src/lib/atexit.py", "src/lib/base64.py", "src/lib/bdb.py", "src/lib/calendar.py", "src/lib/cmath.py", "src/lib/colorsys.py", "src/lib/copy.py", "src/lib/datetime.py", "src/lib/decimal.py", "src/lib/enum.py",
         "src/lib/codecs.py",
         "src/lib/bisect.py", "src/lib/collections.py", "src/lib/contextlib.py",

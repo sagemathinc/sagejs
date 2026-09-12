@@ -68,6 +68,9 @@ def _primitive_operator(constituent: Any) -> tuple[Any, Any, tuple[Any, ...]]:
         operator = constituent.hecke_matrix(index)
         operators.append((index, operator))
         polynomial = operator.charpoly("x")
+        if dimension == 1:
+            # A monic linear characteristic polynomial is already irreducible.
+            return operator, polynomial, runtime.math_tuple([(index, 1)])
         factors = list(polynomial.factor())
         if (
             polynomial.degree() == dimension

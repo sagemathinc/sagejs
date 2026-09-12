@@ -1,11 +1,11 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "d2286e34b09410cddd1fdd3c6eeec7b9c71ce1fef8a6262d2ed7a06a4bbee814",
+  "source_sha256": "7cd7555041210edb8a228623ea6b197e25f22a8d3d84e98ba69e9ab3af627428",
   "counts": {
-    "total": 1105,
+    "total": 1106,
     "by_kind": {
-      "declared-ffi-function": 479,
+      "declared-ffi-function": 480,
       "declared-ffi-resource": 37,
       "napi-export": 358,
       "production-kernel": 55,
@@ -14,15 +14,15 @@
     },
     "by_disposition": {
       "compiled-source": 55,
-      "desktop-only": 50,
-      "generated-wasm": 377,
-      "portable-fallback": 573,
+      "desktop-only": 47,
+      "generated-wasm": 378,
+      "portable-fallback": 576,
       "shared-core": 50
     },
     "by_status": {
-      "available": 623,
-      "desktop-only": 50,
-      "fallback": 432
+      "available": 624,
+      "desktop-only": 47,
+      "fallback": 435
     }
   },
   "workflow_aliases": {
@@ -4978,6 +4978,18 @@
       "explanation": "Rigorous packed logarithm and square-root endpoints are available in the receipt-authenticated production WebAssembly artifact, with the same-source exact fallback retained."
     },
     {
+      "id": "ffi:flint:integer_log_sqrt_balls_prefix_resource",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "The resident logical-prefix logarithm and square-root operation is included in the receipt-authenticated production WebAssembly artifact, with exact endpoint and inactive-tail tests plus a public Chromium FFI witness."
+    },
+    {
       "id": "ffi:flint:integer_log_sqrt_balls_resource",
       "family": "flint",
       "disposition": "generated-wasm",
@@ -7669,7 +7681,7 @@
       "public_consumers": [
         "src/baselib/polynomial.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Exact matrix polynomial evaluation uses portable Horner evaluation when the native accelerator is absent."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRightKernel",
@@ -7681,7 +7693,7 @@
       "public_consumers": [
         "src/baselib/matrix.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Exact cyclotomic right kernels use portable qqbar elimination when the native accelerator is absent."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRowBasis",
@@ -7705,7 +7717,7 @@
       "public_consumers": [
         "src/baselib/polynomial.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Exact portable cyclotomic polynomial factorization is available; rational norm degree grows with the coefficient-field degree."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicRootCoefficients",
@@ -9731,38 +9743,38 @@
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeImages",
       "family": "modular-symbols",
-      "disposition": "desktop-only",
-      "status": "desktop-only",
-      "fallback": "unavailable",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
+      "explanation": "Exact character Hecke action and Gamma1 cusp/newform descent have a portable Python implementation using the browser's exact coefficient-field and matrix operations."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeMatrix",
       "family": "modular-symbols",
-      "disposition": "desktop-only",
-      "status": "desktop-only",
-      "fallback": "unavailable",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
+      "explanation": "Exact character Hecke action and Gamma1 cusp/newform descent have a portable Python implementation using the browser's exact coefficient-field and matrix operations."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeSelectedRows",
       "family": "modular-symbols",
-      "disposition": "desktop-only",
-      "status": "desktop-only",
-      "fallback": "unavailable",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "Character presentations and Gamma1(7) Eisenstein descent work in the browser; workflows requiring character Hecke matrices, including Gamma1(13) cusp/newforms, require native Sage.js."
+      "explanation": "Exact character Hecke action and Gamma1 cusp/newform descent have a portable Python implementation using the browser's exact coefficient-field and matrix operations."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",

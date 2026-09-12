@@ -37,13 +37,19 @@ test("the browser worker uses the authoritative Tree-sitter frontend", async () 
       name: "sagejs-browser-compiler-resources",
       setup(build) {
         build.onResolve(
-          { filter: /^\.\.\/(?:resources|utils)$/ },
+          { filter: /^\.\.\/(?:resources|standalone-resources|utils)$/ },
           () => ({ path: resourceShim }),
         );
       },
     }],
   });
   const browserFrontend = await import(pathToFileURL(bundle));
+  assert.throws(
+    () => browserFrontend.configureBrowserCompilerResources({
+      standardLibrary: { modules: {} },
+    }),
+    /requires coreStandalone dependencies/,
+  );
   browserFrontend.configureBrowserCompilerResources({
     treeSitterRuntime: readFileSync(
       join(root, "dist", "vendor", "web-tree-sitter.wasm"),
@@ -54,13 +60,18 @@ test("the browser worker uses the authoritative Tree-sitter frontend", async () 
     sageGrammar: readFileSync(
       join(root, "dist", "vendor", "tree-sitter-sage.wasm"),
     ),
-    standardLibrary: { modules: {
+    standardLibrary: { coreStandalone: ["implicit_support"], modules: {
       lazy_parent: {
         package: true,
         source: "value = 7\n",
         cache: {signature: require("node:crypto").createHash("sha1").update("value = 7\n").digest("hex")},
       },
-    } },
+        implicit_support: {
+          source: "support_value = 7\n",
+          cache: { signature: "browser-support-fixture" },
+        },
+      },
+    },
   });
 
   try {
@@ -73,7 +84,10 @@ test("the browser worker uses the authoritative Tree-sitter frontend", async () 
     try {
       const ast = frontend.parse("answer = 2^8", {
         filename: "<browser-test>",
+        libdir: "__stdlib__",
       });
+      assert.ok(ast.imported_module_ids.includes("implicit_support"));
+      assert.equal(ast.imports.implicit_support.standalone_lazy, true);
       const output = new compiler.OutputStream({
         omit_baselib: true,
         beautify: true,
@@ -99,6 +113,12 @@ test("the browser worker uses the authoritative Tree-sitter frontend", async () 
       });
       assert.notEqual(ordinary.imports.lazy_parent.dynamic, true,
         "unlisted source modules must retain ordinary compilation");
+      assert.match(output.get(), /support_value/);
+      const dynamicAst = frontend.parse("answer = 2^8", {
+        filename: "<browser-dynamic-test>",
+        runtime_imports: true,
+      });
+      assert.ok(!dynamicAst.imported_module_ids.includes("implicit_support"));
     } finally {
       frontend.close();
     }

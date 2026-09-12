@@ -752,8 +752,10 @@ function fsyncParentDirectory(filename) {
 }
 
 function assertReservationOwnership(reservation) {
-  const held = fs.fstatSync(reservation.descriptor);
-  const named = fs.lstatSync(reservation.filename);
+  // Windows file IDs can exceed 2**53. Number stats can round distinct files
+  // to the same inode and conceal replacement of the reserved output path.
+  const held = fs.fstatSync(reservation.descriptor, { bigint: true });
+  const named = fs.lstatSync(reservation.filename, { bigint: true });
   if (!held.isFile() || !named.isFile() || named.isSymbolicLink() ||
       held.dev !== named.dev || held.ino !== named.ino) {
     throw new Error("holdout census output reservation lost ownership");

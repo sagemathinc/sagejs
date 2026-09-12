@@ -1,6 +1,5 @@
 "use strict";
 
-const { spawn } = require("node:child_process");
 const {
   availableParallelism,
 } = require("node:os");
@@ -15,9 +14,18 @@ const { join, relative } = require("node:path");
 const { inspectBuildReceipt, workspaceFingerprint } = require("./build-receipt.cjs");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
 const {
-  schema: evidenceSchema, sha256, canonical, normalizeOutput, snapshotSource,
-  caseEvidence, reviewedEvidence, reviewMatches, compareCaseRecord, executionBytes,
+  sha256, canonical, snapshotSource,
 } = require("../tools/python-compat/evidence.cjs");
+const {
+  statusOrder, classifySagejs,
+  validateIntentionalIncompatibilities, applyIntentionalIncompatibilities,
+  makeBaselineRecord, compareBaselineRecord,
+} = require("../tools/python-compat/output-baseline.cjs");
+
+const {
+  execute, inspectReference: inspectOutputReference, runOne: runOutputCase,
+  mapConcurrent, legacyEnvironment, makeReport: makeOutputReport,
+} = require("../tools/python-compat/legacy-output-runner.cjs");
 
 const root = join(__dirname, "..");
 const suiteRoot = join(root, "upstream-tests", "micropython");
@@ -31,18 +39,6 @@ const intentionalPath = join(
 // Never qualify a separately installed SEA/native package as this checkout.
 const sagejs = join(root, "bin", "sagejs-source.cjs");
 
-const statusOrder = [
-  "pass",
-  "intentional-incompatibility",
-  "output-mismatch",
-  "compile-error",
-  "missing-module",
-  "missing-name",
-  "runtime-error",
-  "timeout",
-  "oracle-error",
-  "launch-error",
-];
 const statusWidth =
   Math.max(...statusOrder.map((status) => status.length)) + 2;
 
@@ -154,138 +150,6 @@ function requireUnchangedWorkspace(before, after = workspaceFingerprint(root)) {
   if (before !== after) throw new Error("validation workspace changed during execution");
 }
 
-function execute(command, args, { cwd, env, timeout }) {
-  return new Promise((resolve) => {
-    let child;
-    try {
-      child = spawn(command, args, {
-        cwd,
-        env,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-    } catch (error) {
-      resolve({
-        status: null,
-        signal: null,
-        output: "",
-        stdout: "",
-        stderr: "",
-        raw: { output: "", stdout: "", stderr: "" },
-        timedOut: false,
-        error: { name: error.name, code: error.code ?? null, message: error.message },
-      });
-      return;
-    }
-
-    const chunks = [];
-    const stdout = [];
-    const stderr = [];
-    let timedOut = false;
-    let settled = false;
-    const finish = (result) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      const raw = {
-        output: Buffer.concat(chunks), stdout: Buffer.concat(stdout),
-        stderr: Buffer.concat(stderr),
-      };
-      resolve({
-        ...result,
-        error: result.error ? {
-          name: result.error.name, code: result.error.code ?? null,
-          message: result.error.message,
-        } : null,
-        output: normalizeOutput(raw.output.toString("utf8")),
-        stdout: normalizeOutput(raw.stdout.toString("utf8")),
-        stderr: normalizeOutput(raw.stderr.toString("utf8")),
-        raw: Object.fromEntries(Object.entries(raw).map(([stream, bytes]) => [stream, bytes.toString("base64")])),
-        timedOut,
-      });
-    };
-    child.stdout.on("data", (chunk) => { chunks.push(Buffer.from(chunk)); stdout.push(Buffer.from(chunk)); });
-    child.stderr.on("data", (chunk) => { chunks.push(Buffer.from(chunk)); stderr.push(Buffer.from(chunk)); });
-    child.on("error", (error) => {
-      finish({ status: null, signal: null, error });
-    });
-    child.on("close", (status, signal) => {
-      finish({ status, signal, error: null });
-    });
-    const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGKILL");
-    }, timeout);
-  });
-}
-
-function firstDiagnosticLine(output) {
-  return (
-    output
-      .split("\n")
-      .map((line) => line.trim())
-      .find(Boolean) || "(no diagnostic output)"
-  );
-}
-
-function classifySagejs(result, expected) {
-  if (result.error) {
-    return {
-      status: "launch-error",
-      detail: result.error.message,
-    };
-  }
-  if (result.timedOut) {
-    return {
-      status: "timeout",
-      detail: "Sage.js exceeded the per-runtime timeout",
-    };
-  }
-  if (result.status === 0) {
-    if (executionBytes(result, "output").equals(executionBytes(expected, "output"))) {
-      return { status: "pass", detail: "" };
-    }
-    return {
-      status: "output-mismatch",
-      detail: firstOutputDifference(expected.output, result.output),
-    };
-  }
-
-  const diagnostic = result.output;
-  let status = "runtime-error";
-  if (/Failed Import: .* module doesn't exist/.test(diagnostic)) {
-    status = "missing-module";
-  } else if (
-    /Unexpected token|invalid syntax|Invalid syntax|Expecting .* found/.test(
-      diagnostic,
-    )
-  ) {
-    status = "compile-error";
-  } else if (
-    /ReferenceError:|(?:^|\s)[A-Za-z_$][\w$]* is not defined/.test(diagnostic)
-  ) {
-    status = "missing-name";
-  }
-  return {
-    status,
-    detail: firstDiagnosticLine(diagnostic),
-  };
-}
-
-function firstOutputDifference(expected, actual) {
-  const expectedLines = expected.split("\n");
-  const actualLines = actual.split("\n");
-  const count = Math.max(expectedLines.length, actualLines.length);
-  for (let index = 0; index < count; index += 1) {
-    if (expectedLines[index] !== actualLines[index]) {
-      return (
-        `line ${index + 1}: expected ${JSON.stringify(expectedLines[index])}, ` +
-        `got ${JSON.stringify(actualLines[index])}`
-      );
-    }
-  }
-  return "output differs";
-}
-
 function discoverTests() {
   const selected = [];
   const excluded = {
@@ -314,163 +178,15 @@ function discoverTests() {
 
 function loadIntentionalIncompatibilities(selected) {
   const document = JSON.parse(readFileSync(intentionalPath, "utf8"));
-  if (document.format !== 2 || !document.tests) {
-    throw new Error(
-      "INTENTIONAL-INCOMPATIBILITIES.json must use source/outcome-bound format 2",
-    );
-  }
-  const candidates = new Set(selected.map((test) => test.name));
-  for (const [name, entry] of Object.entries(document.tests)) {
-    if (!candidates.has(name)) {
-      throw new Error(
-        `intentional incompatibility ${name} is not a differential candidate`,
-      );
-    }
-    if (
-      !entry ||
-      !statusOrder.includes(entry.expectedStatus) ||
-      ["pass", "intentional-incompatibility", "launch-error", "oracle-error", "timeout"].includes(entry.expectedStatus) ||
-      typeof entry.reason !== "string" ||
-      !entry.reason || !entry.reference || entry.evidence?.schema !== evidenceSchema ||
-      (entry.alternateEvidence !== undefined && !Array.isArray(entry.alternateEvidence))
-    ) {
-      throw new Error(
-        `intentional incompatibility ${name} has an invalid review record`,
-      );
-    }
-    for (const evidence of reviewedEvidence(entry)) {
-      if (evidence?.schema !== evidenceSchema ||
-          evidence.sourceSha256 !== entry.evidence.sourceSha256 ||
-          evidence.normalization !== entry.evidence.normalization ||
-          canonical(evidence.oracle) !== canonical(entry.evidence.oracle)) {
-        throw new Error(`intentional incompatibility ${name} has an invalid alternate fingerprint`);
-      }
-    }
-  }
-  return document.tests;
-}
-
-function applyIntentionalIncompatibilities(results, reviewed, reference) {
-  return results.map((result) => {
-    const entry = reviewed[result.name];
-    if (!entry || !reviewMatches(entry, result, reference)) return result;
-    return {
-      ...result,
-      rawStatus: result.status,
-      reviewedEvidence: reviewedEvidence(entry),
-      status: "intentional-incompatibility",
-      detail: `${entry.reason} (observed ${result.status})`,
-    };
-  });
+  return validateIntentionalIncompatibilities(document, selected);
 }
 
 async function inspectReference(options, environment) {
-  const result = await execute(
-    options.python,
-    [
-      "-BS",
-      "-c",
-      "import platform; print(platform.python_implementation()); print(platform.python_version())",
-    ],
-    {
-      cwd: root,
-      env: environment,
-      timeout: options.timeout,
-    },
-  );
-  if (result.error) {
-    throw new Error(
-      `reference Python could not start (${options.python}): ${result.error.message}`,
-    );
-  }
-  if (result.timedOut || result.status !== 0) {
-    throw new Error(
-      `reference Python identification failed: ${firstDiagnosticLine(result.output)}`,
-    );
-  }
-  const [implementation, version] = result.output.trim().split("\n");
-  if (implementation !== "CPython" || !version) {
-    throw new Error(
-      `the reference must be CPython; got ${JSON.stringify(result.output.trim())}`,
-    );
-  }
-  return {
-    implementation,
-    version,
-    majorMinor: version.split(".").slice(0, 2).join("."),
-    command: options.python,
-  };
+  return inspectOutputReference(options, environment, { root });
 }
 
 async function runOne(test, options, environment) {
-  const sourceSha256 = sha256(readFileSync(test.file));
-  const oracle = await execute(options.python, ["-BS", test.file], {
-    cwd: corpusRoot,
-    env: environment,
-    timeout: options.timeout,
-  });
-  if (oracle.error) {
-    return {
-      name: test.name,
-      status: "launch-error",
-      detail: oracle.error.message,
-      evidence: caseEvidence(sourceSha256, oracle, null),
-      executions: { oracle, subject: null },
-    };
-  }
-  if (oracle.timedOut) {
-    return {
-      name: test.name,
-      status: "oracle-error",
-      detail: "CPython exceeded the per-runtime timeout",
-      evidence: caseEvidence(sourceSha256, oracle, null),
-      executions: { oracle, subject: null },
-    };
-  }
-  if (oracle.status !== 0) {
-    return {
-      name: test.name,
-      status: "oracle-error",
-      detail: firstDiagnosticLine(oracle.output),
-      evidence: caseEvidence(sourceSha256, oracle, null),
-      executions: { oracle, subject: null },
-    };
-  }
-
-  const candidate = await execute(
-    process.execPath,
-    [sagejs, "--python", test.file],
-    {
-      cwd: corpusRoot,
-      env: environment,
-      timeout: options.timeout,
-    },
-  );
-  return {
-    name: test.name,
-    ...classifySagejs(candidate, oracle),
-    evidence: caseEvidence(sourceSha256, oracle, candidate),
-    executions: { oracle, subject: candidate },
-  };
-}
-
-async function mapConcurrent(items, concurrency, callback) {
-  const results = new Array(items.length);
-  let next = 0;
-  async function worker() {
-    while (true) {
-      const index = next++;
-      if (index >= items.length) return;
-      results[index] = await callback(items[index], index);
-    }
-  }
-  await Promise.all(
-    Array.from(
-      { length: Math.min(concurrency, Math.max(1, items.length)) },
-      () => worker(),
-    ),
-  );
-  return results;
+  return runOutputCase(test, options, environment, { corpusRoot, sagejs });
 }
 
 function countStatuses(results) {
@@ -526,50 +242,13 @@ function sourceProvenance() {
   };
 }
 
-function makeReport({ reference, provenance, excluded, artifacts, build, results, gate, workspaceSha256 }) {
-  return {
-    schema: "sagejs.python-conformance-report/v1",
-    reference, provenance, excluded, workspaceSha256,
-    subject: { route: "source", command: process.execPath, args: [sagejs, "--python"] },
-    artifact: {
-      files: artifacts, node: process.versions.node, v8: process.versions.v8,
-      platform: process.platform, arch: process.arch, currentBuild: build.current,
-      qualifiedGate: build.current === true && gate.status === "passed",
-    },
-    gate,
-    results,
-  };
+function makeReport(options) {
+  return makeOutputReport({ ...options, sagejs });
 }
 
 function makeBaseline(results, reference, excluded, provenance) {
   const source = JSON.parse(readFileSync(sourcePath, "utf8"));
-  return {
-    format: 2,
-    source,
-    provenance,
-    reference: {
-      implementation: reference.implementation,
-      version: reference.version,
-      majorMinor: reference.majorMinor,
-    },
-    selection: {
-      candidates: results.length,
-      excludedExpected: excluded.expected,
-      excludedUnittest: excluded.unittest,
-    },
-    outcomes: Object.fromEntries(
-      results.map((result) => [result.name, result.status]),
-    ),
-    rawStatuses: Object.fromEntries(
-      results.map((result) => [result.name, result.rawStatus ?? result.status]),
-    ),
-    evidence: Object.fromEntries(
-      results.map((result) => [result.name, result.reviewedEvidence?.[0] ?? result.evidence]),
-    ),
-    reviewedEvidence: Object.fromEntries(results
-      .filter((result) => result.status === "intentional-incompatibility")
-      .map((result) => [result.name, result.reviewedEvidence])),
-  };
+  return makeBaselineRecord(results, reference, excluded, provenance, source);
 }
 
 function baselinePathFor(reference) {
@@ -583,54 +262,10 @@ function compareBaseline(results, reference, excluded, baselinePath, provenance)
     );
   }
   const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
-  if (baseline.format !== 2) {
-    throw new Error(`baseline format ${baseline.format} lacks source/outcome fingerprints; use report mode and explicitly review a format-2 migration`);
-  }
-  const source = JSON.parse(readFileSync(sourcePath, "utf8"));
-  if (JSON.stringify(baseline.source) !== JSON.stringify(source)) {
-    throw new Error("baseline source metadata does not match SOURCE.json");
-  }
-  if (
-    baseline.reference.implementation !== reference.implementation ||
-    baseline.reference.version !== reference.version
-  ) {
-    throw new Error(
-      `baseline uses ${baseline.reference.implementation} ` +
-        `${baseline.reference.version}, but the reference is ` +
-        `${reference.implementation} ${reference.version}`,
-    );
-  }
-
-  const changes = [];
-  if (baseline.selection.candidates !== results.length) {
-    changes.push("candidate count changed");
-  }
-  if (canonical(baseline.provenance) !== canonical(provenance)) {
-    changes.push("source/fixture/license/review provenance changed");
-  }
-  const current = new Map(results.map((result) => [result.name, result]));
-  for (const [name, expected] of Object.entries(baseline.outcomes)) {
-    const actual = current.get(name);
-    changes.push(...compareCaseRecord(name, {
-      status: expected, rawStatus: baseline.rawStatuses[name], evidence: baseline.evidence[name],
-      reviewedEvidence: baseline.reviewedEvidence?.[name],
-    }, actual && { ...actual, rawStatus: actual.rawStatus ?? actual.status }));
-  }
-  for (const [name, actual] of current) {
-    if (!(name in baseline.outcomes)) {
-      changes.push(`${name}: new test (${actual.status})`);
-    }
-  }
-
-  const baselineExpected = baseline.selection.excludedExpected || [];
-  const baselineUnittest = baseline.selection.excludedUnittest || [];
-  if (JSON.stringify(baselineExpected) !== JSON.stringify(excluded.expected)) {
-    changes.push("the set of .exp-excluded tests changed");
-  }
-  if (JSON.stringify(baselineUnittest) !== JSON.stringify(excluded.unittest)) {
-    changes.push("the set of unittest-excluded tests changed");
-  }
-  return changes;
+  // Preserve the legacy format-error precedence before reading SOURCE.json.
+  const source = baseline.format === 2
+    ? JSON.parse(readFileSync(sourcePath, "utf8")) : undefined;
+  return compareBaselineRecord(results, reference, excluded, baseline, provenance, source);
 }
 
 async function main() {
@@ -645,14 +280,7 @@ async function main() {
     "dist/compiler/compiler.js", "dist/runtime-cache/runtime-bootstrap-python.js",
   ].map((path) => [path, sha256(readFileSync(join(root, path)))]));
   const provenance = sourceProvenance();
-  const environment = {
-    ...process.env,
-    LC_ALL: "C.UTF-8",
-    LANG: "C.UTF-8",
-    PYTHONDONTWRITEBYTECODE: "1",
-    PYTHONHASHSEED: "0",
-    TZ: "UTC",
-  };
+  const environment = legacyEnvironment();
   const reference = await inspectReference(options, environment);
   const { selected, excluded } = discoverTests();
   const intentional = loadIntentionalIncompatibilities(selected);

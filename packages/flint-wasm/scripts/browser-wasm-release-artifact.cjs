@@ -233,7 +233,7 @@ function payloadGroups(manifest, files) {
   return groups;
 }
 
-function inspectProductionArtifact(distDirectory) {
+function inspectArtifact(distDirectory, compressionSizes) {
   const root = path.resolve(distDirectory);
   const manifestPath = path.join(root, "production-manifest.json");
   const buildReceiptPath = path.join(root, "build-receipt.json");
@@ -296,15 +296,7 @@ function inspectProductionArtifact(distDirectory) {
       path: filename,
       bytes: bytes.length,
       sha256: digest,
-      gzip_bytes: zlib.gzipSync(bytes, { level: 9, mtime: 0 }).length,
-      brotli_bytes: zlib.brotliCompressSync(bytes, {
-        params: {
-          [zlib.constants.BROTLI_PARAM_QUALITY]: 11,
-          [zlib.constants.BROTLI_PARAM_MODE]: filename.endsWith(".wasm")
-            ? zlib.constants.BROTLI_MODE_GENERIC
-            : zlib.constants.BROTLI_MODE_TEXT,
-        },
-      }).length,
+      ...compressionSizes(filename, bytes),
     };
   });
   const totals = files.reduce((result, item) => ({
@@ -328,6 +320,51 @@ function inspectProductionArtifact(distDirectory) {
   };
 }
 
+function inspectProductionArtifact(distDirectory) {
+  return inspectArtifact(distDirectory, (filename, bytes) => ({
+    gzip_bytes: zlib.gzipSync(bytes, { level: 9, mtime: 0 }).length,
+    brotli_bytes: zlib.brotliCompressSync(bytes, {
+      params: {
+        [zlib.constants.BROTLI_PARAM_QUALITY]: 11,
+        [zlib.constants.BROTLI_PARAM_MODE]: filename.endsWith(".wasm")
+          ? zlib.constants.BROTLI_MODE_GENERIC
+          : zlib.constants.BROTLI_MODE_TEXT,
+      },
+    }).length,
+  }));
+}
+
+// Comparison only, not provenance: the caller must authenticate the recorded
+// report from a qualified producer. A self-authored JSON report is not evidence
+// of compressed sizes. Recheck bytes, Wasm memory, metadata and derived totals
+// while retaining the producer's measurements instead of recompressing payloads.
+function verifyRecordedArtifact(distDirectory, recorded) {
+  if (recorded?.schema !== "sagejs.browser-wasm-release-artifact/v1" ||
+      !Array.isArray(recorded.files) || recorded.files.length < 1 || recorded.files.length > 20000) {
+    throw new Error("invalid recorded artifact report");
+  }
+  const records = new Map();
+  for (const file of recorded.files) {
+    validateRelative(file.path);
+    if (records.has(file.path) || !/^[a-f0-9]{64}$/.test(file.sha256 ?? "") ||
+        !Number.isSafeInteger(file.bytes) || file.bytes < 0 ||
+        ![file.gzip_bytes, file.brotli_bytes].every((size) => Number.isSafeInteger(size) && size > 0)) {
+      throw new Error("invalid or duplicated recorded file measurement");
+    }
+    records.set(file.path, file);
+  }
+  const actual = inspectArtifact(distDirectory, (filename, bytes) => {
+    const file = records.get(filename);
+    if (!file || file.bytes !== bytes.length || file.sha256 !== sha256(bytes)) {
+      throw new Error(`recorded measurement does not bind ${filename}`);
+    }
+    return { gzip_bytes: file.gzip_bytes, brotli_bytes: file.brotli_bytes };
+  });
+  // Strict JSON readers may use null-prototype objects. Compare the complete
+  // JSON value, not JavaScript object prototypes introduced by its decoder.
+  if (canonicalJson(actual) !== canonicalJson(recorded)) throw new Error("recorded artifact report differs from current bytes or derived metadata");
+  return actual;
+}
 function reviewedTopologyLimits(budget, groupIds) {
   if (budget === null || budget === undefined) return new Map();
   if (budget.schema !== "sagejs.browser-wasm-budget/v1") {
@@ -487,6 +524,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  verifyRecordedArtifact,
   compareArtifacts,
   enforceBudget,
   enforceTopologyBudgets,

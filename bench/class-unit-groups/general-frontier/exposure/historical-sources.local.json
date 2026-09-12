@@ -1,0 +1,89 @@
+{
+  "schema": "sagejs.general-frontier/exposure-sources-v1",
+  "sources": [
+    {
+      "id": "historical-3259",
+      "kind": "historical-3259-labels",
+      "category": "historical-quarantine",
+      "path": "/home/user/sagejs-worktrees/cubic-frontier-next/build/cubic-next-evidence/rank-pending-neighbors-exclusions.txt",
+      "sha256": "b7dc806d98b62f02950f5273c9f50d4126ef9f93a67b1b1c9623f96d0ed4a188"
+    },
+    {
+      "id": "legacy-cubic1730",
+      "kind": "legacy-cubic-out-of-sample",
+      "category": "prior-sage-exposure",
+      "path": "/home/user/sagejs/.agents/scratch/cubic-out-of-sample/corpus.json",
+      "sha256": "6e0d6caa32628fa408bdee3843e4716a6dc6cf0337a599863b106154a35a30d7"
+    },
+    {
+      "id": "frozen-survey1012",
+      "kind": "frozen-cubic-survey-jsonl-gzip",
+      "category": "prior-sage-exposure",
+      "path": "/home/user/sagejs/.agents/scratch/complex-cubic-frontier-survey.jsonl.gz",
+      "sha256": "13970565985336d6aa61dd2e5892bae09cdb5a1cee42de7f4afe541edf523c2a"
+    },
+    {
+      "id": "neighbors-selection20",
+      "kind": "registered-neighbors",
+      "category": "selection-only",
+      "path": "/home/user/sagejs-worktrees/cubic-frontier-next/build/cubic-next-evidence/rank-pending-neighbors-registration.json",
+      "sha256": "893e58ab8b89dbb375dbb3f6179254fb05f5af7f248022123f0a30ed4274f466"
+    },
+    {
+      "id": "cubic100",
+      "kind": "lmfdb-fixture",
+      "category": "prior-sage-exposure",
+      "path": "../../../../test/fixtures/number-field-lmfdb-cubic-100.json",
+      "sha256": "9da77a37aa98decb2fc9e4df2173dc2daa1514ca27ce3ace8ef88a49d2b8e0fe"
+    },
+    {
+      "id": "cubic10",
+      "kind": "lmfdb-fixture",
+      "category": "prior-sage-exposure",
+      "path": "../../../../test/fixtures/number-field-lmfdb-cubic-class-numbers.json",
+      "sha256": "8b247cdc4b8a68ad8ea65559a5451100cbacfffbd724136c4e53efb2507bb298"
+    },
+    {
+      "id": "quartic36",
+      "kind": "lmfdb-fixture",
+      "category": "prior-sage-exposure",
+      "path": "../../../../test/fixtures/number-field-lmfdb-quartic-stratified.json",
+      "sha256": "a84e39a26c7bd8e27c1b1c2761c8b28c38924acdcf1e8fcb2d14d4c516106708"
+    },
+    {
+      "id": "maximal-order505",
+      "kind": "maximal-order-oracles",
+      "category": "historical-quarantine",
+      "path": "../../../../test/fixtures/number-field-maximal-order-corpus.json",
+      "sha256": "03aca43a4f02bf148ef2a538f132086e99fd66b7c0c26b3cb8b304d3040a1a0f"
+    },
+    {
+      "id": "class-unit-oracles",
+      "kind": "class-unit-oracles",
+      "category": "historical-quarantine",
+      "path": "../../../../test/fixtures/number-field-class-unit-oracles.json",
+      "sha256": "a365c72f244a1895bcab972c836853a67f8cb8648dd0a57d8971bd55520ba481"
+    },
+    {
+      "id": "high-degree5",
+      "kind": "high-degree-oracles",
+      "category": "historical-quarantine",
+      "path": "../../../../test/fixtures/number-field-class-unit-high-degree-oracles.json",
+      "sha256": "efd08ff2637ee7ecaa06ce5a6f1fd1f119fb59b93a758a3ea4c4fcc4cb387f55"
+    },
+    {
+      "id": "foundations24",
+      "kind": "foundations-oracles",
+      "category": "historical-quarantine",
+      "path": "../../../../test/fixtures/number-field-foundations/corpus.json",
+      "sha256": "f270919005c54e4ae38d51660d9d79b20f3876faa1a042f9059780d080992f85"
+    },
+    {
+      "id": "quadratic14",
+      "kind": "quadratic-discriminants",
+      "category": "historical-quarantine",
+      "path": "../../../../test/fixtures/number-field-quadratic-class-units.json",
+      "sha256": "ed832bc63a179f79c475972636f407d293be24825f1ddc0edb12bc94989c0150"
+    }
+  ]
+}

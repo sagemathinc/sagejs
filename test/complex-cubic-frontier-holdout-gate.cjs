@@ -1292,6 +1292,39 @@ test("output reservation is exclusive, publishable, and retained after failure",
   assert.equal(directorySyncs, 2);
 });
 
+test("output ownership preserves file IDs beyond Number's exact range", (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-holdout-file-id-"));
+  const reservation = reserveOutput(path.join(directory, "evidence.json"));
+  t.after(() => {
+    closeOutputReservation(reservation);
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
+  const heldId = 2n ** 53n;
+  const replacementId = heldId + 1n;
+  assert.equal(Number(heldId), Number(replacementId));
+  let replaced = false;
+  const fstat = fs.fstatSync;
+  const lstat = fs.lstatSync;
+  t.mock.method(fs, "fstatSync", (descriptor, options) => {
+    const stat = fstat(descriptor, options);
+    stat.ino = options?.bigint ? heldId : Number(heldId);
+    return stat;
+  });
+  t.mock.method(fs, "lstatSync", (filename, options) => {
+    const stat = lstat(filename, options);
+    const id = replaced ? replacementId : heldId;
+    stat.ino = options?.bigint ? id : Number(id);
+    return stat;
+  });
+  assert.throws(() => publishReservedOutput(reservation, "authentic", {
+    write(descriptor, bytes) {
+      fs.writeFileSync(descriptor, bytes);
+      replaced = true;
+    },
+  }), /reservation lost ownership/);
+  assert.equal(reservation.published, false);
+});
+
 test("freeze files are canonical, exclusive, and content-addressed", (t) => {
   const fixture = completeFixture();
   const artifact = makeFreezeArtifact({

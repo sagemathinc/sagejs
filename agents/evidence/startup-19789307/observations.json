@@ -1,0 +1,1188 @@
+{
+  "schema": "sagejs.startup-readiness-audit/v1",
+  "auditDate": "2026-09-07",
+  "scope": "Historical retained executables; diagnostic observations only, not current candidate qualification.",
+  "controlRevision": "3bcdf75c28e6b0b5227e24fe5ee969fab9ad1890",
+  "associatedCheckoutRevision": "19789307151662045ca942ad8ea30dcea4b6f6fa",
+  "sourceBinding": "Each associated host checkout HEAD was read independently after observation. Executable hashes were checked before and after sampling. This does not reconstruct a source-current build receipt or authenticate signing.",
+  "pipe": [
+    {
+      "target": "linux-x64",
+      "observation": {
+        "schema": "sagejs.startup-pipe-observation/v1",
+        "executable": "/home/user/sagejs-release-080-recovery/build/sea/sagejs",
+        "sha256": "ea13704b8bdeb4d058fcff77abc0dd9e6e7c0b2256b2660eb999edd15e587890",
+        "version": "sagejs 0.8.0",
+        "host": {
+          "platform": "linux",
+          "arch": "x64",
+          "cpu": "AMD EPYC 7B13",
+          "controllerNode": "v26.5.1",
+          "before": {
+            "load": [
+              0.11,
+              0.07,
+              0.02
+            ],
+            "freeMemory": 32443932672
+          },
+          "after": {
+            "load": [
+              0.24,
+              0.1,
+              0.03
+            ],
+            "freeMemory": 31455875072
+          }
+        },
+        "protocol": "21 fresh processes, existing filesystem/runtime cache, stdin pipes; first correct answer then second round trip then exit; no prompt measurement or normalization",
+        "samples": [
+          {
+            "firstAnswerMs": 310.9476799999999,
+            "secondRoundTripMs": 14.700079000000187,
+            "exitAfterAnswerMs": 17.860397999999805
+          },
+          {
+            "firstAnswerMs": 311.51222000000007,
+            "secondRoundTripMs": 14.305128999999852,
+            "exitAfterAnswerMs": 17.41311799999994
+          },
+          {
+            "firstAnswerMs": 316.00684,
+            "secondRoundTripMs": 14.47166900000002,
+            "exitAfterAnswerMs": 17.337687999999844
+          },
+          {
+            "firstAnswerMs": 314.8683799999999,
+            "secondRoundTripMs": 14.601019000000178,
+            "exitAfterAnswerMs": 15.361387999999806
+          },
+          {
+            "firstAnswerMs": 312.9489309999999,
+            "secondRoundTripMs": 14.8880079999999,
+            "exitAfterAnswerMs": 15.868969000000106
+          },
+          {
+            "firstAnswerMs": 317.35049000000026,
+            "secondRoundTripMs": 14.859278999999788,
+            "exitAfterAnswerMs": 16.61332799999991
+          },
+          {
+            "firstAnswerMs": 312.07455100000016,
+            "secondRoundTripMs": 15.290887999999995,
+            "exitAfterAnswerMs": 17.488968000000114
+          },
+          {
+            "firstAnswerMs": 312.23709099999996,
+            "secondRoundTripMs": 14.291527999999744,
+            "exitAfterAnswerMs": 15.308379000000059
+          },
+          {
+            "firstAnswerMs": 310.08213000000023,
+            "secondRoundTripMs": 14.508518999999978,
+            "exitAfterAnswerMs": 16.9514079999999
+          },
+          {
+            "firstAnswerMs": 313.14449000000013,
+            "secondRoundTripMs": 14.485028999999486,
+            "exitAfterAnswerMs": 15.604988000000048
+          },
+          {
+            "firstAnswerMs": 312.5297099999998,
+            "secondRoundTripMs": 14.693099000000075,
+            "exitAfterAnswerMs": 16.890417999999954
+          },
+          {
+            "firstAnswerMs": 310.97648000000027,
+            "secondRoundTripMs": 14.508077999999841,
+            "exitAfterAnswerMs": 17.29258899999968
+          },
+          {
+            "firstAnswerMs": 312.0101800000002,
+            "secondRoundTripMs": 14.567259000000377,
+            "exitAfterAnswerMs": 16.779037999999673
+          },
+          {
+            "firstAnswerMs": 310.30079099999966,
+            "secondRoundTripMs": 14.899207999999817,
+            "exitAfterAnswerMs": 17.457228000000214
+          },
+          {
+            "firstAnswerMs": 312.6206309999998,
+            "secondRoundTripMs": 14.718678000000182,
+            "exitAfterAnswerMs": 17.697519000000284
+          },
+          {
+            "firstAnswerMs": 315.85357900000054,
+            "secondRoundTripMs": 14.078488999999536,
+            "exitAfterAnswerMs": 16.29605900000024
+          },
+          {
+            "firstAnswerMs": 313.7014510000008,
+            "secondRoundTripMs": 14.30138799999986,
+            "exitAfterAnswerMs": 17.32933899999989
+          },
+          {
+            "firstAnswerMs": 307.90515999999934,
+            "secondRoundTripMs": 14.78222900000037,
+            "exitAfterAnswerMs": 14.80627800000002
+          },
+          {
+            "firstAnswerMs": 308.8993909999999,
+            "secondRoundTripMs": 14.147617999999966,
+            "exitAfterAnswerMs": 16.68902900000012
+          },
+          {
+            "firstAnswerMs": 316.69486999999936,
+            "secondRoundTripMs": 14.637408000000505,
+            "exitAfterAnswerMs": 15.22124900000017
+          },
+          {
+            "firstAnswerMs": 310.0844499999994,
+            "secondRoundTripMs": 14.807389000000512,
+            "exitAfterAnswerMs": 16.89274800000021
+          }
+        ],
+        "summary": {
+          "firstAnswerMs": {
+            "min": 307.90515999999934,
+            "median": 312.23709099999996,
+            "p95": 316.69486999999936,
+            "max": 317.35049000000026
+          },
+          "secondRoundTripMs": {
+            "min": 14.078488999999536,
+            "median": 14.601019000000178,
+            "p95": 14.899207999999817,
+            "max": 15.290887999999995
+          },
+          "exitAfterAnswerMs": {
+            "min": 14.80627800000002,
+            "median": 16.890417999999954,
+            "p95": 17.697519000000284,
+            "max": 17.860397999999805
+          }
+        }
+      }
+    },
+    {
+      "target": "linux-arm64",
+      "observation": {
+        "schema": "sagejs.startup-pipe-observation/v1",
+        "executable": "/home/user/sagejs-release-080-recovery/build/sea/sagejs",
+        "sha256": "ea0d713dcdc39ccf3878f661bbb9b3a0cf5245b84a5c39091e77db4596fa7000",
+        "version": "sagejs 0.8.0",
+        "host": {
+          "platform": "linux",
+          "arch": "arm64",
+          "cpu": "Neoverse-N1",
+          "controllerNode": "v26.5.1",
+          "before": {
+            "load": [
+              0.1,
+              0.02,
+              0.01
+            ],
+            "freeMemory": 16217419776
+          },
+          "after": {
+            "load": [
+              0.31,
+              0.07,
+              0.02
+            ],
+            "freeMemory": 15589834752
+          }
+        },
+        "protocol": "21 fresh processes, existing filesystem/runtime cache, stdin pipes; first correct answer then second round trip then exit; no prompt measurement or normalization",
+        "samples": [
+          {
+            "firstAnswerMs": 487.0117869999999,
+            "secondRoundTripMs": 32.276476999999886,
+            "exitAfterAnswerMs": 30.86643600000025
+          },
+          {
+            "firstAnswerMs": 453.43439100000023,
+            "secondRoundTripMs": 28.32947699999977,
+            "exitAfterAnswerMs": 30.19779699999981
+          },
+          {
+            "firstAnswerMs": 449.8413910000004,
+            "secondRoundTripMs": 22.435557999999673,
+            "exitAfterAnswerMs": 27.572797000000264
+          },
+          {
+            "firstAnswerMs": 417.10595500000045,
+            "secondRoundTripMs": 20.985797999999704,
+            "exitAfterAnswerMs": 27.109757000000172
+          },
+          {
+            "firstAnswerMs": 437.276433,
+            "secondRoundTripMs": 27.33003700000063,
+            "exitAfterAnswerMs": 35.38487600000008
+          },
+          {
+            "firstAnswerMs": 429.54743300000064,
+            "secondRoundTripMs": 21.796518000000106,
+            "exitAfterAnswerMs": 27.62435699999969
+          },
+          {
+            "firstAnswerMs": 421.2527549999995,
+            "secondRoundTripMs": 20.539357000000564,
+            "exitAfterAnswerMs": 25.454797999999755
+          },
+          {
+            "firstAnswerMs": 418.23479399999997,
+            "secondRoundTripMs": 20.432918000000427,
+            "exitAfterAnswerMs": 25.96111699999983
+          },
+          {
+            "firstAnswerMs": 393.46527799999967,
+            "secondRoundTripMs": 20.52803799999947,
+            "exitAfterAnswerMs": 25.708197000000837
+          },
+          {
+            "firstAnswerMs": 409.67343600000004,
+            "secondRoundTripMs": 22.512157000000116,
+            "exitAfterAnswerMs": 27.429237000000285
+          },
+          {
+            "firstAnswerMs": 398.9949569999999,
+            "secondRoundTripMs": 24.28415700000005,
+            "exitAfterAnswerMs": 27.010557999999946
+          },
+          {
+            "firstAnswerMs": 408.7351149999995,
+            "secondRoundTripMs": 22.316118000000642,
+            "exitAfterAnswerMs": 26.06471699999929
+          },
+          {
+            "firstAnswerMs": 403.6870369999997,
+            "secondRoundTripMs": 20.9435169999997,
+            "exitAfterAnswerMs": 30.97303700000157
+          },
+          {
+            "firstAnswerMs": 388.2301580000003,
+            "secondRoundTripMs": 21.637797999999748,
+            "exitAfterAnswerMs": 24.770597000000635
+          },
+          {
+            "firstAnswerMs": 394.9991169999994,
+            "secondRoundTripMs": 20.10295800000131,
+            "exitAfterAnswerMs": 26.05979699999989
+          },
+          {
+            "firstAnswerMs": 403.47955699999875,
+            "secondRoundTripMs": 22.600836999999956,
+            "exitAfterAnswerMs": 29.324877000000924
+          },
+          {
+            "firstAnswerMs": 408.05763599999955,
+            "secondRoundTripMs": 20.635878000000957,
+            "exitAfterAnswerMs": 24.775676999999632
+          },
+          {
+            "firstAnswerMs": 392.08691799999906,
+            "secondRoundTripMs": 20.072958000000654,
+            "exitAfterAnswerMs": 28.700716999999713
+          },
+          {
+            "firstAnswerMs": 390.02979699999923,
+            "secondRoundTripMs": 21.837798000000475,
+            "exitAfterAnswerMs": 25.523917000000438
+          },
+          {
+            "firstAnswerMs": 399.08739700000115,
+            "secondRoundTripMs": 20.088158000000476,
+            "exitAfterAnswerMs": 25.47495699999854
+          },
+          {
+            "firstAnswerMs": 406.5168759999997,
+            "secondRoundTripMs": 20.375637999999526,
+            "exitAfterAnswerMs": 27.657557000000452
+          }
+        ],
+        "summary": {
+          "firstAnswerMs": {
+            "min": 388.2301580000003,
+            "median": 408.05763599999955,
+            "p95": 453.43439100000023,
+            "max": 487.0117869999999
+          },
+          "secondRoundTripMs": {
+            "min": 20.072958000000654,
+            "median": 21.637797999999748,
+            "p95": 28.32947699999977,
+            "max": 32.276476999999886
+          },
+          "exitAfterAnswerMs": {
+            "min": 24.770597000000635,
+            "median": 27.109757000000172,
+            "p95": 30.97303700000157,
+            "max": 35.38487600000008
+          }
+        }
+      }
+    },
+    {
+      "target": "macos-arm64",
+      "observation": {
+        "schema": "sagejs.startup-pipe-observation/v1",
+        "executable": "/Volumes/sage/sagejs-release-080-recovery/build/sea/sagejs",
+        "sha256": "01f8a728576d662e49392948e49fd7a1b63936e71a30b7a64660eef0d548463c",
+        "version": "sagejs 0.8.0",
+        "host": {
+          "platform": "darwin",
+          "arch": "arm64",
+          "cpu": "Apple M1 Max",
+          "controllerNode": "v26.5.1",
+          "before": {
+            "load": [
+              0.9228515625,
+              1.28515625,
+              1.38818359375
+            ],
+            "freeMemory": 3525967872
+          },
+          "after": {
+            "load": [
+              1.7294921875,
+              1.4462890625,
+              1.4443359375
+            ],
+            "freeMemory": 3452796928
+          }
+        },
+        "protocol": "21 fresh processes, existing filesystem/runtime cache, stdin pipes; first correct answer then second round trip then exit; no prompt measurement or normalization",
+        "samples": [
+          {
+            "firstAnswerMs": 552.5448749999999,
+            "secondRoundTripMs": 21.148374999999987,
+            "exitAfterAnswerMs": 24.275291000000152
+          },
+          {
+            "firstAnswerMs": 444.499542,
+            "secondRoundTripMs": 20.13537499999984,
+            "exitAfterAnswerMs": 18.973291000000017
+          },
+          {
+            "firstAnswerMs": 501.11983299999997,
+            "secondRoundTripMs": 20.862041999999747,
+            "exitAfterAnswerMs": 20.025792000000365
+          },
+          {
+            "firstAnswerMs": 483.73862499999996,
+            "secondRoundTripMs": 21.197999999999865,
+            "exitAfterAnswerMs": 19.996667000000343
+          },
+          {
+            "firstAnswerMs": 503.09191599999986,
+            "secondRoundTripMs": 20.901875000000018,
+            "exitAfterAnswerMs": 20.72787500000004
+          },
+          {
+            "firstAnswerMs": 727.7024169999995,
+            "secondRoundTripMs": 7.882207999999991,
+            "exitAfterAnswerMs": 6.862458000000515
+          },
+          {
+            "firstAnswerMs": 252.17454199999975,
+            "secondRoundTripMs": 16.36658299999999,
+            "exitAfterAnswerMs": 15.769542000000001
+          },
+          {
+            "firstAnswerMs": 339.8024169999999,
+            "secondRoundTripMs": 8.055666000000201,
+            "exitAfterAnswerMs": 6.414792000000489
+          },
+          {
+            "firstAnswerMs": 223.69304100000045,
+            "secondRoundTripMs": 7.415291999999681,
+            "exitAfterAnswerMs": 6.713416999999936
+          },
+          {
+            "firstAnswerMs": 210.9375829999999,
+            "secondRoundTripMs": 9.438209000000825,
+            "exitAfterAnswerMs": 6.772707999999511
+          },
+          {
+            "firstAnswerMs": 261.6920829999999,
+            "secondRoundTripMs": 11.254167000000052,
+            "exitAfterAnswerMs": 6.886707999999999
+          },
+          {
+            "firstAnswerMs": 229.35195899999962,
+            "secondRoundTripMs": 7.969916000000012,
+            "exitAfterAnswerMs": 6.453583999999864
+          },
+          {
+            "firstAnswerMs": 226.6489159999992,
+            "secondRoundTripMs": 8.029417000000649,
+            "exitAfterAnswerMs": 6.5974999999998545
+          },
+          {
+            "firstAnswerMs": 227.0467090000002,
+            "secondRoundTripMs": 13.142790999999306,
+            "exitAfterAnswerMs": 6.888292000000547
+          },
+          {
+            "firstAnswerMs": 225.9307919999992,
+            "secondRoundTripMs": 9.107708000000457,
+            "exitAfterAnswerMs": 6.590791999999965
+          },
+          {
+            "firstAnswerMs": 228.07737499999985,
+            "secondRoundTripMs": 7.083708000000115,
+            "exitAfterAnswerMs": 6.115332999999737
+          },
+          {
+            "firstAnswerMs": 226.43262500000037,
+            "secondRoundTripMs": 16.33020899999974,
+            "exitAfterAnswerMs": 7.726958000000195
+          },
+          {
+            "firstAnswerMs": 227.25925000000007,
+            "secondRoundTripMs": 8.609459000000243,
+            "exitAfterAnswerMs": 7.156290999999328
+          },
+          {
+            "firstAnswerMs": 218.50016699999924,
+            "secondRoundTripMs": 9.654916000000412,
+            "exitAfterAnswerMs": 10.17633399999977
+          },
+          {
+            "firstAnswerMs": 456.85270799999944,
+            "secondRoundTripMs": 20.988542000000052,
+            "exitAfterAnswerMs": 19.46087499999976
+          },
+          {
+            "firstAnswerMs": 511.95329200000015,
+            "secondRoundTripMs": 21.93620799999917,
+            "exitAfterAnswerMs": 19.284166999999798
+          }
+        ],
+        "summary": {
+          "firstAnswerMs": {
+            "min": 210.9375829999999,
+            "median": 252.17454199999975,
+            "p95": 552.5448749999999,
+            "max": 727.7024169999995
+          },
+          "secondRoundTripMs": {
+            "min": 7.083708000000115,
+            "median": 11.254167000000052,
+            "p95": 21.197999999999865,
+            "max": 21.93620799999917
+          },
+          "exitAfterAnswerMs": {
+            "min": 6.115332999999737,
+            "median": 7.156290999999328,
+            "p95": 20.72787500000004,
+            "max": 24.275291000000152
+          }
+        }
+      }
+    },
+    {
+      "target": "windows-x64",
+      "observation": {
+        "schema": "sagejs.startup-pipe-observation/v1",
+        "executable": "C:\\Users\\user\\sagejs-release-080-r7\\build\\sea\\sagejs.exe",
+        "sha256": "9cb5718ffeb1ba292d4f106557d650d65d5c8695b8c32afb7b5a4670d3ed3c28",
+        "version": "sagejs 0.8.0",
+        "host": {
+          "platform": "win32",
+          "arch": "x64",
+          "cpu": "AMD EPYC 7B13",
+          "controllerNode": "v26.5.1",
+          "before": {
+            "load": [
+              0,
+              0,
+              0
+            ],
+            "freeMemory": 29604777984
+          },
+          "after": {
+            "load": [
+              0,
+              0,
+              0
+            ],
+            "freeMemory": 29598908416
+          }
+        },
+        "protocol": "21 fresh processes, existing filesystem/runtime cache, stdin pipes; first correct answer then second round trip then exit; no prompt measurement or normalization",
+        "samples": [
+          {
+            "firstAnswerMs": 373.97510000000005,
+            "secondRoundTripMs": 15.15569999999991,
+            "exitAfterAnswerMs": 23.558200000000056
+          },
+          {
+            "firstAnswerMs": 367.03650000000005,
+            "secondRoundTripMs": 16.44159999999988,
+            "exitAfterAnswerMs": 23.4045000000001
+          },
+          {
+            "firstAnswerMs": 358.4847,
+            "secondRoundTripMs": 15.417200000000093,
+            "exitAfterAnswerMs": 23.999599999999873
+          },
+          {
+            "firstAnswerMs": 357.6890000000001,
+            "secondRoundTripMs": 15.86369999999988,
+            "exitAfterAnswerMs": 22.42509999999993
+          },
+          {
+            "firstAnswerMs": 382.6857,
+            "secondRoundTripMs": 15.111500000000433,
+            "exitAfterAnswerMs": 24.547599999999875
+          },
+          {
+            "firstAnswerMs": 371.3355999999999,
+            "secondRoundTripMs": 14.873900000000049,
+            "exitAfterAnswerMs": 22.783200000000306
+          },
+          {
+            "firstAnswerMs": 350.81709999999975,
+            "secondRoundTripMs": 14.214400000000296,
+            "exitAfterAnswerMs": 22.98369999999977
+          },
+          {
+            "firstAnswerMs": 360.13599999999997,
+            "secondRoundTripMs": 16.965300000000298,
+            "exitAfterAnswerMs": 22.945999999999913
+          },
+          {
+            "firstAnswerMs": 350.0309000000002,
+            "secondRoundTripMs": 15.213600000000042,
+            "exitAfterAnswerMs": 21.22519999999986
+          },
+          {
+            "firstAnswerMs": 351.6537000000003,
+            "secondRoundTripMs": 14.189099999999598,
+            "exitAfterAnswerMs": 20.738500000000386
+          },
+          {
+            "firstAnswerMs": 350.0673999999999,
+            "secondRoundTripMs": 15.107100000000173,
+            "exitAfterAnswerMs": 22.563599999999497
+          },
+          {
+            "firstAnswerMs": 364.53070000000025,
+            "secondRoundTripMs": 15.279099999999744,
+            "exitAfterAnswerMs": 23.024499999999534
+          },
+          {
+            "firstAnswerMs": 389.4925999999996,
+            "secondRoundTripMs": 16.222200000000157,
+            "exitAfterAnswerMs": 21.346400000000358
+          },
+          {
+            "firstAnswerMs": 363.89639999999963,
+            "secondRoundTripMs": 15.176000000000386,
+            "exitAfterAnswerMs": 22.522299999999632
+          },
+          {
+            "firstAnswerMs": 362.3262000000004,
+            "secondRoundTripMs": 18.219099999999344,
+            "exitAfterAnswerMs": 23.221599999999853
+          },
+          {
+            "firstAnswerMs": 368.59639999999945,
+            "secondRoundTripMs": 15.54280000000017,
+            "exitAfterAnswerMs": 22.145300000000134
+          },
+          {
+            "firstAnswerMs": 370.72319999999945,
+            "secondRoundTripMs": 14.96770000000015,
+            "exitAfterAnswerMs": 22.456700000000637
+          },
+          {
+            "firstAnswerMs": 371.22040000000015,
+            "secondRoundTripMs": 15.807699999999386,
+            "exitAfterAnswerMs": 23.047700000000077
+          },
+          {
+            "firstAnswerMs": 361.27810000000045,
+            "secondRoundTripMs": 16.13169999999991,
+            "exitAfterAnswerMs": 23.23620000000028
+          },
+          {
+            "firstAnswerMs": 354.59690000000046,
+            "secondRoundTripMs": 15.432499999998981,
+            "exitAfterAnswerMs": 21.82130000000143
+          },
+          {
+            "firstAnswerMs": 371.6710000000003,
+            "secondRoundTripMs": 15.984399999999368,
+            "exitAfterAnswerMs": 22.141600000000835
+          }
+        ],
+        "summary": {
+          "firstAnswerMs": {
+            "min": 350.0309000000002,
+            "median": 363.89639999999963,
+            "p95": 382.6857,
+            "max": 389.4925999999996
+          },
+          "secondRoundTripMs": {
+            "min": 14.189099999999598,
+            "median": 15.417200000000093,
+            "p95": 16.965300000000298,
+            "max": 18.219099999999344
+          },
+          "exitAfterAnswerMs": {
+            "min": 20.738500000000386,
+            "median": 22.783200000000306,
+            "p95": 23.999599999999873,
+            "max": 24.547599999999875
+          }
+        }
+      }
+    }
+  ],
+  "pty": [
+    {
+      "target": "linux-x64",
+      "observation": {
+        "sha256": "ea13704b8bdeb4d058fcff77abc0dd9e6e7c0b2256b2660eb999edd15e587890",
+        "version": "sagejs 0.8.0",
+        "observedAt": "2026-09-07T14:07:56.172162+00:00",
+        "host": {
+          "system": "Linux",
+          "machine": "x86_64",
+          "controllerPython": "3.12.3",
+          "beforeLoad": [
+            0,
+            0.01513671875,
+            0
+          ],
+          "afterLoad": [
+            0.080078125,
+            0.03173828125,
+            0.00537109375
+          ]
+        },
+        "schema": "sagejs.startup-pty-observation/v1",
+        "executable": "/home/user/sagejs-release-080-recovery/build/sea/sagejs",
+        "protocol": "21 fresh processes on POSIX PTY; initial prompt then 2**100 and returned prompt then 6*7 and returned prompt then Ctrl-D; isolated initially empty XDG cache shared by samples; no source changes",
+        "samples": [
+          {
+            "promptMs": 128.79516795510426,
+            "firstAnswerAfterPromptMs": 184.04815200483426,
+            "secondRoundTripMs": 15.2821289957501,
+            "exitAfterSecondPromptMs": 18.13186804065481
+          },
+          {
+            "promptMs": 134.67120699351653,
+            "firstAnswerAfterPromptMs": 184.8659130046144,
+            "secondRoundTripMs": 15.371258952654898,
+            "exitAfterSecondPromptMs": 17.104019003454596
+          },
+          {
+            "promptMs": 132.98758800374344,
+            "firstAnswerAfterPromptMs": 182.67578299855813,
+            "secondRoundTripMs": 15.058288001455367,
+            "exitAfterSecondPromptMs": 17.688558960799128
+          },
+          {
+            "promptMs": 130.23746700491756,
+            "firstAnswerAfterPromptMs": 181.99490301776677,
+            "secondRoundTripMs": 15.198289009276778,
+            "exitAfterSecondPromptMs": 17.72761798929423
+          },
+          {
+            "promptMs": 130.3442780044861,
+            "firstAnswerAfterPromptMs": 183.82750201271847,
+            "secondRoundTripMs": 14.741308987140656,
+            "exitAfterSecondPromptMs": 17.656527983490378
+          },
+          {
+            "promptMs": 131.64069800404832,
+            "firstAnswerAfterPromptMs": 182.57492198608816,
+            "secondRoundTripMs": 15.174019034020603,
+            "exitAfterSecondPromptMs": 17.63418799964711
+          },
+          {
+            "promptMs": 130.5538680171594,
+            "firstAnswerAfterPromptMs": 181.91554298391566,
+            "secondRoundTripMs": 15.408548002596945,
+            "exitAfterSecondPromptMs": 17.829268996138126
+          },
+          {
+            "promptMs": 132.10586697096005,
+            "firstAnswerAfterPromptMs": 187.0851120329462,
+            "secondRoundTripMs": 15.151659026741982,
+            "exitAfterSecondPromptMs": 17.61544804321602
+          },
+          {
+            "promptMs": 130.55710797198117,
+            "firstAnswerAfterPromptMs": 181.52157304575667,
+            "secondRoundTripMs": 14.90808802191168,
+            "exitAfterSecondPromptMs": 17.332679009996355
+          },
+          {
+            "promptMs": 129.92082699202,
+            "firstAnswerAfterPromptMs": 192.36636196728796,
+            "secondRoundTripMs": 14.076248975470662,
+            "exitAfterSecondPromptMs": 17.99747796030715
+          },
+          {
+            "promptMs": 130.55411796085536,
+            "firstAnswerAfterPromptMs": 193.54710105108097,
+            "secondRoundTripMs": 13.815899030305445,
+            "exitAfterSecondPromptMs": 17.64791796449572
+          },
+          {
+            "promptMs": 131.7675379686989,
+            "firstAnswerAfterPromptMs": 181.55841302359477,
+            "secondRoundTripMs": 15.020428050775081,
+            "exitAfterSecondPromptMs": 17.613009025808424
+          },
+          {
+            "promptMs": 124.39522804925218,
+            "firstAnswerAfterPromptMs": 181.23748298967257,
+            "secondRoundTripMs": 15.004237997345626,
+            "exitAfterSecondPromptMs": 17.966537969186902
+          },
+          {
+            "promptMs": 136.4595569903031,
+            "firstAnswerAfterPromptMs": 187.29173199972138,
+            "secondRoundTripMs": 15.080358018167317,
+            "exitAfterSecondPromptMs": 18.822957994416356
+          },
+          {
+            "promptMs": 131.64743699599057,
+            "firstAnswerAfterPromptMs": 182.31453304179013,
+            "secondRoundTripMs": 16.379918961320072,
+            "exitAfterSecondPromptMs": 18.043618998490274
+          },
+          {
+            "promptMs": 132.0697469636798,
+            "firstAnswerAfterPromptMs": 182.8265929943882,
+            "secondRoundTripMs": 14.757558994460851,
+            "exitAfterSecondPromptMs": 17.64274900779128
+          },
+          {
+            "promptMs": 127.5539780035615,
+            "firstAnswerAfterPromptMs": 190.49654202535748,
+            "secondRoundTripMs": 15.191068057902157,
+            "exitAfterSecondPromptMs": 17.437778995372355
+          },
+          {
+            "promptMs": 132.99862697022036,
+            "firstAnswerAfterPromptMs": 185.11355301598087,
+            "secondRoundTripMs": 15.251488017383963,
+            "exitAfterSecondPromptMs": 18.282638979144394
+          },
+          {
+            "promptMs": 135.74751699343324,
+            "firstAnswerAfterPromptMs": 184.50654204934835,
+            "secondRoundTripMs": 15.692228975240141,
+            "exitAfterSecondPromptMs": 17.34995801234618
+          },
+          {
+            "promptMs": 129.921187995933,
+            "firstAnswerAfterPromptMs": 181.92646303214133,
+            "secondRoundTripMs": 14.814238005783409,
+            "exitAfterSecondPromptMs": 17.52742804819718
+          },
+          {
+            "promptMs": 131.59639801597223,
+            "firstAnswerAfterPromptMs": 180.88277301285416,
+            "secondRoundTripMs": 14.740129001438618,
+            "exitAfterSecondPromptMs": 17.311397998128086
+          }
+        ],
+        "summary": {
+          "promptMs": {
+            "min": 124.39522804925218,
+            "median": 131.59639801597223,
+            "p95": 135.74751699343324,
+            "max": 136.4595569903031
+          },
+          "firstAnswerAfterPromptMs": {
+            "min": 180.88277301285416,
+            "median": 182.8265929943882,
+            "p95": 192.36636196728796,
+            "max": 193.54710105108097
+          },
+          "secondRoundTripMs": {
+            "min": 13.815899030305445,
+            "median": 15.080358018167317,
+            "p95": 15.692228975240141,
+            "max": 16.379918961320072
+          },
+          "exitAfterSecondPromptMs": {
+            "min": 17.104019003454596,
+            "median": 17.64791796449572,
+            "p95": 18.282638979144394,
+            "max": 18.822957994416356
+          }
+        }
+      }
+    },
+    {
+      "target": "linux-arm64",
+      "observation": {
+        "sha256": "ea0d713dcdc39ccf3878f661bbb9b3a0cf5245b84a5c39091e77db4596fa7000",
+        "version": "sagejs 0.8.0",
+        "observedAt": "2026-09-07T14:07:57.641430+00:00",
+        "host": {
+          "system": "Linux",
+          "machine": "aarch64",
+          "controllerPython": "3.12.3",
+          "beforeLoad": [
+            0,
+            0.0107421875,
+            0
+          ],
+          "afterLoad": [
+            0.15380859375,
+            0.0439453125,
+            0.0107421875
+          ]
+        },
+        "schema": "sagejs.startup-pty-observation/v1",
+        "executable": "/home/user/sagejs-release-080-recovery/build/sea/sagejs",
+        "protocol": "21 fresh processes on POSIX PTY; initial prompt then 2**100 and returned prompt then 6*7 and returned prompt then Ctrl-D; isolated initially empty XDG cache shared by samples; no source changes",
+        "samples": [
+          {
+            "promptMs": 162.0034219995432,
+            "firstAnswerAfterPromptMs": 233.29301600097097,
+            "secondRoundTripMs": 20.943637000527815,
+            "exitAfterSecondPromptMs": 29.103597000357695
+          },
+          {
+            "promptMs": 165.83170299963967,
+            "firstAnswerAfterPromptMs": 239.8307740004384,
+            "secondRoundTripMs": 21.223077999820816,
+            "exitAfterSecondPromptMs": 28.670997000517673
+          },
+          {
+            "promptMs": 156.37166300075478,
+            "firstAnswerAfterPromptMs": 231.33641599997645,
+            "secondRoundTripMs": 20.519558000160032,
+            "exitAfterSecondPromptMs": 29.728995999903418
+          },
+          {
+            "promptMs": 160.04874299869698,
+            "firstAnswerAfterPromptMs": 234.22605599989765,
+            "secondRoundTripMs": 20.759717001055833,
+            "exitAfterSecondPromptMs": 26.66151699850161
+          },
+          {
+            "promptMs": 163.7127430003602,
+            "firstAnswerAfterPromptMs": 250.04325400004745,
+            "secondRoundTripMs": 21.046556999863242,
+            "exitAfterSecondPromptMs": 26.26291799970204
+          },
+          {
+            "promptMs": 160.2317030010454,
+            "firstAnswerAfterPromptMs": 254.0213729989773,
+            "secondRoundTripMs": 21.558197999183903,
+            "exitAfterSecondPromptMs": 25.819356998908916
+          },
+          {
+            "promptMs": 159.39634399910574,
+            "firstAnswerAfterPromptMs": 231.4164150011493,
+            "secondRoundTripMs": 20.903478000036557,
+            "exitAfterSecondPromptMs": 26.00695699948119
+          },
+          {
+            "promptMs": 156.13762299835798,
+            "firstAnswerAfterPromptMs": 242.93809500159114,
+            "secondRoundTripMs": 22.647116998996353,
+            "exitAfterSecondPromptMs": 27.166317000592244
+          },
+          {
+            "promptMs": 161.45294300076785,
+            "firstAnswerAfterPromptMs": 232.23857499942824,
+            "secondRoundTripMs": 20.458758001041133,
+            "exitAfterSecondPromptMs": 26.072917000419693
+          },
+          {
+            "promptMs": 157.8875840004912,
+            "firstAnswerAfterPromptMs": 230.1292949996423,
+            "secondRoundTripMs": 20.827798000027542,
+            "exitAfterSecondPromptMs": 26.14591700148594
+          },
+          {
+            "promptMs": 154.84906399979081,
+            "firstAnswerAfterPromptMs": 242.6968539984955,
+            "secondRoundTripMs": 21.219637999820407,
+            "exitAfterSecondPromptMs": 25.693236999359215
+          },
+          {
+            "promptMs": 155.55318300175713,
+            "firstAnswerAfterPromptMs": 233.89337599837745,
+            "secondRoundTripMs": 21.12039699932211,
+            "exitAfterSecondPromptMs": 29.77623699916876
+          },
+          {
+            "promptMs": 156.36906399959116,
+            "firstAnswerAfterPromptMs": 242.93581399979303,
+            "secondRoundTripMs": 21.373358000346343,
+            "exitAfterSecondPromptMs": 26.52235700043093
+          },
+          {
+            "promptMs": 156.32494300007238,
+            "firstAnswerAfterPromptMs": 228.5160960000212,
+            "secondRoundTripMs": 20.68339800098329,
+            "exitAfterSecondPromptMs": 28.943356999661773
+          },
+          {
+            "promptMs": 157.01314299985825,
+            "firstAnswerAfterPromptMs": 247.72377400040568,
+            "secondRoundTripMs": 20.87047699933464,
+            "exitAfterSecondPromptMs": 25.096277999182348
+          },
+          {
+            "promptMs": 158.7453430001915,
+            "firstAnswerAfterPromptMs": 247.36465299974952,
+            "secondRoundTripMs": 22.061198000301374,
+            "exitAfterSecondPromptMs": 26.20763699997042
+          },
+          {
+            "promptMs": 158.58174300046812,
+            "firstAnswerAfterPromptMs": 231.96825599916338,
+            "secondRoundTripMs": 21.174958001211053,
+            "exitAfterSecondPromptMs": 29.570916000011493
+          },
+          {
+            "promptMs": 160.65558300033445,
+            "firstAnswerAfterPromptMs": 247.16425399856234,
+            "secondRoundTripMs": 21.582518000286655,
+            "exitAfterSecondPromptMs": 26.04431700092391
+          },
+          {
+            "promptMs": 160.43498299950443,
+            "firstAnswerAfterPromptMs": 230.97385500113887,
+            "secondRoundTripMs": 21.221397999397595,
+            "exitAfterSecondPromptMs": 27.865236999787157
+          },
+          {
+            "promptMs": 160.06286300034844,
+            "firstAnswerAfterPromptMs": 246.62261400044372,
+            "secondRoundTripMs": 21.428117999676033,
+            "exitAfterSecondPromptMs": 27.695196999047766
+          },
+          {
+            "promptMs": 161.3483429991902,
+            "firstAnswerAfterPromptMs": 234.33645499972044,
+            "secondRoundTripMs": 21.045717998276814,
+            "exitAfterSecondPromptMs": 28.491396999015706
+          }
+        ],
+        "summary": {
+          "promptMs": {
+            "min": 154.84906399979081,
+            "median": 159.39634399910574,
+            "p95": 163.7127430003602,
+            "max": 165.83170299963967
+          },
+          "firstAnswerAfterPromptMs": {
+            "min": 228.5160960000212,
+            "median": 234.33645499972044,
+            "p95": 250.04325400004745,
+            "max": 254.0213729989773
+          },
+          "secondRoundTripMs": {
+            "min": 20.458758001041133,
+            "median": 21.12039699932211,
+            "p95": 22.061198000301374,
+            "max": 22.647116998996353
+          },
+          "exitAfterSecondPromptMs": {
+            "min": 25.096277999182348,
+            "median": 26.66151699850161,
+            "p95": 29.728995999903418,
+            "max": 29.77623699916876
+          }
+        }
+      }
+    },
+    {
+      "target": "macos-arm64",
+      "observation": {
+        "sha256": "01f8a728576d662e49392948e49fd7a1b63936e71a30b7a64660eef0d548463c",
+        "version": "sagejs 0.8.0",
+        "observedAt": "2026-09-07T14:07:59.465250+00:00",
+        "host": {
+          "system": "Darwin",
+          "machine": "arm64",
+          "controllerPython": "3.9.6",
+          "beforeLoad": [
+            1.15234375,
+            1.41162109375,
+            1.45361328125
+          ],
+          "afterLoad": [
+            1.19189453125,
+            1.4072265625,
+            1.45068359375
+          ]
+        },
+        "schema": "sagejs.startup-pty-observation/v1",
+        "executable": "/Volumes/sage/sagejs-release-080-recovery/build/sea/sagejs",
+        "protocol": "21 fresh processes on POSIX PTY; initial prompt then 2**100 and returned prompt then 6*7 and returned prompt then Ctrl-D; isolated initially empty XDG cache shared by samples; no source changes",
+        "samples": [
+          {
+            "promptMs": 251.9522500000001,
+            "firstAnswerAfterPromptMs": 271.4934579999999,
+            "secondRoundTripMs": 21.307958000000184,
+            "exitAfterSecondPromptMs": 23.121917000000103
+          },
+          {
+            "promptMs": 240.55712499999981,
+            "firstAnswerAfterPromptMs": 268.42970900000006,
+            "secondRoundTripMs": 17.83854200000001,
+            "exitAfterSecondPromptMs": 22.641582999999965
+          },
+          {
+            "promptMs": 263.767375,
+            "firstAnswerAfterPromptMs": 262.9877920000001,
+            "secondRoundTripMs": 21.607707999999892,
+            "exitAfterSecondPromptMs": 21.976417000000303
+          },
+          {
+            "promptMs": 242.8738749999999,
+            "firstAnswerAfterPromptMs": 220.78312500000007,
+            "secondRoundTripMs": 22.874791000000005,
+            "exitAfterSecondPromptMs": 21.741791999999815
+          },
+          {
+            "promptMs": 232.58608299999972,
+            "firstAnswerAfterPromptMs": 255.8452080000002,
+            "secondRoundTripMs": 22.76666599999988,
+            "exitAfterSecondPromptMs": 21.90475000000003
+          },
+          {
+            "promptMs": 255.33095800000007,
+            "firstAnswerAfterPromptMs": 263.74399999999997,
+            "secondRoundTripMs": 21.971374999999682,
+            "exitAfterSecondPromptMs": 22.917582999999908
+          },
+          {
+            "promptMs": 248.3590419999997,
+            "firstAnswerAfterPromptMs": 265.8608330000005,
+            "secondRoundTripMs": 22.086083999999673,
+            "exitAfterSecondPromptMs": 23.79504199999971
+          },
+          {
+            "promptMs": 248.33012500000075,
+            "firstAnswerAfterPromptMs": 262.51616599999926,
+            "secondRoundTripMs": 22.095625000000396,
+            "exitAfterSecondPromptMs": 22.768708000000082
+          },
+          {
+            "promptMs": 251.02354199999954,
+            "firstAnswerAfterPromptMs": 263.15791599999994,
+            "secondRoundTripMs": 21.78670900000057,
+            "exitAfterSecondPromptMs": 22.487334000000025
+          },
+          {
+            "promptMs": 251.94745800000007,
+            "firstAnswerAfterPromptMs": 272.75041700000014,
+            "secondRoundTripMs": 21.27945799999953,
+            "exitAfterSecondPromptMs": 22.478750000000325
+          },
+          {
+            "promptMs": 249.38495900000035,
+            "firstAnswerAfterPromptMs": 275.8899159999997,
+            "secondRoundTripMs": 21.45312499999985,
+            "exitAfterSecondPromptMs": 22.35174999999945
+          },
+          {
+            "promptMs": 249.88800000000032,
+            "firstAnswerAfterPromptMs": 271.1494160000001,
+            "secondRoundTripMs": 21.585334000000067,
+            "exitAfterSecondPromptMs": 22.598666999999573
+          },
+          {
+            "promptMs": 251.1569170000003,
+            "firstAnswerAfterPromptMs": 272.60566699999964,
+            "secondRoundTripMs": 21.187041000001017,
+            "exitAfterSecondPromptMs": 22.09283300000031
+          },
+          {
+            "promptMs": 184.80358300000077,
+            "firstAnswerAfterPromptMs": 266.6894170000003,
+            "secondRoundTripMs": 21.74379200000054,
+            "exitAfterSecondPromptMs": 22.16662500000055
+          },
+          {
+            "promptMs": 253.8392080000005,
+            "firstAnswerAfterPromptMs": 273.2043330000007,
+            "secondRoundTripMs": 21.39283400000025,
+            "exitAfterSecondPromptMs": 22.353207999998403
+          },
+          {
+            "promptMs": 254.2757920000014,
+            "firstAnswerAfterPromptMs": 273.50491699999856,
+            "secondRoundTripMs": 21.207874999999987,
+            "exitAfterSecondPromptMs": 22.08183300000144
+          },
+          {
+            "promptMs": 255.81116699999916,
+            "firstAnswerAfterPromptMs": 272.6147500000007,
+            "secondRoundTripMs": 21.36229200000095,
+            "exitAfterSecondPromptMs": 22.280333000001207
+          },
+          {
+            "promptMs": 247.96391599999978,
+            "firstAnswerAfterPromptMs": 271.62075000000027,
+            "secondRoundTripMs": 21.328916999999947,
+            "exitAfterSecondPromptMs": 22.392959000001156
+          },
+          {
+            "promptMs": 250.1898340000004,
+            "firstAnswerAfterPromptMs": 271.88337499999983,
+            "secondRoundTripMs": 22.155208000000925,
+            "exitAfterSecondPromptMs": 22.6225840000005
+          },
+          {
+            "promptMs": 245.2937500000001,
+            "firstAnswerAfterPromptMs": 166.62358399999988,
+            "secondRoundTripMs": 13.483750000000683,
+            "exitAfterSecondPromptMs": 16.056416000001406
+          },
+          {
+            "promptMs": 220.5657919999986,
+            "firstAnswerAfterPromptMs": 271.923417,
+            "secondRoundTripMs": 21.526083999999557,
+            "exitAfterSecondPromptMs": 22.431499999999716
+          }
+        ],
+        "summary": {
+          "promptMs": {
+            "min": 184.80358300000077,
+            "median": 249.88800000000032,
+            "p95": 255.81116699999916,
+            "max": 263.767375
+          },
+          "firstAnswerAfterPromptMs": {
+            "min": 166.62358399999988,
+            "median": 271.1494160000001,
+            "p95": 273.50491699999856,
+            "max": 275.8899159999997
+          },
+          "secondRoundTripMs": {
+            "min": 13.483750000000683,
+            "median": 21.526083999999557,
+            "p95": 22.76666599999988,
+            "max": 22.874791000000005
+          },
+          "exitAfterSecondPromptMs": {
+            "min": 16.056416000001406,
+            "median": 22.392959000001156,
+            "p95": 23.121917000000103,
+            "max": 23.79504199999971
+          }
+        }
+      }
+    }
+  ]
+}

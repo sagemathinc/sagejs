@@ -12,6 +12,80 @@ _INTERNAL_CALLABLE_ALLOCATION_KEY = runtime.reflect.apply(
     runtime.undefined,
     ["sagejs.python.callable-instance-allocation"],
 )
+_internal_keyword_constructor_prototypes = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakSet"), []
+)
+
+
+def ρσ_register_keyword_constructor(cls: Any) -> None:
+    """Brand the stable prototype shared by known class proxy adapters."""
+    _internal_keyword_constructor_prototypes.add(runtime.reflect.get(cls, "prototype"))
+
+
+def ρσ_live_initializer(cls: Any) -> Any:
+    """Resolve past generated forwarding initializers using the current MRO."""
+    original = _internal_get_member(runtime.reflect.get(cls, "prototype"), "__init__")
+    if _internal_get_member(original, "__sagejs_synthetic_init__") is not True:
+        return original
+    mro = _internal_get_member(cls, "__mro__")
+    if not runtime.array.isArray(mro):
+        return original
+    for owner in mro:
+        prototype = runtime.reflect.get(owner, "prototype")
+        if prototype is runtime.undefined:
+            continue
+        descriptor = runtime.object.getOwnPropertyDescriptor(prototype, "__init__")
+        if descriptor is runtime.undefined:
+            continue
+        initializer = runtime.reflect.get(descriptor, "value")
+        if (
+            initializer is not runtime.undefined
+            and _internal_get_member(initializer, "__sagejs_synthetic_init__")
+            is not True
+        ):
+            return initializer
+    return original
+
+
+def _internal_copy_constructor_arguments(supplied_args: Any) -> Any:
+    """Copy a marked call packet before a binding pass consumes its fields."""
+    call_args = runtime.reflect.apply(runtime.array.prototype.slice, supplied_args, [])
+    keyword_copy = runtime.object.assign(
+        runtime.object.create(None), call_args[call_args.length - 1]
+    )
+    runtime.reflect.set(keyword_copy, runtime.kwargs_symbol, True)
+    call_args[call_args.length - 1] = keyword_copy
+    return call_args
+
+
+def ρσ_call_keyword_allocator(allocator: Any, cls: Any, supplied_args: Any) -> Any:
+    call_args = _internal_copy_constructor_arguments(supplied_args)
+    call_args.unshift(cls)
+    return ρσ_interpolate_kwargs(runtime.undefined, allocator, call_args)
+
+
+def _internal_initializer_needs_self(initializer: Any) -> bool:
+    return (
+        _internal_get_member(initializer, "__python_descriptor__") is True
+        and _internal_get_member(initializer, "__self__") is runtime.undefined
+        and _internal_get_member(initializer, "__staticmethod__") is not True
+        and _internal_get_member(initializer, "__sagejs_native_method__") is not True
+        and _internal_get_member(
+            initializer, "__sagejs_method_signature_excludes_self__"
+        )
+        is not True
+    )
+
+
+def ρσ_call_keyword_initializer(
+    initializer: Any, instance: Any, supplied_args: Any
+) -> Any:
+    call_args = _internal_copy_constructor_arguments(supplied_args)
+    receiver = instance
+    if _internal_initializer_needs_self(initializer):
+        call_args.unshift(instance)
+        receiver = runtime.undefined
+    return ρσ_interpolate_kwargs(receiver, initializer, call_args)
 
 
 def _internal_type_is(actual: Any, expected: str) -> bool:
@@ -49,26 +123,15 @@ def _internal_bound_method_helper(name: str) -> Any:
 def _internal_get_member(value: Any, name: Any) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
-    member = runtime.native_get(value, name)
-    if _internal_get_member_raw(member, "__sagejs_eager_bound_cache__") is not True:
-        return member
-
-    # Eager method binding is an implementation cache, not an own Python
-    # attribute.  Resolve it through the authoritative descriptor machinery:
-    # a subclass may have overridden the method after the cache was created,
-    # and an override may itself later have been deleted.
-    resolver = runtime.reflect.get(runtime.global_object, "ρσ_getattr_internal")
-    if not _internal_type_is(runtime.jstype(resolver), "function"):
-        return member
-    return runtime.reflect.apply(
-        resolver, runtime.undefined, [value, name, runtime.undefined]
-    )
-
-
-def _internal_get_member_raw(value: Any, name: Any) -> Any:
-    if value is None or value is runtime.undefined:
-        return runtime.undefined
     return runtime.native_get(value, name)
+
+
+def _internal_callable_slot(value: Any) -> Any:
+    lookup = _internal_bound_method_helper("ρσ_get_type_slot")
+    method = runtime.reflect.apply(lookup, runtime.undefined, [value, "__call__"])
+    if not _internal_type_is(runtime.jstype(method), "function"):
+        raise TypeError("object is not callable")
+    return method
 
 
 def _internal_member_is_function(value: Any, name: Any) -> bool:
@@ -81,7 +144,7 @@ def _internal_member_is_function(value: Any, name: Any) -> bool:
 def _internal_is_baselib_function(value: Any) -> bool:
     if not _internal_type_is(runtime.jstype(value), "function"):
         return False
-    module_name = _internal_get_member_raw(value, "__module__")
+    module_name = _internal_get_member(value, "__module__")
     return _internal_type_is(
         runtime.jstype(module_name), "string"
     ) and runtime.reflect.apply(
@@ -109,6 +172,34 @@ def _internal_call_member(
         explicit_args.unshift(value)
         return runtime.reflect.apply(method, runtime.undefined, explicit_args)
     return runtime.reflect.apply(method, value, call_args)
+
+
+def ρσ_call_assigned_initializer(
+    initializer: Any,
+    instance: Any,
+    supplied_args: Any,
+) -> Any:
+    """Call an assigned Python initializer without losing its explicit self.
+
+    The compiler keeps receiver-style methods on its direct apply fast path.
+    Only a marked function descriptor enters this adapter. Constructor
+    signature selection remains separate from invocation.
+    """
+    if not _internal_initializer_needs_self(initializer):
+        return runtime.reflect.apply(initializer, instance, supplied_args)
+    explicit_args = runtime.reflect.apply(
+        runtime.array.prototype.slice, supplied_args, []
+    )
+    explicit_args.unshift(instance)
+    final_argument = explicit_args[explicit_args.length - 1]
+    if (
+        supplied_args.length
+        and final_argument is not None
+        and _internal_type_is(runtime.jstype(final_argument), "object")
+        and runtime.reflect.get(final_argument, runtime.kwargs_symbol) is True
+    ):
+        return ρσ_interpolate_kwargs(runtime.undefined, initializer, explicit_args)
+    return runtime.reflect.apply(initializer, runtime.undefined, explicit_args)
 
 
 def _internal_is_native_map(value: Any) -> bool:
@@ -254,14 +345,18 @@ def ρσ_is_missing_binding(value: Any) -> bool:
     )
 
 
-def ρσ_check_unbound(value: Any, name: str) -> Any:
+def ρσ_check_unbound(value: Any, name: str, local: bool = False) -> Any:
     if ρσ_is_missing_binding(value):
-        raise NameError("local variable '" + name + "' referenced before assignment")
+        if local:
+            raise UnboundLocalError(
+                "local variable '" + name + "' referenced before assignment"
+            )
+        raise NameError("name '" + name + "' is not defined")
     return value
 
 
-def ρσ_delete_name(value: Any, name: str) -> Any:
-    ρσ_check_unbound(value, name)
+def ρσ_delete_name(value: Any, name: str, local: bool = False) -> Any:
+    ρσ_check_unbound(value, name, local)
     return runtime.undefined
 
 
@@ -550,16 +645,15 @@ def _internal_set_class_repr(wrapper: Any, target: Any) -> None:
 def ρσ_callable_instance_class_adapter(target: Any) -> Any:
     def make_instance(target_class: Any, call_args: Any) -> Any:
         def callable_instance(*instance_args: Any) -> Any:
-            method = _internal_get_member(callable_instance, "__call__")
-            return runtime.reflect.apply(method, callable_instance, instance_args)
+            method = _internal_callable_slot(callable_instance)
+            return runtime.reflect.apply(method, runtime.undefined, instance_args)
 
-        # Host functions have configurable own ``name`` and ``length``
-        # properties.  They are representation details here: retaining them
-        # would shadow Python properties or attributes with those perfectly
-        # ordinary names on callable instances (pytest's MarkDecorator uses
-        # ``name`` directly).
-        runtime.reflect.deleteProperty(callable_instance, "name")
-        runtime.reflect.deleteProperty(callable_instance, "length")
+        # This fresh function is only an instance's host representation. Remove
+        # configurable host fields and emitted Python function metadata before
+        # adding instance state; neither may shadow the class's attributes.
+        # Reflect deletion safely leaves nonconfigurable host internals alone.
+        for host_member in runtime.object.getOwnPropertyNames(callable_instance):
+            runtime.reflect.deleteProperty(callable_instance, host_member)
         runtime.object.setPrototypeOf(callable_instance, target_class.prototype)
         # Callable Python instances are represented by host functions so that
         # ordinary positional calls stay cheap.  Keep an explicit marker: a
@@ -663,6 +757,13 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
         [target, handler],
     )
     runtime.reflect.set(wrapper, "__sagejs_callable_instance_class__", True)
+    alias_heap_class = _internal_builtin("ρσ_alias_heap_class")
+    if not _internal_type_is(runtime.jstype(alias_heap_class), "function"):
+        alias_heap_class = runtime.reflect.get(
+            runtime.global_object, "ρσ_alias_heap_class"
+        )
+    if _internal_type_is(runtime.jstype(alias_heap_class), "function"):
+        runtime.reflect.apply(alias_heap_class, runtime.undefined, [wrapper, target])
     target.prototype.constructor = wrapper
     _internal_set_class_repr(wrapper, target)
     return wrapper
@@ -874,11 +975,7 @@ def ρσ_interpolate_kwargs(
         or _internal_get_member(target_function, "__sagejs_callable_instance__") is True
     ):
         receiver = target_function
-        target_function = runtime.reflect.apply(
-            _internal_builtin("ρσ_getattr"),
-            runtime.undefined,
-            [target_function, "__call__"],
-        )
+        target_function = _internal_callable_slot(target_function)
     elif _internal_has_own(target_function, "__bases__"):
         # A class obtained through ``obj.factory`` is a callable value, not a
         # function descriptor.  The simple-call lowering already removes the
@@ -887,6 +984,14 @@ def ρσ_interpolate_kwargs(
         # relies on this when an Instance trait calls ``self.klass(*args,
         # **kwargs)`` to construct a dynamic default.
         receiver = runtime.undefined
+        if _internal_keyword_constructor_prototypes.has(
+            runtime.reflect.get(target_function, "prototype")
+        ):
+            # Bind independently at the allocator and actual initializer,
+            # not against definition-time copies of a class signature.
+            return runtime.reflect.apply(
+                target_function, runtime.undefined, supplied_args
+            )
     elif (
         not _internal_get_member(target_function, "__argnames__")
         and not _internal_get_member(target_function, "__kwonly__")
@@ -983,11 +1088,7 @@ def ρσ_interpolate_kwargs_legacy(
         or _internal_get_member(target_function, "__sagejs_callable_instance__") is True
     ):
         receiver = target_function
-        target_function = runtime.reflect.apply(
-            _internal_builtin("ρσ_getattr"),
-            runtime.undefined,
-            [target_function, "__call__"],
-        )
+        target_function = _internal_callable_slot(target_function)
     elif _internal_has_own(target_function, "__bases__"):
         receiver = runtime.undefined
     elif (
@@ -1289,7 +1390,7 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
                 raise IndexError("index out of range")
             return _internal_native_getitem(value, key)
         if (
-            _internal_get_member_raw(key, "__sagejs_slice__") is True
+            _internal_get_member(key, "__sagejs_slice__") is True
             and _internal_get_member(value, "__getitem__") is runtime.undefined
         ):
             # Lists and tuples use native Array storage.  Preserve an explicit
@@ -1572,6 +1673,20 @@ def _internal_exists_alternative(
 
 def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     """Test one `isinstance` candidate without a variadic call frame."""
+    if runtime.array.isArray(candidate) and runtime.object.isFrozen(candidate):
+        for nested_candidate in candidate:
+            if ρσ_instanceof_one(value, nested_candidate):
+                return True
+        return False
+    # Implicit checks consult the candidate's type, never its own attributes.
+    # Only exact Python type identity may bypass an overriding instance hook.
+    check_hook = _internal_bound_method_helper("ρσ_class_check_hook")
+    if _internal_type_is(runtime.jstype(check_hook), "function"):
+        checked = runtime.reflect.apply(
+            check_hook, runtime.undefined, [value, candidate, "__instancecheck__"]
+        )
+        if checked is not runtime.undefined:
+            return checked
     value_type = runtime.jstype(value)
     if (
         value is None
@@ -1609,11 +1724,6 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
         )
     ):
         return True
-    if runtime.array.isArray(candidate) and runtime.object.isFrozen(candidate):
-        for nested_candidate in candidate:
-            if ρσ_instanceof_one(value, nested_candidate):
-                return True
-        return False
     module_namespaces = runtime.reflect.get(
         runtime.global_object, "__sagejs_module_namespaces__"
     )
@@ -1708,18 +1818,15 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
         )
     ):
         return True
-    registry = _internal_get_member(candidate, "_abc_registry")
-    if not runtime.array.isArray(registry):
-        candidate_prototype = _internal_get_member(candidate, "prototype")
-        registry = _internal_get_member(candidate_prototype, "_abc_registry")
-    if not runtime.array.isArray(registry):
-        candidate_mro = _internal_get_member(candidate, "__mro__")
-        if candidate_mro is not runtime.undefined:
-            for candidate_base in candidate_mro:
-                base_prototype = _internal_get_member(candidate_base, "prototype")
-                registry = _internal_get_member(base_prototype, "_abc_registry")
-                if runtime.array.isArray(registry):
-                    break
+    # A base's virtual subclasses are not virtual subclasses of every child.
+    # abc.register explicitly records upward propagation; never inherit a
+    # registry through candidate.prototype or the candidate's MRO.
+    registration = runtime.object.getOwnPropertyDescriptor(candidate, "_abc_registry")
+    registry = (
+        runtime.undefined
+        if registration is runtime.undefined
+        else runtime.reflect.get(registration, "value")
+    )
     if runtime.array.isArray(registry):
         for registered_class in registry:
             if ρσ_instanceof_one(value, registered_class):

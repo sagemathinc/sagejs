@@ -31,6 +31,9 @@
 - Read `RELEASE.md` before preparing or publishing a release. Qualify the exact
   candidate on the persistent four-platform hosts before creating an immutable
   tag; GitHub release CI is confirmation and publication, not the iteration loop.
+- For release-process changes, read the audited
+  [robust and efficient release plan](agents/robust-and-efficient-release-process.md).
+  It is a staged proposal, not permission to bypass current release gates.
 
 ## Public coordination
 

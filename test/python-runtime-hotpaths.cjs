@@ -3,8 +3,18 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { readFileSync } = require("node:fs");
+const { join } = require("node:path");
 
 const { createSage } = require("../dist/tools/kernel.js");
+
+test("callable instances retain instance descriptor binding and cached properties", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const source = readFileSync(join(__dirname, "fixtures/python-callable-instance-descriptors.py"), "utf8");
+  const result = await session.evaluate(source);
+  assert.equal(result.stdout.trim(), "callable-descriptor-ok");
+});
 
 test("optimized calls, equality, and indexing retain Python semantics", async (t) => {
   const session = await createSage({ mode: "python" });

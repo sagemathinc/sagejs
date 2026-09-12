@@ -1,0 +1,145 @@
+// sagejs-test-tier: unit
+"use strict";
+
+const assert = require("node:assert/strict");
+const { copyFileSync, mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { join } = require("node:path");
+const { tmpdir } = require("node:os");
+const { test } = require("node:test");
+const { executeAssertion } = require("../tools/python-compat/assertion-runner.cjs");
+const { executionBytes } = require("../tools/python-compat/evidence.cjs");
+const { isolatedEnvironment } = require("../scripts/run-python-compat.cjs");
+const root = join(__dirname, "..");
+
+async function compileStandaloneFixture() {
+  const [root, input, outputFile, scope] = process.argv.slice(2);
+  const { readFileSync, writeFileSync } = require("node:fs");
+  const { join } = require("node:path");
+  const { default: createCompiler } = require(join(root, "dist/tools/compiler.js"));
+  const { createPythonCompilerFrontend } = require(join(root, "dist/tools/python/compiler-frontend.js"));
+  const { standaloneRuntimeRequirePrelude } = require(join(root, "tools/standalone-library.cjs"));
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(readFileSync(input, "utf8"), {
+      filename: input, libdir: join(root, "src/lib"), import_dirs: [],
+      exact_integer_literals: true, strict_python_scopes: true,
+      scoped_flags: { dict_literals: true, overload_getitem: true,
+        bound_methods: true, sequential_definitions: true },
+    });
+    const output = new compiler.OutputStream({
+      baselib_plain: standaloneRuntimeRequirePrelude() +
+        readFileSync(join(root, "dist/compiler/baselib-plain-pretty.js"), "utf8"),
+      beautify: true, private_scope: scope !== "global", exact_integers: true,
+      python_tuples: true, python_truthiness: true, python_attributes: true,
+    });
+    ast.print(output);
+    writeFileSync(outputFile, output.get());
+  } finally { frontend.close(); }
+}
+
+function clean(result) {
+  assert.equal(result.error, null, JSON.stringify(result.error));
+  assert.equal(result.timedOut, false);
+  assert.equal(result.outputLimited, false);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(executionBytes(result, "stdout").length, 0, result.stdout);
+  assert.equal(executionBytes(result, "stderr").length, 0, result.stderr);
+}
+
+for (const fixture of ["python-public-super.py", "python-public-builtins-no-import.py"])
+for (const mode of ["node-runtime", "standalone", "standalone-global"]) {
+  test(`${mode}: ${fixture} publishes ordinary Python builtin lookup`, async () => {
+    const scratch = mkdtempSync(join(tmpdir(), "sagejs-public-super-"));
+    try {
+      const pythonFile = join(scratch, "public_super.py");
+      copyFileSync(join(__dirname, "fixtures", fixture), pythonFile);
+      const options = { cwd: scratch,
+        env: { ...isolatedEnvironment(scratch), NODE_PATH: join(root, "node_modules") },
+        timeoutMs: 30000, maxOutputBytes: 1048576 };
+      const cli = join(root, "bin/sagejs-source.cjs");
+      if (mode === "node-runtime") {
+        clean(await executeAssertion(process.execPath,
+          ["--max-old-space-size=512", cli, "--python", pythonFile], options));
+      } else {
+        const javascriptFile = join(scratch, "public_super.js");
+        // The full CLI standalone path eagerly includes the advanced Sage
+        // mathematics graph even in Python mode. Exercise its real emitter
+        // and standalone builtins adapter with the existing base runtime,
+        // without compiling unrelated mathematical modules in this test.
+        const driver = join(scratch, "compile.cjs");
+        writeFileSync(driver, `(${compileStandaloneFixture.toString()})().catch(error => { console.error(error); process.exitCode = 1; });\n`);
+        clean(await executeAssertion(process.execPath,
+          ["--max-old-space-size=512", driver, root, pythonFile, javascriptFile,
+            mode === "standalone-global" ? "global" : "private"], options));
+        // The browser evaluates a non-strict bootstrap in the worker global
+        // realm, unlike a Node file's CommonJS wrapper. Preserve that distinction
+        // so stale host aliases cannot hide behind private-scope-only tests.
+        const execution = mode === "standalone-global"
+          ? ["-e", "require('node:vm').runInThisContext('void 0;\\n' + require('node:fs').readFileSync(process.argv[1], 'utf8'))", javascriptFile]
+          : [javascriptFile];
+        clean(await executeAssertion(process.execPath,
+          ["--max-old-space-size=512", ...execution], options));
+      }
+    } finally { rmSync(scratch, { recursive: true, force: true }); }
+  });
+}
+
+for (const scope of ["private", "global"]) {
+  test(`standalone-${scope}: implicit dir and documentation need no host loader`, async () => {
+    const scratch = mkdtempSync(join(tmpdir(), "sagejs-standalone-introspection-"));
+    try {
+      const input = join(scratch, "introspection.py");
+      const output = join(scratch, "introspection.js");
+      const driver = join(scratch, "compile.cjs");
+      writeFileSync(input, [
+        "class Listed:",
+        "    marker = 7",
+        "assert 'marker' in dir(Listed)",
+        "assert 'marker' in dir(Listed())",
+        "assert Listed.__dict__['marker'] == 7",
+        "nested = [[1], [2]]",
+        "cloned = copy(nested)",
+        "assert cloned is not nested and cloned[0] is nested[0]",
+        "assert flatten([1, [2, (3, 4)]]) == [1, 2, 3, 4]",
+        "def documented(value=3):",
+        "    return value",
+        "documented.__doc__ = 'standalone documentation sentinel'",
+        "assert 'documented' in dir()",
+        "help()",
+        "help(Listed)",
+        "help(Listed())",
+        "help(documented)",
+        "search_doc('standalone documentation sentinel')",
+      ].join("\n"));
+      writeFileSync(driver, `(${compileStandaloneFixture.toString()})().catch(error => { console.error(error); process.exitCode = 1; });\n`);
+      const options = {
+        cwd: scratch,
+        env: { ...isolatedEnvironment(scratch), NODE_PATH: join(root, "node_modules") },
+        timeoutMs: 30000, maxOutputBytes: 1048576,
+      };
+      clean(await executeAssertion(process.execPath,
+        [driver, root, input, output, scope], options));
+      // A browser-like realm has neither require nor a host module loader.
+      const result = await executeAssertion(process.execPath, ["-e",
+        "const realm={console};" +
+        "require('node:vm').runInNewContext(require('node:fs').readFileSync(process.argv[1], 'utf8'), realm);" +
+        "if(Object.hasOwn(realm.ρσ_modules,'sys'))throw Error('unused sys initialized eagerly');" +
+        "for(const name of ['sagejs._introspection','sagejs._documentation_search','sagejs._collection_helpers','inspect'])" +
+        "if(!Object.hasOwn(realm.ρσ_modules,name))throw Error('missing implicit module '+name)",
+        output], options);
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.error, null);
+      assert.equal(result.timedOut, false);
+      assert.equal(result.outputLimited, false);
+      assert.match(result.stdout, /Help on function documented/);
+      assert.match(result.stdout, /Welcome to Sage.js help/);
+      assert.match(result.stdout, /Help on class Listed/);
+      assert.match(result.stdout, /Help on Listed object/);
+      assert.match(result.stdout, /documented\(value=3\)/);
+      assert.match(result.stdout, /documented -- standalone documentation sentinel/);
+      assert.equal(executionBytes(result, "stderr").length, 0, result.stderr);
+    } finally { rmSync(scratch, { recursive: true, force: true }); }
+  });
+}

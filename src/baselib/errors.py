@@ -41,6 +41,20 @@ def ρσ_function_argument_error(
     return error
 
 
+def ρσ_positional_default(target_function: Any, from_end: int, name: str) -> Any:
+    """Resolve an omitted argument without duplicating binding code per function."""
+    defaults = runtime.native_get(target_function, "__defaults__")
+    if defaults is None or defaults is runtime.undefined or defaults.length < from_end:
+        # The host Error representation crosses the Python exception boundary.
+        error = runtime.reflect.apply(
+            ρσ_function_argument_error,
+            runtime.undefined,
+            ["missing required argument: " + name, target_function],
+        )
+        raise error
+    return defaults[defaults.length - from_end]
+
+
 class BaseException(runtime.error):
     def __init__(self, *args: object) -> None:
         self.args = runtime.math_tuple(list(args))
@@ -81,6 +95,15 @@ class BaseException(runtime.error):
 
 class Exception(BaseException):
     pass
+
+
+class UnboundLocalError(NameError):
+    """A function-local binding was read or deleted before assignment."""
+
+    def __init__(self, *args: object) -> None:
+        # Native NameError's prototype joins Exception below; static typing
+        # cannot observe that runtime inheritance edge.
+        BaseException.__init__(self, *args)  # pyright: ignore[reportArgumentType]
 
 
 class BaseExceptionGroup(BaseException):

@@ -1,0 +1,199 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-candidate-pool",
+  "title": "General Class Unit Candidate Pool",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "M0 deterministic nullable-metadata candidate pool; developer-only Node tooling, no mathematical algorithm; final selection pending reference timings",
+  "base_commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/corpus/"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://www.lmfdb.org/NumberField/",
+    "https://beta.lmfdb.org/api/options",
+    "bench/class-unit-groups/download-lmfdb-number-fields.cjs",
+    "bench/optimization-engine/complex-cubic-frontier-corpus.cjs"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "offline exact source-schema and deterministic-selection fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "python3 bench/class-unit-groups/general-frontier/corpus/test_rank_two_supplement.py",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test bench/class-unit-groups/general-frontier/corpus/candidate-pool.test.cjs",
+    "pnpm merge:check",
+    "pnpm test:unit"
+  ],
+  "runs": [
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/candidate-pool.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.476,
+      "started_at": "2026-09-11T07:02:50.871Z",
+      "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+      "workspace_fingerprint": "14814827b579b0af43ce0a5545cc70a806e9bb7ccc53ae0f5bd04304a9b43282",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.301,
+      "started_at": "2026-09-11T07:03:05.831Z",
+      "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+      "workspace_fingerprint": "14814827b579b0af43ce0a5545cc70a806e9bb7ccc53ae0f5bd04304a9b43282",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.817,
+      "started_at": "2026-09-11T07:04:26.452Z",
+      "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+      "workspace_fingerprint": "14814827b579b0af43ce0a5545cc70a806e9bb7ccc53ae0f5bd04304a9b43282",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/candidate-pool.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.425,
+      "started_at": "2026-09-11T07:07:51.304Z",
+      "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+      "workspace_fingerprint": "5b54c99eb2e83210990f406eed684c989be2488f2afe5b54a7dbe8f2f59bbab2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.595,
+      "started_at": "2026-09-11T07:07:52.379Z",
+      "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+      "workspace_fingerprint": "5b54c99eb2e83210990f406eed684c989be2488f2afe5b54a7dbe8f2f59bbab2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 53.666,
+      "started_at": "2026-09-11T07:08:07.444Z",
+      "commit": "d654e3d45d8c066b979566338a53647a37ab8d00",
+      "workspace_fingerprint": "5b54c99eb2e83210990f406eed684c989be2488f2afe5b54a7dbe8f2f59bbab2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/candidate-pool.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.437,
+      "started_at": "2026-09-11T07:21:49.851Z",
+      "commit": "e65a130f039ebef60a7708e9486aef03663f23ad",
+      "workspace_fingerprint": "c460108251c5c88773b8fbaa5fd5e1c41a75f10f128a70c21307badd361cfe65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.588,
+      "started_at": "2026-09-11T07:21:50.936Z",
+      "commit": "e65a130f039ebef60a7708e9486aef03663f23ad",
+      "workspace_fingerprint": "c460108251c5c88773b8fbaa5fd5e1c41a75f10f128a70c21307badd361cfe65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.64,
+      "started_at": "2026-09-11T07:21:55.164Z",
+      "commit": "e65a130f039ebef60a7708e9486aef03663f23ad",
+      "workspace_fingerprint": "c460108251c5c88773b8fbaa5fd5e1c41a75f10f128a70c21307badd361cfe65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/class-unit-groups/general-frontier/corpus/test_rank_two_supplement.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.2,
+      "started_at": "2026-09-11T07:45:41.102Z",
+      "commit": "ea4cc19de1e35bea80d6a6648ca63eb0267c6177",
+      "workspace_fingerprint": "4da4ab351c876dafcb04cd6c8c7d0c934503c6998ba170a0fc2f28f74d016099",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/candidate-pool.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.435,
+      "started_at": "2026-09-11T07:45:41.938Z",
+      "commit": "ea4cc19de1e35bea80d6a6648ca63eb0267c6177",
+      "workspace_fingerprint": "4da4ab351c876dafcb04cd6c8c7d0c934503c6998ba170a0fc2f28f74d016099",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.206,
+      "started_at": "2026-09-11T07:45:43.027Z",
+      "commit": "ea4cc19de1e35bea80d6a6648ca63eb0267c6177",
+      "workspace_fingerprint": "4da4ab351c876dafcb04cd6c8c7d0c934503c6998ba170a0fc2f28f74d016099",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.587,
+      "started_at": "2026-09-11T07:45:53.902Z",
+      "commit": "ea4cc19de1e35bea80d6a6648ca63eb0267c6177",
+      "workspace_fingerprint": "4da4ab351c876dafcb04cd6c8c7d0c934503c6998ba170a0fc2f28f74d016099",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.617,
+      "started_at": "2026-09-11T07:46:54.621Z",
+      "commit": "ea4cc19de1e35bea80d6a6648ca63eb0267c6177",
+      "workspace_fingerprint": "17394e9fd0dcec343ff1bcfdae9f8931a8eb8e81745520cc05a184003778fe19",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "LMFDB candidate v2 remains unchanged. A separate ordinary-CPython rank-two supplement generates all 112 predeclared cubic/quartic family/scale/index polynomial candidates, checking exact Eisenstein-at-2 irreducibility and elementary real-root signatures. Exact coefficient hashes identify presentations; field discriminants, isomorphism classes and reference costs remain pending. Seven new offline tests cover the supplement alongside the 18 LMFDB candidate tests.",
+    "risks": [
+      "Candidate capacity is not final coverage or matched-reference timing qualification; final roles and time bands remain pending.",
+      "Unknown holdout eligibility remains null, never true; consumers must require an independently audited true value.",
+      "The full architecture check reaches an existing forbidden cowasm mention in agents/python-compiler-runtime-value-and-performance-plan.md:124. That unrelated document is unchanged and outside this lane's claim.",
+      "The contract remains active. Broad unit validation on this worktree requires the absent optional FLINT addon; full native qualification and additional builds are deferred by coordinator instruction. Earlier build/strict receipts describe the v1 revision, not a new v2 full-suite run."
+    ],
+    "next_steps": [
+      "Generate the separate rank-two-supplement.v1 JSON and predeclare a bounded reference-screening subset/order; no CAS cost evidence has been produced by this lane.",
+      "Compute exact field discriminants and reconcile same-discriminant cases by exact isomorphism before counting supplemental polynomials as fields or assigning final holdout roles."
+    ]
+  }
+}

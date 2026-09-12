@@ -15,6 +15,7 @@ const {
   enforceBudget,
   enforceTopologyBudgets,
   inspectProductionArtifact,
+  verifyRecordedArtifact,
   sha256,
 } = require("../packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs");
 const {
@@ -61,6 +62,29 @@ function fixtureDirectory(answer = 42) {
   }));
   return directory;
 }
+
+test("recorded artifact verification checks bytes and totals without running compression", (t) => {
+  const directory = fixtureDirectory();
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const report = inspectProductionArtifact(directory);
+  const zlib = require("node:zlib");
+  t.mock.method(zlib, "gzipSync", () => { throw new Error("unexpected recompression"); });
+  t.mock.method(zlib, "brotliCompressSync", () => { throw new Error("unexpected recompression"); });
+  assert.deepEqual(verifyRecordedArtifact(directory, report), report);
+  for (const mutate of [
+    (value) => value.files.push(value.files[0]),
+    (value) => { value.files[0].sha256 = "0".repeat(64); },
+    (value) => { value.files[0].brotli_bytes = -1; },
+    (value) => { value.totals.gzip_bytes++; },
+    (value) => { value.build_receipt_sha256 = "0".repeat(64); },
+    (value) => { value.source_revision = "other"; },
+  ]) {
+    const changed = structuredClone(report); mutate(changed);
+    assert.throws(() => verifyRecordedArtifact(directory, changed), /recorded/);
+  }
+  fs.appendFileSync(path.join(directory, "kernel.mjs"), "// changed");
+  assert.throws(() => verifyRecordedArtifact(directory, report), /digest/);
+});
 
 test("release artifact receipts validate hashes, Wasm magic, compression, and reproducibility", () => {
   const left = fixtureDirectory();
@@ -124,8 +148,8 @@ test("release CI shards performance and reuses only authenticated native cache e
   assert.doesNotMatch(workflow, /pnpm bootstrap/);
   assert.match(
     workflow,
-    /--runtime node-native --samples 7[\s\S]{0,240}--report-regressions/,
-    "the heterogeneous shared-runner native baseline must retain reviewed evidence without blocking browser correctness",
+    /--native-acceptance[\s\S]{0,160}--budget bench\/browser-wasm-budget.json[\s\S]{0,100}--output build\/wasm-native-acceptance.json/,
+    "the required native corpus must retain execution and interruption acceptance without repeated timing",
   );
   assert.match(workflow, /browser-parity:/);
   assert.match(workflow, /browser-performance:/);
@@ -687,6 +711,11 @@ test("browser/native comparison requires identical workload identities", async (
   assert.equal(comparison.startup_median_ratio, 2);
   assert.equal(comparison.operations.example.cold_median_ratio, 3);
   assert.equal(comparison.operations.example.warm_median_ratio, 2);
+  const diagnostic = compareNativeReceipts(browser, { ...native, samples: 1,
+    measurement_purpose: "native-workload-acceptance" });
+  assert.equal(diagnostic.reference_samples, 1);
+  assert.equal(diagnostic.reference_measurement_purpose, "native-workload-acceptance");
+  assert.match(diagnostic.interpretation, /not repeated timing qualification/);
   assert.throws(
     () => compareNativeReceipts(browser, { ...native, workload_identity: "other" }),
     /different workloads/,

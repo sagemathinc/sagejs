@@ -31,6 +31,7 @@ const {
   expectedPeakMemoryContract,
   receiptCore,
   verifyReceipt,
+  verifyTransferredReceipt,
   writeImmutableJson,
 } = require("../../../scripts/numerical-computing/receipt.cjs");
 const {
@@ -441,6 +442,56 @@ test("collection binds exact source, artifact, capabilities, runtime and per-cas
     historical: true,
     requireClean: true,
   }).mode, "historical-content-integrity");
+});
+
+test("transferred verification preserves producer identity but requires current source and artifacts", async (t) => {
+  const workspace = makeWorkspace();
+  t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  const receipt = await collectFixture(workspace);
+  // Model a trusted producer with different hardware and a different collector
+  // Node version. This fixture is not an authorization to trust arbitrary input.
+  const transferred = structuredClone(receipt);
+  transferred.platform.cpu += " independent producer";
+  const { machine_id, ...facts } = transferred.platform;
+  transferred.platform.machine_id = contentId(facts);
+  transferred.runtime.collector.version = "v22.22.2";
+  transferred.runtime.collector.node = "22.22.2";
+  transferred.id = contentId(receiptCore(transferred));
+  const before = canonicalJson(transferred);
+  const options = { root: workspace.root, requireClean: true };
+  assert.throws(() => verifyReceipt(transferred, options), /measured host/);
+  const collectorOnly = structuredClone(transferred);
+  collectorOnly.platform = receipt.platform;
+  collectorOnly.id = contentId(receiptCore(collectorOnly));
+  assert.throws(() => verifyReceipt(collectorOnly, options), /collector runtime/);
+  assert.equal(verifyTransferredReceipt(transferred, options).mode, "transferred-current-binding");
+  assert.equal(canonicalJson(transferred), before, "producer facts are never relabeled");
+  assert.throws(() => verifyTransferredReceipt(transferred), /repository root/);
+
+  for (const [filename, pattern] of [
+    ["source.txt", /source_bundle/],
+    ["artifact.bin", /artifacts/],
+    ["adapter.cjs", /adapter/],
+    ["fixture.corpus.json", /corpus/],
+    ["capabilities.json", /capability_manifest/],
+  ]) {
+    const absolute = path.join(workspace.root, filename);
+    const bytes = fs.readFileSync(absolute);
+    fs.appendFileSync(absolute, "\n");
+    assert.throws(() => verifyTransferredReceipt(transferred, options), pattern, filename);
+    fs.writeFileSync(absolute, bytes);
+  }
+  const dirty = path.join(workspace.root, "untracked.txt");
+  fs.writeFileSync(dirty, "unreviewed");
+  assert.throws(() => verifyTransferredReceipt(transferred, options), /clean evidence/);
+  fs.unlinkSync(dirty);
+  const tampered = structuredClone(transferred);
+  tampered.cases[0].samples[0].observation.values.result = 7;
+  assert.throws(() => verifyTransferredReceipt(tampered, options), /receipt.id: is stale/);
+  tampered.id = contentId(receiptCore(tampered));
+  assert.throws(() => verifyTransferredReceipt(tampered, options), /evidence is stale/);
+  git(workspace.root, "commit", "--allow-empty", "-m", "another candidate");
+  assert.throws(() => verifyTransferredReceipt(transferred, options), /current commit and tree/);
 });
 
 test("tampering, recomputed forgeries, duplicate keys, and missing cases fail closed", async (t) => {

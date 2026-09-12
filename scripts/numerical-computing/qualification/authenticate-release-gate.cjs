@@ -90,7 +90,7 @@ const EXPECTED_SUPPLEMENTAL = new Map([
 function usage() {
   return `Usage: node scripts/numerical-computing/qualification/authenticate-release-gate.cjs \\
   --candidate COMMIT --gate FILE --rebuilt-gate FILE \\
-  [--browser-distribution PATH] [--public-npm-root FILE]
+  [--browser-distribution PATH] [--public-npm-root FILE] [--platform-npm-directory PATH]
 
 Authenticates the immutable final numerical release-gate document before a
 publisher or deployment consumes it. The rebuilt gate must have been assembled
@@ -109,7 +109,7 @@ function parseArguments(argv) {
     const value = argv[index + 1];
     if (![
       "--browser-distribution", "--candidate", "--gate", "--public-npm-root",
-      "--rebuilt-gate",
+      "--rebuilt-gate", "--platform-npm-directory",
     ].includes(name)) {
       throw new Error(`unknown argument ${name}`);
     }
@@ -374,14 +374,76 @@ function authenticatePublicNpmRoot(value, filename) {
   return digest;
 }
 
-function authenticateBrowserDistribution(value, filename) {
-  const digest = contentDigestPath(root, filename, "browser distribution");
+function authenticateBrowserDistribution(value, filename, repositoryRoot = root) {
+  const digest = contentDigestPath(repositoryRoot, filename, "browser distribution");
   if (digest !== value.artifact_coherence.browser_distribution_content_sha256) {
     throw new Error(
       "browser distribution differs from the numerically qualified browser distribution",
     );
   }
   return digest;
+}
+
+// Bind one selected artifact to its canonical raw manifest after the full gate
+// has been reconstructed/authenticated. This helper is not standalone provenance.
+function qualifiedPackageArtifact(value, platform, kind, repositoryRoot = root) {
+  if (!EXPECTED_PLATFORMS.includes(platform) || !["npm", "sea"].includes(kind)) throw new Error("unsupported qualified package subject");
+  const rowId = `${platform}-${kind}`, artifactName = kind === "npm" ? "npm-platform-tarball" : "sea-executable";
+  const records = value.capability_manifests?.filter((record) => record.row_id === rowId);
+  if (records?.length !== 1 || records[0].path !== EXPECTED_ROWS.get(rowId).manifest) {
+    throw new Error(`${rowId} lacks its canonical qualified manifest`);
+  }
+  const filename = repositoryPath(repositoryRoot, records[0].path, `${rowId} manifest`).absolute;
+  const stat = fs.lstatSync(filename);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > 16 * 1024 * 1024) {
+    throw new Error(`${rowId} manifest must be a bounded ordinary file`);
+  }
+  const bytes = fs.readFileSync(filename);
+  if (sha256(bytes) !== records[0].sha256) throw new Error(`${rowId} manifest differs from the authenticated gate`);
+  const manifest = parseJsonText(bytes.toString("utf8"), `${rowId} manifest`);
+  const compact = manifest.bindings?.artifacts?.filter((artifact) => artifact.name === artifactName);
+  const receipts = value.matrix_receipts?.filter((record) => record.row_id === rowId);
+  if (receipts?.length !== 1 || receipts[0].path !== EXPECTED_ROWS.get(rowId).receipt) {
+    throw new Error(`${rowId} lacks its canonical qualified receipt`);
+  }
+  const receiptPath = repositoryPath(repositoryRoot, receipts[0].path, `${rowId} receipt`).absolute;
+  const receiptStat = fs.lstatSync(receiptPath);
+  if (!receiptStat.isFile() || receiptStat.isSymbolicLink() || receiptStat.nlink !== 1 || receiptStat.size > 16 * 1024 * 1024) {
+    throw new Error(`${rowId} receipt must be a bounded ordinary file`);
+  }
+  const receiptBytes = fs.readFileSync(receiptPath);
+  if (sha256(receiptBytes) !== receipts[0].sha256) throw new Error(`${rowId} receipt differs from the authenticated gate`);
+  const receipt = parseJsonText(receiptBytes.toString("utf8"), `${rowId} receipt`);
+  const bindings = receipt.artifacts?.filter((artifact) => artifact.name === artifactName);
+  // Capability manifests intentionally retain only name/path-digest pairs.
+  // Size and content digests live in the separately gate-bound raw receipt.
+  if (compact?.length !== 1 || bindings?.length !== 1 ||
+      !/^[a-f0-9]{64}$/.test(compact[0].sha256 ?? "") || compact[0].sha256 !== bindings[0].sha256) {
+    throw new Error(`${rowId} lacks one content-bound ${kind === "npm" ? "platform tarball" : "SEA executable"}`);
+  }
+  if (bindings?.length !== 1 || !/^[a-f0-9]{64}$/.test(bindings[0].content_sha256 ?? "") ||
+      !Number.isSafeInteger(bindings[0].bytes) || bindings[0].bytes < 1 || bindings[0].files !== 1) {
+    throw new Error(`${rowId} lacks one content-bound ${kind === "npm" ? "platform tarball" : "SEA executable"}`);
+  }
+  return bindings[0];
+}
+
+function authenticatePlatformNpmPackages(value, directory, repositoryRoot = root) {
+  const result = [];
+  for (const platform of EXPECTED_PLATFORMS) {
+    const rowId = `${platform}-npm`, binding = qualifiedPackageArtifact(value, platform, "npm", repositoryRoot);
+    // Preserve original producer paths in evidence. Only the selected archive's
+    // content is compared: staging it must not relabel or rewrite the receipt.
+    const archive = repositoryPath(repositoryRoot, path.join(directory, `sagejs-${platform}.tgz`), `${rowId} archive`);
+    const archiveStat = fs.lstatSync(archive.absolute);
+    if (!archiveStat.isFile() || archiveStat.isSymbolicLink() || archiveStat.nlink !== 1 ||
+        archiveStat.size !== binding.bytes ||
+        contentDigestPath(repositoryRoot, archive.relative, `${rowId} archive`) !== binding.content_sha256) {
+      throw new Error(`${rowId} platform tarball differs from the qualified package`);
+    }
+    result.push({ platform, path: archive.relative, sha256: binding.content_sha256, bytes: archiveStat.size });
+  }
+  return result;
 }
 
 function authenticateRebuiltGate(value, rebuilt, candidate) {
@@ -424,6 +486,9 @@ function main(argv = process.argv.slice(2)) {
   if (options.public_npm_root !== undefined) {
     authenticatePublicNpmRoot(gate.value, options.public_npm_root);
   }
+  if (options.platform_npm_directory !== undefined) {
+    authenticatePlatformNpmPackages(gate.value, options.platform_npm_directory);
+  }
   process.stdout.write(`passed: authenticated raw-evidence numerical release gate ${gate.value.id}\n`);
   return 0;
 }
@@ -438,6 +503,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  authenticatePlatformNpmPackages, qualifiedPackageArtifact,
   authenticate, authenticateBrowserDistribution, authenticatePublicNpmRoot,
   authenticateRebuiltGate,
   main, parseArguments, usage,

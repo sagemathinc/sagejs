@@ -126,6 +126,20 @@ def _cubic_ceil_sqrt(value: int) -> int:
     return high
 
 
+def _retryable_native_decline(values: Any) -> bool:
+    """Permit a fresh qualified regime, never resumption of failed scratch.
+
+    Diagnostics 437/438 identify the bounded exact unit-product exponent
+    limits. They are capability declines, not malformed mathematical state.
+    The closed attempt has unwound before a different effort is entered.
+    Other fatal phase-44 failures remain terminal.
+    """
+    if len(values) != _CUBIC_OUTPUT_LENGTH:
+        return False
+    phase = int(values[63])
+    return phase in (41, 42, 43, 8) or (phase == 44 and int(values[59]) in (437, 438))
+
+
 def _checked_native_values(
     coefficients: tuple[int, int, int, int], values: Any
 ) -> tuple[int, ...] | None:
@@ -1164,12 +1178,11 @@ def certified_complex_cubic_class_number(
                 if accepted is True:
                     accepted_effort = relation_effort
                     break
-                # Only relation-rank, unit-rank, or analytic-index exhaustion
-                # can authorize broader adjacent or compound relation effort.
-                # Every earlier failure remains a fail-closed decline rather
-                # than paying for semantically irrelevant retries.
+                # A new closed attempt may use an existing alternate regime
+                # after classified insufficiency or a bounded unit-product
+                # capability decline. It never resumes failed scratch.
                 failed_values = native_module.integer_buffer_values(output)
-                if int(failed_values[63]) not in (41, 42, 43, 8):
+                if not _retryable_native_decline(failed_values):
                     break
         finally:
             _resident_call_active = False

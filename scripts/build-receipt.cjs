@@ -29,10 +29,41 @@ const receiptSchema = "sagejs.build-receipt/v3";
 const validationOnlyRoots = [
   "agents/", "docs/", "test/",
   "upstream-tests/micropython/", "upstream-tests/python-compat/",
+  "upstream-tests/python-packages/",
+  // Reviewed developer-only acquisition, reference screening, and evidence
+  // drivers. No compiler/runtime/build product consumes this campaign tree.
+  // Keep other bench trees conservative: some are production-manifest inputs.
+  "bench/class-unit-groups/general-frontier/",
 ];
 const validationOnlyFiles = new Set([
   "AGENTS.md", "ARCHITECTURE.md", "README.md", "RELEASE.md", "TODO.md",
   "website/reference-data.json", "website/reference.html",
+  // Derived validation evidence; generators and source inputs remain build
+  // inputs. Rewriting these manifests invalidates validation, not the build.
+  "architecture/optimizer-opportunities.manifest.json",
+  "bench/modular/qexp-correctness/source-freeze.json",
+  // Reviewed validation harnesses only: their generated programs live in
+  // task scratch directories, not shipped compiler/runtime build outputs.
+  "scripts/run-pure-python-packages.cjs", "scripts/python-package-phases.cjs",
+  "scripts/python-package-suites.cjs", "tools/python-compat/drivers/tomli-errors.py",
+  "scripts/run-python-conformance.cjs", "scripts/run-python-compat.cjs",
+  "tools/python-compat/evidence.cjs", "tools/python-compat/manifest.cjs",
+  "tools/python-compat/assertion-runner.cjs",
+  "tools/python-compat/output-baseline.cjs",
+  "tools/python-compat/legacy-output-manifest.cjs",
+  "tools/python-compat/legacy-output-runner.cjs",
+  "tools/python-compat/output-suite.cjs",
+  "bench/cowasm/run.cjs", "bench/python-compat/qualification.cjs",
+  // These exact campaign contracts contain coordination and validation run
+  // receipts, not runtime configuration. Do not exclude .agents/ generally:
+  // lanes.json and other unknown metadata still participate in build policy.
+  ".agents/tasks/class-unit-rank-two-frontier.json",
+  ".agents/tasks/general-class-unit-candidate-pool.json",
+  ".agents/tasks/general-class-unit-hecke-screen.json",
+  ".agents/tasks/general-class-unit-persistent-reference.json",
+  ".agents/tasks/general-class-unit-exposure-inventory.json",
+  ".agents/tasks/general-class-unit-hard-windows.json",
+  ".agents/tasks/general-frontier-build-partition.json",
 ]);
 
 function isArtifactInput(name, reviewedInputs = new Set()) {

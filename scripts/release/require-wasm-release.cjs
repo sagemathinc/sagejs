@@ -2,6 +2,7 @@
 "use strict";
 
 const fs = require("node:fs");
+const { inspectProductAcceptance } = require("./product-acceptance.cjs");
 
 function fail(message) {
   throw new Error(message);
@@ -25,7 +26,7 @@ function runsFromPages(value) {
   return runs;
 }
 
-function requireSuccessfulWasmRelease(value, expectedSha, expectedTag) {
+function requireWasmProduct(value, expectedSha, expectedTag, api) {
   if (!/^[0-9a-f]{40}$/.test(expectedSha)) {
     fail("expected source SHA must be a full lowercase Git commit id");
   }
@@ -41,21 +42,16 @@ function requireSuccessfulWasmRelease(value, expectedSha, expectedTag) {
   if (matching.length === 0) {
     fail(`no WebAssembly release run matches ${expectedTag} at ${expectedSha}`);
   }
-  const successful = matching.filter(
-    (run) => run?.status === "completed" && run?.conclusion === "success",
-  );
-  if (successful.length === 0) {
-    const states = matching
-      .map((run) => `${run?.id ?? "unknown"}:${run?.status ?? "unknown"}/${run?.conclusion ?? ""}`)
-      .join(", ");
-    fail(`WebAssembly release has not succeeded for ${expectedTag} at ${expectedSha} (${states})`);
+  if (matching.some((run) => !Number.isSafeInteger(run.id) || run.id <= 0) ||
+      new Set(matching.map((run) => run.id)).size !== matching.length) {
+    fail("WebAssembly release lacks unique authenticated run ids");
   }
-  successful.sort((left, right) => Number(right.id) - Number(left.id));
-  const selected = successful[0];
-  if (!Number.isSafeInteger(selected.id) || selected.id <= 0) {
-    fail("successful WebAssembly release lacks an authenticated run id");
-  }
-  return selected;
+  // Never fall back to an older successful campaign when the newest campaign
+  // failed product acceptance. Whole-workflow success is not product evidence:
+  // an unrelated timing report can fail or still be running.
+  matching.sort((left, right) => right.id - left.id);
+  return inspectProductAcceptance({ kind: "browser", runId: matching[0].id,
+    sha: expectedSha, ref: expectedTag, event: "push", purpose: "release" }, api);
 }
 
 function argument(name) {
@@ -66,12 +62,12 @@ function argument(name) {
 
 function main() {
   const value = JSON.parse(fs.readFileSync(0, "utf8"));
-  const selected = requireSuccessfulWasmRelease(
+  const selected = requireWasmProduct(
     value,
     argument("--sha"),
     argument("--tag"),
   );
-  process.stdout.write(`${selected.id}\n`);
+  process.stdout.write(`${JSON.stringify(selected)}\n`);
 }
 
 if (require.main === module) {
@@ -83,4 +79,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { requireSuccessfulWasmRelease, runsFromPages };
+module.exports = { requireWasmProduct, runsFromPages };

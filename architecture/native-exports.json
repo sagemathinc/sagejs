@@ -3055,6 +3055,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/character-hecke-support.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/public-gap-closure-support.mjs",
         "packages/flint/test/lazy-factor.cjs",
@@ -14199,7 +14200,7 @@
       "consumers": [
         "packages/flint-wasm/test/analytic-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
-        "src/baselib/builtins.py"
+        "src/lib/sagejs/special_functions.py"
       ],
       "declared_ffi": null
     },
@@ -14291,7 +14292,7 @@
       "consumers": [
         "packages/flint-wasm/test/analytic-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
-        "src/baselib/builtins.py"
+        "src/lib/sagejs/special_functions.py"
       ],
       "declared_ffi": null
     },
@@ -14330,7 +14331,7 @@
       "consumers": [
         "packages/flint-wasm/test/analytic-backend.test.mjs",
         "packages/flint/test/dirichlet.cjs",
-        "src/baselib/builtins.py"
+        "src/lib/sagejs/special_functions.py"
       ],
       "declared_ffi": null
     },

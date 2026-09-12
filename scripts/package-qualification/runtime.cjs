@@ -22,7 +22,6 @@ const {
 const { tmpdir } = require("node:os");
 const { createRequire } = require("node:module");
 const { dirname, isAbsolute, join, relative, resolve } = require("node:path");
-const { pathToFileURL } = require("node:url");
 
 const { runPnpm } = require("../pnpm-invocation.cjs");
 
@@ -107,7 +106,10 @@ function resolveTarget(name, options = {}) {
 }
 
 function fileDependency(filename) {
-  return pathToFileURL(resolve(filename)).href;
+  // pnpm's file: dependency protocol takes a filesystem path, not a URL:
+  // percent escapes are treated literally (including Windows RUNNER~1 paths).
+  const absolute = resolve(filename);
+  return `file:${process.platform === "win32" ? absolute.replaceAll("\\", "/") : absolute}`;
 }
 
 function fileDigest(filename) {
@@ -309,7 +311,9 @@ function runProcess(executable, args, options = {}) {
         cwd: options.cwd,
         input: options.input,
         encoding: "utf8",
-        env: options.env || process.env,
+        env: { ...(options.env || process.env), ...(options.memoryBarrier ? {
+          SAGEJS_PACKAGE_MEMORY_BARRIER: JSON.stringify(options.memoryBarrier),
+        } : {}) },
         // The supervisor captures bounded child output in metadata, so its own
         // stdout/stderr remain diagnostic-only and cannot trigger ENOBUFS while
         // leaving the supervised process group alive.
@@ -479,10 +483,16 @@ function prepareFreshInstall(options) {
       `overrides:\n  ${JSON.stringify(target.packageName)}: ${JSON.stringify(platformSpec)}\n`,
     );
     const installRunner = options.installRunner || runPnpm;
-    installRunner(["install", "--ignore-scripts"], {
-      cwd: directory,
-      stdio: options.installStdio || "inherit",
-    });
+    try {
+      installRunner(["install", "--ignore-scripts"], {
+        cwd: directory,
+        stdio: options.installStdio || "inherit",
+      });
+    } catch (error) {
+      // Qualification adapters pipe output to protect their JSON protocol.
+      // Preserve the causal package-manager error when that subprocess fails.
+      throw new Error(`Fresh npm installation failed: ${error.message}\n${error.stdout || ""}\n${error.stderr || ""}`, { cause: error });
+    }
     // Do not inspect or execute any installed candidate bytes unless pnpm
     // consumed the exact archive files validated above.
     assertArchiveDigests(archives, archiveDigests);
@@ -584,6 +594,7 @@ function runInstalledSourceLanguage(context, source, language, options = {}) {
       args,
       {
         cwd: context.directory,
+        memoryBarrier: context.memoryBarrier,
         timeout: options.timeout,
         env: {
           ...process.env,
@@ -606,6 +617,7 @@ function runInstalledNode(context, source, options = {}) {
   try {
     return runProcess(process.execPath, [program, ...(options.args || [])], {
       cwd: context.directory,
+      memoryBarrier: context.memoryBarrier,
       input: options.input,
       timeout: options.timeout,
       env: {
@@ -647,6 +659,7 @@ function runInstalledKernelPython(context, source, options = {}) {
   }
   return runProcess(process.execPath, [runner], {
     cwd: context.directory,
+    memoryBarrier: context.memoryBarrier,
     input: source,
     timeout: options.timeout,
     env: { ...process.env, ...(options.env || {}) },
@@ -719,6 +732,7 @@ function runRelocatedSeaLanguage(context, source, language, options = {}) {
     args.push(program);
     return runProcess(context.executable, args, {
       cwd: context.directory,
+      memoryBarrier: context.memoryBarrier,
       timeout: options.timeout,
       env: { ...process.env, ...(options.env || {}) },
     });

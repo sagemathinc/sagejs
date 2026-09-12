@@ -100,16 +100,20 @@ jobs:
             test/browser-wasm-release-gates.cjs \
             test/browser-module-cache.cjs \
             packages/flint-wasm/test/gamma1-modular-forms.test.mjs \
+            packages/flint-wasm/test/character-hecke.test.mjs \
             packages/flint-wasm/test/browser-wasm-wasi-quota.test.mjs
 
       - name: Install Chromium matched to playwright-core
         run: pnpm exec playwright-core install --with-deps chromium
       - name: Run mandatory public worker parity
         run: |
+          SAGEJS_REQUIRE_PREFIX_BROWSER=1 node --test \
+            packages/flint-wasm/test/integer-log-sqrt-prefix.test.mjs
           node packages/flint-wasm/test/browser-wasm-parity.mjs \
             --tier routine --engines chromium --require-engines chromium \
             --receipt build/wasm-routine-parity.json
           pnpm --dir packages/flint-wasm test:browser:numerics
+          node packages/flint-wasm/test/character-hecke-browser.mjs
           node packages/flint-wasm/test/browser-wasm-serialization.mjs
           node packages/flint-wasm/test/browser-wasm-security.mjs
 

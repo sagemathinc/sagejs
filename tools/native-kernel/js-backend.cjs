@@ -531,6 +531,9 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     }
     return lines.join("\n");
   }
+  if (operation.kind === "loop.break" || operation.kind === "loop.continue") {
+    return `${indent}${operation.kind.slice(5)};`;
+  }
   if (operation.kind === "while") {
     return [
       `${indent}while (true) {`,
@@ -2833,8 +2836,12 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
         message.includes("NativeIntegerVector allocation failed")) {
       nativeRaise("MemoryError", message);
     }
-    if (message.includes("NativeIntegerVector index")) {
+    if (message.includes("NativeIntegerVector index") ||
+        message.includes("NativeIntegerVector slice out of range")) {
       nativeRaise("IndexError", message);
+    }
+    if (message.includes("NativeIntegerVector slice cannot resize storage")) {
+      nativeRaise("ValueError", message);
     }
     if (message.includes("matrix modulus must be at least") ||
         message.includes("buffer length does not match dimensions")) {

@@ -1,6 +1,15 @@
+import type { PythonDiagnostic } from "./python/diagnostics";
+export type { PythonDiagnostic } from "./python/diagnostics";
+
+/** Worker evaluation errors expose a JSON-safe diagnostic without parsing host stacks. */
+export interface SageDiagnosticError extends Error {
+  pythonDiagnostic: PythonDiagnostic;
+}
+
 import { EventEmitter } from "events";
 import { join } from "path";
 import { Worker } from "worker_threads";
+import { closeKernelWorker } from "./kernel-worker-lifecycle";
 
 import {
   createForeignFrontend,
@@ -125,11 +134,17 @@ function deserializeError(serialized): Error {
       serialized.message || undefined,
     );
     if (serialized.stack) interrupted.stack = serialized.stack;
+    if (serialized.pythonDiagnostic) {
+      (interrupted as SageDiagnosticError).pythonDiagnostic = serialized.pythonDiagnostic;
+    }
     return interrupted;
   }
   const error = new Error(serialized.message);
   error.name = serialized.name;
   if (serialized.stack) error.stack = serialized.stack;
+  if (serialized.pythonDiagnostic) {
+    (error as SageDiagnosticError).pythonDiagnostic = serialized.pythonDiagnostic;
+  }
   return error;
 }
 
@@ -161,6 +176,7 @@ export class SageSession extends EventEmitter {
   >();
   private nextId = 0;
   private closed = false;
+  private closePromise?: Promise<void>;
 
   constructor({ mode = "sage" }: SageSessionOptions = {}) {
     super();
@@ -541,13 +557,18 @@ export class SageSession extends EventEmitter {
   private async replaceWorker(error: Error): Promise<void> {
     if (this.closed) throw new SageSessionClosedError();
     const worker = this.worker;
+    const hasPendingWork = this.pending.size !== 0;
     this.worker = undefined;
     this.interruptState = undefined;
     // Publish the replacement's readiness before rejecting the interrupted
     // evaluation. Its caller may immediately submit another evaluation.
     this.prepareReadyPromise();
     this.rejectPending(error);
-    if (worker) await worker.terminate();
+    if (worker) {
+      // Resetting an idle session deserves the same evaluator cleanup as close.
+      // Timeouts and interrupts still stop active work without another grace wait.
+      await (hasPendingWork ? worker.terminate() : closeKernelWorker(worker));
+    }
     if (this.closed) return;
     this.spawnWorker(true);
     await this.readyPromise;
@@ -622,8 +643,8 @@ export class SageSession extends EventEmitter {
     );
   }
 
-  async close(): Promise<void> {
-    if (this.closed) return;
+  close(): Promise<void> {
+    if (this.closePromise) return this.closePromise;
     this.closed = true;
     const error = new SageSessionClosedError();
     this.readyReject(error);
@@ -631,8 +652,9 @@ export class SageSession extends EventEmitter {
     this.worker = undefined;
     this.interruptState = undefined;
     this.rejectPending(error);
-    if (worker) await worker.terminate();
-    this.removeAllListeners();
+    this.closePromise = (worker ? closeKernelWorker(worker) : Promise.resolve())
+      .finally(() => this.removeAllListeners());
+    return this.closePromise;
   }
 }
 

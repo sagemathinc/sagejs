@@ -44,7 +44,7 @@ function resolveRelativeImport(importer, imported) {
 
 function pythonDynamicImports(source, importer) {
   const names = new Set();
-  for (const match of source.matchAll(/__import__\(\s*["']([^"']+)["']/g)) {
+  for (const match of source.matchAll(/(?:__import__|_builtins_default_import)\(\s*["']([^"']+)["']/g)) {
     names.add(resolveRelativeImport(importer, match[1]));
   }
   return [...names];
@@ -98,8 +98,10 @@ function moduleClosure(roots) {
     found.add(name);
     pending.push(...moduleParents(name));
     const source = readFileSync(filename, "utf8");
+    const dynamicImports = new Set(pythonDynamicImports(source, name));
     for (const dependency of pythonImports(source, name)) {
-      if (dependency === "sagejs" || dependency.startsWith("sagejs.")) {
+      if (dependency === "sagejs" || dependency.startsWith("sagejs.") ||
+          dynamicImports.has(dependency)) {
         pending.push(dependency);
       }
     }
@@ -120,6 +122,15 @@ function baselibLazyModules(filename) {
 const BUILTINS_STANDALONE_MODULES = Object.freeze(
   EMBEDDED_STANDALONE_LIBRARY?.builtins ??
     baselibLazyModules("builtins.py"),
+);
+
+// Private core support is required even by standalone programs without an
+// import statement. Keep it separate from optional mathematical algorithms.
+const CORE_STANDALONE_MODULES = Object.freeze(
+  EMBEDDED_STANDALONE_LIBRARY?.core ?? moduleClosure(
+    BUILTINS_STANDALONE_MODULES.filter(name =>
+      name.startsWith("sagejs._") || name === "sagejs.class_namespace"),
+  ),
 );
 
 const MATRIX_STANDALONE_MODULES = Object.freeze(
@@ -184,6 +195,7 @@ module.exports = {
   BASELIB_STANDALONE_CACHE_MODULES,
   BASELIB_STANDALONE_MODULES,
   BUILTINS_STANDALONE_MODULES,
+  CORE_STANDALONE_MODULES,
   GROEBNER_STANDALONE_MODULES,
   MATRIX_STANDALONE_MODULES,
   POLYNOMIAL_STANDALONE_MODULES,

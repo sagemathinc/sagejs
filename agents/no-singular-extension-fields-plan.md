@@ -38,6 +38,15 @@ old compiled caches are not evidence for this merged source. Milestone F
 remains unqualified until its complete native and production-Wasm matrix
 passes, and this integration does not authorize a release.
 
+Integration update (2026-09-12): refresh the merge base to `origin/main` at
+`c4c126d09` before Milestone F handoff. Combine the runtime-owned lazy-module
+inventory with main's standalone-core dependency inventory; neither replaces
+the other. Regenerate FFI, capability, source-freeze, optimizer, and reference
+artifacts from this combined tree. Prior `cb604c65e` payload and simulator
+receipts remain historical evidence, not qualification of the integrated
+runtime. Keep PR #122 a draft until source-current qualification is complete;
+removing draft status is the handoff signal to the merge manager.
+
 The implementation order is intentional:
 
 1. define one exact-field coefficient boundary shared by future domains;

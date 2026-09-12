@@ -557,11 +557,73 @@ and abelian-variety codecs; its ceiling is 60,000 bytes. Both resource tests,
 including forced-GC ownership cleanup, and the source inventory check pass.
 
 These are test/packaging-maintenance changes, not changes to the authenticated
-mathematical source closure. Fresh full production geometry reruns are in
-progress; missing historical temporary logs are not counted as passes.
+mathematical source closure. The fresh full production geometry reruns are
+recorded below; missing historical temporary logs are not counted as passes.
 The lane-only `parallel:check` cannot select one task in this integration
 worktree, which inherits 383 live task manifests; this is recorded rather than
 changing other lanes' contracts.
+
+### Main integration and payload accounting
+
+The qualification recovery is integrating `origin/main` at `c4c126d09` in an
+isolated worktree so ongoing old-artifact tests are not changed underneath
+their execution. Browser compiler fixtures retain both runtime-owned lazy
+module selection and main's standalone-core dependencies. FFI declarations
+retain the extension-field resource slice and main's integer logarithm prefix
+operation. Source-bound inventories are regenerated, not resolved by retaining
+one branch's stale counts or hashes.
+
+The [payload evidence](../bench/extension-fields/payload-cb604c65e.json) accounts
+for all aggregate growth at the old candidate. Its new lazy reactor and support
+source add 1,683,768 Brotli bytes; excluding those additions, the payload is
+363,557 Brotli bytes smaller than the preceding baseline. All 14 authenticated
+topology groups pass existing limits, including the unchanged eager-core cap.
+The aggregate baseline now records the actual measured totals; the 5% growth
+allowance and per-group limits are unchanged. Packaging-gate regressions pass
+(18 tests). A newly integrated artifact must still satisfy those gates.
+
+Main contributes the 6,243-byte portable cyclotomic factorizer to the same lazy
+polynomial package. Its combined source size is 323,521 bytes, compared with
+317,278 bytes on the extension branch before integration. The package's source
+ceiling is reconciled from 318,000 to 325,000 bytes; this is additive lazy source
+accounting, not an eager startup or mathematical resource-limit increase.
+
+Fresh old-artifact full Node-Wasm and Chromium runs each pass all five ideal
+field batches, all three geometry field batches, and the GF(4) Frobenius and
+mixed-component batches. Both then exhaust the unchanged 30-second Gröbner
+budget in the nonsplit GF(4) case. This supersedes any assumption of a complete
+29-batch pass at `cb604c65e`; preserve the resource limit and requalify on the
+integrated runtime. The old source's complete portable suite passes (132 files).
+The integrated source passes the independent CPython field-arithmetic and
+108-case Sage Gröbner corpus, plus strict Python (396 modules, zero errors).
+
+Main's NLopt qualification summary remains preserved as historical evidence.
+The extension evaluator changes one file in its reviewed public semantics
+closure, so the combined manifest is explicitly pending source-current
+requalification instead of claiming main's qualified summary covers this code.
+No numerical release qualification or publication is performed by this update.
+
+The integrated full architecture gate passes after explicitly allowing two
+historical audit-failure references in documentation inherited from main.
+Neither reference introduces a runtime dependency. Native Linux x64 and
+standalone-Wasm C witnesses both pass canonical multivariate transfer and
+resource lifetime checks; these are not substitutes for production public-API
+qualification. Compiler, FFI, module/runtime cache, and native-kernel build
+stages complete. A missing direct FLINT addon following an interrupted rebuild
+is repaired explicitly before rerunning public native tests; a build receipt
+that permits an optional absent addon is not evidence those tests ran.
+
+The integrated portable suite passes all 209 files in 4m37s. Ten focused native
+extension enumeration, capability, sparse packet, and resource tests pass,
+including generated-kernel comparisons with independent SageMath answers.
+The multivariate C witness also passes with sanitizers enabled. ARM's focused
+CI step now explicitly includes the addon-dependent enumeration/capability,
+sparse-polynomial, and resource checks omitted by its portable tier.
+All eight public native extension tests pass, including full geometry,
+zero-dimensional decomposition, and the independent 108-case ideal corpus.
+The existing rational/prime-field Gröbner, Buchberger, elimination, quotient,
+and FGLM/solving fixtures also pass. Production Wasm and other platforms remain
+pending for this integrated source.
 
 ## Still required
 

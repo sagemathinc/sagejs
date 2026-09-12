@@ -2,6 +2,20 @@
 "use strict";
 
 const productTagPattern = /^v(\d+)\.(\d+)\.(\d+)(?:\+release\.(\d+))?$/;
+const requiredInstallerAssets = Object.freeze([
+  "install.sh",
+  ...["sagejs-linux-x64.tar.xz", "sagejs-linux-arm64.tar.xz", "sagejs-windows-x64.zip",
+    "sagejs-macos-arm64.zip", "sagejs-macos-arm64.pkg"].flatMap((name) => [name, `${name}.sha256`]),
+]);
+
+function hasCompleteInstallerAssets(release) {
+  if (!Array.isArray(release?.assets)) return false;
+  return requiredInstallerAssets.every((name) => {
+    const matches = release.assets.filter((asset) => asset?.name === name);
+    return matches.length === 1 && matches[0].state === "uploaded" &&
+      Number.isSafeInteger(matches[0].size) && matches[0].size > 0;
+  });
+}
 
 function parseProductTag(tagName) {
   const match = productTagPattern.exec(tagName);
@@ -32,7 +46,10 @@ function compareProductTags(left, right) {
 function selectLatestProductRelease(releases) {
   const candidates = releases
     .flat(Infinity)
-    .filter((release) => !release.draft && !release.prerelease)
+    // A published tag may still be receiving assets after an interrupted
+    // upload. Do not repair Latest to an incomplete installer distribution.
+    // This is metadata completeness, not signature/digest or npm/app proof.
+    .filter((release) => release?.draft === false && release.prerelease === false && hasCompleteInstallerAssets(release))
     .map((release) => parseProductTag(release.tag_name))
     .filter((release) => release !== undefined)
     .sort(compareProductTags);
@@ -103,7 +120,9 @@ if (require.main === module) {
 }
 
 module.exports = {
+  requiredInstallerAssets, hasCompleteInstallerAssets,
   parseProductTag,
+  compareProductTags,
   selectLatestProductRelease,
   selectLatestProductReleaseFromGitHub,
 };

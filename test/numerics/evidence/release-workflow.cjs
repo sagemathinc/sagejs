@@ -744,7 +744,7 @@ test("collectors fail closed when prepared artifacts differ from the manifest", 
   );
 });
 
-test("tag CI collects 12 platform and four browser rows before publication", () => {
+test("qualification CI collects 12 platform and four browser rows before publication", () => {
   for (const platform of ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"]) {
     assert.match(ci, new RegExp(`numerical-qualification-${platform}`));
     assert.match(ci, new RegExp(`platform/${platform.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
@@ -776,19 +776,18 @@ test("tag CI collects 12 platform and four browser rows before publication", () 
   assert.match(platformCollector, /run-soak\.cjs/);
   assert.match(platformCollector, /"--profile", "release"/);
   assert.match(gateAssembler, /expectedSoakEvidence/);
-  assert.match(
-    ci,
-    /publish-release:[\s\S]*?needs:\n\s+- numerical-release-gate[\s\S]*?Restore the mandatory numerical release gate/,
-  );
-  assert.match(
-    ci,
-    /Restore the complete raw numerical evidence inventory[\s\S]+name: numerical-release-evidence[\s\S]+path: build\/numerical-qualification/,
-  );
+  const preparation = require("../../../scripts/release/prepare-publication.cjs");
+  assert.ok(preparation.browserKeys.includes("native/numerical-release-evidence"));
+  assert.ok(preparation.browserKeys.includes("native/numerical-release-gate"));
+  const commands = preparation.verificationStages(root, "a".repeat(40), "sha256:" + "b".repeat(64))
+    .flatMap(stage => stage.commands);
+  const reconstruct = commands.findIndex(command => command.includes("scripts/numerical-computing/qualification/assemble-release-gate.cjs"));
+  const authenticate = commands.findIndex(command => command.includes("scripts/numerical-computing/qualification/authenticate-release-gate.cjs"));
+  assert.ok(reconstruct >= 0 && authenticate > reconstruct);
+  for (const argument of ["--rebuilt-gate", "--public-npm-root", "--browser-distribution"]) {
+    assert.ok(commands[authenticate].includes(argument), argument);
+  }
   assert.doesNotMatch(ci, /merge-multiple:\s*true/);
-  const gate = ci.indexOf("- name: Rebuild and authenticate the gate and exact public npm root");
-  const draft = ci.indexOf("- name: Create or update the draft GitHub release", gate);
-  const npm = ci.indexOf("- name: Publish the platform and public npm packages", draft);
-  assert.ok(gate >= 0 && gate < draft && draft < npm);
   const rawUpload = ci.slice(
     ci.indexOf("name: numerical-release-evidence"),
     ci.indexOf("retention-days: 90", ci.indexOf("name: numerical-release-evidence")),
@@ -796,7 +795,7 @@ test("tag CI collects 12 platform and four browser rows before publication", () 
   assert.doesNotMatch(rawUpload, /numerical-qualification\/gate/);
   const gateJob = ci.slice(
     ci.indexOf("numerical-release-gate:"),
-    ci.indexOf("publish-release:"),
+    ci.indexOf("verify-prepared:"),
   );
   assert.equal(
     [...gateJob.matchAll(/release:qualify:numerics:gate --/g)].length,
@@ -809,7 +808,7 @@ test("tag CI collects 12 platform and four browser rows before publication", () 
   );
 });
 
-test("tag CI packs one authenticated public npm root before every consumer", () => {
+test("qualification CI packs one authenticated public npm root before every consumer", () => {
   const producer = ciJob("public-npm-root");
   assert.deepEqual(jobNeeds(producer), ["routine", "numerical-product"]);
   const build = producer.indexOf("pnpm --dir packages/flint-wasm build");
@@ -850,17 +849,17 @@ test("tag CI packs one authenticated public npm root before every consumer", () 
   assert.match(gate, /--public-npm-root build\/release\/npm\/sagejs\.tgz/);
   assert.match(gate, /--browser-distribution packages\/flint-wasm\/dist/);
 
-  const publisher = ciJob("publish-release");
-  assert.match(publisher, /name: sagejs-public-npm-root\n\s+path: \./);
-  assert.match(
-    publisher,
-    /cp build\/release\/npm\/sagejs\.tgz release\/npm\/sagejs\.tgz[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz/,
-  );
-  assert.match(publisher, /--browser-distribution packages\/flint-wasm\/dist/);
-  assert.match(publisher, /publish_package release\/npm\/sagejs\.tgz latest/);
+  const publisher = ciJob("publish-prepared");
+  assert.ok(publisher.includes("publish-prepared.cjs"));
+  assert.doesNotMatch(publisher, /pnpm pack|actions\/download-artifact/);
+  const { browserKeys } = require("../../../scripts/release/prepare-publication.cjs");
+  assert.ok(browserKeys.includes("native/sagejs-public-npm-root"));
+  assert.deepEqual(require("../../../scripts/release/publish-npm-packages.cjs").packages.at(-1), {
+    archive: "sagejs.tgz", name: "@sagemath/sagejs", tag: "latest",
+  });
 });
 
-test("tag CI release artifact graph is acyclic", () => {
+test("qualification CI release artifact graph is acyclic", () => {
   const visiting = new Set();
   const visited = new Set();
   function visit(name, chain = []) {
@@ -877,7 +876,7 @@ test("tag CI release artifact graph is acyclic", () => {
     visited.add(name);
   }
   for (const name of ciJobs.keys()) visit(name);
-  assert.ok(visited.has("publish-release"));
+  assert.ok(visited.has("publish-prepared"));
 });
 
 test("clean browser qualification builds source evidence before restoring the product", () => {
@@ -902,36 +901,41 @@ test("clean browser qualification builds source evidence before restoring the pr
   );
 });
 
-test("one trusted workflow publishes and recovery reruns its authenticated job", () => {
-  assert.match(ci, /Numerical release qualification gate|numerical-release-gate/);
-  assert.match(ci, /Require successful same-tag WebAssembly release/);
-  assert.match(ci, /actions\/workflows\/wasm-release\.yml\/runs\?event=push&head_sha=\$\{GITHUB_SHA\}/);
-  assert.match(ci, /require-wasm-release\.cjs[\s\S]+--sha "\$GITHUB_SHA" --tag "\$GITHUB_REF_NAME"/);
-  assert.match(ci, /id-token:\s*write/);
-  assert.match(ci, /npm publish "\$archive"/);
-  assert.doesNotMatch(ci, /secrets\.NPM_TOKEN|pnpm publish "\$archive"/);
-  assert.match(
-    ci,
-    /release:qualify:numerics:gate[\s\S]+--input build\/numerical-qualification[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+release:qualify:numerics:authenticate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json[\s\S]+--public-npm-root release\/npm\/sagejs\.tgz[\s\S]+--browser-distribution packages\/flint-wasm\/dist/,
-  );
-  assert.match(ci, /recover-publish:[\s\S]+actions:\s*write/);
-  assert.match(ci, /jobs\?filter=all&per_page=100/);
-  assert.match(ci, /gh api --paginate[\s\S]+\| jq -s '\.' > "\$jobs_file"/);
-  assert.match(ci, /select-recovery-publisher\.cjs/);
-  assert.match(ci, /actions\/jobs\/\$\{publisher_id\}\/rerun/);
-  assert.match(ci, /Numerical release qualification gate/);
-  assert.match(ci, /npm view "\$\{name\}@\$\{version\}" dist\.integrity --json/);
-  assert.match(ci, /createHash\("sha512"\)/);
-  assert.match(ci, /\[\[ "\$version" == "\$package_version" \]\]/);
-  assert.match(ci, /\.head_branch \/\/ ""[\s\S]+== "\$RECOVERY_TAG"/);
+test("one trusted workflow publishes authenticated frozen products without producer reruns", () => {
+  const workflow = require("yaml").parse(ci);
+  const publisher = workflow.jobs["publish-prepared"];
+  assert.equal(workflow.jobs["publish-release"], undefined);
+  assert.equal(workflow.jobs["recover-publish"], undefined);
+  assert.equal(workflow.on.push.tags, undefined);
+  assert.deepEqual(publisher.concurrency, {
+    group: "sagejs-production-publication", "cancel-in-progress": false, queue: "max",
+  });
+  assert.equal(publisher.environment, "sagejs-release");
+  assert.equal(publisher.permissions["id-token"], "write");
+  assert.equal(publisher.needs, undefined);
+  const controller = read("scripts/release/publish-prepared.cjs");
+  const ordered = ["dependencies.prepare ?? preparePromotion", "dependencies.upload ?? publishGithubAssets",
+    "dependencies.npm ?? publishNpmPackages", "dependencies.finalize ?? finalizeGithubRelease"]
+    .map(text => controller.indexOf(text));
+  assert.ok(ordered.every((index, i) => index >= 0 && (i === 0 || index > ordered[i - 1])));
+  assert.ok(controller.includes('prepared.status !== "product-artifacts-authenticated"'));
+  assert.ok(controller.includes('prepared.productIdentity?.sourceRevision !== request.sourceRevision'));
+  assert.ok(controller.includes("verifyHandoffArchive"));
+  assert.ok(controller.includes("assertPreparedFiles"));
+  assert.doesNotMatch(ci, /secrets\.NPM_TOKEN|--clobber/);
   assert.doesNotMatch(manual, /npm publish|pnpm publish|id-token:\s*write/);
-  assert.match(manual, /gh workflow run \.github\/workflows\/ci\.yml/);
-  assert.match(manual, /recovery_run_id="\$SOURCE_RUN_ID"/);
-  assert.match(manual, /recovery_tag="\$RELEASE_TAG"/);
-  assert.match(manual, /\^\[1-9\]\[0-9\]\*\$/);
-  const uploads = [...ci.matchAll(/uses: actions\/upload-artifact@v7[\s\S]*?with:\n([\s\S]*?)(?=\n\s{6}-|\n\s{2}\w|$)/g)];
-  assert.ok(uploads.length >= 13);
-  for (const upload of uploads) assert.match(upload[1], /overwrite:\s*true/);
+  assert.ok(manual.includes("node scripts/release/request-prepared-publication.cjs"));
+  const npmPublisher = read("scripts/release/publish-npm-packages.cjs");
+  assert.ok(npmPublisher.includes('runCommand("npm", ["publish"'));
+  assert.ok(npmPublisher.includes("remote.dist?.integrity !== record.integrity"));
+  assert.ok(npmPublisher.includes('createHash("sha512")'));
+  assert.ok(npmPublisher.includes("metadata.version !== version"));
+  for (const id of ["verify-prepared", "publish-prepared"]) {
+    const upload = workflow.jobs[id].steps.find(step => step.uses?.startsWith("actions/upload-artifact@"));
+    assert.ok(upload.with.name.includes("github.run_attempt"));
+    assert.equal(upload.with.overwrite, undefined);
+    assert.equal(upload.if, "${{ always() }}");
+  }
 });
 
 test("recovery selects the latest exact job occurrence across rerun attempts", () => {
@@ -973,14 +977,19 @@ test("recovery selects the latest exact job occurrence across rerun attempts", (
 });
 
 test("Cloudflare activation requires the same qualified source SHA", () => {
-  assert.match(deploy, /qualification_run_id:/);
-  assert.match(deploy, /\.github\/workflows\/ci\.yml/);
-  assert.match(deploy, /Numerical release qualification gate/);
-  assert.match(deploy, /qualification_sha[\s\S]+source_sha/);
-  assert.match(deploy, /--candidate "\$SOURCE_SHA"/);
-  assert.match(
-    deploy,
-    /--name numerical-release-evidence[\s\S]+release:qualify:numerics:gate[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json[\s\S]+--browser-distribution packages\/flint-wasm\/dist/,
-  );
+  assert.match(deploy, /prepared_request:/);
+  assert.match(deploy, /prepare-browser-deployment\.cjs prepare/);
+  assert.match(deploy, /Recheck frozen browser bytes before activation/);
+  const { browserKeys, verificationStages } = require("../../../scripts/release/prepare-publication.cjs");
+  assert.ok(browserKeys.includes("native/numerical-release-gate"));
+  assert.ok(browserKeys.includes("native/numerical-release-evidence"));
+  const commands = verificationStages(root, "a".repeat(40), `sha256:${"b".repeat(64)}`).flatMap(stage => stage.commands);
+  const reconstruct = commands.find(command => command.includes("scripts/numerical-computing/qualification/assemble-release-gate.cjs"));
+  const authenticate = commands.find(command => command.includes("scripts/numerical-computing/qualification/authenticate-release-gate.cjs"));
+  assert.equal(reconstruct[reconstruct.indexOf("--candidate") + 1], "a".repeat(40));
+  assert.equal(authenticate[authenticate.indexOf("--candidate") + 1], "a".repeat(40));
+  assert.ok(authenticate.includes("--rebuilt-gate"));
+  assert.ok(authenticate.includes("--public-npm-root"));
+  assert.ok(authenticate.includes("--browser-distribution"));
   assert.doesNotMatch(deploy, /Required legacy release job|if \[\[ "\$release_gate" == "missing" \]\]/);
 });

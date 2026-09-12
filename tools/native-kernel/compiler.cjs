@@ -223,10 +223,14 @@ function contentAddressedFile(filename, description, digestStore) {
   }
   const resolved = realpathSync(absolute);
   const identity = statIdentity(before);
+  // Windows can return identical nanosecond timestamps for distinct same-size
+  // writes. Neither the process cache nor a persisted stat tuple proves that
+  // compiler inputs still contain the bytes previously hashed on that host.
+  const reusableStatIdentity = process.platform !== "win32";
   const cached = foreignInputDigestCache.get(resolved);
-  if (cached?.identity === identity) return cached.value;
+  if (reusableStatIdentity && cached?.identity === identity) return cached.value;
   const persisted = digestStore?.files[portablePath(resolved)];
-  const persistedDigest = persisted?.identity === identity &&
+  const persistedDigest = reusableStatIdentity && persisted?.identity === identity &&
       typeof persisted.sha256 === "string" &&
       /^[a-f0-9]{64}$/.test(persisted.sha256)
     ? persisted.sha256
@@ -363,6 +367,8 @@ function backendFingerprint() {
       readFileSync(__filename),
       readFileSync(join(__dirname, "ir.cjs")),
       readFileSync(join(__dirname, "integer-ir.cjs")),
+      readFileSync(join(__dirname, "integer-constants.cjs")),
+      readFileSync(join(__dirname, "workspace-bundles.cjs")),
       readFileSync(join(__dirname, "float64-ir.cjs")),
       readFileSync(join(__dirname, "exact-analysis.cjs")),
       readFileSync(join(__dirname, "prime-field-ir.cjs")),

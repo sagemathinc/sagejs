@@ -85,7 +85,7 @@
   "selection": "explicit-only",
   "qualification": {
     "status": "pending_source_current_requalification",
-    "reason": "The integrated Python runtime, dynamic import namespace, macOS fixtures, and evaluator specialist-resource lifecycle changed; refresh portable numerical qualification before release.",
+    "reason": "The integrated extension-field evaluator lazy-module inventory changes the public semantics closure; historical main receipts are retained but are not qualification of this combined source.",
     "public_semantics_bundle_sha256": "f33d25f57838040c1aef8b2265a566a82e5243322bc86b6218dee3b40e60344b",
     "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
     "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",

@@ -9,8 +9,9 @@ permissions:
   contents: write
 
 concurrency:
-  group: sagejs-protect-latest-product-release
-  cancel-in-progress: true
+  group: sagejs-production-publication
+  cancel-in-progress: false
+  queue: max
 
 jobs:
   protect-latest-product-release:

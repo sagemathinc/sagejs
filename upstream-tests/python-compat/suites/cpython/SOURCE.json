@@ -1,0 +1,89 @@
+{
+  "schema": "sagejs.python-suite-source/v1",
+  "repository": "https://github.com/python/cpython",
+  "revision": "823f0323ee6ec1402088b73bce1a38473cac36dc",
+  "tag": "v3.14.7",
+  "license": "PSF-2.0",
+  "selection": "Three unchanged public unittest method spans from test_scope, each inside an explicit local class/invocation wrapper. The rest of the upstream module and test.support are not executed.",
+  "licenseReview": "Pinned root LICENSE and all selected text reviewed; no Lib or Lib/test ancestor license override. Full license retained. Source is 3.14.7; executed oracle remains separately pinned 3.14.4, not relabeled.",
+  "files": [
+    {
+      "upstreamPath": "Lib/test/test_scope.py",
+      "path": "selected/testFreeVarInMethod.py",
+      "bytes": 1701,
+      "sha256": "52a3c97a619c2e86d5cb0c899e3b5cb5c6f6278265d18d257f7b59096a7f89ac",
+      "upstreamFileSha256": "b5f7f18ea9e254f7d224eb2f0cd0d2e166bafb4f0a100c3cf20b9a42a52e22d9",
+      "selection": {
+        "kind": "unchanged-method-span",
+        "test": "testFreeVarInMethod",
+        "byteStart": 3237,
+        "byteEndExclusive": 4412,
+        "startLine": 132,
+        "endLineInclusive": 168,
+        "bytes": 1175,
+        "sha256": "71ec13bd5a45aeeea47f494ff7cb1ad13935b73ead7cfc95f3c82fd45fe261bf"
+      },
+      "adapter": {
+        "origin": "Sage.js local unittest invocation wrapper; not upstream test text",
+        "prefix": "# Copyright (c) 2001 Python Software Foundation; All Rights Reserved.\n# Selected unchanged CPython method; local unittest wrapper is described in SOURCE.json.\nimport unittest\n\nclass SelectedScopeTest(unittest.TestCase):\n",
+        "suffix": "\n_result = unittest.TestResult()\nSelectedScopeTest(\"testFreeVarInMethod\").run(_result)\nassert _result.testsRun == 1\nassert not _result.failures, _result.failures\nassert not _result.errors, _result.errors\nassert not _result.skipped\nassert not _result.expectedFailures\nassert not _result.unexpectedSuccesses\n",
+        "prefixSha256": "092d079a4688ed676dc9fdac40a1870ce1aecdb590418beb71bd22b51226153a",
+        "suffixSha256": "82ee983cba990b5c47bb316529f6d8fed4c40a4d41b0430962de790d37b6c09c"
+      }
+    },
+    {
+      "upstreamPath": "Lib/test/test_scope.py",
+      "path": "selected/testCellIsKwonlyArg.py",
+      "bytes": 854,
+      "sha256": "ab0d465248716a9d86cfff285703e9d60a633a2dd02250e064cd14c9eb04349d",
+      "upstreamFileSha256": "b5f7f18ea9e254f7d224eb2f0cd0d2e166bafb4f0a100c3cf20b9a42a52e22d9",
+      "selection": {
+        "kind": "unchanged-method-span",
+        "test": "testCellIsKwonlyArg",
+        "byteStart": 4412,
+        "byteEndExclusive": 4740,
+        "startLine": 169,
+        "endLineInclusive": 179,
+        "bytes": 328,
+        "sha256": "a4c606abbb5e357422a81a3c263ebfbfccd5a3d184b142c538d86790780a247d"
+      },
+      "adapter": {
+        "origin": "Sage.js local unittest invocation wrapper; not upstream test text",
+        "prefix": "# Copyright (c) 2001 Python Software Foundation; All Rights Reserved.\n# Selected unchanged CPython method; local unittest wrapper is described in SOURCE.json.\nimport unittest\n\nclass SelectedScopeTest(unittest.TestCase):\n",
+        "suffix": "\n_result = unittest.TestResult()\nSelectedScopeTest(\"testCellIsKwonlyArg\").run(_result)\nassert _result.testsRun == 1\nassert not _result.failures, _result.failures\nassert not _result.errors, _result.errors\nassert not _result.skipped\nassert not _result.expectedFailures\nassert not _result.unexpectedSuccesses\n",
+        "prefixSha256": "092d079a4688ed676dc9fdac40a1870ce1aecdb590418beb71bd22b51226153a",
+        "suffixSha256": "4f233128ebd41b3a1d9841b64707350bd48602b0415ae256a5a8b214a38dc007"
+      }
+    },
+    {
+      "upstreamPath": "Lib/test/test_scope.py",
+      "path": "selected/testNonLocalGenerator.py",
+      "bytes": 817,
+      "sha256": "e3c53f43d0b9d0c4ddd760433e43fbfe4649e1e243f4c8eb769d4f9d2c29e5b4",
+      "upstreamFileSha256": "b5f7f18ea9e254f7d224eb2f0cd0d2e166bafb4f0a100c3cf20b9a42a52e22d9",
+      "selection": {
+        "kind": "unchanged-method-span",
+        "test": "testNonLocalGenerator",
+        "byteStart": 19461,
+        "byteEndExclusive": 19750,
+        "startLine": 734,
+        "endLineInclusive": 746,
+        "bytes": 289,
+        "sha256": "5753216d51b4af9dfeadc50e9a6b58a3306ef3de6d225c0f199f9d927eba7d44"
+      },
+      "adapter": {
+        "origin": "Sage.js local unittest invocation wrapper; not upstream test text",
+        "prefix": "# Copyright (c) 2001 Python Software Foundation; All Rights Reserved.\n# Selected unchanged CPython method; local unittest wrapper is described in SOURCE.json.\nimport unittest\n\nclass SelectedScopeTest(unittest.TestCase):\n",
+        "suffix": "\n_result = unittest.TestResult()\nSelectedScopeTest(\"testNonLocalGenerator\").run(_result)\nassert _result.testsRun == 1\nassert not _result.failures, _result.failures\nassert not _result.errors, _result.errors\nassert not _result.skipped\nassert not _result.expectedFailures\nassert not _result.unexpectedSuccesses\n",
+        "prefixSha256": "092d079a4688ed676dc9fdac40a1870ce1aecdb590418beb71bd22b51226153a",
+        "suffixSha256": "06b40953a4a8f9798ed1604f88859a74789dc1d148a8e5a80c30c7ef9663815a"
+      }
+    },
+    {
+      "upstreamPath": "LICENSE",
+      "path": "LICENSE",
+      "bytes": 13804,
+      "sha256": "b0e25a78cffb43f4d92de8b61ccfa1f1f98ecbc22330b54b5251e7b6ba010231"
+    }
+  ]
+}

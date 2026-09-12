@@ -29,7 +29,7 @@ class AST:
                         self[i] = initializer[i]
 
     def clone(self):
-        return js_new(self.constructor(self))
+        return js_new(self.constructor, self)
 
 
 class AST_Token(AST):
@@ -474,6 +474,7 @@ class AST_Toplevel(AST_Scope):
         "srchash": "[string] SHA1 hash of source code, used for caching",
         "comments_after": "[array] True iff there were comments before this token",
         "python_star_import": "[boolean?] resolve unbound globals through the module namespace after a star import",
+        "standalone_lazy": "[boolean?] embed this implicit runtime dependency as a lazy module factory",
     }
 
 
@@ -539,6 +540,7 @@ class AST_Lambda(AST_Scope):
         "name": "[AST_SymbolDeclaration?] the name of this function",
         "argnames": "[AST_SymbolFunarg*] array of function arguments",
         "decorators": "[AST_Decorator*] function decorators, if any",
+        "python_namespace_decorators": "[AST_Decorator*] original method decorators for prepared namespaces",
         "annotations": "[bool*] True iff this function should have annotations set",
         "is_generator": "[bool*] True iff this function is a generator",
         "is_coroutine": "[bool*] True iff this function was declared with async def",
@@ -586,6 +588,7 @@ class AST_Class(AST_Scope):
         "parent": "[AST_Symbol?] parent class this class inherits from",
         "bases": "[AST_Symbol*] list of base classes this class inherits from",
         "metaclass": "[AST_Node?] explicit Python 3 metaclass expression",
+        "python_namespace_body": "[AST_Node*] source-order body before legacy property alias rewriting",
         "implicit_object_base": "[boolean] object was inserted as an implementation default",
         "static": "[dict] A hash whose keys are names of static methods for this class",
         "classmethods": "[dict] A hash whose keys are names of class methods for this class",

@@ -8,20 +8,16 @@ const { spawnSagejsSync } = require("./helpers/sagejs-cli.cjs");
 
 const root = join(__dirname, "..");
 function run(source) {
-  const timeout =
-    ["darwin", "win32"].includes(process.platform) ||
-    (process.platform === "linux" && process.arch === "arm64")
-      ? 600_000
-      : 300_000;
+  const timeout = 600_000;
   const result = spawnSagejsSync(root, ["--python", "-"], {
     cwd: root,
     encoding: "utf8",
     input: source,
     // This integration test intentionally performs several cold exact
     // class/unit computations in one interpreter.  Keep the subprocess bound
-    // finite, but allow the persistent macOS ARM64 and Linux ARM64 release
-    // hosts, and the slower hosted Windows runner, to finish the proof replays
-    // when both integration workers are under load.
+    // finite and platform-neutral: hosted Linux x64 can also exceed five
+    // minutes when both integration workers are doing cold proof replays.
+    // This is a correctness-suite liveness bound, not a performance target.
     timeout,
   });
   if (result.error) {

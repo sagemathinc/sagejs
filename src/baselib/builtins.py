@@ -300,11 +300,242 @@ _builtins_float_prototype = runtime.undefined
 _builtins_descriptor_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
+_builtins_property_cache = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
 _builtins_class_namespace_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
 _builtins_data_descriptor_names = runtime.reflect.construct(runtime.set_class, [])
 _builtins_descriptor_epoch = 0
+_builtins_heap_class_keys = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+_builtins_prototype_owners = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+_builtins_class_annotation_slots = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+_builtins_class_metaclasses = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+_builtins_instance_namespaces = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+_builtins_instance_dict_owners = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+_builtins_instance_fields = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
+
+
+def ρσ_register_heap_class(value: Any) -> Any:
+    """Brand a newly allocated Python class without allocating annotations."""
+    _builtins_heap_class_keys.set(value, value)
+    return value
+
+
+def ρσ_finalize_heap_class(value: Any) -> Any:
+    """Record ownership after inheritance installs the instance prototype."""
+    if _builtins_heap_class_keys.has(value):
+        _builtins_prototype_owners.set(runtime.reflect.get(value, "prototype"), value)
+    return value
+
+
+def ρσ_alias_heap_class(wrapper: Any, target: Any) -> Any:
+    """Preserve private class slots across a known runtime proxy adapter."""
+    key = _builtins_heap_class_keys.get(target)
+    if key is not runtime.undefined:
+        _builtins_heap_class_keys.set(wrapper, key)
+        _builtins_prototype_owners.set(
+            runtime.reflect.get(target, "prototype"), wrapper
+        )
+        if _builtins_instance_dict_owners.has(target):
+            _builtins_instance_dict_owners.set(
+                wrapper, _builtins_instance_dict_owners.get(target)
+            )
+    return wrapper
+
+
+def _builtins_attribute_owner(value: Any) -> Any:
+    """Use private Python ownership, retaining unknown native fallbacks."""
+    if value is not None and value is not runtime.undefined:
+        owner = _builtins_prototype_owners.get(runtime.object.getPrototypeOf(value))
+        if owner is not runtime.undefined:
+            return owner
+    return _builtins_get_member(value, "constructor")
+
+
+def _builtins_has_instance_dict(value: Any) -> _Bool:
+    """Identify heap-instance storage without trusting writable attributes."""
+    owner = _builtins_attribute_owner(value)
+    return owner is not runtime.undefined and _builtins_instance_dict_owners.has(owner)
+
+
+def _builtins_namespace_module() -> Any:
+    return _builtins_default_import("sagejs._namespace", fromlist=["*"])
+
+
+def ρσ_instance_namespace(value: Any) -> Any:
+    return _builtins_namespace_module()._instance_namespace(value)
+
+
+def ρσ_replace_instance_namespace(value: Any, namespace: Any) -> None:
+    _builtins_namespace_module()._replace_instance_namespace(
+        value, None if namespace is runtime.undefined else namespace
+    )
+
+
+def ρσ_bridge_instance_namespace(value: Any) -> None:
+    """Keep fixed-arity host proxy callbacks outside Python argument binding."""
+    owner = _builtins_attribute_owner(value)
+    target = runtime.object.create(runtime.object.getPrototypeOf(value))
+
+    def get_field(target: Any, name: Any, receiver: Any) -> Any:
+        current = _builtins_instance_namespaces.get(value)
+        if current is not runtime.undefined and current.jsmap.has(name):
+            resolution = _builtins_class_attribute_resolution(
+                _builtins_attribute_owner(value), name
+            )
+            if (
+                resolution is not runtime.undefined
+                and resolution[2] != _BUILTINS_DESCRIPTOR_NONDATA
+                and (
+                    runtime.reflect.get(resolution[1], "get") is not runtime.undefined
+                    or runtime.reflect.get(resolution[1], "set")
+                    is not runtime.undefined
+                )
+            ):
+                return runtime.reflect.get(target, name, receiver)
+            return current.jsmap.get(name)
+        return runtime.reflect.get(target, name, receiver)
+
+    def has_field(target: Any, name: Any) -> _Bool:
+        current = _builtins_instance_namespaces.get(value)
+        return (
+            current is not runtime.undefined and current.jsmap.has(name)
+        ) or runtime.reflect.has(target, name)
+
+    def set_field(target: Any, name: Any, member: Any, receiver: Any) -> _Bool:
+        if not runtime.strict_equal(runtime.jstype(name), "string"):
+            return runtime.reflect.set(target, name, member, receiver)
+        resolution = _builtins_class_attribute_resolution(
+            _builtins_attribute_owner(value), name
+        )
+        if (
+            resolution is not runtime.undefined
+            and resolution[2] != _BUILTINS_DESCRIPTOR_NONDATA
+            and (
+                runtime.reflect.get(resolution[1], "get") is not runtime.undefined
+                or runtime.reflect.get(resolution[1], "set") is not runtime.undefined
+            )
+        ):
+            return runtime.reflect.set(target, name, member, receiver)
+        return _builtins_store_instance_attribute(value, name, member)
+
+    bridge = runtime.reflect.construct(
+        runtime.proxy_class,
+        [target, {"get": get_field, "has": has_field, "set": set_field}],
+    )
+    _builtins_prototype_owners.set(bridge, owner)
+    runtime.object.setPrototypeOf(value, bridge)
+
+
+def _builtins_change_instance_class(value: Any, owner: Any) -> None:
+    _builtins_namespace_module()._change_instance_class(value, owner)
+
+
+def ρσ_instance_prototype(value: Any) -> Any:
+    """Return native layout without a per-instance namespace bridge."""
+    prototype = runtime.object.getPrototypeOf(value)
+    return (
+        runtime.object.getPrototypeOf(prototype)
+        if _builtins_instance_namespaces.has(value)
+        else prototype
+    )
+
+
+def _builtins_store_instance_attribute(value: Any, name: _Str, member: Any) -> _Bool:
+    if not _builtins_has_instance_dict(value):
+        return False
+    if _builtins_data_descriptor_names.has(name):
+        resolution = _builtins_class_attribute_resolution(
+            _builtins_attribute_owner(value), name
+        )
+        if (
+            resolution is not runtime.undefined
+            and resolution[2] == _BUILTINS_DESCRIPTOR_NATIVE_GETTER
+        ):
+            # Preserve native property setters, including readonly rejection.
+            return False
+    if _builtins_instance_namespaces.has(value):
+        namespace = _builtins_instance_namespaces.get(value)
+        if namespace is runtime.undefined:
+            namespace = _builtins_namespace_module()._instance_dict(value)
+        # Attribute operations use dict storage, not overridable mapping methods.
+        namespace.keymap.set(name, name)
+        namespace.jsmap.set(name, member)
+    else:
+        fields = _builtins_instance_fields.get(value)
+        if fields is runtime.undefined:
+            fields = runtime.reflect.construct(runtime.set_class, [])
+            _builtins_instance_fields.set(value, fields)
+        fields.add(name)
+        runtime.object.defineProperty(
+            value,
+            name,
+            {
+                "value": member,
+                "writable": True,
+                "enumerable": True,
+                "configurable": True,
+            },
+        )
+    return True
+
+
+def _builtins_delete_instance_attribute(value: Any, name: _Str) -> _Bool:
+    if not _builtins_has_instance_dict(value):
+        return False
+    return _builtins_namespace_module()._delete_instance_attribute(value, name)
+
+
+def _builtins_class_annotation_key(value: Any) -> Any:
+    key = _builtins_heap_class_keys.get(value)
+    if key is runtime.undefined:
+        return runtime.undefined
+    # This slice supplies the default type slot, not metaclass overrides.
+    # Preserve existing lookup/set/delete behavior when a metaclass explicitly
+    # provides this name. A metaclass's own private annotation slot is not an
+    # attribute of its class instances and must not count as an override.
+    metaclass = _builtins_get_member(value, "__python_type__")
+    if metaclass is not runtime.undefined and metaclass is not ρσ_type:
+        resolution = _builtins_class_attribute_resolution(metaclass, "__annotations__")
+        if resolution is not runtime.undefined:
+            return runtime.undefined
+    return key
+
+
+def _builtins_own_class_annotation(value: Any) -> Any:
+    descriptor = runtime.object.getOwnPropertyDescriptor(value, "__annotations__")
+    if descriptor is runtime.undefined:
+        prototype = runtime.reflect.get(value, "prototype")
+        if prototype is not runtime.undefined:
+            descriptor = runtime.object.getOwnPropertyDescriptor(
+                prototype, "__annotations__"
+            )
+    return descriptor
+
+
+def _builtins_read_class_annotation(value: Any, key: Any) -> Any:
+    if not _builtins_class_annotation_slots.has(key):
+        _builtins_class_annotation_slots.set(key, dict())
+    member = _builtins_class_annotation_slots.get(key)
+    if _builtins_member_is_function(member, "__get__"):
+        return _builtins_call_member(member, "__get__", [None, value])
+    return member
 
 
 def _builtins_as_any(value: Any) -> Any:
@@ -493,7 +724,7 @@ def _builtins_bind_python_function(
         target,
         bind_arguments,
     )
-    runtime.object.assign(bound, target)
+    ρσ_finish_bound_method(bound, target, receiver)
     target_argnames = _builtins_get_member(target, "__argnames__")
     if (
         _builtins_get_member(target, "__sagejs_native_method__") is not True
@@ -510,15 +741,14 @@ def _builtins_bind_python_function(
                 [1],
             ),
         )
+    return bound
+
+
+def ρσ_finish_bound_method(bound: Any, target: Any, receiver: Any) -> Any:
+    runtime.object.assign(bound, target)
     runtime.reflect.set(bound, "__func__", target)
     runtime.reflect.set(bound, "__self__", receiver)
-    ρσ_brand_bound_method(bound)
-    runtime.reflect.set(
-        bound,
-        "__name__",
-        _builtins_get_member(target, "__name__"),
-    )
-    return bound
+    return ρσ_brand_bound_method(bound)
 
 
 _BUILTINS_BOUND_METHODS = runtime.reflect.construct(
@@ -633,6 +863,16 @@ def _builtins_class_attribute_resolution(
                 if runtime.strict_equal(runtime.jstype(native_getter), "function"):
                     descriptor_kind = _BUILTINS_DESCRIPTOR_NATIVE_GETTER
                     descriptor_target = native_getter
+                    if (
+                        _builtins_get_member(
+                            native_getter, "__sagejs_lazy_method_getter__"
+                        )
+                        is True
+                    ):
+                        descriptor_kind = _BUILTINS_DESCRIPTOR_NONDATA
+                        descriptor_target = _builtins_get_member(
+                            native_getter, "__sagejs_unbound_method__"
+                        )
             elif _builtins_member_is_function(descriptor_value, "__get__"):
                 descriptor_target = descriptor_value
                 if _builtins_member_is_function(
@@ -661,12 +901,8 @@ def _builtins_class_attribute_resolution(
                     is True
                 )
             ):
-                # Every ordinary function stored in a Python class namespace
-                # is a non-data descriptor.  This includes compiler-emitted
-                # methods, functions assigned after construction, and methods
-                # overriding an eagerly cached implementation from an imported
-                # base.  Class objects and explicitly static callables retain
-                # their separate paths above.
+                # Ordinary class functions are non-data descriptors, including
+                # later assignments. Classes and static callables stay separate.
                 descriptor_kind = _BUILTINS_DESCRIPTOR_NONDATA
             elif not runtime.strict_equal(runtime.jstype(descriptor_value), "function"):
                 # Non-callable values without ``__get__`` cannot require
@@ -743,6 +979,11 @@ def _builtins_get_special_member(value: Any, name: Any) -> Any:
     """Look up an implicit special method on the type, not the instance."""
     if value is None or value is runtime.undefined:
         return runtime.undefined
+    if _builtins_instance_namespaces.has(value):
+        resolution = _builtins_class_attribute_resolution(
+            _builtins_attribute_owner(value), name
+        )
+        return runtime.undefined if resolution is runtime.undefined else resolution[3]
     value_type = runtime.jstype(value)
     if not runtime.strict_equal(value_type, "object") and not runtime.strict_equal(
         value_type, "function"
@@ -779,7 +1020,7 @@ def _builtins_call_selected_special(
 ) -> Any:
     """Bind and invoke one special method selected from the operand type."""
     if _builtins_get_member(method, "__classmethod__") is True:
-        owner = _builtins_get_member(value, "constructor")
+        owner = _builtins_attribute_owner(value)
         class_target = _builtins_get_member(method, "__func__")
         if runtime.strict_equal(runtime.jstype(class_target), "function"):
             bound = _builtins_bind_python_function(class_target, owner)
@@ -798,7 +1039,7 @@ def _builtins_call_selected_special(
         bound = _builtins_call_member(
             method,
             "__get__",
-            [value, _builtins_get_member(value, "constructor")],
+            [value, _builtins_attribute_owner(value)],
         )
         return runtime.reflect.apply(bound, runtime.undefined, call_args)
     return runtime.reflect.apply(method, value, call_args)
@@ -1104,6 +1345,19 @@ runtime.reflect.set(_NoneType, "__qualname__", "NoneType")
 runtime.reflect.set(_NoneType, "__module__", "builtins")
 runtime.reflect.set(_NoneType, "__sagejs_none_type__", True)
 runtime.set_class_repr(_NoneType, "<class 'NoneType'>")
+
+
+class ρσ_generator_type:
+    """Canonical Python type for emitted native generator instances."""
+
+    def __new__(cls: Any, *args: Any, **kwargs: Any) -> Any:
+        raise TypeError("cannot create 'generator' instances")
+
+
+runtime.reflect.set(ρσ_generator_type, "__name__", "generator")
+runtime.reflect.set(ρσ_generator_type, "__qualname__", "generator")
+runtime.reflect.set(ρσ_generator_type, "__module__", "builtins")
+runtime.set_class_repr(ρσ_generator_type, "<class 'generator'>")
 
 
 def ρσ_operator_add(left: Any, right: Any) -> Any:
@@ -3190,6 +3444,7 @@ _BUILTINS_HIDDEN_INTROSPECTION_NAMES = runtime.reflect.construct(
             "__bind_methods__",
             "__handles_kwarg_interpolation__",
             "__sagejs_baselib_private_names__",
+            "__sagejs_code_varnames__",
             "__varargs__",
             "__varkw__",
             "apply",
@@ -3232,86 +3487,12 @@ _BUILTINS_FUNCTION_SLOT_NAMES = runtime.reflect.construct(
 )
 
 
-def _builtins_visible_introspection_name(name: Any) -> _Bool:
+def ρσ_visible_introspection_name(name: Any) -> _Bool:
     return (
         runtime.strict_equal(runtime.jstype(name), "string")
         and runtime.string_find(name, "ρσ") != 0
         and not _BUILTINS_HIDDEN_INTROSPECTION_NAMES.has(name)
     )
-
-
-def _builtins_introspection_target(value: Any) -> Any:
-    value_type = runtime.jstype(value)
-    if runtime.strict_equal(value_type, "object") or runtime.strict_equal(
-        value_type, "function"
-    ):
-        return value
-    return runtime.object(value)
-
-
-def _builtins_append_dir_names(
-    value: Any,
-    answer: list[_Str],
-    seen: Any,
-) -> None:
-    current = value
-    while (
-        current is not None
-        and current is not runtime.undefined
-        and current is not runtime.object.prototype
-    ):
-        for name in runtime.object.getOwnPropertyNames(current):
-            descriptor = runtime.object.getOwnPropertyDescriptor(current, name)
-            member = runtime.reflect.get(descriptor, "value")
-            getter = runtime.reflect.get(descriptor, "get")
-            if _builtins_is_module_namespace(current) and runtime.strict_equal(
-                runtime.jstype(getter), "function"
-            ):
-                data_value_missing = _builtins_is_missing_binding(
-                    runtime.reflect.get(current, name)
-                )
-            else:
-                data_value_missing = _builtins_is_missing_binding(member) and (
-                    getter is runtime.undefined
-                    and runtime.reflect.get(descriptor, "set") is runtime.undefined
-                )
-            if (
-                not data_value_missing
-                and _builtins_visible_introspection_name(name)
-                and not seen.has(name)
-            ):
-                seen.add(name)
-                answer.append(name)
-        current = runtime.object.getPrototypeOf(current)
-
-
-def _builtins_append_own_dir_names(
-    value: Any,
-    answer: list[_Str],
-    seen: Any,
-) -> None:
-    for name in runtime.object.getOwnPropertyNames(value):
-        descriptor = runtime.object.getOwnPropertyDescriptor(value, name)
-        member = runtime.reflect.get(descriptor, "value")
-        getter = runtime.reflect.get(descriptor, "get")
-        if _builtins_is_module_namespace(value) and runtime.strict_equal(
-            runtime.jstype(getter), "function"
-        ):
-            data_value_missing = _builtins_is_missing_binding(
-                runtime.reflect.get(value, name)
-            )
-        else:
-            data_value_missing = _builtins_is_missing_binding(member) and (
-                getter is runtime.undefined
-                and runtime.reflect.get(descriptor, "set") is runtime.undefined
-            )
-        if (
-            not data_value_missing
-            and _builtins_visible_introspection_name(name)
-            and not seen.has(name)
-        ):
-            seen.add(name)
-            answer.append(name)
 
 
 def _builtins_is_module_namespace(value: Any) -> _Bool:
@@ -3325,89 +3506,95 @@ def _builtins_is_module_namespace(value: Any) -> _Bool:
     return runtime.reflect.apply(has_module, module_namespaces, [value])
 
 
-def _builtins_callable_namespace_snapshot(value: Any) -> Any:
-    """Build one Python-visible snapshot of a class or function namespace."""
-    namespace = runtime.object.create(None)
-    plain_function = runtime.strict_equal(
-        runtime.jstype(value), "function"
-    ) and not _builtins_is_python_class(value)
+class _BuiltinsInstanceDictDescriptor:
+    """The data descriptor of the first heap class introducing a namespace."""
 
-    def copy_own_members(source: Any) -> None:
-        if source is None or source is runtime.undefined:
+    def __init__(self, owner: Any) -> None:
+        prototype = runtime.reflect.get(owner, "prototype")
+
+        def get_owner() -> Any:
+            return _builtins_prototype_owners.get(prototype)
+
+        runtime.object.defineProperties(
+            self,
+            {"__objclass__": {"get": get_owner}, "__name__": {"value": "__dict__"}},
+        )
+
+    def __get__(self, instance: Any, owner: Any = None) -> Any:
+        if instance is None:
+            return self
+        return _builtins_namespace_module()._get_instance_dict(self, instance)
+
+    def __set__(self, instance: Any, namespace: Any) -> None:
+        _builtins_namespace_module()._set_instance_dict(self, instance, namespace)
+
+    def __delete__(self, instance: Any) -> None:
+        _builtins_namespace_module()._delete_instance_dict(self, instance)
+
+
+def _builtins_layout_anchor(owner: Any) -> Any:
+    mro = _builtins_get_member(owner, "__mro__")
+    if not runtime.array.isArray(mro):
+        mro = [owner]
+    for base in mro:
+        if not _builtins_heap_class_keys.has(base):
+            return base
+        prototype = runtime.reflect.get(base, "prototype")
+        slots = runtime.object.getOwnPropertyDescriptor(prototype, "__slots__")
+        if slots is not runtime.undefined:
+            names = runtime.reflect.get(slots, "value")
+            if runtime.strict_equal(runtime.jstype(names), "string"):
+                names = [names]
+            for name in names:
+                if name not in ("__dict__", "__weakref__"):
+                    return base
+    return object
+
+
+def ρσ_install_instance_dict(owner: Any, explicit_dict: _Bool = False) -> None:
+    """Finalize heap namespace ownership after the class body and MRO exist."""
+    global _builtins_descriptor_epoch
+    if not _builtins_heap_class_keys.has(owner):
+        return
+    inherited = False
+    mro = _builtins_get_member(owner, "__mro__")
+    if runtime.array.isArray(mro):
+        for base in mro:
+            if base is not owner and _builtins_instance_dict_owners.has(base):
+                inherited = True
+                break
+    prototype = runtime.reflect.get(owner, "prototype")
+    slots = runtime.object.getOwnPropertyDescriptor(prototype, "__slots__")
+    if not inherited and slots is not runtime.undefined:
+        slot_names = runtime.reflect.get(slots, "value")
+        if "__dict__" not in slot_names:
             return
-        for member_name in runtime.object.getOwnPropertyNames(source):
-            descriptor = runtime.object.getOwnPropertyDescriptor(source, member_name)
-            member = runtime.reflect.get(descriptor, "value")
-            if _builtins_is_missing_binding(member) and (
-                runtime.reflect.get(descriptor, "get") is runtime.undefined
-                and runtime.reflect.get(descriptor, "set") is runtime.undefined
-            ):
-                continue
-            if member is runtime.undefined and (
-                runtime.reflect.get(descriptor, "get") is not runtime.undefined
-                or runtime.reflect.get(descriptor, "set") is not runtime.undefined
-            ):
-                # A class dictionary exposes the descriptor without invoking
-                # it.  Compiler-emitted properties use native accessors; wrap
-                # those accessors so a class rebuilt by ``type``/a metaclass
-                # retains the property in its namespace.
-                getter = runtime.reflect.get(descriptor, "get")
-                setter = runtime.reflect.get(descriptor, "set")
-                runtime.reflect.set(
-                    namespace,
-                    member_name,
-                    SageProperty(
-                        None if getter is runtime.undefined else getter,
-                        None if setter is runtime.undefined else setter,
-                    ),
-                )
-                continue
-            native_function_slot = (
-                source is value
-                and runtime.strict_equal(runtime.jstype(value), "function")
-                and member_name in ("length", "name")
+    # CPython attaches the descriptor when the selected layout base lacks
+    # one, even if a secondary base already contributes dictionary storage.
+    bases = _builtins_get_member(owner, "__bases__")
+    selected = object
+    anchor = object
+    for base in bases:
+        candidate_anchor = _builtins_layout_anchor(base)
+        candidate_mro = _builtins_get_member(candidate_anchor, "__mro__")
+        if selected is object or (
+            candidate_anchor is not anchor
+            and (
+                anchor is object
+                or runtime.array.isArray(candidate_mro)
+                and anchor in candidate_mro
             )
-            if (
-                not native_function_slot
-                and not (
-                    source is value
-                    and plain_function
-                    and _BUILTINS_FUNCTION_SLOT_NAMES.has(member_name)
-                )
-                and _builtins_get_member(
-                    member,
-                    "__sagejs_synthetic_method__",
-                )
-                is not True
-                and not (
-                    member_name == "__init__"
-                    and _builtins_get_member(
-                        member,
-                        "__sagejs_synthetic_init__",
-                    )
-                    is True
-                )
-                and not (
-                    source is value
-                    and member_name == "__repr__"
-                    and _builtins_get_member(
-                        member,
-                        "__sagejs_internal_class_repr__",
-                    )
-                    is True
-                )
-                and _builtins_visible_introspection_name(member_name)
-            ):
-                runtime.reflect.set(
-                    namespace,
-                    member_name,
-                    member,
-                )
-
-    copy_own_members(value)
-    if _builtins_is_python_class(value):
-        copy_own_members(_builtins_get_member(value, "prototype"))
-    return runtime.scope_dict(namespace)
+        ):
+            selected = base
+            anchor = candidate_anchor
+    introduces = not _builtins_instance_dict_owners.has(selected)
+    _builtins_instance_dict_owners.set(owner, explicit_dict or introduces)
+    _builtins_descriptor_epoch += 1
+    if introduces and not explicit_dict:
+        runtime.reflect.set(
+            prototype, "__dict__", _BuiltinsInstanceDictDescriptor(owner)
+        )
+        _builtins_data_descriptor_names.add("__dict__")
 
 
 @runtime.lightweight_math_class
@@ -3420,10 +3607,7 @@ class _BuiltinsClassNamespaceProxy:
         self._mapping = None
 
     def _refresh(self) -> Any:
-        if self._epoch != _builtins_descriptor_epoch:
-            self._mapping = _builtins_callable_namespace_snapshot(self._owner)
-            self._epoch = _builtins_descriptor_epoch
-        return self._mapping
+        return _builtins_namespace_module()._refresh_class_namespace(self)
 
     def __getitem__(self, key: Any) -> Any:
         # Use the mapping protocol explicitly.  A literal subscript in this
@@ -3465,113 +3649,30 @@ class _BuiltinsClassNamespaceProxy:
         return "mappingproxy(" + repr(self._refresh()) + ")"
 
 
+def ρσ_class_namespace_proxy(value: Any) -> Any:
+    return _BuiltinsClassNamespaceProxy(value)
+
+
 def _builtins_namespace_dict(value: Any) -> Any:
-    """Return the Python-visible own namespace of an object or class."""
-    if _builtins_is_module_namespace(value):
-        # Unlike class ``__dict__``, a module dictionary is a mutable live
-        # namespace.  Wrapping the actual object is both the CPython behavior
-        # and dramatically cheaper for documentation-heavy modules such as
-        # ``mpmath.function_docs``.
-        live_scope_dict = runtime.reflect.get(
-            runtime.global_object, "ρσ_live_scope_dict"
-        )
-        return runtime.reflect.apply(live_scope_dict, runtime.undefined, [value])
-
-    if runtime.strict_equal(runtime.jstype(value), "object") or (
-        runtime.strict_equal(runtime.jstype(value), "function")
-        and runtime.native_get(value, "__sagejs_callable_instance__") is True
-    ):
-        # Instance ``__dict__`` is a writable live namespace.  A detached
-        # snapshot breaks ``obj.__dict__.update(...)`` and other ordinary
-        # Python object-model operations.
-        live_scope_dict = runtime.reflect.get(
-            runtime.global_object, "ρσ_live_scope_dict"
-        )
-        return runtime.reflect.apply(live_scope_dict, runtime.undefined, [value, True])
-
-    if _builtins_is_python_class(value):
-        cached = _builtins_class_namespace_cache.get(value)
-        if cached is runtime.undefined:
-            cached = _BuiltinsClassNamespaceProxy(value)
-            _builtins_class_namespace_cache.set(value, cached)
-        return cached
-
-    return _builtins_callable_namespace_snapshot(value)
+    return _builtins_namespace_module()._namespace_dict(value)
 
 
 def ρσ_default_dir(item: Any = runtime.undefined) -> list[_Str]:
     """Return the default sorted Python-facing attributes for `item`."""
-    if item is runtime.undefined:
-        item = runtime.global_object
-
-    target = _builtins_introspection_target(item)
-    answer = []
-    seen = runtime.reflect.construct(runtime.set_class, [])
-    target_is_function = runtime.strict_equal(runtime.jstype(target), "function")
-    constructor = _builtins_get_member(target, "constructor")
-    target_is_python_instance = _builtins_is_python_class(constructor)
-    if target_is_function and not target_is_python_instance:
-        _builtins_append_own_dir_names(target, answer, seen)
-        for native_function_name in ["length", "name"]:
-            if native_function_name in answer:
-                answer.remove(native_function_name)
-    else:
-        _builtins_append_dir_names(target, answer, seen)
-
-    # Python classes expose their instance methods through the class object.
-    # Sage.js stores those methods on the JavaScript constructor prototype.
-    if target_is_function:
-        prototype = _builtins_get_member(target, "prototype")
-        if prototype is not runtime.undefined and prototype is not None:
-            _builtins_append_dir_names(prototype, answer, seen)
-    if target_is_python_instance and target_is_function:
-        for class_only_name in [
-            "__bases__",
-            "__module__",
-            "__name__",
-            "length",
-            "name",
-        ]:
-            if class_only_name in answer:
-                answer.remove(class_only_name)
-    elif not target_is_function and "__bases__" in answer:
-        answer.remove("__bases__")
-    if target is runtime.global_object:
-        private_names = _builtins_get_member(
-            runtime.global_object, "__sagejs_baselib_private_names__"
-        )
-        if private_names is not runtime.undefined:
-            for private_name in private_names:
-                if private_name in answer:
-                    answer.remove(private_name)
-
-    # Attribute names are primitive strings, so the host's stable lexical sort
-    # has exactly the ordering required by Python without routing every
-    # comparison through the generic rich-comparison machinery.  Traitlets
-    # calls ``dir(cls)`` for every descriptor-bearing class, making the former
-    # quadratic Python loop dominate imports of class-heavy packages.
-    runtime.reflect.apply(runtime.array.prototype.sort, answer, [])
-    return answer
+    module = _builtins_default_import(
+        "sagejs._introspection", fromlist=["_default_dir"]
+    )
+    return module._default_dir(
+        runtime.global_object if item is runtime.undefined else item
+    )
 
 
 def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
     """Return the sorted Python-facing attributes available on `item`."""
+    module = _builtins_default_import("sagejs._introspection", fromlist=["_dir"])
     if item is runtime.undefined:
-        return ρσ_default_dir(item)
-    if _builtins_member_is_function(item, "__dir__"):
-        # Use ordinary receiver-aware host lookup here.  In particular, a
-        # Python class is itself the receiver for ``object.__dir__``; routing
-        # through the generic class-descriptor path would intentionally expose
-        # an unbound function and make ``dir(SomeClass)`` inspect globals.
-        custom_names = _builtins_call_member(item, "__dir__", [])
-        answer = []
-        for name in custom_names:
-            if not runtime.strict_equal(runtime.jstype(name), "string"):
-                raise TypeError("__dir__() must return an iterable of strings")
-            answer.append(name)
-        answer.sort()
-        return answer
-    return ρσ_default_dir(item)
+        return module._default_dir(runtime.global_object)
+    return module._dir(item)
 
 
 def ρσ_vars(item: Any = _BUILTINS_MISSING) -> Any:
@@ -3603,7 +3704,12 @@ def ρσ_resolve_callable(value: Any) -> Any:
     """Return a host function or an object's bound `__call__` method."""
     if runtime.strict_equal(runtime.jstype(value), "function"):
         return value
-    return ρσ_getattr(value, "__call__")
+    call_target = ρσ_getattr_internal(value, "__call__", runtime.undefined)
+    if call_target is runtime.undefined:
+        raise TypeError(
+            "'" + _builtins_callable_name(ρσ_type(value)) + "' object is not callable"
+        )
+    return call_target
 
 
 def _builtins_callable_name(value: Any) -> _Str:
@@ -3618,151 +3724,6 @@ def _builtins_callable_name(value: Any) -> _Str:
             return name[3:]
         return name
     return "<anonymous>"
-
-
-def _builtins_has_own(value: Any, name: _Str) -> _Bool:
-    if value is None or value is runtime.undefined:
-        return False
-    return runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty,
-        value,
-        [name],
-    )
-
-
-def _builtins_signature(value: Any, name: _Str) -> _Str:
-    argument_names = _builtins_get_member(value, "__argnames__")
-    defaults = _builtins_get_member(value, "__defaults__")
-    annotation_text = _builtins_get_member(
-        value,
-        "__signature_annotations_text__",
-    )
-    if annotation_text is runtime.undefined:
-        annotation_text = _builtins_get_member(value, "__annotations_text__")
-    annotations = _builtins_get_member(value, "__signature_annotations__")
-    if annotations is runtime.undefined:
-        annotations = _builtins_get_member(value, "__annotations__")
-
-    def annotation(argument: _Str) -> _Str:
-        if _builtins_has_own(annotation_text, argument):
-            return str(_builtins_get_member(annotation_text, argument))
-        if not _builtins_has_own(annotations, argument):
-            return ""
-        item = _builtins_get_member(annotations, argument)
-        if runtime.strict_equal(runtime.jstype(item), "string"):
-            return item
-        callable_name = _builtins_callable_name(item)
-        if callable_name != "<anonymous>":
-            return callable_name
-        return runtime.repr(item)
-
-    def argument_part(argument: _Str) -> _Str:
-        part = argument
-        type_name = annotation(argument)
-        if type_name:
-            part += ": " + type_name
-        if _builtins_has_own(defaults, argument):
-            default_value = _builtins_get_member(defaults, argument)
-            if default_value is runtime.undefined:
-                part += "=None"
-            else:
-                part += "=" + runtime.repr(default_value)
-        return part
-
-    parts = []
-    if runtime.array.isArray(argument_names):
-        for argument in argument_names:
-            parts.append(argument_part(argument))
-
-    positional_only = _builtins_get_member(value, "__positional_only__")
-    if positional_only is True and len(parts):
-        parts.append("/")
-
-    varargs = _builtins_get_member(value, "__varargs__")
-    if runtime.strict_equal(runtime.jstype(varargs), "string"):
-        varargs_part = "*" + varargs
-        varargs_type = annotation(varargs)
-        if varargs_type:
-            varargs_part += ": " + varargs_type
-        parts.append(varargs_part)
-    kwonly = _builtins_get_member(value, "__kwonly__")
-    if runtime.array.isArray(kwonly) and len(kwonly):
-        if not runtime.strict_equal(runtime.jstype(varargs), "string"):
-            parts.append("*")
-        for argument in kwonly:
-            parts.append(argument_part(argument))
-    varkw = _builtins_get_member(value, "__varkw__")
-    if runtime.strict_equal(runtime.jstype(varkw), "string"):
-        varkw_part = "**" + varkw
-        varkw_type = annotation(varkw)
-        if varkw_type:
-            varkw_part += ": " + varkw_type
-        parts.append(varkw_part)
-    signature = name + "(" + str.join(", ", parts) + ")"
-    return_type = annotation("return")
-    if return_type:
-        signature += " -> " + return_type
-    return signature
-
-
-def _builtins_doc(value: Any) -> _Str:
-    for entry in runtime.documentation_registry():
-        if entry[1] is value:
-            metadata_doc = _builtins_get_member(entry[2], "doc")
-            if runtime.strict_equal(runtime.jstype(metadata_doc), "string"):
-                return metadata_doc
-    doc = _builtins_get_member(value, "__doc__")
-    if runtime.strict_equal(runtime.jstype(doc), "string"):
-        return doc
-    return ""
-
-
-def _builtins_indent_doc(doc: _Str, prefix: _Str) -> _Str:
-    if not doc:
-        return ""
-    lines = []
-    for line in doc.split("\n"):
-        lines.append(prefix + line)
-    return str.join("\n", lines)
-
-
-def _builtins_doc_summary(doc: _Str) -> _Str:
-    for line in doc.split("\n"):
-        summary = line.strip()
-        if summary:
-            return summary
-    return ""
-
-
-def _builtins_doc_search_match(
-    query: _Str,
-    candidate: _Str,
-) -> _Bool:
-    lowered = runtime.reflect.apply(
-        runtime.string_class.prototype.normalize,
-        candidate.lower(),
-        ["NFD"],
-    ).replace(
-        runtime.regexp(r"[\u0300-\u036f]", "g"),
-        "",
-    )
-    query = runtime.reflect.apply(
-        runtime.string_class.prototype.normalize,
-        query,
-        ["NFD"],
-    ).replace(
-        runtime.regexp(r"[\u0300-\u036f]", "g"),
-        "",
-    )
-    if query in lowered:
-        return True
-    normalized_query = query.replace(runtime.regexp(r"[`_-]+", "g"), " ").replace(
-        runtime.regexp(r"\s+", "g"), " "
-    )
-    normalized_candidate = lowered.replace(runtime.regexp(r"[`_-]+", "g"), " ").replace(
-        runtime.regexp(r"\s+", "g"), " "
-    )
-    return normalized_query in normalized_candidate
 
 
 def _builtins_is_python_class(value: Any) -> _Bool:
@@ -3799,105 +3760,12 @@ def _builtins_prototype_member(
     return runtime.undefined
 
 
-def _builtins_class_help(value: Any, instance: _Bool) -> _Str:
-    cls = value
-    if instance:
-        cls = _builtins_get_member(value, "constructor")
-    name = _builtins_callable_name(cls)
-    heading = "Help on class " + name + ":"
-    if instance:
-        heading = "Help on " + name + " object:"
-    lines = [
-        heading,
-        "",
-        "class " + _builtins_signature(cls, name),
-    ]
-    doc = _builtins_doc(cls)
-    if doc:
-        lines.extend(["", _builtins_indent_doc(doc, "    ")])
-
-    prototype = _builtins_get_member(cls, "prototype")
-    methods = []
-    for method_name in ρσ_dir(cls):
-        method = _builtins_prototype_member(prototype, method_name)
-        if runtime.string_find(method_name, "_") != 0 and runtime.strict_equal(
-            runtime.jstype(method), "function"
-        ):
-            methods.append(method_name)
-    if len(methods) > 0:
-        lines.extend(["", "Methods:"])
-        for method_name in methods:
-            method = _builtins_prototype_member(prototype, method_name)
-            lines.append("    " + _builtins_signature(method, method_name))
-            method_doc = _builtins_doc(method)
-            if method_doc:
-                lines.append(_builtins_indent_doc(method_doc, "        "))
-    return str.join("\n", lines)
-
-
 def ρσ_help(item: Any = runtime.undefined) -> None:
     """Print concise Python-style help derived from Sage.js metadata."""
-    if item is runtime.undefined:
-        ρσ_print(
-            "Welcome to Sage.js help.  "
-            + "Call help(object) for information about an object."
-        )
-        return
-
-    for entry in runtime.documentation_registry():
-        if entry[1] is item:
-            registered_name = entry[0]
-            metadata = entry[2]
-            metadata_doc = _builtins_get_member(metadata, "doc")
-            if runtime.strict_equal(runtime.jstype(metadata_doc), "string"):
-                registered_kind = _builtins_get_member(metadata, "kind")
-                if not runtime.strict_equal(runtime.jstype(registered_kind), "string"):
-                    registered_kind = "object"
-                registered_lines = [
-                    ("Help on " + registered_kind + " " + registered_name + ":"),
-                    "",
-                ]
-                if registered_kind in ["function", "method", "class"]:
-                    registered_lines.append(_builtins_signature(item, registered_name))
-                    registered_lines.append("")
-                else:
-                    registered_lines.extend([registered_name, ""])
-                registered_lines.append(
-                    _builtins_indent_doc(metadata_doc.strip(), "    ")
-                )
-                ρσ_print(str.join("\n", registered_lines))
-                return
-
-    if _builtins_is_python_class(item):
-        text = _builtins_class_help(item, False)
-    elif runtime.strict_equal(runtime.jstype(item), "function"):
-        name = _builtins_callable_name(item)
-        bound = _builtins_has_member(item, "__self__")
-        kind = "method" if bound else "function"
-        module = _builtins_get_member(item, "__module__")
-        heading = "Help on " + kind + " " + name
-        if runtime.strict_equal(runtime.jstype(module), "string") and module:
-            heading += " in module " + module
-        lines = [
-            heading + ":",
-            "",
-            _builtins_signature(item, name),
-        ]
-        doc = _builtins_doc(item)
-        if doc:
-            lines.extend(["", _builtins_indent_doc(doc, "    ")])
-        text = str.join("\n", lines)
-    else:
-        constructor = _builtins_get_member(item, "constructor")
-        if _builtins_is_python_class(constructor):
-            text = _builtins_class_help(item, True)
-        else:
-            type_name = _builtins_callable_name(constructor)
-            text = "Help on " + type_name + " object."
-            doc = _builtins_doc(item)
-            if doc:
-                text += "\n\n" + _builtins_indent_doc(doc, "    ")
-    ρσ_print(text)
+    module = _builtins_default_import(
+        "sagejs._documentation_search", fromlist=["_help"]
+    )
+    module._help(None if item is runtime.undefined else item, item is runtime.undefined)
 
 
 def ρσ_search_doc(query: Any) -> None:
@@ -3920,74 +3788,10 @@ def ρσ_search_doc(query: Any) -> None:
     not imply that every object documented by the full SageMath manual is
     implemented.
     """
-    text = str(query)
-    needle = text.lower()
-    if not needle:
-        raise ValueError("search_doc query must not be empty")
-
-    matches = []
-    seen = []
-    for registered_entry in runtime.documentation_registry():
-        registered_name = registered_entry[0]
-        registered_value = registered_entry[1]
-        if registered_name in seen:
-            continue
-        registered_doc = _builtins_doc(registered_value)
-        if _builtins_doc_search_match(needle, registered_name) or (
-            registered_doc and _builtins_doc_search_match(needle, registered_doc)
-        ):
-            matches.append(
-                registered_name + " -- " + _builtins_doc_summary(registered_doc)
-            )
-            seen.append(registered_name)
-
-    namespace = _builtins_get_member(runtime.modules, "__main__")
-    names = runtime.object.getOwnPropertyNames(namespace)
-    names.sort()
-    for name in names:
-        if (
-            runtime.string_find(name, "_") == 0
-            or runtime.string_find(name, "ρσ_") == 0
-            or name in seen
-        ):
-            continue
-        descriptor = runtime.object.getOwnPropertyDescriptor(namespace, name)
-        value = runtime.reflect.get(descriptor, "value")
-        if value is runtime.undefined:
-            continue
-        doc = _builtins_doc(value)
-        if _builtins_doc_search_match(needle, name) or (
-            doc and _builtins_doc_search_match(needle, doc)
-        ):
-            matches.append(name + " -- " + _builtins_doc_summary(doc))
-            seen.append(name)
-
-        if not _builtins_is_python_class(value):
-            continue
-        prototype = _builtins_get_member(value, "prototype")
-        for method_name in ρσ_dir(value):
-            if runtime.string_find(method_name, "_") == 0:
-                continue
-            method = _builtins_prototype_member(prototype, method_name)
-            if not runtime.strict_equal(runtime.jstype(method), "function"):
-                continue
-            qualified_name = name + "." + method_name
-            if qualified_name in seen:
-                continue
-            method_doc = _builtins_doc(method)
-            if _builtins_doc_search_match(needle, qualified_name) or (
-                method_doc and _builtins_doc_search_match(needle, method_doc)
-            ):
-                matches.append(
-                    qualified_name + " -- " + _builtins_doc_summary(method_doc)
-                )
-                seen.append(qualified_name)
-
-    matches.sort()
-    if len(matches) == 0:
-        ρσ_print("No documentation matching '" + text + "'.")
-        return
-    ρσ_print("Search results for '" + text + "':\n    " + str.join("\n    ", matches))
+    module = _builtins_default_import(
+        "sagejs._documentation_search", fromlist=["_search_doc"]
+    )
+    module._search_doc(query)
 
 
 def ρσ_ord(value: Any) -> _Int:
@@ -4045,7 +3849,7 @@ def ρσ_callable(value: Any) -> _Bool:
     if value is None or value is runtime.undefined:
         return False
     # Slot presence, not its value or descriptor result, determines callable().
-    prototype = runtime.object.getPrototypeOf(runtime.object(value))
+    prototype = ρσ_instance_prototype(runtime.object(value))
     return prototype is not None and runtime.reflect.has(prototype, "__call__")
 
 
@@ -4063,6 +3867,9 @@ def ρσ_classmethod(target: Any) -> Any:
 
     descriptor.__get__ = classmethod_get
     return descriptor
+
+
+classmethod = ρσ_classmethod
 
 
 def ρσ_staticmethod(target: Any) -> Any:
@@ -5022,7 +4829,9 @@ class SageProperty:
         self.fget = fget
         self.fset = fset
         self.fdel = fdel
-        self.__doc__ = doc
+        self._getter_doc = doc is None
+        inherited_doc = _builtins_get_member(fget, "__doc__") if doc is None else doc
+        self.__doc__ = None if inherited_doc is runtime.undefined else inherited_doc
 
     def __get__(self, instance: Any, _owner: Any = None) -> Any:
         if instance is None:
@@ -5058,13 +4867,28 @@ class SageProperty:
             runtime.reflect.apply(self.fdel, runtime.undefined, [instance])
 
     def getter(self, target_function: Any) -> SageProperty:
-        return SageProperty(target_function, self.fset, self.fdel, self.__doc__)
+        if target_function is None:
+            target_function = self.fget
+        return SageProperty(
+            target_function,
+            self.fset,
+            self.fdel,
+            None if self._getter_doc else self.__doc__,
+        )
 
     def setter(self, target_function: Any) -> SageProperty:
-        return SageProperty(self.fget, target_function, self.fdel, self.__doc__)
+        if target_function is None:
+            target_function = self.fset
+        answer = SageProperty(self.fget, target_function, self.fdel, self.__doc__)
+        answer._getter_doc = self._getter_doc
+        return answer
 
     def deleter(self, target_function: Any) -> SageProperty:
-        return SageProperty(self.fget, self.fset, target_function, self.__doc__)
+        if target_function is None:
+            target_function = self.fdel
+        answer = SageProperty(self.fget, self.fset, target_function, self.__doc__)
+        answer._getter_doc = self._getter_doc
+        return answer
 
 
 def ρσ_property(
@@ -5072,8 +4896,57 @@ def ρσ_property(
     fset: Any = None,
     fdel: Any = None,
     doc: Any = None,
+    *extra: Any,
 ) -> SageProperty:
+    if extra:
+        raise TypeError("property() takes at most 4 arguments")
     return SageProperty(fget, fset, fdel, doc)
+
+
+def _builtins_native_property(source: Any, name: _Str, descriptor: Any) -> Any:
+    """Expose one stable Python property for a native accessor pair."""
+    getter = runtime.reflect.get(descriptor, "get")
+    setter = runtime.reflect.get(descriptor, "set")
+    key = setter if getter is runtime.undefined else getter
+    cached = _builtins_property_cache.get(key)
+    if cached is not runtime.undefined:
+        return cached
+    deleter = runtime.object.getOwnPropertyDescriptor(
+        source, "ρσ_property_deleter_" + name
+    )
+    cached = SageProperty(
+        None if getter is runtime.undefined else runtime.unbound_method_adapter(getter),
+        None if setter is runtime.undefined else runtime.unbound_method_adapter(setter),
+        None
+        if deleter is runtime.undefined
+        else runtime.unbound_method_adapter(runtime.reflect.get(deleter, "value")),
+    )
+    _builtins_property_cache.set(key, cached)
+    return cached
+
+
+def ρσ_register_property(owner: Any, name: _Str, has_setter: _Bool) -> None:
+    """Register the Python descriptor behind compiler-emitted native accessors."""
+    prototype = runtime.reflect.get(owner, "prototype")
+    descriptor = runtime.object.getOwnPropertyDescriptor(prototype, name)
+    value = _builtins_native_property(prototype, name, descriptor)
+    if not has_setter:
+        value.fset = None
+
+
+def _builtins_descriptor_read(
+    descriptor: Any, value: Any, owner: Any, name: _Str, default_value: Any
+) -> Any:
+    try:
+        if owner is runtime.undefined:
+            return runtime.reflect.apply(descriptor, value, [])
+        return _builtins_call_member(descriptor, "__get__", [value, owner])
+    except AttributeError:
+        if _builtins_member_is_function(value, "__getattr__"):
+            return _builtins_missing_attribute(value, name, default_value)
+        if default_value is not _BUILTINS_MISSING:
+            return default_value
+        raise
 
 
 def ρσ_ellipsis_range(*specification: Any) -> list[Any]:
@@ -5155,13 +5028,78 @@ def ρσ_getattr_internal(
     name: _Str,
     default_value: Any,
 ) -> Any:
+    return _builtins_getattr_impl(value, name, default_value, runtime.undefined)
+
+
+def ρσ_prepare_method_call(value: Any, name: _Str) -> Any:
+    """Capture lookup before arguments without materializing ordinary methods."""
+    context = runtime.array.of(runtime.undefined, runtime.undefined, False)
+    member = _builtins_getattr_impl(value, name, _BUILTINS_MISSING, context)
+    if context[0] is runtime.undefined:
+        context[0] = member
+    return context
+
+
+def ρσ_invoke_prepared_method(context: Any, call_args: Any) -> Any:
+    """Invoke a captured call after all positional arguments are evaluated."""
+    target = context[0]
+    receiver = context[1]
+    if context[2] is True:
+        call_args.unshift(receiver)
+        return runtime.reflect.apply(target, runtime.undefined, call_args)
+    if receiver is not runtime.undefined:
+        return runtime.reflect.apply(target, receiver, call_args)
+    return runtime.reflect.apply(
+        ρσ_resolve_callable(target), runtime.undefined, call_args
+    )
+
+
+def _builtins_getattr_impl(
+    value: Any,
+    name: _Str,
+    default_value: Any,
+    call_context: Any,
+) -> Any:
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
+    if runtime.strict_equal(name, "__annotations__"):
+        annotation_key = _builtins_class_annotation_key(value)
+        if (
+            annotation_key is not runtime.undefined
+            and _builtins_own_class_annotation(value) is runtime.undefined
+        ):
+            try:
+                return _builtins_read_class_annotation(value, annotation_key)
+            except AttributeError:
+                if default_value is not _BUILTINS_MISSING:
+                    return default_value
+                raise
     value_type = runtime.jstype(value)
     value_is_callable_instance = (
         runtime.strict_equal(value_type, "function")
         and runtime.native_get(value, "__sagejs_callable_instance__") is True
     )
+    if runtime.strict_equal(name, "__func__") and ρσ_is_bound_method(value):
+        target = runtime.native_get(value, "__func__")
+        # Internal binding/rebinding consumes the receiver-style target.
+        # Python exposes the same cached explicit-self function as C.method.
+        if (
+            _builtins_get_member(target, "__sagejs_native_method__") is True
+            or _builtins_get_member(target, "__sagejs_method_signature_excludes_self__")
+            is True
+        ):
+            return runtime.unbound_method_adapter(target)
+        return target
+    if runtime.strict_equal(value_type, "function") and (
+        runtime.strict_equal(name, "__defaults__")
+        or runtime.strict_equal(name, "__kwdefaults__")
+    ):
+        target = runtime.native_get(value, "__func__")
+        if target is not runtime.undefined and (
+            ρσ_is_bound_method(value)
+            or _builtins_get_member(target, "__sagejs_unbound_adapter__") is value
+        ):
+            return ρσ_getattr_internal(target, name, default_value)
     if runtime.instance_of(value, runtime.error):
         # Native TypeError/ReferenceError/SyntaxError objects are part of the
         # Python exception hierarchy but do not pass through BaseException's
@@ -5193,8 +5131,12 @@ def ρσ_getattr_internal(
         and value is not None
         and value is not runtime.undefined
         and (
-            runtime.strict_equal(runtime.jstype(value), "object")
-            or runtime.strict_equal(runtime.jstype(value), "function")
+            _builtins_is_python_class(value)
+            or _builtins_is_module_namespace(value)
+            or (
+                runtime.strict_equal(runtime.jstype(value), "function")
+                and not value_is_callable_instance
+            )
         )
     ):
         return _builtins_namespace_dict(value)
@@ -5268,29 +5210,29 @@ def ρσ_getattr_internal(
         and value is not None
         and value is not runtime.undefined
     ):
+        namespace = _builtins_instance_namespaces.get(value)
+        namespace_has_member = (
+            namespace is not runtime.undefined and namespace.jsmap.has(name)
+        )
         has_own_member = runtime.reflect.apply(
             runtime.object.prototype.hasOwnProperty,
             value,
             [name],
         )
-        if has_own_member and not _builtins_data_descriptor_names.has(name):
-            own_member = runtime.native_get(value, name)
-            own_is_eager_bound_cache = (
-                _builtins_get_member(
-                    own_member,
-                    "__sagejs_eager_bound_cache__",
-                )
-                is True
+        if (has_own_member or namespace_has_member) and not (
+            _builtins_data_descriptor_names.has(name)
+        ):
+            own_member = (
+                namespace.jsmap.get(name)
+                if namespace_has_member
+                else runtime.native_get(value, name)
             )
             if _builtins_is_missing_binding(own_member):
                 if default_value is not _BUILTINS_MISSING:
                     return default_value
                 raise AttributeError("The attribute " + name + " is not present")
-            if not own_is_eager_bound_cache:
-                return own_member
-        else:
-            own_is_eager_bound_cache = False
-        owner = runtime.native_get(value, "constructor")
+            return own_member
+        owner = _builtins_attribute_owner(value)
         descriptor_resolution = _builtins_class_attribute_resolution(owner, name)
         if descriptor_resolution is not runtime.undefined:
             descriptor_kind = descriptor_resolution[2]
@@ -5299,7 +5241,9 @@ def ρσ_getattr_internal(
                 descriptor_kind,
                 _BUILTINS_DESCRIPTOR_NATIVE_GETTER,
             ):
-                native_value = runtime.reflect.apply(descriptor, value, [])
+                native_value = _builtins_descriptor_read(
+                    descriptor, value, runtime.undefined, name, default_value
+                )
                 if native_value is runtime.undefined:
                     if default_value is not _BUILTINS_MISSING:
                         return default_value
@@ -5309,23 +5253,24 @@ def ρσ_getattr_internal(
                 descriptor_kind,
                 _BUILTINS_DESCRIPTOR_DATA,
             ):
-                return _builtins_call_member(descriptor, "__get__", [value, owner])
+                return _builtins_descriptor_read(
+                    descriptor, value, owner, name, default_value
+                )
         # A data descriptor has now had its required precedence.  An own
         # non-callable value cannot require binding or another inherited
         # lookup, which is the overwhelmingly common path for mathematical
         # object payloads such as ``_mpf_`` and ``_ctxdata``.
-        if has_own_member:
-            own_member = runtime.native_get(value, name)
+        if has_own_member or namespace_has_member:
+            own_member = (
+                namespace.jsmap.get(name)
+                if namespace_has_member
+                else runtime.native_get(value, name)
+            )
             if _builtins_is_missing_binding(own_member):
                 if default_value is not _BUILTINS_MISSING:
                     return default_value
                 raise AttributeError("The attribute " + name + " is not present")
-            if not (own_is_eager_bound_cache and descriptor is not runtime.undefined):
-                # Python functions stored directly on an instance are
-                # ordinary values.  A marked eager cache is only an
-                # implementation detail, however: any different descriptor
-                # later installed by a subclass or setattr() must shadow it.
-                return own_member
+            return own_member
         if runtime.strict_equal(
             descriptor_kind,
             _BUILTINS_DESCRIPTOR_NONDATA,
@@ -5341,8 +5286,26 @@ def ρσ_getattr_internal(
                 and _builtins_get_member(descriptor, "__sagejs_callable_instance__")
                 is not True
             ):
+                if (
+                    call_context is not runtime.undefined
+                    and _builtins_class_attribute_resolution(owner, "__getattribute__")
+                    is runtime.undefined
+                ):
+                    call_context[0] = descriptor
+                    call_context[1] = value
+                    call_context[2] = (
+                        _builtins_get_member(descriptor, "__sagejs_native_method__")
+                        is not True
+                        and _builtins_get_member(
+                            descriptor, "__sagejs_method_signature_excludes_self__"
+                        )
+                        is not True
+                    )
+                    return runtime.undefined
                 return _builtins_bind_python_function(descriptor, value)
-            return _builtins_call_member(descriptor, "__get__", [value, owner])
+            return _builtins_descriptor_read(
+                descriptor, value, owner, name, default_value
+            )
         if runtime.strict_equal(
             descriptor_kind,
             _BUILTINS_DESCRIPTOR_DIRECT,
@@ -5360,7 +5323,27 @@ def ρσ_getattr_internal(
             and class_prototype is not runtime.undefined
             and _builtins_has_member(class_prototype, name)
         ):
+            descriptor_source = class_prototype
+            class_descriptor = runtime.undefined
+            while descriptor_source is not None:
+                class_descriptor = runtime.object.getOwnPropertyDescriptor(
+                    descriptor_source, name
+                )
+                if class_descriptor is not runtime.undefined:
+                    break
+                descriptor_source = runtime.object.getPrototypeOf(descriptor_source)
+            if class_descriptor is not runtime.undefined:
+                native_getter = runtime.reflect.get(class_descriptor, "get")
+                if native_getter is not runtime.undefined and (
+                    _builtins_get_member(native_getter, "__sagejs_lazy_method_getter__")
+                    is not True
+                ):
+                    return _builtins_native_property(
+                        descriptor_source, name, class_descriptor
+                    )
             class_member = _builtins_get_member(class_prototype, name)
+            if _builtins_get_member(class_member, "__self__") is class_prototype:
+                class_member = _builtins_get_member(class_member, "__func__")
             if _builtins_is_missing_binding(class_member):
                 class_member = runtime.undefined
             if class_member is runtime.undefined:
@@ -5377,6 +5360,10 @@ def ρσ_getattr_internal(
                     if runtime.strict_equal(runtime.jstype(static_target), "function")
                     else class_member
                 )
+            elif (
+                _builtins_get_member(class_member, "__sagejs_synthetic_init__") is True
+            ):
+                return runtime.unbound_method_adapter(class_member)
             elif (
                 _builtins_is_python_class(class_member)
                 or ρσ_is_bound_method(class_member)
@@ -5415,7 +5402,7 @@ def ρσ_getattr_internal(
                 is not True
             ):
                 return runtime.unbound_method_adapter(class_member)
-            elif class_member is not runtime.undefined:
+            else:
                 return class_member
         # A Python class is an instance of its metaclass.  Methods inherited
         # from that metaclass (for example pytest's ``NodeMeta._create``) bind
@@ -5563,7 +5550,9 @@ def ρσ_getattr_internal(
                 descriptor = class_target
             return _builtins_bind_python_function(descriptor, owner)
         if _builtins_member_is_function(descriptor, "__get__"):
-            return _builtins_call_member(descriptor, "__get__", [value, owner])
+            return _builtins_descriptor_read(
+                descriptor, value, owner, name, default_value
+            )
         if _builtins_has_member(descriptor, "__staticmethod__"):
             static_target = _builtins_get_member(descriptor, "__func__")
             return (
@@ -5576,6 +5565,10 @@ def ρσ_getattr_internal(
         ) and not _builtins_is_python_class(descriptor):
             return _builtins_bind_python_function(descriptor, value)
         return descriptor
+    return _builtins_missing_attribute(value, name, default_value)
+
+
+def _builtins_missing_attribute(value: Any, name: _Str, default_value: Any) -> Any:
     if _builtins_member_is_function(value, "__getattr__"):
         try:
             if _builtins_is_module_namespace(value):
@@ -5607,6 +5600,14 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
     global _builtins_descriptor_epoch
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
+    if runtime.strict_equal(name, "__annotations__"):
+        annotation_key = _builtins_class_annotation_key(value)
+        if (
+            annotation_key is not runtime.undefined
+            and _builtins_own_class_annotation(value) is runtime.undefined
+        ):
+            _builtins_class_annotation_slots.set(annotation_key, member)
+            return
     if _builtins_get_member(value, "__sagejs_super__") is True:
         runtime.reflect.set(value, name, member)
         return
@@ -5621,12 +5622,43 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
         value
     ):
         raise AttributeError("'method' object has no attribute '" + name + "'")
+    if (
+        runtime.strict_equal(runtime.jstype(value), "function")
+        and not _builtins_is_python_class(value)
+        and (
+            runtime.strict_equal(name, "__defaults__")
+            or runtime.strict_equal(name, "__kwdefaults__")
+        )
+    ):
+        if member is not None and not isinstance(
+            member, runtime.tuple_builtin if name == "__defaults__" else dict
+        ):
+            raise TypeError(
+                name
+                + " must be set to a "
+                + ("tuple" if name == "__defaults__" else "dict")
+                + " object"
+            )
+        target = runtime.native_get(value, "__func__")
+        if (
+            target is not runtime.undefined
+            and _builtins_get_member(target, "__sagejs_unbound_adapter__") is value
+        ):
+            ρσ_setattr(target, name, member)
+        runtime.reflect.set(value, name, member)
+        return
     if name == "__class__":
         if not _builtins_is_python_class(member):
             raise TypeError("__class__ must be set to a class")
-        runtime.object.setPrototypeOf(value, runtime.reflect.get(member, "prototype"))
+        _builtins_change_instance_class(value, member)
         return
-    if name == "__dict__":
+    if name == "__dict__" and _builtins_is_python_class(value):
+        raise AttributeError("attribute '__dict__' of 'type' objects is not writable")
+    if (
+        name == "__dict__"
+        and runtime.strict_equal(runtime.jstype(value), "function")
+        and (_builtins_get_member(value, "__sagejs_callable_instance__") is not True)
+    ):
         _builtins_replace_instance_dict(value, member)
         return
     if not runtime.strict_equal(runtime.jstype(value), "function"):
@@ -5638,7 +5670,7 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
         ):
             return _builtins_call_member(value, "__setattr__", [name, member])
     descriptor_info = _builtins_class_attribute_descriptor(
-        _builtins_get_member(value, "constructor"), name
+        _builtins_attribute_owner(value), name
     )
     if descriptor_info is not runtime.undefined:
         descriptor = runtime.reflect.get(descriptor_info, "value")
@@ -5691,9 +5723,21 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
             member, "__set__"
         ) or _builtins_member_is_function(member, "__delete__"):
             _builtins_data_descriptor_names.add(name)
-        runtime.reflect.set(value.prototype, name, prototype_member)
+        runtime.object.defineProperty(
+            value.prototype,
+            name,
+            {
+                "value": prototype_member,
+                "writable": True,
+                "configurable": True,
+                "enumerable": True,
+            },
+        )
+        runtime.reflect.deleteProperty(value.prototype, "ρσ_property_deleter_" + name)
         if _builtins_member_is_function(member, "__set_name__"):
             _builtins_call_member(member, "__set_name__", [value, name])
+    if _builtins_store_instance_attribute(value, name, member):
+        return
     if not runtime.reflect.set(value, name, member):
         own_descriptor = runtime.object.getOwnPropertyDescriptor(value, name)
         if (
@@ -5750,6 +5794,10 @@ def ρσ_resolve_module_name(
         # ``len = len([1])`` and Sage's ``i = CC(i)`` valid at top level.
     if value is not runtime.undefined and value is not cleared_exception:
         return value
+    if not was_cleared_exception and _builtins_has_member(module_builtins, name):
+        builtin_value = _builtins_get_member(module_builtins, name)
+        if builtin_value is not runtime.undefined:
+            return builtin_value
     # The public Sage facade deliberately contains both Python builtins and
     # mathematical globals such as ``e``.  Consult the authoritative baselib
     # namespaces when deciding whether a cleared exception target may fall
@@ -5819,6 +5867,13 @@ def ρσ_resolve_module_name(
     if declared_in_module:
         # Deleted Python bindings may use Python builtins, never JS globals.
         raise NameError("name '" + name + "' is not defined")
+    facade_names = runtime.native_get(
+        module_builtins, "__sagejs_builtin_facade_names__"
+    )
+    if facade_names is not runtime.undefined and facade_names.has(name):
+        # A deleted builtin must not reappear through the browser's original
+        # global alias. Real module/lexical bindings were already checked.
+        raise NameError("name '" + name + "' is not defined")
     if _builtins_has_member(runtime.global_object, name):
         global_value = _builtins_get_member(runtime.global_object, name)
         if global_value is not runtime.undefined:
@@ -5846,6 +5901,16 @@ class _Code:
 class _FunctionCode:
     def __init__(self, source_function: Any) -> None:
         self.source_function = source_function
+
+    @property
+    def co_varnames(self) -> Any:
+        names = _builtins_get_member(self.source_function, "__sagejs_code_varnames__")
+        if names is not runtime.undefined:
+            return names
+        # Bootstrap functions do not carry source-local metadata.
+        return runtime.math_tuple(
+            _builtins_get_member(self.source_function, "__argnames__") or []
+        )
 
     @property
     def co_filename(self) -> _Str:
@@ -6061,6 +6126,11 @@ def _builtins_dynamic_namespaces(
         local_namespace = default_locals
     if not isinstance(local_namespace, dict):
         raise TypeError("locals must be a mapping")
+    if "__builtins__" not in global_namespace:
+        global_namespace.__setitem__(
+            "__builtins__",
+            ρσ_live_scope_dict(_builtins_default_import("builtins")),  # type: ignore[name-defined]  # noqa: F821
+        )
     return runtime.math_tuple([global_namespace, local_namespace])
 
 
@@ -6179,10 +6249,61 @@ def ρσ_exec(
     return None
 
 
+def _builtins_native_property_deleter(value: Any, name: _Str) -> Any:
+    resolution = _builtins_class_attribute_resolution(
+        _builtins_attribute_owner(value), name
+    )
+    if (
+        resolution is not runtime.undefined
+        and resolution[2] == _BUILTINS_DESCRIPTOR_NATIVE_GETTER
+    ):
+        prototype = runtime.object.getPrototypeOf(value)
+        while not runtime.reflect.get(runtime.object, "hasOwn")(prototype, name):
+            prototype = runtime.object.getPrototypeOf(prototype)
+        deleter = runtime.object.getOwnPropertyDescriptor(
+            prototype, "ρσ_property_deleter_" + name
+        )
+        if deleter is runtime.undefined:
+            raise AttributeError("property has no deleter")
+        return runtime.reflect.get(deleter, "value")
+    return runtime.undefined
+
+
 def ρσ_delattr(value: Any, name: _Str) -> None:
     global _builtins_descriptor_epoch
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
+    if name == "__dict__" and _builtins_is_python_class(value):
+        raise AttributeError("attribute '__dict__' of 'type' objects is not writable")
+    if (
+        runtime.strict_equal(runtime.jstype(value), "function")
+        and not _builtins_is_python_class(value)
+        and (
+            runtime.strict_equal(name, "__defaults__")
+            or runtime.strict_equal(name, "__kwdefaults__")
+        )
+    ):
+        ρσ_setattr(value, name, None)
+        return
+    if runtime.strict_equal(name, "__annotations__"):
+        annotation_key = _builtins_class_annotation_key(value)
+        if annotation_key is not runtime.undefined:
+            if _builtins_own_class_annotation(value) is runtime.undefined:
+                if not _builtins_class_annotation_slots.has(annotation_key):
+                    raise AttributeError("object has no attribute '__annotations__'")
+                runtime.reflect.apply(
+                    runtime.reflect.get(_builtins_class_annotation_slots, "delete"),
+                    _builtins_class_annotation_slots,
+                    [annotation_key],
+                )
+                return
+            # Deleting an explicit namespace value also discards any older
+            # synthesized slot, so it cannot reappear on the next lookup.
+            runtime.reflect.apply(
+                runtime.reflect.get(_builtins_class_annotation_slots, "delete"),
+                _builtins_class_annotation_slots,
+                [annotation_key],
+            )
     builtin_facade_names = runtime.native_get(value, "__sagejs_builtin_facade_names__")
     if builtin_facade_names is not runtime.undefined and builtin_facade_names.has(name):
         if not runtime.reflect.deleteProperty(value, name):
@@ -6209,23 +6330,26 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
             runtime.reflect.deleteProperty(value, name)
         if prototype_has_own:
             runtime.reflect.deleteProperty(prototype, name)
+            runtime.reflect.deleteProperty(prototype, "ρσ_property_deleter_" + name)
         _builtins_descriptor_epoch += 1
         return
     if not runtime.strict_equal(
         runtime.jstype(value), "function"
     ) and _builtins_member_is_function(value, "__delattr__"):
         return _builtins_call_member(value, "__delattr__", [name])
-    property_deleter = _builtins_get_member(value, "ρσ_property_deleter_" + name)
+    property_deleter = _builtins_native_property_deleter(value, name)
     if runtime.strict_equal(runtime.jstype(property_deleter), "function"):
         runtime.reflect.apply(property_deleter, value, [])
         return
     descriptor_info = _builtins_class_attribute_descriptor(
-        _builtins_get_member(value, "constructor"), name
+        _builtins_attribute_owner(value), name
     )
     if descriptor_info is not runtime.undefined:
         descriptor = runtime.reflect.get(descriptor_info, "value")
         if _builtins_member_is_function(descriptor, "__delete__"):
             return _builtins_call_member(descriptor, "__delete__", [value])
+    if _builtins_delete_instance_attribute(value, name):
+        return
     has_own = runtime.reflect.apply(
         runtime.object.prototype.hasOwnProperty,
         value,
@@ -6342,14 +6466,10 @@ def ρσ_py_super(
                         )
                         is True
                     ):
-                        # A lightweight-class method accessor normally caches
-                        # a bound method on its receiver. Super lookup must
-                        # retrieve the raw base function without overwriting a
-                        # same-named method cached by the derived class.
-                        return runtime.reflect.apply(
-                            descriptor_getter,
-                            base_prototype,
-                            [],
+                        # Super needs the raw base function, not a method bound
+                        # to the prototype used for descriptor lookup.
+                        return _builtins_get_member(
+                            descriptor_getter, "__sagejs_unbound_method__"
                         )
                     return runtime.reflect.get(base_prototype, name, instance)
         return runtime.undefined
@@ -6391,13 +6511,7 @@ def ρσ_py_super(
                 member,
                 [receiver],
             )
-            # Function.bind preserves execution semantics but discards the
-            # Python signature metadata used by keyword interpolation.
-            runtime.object.assign(bound, member)
-            runtime.reflect.set(bound, "__self__", receiver)
-            runtime.reflect.set(bound, "__func__", member)
-            ρσ_brand_bound_method(bound)
-            return bound
+            return ρσ_finish_bound_method(bound, member, receiver)
         if _builtins_member_is_function(member, "__get__"):
             return _builtins_call_member(member, "__get__", [instance, instance_class])
         return member
@@ -6564,6 +6678,7 @@ def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
         )
     for attribute_name in (
         "__defaults__",
+        "__kwdefaults__",
         "__handles_kwarg_interpolation__",
         "__kwonly__",
         "__varargs__",
@@ -6591,6 +6706,11 @@ def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
 def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
     """Implement `type.__call__` after a custom metaclass delegates."""
     interpolate = runtime.reflect.get(runtime.global_object, "ρσ_interpolate_kwargs")
+    if not runtime.strict_equal(runtime.jstype(interpolate), "function"):
+        internal = __import__(
+            "sagejs._baselib.internal", fromlist=["ρσ_interpolate_kwargs"]
+        )
+        interpolate = internal.ρσ_interpolate_kwargs
     call_args = list(args)
     runtime.reflect.apply(runtime.array.prototype.push, call_args, [keywords])
     allocator = ρσ_getattr(cls, "__new__", None)
@@ -6632,11 +6752,15 @@ def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
 _BUILTINS_TYPE_NEW_PLAIN_TOKEN = runtime.object.create(None)
 
 
-def _builtins_inherited_metaclass(bases: Any) -> Any:
+def _builtins_inherited_metaclass(bases: Any, selected: Any = runtime.undefined) -> Any:
     """Select the most-derived metaclass required by `bases`."""
-    selected = ρσ_type
+    if selected is runtime.undefined:
+        selected = ρσ_type
     for base in bases:
-        candidate = _builtins_get_member(base, "__python_type__")
+        key = _builtins_heap_class_keys.get(base)
+        candidate = _builtins_class_metaclasses.get(
+            base if key is runtime.undefined else key
+        )
         if candidate is runtime.undefined:
             candidate = ρσ_type
         if candidate is selected:
@@ -6686,22 +6810,10 @@ def ρσ_type(*values: Any) -> Any:
                 )
 
         def dynamic_class(*args: Any, **keywords: Any) -> Any:
-            # Forward user keywords as the eventual instance initializer's
-            # keyword packet.  Sending them through ordinary interpolation
-            # here would let a user keyword named ``cls`` bind the private
-            # first parameter of ``_builtins_type_call`` instead.
-            runtime.reflect.set(keywords, runtime.kwargs_symbol, True)
-            call_args = [dynamic_class]
-            call_args.extend(args)
-            # A marked keyword packet cannot be passed through the Python
-            # ``list.append`` adapter: the adapter would interpret it as its
-            # own keyword packet.  Append it at the JavaScript boundary.
-            runtime.reflect.apply(runtime.array.prototype.push, call_args, [keywords])
-            return runtime.reflect.apply(
-                _builtins_type_call,
-                runtime.undefined,
-                call_args,
-            )
+            # Calling a class invokes its metaclass slot. Explicit delegation
+            # through `type.__call__` still reaches the allocation helper.
+            slot = ρσ_get_type_slot(dynamic_class, "__call__")
+            return slot(*args, **keywords)
 
         prototype = runtime.object.create(runtime.reflect.get(parent, "prototype"))
         runtime.reflect.set(prototype, "constructor", dynamic_class)
@@ -6710,6 +6822,12 @@ def ρσ_type(*values: Any) -> Any:
         runtime.reflect.set(dynamic_class, "__qualname__", class_name)
         runtime.reflect.set(dynamic_class, "__bases__", runtime.math_tuple(list(bases)))
         runtime.reflect.set(prototype, "__bases__", runtime.math_tuple(list(bases)))
+        # The host callable implements type allocation; its Python-function
+        # metadata is not an explicit entry in the new class namespace.
+        runtime.reflect.deleteProperty(dynamic_class, "__annotations__")
+        runtime.reflect.deleteProperty(dynamic_class, "__annotations_text__")
+        ρσ_register_heap_class(dynamic_class)
+        ρσ_finalize_heap_class(dynamic_class)
         for pair in namespace.items():
             member_name = pair[0]
             member = pair[1]
@@ -6730,7 +6848,15 @@ def ρσ_type(*values: Any) -> Any:
                 # explicit marker when rebuilding the class through a custom
                 # metaclass.
                 runtime.reflect.set(member, "__python_descriptor__", True)
-            runtime.reflect.set(prototype, member_name, member)
+            prototype_member = member
+            if (
+                runtime.strict_equal(runtime.jstype(member), "function")
+                and _builtins_get_member(member, "__func__") is not runtime.undefined
+                and _builtins_get_member(member, "__self__") is runtime.undefined
+                and _builtins_get_member(member, "__classmethod__") is not True
+            ):
+                prototype_member = _builtins_get_member(member, "__func__")
+            runtime.reflect.set(prototype, member_name, prototype_member)
             if _builtins_member_is_function(
                 member, "__set__"
             ) or _builtins_member_is_function(member, "__delete__"):
@@ -6771,13 +6897,29 @@ def ρσ_type(*values: Any) -> Any:
             dynamic_class,
             _builtins_get_member(prototype, "__init__"),
         )
+        ρσ_install_instance_dict(dynamic_class, "__dict__" in namespace)
         return dynamic_class
     if len(values) != 1:
         raise TypeError("type() takes 1 or 3 arguments")
     value = values[0]
     if value is None:
         return _NoneType
-    value_type = ρσ_python_jstype(value)
+    value_type = runtime.jstype(value)
+    if runtime.strict_equal(value_type, "object") or runtime.strict_equal(
+        value_type, "function"
+    ):
+        class_key = _builtins_heap_class_keys.get(value)
+        if class_key is not runtime.undefined:
+            metaclass = _builtins_class_metaclasses.get(class_key)
+            return ρσ_type if metaclass is runtime.undefined else metaclass
+        # Read actual representation ownership, never a user constructor or
+        # __python_type__ attribute. Exact lookup deliberately leaves unknown
+        # native/math prototypes on their existing representation paths.
+        owner = _builtins_prototype_owners.get(runtime.object.getPrototypeOf(value))
+        if owner is not runtime.undefined:
+            return owner
+        if runtime.strict_equal(value_type, "object"):
+            value_type = ρσ_python_jstype(value)
     module_namespaces = runtime.reflect.get(
         runtime.global_object, "__sagejs_module_namespaces__"
     )
@@ -6909,6 +7051,7 @@ def _builtins_apply_metaclass_namespace(
         "__python_type__",
         {"value": metaclass, "writable": True, "configurable": True},
     )
+    _builtins_class_metaclasses.set(created, metaclass)
     initializer = _builtins_get_member(
         _builtins_get_member(metaclass, "prototype"),
         "__init__",
@@ -6939,6 +7082,14 @@ def ρσ_apply_metaclass(
     # copy so custom metaclasses can normalize entries before ``type.__new__``
     # without mutating the temporary compiler-generated class.
     namespace = _builtins_namespace_dict(compiled_class).copy()
+    dictionary_descriptor = namespace.get("__dict__")
+    if runtime.instance_of(dictionary_descriptor, _BuiltinsInstanceDictDescriptor) and (
+        dictionary_descriptor.__objclass__ is compiled_class
+    ):
+        # This descriptor belongs to the temporary lowering artifact, not to
+        # the namespace the Python class body supplied to its metaclass.
+        namespace.pop("__dict__")
+    metaclass = _builtins_inherited_metaclass(bases, metaclass)
     # Class construction invokes ``type(metaclass).__call__``.  It must not
     # invoke a ``__call__`` defined *by* the metaclass: that hook constructs
     # instances of the eventual class (RegexLexerMeta is a prominent real
@@ -6956,35 +7107,87 @@ def ρσ_apply_metaclass(
     return created
 
 
+def ρσ_prepare_class(name: Any, bases: Any, metaclass: Any, module: Any) -> Any:
+    """Enter the lazy prepared-namespace path for a non-default metaclass."""
+    selected = _builtins_inherited_metaclass(bases, metaclass)
+    if selected is ρσ_type:
+        return runtime.undefined
+    implementation = __import__("sagejs.class_namespace", fromlist=["prepare"])
+    return implementation.prepare(selected, name, bases, module)
+
+
 def ρσ_apply_inherited_metaclass(
     class_name: _Str,
     bases: Any,
     compiled_class: Any,
 ) -> Any:
     """Apply the non-default metaclass inherited from a base class."""
-    selected = runtime.undefined
-    for base in bases:
-        candidate = _builtins_get_member(base, "__python_type__")
-        if candidate is runtime.undefined or candidate is ρσ_type:
-            continue
-        if selected is runtime.undefined:
-            selected = candidate
-        elif selected is not candidate:
-            raise TypeError(
-                "metaclass conflict: the metaclass of a derived class must "
-                "be a subclass of the metaclasses of all its bases"
-            )
-    if selected is runtime.undefined:
+    selected = _builtins_inherited_metaclass(bases)
+    if selected is ρσ_type:
         return compiled_class
     return ρσ_apply_metaclass(selected, class_name, bases, compiled_class)
 
 
+def ρσ_get_type_slot(candidate: Any, name: _Str) -> Any:
+    """Bind an implicit type slot, ignoring instance attributes.
+
+    Missing slots return `undefined`; present noncallables remain unchanged so
+    the caller's invocation raises normally. Ownership uses the canonical
+    Python type, not writable host `constructor` or instance type markers.
+    """
+    owner = runtime.reflect.apply(ρσ_type, runtime.undefined, [candidate])
+    resolution = _builtins_class_attribute_resolution(owner, name)
+    if resolution is runtime.undefined:
+        return runtime.undefined
+    method = resolution[3]
+    if resolution[2] == _BUILTINS_DESCRIPTOR_NATIVE_GETTER:
+        method = runtime.reflect.apply(method, candidate, [])
+    elif _builtins_get_member(method, "__classmethod__") is True:
+        target = _builtins_get_member(method, "__func__")
+        method = _builtins_bind_python_function(
+            method if target is runtime.undefined else target, owner
+        )
+    elif _builtins_get_member(method, "__staticmethod__") is True:
+        target = _builtins_get_member(method, "__func__")
+        if target is not runtime.undefined:
+            method = target
+    elif _builtins_member_is_function(method, "__get__"):
+        method = _builtins_call_member(method, "__get__", [candidate, owner])
+    elif (
+        runtime.strict_equal(runtime.jstype(method), "function")
+        and not _builtins_is_python_class(method)
+        and _builtins_get_member(method, "__sagejs_callable_instance__") is not True
+        and (
+            resolution[2] == _BUILTINS_DESCRIPTOR_NONDATA
+            or _builtins_get_member(method, "__sagejs_native_method__") is True
+        )
+    ):
+        method = _builtins_bind_python_function(method, candidate)
+    return method
+
+
+def ρσ_class_check_hook(value: Any, candidate: Any, name: _Str) -> Any:
+    """Dispatch a class-check slot, or return `undefined` for structural lookup."""
+    if (
+        name == "__instancecheck__"
+        and runtime.reflect.apply(ρσ_type, runtime.undefined, [value]) is candidate
+    ):
+        return True
+    method = ρσ_get_type_slot(candidate, name)
+    if method is runtime.undefined:
+        return runtime.undefined
+    return ρσ_bool(method(value))
+
+
 def ρσ_issubclass(cls: Any, candidates: Any) -> _Bool:
-    if runtime.array.isArray(candidates):
+    if runtime.array.isArray(candidates) and runtime.object.isFrozen(candidates):
         for candidate in candidates:
             if ρσ_issubclass(cls, candidate):
                 return True
         return False
+    result = ρσ_class_check_hook(cls, candidates, "__subclasscheck__")
+    if result is not runtime.undefined:
+        return result
     if not _builtins_is_python_class(cls) or not _builtins_is_python_class(candidates):
         raise TypeError("issubclass() arg 1 must be a class")
     if cls is candidates:
@@ -6995,7 +7198,12 @@ def ρσ_issubclass(cls: Any, candidates: Any) -> _Bool:
     # class, are subclasses of `object`.
     if candidates is object:
         return True
-    registry = _builtins_get_member(candidates, "_abc_registry")
+    registration = runtime.object.getOwnPropertyDescriptor(candidates, "_abc_registry")
+    registry = (
+        runtime.undefined
+        if registration is runtime.undefined
+        else runtime.reflect.get(registration, "value")
+    )
     if runtime.array.isArray(registry):
         for registered_class in registry:
             if ρσ_issubclass(cls, registered_class):
@@ -8091,117 +8299,16 @@ def _moebius_range(start: Any, stop: Any = None) -> Any:
 runtime.reflect.set(moebius, "range", _moebius_range)
 
 
-_ZETA_BERNOULLI = [
-    0.16666666666666666,
-    -0.03333333333333333,
-    0.023809523809523808,
-    -0.03333333333333333,
-    0.07575757575757576,
-    -0.2531135531135531,
-    1.1666666666666667,
-    -7.092156862745098,
-]
+_special_functions_module_cache = runtime.undefined
 
 
-def _zeta_integer_greater_than_one(value: Any) -> Any:
-    if not runtime.is_exact_integer(value):
-        raise TypeError("the Euler--Maclaurin shortcut requires an integer")
-    s = runtime.number(value)
-    if s <= 1:
-        raise ValueError("the Euler--Maclaurin shortcut requires an integer > 1")
-
-    cutoff = 16
-    answer = 0.0
-    for n in range(1, cutoff):
-        answer += runtime.math.pow(n, -s)
-    answer += runtime.math.pow(cutoff, 1 - s) / (s - 1) + 0.5 * runtime.math.pow(
-        cutoff, -s
-    )
-
-    rising = s
-    factorial = 2.0
-    for index in range(len(_ZETA_BERNOULLI)):
-        if index:
-            rising *= (s + 2 * index - 1) * (s + 2 * index)
-            factorial *= (2 * index + 1) * (2 * index + 2)
-        answer += (
-            _ZETA_BERNOULLI[index]
-            * rising
-            / factorial
-            * runtime.math.pow(cutoff, -(s + 2 * index + 1))
+def _special_functions_module() -> Any:
+    global _special_functions_module_cache
+    if _special_functions_module_cache is runtime.undefined:
+        _special_functions_module_cache = _builtins_default_import(
+            "sagejs.special_functions", fromlist=["complex_gamma"]
         )
-    return answer
-
-
-_riemann_zeta_module_cache = runtime.undefined
-
-
-def _riemann_zeta_module() -> Any:
-    global _riemann_zeta_module_cache
-    if _riemann_zeta_module_cache is runtime.undefined:
-        _riemann_zeta_module_cache = _builtins_default_import(
-            "sagejs.number_fields.riemann_zeta",
-            fromlist=["riemann_zeta"],
-        )
-    return _riemann_zeta_module_cache
-
-
-def _analytic_precision(value: Any) -> Any:
-    if value is None:
-        value = 53
-    precision = runtime.normalize_integer(value)
-    if (
-        runtime.jstype(precision) != "number"
-        or not runtime.number.isSafeInteger(precision)
-        or precision < 16
-    ):
-        raise ValueError("analytic precision must be at least 16 bits")
-    return precision
-
-
-def _analytic_complex_point(field: Any, value: Any) -> Any:
-    if runtime.array.isArray(value) and len(value) == 2:
-        return field(value[0], value[1])
-    try:
-        return field(value)
-    except Exception:
-        evaluator_factory = getattr(value, "_plot_complex_callable", None)
-        if evaluator_factory is not None:
-            evaluator = evaluator_factory([])
-            evaluated = runtime.reflect.apply(evaluator, runtime.undefined, [])
-            real_part = runtime.reflect.get(evaluated, "real")
-            imaginary_part = runtime.reflect.get(evaluated, "imag")
-            if (
-                runtime.jstype(real_part) != "number"
-                or runtime.jstype(imaginary_part) != "number"
-                or not runtime.number.isFinite(real_part)
-                or not runtime.number.isFinite(imaginary_part)
-            ):
-                return _riemann_raise_nonfinite()
-            return field(real_part, imaginary_part)
-        real_part = getattr(value, "real", runtime.undefined)
-        imaginary_part = getattr(value, "imag", runtime.undefined)
-        if (
-            real_part is not runtime.undefined
-            and imaginary_part is not runtime.undefined
-        ):
-            if callable(real_part):
-                real_part = real_part()
-            if callable(imaginary_part):
-                imaginary_part = imaginary_part()
-            try:
-                return field(str(real_part), str(imaginary_part))
-            except Exception:
-                pass
-        raise
-
-
-def _analytic_complex_batch(points: Any, precision: Any) -> Any:
-    if not runtime.array.isArray(points) or len(points) == 0:
-        raise ValueError("analytic points must be a nonempty list or tuple")
-    precision = _analytic_precision(precision)
-    field = runtime.reflect.get(runtime.global_object, "ComplexField")(precision)
-    return field, [_analytic_complex_point(field, point)._native for point in points]
+    return _special_functions_module_cache
 
 
 def complex_gamma_values(points: Any, prec: Any = 53) -> list[Any]:
@@ -8212,19 +8319,13 @@ def complex_gamma_values(points: Any, prec: Any = 53) -> list[Any]:
     implement symbolic gamma or exact integer/half-integer simplification.
     """
 
-    field, native_points = _analytic_complex_batch(points, prec)
-    backend = runtime.flint_backend()
-    evaluator = getattr(backend, "complexGammaValues", runtime.undefined)
-    if evaluator is runtime.undefined:
-        raise RuntimeError("the complex-gamma batch backend is unavailable")
-    native_values = evaluator(native_points, field.precision())
-    return [field._fromNative(value) for value in native_values]
+    return _special_functions_module().complex_gamma_values(points, prec=prec)
 
 
 def complex_gamma(value: Any, prec: Any = 53) -> Any:
     """Numerically evaluate complex gamma in `ComplexField(prec)`."""
 
-    return complex_gamma_values([value], prec=prec)[0]
+    return _special_functions_module().complex_gamma(value, prec=prec)
 
 
 def riemann_xi_values(points: Any, prec: Any = 53) -> list[Any]:
@@ -8236,93 +8337,25 @@ def riemann_xi_values(points: Any, prec: Any = 53) -> list[Any]:
     receipt-backed Arb/Acb batch is available.
     """
 
-    field, native_points = _analytic_complex_batch(points, prec)
-    backend = runtime.flint_backend()
-    evaluator = getattr(backend, "riemannXiValues", runtime.undefined)
-    if evaluator is runtime.undefined:
-        scalar = getattr(backend, "riemannXiStandardValue", runtime.undefined)
-        if scalar is runtime.undefined:
-            raise RuntimeError("the Riemann-xi backend is unavailable")
-        native_values = [scalar(point, field.precision()) for point in native_points]
-    else:
-        native_values = evaluator(native_points, field.precision())
-    two = field(2)
-    return [field._fromNative(value) * two for value in native_values]
+    return _special_functions_module().riemann_xi_values(points, prec=prec)
 
 
 def riemann_xi(value: Any, prec: Any = 53) -> Any:
     """Numerically evaluate no-half-normalized Riemann xi."""
 
-    return riemann_xi_values([value], prec=prec)[0]
-
-
-class _FlintRiemannZetaProvider:
-    def _field(self, precision: Any) -> Any:
-        return runtime.reflect.get(runtime.global_object, "ComplexField")(precision)
-
-    def _point(self, field: Any, value: Any) -> Any:
-        return _analytic_complex_point(field, value)
-
-    def jet(
-        self,
-        value: Any,
-        first_order: Any,
-        count: Any,
-        deflate: Any,
-        precision: Any,
-    ) -> list[Any]:
-        field = self._field(precision)
-        point = self._point(field, value)
-        native_values = runtime.flint_backend().riemannZetaJet(
-            point._native,
-            first_order,
-            count,
-            deflate,
-            precision,
-        )
-        return [field._fromNative(item) for item in native_values]
-
-    def values(
-        self,
-        points: Any,
-        derivative: Any,
-        precision: Any,
-    ) -> list[Any]:
-        if derivative != 0:
-            return [
-                self.jet(point, derivative, 1, False, precision)[0] for point in points
-            ]
-        field = self._field(precision)
-        native_points = [self._point(field, point)._native for point in points]
-        native_values = runtime.flint_backend().riemannZetaValues(
-            native_points, precision
-        )
-        return [field._fromNative(item) for item in native_values]
-
-    def xi(self, value: Any, precision: Any) -> Any:
-        field = self._field(precision)
-        standard = field._fromNative(
-            runtime.flint_backend().riemannXiStandardValue(
-                self._point(field, value)._native, precision
-            )
-        )
-        return standard * 2
-
-
-_flint_riemann_zeta_provider = _FlintRiemannZetaProvider()
-
-
-def _riemann_raise_nonfinite() -> Any:
-    raise ValueError("Riemann-zeta point must be finite")
+    return _special_functions_module().riemann_xi(value, prec=prec)
 
 
 def RiemannZeta(prec: Any = 53) -> Any:
     """Return an arbitrary-precision FLINT/Arb Riemann-zeta evaluator."""
 
-    return _riemann_zeta_module().RiemannZetaEvaluator(
-        prec,
-        provider=_flint_riemann_zeta_provider,
-    )
+    return _special_functions_module().RiemannZeta(prec)
+
+
+def zeta(value: Any, derivative: Any = 0, prec: Any = None) -> Any:
+    """Numerically evaluate the Riemann zeta function or one derivative."""
+
+    return _special_functions_module().zeta(value, derivative=derivative, prec=prec)
 
 
 def kronecker_character(discriminant: Any, reduce: Any = False) -> Any:
@@ -8340,22 +8373,6 @@ def kronecker_character(discriminant: Any, reduce: Any = False) -> Any:
         reduce_radicand=reduce,
         group_factory=group_factory,
     )
-
-
-def zeta(value: Any, derivative: Any = 0, prec: Any = None) -> Any:
-    """Numerically evaluate the Riemann zeta function or one derivative."""
-
-    if (
-        prec is None
-        and runtime.is_exact_integer(value)
-        and runtime.integer_bigint(value) > 1
-        and runtime.integer_bigint(derivative) == 0
-    ):
-        return _zeta_integer_greater_than_one(value)
-    precision = 53 if prec is None else prec
-    if prec is None and hasattr(value, "precision"):
-        precision = value.precision()
-    return RiemannZeta(precision).value(value, derivative=derivative)
 
 
 def _sage_random_word() -> _Int:
@@ -9204,18 +9221,8 @@ search_doc = ρσ_search_doc
 
 def copy(value: Any) -> Any:
     """Return a shallow copy, matching Python's `copy.copy` convenience API."""
-    copier = getattr(value, "__copy__", None)
-    if callable(copier):
-        return copier()
-    copier = getattr(value, "copy", None)
-    if callable(copier):
-        return copier()
-    if isinstance(value, (str, bytes, int, float, complex, tuple, frozenset)):
-        return value
-    try:
-        return type(value)(value)
-    except Exception:
-        raise TypeError("object does not support shallow copying")  # noqa: B904
+    module = _builtins_default_import("sagejs._collection_helpers", fromlist=["copy"])
+    return module.copy(value)
 
 
 def flatten(
@@ -9229,26 +9236,10 @@ def flatten(
     unchanged, while larger values recursively flatten that many nested
     levels. By default only lists and tuples are flattened, matching Sage.
     """
-    use_default_types = ltypes is None
-    answer = []
-    values = list(in_list)
-    pending = []
-    for index in range(len(values) - 1, -1, -1):
-        pending.append((values[index], 0))
-    while pending:
-        value, level = pending.pop()
-        flatten_value = (
-            isinstance(value, (list, tuple))
-            if use_default_types
-            else isinstance(value, ltypes)
-        )
-        if level < max_level and flatten_value:
-            nested = list(value)
-            for index in range(len(nested) - 1, -1, -1):
-                pending.append((nested[index], level + 1))
-        else:
-            answer.append(value)
-    return answer
+    module = _builtins_default_import(
+        "sagejs._collection_helpers", fromlist=["flatten"]
+    )
+    return module.flatten(in_list, ltypes, max_level)
 
 
 def quit(code: Any = None) -> None:
@@ -9332,6 +9323,9 @@ def _builtins_set_type_metadata(cls: Any, name: _Str) -> None:
     runtime.reflect.set(cls, "__name__", name)
     runtime.reflect.set(cls, "__qualname__", name)
     runtime.reflect.set(cls, "__module__", "builtins")
+    # Factory-function annotations are not annotations of the builtin type.
+    runtime.reflect.deleteProperty(cls, "__annotations__")
+    runtime.reflect.deleteProperty(cls, "__annotations_text__")
 
 
 _builtins_set_type_metadata(ρσ_int, "int")
@@ -9371,6 +9365,25 @@ class SageObject:
     def __init__(self) -> None:
         pass
 
+    @classmethod
+    def __subclasshook__(cls: Any, *args: Any) -> Any:
+        return NotImplemented
+
+    def __eq__(self, other: Any) -> Any:
+        return True if runtime.strict_equal(self, other) else NotImplemented
+
+    def __ne__(self, other: Any) -> Any:
+        method = ρσ_get_type_slot(self, "__eq__")
+        answer = method(other)
+        return NotImplemented if answer is NotImplemented else not ρσ_bool(answer)
+
+    def __lt__(self, other: Any) -> Any:
+        return NotImplemented
+
+    __le__ = __lt__
+    __gt__ = __lt__
+    __ge__ = __lt__
+
     def __dir__(self) -> list[_Str]:
         return ρσ_default_dir(self)
 
@@ -9392,6 +9405,9 @@ class SageObject:
 
     def __hash__(self) -> _Int:
         return id(self)
+
+
+_builtins_prototype_owners.set(runtime.reflect.get(SageObject, "prototype"), SageObject)
 
 
 def _builtins_object_new(cls: Any) -> Any:
@@ -9418,16 +9434,7 @@ def _builtins_object_new(cls: Any) -> Any:
 
 
 def _builtins_replace_instance_dict(instance: Any, namespace: Any) -> None:
-    """Replace an instance namespace while preserving its host identity."""
-    if not _builtins_member_is_function(namespace, "items"):
-        raise TypeError("__dict__ must be set to a dictionary")
-    for key in list(runtime.object.keys(instance)):
-        runtime.reflect.deleteProperty(instance, key)
-    for pair in namespace.items():
-        key = pair[0]
-        if not runtime.strict_equal(runtime.jstype(key), "string"):
-            raise TypeError("__dict__ keys must be strings")
-        runtime.reflect.set(instance, key, pair[1])
+    return _builtins_namespace_module()._replace_function_namespace(instance, namespace)
 
 
 @runtime.native_method
@@ -9441,38 +9448,38 @@ def _builtins_object_setattr(
     if name == "__class__":
         if not _builtins_is_python_class(value):
             raise TypeError("__class__ must be set to a class")
-        runtime.object.setPrototypeOf(self, runtime.reflect.get(value, "prototype"))
-        return
-    if name == "__dict__":
-        _builtins_replace_instance_dict(self, value)
+        _builtins_change_instance_class(self, value)
         return
     descriptor_info = _builtins_class_attribute_descriptor(
-        _builtins_get_member(self, "constructor"), name
+        _builtins_attribute_owner(self), name
     )
     if descriptor_info is not runtime.undefined:
         descriptor = runtime.reflect.get(descriptor_info, "value")
         if _builtins_member_is_function(descriptor, "__set__"):
             _builtins_call_member(descriptor, "__set__", [self, value])
             return
-    runtime.reflect.set(self, name, value)
+    if not _builtins_store_instance_attribute(self, name, value):
+        runtime.reflect.set(self, name, value)
 
 
 @runtime.native_method
 def _builtins_object_delattr(self: Any, name: _Str) -> None:
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
-    property_deleter = _builtins_get_member(self, "ρσ_property_deleter_" + name)
+    property_deleter = _builtins_native_property_deleter(self, name)
     if runtime.strict_equal(runtime.jstype(property_deleter), "function"):
         runtime.reflect.apply(property_deleter, self, [])
         return
     descriptor_info = _builtins_class_attribute_descriptor(
-        _builtins_get_member(self, "constructor"), name
+        _builtins_attribute_owner(self), name
     )
     if descriptor_info is not runtime.undefined:
         descriptor = runtime.reflect.get(descriptor_info, "value")
         if _builtins_member_is_function(descriptor, "__delete__"):
             _builtins_call_member(descriptor, "__delete__", [self])
             return
+    if _builtins_delete_instance_attribute(self, name):
+        return
     has_own = runtime.reflect.apply(
         runtime.object.prototype.hasOwnProperty,
         self,
@@ -9482,49 +9489,17 @@ def _builtins_object_delattr(self: Any, name: _Str) -> None:
         raise AttributeError("object has no attribute '" + name + "'")
 
 
-runtime.reflect.set(
-    SageObject,
-    "__new__",
-    _builtins_object_new,
-)
-runtime.reflect.set(
-    _builtins_object_new,
-    "__staticmethod__",
-    True,
-)
-runtime.reflect.set(
-    SageObject,
-    "__setattr__",
-    _builtins_object_setattr,
-)
-runtime.reflect.set(
-    SageObject,
-    "__delattr__",
-    _builtins_object_delattr,
-)
+runtime.reflect.set(_builtins_object_new, "__staticmethod__", True)
 _sage_object_prototype = runtime.reflect.get(SageObject, "prototype")
+for _object_owner in (SageObject, _sage_object_prototype):
+    for _object_name, _object_method in [
+        ("__new__", _builtins_object_new),
+        ("__setattr__", _builtins_object_setattr),
+        ("__delattr__", _builtins_object_delattr),
+    ]:
+        runtime.reflect.set(_object_owner, _object_name, _object_method)
 runtime.reflect.set(
-    _sage_object_prototype,
-    "__new__",
-    _builtins_object_new,
-)
-runtime.reflect.set(
-    _sage_object_prototype,
-    "__setattr__",
-    _builtins_object_setattr,
-)
-runtime.reflect.set(
-    _sage_object_prototype,
-    "__delattr__",
-    _builtins_object_delattr,
-)
-runtime.reflect.set(
-    SageObject,
-    "__init__",
-    runtime.reflect.get(
-        runtime.reflect.get(SageObject, "prototype"),
-        "__init__",
-    ),
+    SageObject, "__init__", runtime.reflect.get(_sage_object_prototype, "__init__")
 )
 runtime.set_class_repr(SageObject, "<class 'object'>")
 runtime.reflect.set(SageObject, "__name__", "object")
@@ -9543,9 +9518,7 @@ runtime.reflect.set(
     _type_bases,
 )
 runtime.reflect.set(ρσ_type, "__mro__", _type_mro)
-runtime.reflect.set(ρσ_type, "__module__", "builtins")
-runtime.reflect.set(ρσ_type, "__name__", "type")
-runtime.reflect.set(ρσ_type, "__qualname__", "type")
+_builtins_set_type_metadata(ρσ_type, "type")
 _object_bases = runtime.reflect.get(SageObject, "__bases__")
 runtime.object.freeze(_object_bases)
 runtime.object.freeze(
@@ -9569,8 +9542,7 @@ runtime.object.defineProperty(
     {"value": ρσ_type, "writable": True, "configurable": True},
 )
 runtime.set_class_repr(ρσ_range, "<class 'range'>")
-runtime.reflect.set(ρσ_range, "__name__", "range")
-runtime.reflect.set(ρσ_range, "__qualname__", "range")
+_builtins_set_type_metadata(ρσ_range, "range")
 
 
 class _SageModuleType:
@@ -9603,7 +9575,6 @@ hex = ρσ_hex
 oct = ρσ_oct
 hash = ρσ_hash
 callable = ρσ_callable
-classmethod = ρσ_classmethod
 staticmethod = ρσ_staticmethod
 enumerate = ρσ_enumerate
 tuple = ρσ_tuple
@@ -9629,56 +9600,45 @@ def _builtins_tuple_new(
 runtime.reflect.set(_builtins_tuple_new, "__staticmethod__", True)
 runtime.reflect.set(tuple, "__new__", _builtins_tuple_new)
 runtime.reflect.set(_tuple_prototype, "__new__", _builtins_tuple_new)
-runtime.reflect.set(
-    _tuple_prototype, "__init__", runtime.native_method(_builtins_tuple_subclass_init)
-)
-runtime.reflect.set(
-    _tuple_prototype, "__len__", runtime.native_method(_builtins_tuple_subclass_len)
-)
-runtime.reflect.set(
-    _tuple_prototype, "__iter__", runtime.native_method(_builtins_tuple_subclass_iter)
-)
-runtime.reflect.set(
-    _tuple_prototype,
-    runtime.iterator_symbol,
-    runtime.native_method(_builtins_tuple_subclass_iter),
-)
-runtime.reflect.set(
-    _tuple_prototype,
-    "__getitem__",
-    runtime.native_method(_builtins_tuple_subclass_getitem),
-)
-runtime.reflect.set(
-    _tuple_prototype, "__repr__", runtime.native_method(_builtins_tuple_subclass_repr)
-)
-runtime.reflect.set(
-    _tuple_prototype, "__str__", runtime.native_method(_builtins_tuple_subclass_repr)
-)
-runtime.reflect.set(
-    _tuple_prototype, "toString", runtime.native_method(_builtins_tuple_subclass_repr)
-)
-runtime.reflect.set(
-    _tuple_prototype, "__eq__", runtime.native_method(_builtins_tuple_subclass_eq)
-)
-runtime.reflect.set(
-    _tuple_prototype, "__add__", runtime.native_method(_builtins_tuple_subclass_add)
-)
-runtime.reflect.set(
-    _tuple_prototype, "__mul__", runtime.native_method(_builtins_tuple_subclass_mul)
-)
-runtime.reflect.set(
-    _tuple_prototype, "__rmul__", runtime.native_method(_builtins_tuple_subclass_mul)
-)
-runtime.reflect.set(
-    _tuple_prototype, "count", runtime.native_method(_builtins_tuple_count)
-)
-runtime.reflect.set(
-    _tuple_prototype, "index", runtime.native_method(_builtins_tuple_index)
-)
+for _tuple_names, _tuple_implementation in [
+    (("__init__",), _builtins_tuple_subclass_init),
+    (("__len__",), _builtins_tuple_subclass_len),
+    (("__iter__", runtime.iterator_symbol), _builtins_tuple_subclass_iter),
+    (("__getitem__",), _builtins_tuple_subclass_getitem),
+    (("__repr__", "__str__", "toString"), _builtins_tuple_subclass_repr),
+    (("__eq__",), _builtins_tuple_subclass_eq),
+    (("__add__",), _builtins_tuple_subclass_add),
+    (("__mul__", "__rmul__"), _builtins_tuple_subclass_mul),
+    (("count",), _builtins_tuple_count),
+    (("index",), _builtins_tuple_index),
+]:
+    for _tuple_name in _tuple_names:
+        runtime.reflect.set(
+            _tuple_prototype, _tuple_name, runtime.native_method(_tuple_implementation)
+        )
 runtime.reflect.set(tuple, "count", _builtins_tuple_count)
 runtime.reflect.set(tuple, "index", _builtins_tuple_index)
 issubclass = ρσ_issubclass
-isinstance = ρσ_instanceof  # type: ignore[name-defined]  # noqa: F821
+# `super` is a Python builtin but a reserved JavaScript identifier. Publish
+# the public spelling as an actual namespace member, not a resolver rewrite.
+# Keep the source parseable by stage zero, which reserves this spelling.
+# Public writes/deletion belong to a separate configurable host property.
+runtime.reflect.set(runtime.global_object, "super", ρσ_py_super)
+
+
+def isinstance(*values: Any) -> _Bool:
+    # Bootstrap functions do not receive the ordinary Python argument-checking
+    # preamble. Validate the public boundary before invoking the internal helper.
+    if len(values) != 2:
+        raise TypeError("isinstance expected 2 arguments, got " + str(len(values)))
+    # The internal module is initialized after builtins. Resolve its helper
+    # when called, rather than capturing an undefined bootstrap-time alias.
+    return ρσ_instanceof_one(values[0], values[1])  # type: ignore[name-defined]  # noqa: F821
+
+
+runtime.reflect.set(isinstance, "__positional_only__", 2)
+runtime.reflect.set(isinstance, "__argnames__", ["value", "classinfo"])
+runtime.reflect.deleteProperty(isinstance, "__varargs__")
 iter = ρσ_iter
 next = ρσ_next
 reversed = ρσ_reversed
@@ -9797,82 +9757,27 @@ runtime.register_doc(
 )
 compile = ρσ_compile
 exec = ρσ_exec
-_integer_is_irreducible_native = runtime.native_method(_builtins_integer_is_irreducible)
-_integer_is_one_native = runtime.native_method(_builtins_integer_is_one)
-_integer_is_square_native = runtime.native_method(_builtins_integer_is_square)
-_integer_digits_native = runtime.native_method(_builtins_integer_digits)
-_integer_bits_native = runtime.native_method(_builtins_integer_bits)
-_integer_nbits_native = runtime.native_method(_builtins_integer_nbits)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.number, "prototype"),
-    "is_irreducible",
-    _integer_is_irreducible_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, "prototype"),
-    "is_irreducible",
-    _integer_is_irreducible_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.number, "prototype"),
-    "is_one",
-    _integer_is_one_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, "prototype"),
-    "is_one",
-    _integer_is_one_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.number, "prototype"),
-    "is_square",
-    _integer_is_square_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, "prototype"),
-    "is_square",
-    _integer_is_square_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.number, "prototype"),
-    "digits",
-    _integer_digits_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, "prototype"),
-    "digits",
-    _integer_digits_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.number, "prototype"),
-    "bits",
-    _integer_bits_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, "prototype"),
-    "bits",
-    _integer_bits_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.number, "prototype"),
-    "nbits",
-    _integer_nbits_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, "prototype"),
-    "nbits",
-    _integer_nbits_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.number, "prototype"),
-    "bit_length",
-    _integer_nbits_native,
-)
-runtime.reflect.set(
-    runtime.reflect.get(runtime.bigint, "prototype"),
-    "bit_length",
-    _integer_nbits_native,
-)
+# Share each native adapter across both integer representations and aliases.
+for _integer_names, _integer_implementation in [
+    (("is_irreducible",), _builtins_integer_is_irreducible),
+    (("is_one",), _builtins_integer_is_one),
+    (("is_square",), _builtins_integer_is_square),
+    (("digits",), _builtins_integer_digits),
+    (("bits",), _builtins_integer_bits),
+    (("nbits", "bit_length"), _builtins_integer_nbits),
+]:
+    _integer_adapter = runtime.native_method(_integer_implementation)
+    for _integer_name in _integer_names:
+        runtime.reflect.set(
+            runtime.reflect.get(runtime.number, "prototype"),
+            _integer_name,
+            _integer_adapter,
+        )
+        runtime.reflect.set(
+            runtime.reflect.get(runtime.bigint, "prototype"),
+            _integer_name,
+            _integer_adapter,
+        )
 runtime.reflect.set(runtime.global_object, "true", True)
 runtime.reflect.set(runtime.global_object, "false", False)
 runtime.reflect.set(runtime.global_object, "ρσ_py_true", True)

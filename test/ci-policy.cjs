@@ -12,7 +12,23 @@ const workflow = readFileSync(
 );
 
 test("routine CI cancels superseded runs and fails the platform matrix fast", () => {
-  assert.match(workflow, /cancel-in-progress: true/);
+  const { parseWorkflow } = require("../scripts/release/workflow-inventory.cjs");
+  const parsed = parseWorkflow(workflow, "ci.yml");
+  const expression = parsed.concurrency["cancel-in-progress"];
+  assert.equal(typeof expression, "string");
+  const evaluate = Function("github", "inputs", "startsWith",
+    `return (${expression.slice(3, -2)});`);
+  for (const [ref, publish_prepared, expected] of [
+    ["refs/heads/main", false, true],
+    ["refs/pull/123/merge", false, true],
+    ["refs/tags/v0.8.0", false, false],
+    ["refs/heads/release-candidate", true, false],
+    ["refs/tags/v0.8.0", true, false],
+  ]) {
+    assert.equal(evaluate({ ref }, { publish_prepared }, (s, prefix) => s.startsWith(prefix)),
+      expected, `cancellation policy for ${ref}, publication=${publish_prepared}`);
+  }
+  assert.equal(parsed.jobs["publish-prepared"].concurrency["cancel-in-progress"], false);
   assert.match(workflow, /^  routine:/m);
   assert.match(workflow, /^  platform-smoke:/m);
   assert.match(workflow, /fail-fast: true/);
@@ -78,15 +94,24 @@ test("routine gate does not build native dependencies or SEA executables", () =>
 });
 
 test("release jobs reuse one required native bootstrap", () => {
+  const stages = require("../scripts/release/stages.cjs").plan("native", "bootstrap,native,native-performance,sea");
+  assert.deepEqual(stages.map((stage) => stage.commands), [
+    [["pnpm", "bootstrap", "--without-sea"], ["pnpm", "python:precompile:run"],
+      ["node", "scripts/release/prepare-test-runtime.cjs"]],
+    [["pnpm", "test:native:correctness:run"]],
+    [["pnpm", "test:native:performance:run"]],
+    [["pnpm", "test:sea:reuse"]],
+  ]);
   for (const job of ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]) {
     const start = workflow.indexOf(`  ${job}:`);
     const nextJob = workflow.slice(start + 3).search(/^  [a-z][a-z0-9-]*:/m);
     const end = nextJob === -1 ? workflow.length : start + 3 + nextJob;
     const section = workflow.slice(start, end);
     assert.match(section, /SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"/);
-    assert.match(section, /pnpm bootstrap/);
-    assert.match(section, /pnpm test:native:run/);
-    assert.match(section, /pnpm test:sea:reuse/);
+    for (const stage of ["bootstrap", "native,native-performance", "sea"]) {
+      const command = 'pnpm release:run --candidate "${{ github.sha }}" --stage ' + stage;
+      assert.equal(section.split(command).length - 1, 1, `${job} runs ${stage} once through the shared runner`);
+    }
     assert.doesNotMatch(section, /run: pnpm test:native\s*$/m);
     assert.doesNotMatch(section, /run: pnpm test:sea\s*$/m);
   }

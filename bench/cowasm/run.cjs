@@ -20,6 +20,7 @@ const {
   tmpdir,
 } = require("node:os");
 const { join, resolve } = require("node:path");
+const { pythonExecutable } = require("../../tools/python-executable.cjs");
 const {
   classifyMeasurement,
   validatePolicy,
@@ -53,7 +54,8 @@ Options:
   --help                   Show this help
 
 Sage.js always runs in Python mode. Performance mode compares Sage.js with
-SAGEJS_COWASM_PYTHON (default: python3), plus any --runtime entries.
+SAGEJS_COWASM_PYTHON (otherwise SAGEJS_REFERENCE_PYTHON, PYTHON, then
+python on Windows or python3 elsewhere), plus any --runtime entries.
 For example, add SageLite with --runtime sagelite=/path/to/sagelite.`);
 }
 
@@ -708,7 +710,7 @@ function main() {
       {
         key: "python",
         label: "CPython",
-        command: process.env.SAGEJS_COWASM_PYTHON || "python3",
+        command: process.env.SAGEJS_COWASM_PYTHON || pythonExecutable(),
         args: [source],
         corpusArguments:
           benchmarkNames.length === allBenchmarkNames.length

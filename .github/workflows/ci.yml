@@ -4,11 +4,19 @@ on:
   push:
     branches:
       - main
-    tags:
-      - "v*"
   pull_request:
   workflow_dispatch:
     inputs:
+      qualify_release:
+        description: Full signed release qualification without publication (all native targets)
+        required: false
+        default: false
+        type: boolean
+      candidate_sha:
+        description: Exact full commit SHA required with qualify_release
+        required: false
+        default: ""
+        type: string
       platform_smoke:
         description: Run the Linux arm64, macOS arm64, and Windows x64 smoke matrix
         required: false
@@ -19,16 +27,16 @@ on:
         required: false
         default: all
         type: string
-      recovery_run_id:
-        description: Completed tagged CI run whose original publish job should be rerun
+      prepared_request:
+        description: Exact frozen artifact and native inspection request JSON; no producer builds
         required: false
         default: ""
         type: string
-      recovery_tag:
-        description: Immutable release tag built by recovery_run_id
+      publish_prepared:
+        description: Publish verified prepared products using the protected environment (default is verification only)
         required: false
-        default: ""
-        type: string
+        default: false
+        type: boolean
   schedule:
     - cron: "17 4 * * 1"
 
@@ -36,13 +44,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: sagejs-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: sagejs-ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.publish_prepared && 'publication' || 'validation' }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') && !inputs.publish_prepared }}
 
 jobs:
   routine:
     name: Routine gate (Linux x64)
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.recovery_run_id == '' }}
+    if: ${{ !inputs.prepared_request && !inputs.publish_prepared }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
@@ -64,6 +72,11 @@ jobs:
         with:
           node-version: 26.5.1
           cache: pnpm
+
+      - name: Validate the explicit qualification request
+        env:
+          SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
+        run: node scripts/release/candidate-mode.cjs native
 
       - name: Install the pinned dependency graph
         run: pnpm install --frozen-lockfile
@@ -102,6 +115,10 @@ jobs:
           node-version: 26.5.1
           cache: pnpm
 
+      - name: Reject pending numerical release qualification before preparation
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
+        run: node scripts/release/source-preflight.cjs --numerical-eligibility
+
       - run: pnpm install --frozen-lockfile
 
       - id: toolchain
@@ -123,8 +140,8 @@ jobs:
           node scripts/numerical-product.cjs publish \
             --output build/authenticated-numerical-product
 
-      - name: Require source-current qualified NLopt for a tagged product
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Require source-current qualified NLopt for a release product or candidate
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: >-
           node
           src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs
@@ -364,7 +381,7 @@ jobs:
       - name: Bootstrap the complete native system
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm bootstrap
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage bootstrap
 
       - name: Execute the resident exact native witness
         run: node --test test/native-rank-four-lattice-workspace.cjs
@@ -392,8 +409,8 @@ jobs:
       - name: Run unit, host integration, and native tests
         run: |
           pnpm test:unit
-          pnpm test:integration:run
-          pnpm test:native:run
+          pnpm release:run --candidate "${{ github.sha }}" --stage integration,integration-performance
+          pnpm release:run --candidate "${{ github.sha }}" --stage native,native-performance
           pnpm --dir packages/flint test:eclib:corpus
           pnpm test:installer
           pnpm test:release
@@ -425,7 +442,7 @@ jobs:
       - name: Build and relocation-test both SEA executables
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm test:sea:reuse
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage sea
 
       - name: Exercise the SEA Jupyter wire protocol
         run: pnpm test:jupyter:sea
@@ -447,10 +464,14 @@ jobs:
           unit, host integration, native, and SEA tests are blocking.
           EOF
 
-      - name: Validate tagged release metadata and installer
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Validate release metadata and installer
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: |
-          pnpm test:release -- --tag "$GITHUB_REF_NAME"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            pnpm test:release -- --tag "$GITHUB_REF_NAME"
+          else
+            pnpm test:release
+          fi
           pnpm test:installer
 
       - name: Package the Linux x64 SEA distribution
@@ -470,14 +491,14 @@ jobs:
           cp install.sh build/release/install.sh
 
       - name: Cache authenticated numerical oracle inputs
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/cache@v6
         with:
           path: build/numerical-scipy-downloads
           key: numerical-scipy-linux-x64-${{ hashFiles('bench/numerical-computing/qualification/scipy-oracle-catalog.json') }}
 
       - name: Provision the hermetic numerical oracle
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: |
           mkdir -p build/numerical-scipy-downloads build/numerical-scipy
           pnpm release:qualify:numerics:oracle -- \
@@ -489,7 +510,7 @@ jobs:
           echo "SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$(pwd)/build/numerical-scipy/provenance.json" >> "$GITHUB_ENV"
 
       - name: Collect exact Linux x64 numerical product rows
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: |
           pnpm release:qualify:numerics:platform -- \
             --candidate "$(git rev-parse HEAD)" \
@@ -499,7 +520,7 @@ jobs:
             --output build/numerical-qualification/platform/linux-x64
 
       - name: Upload Linux x64 numerical qualification
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/upload-artifact@v7
         with:
           name: numerical-qualification-linux-x64
@@ -598,7 +619,7 @@ jobs:
       - name: Bootstrap the complete native system
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm bootstrap
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage bootstrap
 
       - name: Execute the resident exact native witness
         run: node --test test/native-rank-four-lattice-workspace.cjs
@@ -616,7 +637,7 @@ jobs:
       - name: Run portable and native tests
         run: |
           pnpm test:portable
-          pnpm test:native:run
+          pnpm release:run --candidate "${{ github.sha }}" --stage native,native-performance
 
       # These public finite-extension fixtures require the installed native
       # backend and therefore are not members of the addon-free portable tier.
@@ -625,6 +646,12 @@ jobs:
         run: >-
           node --test --test-concurrency=1
           test/extension-field-coordinates.cjs
+          test/extension-field-enumeration.cjs
+          test/extension-field-capabilities.cjs
+          test/extension-sparse-polynomial.cjs
+          test/extension-polynomial-resource-ffi.cjs
+          test/extension-polynomial-resource-kernels.cjs
+          test/extension-mpoly-resource-ffi.cjs
           test/extension-multivariate.cjs
           test/generic-groebner.cjs
           test/extension-ideals.cjs
@@ -633,7 +660,7 @@ jobs:
       - name: Build and relocation-test both SEA executables
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm test:sea:reuse
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage sea
 
       - name: Package the Linux arm64 SEA distribution
         run: |
@@ -650,14 +677,14 @@ jobs:
           pnpm package:native-npm linux-arm64 build/sea/sagejs build/sea/sagepython
 
       - name: Cache authenticated numerical oracle inputs
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/cache@v6
         with:
           path: build/numerical-scipy-downloads
           key: numerical-scipy-linux-arm64-${{ hashFiles('bench/numerical-computing/qualification/scipy-oracle-catalog.json') }}
 
       - name: Provision the hermetic numerical oracle
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: |
           mkdir -p build/numerical-scipy-downloads build/numerical-scipy
           pnpm release:qualify:numerics:oracle -- \
@@ -669,7 +696,7 @@ jobs:
           echo "SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$(pwd)/build/numerical-scipy/provenance.json" >> "$GITHUB_ENV"
 
       - name: Collect exact Linux arm64 numerical product rows
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: |
           pnpm release:qualify:numerics:platform -- \
             --candidate "$(git rev-parse HEAD)" \
@@ -679,7 +706,7 @@ jobs:
             --output build/numerical-qualification/platform/linux-arm64
 
       - name: Upload Linux arm64 numerical qualification
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/upload-artifact@v7
         with:
           name: numerical-qualification-linux-arm64
@@ -735,6 +762,19 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+
+      - name: Provision native XZ for release transport tests
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'sagejs-xz-5.8.3'
+          $archive = "$tools.zip"
+          Invoke-WebRequest -Uri 'https://github.com/tukaani-project/xz/releases/download/v5.8.3/xz-5.8.3-windows.zip' -OutFile $archive -TimeoutSec 90
+          if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLower() -ne '8d0048ee51177b11ef1613959c2a268c951f4e7f6fb3706e681e00e34bb6d5e3') {
+            throw 'XZ controller tool checksum mismatch'
+          }
+          Expand-Archive -LiteralPath $archive -DestinationPath $tools -Force
+          Join-Path $tools 'bin_x86-64' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Ensure Visual Studio clang-cl is installed
         shell: pwsh
@@ -813,7 +853,7 @@ jobs:
       - name: Bootstrap the compiler and native mathematics stack
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm bootstrap --without-sea
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage bootstrap
 
       - name: Execute the resident exact native witness
         run: node --test test/native-rank-four-lattice-workspace.cjs
@@ -826,18 +866,18 @@ jobs:
 
       - name: Run host integration tests
         timeout-minutes: 75
-        run: pnpm test:integration:run
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage integration,integration-performance
 
       - name: Run native addon tests
-        run: pnpm test:native:run
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage native,native-performance
 
       - name: Build and relocation-test both Windows SEA executables
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm test:sea:reuse
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage sea
 
       - name: Authenticate to Azure Artifact Signing
-        if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
         uses: azure/login@v3
         with:
           client-id: ${{ secrets.SAGEJS_AZURE_CLIENT_ID }}
@@ -845,7 +885,7 @@ jobs:
           subscription-id: ${{ secrets.SAGEJS_AZURE_SUBSCRIPTION_ID }}
 
       - name: Sign with Azure Artifact Signing
-        if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
         uses: azure/artifact-signing-action@v2
         with:
           endpoint: ${{ vars.SAGEJS_ARTIFACT_SIGNING_ENDPOINT }}
@@ -858,18 +898,18 @@ jobs:
           timestamp-digest: SHA256
 
       - name: Verify Azure-signed Windows executables
-        if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
         run: pwsh -File scripts/sign-windows.ps1 -VerifyOnly
 
-      - name: Authenticode-sign tagged Windows executables with a PFX
-        if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'pfx'
+      - name: Authenticode-sign Windows release or candidate executables with a PFX
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'pfx'
         env:
           SAGEJS_WINDOWS_CERTIFICATE_PFX_BASE64: ${{ secrets.SAGEJS_WINDOWS_CERTIFICATE_PFX_BASE64 }}
           SAGEJS_WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.SAGEJS_WINDOWS_CERTIFICATE_PASSWORD }}
         run: pnpm release:windows:sign
 
       - name: Record the Windows signing policy
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         shell: pwsh
         env:
           SIGNING_MODE: ${{ vars.SAGEJS_WINDOWS_SIGNING_MODE }}
@@ -903,14 +943,14 @@ jobs:
         run: pnpm package:native-npm windows-x64 build/sea/sagejs.exe build/sea/sagepython.exe
 
       - name: Cache authenticated numerical oracle inputs
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/cache@v6
         with:
           path: build/numerical-scipy-downloads
           key: numerical-scipy-windows-x64-${{ hashFiles('bench/numerical-computing/qualification/scipy-oracle-catalog.json') }}
 
       - name: Provision the hermetic numerical oracle
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force build/numerical-scipy-downloads,build/numerical-scipy | Out-Null
@@ -924,7 +964,7 @@ jobs:
           "SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$root\build\numerical-scipy\provenance.json" >> $env:GITHUB_ENV
 
       - name: Collect exact Windows x64 numerical product rows
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         shell: pwsh
         run: |
           $candidate = git rev-parse HEAD
@@ -936,7 +976,7 @@ jobs:
             --output build/numerical-qualification/platform/windows-x64
 
       - name: Upload Windows x64 numerical qualification
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/upload-artifact@v7
         with:
           name: numerical-qualification-windows-x64
@@ -1045,7 +1085,7 @@ jobs:
       - name: Bootstrap the compiler and native mathematics stack
         env:
           SAGEJS_BUILD_JOBS: "6"
-        run: pnpm bootstrap --without-sea
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage bootstrap
 
       - name: Execute the resident exact native witness
         run: node --test test/native-rank-four-lattice-workspace.cjs
@@ -1058,23 +1098,23 @@ jobs:
           PYTHON: python3
         run: |
           pnpm test:portable
-          pnpm test:integration:run
-          pnpm test:native:run
+          pnpm release:run --candidate "${{ github.sha }}" --stage integration,integration-performance
+          pnpm release:run --candidate "${{ github.sha }}" --stage native,native-performance
 
       - name: Build and relocation-test both macOS SEA executables
         env:
           SAGEJS_BUILD_JOBS: "6"
-        run: pnpm test:sea:reuse
+        run: pnpm release:run --candidate "${{ github.sha }}" --stage sea
 
       - name: Cache authenticated numerical oracle inputs
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/cache@v6
         with:
           path: build/numerical-scipy-downloads
           key: numerical-scipy-macos-arm64-${{ hashFiles('bench/numerical-computing/qualification/scipy-oracle-catalog.json') }}
 
       - name: Provision the hermetic numerical oracle
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: |
           mkdir -p build/numerical-scipy-downloads build/numerical-scipy
           pnpm release:qualify:numerics:oracle -- \
@@ -1086,7 +1126,7 @@ jobs:
           echo "SAGEJS_QUALIFICATION_SCIPY_PROVENANCE=$(pwd)/build/numerical-scipy/provenance.json" >> "$GITHUB_ENV"
 
       - name: Collect the exact macOS Node numerical row
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         run: |
           pnpm release:qualify:numerics:platform -- \
             --candidate "$(git rev-parse HEAD)" \
@@ -1094,7 +1134,7 @@ jobs:
             --output build/numerical-qualification/platform/macos-arm64
 
       - name: Upload macOS numerical signing inputs
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-macos-arm64-qualification-input
@@ -1106,7 +1146,7 @@ jobs:
           retention-days: 14
 
       - name: Upload validated macOS executables for signing
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         uses: actions/upload-artifact@v7
         with:
           name: sagejs-macos-arm64-unsigned
@@ -1119,7 +1159,7 @@ jobs:
 
   macos-sign:
     name: Sign and notarize macOS arm64 release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
     needs: [macos-arm64, public-npm-root]
     runs-on: macos-15
     timeout-minutes: 120
@@ -1264,7 +1304,7 @@ jobs:
 
   numerical-browser-qualification:
     name: Numerical browser and supplemental qualification
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
     needs: [linux-x64, numerical-product, public-npm-root]
     runs-on: ubuntu-24.04
     timeout-minutes: 240
@@ -1380,12 +1420,13 @@ jobs:
             dist/numerical
             packages/flint-wasm/dist
             packages/flint-wasm/numerical/build
+            src/lib/sagejs/numerics/optimization/backends/nlopt/build
           if-no-files-found: error
           retention-days: 14
 
   numerical-release-gate:
     name: Numerical release qualification gate
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
     needs:
       - linux-x64
       - linux-arm64
@@ -1460,6 +1501,9 @@ jobs:
             --public-npm-root build/release/npm/sagejs.tgz \
             --browser-distribution packages/flint-wasm/dist
 
+      - name: Preserve generated inputs required by numerical reconstruction
+        run: node scripts/release/numerical-support.cjs
+
       - name: Preserve the final numerical release evidence
         uses: actions/upload-artifact@v7
         with:
@@ -1478,275 +1522,162 @@ jobs:
             build/numerical-qualification/platform
             build/numerical-qualification/browser/rows
             build/numerical-qualification/browser/supplemental
+            build/numerical-qualification/support/build/sea/sagejs
+            build/numerical-qualification/support/dist/numerical
+            build/numerical-qualification/support/packages/flint-wasm/numerical/build
+            build/numerical-qualification/support/src/lib/sagejs/numerics/optimization/backends/nlopt/build
           if-no-files-found: error
           retention-days: 90
 
-  publish-release:
-    name: Publish tagged GitHub and npm release
-    if: startsWith(github.ref, 'refs/tags/v')
+  native-product-acceptance:
+    name: Sage.js native product acceptance v1
+    # Run even when a prerequisite failed. Only tags and explicit full candidate
+    # campaigns include signing/numerical gates; partial manual runs do not.
+    if: ${{ always() && !inputs.prepared_request && !inputs.publish_prepared && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release)) }}
     needs:
+      - routine
+      - numerical-product
+      - public-npm-root
+      - linux-x64
+      - linux-arm64
+      - windows-x64
+      - macos-arm64
+      - macos-sign
+      - numerical-browser-qualification
       - numerical-release-gate
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+      - name: Require every product prerequisite
+        env:
+          SAGEJS_PRODUCT_NEEDS: ${{ toJSON(needs) }}
+        run: node scripts/release/product-prerequisites.cjs native
+
+
+  verify-prepared:
+    name: Verify exact prepared release artifacts
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.prepared_request && !inputs.publish_prepared }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Check out the reviewed publication control
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: control
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+          package_json_file: control/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+      - name: Install control dependencies without building products
+        working-directory: control
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Admit the exact prepared request
+        id: request
+        env:
+          SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
+        run: |
+          node control/scripts/release/publish-prepared.cjs admit > "$RUNNER_TEMP/prepared-request.json"
+          echo "sha=$(jq -r .sourceRevision "$RUNNER_TEMP/prepared-request.json")" >>"$GITHUB_OUTPUT"
+      - name: Check out the unchanged product source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.request.outputs.sha }}
+          fetch-depth: 0
+          path: candidate
+      - name: Verify the frozen artifact set
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/sagejs-prepared-artifacts"
+          node control/scripts/release/publish-prepared.cjs "$GITHUB_WORKSPACE/candidate" "$RUNNER_TEMP/sagejs-prepared-artifacts"
+      - name: Retain preparation and publication progress
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-verify-prepared-attempt-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/prepared-request.json
+            ${{ runner.temp }}/sagejs-prepared-artifacts/prepared-promotion.json
+            ${{ runner.temp }}/sagejs-prepared-artifacts/publication/*.json
+            candidate/build/release-runner/**/*.json
+            candidate/build/release-runner/**/*.log
+          if-no-files-found: ignore
+          retention-days: 90
+
+
+  publish-prepared:
+    name: Publish exact prepared release artifacts
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_prepared }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
     environment: sagejs-release
+    concurrency:
+      group: sagejs-production-publication
+      cancel-in-progress: false
+      queue: max
     permissions:
       actions: read
       contents: write
       id-token: write
-
     steps:
-      - name: Check out the tagged release metadata
+      - name: Check out the reviewed publication control
         uses: actions/checkout@v7
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
+        with:
+          ref: ${{ github.sha }}
+          path: control
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.9.0
-
-      - name: Install Node.js
-        uses: actions/setup-node@v7
+          package_json_file: control/package.json
+      - uses: actions/setup-node@v7
         with:
           node-version: 26.5.1
           registry-url: https://registry.npmjs.org
-
-      - name: Require successful same-tag WebAssembly release
+      - name: Install control dependencies without building products
+        working-directory: control
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Admit the exact prepared request
+        id: request
         env:
-          GH_TOKEN: ${{ github.token }}
+          SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
         run: |
-          runs_file="$(mktemp)"
-          gh api --paginate \
-            "repos/${GITHUB_REPOSITORY}/actions/workflows/wasm-release.yml/runs?event=push&head_sha=${GITHUB_SHA}&per_page=100" \
-            | jq -s '.' > "$runs_file"
-          node scripts/release/require-wasm-release.cjs \
-            --sha "$GITHUB_SHA" --tag "$GITHUB_REF_NAME" < "$runs_file"
-
-      - name: Restore the mandatory numerical release gate
-        uses: actions/download-artifact@v8
-        with:
-          name: numerical-release-gate
-          path: build/validated-numerical-gate
-
-      - name: Restore the complete raw numerical evidence inventory
-        uses: actions/download-artifact@v8
-        with:
-          name: numerical-release-evidence
-          path: build/numerical-qualification
-
-      - name: Restore the canonical public npm root and browser distribution
-        uses: actions/download-artifact@v8
-        with:
-          name: sagejs-public-npm-root
-          path: .
-
-      - name: Download the validated release artifacts
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          mkdir -p release
-          for artifact in \
-            sagejs-linux-x64 \
-            sagejs-linux-arm64 \
-            sagejs-windows-x64 \
-            sagejs-macos-arm64
-          do
-            gh run download "$GITHUB_RUN_ID" --repo "$GH_REPO" \
-              --name "$artifact" --dir release
-          done
-          mkdir -p release/npm
-          cp build/release/npm/sagejs.tgz release/npm/sagejs.tgz
-
-      - name: Rebuild and authenticate the gate and exact public npm root
-        run: |
-          pnpm release:qualify:numerics:gate -- \
-            --candidate "$(git rev-parse HEAD)" \
-            --input build/numerical-qualification \
-            --output build/numerical-qualification/gate
-          pnpm release:qualify:numerics:authenticate -- \
-            --candidate "$(git rev-parse HEAD)" \
-            --gate build/validated-numerical-gate/release-gate.json \
-            --rebuilt-gate build/numerical-qualification/gate/release-gate.json \
-            --public-npm-root release/npm/sagejs.tgz \
-            --browser-distribution packages/flint-wasm/dist
-
-      - name: Create or update the draft GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
-        run: |
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            [[ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" == "true" ]] || {
-              echo "Release $TAG already exists and is not a mutable draft" >&2
-              exit 1
-            }
-          else
-            gh release create "$TAG" \
-              --draft \
-              --verify-tag \
-              --title "Sage.js ${TAG#v} — early alpha" \
-              --notes-file RELEASE_NOTES.md
-          fi
-          mapfile -t assets < <(find release -maxdepth 1 -type f -print | sort)
-          [[ ${#assets[@]} -gt 0 ]] || { echo "No release assets" >&2; exit 1; }
-          gh release upload "$TAG" "${assets[@]}" --clobber
-
-      - name: Publish the platform and public npm packages
-        env:
-          NPM_CONFIG_PROVENANCE: "true"
-        run: |
-          package_version="$(tar -xOzf release/npm/sagejs.tgz package/package.json | \
-            node -e "let text=''; process.stdin.on('data',x=>text+=x); process.stdin.on('end',()=>console.log(JSON.parse(text).version))")"
-          case "${GITHUB_REF_NAME}" in
-            "v${package_version}") ;;
-            "v${package_version}+release."*)
-              recovery="${GITHUB_REF_NAME#v${package_version}+release.}"
-              [[ "$recovery" =~ ^[1-9][0-9]*$ ]] || {
-                echo "Invalid recovery tag ${GITHUB_REF_NAME}" >&2
-                exit 1
-              }
-              ;;
-            *)
-              echo "Tag ${GITHUB_REF_NAME} does not match npm version ${package_version}" >&2
-              exit 1
-              ;;
-          esac
-
-          publish_package() {
-            local archive="$1"
-            local tag="$2"
-            local metadata name version published published_integrity local_integrity tags tagged_version
-            metadata="$(tar -xOzf "$archive" package/package.json)"
-            name="$(node -e 'console.log(JSON.parse(process.argv[1]).name)' "$metadata")"
-            version="$(node -e 'console.log(JSON.parse(process.argv[1]).version)' "$metadata")"
-            [[ "$version" == "$package_version" ]] || {
-              echo "$archive contains ${name}@${version}, expected version ${package_version}" >&2
-              exit 1
-            }
-            local_integrity="$(node -e \
-              'const fs=require("node:fs"),crypto=require("node:crypto"); const bytes=fs.readFileSync(process.argv[1]); console.log(`sha512-${crypto.createHash("sha512").update(bytes).digest("base64")}`)' \
-              "$archive")"
-            if published="$(npm view "${name}@${version}" version --json 2>/dev/null)"; then
-              [[ "$(node -e 'console.log(JSON.parse(process.argv[1]))' "$published")" == "$version" ]] || {
-                echo "Unexpected published version for ${name}@${version}: $published" >&2
-                exit 1
-              }
-              published_integrity="$(npm view "${name}@${version}" dist.integrity --json)"
-              published_integrity="$(node -e \
-                'const value=JSON.parse(process.argv[1]); if(typeof value !== "string") process.exit(1); console.log(value)' \
-                "$published_integrity")"
-              [[ "$published_integrity" == "$local_integrity" ]] || {
-                echo "${name}@${version} exists with different registry integrity" >&2
-                exit 1
-              }
-              tags="$(npm view "$name" dist-tags --json)"
-              tagged_version="$(node -e \
-                'console.log(JSON.parse(process.argv[1])[process.argv[2]] ?? "")' \
-                "$tags" "$tag")"
-              [[ "$tagged_version" == "$version" ]] || {
-                echo "${name}@${version} exists but dist-tag ${tag} points at ${tagged_version:-nothing}" >&2
-                exit 1
-              }
-              echo "${name}@${version} is already published with dist-tag ${tag}; skipping"
-            else
-              npm publish "$archive" \
-                --access public --tag "$tag" --ignore-scripts
-            fi
-          }
-
-          publish_package release/npm/sagejs-linux-x64.tgz linux-x64
-          publish_package release/npm/sagejs-linux-arm64.tgz linux-arm64
-          publish_package release/npm/sagejs-windows-x64.tgz windows-x64
-          publish_package release/npm/sagejs-macos-arm64.tgz macos-arm64
-          publish_package release/npm/sagejs.tgz latest
-
-          wait_for_package() {
-            local archive="$1"
-            local metadata name version encoded
-            metadata="$(tar -xOzf "$archive" package/package.json)"
-            name="$(node -e 'console.log(JSON.parse(process.argv[1]).name)' "$metadata")"
-            version="$(node -e 'console.log(JSON.parse(process.argv[1]).version)' "$metadata")"
-            encoded="$(node -e 'console.log(encodeURIComponent(process.argv[1]))' "$name")"
-            for attempt in {1..120}; do
-              if curl --fail --silent --output /dev/null \
-                "https://registry.npmjs.org/${encoded}/${version}"
-              then
-                echo "Public npm registry serves ${name}@${version}"
-                return
-              fi
-              if (( attempt % 4 == 0 )); then
-                echo "Waiting for npm scanning: ${name}@${version} (${attempt}/120)"
-              fi
-              sleep 15
-            done
-            echo "npm did not make ${name}@${version} public within 30 minutes" >&2
-            exit 1
-          }
-
-          wait_for_package release/npm/sagejs-linux-x64.tgz
-          wait_for_package release/npm/sagejs-linux-arm64.tgz
-          wait_for_package release/npm/sagejs-windows-x64.tgz
-          wait_for_package release/npm/sagejs-macos-arm64.tgz
-          wait_for_package release/npm/sagejs.tgz
-
-      - name: Publish the immutable GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
-        run: gh release edit "$TAG" --draft=false --latest
-
-  recover-publish:
-    name: Re-run a validated release publication
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != '' }}
-    runs-on: ubuntu-24.04
-    permissions:
-      actions: write
-      contents: read
-
-    steps:
-      - name: Check out the immutable recovery tag
+          node control/scripts/release/publish-prepared.cjs admit > "$RUNNER_TEMP/prepared-request.json"
+          echo "sha=$(jq -r .sourceRevision "$RUNNER_TEMP/prepared-request.json")" >>"$GITHUB_OUTPUT"
+      - name: Check out the unchanged product source
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.recovery_tag }}
-
-      - name: Authenticate the source run and rerun its original trusted publisher
+          ref: ${{ steps.request.outputs.sha }}
+          fetch-depth: 0
+          path: candidate
+      - name: Publish the frozen artifact set
         env:
           GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          RECOVERY_RUN_ID: ${{ inputs.recovery_run_id }}
-          RECOVERY_TAG: ${{ inputs.recovery_tag }}
+          SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
         run: |
-          set -euo pipefail
-          [[ "$RECOVERY_RUN_ID" =~ ^[1-9][0-9]*$ ]] || {
-            echo "recovery_run_id must be a positive Actions run ID" >&2
-            exit 1
-          }
-          [[ "$RECOVERY_TAG" == v* ]] || {
-            echo "recovery_tag must be a release tag" >&2
-            exit 1
-          }
-          [[ "$GITHUB_REF_NAME" == "$RECOVERY_TAG" ]] || {
-            echo "Dispatch this recovery at ref $RECOVERY_TAG, not $GITHUB_REF_NAME" >&2
-            exit 1
-          }
-          run_metadata="$(gh api "repos/${GH_REPO}/actions/runs/${RECOVERY_RUN_ID}")"
-          [[ "$(jq -r .name <<<"$run_metadata")" == "Sage.js CI" ]]
-          [[ "$(jq -r .path <<<"$run_metadata")" == ".github/workflows/ci.yml" ]]
-          [[ "$(jq -r .event <<<"$run_metadata")" == "push" ]]
-          [[ "$(jq -r .status <<<"$run_metadata")" == "completed" ]]
-          [[ "$(jq -r '.head_branch // ""' <<<"$run_metadata")" == "$RECOVERY_TAG" ]] || {
-            echo "Source run was not triggered by exact tag $RECOVERY_TAG" >&2
-            exit 1
-          }
-          source_sha="$(jq -r .head_sha <<<"$run_metadata")"
-          tag_sha="$(git rev-list -n 1 "$RECOVERY_TAG")"
-          [[ "$source_sha" == "$tag_sha" && "$tag_sha" == "$(git rev-parse HEAD)" ]] || {
-            echo "Recovery source/tag/checkout SHA mismatch" >&2
-            exit 1
-          }
-          jobs_file="$(mktemp)"
-          gh api --paginate \
-            "repos/${GH_REPO}/actions/runs/${RECOVERY_RUN_ID}/jobs?filter=all&per_page=100" \
-            | jq -s '.' > "$jobs_file"
-          publisher_id="$(node scripts/release/select-recovery-publisher.cjs < "$jobs_file")"
-          gh api --method POST "repos/${GH_REPO}/actions/jobs/${publisher_id}/rerun"
+          mkdir -p "$RUNNER_TEMP/sagejs-prepared-artifacts"
+          node control/scripts/release/publish-prepared.cjs "$GITHUB_WORKSPACE/candidate" "$RUNNER_TEMP/sagejs-prepared-artifacts"
+      - name: Retain preparation and publication progress
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-publish-prepared-attempt-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/prepared-request.json
+            ${{ runner.temp }}/sagejs-prepared-artifacts/prepared-promotion.json
+            ${{ runner.temp }}/sagejs-prepared-artifacts/publication/*.json
+            candidate/build/release-runner/**/*.json
+            candidate/build/release-runner/**/*.log
+          if-no-files-found: ignore
+          retention-days: 90

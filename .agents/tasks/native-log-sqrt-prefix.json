@@ -1,0 +1,203 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-log-sqrt-prefix",
+  "title": "Resident logical-prefix Arb log/sqrt binding",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add a declaration-generated logical-prefix Arb log/sqrt adapter for fixed resident exact matrices without touching inactive entries",
+  "base_commit": "10bfadf1d04f8be45265ef076cd32fdcdd092d39",
+  "claims": [
+    ".agents/lanes.json",
+    "tools/native-kernel/exact-analysis.cjs",
+    "ffi/flint.ffi.py",
+    "ffi/flint.ffi.json",
+    "packages/flint/include/sagejs/ffi_algorithms.h",
+    "packages/flint/generated/ffi_host.py",
+    "src/lib/sagejs/ffi/flint.py",
+    "src/baselib/sagejs/ffi/flint.py",
+    "architecture/native-boundaries.json",
+    "architecture/wasm-capabilities.json",
+    "architecture/wasm-capabilities-report.json",
+    "architecture/wasm-workload-dashboard.json",
+    "architecture/wasm-workload-dashboard.md",
+    "test/integer-log-sqrt-prefix-resource.cjs",
+    "test/fixtures/integer-log-sqrt-prefix-resource.py",
+    "bench/integer-log-sqrt-prefix-resource.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "native-primitive",
+    "fallback": "same-source",
+    "oracles": [
+      "Bit-for-bit equality with the existing exact-shape Arb batch",
+      "Exact log(1) and perfect-square dyadic endpoint identities"
+    ],
+    "exceptions": [
+      "Thin borrowed-window adapter to the existing mature Arb batch, not a mathematical reimplementation",
+      "Root explicitly coordinated the narrow integration lane allowance for exact-analysis.cjs; this task only adds one declared FFI identity, separate from the while-transfer lane's operation handling"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/integer-log-sqrt-prefix-resource.cjs",
+    "node --test test/ffi.cjs",
+    "node bench/integer-log-sqrt-prefix-resource.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.891,
+      "started_at": "2026-09-05T05:57:30.093Z",
+      "commit": "10bfadf1d04f8be45265ef076cd32fdcdd092d39",
+      "workspace_fingerprint": "3763f532e408e0546d78865dd31e6bc3ddf58836595d1868ca835e207fb4ee73",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/integer-log-sqrt-prefix-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.936,
+      "started_at": "2026-09-05T06:02:07.299Z",
+      "commit": "10bfadf1d04f8be45265ef076cd32fdcdd092d39",
+      "workspace_fingerprint": "35a9c4e3b07b961daefd8bbacf33fcbbe7c4cc9fa129baf911740ed757d113ae",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 7.261,
+      "started_at": "2026-09-05T06:02:42.252Z",
+      "commit": "10bfadf1d04f8be45265ef076cd32fdcdd092d39",
+      "workspace_fingerprint": "35a9c4e3b07b961daefd8bbacf33fcbbe7c4cc9fa129baf911740ed757d113ae",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/integer-log-sqrt-prefix-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.336,
+      "started_at": "2026-09-05T06:02:50.211Z",
+      "commit": "10bfadf1d04f8be45265ef076cd32fdcdd092d39",
+      "workspace_fingerprint": "35a9c4e3b07b961daefd8bbacf33fcbbe7c4cc9fa129baf911740ed757d113ae",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.363,
+      "started_at": "2026-09-05T06:02:51.231Z",
+      "commit": "10bfadf1d04f8be45265ef076cd32fdcdd092d39",
+      "workspace_fingerprint": "35a9c4e3b07b961daefd8bbacf33fcbbe7c4cc9fa129baf911740ed757d113ae",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 47.903,
+      "started_at": "2026-09-05T06:03:31.264Z",
+      "commit": "10bfadf1d04f8be45265ef076cd32fdcdd092d39",
+      "workspace_fingerprint": "35a9c4e3b07b961daefd8bbacf33fcbbe7c4cc9fa129baf911740ed757d113ae",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.055,
+      "started_at": "2026-09-05T06:04:39.927Z",
+      "commit": "10bfadf1d04f8be45265ef076cd32fdcdd092d39",
+      "workspace_fingerprint": "a4618633704b69ca899eabe89d9aa797d87a5cd426355a5b0933c2af48d592f1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/integer-log-sqrt-prefix-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.874,
+      "started_at": "2026-09-05T06:06:08.325Z",
+      "commit": "6ef5e03fcea601a0ba84de942b5204b5471703b0",
+      "workspace_fingerprint": "5bae7bb2b26de4d74971bc1dd99a979c3d9a7e0f4608fcb77599224992f5af1e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 53.132,
+      "started_at": "2026-09-05T06:06:17.843Z",
+      "commit": "6ef5e03fcea601a0ba84de942b5204b5471703b0",
+      "workspace_fingerprint": "5bae7bb2b26de4d74971bc1dd99a979c3d9a7e0f4608fcb77599224992f5af1e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/integer-log-sqrt-prefix-resource.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.351,
+      "started_at": "2026-09-05T06:07:11.579Z",
+      "commit": "6ef5e03fcea601a0ba84de942b5204b5471703b0",
+      "workspace_fingerprint": "5bae7bb2b26de4d74971bc1dd99a979c3d9a7e0f4608fcb77599224992f5af1e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.248,
+      "started_at": "2026-09-05T06:07:12.534Z",
+      "commit": "6ef5e03fcea601a0ba84de942b5204b5471703b0",
+      "workspace_fingerprint": "5bae7bb2b26de4d74971bc1dd99a979c3d9a7e0f4608fcb77599224992f5af1e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 7.439,
+      "started_at": "2026-09-05T06:07:22.457Z",
+      "commit": "6ef5e03fcea601a0ba84de942b5204b5471703b0",
+      "workspace_fingerprint": "5bae7bb2b26de4d74971bc1dd99a979c3d9a7e0f4608fcb77599224992f5af1e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.062,
+      "started_at": "2026-09-05T06:07:30.556Z",
+      "commit": "6ef5e03fcea601a0ba84de942b5204b5471703b0",
+      "workspace_fingerprint": "5bae7bb2b26de4d74971bc1dd99a979c3d9a7e0f4608fcb77599224992f5af1e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Draft PR138, implementation 6ef5e03f: declaration-generated borrowed-prefix Arb log/sqrt binding with full active preflight, poisoned inactive-input support, preserved output tail, and closed fmpz qualification. Full build passed with 39 production families rebuilt. All 5 focused tests, 44 existing FFI tests, and strict checks on 247 modules pass; post-commit receipts cover current source. Direct sanitized GMP/fmpz cores validate repeated calls at fixed 3 MiB checkpoints with zero retries/upstream allocations and high-water at most 195152 bytes. Primitive-only shared-host benchmark is checked in; no opt or class-group performance claim.",
+    "risks": [
+      "Architecture passes declaration/native/Wasm inventories and lifetime checks, then stops at optimizer artifact provenance requiring integration-owned regeneration.",
+      "Portable tests stop in batch 2 on the inherited synthetic holdout fixture: 3.1.10101.1 has an invalid complex cubic discriminant ratio. No mathematical or corpus files were changed by this lane.",
+      "The new Wasm entry is explicitly planned, not included in the current production closure. Browser publication and execution, plus non-Linux native CI, remain pending.",
+      "The primitive witness does not establish a full staged-certification 3 MiB budget: integration must measure all actual stages without hidden checkpoint retries."
+    ],
+    "next_steps": [
+      "Integrate the single exact-analysis FFI identity alongside the non-overlapping while-transfer operation changes, then refresh optimizer provenance.",
+      "Use integer_log_sqrt_balls_prefix_resource(endpoints, values, active_count, precision) on the reused proof owners; keep all mathematical logic in ordinary native Python.",
+      "Execute the new entry in the production Wasm closure before changing planned browser status to available; retain draft/active handoff until the broad gates are resolved."
+    ]
+  }
+}

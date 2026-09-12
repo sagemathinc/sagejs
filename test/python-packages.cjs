@@ -44,7 +44,10 @@ test("pure wheel installation feeds the default Sage.js import path", async (t) 
     if (request.url === "/pypi/sagejs-demo/1.0/json") {
       response.setHeader("content-type", "application/json");
       response.end(JSON.stringify({
-        info: { name: "sagejs-demo", version: "1.0", requires_dist: [] },
+        info: { name: "sagejs-demo", version: "1.0", requires_dist: [
+          "cpython-only==1.0; implementation_name == 'cpython'",
+          "cpython-platform-only==1.0; platform_python_implementation == 'CPython'",
+        ] },
         urls: [{
           filename: wheelName,
           packagetype: "bdist_wheel",

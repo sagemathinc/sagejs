@@ -466,6 +466,7 @@ from sagejs.ffi.flint import (
     number_field_analysis_resource_project_proof as _ffi_number_field_analysis_resource_project_proof,
     integer_log_sqrt_balls_packed as _ffi_integer_log_sqrt_balls_packed,
     integer_log_sqrt_balls_resource as _ffi_integer_log_sqrt_balls_resource,
+    integer_log_sqrt_balls_prefix_resource as _ffi_integer_log_sqrt_balls_prefix_resource,
     positive_rational_log_balls_resource as _ffi_positive_rational_log_balls_resource,
     fq_mpoly_context as _ffi_fq_mpoly_context,
     fq_mpoly_from_terms as _ffi_fq_mpoly_from_terms,
@@ -5596,6 +5597,21 @@ def ffiIntegerLogSqrtBallsResource(
     return _ffi_integer_log_sqrt_balls_resource(
         output,
         source,
+        precision,
+    )
+
+
+@native
+def ffiIntegerLogSqrtBallsPrefixResource(
+    output: FmpzMatrix,
+    source: FmpzMatrix,
+    count: uint64,
+    precision: uint64,
+) -> bool:
+    return _ffi_integer_log_sqrt_balls_prefix_resource(
+        output,
+        source,
+        count,
         precision,
     )
 

@@ -61,6 +61,73 @@ test("compact output terminates fragments containing internal semicolons", () =>
   assert.equal(terminated.get(), "const value = 42;value");
 });
 
+function checkedModuleRead(name, moduleId = "__main__") {
+  return `ρσ_check_unbound(ρσ_resolve_module_name(void 0, ${JSON.stringify(name)}, ` +
+    `ρσ_modules[${JSON.stringify(moduleId)}], (typeof __builtins__ !== "undefined" ? ` +
+    `__builtins__ : (ρσ_modules.builtins || globalThis))), ${JSON.stringify(name)})`;
+}
+
+// Assert the complete namespace/unbound-check protocol before normalizing only
+// these named reads for structural emitter assertions. This preserves call
+// counts and ordering, and cannot hide a wrong scope, binding, or missing check.
+function normalizeCheckedModuleReads(javascript, names) {
+  for (const name of names) {
+    const checked = checkedModuleRead(name);
+    assert.ok(javascript.includes(checked), `missing checked module read: ${name}`);
+    javascript = javascript.split(checked).join(name);
+  }
+  return javascript;
+}
+
+// The timing tests deliberately execute no baselib. Supply only the exact
+// lookup contract their one host callback needs, validating every namespace
+// argument rather than silently treating name-resolution helpers as identities.
+function installTimingLookupFixture(name, callback) {
+  const bindings = Object.freeze({ [name]: callback });
+  const names = [
+    "__builtins__", "ρσ_modules", "ρσ_resolve_module_name", "ρσ_check_unbound",
+  ];
+  const saved = names.map((key) => [
+    key, Object.getOwnPropertyDescriptor(globalThis, key),
+  ]);
+  Object.assign(globalThis, {
+    __builtins__: bindings,
+    ρσ_modules: { builtins: bindings },
+    ρσ_resolve_module_name(value, actualName, namespace, builtins) {
+      assert.equal(value, undefined);
+      assert.equal(actualName, name);
+      assert.equal(namespace, globalThis.ρσ_modules.__main__);
+      assert.equal(builtins, bindings);
+      return bindings[actualName];
+    },
+    ρσ_check_unbound(value, actualName) {
+      assert.equal(actualName, name);
+      assert.equal(value, callback);
+      return value;
+    },
+  });
+  return () => {
+    for (const [key, descriptor] of saved) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+  };
+}
+
+test("checked-read normalization preserves counts and rejects stale lookup shapes", () => {
+  const read = checkedModuleRead("value");
+  assert.equal(normalizeCheckedModuleReads(`${read}; ${read}`, ["value"]), "value; value");
+  for (const stale of [
+    "value",
+    checkedModuleRead("value", "wrong_module"),
+    read.replace('))), "value")', '))), "wrong_name")'),
+    read.replace("void 0", "value"),
+  ]) {
+    assert.throws(() => normalizeCheckedModuleReads(stale, ["value"]),
+      /missing checked module read: value/);
+  }
+});
+
 function wrapTimeitStatement(compiler, ast, { number, repeat = 7 } = {}) {
   const statements = ast.body;
   const body =
@@ -167,6 +234,22 @@ def recurrence(n, field):
       `range = custom_range\nfor index in range(count):\n    value = value * multiplier + increment\n`,
     ]) {
       assert.doesNotMatch(emit(source), /ρσ_prepare_machine_field_region\(/);
+    }
+  } finally {
+    frontend.close();
+  }
+});
+
+test("explicit duplicate keywords are syntax errors, unlike mapping unpacking", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    for (const source of ["f(a=1, a=2)", "f(a=1, **mapping, a=2)"]) {
+      assert.throws(() => frontend.parse(source, parserOptions),
+        /keyword argument repeated: a/);
+    }
+    for (const source of ["f(a=1, **mapping)", "f(**left, **right)"]) {
+      assert.doesNotThrow(() => frontend.parse(source, parserOptions));
     }
   } finally {
     frontend.close();
@@ -381,6 +464,7 @@ test("compiler-marked timeit calibrates an inline statement", async () => {
   };
   globalThis.ρσ_resolve_callable = (value) => value;
   globalThis.ρσ_check_interrupt = () => undefined;
+  const restoreLookup = installTimingLookupFixture("tick", globalThis.tick);
   let temporaryName;
   let previousTemporary;
   try {
@@ -425,6 +509,7 @@ test("compiler-marked timeit calibrates an inline statement", async () => {
       /^25\.0 µs ± 0 µs per loop .*7 runs, 100 loops each\)$/,
     );
   } finally {
+    restoreLookup();
     uninstallTimingHooks();
     if (temporaryName) {
       if (previousTemporary) {
@@ -459,6 +544,9 @@ test("compiler-emitted timeit aborts cleanly after an exception", async () => {
   };
   globalThis.ρσ_resolve_callable = (value) => value;
   globalThis.ρσ_check_interrupt = () => undefined;
+  const restoreLookup = installTimingLookupFixture(
+    "timeit_boom", globalThis.timeit_boom,
+  );
   try {
     const ast = wrapTimeitStatement(
       compiler,
@@ -478,6 +566,7 @@ test("compiler-emitted timeit aborts cleanly after an exception", async () => {
     );
     assert.deepEqual(reports, []);
   } finally {
+    restoreLookup();
     uninstallTimingHooks();
     for (const [name, descriptor] of saved) {
       if (descriptor) Object.defineProperty(globalThis, name, descriptor);
@@ -516,6 +605,7 @@ test("compiler-emitted timing closes its collector when execution raises", async
     throw failure;
   };
   globalThis.ρσ_resolve_callable = (value) => value;
+  const restoreLookup = installTimingLookupFixture("boom", globalThis.boom);
   try {
     const ast = frontend.parse("%time boom()\n", parserOptions);
     const output = new compiler.OutputStream(outputOptions);
@@ -536,6 +626,7 @@ test("compiler-emitted timing closes its collector when execution raises", async
     assert.equal(reports.length, 1);
   } finally {
     if (token && !token.finished) installedFinish(token);
+    restoreLookup();
     uninstallTimingHooks();
     if (previousBoom) {
       Object.defineProperty(globalThis, "boom", previousBoom);
@@ -665,7 +756,7 @@ test("class-body global declarations bind the isolated module cell", async () =>
     );
     assert.match(
       javascript,
-      /ρσ_getattr_internal\([^;\n]*\$ρσ\$py\$runtime[^;\n]*"native_get"/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\([^;\n]*\$ρσ\$py\$runtime[^;\n]*"native_get"\), \[/,
     );
     assert.doesNotMatch(javascript, /\$ρσ\$py\$answer = target\[property_name\]/);
   } finally {
@@ -736,7 +827,7 @@ test("lowering preserves tuple, assignment-target, class, and native-object boun
     const ast = frontend.parse(source, parserOptions);
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
-    const javascript = output.get();
+    const javascript = normalizeCheckedModuleReads(output.get(), ["Object"]);
 
     assert.equal((javascript.match(/ρσ_math_tuple/g) ?? []).length >= 4, true);
     assert.equal((javascript.match(/ρσ_setitem/g) ?? []).length >= 2, true);
@@ -764,7 +855,9 @@ test("observable chained assignments use Python hooks from left to right", async
     );
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
-    const javascript = output.get();
+    const javascript = normalizeCheckedModuleReads(output.get(), [
+      "first", "second", "marker",
+    ]);
     assert.match(javascript, /function\(ρσ_chain_assign_temp\)/);
     assert.equal((javascript.match(/ρσ_setattr/g) ?? []).length, 2);
     assert.match(
@@ -790,7 +883,9 @@ test("observable chained assignments use Python hooks from left to right", async
     );
     const itemOutput = new compiler.OutputStream(outputOptions);
     itemAst.print(itemOutput);
-    const itemJavascript = itemOutput.get();
+    const itemJavascript = normalizeCheckedModuleReads(itemOutput.get(), [
+      "values", "marker",
+    ]);
     assert.match(itemJavascript, /function\(ρσ_chain_assign_temp\)/);
     assert.match(itemJavascript, /shared = ρσ_chain_assign_temp/);
     assert.match(itemJavascript, /ρσ_setitem\(values/);
@@ -805,7 +900,9 @@ test("observable chained assignments use Python hooks from left to right", async
     );
     const chainedItemsOutput = new compiler.OutputStream(outputOptions);
     chainedItemsAst.print(chainedItemsOutput);
-    const chainedItemsJavascript = chainedItemsOutput.get();
+    const chainedItemsJavascript = normalizeCheckedModuleReads(chainedItemsOutput.get(), [
+      "values", "marker",
+    ]);
     assert.match(chainedItemsJavascript, /function\(ρσ_chain_assign_temp\)/);
     assert.equal((chainedItemsJavascript.match(/ρσ_setitem/g) ?? []).length, 2);
     assert.ok(
@@ -873,10 +970,14 @@ test("leading class assignments are available to method defaults", async () => {
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.ok(
-      javascript.indexOf("Example.prototype.sentinel = marker") <
-        javascript.indexOf("Example.prototype.method.__defaults__"),
-    );
+    const assignment = javascript.indexOf("Example.prototype.sentinel =");
+    const method = javascript.indexOf("Example.prototype.method =");
+    assert.ok(assignment >= 0 && method > assignment);
+    assert.match(javascript,
+      /Example\.prototype\.method = ρσ_class_header_\d+_method_\d+\(\[ρσ_check_unbound\(\$ρσ\$py\$Example\.prototype\.sentinel/);
+    const preparedAssignment = javascript.indexOf('bindings["sentinel"] =');
+    const preparedMethod = javascript.indexOf('bindings["method"] =');
+    assert.ok(preparedAssignment >= 0 && preparedMethod > preparedAssignment);
   } finally {
     frontend.close();
   }
@@ -944,11 +1045,11 @@ test("formatted strings invoke format on their template value", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /\ρσ_getattr_internal\("\{!r\}", "format"/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\("\{!r\}", "format"\), \[ρσ_check_unbound\(ρσ_resolve_module_name\(void 0, "value"/,
     );
     assert.doesNotMatch(
       javascript,
-      /\ρσ_getattr_internal\(ρσ_str, "format"/,
+      /(?:ρσ_getattr_internal|ρσ_prepare_method_call)\(ρσ_str, "format"/,
     );
   } finally {
     frontend.close();
@@ -1018,8 +1119,10 @@ test("generator methods shift an explicit descriptor receiver before iteration",
     ast.print(output);
     const javascript = output.get();
     const receiverShift =
-      /Values\.prototype\.items = function[^]*?if \(\(this === globalThis \|\| this == null\)[^]*?function\* js_generator/;
+      /function ρσ_method_items[^]*?if \(\(this === globalThis \|\| this == null\)[^]*?function\* js_generator/;
     assert.match(javascript, receiverShift);
+    assert.match(javascript, /Values\.prototype\.items = ρσ_class_header_\d+_method_\d+\(\[\]\)/);
+    assert.equal((javascript.match(/function\* js_generator/g) ?? []).length, 1);
   } finally {
     frontend.close();
   }
@@ -1036,14 +1139,14 @@ test("dotted callable instances resolve through __call__", async () => {
     );
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
-    const javascript = output.get();
+    const javascript = normalizeCheckedModuleReads(output.get(), ["package"]);
     assert.match(
       javascript,
-      /ρσ_interpolate_kwargs\(ρσ_py_package, ρσ_getattr_internal\(ρσ_py_package, "marker", ρσ_getattr_missing\)/,
+      /ρσ_interpolate_kwargs\(package, ρσ_getattr_internal\(package, "marker", ρσ_getattr_missing\)/,
     );
     assert.match(
       javascript,
-      /ρσ_resolve_callable\(ρσ_getattr_internal\(ρσ_py_package, "factory", ρσ_getattr_missing\)\)/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\(package, "factory"\), \[ρσ_resolve_callable\(Integer\)\("1"\)\]\)/,
     );
   } finally {
     frontend.close();
@@ -1061,7 +1164,9 @@ test("subscripted callable instances resolve through __call__", async () => {
     );
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
-    const javascript = output.get();
+    const javascript = normalizeCheckedModuleReads(output.get(), [
+      "handlers", "name", "owner", "proposal",
+    ]);
     assert.match(
       javascript,
       /\u03c1\u03c3_resolve_callable\(\u03c1\u03c3_getitem\([^\n]+\)\)\(owner, proposal\)/,
@@ -1110,7 +1215,7 @@ test("Python dir loops preserve inherited namespace entries", async () => {
     );
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
-    const javascript = output.get();
+    const javascript = normalizeCheckedModuleReads(output.get(), ["dir", "cls"]);
     assert.doesNotMatch(javascript, /for \([^)]* in cls\)/);
     assert.match(javascript, /ρσ_resolve_callable\(dir\)\(cls\)/);
     assert.match(javascript, /for \(var ρσ_Index\d+ of ρσ_Iter\d+\)/);
@@ -1170,9 +1275,11 @@ test("reserved Python class names stay mangled in method metadata", async () => 
     const javascript = output.get();
     assert.match(
       javascript,
-      /\$ρσ\$py\$default\.prototype\.__init__\.__name__/,
+      /\$ρσ\$py\$default\.prototype\.__init__ = ρσ_class_header_\d+_method_\d+\(\[\]\)/,
     );
+    assert.match(javascript, /ρσ_anonfunc\.__name__ = "__init__"/);
     assert.doesNotMatch(javascript, /(?:^|[^\w$])default\.prototype/);
+    assert.doesNotThrow(() => new Script(javascript));
   } finally {
     frontend.close();
   }
@@ -1191,11 +1298,10 @@ test("zero-argument super uses hygienic class and receiver bindings", async () =
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.match(
-      javascript,
-      /ρσ_py_super\)\(\$ρσ\$py\$Object, \$ρσ\$py\$Reflect\)/,
-    );
-    assert.doesNotMatch(javascript, /ρσ_py_super\)\(Object, Reflect\)/);
+    assert.ok(javascript.includes(
+      `ρσ_resolve_callable(${checkedModuleRead("super")})($ρσ$py$Object, $ρσ$py$Reflect)`,
+    ));
+    assert.doesNotMatch(javascript, /\)\(Object, Reflect\)/);
   } finally {
     frontend.close();
   }
@@ -1218,10 +1324,11 @@ test("explicit class metaclasses are lowered before decorators", async () => {
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.match(
-      javascript,
-      /ρσ_apply_metaclass\(\$ρσ\$py\$Meta, "Example"/,
-    );
+    const prepare = javascript.indexOf('ρσ_prepare_class("Example"');
+    const store = javascript.indexOf('.bindings["answer"] = ', prepare);
+    const finish = javascript.indexOf(".finish()", store);
+    assert.ok(prepare >= 0 && store > prepare && finish > store);
+    assert.match(javascript, /ρσ_class_header_\d+ = .*\$ρσ\$py\$Meta\]/);
   } finally {
     frontend.close();
   }
@@ -1239,7 +1346,9 @@ test("parameterized builtin bases lower to their runtime origins", async () => {
     assert.equal(definition.parent.name, "list");
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
-    assert.match(output.get(), /ρσ_extends\(\$ρσ\$py\$Entries, list\)/);
+    const javascript = output.get();
+    assert.equal(javascript.split(checkedModuleRead("list")).length - 1, 1);
+    assert.match(javascript, /ρσ_extends\(\$ρσ\$py\$Entries, ρσ_class_header_\d+\[1\]\[0\]\)/);
   } finally {
     frontend.close();
   }
@@ -1306,10 +1415,9 @@ test("star-imported reads use the live Python module namespace", async () => {
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.match(
-      javascript,
-      /\$\u03c1\u03c3\$py\$answer = \u03c1\u03c3_resolve_module_name\(void 0, "dynamic_name", \u03c1\u03c3_modules\["star_consumer"\]/,
-    );
+    assert.ok(javascript.includes(
+      `$ρσ$py$answer = ${checkedModuleRead("dynamic_name", "star_consumer")};`,
+    ));
     assert.doesNotMatch(javascript, /typeof \$\u03c1\u03c3\$py\$dynamic_name/);
   } finally {
     frontend.close();
@@ -1327,10 +1435,9 @@ test("nested functions resolve star-imported module names dynamically", async ()
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.match(
-      javascript,
-      /return ρσ_resolve_module_name\(void 0, "dynamic_name", ρσ_modules\["star_consumer"\]/,
-    );
+    assert.ok(javascript.includes(
+      `return ${checkedModuleRead("dynamic_name", "star_consumer")};`,
+    ));
   } finally {
     frontend.close();
   }
@@ -1582,7 +1689,9 @@ test("chained comparisons preserve Python dispatch and shared operands", async (
     );
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
-    const javascript = output.get();
+    const javascript = normalizeCheckedModuleReads(output.get(), [
+      "left", "middle", "right", "first", "middle_value", "last", "a", "b", "c", "d", "e",
+    ]);
     assert.equal((javascript.match(/ρσ_equals/g) ?? []).length, 6);
     assert.match(javascript, /ρσ_equals\(ρσ_compare_0, ρσ_compare_1\)/);
     assert.equal(
@@ -1617,7 +1726,9 @@ test("parenthesized comparisons do not merge into comparison chains", async () =
     );
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
-    const javascript = output.get();
+    const javascript = normalizeCheckedModuleReads(output.get(), [
+      "left", "middle", "first", "last",
+    ]);
     assert.match(
       javascript,
       /ρσ_equals\(ρσ_operator_lt\(left, middle\), \(?ρσ_operator_lt\(first, last\)\)?\)/,
@@ -1667,7 +1778,7 @@ test("same-class static calls are not guessed to be unbound methods", async () =
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(\$ρσ\$py\$Config, "name", ρσ_getattr_missing\)/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\(\$ρσ\$py\$Config, "name"\), \[\$ρσ\$py\$value\]\)/,
     );
     assert.doesNotMatch(
       javascript,
@@ -1696,10 +1807,12 @@ test("callable class variables retain runtime descriptor lookup", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_getattr_internal\(\$ρσ\$py\$Config, "selected", ρσ_getattr_missing\)/,
+      /ρσ_invoke_prepared_method\(ρσ_prepare_method_call\(\$ρσ\$py\$Config, "selected"\), \[\]\)/,
     );
     assert.doesNotMatch(javascript, /Config\.prototype\.selected\(\)/);
-    assert.match(javascript, /delete this\.selected/);
+    // Binding no longer installs inherited methods on the instance, so a
+    // subclass override must not need constructor-time cache cleanup.
+    assert.doesNotMatch(javascript, /delete this\.selected|__bind_methods__/);
   } finally {
     frontend.close();
   }

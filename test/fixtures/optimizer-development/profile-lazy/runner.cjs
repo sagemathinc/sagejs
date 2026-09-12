@@ -23,13 +23,15 @@ function errorRecord(error) {
 
 async function main() {
   const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+  const output = [];
   const evaluator = await createKernelEvaluatorAsync({
     mode: payload.language ?? "sage",
-    onOutput() {},
+    onOutput(text) { output.push(text); },
   });
   try {
     if (payload.action === "evaluate") {
-      return { evaluation: evaluator.evaluate(payload.source, payload.options) };
+      const evaluation = evaluator.evaluate(payload.source, payload.options);
+      return { evaluation, stdout: output.join("") };
     }
     if (payload.action === "profile") {
       const result = await evaluator.profile(payload.source, payload.options);
@@ -45,6 +47,7 @@ async function main() {
         evaluation: result.evaluation,
         sourceMaps: result.sourceMaps,
         observation: result.observation,
+        stdout: output.join(""),
         afterError,
       };
     }

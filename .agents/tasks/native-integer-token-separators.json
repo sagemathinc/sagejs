@@ -1,0 +1,95 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-integer-token-separators",
+  "title": "Native Integer Token Separators",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Normalize integer token separators without altering strings or exactness",
+  "base_commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+  "claims": [
+    "tools/python/lowerer.ts",
+    "test/native-integer-token-separators.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/sagemathinc/sagejs/pull/101"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "node --test test/native-integer-token-separators.cjs test/python-cst-lowerer.cjs test/python-syntax-frontend.cjs",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 198.944,
+      "started_at": "2026-09-05T03:55:21.307Z",
+      "commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+      "workspace_fingerprint": "dc124fd6d4957940a6411f8e092c5a2d5ced3587b71dfb91a52bebc44ca2cc68",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-integer-token-separators.cjs test/python-cst-lowerer.cjs test/python-syntax-frontend.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.841,
+      "started_at": "2026-09-05T03:59:29.471Z",
+      "commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+      "workspace_fingerprint": "dc124fd6d4957940a6411f8e092c5a2d5ced3587b71dfb91a52bebc44ca2cc68",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec tsc --project tsconfig.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.898,
+      "started_at": "2026-09-05T03:59:46.412Z",
+      "commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+      "workspace_fingerprint": "dc124fd6d4957940a6411f8e092c5a2d5ced3587b71dfb91a52bebc44ca2cc68",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.08,
+      "started_at": "2026-09-05T03:59:53.505Z",
+      "commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+      "workspace_fingerprint": "dc124fd6d4957940a6411f8e092c5a2d5ced3587b71dfb91a52bebc44ca2cc68",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Normalize separators only in exact integer literal tokens so native literal recognizers see exact canonical digits. Validate separator placement before normalization because the CST grammar admits some trailing separators. Original source tokens and spans, explicit constructor strings, floating literals, and nonexact Python numbers remain unchanged. Focused regressions cover frontend JavaScript emission and native IR including exact values beyond 2^53, uint64 boundaries, annotated locals, module constants, defaults, and unary negatives. CPython agrees on seven valid values and five invalid tokens.",
+    "risks": [
+      "Draft integration lane: complete build, integration tests, cross-platform native execution, and production-pack qualification remain pending. Task stays active rather than claiming lane-wide qualification.",
+      "Full compiler suite: 11 pass, 18 explicitly skipped, and 4 fail solely because this no-install/no-native-build lane lacks packages/flint/build/Release/sagejs_flint.node (algebra, matrix, polynomial, series fixtures).",
+      "Architecture validation reports the expected stale optimizer manifest because this frontend source changes its input fingerprint; integration owns refreshing shared evidence.",
+      "Local tests use freshly TypeScript-compiled frontend tools and unchanged generated compiler/parser assets copied from the f7f00552 integration foundation. No shared addon rebuild or opt usage occurred."
+    ],
+    "next_steps": [
+      "Integrate through PR101, refresh affected optimizer/source fingerprints, and perform complete build and native/integration qualification."
+    ]
+  }
+}

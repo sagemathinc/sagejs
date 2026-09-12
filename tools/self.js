@@ -31,6 +31,14 @@ const COMPILER_BASELIB_MODULES = new Set([
   "str.py",
 ]);
 
+function supportsCompactStatements(PyLang) {
+  const probe = new PyLang.OutputStream({ beautify: false });
+  probe.print("(() => { const value = 1; return value; })()");
+  probe.semicolon();
+  probe.print("next");
+  return probe.get().endsWith("();next");
+}
+
 async function compile_baselib(PyLang, src_path, compiler_only = false) {
   let supportsPythonOrdering = false;
   try {
@@ -56,11 +64,7 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
   // on the next pass without stripping names, docstrings or annotations.
   let beautify = true;
   if (compiler_only) {
-    const probe = new PyLang.OutputStream({ beautify: false });
-    probe.print("(() => { const value = 1; return value; })()");
-    probe.semicolon();
-    probe.print("next");
-    beautify = !probe.get().endsWith("();next");
+    beautify = !supportsCompactStatements(PyLang);
   }
   const { createPythonCompilerFrontend } = require("./python/compiler-frontend");
   const frontend = PyLang.AST_AnnotatedAssignment
@@ -454,7 +458,11 @@ async function compile(
   // explicit; generated Python and ordinary baselib modules default to Python
   // truth testing.
   output_options = {
-    beautify: true,
+    // The private compiler implementation follows its bootstrap's compact
+    // formatting policy. Keep names and metadata intact; ordinary user output
+    // and the readable full baselib retain their separate formatting policies.
+    // Stage zero still uses readable output until separators are safe.
+    beautify: !supportsCompactStatements(PyLang),
     baselib_plain: compiler_baselib.pretty,
   };
   try {
@@ -467,6 +475,21 @@ async function compile(
   try {
     new PyLang.OutputStream({ python_ordering: false });
     output_options.python_ordering = false;
+  } catch (_error) {}
+
+  try {
+    // Compiler implementation modules do not shadow the literal constructors.
+    // Hoist their immutable numeric constants once per module instead of
+    // parsing them again on every emitter operation. Do not change baselib
+    // compilation or user-output policy; stage zero predates these options.
+    const literalOptions = {
+      pool_numeric_literals: true,
+      numeric_literal_pool_prefix: "compiler_",
+    };
+    // OutputStream fills defaults into its options object; probe a copy so
+    // those defaults cannot overwrite baselib_plain or bootstrap policies.
+    new PyLang.OutputStream({ ...literalOptions });
+    Object.assign(output_options, literalOptions);
   } catch (_error) {}
 
   var raw = sources[file],
@@ -482,6 +505,12 @@ async function compile(
       basedir: path.dirname(file),
       libdir: path.join(src_path, "lib"),
       compiler_bootstrap: true,
+      // The compiler implementation uses native JavaScript receiver calls.
+      // Match the immutable bootstrap's class policy instead of allocating
+      // Python bound-method caches on every AST node and token. This setting
+      // propagates to imported compiler modules, not the separately compiled
+      // Python baselib, whose bound methods remain enabled above.
+      scoped_flags: { bound_methods: false },
     });
   }
 

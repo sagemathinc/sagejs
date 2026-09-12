@@ -3,9 +3,18 @@ name: Sage.js WebAssembly reproducible release
 on:
   schedule:
     - cron: "41 3 * * 1"
-  push:
-    tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      qualify_release:
+        description: Qualify exact pre-tag artifacts, including build provenance, without publication
+        required: false
+        default: false
+        type: boolean
+      candidate_sha:
+        description: Exact full commit SHA required with qualify_release
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -39,6 +48,10 @@ jobs:
         with:
           node-version: 26.5.1
           cache: pnpm
+      - name: Validate the explicit qualification request
+        env:
+          SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
+        run: node scripts/release/candidate-mode.cjs browser
       - name: Fetch every pinned native source from the private R2 mirror
         run: |
           node tools/source-mirror/scripts/source-mirror.mjs fetch \
@@ -72,19 +85,19 @@ jobs:
         run: |
           node packages/flint-wasm/test/browser-wasm-node-parity.cjs \
             --tier release --receipt build/wasm-node-oracle.json
+      - name: Accept every native workload once without a repeated timing campaign
+        run: |
           node bench/browser-wasm-performance.mjs \
-            --runtime node-native --samples 7 \
+            --native-acceptance \
             --budget bench/browser-wasm-budget.json \
-            --require-baseline \
-            --report-regressions \
-            --output build/wasm-performance-node-native.json
+            --output build/wasm-native-acceptance.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: wasm-node-oracle-receipt
           path: |
             build/wasm-node-oracle.json
-            build/wasm-performance-node-native.json
+            build/wasm-native-acceptance.json
           if-no-files-found: error
 
   clean-build:
@@ -114,6 +127,10 @@ jobs:
         with:
           node-version: 26.5.1
           cache: pnpm
+      - name: Validate the explicit qualification request
+        env:
+          SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
+        run: node scripts/release/candidate-mode.cjs browser
       - name: Fetch every pinned build source from the private R2 mirror
         run: |
           node tools/source-mirror/scripts/source-mirror.mjs fetch \
@@ -342,7 +359,7 @@ jobs:
             -C build/a/packages/flint-wasm -czf build/sagejs-wasm.tar.gz dist
           sha256sum build/sagejs-wasm.tar.gz > build/sagejs-wasm.tar.gz.sha256
       - uses: actions/attest-build-provenance@v3
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.qualify_release))
         with:
           subject-path: build/sagejs-wasm.tar.gz
       - uses: actions/upload-artifact@v7
@@ -395,11 +412,18 @@ jobs:
             --engines ${{ matrix.engine }} \
             --require-engines ${{ matrix.engine }} \
             --receipt build/wasm-parity-${{ matrix.engine }}.json
+      - name: Require cold and warm workload routes without timing campaigns
+        run: |
+          node bench/browser-wasm-workload-acceptance.mjs \
+            --engine ${{ matrix.engine }} \
+            --output build/wasm-acceptance-${{ matrix.engine }}.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: wasm-browser-parity-${{ matrix.engine }}-receipts
-          path: build/wasm-parity-${{ matrix.engine }}.json
+          path: |
+            build/wasm-parity-${{ matrix.engine }}.json
+            build/wasm-acceptance-${{ matrix.engine }}.json
           if-no-files-found: error
 
   browser-performance:
@@ -444,7 +468,7 @@ jobs:
           node bench/browser-wasm-performance.mjs \
             --engine ${{ matrix.engine }} --samples 3 \
             --shard ${{ matrix.shard }}/4 \
-            --native-reference build/node-reference/wasm-performance-node-native.json \
+            --native-reference build/node-reference/wasm-native-acceptance.json \
             --budget bench/browser-wasm-budget.json \
             --require-baseline \
             --report-regressions \
@@ -575,7 +599,7 @@ jobs:
 
   workload-enforcement:
     name: Reject silent portable computation
-    needs: [browser-parity, browser-performance]
+    needs: browser-parity
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -591,11 +615,51 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v8
         with:
-          pattern: wasm-browser-*-receipts
+          pattern: wasm-browser-parity-*-receipts
           merge-multiple: true
           path: .artifacts/wasm-workload-receipts
-      - run: pnpm wasm:workload-enforce
+      - name: Require source-current parity and workload acceptance for every engine
+        run: |
+          node scripts/wasm-workload-dashboard.cjs --check \
+            --acceptance-only --source-revision "$GITHUB_SHA" \
+            --explicit-receipts-only \
+            --receipt .artifacts/wasm-workload-receipts/wasm-parity-chromium.json \
+            --receipt .artifacts/wasm-workload-receipts/wasm-acceptance-chromium.json \
+            --receipt .artifacts/wasm-workload-receipts/wasm-parity-firefox.json \
+            --receipt .artifacts/wasm-workload-receipts/wasm-acceptance-firefox.json \
+            --receipt .artifacts/wasm-workload-receipts/wasm-parity-webkit.json \
+            --receipt .artifacts/wasm-workload-receipts/wasm-acceptance-webkit.json
 
+  browser-product-acceptance:
+    name: Sage.js browser product acceptance v1
+    if: ${{ always() }}
+    needs:
+      - node-oracle
+      - clean-build
+      - cross-platform-toolchain
+      - windows-prebuilt-artifact
+      - reproducibility
+      - browser-parity
+      - browser-security-chromium
+      - browser-webkit-recovery
+      - node-wasm-cli
+      - workload-enforcement
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+      - name: Require every product prerequisite
+        env:
+          SAGEJS_PRODUCT_NEEDS: ${{ toJSON(needs) }}
+        run: node scripts/release/product-prerequisites.cjs browser
+
+  # Combined reporting status remains visible, but publication/deployment use
+  # browser-product-acceptance, not this job or the whole workflow conclusion.
   browser-release-gates:
     name: Browser release gates
     if: ${{ always() }}
