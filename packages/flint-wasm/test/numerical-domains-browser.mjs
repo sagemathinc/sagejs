@@ -24,7 +24,7 @@ from sagejs.numerics.linear_algebra import solve
 from sagejs.numerics.ode import solve_ivp
 from sagejs.numerics.optimization import minimize_scalar
 from sagejs.numerics.spectral import fft
-from sagejs.numerics.statistics import describe
+from sagejs.numerics.statistics import StatisticsData, describe
 from sagejs.numerics.sweeps import run_parameter_sweep
 from sagejs.numerics.visualization import root_plot
 
@@ -42,6 +42,12 @@ ode = solve_ivp(
 )
 spectrum = fft([1.0, 0.0, 0.0, 0.0])
 summary = describe([1.0, 2.0, 3.0, 4.0])
+with StatisticsData([1.0, 2.0, 3.0, 4.0], backend="native") as owned:
+    prepared_summary = owned.describe()
+    assert owned.backend == "ordinary-python"
+    assert prepared_summary.success and prepared_summary.validation.passed
+    assert prepared_summary.value == summary.value
+assert owned.closed
 sweep = run_parameter_sweep(
     [1, 2, 3],
     lambda value, context: value*value,
