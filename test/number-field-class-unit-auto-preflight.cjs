@@ -69,7 +69,7 @@ R = PolynomialRing(QQ, "x")
 x = R.gen()
 cases = (
     (x**3 - x**2 - 6*x - 12, False, 3, (3,), "complete"),
-    (x**3 + 4*x - 1, True, 2, (2,), "live-prefix"),
+    (x**3 + 4*x - 1, False, 2, (2,), "live-prefix"),
     (x**3 - x**2 + 7*x + 8, False, 6, (6,), "size-decline"),
     (x**3 - x**2 + 1, False, 1, (), "zero-factor-base"),
 )
@@ -198,17 +198,23 @@ cubic_module.bounded_cubic_minkowski_class_number = counted_producer
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 
-# A conditional request followed by an unconditional request reuses the
-# authenticated terminal and never reruns the cubic producer.
+# A conditional request cannot turn its BF unit proof into an unconditional
+# terminal.  The independently certified scalar class number remains exact.
 K = NumberField(x**3 - x**2 - 6*x - 12, "a")
 conditional = K.class_unit_group(proof=False)
 assert conditional.complete and conditional.class_number() == 3
 assert len(producer_calls) == 1
-unconditional = K.class_unit_group(proof=True)
-assert unconditional.complete and unconditional.proof_status == "exact-unconditional"
-assert unconditional.class_group().invariants() == (3,)
-assert unconditional.class_group().verify()
-assert unconditional.saturation_record.verify(K, K.maximal_order())
+try:
+    K.class_unit_group(proof=True)
+    raise AssertionError("the conditional cubic terminal became unconditional")
+except NotImplementedError as error:
+    assert "unconditional analytic unit completeness" in str(error)
+assert K.class_unit_group(proof=False) is conditional
+assert conditional.proof_status == "exact-relations-conditional-grh"
+assert conditional.class_group().invariants() == (3,)
+assert conditional.class_group().verify()
+assert conditional.saturation_record.verify(K, K.maximal_order())
+assert K.class_number(proof=True) == 3
 assert len(producer_calls) == 1
 
 # Mutating a retained relation invalidates only the acceleration hint.  The
@@ -222,13 +228,27 @@ row = relation.row
 relation.row = (row[0] + 1,) + row[1:]
 T._bounded_cubic_class_number_artifact = forged
 before = len(producer_calls)
-result = T.class_unit_group(proof=True)
+result = T.class_unit_group(proof=False)
 assert result.complete and result.class_number() == 3
+assert result.proof_status == "exact-relations-conditional-grh"
 assert result.class_group().invariants() == (3,)
 assert result.class_group().verify()
 assert result.saturation_record.verify(T, T.maximal_order())
 assert result.diagnostics["resources"]["cubic_relation_seed_uses"] == 0
 assert len(producer_calls) == before
+try:
+    T.class_unit_group(proof=True)
+    raise AssertionError("a recomputed generic BF terminal became unconditional")
+except NotImplementedError as error:
+    assert "unconditional analytic unit completeness" in str(error)
+assert T.class_unit_group(proof=False) is result
+assert result.class_group().verify()
+fresh = NumberField(x**3 - x**2 - 6*x - 12, "fresh")
+try:
+    fresh.class_unit_group(proof=True, algorithm="buchmann-hecke")
+    raise AssertionError("fresh generic BF computation became unconditional")
+except NotImplementedError as error:
+    assert "unconditional analytic unit completeness" in str(error)
 print("cubic-auto-preflight-authority-ok")
 `, 240_000);
   assert.equal(output, "cubic-auto-preflight-authority-ok");

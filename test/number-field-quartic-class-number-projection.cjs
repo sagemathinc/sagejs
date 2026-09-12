@@ -60,10 +60,29 @@ cases = (
     ("complex-h4", x**4 - 4*x**3 + 4*x**2 - x + 6, 4),
 )
 
+def expect_unconditional_decline(request):
+    try:
+        request()
+        raise AssertionError("generic quartic BF completion became unconditional")
+    except NotImplementedError as error:
+        assert "unconditional analytic unit completeness" in str(error)
+
 for proof in (False, True):
     for index, (_label, polynomial, expected) in enumerate(cases):
         K = NumberField(polynomial, "a" + str(int(proof)) + str(index))
         K.maximal_order()
+        if proof:
+            # These nontrivial scalar projections depend on the generic BF
+            # index, unlike the independent h=1 certificate tested below.
+            expect_unconditional_decline(
+                lambda: class_unit_module.quartic_class_number_projection(
+                    K, proof=True
+                )
+            )
+            expect_unconditional_decline(
+                lambda: class_unit_module.class_unit_context(K, proof=True)
+            )
+            continue
         builds = [0]
         original_build = factor_base_module.build_factor_base
         def counted_build(plan):
@@ -95,16 +114,11 @@ for proof in (False, True):
             K, proof=proof, algorithm="auto"
         )
         assert completed.complete and completed.class_number() == expected
-        expected_proof_status = (
-            "exact-unconditional"
-            if proof
-            else "exact-relations-conditional-grh"
-        )
         # The resumable scalar path preserves the same honest analytic
         # authority as a direct coupled computation: proof=False consumes
         # the Belabas--Friedman GRH bound even when its factor-base plan is the
         # unconditional Minkowski plan.
-        assert completed.proof_status == expected_proof_status, (
+        assert completed.proof_status == "exact-relations-conditional-grh", (
             "resumed-proof-status",
             proof,
             index,
@@ -116,6 +130,22 @@ for proof in (False, True):
         assert resources["deferred_saturation_certificate_constructions"] == 1
         assert completed.saturation_record.verify(K, K.maximal_order())
         assert completed.class_group().order() == expected
+        # Finishing consumes deferred scalar authority.  Compare the actual
+        # post-completion hint, which may already be unavailable, rather than
+        # requiring an obsolete pre-completion projection to remain usable.
+        completed_hint = class_unit_module._cached_class_number_projection(
+            K, key, False
+        )
+        expect_unconditional_decline(
+            lambda: class_unit_module.class_unit_context(K, proof=True)
+        )
+        assert class_unit_module.class_unit_context(K, proof=False) is completed, (
+            "conditional-result-reuse", index
+        )
+        assert class_unit_module._cached_class_number_projection(
+            K, key, False
+        ) is completed_hint, ("scalar-hint-after-decline", index)
+        assert completed.proof_status == "exact-relations-conditional-grh"
 
 # The public scalar method publishes the same resumable projection, and the
 # subsequent public class-group observation consumes it without rebuilding the
@@ -125,6 +155,10 @@ for proof in (False, True):
         x**4 - 2*x**3 - x**2 - 3*x + 1,
         "public" + str(int(proof)),
     )
+    if proof:
+        for request in (K.class_number, K.class_group, K.class_unit_group):
+            expect_unconditional_decline(lambda: request(proof=True))
+        continue
     builds = [0]
     original_build = factor_base_module.build_factor_base
     def counted_public_build(plan):
@@ -149,8 +183,7 @@ for proof in (False, True):
     # The public adapter independently replays the factor-base presentation.
     # Conditional results also replay the distinct analytic authority carried
     # by their GRH certificate; neither path launches a second relation search.
-    expected_total_builds = 3 if not proof else 2
-    assert builds[0] == expected_total_builds, (
+    assert builds[0] == 3, (
         "public-total-builds",
         proof,
         builds[0],
@@ -159,6 +192,16 @@ for proof in (False, True):
     assert group.verify()
     assert resources["relation_attempts"] == attempts
     assert resources["relations"] == relations
+    completed_hint = class_unit_module._cached_class_number_projection(
+        K, key, False
+    )
+    for request in (K.class_number, K.class_group, K.class_unit_group):
+        expect_unconditional_decline(lambda: request(proof=True))
+    assert class_unit_module._cached_class_number_projection(
+        K, key, False
+    ) is completed_hint, "public-scalar-hint-after-decline"
+    assert K.class_group(proof=False).invariants() == (2,)
+    assert group.verify()
 
 # A reusable public adapter consumes the saturation record's already-canonical
 # body.  It never reconstructs that payload from exact unit objects, while the
