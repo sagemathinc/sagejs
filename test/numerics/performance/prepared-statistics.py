@@ -38,9 +38,7 @@ def checked(values, ddof=1):
                         actual = result.value[name]
                         assert type(actual) is float, (name, type(actual), value)
                         if value == 0.0:
-                            assert math.copysign(1.0, actual) == math.copysign(
-                                1.0, value
-                            ), name
+                            assert repr(actual) == repr(value), name
             assert result.validation.to_dict() == ordinary.validation.to_dict()
             assert result.evaluations == len(values)
             if result.success:

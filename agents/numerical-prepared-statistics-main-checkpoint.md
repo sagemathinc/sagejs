@@ -45,15 +45,50 @@ regions, not a hard deadline inside sorting or native arithmetic.
   and `docs/general-class-unit-frontier.md`; those unrelated documents are
   untouched. Algebraic-geometry and optimization-engine checks pass separately.
   The source-bound optimizer inventory is regenerated and verified for this
-  slice (16,626 functions, 14,535 loops); publishing its immutable evidence
-  assets remains part of the PR handoff, not a product release.
+  slice (16,626 functions, 14,535 loops); its four immutable infrastructure
+  evidence assets are published and their GitHub digests verified. Product
+  Latest remains unchanged; this is not a product release.
 - The inherited lane-only check reports 406 live task manifests; this isolated
   integration branch is not a new lane contract and does not retire them.
 
-These are local development validations. A fresh source-frozen build and
-identity-bound current measurements follow. The development collector reports
-setup, first call, generic and prepared queries separately, with no paired-run,
-four-platform, public-browser, npm/SEA or memory qualification claim.
+## Frozen source and public browser follow-up
+
+At clean source `dca0b0873`, a fresh eight-stage local build passes (10m37s) and
+12 focused/domain tests pass without skips. The same clean source independently
+builds on reserved `bench-1` (10m25s), with 10 tests passing and two explicit
+optional SDK/sanitizer skips. Checked public `describe(20000 observations)` is
+96/103 ms locally and 82/93 ms on the independent host (none/summary traces),
+versus generic 5.7/5.8 seconds locally and 5.0/4.8 seconds on the host. Preparation
+remains separately 1.1–1.5 seconds. Values and validation agree with CPython.
+These sequential collectors are not paired performance qualification. The
+[raw records, logs and verifier](../bench/numerics/performance/results/n2-prepared-statistics-dca0b0873/README.md)
+retain slower/noisy rows and every setup/first-call cost.
+
+The real browser corpus initially failed because build-time import discovery
+missed the function-local `_prepared_native` import. An explicit precompiled
+package entry fixes the bundle, without swallowing ImportError. The full owned
+data/ordinary fallback corpus now passes in Chromium, Firefox and WebKit. The
+existing routine numerical-browser test also exercises the explicit native
+request and correct fallback, so this gap cannot hide behind kernel-only tests.
+All 69 public numerical modules and the cross-domain routine witnesses pass.
+The rebuilt browser artifact passes the unchanged payload/topology budget:
+195,193,174 raw bytes, 25,000,895 gzip bytes, 15,661,748 Brotli bytes across all
+groups. These are artifact inventory totals, not bytes fetched by one query.
+This browser build includes the packaging fix atop `dca0b0873`; it is not a
+clean immutable release qualification of that original commit.
+
+A stricter dependency probe exposed an inherited startup limitation:
+`evaluator.mjs` eagerly instantiates FLINT/algebraic/M4RI before any evaluation.
+The browser tests record those requests and require no additional exact/Plotly
+loads from statistics. They explicitly report `lightweight_startup: false`.
+Node's no-exact-load assertion remains strict. Both original browser failures
+are retained; the browser startup requirement remains open rather than being
+silently turned into an incremental-load pass.
+
+The sign witness now uses float representations instead of the existing
+dynamic `math.copysign`, which incorrectly ignores negative zero. The complete
+Node ownership/fallback corpus and all three public browser engines pass again
+with that independent oracle. This does not repair the separate math wrapper.
 
 ## Still open
 

@@ -26,6 +26,10 @@ uses the ordinary Python fallback. Inspect `data.backend` and the result's
 backend/provenance instead of inferring selection from the request. Missing or
 stale artifacts never trigger a hidden compilation or exact-library download.
 No FLINT, PARI or Plotly load is required to prepare data or compute a summary.
+The Node tests enforce this. The existing browser worker nevertheless eagerly
+downloads FLINT, algebraic and M4RI backends during startup, before the numerical
+call. Statistics adds no further backend downloads, but a lightweight browser
+startup is still an unresolved product requirement, not a property of this API.
 
 The optional route compiles the actual typed Python bodies for accurately
 rounded finite summation and centered transformations. It retains the existing

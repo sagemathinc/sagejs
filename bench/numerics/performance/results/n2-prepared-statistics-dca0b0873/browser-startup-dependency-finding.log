@@ -1,0 +1,28 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: statistics must not load exact arithmetic or Plotly
++ actual - expected
+
++ [
++   '/dist/flint-factor.wasm',
++   '/dist/m4ri-resource.wasm',
++   '/dist/flint-algebraic.wasm'
++ ]
+- []
+
+    at file:///home/user/sagejs-worktrees/perf-numerical-statistics-main/test/numerics/performance/prepared-statistics-browser.mjs:45:14 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [
+    '/dist/flint-factor.wasm',
+    '/dist/m4ri-resource.wasm',
+    '/dist/flint-algebraic.wasm'
+  ],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.8.1
