@@ -32,6 +32,12 @@ export interface CstLoweringResult {
   directlyLoweredNodeTypes: ReadonlySet<string>;
 }
 
+// Order-only metadata: expressions remain owned by args.kwargs/kwarg_items.
+// Consecutive explicit keywords form one evaluation/merge group in Python.
+export type PythonKeywordGroup =
+  | { kind: "explicit"; start: number; count: number }
+  | { kind: "mapping"; index: number };
+
 function significantChildren(node: SyntaxNode): SyntaxNode[] {
   return node.namedChildren.filter(
     (child) => child.type !== "comment" && child.type !== "line_continuation",
@@ -3348,8 +3354,7 @@ export class PythonCstLowerer {
       value instanceof this.compiler.AST_Call &&
       !value.sage_empty_bracket_constructor
     ) {
-      value.args.kwargs ??= [];
-      value.args.kwargs.push([
+      this.appendCallKeyword(value.args, [
         this.make("AST_SymbolRef", node, { name: "names" }),
         this.make("AST_Array", node, {
           elements: names.map((name) =>
@@ -3570,10 +3575,24 @@ export class PythonCstLowerer {
     return build(0);
   }
 
+  private appendCallKeyword(args: any, pair: any[]): void {
+    args.kwargs ??= [];
+    args.keyword_groups ??= [];
+    const groups: PythonKeywordGroup[] = args.keyword_groups;
+    const previous = groups.at(-1);
+    if (previous?.kind === "explicit") {
+      previous.count += 1;
+    } else {
+      groups.push({ kind: "explicit", start: args.kwargs.length, count: 1 });
+    }
+    args.kwargs.push(pair);
+  }
+
   private lowerCall(node: SyntaxNode, unwrapSplatFunction = false): any {
     const args: any[] = [];
     (args as any).kwargs = [];
     (args as any).kwarg_items = [];
+    (args as any).keyword_groups = [];
     (args as any).starargs = false;
     const argumentsNode = this.field(node, "arguments");
     const argumentNodes = argumentsNode.type === "argument_list"
@@ -3590,7 +3609,7 @@ export class PythonCstLowerer {
           throw new SyntaxError(`keyword argument repeated: ${keywordName}`);
         }
         explicitKeywords.add(keywordName);
-        (args as any).kwargs.push([
+        this.appendCallKeyword(args, [
           this.make("AST_SymbolRef", this.field(argument, "name"), {
             name: keywordName,
           }),
@@ -3598,6 +3617,9 @@ export class PythonCstLowerer {
         ]);
       } else if (argument.type === "dictionary_splat") {
         sawDictionarySplat = true;
+        (args as any).keyword_groups.push({
+          kind: "mapping", index: (args as any).kwarg_items.length,
+        });
         (args as any).kwarg_items.push(
           this.lowerExpression(significantChildren(argument)[0]),
         );

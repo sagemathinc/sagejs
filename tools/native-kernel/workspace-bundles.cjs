@@ -155,7 +155,7 @@ function prepareWorkspaceBundles(topLevel, compiler, resources, filename) {
         const result = node.map(item => expression(item, env));
         // Call argument lists carry named/starred arguments on the array.
         // Do not erase those effects or validation inputs during projection.
-        for (const key of ["kwargs", "kwarg_items", "starargs"]) {
+        for (const key of ["kwargs", "kwarg_items", "starargs", "keyword_groups"]) {
           if (Object.hasOwn(node, key)) result[key] = expression(node[key], env);
         }
         return result;

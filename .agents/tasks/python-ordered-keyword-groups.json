@@ -1,0 +1,72 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-ordered-keyword-groups",
+  "title": "Python Ordered Keyword Groups",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Preserve ordered keyword groups through lowering and projection pending coordinated emitter integration",
+  "base_commit": "02a683d213072c3129da1f71e2aa47de447cfc4a",
+  "claims": [
+    "tools/python/lowerer.ts",
+    "tools/native-kernel/workspace-bundles.cjs",
+    "test/python-ordered-keyword-groups.cjs",
+    "docs/python-ordered-keyword-groups.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython 3.14 keyword group order and semantic AST projection"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_KEYWORD_GROUP_COMPILER_ROOT=/tmp/sagejs-keyword-order.oQHyJw node test/python-ordered-keyword-groups.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.37,
+      "started_at": "2026-09-12T10:57:19.369Z",
+      "commit": "02a683d213072c3129da1f71e2aa47de447cfc4a",
+      "workspace_fingerprint": "9f7b5c83dda8c38c5edc5de7e627f17a8e16dcb8d49e2805f8be6cc72068e64d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec tsc --noEmit --pretty false",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.884,
+      "started_at": "2026-09-12T10:57:20.765Z",
+      "commit": "02a683d213072c3129da1f71e2aa47de447cfc4a",
+      "workspace_fingerprint": "9f7b5c83dda8c38c5edc5de7e627f17a8e16dcb8d49e2805f8be6cc72068e64d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Producer/projection checkpoint on main 02a683d21: ordered index-only keyword groups, shared ordinary/Sage synthesized append, and workspace preservation. Source-focused CPython grouping/projection checks and TypeScript checking pass. No emitter/runtime edits or builds; this is not a completed public semantics fix.",
+    "risks": [
+      "Existing emitter does not yet consume keyword_groups.",
+      "Non-string mapping-key validation timing remains a required unresolved gap.",
+      "The proposed runtime helper needs natural shared-code headroom before final integration."
+    ],
+    "next_steps": [
+      "Coordinate consumer ownership transfer, integrate PR260 generator scope behavior, then add ordered incremental merge emission and packet collision controls.",
+      "Qualify complete consumer/source-frozen candidate before review; do not open a producer-only completion PR."
+    ]
+  }
+}
