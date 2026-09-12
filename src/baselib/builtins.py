@@ -705,20 +705,25 @@ def _builtins_call_member(
     return runtime.reflect.apply(method, value, call_args)
 
 
+def _builtins_set_python_type(value: Any, python_type: Any) -> None:
+    runtime.object.defineProperty(
+        value,
+        "__python_type__",
+        {"value": python_type, "writable": True, "configurable": True},
+    )
+
+
 def _builtins_bind_python_function(
     target: Any,
     receiver: Any,
 ) -> Any:
-    bind_arguments = runtime.reflect.construct(runtime.array, [])
-    bind_arguments.push(runtime.undefined)
-    bind_arguments.push(receiver)
+    bind_arguments = runtime.array.of(receiver)
     if (
-        _builtins_get_member(target, "__sagejs_native_method__") is True
-        or _builtins_get_member(target, "__sagejs_method_signature_excludes_self__")
-        is True
+        _builtins_get_member(target, "__sagejs_native_method__") is not True
+        and _builtins_get_member(target, "__sagejs_method_signature_excludes_self__")
+        is not True
     ):
-        bind_arguments = runtime.reflect.construct(runtime.array, [])
-        bind_arguments.push(receiver)
+        bind_arguments.unshift(runtime.undefined)
     bound = runtime.reflect.apply(
         runtime.reflect.get(target, "bind"),
         target,
@@ -741,6 +746,11 @@ def _builtins_bind_python_function(
                 [1],
             ),
         )
+        positional_only = runtime.reflect.get(bound, "__positional_only__")
+        if positional_only is not True and positional_only is not runtime.undefined:
+            runtime.reflect.set(
+                bound, "__positional_only__", runtime.math.max(0, positional_only - 1)
+            )
     return bound
 
 
@@ -3750,21 +3760,6 @@ def _builtins_is_python_class(value: Any) -> _Bool:
     return _builtins_get_member(value, "__python_type__") is ρσ_type
 
 
-def _builtins_prototype_member(
-    prototype: Any,
-    name: _Str,
-) -> Any:
-    current = prototype
-    while current is not None and current is not runtime.undefined:
-        descriptor = runtime.object.getOwnPropertyDescriptor(current, name)
-        if descriptor is not runtime.undefined:
-            # Do not invoke a property getter while merely inspecting docs.
-            # Ordinary Python methods are stored as descriptor values.
-            return runtime.reflect.get(descriptor, "value")
-        current = runtime.object.getPrototypeOf(current)
-    return runtime.undefined
-
-
 def ρσ_help(item: Any = runtime.undefined) -> None:
     """Print concise Python-style help derived from Sage.js metadata."""
     module = _builtins_default_import(
@@ -5984,15 +5979,7 @@ def _builtins_function_with_globals(
             return _builtins_function_with_globals(result, global_namespace)
         return result
 
-    runtime.object.defineProperty(
-        rebound,
-        "__python_type__",
-        {
-            "value": ρσ_function_type,
-            "writable": True,
-            "configurable": True,
-        },
-    )
+    _builtins_set_python_type(rebound, ρσ_function_type)
     runtime.reflect.set(rebound, "__python_descriptor__", True)
     runtime.object.defineProperty(
         rebound,
@@ -6890,11 +6877,7 @@ def ρσ_type(*values: Any) -> Any:
                     [dynamic_class, bases],
                 ),
             )
-        runtime.object.defineProperty(
-            dynamic_class,
-            "__python_type__",
-            {"value": ρσ_type, "writable": True, "configurable": True},
-        )
+        _builtins_set_python_type(dynamic_class, ρσ_type)
         runtime.set_class_repr(dynamic_class, "<class '" + class_name + "'>")
         ρσ_apply_custom_new_signature(
             dynamic_class,
@@ -7049,11 +7032,7 @@ def _builtins_apply_metaclass_namespace(
     # metaclass while `metaclass.__init__` runs.  Publish that relationship
     # before invoking the initializer so `super()` inside a metaclass
     # `__init__` follows the metaclass MRO (traitlets relies on this).
-    runtime.object.defineProperty(
-        created,
-        "__python_type__",
-        {"value": metaclass, "writable": True, "configurable": True},
-    )
+    _builtins_set_python_type(created, metaclass)
     _builtins_class_metaclasses.set(created, metaclass)
     initializer = _builtins_get_member(
         _builtins_get_member(metaclass, "prototype"),
@@ -7223,6 +7202,13 @@ def ρσ_issubclass(cls: Any, candidates: Any) -> _Bool:
     )
 
 
+def _builtins_optional_attribute(value: Any, name: _Str) -> Any:
+    try:
+        return ρσ_getattr_internal(value, name, runtime.undefined)
+    except AttributeError:
+        return runtime.undefined
+
+
 def ρσ_divmod(left: Any, right: Any) -> Any:
     if (
         runtime.strict_equal(runtime.jstype(left), "number")
@@ -7235,54 +7221,39 @@ def ρσ_divmod(left: Any, right: Any) -> Any:
         quotient = runtime.math.floor(runtime.native_div(left, right))
         remainder = runtime.native_sub(left, runtime.native_mul(quotient, right))
         return runtime.math_tuple([quotient, remainder])
-    left_class = _builtins_get_member(left, "constructor")
-    right_class = _builtins_get_member(right, "constructor")
-    right_reflected_descriptor = runtime.object.getOwnPropertyDescriptor(
-        _builtins_get_member(right_class, "prototype"),
-        "__rdivmod__",
-    )
-    right_reflected = (
-        runtime.undefined
-        if right_reflected_descriptor is runtime.undefined
-        else runtime.reflect.get(right_reflected_descriptor, "value")
-    )
-    left_reflected = _builtins_prototype_member(
-        _builtins_get_member(left_class, "prototype"),
-        "__rdivmod__",
-    )
-    left_direct = _builtins_get_special_member(left, "__divmod__")
-    right_reflected_selected = _builtins_get_special_member(right, "__rdivmod__")
-    right_reflected_function = _builtins_get_member(right_reflected, "__func__")
-    if right_reflected_function is runtime.undefined:
-        right_reflected_function = right_reflected
-    left_reflected_function = _builtins_get_member(left_reflected, "__func__")
-    if left_reflected_function is runtime.undefined:
-        left_reflected_function = left_reflected
-    reflected_first = (
+    left_class = _builtins_attribute_owner(left)
+    right_class = _builtins_attribute_owner(right)
+    reflected_first = False
+    if (
         _builtins_is_python_class(left_class)
         and _builtins_is_python_class(right_class)
         and left_class is not right_class
         and ρσ_issubclass(right_class, left_class)
-        and right_reflected_descriptor is not runtime.undefined
-        and right_reflected_function is not left_reflected_function
-        and right_reflected_selected is not runtime.undefined
-    )
+    ):
+        right_reflected = _builtins_optional_attribute(right_class, "__rdivmod__")
+        if right_reflected is not runtime.undefined:
+            left_reflected = _builtins_optional_attribute(left_class, "__rdivmod__")
+            reflected_first = left_reflected is runtime.undefined or (
+                left_reflected is not right_reflected
+                and left_reflected != right_reflected
+            )
     if reflected_first:
-        result = _builtins_call_selected_special(
-            right, right_reflected_selected, [left]
-        )
+        method = _builtins_get_special_member(right, "__rdivmod__")
+        if method is not runtime.undefined:
+            result = _builtins_call_selected_special(right, method, [left])
+            if result is not NotImplemented:
+                return result
+    method = _builtins_get_special_member(left, "__divmod__")
+    if method is not runtime.undefined:
+        result = _builtins_call_selected_special(left, method, [right])
         if result is not NotImplemented:
             return result
-    if left_direct is not runtime.undefined:
-        result = _builtins_call_selected_special(left, left_direct, [right])
-        if result is not NotImplemented:
-            return result
-    if not reflected_first and right_reflected_selected is not runtime.undefined:
-        result = _builtins_call_selected_special(
-            right, right_reflected_selected, [left]
-        )
-        if result is not NotImplemented:
-            return result
+    if left_class is not right_class and not reflected_first:
+        method = _builtins_get_special_member(right, "__rdivmod__")
+        if method is not runtime.undefined:
+            result = _builtins_call_selected_special(right, method, [left])
+            if result is not NotImplemented:
+                return result
     if runtime.equals(right, 0):
         raise runtime.zero_division_error("integer division or modulo by zero")
     quotient = ρσ_operator_floordiv(left, right)
@@ -9336,11 +9307,7 @@ _builtins_set_type_metadata(ρσ_bool, "bool")
 _builtins_set_type_metadata(ρσ_float, "float")
 _builtins_set_type_metadata(runtime.function_class, "function")
 for builtin_numeric_type in (ρσ_int, ρσ_bool, ρσ_float, ρσ_type):
-    runtime.object.defineProperty(
-        builtin_numeric_type,
-        "__python_type__",
-        {"value": ρσ_type, "writable": True, "configurable": True},
-    )
+    _builtins_set_python_type(builtin_numeric_type, ρσ_type)
 runtime.reflect.set(runtime.function_class, "__python_type__", ρσ_type)
 runtime.set_class_repr(ρσ_tuple, "<class 'tuple'>")
 runtime.set_class_repr(ρσ_property, "<class 'property'>")
@@ -9352,11 +9319,7 @@ for builtin_factory_type in (ρσ_tuple, ρσ_property):
     # baselib functions receive lazy function metadata, so replace that marker
     # explicitly instead of letting class inheritance mistake the factory for
     # a custom metaclass.
-    runtime.object.defineProperty(
-        builtin_factory_type,
-        "__python_type__",
-        {"value": ρσ_type, "writable": True, "configurable": True},
-    )
+    _builtins_set_python_type(builtin_factory_type, ρσ_type)
 runtime.reflect.set(
     runtime.reflect.get(SageProperty, "prototype"),
     "__python_type__",
@@ -9540,11 +9503,7 @@ runtime.reflect.set(ρσ_range, "prototype", runtime.reflect.get(_Range, "protot
 runtime.reflect.set(
     runtime.reflect.get(_Range, "prototype"), "__python_type__", ρσ_range
 )
-runtime.object.defineProperty(
-    ρσ_range,
-    "__python_type__",
-    {"value": ρσ_type, "writable": True, "configurable": True},
-)
+_builtins_set_python_type(ρσ_range, ρσ_type)
 runtime.set_class_repr(ρσ_range, "<class 'range'>")
 _builtins_set_type_metadata(ρσ_range, "range")
 

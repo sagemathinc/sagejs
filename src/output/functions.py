@@ -443,8 +443,8 @@ def has_annotations(self):
     return False
 
 
-def print_annotation_text(self, output, strip_first):
-    output.print("{")
+def print_annotation_text(self, output, strip_first, flat_pairs=False):
+    output.print("[" if flat_pairs else "{")
     wrote = False
 
     def write_argument(arg):
@@ -453,7 +453,7 @@ def print_annotation_text(self, output, strip_first):
             if wrote:
                 output.comma()
             output.print(JSON.stringify(arg.name))
-            output.print(":")
+            output.print("," if flat_pairs else ":")
             output.space()
             output.print(JSON.stringify(arg.annotation_text or arg.name))
             wrote = True
@@ -470,10 +470,10 @@ def print_annotation_text(self, output, strip_first):
     if self.return_annotation:
         if wrote:
             output.comma()
-        output.print('"return":')
+        output.print('"return",' if flat_pairs else '"return":')
         output.space()
         output.print(JSON.stringify(self.return_annotation_text or "Any"))
-    output.print("}")
+    output.print("]" if flat_pairs else "}")
 
 
 def function_annotation(self, output, strip_first, name):
@@ -531,13 +531,18 @@ def function_annotation(self, output, strip_first, name):
 
         def annotations():
             if not compiling_baselib:
-                output.print("ρσ_dict(")
+                output.print("ρσ_dict_literal(")
             if self.annotations is "future":
-                print_annotation_text(self, output, strip_first)
+                print_annotation_text(
+                    self,
+                    output,
+                    strip_first and compiling_baselib,
+                    not compiling_baselib,
+                )
                 if not compiling_baselib:
                     output.print(")")
                 return
-            output.print("{")
+            output.print("{" if compiling_baselib else "[")
             wrote = False
 
             def write_evaluated(arg):
@@ -546,12 +551,12 @@ def function_annotation(self, output, strip_first, name):
                     if wrote:
                         output.comma()
                     output.print(JSON.stringify(arg.name))
-                    output.print(":"), output.space()
+                    output.print(":" if compiling_baselib else ","), output.space()
                     arg.annotation.print(output)
                     wrote = True
 
             for index, arg in enumerate(self.argnames):
-                if not (strip_first and index is 0):
+                if not (compiling_baselib and strip_first and index is 0):
                     write_evaluated(arg)
             if self.argnames.starargs is not undefined:
                 write_evaluated(self.argnames.starargs)
@@ -562,9 +567,12 @@ def function_annotation(self, output, strip_first, name):
             if self.return_annotation:
                 if wrote:
                     output.comma()
-                output.print("return:"), output.space()
+                (
+                    output.print("return:" if compiling_baselib else '"return",'),
+                    output.space(),
+                )
                 self.return_annotation.print(output)
-            output.print("}")
+            output.print("}" if compiling_baselib else "]")
             if not compiling_baselib:
                 output.print(")")
 
@@ -574,7 +582,7 @@ def function_annotation(self, output, strip_first, name):
         # even when it is empty.  functools.wraps and many package-level
         # decorators copy it unconditionally.
         props.__annotations__ = lambda: output.print(
-            "{}" if compiling_baselib else "ρσ_dict()"
+            "{}" if compiling_baselib else "ρσ_dict_literal([])"
         )
 
     # Create __defaults__
@@ -1493,8 +1501,21 @@ def print_function_call(self, output):
             output.comma(),
         )
 
+    prepared_keywords = has_kwargs and resolved_python_attribute
+    if prepared_keywords:
+        for argument in self.args:
+            if argument.is_array:
+                prepared_keywords = False
+                break
+
     if has_kwargs:
-        if is_new:
+        if prepared_keywords:
+            output.print("ρσ_invoke_prepared_keywords(ρσ_prepare_method_call(")
+            self.expression.expression.print(output)
+            output.comma()
+            output.print(JSON.stringify(self.expression.property))
+            output.print(")")
+        elif is_new:
             print_new(False)
         else:
             output.print(
@@ -1503,7 +1524,8 @@ def print_function_call(self, output):
                 else "ρσ_interpolate_kwargs_legacy("
             )
             do_print_this()
-        print_function_name(True)
+        if not prepared_keywords:
+            print_function_name(True)
         output.comma()
     else:
         if is_new:
@@ -1522,16 +1544,34 @@ def print_function_call(self, output):
     if is_prototype_call and self.args.length > 1:
         self.args.shift()
 
-    print_positional_args()
-
-    if has_kwargs:
-        if self.args.length:
-            output.print(".concat(")
-        output.print("[")
+    if (
+        output.options.python_attributes
+        and has_kwargs
+        and self.args.length == 1
+        and self.args[0].is_array
+    ):
+        # A sole starred expression is evaluated before keywords, but its
+        # iterable is consumed afterwards. Keep user expressions at the call
+        # site (including yield/await), and give each invocation private state.
+        output.print(
+            "(function(ρσ_star,ρσ_keywords){return "
+            "Array.from(ρσ_Iterable(ρσ_star)).concat([ρσ_keywords]);})("
+        )
+        self.args[0].print(output)
+        output.comma()
         print_kwargs()
-        output.print("]")
-        if self.args.length:
-            output.print(")")
+        output.print(")")
+    else:
+        print_positional_args()
+
+        if has_kwargs:
+            if self.args.length:
+                output.print(".concat(")
+            output.print("[")
+            print_kwargs()
+            output.print("]")
+            if self.args.length:
+                output.print(")")
 
     output.print(")")
     if not is_repeatable:
