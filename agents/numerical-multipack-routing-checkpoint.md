@@ -46,6 +46,21 @@ old generated v4 production outputs must be rebuilt, not aliased into this layou
   and mismatched membership have focused rejection tests.
 
 The controlled SEA asset transport is **not an executable SEA qualification**.
+An additional specialized test now builds and relocates two real executable SEA
+fixtures on Linux x64 Node 26.8.1, using the actual compiled resource loader.
+The valid fixture computes the cancellation-sensitive sum exactly and leaves
+the exact pack unextracted; the second fixture rejects a corrupted embedded
+manifest before extraction. Execution has no compiler on `PATH`, no developer
+native cache and an absent exact prefix. Each fixture is 157,220,036 bytes
+(mostly the unstripped Node template), not a measured Sage.js product payload.
+This is executable native-pack loading qualification only, **not** full Sage.js
+Python/CLI/npm/SEA qualification. Reproduce with a prepared native checkout and
+a Node builder supporting `--build-sea`:
+
+```sh
+node --test test/numerics/performance/multipack-sea.cjs
+```
+
 These checks use existing built frontend/runtime inputs with freshly compiled
 TypeScript and freshly generated native fixtures, not a fresh eight-stage
 product build. The full production-native suite has been updated for the layout

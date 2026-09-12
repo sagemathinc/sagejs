@@ -93,6 +93,10 @@ async function main() {
   fs.renameSync(path.join(temporary,"withheld-exact-pack"),exactDirectory);
   const exactWrapper = require(path.join(published,layout.modulePath(exact)));
   assert.equal(exactWrapper.exact_twice(1n<<200n),1n<<201n);
+  if (process.argv.includes("--sea")) {
+    const {qualifySeaFixture} = require("./multipack-sea-fixture.cjs");
+    console.log(JSON.stringify({seaFixtures:qualifySeaFixture({root,temporary,published,index,numerical,exact})}));
+  }
   console.log(JSON.stringify({packs:2,numericalPublicAutoloadWithoutExactPack:true,
     seaResourceExtractionWithoutExactPack:true,corruptManifestsRejected:6,exactBits:202}));
 }
