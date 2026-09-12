@@ -5764,9 +5764,20 @@ def ρσ_resolve_module_name(
         cleared_exception is not runtime.undefined and value is cleared_exception
     )
     declared_in_module = False
-    if module_namespace is not None and _builtins_has_member(module_namespace, name):
+    native_namespace = runtime.strict_equal(runtime.jstype(module_namespace), "object")
+    # Object namespaces need neither primitive boxing nor function metadata
+    # synthesis. Keep has-before-get, including Proxy traps and live accessors.
+    if module_namespace is not None and (
+        runtime.reflect.has(module_namespace, name)
+        if native_namespace
+        else _builtins_has_member(module_namespace, name)
+    ):
         declared_in_module = True
-        module_value = _builtins_get_member(module_namespace, name)
+        module_value = (
+            runtime.native_get(module_namespace, name)
+            if native_namespace
+            else _builtins_get_member(module_namespace, name)
+        )
         if (
             module_value is not runtime.undefined
             and module_value is not cleared_exception
