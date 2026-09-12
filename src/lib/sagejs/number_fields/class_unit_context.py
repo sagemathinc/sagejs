@@ -573,6 +573,7 @@ class _LiveClassUnitArtifacts:
         self.field = field
         self.order = order
         self.reusable = bool(reusable)
+        self.unit_coordinate_order_identity: Any = None
         self.factor_base: tuple[Any, ...] = ()
         self.factor_base_bound = False
         self.factor_base_validation_available = False
@@ -1459,13 +1460,20 @@ class _LiveClassUnitArtifacts:
         self.deactivate_generation_verification()
         self.saturation_live_authority_available = False
         self.sealed = True
+        if self.reusable:
+            self.unit_coordinate_order_identity = canonical_component(
+                _order_fingerprint(self.field, self.order)
+            )
         if (
             self.reusable
-            and self.terminal_proof_status == "exact-relations-conditional-grh"
+            and self.terminal_proof_status
+            in ("exact-relations-conditional-grh", "exact-unconditional")
             and class_group is not None
             and unit_group is not None
             and saturation_record is not None
         ):
+            # Unit maps need the pre-publication snapshot in both proof modes;
+            # initializing it lazily would bless mutations made after escape.
             try:
                 self.terminal_identity_snapshot = self._capture_terminal_identity()
                 self.terminal_semantic_snapshot = self._capture_terminal_semantics()
@@ -1864,6 +1872,39 @@ class ClassUnitGroupContext:
             analytic_workspace=analytic_workspace,
             factored_logarithm_workspace=factored_logarithm_workspace,
         )
+
+    def _unit_coordinate_source_authenticated(
+        self, token: Any, source: Any, *, rank_zero: bool = False
+    ) -> bool:
+        """Authenticate the producer's original order before either map replay."""
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("unit-coordinate authority is engine-owned")
+        live = self._live_artifacts
+        if not (
+            type(live) is _LiveClassUnitArtifacts
+            and live.sealed
+            and live.reusable
+            and live.field is self.field
+            and live.order is self.order
+            and source.field is self.field
+            and live.terminal_proof_status == source.proof_status
+            and live.unit_coordinate_order_identity is not None
+        ):
+            return False
+        try:
+            if (
+                _order_fingerprint(self.field, self.order)
+                != live.unit_coordinate_order_identity
+            ):
+                return False
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+        if rank_zero:
+            return bool(
+                source._unit_group is live.unit_group
+                and source._class_group is live.class_group
+            )
+        return live._terminal_source_matches(source, require_semantic_snapshot=True)
 
     def _bind_live_relations(
         self,

@@ -8,7 +8,7 @@ const test = require("node:test");
 
 const root = join(__dirname, "..");
 
-test("exact cubic and direct-Minkowski projections are isolated zero-algebra views", () => {
+test("conditional cubic maps retain exact isolation without granting unconditional units", () => {
   const executable =
     process.platform === "win32"
       ? process.execPath
@@ -29,11 +29,21 @@ test("exact cubic and direct-Minkowski projections are isolated zero-algebra vie
     encoding: "utf8",
     timeout: 900_000,
   });
-  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(result.status, 0, [result.stdout, result.stderr].filter(Boolean).join("\n"));
   const payload = JSON.parse(result.stdout.trim().split("\n").at(-1));
   assert.equal(payload.status, "ok");
-  assert.equal(payload.rows.length, 6);
+  assert.equal(payload.rows.length, 3);
+  assert.deepEqual(payload.scalar_controls, [
+    { label: "3.1.588.1", proof: true, class_number: 3 },
+    { label: "3.1.5448.1", proof: true, scalar_declined: true },
+    { label: "3.1.4027.2", proof: true, scalar_declined: true },
+  ]);
+  assert.deepEqual(payload.fresh_declines, payload.scalar_controls.map(({ label }) =>
+    ({ label, proof: true, combined_declined: true })));
   for (const row of payload.rows) {
+    assert.equal(row.proof, false);
+    assert.equal(row.proof_status, "exact-relations-conditional-grh");
+    assert.equal(row.cached_unconditional_combined_declined, true);
     // Absolute latency is measured by the dedicated class-unit benchmark.
     // This integration test runs alongside independent files, so wall-clock
     // microbenchmarks here would turn test-runner contention into failures.

@@ -998,12 +998,16 @@ payload = C.proof_payload()
 assert payload["proof_status"] == EXACT_UNCONDITIONAL
 assert payload["bound"] == [2, 1] and len(payload["prime_records"]) == 1
 assert payload["proof_progress"]["partition_count"] == 2
+assert payload["proof_progress"]["complete"] is True
+assert payload["proof_progress"]["completed_items"] == len(payload["prime_records"])
 assert payload["saturation"]["index_bound"] == 6
 assert C.verify_proof_payload(payload)
 for path, value in (
     (("theorem",), "forged Minkowski theorem"),
     (("discriminant",), 2),
     (("bound", 0), 3),
+    (("prime_records", 0, "ideal", "schema"), "unknown-ideal-schema"),
+    (("prime_records", 0, "principal_witness", "ideal", "schema"), "unknown-ideal-schema"),
     (("field_order_fingerprint", "discriminant"), 2),
     (("saturation", "complete"), False),
     (("saturation", "evidence", "attempts", 1, "root_coordinates"), [[[9, 1]]]),
@@ -1063,6 +1067,50 @@ try:
 except ArithmeticError:
     pass
 
+# Exercise the direct replay resource guard without manufacturing a completed
+# public class/unit computation. All supplied metadata agrees; only the bound
+# exceeds the cap. Enumeration must not start.
+from sagejs.number_fields.class_group_maps import _direct_minkowski_evidence
+
+class OversizedDirectResult:
+    stages = (Stage("factor-base", "complete", {
+        "bound": 100_001, "theorem": "Minkowski ideal-class theorem",
+        "assumptions": [], "size": 0,
+    }),)
+    diagnostics = {"factor_base_bound": 100_001, "factor_base_size": 0}
+
+class EmptyRetainedGroup:
+    _factor_base = ()
+
+class GuardReplay:
+    def __init__(self):
+        self.order = O
+    def iter_minkowski_prime_ideals(self):
+        raise AssertionError("oversized replay reached prime enumeration")
+
+try:
+    _direct_minkowski_evidence(
+        OversizedDirectResult(), EmptyRetainedGroup(), GuardReplay(), 100_001, {}
+    )
+    raise AssertionError("an unbounded direct Minkowski replay was accepted")
+except ArithmeticError as error:
+    assert "direct Minkowski factor-base authority is inconsistent" in str(error)
+
+# The same fixture at the cap must pass the authority guard and reach the
+# enumeration marker, proving that the rejection above was specifically size.
+at_cap = OversizedDirectResult()
+at_cap.stages = (Stage("factor-base", "complete", {
+    "bound": 100_000, "theorem": "Minkowski ideal-class theorem",
+    "assumptions": [], "size": 0,
+}),)
+at_cap.diagnostics = {"factor_base_bound": 100_000, "factor_base_size": 0}
+try:
+    _direct_minkowski_evidence(at_cap, EmptyRetainedGroup(), GuardReplay(), 100_000, {})
+except AssertionError as error:
+    assert str(error) == "oversized replay reached prime enumeration"
+else:
+    raise AssertionError("at-cap direct replay did not reach enumeration")
+
 print("engine-unconditional-proof-ok")
 `);
   assert.equal(output, "engine-unconditional-proof-ok");
@@ -1079,30 +1127,20 @@ R = PolynomialRing(QQ, "x")
 x = R.gen()
 
 K6 = NumberField(x**6 - x - 1, "a")
-assert K6.class_number() == 1
-C6 = K6.class_group()
-assert C6.order() == 1 and C6.proof_status == "exact-unconditional"
+assert K6.class_number(proof=False) == 1
+C6 = K6.class_group(proof=False)
+assert C6.order() == 1 and C6.proof_status == "exact-relations-conditional-grh"
 payload6 = C6.proof_payload()
 assert C6.verify_proof_payload(payload6)
-assert payload6["prime_records"]
+assert payload6["conditional_evidence"]["factor_base"]
 assert all(
-    record["ideal"]["schema"] == "sagejs.number-fields.prime-ideal.v1"
-    for record in payload6["prime_records"]
-)
-assert all(
-    record["principal_witness"]["ideal"]["schema"]
-    == "sagejs.number-fields.ideal.v1"
-    for record in payload6["prime_records"]
+    record["schema"] == "sagejs.number-fields.prime-ideal.v1"
+    for record in payload6["conditional_evidence"]["factor_base"]
 )
 
 bad_prime = copy.deepcopy(payload6)
-bad_prime["prime_records"][0]["ideal"]["schema"] = "unknown-prime-schema"
+bad_prime["conditional_evidence"]["factor_base"][0]["schema"] = "unknown-prime-schema"
 assert not C6.verify_proof_payload(bad_prime)
-bad_ideal = copy.deepcopy(payload6)
-bad_ideal["prime_records"][0]["principal_witness"]["ideal"]["schema"] = (
-    "unknown-ideal-schema"
-)
-assert not C6.verify_proof_payload(bad_ideal)
 
 K3 = NumberField(x**3 + 4*x - 1, "b")
 conditional_result = class_unit_context(K3, proof=False)
@@ -1132,32 +1170,21 @@ corrupted_conditional["conditional_evidence"]["factor_base_plan"][
 ] = ["forged GRH assumption"]
 assert not C3_conditional.verify_proof_payload(corrupted_conditional)
 
-C3 = K3.class_group(proof=True)
-assert C3.order() == 2 and C3.proof_status == "exact-unconditional"
-payload3 = C3.proof_payload()
-assert C3.verify_proof_payload(payload3)
-assert payload3["proof_progress"]["complete"] is True
-assert payload3["proof_progress"]["completed_items"] == len(
-    payload3["prime_records"]
-)
-assert all(
-    record["ideal"]["schema"] == "sagejs.number-fields.prime-ideal.v1"
-    for record in payload3["prime_records"]
-)
-corrupted = copy.deepcopy(payload3)
-corrupted["prime_records"][0]["ideal"]["schema"] = "unknown-schema"
-assert not C3.verify_proof_payload(corrupted)
-
-K3_unbounded = NumberField(x**3 + 4*x - 1, "unbounded")
-result3 = class_unit_context(K3_unbounded, proof=True)
-factor_stage = next(stage for stage in result3.stages if stage.name == "factor-base")
-factor_stage.details["bound"] = 100_001
-result3.diagnostics["factor_base_bound"] = 100_001
-try:
-    class_group_from_engine_result(result3)
-    raise AssertionError("an unbounded direct Minkowski replay was accepted")
-except ArithmeticError:
-    pass
+# Prime-class generation does not discharge the separate fundamental-unit
+# obligation. Neither cached conditional groups nor fresh computations may
+# promote the BF zeta-GRH certificate to an unconditional completion.
+for polynomial, field in ((x**6 - x - 1, K6), (x**3 + 4*x - 1, K3)):
+    for candidate in (field, NumberField(polynomial, "fresh")):
+        for method in (candidate.class_group, candidate.class_unit_group):
+            try:
+                method(proof=True)
+            except NotImplementedError as error:
+                assert "unconditional analytic unit completeness is unavailable" in str(error)
+                assert "Belabas--Friedman" in str(error)
+            else:
+                raise AssertionError("conditional BF evidence granted unconditional completion")
+assert K6.class_group(proof=False).verify_proof_payload(payload6)
+assert K3.class_group(proof=False).verify_proof_payload(conditional_payload)
 
 print("public-proof-regimes-replay-ok")
 `);

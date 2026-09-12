@@ -1,0 +1,115 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-unit-coordinate-map",
+  "title": "General Unit Coordinate Map",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement authenticated compact unit coordinates for complete existing class/unit computations with bounded ordinary-input logarithms and explicit capability failures",
+  "base_commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+  "claims": [
+    "src/lib/sagejs/number_fields/unit_coordinates.py",
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "src/lib/sagejs/number_fields/class_unit_context.py",
+    "test/general-unit-coordinates.cjs",
+    "docs/number-field-unit-coordinates.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing exposed class-unit fixture exact relations",
+      "CPython rational interval arithmetic differential"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 327.125,
+      "started_at": "2026-09-11T11:19:05.085Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "0fec00cd66431bd08e9c14413a8f4975959d260639e11b76de8b537efbefde7e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-unit-coordinates.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.384,
+      "started_at": "2026-09-11T11:24:55.940Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "73456a59b1c8a973dd03f8dd12dcb532256a94343f640d5a2cb44ea8618e015b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-unit-coordinates.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.02,
+      "started_at": "2026-09-11T11:27:02.439Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "3d27b8fa75d7f4388c9eb952b8867c3854925e34db907449294ca6043d983b9b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.687,
+      "started_at": "2026-09-11T11:27:19.134Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "3d27b8fa75d7f4388c9eb952b8867c3854925e34db907449294ca6043d983b9b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 827.871,
+      "started_at": "2026-09-11T11:28:18.504Z",
+      "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
+      "workspace_fingerprint": "3d27b8fa75d7f4388c9eb952b8867c3854925e34db907449294ca6043d983b9b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-terminal-reuse.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 483.238,
+      "started_at": "2026-09-11T11:42:07.063Z",
+      "commit": "f531a6b640ce8344a9e595ba8bc602a24678bafe",
+      "workspace_fingerprint": "f92a37e399e5457baae065c316948fb5d047d742ca323a5f75b1233004ff4bac",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Draft first M1 correctness slice: authenticated torsion-first compact maps, bounded exact ordinary-input coordinates, rank-zero specialized replay, and mutation/resource regressions. Final-source focused, strict, native and terminal-reuse tests pass; docs and direct new-module Pyright checks pass. Source checkpoint f531a6b64 is unchanged. Not ready for merge or full M1 qualification.",
+    "risks": [
+      "Integration must register the new module in number-field-global-arithmetic and review its source-inventory allowance; current merge:check and test:changed stop at the unchanged algorithms source cap.",
+      "Integration owns pyrightconfig registration; the new module separately passes Pyright, while the lane strict suite currently covers 382 registered modules.",
+      "The source commit changes the framework's HEAD-tree-plus-diff fingerprint despite identical source bytes: focused/strict/native receipts use precommit 3d27b8fa75d7f4388c9eb952b8867c3854925e34db907449294ca6043d983b9b; final terminal reuse uses postcommit f92a37e399e5457baae065c316948fb5d047d742ca323a5f75b1233004ff4bac. Receipts are preserved without relabeling; integration must validate its own tree.",
+      "Arbitrary factored membership, detached map replay, complex positive-rank torsion and additional specialized authorities remain unsupported; no full M1 or performance qualification is claimed.",
+      "Producer snapshots add eager terminal-publication work. Expansion weight is a size-policy proxy, not a proved CPU or memory bound."
+    ],
+    "next_steps": [
+      "Coordinator integrates explicit package ownership/source-inventory review and strict-module registration, then reruns integration gates before any merge approval.",
+      "Retain the documented capability gaps for later bounded correctness work; do not change frozen M0 baseline or execute holdouts from this lane."
+    ]
+  }
+}

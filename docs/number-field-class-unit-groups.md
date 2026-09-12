@@ -12,9 +12,9 @@ absolute number fields over `QQ`. The shared computation is available as
 ```sage
 R.<x> = PolynomialRing(QQ)
 K.<a> = NumberField(x^2 + 4*x + 1)
-result = K.class_unit_group()
+result = K.class_unit_group(proof=False)
 result.complete, result.proof_status
-# (True, 'exact-unconditional')
+# (True, 'exact-relations-conditional-grh')
 result.class_group().invariants(), result.unit_group().unit_rank
 # ((), 1)
 ```
@@ -34,14 +34,33 @@ This quintic has signature `(1, 2)` and field discriminant `380452`. It is a
 deliberately slow documentation example; the ordinary test suite validates
 its committed oracle record and runs the discriminant-12 quadratic through
 the public API. Set `SAGEJS_SLOW_CLASS_UNIT=1` when running
-`test/number-field-class-unit-public.cjs` to replay both proof modes for the
-quintic as well.
+`test/number-field-class-unit-public.cjs` to replay the conditional quintic
+computation as well.
 
 ## Proof and GRH semantics
 
 `proof=None`, the default, means unconditional completion. `proof=True` is the
 explicit spelling of the same policy. A complete result has proof status
 `exact-unconditional`.
+
+The generic engine currently has no unconditional analytic unit-completeness
+certificate: its Belabas--Friedman (BF) index theorem requires zeta GRH even
+when Minkowski proves class generation exactly. A generic combined
+`class_unit_group(proof=True)` therefore raises `NotImplementedError` identifying
+the remaining proof-stage obligation. The same applies to upgrading a cached
+BF result; the failed request leaves its conditional context and maps valid.
+This is an unavailable proof capability, not resource exhaustion. Recognized
+specialized rank-zero, rational and bounded cubic results retain their exact
+semantics. Standalone real-quadratic Pell unit certificates and independently
+proved scalar class numbers also remain available, but degree two alone does
+not make the combined fallback unconditional. An exact class number alone does
+not certify a complete unit lattice. A scalar obtained only after a BF index
+check remains conditional too; an incomplete exact relation prefix is not a
+completed exact scalar certificate.
+
+BF index certificate construction, decoding and replay accept only
+`exact-relations-conditional-grh`. Changing and rehashing its proof label cannot
+remove the analytic hypothesis; a generation verifier proves only generation.
 
 `proof=False` permits two explicitly named GRH hypotheses. The
 Belabas--Diaz y Diaz--Friedman generator bound assumes nonvanishing to the

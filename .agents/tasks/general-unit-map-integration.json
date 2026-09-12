@@ -1,0 +1,314 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-unit-map-integration",
+  "title": "General Unit Map Integration",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate authenticated unit-coordinate maps, corrected BF proof policy and bounded detached component replay with explicit ownership, strict typing, resource evidence and unchanged safety gates",
+  "base_commit": "eb0d53e2dd87bcd090d194e7edf168101a465864",
+  "claims": [
+    "architecture/package-graph.json",
+    "pyrightconfig.json",
+    "docs/general-unit-map-integration-review.md",
+    "docs/general-resumed-unit-map-integration-review.md",
+    "architecture/optimizer-opportunities.manifest.json",
+    "docs/optimizer-opportunities.md",
+    "scripts/audit-cowasm-dependency.cjs",
+    "test/retired-dependency-provenance.cjs",
+    "scripts/build-receipt.cjs",
+    "test/build-input-partition.cjs",
+    "bench/modular/qexp-correctness/source-freeze.json"
+  ],
+  "dependencies": [
+    "general-unit-coordinate-map",
+    "general-class-unit-bf-proof-policy",
+    "general-class-unit-component-replay",
+    "general-class-unit-projection-proof-fixture",
+    "general-quartic-proof-fixtures",
+    "reference-html-conflict-markers",
+    "general-class-unit-generation-replay",
+    "general-class-unit-conditional-replay",
+    "general-class-unit-replay-data",
+    "general-class-unit-bdf-replay"
+  ],
+  "references": [
+    "Ownership baseline eb0d53e2d integrates reviewed detached generation/completion, shared payload decoder and resumed maps through2b68a8cf8. Full qualification still compares against b1740b78722ea3c8f22aa1df97823a75e40bf78b; source-lane receipts are not integrated qualification.",
+    "Ownership baseline a67040ca4 includes reviewed main's inherited HTML conflict-marker repair 831523ff7 and focused receipts 03164ceef. Full qualification still compares against b1740b78722ea3c8f22aa1df97823a75e40bf78b, including all dependencies.",
+    "Ownership baseline11a1b1eae records reviewed main c4c126d09, generic BF fixture code769679c77 and receipts1b578345d. This does not reset qualification: full changed-tree validation remains against b1740b78722ea3c8f22aa1df97823a75e40bf78b.",
+    "Mathematical dependency f531a6b640ce8344a9e595ba8bc602a24678bafe, merged as47746b60bcd1e5e1c141667413f397a5ad73a35e; integration does not claim its mathematical files",
+    "Independent exact documentary audit correction e5288a49e and portable test metadata followup f06c92ca7",
+    "Full integration validation compares against b1740b78722ea3c8f22aa1df97823a75e40bf78b rather than omitting merged dependencies",
+    "BF proof-policy dependency4d53ffb039d0df8988f69afa818466995d83d72c merged at83226d9cd; independent source review approved, exact-revision integration validation pending",
+    "Detached component replay source2436b080fbbd478888f87c6e0cef5baa80beb094 and metadatahandoffdc5de62b791020c6117d611a3a6f54d90b75a635 merged atf1c19aae8; no completeness authority claimed",
+    "Strict import-order followup0bef58bb57f65a121ab3eacfc624867d935b6ec0 merged atd6caf8e075db2dab0d85bce2eaccbb5ff74311f6; dedicated replay tests passed and prior strict failure retained"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Focused exact unit-coordinate and terminal-context regressions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm test:changed -- --base b1740b78722ea3c8f22aa1df97823a75e40bf78b"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.698,
+      "started_at": "2026-09-11T11:45:58.505Z",
+      "commit": "47746b60bcd1e5e1c141667413f397a5ad73a35e",
+      "workspace_fingerprint": "0f4a90149f7a96258edb0f887a651fbc13aad16a59c1f992e49b5cf7570b7100",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 661.089,
+      "started_at": "2026-09-11T12:15:10.267Z",
+      "commit": "81df347ab918ec7d96cb02e9e128894ade05f3b2",
+      "workspace_fingerprint": "c1e541936b8450b4ce0c7b8ba959bf5876ea58b96b69930a7acb5167f4c2159a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4616.394,
+      "started_at": "2026-09-11T12:33:48.596Z",
+      "commit": "e19a712bee767d89850017e24f4f981c8812a667",
+      "workspace_fingerprint": "9a8e1029f2dafcfc6c3e19632fddf5c3732aa60719340d8100f88041406dd69d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.994,
+      "started_at": "2026-09-11T13:57:07.116Z",
+      "commit": "f1c19aae850df20c42d94b9d0c842f9d8e663718",
+      "workspace_fingerprint": "f9c6a6892489be08add4e79b67de44aba73fbe56df0e53b1d215b504b6d4e375",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 12.972,
+      "started_at": "2026-09-11T13:59:29.296Z",
+      "commit": "f1c19aae850df20c42d94b9d0c842f9d8e663718",
+      "workspace_fingerprint": "62d20de4a6b99fb42bcc79a3980abb277472819186d407dba47069418d77829f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.187,
+      "started_at": "2026-09-11T14:21:03.524Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "cc214f1405bf5488792b5efe05236b0cb1495b40afbb725a3187a7c717ca2a85",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1271.381,
+      "started_at": "2026-09-11T14:21:58.352Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "cc214f1405bf5488792b5efe05236b0cb1495b40afbb725a3187a7c717ca2a85",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2005.498,
+      "started_at": "2026-09-11T17:11:12.453Z",
+      "commit": "d4f761bf246a8f94d15e59eda554b97cda554c5c",
+      "workspace_fingerprint": "3f2d4b22633b630bbb4a6a30fbbe5f2c7ffba51bbc6d59dd220abaf114043cc6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration:run",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 868.276,
+      "started_at": "2026-09-11T22:09:25.975Z",
+      "commit": "d4f761bf246a8f94d15e59eda554b97cda554c5c",
+      "workspace_fingerprint": "3f2d4b22633b630bbb4a6a30fbbe5f2c7ffba51bbc6d59dd220abaf114043cc6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2247.838,
+      "started_at": "2026-09-12T04:29:41.938Z",
+      "commit": "fe2918cf20305334678791845e505a9919523ad8",
+      "workspace_fingerprint": "8dcc0b5e1252d1320efc337b84b99f02ce985b7c9c0efc850cdb4535c116bc44",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.562,
+      "started_at": "2026-09-12T06:09:31.560Z",
+      "commit": "9d8ae7b87286b0f5be6f3ee9c4742349d82ce666",
+      "workspace_fingerprint": "752ef8159c97f94ab790dff8e9c058f8a160b087a10f0a3a3ab4187cc9a09b8a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1146.433,
+      "started_at": "2026-09-12T06:17:22.512Z",
+      "commit": "9688e75e05920ab10f5f8ebe2b4ea2df06e683a9",
+      "workspace_fingerprint": "ac4402c03b7fe8d39aea7e5649f11d81331dcab3d3d7f4cea02e1b3bed14102d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.126,
+      "started_at": "2026-09-12T06:49:25.435Z",
+      "commit": "6fac13fbb51b6f23a11645831cdc87e41090ca80",
+      "workspace_fingerprint": "93848ad06584b080cd71783ed5c82a7f251c83992fdf245218b793a0dfbf1299",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 74.029,
+      "started_at": "2026-09-12T06:49:42.535Z",
+      "commit": "6fac13fbb51b6f23a11645831cdc87e41090ca80",
+      "workspace_fingerprint": "93848ad06584b080cd71783ed5c82a7f251c83992fdf245218b793a0dfbf1299",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 203.469,
+      "started_at": "2026-09-12T06:50:57.389Z",
+      "commit": "6fac13fbb51b6f23a11645831cdc87e41090ca80",
+      "workspace_fingerprint": "93848ad06584b080cd71783ed5c82a7f251c83992fdf245218b793a0dfbf1299",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration:run",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 896.313,
+      "started_at": "2026-09-12T07:05:27.091Z",
+      "commit": "53616619602d8efcbbd6887e502f436f74c46047",
+      "workspace_fingerprint": "93848ad06584b080cd71783ed5c82a7f251c83992fdf245218b793a0dfbf1299",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm python:precompile:run",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 287.329,
+      "started_at": "2026-09-12T07:25:11.837Z",
+      "commit": "53616619602d8efcbbd6887e502f436f74c46047",
+      "workspace_fingerprint": "93848ad06584b080cd71783ed5c82a7f251c83992fdf245218b793a0dfbf1299",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=precompiled OM worker test/number-field-om-auto-selector.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.871,
+      "started_at": "2026-09-12T07:29:59.807Z",
+      "commit": "53616619602d8efcbbd6887e502f436f74c46047",
+      "workspace_fingerprint": "93848ad06584b080cd71783ed5c82a7f251c83992fdf245218b793a0dfbf1299",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration:run",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1153.504,
+      "started_at": "2026-09-12T07:30:04.345Z",
+      "commit": "53616619602d8efcbbd6887e502f436f74c46047",
+      "workspace_fingerprint": "93848ad06584b080cd71783ed5c82a7f251c83992fdf245218b793a0dfbf1299",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/build-input-partition.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.694,
+      "started_at": "2026-09-12T08:07:08.320Z",
+      "commit": "eb0d53e2dd87bcd090d194e7edf168101a465864",
+      "workspace_fingerprint": "751e8c332fb8fb786dd5848422ba0719c1b789b9d8d7cf3977313237259a9d5a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.552,
+      "started_at": "2026-09-12T08:07:17.677Z",
+      "commit": "eb0d53e2dd87bcd090d194e7edf168101a465864",
+      "workspace_fingerprint": "751e8c332fb8fb786dd5848422ba0719c1b789b9d8d7cf3977313237259a9d5a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /home/user/sagejs-worktrees/class-unit-rank-two-frontier/bench/class-unit-groups/general-frontier/reference/runner/supervise.py 590 node --test --test-concurrency=1 test/general-unit-resumed-map.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 228.434,
+      "started_at": "2026-09-12T08:09:57.462Z",
+      "commit": "eb0d53e2dd87bcd090d194e7edf168101a465864",
+      "workspace_fingerprint": "86348e29a4b1549aa24e2bb1a3c166eabd03772eee9fb7617f42d3334eeb64dc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.025,
+      "started_at": "2026-09-12T08:22:11.015Z",
+      "commit": "eb0d53e2dd87bcd090d194e7edf168101a465864",
+      "workspace_fingerprint": "dfc3c3718be6b11c4ca3ba68233a9f98e5ece3d00f403a3c3b9ccfd65ed2cee8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/build-input-partition.cjs test/modular-qexp-source-freeze.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.863,
+      "started_at": "2026-09-12T08:23:48.236Z",
+      "commit": "eb0d53e2dd87bcd090d194e7edf168101a465864",
+      "workspace_fingerprint": "dfc3c3718be6b11c4ca3ba68233a9f98e5ece3d00f403a3c3b9ccfd65ed2cee8",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

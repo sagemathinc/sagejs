@@ -1,0 +1,130 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-projection-proof-fixture",
+  "title": "General Class Unit Projection Proof Fixture",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Correct projection regression proof expectations while preserving exact map isolation checks",
+  "base_commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+  "claims": [
+    "test/number-field-class-group-maps-proof.cjs",
+    "test/number-field-class-unit-exact-public-projection.py",
+    "test/number-field-class-unit-exact-public-projection.cjs",
+    "docs/number-field-class-unit-projection-regression.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "Reviewed BF proof-policy correction at integration 3f5edf0ab: generic BF is conditional only",
+    "src/lib/sagejs/number_fields/units.py: bounded_unit_subgroup has no independent completion certificate for these three presentations",
+    "src/lib/sagejs/number_fields/cubic_class_number.py: independent exact scalar norm-obstruction certificate",
+    "docs/number-field-class-unit-projection-regression.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing exact class-group invariants (3), (8), (6) on retained cubic fixtures",
+      "Independent scalar proof=True route and conditional map proof replay",
+      "Mutation, cancellation, decoder instrumentation and cache-isolation assertions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-class-group-maps-proof.cjs",
+    "node --test test/number-field-class-unit-exact-public-projection.cjs",
+    "pnpm test:changed -- --base 3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.061,
+      "started_at": "2026-09-11T14:57:49.591Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "d6a090b7c7f879ee39e3095e920c0daa1e7d467672fb89719f2149a7286cfd30",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-exact-public-projection.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 247.172,
+      "started_at": "2026-09-11T15:10:33.395Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "d6a090b7c7f879ee39e3095e920c0daa1e7d467672fb89719f2149a7286cfd30",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-exact-public-projection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 187.713,
+      "started_at": "2026-09-11T15:16:08.736Z",
+      "commit": "3f5edf0ab69089fd19f3af26db0863aedc5ef3bf",
+      "workspace_fingerprint": "8480a971cdb9814846f0831feba2f2743d9d75c3e0adc2881454829418e166b7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=public groups distinguish test/number-field-class-group-maps-proof.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.514,
+      "started_at": "2026-09-12T03:26:31.158Z",
+      "commit": "3b6c30534d35c5f4289664c53750c9f3602a2061",
+      "workspace_fingerprint": "b3c9153fe6a39af945a89f99a9b6b9e6e145dbf55e38ccdda877498da28dca61",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-group-maps-proof.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 147.554,
+      "started_at": "2026-09-12T03:27:55.753Z",
+      "commit": "3b6c30534d35c5f4289664c53750c9f3602a2061",
+      "workspace_fingerprint": "ffe18170080d5e4ab01f1c7490d230bd507d2d111dc7e7dd33e6c8a4c4810a9f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=unconditional engine evidence test/number-field-class-group-maps-proof.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.56,
+      "started_at": "2026-09-12T03:30:33.509Z",
+      "commit": "3b6c30534d35c5f4289664c53750c9f3602a2061",
+      "workspace_fingerprint": "a2d20df4e25c969001e60f29503296dbcac1776fe81387bfeb9c8accc8b78e47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-group-maps-proof.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 145.71,
+      "started_at": "2026-09-12T03:31:19.351Z",
+      "commit": "3b6c30534d35c5f4289664c53750c9f3602a2061",
+      "workspace_fingerprint": "a2d20df4e25c969001e60f29503296dbcac1776fe81387bfeb9c8accc8b78e47",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Projection regression passed in 187.713 seconds. Follow-up maps-proof file passes all seven tests in 145.71 seconds: retained sextic/cubic conditional computations and fresh/cached unconditional declines, independent Minkowski-stream schema/progress mutations, and direct replay over-cap rejection plus at-cap enumeration control. Focused last test passed 54.51 seconds and focused stream test 38.56 seconds. Initial whole-file failure from test-double class-attribute access is preserved; the replay double now initializes its order instance attribute. No production proof semantics changed.",
+    "risks": [
+      "Full changed-tree/native and non-Linux validation remain pending; focused fixture is not full integration qualification.",
+      "Unconditional combined class/unit capability for these presentations remains unavailable; exact scalar class numbers do not prove fundamental units."
+    ],
+    "next_steps": [
+      "Focused fixture passed; qualify full integrated revision without treating this as a full-suite receipt.",
+      "Root reviews and integrates the test-only correction before rerunning combined qualification."
+    ]
+  }
+}

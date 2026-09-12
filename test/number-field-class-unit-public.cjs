@@ -148,7 +148,6 @@ x = R.gen()
 K = NumberField(x**2 + 4*x + 1, "a")
 expected = [
     (False, "exact-relations-conditional-grh"),
-    (True, "exact-unconditional"),
 ]
 for proof, status in expected:
     result = K.class_unit_group(proof=proof)
@@ -166,8 +165,12 @@ for proof, status in expected:
     assert regulator.rigorous and regulator.full_rank_certified
     assert regulator.precision_bits >= 100 and regulator.lower < regulator.upper
 assert K.class_unit_group(proof=False) is K.class_unit_group(proof=False)
-assert K.class_unit_group(proof=True) is K.class_unit_group(proof=True)
-assert K.class_unit_group(proof=False) is not K.class_unit_group(proof=True)
+try:
+    K.class_unit_group(proof=True)
+    raise AssertionError("generic quadratic BF result became unconditional")
+except NotImplementedError as error:
+    assert "unconditional analytic unit completeness" in str(error)
+assert K.class_unit_group(proof=False) is result
 print("quadratic-public-ok")
 `, 180_000);
   assert.equal(output, "quadratic-public-ok");
@@ -526,7 +529,7 @@ analytic_module.UnitSaturationIndexCertificate._authenticated_body_matches = (
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 K = NumberField(x**3 + 4*x - 1, "s")
-assert K.class_number(proof=True) == 2
+assert K.class_number(proof=False) == 2
 artifact = K._bounded_cubic_class_number_artifact
 assert not artifact.complete
 assert artifact.diagnostics["context_relation_prefix_bound"] is True
@@ -548,10 +551,10 @@ try:
     raise AssertionError("a cached class-number projection was mutable")
 except AttributeError:
     pass
-result = K.class_unit_group(proof=True)
+result = K.class_unit_group(proof=False)
 assert projection._completed is result
 resources = result.diagnostics["resources"]
-assert result.proof_status == "exact-unconditional"
+assert result.proof_status == "exact-relations-conditional-grh"
 assert result.diagnostics["factor_base_bound"] == 4
 assert result.diagnostics["factor_base_size"] == 3
 assert resources["cubic_relation_seed_uses"] == 1
@@ -605,6 +608,12 @@ serialized_record["reason"] += " (payload mutation)"
 serialized_record["analytic_certificate"]["generation_evidence"]["bound"] += 1
 assert serialized_record != record.to_dict()
 assert record.reason == "rigorous hR index-one validation after bounded saturation"
+for request in (K.class_number, K.class_unit_group):
+    try:
+        request(proof=True)
+        raise AssertionError("BF relation-prefix completion became unconditional")
+    except NotImplementedError as error:
+        assert "unconditional analytic unit completeness" in str(error)
 
 # The authority is only a live optimization hint.  Any mutation invalidates
 # it, and the public verifier still fails closed against the content hash.
@@ -856,9 +865,12 @@ assert callback_result.diagnostics["resources"][
 assert replay_calls[0] >= 1
 assert events
 
-# The completed conditional computation upgrades to proof=True by reusing its
-# exact relation and analytic state rather than repeating discovery.
-assert K.class_number(proof=True) == 7
+# This scalar still depends on BF, unlike a completed exact scalar artifact.
+try:
+    K.class_number(proof=True)
+    raise AssertionError("BF-dependent scalar became unconditional")
+except NotImplementedError as error:
+    assert "unconditional analytic unit completeness" in str(error)
 print("cubic-packed-fundamental-unit-ok")
 `, 180_000);
   assert.equal(output, "cubic-packed-fundamental-unit-ok");
@@ -951,31 +963,15 @@ assert fallback_result.diagnostics["resources"][
     "cubic_integral_sieve_validated_batch_uses"
 ] == 0
 
-# For proof=True, the same ten-prime Minkowski prefix is much cheaper than
-# discovering a conditional BDF presentation and then expressing every
-# Minkowski prime in it during a separate unconditional proof pass.
+# An incomplete ten-prime prefix is exact relation evidence, not an
+# unconditional scalar or combined certificate. Its former completion used BF.
 P = L
-assert P.class_number(proof=True) == 6
-assert P._bounded_cubic_class_number_artifact is not large_artifact
-proof_projection = P._class_number_projection_cache[
-    next(key for key in P._class_number_projection_cache if key[0] is True)
-]
-proof_result = P.class_unit_group(proof=True)
-assert proof_projection._completed is proof_result
-proof_resources = proof_result.diagnostics["resources"]
-assert proof_result.proof_status == "exact-unconditional"
-assert proof_result.diagnostics["factor_base_bound"] == 17
-assert proof_result.diagnostics["factor_base_size"] == 10
-assert proof_result.diagnostics["unconditional_prime_records"] == ()
-assert proof_resources["cubic_factor_base_seed_uses"] == 1
-assert proof_resources["cubic_relation_seed_uses"] == 1
-assert proof_resources["cubic_relation_seed_relations"] == 11
-assert proof_resources["relation_attempts"] == 0
-assert proof_resources["relation_candidates"] == 0
-assert proof_resources["class_group_generator_reconstruction_calls"] == 1
-assert proof_resources["class_group_generator_power_requests"] >= 1
-assert proof_result.saturation_record.complete
-assert proof_result.saturation_record.verify()
+for request in (P.class_number, P.class_unit_group):
+    try:
+        request(proof=True)
+        raise AssertionError("ten-prime BF prefix became unconditional")
+    except NotImplementedError as error:
+        assert "unconditional analytic unit completeness" in str(error)
 
 # LMFDB 3.1.5448.1 has no duplicate valuation row in the primary coefficient
 # box.  The bounded coefficient-4 fallback finds one stable exact dependency
@@ -1089,14 +1085,14 @@ print("shared-live-analytic-ok")
 });
 
 test(
-  "public motivating quintic replays conditional and unconditional class maps",
+  "public motivating quintic replays conditional maps and rejects unsupported proof",
   { skip: process.env.SAGEJS_SLOW_CLASS_UNIT !== "1" },
   () => {
     const output = runPublic(String.raw`
 R = PolynomialRing(QQ, "x")
 x = R.gen()
 K = NumberField(x**5 + x**3 - x**2 + 4*x + 1, "a")
-for proof, status in [(False, "exact-relations-conditional-grh"), (True, "exact-unconditional")]:
+for proof, status in [(False, "exact-relations-conditional-grh")]:
     result = K.class_unit_group(proof=proof)
     assert result.complete and result.proof_status == status
     C = result.class_group()
@@ -1112,6 +1108,11 @@ for proof, status in [(False, "exact-relations-conditional-grh"), (True, "exact-
     assert len(result.units()) == 2 and all(unit.norm() in (-1, 1) for unit in result.units())
     regulator = result.regulator()
     assert regulator.rigorous and regulator.precision_bits >= 100
+try:
+    K.class_unit_group(proof=True)
+    raise AssertionError("BF quintic became unconditional")
+except NotImplementedError as error:
+    assert "unconditional analytic unit completeness" in str(error)
 print("quintic-public-ok")
 `, 900_000);
     assert.equal(output, "quintic-public-ok");
