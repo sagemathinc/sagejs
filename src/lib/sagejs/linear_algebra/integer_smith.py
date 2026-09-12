@@ -34,13 +34,17 @@ def preconditioned_elementary_divisors(source: Any) -> Any:
     preserve Smith invariants. Four passes bound preconditioning work;
     diagonalization is an optimization, never a correctness assumption.
 
-    Small, singular and rectangular matrices keep the general Smith path.
+    Small, sparse, singular and rectangular matrices keep the general Smith
+    path: sparse Hecke operators should not pay for a dense rational inverse.
     The foreign modular HNF has native and Wasm adapters; if unavailable,
     the original Smith algorithm remains a correct fallback.
     """
     if source.base_ring() != sage.ZZ:
         raise TypeError("Smith preconditioning requires an integer matrix")
     if source.nrows() < 16 or source.nrows() != source.ncols():
+        return source.elementary_divisors()
+    entries = source.list()
+    if 4 * sum(entry != 0 for entry in entries) <= len(entries):
         return source.elementary_divisors()
     try:
         inverse = source.change_ring(sage.QQ).inverse()

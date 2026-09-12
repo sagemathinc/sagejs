@@ -60,8 +60,13 @@ cokernel and supplies the bound required by FLINT's modular HNF.
 Alternate row HNF and transposition, which preserve Smith invariants.
 Stop upon reaching a diagonal matrix, or after four passes; in either
 case run the ordinary Smith algorithm on the resulting equivalent matrix.
-Thus convergence is never assumed. Small, singular and rectangular matrices
-retain the general Smith path, as do hosts without the modular HNF adapter.
+Thus convergence is never assumed. Small, singular, rectangular and sparse
+matrices (at most one quarter nonzero entries) retain the general Smith path,
+as do hosts without the modular HNF adapter. Sparse Hecke operators should
+not pay for a dense rational inverse: the level-$1009$ $T_2-1$ matrix has only
+$1601$ nonzeros among $27556$ entries, whereas the large decomposition matrices
+are more than three quarters nonzero. Both selected algorithms are exact;
+sparsity is only a cost heuristic, not a mathematical certificate.
 
 The algorithm is ordinary Python using an existing portable FLINT binding.
 Its buffers are explicitly packed through `sagejs.runtime`, including in

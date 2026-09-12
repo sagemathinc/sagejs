@@ -255,8 +255,9 @@ for n in [16, 19]:
         U = identity_matrix(ZZ, n)
         V = identity_matrix(ZZ, n)
         for i in range(n - 1):
-            U[i, i + 1] = (-1) ** i * (i + 7)
-            V[i + 1, i] = i + 3
+            for j in range(i + 1, n):
+                U[i, j] = (-1) ** i * (i + j + 7)
+                V[j, i] = i + j + 3
         A = U * D * V
         bound = scale
         for i in range(1, n + 1):
@@ -266,7 +267,13 @@ for n in [16, 19]:
         assert (
             preconditioned_elementary_divisors(A.transpose()) == D.elementary_divisors()
         )
-for A in [matrix(ZZ, 16, 16), matrix(ZZ, 19, 16), identity_matrix(ZZ, 0)]:
+for A in [
+    matrix(ZZ, 16, 16),
+    matrix(ZZ, [[1] * 16] * 16),
+    (2**90) * identity_matrix(ZZ, 16),
+    matrix(ZZ, 19, 16),
+    identity_matrix(ZZ, 0),
+]:
     assert preconditioned_elementary_divisors(A) == A.elementary_divisors()
 import sagejs.linear_algebra.integer_smith as smith_helpers
 
@@ -280,6 +287,9 @@ def unavailable_modular_hnf(*args):
 try:
     smith_helpers._modular_hnf = unavailable_modular_hnf
     A = 6 * identity_matrix(ZZ, 16)
+    for i in range(16):
+        for j in range(i + 1, 16):
+            A[i, j] = 6
     assert preconditioned_elementary_divisors(A) == [6] * 16
 finally:
     smith_helpers._modular_hnf = original_modular_hnf
