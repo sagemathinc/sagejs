@@ -602,7 +602,12 @@ def print_list_comprehension(self, output):
                     body_out.print("}"),
                 )  # end js_generator
                 output.newline(), output.indent()
-                output.spaced("var", "result", "=", "js_generator.call(this)")
+                output.spaced(
+                    "var",
+                    "result",
+                    "=",
+                    "ρσ_handled_state.wrap(js_generator.call(this))",
+                )
                 output.end_statement()
                 # Native generator .constructor is a non-callable host object, not
                 # a Python type. Share one canonical type across all generator sites.

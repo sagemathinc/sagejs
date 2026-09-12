@@ -139,7 +139,6 @@ export class PythonCstLowerer {
   }> = [];
   private nativeBitwise = false;
   private readonly classStack: string[] = [];
-  private catchDepth = 0;
   private matchCounter = 0;
   private readonly functionFrames: Array<{
     isCoroutine: boolean;
@@ -481,27 +480,20 @@ export class PythonCstLowerer {
       }
       case "raise_statement": {
         const value = significantChildren(node)[0];
-        let raised: any;
-        if (value) {
-          raised = this.lowerExpression(value);
-        } else if (this.catchDepth > 0) {
-          raised = this.make("AST_SymbolCatch", node, { name: "ρσ_Exception" });
-        } else {
-          const args: any[] = [this.make("AST_String", node, {
-            value: "No active exception to reraise",
-          })];
-          (args as any).kwargs = [];
-          (args as any).kwarg_items = [];
-          (args as any).starargs = false;
-          raised = this.make("AST_New", node, {
-            expression: this.make("AST_SymbolRef", node, {
-              name: "RuntimeError",
+        const raised = value
+          ? this.lowerExpression(value)
+          : this.make("AST_Call", node, {
+            expression: this.make("AST_Dot", node, {
+              expression: this.make("AST_SymbolRef", node, {
+                name: "ρσ_handled_state",
+              }),
+              property: "reraise",
             }),
-            args,
-            python_class: false,
+            args: [],
           });
-        }
         return [this.make("AST_Throw", node, {
+          // A bare raise resolves dynamic handled state, including helpers
+          // called from a handler; lexical nesting is not exception ownership.
           value: raised,
         })];
       }
@@ -1086,15 +1078,9 @@ export class PythonCstLowerer {
         (child) => child.type === "block",
       );
       if (!body) throw new UnsupportedPythonCstNode(clause, "missing body");
-      this.catchDepth += 1;
-      let loweredBody: any[];
-      try {
-        loweredBody = significantChildren(body).flatMap((child) =>
-          this.lowerStatement(child)
-        );
-      } finally {
-        this.catchDepth -= 1;
-      }
+      const loweredBody = significantChildren(body).flatMap((child) =>
+        this.lowerStatement(child)
+      );
       return this.make("AST_Except", clause, {
         argname: alias
           ? this.pythonSymbol("AST_SymbolCatch", alias, { name: alias.text })
