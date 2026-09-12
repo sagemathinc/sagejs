@@ -2,9 +2,18 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import test from "node:test";
 
-import { createPrecompiledDynamicCompiler } from "../dynamic-compiler.mjs";
+import { canSeedDynamicName, createPrecompiledDynamicCompiler } from "../dynamic-compiler.mjs";
 
 const sha256 = (value) => crypto.createHash("sha256").update(value).digest("hex");
+
+test("browser dynamic namespaces retain Python module metadata like native capture", () => {
+  for (const name of ["__name__", "__file__", "__spec__", "\u03b1", "ordinary"]) {
+    assert.equal(canSeedDynamicName(name), true, name);
+  }
+  for (const name of ["for", "None", "1bad", "with space", "x;y"]) {
+    assert.equal(canSeedDynamicName(name), false, name);
+  }
+});
 
 test("portable dynamic programs use exact UTF-8 source and namespace identities", () => {
   const source = "answer = 'λ'\n";
