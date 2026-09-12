@@ -1,0 +1,91 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "reference-html-conflict-markers",
+  "title": "Reference Html Conflict Markers",
+  "lane": "documentation-compat",
+  "status": "active",
+  "owner": "user",
+  "objective": "Remove inherited conflict markers from reference HTML while preserving all resource fingerprints",
+  "base_commit": "c4c126d09ba4f5c2fb30001fd8b561b24105d80f",
+  "claims": [
+    "website/reference.html",
+    "test/website.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Static reference HTML has one body and no unresolved merge markers"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm docs:check",
+    "pnpm test:tutorial",
+    "node --test test/website.cjs",
+    "node --check test/website.cjs",
+    "git diff --check",
+    "pnpm merge:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/website.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.132,
+      "started_at": "2026-09-12T06:10:47.614Z",
+      "commit": "c4c126d09ba4f5c2fb30001fd8b561b24105d80f",
+      "workspace_fingerprint": "4a2b56729a375877853a7df3a1315c06241d2d9a3ee73b02ea7c4f6afc28af86",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check test/website.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.029,
+      "started_at": "2026-09-12T06:10:48.630Z",
+      "commit": "c4c126d09ba4f5c2fb30001fd8b561b24105d80f",
+      "workspace_fingerprint": "4a2b56729a375877853a7df3a1315c06241d2d9a3ee73b02ea7c4f6afc28af86",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.263,
+      "started_at": "2026-09-12T06:10:49.547Z",
+      "commit": "c4c126d09ba4f5c2fb30001fd8b561b24105d80f",
+      "workspace_fingerprint": "4a2b56729a375877853a7df3a1315c06241d2d9a3ee73b02ea7c4f6afc28af86",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.044,
+      "started_at": "2026-09-12T06:11:01.815Z",
+      "commit": "c4c126d09ba4f5c2fb30001fd8b561b24105d80f",
+      "workspace_fingerprint": "4a2b56729a375877853a7df3a1315c06241d2d9a3ee73b02ea7c4f6afc28af86",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Removed inherited reference HTML conflict markers and one identical duplicate body line. Added a static regression for conflict markers and exactly one opening/closing body. The regression was observed failing before the HTML correction; all 10 website unit tests pass afterward. Exact comparison against c4c126d09 confirms only the four intended lines were removed and all resource/data fingerprints remain unchanged.",
+    "risks": [
+      "This is a bounded static website repair, not full build, browser, tutorial, or generated documentation qualification. Required documentation-lane checks remain unrun rather than waived; contract remains active.",
+      "pnpm test:changed -- --list selects merge:check and the complete unit tier. merge:check and all 10 website unit cases passed; the complete unit tier is left to parent integration qualification."
+    ],
+    "next_steps": [
+      "Integrate into PR 219 and run parent integration qualification. No mathematical source, runtime configuration, or resource allowance changes."
+    ]
+  }
+}
