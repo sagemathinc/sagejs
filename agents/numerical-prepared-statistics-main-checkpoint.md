@@ -102,3 +102,17 @@ This slice must not be offered for merging before its #232 foundation is
 qualified, and does not imply completion of N0–N6.
 
 User semantics and example: [owned data](../docs/numerical-computing/statistics/prepared-data.md).
+# Packaging-source revalidation, 2026-09-12
+
+Clean source `32922c911e68a288fc916e442a679d5939c51245` completed the full
+eight-stage root build in 13m17s. Its focused centered/prepared/domain run passed
+11 tests with the one explicitly opt-in sanitizer skip. A separate
+`SAGEJS_NUMERICAL_SANITIZER_TESTS=1` centered run passed all four tests with zero
+skips, including the address/undefined/leak checks. This strengthens packaging
+source evidence; it does not turn developer-cache native execution into a
+qualified installed-product route. The previous browser artifact and frozen
+mathematical timing identities remain as recorded below, not relabeled.
+
+PR #232 merged at `fb98e46e3`; #240 is now based on `main` and remains draft.
+Its included test-only follow-up `39ca74dc1` independently checks dynamic zero
+signs rather than relying on the inherited defective `math.copysign` wrapper.
