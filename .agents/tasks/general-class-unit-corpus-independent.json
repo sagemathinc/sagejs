@@ -1,0 +1,71 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-class-unit-corpus-independent",
+  "title": "General Class Unit Corpus Independent",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Deliver byte-identical reviewed frozen corpus and stress-candidate tooling independently on main, with discovered offline regression wrappers and fresh qualification receipts",
+  "base_commit": "6c42dd0938deaf3e13c7c681f4206d7199ad89ef",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/corpus/frozen/",
+    "bench/class-unit-groups/general-frontier/corpus/stress_supplement.py",
+    "bench/class-unit-groups/general-frontier/corpus/test_stress_supplement.py",
+    "bench/class-unit-groups/general-frontier/corpus/STRESS-SUPPLEMENT.md",
+    "docs/general-class-unit-corpus-v1.md",
+    "test/general-class-unit-corpus-frozen.cjs",
+    "test/general-class-unit-corpus-supplements.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "Reviewed corpus implementation 620a27151bac590ba8e0fe9f42515211bcb714e6 and historical receipt commit d4091f8c6e3c972bc293f441c12fedcafc26d224 (PR236); six source/fixture/doc files imported byte-identically, no parent ancestry imported.",
+    "Reviewed stress implementation de0f3789a and historical receipt commit 68e1f4f3dbe887ad8fb42eb64efa1ffa93271021 (PR246); three source/doc files imported byte-identically, no parent ancestry imported.",
+    "Historical corpus contract SHA256 58a78627ba74b203d13536cd612f6ba518e9b2b05b848e485a7dd5b1047351d3 at d4091f8c6; historical stress contract SHA256 b2662b71c1f4e10de1c82f36cab880fe0ce88477f383c54eb90fc116b0b28e99 at 68e1f4f3d. Old receipts are not copied into current runs.",
+    "Old live claims explicitly transferred by metadata-only commits c1da296de (corpus) and 35493f9dc (stress). Old drafts remain open; non-live proposed status documents superseded ownership without claiming completion.",
+    "Coordination: https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18410758",
+    "Adopted M0-M5 plan SHA256 aceadd86d81f796740e9fa1e02c5d1a57854453ecc0d1774f3f09bf2dcd14403; no effort, resource-cap or qualification reset.",
+    "Frozen coverage SHA256 b53a7084f53c7dd6cb6911423daacb7f2103fb6cb075f13da2534eb0aa62f948; observations de1f90c7f9d719e68cc397a34958b835c9425a035d1fdfbb4f10c972f7101060; manifest 29e13dfbd25807dd5e1737585ab7e207594b53d6b55bc0da3380333f9f61358a.",
+    "Stress fixed export SHA256 56c7fbe15c5c3ce5fc373aaaa714061653e6080d356b6b0b31150d4cc7988d44; old 112-candidate pretty-export SHA256 8e7a63a7abfb21f2f4bf1b370ba526d17ee48b2a4af533a2c5bd8f55a75f5141."
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Exact corpus hashes, independent rational Sturm/resultant checks and offline mutation regressions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --test test/general-class-unit-corpus-frozen.cjs test/general-class-unit-corpus-supplements.cjs",
+    "node --test bench/class-unit-groups/general-frontier/corpus/frozen/freeze.test.cjs",
+    "node bench/class-unit-groups/general-frontier/corpus/frozen/freeze.cjs check",
+    "python3 bench/class-unit-groups/general-frontier/corpus/test_rank_two_supplement.py",
+    "python3 bench/class-unit-groups/general-frontier/corpus/test_stress_supplement.py",
+    "pnpm test:changed -- --base 6c42dd0938deaf3e13c7c681f4206d7199ad89ef"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Main-based independent delivery of the byte-identical reviewed frozen 1800/360/90 corpus and source-only 36-polynomial stress supplement. Two tiny discovered unit/portable wrappers register the existing frozen Node suite and existing CPython rank-two/stress suites, using the repository Python executable selector. No PR219 source ancestry, mathematical API, package/registry change or runtime-cap change is included. Prior source/evidence identities remain explicit and historical receipts are not current qualification.",
+    "risks": [
+      "Current-main build and declared validation must qualify this source before review; retain any failures separately from the old PR219 integration evidence. No copied integration runtime is authorized.",
+      "Membership packaging is not M0 completion or matched performance qualification. Raw evidence custody, complete repeated100/200-bit reference baselines and stress/proof screening remain separate pending work.",
+      "The 36 stress entries remain polynomial candidates, not proven distinct fields or eligible/qualified benchmarks. Exact maximal-order and isomorphism admission remain pending.",
+      "Linux receipts do not establish other-platform qualification. Old PR236/246 drafts stay open until the independent replacement is safely established."
+    ],
+    "next_steps": [
+      "Run fresh sequential build, focused offline, changed-file, architecture, portable and strict receipts on the current source; stop and report broader runtime defects instead of repairing them in this lane.",
+      "Publish a main-targeted draft PR, preserve exact imported bytes, and let integration decide readiness and eventual supersession of the old drafts after qualification."
+    ]
+  }
+}
