@@ -167,13 +167,33 @@
       "commit": "abd0aa8e057ed04af1c5b0a4f66695144c481be8",
       "workspace_fingerprint": "99fe9905d2d07db1b64bf0a147ad86b750f522a1284109117d5925c9a3571595",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-conditional-replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 165.492,
+      "started_at": "2026-09-12T04:38:04.153Z",
+      "commit": "caaec34aba6899e959cfde8277f180b59424a68b",
+      "workspace_fingerprint": "497210a3c21c718d09547516c985f08df3229452b68bea334d5de8bda7ea3bf4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.87,
+      "started_at": "2026-09-12T04:40:50.458Z",
+      "commit": "caaec34aba6899e959cfde8277f180b59424a68b",
+      "workspace_fingerprint": "497210a3c21c718d09547516c985f08df3229452b68bea334d5de8bda7ea3bf4",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Active draft conditional completeness composition. One extracted component pipeline creates fresh exact field/order/primes/relations/presentation/units/torsion; the independently checked generation dependency and existing workspace-free BF recomputation prove index one. New compact binding authenticates ordered factored units through the full component digest, derives h-prime from verified presentation.order and returns only detached conditional-GRH completeness, never live/map authority. Legacy component-only API and ordinary-coordinate v1 analytic certificate are unchanged; no analytic.py edit was needed. Final focused six tests pass (64.06s), including actual generic real-cubic and mixed-quartic complete=True, actual recomputed squared-unit index2 rejection and forbidden expansion/discovery/shared-cache paths. Final strict384 passes (54.85s). Keep active/draft pending source allowance, registration and full integration/native qualification.",
+    "summary": "Active draft conditional completeness composition with independently reviewed class- and unit-index controls. Existing fresh real-cubic, mixed-quartic and rank-three completion/squared-unit checks pass, and the added x^3-10 control replaces the entire exact relation lattice L by 2L, replays valid components and exact presentation H=8h, then observes fresh BF index eight and rejects completeness. The three focused tests pass at the current test/doc workspace (165.49s); strict384 passes (58.87s). No production mathematical source, runtime cap, or architecture allowance changed in this follow-up. Keep active/draft pending readable decoder factoring, explicit source-resource integration and full native/platform/integration qualification.",
     "risks": [
       "No runtime/resource cap increased. Existing 32-magnitude-bit coefficients, 128-bit discriminant, base32, relations128, factor exponent256/aggregate4096 and Minkowski1000 caps do not establish the campaign's twenty expensive rank-two target. The retained input-size audit supports a later explicit policy review, not silent admission expansion.",
-      "Source class_unit_replay.py is 30027 bytes, SHA25634ca98a348e25aa95d1a19a9b8b6ce2be91a13f07aa1704e4f6ab9d46f11b733; source-matched generated JavaScript is193365 UTF8 bytes, SHA256262583f98f893cb4ba8e3a9869829931e073e6778f27ccd7e23e488dd8b78d1f. Together with the8823-byte generation module this needs explicit integration source-ownership/allowance review. No generated artifacts are committed.",
+      "Source class_unit_replay.py remains 30027 bytes, SHA25634ca98a348e25aa95d1a19a9b8b6ce2be91a13f07aa1704e4f6ab9d46f11b733. Independently regenerated canonical javascriptTemplate is193159 UTF8 bytes, SHA256a3932c3a37661b7f26f24805e1d37eb90ebbd604bbf473af3a7d9a3f9afe765e; generation source8823/template55627 bytes. Fresh forced-source canonical-template probe uses common compilerSHA2566b62435f11238dadf1f23b6aa002400c1f7d15ad185a4ab079824d6f373b3b56. Correct global attribution is1739107 bytes versus1730000 allowance. Rootlab build/general-frontier/replay-resource-review-v1.md records the matching baseline, hashes and factoring recommendation. These are isolated generation measurements, not a current packaged-build qualification.",
       "Architecture receipt retains the expected unregistered-generation failure: number-field-algorithms1208723 >1200000. The global source allowance also needs review. test:changed was inspected with --list; its full build/architecture/integration sequence has not been qualified in this lane.",
       "Development tests reused compiler/native artifacts from the frozen BF lane and authenticated lazy caches; the changed module was compiled from this lane's actual source. Fresh complete build/native/docs/platform qualification remains pending, not implied by focused mathematical execution.",
       "Earlier strict failure was the not-yet-merged generation import. Initial squared-unit negatives declined without isolating index2 at inherited coarse error; the final test requests1/64 within unchanged caps and asserts actual index2. Another test failure exposed the harness missing the existing AnalyticResourceError type. All original receipts are retained.",

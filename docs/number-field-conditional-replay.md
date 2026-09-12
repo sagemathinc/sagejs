@@ -50,6 +50,16 @@ It checks fresh conditional completion and recomputed index two after squaring
 one unit, using the same verifier and unchanged resource limits as the rank-two
 examples. The three-field test passed locally in 120.23 seconds; this is a
 correctness-test duration with discovery and negative checks, not a controlled
-class-and-unit timing. A proper relation-sublattice negative test remains a
-separate obligation: changing only the claimed class number tests binding,
-not the relation-index factor of the completeness argument.
+class-and-unit timing.
+
+A separate proper relation-sublattice control uses $x^3-10$, whose generic
+computation has a three-prime factor base. After fresh completion establishes
+$h=1$, the test doubles every relation row and witness exponent, recomputes norm
+evidence and exact HNF/SNF, and leaves units and generating-base evidence
+unchanged. This replaces $L$ by $2L$, so the finite quotient has order $8h$.
+Independent component replay accepts these valid ideal equalities and transforms;
+fresh analytic replay then actually returns index eight and refuses completeness.
+The test tightens its error request to `1/32` within unchanged verifier limits.
+Unlike changing only a claimed class number, this exercises the relation-index
+factor of the argument. Neither this test nor the squared-unit controls constitute
+a formal proof of the general theorem.
