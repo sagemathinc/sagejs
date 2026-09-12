@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `6b5c9729e1791f4c40d19bc100827b14882fe293eb10e4122e5948f2609e05d2` (739 files, 14860174 bytes).
-Analyzed source bundle: `sha256:1c335d19f14ea141a136ea8ebcd62c22400fc60ebc025e4378f1b8c3ebd5f67a`; compiler identity: `sha256:0b63c9197fce3e6a19a0524256776b0e60b00c3f5fd2c1eab20a70a3c036d0e4`.
+Input identity: `81d32ed4e8532aaf845039ceffc9f2a5b4f9c0348c9c2c8318c1b11bd2f5066a` (739 files, 14861615 bytes).
+Analyzed source bundle: `sha256:4d51d63e55fe614e3ab095ee192dbb33d10ef062f9b6f5afeaf0c8a9a380b82b`; compiler identity: `sha256:037934d428c33db3604dbb781d8a4b3b177d57acd3e1feb73c6f49859aa91629`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -49,11 +49,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 97930
+- Potential object-result sites: 97977
 - Collection-allocation sites: 11834
 - Known coercion sites: 20348
 - Potential boundary-call sites: 107
-- Unresolved call sites: 50358
+- Unresolved call sites: 50367
 - Selected-target allocations: 3 known; 53 runtime-dependent
 - Selected-target representation conversions: 3 known; 55 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
@@ -128,7 +128,7 @@ convenience, not a performance ranking.
 | `dashboard.comprehension-loop` | 5402 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
 | `dashboard.indexed-access-sites` | 3891 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
 | `bounded-integer.dynamic-call` | 2900 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
-| `dashboard.control-flow-sites` | 2659 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
+| `dashboard.control-flow-sites` | 2661 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
 | `bounded-integer.unsupported-iterator` | 2321 | Use a proved built-in `range` iteration shape or add a verifier for the required iterator semantics. |
 | `dashboard.nested-loop-sites` | 2133 | Consider a fused multidimensional region with explicit shape and work bounds. |
 | `bounded-integer.mutable-buffer-access` | 2094 | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
