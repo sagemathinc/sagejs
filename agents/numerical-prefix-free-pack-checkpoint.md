@@ -53,6 +53,20 @@ Windows where loaded DLLs cannot be removed in-process.
 
 ## Scope still open
 
+An additional persistent Linux ARM64 check passed the same 200-case
+numerical-only relocated-pack worker on Node 26.5.1. The pack was 67,728 bytes,
+key `e12da73cac6380cd1069c5d602ea79315b44a8b60243b563f84952b14dc148af`,
+SHA-256 `bd66fb1ab8684633f6fe89e49630f380d5d6d34b2c1def1ef3360e6f8a56faa2`.
+This used an isolated source archive of `9a6a2242f`, an absent exact prefix,
+and read-only reuse of the prior binary64 checkout's installed development
+dependencies and built frontend. The frontend SHA-256 was
+`6168f6c2438e5846ff7447ad6a19bf89d686ea3f2cb1c34ed3755434f626b014`.
+The builder, compiler, IR and worker hashes matched the local committed inputs.
+Three initial staging attempts stopped on omitted `index.cjs`, `bin/`, and
+the package-local node-gyp dependency link, respectively; completing those
+staging inputs required no code change. No full ARM build or mixed-pack ARM
+qualification is claimed.
+
 The production publisher, root index, generated wrapper lookup and SEA loader
 still assume one mathematics pack. They must gain reviewed, content-addressed
 pack routing before numerical users can avoid loading the exact pack in an
