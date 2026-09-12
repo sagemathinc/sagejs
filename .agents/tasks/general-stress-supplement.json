@@ -1,0 +1,131 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "general-stress-supplement",
+  "title": "General Stress Supplement",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add a separately versioned 36-polynomial source-only stress supplement with exact elementary certificates and offline validation, preserving all frozen corpus memberships",
+  "base_commit": "d4091f8c6e3c972bc293f441c12fedcafc26d224",
+  "claims": [
+    "bench/class-unit-groups/general-frontier/corpus/stress_supplement.py",
+    "bench/class-unit-groups/general-frontier/corpus/test_stress_supplement.py",
+    "bench/class-unit-groups/general-frontier/corpus/STRESS-SUPPLEMENT.md"
+  ],
+  "dependencies": [
+    "general-class-unit-corpus-freeze"
+  ],
+  "references": [
+    "Reviewed rootlab build/general-frontier/m0-stress-proof-preselection-v1.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Exact integer Eisenstein/signature conditions and independent rational Sturm/resultant tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "python3 bench/class-unit-groups/general-frontier/corpus/test_stress_supplement.py",
+    "python3 bench/class-unit-groups/general-frontier/corpus/test_rank_two_supplement.py",
+    "node --test bench/class-unit-groups/general-frontier/corpus/frozen/freeze.test.cjs",
+    "pnpm merge:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 63.196,
+      "started_at": "2026-09-12T08:24:20.626Z",
+      "commit": "d4091f8c6e3c972bc293f441c12fedcafc26d224",
+      "workspace_fingerprint": "d9019f38d9d4aa7faac36e60f4c6f03c50f72f2d2b10265f730b9691911a40c1",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/class-unit-groups/general-frontier/corpus/test_stress_supplement.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.269,
+      "started_at": "2026-09-12T08:27:25.658Z",
+      "commit": "d4091f8c6e3c972bc293f441c12fedcafc26d224",
+      "workspace_fingerprint": "58534c15aef068e0305bbe8ec2059e232f6cc66d8e1d7dc847212ccebcbe8f41",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/class-unit-groups/general-frontier/corpus/test_rank_two_supplement.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.203,
+      "started_at": "2026-09-12T08:27:26.150Z",
+      "commit": "d4091f8c6e3c972bc293f441c12fedcafc26d224",
+      "workspace_fingerprint": "58534c15aef068e0305bbe8ec2059e232f6cc66d8e1d7dc847212ccebcbe8f41",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/frozen/freeze.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.293,
+      "started_at": "2026-09-12T08:27:26.561Z",
+      "commit": "d4091f8c6e3c972bc293f441c12fedcafc26d224",
+      "workspace_fingerprint": "58534c15aef068e0305bbe8ec2059e232f6cc66d8e1d7dc847212ccebcbe8f41",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.792,
+      "started_at": "2026-09-12T08:27:28.119Z",
+      "commit": "d4091f8c6e3c972bc293f441c12fedcafc26d224",
+      "workspace_fingerprint": "58534c15aef068e0305bbe8ec2059e232f6cc66d8e1d7dc847212ccebcbe8f41",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/parallel-development.cjs changed --base d4091f8c6e3c972bc293f441c12fedcafc26d224 --list",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.123,
+      "started_at": "2026-09-12T08:27:32.112Z",
+      "commit": "d4091f8c6e3c972bc293f441c12fedcafc26d224",
+      "workspace_fingerprint": "58534c15aef068e0305bbe8ec2059e232f6cc66d8e1d7dc847212ccebcbe8f41",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 63.29,
+      "started_at": "2026-09-12T08:27:32.435Z",
+      "commit": "d4091f8c6e3c972bc293f441c12fedcafc26d224",
+      "workspace_fingerprint": "58534c15aef068e0305bbe8ec2059e232f6cc66d8e1d7dc847212ccebcbe8f41",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds only the separately versioned source-only 36-polynomial stress supplement: 20 quadratic and 16 quintic candidates, with 18 primary and 18 reserve queue entries. Exact integer certificates prove Eisenstein irreducibility and signature; independent offline rational Sturm and Sylvester tests corroborate all entries. Decimal-string hashes, exclusive writes and bounded offline regeneration preserve the prior contracts. Frozen 112-candidate export and 1800/360/90 corpus bytes remain pinned and unchanged. No field admission, selection, exposure or reference/proof policy is changed.",
+    "risks": [
+      "Source-only candidates are not 36 proven distinct fields. Exact maximal-order/discriminant and isomorphism reconciliation against coverage/reserves remain pending; equation discriminants and coefficient hashes are not field identity authority.",
+      "No CAS, reference acquisition, benchmark/timing job, SSH host job, optimization, compiler build, or runtime/source-cap change was performed. Stress/runtime and unconditional eligibility remain null; no complete class/unit/maps or regulator qualification is claimed.",
+      "No full build was authorized and dist/sagejs.js is absent. Default architecture:check and test:portable gates, plus the test:unit command selected by test:changed, remain pending integration. The contract remains active instead of claiming review-ready receipts for missing gates.",
+      "Setup deviation: parallel:new used --no-install, but the required subsequent pnpm parallel:check triggered pnpm 11 automatic installation of 144 reused packages with zero downloads; native package hooks deferred builds. No explicit install/build command was issued and tracked dependency files remain unchanged.",
+      "Focused checks are local Linux x64 using CPython 3.14.4 and Node 26.8.1; they do not establish other-platform or Sage.js-compiled execution qualification."
+    ],
+    "next_steps": [
+      "Review the narrow source-only draft PR stacked on agent/general-class-unit-corpus-freeze; integration owns remaining default and changed-test qualification without weakening caps or rebuilding frozen artifacts.",
+      "If separately authorized, prepare exact maximal-order/discriminant and isomorphism admission before counting fields or dispatching matched complete reference requests. Preserve candidate queue roles without freezing corpus selection or adapting this policy to observed outcomes."
+    ]
+  }
+}
