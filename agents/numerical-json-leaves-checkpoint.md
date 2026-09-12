@@ -107,8 +107,18 @@ At `d8e65e466`, the complete ordinary local `pnpm test` run passes its
 functional phases, then fails the unchanged startup gate at 409.5ms normalized
 versus 400ms (empty CLI 185.0ms). This is retained as a failure, not waived
 because the JSON module is lazy or the browser tests pass. The PR remains draft.
-An exact-source ARM64 build/routine run is being collected independently; it
-does not substitute for diagnosis of the local startup miss.
+An independent exact-source ARM64 run at `d8e65e466` now passes the complete
+eight-stage build (14m08s), focused tests (16 pass, one explicitly opt-in Plotly
+gallery browser skip), and ordinary routine gate (3m41s), including unchanged
+startup. The public JSON tests do not skip. The checkout remains clean.
+This does not substitute for diagnosis of the local startup miss.
+
+GitHub checks on documentation head `997163ea8` also pass routine Linux x64,
+Chromium parity, Linux ARM64/macOS ARM64/Windows x64 platform smoke, and iOS
+simulator checks. Release-only jobs are correctly skipped and are not counted
+as product qualification. The ARM reservation has been released after the
+controller exited successfully; retained logs are in
+`/home/user/numerical-json-arm-d8e65e466.log` on bench-arm.
 
 The four content-addressed optimizer-inventory assets for logical snapshot
 `99c4c7469ecd80e2d24032d6e2ac077df54326975d020b7b6c46e5346a184fdc`
