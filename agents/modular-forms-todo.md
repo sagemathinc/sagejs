@@ -9,8 +9,8 @@ It compares the current implementation with functionality available in
 SageMath, psage, Magma, and PARI/GP, and gives each missing area an explicit
 definition of done.
 
-The next foundation milestone is **general exact $q$-expansion bases by two
-independent routes**:
+The completed P0 foundation provides **general exact $q$-expansion bases by two
+independent routes**, within the explicitly documented domains:
 
 1. reconstruction from exact modular symbols and their Hecke action; and
 2. constructive formulas for known modular forms, followed by exact
@@ -35,6 +35,27 @@ classical API.
   comparison system. Correctness alone does not imply competitiveness.
 - The checklist describes mathematical capabilities, not parity with every
   incidental method name in another system.
+
+### Reconciliation: 2026-09-12
+
+Reconciled against main `c4c126d09`, including merged PR #201. The old local
+checkout predated the character and $\Gamma_1$ object layers; their existing
+main checkmarks are retained below. P0 freeze receipts are historical evidence
+for their exact revisions, not qualification of every subsequent feature.
+
+The next active slice is **modular abelian varieties: products, certified
+morphisms, finite kernels, isogenies, and degeneracy-labelled oldform copies**.
+Its acceptance items are deliberately unchecked until implemented and tested.
+
+- [x] Portable character Hecke action and exact cyclotomic factorization for
+  browser character-newform decomposition; shared native/Node-Wasm/Chromium
+  tests include a cubic eigenpacket over a degree-four cyclotomic field
+  (`test/portable-cyclotomic-factor.cjs` and
+  `packages/flint-wasm/test/character-hecke-support.mjs`).
+- [x] Direct exact cyclotomic row-basis reconstruction replacing the
+  double-kernel $\Gamma_1$ memory cliff (`docs/gamma1-modular-forms.md`).
+- [ ] Large-degree portable factorization performance parity with native CAS;
+  correctness of the Trager fallback does not establish this.
 
 ## Current Sage.js foundation
 
@@ -115,8 +136,10 @@ classical API.
 - [x] Dirichlet-character cusp spaces over their exact cyclotomic value
   fields, including full sign-zero and directly constructed signed spaces;
   arbitrary proper sign-zero subspaces remain excluded.
-- [ ] $\Gamma_1(N)$ via its exact character decomposition or an equally
-  audited direct construction.
+- [x] $\Gamma_1(N)$ via exact character-orbit decomposition and rational
+  Galois descent, with complete ambient/cusp/Eisenstein bases, old/new spaces,
+  exact Hecke and diamond action, normalized packets, and serialization in
+  integral weight $k\geq2$.
 - [ ] A declared bounded domain for weight $1$, or an explicit fail-closed
   exclusion until the weight-$1$ project is complete.
 
@@ -374,24 +397,56 @@ Linux arm64, macOS arm64, native Windows x64, and real-browser Chromium.
 
 ## P1: complete the classical modular-form object layer
 
-- [ ] General `ModularForms` spaces for $\Gamma_1(N)$ and $\Gamma_H(N)$.
-- [ ] General `ModularForms(chi,k)` spaces with nebentypus.
+- [x] General `ModularForms` spaces for $\Gamma_1(N)$ in integral weight
+  $k\geq2$, using exact cyclotomic character-orbit descent over $\QQ$.
+- [ ] General `ModularForms` spaces for $\Gamma_H(N)$.
+- [x] General `ModularForms(chi,k)` and `CuspForms(chi,k)` parents in the
+  integral-weight $k\geq2$ Dirichlet-character domain, over $\QQ$ for
+  quadratic characters and exact cyclotomic fields for higher order.
 - [ ] Base change to number fields, cyclotomic orders, finite fields, and
   supported $p$-adic rings.
-- [ ] First-class cusp, Eisenstein, oldform, newform, and ambient elements.
-- [ ] Complete Hecke-module methods on modular-form spaces and elements.
+- [x] First-class cusp, Eisenstein, oldform, newform, and ambient elements in
+  the integral-weight $\Gamma_0/\QQ$ domain and its fixed-character exact
+  cyclotomic extension.
+- [x] Exact good- and bad-prime Hecke-module methods on those
+  $\Gamma_0/\QQ$ spaces and elements.
+- [x] Extend the common element, membership, coordinate, product, and Hecke
+  contracts to Dirichlet characters over $\QQ$ and exact cyclotomic fields.
+- [x] Exact parented addition, scalar arithmetic, products, equality, and lazy
+  extendable $q$-expansions over $\QQ$ and supported cyclotomic character
+  fields.
 - [ ] Extend the P0B exact expansion algebra from certified basis construction
   into a complete parented modular-form ring interface.
 - [ ] Quotients when holomorphic, derivatives, and general twists beyond the
   P0B domain.
-- [ ] Membership and coordinate recovery from sufficiently precise
-  $q$-expansions.
+- [x] Sturm-certified membership and coordinate recovery from sufficiently
+  precise $q$-expansions over $\QQ$ and supported cyclotomic character fields.
 - [ ] Graded rings of classical modular forms.
 - [x] Victor Miller bases and efficient level-$1$ arithmetic.
 - [ ] Rankin--Cohen brackets.
 - [ ] CM detection and systematic twist recognition.
 - [ ] General Atkin--Lehner operators and eigenvalues.
 - [ ] Congruence modules and comparison of eigenforms modulo prime ideals.
+
+The first object-layer vertical slice is specified in
+`agents/classical-modular-form-object-layer-plan.md` and documented in
+`docs/classical-modular-form-elements.md`.  Its combined source-freeze bundle
+has SHA-256
+`c471ec32acab41cb5cd66f12b0beb732ea68bc9389b8c8636d820aa21802672b`.
+The fixed-character extension is specified in
+`agents/classical-modular-forms-character-object-layer-plan.md`. It deliberately
+reuses the same element hierarchy and covers quadratic characters over $\QQ$,
+higher-order characters over exact cyclotomic fields, imprimitive old/new
+decomposition, exact eigenpackets, and authenticated serialization.
+The full $\Gamma_1$ extension is specified in
+`agents/gamma1-modular-forms-plan.md` and documented in
+`docs/gamma1-modular-forms.md`; it descends one fast fixed-character space per
+Galois orbit to a canonical Sturm-certified rational basis.
+Higher-order-character $q$-expansion reconstruction now uses direct exact
+Hecke images in the cyclotomic power basis.  The reproducible scaling grid in
+`bench/modular/higher-character-qexp/` checks degrees $4$ and $8$ through a
+nontrivial exact coefficient; its 2026-09-04 levels $101$, $157$, $241$, and
+$401$ receipt ranges from $3\times$ to $10\times$ faster than SageMath.
 
 ## P1: analytic modular-form functionality
 
@@ -415,8 +470,9 @@ Linux arm64, macOS arm64, native Windows x64, and real-browser Chromium.
 - [ ] Level-raising degeneracy maps.
 - [ ] Character-valued lowering maps for imprimitive characters.
 - [ ] General exact coefficient rings and reduction modulo prime ideals.
-- [ ] Integral structures and saturated lattices in rational modular-symbol
-  spaces.
+- [x] Saturated integral homology for the implemented weight-$2$
+  $\Gamma_0/\QQ$ modular-abelian-variety models.
+- [ ] Extend integral structures to general rational modular-symbol spaces.
 - [ ] Period maps from integral modular symbols to modular abelian varieties.
 
 ## P1: Brandt, supersingular, and modular-Jacobian completion
@@ -446,8 +502,11 @@ Linux arm64, macOS arm64, native Windows x64, and real-browser Chromium.
   $q$-expansion bases when the character modulus is divisible by $16$.
 - [ ] Complete half-integral-weight modular-form spaces outside the initial
   Basmaji domain, including Eisenstein and arbitrary supported level cases.
-- [ ] Kohnen plus and new subspaces.
-- [ ] Shimura/Kohnen correspondence to integral weight.
+- [x] Certified Kohnen-plus coefficient kernels in the initial domain.
+- [ ] General Kohnen new subspaces and plus spaces outside that domain.
+- [x] Certified cuspidal Shimura lifts in the initial trivial-character
+  target domain (see the P0B bounds above).
+- [ ] Complete the Shimura/Kohnen correspondence beyond that domain.
 - [x] Exact $T_{p^2}$ matrices at odd good primes in the initial Basmaji
   domain, plus coefficient-formula action on arbitrary exact expansions.
 - [ ] Bad-prime and general-index Hecke operators and half-integral
@@ -468,7 +527,27 @@ Linux arm64, macOS arm64, native Windows x64, and real-browser Chromium.
 
 ## P2: modular abelian varieties and modular curves
 
-- [ ] Construct $A_f=J_0(N)/I_fJ_0(N)$ from a weight-$2$ newform constituent.
+- [x] `J0(N)`, saturated integral homology, exact Hecke action and rational
+  Hecke-isotypic decomposition in weight $2$ over $\QQ$.
+- [x] Construct $A_f=J_0(N)/I_fJ_0(N)$ from a weight-$2$ newform constituent,
+  retaining the distinction between the connected quotient lattice and the
+  embedded constituent lattice.
+- [x] Canonical integral inclusions and connected quotient maps, with
+  construction-authenticated serialization and Sage/Magma fixtures
+  (`docs/modular-abelian-varieties.md`, `test/modular-abelian-varieties.cjs`).
+- [x] Larger-level decomposition and quotient benchmark receipts against
+  Sage, including levels $1009$ and $2003$
+  (`bench/modular/abelian-varieties/`). These cover the prior slice, not the
+  new morphism workloads below.
+- [ ] Products, identities, composition, addition and certified explicit
+  homology matrices; arbitrary integral matrices are not morphism proofs.
+- [ ] Connected kernel varieties, finite geometric kernel-component groups,
+  and nonsaturated integral image lattices.
+- [ ] Isogeny certification, Smith kernel invariants and exact degrees.
+- [ ] Explicit raising/lowering degeneracy maps and labelled oldform copies
+  at composite levels (finer than full-Hecke isotypic decomposition).
+- [ ] Sage differential tests, larger-level cold/warm benchmarks and
+  native/browser parity for the new morphism slice.
 - [ ] Homomorphism and endomorphism rings of supported modular abelian
   varieties.
 - [ ] Rational torsion and finite subgroup schemes in the supported domain.
