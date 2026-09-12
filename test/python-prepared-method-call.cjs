@@ -34,7 +34,9 @@ test("only immediate Python dot calls use prepared method lookup", () => {
     new compiler.AST_SymbolRef({ name: "value" }),
     new compiler.AST_Number({ value: 1 }),
   ]];
-  assert.doesNotMatch(emit(call("obj", "method", keywordArgs)), /prepared_method|prepare_method/u);
+  assert.match(emit(call("obj", "method", keywordArgs)), /ρσ_invoke_prepared_keywords\(ρσ_prepare_method_call\(/u);
+  assert.doesNotMatch(emit(call("obj", "method", keywordArgs), false), /prepared_keywords/u);
+  assert.doesNotMatch(emit(call("Object", "keys", keywordArgs)), /prepared_keywords/u);
   const spread = new compiler.AST_SymbolRef({ name: "values" });
   spread.is_array = true;
   const starArgs = [spread];
@@ -42,6 +44,12 @@ test("only immediate Python dot calls use prepared method lookup", () => {
   const starred = emit(call("obj", "method", starArgs));
   assert.match(starred, /ρσ_invoke_prepared_method\(\[ρσ_getattr_internal\(/u);
   assert.doesNotMatch(starred, /ρσ_prepare_method_call|ρσ_resolve_callable/u);
+  starArgs.kwargs = keywordArgs.kwargs;
+  assert.doesNotMatch(emit(call("obj", "method", starArgs)), /ρσ_invoke_prepared_keywords/u);
+  const mappingArgs = [];
+  mappingArgs.starargs = true;
+  mappingArgs.kwarg_items = [new compiler.AST_SymbolRef({ name: "mapping" })];
+  assert.match(emit(call("obj", "method", mappingArgs)), /ρσ_invoke_prepared_keywords\(ρσ_prepare_method_call\(/u);
 });
 
 const source = `
