@@ -1,4 +1,5 @@
-// sagejs-test-tier: portable
+// sagejs-test-tier: unit
+// sagejs-test-portable: true
 "use strict";
 const assert=require("node:assert/strict"),fs=require("node:fs"),os=require("node:os"),path=require("node:path");
 const test=require("node:test");
