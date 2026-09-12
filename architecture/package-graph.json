@@ -49,6 +49,7 @@
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
         "src/baselib/__future__.py",
+        "src/baselib/bootstrap_shared.py",
         "src/baselib/builtins.py",
         "src/baselib/byte_strings.py",
         "src/baselib/compiler_bootstrap.py",
