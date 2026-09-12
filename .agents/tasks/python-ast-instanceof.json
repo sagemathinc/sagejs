@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-ast-instanceof",
+  "title": "Python Ast Instanceof",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Use declared host instance_of primitive for compiler AST type checks",
+  "base_commit": "c4c126d09ba4f5c2fb30001fd8b561b24105d80f",
+  "claims": [
+    "src/ast_types.py",
+    "test/python-ast-instanceof.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "JavaScript instanceof"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Assign the compiler-private is_node_type export directly to existing js.js_instanceof, avoiding a wrapper and its dispatch. Native behavior diagnostics pass. Earlier runtime.instance_of import and imported-alias candidates failed immutable stage-zero import resolution and export discovery respectively; both were abandoned without loader changes. The explicit assignment passed immutable seed compiler import/export emission preflight. This contract is frozen before the assignment candidate bootstrap build; final results go in the PR without contract mutation.",
+    "risks": [
+      "No performance gain is claimed until controlled comparison.",
+      "Private helper introspection now identifies js_instanceof from js instead of the former ast_types wrapper; repository search found no consumers of the old metadata.",
+      "Full compiler/integration and multi-platform qualification remain governed by their declared checks; focused diagnostics do not replace them."
+    ],
+    "next_steps": [
+      "Run full self-hosting build and direct focused, CST, portable and strict checks on frozen source.",
+      "Inspect bootstrap primitive emission and module closure before measuring exact baseline/candidate artifacts."
+    ]
+  }
+}
