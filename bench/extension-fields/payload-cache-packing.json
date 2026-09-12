@@ -1,0 +1,26 @@
+{
+  "schema": "sagejs.browser-cache-packing-evidence/v1",
+  "status": "local-precommit-packaging-check",
+  "artifact": "sha256:c79c1bbcd2106ac79908dc6be10bcdd3b00ec67c84b8b53e15413461816bbce5",
+  "source_revision": "b83d5eee494bd4c8167be0b4413daba686ac970c",
+  "report_sha256": "194702c7085af3bb5da7c9a706a5f4c214f5403bf1a485cd0e2d4d0c5f159d11",
+  "totals": {
+    "bytes": 180264305,
+    "gzip_bytes": 25667722,
+    "brotli_bytes": 17357198
+  },
+  "eager_core": {
+    "bytes": 150105019,
+    "gzip_bytes": 15773861,
+    "brotli_bytes": 9698492
+  },
+  "limit_brotli_bytes": 9700000,
+  "previous_eager_core_brotli_bytes": 9727271,
+  "roundtrip_modules": 157,
+  "notes": [
+    "Exact JavaScript outputs and compiler metadata retained; decode at both compiler resource boundaries.",
+    "All aggregate and specialist/eager topology budgets passed without increasing any limit.",
+    "Production lazy-import and implicit-core checks passed. Non-isolated mpmath dynamic-cache failure also reproduces before packing; not claimed fixed.",
+    "This precommit artifact is packaging evidence, not final Milestone F qualification."
+  ]
+}

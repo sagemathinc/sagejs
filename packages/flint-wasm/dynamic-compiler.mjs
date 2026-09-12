@@ -15,6 +15,48 @@ export function canSeedDynamicName(name) {
   );
 }
 
+export function decodeBrowserModuleCache(cache) {
+  // Runtime-owned module shells can intentionally contain metadata only.
+  if (cache.outputs === undefined) return cache;
+  const outputs = {};
+  for (const [key, value] of Object.entries(cache.outputs)) {
+    if (typeof value === "string") { outputs[key] = value; continue; }
+    if (!value || value.type !== "copy-splice-v1" ||
+        !Object.hasOwn(cache.outputs, value.base) ||
+        typeof cache.outputs[value.base] !== "string" ||
+        !Number.isSafeInteger(value.length) || value.length < 0 ||
+        value.length > 64 * 1024 * 1024 || !Array.isArray(value.parts)) {
+      throw new TypeError("invalid browser compiler output splice");
+    }
+    const base = cache.outputs[value.base];
+    let cursor = 0, total = 0;
+    const parts = [];
+    for (const part of value.parts) {
+      if (typeof part === "string") {
+        total += part.length;
+        parts.push(part);
+      } else {
+        if (!Array.isArray(part) || part.length !== 2 ||
+            !part.every(Number.isSafeInteger) || part[1] <= 0) {
+          throw new TypeError("invalid browser compiler copy range");
+        }
+        const start = cursor + part[0], end = start + part[1];
+        if (start < 0 || !Number.isSafeInteger(end) || end > base.length) {
+          throw new TypeError("browser compiler copy range is outside its base");
+        }
+        total += part[1];
+        if (total > value.length) throw new TypeError("browser compiler splice length overflow");
+        parts.push(base.slice(start, end));
+        cursor = end;
+      }
+      if (total > value.length) throw new TypeError("browser compiler splice length overflow");
+    }
+    if (total !== value.length) throw new TypeError("browser compiler splice length mismatch");
+    outputs[key] = parts.join("");
+  }
+  return {...cache, outputs};
+}
+
 export function createBrowserCompiler(compilerSource, standardLibrary) {
   const compiler = {};
   const unavailable = (operation) => () => {
@@ -32,7 +74,7 @@ export function createBrowserCompiler(compilerSource, standardLibrary) {
     );
     files.set(
       `__module_cache__/${name.replaceAll(".", "-")}.json`,
-      JSON.stringify(module.cache),
+      JSON.stringify(decodeBrowserModuleCache(module.cache)),
     );
     signatures.set(module.source, module.cache.signature);
   }
