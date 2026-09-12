@@ -122,3 +122,35 @@ blocked build startup and were corrected in `4291d2368`; an extra Node 22
 holdout test was scheduled during module-cache reconstruction and failed on
 the absent runtime cache (16 passed, one failed). That run is not claimed as
 qualification and is rerun only after the cache is stable.
+
+## Executable product checkpoint at `e4d066c38`
+
+The graph-enabled eight-stage Linux x64 build now passes (10m36s), with
+41 authenticated production families and two packs; all 41 families reused
+their validated generated objects. Lazy preparation passes for 431 modules,
+eight dynamic artifacts and 46 multiprocessing modules. Both real product
+SEAs build and pass `test/sea-smoke.cjs`; the public numerical CMinpack and
+NLopt SEA tests also pass (2/2). These are full local executables, unlike the
+earlier four-platform loader fixtures.
+
+| Executable | Bytes | SHA-256 |
+| --- | ---: | --- |
+| Sage.js | 502426062 | `9d4640bc38d2b49abf30a4982538955b1bb9f69d91d01a70fb8e25af10fac0ea` |
+| SagePython | 414910926 | `7942e13e055ba09763d83981a6e8ca3cbc4a0a66674bc1a41ac94127ab75e0d5` |
+
+The Linux x64 platform npm archive builds. The root archive does **not** yet
+pass ordinary prepack: its functional tests pass, but the unchanged 400ms
+development-CLI startup gate fails at 411.0ms normalized. A second unchanged
+run after other owned builds finished also fails at 409.0ms (empty CLI
+185.1ms). Concurrency therefore does not explain away the failure. No budget
+was increased and prepack was not bypassed. Fresh installed-root-package
+qualification has not run. Startup attribution, four-platform full product
+qualification, and source-current backend promotion evidence remain open;
+this PR stays draft.
+
+Earlier local attempts correctly rejected a missing graph addon, then a stale
+build receipt after enabling it. Rebuilding with the validated graph and FLINT
+prefixes resolved those artifact-input issues; neither was a solver failure.
+The post-build closure regressions pass 19/19, and the corrected Node 22
+post-build holdout run passes 17/17. Artifact sizes above are not evidence of
+startup, RSS or compressed-payload improvement.
