@@ -953,6 +953,17 @@ def _internal_class_instance_function(receiver: Any, target_function: Any) -> bo
     return False
 
 
+def ρσ_invoke_prepared_keywords(context: Any, supplied_args: Any) -> Any:
+    target = context[0]
+    receiver = context[1]
+    if receiver is runtime.undefined:
+        return ρσ_interpolate_kwargs(receiver, target, supplied_args)
+    if context[2] is True:
+        supplied_args.unshift(receiver)
+        receiver = runtime.undefined
+    return _internal_bind_kwargs(receiver, target, supplied_args)
+
+
 def ρσ_interpolate_kwargs(
     receiver: Any,
     target_function: Any,
@@ -1014,6 +1025,12 @@ def ρσ_interpolate_kwargs(
         ):
             receiver = target_function
             target_function = callable_method
+    return _internal_bind_kwargs(receiver, target_function, supplied_args)
+
+
+def _internal_bind_kwargs(
+    receiver: Any, target_function: Any, supplied_args: Any
+) -> Any:
     keyword_object = supplied_args[-1]
     argnames = _internal_get_member(target_function, "__argnames__")
     keyword_only = _internal_get_member(target_function, "__kwonly__")
@@ -1863,10 +1880,7 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     return False
 
 
-def _internal_is_exception_class(candidate: Any) -> bool:
-    if not _internal_type_is(runtime.jstype(candidate), "function"):
-        return False
-    base_exception = runtime.undefined
+def _internal_error_type(name: str) -> Any:
     baselib_modules = runtime.reflect.get(
         runtime.global_object,
         "__sagejs_baselib_modules__",
@@ -1877,7 +1891,14 @@ def _internal_is_exception_class(candidate: Any) -> bool:
             "sagejs._baselib.errors",
         )
         if errors_module is not runtime.undefined:
-            base_exception = runtime.reflect.get(errors_module, "BaseException")
+            return runtime.reflect.get(errors_module, name)
+    return runtime.undefined
+
+
+def _internal_is_exception_class(candidate: Any) -> bool:
+    if not _internal_type_is(runtime.jstype(candidate), "function"):
+        return False
+    base_exception = _internal_error_type("BaseException")
     if base_exception is runtime.undefined:
         base_exception = _internal_builtin("BaseException")
     # The stage-zero/self-hosting compiler deliberately runs without the
@@ -1932,24 +1953,13 @@ def ρσ_exception_matches(value: Any, candidate: Any) -> bool:
         raise TypeError(
             "catching classes that do not inherit from BaseException is not allowed"
         )
-    baselib_modules = runtime.reflect.get(
-        runtime.global_object,
-        "__sagejs_baselib_modules__",
-    )
-    if baselib_modules is not runtime.undefined:
-        errors_module = runtime.reflect.get(
-            baselib_modules,
-            "sagejs._baselib.errors",
-        )
-        if (
-            errors_module is not runtime.undefined
-            and candidate is runtime.reflect.get(errors_module, "Exception")
-            and runtime.instance_of(value, runtime.error)
-        ):
-            # Host errors historically normalize through Python's broad
-            # builtin Exception handler. Keep that boundary behavior, but
-            # only for the actual builtin object rather than its spelling.
-            return True
+    if candidate is _internal_error_type("Exception") and runtime.instance_of(
+        value, runtime.error
+    ):
+        # Host errors historically normalize through Python's broad
+        # builtin Exception handler. Keep that boundary behavior, but
+        # only for the actual builtin object rather than its spelling.
+        return True
     return ρσ_instanceof_one(value, candidate)
 
 

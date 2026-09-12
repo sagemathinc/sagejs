@@ -1493,8 +1493,21 @@ def print_function_call(self, output):
             output.comma(),
         )
 
+    prepared_keywords = has_kwargs and resolved_python_attribute
+    if prepared_keywords:
+        for argument in self.args:
+            if argument.is_array:
+                prepared_keywords = False
+                break
+
     if has_kwargs:
-        if is_new:
+        if prepared_keywords:
+            output.print("ρσ_invoke_prepared_keywords(ρσ_prepare_method_call(")
+            self.expression.expression.print(output)
+            output.comma()
+            output.print(JSON.stringify(self.expression.property))
+            output.print(")")
+        elif is_new:
             print_new(False)
         else:
             output.print(
@@ -1503,7 +1516,8 @@ def print_function_call(self, output):
                 else "ρσ_interpolate_kwargs_legacy("
             )
             do_print_this()
-        print_function_name(True)
+        if not prepared_keywords:
+            print_function_name(True)
         output.comma()
     else:
         if is_new:

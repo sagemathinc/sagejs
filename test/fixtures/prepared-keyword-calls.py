@@ -329,7 +329,11 @@ def test_explicit_self_and_positional_only_self():
 
     Target.external = external
     target = Target()
+    saved_external = target.external
     assert target.external(value=3, self=4) == (target, 3, 4)
+    assert saved_external(value=3, self=4) == (target, 3, 4)
+    assert saved_external.__self__ is target
+    assert saved_external.__func__ is external
     assert target.positional_self(value=3, self=4) == (target, 3, 4)
     try:
         target.ordinary(value=3, self=4)
@@ -337,3 +341,18 @@ def test_explicit_self_and_positional_only_self():
         pass
     else:
         assert False
+
+    def two_positional(self, value, /, optional=7):
+        return self, value, optional
+
+    Target.two_positional = two_positional
+    saved_two = target.two_positional
+    assert target.two_positional(3, optional=9) == (target, 3, 9)
+    assert saved_two(3, optional=9) == (target, 3, 9)
+    for method in (saved_two, target.two_positional):
+        try:
+            method(value=3)
+        except TypeError:
+            pass
+        else:
+            assert False
