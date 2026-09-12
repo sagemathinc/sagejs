@@ -5,15 +5,9 @@ before builtins. They have no private state or mathematical implementation.
 """
 
 
-def ρσ_native_method_adapter(target_function):
+def ρσ_copy_method_metadata(method, target_function):
+    """Copy ordered adapter metadata without evaluating live getter properties."""
     return r"""%js (() => {
-        function method(...args) {
-            args.unshift(this);
-            return Reflect.apply(target_function, undefined, args);
-        }
-        if (target_function.__argnames__) {
-            method.__argnames__ = target_function.__argnames__.slice(1);
-        }
         for (const name of [
             "__annotations__",
             "__annotations_text__",
@@ -41,6 +35,19 @@ def ρσ_native_method_adapter(target_function):
                 method[name] = target_function[name];
             }
         }
+    })()"""
+
+
+def ρσ_native_method_adapter(target_function):
+    return r"""%js (() => {
+        function method(...args) {
+            args.unshift(this);
+            return Reflect.apply(target_function, undefined, args);
+        }
+        if (target_function.__argnames__) {
+            method.__argnames__ = target_function.__argnames__.slice(1);
+        }
+        ρσ_copy_method_metadata(method, target_function);
         method.__sagejs_native_method__ = true;
         return method;
     })()"""
@@ -58,33 +65,7 @@ def ρσ_unbound_method_adapter(target_function):
         if (target_function.__argnames__) {
             method.__argnames__ = ["self", ...target_function.__argnames__];
         }
-        for (const name of [
-            "__annotations__",
-            "__annotations_text__",
-            "__code__",
-            "__defaults__",
-            "__doc__",
-            "__globals__",
-            "__handles_kwarg_interpolation__",
-            "__kwdefaults__",
-            "__kwonly__",
-            "__module__",
-            "__name__",
-            "__positional_only__",
-            "__python_type__",
-            "__qualname__",
-            "__varargs__",
-            "__varkw__",
-        ]) {
-            const descriptor = Object.getOwnPropertyDescriptor(
-                target_function, name
-            );
-            if (descriptor && typeof descriptor.get === "function") {
-                Object.defineProperty(method, name, descriptor);
-            } else {
-                method[name] = target_function[name];
-            }
-        }
+        ρσ_copy_method_metadata(method, target_function);
         method.__func__ = target_function;
         // The adapter still represents an ordinary Python function.  Mark it
         // as a descriptor so aliases assigned back onto a class (for example
