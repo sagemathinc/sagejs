@@ -4,7 +4,7 @@
   "id": "general-class-unit-corpus-independent",
   "title": "General Class Unit Corpus Independent",
   "lane": "integration",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Deliver byte-identical reviewed frozen corpus and stress-candidate tooling independently on main, with discovered offline regression wrappers and fresh qualification receipts",
   "base_commit": "6c42dd0938deaf3e13c7c681f4206d7199ad89ef",
@@ -26,7 +26,10 @@
     "Coordination: https://github.com/sagemathinc/sagejs/discussions/104#discussioncomment-18410758",
     "Adopted M0-M5 plan SHA256 aceadd86d81f796740e9fa1e02c5d1a57854453ecc0d1774f3f09bf2dcd14403; no effort, resource-cap or qualification reset.",
     "Frozen coverage SHA256 b53a7084f53c7dd6cb6911423daacb7f2103fb6cb075f13da2534eb0aa62f948; observations de1f90c7f9d719e68cc397a34958b835c9425a035d1fdfbb4f10c972f7101060; manifest 29e13dfbd25807dd5e1737585ab7e207594b53d6b55bc0da3380333f9f61358a.",
-    "Stress fixed export SHA256 56c7fbe15c5c3ce5fc373aaaa714061653e6080d356b6b0b31150d4cc7988d44; old 112-candidate pretty-export SHA256 8e7a63a7abfb21f2f4bf1b370ba526d17ee48b2a4af533a2c5bd8f55a75f5141."
+    "Stress fixed export SHA256 56c7fbe15c5c3ce5fc373aaaa714061653e6080d356b6b0b31150d4cc7988d44; old 112-candidate pretty-export SHA256 8e7a63a7abfb21f2f4bf1b370ba526d17ee48b2a4af533a2c5bd8f55a75f5141.",
+    "Independent source commit c96906e681f898f449a66a664dc39931904eee7f; draft PR https://github.com/sagemathinc/sagejs/pull/257 targets main. Ordered eleven-file payload SHA256 d0ff88da82e2e1053cb27fa78852adeedba3b8cff78871e00b3e3692d6fa3c08 (2077226 bytes); nine imported files remain byte-identical to the historical commits.",
+    "Current-checkout ignored evidence: build/general-frontier/corpus-independent-source-pins-v1.json, corpus-independent-validation-notes-v1.md and corpus-independent-{build,strict,architecture,portable,changed,native-prepare}-v1.log; successful unchanged rerun is corpus-independent-changed-v2.log. Initial missing-FLINT failure remains in runs and its original log.",
+    "Authorized documented native preparation retained source fingerprint 17423c49c31a3c6f2bdcece2ea4a35224679c6575e4b3cab4e9526c1f180f7f3. FLINT direct-addon manifest SHA256 57ed7d1088090ead3827fa7bb277514f237810bac6266607da9b360ade693e93; generated-FFI manifest SHA256 59ef1c3fbc671730c177a68a9c48ab42a2a42c8320836b1a7b3157b24b86d18d. No feature-integration runtime copied or native source changed."
   ],
   "architecture": {
     "strategy": "dynamic-python",
@@ -54,18 +57,139 @@
     "python3 bench/class-unit-groups/general-frontier/corpus/test_stress_supplement.py",
     "pnpm test:changed -- --base 6c42dd0938deaf3e13c7c681f4206d7199ad89ef"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/general-class-unit-corpus-frozen.cjs test/general-class-unit-corpus-supplements.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.212,
+      "started_at": "2026-09-12T09:12:03.485Z",
+      "commit": "c96906e681f898f449a66a664dc39931904eee7f",
+      "workspace_fingerprint": "17423c49c31a3c6f2bdcece2ea4a35224679c6575e4b3cab4e9526c1f180f7f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test bench/class-unit-groups/general-frontier/corpus/frozen/freeze.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.199,
+      "started_at": "2026-09-12T09:12:04.887Z",
+      "commit": "c96906e681f898f449a66a664dc39931904eee7f",
+      "workspace_fingerprint": "17423c49c31a3c6f2bdcece2ea4a35224679c6575e4b3cab4e9526c1f180f7f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/general-frontier/corpus/frozen/freeze.cjs check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.164,
+      "started_at": "2026-09-12T09:12:06.278Z",
+      "commit": "c96906e681f898f449a66a664dc39931904eee7f",
+      "workspace_fingerprint": "17423c49c31a3c6f2bdcece2ea4a35224679c6575e4b3cab4e9526c1f180f7f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/class-unit-groups/general-frontier/corpus/test_rank_two_supplement.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.197,
+      "started_at": "2026-09-12T09:12:06.635Z",
+      "commit": "c96906e681f898f449a66a664dc39931904eee7f",
+      "workspace_fingerprint": "17423c49c31a3c6f2bdcece2ea4a35224679c6575e4b3cab4e9526c1f180f7f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/class-unit-groups/general-frontier/corpus/test_stress_supplement.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.248,
+      "started_at": "2026-09-12T09:12:07.020Z",
+      "commit": "c96906e681f898f449a66a664dc39931904eee7f",
+      "workspace_fingerprint": "17423c49c31a3c6f2bdcece2ea4a35224679c6575e4b3cab4e9526c1f180f7f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 644.35,
+      "started_at": "2026-09-12T09:12:07.456Z",
+      "commit": "c96906e681f898f449a66a664dc39931904eee7f",
+      "workspace_fingerprint": "17423c49c31a3c6f2bdcece2ea4a35224679c6575e4b3cab4e9526c1f180f7f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.896,
+      "started_at": "2026-09-12T09:23:27.379Z",
+      "commit": "c96906e681f898f449a66a664dc39931904eee7f",
+      "workspace_fingerprint": "17423c49c31a3c6f2bdcece2ea4a35224679c6575e4b3cab4e9526c1f180f7f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.218,
+      "started_at": "2026-09-12T09:24:25.422Z",
+      "commit": "c96906e681f898f449a66a664dc39931904eee7f",
+      "workspace_fingerprint": "17423c49c31a3c6f2bdcece2ea4a35224679c6575e4b3cab4e9526c1f180f7f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 113.458,
+      "started_at": "2026-09-12T09:24:37.791Z",
+      "commit": "c96906e681f898f449a66a664dc39931904eee7f",
+      "workspace_fingerprint": "17423c49c31a3c6f2bdcece2ea4a35224679c6575e4b3cab4e9526c1f180f7f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 6c42dd0938deaf3e13c7c681f4206d7199ad89ef",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.816,
+      "started_at": "2026-09-12T09:26:31.409Z",
+      "commit": "c96906e681f898f449a66a664dc39931904eee7f",
+      "workspace_fingerprint": "17423c49c31a3c6f2bdcece2ea4a35224679c6575e4b3cab4e9526c1f180f7f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:cache -- prepare",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 235.159,
+      "started_at": "2026-09-12T09:28:08.988Z",
+      "commit": "c96906e681f898f449a66a664dc39931904eee7f",
+      "workspace_fingerprint": "17423c49c31a3c6f2bdcece2ea4a35224679c6575e4b3cab4e9526c1f180f7f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 6c42dd0938deaf3e13c7c681f4206d7199ad89ef",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 929.908,
+      "started_at": "2026-09-12T09:32:17.457Z",
+      "commit": "c96906e681f898f449a66a664dc39931904eee7f",
+      "workspace_fingerprint": "17423c49c31a3c6f2bdcece2ea4a35224679c6575e4b3cab4e9526c1f180f7f3",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "Main-based independent delivery of the byte-identical reviewed frozen 1800/360/90 corpus and source-only 36-polynomial stress supplement. Two tiny discovered unit/portable wrappers register the existing frozen Node suite and existing CPython rank-two/stress suites, using the repository Python executable selector. No PR219 source ancestry, mathematical API, package/registry change or runtime-cap change is included. Prior source/evidence identities remain explicit and historical receipts are not current qualification.",
+    "summary": "Main-based independent delivery of the byte-identical reviewed frozen 1800/360/90 corpus and source-only 36-polynomial stress supplement. Two tiny discovered unit/portable wrappers register existing frozen Node and CPython rank-two/stress suites using the repository Python executable selector. All declared current-source Linux checks pass: fresh build, zero-error strict (393 modules), architecture, portable (211 files), direct offline regressions (11 frozen, 7 rank-two, 11 stress; 13 wrapper tests), fixture validation and deterministic test:changed (merge invariants, 226 unit files, documentation). The first changed-file attempt failed for an absent FLINT addon; that failure is retained. Authorized documented native preparation and one unchanged rerun passed, including the normal docs-triggered rebuild with all five adapters current and 41 native kernel families published. No PR219 ancestry, mathematical API, package/registry, runtime-cap or source-allowance change is included. Historical receipts are not current qualification.",
     "risks": [
-      "Current-main build and declared validation must qualify this source before review; retain any failures separately from the old PR219 integration evidence. No copied integration runtime is authorized.",
+      "Initial missing-artifact failure is retained, not erased by the passing rerun. Current-source receipts establish the declared Linux tooling gates only; the full integration/native suites were not run. Optional cminpack/NLopt Wasm reactors remain unprepared and were explicitly skipped by the build.",
       "Membership packaging is not M0 completion or matched performance qualification. Raw evidence custody, complete repeated100/200-bit reference baselines and stress/proof screening remain separate pending work.",
       "The 36 stress entries remain polynomial candidates, not proven distinct fields or eligible/qualified benchmarks. Exact maximal-order and isomorphism admission remain pending.",
       "Linux receipts do not establish other-platform qualification. Old PR236/246 drafts stay open until the independent replacement is safely established."
     ],
     "next_steps": [
-      "Run fresh sequential build, focused offline, changed-file, architecture, portable and strict receipts on the current source; stop and report broader runtime defects instead of repairing them in this lane.",
-      "Publish a main-targeted draft PR, preserve exact imported bytes, and let integration decide readiness and eventual supersession of the old drafts after qualification."
+      "Review draft PR257 against main and obtain required cross-platform CI/review before promotion; no independent corpus proof, admission or performance claim follows from these checks.",
+      "Integration decides readiness and eventual supersession of old draft PR236/246 once the independent replacement is safely established; do not rewrite their historical receipts or close them prematurely."
     ]
   }
 }
