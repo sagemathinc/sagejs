@@ -80,6 +80,36 @@
       "commit": "56972a7ffb030944620d3a4821d5c0297f48cd54",
       "workspace_fingerprint": "800c8ba38eac73e5a6769e540674de3df7931f48e82ccce981bfbaf2687f80a0",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 86.648,
+      "started_at": "2026-09-12T06:01:19.825Z",
+      "commit": "ecc07909dcbca9ae7a09fdb3555a269d60b94f37",
+      "workspace_fingerprint": "fe787df6f8c0042530d152e7ea915b9979d41b6404bdcb468ae766a59cc5f550",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright --project pyrightconfig.json src/lib/sagejs/number_fields/class_unit_replay.py src/lib/sagejs/number_fields/class_unit_generation_replay.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.423,
+      "started_at": "2026-09-12T06:02:47.482Z",
+      "commit": "ecc07909dcbca9ae7a09fdb3555a269d60b94f37",
+      "workspace_fingerprint": "fe787df6f8c0042530d152e7ea915b9979d41b6404bdcb468ae766a59cc5f550",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/general-class-unit-bdf-replay.cjs test/general-class-unit-conditional-replay.cjs test/general-class-unit-generation-replay.cjs test/general-class-unit-detached-replay.cjs test/general-class-unit-replay-data.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 236.922,
+      "started_at": "2026-09-12T06:02:50.774Z",
+      "commit": "ecc07909dcbca9ae7a09fdb3555a269d60b94f37",
+      "workspace_fingerprint": "fe787df6f8c0042530d152e7ea915b9979d41b6404bdcb468ae766a59cc5f550",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
