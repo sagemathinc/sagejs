@@ -137,8 +137,11 @@ def _machine_extension_kernel_modules() -> tuple[Any, Any]:
 def _touch_fq_context_resource(storage: Any) -> None:
     if _fq_context_resource_cache and _fq_context_resource_cache[-1] is storage:
         return
-    if storage in _fq_context_resource_cache:
-        _fq_context_resource_cache.remove(storage)
+    # Cache membership is resource identity, never mathematical equality.
+    for index in range(len(_fq_context_resource_cache)):
+        if _fq_context_resource_cache[index] is storage:
+            _fq_context_resource_cache.pop(index)
+            break
     _fq_context_resource_cache.append(storage)
     while len(_fq_context_resource_cache) > _FQ_CONTEXT_RESOURCE_CACHE_LIMIT:
         victim = _fq_context_resource_cache[0]
@@ -149,8 +152,12 @@ def _touch_fq_context_resource(storage: Any) -> None:
 def _touch_fq_element_resource(storage: Any) -> None:
     if _fq_element_resource_cache and _fq_element_resource_cache[-1] is storage:
         return
-    if storage in _fq_element_resource_cache:
-        _fq_element_resource_cache.remove(storage)
+    # Avoid Python equality dispatch on every coefficient access. A wrapper
+    # occurs at most once; locating its identity preserves the exact LRU order.
+    for index in range(len(_fq_element_resource_cache)):
+        if _fq_element_resource_cache[index] is storage:
+            _fq_element_resource_cache.pop(index)
+            break
     _fq_element_resource_cache.append(storage)
     while len(_fq_element_resource_cache) > _FQ_ELEMENT_RESOURCE_CACHE_LIMIT:
         victim = _fq_element_resource_cache[0]
