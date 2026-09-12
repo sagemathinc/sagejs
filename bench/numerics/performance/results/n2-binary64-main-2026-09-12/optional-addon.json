@@ -1,0 +1,34 @@
+{
+  "schema": "sagejs.numerics.optional-addon-validation/v1",
+  "source": "c092f9fe7a923da053638569d51f41619b693bcf",
+  "baseline": "5b307b65fc350763abd52062e57f1c7a3666f925",
+  "node": "26.8.1",
+  "platform": "linux-x64",
+  "prefix_rebuilt": false,
+  "eclib_revision": "8dca7f18acedf7c2283a5d0e689c269f8258c981",
+  "eclib_patch_sha256": "9ea87bcd6504fd10559cf99cd5891de3d9c21ae8d7b8976dddaf7cbb9777a234",
+  "direct_addon_source_sha256": "36eda88cb451c947a8c4350a4ccc84f0e88862f516c8c609beaab47d1c33ba7b",
+  "direct_addon_sha256": "ca67c49b561fb6ed622f01d9b096e6d44fa2d5f38b2818388398cd666d951d8b",
+  "ffi_source_sha256": "3a67217bd7d2792ee6c368f736d84e39ca710904cd14784028c38df2c173fb5d",
+  "ffi_addon_sha256": "36c3da5d016b010c9a48938ff9a8bddbe19f6e4f3136924b87e386e3424f569a",
+  "ffi_cache_key": "5e50be4945a9b433294514d9ef5265870ced6ddd5d12bc6d442d64c24810405f",
+  "ffi_functions": 427,
+  "candidate_suite": {
+    "pass": 25,
+    "fail": 1,
+    "skip": 28,
+    "failure": "algebra.py: spawnSync ETIMEDOUT at the unchanged 60000 ms limit",
+    "log_sha256": "4df81e5392ea3a663f5c0db9fe8e06e88326b9c8d427e82a75b4b0b710633010"
+  },
+  "baseline_diagnostic": {
+    "pass": 0,
+    "fail": 1,
+    "failure": "algebra.py: spawnSync ETIMEDOUT at the unchanged 60000 ms limit",
+    "borrowed_source_identical_flint_package": true,
+    "baseline_source_or_build_modified": false,
+    "log_sha256": "a641de5b210eebab7bea7909ea0ae9bd233341511b8ec7e2f978f04bfd44ae82"
+  },
+  "full_compiler_suite_pass": false,
+  "production_native_packs_qualified": false,
+  "four_platform_qualification": false
+}

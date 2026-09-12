@@ -49,6 +49,7 @@
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
         "src/baselib/__future__.py",
+        "src/baselib/bootstrap_shared.py",
         "src/baselib/builtins.py",
         "src/baselib/byte_strings.py",
         "src/baselib/compiler_bootstrap.py",
@@ -131,7 +132,7 @@
       "layer": 5,
       "startup": "lazy",
       "max_source_bytes": 360000,
-      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec", "native-integration"],
       "modules": ["sagejs.numerics.statistics"],
       "files": [],
       "prefixes": ["src/lib/sagejs/numerics/statistics/"]
@@ -203,7 +204,7 @@
       "id": "linear-algebra",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 450000,
+      "max_source_bytes": 451000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py"
@@ -893,9 +894,10 @@
       "id": "modular-abelian-varieties",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 70000,
+      "max_source_bytes": 85000,
       "depends_on": [
         "core-runtime",
+        "python-stdlib",
         "arithmetic",
         "linear-algebra",
         "modular-forms",
@@ -906,7 +908,11 @@
       ],
       "files": [
         "src/lib/sagejs/modular_abelian_varieties/__init__.py",
-        "src/lib/sagejs/modular_abelian_varieties/abelian_variety.py"
+        "src/lib/sagejs/modular_abelian_varieties/abelian_variety.py",
+        "src/lib/sagejs/modular_abelian_varieties/lattices.py",
+        "src/lib/sagejs/modular_abelian_varieties/morphisms.py",
+        "src/lib/sagejs/modular_abelian_varieties/products.py",
+        "src/lib/sagejs/modular_abelian_varieties/degeneracy.py"
       ],
       "typescript_files": ["tools/serialization-codecs/modular-abelian-varieties.ts"],
       "prefixes": []
@@ -1007,7 +1013,7 @@
         "http", "importlib", "io", "js", "json", "keyword", "math", "multiprocessing", "ntpath", "numbers",
         "operator", "os", "pathlib", "pdb", "pickle", "platform", "posixpath", "pprint", "pythonize", "random",
         "re", "reprlib", "sage", "sagejs_serialization", "shlex", "shutil", "socket", "string",
-        "sagejs._collection_helpers", "sagejs._documentation_search", "sagejs._introspection", "sagejs._namespace", "sagejs.class_namespace", "sagejs.javascript", "sqlite3", "stat", "statistics", "struct", "subprocess", "sys", "tempfile", "textwrap", "threading", "time",
+        "sagejs._collection_helpers", "sagejs._documentation_search", "sagejs._introspection", "sagejs._namespace", "sagejs._punycode", "sagejs.class_namespace", "sagejs.javascript", "sqlite3", "stat", "statistics", "struct", "subprocess", "sys", "tempfile", "textwrap", "threading", "time",
         "tokenize", "traceback", "types", "unicodedata", "unittest", "urllib", "uuid", "warnings", "weakref", "xml", "zlib"
       ],
       "files": [
@@ -1017,6 +1023,7 @@
         "src/lib/sagejs/_collection_helpers.py",
         "src/lib/sagejs/_introspection.py",
         "src/lib/sagejs/_namespace.py",
+        "src/lib/sagejs/_punycode.py",
         "src/lib/_dummy_thread.py", "src/lib/_thread.py", "src/lib/abc.py", "src/lib/aes.py", "src/lib/annotationlib.py", "src/lib/argparse.py", "src/lib/array.py", "src/lib/ast.py", "src/lib/atexit.py", "src/lib/base64.py", "src/lib/bdb.py", "src/lib/calendar.py", "src/lib/cmath.py", "src/lib/colorsys.py", "src/lib/copy.py", "src/lib/datetime.py", "src/lib/decimal.py", "src/lib/enum.py",
         "src/lib/codecs.py",
         "src/lib/bisect.py", "src/lib/collections.py", "src/lib/contextlib.py",

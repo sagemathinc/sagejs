@@ -722,6 +722,10 @@ function bindingGyp(
   const matrixOnly = ir.functions.every(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
   );
+  const floatOnly = ir.functions.length > 0 &&
+    ir.functions.every((fn) => fn.kernelKind === "float64") &&
+    (ir.foreignLibraries || []).length === 0;
+  const usesFloat64 = ir.functions.some((fn) => fn.kernelKind === "float64");
   const tuning = usesSpecializedPrimeField ? primeFieldTuning() : null;
   const foreignLibraries = Array.from(new Set(
     (ir.foreignLibraries || []).flatMap((library) =>
@@ -763,7 +767,7 @@ function bindingGyp(
     target.libraries = [
       ...linkedForeignLibraries,
       ...(usesExplicitPrimeModulus ? [nativeFlintLibrary] : []),
-      ...(!matrixOnly
+      ...(!matrixOnly && !floatOnly
         ? [
           nativeMpcLibrary,
           join(nativePrefix, "lib", "mpfr.lib"),
@@ -791,6 +795,9 @@ function bindingGyp(
         ...(profileSymbols ? { DebugInformationFormat: 3 } : {}),
         Optimization: 3,
         WarningLevel: 3,
+        ...(usesFloat64
+          ? { AdditionalOptions: ["/clang:-ffp-contract=off"] }
+          : {}),
         ...(hasExceptionShims
           ? {
             ExceptionHandling: 1,
@@ -810,7 +817,7 @@ function bindingGyp(
     target.libraries = [
       ...linkedForeignLibraries,
       ...(usesExplicitPrimeModulus ? [nativeFlintLibrary] : []),
-      ...(!matrixOnly
+      ...(!matrixOnly && !floatOnly
         ? [
           nativeMpcLibrary,
           join(nativePrefix, "lib", "libmpfr.a"),
@@ -827,6 +834,7 @@ function bindingGyp(
       "-Wextra",
       "-ffunction-sections",
       "-fdata-sections",
+      ...(usesFloat64 ? ["-ffp-contract=off"] : []),
       ...(profileSymbols ? ["-g"] : []),
     ];
     if (hasExceptionShims) {
@@ -841,6 +849,7 @@ function bindingGyp(
       target.xcode_settings = {
         GCC_OPTIMIZATION_LEVEL: "3",
         MACOSX_DEPLOYMENT_TARGET: macosDeploymentTarget(),
+        ...(usesFloat64 ? { OTHER_CFLAGS: ["-ffp-contract=off"] } : {}),
         ...(profileSymbols
           ? {
             DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym",
@@ -1005,7 +1014,10 @@ async function compileKernel(options) {
   const matrixOnly = ir.functions.every(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
   );
-  if (!matrixOnly && !existsSync(nativeMpcLibrary)) {
+  const floatOnly = ir.functions.length > 0 &&
+    ir.functions.every((fn) => fn.kernelKind === "float64") &&
+    (ir.foreignLibraries || []).length === 0;
+  if (!matrixOnly && !floatOnly && !existsSync(nativeMpcLibrary)) {
     throw new Error(
       "native MPC dependencies are not built; run " +
         "pnpm --dir packages/flint build",

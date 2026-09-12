@@ -1363,7 +1363,9 @@ def print_function_call(self, output):
         output.comma()
 
     def do_print_this():
-        if not is_repeatable:
+        if resolved_python_attribute:
+            output.print("undefined")
+        elif not is_repeatable:
             output.print("ρσ_expr_temp")
         elif is_node_type(self, AST_ClassCall) and self["static"]:
             # ``AST_ClassCall.static`` covers both static methods and class
@@ -1409,6 +1411,13 @@ def print_function_call(self, output):
     has_kwargs = has_kwarg_items or has_kwarg_formals
     is_new = is_node_type(self, AST_New) and not self.python_class
     is_repeatable = True
+    resolved_python_attribute = (
+        not is_new
+        and not is_node_type(self, AST_ClassCall)
+        and not self.direct_call
+        and is_node_type(self.expression, AST_Dot)
+        and is_python_attribute_read(self.expression, output)
+    )
 
     if is_new and not self.args.length and not has_kwargs and not self.args.starargs:
         output.print("new"), output.space()
@@ -1423,13 +1432,7 @@ def print_function_call(self, output):
                     output.comma()
                 a.print(output)
 
-        if (
-            not is_new
-            and not is_node_type(self, AST_ClassCall)
-            and not self.direct_call
-            and is_node_type(self.expression, AST_Dot)
-            and is_python_attribute_read(self.expression, output)
-        ):
+        if resolved_python_attribute:
             # Resolve and retain the attribute before evaluating arguments.
             # A per-call record remains valid across nested calls and mutation;
             # ordinary attribute reads still produce observable bound methods.
@@ -1448,7 +1451,12 @@ def print_function_call(self, output):
         output.with_parens(print_args)
         return
 
-    is_repeatable = is_new or not has_calls(self.expression)
+    # Python attribute lookup already applies descriptors and returns the
+    # callable value. Do not evaluate its syntactic receiver a second time or
+    # infer binding again from unrelated attributes in that receiver.
+    is_repeatable = (
+        resolved_python_attribute or is_new or not has_calls(self.expression)
+    )
     if not is_repeatable:
         (
             output.assign("(ρσ_expr_temp"),
@@ -1473,6 +1481,10 @@ def print_function_call(self, output):
             print_new(True)
             print_function_name(True)
             output.comma()
+        elif resolved_python_attribute:
+            output.print("ρσ_invoke_prepared_method([")
+            self.expression.print(output)
+            output.print("], ")
         else:
             print_function_name(True)
             output.print(".apply(")

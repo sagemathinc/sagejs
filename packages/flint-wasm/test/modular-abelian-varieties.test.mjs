@@ -13,8 +13,10 @@ test("packaged Wasm loads abelian varieties and preserves canonical maps", async
   await assert.rejects(sage.evaluate([
     modularAbelianVarietyCase.source,
     "from sagejs.modular_abelian_varieties import ModularAbelianVarietyMap",
-    "bad=ModularAbelianVarietyMap(J,A,2*q.matrix(),'doubled quotient')",
+    "bad=ModularAbelianVarietyMap(J,A,2*q.matrix(),generators=[q])",
+    "assert loads(dumps(bad)).matrix()==2*q.matrix()",
+    "bad._recipe=('quotient',)",
     "dumps(bad)",
   ].join("\n")),
-    /only canonical homology maps.*matrix differs/);
+    /invalid morphism construction certificate/);
 });
