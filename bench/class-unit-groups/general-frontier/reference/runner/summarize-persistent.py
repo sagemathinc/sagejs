@@ -135,6 +135,9 @@ def normalize(receipt):
             row["exact_compact_output"] = True
             row["presentation_class_invariants"] = result["compact"]["class_invariants"]
             row["regulator"] = result["compact"]["regulator"]
+            if result["schema"] == "sagejs-pari-frontier-screen-v4":
+                row["seed_scope"] = result["seed_scope"]
+                row["iteration_outputs"] = result["iteration_outputs"]
     else:
         response = json.loads(receipt["stdout"])
         result = response["result"]
@@ -157,14 +160,24 @@ def normalize(receipt):
         row["witness_semantics"] = (
             result["witness_semantics"]
             if result["schema"]
-            in ("sagejs-hecke-frontier-screen-v2", "sagejs-hecke-frontier-screen-v3")
+            in (
+                "sagejs-hecke-frontier-screen-v2",
+                "sagejs-hecke-frontier-screen-v3",
+                "sagejs-hecke-frontier-screen-v4",
+            )
             else "ideal-equals-principal-witness-times-returned-class-map-representative"
         )
         row["regulator"] = compact["regulator"]
         row["proof_execution"] = result.get("proof_execution")
-        if result["schema"] == "sagejs-hecke-frontier-screen-v3":
+        if result["schema"] in (
+            "sagejs-hecke-frontier-screen-v3",
+            "sagejs-hecke-frontier-screen-v4",
+        ):
             row["retained_iteration"] = result["retained_iteration"]
             row["batch_outputs_complete"] = result["batch_outputs_complete"]
+        if result["schema"] == "sagejs-hecke-frontier-screen-v4":
+            row["seed_scope"] = result["seed_scope"]
+            row["iteration_outputs"] = result["iteration_outputs"]
         row["julia_diagnostics"] = response.get("diagnostics")
         # @timed can include compiling frontier_case before its internal timer
         # starts. Never subtract this diagnostic from worker elapsed_ns.

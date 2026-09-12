@@ -104,20 +104,25 @@ frontier_json_compact(b, u, unit_coordinates, class_coordinates, class_powers, p
   ]));
 };
 
-frontier_json_envelope(id, bits, iterations, seed, compact, proof_policy, certification_ms) = {
-  my(v = version());
-  return(frontier_json_object([
-    "\"schema\":\"sagejs-pari-frontier-screen-v3\"",
+frontier_json_proof(proof_policy, iterations, certification_ms) = {
+  return(if(proof_policy == "conditional-grh", "null", frontier_json_object([
+    "\"method\":\"pari-bnfcertify-full\"", "\"flag\":0", "\"last_return\":\"1\"",
+    frontier_json_key("completed_iterations", Str(iterations)),
+    frontier_json_key("certification_milliseconds", frontier_json_integer(certification_ms))
+  ])));
+};
+
+frontier_json_envelope(id, bits, iterations, seed, compact, proof_policy, certification_ms, iteration_outputs = []) = {
+  my(v = version(), fields);
+  fields = [
+    frontier_json_key("schema", if(iterations == 1, "\"sagejs-pari-frontier-screen-v3\"", "\"sagejs-pari-frontier-screen-v4\"")),
     frontier_json_key("id", Str("\"", id, "\"")),
     frontier_json_key("bits", Str(bits)),
     frontier_json_key("iterations", Str(iterations)),
     frontier_json_key("seed", frontier_json_integer(seed)),
     frontier_json_key("proof_policy", Str("\"", proof_policy, "\"")),
-    frontier_json_key("proof_execution", if(proof_policy == "conditional-grh", "null", frontier_json_object([
-      "\"method\":\"pari-bnfcertify-full\"", "\"flag\":0", "\"last_return\":\"1\"",
-      frontier_json_key("completed_iterations", Str(iterations)),
-      frontier_json_key("certification_milliseconds", frontier_json_integer(certification_ms))
-    ]))), "\"independent_replay\":false",
+    frontier_json_key("proof_execution", frontier_json_proof(proof_policy, iterations, certification_ms)),
+    "\"independent_replay\":false",
     "\"witness_semantics\":\"ideal-equals-principal-witness-times-literal-class-generator-product\"",
     "\"class_generator_order\":\"pari-bnf.gen\"",
     "\"unit_generator_order\":\"torsion-first-then-bnfunits-free-order\"",
@@ -125,9 +130,15 @@ frontier_json_envelope(id, bits, iterations, seed, compact, proof_policy, certif
     "\"ideal_basis_layout\":\"outer-array-of-basis-elements\"",
     frontier_json_key("pari_version", Str("[", v[1], ",", v[2], ",", v[3], "]")),
     frontier_json_key("retained_iteration", Str(iterations)),
-    frontier_json_key("batch_outputs_complete", if(iterations == 1, "true", "false")),
+    "\"batch_outputs_complete\":true",
     frontier_json_key("compact", compact)
-  ]));
+  ];
+  if(iterations > 1,
+    if(#iteration_outputs != iterations, error("incomplete batch outputs"));
+    fields = concat(fields, ["\"seed_scope\":\"once-per-batch\"",
+      frontier_json_key("iteration_outputs", frontier_json_array(iteration_outputs))])
+  );
+  return(frontier_json_object(fields));
 };
 
 frontier_class_power(b, j) = {
@@ -142,7 +153,8 @@ frontier_class_power(b, j) = {
 frontier_case(id, coefficients, bits, iterations, seed, proof_policy) = {
   my(started, elapsed, polynomial, b, u, unit_coordinates, class_coordinates,
      probes, decompositions, materialized, class_powers, initial_bits, regulator_text, characters,
-     certification_ms = 0, certification_started, certified);
+     certification_ms = 0, certification_started, certified, iteration_certification_ms,
+     iteration_outputs = List(), encoded_iteration, retained_bytes = 0, envelope);
   if(type(id) != "t_STR" || #id == 0, error("invalid request id"));
   characters = Vecsmall(id);
   for(j = 1, #characters,
@@ -157,12 +169,14 @@ frontier_case(id, coefficients, bits, iterations, seed, proof_policy) = {
   setrand(seed);
   started = getwalltime();
   for(iteration = 1, iterations,
+    iteration_certification_ms = 0;
     polynomial = Polrev(coefficients);
     b = bnfinit(polynomial, 1);
     if(proof_policy == "unconditional",
       certification_started = getwalltime();
       certified = bnfcertify(b, 0);
-      certification_ms += getwalltime() - certification_started;
+      iteration_certification_ms = getwalltime() - certification_started;
+      certification_ms += iteration_certification_ms;
       if(type(certified) != "t_INT" || certified != 1, error("full bnf certification failed"))
     );
     u = bnfunits(b);
@@ -181,16 +195,31 @@ frontier_case(id, coefficients, bits, iterations, seed, proof_policy) = {
               idealadd(b, 3, Mod(x + 1, polynomial)),
               idealadd(b, 5, Mod(x - 1, polynomial))];
     decompositions = vector(#probes, j, bnfisprincipal(b, probes[j], 4));
-    \\ Every iteration serializes exact data inside the measured boundary;
-    \\ only the final iteration is retained. Regulator remains approximate.
+    \\ Retain serialized data, never live bnf contexts. Regulator stays approximate.
     if(type(b.reg) != "t_REAL" && type(b.reg) != "t_INT" && type(b.reg) != "t_FRAC", error("invalid regulator scalar"));
     regulator_text = Str(b.reg);
     materialized = frontier_json_compact(b, u, unit_coordinates, class_coordinates,
       class_powers, probes, decompositions, bits, initial_bits, regulator_text, proof_policy);
+    if(iterations > 1,
+      encoded_iteration = frontier_json_object([
+        frontier_json_key("iteration", Str(iteration)),
+        frontier_json_key("proof_execution", frontier_json_proof(proof_policy, 1, iteration_certification_ms)),
+        frontier_json_key("compact", materialized)
+      ]);
+      retained_bytes += #encoded_iteration + 1;
+      \\ Include the duplicated final compact summary and reserve envelope space.
+      if(retained_bytes + #materialized + 65536 > 32*1024*1024, error("batch output limit"));
+      listput(iteration_outputs, encoded_iteration)
+    );
+  );
+  if(iterations > 1,
+    envelope = frontier_json_envelope(id, bits, iterations, seed, materialized, proof_policy, certification_ms, Vec(iteration_outputs));
+    if(#envelope + 65536 > 32*1024*1024, error("batch output limit"))
   );
   elapsed = getwalltime() - started;
+  if(iterations == 1, envelope = frontier_json_envelope(id, bits, iterations, seed, materialized, proof_policy, certification_ms));
   print("FRONTIER_RESULT|", id, "|", bits, "|", iterations, "|", elapsed,
         "|", b.no, "|", b.cyc, "|", b.disc, "|", b.sign, "|", b.tu[1],
         "|", regulator_text);
-  print("FRONTIER_COMPACT_JSON|", id, "|", frontier_json_envelope(id, bits, iterations, seed, materialized, proof_policy, certification_ms));
+  print("FRONTIER_COMPACT_JSON|", id, "|", envelope);
 };

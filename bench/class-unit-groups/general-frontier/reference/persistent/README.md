@@ -60,10 +60,15 @@ sizes; their defaults remain 200 bits and one iteration for the older screen.
 
 Independent samples here mean separate requests with fresh mathematical state,
 not statistically independent random streams: each request resets the same seed
-to 1, and process-global caches/JIT state persist. Existing workers return total
-batch time and **only the last iteration's compact result**; all emitted raw
-stdout/stderr is retained, but no per-iteration timing, proof or output retention
-is claimed. A 100-bit request computes at 100 bits; no 200-bit output is relabelled
+to 1, and process-global caches/JIT state persist. Current workers return total
+batch time and **every fresh iteration's compact result and proof-execution
+record** in the v4 batch envelope. Singleton requests retain the v3 format.
+Historical last-only batches remain incomplete evidence; they are never promoted
+to full-output batches. All emitted raw stdout/stderr is retained within the
+unchanged output cap. Per-iteration timing is not available: dividing the total
+by the declared count gives an average, not individual measurements. Retained
+outputs and source-bound proof-policy records are not independent completeness
+proofs. A 100-bit request computes at 100 bits; no 200-bit output is relabelled
 or rounded into it. PARI pins `nbthreads=1`, `parisizemax=2 GiB`, and
 `threadsizemax=2 GiB`; Hecke uses strict existing package caches and a clean
 `@:@stdlib` load path. No package download or precompilation is performed.

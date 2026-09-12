@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 import unittest
+from types import SimpleNamespace
 
 
 HERE = Path(__file__).resolve().parent
@@ -85,6 +86,42 @@ class PersistentContracts(unittest.TestCase):
             path.stem: json.loads(path.read_text())
             for path in (self.root / "output").glob("*.json")
         }
+
+    def test_pari_marker_and_request_hash_retained_on_failure_and_interruption(self):
+        for interrupted in (False, True):
+            with self.subTest(interrupted=interrupted):
+                c = campaign(self.root)
+                c.engine = "pari"
+                c.state = state()
+                c.output.mkdir(exist_ok=True)
+                observed = []
+
+                def exchange(payload, seconds, marker):
+                    observed.append((payload, marker))
+                    if interrupted:
+                        raise supervisor.CoordinatorInterrupted()
+                    return {"status": "timeout", "stdout": "", "stderr": ""}
+
+                c.worker = SimpleNamespace(
+                    exchange=exchange, close=lambda: None, capture=(b"", b"")
+                )
+                name = "interrupted" if interrupted else "failed"
+                if interrupted:
+                    with self.assertRaises(supervisor.CoordinatorInterrupted):
+                        c.request(name, "sample", name, ["-2", "0", "1"], 1)
+                else:
+                    c.request(name, "sample", name, ["-2", "0", "1"], 1)
+                receipt = self.receipts()[name]
+                metadata = receipt["pending_reservation"] if interrupted else receipt
+                payload, marker = observed[0]
+                self.assertEqual(metadata["request_marker"], marker.decode())
+                self.assertEqual(
+                    metadata["request_sha256"],
+                    supervisor.hashlib.sha256(payload).hexdigest(),
+                )
+                self.assertIn(
+                    ("print(" + json.dumps(marker.decode()) + ");\n").encode(), payload
+                )
 
     def test_persistent_success_and_separate_warmup(self):
         campaign(self.root).run([record("first"), record("second")])

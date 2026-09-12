@@ -110,9 +110,16 @@ function one_fresh_case(coefficients, bits, proof_policy)
     return result, materialized, class_ns, unit_ns
 end
 
+function frontier_proof(proof_policy, iterations, class_ns, unit_ns)
+    return proof_policy == "conditional-grh" ? nothing :
+        (method="hecke-class-and-unit-grh-false", class_group_grh=false,
+         unit_group_grh=false, completed_iterations=iterations,
+         class_group_call_nanoseconds=string(class_ns), unit_group_call_nanoseconds=string(unit_ns))
+end
+
 function frontier_case(id, coefficients, bits, iterations, seed, proof_policy)
     bits in (100, 200) || throw(ArgumentError("precision must be 100 or 200"))
-    1 <= iterations <= 100000 || throw(ArgumentError("invalid batch size"))
+    1 <= iterations <= 10000 || throw(ArgumentError("invalid batch size"))
     proof_policy isa AbstractString && proof_policy in ("conditional-grh", "unconditional") ||
         throw(ArgumentError("invalid proof policy"))
     Random.seed!(seed)
@@ -120,26 +127,38 @@ function frontier_case(id, coefficients, bits, iterations, seed, proof_policy)
     materialized = ""
     class_ns = UInt64(0)
     unit_ns = UInt64(0)
+    iteration_outputs = []
+    retained_bytes = 0
     started = time_ns()
-    for _ in 1:iterations
+    for iteration in 1:iterations
         compact, materialized, class_call_ns, unit_call_ns = one_fresh_case(coefficients, bits, proof_policy)
         class_ns += class_call_ns
         unit_ns += unit_call_ns
         isempty(materialized) && error("compact materialization failed")
+        if iterations > 1
+            entry = (iteration=iteration,
+                     proof_execution=frontier_proof(proof_policy, 1, class_call_ns, unit_call_ns),
+                     compact=compact)
+            # No field contexts are retained; count exact UTF-8 serialization,
+            # the duplicate final summary and conservative envelope headroom.
+            retained_bytes += ncodeunits(frontier_json(entry)) + 1
+            retained_bytes + ncodeunits(materialized) + 65536 <= 32 * 1024 * 1024 ||
+                error("batch output limit")
+            push!(iteration_outputs, entry)
+        end
     end
     elapsed_ns = time_ns() - started
-    proof_execution = proof_policy == "conditional-grh" ? nothing :
-        (method="hecke-class-and-unit-grh-false", class_group_grh=false,
-         unit_group_grh=false, completed_iterations=iterations,
-         class_group_call_nanoseconds=string(class_ns), unit_group_call_nanoseconds=string(unit_ns))
-    return (schema="sagejs-hecke-frontier-screen-v3", id=string(id), bits=bits,
+    proof_execution = frontier_proof(proof_policy, iterations, class_ns, unit_ns)
+    result = (schema=iterations == 1 ? "sagejs-hecke-frontier-screen-v3" : "sagejs-hecke-frontier-screen-v4", id=string(id), bits=bits,
             iterations=iterations, seed=string(seed), elapsed_ns=string(elapsed_ns),
             boundary="persistent-process-fresh-field-complete-compact-screen",
             witness_semantics="ideal-equals-principal-witness-times-literal-class-generator-product",
             proof_policy=proof_policy, proof_execution=proof_execution, independent_replay=false,
-            retained_iteration=iterations, batch_outputs_complete=iterations == 1,
+            retained_iteration=iterations, batch_outputs_complete=true,
             versions=(julia=string(VERSION), hecke=string(Base.pkgversion(Hecke)),
                       nemo=string(Base.pkgversion(Hecke.Nemo))), compact=compact)
+    return iterations == 1 ? result : merge(result,
+        (seed_scope="once-per-batch", iteration_outputs=iteration_outputs))
 end
 
 function main(input=stdin, output=stdout)

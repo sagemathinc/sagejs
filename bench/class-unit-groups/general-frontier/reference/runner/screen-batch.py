@@ -26,6 +26,8 @@ from fractions import Fraction
 
 LIMIT = 120 * 3600
 PARI_SCHEMA = "sagejs-pari-frontier-screen-v3"
+BATCH_KEYS = {"seed_scope", "iteration_outputs"}
+OUTPUT_CAP = 32 * 1024 * 1024
 PROOF_POLICIES = ("conditional-grh", "unconditional")
 PARI_SEMANTICS = "ideal-equals-principal-witness-times-literal-class-generator-product"
 
@@ -54,7 +56,8 @@ def strict_json(text):
 def validate_proof_execution(result, engine, policy, iterations):
     """Validate claimed execution, not an independent mathematical certificate."""
     validate_proof_policy(policy)
-    current = result.get("schema") == f"sagejs-{engine}-frontier-screen-v3"
+    batch = result.get("schema") == f"sagejs-{engine}-frontier-screen-v4"
+    current = batch or result.get("schema") == f"sagejs-{engine}-frontier-screen-v3"
     if not current:
         if (
             policy != "conditional-grh"
@@ -79,7 +82,7 @@ def validate_proof_execution(result, engine, policy, iterations):
         or result["retained_iteration"] != iterations
     ):
         raise ValueError("retained iteration mismatch")
-    if result.get("batch_outputs_complete") is not (iterations == 1):
+    if result.get("batch_outputs_complete") is not (batch or iterations == 1):
         raise ValueError("batch retention mismatch")
     execution = result["proof_execution"]
     if policy == "conditional-grh":
@@ -136,6 +139,90 @@ def receipt_policy(receipt):
     return "conditional-grh"
 
 
+def batch_iteration_views(result, engine, policy, iterations):
+    """Internal single-output validation views; never serialized as fresh requests."""
+    if (
+        result.get("schema") != f"sagejs-{engine}-frontier-screen-v4"
+        or type(iterations) is not int
+        or not 2 <= iterations <= 10000
+        or result.get("seed_scope") != "once-per-batch"
+        or type(result.get("iterations")) is not int
+        or result["iterations"] != iterations
+    ):
+        raise ValueError("invalid whole-batch scope")
+    validate_proof_execution(result, engine, policy, iterations)
+    outputs = result["iteration_outputs"]
+    if not isinstance(outputs, list) or len(outputs) != iterations:
+        raise ValueError("missing batch outputs")
+    views = []
+    durations = (
+        ("certification_milliseconds",)
+        if engine == "pari"
+        else ("class_group_call_nanoseconds", "unit_group_call_nanoseconds")
+    )
+    sums = dict.fromkeys(durations, 0)
+    for ordinal, entry in enumerate(outputs, 1):
+        if (
+            not isinstance(entry, dict)
+            or set(entry) != {"iteration", "compact", "proof_execution"}
+            or type(entry["iteration"]) is not int
+            or entry["iteration"] != ordinal
+        ):
+            raise ValueError("invalid batch output ordinal or fields")
+        view = {k: v for k, v in result.items() if k not in BATCH_KEYS}
+        view.update(
+            schema=f"sagejs-{engine}-frontier-screen-v3",
+            iterations=1,
+            retained_iteration=1,
+            compact=entry["compact"],
+            proof_execution=entry["proof_execution"],
+        )
+        validate_proof_execution(view, engine, policy, 1)
+        if policy == "unconditional":
+            for name in durations:
+                sums[name] += int(entry["proof_execution"][name])
+        for name in (
+            "class_number",
+            "class_invariants",
+            "discriminant",
+            "signature",
+            "torsion_order",
+        ):
+            if entry["compact"][name] != result["compact"][name]:
+                raise ValueError("batch exact scalar disagreement")
+        views.append(view)
+    if outputs[-1]["compact"] != result["compact"]:
+        raise ValueError("last output differs from batch summary")
+    if policy == "unconditional" and any(
+        str(sums[name]) != result["proof_execution"][name] for name in durations
+    ):
+        raise ValueError("aggregate proof duration differs from iterations")
+    return views
+
+
+def pari_validation_frames(result, elapsed="0"):
+    """Construct internal shape-validation frames, not a measurement receipt."""
+    c = result["compact"]
+    summary = "|".join(
+        [
+            "FRONTIER_RESULT",
+            result["id"],
+            str(result["bits"]),
+            str(result["iterations"]),
+            elapsed,
+            c["class_number"],
+            json.dumps([int(x) for x in c["class_invariants"]]),
+            c["discriminant"],
+            json.dumps(c["signature"]),
+            c["torsion_order"],
+            c["regulator"]["text"],
+        ]
+    )
+    return (
+        summary + "\nFRONTIER_COMPACT_JSON|" + result["id"] + "|" + json.dumps(result)
+    )
+
+
 def parse_pari_compact(
     output,
     label,
@@ -184,6 +271,24 @@ def parse_pari_compact(
     result = json.loads(
         lines[1].split("|", 2)[2], object_pairs_hook=distinct, parse_constant=nonfinite
     )
+    if result.get("schema") == "sagejs-pari-frontier-screen-v4":
+        views = batch_iteration_views(result, "pari", proof_policy, iterations)
+        for view in views:
+            parse_pari_compact(
+                pari_validation_frames(view), label, bits, 1, degree, seed, proof_policy
+            )
+        # Validate the real terminal scalar summary against the final output too.
+        final_summary = list(summary)
+        final_summary[3] = "1"
+        final_output = (
+            "|".join(final_summary)
+            + "\nFRONTIER_COMPACT_JSON|"
+            + label
+            + "|"
+            + json.dumps(views[-1])
+        )
+        parse_pari_compact(final_output, label, bits, 1, degree, seed, proof_policy)
+        return result
     keys(
         result,
         "schema id bits iterations seed proof_policy independent_replay witness_semantics class_generator_order unit_generator_order element_basis ideal_basis_layout pari_version retained_iteration batch_outputs_complete compact"
@@ -462,7 +567,10 @@ def validate_terminal(
                 expected_seed,
                 expected_proof_policy,
             )
-            if require_current and parsed["schema"] != PARI_SCHEMA:
+            if require_current and parsed["schema"] not in (
+                PARI_SCHEMA,
+                "sagejs-pari-frontier-screen-v4",
+            ):
                 return "error"
         except (
             KeyError,
@@ -518,8 +626,37 @@ def validate_hecke_terminal(
     if returncode != 0 or errors.strip():
         return "error"
     try:
+        if len(output.encode()) > OUTPUT_CAP:
+            return "output-limit"
         answer = strict_json(output)
         result = answer["result"]
+        if result.get("schema") == "sagejs-hecke-frontier-screen-v4":
+            if answer.get("status") != "ok":
+                return "error"
+            views = batch_iteration_views(
+                result, "hecke", expected_proof_policy, expected_iterations
+            )
+            return (
+                "ok"
+                if all(
+                    validate_hecke_terminal(
+                        json.dumps({"status": "ok", "result": view}),
+                        "",
+                        label,
+                        0,
+                        False,
+                        False,
+                        expected_bits=expected_bits,
+                        expected_iterations=1,
+                        expected_seed=expected_seed,
+                        expected_proof_policy=expected_proof_policy,
+                        require_current=True,
+                    )
+                    == "ok"
+                    for view in views
+                )
+                else "error"
+            )
         if (
             require_current
             and result.get("schema") != "sagejs-hecke-frontier-screen-v3"
