@@ -1,8 +1,8 @@
 """Bounded unit coordinates over an already authenticated fundamental system.
 
 This is a correctness interface, not a new class/unit discovery engine. Compact
-construction is exact; arbitrary factored membership and detached map replay
-are explicitly unsupported in this first slice.
+construction is exact. Nonreusable standard terminals require fresh bounded
+completion replay; arbitrary detached factored membership remains unsupported.
 """
 
 from __future__ import annotations
@@ -104,6 +104,8 @@ def _integer_log_solution(
 def _element_snapshot(
     element: Any, degree: int, bits: int
 ) -> tuple[tuple[int, int], ...]:
+    if len(element._coefficients) > degree:
+        raise UnitCoordinateResourceError("unit element exceeds its field dimension")
     values = element.list()
     if len(values) != degree:
         raise TypeError("unit element has the wrong field degree")
@@ -216,6 +218,157 @@ def _recognized_authority(source: Any) -> tuple[Any, Any, Any]:
     return context.order, units, evidence
 
 
+def _nonreusable_terminal(source: Any) -> bool:
+    """Select a terminal replay path, never rescue an arbitrary live rejection."""
+    if (
+        type(source) is not groups.ClassUnitComputation
+        or source.complete is not True
+        or source.proof_status != groups.EXACT_RELATIONS_CONDITIONAL_GRH
+        or type(source.context) is not context_module.ClassUnitGroupContext
+        or type(source.context.proof_state) is not context_module.ClassUnitProofState
+        or source.context.proof_state.label != source.proof_status
+        or type(source._unit_group) is not groups.UnitGroupComputation
+        or source._unit_group.complete is not True
+        or source._unit_group.proof_status != source.proof_status
+        or type(source.saturation_record) is not groups.ClassUnitSaturationRecord
+        or source._unit_group._completion_evidence is not source.saturation_record
+        or source.saturation_record.complete is not True
+        or source.saturation_record.rigorous is not True
+        or source.saturation_record.saturated is not True
+        or source.saturation_record.remaining_index_bound != 1
+    ):
+        return False
+    live = source.context._live_artifacts
+    return bool(
+        type(live) is context_module._LiveClassUnitArtifacts
+        and live.sealed
+        and live.reusable is False
+        and live.field is source.field
+        and source.context.field is source.field
+        and live.order is source.context.order
+        and live.unit_group is source._unit_group
+        and live.class_group is source._class_group
+        and live.saturation_record is source.saturation_record
+        and live.terminal_proof_status == source.proof_status
+    )
+
+
+def _resumed_source_snapshot(source: Any, bits: int) -> Any:
+    """Bind source semantics, not producer callbacks or complete flags alone."""
+    from sagejs.number_fields import class_unit_replay as replay
+
+    if not _nonreusable_terminal(source):
+        raise UnitCoordinateCapabilityError("nonreusable terminal source changed")
+    replay._component_claim_source(source, resumed_copy=True)
+    certificate = source.saturation_record._analytic_certificate
+    encoded = certificate._body_json
+    # This private source snapshot, unlike the public compact export, retains
+    # the producer certificate body for mutation detection. Bound it before
+    # traversing it; never impose this extra retention on public export users.
+    if type(encoded) is not str:
+        raise UnitCoordinateCapabilityError("terminal analytic claim changed")
+    if (
+        len(encoded) > replay.MAX_BYTES
+        or len(encoded.encode("utf-8")) > replay.MAX_BYTES
+    ):
+        raise replay.ComponentReplayResourceError("analytic claim exceeds byte limit")
+    if not certificate._authenticated_body_matches():
+        raise UnitCoordinateCapabilityError("terminal analytic claim changed")
+    torsion = source._unit_group.torsion
+    if (
+        type(torsion) is not unit_support.RootsOfUnityResult
+        or type(torsion.certificate) is not unit_support.RootsOfUnityCertificate
+    ):
+        raise UnitCoordinateCapabilityError("terminal torsion claim changed")
+    field = source.field
+    degree = int(field.degree())
+    return (
+        context_module.stable_component_hash(
+            context_module._order_fingerprint(field, source.context.order)
+        ),
+        context_module.stable_component_hash(source.context.proof_state.to_dict()),
+        tuple(
+            _factored_snapshot(u, field, bits) for u in source._unit_group.generators
+        ),
+        source._unit_group.unit_rank,
+        _element_snapshot(torsion.generator, degree, bits),
+        tuple(_element_snapshot(u, degree, bits) for u in torsion.elements),
+        torsion.order,
+        torsion.complete,
+        context_module.stable_component_hash(torsion.certificate.to_dict()),
+        certificate._body_json,
+        # Exact mutation comparison needs the bounded data, not another schema
+        # replay. Full preflight remains at admission; no arithmetic is cached.
+        replay._json(replay._terminal_component_body(source)),
+    )
+
+
+def _replay_resumed_units(source: Any, bits: int) -> tuple[Any, Any, Any]:
+    """Replay once, then copy the verified ordered basis into the original field."""
+    from sagejs.number_fields import class_unit_replay as replay
+    from sagejs.number_fields.class_group_proof_contracts import (
+        BDF_CLASS_CHARACTER_GRH,
+        BELABAS_FRIEDMAN_ZETA_GRH,
+    )
+
+    theorem = source.context.proof_state.factor_base_theorem
+    if theorem == "Belabas--Diaz y Diaz--Friedman":
+        selector = "bdf"
+        assumptions = sorted([BDF_CLASS_CHARACTER_GRH, BELABAS_FRIEDMAN_ZETA_GRH])
+    elif theorem == "Minkowski":
+        selector = "minkowski"
+        assumptions = [BELABAS_FRIEDMAN_ZETA_GRH]
+    else:
+        raise UnitCoordinateCapabilityError("unsupported terminal generation theorem")
+    if source.context.proof_state.assumptions != tuple(assumptions):
+        raise UnitCoordinateCapabilityError("terminal theorem assumptions differ")
+    replay._component_claim_source(source)
+    before = _resumed_source_snapshot(source, bits)
+    claims = replay._conditional_completion_claims(source, generation_theorem=selector)
+    _, _, checked_units, checked_torsion, report = replay._replay_conditional_owned(
+        claims
+    )
+    if (
+        _resumed_source_snapshot(source, bits) != before
+        or context_module._order_fingerprint(source.field, source.context.order)
+        != report["field_order"]
+        or list(source.context.proof_state.assumptions) != report["assumptions"]
+        or source._unit_group.unit_rank != report["free_unit_rank"]
+    ):
+        raise UnitCoordinateCapabilityError("replayed terminal binding differs")
+    # The fresh replay established these exact coefficient products in the
+    # identical defining polynomial and maximal order. Transport is canonical,
+    # not a field-isomorphism search, expansion, or producer-owned alias.
+    basis = tuple(
+        FactoredNumberFieldElement.from_dict(source.field, unit.to_dict())
+        for unit in checked_units
+    )
+    certificate = unit_support.RootsOfUnityCertificate.from_dict(
+        source.field, checked_torsion.certificate.to_dict()
+    )
+    roots = [
+        source.field._from_coefficients(root.list())
+        for root in checked_torsion.elements
+    ]
+    torsion = unit_support.RootsOfUnityResult(
+        roots,
+        source.field._from_coefficients(checked_torsion.generator.list()),
+        checked_torsion.order,
+        True,
+        "fresh conditional completion replay",
+        certificate,
+    )
+    claimed_torsion = source._unit_group.torsion
+    if (
+        claimed_torsion.complete is not True
+        or torsion.order != claimed_torsion.order
+        or torsion.generator != claimed_torsion.generator
+        or torsion.elements != claimed_torsion.elements
+    ):
+        raise UnitCoordinateCapabilityError("replayed torsion differs from source")
+    return basis, torsion, before
+
+
 class UnitCoordinateMap:
     """A torsion-first map with explicit compact and expanded reconstruction."""
 
@@ -233,7 +386,23 @@ class UnitCoordinateMap:
             raise TypeError(
                 "construct unit maps through ClassUnitComputation.unit_coordinate_map"
             )
-        order, units, evidence = _recognized_authority(source)
+        replayed = _nonreusable_terminal(source)
+        if replayed:
+            basis, torsion, source_snapshot = _replay_resumed_units(
+                source, max_input_bits
+            )
+            order, units, evidence = (
+                source.context.order,
+                source._unit_group,
+                source.saturation_record,
+            )
+        else:
+            order, units, evidence = _recognized_authority(source)
+            basis, torsion, source_snapshot = (
+                tuple(units.generators),
+                units.torsion,
+                None,
+            )
         self._source, self._field, self._order = source, source.field, order
         self._context = source.context
         self._units, self._evidence = units, evidence
@@ -243,8 +412,22 @@ class UnitCoordinateMap:
         self._max_input_bits = max_input_bits
         self._max_exponent_bits = max_exponent_bits
         self._max_expansion_weight = max_expansion_weight
-        self._torsion = units.torsion
-        self._basis = tuple(units.generators)
+        self._replayed = replayed
+        self._source_snapshot = source_snapshot
+        self._source_basis = tuple(units.generators)
+        self._source_torsion = units.torsion
+        self._source_certificate = evidence._analytic_certificate if replayed else None
+        self._source_components = (
+            (
+                tuple(source.conditional_factor_base),
+                tuple(source.conditional_relation_records),
+                source.conditional_presentation_evidence,
+            )
+            if replayed
+            else None
+        )
+        self._torsion = torsion
+        self._basis = basis
         if not 0 <= self._rank <= 3 or len(self._basis) != self._rank:
             raise UnitCoordinateCapabilityError(
                 "unit maps support complete ranks zero through three"
@@ -264,6 +447,23 @@ class UnitCoordinateMap:
     def _semantic_snapshot(self) -> Any:
         degree = int(self._field.degree())
         bits = self._max_input_bits
+        if self._replayed:
+            from sagejs.number_fields import class_unit_replay as replay
+
+            if (
+                type(self._torsion.certificate)
+                is not unit_support.RootsOfUnityCertificate
+                or len(self._torsion.elements) > 12
+                or self._torsion.generator.parent() is not self._field
+                or any(u.parent() is not self._field for u in self._torsion.elements)
+            ):
+                raise UnitCoordinateCapabilityError("replayed map torsion changed")
+            replay._bounded_claim_tree(self._torsion.certificate._payload_tuple())
+        snapshot = (
+            context_module.stable_component_hash
+            if self._replayed
+            else context_module.canonical_component
+        )
         return (
             tuple(
                 (int(x._numerator), int(x._denominator))
@@ -278,14 +478,45 @@ class UnitCoordinateMap:
             tuple(_element_snapshot(u, degree, bits) for u in self._torsion.elements),
             self._torsion.order,
             self._torsion.complete,
-            context_module.canonical_component(
-                self._source.context.proof_state.to_dict()
-            ),
-            context_module.canonical_component(self._torsion.certificate.to_dict()),
+            snapshot(self._source.context.proof_state.to_dict()),
+            snapshot(self._torsion.certificate.to_dict()),
         )
 
     def _check(self) -> None:
-        order, units, evidence = _recognized_authority(self._source)
+        if self._replayed:
+            components = self._source_components
+            if components is None or (
+                self._source.saturation_record._analytic_certificate
+                is not self._source_certificate
+                or self._source.conditional_presentation_evidence is not components[2]
+                or any(
+                    len(current) != len(original)
+                    or any(a is not b for a, b in zip(current, original, strict=True))
+                    for current, original in (
+                        (self._source.conditional_factor_base, components[0]),
+                        (self._source.conditional_relation_records, components[1]),
+                        (self._source._unit_group.generators, self._source_basis),
+                    )
+                )
+            ):
+                raise UnitCoordinateCapabilityError(
+                    "replayed component identity changed"
+                )
+            try:
+                snapshot = _resumed_source_snapshot(self._source, self._max_input_bits)
+            except (ValueError, TypeError, AttributeError, ArithmeticError) as error:
+                raise UnitCoordinateCapabilityError(
+                    "replayed unit map source changed"
+                ) from error
+            if snapshot != self._source_snapshot:
+                raise UnitCoordinateCapabilityError("replayed unit map source changed")
+            order, units, evidence = (
+                self._source.context.order,
+                self._source._unit_group,
+                self._source.saturation_record,
+            )
+        else:
+            order, units, evidence = _recognized_authority(self._source)
         if (
             self._source.field is not self._field
             or self._source.context is not self._context
@@ -293,8 +524,8 @@ class UnitCoordinateMap:
             or units is not self._units
             or evidence is not self._evidence
             or self._source.proof_status != self._proof_status
-            or units.torsion is not self._torsion
-            or units.generators != self._basis
+            or units.torsion is not self._source_torsion
+            or units.generators != self._source_basis
             or self._semantic_snapshot() != self._snapshot
         ):
             raise UnitCoordinateCapabilityError(

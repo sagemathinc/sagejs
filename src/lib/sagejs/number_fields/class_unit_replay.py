@@ -298,17 +298,88 @@ def _preflight(payload: Any) -> int:
     return degree
 
 
-def export_terminal_components(source: Any) -> str:
-    """Export recognized live components, without exporting their authority."""
+def _component_claim_source(
+    source: Any, *, resumed_copy: bool = False
+) -> tuple[Any, Any, Any]:
+    """Bound standard producer claims without granting completeness authority."""
+    from sagejs.number_fields import class_group_matrix as matrix
+    from sagejs.number_fields import class_group_relations as relations
+    from sagejs.number_fields import class_unit_analytic as analytic
     from sagejs.number_fields import class_unit_context as context
     from sagejs.number_fields import class_unit_groups as groups
-    from sagejs.number_fields.unit_coordinates import _recognized_authority
+    from sagejs.number_fields import prime_ideals
+    from sagejs.number_fields import units as unit_support
+    from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
 
-    order, units, evidence = _recognized_authority(source)
-    if type(evidence) is not groups.ClassUnitSaturationRecord:
+    if (
+        type(source) is not groups.ClassUnitComputation
+        or source.complete is not True
+        or type(source.context) is not context.ClassUnitGroupContext
+        or source.context.field is not source.field
+        or source.context.order.number_field() is not source.field
+        or type(source._unit_group) is not groups.UnitGroupComputation
+        or source._unit_group.complete is not True
+        or type(source.saturation_record) is not groups.ClassUnitSaturationRecord
+        or source._unit_group._completion_evidence is not source.saturation_record
+        or type(source.saturation_record._analytic_certificate)
+        is not analytic.UnitSaturationIndexCertificate
+        or type(source._unit_group.torsion) is not unit_support.RootsOfUnityResult
+        or type(source._unit_group.torsion.certificate)
+        is not unit_support.RootsOfUnityCertificate
+        or type(source.conditional_presentation_evidence)
+        is not matrix.RelationPresentation
+    ):
         raise ComponentReplayCapabilityError(
-            "specialized terminal export is unsupported"
+            "component claims require standard generic terminal objects"
         )
+    units = source._unit_group
+    presentation = source.conditional_presentation_evidence
+    if (
+        not 2 <= int(source.field.degree()) <= 4
+        or len(source.conditional_factor_base) > 32
+        or len(source.conditional_relation_records) > MAX_RELATIONS
+        or len(units.generators) > 3
+        or len(units.torsion.elements) > 12
+        or presentation.column_count > 32
+        or len(presentation.relation_rows) > MAX_RELATIONS
+        or any(len(row.entries) > 32 for row in presentation.relation_rows)
+    ):
+        raise ComponentReplayResourceError("producer components exceed replay limits")
+    for prime in source.conditional_factor_base:
+        _require(
+            type(prime) is prime_ideals.NumberFieldPrimeIdeal, "nonstandard prime claim"
+        )
+    for rows in (
+        presentation.hnf,
+        presentation.hnf_left_transform,
+        presentation.smith,
+        presentation.smith_left_transform,
+        presentation.smith_right_transform,
+        presentation.smith_right_inverse,
+    ):
+        if len(rows) > MAX_RELATIONS or any(len(row) > MAX_RELATIONS for row in rows):
+            raise ComponentReplayResourceError("presentation claim exceeds row limits")
+    for record in source.conditional_relation_records:
+        _require(type(record) is relations.RelationRecord, "nonstandard relation claim")
+        if max(len(record.row), len(record.quotient_row), len(record.source_row)) > 32:
+            raise ComponentReplayResourceError("relation claim exceeds row limit")
+    for unit in units.generators:
+        _require(
+            type(unit) is FactoredNumberFieldElement and unit.field() is source.field,
+            "nonstandard unit claim",
+        )
+        if len(unit.factors()) > MAX_FACTORS:
+            raise ComponentReplayResourceError("unit claim exceeds factor limit")
+    if resumed_copy:
+        _preflight_resumed_copy(source)
+    return source.context.order, units, source.saturation_record
+
+
+def _terminal_component_body(source: Any) -> dict[str, Any]:
+    """Copy bounded claim data; this body alone grants no authority."""
+    from sagejs.number_fields import class_unit_context as context
+
+    order, units, _ = _component_claim_source(source)
     primes = []
     for prime in source.conditional_factor_base:
         payload = prime.to_dict()
@@ -317,12 +388,25 @@ def export_terminal_components(source: Any) -> str:
         primes.append(payload)
     records = []
     for record in source.conditional_relation_records:
-        payload = record.to_dict()
-        payload["provenance"] = {}
-        payload["archimedean"]["precision"] = 0
-        payload["archimedean"]["logs"] = []
-        records.append(payload)
-    body = {
+        # Do not first copy discarded producer logs or provenance. Only these
+        # exact claim fields enter the existing component envelope.
+        records.append(
+            {
+                "schema": "sagejs.number-fields/class-relation-v2",
+                "row": list(record.row),
+                "source_row": list(record.source_row),
+                "quotient_row": list(record.quotient_row),
+                "witness": record.witness,
+                "norm_smoothness": record.norm_smoothness,
+                "provenance": {},
+                "archimedean": {
+                    "precision": 0,
+                    "logs": [],
+                    "complex_place_convention": "one-place-log-absolute-value-times-two",
+                },
+            }
+        )
+    return {
         "schema": SCHEMA,
         "field_order": context._order_fingerprint(source.field, order),
         "source_proof_status": source.proof_status,
@@ -335,11 +419,181 @@ def export_terminal_components(source: Any) -> str:
             "certificate": units.torsion.certificate.to_dict(),
         },
     }
+
+
+def _terminal_component_claims(source: Any) -> str:
+    """Serialize claims only; callers establish live or fresh replay authority."""
+    body = _terminal_component_body(source)
     body["content_sha256"] = _hash(body)
     text = _json(body)
     _preflight(_decode(text))
+    return text
+
+
+def export_terminal_components(source: Any) -> str:
+    """Export recognized live components, without exporting their authority."""
+    from sagejs.number_fields import class_unit_groups as groups
+    from sagejs.number_fields.unit_coordinates import _recognized_authority
+
+    _, _, evidence = _recognized_authority(source)
+    if type(evidence) is not groups.ClassUnitSaturationRecord:
+        raise ComponentReplayCapabilityError(
+            "specialized terminal export is unsupported"
+        )
+    text = _terminal_component_claims(source)
     _recognized_authority(source)
     return text
+
+
+def _preflight_resumed_copy(source: Any) -> None:
+    """Bound caller-reachable data before the resumed path copies it to JSON.
+
+    This is a representation guard, not a mathematical verifier. Existing
+    decoded-envelope preflight and fresh exact replay remain mandatory.
+    """
+    order, units, evidence = (
+        source.context.order,
+        source._unit_group,
+        source.saturation_record,
+    )
+    degree = int(source.field.degree())
+    certificate = evidence._analytic_certificate
+    body = certificate._body_snapshot
+    _require(
+        type(body) is dict
+        and certificate._configuration is body.get("configuration")
+        and certificate._analytic_proof is body.get("analytic_proof")
+        and certificate._index_bound == body.get("index_bound"),
+        "analytic claim aliases changed",
+    )
+    rows = [order._basis_rows] + [p._basis_rows for p in source.conditional_factor_base]
+    if len(source.field._defining_coefficients) != degree + 1 or any(
+        len(matrix) != degree or any(len(row) != degree for row in matrix)
+        for matrix in rows
+    ):
+        raise ComponentReplayResourceError(
+            "source field/order dimensions exceed policy"
+        )
+    for row in [source.field._defining_coefficients] + [
+        row for matrix in rows for row in matrix
+    ]:
+        if any(
+            max(abs(int(c._numerator)).bit_length(), int(c._denominator).bit_length())
+            > 4096
+            for c in row
+        ):
+            raise ComponentReplayResourceError(
+                "source field/order coefficient exceeds policy"
+            )
+    state = source.context.proof_state
+    presentation = source.conditional_presentation_evidence
+    raw = [
+        state._evidence,
+        state.reason,
+        state.factor_base_theorem,
+        state.factor_base_bound,
+        state.assumptions,
+        body,
+        source.field.variable_name(),
+        int(order.discriminant()),
+        units.torsion.certificate._payload_tuple(),
+        units.torsion.order,
+        units.torsion.complete,
+        presentation.column_count,
+        presentation.backend,
+        presentation.hnf,
+        presentation.hnf_left_transform,
+        presentation.smith,
+        presentation.smith_left_transform,
+        presentation.smith_right_transform,
+        presentation.smith_right_inverse,
+    ]
+    raw.extend([row.column_count, row.entries] for row in presentation.relation_rows)
+    raw.extend(
+        [r.row, r.source_row, r.quotient_row, r.witness, r.norm_smoothness]
+        for r in source.conditional_relation_records
+    )
+    for prime in source.conditional_factor_base:
+        _require(prime.ring() is order, "source prime order differs")
+        if prime._residue_presentation is None:
+            raise ComponentReplayCapabilityError(
+                "resumed prime lacks retained residue data"
+            )
+        raw.append(
+            [
+                prime._residue_presentation,
+                prime._rational_prime,
+                prime._ramification_index,
+                prime._residue_degree,
+            ]
+        )
+    elements = list(units.torsion.elements) + [units.torsion.generator]
+    for unit in units.generators:
+        for factor, exponent in unit.factors():
+            raw.append(exponent)
+            elements.append(factor)
+    for element in elements:
+        _require(element.parent() is source.field, "source element field differs")
+        # Ordinary elements trim trailing zero coefficients; list() pads them.
+        if len(element._coefficients) > degree:
+            raise ComponentReplayResourceError(
+                "source element dimensions exceed policy"
+            )
+        for c in element._coefficients:
+            raw.extend([int(c._numerator), int(c._denominator)])
+    _bounded_claim_tree(raw)
+
+
+def _bounded_claim_tree(raw: Any) -> None:
+    """Conservatively bound JSON representation before copying/stringifying it."""
+    # Breadth and depth checks precede expansion of the traversal stack. Tuples
+    # are admitted here only as the producer representation of JSON arrays.
+    pending: list[tuple[Any, int]] = [(raw, 0)]
+    nodes = 0
+    encoded_bytes = 0
+    while pending:
+        value, depth = pending.pop()
+        nodes += 1
+        if nodes > MAX_NODES or depth > MAX_DEPTH:
+            raise ComponentReplayResourceError("source claim tree exceeds policy")
+        if type(value) in (list, tuple, dict):
+            maximum = 64 if type(value) is dict else 1024
+            if len(value) > maximum:
+                raise ComponentReplayResourceError(
+                    "source claim container exceeds policy"
+                )
+            if type(value) is dict:
+                _require(
+                    all(type(k) is str and len(k) <= 128 for k in value),
+                    "invalid claim key",
+                )
+                encoded_bytes += sum(12 * len(k) + 3 for k in value)
+                values = value.values()
+            else:
+                values = value
+            encoded_bytes += 2 + max(0, len(value) - 1)
+            pending.extend((child, depth + 1) for child in values)
+        elif type(value) is int:
+            bits = abs(value).bit_length()
+            if bits > 4096:
+                raise ComponentReplayResourceError(
+                    "source claim integer exceeds policy"
+                )
+            encoded_bytes += 2 + bits * 30103 // 100000
+        elif type(value) is str:
+            if len(value) > 4096:
+                raise ComponentReplayResourceError("source claim string exceeds policy")
+            # A non-BMP code point can require two JSON Unicode escapes.
+            encoded_bytes += 2 + 12 * len(value)
+        else:
+            _require(
+                value is None or type(value) is bool, "unsupported source claim value"
+            )
+            encoded_bytes += 5
+        if encoded_bytes > MAX_BYTES:
+            raise ComponentReplayResourceError(
+                "source claim encoded size exceeds policy"
+            )
 
 
 def replay_terminal_components(text: str) -> dict[str, Any]:
@@ -562,6 +816,16 @@ def export_conditional_class_unit(
     Export does not establish detached completeness; the receiver rechecks it.
     Explicit `generation_theorem="bdf"` emits v2 with both named hypotheses.
     """
+    from sagejs.number_fields.unit_coordinates import _recognized_authority
+
+    _recognized_authority(source)
+    text = _conditional_completion_claims(source, generation_theorem=generation_theorem)
+    _recognized_authority(source)
+    return text
+
+
+def _conditional_completion_claims(source: Any, *, generation_theorem: str) -> str:
+    """Copy bounded terminal claims without calling a producer verifier."""
     _require(
         generation_theorem in ("minkowski", "bdf"),
         "unsupported generation theorem",
@@ -572,10 +836,9 @@ def export_conditional_class_unit(
         BDF_CLASS_CHARACTER_GRH,
         BELABAS_FRIEDMAN_ZETA_GRH,
     )
-    from sagejs.number_fields.unit_coordinates import _recognized_authority
 
-    components = _decode(export_terminal_components(source))
-    order, _, evidence = _recognized_authority(source)
+    components = _decode(_terminal_component_claims(source))
+    order, _, evidence = _component_claim_source(source)
     bdf = generation_theorem == "bdf"
     generation_body: dict[str, Any] = {
         "schema": generation.BDF_SCHEMA if bdf else generation.SCHEMA,
@@ -616,7 +879,6 @@ def export_conditional_class_unit(
         )
     text = _json(_sealed(body))
     _preflight_completion(_decode(text, proof_scalars=True))
-    _recognized_authority(source)
     return text
 
 
@@ -625,6 +887,15 @@ def replay_conditional_class_unit(text: str) -> dict[str, Any]:
 
     Returns detached evidence only, never a producer context or map token.
     Every exact and analytic check is recomputed on verifier-owned objects.
+    """
+    return _replay_conditional_owned(text)[-1]
+
+
+def _replay_conditional_owned(text: str) -> tuple[Any, ...]:
+    """Keep fresh verified objects private for existing bounded consumers.
+
+    Only this full replay issues the return value. No producer object, callback,
+    success report, or restored authority token is accepted as input.
     """
     payload = _decode(text, proof_scalars=True)
     _preflight_completion(payload)
@@ -680,7 +951,7 @@ def replay_conditional_class_unit(text: str) -> dict[str, Any]:
         index == 1 and proof == binding["analytic_proof"],
         "fresh compact BF proof is not the claimed index one",
     )
-    return {
+    report = {
         "schema": "sagejs.number-fields/class-unit-conditional-report-v2"
         if bdf
         else "sagejs.number-fields/class-unit-conditional-report-v1",
@@ -698,3 +969,4 @@ def replay_conditional_class_unit(text: str) -> dict[str, Any]:
         "generation": checked_generation,
         "live_context_authority": False,
     }
+    return field, order, tuple(units), torsion, report
