@@ -1,6 +1,7 @@
 # Numerical native multipack routing — draft integration
 
-N2 packaging increment, 2026-09-12, stacked on prefix-free aggregate PR #259.
+N2 packaging increment, 2026-09-12, based on main after prefix-free aggregate
+PR #259 merged.
 This is not merge-ready and does not enable numerical backend defaults.
 
 ## Implemented
@@ -154,3 +155,46 @@ prefixes resolved those artifact-input issues; neither was a solver failure.
 The post-build closure regressions pass 19/19, and the corrected Node 22
 post-build holdout run passes 17/17. Artifact sizes above are not evidence of
 startup, RSS or compressed-payload improvement.
+
+## Current-main integration at `d3c436020`
+
+PR #259 has merged. PR #262 now targets main and merges `256419004` without
+changing mathematical algorithms or compiler lowering. The sole merge conflict
+was the pending NLopt public closure: the reviewed main evaluator identity is
+combined with the multipack loader identities. The resulting public bundle is
+`0f700d227efce9e5b284b5488cefa8a027206ef093fc5afa3c9cae388b78a842`.
+Ordinary source-current verification passes; `--require-qualified` still
+rejects the explicitly pending state. Historical receipts are unchanged.
+
+The complete graph-enabled local build passes in 14m12s, rebuilding all 41
+kernel families into two production packs. Post-build architecture checks and
+strict Python (403 modules, zero errors) pass. All 12 focused production,
+catalog, closure and independent-pack tests pass without skips. They include
+autoload of every production family, numerical execution with the exact pack
+withheld, and rejection of six corrupt manifests and stale FFI/compiler
+metadata. The 35 focused NLopt backend/ABI/promotion tests also pass.
+
+Ordinary root `pnpm pack` passes its complete routine prepack validation in
+2m12s, including the unchanged startup gate. This is a new-source pass, not an
+erasure of the prior `e4d066c38` failures or a measured startup speedup. Lazy
+preparation passes for 441 modules, eight dynamic programs and 46 authorized
+multiprocessing modules. The root archive and Linux platform archive build.
+A fresh Linux x64 install passes public APIs, lazy numerical resource checks
+and relocated SEA execution. Both rebuilt product executables pass general SEA
+smoke and the two public CMinpack/NLopt SEA tests, without skips.
+
+| Merged-source artifact | Bytes | SHA-256 |
+| --- | ---: | --- |
+| Sage.js SEA | 504191438 | `6ca63ad06ec95aaa6387f0d625a8d828b775d1af16140f9bed4d311bcde10c20` |
+| SagePython SEA | 416623054 | `88bfe34a70e64318f8c4ea0eb5902b0f5bc772a321b63a952906a71f3c15354f` |
+| Root npm archive | 51537277 | `f6a53ef3c0681aabf807306ea7efe7c206cf966aa8b5de878aafc7140c8cc285` |
+
+These are development qualification artifacts, not a published release or a
+new compressed-payload allowance. The old executable hashes above do not
+qualify this merged source. Full cross-platform packages remain open.
+
+An architecture run launched during compiler convergence failed with an
+`instanceof` parser error; the stable post-build run passes. Separately,
+`parallel:check` cannot select this integration worktree's task because it sees
+416 live records. Other lanes' records are not modified to hide that tooling
+failure. No four-platform full-product or public-latency target is claimed.
