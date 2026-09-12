@@ -1,0 +1,1296 @@
+{
+  "schema": "sagejs.general-frontier.smoke-prefix-observation.v1",
+  "captured_at_utc": "2026-09-12T11:23:22Z",
+  "scope": "Sixteen already terminal frozen pre-M1 smoke requests, indices037-052. Not the full90 result or final runtime attestation.",
+  "source_commit": "b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+  "service": "class-unit-smoke90-continuation-v1.service",
+  "manifest_sha256": "3a0a855778ebcef2e4e061e1ea86c806e4b79b6f253908d12da90b072765cdc4",
+  "remote_file_manifest_sha256": "032a351a64f25cdcfc9ee557ce98d441492c64589c69a604cb2d9db38f97d6f7",
+  "raw_custody_directory": "/home/user/sagejs-worktrees/class-unit-rank-two-frontier/build/general-frontier/smoke90-continuation-custody-v1/prefix-037-052",
+  "all64_files_match_remote_manifest": true,
+  "all16_embedded_stdout_stderr_hash_pairs_verified": true,
+  "rows": [
+    {
+      "filename": "037-4.0.1000245115136.1.json",
+      "sha256": "95180a77aebe67a7878d37ee00bd48f933f518353b922e1345fa5bfbf483b2e9",
+      "request": {
+        "label": "4.0.1000245115136.1",
+        "coefficients": [
+          "101329",
+          "-11816",
+          "436",
+          "0",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "elapsed_seconds": 600.2004658389778,
+      "reason": null,
+      "last_phase": {
+        "name": "request-class-unit-group",
+        "monotonic_seconds": 1789208146.5730505
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789208146.3002422
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789208146.504564
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789208146.5730505
+        }
+      ],
+      "computation_complete": null,
+      "phase_timings": null,
+      "saturation": null,
+      "stdout_sha256": "4460335ecb51fcab7f60835ee8fe6d39c54217b902037b864af2fd013f779f38",
+      "stderr_sha256": "5327546c15e794985c8871edac7fb4654a797ef356d1d1f3c4f23709840af1fa",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "038-4.2.1002184223040.5.json",
+      "sha256": "5f789af62bca079880bf32219c3ab49c4b11416b69d23e0c700d1d32d386b10c",
+      "request": {
+        "label": "4.2.1002184223040.5",
+        "coefficients": [
+          "-16676660",
+          "0",
+          "2002",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "elapsed_seconds": 145.5050866229867,
+      "reason": "integer division result too large for a float",
+      "last_phase": {
+        "name": "request-class-unit-group",
+        "monotonic_seconds": 1789208746.7587569
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789208746.4861853
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789208746.6902301
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789208746.7587569
+        }
+      ],
+      "computation_complete": false,
+      "phase_timings": {
+        "factor-base": 2.458714624,
+        "total": 142.691815168
+      },
+      "saturation": null,
+      "stdout_sha256": "163822844de14b758b96bf9a2099cde961db0eb8c802da73fac0babad0cbfacb",
+      "stderr_sha256": "b1211635d1e1c08384ea4c65bda879019c6d1d201050ace3047b5e57c77a099d",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "039-4.4.1000300030001.1.json",
+      "sha256": "59739583b85cf1584b981830ffee88e2232a413e36d7b146730333fa0aa01cc5",
+      "request": {
+        "label": "4.4.1000300030001.1",
+        "coefficients": [
+          "-249439",
+          "-79383",
+          "-3750",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "request-error",
+      "elapsed_seconds": 209.47709747802583,
+      "reason": "Belabas--Friedman threshold exceeds maximum_prime_bound",
+      "last_phase": {
+        "name": "request-class-unit-group",
+        "monotonic_seconds": 1789208892.2715318
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789208891.9975793
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789208892.2019348
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789208892.2715318
+        }
+      ],
+      "computation_complete": false,
+      "phase_timings": null,
+      "saturation": null,
+      "stdout_sha256": "1c1693dfee075022e88b47ed4d728e863f59f51175c3b0ca19da6bce7a697414",
+      "stderr_sha256": "ffebe6c4b1908240711c303c206ff133387d414e830a2ed9f74f13406ac941f6",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "040-5.1.1000000.1.json",
+      "sha256": "cae33a93fb4c0814d63aae7a18e07f8026a0beb5d9d7c4db657a0edafd4e40e8",
+      "request": {
+        "label": "5.1.1000000.1",
+        "coefficients": [
+          "-12",
+          "-5",
+          "0",
+          "0",
+          "0",
+          "1"
+        ]
+      },
+      "status": "timeout",
+      "elapsed_seconds": 600.1264875560009,
+      "reason": null,
+      "last_phase": {
+        "name": "request-class-unit-group",
+        "monotonic_seconds": 1789209101.736759
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789209101.5154803
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789209101.6665347
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789209101.736759
+        }
+      ],
+      "computation_complete": null,
+      "phase_timings": null,
+      "saturation": null,
+      "stdout_sha256": "ec18ee9a3490308f010beb0766f42b0df48a3a85f9dfe935c0ff6a0abb3f26ae",
+      "stderr_sha256": "837c48b707588c26cfcbf5c5b2b354840cb128653783d010a036c1d9a4d28b08",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "041-5.1.1000616.1.json",
+      "sha256": "04714f030225d254b120292789ff6ecd7a6562526d39ad87b4e20dae073fed78",
+      "request": {
+        "label": "5.1.1000616.1",
+        "coefficients": [
+          "-9",
+          "-15",
+          "-11",
+          "-4",
+          "0",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "elapsed_seconds": 23.295531190990005,
+      "reason": "exact relations and rigorous class/unit index one",
+      "last_phase": {
+        "name": "unit-coordinate-maps",
+        "monotonic_seconds": 1789209722.984341
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789209701.5920906
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789209701.7890368
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789209701.8562856
+        },
+        {
+          "name": "projection-class-group",
+          "monotonic_seconds": 1789209707.9870722
+        },
+        {
+          "name": "class-invariants",
+          "monotonic_seconds": 1789209717.8249347
+        },
+        {
+          "name": "class-number",
+          "monotonic_seconds": 1789209717.8268836
+        },
+        {
+          "name": "class-proof-payload",
+          "monotonic_seconds": 1789209717.8288004
+        },
+        {
+          "name": "projection-unit-group",
+          "monotonic_seconds": 1789209722.078062
+        },
+        {
+          "name": "unit-summary",
+          "monotonic_seconds": 1789209722.0889604
+        },
+        {
+          "name": "free-unit-generators",
+          "monotonic_seconds": 1789209722.0917325
+        },
+        {
+          "name": "regulator-100-bits",
+          "monotonic_seconds": 1789209722.1045263
+        },
+        {
+          "name": "class-generator-ideals",
+          "monotonic_seconds": 1789209722.1223378
+        },
+        {
+          "name": "class-coordinate-maps",
+          "monotonic_seconds": 1789209722.1249251
+        },
+        {
+          "name": "class-coordinate-map-0",
+          "monotonic_seconds": 1789209722.1317508
+        },
+        {
+          "name": "unit-coordinate-maps",
+          "monotonic_seconds": 1789209722.984341
+        }
+      ],
+      "computation_complete": true,
+      "phase_timings": {
+        "factor-base": 1.312663296,
+        "relations": 2.715875584,
+        "unit-recovery": 0.021007872,
+        "analytic-index": 0.422571008,
+        "class-group": 0.008524288,
+        "total": 4.816984832
+      },
+      "saturation": {
+        "schema": "sagejs.number-fields/class-unit-saturation-summary-v1",
+        "status": "complete",
+        "complete": true,
+        "rigorous": true,
+        "index_bound": 1,
+        "remaining_index_bound": 1,
+        "content_sha256": "2eee0715ae348dd52ec6fe278bd073fe36d7212635aa19ce25d1f7007a4e46b2",
+        "certificate_workspace": {
+          "provider_calls": 1,
+          "regulator_cache_hits": 1,
+          "finite_term_cache_hits": 1,
+          "certificate_construction_calls": 1,
+          "certificate_replay_calls": 0
+        }
+      },
+      "stdout_sha256": "261c857f20ad0bafa57fe6b72acb0733463ef2a584cd1f25e0f27f0209ae835c",
+      "stderr_sha256": "c15ac545c0ffa07c619f9b1af289818531f97992c486046f2a8ca4c88967c6f5",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "042-5.1.1000700.1.json",
+      "sha256": "9ffbbd6d23ea36a5da1653040e5981d7fad69ca9fa4496e467a0e97f692934a8",
+      "request": {
+        "label": "5.1.1000700.1",
+        "coefficients": [
+          "5",
+          "11",
+          "-15",
+          "2",
+          "0",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "elapsed_seconds": 531.178966706997,
+      "reason": "exact relations and rigorous class/unit index one",
+      "last_phase": {
+        "name": "unit-coordinate-maps",
+        "monotonic_seconds": 1789210253.8113697
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789209724.9680138
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789209725.1671605
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789209725.2418036
+        },
+        {
+          "name": "projection-class-group",
+          "monotonic_seconds": 1789210246.2664149
+        },
+        {
+          "name": "class-invariants",
+          "monotonic_seconds": 1789210251.2761724
+        },
+        {
+          "name": "class-number",
+          "monotonic_seconds": 1789210251.2788968
+        },
+        {
+          "name": "class-proof-payload",
+          "monotonic_seconds": 1789210251.2804182
+        },
+        {
+          "name": "projection-unit-group",
+          "monotonic_seconds": 1789210253.0868099
+        },
+        {
+          "name": "unit-summary",
+          "monotonic_seconds": 1789210253.0980756
+        },
+        {
+          "name": "free-unit-generators",
+          "monotonic_seconds": 1789210253.1008525
+        },
+        {
+          "name": "regulator-100-bits",
+          "monotonic_seconds": 1789210253.1108835
+        },
+        {
+          "name": "class-generator-ideals",
+          "monotonic_seconds": 1789210253.1277344
+        },
+        {
+          "name": "class-coordinate-maps",
+          "monotonic_seconds": 1789210253.130424
+        },
+        {
+          "name": "class-coordinate-map-0",
+          "monotonic_seconds": 1789210253.1373928
+        },
+        {
+          "name": "unit-coordinate-maps",
+          "monotonic_seconds": 1789210253.8113697
+        }
+      ],
+      "computation_complete": true,
+      "phase_timings": {
+        "factor-base": 1.472125952,
+        "relations": 1.2359293439999999,
+        "unit-recovery": 0.31704319999999997,
+        "analytic-index": 0.823806464,
+        "class-group": 0.007007232,
+        "total": 519.90794496
+      },
+      "saturation": {
+        "schema": "sagejs.number-fields/class-unit-saturation-summary-v1",
+        "status": "complete",
+        "complete": true,
+        "rigorous": true,
+        "index_bound": 2,
+        "remaining_index_bound": 1,
+        "content_sha256": "be2cc8307447dc1e5b084997941cc0fe3df7e844de091b89b1ec2495d52864bb",
+        "certificate_workspace": {
+          "provider_calls": 2,
+          "regulator_cache_hits": 6,
+          "finite_term_cache_hits": 10,
+          "certificate_construction_calls": 2,
+          "certificate_replay_calls": 2
+        }
+      },
+      "stdout_sha256": "280865f7721ae48e9f433a90f55936d47c88752f79b8d356e28f8af67b50aa4d",
+      "stderr_sha256": "cb9ad1c75f1b7cf414fc7ee0111c0c218883828cba8726afaec9b0d725f0077e",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "043-5.1.1000704.1.json",
+      "sha256": "d5cc313c580ef39e59974add108195a50e930480ee82200e98b6287123d32e8c",
+      "request": {
+        "label": "5.1.1000704.1",
+        "coefficients": [
+          "6",
+          "-9",
+          "4",
+          "2",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "elapsed_seconds": 17.32463600198389,
+      "reason": "exact relations and rigorous class/unit index one",
+      "last_phase": {
+        "name": "unit-coordinate-maps",
+        "monotonic_seconds": 1789210271.703621
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789210256.1776712
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789210256.3835952
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789210256.452648
+        },
+        {
+          "name": "projection-class-group",
+          "monotonic_seconds": 1789210260.9944339
+        },
+        {
+          "name": "class-invariants",
+          "monotonic_seconds": 1789210268.2014987
+        },
+        {
+          "name": "class-number",
+          "monotonic_seconds": 1789210268.203361
+        },
+        {
+          "name": "class-proof-payload",
+          "monotonic_seconds": 1789210268.2051725
+        },
+        {
+          "name": "projection-unit-group",
+          "monotonic_seconds": 1789210270.9615738
+        },
+        {
+          "name": "unit-summary",
+          "monotonic_seconds": 1789210270.9725366
+        },
+        {
+          "name": "free-unit-generators",
+          "monotonic_seconds": 1789210270.975404
+        },
+        {
+          "name": "regulator-100-bits",
+          "monotonic_seconds": 1789210270.9886823
+        },
+        {
+          "name": "class-generator-ideals",
+          "monotonic_seconds": 1789210271.0062976
+        },
+        {
+          "name": "class-coordinate-maps",
+          "monotonic_seconds": 1789210271.0088599
+        },
+        {
+          "name": "class-coordinate-map-0",
+          "monotonic_seconds": 1789210271.0159528
+        },
+        {
+          "name": "unit-coordinate-maps",
+          "monotonic_seconds": 1789210271.703621
+        }
+      ],
+      "computation_complete": true,
+      "phase_timings": {
+        "factor-base": 0.9098624,
+        "relations": 1.801592064,
+        "unit-recovery": 0.014774016,
+        "analytic-index": 0.352656896,
+        "class-group": 0.006977792,
+        "total": 3.369498624
+      },
+      "saturation": {
+        "schema": "sagejs.number-fields/class-unit-saturation-summary-v1",
+        "status": "complete",
+        "complete": true,
+        "rigorous": true,
+        "index_bound": 1,
+        "remaining_index_bound": 1,
+        "content_sha256": "8c956ac2834d68df07dbe32e86cc9ba511e598b259e96e775a8f4dd516b78e1f",
+        "certificate_workspace": {
+          "provider_calls": 1,
+          "regulator_cache_hits": 1,
+          "finite_term_cache_hits": 1,
+          "certificate_construction_calls": 1,
+          "certificate_replay_calls": 0
+        }
+      },
+      "stdout_sha256": "41636fa5911371d411b165d96f0e0bb3d22ed067cd0e50458899c5e1dd429985",
+      "stderr_sha256": "84ebf1a32a47529245acb811ae6ce99cee4040006fda878a6a812ac698fb2cb9",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "044-5.1.1000709.1.json",
+      "sha256": "8f527e33b5e6095420e227ade75a64fae9783f1fa7c756f7d6425f1ac5b62aee",
+      "request": {
+        "label": "5.1.1000709.1",
+        "coefficients": [
+          "3",
+          "4",
+          "2",
+          "4",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "elapsed_seconds": 13.316893145994982,
+      "reason": "exact relations and rigorous class/unit index one",
+      "last_phase": {
+        "name": "unit-coordinate-maps",
+        "monotonic_seconds": 1789210285.1784713
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789210273.4956906
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789210273.6935933
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789210273.7606726
+        },
+        {
+          "name": "projection-class-group",
+          "monotonic_seconds": 1789210277.7492816
+        },
+        {
+          "name": "class-invariants",
+          "monotonic_seconds": 1789210282.667883
+        },
+        {
+          "name": "class-number",
+          "monotonic_seconds": 1789210282.669854
+        },
+        {
+          "name": "class-proof-payload",
+          "monotonic_seconds": 1789210282.6732056
+        },
+        {
+          "name": "projection-unit-group",
+          "monotonic_seconds": 1789210284.4299438
+        },
+        {
+          "name": "unit-summary",
+          "monotonic_seconds": 1789210284.4419827
+        },
+        {
+          "name": "free-unit-generators",
+          "monotonic_seconds": 1789210284.4447854
+        },
+        {
+          "name": "regulator-100-bits",
+          "monotonic_seconds": 1789210284.4556444
+        },
+        {
+          "name": "class-generator-ideals",
+          "monotonic_seconds": 1789210284.4738126
+        },
+        {
+          "name": "class-coordinate-maps",
+          "monotonic_seconds": 1789210284.4763503
+        },
+        {
+          "name": "class-coordinate-map-0",
+          "monotonic_seconds": 1789210284.483682
+        },
+        {
+          "name": "unit-coordinate-maps",
+          "monotonic_seconds": 1789210285.1784713
+        }
+      ],
+      "computation_complete": true,
+      "phase_timings": {
+        "factor-base": 0.998739456,
+        "relations": 1.18064384,
+        "unit-recovery": 0.0102592,
+        "analytic-index": 0.312153088,
+        "class-group": 0.00648576,
+        "total": 2.770496
+      },
+      "saturation": {
+        "schema": "sagejs.number-fields/class-unit-saturation-summary-v1",
+        "status": "complete",
+        "complete": true,
+        "rigorous": true,
+        "index_bound": 1,
+        "remaining_index_bound": 1,
+        "content_sha256": "82a3768be71e0b489ff821d2d47fa0f1186dd42c7ca7b8e3b32d9ed80716aa6b",
+        "certificate_workspace": {
+          "provider_calls": 1,
+          "regulator_cache_hits": 1,
+          "finite_term_cache_hits": 1,
+          "certificate_construction_calls": 1,
+          "certificate_replay_calls": 0
+        }
+      },
+      "stdout_sha256": "bbb553e882965dc956cef434f0c7f8ecbc85596670339896e61cf142fbd92500",
+      "stderr_sha256": "d816973370cf9d5e15243bd5ca7f7618e6b84daa7fc03a107c914bc197af3d74",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "045-5.1.1000836.2.json",
+      "sha256": "cc37ade5250ebef01063e8dc42e70df4c06e703387b8b73ea52141d151cc9f79",
+      "request": {
+        "label": "5.1.1000836.2",
+        "coefficients": [
+          "-3",
+          "12",
+          "-21",
+          "11",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "elapsed_seconds": 550.0231427759863,
+      "reason": "exact relations and rigorous class/unit index one",
+      "last_phase": {
+        "name": "unit-coordinate-maps",
+        "monotonic_seconds": 1789210834.3269842
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789210286.8564067
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789210287.0596576
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789210287.130126
+        },
+        {
+          "name": "projection-class-group",
+          "monotonic_seconds": 1789210824.1310556
+        },
+        {
+          "name": "class-invariants",
+          "monotonic_seconds": 1789210830.7904136
+        },
+        {
+          "name": "class-number",
+          "monotonic_seconds": 1789210830.7925715
+        },
+        {
+          "name": "class-proof-payload",
+          "monotonic_seconds": 1789210830.794119
+        },
+        {
+          "name": "projection-unit-group",
+          "monotonic_seconds": 1789210833.54536
+        },
+        {
+          "name": "unit-summary",
+          "monotonic_seconds": 1789210833.5566747
+        },
+        {
+          "name": "free-unit-generators",
+          "monotonic_seconds": 1789210833.5594816
+        },
+        {
+          "name": "regulator-100-bits",
+          "monotonic_seconds": 1789210833.569738
+        },
+        {
+          "name": "class-generator-ideals",
+          "monotonic_seconds": 1789210833.6525416
+        },
+        {
+          "name": "class-coordinate-maps",
+          "monotonic_seconds": 1789210833.6553485
+        },
+        {
+          "name": "class-coordinate-map-0",
+          "monotonic_seconds": 1789210833.6624515
+        },
+        {
+          "name": "unit-coordinate-maps",
+          "monotonic_seconds": 1789210834.3269842
+        }
+      ],
+      "computation_complete": true,
+      "phase_timings": {
+        "factor-base": 1.202245632,
+        "relations": 2.425855232,
+        "unit-recovery": 0.533508352,
+        "analytic-index": 1.419936512,
+        "class-group": 0.006879232,
+        "total": 535.759252992
+      },
+      "saturation": {
+        "schema": "sagejs.number-fields/class-unit-saturation-summary-v1",
+        "status": "complete",
+        "complete": true,
+        "rigorous": true,
+        "index_bound": 6,
+        "remaining_index_bound": 1,
+        "content_sha256": "85995636ba6bb80c2ccbeab747626ab3e7f728fd974a45952688437f56715a78",
+        "certificate_workspace": {
+          "provider_calls": 4,
+          "regulator_cache_hits": 4,
+          "finite_term_cache_hits": 11,
+          "certificate_construction_calls": 2,
+          "certificate_replay_calls": 2
+        }
+      },
+      "stdout_sha256": "fdb0e38c1193ae16b68d8cc5baa2a696e6b7e42c098879f3022b9034e8522f63",
+      "stderr_sha256": "6a528669f82ddc3c6682eb272d1b46a3340373c5b42f8579bd82bd2928ee2f33",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "046-5.3.1000359.1.json",
+      "sha256": "3a33895f2da32edf485793486e17746215bb061c5479ab00812c2acead43af01",
+      "request": {
+        "label": "5.3.1000359.1",
+        "coefficients": [
+          "-9",
+          "6",
+          "14",
+          "-7",
+          "-2",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "elapsed_seconds": 14.770112240978051,
+      "reason": "exact relations and rigorous class/unit index one",
+      "last_phase": {
+        "name": "unit-coordinate-maps",
+        "monotonic_seconds": 1789210850.0605893
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789210836.8986263
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789210837.0987115
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789210837.168793
+        },
+        {
+          "name": "projection-class-group",
+          "monotonic_seconds": 1789210842.1865838
+        },
+        {
+          "name": "class-invariants",
+          "monotonic_seconds": 1789210847.5561101
+        },
+        {
+          "name": "class-number",
+          "monotonic_seconds": 1789210847.5579386
+        },
+        {
+          "name": "class-proof-payload",
+          "monotonic_seconds": 1789210847.5599623
+        },
+        {
+          "name": "projection-unit-group",
+          "monotonic_seconds": 1789210849.3516343
+        },
+        {
+          "name": "unit-summary",
+          "monotonic_seconds": 1789210849.3623188
+        },
+        {
+          "name": "free-unit-generators",
+          "monotonic_seconds": 1789210849.3650475
+        },
+        {
+          "name": "regulator-100-bits",
+          "monotonic_seconds": 1789210849.3811476
+        },
+        {
+          "name": "class-generator-ideals",
+          "monotonic_seconds": 1789210849.4063015
+        },
+        {
+          "name": "class-coordinate-maps",
+          "monotonic_seconds": 1789210849.4089448
+        },
+        {
+          "name": "class-coordinate-map-0",
+          "monotonic_seconds": 1789210849.4159377
+        },
+        {
+          "name": "unit-coordinate-maps",
+          "monotonic_seconds": 1789210850.0605893
+        }
+      ],
+      "computation_complete": true,
+      "phase_timings": {
+        "factor-base": 1.101858048,
+        "relations": 1.771977984,
+        "unit-recovery": 0.301499904,
+        "analytic-index": 0.496343808,
+        "class-group": 0.007428608,
+        "total": 3.932196608
+      },
+      "saturation": {
+        "schema": "sagejs.number-fields/class-unit-saturation-summary-v1",
+        "status": "complete",
+        "complete": true,
+        "rigorous": true,
+        "index_bound": 1,
+        "remaining_index_bound": 1,
+        "content_sha256": "6a59399b6693dc906358d482b645d6f84bdf8e3a2e1731243b57dd15e7555e38",
+        "certificate_workspace": {
+          "provider_calls": 1,
+          "regulator_cache_hits": 1,
+          "finite_term_cache_hits": 1,
+          "certificate_construction_calls": 1,
+          "certificate_replay_calls": 0
+        }
+      },
+      "stdout_sha256": "0e3eab759fc964afdfc71a515e682eecfd36b9adf148a407e135e3eda54d3a46",
+      "stderr_sha256": "ff45774431a147373bc908361ef35ddc6e7cf88234e4505303150035fed64e0b",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "047-5.3.1001187.1.json",
+      "sha256": "9d6d23c8b571ad9e1c54c2b9b665276b41f1b582be0ea777fdd702181fa1f983",
+      "request": {
+        "label": "5.3.1001187.1",
+        "coefficients": [
+          "-3",
+          "0",
+          "3",
+          "-4",
+          "-1",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "elapsed_seconds": 17.92895407101605,
+      "reason": "exact relations and rigorous class/unit index one",
+      "last_phase": {
+        "name": "unit-coordinate-maps",
+        "monotonic_seconds": 1789210867.8440533
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789210851.6881545
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789210851.8840532
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789210851.951739
+        },
+        {
+          "name": "projection-class-group",
+          "monotonic_seconds": 1789210857.3799748
+        },
+        {
+          "name": "class-invariants",
+          "monotonic_seconds": 1789210864.4331155
+        },
+        {
+          "name": "class-number",
+          "monotonic_seconds": 1789210864.4351652
+        },
+        {
+          "name": "class-proof-payload",
+          "monotonic_seconds": 1789210864.4369183
+        },
+        {
+          "name": "projection-unit-group",
+          "monotonic_seconds": 1789210867.0361638
+        },
+        {
+          "name": "unit-summary",
+          "monotonic_seconds": 1789210867.0479808
+        },
+        {
+          "name": "free-unit-generators",
+          "monotonic_seconds": 1789210867.0507596
+        },
+        {
+          "name": "regulator-100-bits",
+          "monotonic_seconds": 1789210867.0682213
+        },
+        {
+          "name": "class-generator-ideals",
+          "monotonic_seconds": 1789210867.09628
+        },
+        {
+          "name": "class-coordinate-maps",
+          "monotonic_seconds": 1789210867.0991178
+        },
+        {
+          "name": "class-coordinate-map-0",
+          "monotonic_seconds": 1789210867.1059577
+        },
+        {
+          "name": "unit-coordinate-maps",
+          "monotonic_seconds": 1789210867.8440533
+        }
+      ],
+      "computation_complete": true,
+      "phase_timings": {
+        "factor-base": 0.97118976,
+        "relations": 2.070906112,
+        "unit-recovery": 0.417137152,
+        "analytic-index": 0.414866432,
+        "class-group": 0.006882304,
+        "total": 4.171920896
+      },
+      "saturation": {
+        "schema": "sagejs.number-fields/class-unit-saturation-summary-v1",
+        "status": "complete",
+        "complete": true,
+        "rigorous": true,
+        "index_bound": 1,
+        "remaining_index_bound": 1,
+        "content_sha256": "9679e9dba10d1de44c98f95dba6527c64844a3521bccc30d391a51772d0b7f68",
+        "certificate_workspace": {
+          "provider_calls": 1,
+          "regulator_cache_hits": 1,
+          "finite_term_cache_hits": 1,
+          "certificate_construction_calls": 1,
+          "certificate_replay_calls": 0
+        }
+      },
+      "stdout_sha256": "84adf8baeec2e38750f0c624518525af2a3eef340de33af950dc9277e2cb21c0",
+      "stderr_sha256": "6d2c448d0fa1e463711a9aa98c80d1cd22b0f2f53f3091af8aaffe1e0f1f029d",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "048-5.3.1001188.1.json",
+      "sha256": "c13c43a05f2efe3077189c2b6f5fc5412e1012cf2084900b72d53e81a389011d",
+      "request": {
+        "label": "5.3.1001188.1",
+        "coefficients": [
+          "-4",
+          "-10",
+          "-4",
+          "-3",
+          "0",
+          "1"
+        ]
+      },
+      "status": "capability-gap",
+      "elapsed_seconds": 17.875449476006906,
+      "reason": "exact relations and rigorous class/unit index one",
+      "last_phase": {
+        "name": "unit-coordinate-maps",
+        "monotonic_seconds": 1789210885.7998521
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789210869.6590083
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789210869.8562875
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789210869.923958
+        },
+        {
+          "name": "projection-class-group",
+          "monotonic_seconds": 1789210875.4470115
+        },
+        {
+          "name": "class-invariants",
+          "monotonic_seconds": 1789210882.645481
+        },
+        {
+          "name": "class-number",
+          "monotonic_seconds": 1789210882.6473894
+        },
+        {
+          "name": "class-proof-payload",
+          "monotonic_seconds": 1789210882.649253
+        },
+        {
+          "name": "projection-unit-group",
+          "monotonic_seconds": 1789210885.0042758
+        },
+        {
+          "name": "unit-summary",
+          "monotonic_seconds": 1789210885.0152996
+        },
+        {
+          "name": "free-unit-generators",
+          "monotonic_seconds": 1789210885.0204446
+        },
+        {
+          "name": "regulator-100-bits",
+          "monotonic_seconds": 1789210885.0440333
+        },
+        {
+          "name": "class-generator-ideals",
+          "monotonic_seconds": 1789210885.1109838
+        },
+        {
+          "name": "class-coordinate-maps",
+          "monotonic_seconds": 1789210885.1138802
+        },
+        {
+          "name": "class-coordinate-map-0",
+          "monotonic_seconds": 1789210885.1211195
+        },
+        {
+          "name": "unit-coordinate-maps",
+          "monotonic_seconds": 1789210885.7998521
+        }
+      ],
+      "computation_complete": true,
+      "phase_timings": {
+        "factor-base": 1.278463488,
+        "relations": 1.8933184,
+        "unit-recovery": 0.3309824,
+        "analytic-index": 0.5271424,
+        "class-group": 0.009268736,
+        "total": 4.373799936
+      },
+      "saturation": {
+        "schema": "sagejs.number-fields/class-unit-saturation-summary-v1",
+        "status": "complete",
+        "complete": true,
+        "rigorous": true,
+        "index_bound": 1,
+        "remaining_index_bound": 1,
+        "content_sha256": "63323b8bdb16effba2f0ae728e0c6b419aac7667f532708e7c5c7c3caae244ed",
+        "certificate_workspace": {
+          "provider_calls": 1,
+          "regulator_cache_hits": 1,
+          "finite_term_cache_hits": 1,
+          "certificate_construction_calls": 1,
+          "certificate_replay_calls": 0
+        }
+      },
+      "stdout_sha256": "99daf56b5261587013d65d3ba6452dc4e111449e8995cf4c3347d9a9c5bb2577",
+      "stderr_sha256": "e4304051b95b0e675a4d43583878ec22c3f973800e11e72b76b3b084a4d83677",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "049-5.5.1019601.1.json",
+      "sha256": "0fb3aeda5f4cb1ee729422be208e141990a0bd046b75f862156c6b4231e98b62",
+      "request": {
+        "label": "5.5.1019601.1",
+        "coefficients": [
+          "7",
+          "24",
+          "-1",
+          "-10",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "elapsed_seconds": 7.844772853015456,
+      "reason": "regulator enclosure exceeded maximum_precision_bits",
+      "last_phase": {
+        "name": "request-class-unit-group",
+        "monotonic_seconds": 1789210887.8337643
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789210887.5621462
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789210887.7658467
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789210887.8337643
+        }
+      ],
+      "computation_complete": false,
+      "phase_timings": {
+        "factor-base": 0.822531072,
+        "relations": 1.592145408,
+        "unit-recovery": 0.46971008,
+        "total": 5.335373056
+      },
+      "saturation": null,
+      "stdout_sha256": "d80c58d9354a3a1fe002e81d823111baf105a0b10acb1040053e3148337eb788",
+      "stderr_sha256": "0dcf858a77ac6bd82c528047caafee6026bb6933af1097a2f9d4a72241a1f121",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "050-6.0.1000260638139.1.json",
+      "sha256": "6c3f9a996f66a9173dd5466cc8fe6a02dcb9b480c58f094595aba3af22ba2739",
+      "request": {
+        "label": "6.0.1000260638139.1",
+        "coefficients": [
+          "3737",
+          "-771",
+          "406",
+          "-164",
+          "10",
+          "0",
+          "1"
+        ]
+      },
+      "status": "request-error",
+      "elapsed_seconds": 210.34732936799992,
+      "reason": "Belabas--Friedman threshold exceeds maximum_prime_bound",
+      "last_phase": {
+        "name": "request-class-unit-group",
+        "monotonic_seconds": 1789210895.6848643
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789210895.4000359
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789210895.5535185
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789210895.6848643
+        }
+      ],
+      "computation_complete": false,
+      "phase_timings": null,
+      "saturation": null,
+      "stdout_sha256": "bdede3d1fdc61f342b7469b1285e3a782097e2cb9f1ba42ae11f9fcbf982a491",
+      "stderr_sha256": "b3a65bed082ad9adbe56e16efb542b706d687d3d63382388bf77da38cd37e7f1",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "051-6.0.1000465411095.1.json",
+      "sha256": "5a4cc8b9068f519dbf6dc6c35b5dc31d8e87f4f0b5c21bc26eb48d46c1a507d3",
+      "request": {
+        "label": "6.0.1000465411095.1",
+        "coefficients": [
+          "1020",
+          "0",
+          "381",
+          "0",
+          "37",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "elapsed_seconds": 54.987255582003854,
+      "reason": "regulator enclosure exceeded maximum_precision_bits",
+      "last_phase": {
+        "name": "request-class-unit-group",
+        "monotonic_seconds": 1789211106.0507345
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789211105.7623978
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789211105.9808757
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789211106.0507345
+        }
+      ],
+      "computation_complete": false,
+      "phase_timings": {
+        "factor-base": 2.7281536,
+        "relations": 47.242816256,
+        "unit-recovery": 1.162347008,
+        "total": 52.487120128
+      },
+      "saturation": null,
+      "stdout_sha256": "23bf541e117766a6162b1f88b320d9b0b1d6acd5da827e626ee2ca2588f872eb",
+      "stderr_sha256": "198ae30a943000c97742336626ee9bf2565bc06358716c49cef951263db0bdb7",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    },
+    {
+      "filename": "052-6.0.1000712609303.1.json",
+      "sha256": "7a8de7742b8fd2c8dc4fed79d1683ca8cebf174677fc676553037867dd9d09d4",
+      "request": {
+        "label": "6.0.1000712609303.1",
+        "coefficients": [
+          "5567",
+          "-507",
+          "737",
+          "-9",
+          "38",
+          "0",
+          "1"
+        ]
+      },
+      "status": "incomplete-computation",
+      "elapsed_seconds": 448.8070325299923,
+      "reason": "bounded saturation did not isolate class/unit index one",
+      "last_phase": {
+        "name": "request-class-unit-group",
+        "monotonic_seconds": 1789211161.0134547
+      },
+      "phases": [
+        {
+          "name": "import-public-context",
+          "monotonic_seconds": 1789211160.7200596
+        },
+        {
+          "name": "construct-field",
+          "monotonic_seconds": 1789211160.879492
+        },
+        {
+          "name": "request-class-unit-group",
+          "monotonic_seconds": 1789211161.0134547
+        }
+      ],
+      "computation_complete": false,
+      "phase_timings": {
+        "factor-base": 3.259889152,
+        "relations": 49.995081728,
+        "unit-recovery": 4.48326912,
+        "analytic-index": 126.425315584,
+        "total": 446.252004864
+      },
+      "saturation": {
+        "schema": "sagejs.number-fields/class-unit-saturation-summary-v1",
+        "status": "bounded",
+        "complete": false,
+        "rigorous": true,
+        "index_bound": 2,
+        "remaining_index_bound": 2,
+        "content_sha256": "0b4273dacf31d66d4cafb854449286ba71e53abce8bcdeb6f725e684a3dd7b76",
+        "certificate_workspace": {
+          "provider_calls": 2,
+          "regulator_cache_hits": 16,
+          "finite_term_cache_hits": 32,
+          "certificate_construction_calls": 4,
+          "certificate_replay_calls": 6
+        }
+      },
+      "stdout_sha256": "32dfecc3b54ee6ef3748285412cb89693cdb375b9aa45586858c957677efbf39",
+      "stderr_sha256": "b617f45e101e2f463bee4e2e608c3aaa7870d6350665217313ccc944d211a294",
+      "cleanup_verified": true,
+      "qualified_timing": false
+    }
+  ]
+}
