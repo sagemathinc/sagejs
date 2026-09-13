@@ -46,6 +46,13 @@ compiled caches. No class-group policy, proof authority or public dispatch is
 changed. Keep this prerequisite draft until qualification closes.
 # Prepared field ingress follow-up (experimental)
 
+The PARI rounding translation additionally motivates exact `int.bit_length()`.
+It now lowers for Integer/uint64 expressions, with Python's sign-independent
+result and zero returning zero. Tagged word and GMP paths and generated JS
+are compared to CPython through 4,096-bit values by
+`tools/native-kernel/test/integer-bit-length.cjs`. General exact-integer shifts
+remain a separate missing operation; the rounding function is not yet native.
+
 Borrowed `RealNumberBuffer` and `ComplexNumberBuffer` arguments additionally
 admit read-only indexing by nonnegative constants or uint64 indices inside
 field loops. They are ordinary lists dynamically. The Node adapter constructs

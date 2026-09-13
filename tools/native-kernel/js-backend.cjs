@@ -484,6 +484,9 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}${operation.target} = ${operation.source} < 0n ` +
       `? -${operation.source} : ${operation.source};`;
   }
+  if (operation.kind === "integer.bit_length") {
+    return `${indent}${operation.target} = ${operation.source} === 0n ? 0n : BigInt((${operation.source} < 0n ? -${operation.source} : ${operation.source}).toString(2).length);`;
+  }
   if (operation.kind === "integer.pow_uint") {
     return `${indent}${operation.target} = ${operation.base} ** ` +
       `${BigInt(operation.exponent)}n;`;

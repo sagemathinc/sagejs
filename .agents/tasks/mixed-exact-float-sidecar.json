@@ -9,6 +9,10 @@
   "objective": "Allow exact @native call graphs to invoke pure Float64 helpers and use Float64Buffer scheduling sidecars through explicit checked signed-Integer-to-Float64 conversion without weakening exact proof authority",
   "base_commit": "938ccd425f0a322bafb1375968d5e24b38d5cde5",
   "claims": [
+    "tools/native-kernel/exact-runtime.cjs",
+    "tools/native-kernel/tagged-backend.cjs",
+    "tools/native-kernel/word-backend.cjs",
+    "tools/native-kernel/test/integer-bit-length.cjs",
     "tools/native-kernel/ir.cjs",
     "tools/native-kernel/test/prepared-field-inputs.cjs",
     "test/native-kernel.cjs",

@@ -1166,6 +1166,21 @@ static void sagejs_tagged_abs(
     mpz_abs(target->big, source->big);
 }
 
+static void sagejs_tagged_bit_length(
+    sagejs_tagged_int *target, sagejs_tagged_int *source)
+{
+    uint64_t bits = 0;
+    if (source->is_big)
+        bits = mpz_sgn(source->big) == 0 ? 0 : (uint64_t)mpz_sizeinbase(source->big, 2);
+    else
+    {
+        uint64_t magnitude = source->small < 0
+            ? UINT64_C(0) - (uint64_t)source->small : (uint64_t)source->small;
+        while (magnitude) { bits++; magnitude >>= 1; }
+    }
+    sagejs_tagged_set_uint64(target, bits);
+}
+
 static void sagejs_tagged_pow_ui(
     sagejs_tagged_int *target,
     sagejs_tagged_int *base,
