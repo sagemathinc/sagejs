@@ -415,6 +415,9 @@ function emitTaggedOperation(operation, context, indent) {
   if (operation.kind === "integer.bit_length") {
     return `${indent}sagejs_tagged_bit_length(${target}, ${taggedValue(operation.source, context)});`;
   }
+  if (operation.kind === "integer.shift") {
+    return `${indent}if (!sagejs_tagged_shift(status, ${target}, ${taggedValue(operation.left, context)}, ${taggedValue(operation.right, context)}, ${operation.operation === "left" ? 1 : 0})) goto fail;`;
+  }
   if (operation.kind === "integer.pow_uint") {
     return `${indent}sagejs_tagged_pow_ui(${target}, ` +
       `${taggedValue(operation.base, context)}, ` +

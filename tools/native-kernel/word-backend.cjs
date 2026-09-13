@@ -104,6 +104,7 @@ function mayPromote(operation) {
     "integer.from_uint64",
     "integer.neg",
     "integer.abs",
+    "integer.shift",
     "integer.pow_uint",
     "integer.divmod",
     "integer.binary",
@@ -426,6 +427,7 @@ ${indent}    while (magnitude) { bits++; magnitude >>= 1; }
 ${indent}    ${target} = bits;
 ${indent}}`;
   }
+  if (operation.kind === "integer.shift") return promote();
   if (operation.kind === "integer.pow_uint") {
     return [
       `${indent}if (!sagejs_word_pow_int64(${value(operation.base)}, ` +

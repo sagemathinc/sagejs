@@ -13,6 +13,7 @@
     "tools/native-kernel/tagged-backend.cjs",
     "tools/native-kernel/word-backend.cjs",
     "tools/native-kernel/test/integer-bit-length.cjs",
+    "tools/native-kernel/test/integer-shifts.cjs",
     "tools/native-kernel/ir.cjs",
     "tools/native-kernel/test/prepared-field-inputs.cjs",
     "test/native-kernel.cjs",

@@ -40,6 +40,7 @@ function operationInputs(operation) {
     case "integer.mod_uint64":
       return [operation.left, operation.right];
     case "integer.binary":
+    case "integer.shift":
     case "float64.binary":
     case "uint64.binary":
     case "integer.divmod":
@@ -513,7 +514,8 @@ function executionProfile(fn) {
         operation.kind === "integer.divmod" ||
         operation.kind === "integer.mod_uint64" ||
         operation.kind === "integer.round_sqrt" ||
-        operation.kind === "integer.bit_length"
+        operation.kind === "integer.bit_length" ||
+        operation.kind === "integer.shift"
       ) {
         profile.arithmeticOperations += 1;
       }

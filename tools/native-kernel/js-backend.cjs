@@ -487,6 +487,16 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "integer.bit_length") {
     return `${indent}${operation.target} = ${operation.source} === 0n ? 0n : BigInt((${operation.source} < 0n ? -${operation.source} : ${operation.source}).toString(2).length);`;
   }
+  if (operation.kind === "integer.shift") {
+    const a=operation.left,b=operation.right,t=operation.target;
+    return `${indent}if (${b} < 0n) nativeRaise("ValueError", "negative shift count");
+${indent}if (${a} === 0n || ${b} === 0n) ${t} = ${a};
+${indent}else {
+${indent}  const bits = BigInt((${a} < 0n ? -${a} : ${a}).toString(2).length);
+${operation.operation === "left" ? `${indent}  if (${b} + bits > 1048576n) nativeRaise("MemoryError", "integer shift allocation limit exceeded");
+${indent}  ${t} = ${a} << ${b};` : `${indent}  ${t} = ${b} >= bits ? (${a} < 0n ? -1n : 0n) : ${a} >> ${b};`}
+${indent}}`;
+  }
   if (operation.kind === "integer.pow_uint") {
     return `${indent}${operation.target} = ${operation.base} ** ` +
       `${BigInt(operation.exponent)}n;`;
@@ -2919,6 +2929,8 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
     if (message.includes("range() arg 3 must not be zero")) {
       nativeRaise("ValueError", message);
     }
+    if (message.includes("negative shift count")) nativeRaise("ValueError", message);
+    if (message.includes("integer shift allocation limit")) nativeRaise("MemoryError", message);
     if (message.includes("math domain")) nativeRaise("ValueError", message);
     if (message.includes("too large to convert")) {
       nativeRaise("OverflowError", message);

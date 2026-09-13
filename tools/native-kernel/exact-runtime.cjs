@@ -1166,6 +1166,40 @@ static void sagejs_tagged_abs(
     mpz_abs(target->big, source->big);
 }
 
+/* A shift may request enormous storage with a tiny count operand. This new
+ * operation has an explicit 1-Mibit result allocation cap; it never truncates.
+ * Existing zero/count-zero values and saturating right shifts need no growth. */
+static int sagejs_mpz_shift(sagejs_native_status *status, mpz_t target,
+    const mpz_t left, const mpz_t right, int shift_left)
+{
+    if (mpz_sgn(right) < 0) {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, "negative shift count");
+        return 0;
+    }
+    if (mpz_sgn(left) == 0 || mpz_sgn(right) == 0) { mpz_set(target, left); return 1; }
+    if (!shift_left) {
+        if (!mpz_fits_ulong_p(right) || mpz_get_ui(right) >= mpz_sizeinbase(left,2)) {
+            mpz_set_si(target, mpz_sgn(left) < 0 ? -1 : 0); return 1;
+        }
+        mpz_fdiv_q_2exp(target,left,mpz_get_ui(right)); return 1;
+    }
+    if (!mpz_fits_ulong_p(right) || mpz_cmp_ui(right,1048576UL) > 0) {
+        sagejs_native_status_set(status,SAGEJS_NATIVE_RANGE_ERROR,"integer shift allocation limit exceeded");return 0;
+    }
+    unsigned long count=mpz_get_ui(right);
+    if (mpz_sizeinbase(left,2) > 1048576UL-count) {
+        sagejs_native_status_set(status,SAGEJS_NATIVE_RANGE_ERROR,"integer shift allocation limit exceeded");return 0;
+    }
+    mpz_mul_2exp(target,left,count);return 1;
+}
+
+static int sagejs_tagged_shift(sagejs_native_status *status,
+    sagejs_tagged_int *target,sagejs_tagged_int *left,sagejs_tagged_int *right,int direction)
+{
+    sagejs_tagged_make_big(left);sagejs_tagged_make_big(right);sagejs_tagged_make_big(target);
+    return sagejs_mpz_shift(status,target->big,left->big,right->big,direction);
+}
+
 static void sagejs_tagged_bit_length(
     sagejs_tagged_int *target, sagejs_tagged_int *source)
 {

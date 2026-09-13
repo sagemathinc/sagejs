@@ -2203,6 +2203,16 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
   if (bitwise !== undefined) {
     const left = lowerUint64Operand(node.left, context, operations);
     const right = lowerUint64Operand(node.right, context, operations);
+    if ((node.operator === "<<" || node.operator === ">>") &&
+        (left.type === "Integer" ||
+          (integerLiteral(node.left) !== undefined && right.type === "Integer"))) {
+      const a = coerceInteger(left, context, node.left, operations);
+      const b = coerceInteger(right, context, node.right, operations);
+      const target = temporary(context, node, "Integer");
+      operations.push({kind:"integer.shift", operation:node.operator === "<<" ? "left" : "right",
+        target, left:a.name, right:b.name});
+      return {name:target,type:"Integer"};
+    }
     expect(
       context,
       node,

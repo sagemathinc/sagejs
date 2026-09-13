@@ -51,7 +51,19 @@ It now lowers for Integer/uint64 expressions, with Python's sign-independent
 result and zero returning zero. Tagged word and GMP paths and generated JS
 are compared to CPython through 4,096-bit values by
 `tools/native-kernel/test/integer-bit-length.cjs`. General exact-integer shifts
-remain a separate missing operation; the rounding function is not yet native.
+now lower to checked GMP/tagged operations and generated JS. Right shifts of
+negative values round down, and arbitrarily large right counts saturate to
+zero or minus one without allocating the requested bit count. Negative counts
+raise `ValueError` through public dispatch (raw native status uses RangeError).
+Left shifts have an explicit 1,048,576-result-bit allocation ceiling and raise
+`MemoryError` through public dispatch rather than truncate; zero and count-zero
+operations require no growth. This resource limit does not change ordinary
+CPython execution. Machine `uint64` shift semantics remain separate.
+`tools/native-kernel/test/integer-shifts.cjs` compares CPython, generated JS,
+public dispatch and forced native execution, including signed and large-count
+cases. The experimental PARI rounding translation now agrees on 75 prepared
+real inputs across these execution paths. This does not qualify the embedding
+norm or the connected class-group path.
 
 Borrowed `RealNumberBuffer` and `ComplexNumberBuffer` arguments additionally
 admit read-only indexing by nonnegative constants or uint64 indices inside
