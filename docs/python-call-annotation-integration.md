@@ -233,3 +233,29 @@ start with unwind-time records to avoid allocating an active-frame object on
 every successful call. It must correctly record local catches and throwing
 call sites, preserve foreign-error diagnostics, and compare generated ordinary
 calls against an unchanged build before selecting a production representation.
+
+### Implicit context at compiler raise boundaries
+
+Compiler-emitted raises now use `ρσ_prepare_raise`: normalize the exception,
+read the active handler, and attach it as `__context__`. With no active handler
+or when reraising that same exception, it returns without traversing a chain.
+For another active exception it severs a reverse context edge before linking,
+so reuse of an older exception cannot create a new cycle. A visited WeakSet
+bounds traversal of cycles introduced through host interop. No stack is
+captured or formatted by this helper.
+
+The CPython-backed fixture covers ordinary chaining, context retained under
+`from None`, and reuse of the original exception while handling its replacement.
+It passed CPython and failed both Sage.js modes before the change. This scope
+does not qualify foreign JavaScript throws, generator state isolation, or a
+complete traceback representation. These remain explicit follow-up work.
+
+Qualification: full build 6m 56s, nine selected semantic/stack/lookup tests,
+strict403 checks and the frozen selected pyparsing 3.3.2 workflow all pass.
+Local host-realm diagnostics (10,000 operations, three warmups/seven samples,
+two rounds) report construction 91–92 ms, construction/catch 83.5–84.2 ms,
+and re-raise 12.64–12.68 ms. These are current-candidate diagnostics, not a
+controlled before/after speedup or a new CPython ratio. The chained path is
+not timed by this ordinary-handler workload; its allocation/lookup cost remains
+a separate measurement target. Native stack capture remains the major open
+performance issue.

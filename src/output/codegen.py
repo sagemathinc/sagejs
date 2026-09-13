@@ -608,7 +608,7 @@ def generate_code():
         if self.value:
             output.space()
             if kind is "throw":
-                output.print("ρσ_exception_value(")
+                output.print("ρσ_prepare_raise(")
                 self.value.print(output)
                 output.print(")")
             else:

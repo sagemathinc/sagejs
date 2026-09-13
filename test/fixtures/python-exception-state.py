@@ -99,4 +99,39 @@ except TypeError:
 else:
     assert False
 assert current() is None
+original = ValueError("original")
+replacement = KeyError("replacement")
+try:
+    try:
+        raise original
+    except ValueError:
+        raise replacement
+except KeyError as error:
+    assert error is replacement
+    assert error.__context__ is original
+    assert error.__cause__ is None
+    assert error.__suppress_context__ is False
+
+suppressed = TypeError("suppressed")
+try:
+    try:
+        raise original
+    except ValueError:
+        raise suppressed from None
+except TypeError as error:
+    assert error.__context__ is original
+    assert error.__cause__ is None
+    assert error.__suppress_context__ is True
+
+# Reusing the original while handling its replacement must break the old
+# reverse edge rather than create an exception-context cycle.
+try:
+    try:
+        raise replacement
+    except KeyError:
+        raise original
+except ValueError:
+    assert original.__context__ is replacement
+    assert replacement.__context__ is None
+assert current() is None
 print("exception-state-ok")

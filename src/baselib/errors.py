@@ -50,6 +50,32 @@ def ρσ_exception_with_cause(value: object, cause: object) -> object:
     return error
 
 
+def ρσ_prepare_raise(value: object) -> object:
+    """Attach dynamic context at a raise boundary without capturing a stack."""
+    error = ρσ_exception_value(value)
+    active = runtime.reflect.get(runtime.global_object, "__sagejs_last_exception__")
+    if active is runtime.undefined or active is None or active is error:
+        return error
+    # Reusing an exception that is already in the active chain must sever
+    # the reverse edge first. A visited set also bounds traversal of cycles
+    # introduced through the host interop boundary.
+    seen = runtime.reflect.construct(
+        runtime.reflect.get(runtime.global_object, "WeakSet"), []
+    )
+    cursor = active
+    while cursor is not None and cursor is not runtime.undefined:
+        if not runtime.instance_of(cursor, runtime.error) or seen.has(cursor):
+            break
+        seen.add(cursor)
+        parent = runtime.reflect.get(cursor, "__context__")
+        if parent is error:
+            runtime.reflect.set(cursor, "__context__", None)
+            break
+        cursor = parent
+    runtime.reflect.set(error, "__context__", active)
+    return error
+
+
 def ρσ_function_argument_error(
     message: str,
     target_function: object,
