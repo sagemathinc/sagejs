@@ -2575,6 +2575,8 @@ function fieldCoreSignature(fn, prototype = false) {
   const parameters = fn.params.map((param) =>
     param.type === "uint64"
       ? `uint64_t ${cName(param.name)}`
+      : param.type === "RealNumber" ? `mpfr_srcptr ${cName(param.name)}`
+      : param.type === "ComplexNumber" ? `mpc_srcptr ${cName(param.name)}`
       : `mpfr_prec_t ${cName(param.name)}_precision`
   );
   return `int sagejs_kernel_${fn.name}(` + [
@@ -2591,6 +2593,11 @@ function emitFieldCoreFunction(fn) {
   const localType = real ? "mpfr_t" : "mpc_t";
   const parent = fn.params.find((param) => param.type === parentType);
   const locals = new Map(fn.locals.map((local) => [local.name, local]));
+  for (const param of fn.params) {
+    if (param.type === fn.returnType) locals.set(param.name, {
+      ...param, storage: "borrowed",
+    });
+  }
   const declarations = [];
   const initialization = [];
   const cleanup = [];
@@ -2642,6 +2649,10 @@ function emitFieldCoreFunction(fn) {
 ${Array.from(loopIndexes, (name) => `    uint64_t ${cName(name)};`).join("\n")}
 ${declarations.join("\n")}
     sagejs_native_status_reset(status);
+${fn.params.filter((param) => param.type === fn.returnType).map((param) => `    if (${real ? "mpfr_get_prec" : "mpc_get_prec"}(${cName(param.name)}) != precision) {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_TYPE_ERROR, "prepared input precision must match field");
+        return 0;
+    }`).join("\n")}
 ${initialization.join("\n")}
 ${statements.join("\n")}
     goto success;
@@ -2665,8 +2676,10 @@ function emitFieldNodeAdapter(fn) {
   const coreArguments = fn.params.map((param) =>
     param.type === "uint64"
       ? cName(param.name)
+      : param.type === fn.returnType ? `${cName(param.name)}->value`
       : `${cName(param.name)}_precision`
   );
+  const inputs = fn.params.filter((param) => param.type === fn.returnType);
   return `static napi_value compiled_${fn.name}(
     napi_env env, napi_callback_info info)
 {
@@ -2674,7 +2687,8 @@ function emitFieldNodeAdapter(fn) {
     size_t argc = ${fn.params.length};
     sagejs_native_status status = {0, NULL};
     mpfr_prec_t ${cName(parent.name)}_precision;
-    uint64_t ${cName(iterations.name)};
+    ${iterations ? `uint64_t ${cName(iterations.name)};` : ""}
+${inputs.map((param) => `    ${nativeType} *${cName(param.name)};`).join("\n")}
     ${nativeType} *result = NULL;
     napi_value wrapped;
     if (!sagejs_native_check_napi(env,
@@ -2686,10 +2700,17 @@ function emitFieldNodeAdapter(fn) {
         return NULL;
     }
     if (!get_precision(env, args[${fn.params.indexOf(parent)}],
-            &${cName(parent.name)}_precision) ||
-        !get_uint64(env, args[${fn.params.indexOf(iterations)}],
-            &${cName(iterations.name)}))
+            &${cName(parent.name)}_precision))
         return NULL;
+${iterations ? `    if (!get_uint64(env, args[${fn.params.indexOf(iterations)}],
+            &${cName(iterations.name)})) return NULL;` : ""}
+${inputs.map((param) => `    ${cName(param.name)} = sagejs_native_unwrap_${prefix}(
+        env, args[${fn.params.indexOf(param)}]);
+    if (${cName(param.name)} == NULL) return NULL;
+    if (${prefix === "real" ? "mpfr_get_prec" : "mpc_get_prec"}(${cName(param.name)}->value) != ${cName(parent.name)}_precision) {
+        napi_throw_type_error(env, NULL, "prepared input precision must match field");
+        return NULL;
+    }`).join("\n")}
     result = sagejs_native_new_${prefix}(
         env, ${cName(parent.name)}_precision);
     if (result == NULL)
