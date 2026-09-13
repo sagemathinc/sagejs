@@ -409,7 +409,7 @@ function lowerAssignment(statement, context, description) {
   return operations;
 }
 
-function lowerRange(node, iterationName) {
+function lowerRange(node, iterationNames) {
   expect(
     nodeType(node) === "AST_Call" &&
       nodeType(node.expression) === "AST_SymbolRef" &&
@@ -420,9 +420,9 @@ function lowerRange(node, iterationName) {
   if (
     args.length === 1 &&
     nodeType(args[0]) === "AST_SymbolRef" &&
-    args[0].name === iterationName
+    iterationNames.includes(args[0].name)
   ) {
-    return { start: 0, count: iterationName };
+    return { start: 0, count: args[0].name };
   }
 
   const start = args.length === 2 ? integerLiteral(args[0]) : undefined;
@@ -442,12 +442,12 @@ function lowerRange(node, iterationName) {
     start !== undefined &&
       start >= 0n &&
       start <= MAX_SAFE_START &&
-      stopName === iterationName &&
+      iterationNames.includes(stopName) &&
       stopOffset === start,
-    `native two-argument loop must use range(k, ${iterationName} + k) ` +
+    `native two-argument loop must use range(k, ${iterationNames.join(" or ")} + k) ` +
       "with a nonnegative safe integer k",
   );
-  return { start: Number(start), count: iterationName };
+  return { start: Number(start), count: stopName };
 }
 
 function nativeDecorator(fn) {
@@ -533,10 +533,8 @@ function lowerLegacyFunction(fn, decorated = false) {
     elementType = "Integer";
   } else {
     expect(
-      parentParams.length === 1 &&
-        integerParams.length === 0 &&
-        iterationParams.length <= 1,
-      "a real or complex native kernel requires one supported field and at most one uint64 argument",
+      parentParams.length === 1 && integerParams.length === 0,
+      "a real or complex native kernel requires one supported field",
     );
     parent = parentParams[0];
     elementType = PARENT_ELEMENT_TYPES.get(parent.type);
@@ -549,7 +547,6 @@ function lowerLegacyFunction(fn, decorated = false) {
       param.type === elementType + "Buffer"),
     "prepared field inputs must match the result field type");
   }
-  const iterationName = iterationParams[0]?.name;
   const context = {
     elementType,
     bufferNames: new Set(params.filter((param) => param.type === elementType + "Buffer")
@@ -593,7 +590,7 @@ function lowerLegacyFunction(fn, decorated = false) {
           !context.scalarTypes.has(index),
         `native loop index ${index} conflicts with a value`,
       );
-      const range = lowerRange(statement.object, iterationName);
+      const range = lowerRange(statement.object, iterationParams.map((param) => param.name));
       context.scalarTypes.set(index, "uint64");
       context.scalarCoercions = new Map();
       const loopBody = [];

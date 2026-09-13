@@ -34,6 +34,14 @@ def complex_first(field: ComplexField, a: ComplexNumberBuffer) -> ComplexNumber:
 @native
 def real_two(field: RealField) -> RealNumber:
     return field("2")
+@native
+def real_two_sums(field: RealField, a: RealNumberBuffer, n: uint64, m: uint64) -> RealNumber:
+    value = field("0")
+    for i in range(n):
+        value += a[i]
+    for j in range(m):
+        value += a[j]
+    return value
 `);
   const built = await compileKernel({ sourcePath: source });
   const mod = require(built.modulePath);
@@ -50,10 +58,13 @@ def real_two(field: RealField) -> RealNumber:
   assert.equal(mod.real_identity.javascript(field, a), a);
   const two = mod.real_two(field);
   assert.ok(mod.real_sum(field, [two, two], 2)._native);
+  assert.ok(mod.real_two_sums(field, [two, two], 2, 1)._native);
+  assert.throws(() => mod.real_two_sums(field, [two], 1, -1), /uint64|nonnegative|unsigned/);
   assert.throws(() => mod.real_sum(field, [two], 2), /index out of range/);
   assert.throws(() => mod.real_sum(field, [two, fake], 2), /MPFR real/);
   const dyn = value => ({value: BigInt(value), _add_(rhs) { return dyn(this.value + rhs.value); }});
   assert.equal(mod.real_sum.javascript(dyn, [dyn(3), dyn(-5)], 2).value, -2n);
+  assert.equal(mod.real_two_sums.javascript(dyn, [dyn(3), dyn(-5)], 2, 1).value, 1n);
   assert.throws(() => mod.real_sum.javascript(dyn, [], 1), /index out of range/);
   assert.equal(mod.complex_first.javascript(null, [a]), a);
 
@@ -77,6 +88,9 @@ int main(void) {
   mpfr_srcptr entries[] = {a,b};
   mpfr_add(expected,a,b,MPFR_RNDN);
   assert(sagejs_kernel_real_sum(&status,r,192,entries,2,2));
+  assert(mpfr_equal_p(r,expected));
+  mpfr_add(expected,expected,a,MPFR_RNDN);
+  assert(sagejs_kernel_real_two_sums(&status,r,192,entries,2,2,1));
   assert(mpfr_equal_p(r,expected));
   assert(!sagejs_kernel_real_sum(&status,r,192,entries,2,3));
   assert(status.code == SAGEJS_NATIVE_RANGE_ERROR);
