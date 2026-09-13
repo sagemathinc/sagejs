@@ -24,7 +24,7 @@ full build blocked by optional FFLAS installation, and generated optimizer
 manifest awaiting integration review. Strict Python and focused compiler tests
 pass. None of these checks establishes a complete class-group port.
 
-Next: collect an upstream small-relation trace, compare candidate/admission
+Next: extend the upstream small-relation trace through candidate/admission
 state, and extend the connected segment through norm/factorization and relation
 admission. Prepared-field and full-path timings remain unmeasured. The original
 scope and acceptance criteria are unchanged.
@@ -123,7 +123,7 @@ the admitted integer range and still leaves conversion/helper-call dependencies.
 Calling the interpreter inside the native search is prohibited. Replacing the
 search by the existing certified cubic algorithm changes the experiment.
 
-## Current executable evidence
+## Initial executable evidence (before prerequisite integration)
 
 - Unmodified official PARI source builds locally with GCC 15.2.0, GMP 6.3.0,
   single-thread engine, `-O3 -Wall -fno-strict-aliasing`, no readline or graphics.
@@ -154,9 +154,63 @@ search by the existing certified cubic algorithm changes the experiment.
   not reached. Full native qualification has not run; the lowering failure
   itself must be resolved first. These limitations keep the PR draft.
 
-There have been no paired measurements, no generated core for this prototype,
+At that initial checkpoint there were no paired measurements or generated core for this prototype,
 and no experiment claim against the 2x target. Dependencies such as rounded
 archimedean norm, prime-ideal valuations, rank admission and unit recovery remain
 untranslated. The next investment is to finish/integrate the mixed-buffer
 compiler prerequisite, then resume the connected small-relation path; this
 checkpoint is explicitly inconclusive about whole-engine parity.
+
+## Upstream enumeration trace checkpoint
+
+The translated enumeration now matches native PARI 2.17.4 candidate prefixes
+and trial counters on four predeclared tuning fields, in both generated JS and
+compiled native execution. This does **not** test primitive/scalar rejection,
+relation admission, stopping equivalence, or class-group output from Sage.js.
+
+| Tuning field ID prefix | Enumeration calls | Comparisons, both backends | PARI output |
+| --- | ---: | ---: | --- |
+| `0e970fdb` | 16 | 2,558 | `1 []` |
+| `dec56e7e` | 12 | 1,766 | `3 [3]` |
+| `0857fab7` | 44 | 11,920 | `1 []` |
+| `98479377` | 301 | 112,738 | `4 [2, 2]` |
+
+There are 64,491 recorded vectors checked against each backend, not 128,982
+independent vectors. Records are limited to the first 200 trial counts per
+enumeration call. No final-reserve field was opened. Each GP invocation has a
+30-second timeout and 4 MiB output cap. These diagnostic runs are not timings.
+
+Apply `bench/pari-class-group-port/pari-trace.patch` to the pinned pristine
+archive, rebuild GP, then run:
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_pari_trace.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/gp
+```
+
+The patch activates only under `SAGEJS_TRACE_FP`; the runner sets it. The
+instrumented binary must not serve as an unmodified timing comparator, even
+with the environment flag unset. The source/build directory used for the
+initial smoke has now been instrumented: its current `buch2.c` SHA-256 is
+`d8b09a54e51399c83f2faa92ccc3f1f70f41d660b1cb279738bc207ff553f87a`,
+and its `libpari-gmp.so.2.17.4` SHA-256 is
+`c1a41ed3a65f65762bd9ee718397b439592185c3f1d3f52fb9d19f8bb980064a`.
+The earlier binary hashes above describe the earlier unmodified build only.
+
+Parsed-trace SHA-256 values, in table order:
+
+```text
+3bbddcb2fc4241c8066b319fee7c006258a5f96a487f14ef1644f06affde40a1
+8dcf442b9a4f0895e67843e86f24f092625e4926736b76c30e055ee5b299da96
+24eb70f035e1eb439356a5b3e55db1baba24c6cfc01af25d3e952e07f79f372f
+c9bf7233c137a9275dcf2951a86a7017efa823124adea937fe79084a12ef1fde
+```
+
+Diagnostic failures retained: initial parsing lost records when other PARI
+diagnostics lacked a terminating newline; parsing now locates the explicit
+marker. Enabling all BNF debug output exceeded the unchanged 4 MiB cap on the
+first quartic, so the patch uses a dedicated flag instead. PARI's real-number
+formatter can separate an exponent with whitespace (`2.04 e-38`); the parser
+now consumes the complete real value, with a focused regression assertion.
+Neither apparent ordering mismatch required changing the translated algorithm.
