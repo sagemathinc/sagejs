@@ -1,6 +1,39 @@
 # No-Singular number fields: implementation audit
 
-Status: **N1 implemented and locally validated; N2/N3/N5 incomplete.**
+Status: **N1/N2/N3 implemented; production qualification N5 in progress.**
+
+## Current production checkpoint
+
+Mathematical source is frozen at `890e83ba424291cf37f605b3b1b0ebf62662f6e6`.
+The subsequent `0eb6591d0` and `5d9ff96f4` commits only refresh generated
+reference documentation and mark guide examples executable. Earlier sections
+below are historical checkpoints, not current capability restrictions.
+
+| Qualification | Current evidence |
+| --- | --- |
+| Linux x64 | Full build, seven focused number-field tests, direct native fixtures, and 222/222 portable files pass |
+| Production Node-Wasm | Number-field geometry/factorization/decomposition and 75 independent oracle fixtures pass |
+| Chromium | The same production number-field batches pass without a development source override |
+| Existing portable algebra | QQ/prime-field and finite-extension geometry regression batches pass in production Node-Wasm |
+| Strict Python / architecture | 405 modules, zero errors; complete architecture check passes |
+| Documentation | Four executable Sage examples in the two number-field guides pass |
+| Linux ARM64 / macOS ARM64 | Qualification running; not yet accepted |
+| Windows x64 | Blocked on host disk capacity (approximately 1.1 GB free); no success claimed |
+| Mobile simulators | Workflow 34727914092 running; not yet accepted |
+| npm / relocated SEA | Linux packages built; fresh-install and relocation checks running |
+
+The tested production Wasm artifact is
+`051707e3caacc3289ff4430f271aabce2fb669d3df2f778f1023c151d69a683e`.
+It contains 286 compiled functions and one explicitly unsupported baseline
+function; this work introduces no new native kernels. Node-Wasm and Chromium
+number-field checks each complete in about two minutes. Existing production
+algebra regression batches take about eight minutes. Receipts apply to this
+artifact, not an untested later documentation repack.
+
+Logs are retained under `/home/user/sagejs-extension-qualification-20260912/`
+with the `n5-` prefix. PR #274 remains draft. No release is authorized or
+published. Optional msolve acceleration remains deferred; the shipped source
+uses exact algorithms under both proof settings.
 
 ## N1 completion
 
