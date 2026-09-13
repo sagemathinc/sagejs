@@ -76,4 +76,27 @@ except ValueError:
         assert error is outer
     assert current() is outer
 assert current() is None
+cause = KeyError("cause")
+try:
+    raise outer from cause
+except ValueError as error:
+    assert error is outer
+    assert error.__cause__ is cause
+    assert error.__suppress_context__ is True
+try:
+    raise outer from None
+except ValueError as error:
+    assert error.__cause__ is None
+    assert error.__suppress_context__ is True
+try:
+    raise ValueError from KeyError
+except ValueError as error:
+    assert isinstance(error.__cause__, KeyError)
+try:
+    raise outer from 42
+except TypeError:
+    pass
+else:
+    assert False
+assert current() is None
 print("exception-state-ok")

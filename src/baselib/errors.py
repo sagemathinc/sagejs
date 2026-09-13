@@ -40,6 +40,16 @@ def ρσ_exception_value(value: object) -> object:
     raise TypeError("exceptions must derive from BaseException")
 
 
+def ρσ_exception_with_cause(value: object, cause: object) -> object:
+    """Normalize an explicit raise cause without formatting either exception."""
+    error = ρσ_exception_value(value)
+    if cause is not None:
+        cause = ρσ_exception_value(cause)
+    runtime.reflect.set(error, "__cause__", cause)
+    runtime.reflect.set(error, "__suppress_context__", True)
+    return error
+
+
 def ρσ_function_argument_error(
     message: str,
     target_function: object,

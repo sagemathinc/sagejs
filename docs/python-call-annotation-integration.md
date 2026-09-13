@@ -204,3 +204,32 @@ A subsequent narrow Pyright annotation documents the existing host-backed
 exception inheritance boundary; this typing-only change is not covered by the
 earlier source-identity build receipt. No new speedup, generator isolation,
 chaining or logical traceback completion is claimed.
+
+### Explicit cause and traceback-lowering experiments
+
+Explicit `raise value from cause` now lowers through a helper that evaluates
+both operands, normalizes exception classes/instances, and sets `__cause__`
+and `__suppress_context__` without formatting either exception. Previously the
+cause expression was discarded. The state fixture also covers `from None` and
+invalid causes. This does not implement implicit context or cycle prevention.
+The expanded fixture passed CPython and failed both Sage.js modes before the
+change. After the change the full build passed in 6m 50s, all eight selected
+state/stack tests passed, and strict checks passed for 403 library modules.
+
+A hand-lowered synchronous three-function JavaScript sketch compares native
+capture with unwind-time linked records and an active logical frame stack.
+The first mixed-process run showed large order effects and is not accepted as
+a comparison. Fresh processes per variant/mode (three warmups/seven samples,
+100,000 iterations) gave normal/throwing medians of approximately: plain
+1.11/99 ms, native capture 1.01/495 ms, unwind records 1.26/370 ms, active
+stack 3.50/323 ms. These are development leads, not Python/runtime acceptance
+evidence: fixed-depth normal calls may optimize away, and source identity,
+generators, async, foreign errors and Python dispatch are absent. Do not infer
+a deployable speedup or normal-call budget from this sketch.
+
+Prototype and raw runs are retained at
+`/tmp/sagejs-traceback-prototype.Gg85LV`. The next compiler experiment should
+start with unwind-time records to avoid allocating an active-frame object on
+every successful call. It must correctly record local catches and throwing
+call sites, preserve foreign-error diagnostics, and compare generated ordinary
+calls against an unchanged build before selecting a production representation.

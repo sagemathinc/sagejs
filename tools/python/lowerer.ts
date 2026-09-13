@@ -480,10 +480,23 @@ export class PythonCstLowerer {
         })];
       }
       case "raise_statement": {
-        const value = significantChildren(node)[0];
+        const parts = significantChildren(node);
+        const value = parts[0];
         let raised: any;
         if (value) {
           raised = this.lowerExpression(value);
+          if (parts.length > 1) {
+            const args: any[] = [raised, this.lowerExpression(parts[1])];
+            (args as any).kwargs = [];
+            (args as any).kwarg_items = [];
+            (args as any).starargs = false;
+            raised = this.make("AST_Call", node, {
+              expression: this.make("AST_SymbolRef", node, {
+                name: "ρσ_exception_with_cause",
+              }),
+              args,
+            });
+          }
         } else {
           const args: any[] = [];
           (args as any).kwargs = [];
