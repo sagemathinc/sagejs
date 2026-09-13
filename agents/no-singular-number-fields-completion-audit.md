@@ -18,9 +18,9 @@ below are historical checkpoints, not current capability restrictions.
 | Strict Python / architecture | 405 modules, zero errors; complete architecture check passes |
 | Documentation | Four executable Sage examples in the two number-field guides pass |
 | Linux ARM64 / macOS ARM64 | Qualification running; not yet accepted |
-| Windows x64 | Blocked on host disk capacity (approximately 1.1 GB free); no success claimed |
-| Mobile simulators | Workflow 34727914092 running; not yet accepted |
-| npm / relocated SEA | Linux packages built; fresh-install and relocation checks running |
+| Windows x64 | Persistent host has approximately 1.1 GB free; alternate native CI run 34728729942 started without signing/publication; no success claimed |
+| Mobile simulators | Existing iPhone/iPad checks pass in workflow 34727914092; this is not the full Chromium number-field corpus |
+| npm / relocated SEA | Fresh Linux install, public APIs, lazy resources, and relocated SEA pass; additional installed-kernel/SEA number-field ideal, factorization, geometry, and radical smoke passes |
 
 The tested production Wasm artifact is
 `051707e3caacc3289ff4430f271aabce2fb669d3df2f778f1023c151d69a683e`.
@@ -30,8 +30,17 @@ number-field checks each complete in about two minutes. Existing production
 algebra regression batches take about eight minutes. Receipts apply to this
 artifact, not an untested later documentation repack.
 
+The distribution smoke initially selected the Python-only `sagepython`
+executable, which correctly rejected mathematics. Selecting the mathematical
+`sagejs` executable passes the same test without a product change. The
+successful logs are `n5-npm-standard.log` and `n5-npm-sea-smoke-math.log`;
+the initial `n5-npm-sea-smoke.log` remains failed setup evidence. The root npm
+tarball includes the tested documentation-only descendants; its mathematical
+payload and the platform SEA payload retain the frozen source above.
+
 Logs are retained under `/home/user/sagejs-extension-qualification-20260912/`
-with the `n5-` prefix. PR #274 remains draft. No release is authorized or
+with the `n5-` prefix; the [checkpoint manifest](number-fields-qualification-890e83ba4.json)
+records hashes of the completed portable/distribution logs. PR #274 remains draft. No release is authorized or
 published. Optional msolve acceleration remains deferred; the shipped source
 uses exact algorithms under both proof settings.
 
