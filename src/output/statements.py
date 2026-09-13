@@ -111,6 +111,10 @@ def display_body(body, is_toplevel, output):
         if not (is_node_type(stmt, AST_EmptyStatement)) and not (
             is_node_type(stmt, AST_Definitions)
         ):
+            if output.options.python_traceback_records and output.traceback_function:
+                output.indent()
+                output.print("ρσ_trace_line = " + str(stmt.start.line))
+                output.end_statement()
             output.indent()
             stmt.print(output)
             if not (i is last and is_toplevel):
@@ -189,7 +193,31 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
             output.with_block(clear_exception_target)
             return
 
-    display_body(node.body, is_toplevel, output)
+    if output.options.python_traceback_records and is_node_type(node, AST_Scope):
+        if node.is_generator or node.is_lambda:
+            raise Error("logical tracebacks do not yet support generators or lambdas")
+        previous = output.traceback_function
+        output.traceback_function = {
+            "filename": node.start.file,
+            "name": node.name.name if node.name else "<anonymous>",
+            "source": node.start.raw,
+            "first_lineno": node.start.line,
+        }
+        output.indent()
+        output.print("var ρσ_trace_activation, ρσ_trace_line = " + str(node.start.line))
+        output.end_statement()
+        output.indent()
+        output.print("try ")
+        output.with_block(lambda: display_body(node.body, is_toplevel, output))
+        output.print(" catch (ρσ_trace_error) {")
+        output.print("throw ρσ_record_traceback(ρσ_trace_error,")
+        output.print(JSON.stringify(output.traceback_function))
+        output.print(
+            ",ρσ_trace_line,ρσ_trace_activation || (ρσ_trace_activation = {}),false); }"
+        )
+        output.traceback_function = previous
+    else:
+        display_body(node.body, is_toplevel, output)
 
 
 def display_lambda_body(node, output, function_preamble):

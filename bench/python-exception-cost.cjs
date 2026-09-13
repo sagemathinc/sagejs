@@ -8,10 +8,11 @@ const assert = require("node:assert/strict");
 const createCompiler = require("../dist/tools/compiler.js").default;
 const { createPythonCompilerFrontend } = require("../dist/tools/python/compiler-frontend.js");
 const root = join(__dirname, "..");
-const cases = ["construct", "construct_raise_catch", "raise_existing"];
+const cases = ["construct", "construct_raise_catch", "raise_existing", "normal_call"];
 const selectedCase = process.env.SAGEJS_EXCEPTION_CASE;
 const selectedVariant = process.env.SAGEJS_EXCEPTION_VARIANT;
 const privateScope = process.env.SAGEJS_EXCEPTION_PRIVATE_SCOPE === "1";
+const logicalRecords = process.env.SAGEJS_EXCEPTION_LOGICAL_RECORDS === "1";
 // Match the production Node bootstrap's realm by default. A separate VM
 // context materially changes global lookup cost and is an explicit probe.
 const realm = process.env.SAGEJS_EXCEPTION_REALM || "host";
@@ -19,6 +20,13 @@ assert.ok(["vm", "host"].includes(realm));
 assert.ok(!selectedCase || cases.includes(selectedCase));
 assert.ok(!selectedVariant || ["fallback", "lazy", "no-capture-diagnostic"].includes(selectedVariant));
 const source = `
+def identity(value):
+    return value
+def normal_call(n):
+    total = 0
+    for i in range(n):
+        total += identity(1)
+    return total
 def construct(n):
     total = 0
     for i in range(n):
@@ -46,6 +54,7 @@ import sagejs.runtime as runtime
 runtime.reflect.set(runtime.global_object, '__exception_construct', construct)
 runtime.reflect.set(runtime.global_object, '__exception_construct_raise_catch', construct_raise_catch)
 runtime.reflect.set(runtime.global_object, '__exception_raise_existing', raise_existing)
+runtime.reflect.set(runtime.global_object, '__exception_normal_call', normal_call)
 `;
 (async () => {
   const compiler = createCompiler();
@@ -57,6 +66,7 @@ runtime.reflect.set(runtime.global_object, '__exception_raise_existing', raise_e
     const output = new compiler.OutputStream({
       baselib_plain: readFileSync(join(root, "dist/compiler/baselib-plain-pretty.js"), "utf8"),
       private_scope: privateScope, write_name: false, python_attributes: true,
+      python_traceback_records: logicalRecords,
       python_truthiness: true, python_tuples: true,
     });
     ast.print(output);
@@ -71,6 +81,7 @@ runtime.reflect.set(runtime.global_object, '__exception_raise_existing', raise_e
       runInThisContext(output.get(), { timeout: 30000 });
     } else runInContext(output.get(), context, { timeout: 30000 });
     const hostError = realm === "host" ? Error : runInContext("Error", context);
+    if (logicalRecords) context.__sagejs_traceback_records_enabled__ = true;
     const capture = hostError.captureStackTrace;
     assert.equal(typeof capture, "function");
     const count = 10000;
@@ -102,8 +113,9 @@ runtime.reflect.set(runtime.global_object, '__exception_raise_existing', raise_e
         }
       }
     } finally { hostError.captureStackTrace = capture; }
-    console.log(JSON.stringify({ node: process.version, privateScope, realm,
-      semanticsPreserved: selectedVariant !== "no-capture-diagnostic",
+    console.log(JSON.stringify({ node: process.version, privateScope, realm, logicalRecords,
+      semanticsPreserved: !logicalRecords && selectedVariant !== "no-capture-diagnostic",
+      tracebackQualification: logicalRecords ? "experimental synchronous fixtures only" : "native carrier",
       scope: "Standalone same-candidate warm diagnostic, not packaged-runtime qualification or historical/CPython comparison; no-capture-diagnostic deliberately drops frames and is attribution only",
       results }, null, 2));
   } finally { frontend.close(); }

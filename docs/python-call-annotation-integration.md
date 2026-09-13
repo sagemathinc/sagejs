@@ -259,3 +259,49 @@ controlled before/after speedup or a new CPython ratio. The chained path is
 not timed by this ordinary-handler workload; its allocation/lookup cost remains
 a separate measurement target. Native stack capture remains the major open
 performance issue.
+
+### Experimental compiler-assisted unwind records
+
+The private `python_traceback_records` output option instruments synchronous
+function statements, explicit raises, local catches and unwind boundaries.
+Activation identities are allocated on the exception path, not on successful
+calls. Bare reraises reuse the activation's existing frame; explicit reraises
+prepend a new record. A catch before a bare `finally` preserves the throwing
+call's line before cleanup executes. Records retain frozen source metadata,
+and `traceback.extract_tb` and formatting consume their Python coordinates.
+
+The mechanism diagnostic enables `__sagejs_traceback_records_enabled__` only
+after bootstrap. Exceptions created under that private flag do not capture a
+native stack; ordinary operation remains on the native path. Foreign errors
+are not converted into fabricated Python records. This is an experiment, **not
+a supported global runtime switch**: uninstrumented callers, module execution,
+generators/async, argument-binding failures before the instrumented body,
+`sys.exc_info()` integration and all CLI/notebook display consumers still need
+qualification before production adoption. Generators and lambdas are rejected
+by the experimental emitter. Code metadata allocation/deduplication, nested
+expression call-site precision, traceback mutation and ordinary-call overhead
+also remain follow-up work. The existing draft PR remains draft.
+
+Use `SAGEJS_EXCEPTION_LOGICAL_RECORDS=1 SAGEJS_EXCEPTION_VARIANT=lazy
+SAGEJS_EXCEPTION_CASE=construct_raise_catch node bench/python-exception-cost.cjs`
+for the experimental warm diagnostic, and omit the logical-record variable for
+its same-candidate native control. Do not compare repeated explicit reraises
+as equivalent work: logical traceback chains now grow, unlike the legacy
+native carrier. This diagnostic is not four-platform/package qualification or
+a newly measured CPython ratio.
+
+Local Node 26.8.1 host-realm measurements (10,000 fresh raises/catches,
+three warmups, seven samples per round, two rounds in each fresh process,
+native/records/records/native process order) gave round medians of 88.2–92.7 ms
+for native capture and 40.7–41.8 ms for records: approximately 2.1–2.3x faster.
+Raw runs are retained as `/home/user/python-logical-final-{native,records}-{a,b}.json`.
+This removes capture from the exercised path, not all exception overhead.
+An additional `normal_call` case measures successful calls with instrumentation
+enabled; it is a small mechanism diagnostic, not a package-level overhead gate.
+
+Validation: the initial full build passed (6m 54s), then the final compiler
+changes converged in two self-hosting passes; all 15 focused tests and strict
+403-module checks passed. The tests cover source lines, recursive activation
+identity, local catches, bare reraises, `finally` call sites, native fallback,
+zero native captures on the logical path, and stdlib formatting/limit direction.
+This is not a claim of a final four-platform build or a closed performance cliff.

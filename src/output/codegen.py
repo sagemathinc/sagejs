@@ -14,6 +14,7 @@ from ast_types import (
     AST_Binary,
     AST_BlockStatement,
     AST_Break,
+    AST_Call,
     AST_Class,
     AST_Conditional,
     AST_Constant,
@@ -608,9 +609,27 @@ def generate_code():
         if self.value:
             output.space()
             if kind is "throw":
+                logical = (
+                    output.options.python_traceback_records
+                    and output.traceback_function
+                )
+                if logical:
+                    output.print("ρσ_record_traceback(")
                 output.print("ρσ_prepare_raise(")
                 self.value.print(output)
                 output.print(")")
+                if logical:
+                    output.print("," + JSON.stringify(output.traceback_function))
+                    output.print("," + str(self.start.line))
+                    bare = (
+                        is_node_type(self.value, AST_Call)
+                        and self.value.expression.name is "ρσ_reraise_exception"
+                    )
+                    output.print(
+                        ",ρσ_trace_activation || (ρσ_trace_activation = {}),"
+                        + ("false" if bare else "true")
+                        + ")"
+                    )
             else:
                 self.value.print(output)
         elif kind is "return" and output.options.python_truthiness:

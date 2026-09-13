@@ -32,6 +32,15 @@ def print_try(self, output):
     if self.bcatch:
         output.space()
         print_catch(self.bcatch, output)
+    elif output.options.python_traceback_records and output.traceback_function:
+        # Preserve the throwing call's line before a finally suite changes it.
+        output.print(
+            " catch (ρσ_trace_error) { throw ρσ_record_traceback(ρσ_trace_error,"
+        )
+        output.print(JSON.stringify(output.traceback_function))
+        output.print(
+            ",ρσ_trace_line,ρσ_trace_activation || (ρσ_trace_activation = {}),false); }"
+        )
 
     if self.bfinally:
         output.space()
@@ -52,6 +61,14 @@ def print_catch(self, output):
         output.assign("ρσ_Exception")
         output.print("ρσ_normalize_exception(ρσ_Exception)")
         output.end_statement()
+        if output.options.python_traceback_records and output.traceback_function:
+            output.indent()
+            output.print("ρσ_Exception = ρσ_record_traceback(ρσ_Exception,")
+            output.print(JSON.stringify(output.traceback_function))
+            output.print(
+                ",ρσ_trace_line,ρσ_trace_activation || (ρσ_trace_activation = {}),false)"
+            )
+            output.end_statement()
         output.indent()
         output.print("let ρσ_previous_exception = ρσ_last_exception")
         output.end_statement()

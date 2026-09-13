@@ -76,6 +76,34 @@ def ρσ_prepare_raise(value: object) -> object:
     return error
 
 
+def ρσ_record_traceback(
+    error: Any, code: Any, line: Any, activation: Any, explicit: Any
+) -> Any:
+    """Append an unwind record only for opted-in logical Python exceptions."""
+    if error is None or error is runtime.undefined:
+        return error
+    if not runtime.strict_equal(runtime.jstype(error), "object"):
+        return error
+    if runtime.reflect.get(error, "__sagejs_logical_exception__") is not True:
+        return error
+    previous = runtime.reflect.get(error, "__traceback__")
+    if (
+        not explicit
+        and previous is not None
+        and previous is not runtime.undefined
+        and runtime.reflect.get(previous, "activation") is activation
+    ):
+        return error
+    record = runtime.object.create(None)
+    runtime.reflect.set(record, "__sagejs_traceback_record__", True)
+    runtime.reflect.set(record, "code", runtime.object.freeze(code))
+    runtime.reflect.set(record, "tb_lineno", line)
+    runtime.reflect.set(record, "tb_next", previous)
+    runtime.reflect.set(record, "activation", activation)
+    runtime.reflect.set(error, "__traceback__", record)
+    return error
+
+
 def ρσ_function_argument_error(
     message: str,
     target_function: object,
@@ -123,8 +151,17 @@ class BaseException(runtime.error):
             if python_name is runtime.undefined
             else runtime.string(python_name)
         )
+        logical = (
+            runtime.reflect.get(
+                runtime.global_object, "__sagejs_traceback_records_enabled__"
+            )
+            is True
+        )
         capture = runtime.reflect.get(runtime.error, "captureStackTrace")
-        if runtime.strict_equal(runtime.jstype(capture), "function"):
+        if logical:
+            self.__traceback__ = None
+            runtime.reflect.set(self, "__sagejs_logical_exception__", True)
+        elif runtime.strict_equal(runtime.jstype(capture), "function"):
             # Capture the creation site now, but let the host format its stack
             # lazily. Formatting every caught exception makes ordinary Python
             # exception-based control flow unnecessarily expensive.
@@ -136,7 +173,9 @@ class BaseException(runtime.error):
         # Until an embedding provides structured frame objects, the native
         # Error itself is our traceback-like carrier.  ``traceback.extract_tb``
         # understands its stack string.
-        self.__traceback__ = self
+        if not logical:
+            runtime.reflect.set(self, "__sagejs_logical_exception__", False)
+            self.__traceback__ = self
         self.__cause__ = None
         self.__context__ = None
         self.__suppress_context__ = False
