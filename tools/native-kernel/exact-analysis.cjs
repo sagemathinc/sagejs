@@ -714,7 +714,7 @@ function localEffects(fn) {
           operation.kind === "integer.buffer.set") {
         mayRaise.add("OverflowError");
       }
-      if (operation.kind === "raise") mayRaise.add(operation.errorType);
+      if (operation.kind === "raise") mayRaise.add(operation.exception);
       if (operation.kind === "ffi.call" ||
           operation.kind === "ffi.arena.resource.allocate") {
         const effects = operation.foreign.function.effects;

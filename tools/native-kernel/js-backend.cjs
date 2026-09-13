@@ -888,20 +888,34 @@ function uint64BufferMayBeWritten(fn, name) {
   return !Array.isArray(externalWrites) || externalWrites.includes(name);
 }
 
-function declaredFfiErrors(fn) {
+function declaredFfiErrors(fn, functions = []) {
   const translations = Object.create(null);
+  const visited = new Set([fn.name]);
+  function record(message, exception) {
+    const previous = translations[message];
+    if (previous !== undefined && JSON.stringify(previous) !== JSON.stringify(exception)) {
+      throw new Error(`conflicting native exception translations for ${message}`);
+    }
+    translations[message] = exception;
+  }
   const visit = (operations) => {
     for (const operation of operations || []) {
+      if (operation.kind === "raise") {
+        if (operation.exception === "ValueError") {
+          record(`ValueError: ${operation.message}`, {exception: "ValueError", message: operation.message});
+        } else record(operation.message, operation.exception);
+      }
+      if (operation.kind === "native.call" && !visited.has(operation.function)) {
+        const callee = functions.find((candidate) => candidate.name === operation.function);
+        if (callee) {
+          visited.add(callee.name);
+          visit(callee.body);
+        }
+      }
       if (operation.kind === "ffi.call") {
         const errors = operation.foreign.function.errors;
         if (errors.exception !== null) {
-          const previous = translations[errors.message];
-          if (previous !== undefined && previous !== errors.exception) {
-            throw new Error(
-              `conflicting FFI exception translations for ${errors.message}`,
-            );
-          }
-          translations[errors.message] = errors.exception;
+          record(errors.message, errors.exception);
         }
       }
       visit(operation.body);
@@ -915,7 +929,7 @@ function declaredFfiErrors(fn) {
 }
 
 function exactNativeExpression(fn, backend) {
-  const ffiErrors = declaredFfiErrors(fn);
+  const ffiErrors = fn.nativeDeclaredErrors || declaredFfiErrors(fn);
   const buffers = fn.params.filter((param) =>
     param.type === "Int64Buffer" || param.type === "Int64Record" ||
     param.type === "IntegerBuffer" || param.type === "UInt64Buffer" ||
@@ -2921,6 +2935,9 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
     const declaredException = declaredErrors === null
       ? undefined : declaredErrors[message];
     if (declaredException !== undefined) {
+      if (typeof declaredException === "object") {
+        nativeRaise(declaredException.exception, declaredException.message);
+      }
       nativeRaise(declaredException, message);
     }
     if (message.includes("division") || message.includes("modulo")) {
@@ -3092,7 +3109,7 @@ ${ir.functions.map((fn) =>
     fn.hostCallable === false
       ? emitExactFallback(fn)
       : fn.kernelKind === "integer"
-      ? emitExactPublicFunction(fn, options.automaticSelections?.[fn.name])
+      ? emitExactPublicFunction({...fn, nativeDeclaredErrors: declaredFfiErrors(fn, ir.functions)}, options.automaticSelections?.[fn.name])
       : fn.kernelKind === "float64"
         ? emitFloat64PublicFunction(fn)
       : fn.kernelKind === "prime-field-matrix"

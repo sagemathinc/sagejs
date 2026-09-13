@@ -1713,7 +1713,7 @@ function emitExactStatements(statements, context, indent) {
     }
     if (statement.kind === "raise") {
       lines.push(
-        statusFailure("range", statement.message, indent),
+        statusFailure("range", statement.exception === "ValueError" ? `ValueError: ${statement.message}` : statement.message, indent),
         `${indent}goto fail;`,
       );
       continue;

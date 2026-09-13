@@ -16,8 +16,19 @@ def left(x: int, n: int) -> int:
 @native
 def right(x: int, n: int) -> int:
     return x >> n
+@native
+def word_base() -> int:
+    return 1 << 64
+@native
+def inplace(x: int, n: int) -> int:
+    shift = n
+    x <<= shift
+    x >>= shift
+    return x
 `);
   const b=await compileKernel({sourcePath:source}),mod=require(b.modulePath),raw=require(b.addonPath);
+  for(const f of [mod.word_base,mod.word_base.javascript,raw.word_base])assert.equal(f(),1n<<64n);
+  for(const f of [mod.inplace,mod.inplace.javascript,raw.inplace])assert.equal(f(-7n,70n),-7n);
   const cases=[];
   for(const x of [0n,1n,-1n,7n,-7n,-(1n<<63n),(1n<<511n)+3n])
     for(const n of [0n,1n,63n,64n,512n])cases.push([x,n]);
