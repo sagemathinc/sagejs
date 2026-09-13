@@ -1,6 +1,6 @@
 # No-Singular number fields: implementation audit
 
-Status: **N1/N2/N3 implemented; production qualification N5 in progress.**
+Status: **N1/N2/N3 implemented; N5 blocked at the Windows integration gate.**
 
 ## Current production checkpoint
 
@@ -19,7 +19,7 @@ below are historical checkpoints, not current capability restrictions.
 | Documentation | Four executable Sage examples in the two number-field guides pass |
 | Linux ARM64 | Focused tests, 222/222 portable files, fresh 41-family production native pack, and all five direct number-field fixtures pass |
 | macOS ARM64 | Full authenticated build, 41-family production pack, focused/direct fixtures, 75 independent oracles, and 222/222 portable files pass |
-| Windows x64 | Persistent host has approximately 1.1 GB free; alternate native CI run 34728729942 started without signing/publication; no success claimed |
+| Windows x64 | CI 34728729942 passes build/startup/portable, then fails existing CLI help test before number-field tests and SEA; not qualified |
 | Mobile simulators | Existing iPhone/iPad checks pass in workflow 34727914092; this is not the full Chromium number-field corpus |
 | npm / relocated SEA | Fresh Linux install, public APIs, lazy resources, and relocated SEA pass; additional installed-kernel/SEA number-field ideal, factorization, geometry, and radical smoke passes |
 
@@ -58,6 +58,30 @@ is `n5-macos-arm64-890e83ba4.log`, at the frozen commit with Node 26.5.0.
 Its 41-family native pack is 22.47 MiB and its authenticated numerical product
 is `sha256:82957eff19c01111030001d6bdb4ddade1cbeb63f560901d8de5954b950de0f6`.
 The first failed build remains separate evidence, not a complete receipt.
+
+### Remaining integration blocker
+
+[Windows CI run 34728729942](https://github.com/sagemathinc/sagejs/actions/runs/34728729942)
+ran at `0116e28051cd1fc0f9e38cda2b6e30176b2ea77f`, a documentation-only
+descendant of the mathematical freeze. Its routine, canonical numerical,
+canonical browser/npm, Windows bootstrap, resident witness, startup, and
+portable gates pass. Integration fails at `test/cli-smoke.cjs:800`:
+`help(Example)` omits the expected `Methods:` section. The same failure
+reproduces on Linux with `node --test test/cli-smoke.cjs`.
+
+Class lowering, builtins, introspection, and documentation-help implementation
+are unchanged between the integrated branch base `256419004` and the frozen
+number-field source. This points to a pre-existing shared-introspection defect,
+not a Windows-specific number-field arithmetic failure. It has not been
+silently skipped or fixed by broadening this mathematical lane.
+
+Fail-fast cancellation left 390 integration files unstarted, including the
+number-field fixtures, and the native/SEA stages did not run. Therefore this
+run does **not** qualify number-field Windows behavior. The available persistent
+Windows host also remains short on disk space. Logs are
+`n5-windows-ci-failed.log` and `n5-cli-local-reproduce.log`. Resolve the shared
+CLI defect in coordination with the integration lane, then repeat Windows
+qualification before marking PR #274 ready. No release was published.
 
 Logs are retained under `/home/user/sagejs-extension-qualification-20260912/`
 with the `n5-` prefix; the [checkpoint manifest](number-fields-qualification-890e83ba4.json)

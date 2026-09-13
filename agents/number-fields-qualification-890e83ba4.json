@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.number-fields-qualification-checkpoint/v1",
-  "status": "incomplete",
+  "status": "blocked",
   "mathematicalSource": "890e83ba424291cf37f605b3b1b0ebf62662f6e6",
   "wasmArtifact": "051707e3caacc3289ff4430f271aabce2fb669d3df2f778f1023c151d69a683e",
   "logDirectory": "/home/user/sagejs-extension-qualification-20260912",
@@ -52,6 +52,14 @@
     "scope": "existing iPhone/iPad simulator checks, not the full number-field oracle corpus"
   },
   "open": ["windows-x64"],
+  "windows": {
+    "run": "https://github.com/sagemathinc/sagejs/actions/runs/34728729942",
+    "commit": "0116e28051cd1fc0f9e38cda2b6e30176b2ea77f",
+    "result": "integration-failed",
+    "failure": "test/cli-smoke.cjs:800: class help omits Methods section; reproduced on Linux",
+    "numberFieldFixtures": "not run: fail-fast cancellation",
+    "sea": "not run"
+  },
   "notes": [
     "Logs are retained locally; hashes identify evidence but are not public artifact hosting.",
     "Distribution root archive includes documentation-only descendants; mathematical payload is unchanged.",
