@@ -6,6 +6,16 @@
   "logDirectory": "/home/user/sagejs-extension-qualification-20260912",
   "logs": [
     {
+      "file": "n5-arm64-890e83ba4-patched-source.log",
+      "sha256": "1f3e6e72cdb6f2840cdf6fd463e04c3bf5ee32271c4efa404b7e5c099ce93c7d",
+      "result": "passed"
+    },
+    {
+      "file": "n5-arm64-native-pack-890e83ba4.log",
+      "sha256": "d1c3322c8c25a81e94d4bbb252489d7c46d8d30a1339816d88b1ddb353e73bbc",
+      "result": "passed"
+    },
+    {
       "file": "n5-node-wasm-890e83ba4.log",
       "sha256": "ac061ce802e22561375baf5b7601ca7935b22fe6a301b9b686c69f2ba592b458",
       "result": "passed"
@@ -36,7 +46,7 @@
     "result": "passed",
     "scope": "existing iPhone/iPad simulator checks, not the full number-field oracle corpus"
   },
-  "open": ["linux-arm64", "macos-arm64", "windows-x64"],
+  "open": ["macos-arm64", "windows-x64"],
   "notes": [
     "Logs are retained locally; hashes identify evidence but are not public artifact hosting.",
     "Distribution root archive includes documentation-only descendants; mathematical payload is unchanged.",

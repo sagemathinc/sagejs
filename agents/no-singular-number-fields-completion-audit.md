@@ -17,7 +17,8 @@ below are historical checkpoints, not current capability restrictions.
 | Existing portable algebra | QQ/prime-field and finite-extension geometry regression batches pass in production Node-Wasm |
 | Strict Python / architecture | 405 modules, zero errors; complete architecture check passes |
 | Documentation | Four executable Sage examples in the two number-field guides pass |
-| Linux ARM64 / macOS ARM64 | Qualification running; not yet accepted |
+| Linux ARM64 | Focused tests, 222/222 portable files, fresh 41-family production native pack, and all five direct number-field fixtures pass |
+| macOS ARM64 | Qualification running; numerical artifact setup failure described below, not yet accepted |
 | Windows x64 | Persistent host has approximately 1.1 GB free; alternate native CI run 34728729942 started without signing/publication; no success claimed |
 | Mobile simulators | Existing iPhone/iPad checks pass in workflow 34727914092; this is not the full Chromium number-field corpus |
 | npm / relocated SEA | Fresh Linux install, public APIs, lazy resources, and relocated SEA pass; additional installed-kernel/SEA number-field ideal, factorization, geometry, and radical smoke passes |
@@ -37,6 +38,22 @@ successful logs are `n5-npm-standard.log` and `n5-npm-sea-smoke-math.log`;
 the initial `n5-npm-sea-smoke.log` remains failed setup evidence. The root npm
 tarball includes the tested documentation-only descendants; its mathematical
 payload and the platform SEA payload retain the frozen source above.
+
+Linux ARM64 passes at the frozen mathematical commit with Node 26.5.1.
+The initial eight-stage build preceded FLINT FFI adapter generation and skipped
+the native pack. After the focused/portable tests finished, the 41-family
+20.70 MiB native pack was built, the validated native receipt refreshed, and
+all five direct number-field fixtures rerun successfully, including the 75
+independent Sage oracles. Both `n5-arm64-890e83ba4-patched-source.log` and
+`n5-arm64-native-pack-890e83ba4.log` are required to describe this evidence.
+
+macOS completed its production native pack but failed its final numerical
+reactor step with `manifest/build artifact gzip_bytes mismatch`. The recovery
+uses the authenticated numerical product from successful simulator run
+34727914092 at the same commit, through the existing `SAGEJS_NUMERICAL_PRODUCT_ROOT`
+installation/validation path. It does not change the manifest or bypass its
+checks. The repeated full build and tests remain pending; the failed first
+build is not a complete macOS receipt.
 
 Logs are retained under `/home/user/sagejs-extension-qualification-20260912/`
 with the `n5-` prefix; the [checkpoint manifest](number-fields-qualification-890e83ba4.json)
