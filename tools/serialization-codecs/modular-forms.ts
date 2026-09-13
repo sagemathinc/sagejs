@@ -127,6 +127,7 @@ function encodeParent(value: unknown, context: EncodeContext): WireValue {
       });
     case "ModularAbelianVariety":
     case "AbelianVarietyHomology":
+    case "ModularAbelianHomSpace":
       return require("./modular-abelian-varieties").encodeModularAbelianParent(value, context);
     default:
       throw new SageSerializationError("unsupported modular-forms parent");
@@ -188,6 +189,7 @@ function decodeParent(payload: WireValue, context: DecodeContext): unknown {
       return callMethod(data.cuspSpace, "old_subspace", []);
     case "ModularAbelianVariety":
     case "AbelianVarietyHomology":
+    case "ModularAbelianHomSpace":
       return require("./modular-abelian-varieties").decodeModularAbelianParent(data);
     default:
       throw new SageSerializationError(
@@ -388,6 +390,7 @@ const parentCodec: SageCodec = {
     "OldModularFormsSubspace",
     "ModularAbelianVariety",
     "AbelianVarietyHomology",
+    "ModularAbelianHomSpace",
   ].includes(
     kind(value) ?? "",
   ),

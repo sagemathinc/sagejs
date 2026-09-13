@@ -576,8 +576,17 @@ $401$ receipt ranges from $3\times$ to $10\times$ faster than SageMath.
   browser throughput qualification does not establish universal parity.
   Shared native, Node/Wasm and Chromium correctness tests pass. See receipts
   in `bench/modular/abelian-varieties/decomposition-performance.md`.
-- [ ] Homomorphism and endomorphism rings of supported modular abelian
-  varieties.
+- [x] Certified complete Hom spaces and endomorphism rings over QQ for the
+  supported weight-two Gamma0 varieties, products, subvarieties and connected
+  quotient models. Integral bases, coordinates/membership, complementary
+  isogenies, ring composition and authenticated serialization are implemented.
+  Complete Sage lattice comparisons pass (including integral basis transport);
+  native, Node/Wasm and real Chromium pass the shared corpus through level 389.
+  At levels 101/121/169, native medians are 0.523/0.802/0.590 s versus
+  Sage 1.632/25.508/6.288 s. Larger native/Wasm basis parity passes at 242/389;
+  Sage 242 timed out at 300 s, so no large-level Sage ratio is claimed.
+  See `docs/modular-abelian-hom.md` and
+  `bench/modular/abelian-varieties/hom-performance.md`.
 - [ ] Rational torsion and finite subgroup schemes in the supported domain.
 - [ ] Modular degree, congruence number, and congruence exponent.
 - [ ] Tamagawa and component-group data for newform quotients.

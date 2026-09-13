@@ -75,6 +75,7 @@ def _polynomial_at_matrix(polynomial: Any, operator: Any) -> Any:
     degree = polynomial.degree()
     if degree <= 4:
         return polynomial(operator)
+    coefficients = polynomial.list()
     step = 1
     while step * step < degree + 1:
         step += 1
@@ -85,8 +86,8 @@ def _polynomial_at_matrix(polynomial: Any, operator: Any) -> Any:
     result = None
     for block_index in range(degree // step, -1, -1):
         block = _zero_matrix(sage.QQ, size, size)
-        for index in range(step):
-            coefficient = polynomial[block_index * step + index]
+        for index in range(min(step, degree + 1 - block_index * step)):
+            coefficient = coefficients[block_index * step + index]
             if coefficient != 0:
                 block += coefficient * powers[index]
         result = block if result is None else result * powers[step] + block
@@ -573,6 +574,16 @@ class ModularAbelianVariety(sage.Parent):
     def hecke_morphism(self, index: Any) -> Any:
         index = _positive_integer(index, "Hecke index")
         return _create_map(self, self, self.hecke_matrix(index), ("hecke", index))
+
+    def Hom(self, codomain: Any) -> Any:
+        """Return the complete integral Hom group over QQ."""
+        from sagejs.modular_abelian_varieties.homspace import Hom
+
+        return Hom(self, codomain)
+
+    def endomorphism_ring(self) -> Any:
+        """Return the full integral endomorphism order over QQ."""
+        return self.Hom(self)
 
     def hom(self, matrix: Any, codomain: Any = None, generators: Any = None) -> Any:
         if codomain is None:

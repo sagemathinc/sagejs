@@ -121,6 +121,28 @@ def _modular_abelian_variety_module() -> Any:
     return _modular_abelian_variety_module_cache
 
 
+def Hom(domain: Any, codomain: Any) -> Any:
+    """Return the complete integral Hom group of modular abelian varieties over QQ.
+
+    ```sage
+    sage: Hom(J0(11), J0(22)).rank()
+    2
+    ```
+    """
+    return _modular_abelian_variety_module().Hom(domain, codomain)
+
+
+def End(variety: Any) -> Any:
+    """Return the full endomorphism order of a modular abelian variety over QQ.
+
+    ```sage
+    sage: End(J0(23)).rank()
+    2
+    ```
+    """
+    return _modular_abelian_variety_module().End(variety)
+
+
 def J0(N: Any) -> Any:
     r"""Return the modular Jacobian $J_0(N)$ over $\mathbf Q$.
 
@@ -7299,6 +7321,45 @@ runtime.register_doc(
                 "Full-Jacobian component groups are implemented; newform-quotient "
                 "groups await audited integral modular-degree maps."
             ),
+        ],
+    },
+)
+
+runtime.register_doc(
+    "Hom",
+    Hom,
+    {
+        "kind": "function",
+        "module": "sage.modular.abvar.homspace",
+        "tags": ["modular abelian varieties", "homomorphisms", "integral homology"],
+        "backends": [
+            "Sage.js exact newform decomposition",
+            "FLINT integral saturation",
+        ],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": "Complete Hom over QQ for the supported weight-two Gamma0 varieties.",
+        },
+        "limitations": [
+            "Only supported modular abelian varieties over QQ; not a generic categorical Hom constructor."
+        ],
+    },
+)
+
+runtime.register_doc(
+    "End",
+    End,
+    {
+        "kind": "function",
+        "module": "sage.modular.abvar.homspace",
+        "tags": ["modular abelian varieties", "endomorphism rings"],
+        "backends": ["Sage.js complete integral Hom lattice"],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": "Full endomorphism order over QQ, including repeated factors and integral gluing.",
+        },
+        "limitations": [
+            "Does not compute geometric endomorphisms over an algebraic closure."
         ],
     },
 )

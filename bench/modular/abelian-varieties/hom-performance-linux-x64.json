@@ -1,0 +1,156 @@
+{
+  "revision": "72abdc6a1402587dd59db8eb39a8589a69a83732",
+  "date": "2026-09-13T19:09:10.069Z",
+  "artifact": "sha256:2900d3d8d32d0453da704cdc2f622c74b08b6da6753d996356eb5b1b69e7d6a5",
+  "host": {
+    "cpu": "AMD EPYC 7B13",
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.8.1"
+  },
+  "sourceSha256": {
+    "src/baselib/modular.py": "099e10f20e64cc9ecc4daa002f5e7883d2b76513cebfea7c28e4ac06c7951866",
+    "src/lib/sagejs/modular_abelian_varieties/__init__.py": "889924b0ee0f1a99865d93ae718639a3b5f6e19b9cef2d4ad271aecae2609c98",
+    "src/lib/sagejs/modular_abelian_varieties/abelian_variety.py": "e1e955449af4e71b8e693c7c6d87d6267593e77b4bd2871c8a8b4fd90abbb9ae",
+    "src/lib/sagejs/modular_abelian_varieties/lattices.py": "b5a2c3a6eb3f2b62fe2f1ab1922e6925adaf66e658675d30c286fda2521acef8",
+    "src/lib/sagejs/modular_abelian_varieties/morphisms.py": "70cb182a15ab5db3dfd50788da8e033949890c86caf2cf2d3c7077d355f749b4",
+    "src/lib/sagejs/modular_abelian_varieties/products.py": "59cefa90f29d013c53775d0126f9632cfc9b110743520bf3bf0b9d036931a766",
+    "src/lib/sagejs/modular_abelian_varieties/degeneracy.py": "cecf56ff1884889f1e9031202aede1029bb97a8aef50c637045cc1db080aaa81",
+    "src/lib/sagejs/modular_abelian_varieties/homspace.py": "e7c55754fd1545915113ddf8b9b1b22b4a238b20c79fc13e7cee30da887c810e",
+    "bench/modular/abelian-varieties/hom-performance.cjs": "7cb708b8e619ea34e081fd5a588407efcfcae8a6d0808b7c15db9cd00f7722c6",
+    "bench/modular/abelian-varieties/hom-performance.py": "c1bb7ce82953b9ca140081e22495d9163a074d684df53615bb6f9beab68db6c2",
+    "bench/modular/abelian-varieties/hom-performance-sage.py": "6eee5342f4240b5bd5fb96b8be37809b7bda2ae760d3dad9494456af066d3546"
+  },
+  "policy": "Sequential fresh processes, startup excluded, no mathematical warmup. Force complete End(J0(N)).gens(). Independent exact Sage lattice comparison outside timer. Shared host, no concurrent owned builds/tests. Local observations, not four-platform performance qualification.",
+  "samples": 3,
+  "results": [
+    {
+      "sample": 0,
+      "system": "Sage",
+      "version": "10.9.post1",
+      "level": 101,
+      "dimension": 8,
+      "rank": 8,
+      "seconds": 1.6717527440050617,
+      "oracleSha256": "182c03ef3d7a0bf4aee266835246572e612e86898fcdff5b8aeb652918491584"
+    },
+    {
+      "system": "Sage.js/native",
+      "level": 101,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "oracleSha256": "182c03ef3d7a0bf4aee266835246572e612e86898fcdff5b8aeb652918491584",
+      "record": {
+        "level": 101,
+        "dimension": 8,
+        "rank": 8,
+        "seconds": 0.5391504764556885,
+        "exact_sage_lattice": true
+      }
+    },
+    {
+      "system": "Sage.js/wasm",
+      "level": 101,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "oracleSha256": "182c03ef3d7a0bf4aee266835246572e612e86898fcdff5b8aeb652918491584",
+      "record": {
+        "level": 101,
+        "dimension": 8,
+        "rank": 8,
+        "seconds": 0.5131843090057373,
+        "exact_sage_lattice": true
+      }
+    },
+    {
+      "sample": 1,
+      "system": "Sage",
+      "version": "10.9.post1",
+      "level": 101,
+      "dimension": 8,
+      "rank": 8,
+      "seconds": 1.5901520540355705,
+      "oracleSha256": "182c03ef3d7a0bf4aee266835246572e612e86898fcdff5b8aeb652918491584"
+    },
+    {
+      "system": "Sage.js/native",
+      "level": 101,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "oracleSha256": "182c03ef3d7a0bf4aee266835246572e612e86898fcdff5b8aeb652918491584",
+      "record": {
+        "level": 101,
+        "dimension": 8,
+        "rank": 8,
+        "seconds": 0.5531761646270752,
+        "exact_sage_lattice": true
+      }
+    },
+    {
+      "system": "Sage.js/wasm",
+      "level": 101,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "oracleSha256": "182c03ef3d7a0bf4aee266835246572e612e86898fcdff5b8aeb652918491584",
+      "record": {
+        "level": 101,
+        "dimension": 8,
+        "rank": 8,
+        "seconds": 0.5310139656066895,
+        "exact_sage_lattice": true
+      }
+    },
+    {
+      "sample": 2,
+      "system": "Sage",
+      "version": "10.9.post1",
+      "level": 101,
+      "dimension": 8,
+      "rank": 8,
+      "seconds": 1.597561412025243,
+      "oracleSha256": "182c03ef3d7a0bf4aee266835246572e612e86898fcdff5b8aeb652918491584"
+    },
+    {
+      "system": "Sage.js/native",
+      "level": 101,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "oracleSha256": "182c03ef3d7a0bf4aee266835246572e612e86898fcdff5b8aeb652918491584",
+      "record": {
+        "level": 101,
+        "dimension": 8,
+        "rank": 8,
+        "seconds": 0.5012569427490234,
+        "exact_sage_lattice": true
+      }
+    },
+    {
+      "system": "Sage.js/wasm",
+      "level": 101,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "oracleSha256": "182c03ef3d7a0bf4aee266835246572e612e86898fcdff5b8aeb652918491584",
+      "record": {
+        "level": 101,
+        "dimension": 8,
+        "rank": 8,
+        "seconds": 0.5380923748016357,
+        "exact_sage_lattice": true
+      }
+    },
+    {
+      "system": "Sage",
+      "level": 242,
+      "sample": 0,
+      "status": null,
+      "signal": "SIGTERM",
+      "error": ""
+    }
+  ]
+}
