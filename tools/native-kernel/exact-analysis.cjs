@@ -25,6 +25,7 @@ function operationInputs(operation) {
     case "integer.truth":
     case "integer.round_sqrt":
     case "uint64.from_integer_checked":
+    case "float64.from_integer_checked":
     case "bool.not":
     case "uint64.truth":
     case "value.discard":
@@ -34,10 +35,12 @@ function operationInputs(operation) {
     case "integer.mod_uint64":
       return [operation.left, operation.right];
     case "integer.binary":
+    case "float64.binary":
     case "uint64.binary":
     case "integer.divmod":
     case "integer.compare":
     case "uint64.compare":
+    case "float64.compare":
     case "bool.compare":
     case "bool.binary":
       return [operation.left, operation.right];
@@ -68,6 +71,17 @@ function operationInputs(operation) {
     case "uint64.buffer.get":
       return [operation.buffer, operation.index];
     case "uint64.buffer.set":
+      return [operation.buffer, operation.index, operation.value];
+    case "float64.copy":
+    case "float64.negate":
+      return [operation.source];
+    case "float64.buffer.copy":
+      return [operation.source];
+    case "float64.buffer.length":
+      return [operation.buffer];
+    case "float64.buffer.get":
+      return [operation.buffer, operation.index];
+    case "float64.buffer.set":
       return [operation.buffer, operation.index, operation.value];
     case "integer.vector.scope":
       return [operation.capacity, operation.memoryLimit];
@@ -588,6 +602,13 @@ function localEffects(fn) {
       if (operation.kind === "uint64.from_integer_checked") {
         mayRaise.add("OverflowError");
       }
+      if (operation.kind === "float64.from_integer_checked") {
+        mayRaise.add("OverflowError");
+      }
+      if (operation.kind === "float64.binary" &&
+          operation.operation === "div") {
+        mayRaise.add("ZeroDivisionError");
+      }
       if (operation.kind === "integer.round_sqrt") {
         mayRaise.add("ValueError");
         mayRaise.add("OverflowError");
@@ -602,7 +623,9 @@ function localEffects(fn) {
         operation.kind === "integer.buffer.get" ||
         operation.kind === "integer.buffer.set" ||
         operation.kind === "uint64.buffer.get" ||
-        operation.kind === "uint64.buffer.set"
+        operation.kind === "uint64.buffer.set" ||
+        operation.kind === "float64.buffer.get" ||
+        operation.kind === "float64.buffer.set"
       ) {
         mayRaise.add("IndexError");
       }
@@ -704,7 +727,7 @@ function localEffects(fn) {
 function bufferWrites(fn, dependencyEffects) {
   const bufferTypes = new Set([
     "IntegerBuffer", "Int64Buffer", "Int64Record", "UInt64Buffer",
-    "NativeIntegerVector",
+    "Float64Buffer", "NativeIntegerVector",
   ]);
   const aliases = new Map(
     fn.params
@@ -727,13 +750,15 @@ function bufferWrites(fn, dependencyEffects) {
     for (const statement of statements) {
       if (statement.kind === "int64.buffer.copy" ||
           statement.kind === "integer.buffer.copy" ||
-          statement.kind === "uint64.buffer.copy") {
+          statement.kind === "uint64.buffer.copy" ||
+          statement.kind === "float64.buffer.copy") {
         changed = addAlias(statement.target, roots(statement.source)) || changed;
       } else if (statement.kind === "int64.record.view") {
         changed = addAlias(statement.target, roots(statement.buffer)) || changed;
       } else if (statement.kind === "int64.buffer.set" ||
           statement.kind === "integer.buffer.set" ||
-          statement.kind === "uint64.buffer.set") {
+          statement.kind === "uint64.buffer.set" ||
+          statement.kind === "float64.buffer.set") {
         for (const root of roots(statement.buffer)) writes.add(root);
       } else if (statement.kind === "integer.vector.set" ||
           statement.kind === "integer.vector.addmul" ||
@@ -1433,6 +1458,14 @@ function analyzeExactModule(functions) {
       dependencyDepth: dependencyDepth(fn.name),
     };
     let backend = backendPolicy(fn, profile, recursive.has(fn.name));
+    if ([...fn.params, ...fn.locals].some((value) =>
+      value.type === "Float64" || value.type === "Float64Buffer"
+    )) {
+      backend = {
+        kind: "gmp",
+        reason: "mixed exact and Float64 scheduling requires the exact core",
+      };
+    }
     if (
       profile.rangeLoops > 0 &&
       !["gmp", "integer-buffer-values"].includes(backend.kind)

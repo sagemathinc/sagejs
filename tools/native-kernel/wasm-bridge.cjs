@@ -269,9 +269,10 @@ function parameterBridge(parameter, ir, fn) {
         type: parameter.type,
         ...(parameter.type === "Float64Buffer"
           ? {
-            mutable: (fn.analysis?.effects?.mutates ?? []).includes(
-              parameter.name,
-            ),
+            mutable: [
+              ...(fn.analysis?.effects?.mutates ?? []),
+              ...(fn.analysis?.effects?.externalWrites ?? []),
+            ].includes(parameter.name),
           }
           : {}),
       },

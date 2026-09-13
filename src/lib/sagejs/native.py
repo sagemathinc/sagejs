@@ -84,6 +84,23 @@ def checked_uint64(value: int) -> uint64:
     return exact
 
 
+def checked_float64(value: int) -> float:
+    """Return an exactly represented binary64 integer.
+
+    This is the explicit bridge from exact arithmetic into an approximate
+    scheduling sidecar.  The dynamic fallback and compiled program both raise
+    `OverflowError` unless `abs(value) <= 2^53`, the consecutive-integer range
+    in which IEEE-754 binary64 represents every integer exactly.
+
+    The result is suitable for heuristics and scheduling.  It must not replace
+    exact state used to authenticate a mathematical result.
+    """
+    exact = int(value)
+    if abs(exact) > (1 << 53):
+        raise OverflowError("integer is outside exact binary64 range")
+    return float(exact)
+
+
 class _NativeExactBudget:
     """Shared deterministic semantic-memory budget for portable exact owners."""
 
@@ -1623,6 +1640,7 @@ __all__ = [
     "RationalBuffer",
     "UInt64Buffer",
     "uint64",
+    "checked_float64",
     "checked_uint64",
     "float64_buffer",
     "float64_record",
