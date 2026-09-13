@@ -1,6 +1,11 @@
 # Faithful PARI class-group language experiment
 
 Status: ownership approved; mixed-buffer prerequisite integrated experimentally.
+The user subsequently approved additional reasonably justified compiler changes
+on this experimental branch. The original one-correction count is superseded;
+the experiment's time/compute budgets and faithful-work criteria are unchanged.
+The prepared-field ingress correction is in progress in the prerequisite
+worktree; later historical references to awaiting permission are resolved.
 No class-group or performance result is claimed. Earlier obstruction evidence
 below is retained as history, not the current ownership state.
 
