@@ -1,0 +1,781 @@
+{
+  "schema": 1,
+  "experiment": "pari-class-group-language-port",
+  "target_pari_version": "2.17.4",
+  "frozen_before_translation_tuning": true,
+  "source_artifacts": [
+    {
+      "path": "smoke90-v1/frozen/coverage.jsonl",
+      "sha256": "b53a7084f53c7dd6cb6911423daacb7f2103fb6cb075f13da2534eb0aa62f948"
+    },
+    {
+      "path": "performance-historical360-v1/repeat-cost-planning-v5.json",
+      "sha256": "279377571724af5d3a1b6a8a4c662ff710c077d3f510789e021d0b25dcd41ec8"
+    }
+  ],
+  "reference_data_status": "Existing source metadata, not independently certified by this panel. PARI 2.15.4 timings are selection-only historical discovery costs, not PARI 2.17.4 or prepared-field/segment baselines.",
+  "counts": {
+    "fields": 24,
+    "tuning": 16,
+    "final_reserve": 8,
+    "known_nontrivial_class_groups": 16,
+    "known_noncyclic_class_groups": 6,
+    "known_nontrivial_equation_indices": 8,
+    "historical_pari_above_1_second": 11,
+    "historical_pari_above_10_seconds": 6,
+    "historical_pari_timing_missing": 2
+  },
+  "rows": [
+    {
+      "id": "generated-sha256-0e970fdb1b4f043d042bd6093172638086e293ad03749215f71f7510a6622ba0",
+      "stratum": "real-cubic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "20034",
+        "-20018",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 3,
+      "signature": [
+        3,
+        0
+      ],
+      "unit_rank": 2,
+      "discriminant": "32075641032116",
+      "equation_order_index": "1",
+      "reference_class_number": "1",
+      "reference_class_invariants": [],
+      "polynomial_sha256": "2d0fa668fad6c929a71eabdee7ebfb7acc1938307a41d4c1b49847cc99c7964d",
+      "coverage_line_sha256": "92fb3125bb28f526519132112e5ec7c651a04c344095d8e050a015cf567f3091",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "0.012",
+      "historical_timing_source": "generated56-independent-review-v1/paired.json"
+    },
+    {
+      "id": "generated-sha256-dec56e7e41f5f60071249da2e66871ed837a3c6e65d821c328e7b4c57adaff3f",
+      "stratum": "real-cubic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "20018",
+        "-20010",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 3,
+      "signature": [
+        3,
+        0
+      ],
+      "unit_rank": 2,
+      "discriminant": "3559689395028",
+      "equation_order_index": "3",
+      "reference_class_number": "3",
+      "reference_class_invariants": [
+        "3"
+      ],
+      "polynomial_sha256": "394cce5d99f0e9f8ba49a12e1542ff41f36c98b535a4535071414a575ded95ba",
+      "coverage_line_sha256": "4af0db9cf4e567e1dba28acf42fe62088513cd7ce175c6676f1e5d3142bd29d0",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "0.01",
+      "historical_timing_source": "generated56-independent-review-v1/paired.json"
+    },
+    {
+      "id": "generated-sha256-161e86ff30182c7d5299b4ec5c331b7be0b2b85a89e90c8d404c9835d0fa7bd4",
+      "stratum": "real-cubic",
+      "phase": "final-reserve",
+      "original_role": "development",
+      "coefficients": [
+        "2000042",
+        "-2000022",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 3,
+      "signature": [
+        3,
+        0
+      ],
+      "unit_rank": 2,
+      "discriminant": "32000948007079994964",
+      "equation_order_index": "1",
+      "reference_class_number": "2",
+      "reference_class_invariants": [
+        "2"
+      ],
+      "polynomial_sha256": "0d014757c8f82819649ab1e24ee36fcd880e30dc8e292e3d0fa2d40397460597",
+      "coverage_line_sha256": "6e868a01e0c82cadcded491e1dd055f5dac35b41ae980b16024341b902f00095",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "0.189",
+      "historical_timing_source": "generated56-independent-review-v1/paired.json"
+    },
+    {
+      "id": "generated-sha256-11997528676ebeb1c0636be2cb828b5ed5a527ea18eb3a4ace953984da507de9",
+      "stratum": "real-cubic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "20000000042",
+        "-20000000022",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 3,
+      "signature": [
+        3,
+        0
+      ],
+      "unit_rank": 2,
+      "discriminant": "32000000094800000070799999994964",
+      "equation_order_index": "1",
+      "reference_class_number": "6",
+      "reference_class_invariants": [
+        "6"
+      ],
+      "polynomial_sha256": "aae73048ee765ce38148539a3abf01dac43ab04427126dae8295211d684d4d15",
+      "coverage_line_sha256": "eaf5a8dd01fb78f61eb13eab50a32be73f4ad4783c18e1942e546b0a619cac1e",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "3.792",
+      "historical_timing_source": "generated56-independent-review-v1/paired.json"
+    },
+    {
+      "id": "generated-sha256-806defcf929c9cfff7467b8e7ea7b9f939cdd042bce8c1f5a310f5688904e3b9",
+      "stratum": "real-cubic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "20000000018",
+        "-20000000010",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 3,
+      "signature": [
+        3,
+        0
+      ],
+      "unit_rank": 2,
+      "discriminant": "3555555559688888889395555555028",
+      "equation_order_index": "3",
+      "reference_class_number": "2",
+      "reference_class_invariants": [
+        "2"
+      ],
+      "polynomial_sha256": "beb19c9584069e8397f9b1d5ddb6d87965aabcc0c788003ea106f3a2f0f566e6",
+      "coverage_line_sha256": "67d82fc15921de095905c200906ad9b79c9624ae887b86268dc6076f840a3848",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "2.951",
+      "historical_timing_source": "generated56-independent-review-v1/paired.json"
+    },
+    {
+      "id": "generated-sha256-48965d7e00bbf7b4d3b5a2062acecf0e71e7567caee431694b53ddfe1e97546e",
+      "stratum": "real-cubic",
+      "phase": "final-reserve",
+      "original_role": "development",
+      "coefficients": [
+        "2000000000026",
+        "-2000000000014",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 3,
+      "signature": [
+        3,
+        0
+      ],
+      "unit_rank": 2,
+      "discriminant": "32000000000564000000001895999999992724",
+      "equation_order_index": "1",
+      "reference_class_number": "2",
+      "reference_class_invariants": [
+        "2"
+      ],
+      "polynomial_sha256": "ab9ff8ae98fa3bb40bda6fa04afa998abe80cfcc6d64104341081a8073843587",
+      "coverage_line_sha256": "d389ef95eb23a8add63f6c2332f499dfb36940bb38c495656fec663aa0152f67",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "10.379",
+      "historical_timing_source": "performance-later17-recovery-v1/reconciliation.json"
+    },
+    {
+      "id": "generated-sha256-55ba15494f03f38bf8f687ff4d2813e81184d71c84dbed9e1adc6af7ba62f0eb",
+      "stratum": "real-cubic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "2000000000018",
+        "-2000000000010",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 3,
+      "signature": [
+        3,
+        0
+      ],
+      "unit_rank": 2,
+      "discriminant": "3555555555596888888888939555555555028",
+      "equation_order_index": "3",
+      "reference_class_number": "4",
+      "reference_class_invariants": [
+        "2",
+        "2"
+      ],
+      "polynomial_sha256": "26fed17015f6479f2de7a3544d8e2ac9ef41ec899b18193d997489a0aeafa416",
+      "coverage_line_sha256": "b89bfd4e1d1c004992118c4b83431703507e89f2dc5011ff6d0d5050592196f1",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "21.378",
+      "historical_timing_source": "performance-later17-recovery-v1/reconciliation.json"
+    },
+    {
+      "id": "generated-sha256-f3f2eb89c60b3e0365ba9e661565794fcf0e6d8b53ffa0bc3fb148e83f276cec",
+      "stratum": "real-cubic",
+      "phase": "final-reserve",
+      "original_role": "development",
+      "coefficients": [
+        "2000000000034",
+        "-2000000000018",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 3,
+      "signature": [
+        3,
+        0
+      ],
+      "unit_rank": 2,
+      "discriminant": "264462809923603305785157884297520596",
+      "equation_order_index": "11",
+      "reference_class_number": "1",
+      "reference_class_invariants": [],
+      "polynomial_sha256": "621aa60ad0bc6915ec22b69ea04ed5b169e8c68fd7dd79d1be66255c74b4144d",
+      "coverage_line_sha256": "9315a5dcaae3819c51d51d110a0c543d7c9e86d95667ffbaa0f06dee27dbb7c4",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "15.678",
+      "historical_timing_source": "performance-later17-recovery-v1/reconciliation.json"
+    },
+    {
+      "id": "generated-sha256-0857fab7114ab0045f1b91601101549c7b8d854c5c999b91afcb190cd2863363",
+      "stratum": "mixed-quartic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "-20034",
+        "-20018",
+        "0",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 4,
+      "signature": [
+        2,
+        1
+      ],
+      "unit_rank": 2,
+      "discriminant": "-4337631470366176176",
+      "equation_order_index": "1",
+      "reference_class_number": "1",
+      "reference_class_invariants": [],
+      "polynomial_sha256": "4184b3a9e86b3cc2f80a3dcaa593cba175263954c0e914b9cc6feaf68e9b0f52",
+      "coverage_line_sha256": "ca605dc78ee998577dec4e6967267f45507265864449143f029fb7791255fec4",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "0.062",
+      "historical_timing_source": "generated56-independent-review-v1/paired.json"
+    },
+    {
+      "id": "generated-sha256-633202c4cc0e933c42eb3c81009c4914778ef5c21098ca35c9a21f9858dc371a",
+      "stratum": "mixed-quartic",
+      "phase": "final-reserve",
+      "original_role": "development",
+      "coefficients": [
+        "-20042",
+        "-20022",
+        "0",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 4,
+      "signature": [
+        2,
+        1
+      ],
+      "unit_rank": 2,
+      "discriminant": "-4341100315720011440",
+      "equation_order_index": "1",
+      "reference_class_number": "3",
+      "reference_class_invariants": [
+        "3"
+      ],
+      "polynomial_sha256": "ba8d8d41e2d4ea52e0ee994890046bbd84ead8e4c1338dd4659c008f20523910",
+      "coverage_line_sha256": "fd18ae78c785845df73250fcf56a2b491f3c686f483a76b9b4f7a677e31d6b26",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "0.058",
+      "historical_timing_source": "generated56-independent-review-v1/paired.json"
+    },
+    {
+      "id": "generated-sha256-984793770b4a15a79fbc9984fe352fbc867491917733c78bdba3b1856c18e3a7",
+      "stratum": "mixed-quartic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "-2000042",
+        "-2000022",
+        "0",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 4,
+      "signature": [
+        2,
+        1
+      ],
+      "unit_rank": 2,
+      "discriminant": "-315574182938393724979760",
+      "equation_order_index": "37",
+      "reference_class_number": "4",
+      "reference_class_invariants": [
+        "2",
+        "2"
+      ],
+      "polynomial_sha256": "205cea0cc9446e959892f4b3cd8dd5e53ff37ae4fd43d335974bffaf3c92ec7a",
+      "coverage_line_sha256": "0dea767e8538dc25abd830dca8bb908ee24f627e026c051df910182544e6504c",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "0.544",
+      "historical_timing_source": "generated56-independent-review-v1/paired.json"
+    },
+    {
+      "id": "generated-sha256-147ddd296edb3764954d6142a499d17edcfecc635aec0181d4beda65d97ad4ab",
+      "stratum": "mixed-quartic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "-2000018",
+        "-2000010",
+        "0",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 4,
+      "signature": [
+        2,
+        1
+      ],
+      "unit_rank": 2,
+      "discriminant": "-432010688120096713665762992",
+      "equation_order_index": "1",
+      "reference_class_number": "4",
+      "reference_class_invariants": [
+        "2",
+        "2"
+      ],
+      "polynomial_sha256": "ce2bfa61425aa6816f76d5d4f48e7568a7cca85e7ae408e6ec3cb423cf353b07",
+      "coverage_line_sha256": "c86091cad32786af88b1ff2a0a4e61cf67ed82c394a641b86f05a9d4f207dc5d",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "1.472",
+      "historical_timing_source": "generated56-independent-review-v1/paired.json"
+    },
+    {
+      "id": "generated-sha256-51c7daac6a41a40a21fa1ce0e96dd833b46eb2024c4632c5e09f2066260f9765",
+      "stratum": "mixed-quartic",
+      "phase": "final-reserve",
+      "original_role": "development",
+      "coefficients": [
+        "-200000026",
+        "-200000014",
+        "0",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 4,
+      "signature": [
+        2,
+        1
+      ],
+      "unit_rank": 2,
+      "discriminant": "-357024910281008833059199206657328",
+      "equation_order_index": "11",
+      "reference_class_number": "1",
+      "reference_class_invariants": [],
+      "polynomial_sha256": "2cbecd559bb18cbad01cc4242029430793c7ce2aa780cc66fc5c0c9def1e8d01",
+      "coverage_line_sha256": "9740a7094c0f4699b4882c9fc814cb4c0fcafd94b2134247513ec6979fea0930",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "5.571",
+      "historical_timing_source": "generated56-independent-review-v1/paired.json"
+    },
+    {
+      "id": "generated-sha256-353468f1887e96f5a2f66e3121564636ed8cdbd75bde6571609627bbe8586e33",
+      "stratum": "mixed-quartic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "-20000000010",
+        "-20000000006",
+        "0",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 4,
+      "signature": [
+        2,
+        1
+      ],
+      "unit_rank": 2,
+      "discriminant": "-4320000007232000005404800002002560000290992",
+      "equation_order_index": "1",
+      "reference_class_number": "2",
+      "reference_class_invariants": [
+        "2"
+      ],
+      "polynomial_sha256": "a0f7253a51b3045aa02d82f0846e4caa390b93ef159b8c1713245f5793d1e06c",
+      "coverage_line_sha256": "dc758d45a2d1ada4c8c3415b02fcbaad84dd2b2fd0b032e8eb6f91d0a9a5e01c",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "20.631",
+      "historical_timing_source": "performance-later17-recovery-v1/reconciliation.json"
+    },
+    {
+      "id": "generated-sha256-e1d4643ab62bde9546d63340545e5302c2cef517222d569e634fb5e2093f6413",
+      "stratum": "mixed-quartic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "-200000002",
+        "-200000002",
+        "0",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 4,
+      "signature": [
+        2,
+        1
+      ],
+      "unit_rank": 2,
+      "discriminant": "-43200003776000087360000787200002480",
+      "equation_order_index": "1",
+      "reference_class_number": "192",
+      "reference_class_invariants": [
+        "8",
+        "24"
+      ],
+      "polynomial_sha256": "aa0aa6152d8cf26cfe21b9f0b2e8c25aadb5cd00161a0ca3cf4d81d92df2ea20",
+      "coverage_line_sha256": "676d1a08281e058b1a7b972eb57a3b4e85dc3aa10ca72e0e545ecdb1a1233f70",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "11.248",
+      "historical_timing_source": "performance-later17-recovery-v1/reconciliation.json"
+    },
+    {
+      "id": "generated-sha256-31944147dd7c5dd0e8206e08fa6a39344c10a27482162a921eb56cd259bb6a81",
+      "stratum": "mixed-quartic",
+      "phase": "final-reserve",
+      "original_role": "development",
+      "coefficients": [
+        "-20000000026",
+        "-20000000014",
+        "0",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 4,
+      "signature": [
+        2,
+        1
+      ],
+      "unit_rank": 2,
+      "discriminant": "-4320000014144000020688000016310400005536688",
+      "equation_order_index": "1",
+      "reference_class_number": "1",
+      "reference_class_invariants": [],
+      "polynomial_sha256": "91675db820fade46982fc33edcf7ca7a376b1bd00706040a2e9390bd8bc47f42",
+      "coverage_line_sha256": "5aed01e2ae3f0bef757f0d4aa1c42fbc9e2719a6f3bfd16a30433da4b205f492",
+      "source": "generated",
+      "source_url": null,
+      "historical_pari_2_15_4_seconds": "31.729",
+      "historical_timing_source": "performance-later17-recovery-v1/reconciliation.json"
+    },
+    {
+      "id": "3.1.1002718428660.2",
+      "stratum": "complex-cubic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "-73393658",
+        "-146523",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 3,
+      "signature": [
+        1,
+        1
+      ],
+      "unit_rank": 1,
+      "discriminant": "-1002718428660",
+      "equation_order_index": "1",
+      "reference_class_number": "27",
+      "reference_class_invariants": [
+        "3",
+        "3",
+        "3"
+      ],
+      "polynomial_sha256": "aabb93f0d6139f9397586e148a87f5444f7da173ef7d1aabc0c8fae15705cf56",
+      "coverage_line_sha256": "6194968ec26acbfdd745cf9a553b0a1ca150db98ea708600fe1993362ec67ebd",
+      "source": "LMFDB",
+      "source_url": "https://www.lmfdb.org/NumberField/3.1.1002718428660.2",
+      "historical_pari_2_15_4_seconds": "0.012",
+      "historical_timing_source": "paired-coverage-discovery-v1.json"
+    },
+    {
+      "id": "3.1.1003588962376.2",
+      "stratum": "complex-cubic",
+      "phase": "final-reserve",
+      "original_role": "development",
+      "coefficients": [
+        "-3310582",
+        "61567",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 3,
+      "signature": [
+        1,
+        1
+      ],
+      "unit_rank": 1,
+      "discriminant": "-1003588962376",
+      "equation_order_index": "1",
+      "reference_class_number": "3",
+      "reference_class_invariants": [
+        "3"
+      ],
+      "polynomial_sha256": "18bae64d0f496e0e0f3857b99c46a6dd98a1cc50284ce74c4d5c418e241654f6",
+      "coverage_line_sha256": "053c8183889a69dc9c579f9b1c2fd0859ffecd2e6fbb2ef3f05e42032742ef6c",
+      "source": "LMFDB",
+      "source_url": "https://www.lmfdb.org/NumberField/3.1.1003588962376.2",
+      "historical_pari_2_15_4_seconds": "0.007",
+      "historical_timing_source": "paired-coverage-discovery-v1.json"
+    },
+    {
+      "id": "3.1.1005907102200.3",
+      "stratum": "complex-cubic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "-7353960",
+        "177570",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 3,
+      "signature": [
+        1,
+        1
+      ],
+      "unit_rank": 1,
+      "discriminant": "-1005907102200",
+      "equation_order_index": "1",
+      "reference_class_number": "18",
+      "reference_class_invariants": [
+        "18"
+      ],
+      "polynomial_sha256": "d48b43b95d82e5e127e939b4625aedac5bbb1f927c9b92e19c583c51c0901c6e",
+      "coverage_line_sha256": "b55a838e5f043244e4ebdbe394b7f26a5799a6486e6693ea9c2b63cb064705a3",
+      "source": "LMFDB",
+      "source_url": "https://www.lmfdb.org/NumberField/3.1.1005907102200.3",
+      "historical_pari_2_15_4_seconds": "0.006",
+      "historical_timing_source": "reference-panel-fill98-reconciliation-v1/paired.json"
+    },
+    {
+      "id": "3.1.1086061775432017340256300.107",
+      "stratum": "complex-cubic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "-51050867718180330",
+        "0",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 3,
+      "signature": [
+        1,
+        1
+      ],
+      "unit_rank": 1,
+      "discriminant": "-1086061775432017340256300",
+      "equation_order_index": "1",
+      "reference_class_number": null,
+      "reference_class_invariants": null,
+      "polynomial_sha256": "0aab4dadcd4bc7c70dcb017b9f584154d6fd1d98500e7951c71ace3efa5e81db",
+      "coverage_line_sha256": "b950886dc24329fd8b65b863a6263d0ecb0e9cc8e2648aeaed52362442169ab5",
+      "source": "LMFDB",
+      "source_url": "https://www.lmfdb.org/NumberField/3.1.1086061775432017340256300.107",
+      "historical_pari_2_15_4_seconds": "1.429",
+      "historical_timing_source": "paired-coverage-discovery-v1.json"
+    },
+    {
+      "id": "5.1.1000000.1",
+      "stratum": "quintic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "-12",
+        "-5",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 5,
+      "signature": [
+        1,
+        2
+      ],
+      "unit_rank": 2,
+      "discriminant": "1000000",
+      "equation_order_index": "4",
+      "reference_class_number": "1",
+      "reference_class_invariants": [],
+      "polynomial_sha256": "36db16a4e174ca1a24dc16439e97c3660cb5135b378dcd3c2e86e438fb3bee11",
+      "coverage_line_sha256": "8974ae818d3fbd5552e32befd76f7f5d1e11798bb3a696d435039f28e2aa0cf7",
+      "source": "LMFDB",
+      "source_url": "https://www.lmfdb.org/NumberField/5.1.1000000.1",
+      "historical_pari_2_15_4_seconds": "0.004",
+      "historical_timing_source": "reference-panel-fill98-reconciliation-v1/paired.json"
+    },
+    {
+      "id": "5.3.1009349859375.3",
+      "stratum": "quintic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "36",
+        "930",
+        "-305",
+        "-90",
+        "0",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 5,
+      "signature": [
+        3,
+        1
+      ],
+      "unit_rank": 3,
+      "discriminant": "-1009349859375",
+      "equation_order_index": "2",
+      "reference_class_number": "1",
+      "reference_class_invariants": [],
+      "polynomial_sha256": "6966124ec38a3af183ec7fa9d6cc4f376ef36aa0ba716eeff92bcba0bf7a64bb",
+      "coverage_line_sha256": "6887ed470ade7f7d4543cfeae1e7e9401f076acc0bd8c8288f68cabcf56c6201",
+      "source": "LMFDB",
+      "source_url": "https://www.lmfdb.org/NumberField/5.3.1009349859375.3",
+      "historical_pari_2_15_4_seconds": "0.009",
+      "historical_timing_source": "reference-panel-fill98-reconciliation-v1/paired.json"
+    },
+    {
+      "id": "5.3.1007401641867.2",
+      "stratum": "quintic",
+      "phase": "final-reserve",
+      "original_role": "development",
+      "coefficients": [
+        "-2733",
+        "-139",
+        "44",
+        "-48",
+        "-2",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 5,
+      "signature": [
+        3,
+        1
+      ],
+      "unit_rank": 3,
+      "discriminant": "-1007401641867",
+      "equation_order_index": "1",
+      "reference_class_number": "20",
+      "reference_class_invariants": [
+        "2",
+        "10"
+      ],
+      "polynomial_sha256": "846591023aee2abbc5dd4b39eea03a8deac062f027ad45f9888b1d642e6580b3",
+      "coverage_line_sha256": "a9b43417db62bcc2d50e6157d9ea3ed56bd006572a3d1b252dcda2649c44ff51",
+      "source": "LMFDB",
+      "source_url": "https://www.lmfdb.org/NumberField/5.3.1007401641867.2",
+      "historical_pari_2_15_4_seconds": null,
+      "historical_timing_source": null
+    },
+    {
+      "id": "5.5.1002836007889.1",
+      "stratum": "quintic",
+      "phase": "tuning",
+      "original_role": "development",
+      "coefficients": [
+        "341",
+        "-970",
+        "772",
+        "-141",
+        "-2",
+        "1"
+      ],
+      "coefficient_order": "ascending",
+      "degree": 5,
+      "signature": [
+        5,
+        0
+      ],
+      "unit_rank": 4,
+      "discriminant": "1002836007889",
+      "equation_order_index": "1",
+      "reference_class_number": "6",
+      "reference_class_invariants": [
+        "6"
+      ],
+      "polynomial_sha256": "c3077e07c31ac7586ee22c1a57ecfab1883699f8061f850ad75a86d46f23ea73",
+      "coverage_line_sha256": "8d4d3dcf76f7bc39d2d7e2e07f8aefd03028769498353d2943cdbad252a7ca26",
+      "source": "LMFDB",
+      "source_url": "https://www.lmfdb.org/NumberField/5.5.1002836007889.1",
+      "historical_pari_2_15_4_seconds": null,
+      "historical_timing_source": null
+    }
+  ]
+}
