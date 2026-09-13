@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 226,
+    "pass": 228,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
@@ -199,6 +199,11 @@
       "id": "src/baselib/elliptic_curves.py#5fc3f419b1f2ec5e-112e7d5ec82c367f",
       "status": "pass",
       "actual": "(161/16 : -2065/64 : 1)\n"
+    },
+    {
+      "id": "src/baselib/modular.py#d7e6b91d27b68036-d4735e3a265e16ee",
+      "status": "pass",
+      "actual": "2\n"
     },
     {
       "id": "src/baselib/modular.py#957b693c349934d0-e3b0c44298fc1c14",
@@ -665,6 +670,11 @@
       "id": "src/baselib/graphics.py#17671abe261ba66e-441459f59cccc537",
       "status": "pass",
       "actual": "Graphics object consisting of 1 graphics primitive\n"
+    },
+    {
+      "id": "src/baselib/modular.py#9c548972257c6202-d4735e3a265e16ee",
+      "status": "pass",
+      "actual": "2\n"
     },
     {
       "id": "src/baselib/hyperelliptic_curves.py#795c664f1fca1e0a-e3b0c44298fc1c14",
