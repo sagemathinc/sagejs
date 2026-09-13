@@ -180,3 +180,19 @@ Closing the remaining capture-dominated cliff requires a correct cheaper
 traceback representation (for example executable-identity-bound logical Python
 frames), not suppressing stacks or postponing capture until their creation
 frames are lost. That architectural work remains open.
+
+### Scoped handler state prerequisite
+
+The catch emitter now saves its lexical and shared active-exception slots and
+restores them in `finally` around synchronous handler dispatch. The previous
+implementation leaked the inner exception after nested handlers and leaked
+handled exceptions after function returns. A new fixture first passed CPython
+and failed both Sage.js modes, then passed all three after compiler convergence.
+It covers nested handlers, helper calls, returns, break/continue and propagation
+through a nonmatching handler. Strict checks pass. This is a correctness
+prerequisite for traceback redesign, not a claimed performance improvement.
+
+Generator suspension/resumption and dynamically scoped bare reraising remain
+separate required work; the synchronous restoration test does not qualify them.
+Current bare-raise lowering uses lexical catch depth and must be replaced with
+dynamic active-exception lookup before full semantics can be claimed.

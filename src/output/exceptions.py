@@ -53,6 +53,14 @@ def print_catch(self, output):
         output.print("ρσ_normalize_exception(ρσ_Exception)")
         output.end_statement()
         output.indent()
+        output.print("let ρσ_previous_exception = ρσ_last_exception")
+        output.end_statement()
+        output.indent()
+        output.print(
+            "let ρσ_previous_global_exception = globalThis.__sagejs_last_exception__"
+        )
+        output.end_statement()
+        output.indent()
         output.spaced("ρσ_last_exception", "=", "ρσ_Exception"), output.end_statement()
         # Lazy modules execute in separate JavaScript closures, so their
         # lexical ``ρσ_last_exception`` bindings are not visible to the
@@ -63,6 +71,27 @@ def print_catch(self, output):
             output.spaced("globalThis.__sagejs_last_exception__", "=", "ρσ_Exception"),
             output.end_statement(),
         )
+        output.indent()
+        output.print("try")
+        output.space()
+        output.with_block(f_dispatch)
+        output.space()
+        output.print("finally")
+        output.space()
+
+        def restore_exception():
+            output.indent()
+            output.print("ρσ_last_exception = ρσ_previous_exception")
+            output.end_statement()
+            output.indent()
+            output.print(
+                "globalThis.__sagejs_last_exception__ = ρσ_previous_global_exception"
+            )
+            output.end_statement()
+
+        output.with_block(restore_exception)
+
+    def f_dispatch():
         output.indent()
         no_default = True
         for i, exception in enumerate(self.body):

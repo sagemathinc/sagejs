@@ -9,6 +9,9 @@
   "objective": "Qualify prepared calls, reflected divmod and annotation metadata on current main without widening budgets",
   "base_commit": "2564190042e003176ada3a71700f946ae992f973",
   "claims": [
+    "src/output/exceptions.py",
+    "test/fixtures/python-exception-state.py",
+    "test/python-exception-state.cjs",
     "src/baselib/builtins.py",
     "src/baselib/errors.py",
     "test/python-lazy-exception-stack.cjs",
