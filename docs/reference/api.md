@@ -9,39 +9,62 @@ generated: true
 This file is generated from the runtime DocSpec registry. Edit the
 adjacent public docstring and registration metadata, then regenerate it.
 
+## `AbelianVariety`
+
+```sage
+AbelianVariety(X: Any) -> Any
+```
+
+Construct a weight-$2$ $\Gamma_0(N)$ modular abelian variety.
+
+A level or `Gamma0` group constructs $J_0(N)$. A sign-zero cuspidal
+modular-symbol subspace constructs its saturated embedded subvariety, and
+a normalized newform constructs the connected quotient $A_f$.
+
+```sage
+sage: AbelianVariety(11).dimension()
+1
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.abvar.constructor`
+- Tags: modular abelian varieties, newforms, quotients, integral homology
+- Backends: Sage.js exact modular symbols, FLINT integer kernels, Hermite forms, and Smith forms
+- Sage compatibility: partial — Accepts Gamma0 levels/groups, sign-zero cuspidal modular symbols, and weight-two normalized newforms. Newforms construct connected quotients and also expose the embedded isogenous subvariety.
+- Limitations: Products and arbitrary Hecke-ideal quotients are not implemented. Only weight-two Gamma0 spaces over QQ are accepted.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular abelian variety constructors](https://doc.sagemath.org/html/en/reference/modabvar/); license GPL-2.0-or-later
+
 ## `AffineSpace`
 
 ```sage
-AffineSpace(dimension: int, base: sage.Parent, names: Any='x') -> AffineSpaceParent
+AffineSpace(first: Any, second: Any, names: Any='x') -> AffineSpaceParent
 ```
 
-Construct affine space with the requested coordinate names.
-
-### Example
+Construct affine space in either Sage-compatible argument order.
 
 ```sage
-sage: A = AffineSpace(2, QQ, 'xy')
-sage: A
-Affine Space of dimension 2 over Rational Field
-sage: A.gens()
-(x, y)
+sage: A = AffineSpace(QQ, 2, names=("x", "y"))
+sage: A.dimension()
+2
 ```
-
-The coordinate ring is a FLINT-backed multivariate polynomial ring.
 
 ### Metadata
 
 - Kind: `function`
 - Module: `sage.schemes`
-- Tags: algebraic geometry, affine schemes, curves, multivariate polynomials
-- Backends: FLINT, Sage.js algebraic geometry layer
-- Sage compatibility: partial — Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation.
-- Limitations: General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal.
+- Tags: algebraic geometry, affine schemes, projective schemes, curves
+- Backends: Sage.js exact polynomial and ideal layers
+- Sage compatibility: partial — Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary.
 
 ### Provenance
 
-- `sage-derived` — [SageMath schemes and plane curves API](https://doc.sagemath.org/html/en/reference/curves/); license GPL-2.0-or-later
-- `library-backed` — [FLINT multivariate polynomial arithmetic](https://flintlib.org/doc/)
+- `sage-derived` — [SageMath schemes public API](https://doc.sagemath.org/html/en/reference/schemes/); license GPL-2.0-or-later
+- `sagejs-original` — [Sage.js no-Singular algebraic geometry](https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md); license GPL-3.0-only
 
 ## `animate`
 
@@ -285,6 +308,43 @@ Graphics3d Object
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
 
+## `BrandtModule`
+
+```sage
+BrandtModule(D: Any, N: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=True, realization: str='auto', dense_entry_limit: Any=1000000) -> Any
+```
+
+Construct the weight-two Brandt module over $\mathbf Q$.
+
+The quaternion discriminant `D` is squarefree with an odd number of
+prime factors, and the Eichler conductor `N` is positive and coprime to
+`D`. The canonical sparse supersingular realization is selected when it
+applies; all other valid pairs use the exact Jacquet--Langlands Hecke
+realization. Pass `realization="ideal-classes"` to construct genuine
+Eichler right ideal classes, their unit weights, and their integral
+pairing.
+
+```sage
+sage: B = BrandtModule(11, 1)
+sage: (B.dimension(), B.T(2).charpoly())
+(2, x^2 - x - 6)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.quatalg.brandt`
+- Tags: modular forms, Brandt modules, quaternion algebras, Eichler orders, Hecke operators, Jacquet-Langlands
+- Backends: Sage.js sparse supersingular graphs, Sage.js exact modular symbols, Sage.js exact rational quaternion ideals
+- Sage compatibility: extension — Supports every definite squarefree rational quaternion discriminant and coprime Eichler conductor in weight two. The default general basis is an exact Jacquet--Langlands Hecke realization; the explicit ideal-class realization constructs genuine quaternion ideals and their integral lattice.
+- Limitations: Bad-prime operators at primes dividing the Eichler conductor are not yet exposed. Only weight two and base rings QQ/ZZ are implemented. Atkin--Lehner operators are currently exposed for divisors of D. Full-Jacobian component groups are implemented; newform-quotient groups await audited integral modular-degree maps.
+
+### Provenance
+
+- `literature-implemented` — Jacquet--Langlands correspondence for definite quaternion algebras
+- `sage-derived` — [SageMath Brandt-module API](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/quatalg/brandt.html); license GPL-2.0-or-later
+- `literature-implemented` — Kirschmer--Voight ideal-class enumeration and Kohel--Stein monodromy/component-group formulas
+
 ## `circle`
 
 ```sage
@@ -310,6 +370,62 @@ Return a circle centered at `center` with the given radius.
 ### References
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `cohen_eisenstein_series_certificate`
+
+```sage
+cohen_eisenstein_series_certificate(r: Any, prec: Any=20, variable: str='q', **opts: Any) -> Any
+```
+
+Return the replayable Cohen coefficient-formula certificate.
+
+```sage
+sage: cohen_eisenstein_series_certificate(2, 12).verify()
+True
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
+
+## `cohen_eisenstein_series_qexp`
+
+```sage
+cohen_eisenstein_series_qexp(r: Any, prec: Any=20, variable: str='q', normalization: str='cohen', **opts: Any) -> Any
+```
+
+Return Cohen's exact Eisenstein series of weight $r+\tfrac12$.
+
+```sage
+sage: cohen_eisenstein_series_qexp(2, 6)
+1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
 
 ## `Color`
 
@@ -510,39 +626,89 @@ Return a cube centered at `center` with side length `size`.
 ## `Curve`
 
 ```sage
-Curve(polynomial: Any) -> AffinePlaneCurve
+Curve(polynomial: Any) -> Any
 ```
 
-Construct an affine plane curve from a multivariate polynomial.
-
-### Example
+Construct an affine or projective plane curve from one polynomial.
 
 ```sage
-sage: x, y = AffineSpace(2, QQ, 'xy').gens()
-sage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))
-sage: C.irreducible_components()
-[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
-  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
-  x^3 + y^3 - 1]
+sage: R = PolynomialRing(QQ, names=("x", "y"))
+sage: x, y = R.gens()
+sage: C = Curve(y^2 - x^3)
+sage: C.degree()
+3
 ```
-
-Hypersurface components use FLINT multivariate factorization. Plane-curve
-intersections over `QQ` use a resultant followed by factorization and
-Gröbner bases. General primary decomposition is not yet implemented.
 
 ### Metadata
 
 - Kind: `function`
 - Module: `sage.schemes`
-- Tags: algebraic geometry, affine schemes, curves, multivariate polynomials
-- Backends: FLINT, Sage.js algebraic geometry layer
-- Sage compatibility: partial — Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation.
-- Limitations: General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal.
+- Tags: algebraic geometry, affine schemes, projective schemes, curves
+- Backends: Sage.js exact polynomial and ideal layers
+- Sage compatibility: partial — Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary.
 
 ### Provenance
 
-- `sage-derived` — [SageMath schemes and plane curves API](https://doc.sagemath.org/html/en/reference/curves/); license GPL-2.0-or-later
-- `library-backed` — [FLINT multivariate polynomial arithmetic](https://flintlib.org/doc/)
+- `sage-derived` — [SageMath schemes public API](https://doc.sagemath.org/html/en/reference/schemes/); license GPL-2.0-or-later
+- `sagejs-original` — [Sage.js no-Singular algebraic geometry](https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md); license GPL-3.0-only
+
+## `curve_fit`
+
+```sage
+curve_fit(function, xdata, ydata, p0, **options)
+```
+
+Fit a nonlinear model with residual diagnostics and parameter provenance.
+
+Import from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics.optimization`
+- Tags: numerical, fitting, least-squares
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
+
+## `CuspForms`
+
+```sage
+CuspForms(group: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=True, prec: Any=6) -> ModularFormsSubspace
+```
+
+Construct the cuspidal subspace of `ModularForms(group, weight)`.
+
+### Examples
+
+```sage
+sage: S = CuspForms(11, 2)
+sage: (S.dimension(), S.q_expansion_basis(6))
+(1, [q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)])
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.constructor`
+- Tags: modular forms, spaces, cusp forms, q-expansions, modular symbols
+- Backends: FLINT, Sage.js exact arithmetic
+- Sage compatibility: extension — The supported exact space and q-expansion operations follow SageMath; Sage.js does not yet implement the complete Hecke-module surface.
+- Algorithm: Exact dimension formulas, native Eisenstein coefficient generation, and certified level-one Victor Miller bases
+- Limitations: Only QQ is currently accepted as the ambient base ring. Full ambient and cuspidal q-expansion bases currently require level one; Eisenstein bases also support prime level.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular forms API](https://doc.sagemath.org/html/en/reference/modfrm/); license GPL-2.0-or-later
+- `library-backed` — [FLINT exact arithmetic](https://flintlib.org/)
+- `sagejs-original` — Lightweight parent-aware modular-form implementation
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
 ## `cylindrical_plot3d`
 
@@ -565,6 +731,40 @@ Plot a radial function in cylindrical coordinates.
 
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `delta_qexp`
+
+```sage
+delta_qexp(prec: Any=10, variable: str='q', K: Any=None, **opts: Any) -> Any
+```
+
+Return the exact $q$-expansion of the weight-$12$ form $\Delta$.
+
+### Examples
+
+```sage
+sage: delta_qexp(6)
+q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.vm_basis`
+- Tags: modular forms, q-expansions, level one, Delta, cusp forms
+- Backends: FLINT, Sage.js exact arithmetic
+- Sage compatibility: compatible — The name, integral leading-term normalization, cusp_only option, precision, and variable conventions follow SageMath.
+- Algorithm: Exact arithmetic in QQ[E4,E6], the independent Jacobi Delta identity, and certified triangular normalization
+- Limitations: This first exact formula algebra is level one over QQ.
+
+### Provenance
+
+- `sage-derived` — [SageMath Victor Miller basis](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/modform/vm_basis.html); license GPL-2.0-or-later
+- `literature-implemented` — The graded-ring identity QQ[E4,E6]
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/) (2007).
 
 ## `density_plot`
 
@@ -1019,64 +1219,14 @@ sage: b.q_expansion(100).precision_absolute()
 - Tags: modular forms, spaces, Eisenstein series, q-expansions
 - Backends: FLINT, Sage.js exact arithmetic
 - Sage compatibility: extension — The supported exact space and q-expansion operations follow SageMath; Sage.js does not yet implement the complete Hecke-module surface.
-- Algorithm: Exact dimension formulas and native Eisenstein coefficient generation
-- Limitations: Only QQ is currently accepted as the ambient base ring. General Hecke operators and cusp-form bases are not implemented.
+- Algorithm: Exact dimension formulas, native Eisenstein coefficient generation, and certified level-one Victor Miller bases
+- Limitations: Only QQ is currently accepted as the ambient base ring. Full ambient and cuspidal q-expansion bases currently require level one; Eisenstein bases also support prime level.
 
 ### Provenance
 
 - `sage-derived` — [SageMath modular forms API](https://doc.sagemath.org/html/en/reference/modfrm/); license GPL-2.0-or-later
 - `library-backed` — [FLINT exact arithmetic](https://flintlib.org/)
 - `sagejs-original` — Lightweight parent-aware modular-form implementation
-
-### References
-
-- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
-
-## `EisensteinSeriesElement.q_expansion`
-
-```sage
-q_expansion(prec: Any=None) -> Any
-```
-
-Return the `q`-expansion to absolute precision `O(q^prec)`.
-
-### Parameters
-
-- `prec` — nonnegative integer; when omitted, use the precision
-  requested when this basis element was constructed.
-
-### Examples
-
-The level-389 weight-2 Eisenstein form can be displayed briefly and
-then expanded farther without reconstructing its parent:
-
-```sage
-sage: E = EisensteinForms(389, 2)
-sage: b = E.basis(prec=8)[0]
-sage: b.q_expansion(5)
-1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + 42/97*q^4 + O(q^5)
-```
-
-### Implementation
-
-Level-one divisor sums are generated in one native FLINT sieve.
-Prime-level oldforms use the exact degeneracy map `q -> q^N`.
-
-### Metadata
-
-- Kind: `method`
-- Module: `sage.modular.modform.element`
-- Tags: modular forms, Eisenstein series, q-expansions, power series
-- Backends: FLINT, Sage.js native helpers
-- Sage compatibility: compatible — Returns an exact power series with Sage-style absolute precision notation.
-- Algorithm: Native exact divisor-sum sieve and degeneracy maps
-- Limitations: The currently constructed Eisenstein spaces cover the implemented congruence-subgroup cases.
-
-### Provenance
-
-- `sage-derived` — [SageMath modular-form element API](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/modform/element.html); license GPL-2.0-or-later
-- `library-backed` — [FLINT exact arithmetic](https://flintlib.org/)
-- `sagejs-original` — Native coefficient sieve and parent integration
 
 ### References
 
@@ -1170,6 +1320,94 @@ sage: 10 * E([0,0])
 
 - `sage-derived` — [SageMath elliptic curves API](https://doc.sagemath.org/html/en/reference/arithmetic_curves/); license GPL-2.0-or-later
 
+## `eta_product`
+
+```sage
+eta_product(level: Any, exponents: Any, prec: Any=10, variable: str='q') -> Any
+```
+
+Return a certified exact product $\prod_{d\mid N}\eta(dz)^{r_d}$.
+
+```sage
+sage: D = eta_product(1, {1: 24}, prec=8)
+sage: D.q_expansion()
+q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 - 6048*q^6 - 16744*q^7 + O(q^8)
+sage: D.certificate().verify()
+True
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.modular_forms.eta_products`
+- Tags: modular forms, q-expansions, eta products, eta quotients, Newman congruences, Ligozat cusp orders, Dirichlet characters
+- Backends: ordinary Python exact Euler products, FLINT exact rational power series, Sage.js modular-symbol ambient certificates
+- Sage compatibility: extension — SageMath's uppercase EtaProduct is a weight-zero meromorphic modular-function API. Sage.js uses lowercase eta_product for Newman--Ligozat-certified holomorphic modular forms of any supported integral weight, including valid negative exponents.
+- Limitations: Publication requires integral nonnegative weight and the sufficient Newman--Ligozat conditions. The bounded automatic registry currently searches only trivial-character cusp forms with nonnegative exponents. The automatic registry is limited to level at most 128, weight at most 24, and levels with at most four divisors.
+
+### Provenance
+
+- `literature-implemented` — Newman's eta-quotient congruences and Ligozat's cusp-order criterion
+- `sagejs-original` — Replayable modular-form certificate, exact character metadata, bounded candidate enumeration, and honest formula-registry integration
+- `sage-derived` — [SageMath eta-product Euler expansion used as an independent oracle](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/etaproducts.html); license GPL-2.0-or-later
+
+## `eta_product_candidates`
+
+```sage
+eta_product_candidates(level: Any, weight: Any, prec: Any=10, **options: Any) -> Any
+```
+
+Enumerate a deterministic bounded family of certified eta products.
+
+```sage
+sage: [f.exponents() for f in eta_product_candidates(11, 2, prec=8)]
+[((1, 2), (11, 2))]
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.modular_forms.eta_products`
+- Tags: modular forms, q-expansions, eta products, eta quotients, Newman congruences, Ligozat cusp orders, Dirichlet characters
+- Backends: ordinary Python exact Euler products, FLINT exact rational power series, Sage.js modular-symbol ambient certificates
+- Sage compatibility: extension — SageMath's uppercase EtaProduct is a weight-zero meromorphic modular-function API. Sage.js uses lowercase eta_product for Newman--Ligozat-certified holomorphic modular forms of any supported integral weight, including valid negative exponents.
+- Limitations: Publication requires integral nonnegative weight and the sufficient Newman--Ligozat conditions. The bounded automatic registry currently searches only trivial-character cusp forms with nonnegative exponents. The automatic registry is limited to level at most 128, weight at most 24, and levels with at most four divisors.
+
+### Provenance
+
+- `literature-implemented` — Newman's eta-quotient congruences and Ligozat's cusp-order criterion
+- `sagejs-original` — Replayable modular-form certificate, exact character metadata, bounded candidate enumeration, and honest formula-registry integration
+- `sage-derived` — [SageMath eta-product Euler expansion used as an independent oracle](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/etaproducts.html); license GPL-2.0-or-later
+
+## `eta_product_certificate`
+
+```sage
+eta_product_certificate(level: Any, exponents: Any) -> Any
+```
+
+Return all exact Newman--Ligozat conditions for an eta product.
+
+```sage
+sage: C = eta_product_certificate(4, {1: -12, 2: 10, 4: 4})
+sage: C.verify(), C.failure_reason()
+(False, 'the eta product has a pole at a cusp')
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.modular_forms.eta_products`
+- Tags: modular forms, q-expansions, eta products, eta quotients, Newman congruences, Ligozat cusp orders, Dirichlet characters
+- Backends: ordinary Python exact Euler products, FLINT exact rational power series, Sage.js modular-symbol ambient certificates
+- Sage compatibility: extension — SageMath's uppercase EtaProduct is a weight-zero meromorphic modular-function API. Sage.js uses lowercase eta_product for Newman--Ligozat-certified holomorphic modular forms of any supported integral weight, including valid negative exponents.
+- Limitations: Publication requires integral nonnegative weight and the sufficient Newman--Ligozat conditions. The bounded automatic registry currently searches only trivial-character cusp forms with nonnegative exponents. The automatic registry is limited to level at most 128, weight at most 24, and levels with at most four divisors.
+
+### Provenance
+
+- `literature-implemented` — Newman's eta-quotient congruences and Ligozat's cusp-order criterion
+- `sagejs-original` — Replayable modular-form certificate, exact character metadata, bounded candidate enumeration, and honest formula-registry integration
+- `sage-derived` — [SageMath eta-product Euler expansion used as an independent oracle](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/etaproducts.html); license GPL-2.0-or-later
+
 ## `exit`
 
 ```sage
@@ -1262,6 +1500,50 @@ Compile a symbolic expression to a hot JavaScript numeric function.
 
 - [Cortex Compute Engine](https://cortexjs.io/compute-engine/).
 
+## `fft`
+
+```sage
+fft(samples, **options)
+```
+
+Compute a radix-2 or Bluestein discrete Fourier transform.
+
+Import from `sagejs.numerics.spectral`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics.spectral`
+- Tags: numerical, spectral, fft
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
+
+## `find_root`
+
+```sage
+find_root(function, a=None, b=None, *, x0=None, method=None, **options)
+```
+
+Find and independently validate a scalar root with diagnostics and bounded traces.
+
+Import from `sagejs.numerics`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics`
+- Tags: numerical, root-finding, validated
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
+
 ## `frame_labels`
 
 ```sage
@@ -1330,8 +1612,10 @@ sage: K['x']
 Univariate Polynomial Ring in x over Finite Field in a of size 3^2
 ```
 
-Extension moduli are irreducible and normalized to monic. Passing
-`modulus='primitive'` uses the backend's primitive Conway polynomial.
+Extension moduli are irreducible and normalized to monic. Named quadratic
+extensions use a deterministic irreducible polynomial when the Conway
+tables have no entry. Passing `modulus='primitive'` requires a primitive
+Conway polynomial and does not use this fallback.
 
 ### Metadata
 
@@ -4612,6 +4896,120 @@ This entry is implemented and exercised by the Sage.js graph semantic corpus. Th
 
 - `sage-derived` — [SageMath `src/sage/graphs/generators/families.py`:3651](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/families.py#L3651); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
 
+## `half_integral_formula_registry`
+
+```sage
+half_integral_formula_registry() -> Any
+```
+
+Return the bounded, certificate-bearing half-integral formula registry.
+
+```sage
+sage: len(half_integral_formula_registry())
+4
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
+
+## `half_integral_weight_hecke_qexp`
+
+```sage
+half_integral_weight_hecke_qexp(series: Any, k: Any, p: Any, chi: Any=None, prec: Any=None, variable: str='q') -> Any
+```
+
+Apply $T_{p^2}$ using Shimura's exact coefficient formula.
+
+```sage
+sage: f = cohen_eisenstein_series_qexp(2, 82)
+sage: half_integral_weight_hecke_qexp(f, 5, 3, prec=5)
+7/30 - 7/3*q - 49/3*q^4 + O(q^5)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
+
+## `half_integral_weight_modform_basis`
+
+```sage
+half_integral_weight_modform_basis(chi: Any, k: Any, prec: Any) -> list[Any]
+```
+
+Return Sage-compatible Basmaji half-integral cusp expansions.
+
+```sage
+sage: half_integral_weight_modform_basis(list(DirichletGroup(16))[4], 3, 5)
+[]
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
+
+## `HalfIntegralWeightModularForms`
+
+```sage
+HalfIntegralWeightModularForms(chi: Any, k: Any, prec: Any=10) -> Any
+```
+
+Construct the certified cusp space $S_{k/2}(\Gamma_0(N),\chi)$.
+
+```sage
+sage: H = HalfIntegralWeightModularForms(list(DirichletGroup(16))[4], 3)
+sage: (H.weight(), H.dimension())
+(3/2, 0)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
+
 ## `help`
 
 ```sage
@@ -4959,6 +5357,28 @@ sage: S.vertex_list()
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
 
+## `integrate`
+
+```sage
+integrate(function, a, b, *, method=None, **options)
+```
+
+Compute an adaptive numerical integral with error and budget diagnostics.
+
+Import from `sagejs.numerics.integration`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics.integration`
+- Tags: numerical, integration, quadrature
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
+
 ## `is_prime`
 
 ```sage
@@ -4984,6 +5404,34 @@ Return whether `value` is prime, using FLINT's primality test.
 ### References
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `J0`
+
+```sage
+J0(N: Any) -> Any
+```
+
+Return the modular Jacobian $J_0(N)$ over $\mathbf Q$.
+
+```sage
+sage: J = J0(37)
+sage: (J.dimension(), J.integral_homology().rank())
+(2, 4)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.abvar.constructor`
+- Tags: modular abelian varieties, modular symbols, integral homology, Hecke operators
+- Backends: Sage.js exact modular symbols, FLINT integer kernels and normal forms
+- Sage compatibility: partial — The weight-two Gamma0/Q object and integral-homology core are implemented; general groups and arithmetic invariants remain future slices.
+- Limitations: Only weight two, Gamma0, trivial character, and base field QQ are supported. Period lattices, polarizations, modular degrees, and component groups are deferred.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular abelian variety object model](https://doc.sagemath.org/html/en/reference/modabvar/); license GPL-2.0-or-later
+- `sagejs-original` — Connected quotient lattice and construction-authenticated SagePack representation
 
 ## `Jacobian`
 
@@ -5317,14 +5765,15 @@ relations `x + R*x + R^2*x`, stored in native compressed-row form.
 ## `matrix`
 
 ```sage
-matrix(*args: Any) -> Matrix
+matrix(*args: Any, **options: Any) -> Matrix
 ```
 
-Construct a dense matrix, optionally over an explicit base ring.
+Construct a dense or sparse matrix, optionally over an explicit base ring.
 
 Sage's common row-list, flat-list, dimension, and entry-function forms are
-supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and
-arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.
+supported. Pass `sparse=True` to construct a sparse matrix parent. Exact
+matrices use FLINT on native hosts; `RDF`/`CDF` and arbitrary-precision
+real/complex matrices use FLINT, Arb, and ACB.
 
 ### Examples
 
@@ -5413,10 +5862,54 @@ conjugacy classes using the conjugation action of the generators.
 
 - `sage-derived` — [SageMath finite groups API](https://doc.sagemath.org/html/en/reference/groups/); license GPL-2.0-or-later
 
+## `minimize`
+
+```sage
+minimize(function, x0, *, method=None, **options)
+```
+
+Minimize a multivariate objective and return a structured NumericalResult.
+
+Import from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics.optimization`
+- Tags: numerical, optimization
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
+
+## `minimize_scalar`
+
+```sage
+minimize_scalar(function, bounds=None, *, method=None, **options)
+```
+
+Minimize a scalar objective with explicit budgets and validation evidence.
+
+Import from `sagejs.numerics.optimization`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics.optimization`
+- Tags: numerical, optimization
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
+
 ## `Mod`
 
 ```sage
-Mod(value: Any, modulus: Any) -> IntegerModElement
+Mod(value: Any, modulus: Any) -> Any
 ```
 
 Construct `value` in the ring of integers modulo `modulus`.
@@ -5448,9 +5941,10 @@ ModularForms(group: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=T
 
 Construct the implemented ambient space of modular forms.
 
-`group` is a level or congruence subgroup, `weight` is nonnegative,
-and `prec` controls the default displayed q-expansion precision.
-Initial ambient spaces are exact over `QQ`.
+`group` is a level, congruence subgroup, or Dirichlet character; `weight`
+is nonnegative, and `prec` controls the default displayed q-expansion
+precision. Trivial and quadratic characters are exact over `QQ`, while
+higher-order characters use their minimal exact cyclotomic value field.
 
 ### Examples
 
@@ -5462,9 +5956,9 @@ sage: M.cuspidal_subspace().dimension()
 1
 ```
 
-This foundation currently provides exact dimensions, cusp/Eisenstein
-subspaces, and Eisenstein q-expansions.  It is not yet SageMath's complete
-Hecke-module implementation.
+The returned cusp, Eisenstein, old, new, and ambient spaces share one
+parented exact element contract, including exact Hecke action and
+Sturm-certified coordinate recovery.
 
 ### Metadata
 
@@ -5473,8 +5967,8 @@ Hecke-module implementation.
 - Tags: modular forms, spaces, ambient spaces
 - Backends: FLINT, Sage.js exact arithmetic
 - Sage compatibility: partial — The supported exact space and q-expansion operations follow SageMath; Sage.js does not yet implement the complete Hecke-module surface.
-- Algorithm: Exact dimension formulas and native Eisenstein coefficient generation
-- Limitations: Only QQ is currently accepted as the ambient base ring. General Hecke operators and cusp-form bases are not implemented.
+- Algorithm: Exact dimension formulas, native Eisenstein coefficient generation, and certified level-one Victor Miller bases
+- Limitations: Only QQ is currently accepted as the ambient base ring. Full ambient and cuspidal q-expansion bases currently require level one; Eisenstein bases also support prime level.
 
 ### Provenance
 
@@ -5857,6 +6351,123 @@ Return the `+1` eigenspace of the star involution.
 - William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
 - John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
 
+## `ModularSymbolsSpace.q_expansion_basis`
+
+```sage
+q_expansion_basis(prec: Any=None, algorithm: str='default', variable: str='q', **opts: Any) -> list[Any]
+```
+
+Return an echelon basis of associated cusp-form expansions.
+
+Trivial- and Dirichlet-character $\Gamma_0(N)$ spaces use exact
+Hecke-dual reconstruction over their coefficient field. The returned
+power series retain opaque FLINT polynomial storage; only their public
+coefficient views are materialized on demand.
+
+### Examples
+
+```sage
+sage: S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()
+sage: S.q_expansion_basis(6)
+[q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)]
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.space`
+- Tags: number theory, modular symbols, cusp forms, q-expansions, Hecke operators, Sturm bound
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
+- Sage compatibility: compatible — Gamma0 cusp spaces with trivial or Dirichlet character support weights at least two, all signs, caller-selected precision, and their exact rational or cyclotomic coefficient field. Sign-zero spaces use the common signed Hecke module.
+- Algorithm: Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification
+- Limitations: Arbitrary proper sign-zero subspaces are not yet supported.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular-symbol API](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated coordinate and subspace adapter
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
+- John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
+
+## `ModularSymbolsSpace.q_expansion_basis_certificate`
+
+```sage
+q_expansion_basis_certificate(prec: Any=None) -> Any
+```
+
+Return a replayable Sturm certificate for a cusp-form basis.
+
+### Examples
+
+```sage
+sage: S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()
+sage: C = S.q_expansion_basis_certificate()
+sage: (C.dimension(), C.is_sturm_certified(), C.verify())
+(1, True, True)
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.space`
+- Tags: number theory, modular symbols, cusp forms, q-expansions, Hecke operators, Sturm bound
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
+- Sage compatibility: compatible — Gamma0 cusp spaces with trivial or Dirichlet character support weights at least two, all signs, caller-selected precision, and their exact rational or cyclotomic coefficient field. Sign-zero spaces use the common signed Hecke module.
+- Algorithm: Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification
+- Limitations: Arbitrary proper sign-zero subspaces are not yet supported.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular-symbol API](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated coordinate and subspace adapter
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
+- John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
+
+## `ModularSymbolsSpace.q_expansion_module`
+
+```sage
+q_expansion_module(prec: Any=None, R: Any=None, algorithm: str='default') -> Any
+```
+
+Return the coefficient module of the expansions.
+
+### Examples
+
+```sage
+sage: S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()
+sage: S.q_expansion_module(5, ZZ).basis_matrix()
+[ 0  1 -2 -1  2]
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.space`
+- Tags: number theory, modular symbols, cusp forms, q-expansions, Hecke operators, Sturm bound
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
+- Sage compatibility: compatible — Gamma0 cusp spaces with trivial or Dirichlet character support weights at least two, all signs, caller-selected precision, and their exact rational or cyclotomic coefficient field. Sign-zero spaces use the common signed Hecke module.
+- Algorithm: Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification
+- Limitations: Arbitrary proper sign-zero subspaces are not yet supported.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular-symbol API](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated coordinate and subspace adapter
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
+- John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
+
 ## `ModularSymbolsSpace.star_involution`
 
 ```sage
@@ -6180,7 +6791,7 @@ Return the exact triple-Manin-symbol presentation over `QQ`.
 parametric_plot(functions: Sequence[Any], *range_args: Any, **options: Any) -> Graphics
 ```
 
-Plot a two-component parametric plane curve.
+Plot a parametric plane curve, space curve, or surface.
 
 ### Metadata
 
@@ -7129,10 +7740,10 @@ Plot a function of two variables as a three-dimensional surface.
 ## `point`
 
 ```sage
-point(points: Any, **options: Any) -> Graphics
+point(points: Any, **options: Any) -> Any
 ```
 
-Return a graphics object containing one or more points.
+Return one or more points, dispatching three coordinates to `point3d`.
 
 ### Metadata
 
@@ -7155,10 +7766,10 @@ Return a graphics object containing one or more points.
 ## `point2d`
 
 ```sage
-point(points: Any, **options: Any) -> Graphics
+point(points: Any, **options: Any) -> Any
 ```
 
-Return a graphics object containing one or more points.
+Return one or more points, dispatching three coordinates to `point3d`.
 
 ### Metadata
 
@@ -7203,10 +7814,10 @@ Return one or more points in three-dimensional space.
 ## `points`
 
 ```sage
-point(points: Any, **options: Any) -> Graphics
+point(points: Any, **options: Any) -> Any
 ```
 
-Return a graphics object containing one or more points.
+Return one or more points, dispatching three coordinates to `point3d`.
 
 ### Metadata
 
@@ -7479,6 +8090,33 @@ sage: prime_range(10, 20)
 ### References
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `ProjectiveSpace`
+
+```sage
+ProjectiveSpace(first: Any, second: Any, names: Any='x') -> ProjectiveSpaceParent
+```
+
+Construct projective space in either Sage-compatible argument order.
+
+```sage
+sage: P = ProjectiveSpace(QQ, 2, names=("x", "y", "z"))
+sage: P(2, 4, 6) == P(1, 2, 3)
+True
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.schemes`
+- Tags: algebraic geometry, affine schemes, projective schemes, curves
+- Backends: Sage.js exact polynomial and ideal layers
+- Sage compatibility: partial — Exact embedded affine/projective geometry over QQ and prime GF(p), without a Singular runtime dependency. See docs/algebraic-geometry.md for the capability boundary.
+
+### Provenance
+
+- `sage-derived` — [SageMath schemes public API](https://doc.sagemath.org/html/en/reference/schemes/); license GPL-2.0-or-later
+- `sagejs-original` — [Sage.js no-Singular algebraic geometry](https://github.com/sagemathinc/sagejs/blob/main/docs/algebraic-geometry.md); license GPL-3.0-only
 
 ## `Qp`
 
@@ -7798,7 +8436,7 @@ well as documented methods of loaded Python classes.
 ```sage
 sage: search_doc('q-expansion')
 Search results for 'q-expansion':
-    EisensteinSeriesElement.q_expansion -- Return the ...
+    ClassicalModularFormElement.q_expansion -- Return the ...
 ```
 
 This intentionally searches the locally installed Sage.js API.  It does
@@ -7817,17 +8455,47 @@ implemented.
 
 - `sagejs-original`
 
+## `shimura_lift_qexp`
+
+```sage
+shimura_lift_qexp(series: Any, k: Any, t: Any=1, chi: Any=None, level: Any=None, prec: Any=None, variable: str='q') -> Any
+```
+
+Return the exact cuspidal Shimura lift for squarefree $t$.
+
+```sage
+sage: q = PowerSeriesRing(QQ, 'q', default_prec=10).gen()
+sage: shimura_lift_qexp(q + O(q^10), 3, level=4, prec=4)
+q - q^3 + O(q^4)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
+
 ## `show`
 
 ```sage
 show(value: Any, *others: Any, **options: Any) -> Any
 ```
 
-Return `value` for rich display, combining graphics when requested.
+Display `value`, combining graphics when requested.
 
-Multiple graphics are added before display.  Notebook kernels render the
-returned semantic object using Plotly-compatible HTML/data, without
-requiring a Jupyter extension.
+Multiple graphics are added before display. Notebook and browser kernels
+publish the semantic object through their rich-display channel; text-only
+processes print its ordinary representation. This also works from inside
+callbacks, where returning the object would otherwise discard it.
 
 ### Metadata
 
@@ -7890,6 +8558,28 @@ transcendental families remain outside the current supported surface.
 ### References
 
 - [Cortex Compute Engine](https://cortexjs.io/compute-engine/).
+
+## `solve_ivp`
+
+```sage
+solve_ivp(function, t_span, y0, *, method=None, **options)
+```
+
+Solve and validate an initial-value ODE problem with adaptive-step traces.
+
+Import from `sagejs.numerics.ode`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics.ode`
+- Tags: numerical, ode, initial-value-problem
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
 
 ## `Sp`
 
@@ -8037,6 +8727,65 @@ sage: sudoku(A)[0]
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
+## `SupersingularModule`
+
+```sage
+SupersingularModule(characteristic: Any=2, level: Any=1, base_ring: Any=None, dense_entry_limit: Any=1000000) -> Any
+```
+
+Construct the sparse level-one supersingular Brandt module.
+
+The authoritative Hecke representation is sparse. Calling `matrix()` on
+an operator is a bounded compatibility operation for small examples.
+
+```sage
+sage: S = SupersingularModule(37)
+sage: S.dimension()
+3
+sage: S.T(2) * vector(ZZ, [1, 1, 1])
+(3, 3, 3)
+```
+
+The implementation supports prime characteristic at least five,
+auxiliary level one, and good prime-index Hecke operators under an
+explicit modular-polynomial construction bound.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.ssmod.ssmod`
+- Tags: modular forms, supersingular elliptic curves, Brandt modules, Hecke operators, sparse matrices, isogeny graphs
+- Backends: Sage.js exact finite-field arithmetic, Sage.js immutable sparse Hecke operators
+- Sage compatibility: partial — Prime characteristic at least five, auxiliary level one, and good prime-index Hecke operators are supported. The Hecke operator itself is sparse; dense matrix materialization and modular-polynomial construction are explicitly bounded.
+- Limitations: Characteristics 2 and 3 are not implemented. Auxiliary levels greater than one are not implemented. Composite-index and bad-prime Hecke operators are not implemented.
+
+### Provenance
+
+- `sage-derived` — [SageMath supersingular modules](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/ssmod/ssmod.html); license GPL-2.0-or-later
+- `sagejs-original` — Immutable CSR Hecke operator, mass-weighted graph view, and bounded dense compatibility layer
+
+## `svd`
+
+```sage
+svd(matrix, *, trace='none', **options)
+```
+
+Compute and independently validate a singular-value decomposition.
+
+Import from `sagejs.numerics.spectral`. Results expose `explain()`, `to_json()`, semantic plots, and bounded animations when supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.numerics.spectral`
+- Tags: numerical, linear-algebra, spectral
+- Backends: portable-python, browser-wasm, native-optional
+- Sage compatibility: extension — Agent-first structured numerical result contract.
+
+### Provenance
+
+- `sagejs-original`
+
 ## `tetrahedron`
 
 ```sage
@@ -8106,6 +8855,118 @@ Display text at a point in three-dimensional space.
 
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `theta_qexp`
+
+```sage
+theta_qexp(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any
+```
+
+Return the exact unary theta series $\sum_{n\in\ZZ}q^{n^2}$.
+
+```sage
+sage: theta_qexp(6)
+1 + 2*q + 2*q^4 + O(q^6)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
+
+## `theta_qexp_certificate`
+
+```sage
+theta_qexp_certificate(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any
+```
+
+Return the replayable standard-theta coefficient certificate.
+
+```sage
+sage: theta_qexp_certificate(12).verify()
+True
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
+
+## `theta2_qexp`
+
+```sage
+theta2_qexp(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any
+```
+
+Return $\sum_{n>0,\ n\text{ odd}}q^{n^2}$ exactly.
+
+```sage
+sage: theta2_qexp(12)
+q + q^9 + O(q^12)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
+
+## `theta2_qexp_certificate`
+
+```sage
+theta2_qexp_certificate(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any
+```
+
+Return the replayable odd-square theta coefficient certificate.
+
+```sage
+sage: theta2_qexp_certificate(12).verify()
+True
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
 
 ## `var`
 
@@ -8179,6 +9040,40 @@ Sage.js
 ### Provenance
 
 - `sagejs-original`
+
+## `victor_miller_basis`
+
+```sage
+victor_miller_basis(k: Any, prec: Any=10, cusp_only: bool=False, variable: str='q', **opts: Any) -> list[Any]
+```
+
+Return the integral Victor Miller basis in level $1$ and weight $k$.
+
+### Examples
+
+```sage
+sage: victor_miller_basis(12, 5)
+[1 + 196560*q^2 + 16773120*q^3 + 398034000*q^4 + O(q^5), q - 24*q^2 + 252*q^3 - 1472*q^4 + O(q^5)]
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.vm_basis`
+- Tags: modular forms, q-expansions, level one, Victor Miller basis, cusp forms
+- Backends: FLINT, Sage.js exact arithmetic
+- Sage compatibility: compatible — The name, integral leading-term normalization, cusp_only option, precision, and variable conventions follow SageMath.
+- Algorithm: Exact arithmetic in QQ[E4,E6], the independent Jacobi Delta identity, and certified triangular normalization
+- Limitations: This first exact formula algebra is level one over QQ.
+
+### Provenance
+
+- `sage-derived` — [SageMath Victor Miller basis](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/modform/vm_basis.html); license GPL-2.0-or-later
+- `literature-implemented` — The graded-ring identity QQ[E4,E6]
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/) (2007).
 
 ## `Zmod`
 

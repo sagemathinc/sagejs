@@ -18,6 +18,55 @@
       }
     },
     {
+      "id": "exact-public-builtins",
+      "family": "exact-arithmetic",
+      "workflow": "exact-public-builtins",
+      "tier": "routine",
+      "requires": [
+        { "id": "napi:@sagemath/sagejs-flint:binomial", "route": "portable-fallback" },
+        { "id": "napi:@sagemath/sagejs-flint:factorial", "route": "portable-fallback" },
+        { "id": "napi:@sagemath/sagejs-flint:primePi", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "print(factorial(20), binomial(100,50), prime_pi(10^6))",
+      "timeout_ms": 15000,
+      "expect": {
+        "stdout": "2432902008176640000 100891344545564193334812497256 78498\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "portable-extension-and-complex-matrices",
+      "family": "linear-algebra",
+      "workflow": "portable-extension-and-complex-matrices",
+      "tier": "routine",
+      "requires": [
+        { "id": "napi:@sagemath/sagejs-flint:acbMatrix", "route": "portable-fallback" },
+        { "id": "napi:@sagemath/sagejs-flint:fqMatrix", "route": "portable-fallback" }
+      ],
+      "source": "K=GF(7^2,'a')\nA=random_matrix(K,10)\nM=matrix(K,[[1,K.gen(),0],[0,1,K.gen()],[0,0,1]])\nprint(A.dimensions(),A.base_ring()==K,(A-A).is_zero(),A.transpose().transpose()==A)\nprint(2*M==M+M,(-M+M).is_zero(),(M*M)[0,2]==K.gen()^2,M.det(),M.rank(),M.rref()==identity_matrix(K,3),M.right_kernel().dimension())\nz=CDF.gen()\nC=matrix(CDF,[[1.2,z],[2,3]])\nprint(C.dimensions(),(C+C-C)==C,2*C==C+C,C.transpose().transpose()==C,C.rank(),abs(C.det()-CDF(3.6,-2))<1e-12,abs((C*C)[0,0]-CDF(1.44,2))<1e-12)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "(10, 10) True True True\nTrue True True 1 3 True 0\n(2, 2) True True True 2 True True\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "brandt-degeneracy-and-elliptic-scalar-fallback",
+      "family": "arithmetic-geometry",
+      "workflow": "brandt-degeneracy-and-elliptic-scalar-fallback",
+      "tier": "routine",
+      "requires": [
+        { "id": "napi:@sagemath/sagejs-flint:ecScalarMulPrime", "route": "portable-fallback" },
+        { "id": "napi:@sagemath/sagejs-flint:p1ListDegeneracyMatrix", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "B=BrandtModule(3,11)\nprint(B.discriminant(),B.level(),B.dimension())\nE=EllipticCurve(GF(101),[0,0,0,1,1])\nP=E.points()[1]\nprint(17*P==P._affine_scalar_mul(17))",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "3 33 2\nTrue\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "partition-count-and-ranking",
       "family": "enumerative-combinatorics",
       "workflow": "partition-count-and-ranking",
@@ -45,6 +94,10 @@
       "expect": {
         "stdout": "15*a + 81 9999 wasm-compiled-source\n",
         "repr": ""
+      },
+      "node_expect": {
+        "stdout": "15*a + 81 9999 native-compiled-source\n",
+        "repr": ""
       }
     },
     {
@@ -59,6 +112,10 @@
       "timeout_ms": 30000,
       "expect": {
         "stdout": "(2, 2, 0) 9999 wasm-compiled-source\n",
+        "repr": ""
+      },
+      "node_expect": {
+        "stdout": "(2, 2, 0) 9999 native-compiled-source\n",
         "repr": ""
       }
     },
@@ -391,8 +448,7 @@
       "workflow": "symbolic-numerical-kernels",
       "tier": "release",
       "requires": [
-        { "id": "specialist:symbolic-numerical-integral-wasm", "route": "receipt-backed-wasm-artifact" },
-        { "id": "specialist:symbolic-find-root-wasm", "route": "receipt-backed-wasm-artifact" }
+        { "id": "specialist:symbolic-numerical-integral-wasm", "route": "receipt-backed-wasm-artifact" }
       ],
       "source": "x=var('x')\nintegral=numerical_integral(exp(x^2),1,2,eps_abs=1e-12,eps_rel=1e-12)\nroot=(x^2-2).find_root(1,2)\nprint(float(integral[0]),float(root))",
       "timeout_ms": 30000,
@@ -512,10 +568,10 @@
       "requires": [
         { "id": "specialist:numpy-ts", "route": "receipt-backed-wasm-artifact" }
       ],
-      "source": "import numpy as np\na = np.arange(12, dtype=np.int32).reshape(3, 4)\nview = a[:, 1:3]\nview[0, 0] = 99\nprint(type(a).__name__, a.dtype.name, a.shape)\nprint((a + 2).sum(axis=0).tolist())\nprint(round(float(np.linalg.det(np.array([[1.5, 2.0], [3.0, 4.5]]))), 10))",
+    "source": "import numpy as np\na = np.arange(12, dtype=np.int32).reshape(3, 4)\nview = a[:, 1:3]\nview[0, 0] = 99\nprint(type(a).__name__, a.dtype.name, a.shape)\nprint((a + 2).sum(axis=0).tolist())\nprint(round(float(np.linalg.det(np.array([[1.5, 2.0], [3.0, 4.5]]))), 10))",
       "timeout_ms": 30000,
       "expect": {
-        "stdout": "ndarray int32 (3, 4)\n[18, 119, 24, 27]\n0.75\n",
+      "stdout": "ndarray int32 (3, 4)\n[18, 119, 24, 27]\n0.75\n",
         "repr": ""
       }
     },

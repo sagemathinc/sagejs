@@ -11,6 +11,7 @@ const test = require("node:test");
 const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
@@ -27,7 +28,7 @@ function runNode(modulePath, source) {
 }
 
 test("portable sparse exact rows preserve order, shape, and budget", () => {
-  const result = spawnSync("python3", ["-c", String.raw`
+  const result = spawnSync(pythonExecutable(), ["-c", String.raw`
 import importlib.util, sys, types
 package = types.ModuleType("sagejs")
 package.__path__ = []
@@ -79,12 +80,13 @@ with module.NativeExactArena(264, 4096) as arena:
     else:
         raise AssertionError("duplicate sparse coordinate unexpectedly passed")
 `], { cwd: root, encoding: "utf8", timeout: 120_000 });
+  if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 
 test("sparse exact IR records shape, capacity, source, and failure effects", async () => {
   const ir = await lowerSource(readFileSync(sourcePath, "utf8"), sourcePath);
-  assert.equal(ir.version, 36);
+  assert.equal(ir.version, 39);
   const fn = ir.functions.find((candidate) =>
     candidate.name === "sparse_relation_summary"
   );

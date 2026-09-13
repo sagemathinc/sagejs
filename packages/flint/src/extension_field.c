@@ -7,6 +7,7 @@
 
 #include <flint/flint.h>
 #include <flint/fmpz.h>
+#include <flint/fmpz_poly.h>
 #include <flint/fmpz_mod.h>
 #include <flint/fmpz_mod_poly.h>
 #include <flint/fmpz_mod_poly_factor.h>
@@ -963,6 +964,55 @@ napi_value sagejs_fq_to_string(napi_env env, napi_callback_info info)
         return NULL;
     }
     flint_free(text);
+    return result;
+}
+
+/* Copy exact power-basis coordinates across the legacy host boundary.
+ * The generated-resource backend already exposes the same information via
+ * fq_element_coordinate_bytes. Never recover coordinates from display text.
+ */
+napi_value sagejs_fq_coordinates(napi_env env, napi_callback_info info)
+{
+    napi_value args[1], result;
+    sagejs_fq_element *element;
+    fmpz_poly_t coordinates;
+    fmpz_t coefficient;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    element = unwrap_element(env, args[0]);
+    if (element == NULL)
+        return NULL;
+    if ((uint64_t) element->context->degree > UINT32_MAX)
+    {
+        napi_throw_range_error(env, NULL,
+            "power-basis coordinate vector exceeds the host array limit");
+        return NULL;
+    }
+    if (!check_napi(env, napi_create_array_with_length(
+        env, (size_t) element->context->degree, &result)))
+        return NULL;
+    fmpz_poly_init(coordinates);
+    fmpz_init(coefficient);
+    fq_default_get_fmpz_poly(
+        coordinates, element->value, element->context->value);
+    for (slong i = 0; i < element->context->degree; i++)
+    {
+        napi_value entry;
+        fmpz_poly_get_coeff_fmpz(coefficient, coordinates, i);
+        /* Some fq_default representations choose symmetric integer lifts. */
+        fmpz_mod(coefficient, coefficient, element->context->prime);
+        entry = fmpz_to_bigint(env, coefficient);
+        if (entry == NULL || !check_napi(env, napi_set_element(
+            env, result, (uint32_t) i, entry)))
+        {
+            fmpz_clear(coefficient);
+            fmpz_poly_clear(coordinates);
+            return NULL;
+        }
+    }
+    fmpz_clear(coefficient);
+    fmpz_poly_clear(coordinates);
     return result;
 }
 

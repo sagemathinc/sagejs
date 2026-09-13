@@ -8,6 +8,7 @@ const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { compile } = require("@sagemath/sagejs/native");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const { removeLoadedNativeCache } = require("./helpers/native-cache-cleanup.cjs");
 
 const root = join(__dirname, "..");
@@ -428,7 +429,7 @@ from fractions import Fraction
 assert [Fraction(value, quotient[0]) for value in quotient[1:]] == [Fraction(4, 5), Fraction(9, 5)]
 print('cpython-ok')
 `;
-    const python = spawnSync("python3", ["-c", pythonProgram], {
+    const python = spawnSync(pythonExecutable(), ["-c", pythonProgram], {
       cwd: root,
       encoding: "utf8",
       timeout: 60_000,

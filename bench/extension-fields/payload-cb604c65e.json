@@ -1,0 +1,32 @@
+{
+  "schema": "sagejs.extension-fields-payload-review/v1",
+  "source_revision": "cb604c65e15e9648581fc36ba9d7d3e12da3e239",
+  "artifact_identity": "sha256:e8c5ee080b4c4253ca0515917db05220f5326d42c78a250263f128a9dbf54ad0",
+  "production_manifest_sha256": "63cf5610bfba4c65b67f882bc8eaa6c3af517f5e1e123a6b4b19eba03e059164",
+  "command": "node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs --dist packages/flint-wasm/dist --output payload.json",
+  "totals": { "bytes": 169872974, "gzip_bytes": 25354265, "brotli_bytes": 16876678 },
+  "previous_baseline": { "bytes": 187049102, "gzip_bytes": 25160189, "brotli_bytes": 15556467 },
+  "added_groups": [
+    {
+      "id": "extension-multivariate",
+      "kind": "specialist",
+      "dependencies": ["eager-core"],
+      "files": ["flint-extension-multivariate.wasm"],
+      "compressed_delta": { "bytes": 5181753, "gzip_bytes": 2101397, "brotli_bytes": 1680720 },
+      "maximum_compressed_delta": { "gzip_bytes": 2300000, "brotli_bytes": 1900000 }
+    },
+    {
+      "id": "extension-multivariate-source",
+      "kind": "support",
+      "dependencies": [],
+      "files": ["extension-resource-adapter.c"],
+      "compressed_delta": { "bytes": 36911, "gzip_bytes": 3512, "brotli_bytes": 3048 },
+      "maximum_compressed_delta": { "gzip_bytes": 16000, "brotli_bytes": 14000 }
+    }
+  ],
+  "eager_core": {
+    "compressed_delta": { "bytes": 139715288, "gzip_bytes": 15460564, "brotli_bytes": 9217212 },
+    "maximum_compressed_delta": { "gzip_bytes": 17600000, "brotli_bytes": 9700000 }
+  },
+  "review": "All 14 authenticated topology groups pass their existing compressed limits. The added groups account for 1683768 Brotli bytes; the remaining artifact is 363557 Brotli bytes smaller than the preceding baseline. Admit this measured additive capability without changing the 5% relative growth allowance or any topology limit. This is payload evidence, not mathematical or cross-platform qualification."
+}

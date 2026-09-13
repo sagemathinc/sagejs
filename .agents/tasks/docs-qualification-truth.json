@@ -1,0 +1,97 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "docs-qualification-truth",
+  "title": "Repair numerical qualification claims",
+  "lane": "numerical-contracts",
+  "status": "review",
+  "owner": "user",
+  "objective": "Make numerical-computing documentation truthful and source-bound before final qualification",
+  "base_commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+  "claims": [
+    "agents/numerical-computing-product-plan.md",
+    "docs/numerical-computing/inventory.md",
+    "docs/numerical-computing/qualification/product-campaign.md",
+    "docs/numerical-computing/optimization/nlopt-methods.md",
+    "docs/numerical-computing/approximation/integration-requests.md",
+    "docs/numerical-computing/linear-algebra/integration-requests.md",
+    "docs/numerical-computing/linear-algebra/support-matrix.json",
+    "docs/numerical-computing/ode/integration-requests.md",
+    "docs/numerical-computing/statistics/INTEGRATION-REQUESTS.md",
+    "docs/numerical-computing/multilingual/integration.md",
+    "architecture/optimizer-opportunities.manifest.json",
+    "docs/optimizer-opportunities.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 558.551,
+      "started_at": "2026-09-02T20:46:26.659Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "3757de8215e96ec66da589b91986d7f41e6855cb826ae01334e47b8f9b20aa16",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.291,
+      "started_at": "2026-09-02T20:56:00.779Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "3757de8215e96ec66da589b91986d7f41e6855cb826ae01334e47b8f9b20aa16",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 63.66,
+      "started_at": "2026-09-02T20:56:49.520Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "3757de8215e96ec66da589b91986d7f41e6855cb826ae01334e47b8f9b20aa16",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 765.184,
+      "started_at": "2026-09-02T20:58:00.462Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "3757de8215e96ec66da589b91986d7f41e6855cb826ae01334e47b8f9b20aa16",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Replaced the stale numerical product implementation record with source-bound P0-P8 status and executable evidence links; corrected live corpus, surface, browser-closure, and NLopt qualification claims; converted resolved lane handoffs into historical decision records; distinguished package-local linear algebra gaps from product spectral support; documented explicit deferrals; and regenerated optimizer-opportunity artifacts required by the authoritative plan change.",
+    "risks": [
+      "The final P8 product qualification remains intentionally unclaimed until an exact frozen candidate produces authenticated receipts.",
+      "Public cross-domain gallery deployment and the separate website capability wording are owned by other lanes and are not changed here."
+    ],
+    "next_steps": [
+      "Cherry-pick this commit into the integration candidate before its SHA freeze.",
+      "Run the final source-bound product matrix without editing source afterward; retain candidate identities in immutable release artifacts and notes."
+    ]
+  }
+}

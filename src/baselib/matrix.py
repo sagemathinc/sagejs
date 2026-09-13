@@ -40,6 +40,24 @@ _MATRIX_RESOURCE_CACHE_LIMIT = 64
 _matrix_resource_cache = []
 
 
+def _latex_display(value: Any) -> Any:
+    record = runtime.object.create(None)
+    runtime.reflect.set(record, "mime", "text/latex")
+    runtime.reflect.set(record, "data", "$\\displaystyle " + str(value) + "$")
+    return record
+
+
+def _latex_rational_text(value: str) -> str:
+    if "/" not in value:
+        return value
+    parts = value.split("/")
+    numerator = parts[0]
+    denominator = parts[1]
+    if numerator.startswith("-"):
+        return "-\\frac{" + numerator[1:] + "}{" + denominator + "}"
+    return "\\frac{" + numerator + "}{" + denominator + "}"
+
+
 def _touch_matrix_resource(storage: Any) -> None:
     """Retain one exact matrix handle in the bounded synchronous-job cache."""
     if _matrix_resource_cache and _matrix_resource_cache[-1] is storage:
@@ -113,6 +131,13 @@ class _PackedRationalStorage:
             raise ValueError("rational buffer component lengths differ")
         self.numerators = numerators
         self.denominators = denominators
+
+
+class _PortableMatrixStorage:
+    """Own ordinary coerced entries when a host matrix ABI is unavailable."""
+
+    def __init__(self, entries: list[Any]) -> None:
+        self.entries = list(entries)
 
 
 class _FmpqMatrixResourceStorage:
@@ -1001,6 +1026,10 @@ def _is_complex_base(value: object) -> bool:
     ]
 
 
+def _is_symbolic_base(value: object) -> bool:
+    return getattr(value, "_kind", None) == "SR"
+
+
 def _is_base_ring(value: object) -> bool:
     return (
         value is sage.ZZ
@@ -1011,11 +1040,19 @@ def _is_base_ring(value: object) -> bool:
         or _is_extension_field_base(value)
         or _is_algebraic_base(value)
         or _is_approximate_base(value)
+        or _is_symbolic_base(value)
     )
 
 
 def _cyclotomic_order(value: Any) -> Any:
-    return value.zeta_order()
+    """Return the `n` naming the field, which its presentation is keyed by."""
+    order = getattr(value, "_order", None)
+    return value.zeta_order() if order is None else order
+
+
+def _cyclotomic_degree(value: Any) -> int:
+    """Return the degree after the caller has recognized a cyclotomic field."""
+    return int(value.degree())
 
 
 def _canonical_base(base: sage.Parent) -> sage.Parent:
@@ -1031,6 +1068,8 @@ def _base_for_values(values: list[Any]) -> sage.Parent:
         if isinstance(value, sage.Rational):
             return sage.QQ
         parent = getattr(value, "_parent", None)
+        if _is_symbolic_base(parent):
+            return runtime.reflect.get(value, "_parent")
         if _is_algebraic_base(parent):
             return runtime.reflect.get(value, "_parent")
         if _is_approximate_base(parent):
@@ -1129,6 +1168,13 @@ def _native_matrix(
             getattr(base, "_kind", None) == "AA",
         )
     if _is_extension_field_base(base):
+        if not _flint_backend_has_function("fqMatrix"):
+            trace = runtime.reflect.get(
+                runtime.flint_backend(), "tracePortableFqMatrix"
+            )
+            if runtime.jstype(trace) == "function":
+                trace()
+            return _PortableMatrixStorage(values)
         entries = []
         for value in values:
             entries.append(runtime.reflect.get(base(value), "_native"))
@@ -1150,6 +1196,13 @@ def _native_matrix(
             return backend.zmodMatrix(rows, cols, entries, base._modulus)
         return backend.nmodMatrix(rows, cols, entries, base._modulus)
     if _is_approximate_base(base):
+        if not _flint_backend_has_function("acbMatrix"):
+            trace = runtime.reflect.get(
+                runtime.flint_backend(), "tracePortableAcbMatrix"
+            )
+            if runtime.jstype(trace) == "function":
+                trace()
+            return _PortableMatrixStorage(values)
         field = _complex_field(_approximate_precision(base))
         entries = []
         for value in values:
@@ -1248,6 +1301,10 @@ def _common_base(
 ) -> sage.Parent:
     if left is right:
         return left
+    if _is_symbolic_base(left):
+        return left
+    if _is_symbolic_base(right):
+        return right
     if _is_algebraic_base(left) or _is_algebraic_base(right):
         if left is sage.ZZ or left is sage.QQ:
             return right
@@ -1474,24 +1531,13 @@ class MatrixSpaceParent(sage.Parent):
                 return self._from_m4ri_matrix_resource(resource)
             values = runtime.uint64_unpack_le(entries, width, count)
             return self._from_uint64_residues(values)
-        backend = runtime.flint_backend()
-        if getattr(self._base, "_kind", None) == "ZMOD":
-            native = backend.zmodMatrixPacked(
-                self._rows,
-                self._cols,
-                entries,
-                width,
-                self._base._modulus,
-            )
-        else:
-            native = backend.nmodMatrixPacked(
-                self._rows,
-                self._cols,
-                entries,
-                width,
-                self._base._modulus,
-            )
-        return Matrix(self, native)
+        count = self._rows * self._cols
+        if width not in [1, 2, 4, 8]:
+            raise ValueError("unsupported packed residue width")
+        if len(entries) != count * width:
+            raise ValueError("packed matrix residue count does not match dimensions")
+        values = runtime.uint64_unpack_le(entries, width, count)
+        return self([self._base(value) for value in values])
 
     def _from_uint64_residues(self, entries: Any) -> Matrix:
         """Construct `GF(p)` storage from canonical row-major residues."""
@@ -2302,6 +2348,69 @@ class Vector(sage.Element):
     def list(self) -> list[Any]:
         return list(self._exact_values())
 
+    def __call__(self, *args: Any, **kwargs: Any) -> Vector:
+        """Evaluate or substitute every coordinate of a symbolic vector."""
+        values = []
+        for entry in self:
+            if callable(entry):
+                values.append(entry(*args, **kwargs))
+            elif len(args) == 0 and len(runtime.object.keys(kwargs)) == 0:
+                values.append(entry)
+            else:
+                values.append(entry)
+        return vector(values)
+
+    def diff(self, *variables: Any) -> Vector:
+        """Differentiate each coordinate."""
+        values = []
+        for entry in self:
+            derivative = getattr(entry, "diff", None)
+            if callable(derivative):
+                values.append(derivative(*variables))
+            else:
+                values.append(0)
+        return vector(values)
+
+    derivative = diff
+
+    def norm(self, p: int = 2) -> Any:
+        """Return the symbolic or exact `p`-norm of this vector."""
+        p = int(p)
+        if p < 1:
+            raise ValueError("vector norm degree must be positive")
+        total = 0
+        for entry in self:
+            total += abs(entry) ** p
+        if p == 1:
+            return total
+        if p == 2:
+            square_root = runtime.reflect.get(runtime.global_object, "sqrt")
+            return runtime.reflect.apply(square_root, runtime.undefined, [total])
+        return total ** runtime.rational_class(1, p)
+
+    def numerical_approx(
+        self,
+        prec: Any = None,
+        digits: Any = None,
+    ) -> Vector:
+        """Numerically approximate every coordinate."""
+        approximate = runtime.reflect.get(
+            runtime.global_object,
+            "numerical_approx",
+        )
+        return vector(
+            [
+                runtime.reflect.apply(
+                    approximate,
+                    runtime.undefined,
+                    [entry, prec, digits],
+                )
+                for entry in self
+            ]
+        )
+
+    n = numerical_approx
+
     def __copy__(self) -> Vector:
         if self._native_value is runtime.undefined:
             return Vector(self._parent, list(self._entries))
@@ -2325,6 +2434,8 @@ class Vector(sage.Element):
             return self
         if base is coordinate_ring:
             return VectorSpace(base, len(self))(self.list())
+        if _is_symbolic_base(base):
+            return VectorSpace(base, len(self))(_coerce_values(base, self.list()))
         if coordinate_ring is sage.ZZ and (
             base is sage.QQ
             or _is_modular_base(base)
@@ -2406,6 +2517,12 @@ class Vector(sage.Element):
             return total
         if isinstance(other, Matrix):
             return other._vector_product(self, "left")
+        if _is_symbolic_base(self._coordinate_ring()):
+            scalar = self._coordinate_ring()(other)
+            return self._from_coordinate_values(
+                [value * scalar for value in self],
+                self._preserve_parent(),
+            )
         if _is_extension_field_base(self.base_ring()) and not self._preserve_parent():
             scalar = self.base_ring()(other)
             return VectorSpace(self.base_ring(), len(self))(
@@ -2441,6 +2558,21 @@ class Vector(sage.Element):
     def __rmul__(self, other: object) -> Vector:
         return self * other
 
+    def __truediv__(self, other: object) -> Vector:
+        if runtime.is_exact_integer(other):
+            denominator = runtime.integer_bigint(other)
+            if denominator == 0:
+                raise ZeroDivisionError("vector division by zero")
+            reciprocal = runtime.rational_class(1, denominator)
+        elif isinstance(other, sage.Rational):
+            if other._numerator == 0:
+                raise ZeroDivisionError("vector division by zero")
+            reciprocal = runtime.rational_class(other._denominator, other._numerator)
+        else:
+            base = self._coordinate_ring()
+            reciprocal = base(1) / base(other)
+        return self * reciprocal
+
     def _sage_binop_(
         self,
         operator: str,
@@ -2455,10 +2587,29 @@ class Vector(sage.Element):
             if reflected:
                 return self.__rmul__(other)
             return self.__mul__(other)
+        if operator == "truediv" and not reflected:
+            return self.__truediv__(other)
         raise TypeError("operation " + operator + " is not defined for vectors")
 
     def dot_product(self, other: Vector) -> Any:
         return self * other
+
+    def cross_product(self, other: Vector) -> Vector:
+        """Return the three-dimensional cross product."""
+        if not isinstance(other, Vector):
+            raise TypeError("cross product requires another vector")
+        if len(self) != 3 or len(other) != 3:
+            raise TypeError(
+                "cross product is currently defined for vectors of length three"
+            )
+        left, right = self._pair(other)
+        return VectorSpace(left._coordinate_ring(), 3)(
+            [
+                left[1] * right[2] - left[2] * right[1],
+                left[2] * right[0] - left[0] * right[2],
+                left[0] * right[1] - left[1] * right[0],
+            ]
+        )
 
     def column(self) -> Matrix:
         return matrix(self._coordinate_ring(), len(self), 1, self.list())
@@ -2543,6 +2694,14 @@ class VectorSubspaceParent(sage.Parent):
         return [self.gen(index) for index in range(self.dimension())]
 
     gens = basis
+
+    def coordinate_vector(self, value: Any) -> Vector:
+        """Return coordinates of `value` in this subspace's basis."""
+        ambient_value = self._ambient(value)
+        coordinates = self._basis_matrix.transpose().solve_right(ambient_value)
+        if self._basis_matrix.transpose() * coordinates != ambient_value:
+            raise ArithmeticError("vector is not in the subspace")
+        return coordinates
 
     def gen(self, index: int = 0) -> Vector:
         row = self._basis_matrix.row(index)
@@ -2878,6 +3037,7 @@ class Matrix(sage.Element):
         self._integer_storage_cache: Any = runtime.undefined
         self._rational_storage_cache: Any = runtime.undefined
         self._exact_host_values_cache: Any = runtime.undefined
+        self._portable_storage_cache: Any = runtime.undefined
         if _is_packed_uint64(native_value):
             self._prime_residues_cache = native_value
         elif isinstance(native_value, _M4riMatrixResourceStorage):
@@ -2890,6 +3050,8 @@ class Matrix(sage.Element):
             self._rational_storage_cache = native_value
         elif isinstance(native_value, _FmpqMatrixResourceStorage):
             self._rational_storage_cache = native_value
+        elif isinstance(native_value, _PortableMatrixStorage):
+            self._portable_storage_cache = native_value
         else:
             self._native_handle = native_value
         self._immutable = False
@@ -2906,6 +3068,8 @@ class Matrix(sage.Element):
         self._right_kernel_cache = runtime.undefined
         self._left_kernel_cache = runtime.undefined
         self._pivots_cache = runtime.undefined
+        self._full_row_rank_pivots_cache = runtime.undefined
+        self._full_row_rank_prime_cache = runtime.undefined
         self._charpoly_cache = runtime.map()
         self._minpoly_cache = runtime.map()
         self._row_vectors_cache: Any = runtime.undefined
@@ -2937,6 +3101,9 @@ class Matrix(sage.Element):
             self._prime_residues_cache is not runtime.undefined
             or self._has_m4ri_matrix_resource()
         ) and _is_packed_dense_prime_base(self.base_ring())
+
+    def _has_portable_storage(self) -> bool:
+        return isinstance(self._portable_storage_cache, _PortableMatrixStorage)
 
     def _has_nmod_matrix_resource(self) -> bool:
         return isinstance(self._nmod_storage_cache, _NmodMatrixResourceStorage)
@@ -3113,7 +3280,16 @@ class Matrix(sage.Element):
                 region = _m4ri_ffi_module().matrix_sagepack_bytes(self._m4ri_resource())
                 return region.take_bytes()
             return runtime.uint64_pack_le(self._prime_residues(), width)
-        return runtime.flint_backend().matrixExportPacked(self._native, width)
+        if width not in [1, 2, 4, 8]:
+            raise ValueError("unsupported packed residue width")
+        modulus = runtime.integer_bigint(_untyped(self.base_ring()).characteristic())
+        limit = runtime.bigint(1) << runtime.bigint(8 * width)
+        if modulus - runtime.bigint(1) >= limit:
+            raise OverflowError("a matrix residue does not fit the requested width")
+        values = []
+        for entry in self.list():
+            values.append(runtime.integer_bigint(entry._value))
+        return runtime.uint64_pack_le(_packed_uint64(values), width)
 
     def _prime_residues(self) -> Any:
         """Return canonical row-major residues for a prime field."""
@@ -3281,6 +3457,18 @@ class Matrix(sage.Element):
             values = self._exact_host_values()
             return [values[start + index * stride] for index in range(count)]
         raise TypeError("bulk exact selection requires a generated matrix resource")
+
+    def _packed_rational_row(self, index: Any) -> Any:
+        """Serialize one `QQ` row without materializing host rationals."""
+        index = _normalize_named_index(index, self.nrows(), "row")
+        if not self._has_fmpq_matrix_resource() or not _flint_backend_has_function(
+            "ffiFmpqMatrixSerializeSequence"
+        ):
+            raise TypeError("packed rational rows require a generated FLINT matrix")
+        region = _flint_ffi_module().fmpq_matrix_serialize_sequence(
+            self._rational_resource(), index * self.ncols(), 1, self.ncols()
+        )
+        return region.take_bytes()
 
     def _cached_row_vectors(self) -> list[Vector]:
         """Return the canonical cached immutable row vectors."""
@@ -3465,7 +3653,19 @@ class Matrix(sage.Element):
                 int(_untyped(self.base_ring()).characteristic()),
             )
             return result
-        return runtime.flint_backend().matrixIsZero(self._native)
+        if self._has_portable_storage():
+            for entry in self._portable_storage_cache.entries:
+                if entry != 0:
+                    return False
+            return True
+        # Algebraic and approximate matrices may own dedicated native
+        # resources, while composite-residue matrices may use a coarse legacy
+        # handle.  Their common exact public oracle is entry comparison; this
+        # also avoids the host-only `matrixIsZero` adapter in WebAssembly.
+        for entry in self.list():
+            if entry != 0:
+                return False
+        return True
 
     def __bool__(self) -> bool:
         return not self.is_zero()
@@ -3584,6 +3784,8 @@ class Matrix(sage.Element):
         m4ri_storage = self._m4ri_storage_cache
         nmod_storage = self._nmod_storage_cache
         prime_storage = self._prime_residues_cache
+        if self._has_portable_storage():
+            return self._portable_storage_cache.entries[row * columns + col]
         if isinstance(m4ri_storage, _M4riMatrixResourceStorage):
             flat_index = row * columns + col
             if self._prime_host_values_cache is not runtime.undefined:
@@ -3652,6 +3854,12 @@ class Matrix(sage.Element):
             raise IndexError("matrix index must have two components")
         row = _normalize_index(index[0], self.nrows())
         col = _normalize_index(index[1], self.ncols())
+        if self._has_portable_storage():
+            self._portable_storage_cache.entries[row * self.ncols() + col] = (
+                self.base_ring()(value)
+            )
+            self._clear_cache()
+            return
         integer_storage = self._integer_storage_cache
         if isinstance(integer_storage, _FmpzMatrixResourceStorage):
             exact = sage.ZZ(value)
@@ -4153,7 +4361,9 @@ class Matrix(sage.Element):
                     base,
                     self.nrows(),
                     self.ncols(),
-                )._from_integer_values(self._rational_numerators())
+                )._from_integer_values(
+                    _integer_buffer_values(self._rational_numerators())
+                )
             return matrix(base, self.nrows(), self.ncols(), self.list())
         if (
             self.base_ring() is sage.ZZ
@@ -4322,6 +4532,19 @@ class Matrix(sage.Element):
                 modulus,
             )
             return left._parent._from_canonical_uint64_residues(entries)
+        if left._has_portable_storage() or right._has_portable_storage():
+            portable_entries = []
+            for row in range(left.nrows()):
+                for column in range(left.ncols()):
+                    portable_entries.append(
+                        left._entry(row, column) + right._entry(row, column)
+                    )
+            return matrix(
+                left.base_ring(),
+                left.nrows(),
+                left.ncols(),
+                portable_entries,
+            )
         backend = runtime.flint_backend()
         if _is_extension_field_base(left.base_ring()):
             native_value = backend.fqMatrixAdd(left._native, right._native)
@@ -4457,6 +4680,19 @@ class Matrix(sage.Element):
                 modulus,
             )
             return left._parent._from_canonical_uint64_residues(entries)
+        if left._has_portable_storage() or right._has_portable_storage():
+            portable_entries = []
+            for row in range(left.nrows()):
+                for column in range(left.ncols()):
+                    portable_entries.append(
+                        left._entry(row, column) - right._entry(row, column)
+                    )
+            return matrix(
+                left.base_ring(),
+                left.nrows(),
+                left.ncols(),
+                portable_entries,
+            )
         backend = runtime.flint_backend()
         if _is_extension_field_base(left.base_ring()):
             native_value = backend.fqMatrixSub(left._native, right._native)
@@ -4569,6 +4805,13 @@ class Matrix(sage.Element):
                 modulus,
             )
             return self._parent._from_canonical_uint64_residues(entries)
+        if self._has_portable_storage():
+            return matrix(
+                self.base_ring(),
+                self.nrows(),
+                self.ncols(),
+                [-entry for entry in self._portable_storage_cache.entries],
+            )
         backend = runtime.flint_backend()
         if _is_extension_field_base(self.base_ring()):
             native_value = backend.fqMatrixNeg(self._native)
@@ -4621,6 +4864,14 @@ class Matrix(sage.Element):
                 self.ncols(),
             )
             return self._parent._from_same_shape_fmpq_matrix_resource(resource)
+        if self._has_portable_storage():
+            value = self.base_ring()(scalar)
+            return matrix(
+                self.base_ring(),
+                self.nrows(),
+                self.ncols(),
+                [entry * value for entry in self._portable_storage_cache.entries],
+            )
         if _is_extension_field_base(self.base_ring()):
             value = self.base_ring()(scalar)
             native_value = runtime.flint_backend().fqMatrixScalarMul(
@@ -4969,6 +5220,22 @@ class Matrix(sage.Element):
                 )._from_canonical_rational_entries(
                     storage.numerators, storage.denominators
                 )
+            if left._has_portable_storage() or right._has_portable_storage():
+                entries = []
+                for row in range(left.nrows()):
+                    for column in range(right.ncols()):
+                        total = base(0)
+                        for inner in range(left.ncols()):
+                            total += left._entry(row, inner) * right._entry(
+                                inner, column
+                            )
+                        entries.append(total)
+                return matrix(
+                    base,
+                    left.nrows(),
+                    right.ncols(),
+                    entries,
+                )
             backend = runtime.flint_backend()
             if _is_extension_field_base(base):
                 native_value = backend.fqMatrixMul(left._native, right._native)
@@ -5225,6 +5492,20 @@ class Matrix(sage.Element):
             answer._row_subdivisions = list(self._col_subdivisions)
             answer._col_subdivisions = list(self._row_subdivisions)
             return answer
+        if self._has_portable_storage():
+            portable_entries = []
+            for column in range(self.ncols()):
+                for row in range(self.nrows()):
+                    portable_entries.append(self._entry(row, column))
+            answer = matrix(
+                self.base_ring(),
+                self.ncols(),
+                self.nrows(),
+                portable_entries,
+            )
+            answer._row_subdivisions = list(self._col_subdivisions)
+            answer._col_subdivisions = list(self._row_subdivisions)
+            return answer
         backend = runtime.flint_backend()
         if _is_extension_field_base(self.base_ring()):
             native_value = backend.fqMatrixTranspose(self._native)
@@ -5241,6 +5522,43 @@ class Matrix(sage.Element):
     @property
     def T(self) -> Matrix:
         return self.transpose()
+
+    def _portable_rref_entries(self) -> tuple[list[Any], list[int]]:
+        """Return ordinary row-reduced entries and pivot columns."""
+        rows = [
+            [self._entry(row, column) for column in range(self.ncols())]
+            for row in range(self.nrows())
+        ]
+        pivots = []
+        pivot_row = 0
+        for column in range(self.ncols()):
+            selected = None
+            for row in range(pivot_row, self.nrows()):
+                if rows[row][column] != 0:
+                    selected = row
+                    break
+            if selected is None:
+                continue
+            rows[pivot_row], rows[selected] = rows[selected], rows[pivot_row]
+            inverse = self.base_ring()(1) / rows[pivot_row][column]
+            rows[pivot_row] = [entry * inverse for entry in rows[pivot_row]]
+            for row in range(self.nrows()):
+                if row == pivot_row:
+                    continue
+                factor = rows[row][column]
+                if factor != 0:
+                    rows[row] = [
+                        rows[row][index] - factor * rows[pivot_row][index]
+                        for index in range(self.ncols())
+                    ]
+            pivots.append(column)
+            pivot_row += 1
+            if pivot_row == self.nrows():
+                break
+        entries = []
+        for row in rows:
+            entries.extend(row)
+        return (entries, pivots)
 
     def determinant(
         self,
@@ -5383,6 +5701,33 @@ class Matrix(sage.Element):
                 modulus,
             )
             return self._determinant_cache
+        if self._has_portable_storage():
+            rows = [
+                [self._entry(row, column) for column in range(self.ncols())]
+                for row in range(self.nrows())
+            ]
+            result = self.base_ring()(1)
+            sign = 1
+            for column in range(self.ncols()):
+                pivot = None
+                for row in range(column, self.nrows()):
+                    if rows[row][column] != 0:
+                        pivot = row
+                        break
+                if pivot is None:
+                    self._determinant_cache = self.base_ring()(0)
+                    return self._determinant_cache
+                if pivot != column:
+                    rows[column], rows[pivot] = rows[pivot], rows[column]
+                    sign = -sign
+                value = rows[column][column]
+                result *= value
+                for row in range(column + 1, self.nrows()):
+                    factor = rows[row][column] / value
+                    for index in range(column + 1, self.ncols()):
+                        rows[row][index] -= factor * rows[column][index]
+            self._determinant_cache = result if sign == 1 else -result
+            return self._determinant_cache
         backend = runtime.flint_backend()
         if _is_extension_field_base(self.base_ring()):
             value = backend.fqMatrixDet(self._native)
@@ -5405,6 +5750,8 @@ class Matrix(sage.Element):
         self._right_kernel_cache = runtime.undefined
         self._left_kernel_cache = runtime.undefined
         self._pivots_cache = runtime.undefined
+        self._full_row_rank_pivots_cache = runtime.undefined
+        self._full_row_rank_prime_cache = runtime.undefined
         # Scalar construction may invalidate an already empty matrix thousands
         # of times. Reuse these two identity-insensitive lookup tables rather
         # than allocate fresh maps for every successful write.
@@ -5425,6 +5772,10 @@ class Matrix(sage.Element):
         if algorithm == "m4ri" and not self._has_m4ri_matrix_resource():
             raise ValueError("M4RI rank requires an available GF(2) backend")
         if self._rank_cache is runtime.undefined:
+            if self._has_portable_storage():
+                _entries, pivots = self._portable_rref_entries()
+                self._rank_cache = len(pivots)
+                return self._rank_cache
             backend = runtime.flint_backend()
             if self._has_packed_rational_storage():
                 if self._has_fmpq_matrix_resource():
@@ -5707,7 +6058,7 @@ class Matrix(sage.Element):
         return nonzero / (self.nrows() * self.ncols())
 
     def is_sparse(self) -> bool:
-        return False
+        return bool(self._parent._sparse)
 
     def rref(self, algorithm: Any = None) -> Matrix:
         if algorithm not in [None, "m4ri", "fflas", "flint", "modp"]:
@@ -5717,6 +6068,17 @@ class Matrix(sage.Element):
         if algorithm == "m4ri" and not self._has_m4ri_matrix_resource():
             raise ValueError("M4RI RREF requires an available GF(2) backend")
         if self._rref_cache is runtime.undefined:
+            if self._has_portable_storage():
+                entries, pivots = self._portable_rref_entries()
+                self._rank_cache = len(pivots)
+                self._rref_cache = matrix(
+                    self.base_ring(), self.nrows(), self.ncols(), entries
+                )
+                self._rref_cache._rank_cache = self._rank_cache
+                self._rref_cache._pivots_cache = runtime.math_tuple(pivots)
+                self._rref_cache._rref_cache = self._rref_cache
+                self._rref_cache.set_immutable()
+                return self._rref_cache
             if self._has_integer_storage():
                 self._rref_cache = self.change_ring(sage.QQ).rref(algorithm)
                 self._rref_cache.set_immutable()
@@ -6141,7 +6503,18 @@ class Matrix(sage.Element):
         return self._howell_cache
 
     def elementary_divisors(self, algorithm: Any = None) -> list[Any]:
-        diagonal = self.smith_form()[0].diagonal()
+        if self.base_ring() is not sage.ZZ:
+            raise TypeError("elementary divisors currently require an integer matrix")
+        if _flint_backend_has_function("ffiFmpzMatrixSnf"):
+            # Invariant factors do not require the two unimodular transforms.
+            # Those transforms can have much larger coefficients than the SNF.
+            ffi = _flint_ffi_module()
+            result = self._parent._from_fmpz_matrix_resource(
+                ffi.fmpz_matrix_snf(self._integer_resource())
+            )
+            diagonal = result.diagonal()
+        else:
+            diagonal = self.smith_form()[0].diagonal()
         while len(diagonal) < self.nrows():
             diagonal.append(0)
         return diagonal
@@ -6286,7 +6659,78 @@ class Matrix(sage.Element):
         )
         return self._pivots_cache
 
+    def _full_row_rank_pivots(self) -> Any:
+        r"""Return columns whose minor certifies full row rank over `QQ`.
+
+        The generated FLINT boundary reduces modulo a prime avoiding all
+        denominators.  A nonzero maximal minor there is an exact certificate
+        that the same minor is nonzero over `QQ`; no rational RREF is formed.
+        """
+        if self.base_ring() is not sage.QQ:
+            raise TypeError("full-row-rank pivot certification requires QQ")
+        if self._full_row_rank_pivots_cache is runtime.undefined:
+            if not self._has_fmpq_matrix_resource() or not _flint_backend_has_function(
+                "ffiFmpqMatrixFullRowRankPivots"
+            ):
+                pivots = runtime.math_tuple(self.pivots())
+                if len(pivots) != self.nrows():
+                    raise ArithmeticError("matrix does not have full row rank")
+                self._full_row_rank_pivots_cache = pivots
+                self._full_row_rank_prime_cache = None
+                return pivots
+            region = _flint_ffi_module().fmpq_matrix_full_row_rank_pivots(
+                self._rational_resource()
+            )
+            packed = region.take_bytes()
+            if len(packed) == 0:
+                # Finitely many unlucky primes cannot disprove full rank.
+                # Preserve exact semantics when the bounded certificate search
+                # is inconclusive (including primes dividing denominators).
+                pivots = runtime.math_tuple(self.pivots())
+                if len(pivots) != self.nrows():
+                    raise ArithmeticError("matrix does not have full row rank")
+                self._full_row_rank_pivots_cache = pivots
+                self._full_row_rank_prime_cache = None
+                return pivots
+            if len(packed) != 8 * (self.nrows() + 1):
+                raise RuntimeError("invalid full-row-rank pivot certificate length")
+            values = runtime.uint64_unpack_le(packed, 8, self.nrows() + 1)
+            self._full_row_rank_prime_cache = runtime.number(values[0])
+            self._full_row_rank_pivots_cache = runtime.math_tuple(
+                [runtime.number(values[index + 1]) for index in range(self.nrows())]
+            )
+            self._rank_cache = self.nrows()
+        return self._full_row_rank_pivots_cache
+
     def row_space(self, base_ring: Any = None) -> VectorSubspaceParent:
+        matrix_base = self.base_ring()
+        if (
+            base_ring is None
+            and getattr(matrix_base, "_kind", None) == "CyclotomicField"
+            and _cyclotomic_degree(matrix_base) > 2
+        ):
+            native_row_basis = runtime.reflect.get(
+                runtime.flint_backend(), "cyclotomicMatrixRowBasis"
+            )
+            if runtime.jstype(native_row_basis) == "function":
+                cyclotomic_order = int(_cyclotomic_order(matrix_base))
+                native_result = native_row_basis(
+                    self._native,
+                    runtime.integer_bigint(cyclotomic_order),
+                )
+                rank = int(native_result[1])
+                basis = Matrix(
+                    MatrixSpace(self.base_ring(), rank, self.ncols()),
+                    native_result[0],
+                )
+                basis._rref_cache = basis
+                basis._rank_cache = rank
+                basis.set_immutable()
+                self._rank_cache = rank
+                return VectorSubspaceParent(
+                    VectorSpace(self.base_ring(), self.ncols()),
+                    basis,
+                )
         plan = _matrix_subspaces_public_module().prepare_public_row_space(
             self, base_ring
         )
@@ -6315,6 +6759,30 @@ class Matrix(sage.Element):
 
     def right_kernel(self) -> VectorSubspaceParent:
         if self._right_kernel_cache is runtime.undefined:
+            if self._has_portable_storage():
+                reduced = self.rref()
+                pivots = list(reduced.pivots())
+                free_columns = [
+                    column for column in range(self.ncols()) if column not in pivots
+                ]
+                entries = []
+                for free in free_columns:
+                    vector = [self.base_ring()(0) for _ in range(self.ncols())]
+                    vector[free] = self.base_ring()(1)
+                    for row in range(len(pivots)):
+                        vector[pivots[row]] = -reduced[row, free]
+                    entries.extend(vector)
+                basis = matrix(
+                    self.base_ring(),
+                    len(free_columns),
+                    self.ncols(),
+                    entries,
+                )
+                self._right_kernel_cache = VectorSubspaceParent(
+                    VectorSpace(self.base_ring(), self.ncols()),
+                    basis,
+                )
+                return self._right_kernel_cache
             backend = runtime.flint_backend()
             native_value = runtime.undefined
             basis = None
@@ -6495,11 +6963,15 @@ class Matrix(sage.Element):
                 native_value = backend.fqMatrixRightKernel(self._native)
             elif getattr(self.base_ring(), "_kind", None) == "CyclotomicField":
                 cyclotomic_order = int(_cyclotomic_order(self.base_ring()))
-                if cyclotomic_order in [3, 4, 6]:
-                    # FLINT's direct qqbar elimination is already effective
-                    # in quadratic fields and avoids translating legacy
-                    # order-3 character presentations through a larger
-                    # cyclotomic coordinate cache.
+                if (
+                    cyclotomic_order in [3, 4, 6]
+                    or runtime.jstype(
+                        runtime.reflect.get(backend, "cyclotomicMatrixRightKernel")
+                    )
+                    != "function"
+                ):
+                    # Exact qqbar elimination handles quadratic fields and
+                    # hosts without the cyclotomic coordinate accelerator.
                     nullity = self.ncols() - self.rank()
                     native_value = backend.matrixRightKernel(self._native)
                 else:
@@ -6581,6 +7053,16 @@ class Matrix(sage.Element):
             raise ArithmeticError("only valid for square matrix")
         if not _is_approximate_base(self.base_ring()):
             raise TypeError("approximate eigensystems require a real or complex matrix")
+        if self._has_portable_storage():
+            field = _complex_field(_approximate_precision(self.base_ring()))
+            entries = []
+            for value in self.list():
+                entries.append(runtime.reflect.get(field(value), "_native"))
+            return runtime.flint_backend().matrixApproxEigensystemPortable(
+                entries,
+                self.nrows(),
+                _approximate_precision(self.base_ring()),
+            )
         return runtime.flint_backend().matrixApproxEigensystem(self._native)
 
     def eigenvalues(
@@ -6723,6 +7205,27 @@ class Matrix(sage.Element):
         if _is_approximate_base(self.base_ring()):
             return self._approximate_eigenvectors(False)
         return self._exact_eigenvectors(False)
+
+    def eigenmatrix_right(self) -> Any:
+        """Return `(D, P)` with right eigenvectors as the columns of `P`."""
+        eigenvalues = []
+        columns = []
+        for value, basis, _multiplicity in self.eigenvectors_right():
+            for basis_vector in basis:
+                eigenvalues.append(value)
+                columns.append(basis_vector)
+        if len(columns) != self.nrows():
+            raise ValueError("matrix is not diagonalizable")
+        base = columns[0]._coordinate_ring() if len(columns) else self.base_ring()
+        for value in eigenvalues:
+            base = _common_base(base, runtime.coercion_model.parentOf(value))
+        entries = []
+        for row in range(self.nrows()):
+            for column in range(self.ncols()):
+                entries.append(columns[column][row])
+        change = matrix(base, self.nrows(), self.ncols(), entries)
+        diagonal = diagonal_matrix(base, eigenvalues)
+        return runtime.math_tuple([diagonal, change])
 
     def _eigenspaces(self, left: bool) -> list[Any]:
         if not _is_approximate_base(self.base_ring()):
@@ -7629,24 +8132,31 @@ class Matrix(sage.Element):
                 right_matrix.change_ring(solve_base)
             )
             reduced = augmented.echelon_form()
+            # Export once: scalar resource reads otherwise cross the Wasm
+            # boundary for every pivot candidate and solution coefficient.
+            reduced_entries = reduced.list()
+            reduced_columns = reduced.ncols()
             solution_entries = [
                 solve_base(0) for _entry in range(self.ncols() * right_matrix.ncols())
             ]
             for row in range(reduced.nrows()):
                 pivot = None
                 for col in range(self.ncols()):
-                    if reduced[row, col] != 0:
+                    if reduced_entries[row * reduced_columns + col] != 0:
                         pivot = col
                         break
                 if pivot is None:
                     for col in range(right_matrix.ncols()):
-                        if reduced[row, self.ncols() + col] != 0:
+                        if (
+                            reduced_entries[row * reduced_columns + self.ncols() + col]
+                            != 0
+                        ):
                             raise ValueError("matrix equation has no solutions")
                 else:
                     for col in range(right_matrix.ncols()):
-                        solution_entries[pivot * right_matrix.ncols() + col] = reduced[
-                            row, self.ncols() + col
-                        ]
+                        solution_entries[pivot * right_matrix.ncols() + col] = (
+                            reduced_entries[row * reduced_columns + self.ncols() + col]
+                        )
             solution = matrix(
                 solve_base,
                 self.ncols(),
@@ -7783,6 +8293,21 @@ class Matrix(sage.Element):
                 answer._row_subdivisions = [top.nrows()]
             answer._trace_word_prime_resource("stack")
             return answer
+        if _is_algebraic_base(base):
+            native_value = runtime.flint_backend().matrixStack(
+                top._native, bottom._native
+            )
+            answer = Matrix(
+                MatrixSpace(
+                    base,
+                    top.nrows() + bottom.nrows(),
+                    top.ncols(),
+                ),
+                native_value,
+            )
+            if subdivide:
+                answer._row_subdivisions = [top.nrows()]
+            return answer
         if top._has_packed_prime_storage() and bottom._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_field_matrix_stack
             modulus = int(_untyped(base).characteristic())
@@ -7812,18 +8337,6 @@ class Matrix(sage.Element):
                 answer.ncols(),
                 modulus,
             )
-            return answer
-        if base is sage.ZZ or base is sage.QQ:
-            answer = Matrix(
-                MatrixSpace(
-                    base,
-                    top.nrows() + bottom.nrows(),
-                    top.ncols(),
-                ),
-                runtime.flint_backend().matrixStack(top._native, bottom._native),
-            )
-            if subdivide:
-                answer._row_subdivisions = [top.nrows()]
             return answer
         answer = matrix(
             base,
@@ -7975,18 +8488,6 @@ class Matrix(sage.Element):
                 answer.ncols(),
                 modulus,
             )
-            return answer
-        if base is sage.ZZ or base is sage.QQ:
-            answer = Matrix(
-                MatrixSpace(
-                    base,
-                    left.nrows(),
-                    left.ncols() + right.ncols(),
-                ),
-                runtime.flint_backend().matrixAugment(left._native, right._native),
-            )
-            if subdivide:
-                answer._col_subdivisions = [left.ncols()]
             return answer
         entries = []
         for row in range(left.nrows()):
@@ -8608,12 +9109,28 @@ class Matrix(sage.Element):
                 modulus,
             )
             return result
+        if left._has_portable_storage() or right._has_portable_storage():
+            for row in range(left.nrows()):
+                for column in range(left.ncols()):
+                    if left._entry(row, column) != right._entry(row, column):
+                        return False
+            return True
         backend = runtime.flint_backend()
         if _is_extension_field_base(base):
             return backend.fqMatrixEqual(left._native, right._native)
         return backend.matrixEqual(left._native, right._native)
 
     def __copy__(self) -> Matrix:
+        if self._has_portable_storage():
+            answer = matrix(
+                self.base_ring(),
+                self.nrows(),
+                self.ncols(),
+                list(self._portable_storage_cache.entries),
+            )
+            answer._row_subdivisions = list(self._row_subdivisions)
+            answer._col_subdivisions = list(self._col_subdivisions)
+            return answer
         if self._has_nmod_matrix_resource():
             answer = self._parent._from_nmod_matrix_resource(
                 _flint_ffi_module().nmod_matrix_copy(self._nmod_resource())
@@ -8785,7 +9302,12 @@ class Matrix(sage.Element):
         lines = []
         for row, text_row in enumerate(text_rows):
             if row in self._row_subdivisions:
-                lines.append("[" + "-" * (len(lines[-1]) - 2) + "]")
+                previous = lines[-1][1:-1]
+                lines.append(
+                    "["
+                    + "".join("+" if value == "|" else "-" for value in previous)
+                    + "]"
+                )
             entries = []
             for col in range(self.ncols()):
                 entries.append(text_row[col].rjust(width))
@@ -8812,6 +9334,85 @@ class Matrix(sage.Element):
                 + " (use the '.str()' method to see the entries)"
             )
         return self.str()
+
+    def _latex_(self) -> str:
+        """Return Sage-compatible array LaTeX for this matrix."""
+        alignment = "r" * self.ncols()
+        rows = []
+        if (
+            self._has_fmpq_matrix_resource()
+            and len(self._row_subdivisions) == 0
+            and len(self._col_subdivisions) == 0
+        ):
+            # FLINT can serialize a whole exact matrix roughly as cheaply as
+            # one ordinary entry lookup.  Reuse that row-major text and only
+            # rewrite rational tokens into TeX instead of decoding 2n packed
+            # big integers in the presentation layer.
+            for line in self.str().split("\n"):
+                rows.append(
+                    " & ".join(
+                        [
+                            _latex_rational_text(value)
+                            for value in line[1:-1].split(" ")
+                            if value != ""
+                        ]
+                    )
+                )
+        elif self._has_packed_rational_storage():
+            # Decode the two canonical packed buffers once.  Calling `_entry`
+            # here would cross the exact-matrix boundary and allocate a
+            # Rational object for every displayed entry; that is particularly
+            # costly for the large matrices for which LaTeX output is already
+            # mostly string construction.
+            numerators = _integer_buffer_values(self._rational_numerators())
+            denominators = _integer_buffer_values(self._rational_denominators())
+            for row in range(self.nrows()):
+                entries = []
+                for column in range(self.ncols()):
+                    index = row * self.ncols() + column
+                    numerator = numerators[index]
+                    denominator = denominators[index]
+                    if denominator == 1:
+                        text = str(numerator)
+                    elif numerator < 0:
+                        text = (
+                            "-\\frac{" + str(-numerator) + "}{" + str(denominator) + "}"
+                        )
+                    else:
+                        text = (
+                            "\\frac{" + str(numerator) + "}{" + str(denominator) + "}"
+                        )
+                    entries.append(text)
+                rows.append(" & ".join(entries))
+        elif self._has_integer_storage():
+            # Integer matrices use the same one-shot packed decode.
+            values = _integer_buffer_values(self._integer_entries())
+            for row in range(self.nrows()):
+                entries = []
+                for column in range(self.ncols()):
+                    entries.append(str(values[row * self.ncols() + column]))
+                rows.append(" & ".join(entries))
+        else:
+            for row in range(self.nrows()):
+                entries = []
+                for column in range(self.ncols()):
+                    entry = self._entry(row, column)
+                    if hasattr(entry, "_latex_"):
+                        entries.append(str(entry._latex_()))
+                    else:
+                        entries.append(str(entry))
+                rows.append(" & ".join(entries))
+        body = " \\\\\n".join(rows)
+        return (
+            "\\left(\\begin{array}{"
+            + alignment
+            + "}\n"
+            + body
+            + "\n\\end{array}\\right)"
+        )
+
+    def _rich_repr_(self) -> Any:
+        return _latex_display(self._latex_())
 
     __str__ = __repr__
     toString = __repr__
@@ -8959,9 +9560,10 @@ def VectorSpace(
         and not _is_extension_field_base(base)
         and not _is_algebraic_base(base)
         and not _is_approximate_base(base)
+        and not _is_symbolic_base(base)
     ):
         raise TypeError(
-            "vectors currently require ZZ, QQ, AA, QQbar, GF, Zmod, "
+            "vectors currently require ZZ, QQ, SR, AA, QQbar, GF, Zmod, "
             "or a real/complex field"
         )
     degree = int(degree)
@@ -8995,13 +9597,14 @@ def _matrix_data(value: Any) -> tuple[int, int, list[Any]]:
     return len(rows), cols, values
 
 
-def matrix(*args: Any) -> Matrix:
+def matrix(*args: Any, **options: Any) -> Matrix:
     r"""
-    Construct a dense matrix, optionally over an explicit base ring.
+    Construct a dense or sparse matrix, optionally over an explicit base ring.
 
     Sage's common row-list, flat-list, dimension, and entry-function forms are
-    supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and
-    arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.
+    supported. Pass `sparse=True` to construct a sparse matrix parent. Exact
+    matrices use FLINT on native hosts; `RDF`/`CDF` and arbitrary-precision
+    real/complex matrices use FLINT, Arb, and ACB.
 
     ### Examples
 
@@ -9014,6 +9617,12 @@ def matrix(*args: Any) -> Matrix:
     [0 1]
     ```
     """
+    sparse_value = runtime.reflect.get(options, "sparse")
+    sparse_specified = sparse_value is not runtime.undefined
+    sparse = False if not sparse_specified else bool(sparse_value)
+    runtime.reflect.deleteProperty(options, "sparse")
+    if len(runtime.object.keys(options)):
+        raise TypeError("unsupported matrix() option")
     if not args:
         raise TypeError("matrix() requires entries or dimensions")
     values = list(args)
@@ -9023,8 +9632,14 @@ def matrix(*args: Any) -> Matrix:
     if len(values) == 1:
         if isinstance(values[0], Matrix):
             source = values[0]
-            return source if base is None else source.change_ring(base)
-        if base is not None and runtime.is_exact_integer(values[0]):
+            if not sparse_specified:
+                return source if base is None else source.change_ring(base)
+            rows = source.nrows()
+            cols = source.ncols()
+            entries = source.list()
+            if base is None:
+                base = source.base_ring()
+        elif base is not None and runtime.is_exact_integer(values[0]):
             rows = int(values[0])
             cols = rows
             entries = [0 for _ in range(rows * cols)]
@@ -9046,6 +9661,12 @@ def matrix(*args: Any) -> Matrix:
             entries = source if type(source) is list else list(source)
             if rows == 0:
                 cols = 0
+            elif (
+                len(entries) == rows
+                and len(entries) > 0
+                and isinstance(entries[0], (list, tuple, Vector))
+            ):
+                cols = len(entries[0])
             elif len(entries) % rows != 0:
                 raise ValueError("matrix entry count is not divisible by row count")
             else:
@@ -9070,11 +9691,152 @@ def matrix(*args: Any) -> Matrix:
         raise TypeError("unsupported matrix() constructor signature")
     if rows < 0 or cols < 0:
         raise ValueError("matrix dimensions must be nonnegative")
+    if (
+        len(entries) == rows
+        and len(entries) > 0
+        and isinstance(entries[0], (list, tuple, Vector))
+    ):
+        nested_entries = []
+        for row in entries:
+            if not isinstance(row, (list, tuple, Vector)):
+                raise TypeError("matrix rows must be lists, tuples, or vectors")
+            row_entries = list(row)
+            if len(row_entries) != cols:
+                raise ValueError("matrix row length does not match its dimensions")
+            nested_entries.extend(row_entries)
+        entries = nested_entries
     if len(entries) != rows * cols:
         raise ValueError("matrix entry count does not match its dimensions")
     if base is None:
         base = _base_for_values(entries)
-    return MatrixSpace(base, rows, cols)(entries)
+    return MatrixSpace(base, rows, cols, sparse=bool(sparse))(entries)
+
+
+def column_matrix(*args: Any) -> Matrix:
+    """Construct a matrix using the supplied rows as columns."""
+    return matrix(*args).transpose()
+
+
+def block_matrix(*args: Any, **options: Any) -> Matrix:
+    """Construct a dense matrix by concatenating a rectangular block array."""
+    subdivide_value = runtime.reflect.get(options, "subdivide")
+    subdivide = True if subdivide_value is runtime.undefined else bool(subdivide_value)
+    runtime.reflect.deleteProperty(options, "subdivide")
+    sparse_value = runtime.reflect.get(options, "sparse")
+    sparse = False if sparse_value is runtime.undefined else bool(sparse_value)
+    runtime.reflect.deleteProperty(options, "sparse")
+    if len(runtime.object.keys(options)):
+        raise TypeError("unsupported block_matrix() option")
+    if sparse:
+        raise NotImplementedError("sparse block matrices are not available")
+    values = list(args)
+    base = None
+    if values and _is_base_ring(values[0]):
+        base = _canonical_base(values.pop(0))
+    if len(values) == 1:
+        rows_of_blocks = [list(row) for row in values[0]]
+    elif len(values) == 3:
+        block_rows = int(values[0])
+        block_columns = int(values[1])
+        flat = list(values[2])
+        if len(flat) != block_rows * block_columns:
+            raise ValueError("block count does not match the block dimensions")
+        rows_of_blocks = []
+        for row in range(block_rows):
+            start = row * block_columns
+            rows_of_blocks.append(flat[start : start + block_columns])
+    else:
+        raise TypeError("unsupported block_matrix() constructor signature")
+    if len(rows_of_blocks) == 0:
+        return matrix(base, []) if base is not None else matrix([])
+    block_columns = len(rows_of_blocks[0])
+    if block_columns == 0:
+        return matrix(base, 0, 0) if base is not None else matrix(0, 0)
+    for row in rows_of_blocks:
+        if len(row) != block_columns:
+            raise ValueError("block rows must have the same length")
+
+    row_heights = [0 for _row in rows_of_blocks]
+    column_widths = [0 for _column in range(block_columns)]
+    for row_index in range(len(rows_of_blocks)):
+        for column_index in range(block_columns):
+            block = rows_of_blocks[row_index][column_index]
+            if isinstance(block, Matrix):
+                height = block.nrows()
+                width = block.ncols()
+                if row_heights[row_index] not in (0, height):
+                    raise ValueError("incompatible block-row heights")
+                if column_widths[column_index] not in (0, width):
+                    raise ValueError("incompatible block-column widths")
+                row_heights[row_index] = height
+                column_widths[column_index] = width
+                if base is None:
+                    base = block.base_ring()
+                else:
+                    base = _common_base(base, block.base_ring())
+    for index in range(len(row_heights)):
+        if row_heights[index] == 0:
+            raise ValueError("cannot infer the height of an all-scalar block row")
+    for index in range(len(column_widths)):
+        if column_widths[index] == 0:
+            raise ValueError("cannot infer the width of an all-scalar block column")
+    if base is None:
+        base = sage.ZZ
+
+    entries = []
+    for block_row in range(len(rows_of_blocks)):
+        for local_row in range(row_heights[block_row]):
+            for block_column in range(block_columns):
+                block = rows_of_blocks[block_row][block_column]
+                width = column_widths[block_column]
+                height = row_heights[block_row]
+                if isinstance(block, Matrix):
+                    changed = block.change_ring(base)
+                    for local_column in range(width):
+                        entries.append(changed[local_row, local_column])
+                else:
+                    scalar = base(block)
+                    if scalar != 0 and height != width:
+                        raise ValueError("a nonzero scalar block must be square")
+                    for local_column in range(width):
+                        entries.append(scalar if local_row == local_column else base(0))
+    answer = matrix(base, sum(row_heights), sum(column_widths), entries)
+    if subdivide:
+        row_cuts = []
+        column_cuts = []
+        total = 0
+        for height in row_heights[:-1]:
+            total += height
+            row_cuts.append(total)
+        total = 0
+        for width in column_widths[:-1]:
+            total += width
+            column_cuts.append(total)
+        answer.subdivide(row_cuts, column_cuts)
+    return answer
+
+
+def block_diagonal_matrix(*sub_matrices: Any, **options: Any) -> Matrix:
+    """Construct a matrix whose diagonal blocks are `sub_matrices`."""
+    if len(sub_matrices) == 1 and isinstance(sub_matrices[0], (list, tuple)):
+        blocks = list(sub_matrices[0])
+    else:
+        blocks = list(sub_matrices)
+    count = len(blocks)
+    if count == 0:
+        return matrix(0, 0)
+    entries = [0 for _index in range(count * count)]
+    for index in range(count):
+        entries[index * count + index] = blocks[index]
+    return block_matrix(count, count, entries, **options)
+
+
+def det(value: Any) -> Any:
+    """Return the determinant of a matrix-like value."""
+    determinant = getattr(value, "det", None)
+    if not callable(determinant):
+        raise TypeError("det() requires an object with a determinant")
+    return determinant()
 
 
 def vector(*args: Any) -> Vector:
@@ -9182,7 +9944,11 @@ def zero_matrix(
     return MatrixSpace(base, rows, cols)(0)
 
 
-def identity_matrix(base: sage.Parent, size: int) -> Matrix:
+def identity_matrix(base: Any, size: int | None = None) -> Matrix:
+    """Return an identity matrix, defaulting to `ZZ` when only size is given."""
+    if size is None:
+        size = int(base)
+        base = sage.ZZ
     base = _canonical_base(base)
     size = int(size)
     if size < 0:
@@ -9920,7 +10686,7 @@ def random_matrix(
         raise TypeError(
             "random_matrix currently requires ZZ, QQ, GF, Zmod, or a real/complex field"
         )
-    if algorithm != "randomize":
+    if algorithm not in ("randomize", "unimodular"):
         raise NotImplementedError(
             "random_matrix algorithm '" + algorithm + "' is not implemented yet"
         )
@@ -9934,6 +10700,37 @@ def random_matrix(
     cols = rows if ncols is None else int(ncols)
     if rows < 0 or cols < 0:
         raise ValueError("matrix dimensions must be nonnegative")
+    if algorithm == "unimodular":
+        if rows != cols:
+            raise ValueError("a unimodular matrix must be square")
+        if base not in (sage.ZZ, sage.QQ):
+            raise TypeError("unimodular random matrices require ZZ or QQ")
+        if len(runtime.object.keys(kwds)):
+            raise TypeError("unimodular random matrices do not accept extra options")
+        entries = []
+        for row in range(rows):
+            entries.append([base(1 if row == column else 0) for column in range(cols)])
+        for _step in range(max(4, 4 * rows)):
+            if rows < 2:
+                if rows == 1 and _random_int(0, 2):
+                    entries[0][0] = -entries[0][0]
+                continue
+            first = _random_int(0, rows - 1)
+            second = _random_int(0, rows - 2)
+            if second >= first:
+                second += 1
+            operation = _random_int(0, 2)
+            if operation == 0:
+                entries[first], entries[second] = entries[second], entries[first]
+            elif operation == 1:
+                entries[first] = [-value for value in entries[first]]
+            else:
+                multiplier = -1 if _random_int(0, 2) == 0 else 1
+                entries[first] = [
+                    entries[first][column] + multiplier * entries[second][column]
+                    for column in range(cols)
+                ]
+        return matrix(base, entries)
     density_supplied = runtime.reflect.has(kwds, "density")
     raw_density = keyword("density", None)
     # Sage treats an explicit `density=None` exactly like an omitted density:

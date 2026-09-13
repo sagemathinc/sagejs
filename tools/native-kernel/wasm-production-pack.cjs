@@ -11,7 +11,10 @@ const {
 const { join, relative, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
-const { generateHostCore } = require("./c-backend.cjs");
+const {
+  classifyHostCoreTarget,
+  generateHostCore,
+} = require("./c-backend.cjs");
 const { lowerSource } = require("./ir.cjs");
 const { createNativeImportResolver } = require("./native-imports.cjs");
 const {
@@ -29,6 +32,10 @@ const {
 
 const WASM_PACK_SCHEMA = "sagejs.native-wasm-pack/v1";
 const WASM_PACK_IDENTITY_SCHEMA = "sagejs.native-wasm-pack-identity/v2";
+const WASM32_HOST_CORE_CAPABILITIES = Object.freeze({
+  target: "wasm32-wasip1",
+  flintLimbBits: 32,
+});
 
 function sha256File(filename) {
   return createHash("sha256").update(readFileSync(filename)).digest("hex");
@@ -73,6 +80,32 @@ function requiredResourceAdapters(modules) {
   return [...resources.values()].sort((left, right) =>
     left.identity.localeCompare(right.identity)
   );
+}
+
+function productionKernelsForPack(kernels, pack) {
+  const byIdentity = new Map();
+  for (const kernel of kernels) {
+    if (byIdentity.has(kernel.identityHash)) {
+      throw new Error(
+        `duplicate production kernel identity ${kernel.identityHash}`,
+      );
+    }
+    byIdentity.set(kernel.identityHash, kernel);
+  }
+  return pack.modules.map((identity) => {
+    const kernel = byIdentity.get(identity);
+    if (kernel === undefined) {
+      throw new Error(
+        `Wasm ${pack.domain} pack names unknown kernel identity ${identity}`,
+      );
+    }
+    if (kernel.domain !== pack.domain) {
+      throw new Error(
+        `Wasm ${pack.domain} pack names ${kernel.domain} kernel ${identity}`,
+      );
+    }
+    return kernel;
+  });
 }
 
 function packIdentity(domain, modules, ownershipAdapter = null) {
@@ -133,18 +166,24 @@ async function inventoryProductionKernels({ root, manifestPath }) {
       descriptorSelectionReceipts(kernel),
       ir,
     );
+    const targetCompatibility = classifyHostCoreTarget(
+      ir,
+      WASM32_HOST_CORE_CAPABILITIES,
+    );
     const functions = kernel.functions.map((name) => {
       const fn = ir.functions.find((candidate) => candidate.name === name);
       if (fn === undefined) {
         throw new Error(`${kernel.id} did not lower requested function ${name}`);
       }
       const classification = classifyWasmFunction(fn, ir);
+      const supported = classification.supported &&
+        targetCompatibility.supported;
       return {
         name,
         declarationHash: identity.functionDeclarations[name],
         kernelKind: fn.kernelKind,
-        status: classification.supported ? "compiled-source" : "unsupported",
-        ...(classification.supported
+        status: supported ? "compiled-source" : "unsupported",
+        ...(supported
           ? {
             results: classification.results,
             ...(classification.resources === undefined
@@ -152,7 +191,16 @@ async function inventoryProductionKernels({ root, manifestPath }) {
               : { resources: classification.resources }),
           }
           : {
-            reason: classification.reason,
+            reason: classification.supported
+              ? targetCompatibility.reason
+              : classification.reason,
+            ...(classification.supported &&
+                targetCompatibility.requirement !== undefined
+              ? {
+                targetRequirement: targetCompatibility.requirement,
+                targetActual: targetCompatibility.actual,
+              }
+              : {}),
             ...(classification.resources === undefined
               ? {}
               : { resources: classification.resources }),
@@ -459,8 +507,13 @@ async function buildWasmProductionPacks(options) {
   const emitted = discovered.modules.map((module) =>
     emitModule(outputRoot, module)
   );
+  // A production source remains represented by its authenticated emitted core
+  // and exact fallback record even when no public function is callable on this
+  // target.  Do not pass such a core to clang: target incompatibilities must be
+  // ordinary capability outcomes, not late preprocessor failures.
+  const compilable = emitted.filter((module) => module.functions.length !== 0);
   const domains = new Map();
-  for (const module of emitted) {
+  for (const module of compilable) {
     const modules = domains.get(module.domain) ?? [];
     modules.push(module);
     domains.set(module.domain, modules);
@@ -516,6 +569,12 @@ async function buildWasmProductionPacks(options) {
         kernel: kernel.id,
         function: fn.name,
         reason: fn.reason,
+        ...(fn.targetRequirement === undefined
+          ? {}
+          : {
+            targetRequirement: fn.targetRequirement,
+            targetActual: fn.targetActual,
+          }),
         fallback: kernel.fallback,
         oracles: kernel.oracles,
         tests: kernel.tests,
@@ -547,7 +606,7 @@ async function buildWasmProductionPacks(options) {
     completeInventory: true,
     registeredKernels: discovered.registered.length,
     productionKernels: discovered.production.length,
-    compiledKernelCores: emitted.length,
+    compiledKernelCores: compilable.length,
     sourceModules: discovered.inventory.length,
     compiledFunctions: discovered.inventory.reduce(
       (total, kernel) => total + kernel.functions.filter(
@@ -627,6 +686,7 @@ module.exports = {
   defaultToolchain,
   inventoryProductionKernels,
   packIdentity,
+  productionKernelsForPack,
   requiredResourceAdapters,
   parseArguments,
 };

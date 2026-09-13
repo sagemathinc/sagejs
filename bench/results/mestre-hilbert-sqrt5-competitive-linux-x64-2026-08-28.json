@@ -1,0 +1,288 @@
+{
+  "schema": "sagejs.mestre-hilbert-sqrt5-competitive-receipt.v1",
+  "recorded_at": "2026-08-28T06:45:40.449Z",
+  "source_commit": "de68f4213fd4246302bdf755b146fc7f3bb08884",
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.7.0",
+    "cpus": 16,
+    "model": "AMD EPYC 7B13",
+    "total_memory_bytes": 67418701824
+  },
+  "contract": {
+    "levels": [
+      31,
+      389,
+      809,
+      2011
+    ],
+    "repeat": 3,
+    "equal_contract_timing": "public module construction plus first T2",
+    "sample_isolation": "fresh Sage.js and Magma process for every level and sample",
+    "exact_comparison": "Magma cuspidal T2/T3 characteristic polynomials equal Sage.js ambient polynomials after removing the Eisenstein factors x-5 and x-10",
+    "magma_cpu_timer_resolution_seconds": 0.01,
+    "magma_warm_iterations": 1000
+  },
+  "sources": {
+    "sage_benchmark": "bench/modular/mestre/hilbert-sqrt5.cjs",
+    "sage_benchmark_sha256": "d8281b3d9b9e8ef2488bd4942c4e42654f92cb6b73ac206be4304e16c46593b5",
+    "magma_benchmark": "bench/modular/mestre/magma-hilbert-sqrt5-benchmark.m",
+    "magma_benchmark_sha256": "ad93973d61f3edba5031508ce14443225e38a212cf8db2e426dc31e7d81cd2a6"
+  },
+  "peak_process_tree_rss_bytes": {
+    "sagejs": 256253952,
+    "magma": 54214656
+  },
+  "records": [
+    {
+      "level_norm": 31,
+      "omega_residue": 19,
+      "ambient_dimension": 2,
+      "exact_agreement": true,
+      "samples": [
+        {
+          "sample": 1,
+          "sagejs": {
+            "process_wall_seconds": 0.868334065,
+            "peak_process_tree_rss_bytes": 246353920,
+            "construction_seconds": 0.1673893928527832,
+            "first_t2_seconds": 0.01143646240234375,
+            "construction_plus_first_t2_seconds": 0.17882585525512695
+          },
+          "magma": {
+            "process_wall_seconds": 0.910580952,
+            "peak_process_tree_rss_bytes": 51769344,
+            "construction_cpu_seconds": 0.03,
+            "first_t2_cpu_seconds": 0.56,
+            "construction_plus_first_t2_cpu_seconds": 0.5900000000000001,
+            "warm_t2_cpu_seconds": 0.0001
+          }
+        },
+        {
+          "sample": 2,
+          "sagejs": {
+            "process_wall_seconds": 0.883055984,
+            "peak_process_tree_rss_bytes": 245792768,
+            "construction_seconds": 0.17729473114013672,
+            "first_t2_seconds": 0.01187443733215332,
+            "construction_plus_first_t2_seconds": 0.18916916847229004
+          },
+          "magma": {
+            "process_wall_seconds": 0.896931593,
+            "peak_process_tree_rss_bytes": 53805056,
+            "construction_cpu_seconds": 0.03,
+            "first_t2_cpu_seconds": 0.55,
+            "construction_plus_first_t2_cpu_seconds": 0.5800000000000001,
+            "warm_t2_cpu_seconds": 0.0001
+          }
+        },
+        {
+          "sample": 3,
+          "sagejs": {
+            "process_wall_seconds": 0.891578843,
+            "peak_process_tree_rss_bytes": 244649984,
+            "construction_seconds": 0.16569304466247559,
+            "first_t2_seconds": 0.011928796768188477,
+            "construction_plus_first_t2_seconds": 0.17762184143066406
+          },
+          "magma": {
+            "process_wall_seconds": 0.895029693,
+            "peak_process_tree_rss_bytes": 50839552,
+            "construction_cpu_seconds": 0.03,
+            "first_t2_cpu_seconds": 0.55,
+            "construction_plus_first_t2_cpu_seconds": 0.5800000000000001,
+            "warm_t2_cpu_seconds": 0.00008999999999999999
+          }
+        }
+      ]
+    },
+    {
+      "level_norm": 389,
+      "omega_residue": 238,
+      "ambient_dimension": 7,
+      "exact_agreement": true,
+      "samples": [
+        {
+          "sample": 1,
+          "sagejs": {
+            "process_wall_seconds": 0.903234092,
+            "peak_process_tree_rss_bytes": 246726656,
+            "construction_seconds": 0.14314007759094238,
+            "first_t2_seconds": 0.02443242073059082,
+            "construction_plus_first_t2_seconds": 0.1675724983215332
+          },
+          "magma": {
+            "process_wall_seconds": 0.921050692,
+            "peak_process_tree_rss_bytes": 48869376,
+            "construction_cpu_seconds": 0.03,
+            "first_t2_cpu_seconds": 0.58,
+            "construction_plus_first_t2_cpu_seconds": 0.61,
+            "warm_t2_cpu_seconds": 0.00008999999999999999
+          }
+        },
+        {
+          "sample": 2,
+          "sagejs": {
+            "process_wall_seconds": 0.957931259,
+            "peak_process_tree_rss_bytes": 238903296,
+            "construction_seconds": 0.17973685264587402,
+            "first_t2_seconds": 0.025042057037353516,
+            "construction_plus_first_t2_seconds": 0.20477890968322754
+          },
+          "magma": {
+            "process_wall_seconds": 0.95374506,
+            "peak_process_tree_rss_bytes": 52228096,
+            "construction_cpu_seconds": 0.03,
+            "first_t2_cpu_seconds": 0.61,
+            "construction_plus_first_t2_cpu_seconds": 0.64,
+            "warm_t2_cpu_seconds": 0.0001
+          }
+        },
+        {
+          "sample": 3,
+          "sagejs": {
+            "process_wall_seconds": 0.979564417,
+            "peak_process_tree_rss_bytes": 246837248,
+            "construction_seconds": 0.20928144454956055,
+            "first_t2_seconds": 0.024200916290283203,
+            "construction_plus_first_t2_seconds": 0.23348236083984375
+          },
+          "magma": {
+            "process_wall_seconds": 0.931384641,
+            "peak_process_tree_rss_bytes": 49242112,
+            "construction_cpu_seconds": 0.04,
+            "first_t2_cpu_seconds": 0.58,
+            "construction_plus_first_t2_cpu_seconds": 0.62,
+            "warm_t2_cpu_seconds": 0.00008999999999999999
+          }
+        }
+      ]
+    },
+    {
+      "level_norm": 809,
+      "omega_residue": 467,
+      "ambient_dimension": 14,
+      "exact_agreement": true,
+      "samples": [
+        {
+          "sample": 1,
+          "sagejs": {
+            "process_wall_seconds": 1.068876992,
+            "peak_process_tree_rss_bytes": 238026752,
+            "construction_seconds": 0.25463032722473145,
+            "first_t2_seconds": 0.040297508239746094,
+            "construction_plus_first_t2_seconds": 0.29492783546447754
+          },
+          "magma": {
+            "process_wall_seconds": 0.944697751,
+            "peak_process_tree_rss_bytes": 52633600,
+            "construction_cpu_seconds": 0.03,
+            "first_t2_cpu_seconds": 0.6,
+            "construction_plus_first_t2_cpu_seconds": 0.63,
+            "warm_t2_cpu_seconds": 0.00008999999999999999
+          }
+        },
+        {
+          "sample": 2,
+          "sagejs": {
+            "process_wall_seconds": 1.036955594,
+            "peak_process_tree_rss_bytes": 246042624,
+            "construction_seconds": 0.21764135360717773,
+            "first_t2_seconds": 0.0395660400390625,
+            "construction_plus_first_t2_seconds": 0.25720739364624023
+          },
+          "magma": {
+            "process_wall_seconds": 0.979574798,
+            "peak_process_tree_rss_bytes": 53006336,
+            "construction_cpu_seconds": 0.03,
+            "first_t2_cpu_seconds": 0.64,
+            "construction_plus_first_t2_cpu_seconds": 0.67,
+            "warm_t2_cpu_seconds": 0.0001
+          }
+        },
+        {
+          "sample": 3,
+          "sagejs": {
+            "process_wall_seconds": 1.042123883,
+            "peak_process_tree_rss_bytes": 236802048,
+            "construction_seconds": 0.2135460376739502,
+            "first_t2_seconds": 0.040162086486816406,
+            "construction_plus_first_t2_seconds": 0.2537081241607666
+          },
+          "magma": {
+            "process_wall_seconds": 0.940239211,
+            "peak_process_tree_rss_bytes": 53653504,
+            "construction_cpu_seconds": 0.03,
+            "first_t2_cpu_seconds": 0.6,
+            "construction_plus_first_t2_cpu_seconds": 0.63,
+            "warm_t2_cpu_seconds": 0.0001
+          }
+        }
+      ]
+    },
+    {
+      "level_norm": 2011,
+      "omega_residue": 736,
+      "ambient_dimension": 35,
+      "exact_agreement": true,
+      "samples": [
+        {
+          "sample": 1,
+          "sagejs": {
+            "process_wall_seconds": 1.26553105,
+            "peak_process_tree_rss_bytes": 256253952,
+            "construction_seconds": 0.29382944107055664,
+            "first_t2_seconds": 0.08008790016174316,
+            "construction_plus_first_t2_seconds": 0.3739173412322998
+          },
+          "magma": {
+            "process_wall_seconds": 1.026295084,
+            "peak_process_tree_rss_bytes": 54206464,
+            "construction_cpu_seconds": 0.03,
+            "first_t2_cpu_seconds": 0.67,
+            "construction_plus_first_t2_cpu_seconds": 0.7000000000000001,
+            "warm_t2_cpu_seconds": 0.0001
+          }
+        },
+        {
+          "sample": 2,
+          "sagejs": {
+            "process_wall_seconds": 1.336075555,
+            "peak_process_tree_rss_bytes": 243671040,
+            "construction_seconds": 0.3696725368499756,
+            "first_t2_seconds": 0.07993340492248535,
+            "construction_plus_first_t2_seconds": 0.44960594177246094
+          },
+          "magma": {
+            "process_wall_seconds": 1.005070616,
+            "peak_process_tree_rss_bytes": 52592640,
+            "construction_cpu_seconds": 0.02,
+            "first_t2_cpu_seconds": 0.66,
+            "construction_plus_first_t2_cpu_seconds": 0.68,
+            "warm_t2_cpu_seconds": 0.00008999999999999999
+          }
+        },
+        {
+          "sample": 3,
+          "sagejs": {
+            "process_wall_seconds": 1.277269229,
+            "peak_process_tree_rss_bytes": 253345792,
+            "construction_seconds": 0.32340073585510254,
+            "first_t2_seconds": 0.0782155990600586,
+            "construction_plus_first_t2_seconds": 0.40161633491516113
+          },
+          "magma": {
+            "process_wall_seconds": 1.012833016,
+            "peak_process_tree_rss_bytes": 54214656,
+            "construction_cpu_seconds": 0.03,
+            "first_t2_cpu_seconds": 0.67,
+            "construction_plus_first_t2_cpu_seconds": 0.7000000000000001,
+            "warm_t2_cpu_seconds": 0.00008999999999999999
+          }
+        }
+      ]
+    }
+  ],
+  "exact_agreement": true
+}

@@ -44,7 +44,14 @@ void (async () => {
           ? "observed"
           : "unavailable";
         current.instrumentation = result.instrumentation ?? null;
-        current.failures = assertParityExpectation(item, result);
+        current.expectation_route = item.node_expect
+          ? "node-native-override"
+          : "shared";
+        current.failures = assertParityExpectation(
+          item,
+          result,
+          item.node_expect ?? item.expect,
+        );
         current.status = current.failures.length === 0 ? "passed" : "mismatch";
       } catch (error) {
         current.status = "missing-or-failed-capability";

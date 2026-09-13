@@ -6,11 +6,15 @@ import sagejs.runtime as runtime
 class FrameSummary:
     """A small CPython-compatible description of one stack frame."""
 
-    def __init__(self, filename, lineno, name, line=None):
+    def __init__(
+        self, filename, lineno, name, line=None, provenance="unspecified", raw=None
+    ):
         self.filename = filename
         self.lineno = lineno
         self.name = name
         self.line = line
+        self.provenance = provenance
+        self.raw = raw
 
     def __getitem__(self, index):
         values = (self.filename, self.lineno, self.name, self.line)
@@ -100,62 +104,81 @@ def format_stack(frame=None, limit=None):
     return [line + "\n" for line in lines]
 
 
-def _frame_from_native_line(text):
-    text = text.strip()
+def _mapped_frames(error, boundary):
+    hook = runtime.reflect.get(
+        runtime.global_object, "__sagejs_capture_python_frames__"
+    )
+    if hook is runtime.undefined:
+        if error is None:
+            error = runtime.reflect.construct(runtime.error, [])
+            capture = runtime.reflect.get(runtime.error, "captureStackTrace")
+            if capture is not runtime.undefined:
+                runtime.reflect.apply(capture, runtime.error, [error, boundary])
+        return [
+            _native_frame(line) for line in reversed(_stack(error).splitlines()[1:])
+        ]
+    records = runtime.reflect.apply(hook, None, [error, boundary])
+    return [
+        FrameSummary(
+            record.filename,
+            record.lineno,
+            record.name,
+            record.line,
+            record.provenance,
+            record.raw,
+        )
+        for record in records
+    ]
+
+
+def _native_frame(raw):
+    text = raw.strip()
     if text.startswith("at "):
         text = text[3:]
-    name = "<module>"
-    location = text
-    open_paren = text.rfind(" (")
-    if open_paren >= 0 and text.endswith(")"):
-        name = text[:open_paren]
-        location = text[open_paren + 2 : -1]
-    pieces = location.rsplit(":", 2)
-    filename = pieces[0]
+    paren = text.rfind(" (")
+    name = text[:paren] if paren >= 0 else None
+    location = text[paren + 2 : -1] if paren >= 0 and text.endswith(")") else text
+    parts = location.rsplit(":", 2)
+    filename = location
     lineno = 0
-    if len(pieces) >= 2:
+    if len(parts) == 3:
         try:
-            lineno = int(pieces[-2])
+            lineno = int(parts[1])
+            int(parts[2])
+            filename = parts[0]
         except ValueError:
-            pass
-    return FrameSummary(filename, lineno, name)
+            lineno = 0
+    return FrameSummary(filename, lineno, name, None, "native-stack", raw)
 
 
 def extract_stack(frame=None, limit=None):
-    """Extract the current native stack as `FrameSummary` objects."""
-    error = runtime.reflect.construct(runtime.error, [])
-    lines = _stack(error).splitlines()[1:]
-    for index in range(len(lines)):
-        if "extract_stack" in lines[index]:
-            lines = lines[index + 1 :]
-            break
-    frames = [_frame_from_native_line(line) for line in reversed(lines)]
-    # Calls made through the compiler's keyword interpolation helper add a
-    # host-only frame which has no Python counterpart.  Discard such frames
-    # from the top of the extracted Python stack.
-    while frames and frames[-1].name.startswith("ρσ_"):
-        frames.pop()
+    """Extract the current capture stack with explicit frame provenance.
+
+    `frame` is currently ignored. Registered Node executions have original
+    Python coordinates; other frames retain native/generated coordinates.
+    """
+    frames = _mapped_frames(None, extract_stack)
+    if limit == 0:
+        return []
     if limit is not None:
         frames = frames[-limit:] if limit >= 0 else frames[:-limit]
     return frames
 
 
 def extract_tb(tb, limit=None):
-    """Return frame summaries for a native traceback-like value."""
-    text = _stack(tb)
-    lines = text.splitlines()[1:] if text else []
-    frames = [_frame_from_native_line(line) for line in reversed(lines)]
-    if (
-        frames
-        and runtime.reflect.get(tb, "__sagejs_argument_error__")
-        is not runtime.undefined
-    ):
-        # V8 reports binder failures at the generated caller after the three
-        # host-only lines which collect ``*args``. Removing that offset makes
-        # line-based provenance checks agree with the Python source layout.
-        # A future full source-map traceback backend will subsume this narrow
-        # adjustment.
-        frames[-1].lineno = max(0, frames[-1].lineno - 3)
+    """Return frames from an exception's capture-time stack, not its unwind chain.
+
+    Known incompatibility: positive `limit` keeps the last N captured frames,
+    unlike CPython's first N traceback frames; negative limits keep the first N.
+    Fixing this requires caught/reraised exception boundaries, not guessed
+    truncation of native callers. The pinned pyparsing smoke currently depends
+    on this legacy limit behavior as well as the exact source-coordinate fix.
+    """
+    if tb is None:
+        return []
+    frames = _mapped_frames(tb, None)
+    if limit == 0:
+        return []
     if limit is not None:
         frames = frames[-limit:] if limit >= 0 else frames[:-limit]
     return frames

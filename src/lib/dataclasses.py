@@ -20,7 +20,22 @@ KW_ONLY = _KwOnly()
 def _install_method(cls, name, function):
     """Install a dynamically generated Python function as a native method."""
     prototype = runtime.reflect.get(cls, "prototype")
-    runtime.reflect.set(prototype, name, runtime.native_method_adapter(function))
+    method = runtime.native_method_adapter(function)
+    runtime.reflect.set(prototype, name, method)
+    if name == "__init__":
+        # Class-call keyword interpolation consults signature metadata on the
+        # class before invoking its initializer.  A dataclass replaces the
+        # compiler's synthetic initializer dynamically, so publish the new
+        # callable contract on the class as well.
+        for attribute in (
+            "__argnames__",
+            "__defaults__",
+            "__handles_kwarg_interpolation__",
+            "__kwonly__",
+            "__varargs__",
+            "__varkw__",
+        ):
+            runtime.reflect.set(cls, attribute, runtime.reflect.get(method, attribute))
 
 
 class InitVar:
@@ -119,7 +134,10 @@ def dataclass(
         inherited_names = {item.name for item in inherited}
         own = []
         keyword_mode = kw_only
-        annotations = getattr(target, "__annotations__", {})
+        # Compiler-emitted class annotations may use a compact native mapping
+        # at the runtime boundary.  Normalize it before relying on Python's
+        # mapping API, exactly as callers would observe through ``dict``.
+        annotations = dict(getattr(target, "__annotations__", {}))
         namespace = getattr(target, "__dict__", {})
         for name, annotation in annotations.items():
             if annotation is KW_ONLY or annotation == "KW_ONLY":

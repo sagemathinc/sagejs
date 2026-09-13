@@ -1,0 +1,58 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-frontier-equation-index",
+  "title": "Cubic Frontier Equation Index",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Derive exact equation-order indices for frozen cubic frontier diagnostics without changing timed fields",
+  "base_commit": "6905e47548ed28a985aa19fa4aa0edd04d21d12b",
+  "claims": [
+    "bench/class-unit-groups/cubic-equation-index.cjs",
+    "bench/class-unit-groups/run-complex-cubic-frontier.cjs",
+    "test/complex-cubic-frontier-runner.cjs",
+    "test/cubic-equation-index.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://www.lmfdb.org/knowledge/show/nf.zk_index"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact cubic polynomial discriminant identity"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check",
+    "node --test test/cubic-equation-index.cjs test/complex-cubic-frontier-runner.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/cubic-equation-index.cjs test/complex-cubic-frontier-runner.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.485,
+      "started_at": "2026-09-05T02:47:32.519Z",
+      "commit": "6905e47548ed28a985aa19fa4aa0edd04d21d12b",
+      "workspace_fingerprint": "2ca1d6b650c87a6db0344fda94f1e2eb2b5133017658c4104b881d134b074b03",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Derive equation-order indices exactly for frontier selection and receipt admission while preserving frozen raw survey bytes, field order, generated timed programs and identity digests. All 1000 retained census receipts agree with exact derivation; 725 raw records contain the distinct LMFDB field-index invariant. Focused 27 tests pass, including rehashed wrong-index receipt rejection; merge inventory checks pass.",
+    "risks": ["Task-base test:changed reaches unit tests but the isolated partial build lacks the FLINT addon and reports runtime bootstrap failures. Full build/compiler/architecture lane receipts remain for integration; contract intentionally stays active."],
+    "next_steps": ["Integrate the benchmark-only commit, run full checks in the prepared integration checkout, and mark the contract review only with fresh passing required receipts."]
+  }
+}

@@ -491,6 +491,65 @@ class CoercionModel:
 
         left_construction = left._construction
         right_construction = right._construction
+        if (
+            left_construction is not runtime.undefined
+            and left_construction["kind"] == "polynomial_quotient"
+        ):
+            if (
+                right_construction is not runtime.undefined
+                and right_construction["kind"] == "polynomial_quotient"
+            ):
+                raise TypeError(
+                    "no canonical coercion between different polynomial quotients"
+                )
+            cover = left_construction["cover"]
+            cover_plan = self.resolveParents(cover, right)
+            if cover_plan.parent is not cover:
+                raise TypeError(
+                    "constant does not canonically coerce to quotient cover ring"
+                )
+
+            def coerce_left_quotient(value: Any) -> Any:
+                return value
+
+            def coerce_right_into_quotient(value: Any) -> Any:
+                return _untyped(left)(cover_plan.rightMap(value))
+
+            return self._cache(
+                left,
+                right,
+                CoercionPlan(
+                    left,
+                    coerce_left_quotient,
+                    coerce_right_into_quotient,
+                ),
+            )
+        if (
+            right_construction is not runtime.undefined
+            and right_construction["kind"] == "polynomial_quotient"
+        ):
+            cover = right_construction["cover"]
+            cover_plan = self.resolveParents(left, cover)
+            if cover_plan.parent is not cover:
+                raise TypeError(
+                    "constant does not canonically coerce to quotient cover ring"
+                )
+
+            def coerce_left_into_quotient(value: Any) -> Any:
+                return _untyped(right)(cover_plan.leftMap(value))
+
+            def coerce_right_quotient(value: Any) -> Any:
+                return value
+
+            return self._cache(
+                left,
+                right,
+                CoercionPlan(
+                    right,
+                    coerce_left_into_quotient,
+                    coerce_right_quotient,
+                ),
+            )
         series_kinds = ["power_series", "laurent_series"]
         if (
             left_construction is not runtime.undefined

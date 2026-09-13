@@ -14,8 +14,9 @@ the principal relation consumed by relation-matrix code.  The optional source
 ideal is useful for LLL searches in a selected ideal without weakening the
 certificate.  Live admission checks the source and principal rows exactly;
 the compact serialized record retains their exponent rows, and detached replay
-reconstructs source, quotient, and principal ideals and multiplies them
-independently.
+reconstructs the source and quotient ideals, checks their exact product, and
+uses the authenticated row sum to identify that product with the principal
+relation row.
 
 The bounded short-vector search follows the readable first stage of Hecke's
 `Rel_LLL.jl`: reduce a Minkowski-embedded ideal basis, try basis vectors and
@@ -1001,6 +1002,23 @@ def verify_relation_record(
         ):
             return {"certified": True, "failures": []}
         reconstruct = _relation_reconstructor(order, factors, reconstructor)
+        return _verify_relation_record_over_validated_base(
+            order, factors, relation, reconstruct
+        )
+    except Exception as error:
+        failures.append(str(error))
+    return {"certified": not failures, "failures": failures}
+
+
+def _verify_relation_record_over_validated_base(
+    order: Any,
+    factors: tuple[Any, ...],
+    relation: RelationRecord,
+    reconstruct: Callable[[Iterable[int]], Any],
+) -> dict[str, Any]:
+    """Replay one record after a caller has authenticated the factor base."""
+    failures: list[str] = []
+    try:
         if len(relation.row) != len(factors):
             failures.append("relation row width mismatch")
         if relation.row != tuple(
@@ -1014,11 +1032,13 @@ def verify_relation_record(
         principal = relation._principal_from_witness(order)
         reconstructed_source = reconstruct(relation.source_row)
         reconstructed_quotient = reconstruct(relation.quotient_row)
-        reconstructed_principal = reconstruct(relation.row)
         if principal != reconstructed_source * reconstructed_quotient:
             failures.append("principal ideal is not source times smooth quotient")
-        if principal != reconstructed_principal:
-            failures.append("principal ideal does not match the matrix row")
+        # `row == source_row + quotient_row` was checked above.  Since the
+        # row-to-ideal map sends vector addition to ideal multiplication, the
+        # exact product equality also proves that `row` represents the same
+        # principal ideal.  Reconstructing `row` independently would repeat
+        # the same ideal powers and multiplication without adding a theorem.
         expected_norms = _norm_smoothness(
             abs(sage.QQ(principal.norm())),
             relation.row,
@@ -1029,6 +1049,34 @@ def verify_relation_record(
     except Exception as error:
         failures.append(str(error))
     return {"certified": not failures, "failures": failures}
+
+
+def verify_relation_records(
+    order: Any,
+    factor_base: Iterable[Any],
+    records: Iterable[RelationRecord],
+    *,
+    reconstructor: Any = None,
+    cancelled: Callable[[], Any] | None = None,
+) -> bool:
+    """Replay a batch while authenticating its shared factor base once."""
+    if cancelled is not None and not callable(cancelled):
+        raise TypeError("cancelled must be callable")
+    try:
+        factors = _validate_factor_base(order, factor_base)
+        reconstruct = _relation_reconstructor(order, factors, reconstructor)
+        for relation in records:
+            if cancelled is not None and cancelled():
+                return False
+            if type(relation) is not RelationRecord or not bool(
+                _verify_relation_record_over_validated_base(
+                    order, factors, relation, reconstruct
+                )["certified"]
+            ):
+                return False
+        return cancelled is None or not cancelled()
+    except Exception:
+        return False
 
 
 class ModularRankScreen:

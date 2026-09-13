@@ -13,6 +13,7 @@ from sagejs.ffi.flint import (
     FmpzMatrix,
     fmpz_mat_charpoly,
     fmpz_mat_det,
+    fmpz_mat_gram_lll_transform,
     fmpz_mat_hnf,
     fmpz_mat_hnf_modular_eldiv,
     fmpz_mat_hnf_transform,
@@ -255,6 +256,23 @@ def flint_dense_integer_matrix_lll_transform(
     columns: uint64,
 ) -> bool:
     return fmpz_mat_lll_transform(
+        output,
+        transform,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
+def flint_dense_integer_matrix_gram_lll_transform(
+    output: IntegerBuffer,
+    transform: IntegerBuffer,
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return fmpz_mat_gram_lll_transform(
         output,
         transform,
         source,

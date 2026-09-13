@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerical-frontend-breadth",
+  "title": "Natural fitting and ODE frontend breadth",
+  "lane": "numerical-optimization",
+  "status": "active",
+  "owner": "user",
+  "objective": "Expose and validate natural Sage/Python curve-fitting planning and ODE solving over shared numerical contracts without touching MATLAB or Wolfram parsers",
+  "base_commit": "633772d75290d2aa64d397f32aa1aacb8e677827",
+  "claims": [
+    "src/lib/sagejs/numerics/optimization/least_squares.py",
+    "src/lib/sagejs/numerics/optimization/__init__.py",
+    "test/numerics/frontends/sage-python-fitting-ode.cjs",
+    "docs/numerical-computing/frontends/sage-python-fitting-ode.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/numerical-computing-product-plan.md",
+    "docs/numerical-computing/optimization/README.md",
+    "docs/numerical-computing/ode/README.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython 3 same-source execution",
+      "Sage.js dynamic Python execution"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

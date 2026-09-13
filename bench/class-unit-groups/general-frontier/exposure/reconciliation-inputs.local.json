@@ -1,0 +1,15 @@
+{
+  "schema": "sagejs.general-frontier/exposure-reconciliation-inputs-v1",
+  "pool": {
+    "path": "/home/user/sagejs-worktrees/class-unit-rank-two-frontier/build/general-frontier/candidates-v2/pool.json",
+    "sha256": "e7a940591c7984d26d867fbe400b6bcd8466501442cc0662ef40dc5d4a2b48c9"
+  },
+  "inventory": {
+    "path": "/home/user/sagejs-worktrees/class-unit-rank-two-frontier/build/general-frontier/exposure-inventory-v1.json",
+    "sha256": "6f265c4a8ae83e4ef1f970464fbd2c3e899f770b9608ad7252262123e119489a"
+  },
+  "oracle_fixture": {
+    "path": "../../../../test/fixtures/number-field-class-unit-oracles.json",
+    "sha256": "a365c72f244a1895bcab972c836853a67f8cb8648dd0a57d8971bd55520ba481"
+  }
+}

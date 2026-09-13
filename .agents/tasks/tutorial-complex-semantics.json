@@ -1,0 +1,65 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "tutorial-complex-semantics",
+  "title": "Tutorial Complex Semantics",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Restore Sage tutorial assignment semantics for self-referential top-level names and classify genuinely equivalent symbolic differential-equation output",
+  "base_commit": "fa793b4a422638e82fe678e8be2412fda6082fd8",
+  "claims": [
+    "src/baselib/builtins.py",
+    "test/tutorial-complex-semantics.cjs",
+    "upstream-tests/sage/tutorial/expectations.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython and Sage assignment semantics for i = CC(i)",
+      "Symbolic equivalence of desolve tutorial output"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/tutorial-complex-semantics.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.725,
+      "started_at": "2026-09-02T22:54:58.085Z",
+      "commit": "fa793b4a422638e82fe678e8be2412fda6082fd8",
+      "workspace_fingerprint": "c48fc27c9301bef8f7eb3f427b814940027c559e2a1c6409843b4f6b377f90da",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/run-sage-tutorial.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 14.338,
+      "started_at": "2026-09-02T22:55:56.550Z",
+      "commit": "fa793b4a422638e82fe678e8be2412fda6082fd8",
+      "workspace_fingerprint": "c48fc27c9301bef8f7eb3f427b814940027c559e2a1c6409843b4f6b377f90da",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

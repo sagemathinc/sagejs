@@ -40,6 +40,7 @@
 #include "elliptic_lfunction.h"
 #include "extension_field.h"
 #include "floating.h"
+#include "intervals.h"
 #include "matrix.h"
 #include "multivariate.h"
 #include "number_field_factor.h"
@@ -1575,6 +1576,149 @@ static napi_value qq_poly_constant(napi_env env, napi_callback_info info)
     return poly == NULL ? NULL : result;
 }
 
+static uint32_t poly_read_uint32_le(const uint8_t *data)
+{
+    return (uint32_t) data[0] |
+        ((uint32_t) data[1] << 8) |
+        ((uint32_t) data[2] << 16) |
+        ((uint32_t) data[3] << 24);
+}
+
+/*
+ * Import canonical packed rational coefficients into the transitional
+ * series polynomial representation in one bounded crossing.  Exact matrix
+ * rows already use this numerator/denominator stream, so Gamma1 basis
+ * publication need not materialize hundreds of thousands of host BigInts
+ * merely to pack them again.
+ */
+static napi_value qq_poly_packed(napi_env env, napi_callback_info info)
+{
+    napi_value args[2], array_buffer, result;
+    napi_typedarray_type array_type;
+    sagejs_poly *poly;
+    ulong coefficient_count;
+    size_t byte_length, byte_offset, offset = 0, maximum_words = 0;
+    void *raw_data;
+    const uint8_t *data;
+    ulong *words = NULL;
+    fmpz_t numerator, denominator;
+    fmpq_t coefficient;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !bigint_to_ulong(env, args[0], &coefficient_count) ||
+        !check_napi(env, napi_get_typedarray_info(
+            env, args[1], &array_type, &byte_length, &raw_data,
+            &array_buffer, &byte_offset)))
+        return NULL;
+    if (array_type != napi_uint8_array || coefficient_count > (ulong) WORD_MAX)
+    {
+        napi_throw_type_error(env, NULL,
+            "packed rational polynomial requires a coefficient count and Uint8Array");
+        return NULL;
+    }
+    (void) array_buffer;
+    (void) byte_offset;
+    data = (const uint8_t *) raw_data;
+    for (ulong index = 0; index < coefficient_count; index++)
+        for (size_t part = 0; part < 2; part++)
+        {
+            uint32_t header;
+            size_t bytes, word_count;
+            if (byte_length - offset < 4)
+                goto invalid;
+            header = poly_read_uint32_le(data + offset);
+            offset += 4;
+            if (part == 1 && (header & UINT32_C(0x80000000)) != 0)
+                goto invalid;
+            bytes = (size_t) (header & UINT32_C(0x7fffffff));
+            if (bytes > byte_length - offset)
+                goto invalid;
+            word_count = (bytes + sizeof(ulong) - 1) / sizeof(ulong);
+            if (word_count > maximum_words)
+                maximum_words = word_count;
+            offset += bytes;
+        }
+    if (offset != byte_length)
+        goto invalid;
+    if (maximum_words != 0)
+    {
+        words = calloc(maximum_words, sizeof(ulong));
+        if (words == NULL)
+        {
+            napi_throw_error(env, NULL,
+                "unable to allocate packed rational polynomial workspace");
+            return NULL;
+        }
+    }
+    result = create_poly(env, SAGEJS_POLY_QQ, 0);
+    if (result == NULL)
+    {
+        free(words);
+        return NULL;
+    }
+    poly = unwrap_poly(env, result, SAGEJS_POLY_QQ);
+    if (poly == NULL)
+    {
+        free(words);
+        return NULL;
+    }
+    fmpz_init(numerator);
+    fmpz_init(denominator);
+    fmpq_init(coefficient);
+    offset = 0;
+    for (ulong index = 0; index < coefficient_count; index++)
+    {
+        fmpz *parts[2] = {numerator, denominator};
+        for (size_t part = 0; part < 2; part++)
+        {
+            const uint32_t header = poly_read_uint32_le(data + offset);
+            const size_t bytes =
+                (size_t) (header & UINT32_C(0x7fffffff));
+            const size_t word_count =
+                (bytes + sizeof(ulong) - 1) / sizeof(ulong);
+            offset += 4;
+            if (word_count != 0)
+                memset(words, 0, word_count * sizeof(ulong));
+            for (size_t byte = 0; byte < bytes; byte++)
+                words[byte / sizeof(ulong)] |=
+                    (ulong) data[offset + byte] <<
+                    (8 * (byte % sizeof(ulong)));
+            if (word_count == 0)
+                fmpz_zero(parts[part]);
+            else
+            {
+                fmpz_set_ui_array(parts[part], words, (slong) word_count);
+                if (part == 0 &&
+                    (header & UINT32_C(0x80000000)) != 0)
+                    fmpz_neg(parts[part], parts[part]);
+            }
+            offset += bytes;
+        }
+        if (fmpz_is_zero(denominator))
+        {
+            fmpq_clear(coefficient);
+            fmpz_clear(denominator);
+            fmpz_clear(numerator);
+            free(words);
+            napi_throw_range_error(env, NULL,
+                "packed rational polynomial denominator is zero");
+            return NULL;
+        }
+        fmpq_set_fmpz_frac(coefficient, numerator, denominator);
+        fmpq_poly_set_coeff_fmpq(poly->rational, (slong) index, coefficient);
+    }
+    fmpq_clear(coefficient);
+    fmpz_clear(denominator);
+    fmpz_clear(numerator);
+    free(words);
+    return result;
+
+invalid:
+    napi_throw_range_error(env, NULL,
+        "invalid packed rational polynomial representation");
+    return NULL;
+}
+
 static napi_value zz_poly_gen(napi_env env, napi_callback_info info)
 {
     napi_value result;
@@ -1628,6 +1772,35 @@ static napi_value zz_poly_to_qq(napi_env env, napi_callback_info info)
     if (target == NULL)
         return NULL;
     fmpq_poly_set_fmpz_poly(target->rational, source->integer);
+    return result;
+}
+
+/* Convert an integral rational polynomial without publishing coefficients. */
+static napi_value qq_poly_to_zz_exact(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    sagejs_poly *source;
+    sagejs_poly *target;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    source = unwrap_poly(env, args[0], SAGEJS_POLY_QQ);
+    if (source == NULL)
+        return NULL;
+    if (!fmpz_is_one(fmpq_poly_denref(source->rational)))
+    {
+        napi_throw_range_error(
+            env, NULL, "rational polynomial has nonintegral coefficients");
+        return NULL;
+    }
+    result = create_poly(env, SAGEJS_POLY_ZZ, 0);
+    if (result == NULL)
+        return NULL;
+    target = unwrap_poly(env, result, SAGEJS_POLY_ZZ);
+    if (target == NULL)
+        return NULL;
+    fmpq_poly_get_numerator(target->integer, source->rational);
     return result;
 }
 
@@ -2501,6 +2674,165 @@ static napi_value poly_coefficients(napi_env env, napi_callback_info info)
     fmpz_clear(integer);
     fmpq_clear(rational);
     return result;
+}
+
+/* Read one coefficient without constructing the complete coefficient array. */
+static napi_value poly_coefficient(napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value result = NULL;
+    napi_value numerator;
+    napi_value denominator;
+    sagejs_poly *poly;
+    ulong index;
+    fmpz_t integer;
+    fmpq_t rational;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !bigint_to_ulong(env, args[1], &index))
+        return NULL;
+    if (index > (ulong) WORD_MAX)
+    {
+        napi_throw_range_error(
+            env, NULL, "polynomial coefficient index is out of range");
+        return NULL;
+    }
+    poly = unwrap_poly(env, args[0], 0);
+    if (poly == NULL)
+        return NULL;
+    fmpz_init(integer);
+    fmpq_init(rational);
+    if (poly->kind == SAGEJS_POLY_ZZ)
+    {
+        fmpz_poly_get_coeff_fmpz(integer, poly->integer, (slong) index);
+        result = fmpz_to_bigint(env, integer);
+    }
+    else if (poly->kind == SAGEJS_POLY_QQ)
+    {
+        fmpq_poly_get_coeff_fmpq(rational, poly->rational, (slong) index);
+        numerator = fmpz_to_bigint(env, fmpq_numref(rational));
+        denominator = fmpz_to_bigint(env, fmpq_denref(rational));
+        if (numerator != NULL && denominator != NULL &&
+            check_napi(env, napi_create_object(env, &result)) &&
+            check_napi(env, napi_set_named_property(
+                env, result, "numerator", numerator)) &&
+            check_napi(env, napi_set_named_property(
+                env, result, "denominator", denominator)))
+        {
+            /* result is complete */
+        }
+        else
+            result = NULL;
+    }
+    else if (!check_napi(env, napi_create_bigint_uint64(
+        env, nmod_poly_get_coeff_ui(poly->modular, (slong) index), &result)))
+        result = NULL;
+    fmpz_clear(integer);
+    fmpq_clear(rational);
+    return result;
+}
+
+/*
+ * Clone and reduce a ZZ[x] basis whose first square coefficient block is
+ * upper unitriangular.  The polynomials remain opaque across the complete
+ * elimination; only the resulting handles cross Node-API.
+ */
+static napi_value zz_poly_unitriangular_basis(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    napi_value input;
+    napi_value output;
+    sagejs_poly *source;
+    sagejs_poly **rows = NULL;
+    uint32_t length;
+    uint32_t row;
+    uint32_t column;
+    fmpz_t coefficient;
+    bool is_array = false;
+
+    if (!require_arguments(env, info, 1, args) ||
+        !check_napi(env, napi_is_array(env, args[0], &is_array)))
+        return NULL;
+    if (!is_array)
+    {
+        napi_throw_type_error(env, NULL, "expected an array of ZZ polynomials");
+        return NULL;
+    }
+    if (!check_napi(env, napi_get_array_length(env, args[0], &length)) ||
+        !check_napi(env, napi_create_array_with_length(env, length, &result)))
+        return NULL;
+    if (length == 0)
+        return result;
+    rows = calloc(length, sizeof(*rows));
+    if (rows == NULL)
+    {
+        napi_throw_error(env, NULL, "unable to allocate polynomial basis");
+        return NULL;
+    }
+    for (row = 0; row < length; row++)
+    {
+        if (!check_napi(env, napi_get_element(env, args[0], row, &input)))
+            goto fail;
+        source = unwrap_poly(env, input, SAGEJS_POLY_ZZ);
+        if (source == NULL)
+            goto fail;
+        output = create_poly(env, SAGEJS_POLY_ZZ, 0);
+        if (output == NULL)
+            goto fail;
+        rows[row] = unwrap_poly(env, output, SAGEJS_POLY_ZZ);
+        if (rows[row] == NULL)
+            goto fail;
+        fmpz_poly_set(rows[row]->integer, source->integer);
+        if (!check_napi(env, napi_set_element(env, result, row, output)))
+            goto fail;
+    }
+    fmpz_init(coefficient);
+    for (row = 0; row < length; row++)
+    {
+        for (column = 0; column < row; column++)
+        {
+            fmpz_poly_get_coeff_fmpz(
+                coefficient, rows[row]->integer, (slong) column);
+            if (!fmpz_is_zero(coefficient))
+            {
+                fmpz_clear(coefficient);
+                napi_throw_range_error(
+                    env, NULL, "polynomial basis is not unitriangular");
+                goto fail;
+            }
+        }
+        fmpz_poly_get_coeff_fmpz(
+            coefficient, rows[row]->integer, (slong) row);
+        if (!fmpz_is_one(coefficient))
+        {
+            fmpz_clear(coefficient);
+            napi_throw_range_error(
+                env, NULL, "polynomial basis is not unitriangular");
+            goto fail;
+        }
+    }
+    for (row = 1; row < length; row++)
+    {
+        for (column = 0; column < row; column++)
+        {
+            fmpz_poly_get_coeff_fmpz(
+                coefficient, rows[column]->integer, (slong) row);
+            if (!fmpz_is_zero(coefficient))
+                fmpz_poly_scalar_submul_fmpz(
+                    rows[column]->integer,
+                    rows[row]->integer,
+                    coefficient);
+        }
+    }
+    fmpz_clear(coefficient);
+    free(rows);
+    return result;
+
+fail:
+    free(rows);
+    return NULL;
 }
 
 /*
@@ -4499,6 +4831,9 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"cyclotomicElementCoefficients", NULL,
             sagejs_cyclotomic_element_coefficients,
             NULL, NULL, NULL, napi_default, NULL},
+        {"cyclotomicElementsFromIntegralCoordinates", NULL,
+            sagejs_cyclotomic_elements_from_integral_coordinates,
+            NULL, NULL, NULL, napi_default, NULL},
         {"cyclotomicPolyFactor", NULL,
             sagejs_cyclotomic_poly_factor,
             NULL, NULL, NULL, napi_default, NULL},
@@ -4661,8 +4996,14 @@ static napi_value initialize(napi_env env, napi_value exports)
          sagejs_character_presentation_boundary_data,
          NULL, NULL, NULL, napi_default, NULL},
         {"p1ListCharacterHeckeMatrix", NULL,
-         sagejs_p1list_character_hecke_matrix,
-         NULL, NULL, NULL, napi_default, NULL},
+            sagejs_p1list_character_hecke_matrix,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"p1ListCharacterHeckeImages", NULL,
+            sagejs_p1list_character_hecke_images,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"p1ListCharacterHeckeSelectedRows", NULL,
+            sagejs_p1list_character_hecke_selected_rows,
+            NULL, NULL, NULL, napi_default, NULL},
         {"p1ListReducePath", NULL, sagejs_p1list_reduce_path,
          NULL, NULL, NULL, napi_default, NULL},
         {"p1ListManinRelations", NULL, sagejs_p1list_manin_relations,
@@ -4761,6 +5102,9 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"cyclotomicMatrixRightKernel", NULL,
             sagejs_cyclotomic_matrix_right_kernel,
             NULL, NULL, NULL, napi_default, NULL},
+        {"cyclotomicMatrixRowBasis", NULL,
+            sagejs_cyclotomic_matrix_row_basis,
+            NULL, NULL, NULL, napi_default, NULL},
         {"cyclotomicMatrixPolyEvaluate", NULL,
             sagejs_cyclotomic_matrix_poly_evaluate,
             NULL, NULL, NULL, napi_default, NULL},
@@ -4814,13 +5158,19 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"mpolyUnivariateCoefficients", NULL,
             sagejs_mpoly_univariate_coefficients,
             NULL, NULL, NULL, napi_default, NULL},
+        {"mpolyTerms", NULL, sagejs_mpoly_terms,
+            NULL, NULL, NULL, napi_default, NULL},
         {"mpolyLength", NULL, sagejs_mpoly_length, NULL, NULL, NULL,
             napi_default, NULL},
         {"mpolyDegree", NULL, sagejs_mpoly_degree, NULL, NULL, NULL,
             napi_default, NULL},
         {"mpolyTotalDegree", NULL, sagejs_mpoly_total_degree,
             NULL, NULL, NULL, napi_default, NULL},
+        {"mpolyLeadingMonomial", NULL, sagejs_mpoly_leading_monomial,
+            NULL, NULL, NULL, napi_default, NULL},
         {"mpolyGroebner", NULL, sagejs_mpoly_groebner,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"mpolyGroebnerMsolve", NULL, sagejs_mpoly_groebner_msolve,
             NULL, NULL, NULL, napi_default, NULL},
         {"mpolyReduce", NULL, sagejs_mpoly_reduce,
             NULL, NULL, NULL, napi_default, NULL},
@@ -4828,11 +5178,15 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"qqPolyConstant", NULL, qq_poly_constant, NULL, NULL, NULL,
             napi_default, NULL},
+        {"qqPolyPacked", NULL, qq_poly_packed, NULL, NULL, NULL,
+            napi_default, NULL},
         {"zzPolyGen", NULL, zz_poly_gen, NULL, NULL, NULL,
             napi_default, NULL},
         {"qqPolyGen", NULL, qq_poly_gen, NULL, NULL, NULL,
             napi_default, NULL},
         {"zzPolyToQQ", NULL, zz_poly_to_qq, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"qqPolyToZZExact", NULL, qq_poly_to_zz_exact, NULL, NULL, NULL,
             napi_default, NULL},
         {"wordIsPrime", NULL, word_is_prime, NULL, NULL, NULL,
             napi_default, NULL},
@@ -4873,6 +5227,8 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"fqIsOne", NULL, sagejs_fq_is_one, NULL, NULL, NULL,
             napi_default, NULL},
         {"fqToString", NULL, sagejs_fq_to_string, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"fqCoordinates", NULL, sagejs_fq_coordinates, NULL, NULL, NULL,
             napi_default, NULL},
         {"fqPolyConstant", NULL, sagejs_fq_poly_constant,
             NULL, NULL, NULL, napi_default, NULL},
@@ -4979,6 +5335,10 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"polyCoefficients", NULL, poly_coefficients, NULL, NULL, NULL,
             napi_default, NULL},
+        {"polyCoefficient", NULL, poly_coefficient, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"zzPolyUnitriangularBasis", NULL, zz_poly_unitriangular_basis,
+            NULL, NULL, NULL, napi_default, NULL},
         {"ecAnlistIntegral", NULL, elliptic_anlist_integral,
             NULL, NULL, NULL, napi_default, NULL},
         {"ecApIntegral", NULL, elliptic_ap_smalljac_integral,
@@ -5079,10 +5439,58 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"realToString", NULL, sagejs_real_to_string, NULL, NULL, NULL,
             napi_default, NULL},
+        {"realNext", NULL, sagejs_real_next, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"realParts", NULL, sagejs_real_parts, NULL, NULL, NULL,
+            napi_default, NULL},
         {"realToDouble", NULL, sagejs_real_to_double, NULL, NULL, NULL,
             napi_default, NULL},
         {"realPrecision", NULL, sagejs_real_precision, NULL, NULL, NULL,
             napi_default, NULL},
+        {"realIntervalFromRational", NULL,
+            sagejs_real_interval_from_rational,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"realIntervalFromBounds", NULL,
+            sagejs_real_interval_from_bounds,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"realIntervalRound", NULL, sagejs_real_interval_round,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"realIntervalBinary", NULL, sagejs_real_interval_binary,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"realIntervalUnary", NULL, sagejs_real_interval_unary,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"realIntervalPowInt", NULL, sagejs_real_interval_pow_int,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"realIntervalRelation", NULL, sagejs_real_interval_relation,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"realIntervalPart", NULL, sagejs_real_interval_part,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"realIntervalToString", NULL, sagejs_real_interval_to_string,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"realIntervalPrecision", NULL, sagejs_real_interval_precision,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"complexIntervalFromParts", NULL,
+            sagejs_complex_interval_from_parts,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"complexIntervalRound", NULL, sagejs_complex_interval_round,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"complexIntervalBinary", NULL, sagejs_complex_interval_binary,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"complexIntervalUnary", NULL, sagejs_complex_interval_unary,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"complexIntervalPowInt", NULL, sagejs_complex_interval_pow_int,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"complexIntervalRelation", NULL,
+            sagejs_complex_interval_relation,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"complexIntervalPart", NULL, sagejs_complex_interval_part,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"complexIntervalToString", NULL,
+            sagejs_complex_interval_to_string,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"complexIntervalPrecision", NULL,
+            sagejs_complex_interval_precision,
+            NULL, NULL, NULL, napi_default, NULL},
         {"complexFromReals", NULL, sagejs_complex_from_reals, NULL, NULL, NULL,
             napi_default, NULL},
         {"complexRound", NULL, sagejs_complex_round, NULL, NULL, NULL,

@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5147,
-      "bytes": 168535,
+      "lines": 5555,
+      "bytes": 183546,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -23,15 +23,15 @@
         "locally implemented integer, polynomial, and factoring helpers",
         "bounded adapters for elliptic and hyperelliptic external-library kernels"
       ],
-      "rationale": "The boundary is legitimate, but a 5,141-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
+      "rationale": "The boundary is legitimate, but a large adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
       "fallback": "Existing ordinary Python arithmetic remains the capability fallback while each exported operation is separated.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Create a symbol-level inventory and extract one representation-neutral helper family per change set."
     },
     {
       "path": "packages/flint/src/cyclotomic_rref.c",
-      "lines": 1008,
-      "bytes": 33170,
+      "lines": 1015,
+      "bytes": 33554,
       "decision": "split-and-migrate",
       "priority": "medium",
       "responsibilities": [
@@ -79,16 +79,17 @@
     },
     {
       "path": "packages/flint/src/matrix.c",
-      "lines": 5851,
-      "bytes": 191200,
+      "lines": 6584,
+      "bytes": 218519,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
         "Node-API matrix representation",
         "FLINT dense and sparse matrix calls",
+        "coordinate-preserving cyclotomic representation primitives",
         "locally implemented matrix algorithms and conversion paths"
       ],
-      "rationale": "The largest mixed native source combines an essential packed FLINT boundary with Sage.js-owned algorithms. Retain mature FLINT calls, split the ABI by representation, and use existing prime-field typed witnesses to migrate local control flow where it is competitive.",
+      "rationale": "The largest mixed native source combines an essential packed FLINT boundary with Sage.js-owned algorithms. Retain mature FLINT calls and coordinate-preserving cyclotomic representation primitives, split the ABI by representation, and use existing prime-field typed witnesses to migrate local control flow where it is competitive.",
       "fallback": "Every matrix operation retains its tested Python/JavaScript implementation or an explicit native capability diagnostic.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
       "next": "Preserve the exact 50-export symbol ratchet, migrate the 22 thin operations through declarations, and replace the 12 documented source-owned exceptions one typed algorithm at a time."
@@ -127,8 +128,8 @@
     },
     {
       "path": "packages/flint/src/p1.c",
-      "lines": 4603,
-      "bytes": 161898,
+      "lines": 5273,
+      "bytes": 190508,
       "decision": "typed-remediation-pilot",
       "priority": "critical",
       "responsibilities": [
@@ -136,6 +137,7 @@
         "integer and rational sparse star eigenspaces",
         "higher-weight and character presentations",
         "Heilbronn representatives and Hecke assembly",
+        "bulk cyclotomic power-basis Hecke images for q-expansion reconstruction",
         "path reduction and result conversion"
       ],
       "rationale": "This file is the clearest architecture violation: an adapter contains several independent research algorithms and low-level exact-memory management. The continued-fraction Heilbronn enumeration and fused higher-weight Hecke traversal are now source-transparent typed-Python implementations; sparse exact elimination follows only after packed records and rational storage are compiler features.",
@@ -360,13 +362,13 @@
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
-        "bounded exact discriminant decomposition with perfect-power normalization and a fail-closed 16-bit-prime continuation for word residuals",
+        "bounded exact discriminant decomposition without eager full factorization",
         "partial word-prime Round-2 dispatch over an immutable sealed polynomial",
         "canonical compact source, component, and HNF evidence ownership",
         "terminal local fixed-point witness construction after final HNF rebasing",
         "proof-carrying packing of independently checked local terminal witnesses in caller-prime order"
       ],
-      "rationale": "This fuses discriminant, cheap decomposition, and partial local-order work into one native call while preserving every lazy residual exactly. After the cheap caller-selected trial pass it normalizes exact perfect powers, then continues word-sized residuals only through the fixed 16-bit-prime table; any remaining composite is retained and declined. This closes the measured 1277*1699 and 1153*2927 frontier gaps without calling a general factor engine that can terminate on failure. Published factors remain untrusted discoveries: source-transparent replay proves deterministic word primality, coprimality, and exact discriminant reconstruction. The handwritten FLINT representation boundary is a measured compiler exception: the source-transparent degree-64 O(n^4) replay took 18.185s, versus 2.356s for a three-prime FLINT resource producer. A later standalone full-12-prime verifier measured 3.776s and made the combined vector429 path 6.247s, so its production FFI/API was removed; its negative receipt and ordinary mathematical oracle remain. Proof-carrying construction instead packs the independently checked terminal state already published by each local worker without replaying enlargement. The optimized vector429 boundary measured 2.399s total, including 0.237s native proof overhead and 0.299s current projection. The ordinary source remains the independent mathematical oracle.",
+      "rationale": "This fuses discriminant, cheap decomposition, and partial local-order work into one native call while preserving every lazy residual exactly. The handwritten FLINT representation boundary is a measured compiler exception: the source-transparent degree-64 O(n^4) replay took 18.185s, versus 2.356s for a three-prime FLINT resource producer. A later standalone full-12-prime verifier measured 3.776s and made the combined vector429 path 6.247s, so its production FFI/API was removed; its negative receipt and ordinary mathematical oracle remain. Proof-carrying construction instead packs the independently checked terminal state already published by each local worker without replaying enlargement. The optimized vector429 boundary measured 2.399s total, including 0.237s native proof overhead and 0.299s current projection. The ordinary source remains the independent mathematical oracle.",
       "fallback": "Externally supplied, copied, or malformed packed proofs are never directly trusted: the ordinary-Python checker recomputes the polynomial discriminant, HNF/index/order closure, each local exact multiplication table and fixed point, and the coprime merge into the final order. Linear authentication exists only synchronously around the actual current generated construction call and binds its nested order bytes, polynomial, complete caller-prime tuple, witness shapes, and final basis before sealing. Worker allocation is bounded to five lanes under 512 MiB, pthread-creation failure runs the missing lane synchronously, and native Windows uses the exact sequential path.",
       "oracles": [
         "CPython",
@@ -413,17 +415,18 @@
     },
     {
       "path": "packages/flint-wasm/src/numeric.c",
-      "lines": 1443,
-      "bytes": 45694,
+      "lines": 2890,
+      "bytes": 92112,
       "decision": "retain-bridge",
       "priority": "high",
       "responsibilities": [
         "bounded generation-tagged MPFR and complex resource ownership",
         "decimal ingress plus exact MPFR spill and restore transport",
         "mature Arb and Acb special-function dispatch",
-        "bounded elementary-expression VM, quadrature, and root iteration"
+        "bounded elementary-expression VM, quadrature, and root iteration",
+        "ordered approximate matrix eigensystems with normalized left and right eigenvectors"
       ],
-      "rationale": "The scalar numerical algorithms and special functions delegate to mature MPFR, Arb, and Acb operations. The handwritten finite VM, GK21 quadrature policy, and bisection loop are an explicit measured compiler limitation exception: the isolated synchronous reactor cannot call a Python/JavaScript callback, while the source compiler does not yet lower MPFR/Acb resource operations. Keeping this bounded coarse call in the reactor removes the measured hot loops without embedding an interpreter or Unix runtime.",
+      "rationale": "The scalar numerical algorithms, special functions, and eigensystems delegate to mature MPFR, Arb, and Acb operations. The handwritten finite VM, GK21 quadrature policy, bisection loop, and eigensystem result transport are an explicit measured compiler limitation exception: the isolated synchronous reactor cannot call a Python/JavaScript callback, while the source compiler does not yet lower MPFR/Acb resource operations. Keeping these bounded coarse calls in the reactor removes the measured hot loops without embedding an interpreter or Unix runtime.",
       "fallback": "Ordinary Python numerical evaluation remains explicit for unsupported expression trees and arbitrary Python callables.",
       "oracles": [
         "CPython",
@@ -478,24 +481,108 @@
     },
     {
       "path": "packages/flint-wasm/src/multivariate.c",
-      "lines": 68,
-      "bytes": 1761,
+      "lines": 99,
+      "bytes": 2774,
       "decision": "retain-bridge",
       "priority": "high",
       "responsibilities": [
         "bounded Wasm32 ingress and egress buffer ownership",
-        "stable flat exports over the host-neutral FLINT resultant core",
+        "stable flat exports over the host-neutral FLINT resultant and msolve Groebner cores",
         "copy-length and capacity reporting without retained host pointers"
       ],
-      "rationale": "This file contains only a fixed-size linear-memory adapter around the separately reviewed host-neutral FLINT multivariate core; all polynomial validation and mathematical work remains in that shared core and mature FLINT.",
-      "fallback": "Native Node uses its exact FLINT route; unsupported browser domains fail explicitly rather than selecting a heavyweight portable resultant.",
+      "rationale": "This file contains only a fixed-size linear-memory adapter around separately reviewed host-neutral multivariate cores; all polynomial validation and mathematical work remains in those shared cores, FLINT, and pinned msolve.",
+      "fallback": "Native Node uses exact FLINT or msolve routes; unsupported browser domains and malformed packets fail explicitly before entering a mathematical engine.",
       "oracles": [
         "CPython",
         "Sage.js JavaScript fallback",
         "FLINT",
         "SageMath"
       ],
-      "next": "Keep the six-export surface bounded and preserve one copied ingress and egress per public resultant."
+      "next": "Keep the bounded export surface versioned and preserve one copied ingress and egress per public resultant or Groebner computation."
+    },
+    {
+      "path": "packages/flint/src/groebner_wasm_core.c",
+      "lines": 461,
+      "bytes": 17417,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "validate bounded versioned prime-field and rational polynomial packets",
+        "translate owned fixed-width packets to and from the msolve wrapper",
+        "enforce exact input and 16 MiB output resource limits"
+      ],
+      "rationale": "The core owns no mathematical policy and implements no Groebner algorithm; it is a host-neutral parser, ownership adapter, and serializer around the independently pinned msolve engine.",
+      "fallback": "Malformed and out-of-envelope packets fail before msolve, while higher-level Sage.js keeps exact dynamic polynomial algorithms available for unsupported domains.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT",
+        "SageMath"
+      ],
+      "next": "Keep packet schemas versioned and extend limits only with malformed-input, sanitizer, and cross-target evidence."
+    },
+    {
+      "path": "packages/flint/src/msolve_core.c",
+      "lines": 337,
+      "bytes": 10076,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "convert msolve fatal process exits into recoverable native failures or contained Wasm traps",
+        "own and release prime-field and rational result allocations",
+        "pin deterministic scalar reduced-basis engine options"
+      ],
+      "rationale": "This narrow wrapper is necessary because upstream msolve exposes allocator-owned arrays and process exits rather than a status-only embedding ABI; all Groebner mathematics remains in the pinned upstream source.",
+      "fallback": "Native failures return without partial results, Wasm fatal paths trap only the current call, and higher-level explicit selection prevents an unproved rational route from impersonating the default exact backend.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT",
+        "SageMath"
+      ],
+      "next": "Upstream the status-returning embedding changes and remove local containment code when msolve provides an equivalent stable library contract."
+    },
+    {
+      "path": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
+      "lines": 367,
+      "bytes": 11651,
+      "decision": "retain-bridge",
+      "priority": "low",
+      "responsibilities": [
+        "validate bounded cminpack dimensions, tolerances, workspace, and linear-memory regions",
+        "marshal complete residual and Jacobian callback batches across one synchronous Wasm import",
+        "track and release every operation-owned allocation on success and failure"
+      ],
+      "rationale": "This adapter owns only a bounded status, callback, and memory ABI around authenticated upstream cminpack; the Levenberg-Marquardt iteration policy remains entirely in the mature external library.",
+      "fallback": "The public automatic route remains the independently tested ordinary-Python damped Gauss-Newton implementation, while an explicit cminpack identity fails rather than silently substituting it.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "cminpack upstream MGH corpus",
+        "SciPy"
+      ],
+      "next": "Retain the one-import packed boundary and exact method names; widen dimensions or select it automatically only with fresh lifecycle, correctness, payload, and performance receipts."
+    },
+    {
+      "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+      "lines": 463,
+      "bytes": 17196,
+      "decision": "retain-bridge",
+      "priority": "low",
+      "responsibilities": [
+        "validate dimensions, tolerances, bounds, and every linear-memory region",
+        "marshal objective values through one synchronous Wasm import while retaining separately fuzzed future derivative-batch ABI probes",
+        "translate cancellation, force-stop, allocation failure, and exact NLopt statuses without inventing convergence"
+      ],
+      "rationale": "The adapter owns only a bounded foreign-library ABI around authenticated MIT NLopt Nelder-Mead sources; the algorithm remains entirely upstream, derivative callbacks are rejected, and public success is explicitly heuristic after independent contradiction checks. COBYLA is absent from the source closure because its selected upstream f2c implementation fails source-bound UBSAN.",
+      "fallback": "Automatic minimization remains ordinary Python. Explicit NLopt Nelder-Mead fails closed when the artifact, callback contract, result identity, or independent contradiction checks are unavailable. Nonlinear constraints are unsupported pending a modern sanitizer-clean backend.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "SciPy",
+        "PRIMA"
+      ],
+      "next": "Keep Nelder-Mead explicit-only and heuristic; evaluate a modern PRIMA implementation for constrained optimization with separately pinned licensing, lifecycle, correctness, payload, sanitizer, and four-platform evidence."
     },
     {
       "path": "packages/wasm-toolchain/patches/sagejs_wasi_fenv_compat.h",

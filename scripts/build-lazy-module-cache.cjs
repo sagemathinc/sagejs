@@ -27,6 +27,9 @@ const {
   provenanceRecord,
   validateLazyModuleBundle,
 } = require("./lazy-module-provenance.cjs");
+const {
+  validateNumericalBrowserClosure,
+} = require("./check-numerical-browser-closure.cjs");
 
 const root = resolve(__dirname, "..");
 const libraryDirectory = join(root, "src", "lib");
@@ -37,6 +40,7 @@ const manifest = JSON.parse(readFileSync(
   join(__dirname, "precompiled-python-packages.json"),
   "utf8",
 ));
+validateNumericalBrowserClosure({ repositoryRoot: root, manifest });
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-python-precompile-"));
 const packageTemporary = join(temporary, "packages");
 const taskTemporary = join(temporary, "tasks");
@@ -161,8 +165,15 @@ function copyCompiledModules(moduleDirectory, taskModules, bundleModules) {
   for (const cacheFilename of filesBelow(moduleDirectory)) {
     if (!cacheFilename.endsWith(".json")) continue;
     const cached = JSON.parse(readFileSync(cacheFilename, "utf8"));
+    // A cache generation can also contain advisory lease/maintenance metadata.
+    // In particular, Windows may retain the lease briefly after the compiler
+    // process exits.  Only compiler module records have both fields below.
+    if (
+      typeof cached.filename !== "string" ||
+      typeof cached.javascript !== "string"
+    ) continue;
     const name = moduleName(cached.filename);
-    if (!name || typeof cached.javascript !== "string") continue;
+    if (!name) continue;
     assertLazyModuleName(name);
     const canonical = canonicalizeJavascriptTemplate({
       name,
@@ -365,6 +376,11 @@ try {
     },
     modules: sortedBundleModules,
   };
+  validateNumericalBrowserClosure({
+    repositoryRoot: root,
+    manifest,
+    bundle,
+  });
   validateLazyModuleBundle(bundle, { repositoryRoot: root });
   writeFileSync(bundleFilename, `${JSON.stringify(bundle)}\n`);
 

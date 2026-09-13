@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sagemathinc/sagejs/blob/main/docs/numerical-computing/multilingual/intent.schema.json",
+  "title": "Sage.js canonical numerical frontend intent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "kind",
+    "operation",
+    "operands",
+    "options",
+    "outputs",
+    "source",
+    "classification",
+    "replayable",
+    "metadata"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "numerical_frontend_intent" },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["domain", "name", "version"],
+      "properties": {
+        "domain": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "operands": { "type": "object" },
+    "options": { "type": "object" },
+    "outputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "name", "text", "span"],
+      "properties": {
+        "language": {
+          "enum": ["sage", "python-scipy", "matlab", "wolfram"]
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "text": { "type": ["string", "null"] },
+        "span": { "type": "object" }
+      }
+    },
+    "classification": {
+      "enum": ["faithful", "translated", "extension"]
+    },
+    "replayable": { "type": "boolean" },
+    "metadata": { "type": "object" }
+  }
+}

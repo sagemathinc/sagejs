@@ -5,6 +5,25 @@ export interface SageDisplayData {
   data: unknown;
 }
 
+export interface SageOutputEvent {
+  schema: "sagejs.output-event/v1";
+  type: "stream" | "display_data" | "update_display_data" | "clear_output" | "error";
+  parentId?: string;
+  [name: string]: unknown;
+}
+
+export interface SageCommEvent {
+  schema: "sagejs.comm-event/v1";
+  type: "open" | "message" | "close";
+  commId: string;
+  parentId?: string;
+  targetName?: string;
+  targetModule?: string;
+  data: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  buffers: Uint8Array[];
+}
+
 export interface SageOptimizationReport {
   schema: "sagejs.optimizer-evaluation/v1";
   authority: "compiler-verified-static";
@@ -29,6 +48,11 @@ export interface SageEvaluationResult {
   durationMs: number;
   /** Optional rich representation of the final value. */
   display?: SageDisplayData;
+  /** Standard Python/Jupyter MIME bundle for the final expression. */
+  mimeBundle?: {
+    data: Record<string, unknown>;
+    metadata: Record<string, unknown>;
+  };
   /** Compiler-verified static optimizer decisions for this evaluation. */
   optimization: SageOptimizationReport;
 }
@@ -37,18 +61,39 @@ export interface SageEvaluationOptions {
   filename?: string;
   timeout?: number;
   onOutput?: (text: string) => void;
+  onError?: (text: string) => void;
+  onEvent?: (event: SageOutputEvent) => void;
+  onComm?: (event: SageCommEvent) => void;
 }
 
 export interface BrowserSageSessionOptions {
+  /** Default source and runtime semantics for evaluations in this session. */
+  mode?: "sage" | "python";
   worker?: string | URL;
   compiler?: string | URL;
   baselib?: string | URL;
   standardLibrary?: string | URL;
   lazyModules?: string | URL;
+  conwayData?: string | URL;
+  dynamicPrograms?: string | URL;
   flint?: string | URL;
+  algebraic?: string | URL;
+  nativeKernels?: string | URL;
   m4ri?: string | URL;
+  numerical?: string | URL;
+  numericalNlopt?: string | URL;
+  nloptAdapter?: string | URL;
   symbolic?: string | URL;
+  documentation?: string | URL;
   compilerWorker?: string | URL;
+  compilerFrontend?: string | URL;
+  foreignFrontend?: string | URL;
+  treeSitterRuntime?: string | URL;
+  pythonGrammar?: string | URL;
+  sageGrammar?: string | URL;
+  foreignGrammars?: Record<string, string | URL>;
+  capabilityReport?: string | URL;
+  optimizationLevel?: "O0" | "O1" | "O2" | "O3" | "Os";
   onGraphicsSave?: (request: SageGraphicsSaveRequest) => void | Promise<void>;
 }
 
@@ -76,6 +121,14 @@ export class SageSession {
   ): this;
   on(type: "ready", listener: () => void): this;
   on(type: "error", listener: (error: Error) => void): this;
+  on(
+    type: "output",
+    listener: (event: SageOutputEvent, context: { requestId: number }) => void,
+  ): this;
+  on(
+    type: "comm",
+    listener: (event: SageCommEvent, context: { requestId: number }) => void,
+  ): this;
   off(type: string, listener: (...parameters: unknown[]) => void): this;
   ready(): Promise<this>;
   evaluate(
@@ -86,6 +139,24 @@ export class SageSession {
     source: string,
     options?: SageEvaluationOptions,
   ): Promise<SageEvaluationResult>;
+  comm(event: SageCommEvent, handlers?: {
+    onOutput?: (text: string) => void;
+    onError?: (text: string) => void;
+    onEvent?: (event: SageOutputEvent) => void;
+    onComm?: (event: SageCommEvent) => void;
+  }): Promise<void>;
+  commInfo(targetName?: string): Promise<Record<string, unknown>>;
+  /**
+   * Evaluate Sage/Python source and return its final expression as detached
+   * JSON-compatible data. Put a multiline expression in a variable and use
+   * that variable as the final physical line.
+   */
+  evaluateJSON(source: string, options?: SageEvaluationOptions): Promise<unknown>;
+  /** Return the installed DocSpec v1 catalog. */
+  documentation(): Promise<{
+    schema_version: 1;
+    entries: Array<Record<string, unknown>>;
+  }>;
   interrupt(): Promise<void>;
   reset(): Promise<void>;
   close(): Promise<void>;

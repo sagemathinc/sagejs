@@ -13,19 +13,19 @@ import { basicSetup } from "codemirror";
 const FOUR_SPACES = "    ";
 
 const sageHighlightStyle = HighlightStyle.define([
-  { tag: tags.comment, color: "#86a899", fontStyle: "italic" },
+  { tag: tags.comment, color: "var(--code-comment)", fontStyle: "italic" },
   {
     tag: [tags.keyword, tags.modifier, tags.operatorKeyword],
-    color: "#8ee5b8",
+    color: "var(--code-keyword)",
     fontWeight: "650",
   },
   {
     tag: [tags.string, tags.character, tags.regexp],
-    color: "#f0cf82",
+    color: "var(--code-string)",
   },
   {
     tag: [tags.number, tags.bool, tags.atom, tags.constant(tags.name)],
-    color: "#9fc9f4",
+    color: "var(--code-number)",
   },
   {
     tag: [
@@ -34,19 +34,19 @@ const sageHighlightStyle = HighlightStyle.define([
       tags.className,
       tags.typeName,
     ],
-    color: "#d4ed96",
+    color: "var(--code-name)",
   },
-  { tag: [tags.invalid, tags.deleted], color: "#ff9a8e" },
+  { tag: [tags.invalid, tags.deleted], color: "var(--code-invalid)" },
 ]);
 
 const sageTheme = EditorView.theme(
   {
     "&": {
-      backgroundColor: "#12201a",
-      color: "#e9f2ed",
+      backgroundColor: "var(--code)",
+      color: "var(--code-ink)",
       height: "100%",
     },
-    "&.cm-focused": { outline: "3px solid #65b995", outlineOffset: "-3px" },
+    "&.cm-focused": { outline: "3px solid var(--focus)", outlineOffset: "-3px" },
     ".cm-scroller": {
       fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
       fontSize: ".91rem",
@@ -54,31 +54,31 @@ const sageTheme = EditorView.theme(
       lineHeight: "1.55",
       overflow: "auto",
     },
-    ".cm-content": { caretColor: "#d8f36a", padding: "1rem 0" },
+    ".cm-content": { caretColor: "var(--code-caret)", padding: "1rem 0" },
     ".cm-line": { padding: "0 1.15rem" },
-    ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#d8f36a" },
+    ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--code-caret)" },
     ".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection": {
-      backgroundColor: "#315e4c !important",
+      backgroundColor: "var(--code-selection) !important",
     },
     ".cm-gutters": {
-      backgroundColor: "#162820",
+      backgroundColor: "var(--code-gutter)",
       border: "none",
-      color: "#78998a",
+      color: "var(--code-gutter-ink)",
     },
-    ".cm-activeLine": { backgroundColor: "#192c24" },
-    ".cm-activeLineGutter": { backgroundColor: "#203b2f", color: "#c6ddd2" },
+    ".cm-activeLine": { backgroundColor: "var(--code-active)" },
+    ".cm-activeLineGutter": { backgroundColor: "var(--code-active-gutter)", color: "var(--code-ink)" },
     ".cm-matchingBracket": {
-      backgroundColor: "#315e4c",
-      outline: "1px solid #79c7a5",
+      backgroundColor: "var(--code-selection)",
+      outline: "1px solid var(--focus)",
     },
-    ".cm-panels": { backgroundColor: "#20342b", color: "#e9f2ed" },
+    ".cm-panels": { backgroundColor: "var(--code-gutter)", color: "var(--code-ink)" },
     ".cm-tooltip": {
-      backgroundColor: "#f8fbf8",
-      border: "1px solid #b8c8bf",
-      color: "#17211d",
+      backgroundColor: "var(--panel)",
+      border: "1px solid var(--line)",
+      color: "var(--ink)",
     },
   },
-  { dark: true },
+  { dark: false },
 );
 
 function boundedOffset(value, length) {
@@ -180,6 +180,33 @@ export function createSourceEditor(parent, { onRun } = {}) {
       parent.value = value;
     },
   });
+}
+
+/** Render Sage source with the worksheet's exact syntax highlighting. */
+export function createReadOnlySource(parent, source, label = "Sage input") {
+  if (!(parent instanceof HTMLElement)) {
+    throw new TypeError("CodeMirror requires an HTML element parent");
+  }
+  const state = EditorState.create({
+    doc: String(source ?? ""),
+    extensions: [
+      python(),
+      EditorState.tabSize.of(4),
+      indentUnit.of(FOUR_SPACES),
+      syntaxHighlighting(sageHighlightStyle),
+      sageTheme,
+      EditorView.lineWrapping,
+      EditorState.readOnly.of(true),
+      EditorView.editable.of(false),
+      EditorView.contentAttributes.of({
+        "aria-label": label,
+        spellcheck: "false",
+      }),
+    ],
+  });
+  const view = new EditorView({ parent, state });
+  parent.dataset.editor = "codemirror6-readonly";
+  return Object.freeze({ destroy: () => view.destroy() });
 }
 
 export const SOURCE_INDENT = FOUR_SPACES;

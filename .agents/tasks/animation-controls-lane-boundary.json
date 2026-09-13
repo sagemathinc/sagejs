@@ -1,0 +1,41 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "animation-controls-lane-boundary",
+  "title": "Own numerical gallery validation",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Allow the documentation-compat lane to own the numerical gallery source, generated documentation, focused browser tests, and benchmark together",
+  "base_commit": "ddb3543d144ac60ecd0ec15a5ae40ca98f0f657f",
+  "claims": [
+    ".agents/lanes.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "parallel contract validation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

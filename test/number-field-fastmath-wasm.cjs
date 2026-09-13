@@ -6,6 +6,7 @@ const assert = require("node:assert/strict");
 const { existsSync } = require("node:fs");
 const { join } = require("node:path");
 const test = require("node:test");
+const { pathToFileURL } = require("node:url");
 
 const root = join(__dirname, "..");
 const wasm = join(root, "packages/flint-wasm/dist/flint-factor.wasm");
@@ -18,7 +19,7 @@ function route(result, capabilityId) {
 
 async function withSession(callback) {
   const { createSage } = await import(
-    join(root, "packages/flint-wasm/node-kernel.mjs")
+    pathToFileURL(join(root, "packages/flint-wasm/node-kernel.mjs")).href
   );
   const session = await createSage();
   try {

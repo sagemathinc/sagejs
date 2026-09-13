@@ -1,0 +1,67 @@
+{
+  "schema": "sagejs.mestre-hilbert-sqrt5-magma-oracle.v1",
+  "generated_with": "Magma V2.18-5",
+  "captured_at": "2026-08-28",
+  "script": "bench/modular/mestre/magma-hilbert-sqrt5-oracle.m",
+  "script_sha256": "e7cbe2ac27fab603e44893dd14f97b42e56560bc530def029784b9bd9d046bf9",
+  "stdout_sha256": "722b1fb0d1c1d05eeaaa3eef6483ba675256d2bd99fd04145f0abeb82cd90e5e",
+  "conventions": {
+    "field": "Q(a), a^2-a-1=0",
+    "weight": [2, 2],
+    "sagejs_space": "ambient Brandt module with one Eisenstein line",
+    "magma_space": "HilbertCuspForms",
+    "t2_ideal": "2*O_F of norm 4; remove the Sage.js Eisenstein factor x-5",
+    "t3_ideal": "3*O_F of norm 9; remove the Sage.js Eisenstein factor x-10",
+    "coefficient_order": "ascending"
+  },
+  "levels": [
+    {
+      "level_norm": 31,
+      "omega_residue": 19,
+      "cusp_dimension": 1,
+      "t2_cuspidal_charpoly": [3, 1],
+      "t3_cuspidal_charpoly": [-2, 1],
+      "timings": [
+        {"sample": 1, "construction_cpu_seconds": 0.03, "first_t2_cpu_seconds": 0.56, "first_t3_cpu_seconds": 0.02, "warm_iterations": 1000, "warm_t2_batch_cpu_seconds": 0.1},
+        {"sample": 2, "construction_cpu_seconds": 0, "first_t2_cpu_seconds": 0, "first_t3_cpu_seconds": 0, "warm_iterations": 1000, "warm_t2_batch_cpu_seconds": 0.09},
+        {"sample": 3, "construction_cpu_seconds": 0, "first_t2_cpu_seconds": 0, "first_t3_cpu_seconds": 0, "warm_iterations": 1000, "warm_t2_batch_cpu_seconds": 0.09}
+      ]
+    },
+    {
+      "level_norm": 389,
+      "omega_residue": 238,
+      "cusp_dimension": 6,
+      "t2_cuspidal_charpoly": [-20, 30, 31, -20, -13, 2, 1],
+      "t3_cuspidal_charpoly": [36, -66, -13, 60, -21, -2, 1],
+      "timings": [
+        {"sample": 1, "construction_cpu_seconds": 0, "first_t2_cpu_seconds": 0.04, "first_t3_cpu_seconds": 0, "warm_iterations": 1000, "warm_t2_batch_cpu_seconds": 0.09},
+        {"sample": 2, "construction_cpu_seconds": 0, "first_t2_cpu_seconds": 0, "first_t3_cpu_seconds": 0, "warm_iterations": 1000, "warm_t2_batch_cpu_seconds": 0.09},
+        {"sample": 3, "construction_cpu_seconds": 0, "first_t2_cpu_seconds": 0, "first_t3_cpu_seconds": 0, "warm_iterations": 1000, "warm_t2_batch_cpu_seconds": 0.1}
+      ]
+    },
+    {
+      "level_norm": 809,
+      "omega_residue": 467,
+      "cusp_dimension": 13,
+      "t2_cuspidal_charpoly": [-551, 2223, 2119, -4599, -2356, 3698, 1158, -1470, -274, 300, 29, -29, -1, 1],
+      "t3_cuspidal_charpoly": [0, 2952, -35608, -69760, 32754, 50951, -13358, -12772, 2596, 1290, -184, -59, 4, 1],
+      "timings": [
+        {"sample": 1, "construction_cpu_seconds": 0, "first_t2_cpu_seconds": 0.06, "first_t3_cpu_seconds": 0, "warm_iterations": 1000, "warm_t2_batch_cpu_seconds": 0.09},
+        {"sample": 2, "construction_cpu_seconds": 0, "first_t2_cpu_seconds": 0, "first_t3_cpu_seconds": 0, "warm_iterations": 1000, "warm_t2_batch_cpu_seconds": 0.09},
+        {"sample": 3, "construction_cpu_seconds": 0, "first_t2_cpu_seconds": 0, "first_t3_cpu_seconds": 0, "warm_iterations": 1000, "warm_t2_batch_cpu_seconds": 0.09}
+      ]
+    },
+    {
+      "level_norm": 2011,
+      "omega_residue": 736,
+      "cusp_dimension": 34,
+      "t2_cuspidal_charpoly": [-406213, -4819750, -6315407, 80744826, 162143058, -587844500, -1107422911, 2518755380, 3523656598, -6728624816, -5848233175, 10998116656, 5435275775, -11261232014, -2865209580, 7507017390, 751855375, -3370753754, 8622016, 1044403610, -76730456, -226431536, 28080025, 34474352, -5551168, -3656172, 690133, 263708, -55369, -12302, 2786, 334, -80, -4, 1],
+      "t3_cuspidal_charpoly": [1649273903, -10097209272, -368785779939, -1913483096836, -1161450469093, 10690991197886, 13744554678113, -18025144603562, -29898460544201, 13225919574154, 30155433126894, -4521405771258, -17742369860990, 344309437898, 6772011532695, 299452975306, -1777088857267, -131413173850, 331410040885, 27997471158, -44695109406, -3736951512, 4384412868, 333254130, -311428553, -20141490, 15768232, 813144, -551860, -20940, 12623, 310, -169, -2, 1],
+      "timings": [
+        {"sample": 1, "construction_cpu_seconds": 0, "first_t2_cpu_seconds": 0.11, "first_t3_cpu_seconds": 0.01, "warm_iterations": 1000, "warm_t2_batch_cpu_seconds": 0.09},
+        {"sample": 2, "construction_cpu_seconds": 0, "first_t2_cpu_seconds": 0, "first_t3_cpu_seconds": 0, "warm_iterations": 1000, "warm_t2_batch_cpu_seconds": 0.09},
+        {"sample": 3, "construction_cpu_seconds": 0, "first_t2_cpu_seconds": 0, "first_t3_cpu_seconds": 0, "warm_iterations": 1000, "warm_t2_batch_cpu_seconds": 0.09}
+      ]
+    }
+  ]
+}

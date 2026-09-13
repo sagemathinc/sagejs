@@ -13,7 +13,10 @@ const {
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const test = require("node:test");
-const { sanitizerEnvironment } = require("../../../test/helpers/sanitizers.cjs");
+const {
+  sanitizerCompilerFlag,
+  sanitizerEnvironment,
+} = require("../../../test/helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const repositoryRoot = resolve(root, "..", "..");
@@ -600,7 +603,7 @@ int main(void) {
 `);
   const prefix = join(root, ".native", "prefix");
   const compile = spawnSync("cc", [
-    "-std=gnu17", "-O1", "-g", "-fsanitize=address,undefined",
+    "-std=gnu17", "-O1", "-g", sanitizerCompilerFlag(),
     `-I${join(prefix, "include")}`, source,
     join(prefix, "lib", "libm4ri.a"), "-lm", "-o", executable,
   ], { encoding: "utf8" });

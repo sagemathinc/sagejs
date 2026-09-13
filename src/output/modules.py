@@ -11,29 +11,115 @@ from output.functions import set_module_name
 from compiler_version import get_compiler_version
 from utils import cache_file_name
 from ast_types import (
+    AST_Array,
     AST_Call,
     AST_Class,
     AST_Import,
+    AST_Imports,
     AST_Lambda,
+    AST_Seq,
     AST_String,
     AST_SymbolRef,
     AST_Toplevel,
+    AST_UnaryPrefix,
     TreeWalker,
     is_node_type,
 )
 
 
-def control_flow_import_names(module):
-    """Return module names assigned by imports nested in control flow."""
+def control_flow_import_names(module, output=None):
+    """Return module names that require runtime namespace resolution."""
     names = {}
+    star_candidates = {}
+    has_module_star_import = False
     walker = None
+
+    def record_deleted_target(target):
+        if is_node_type(target, AST_SymbolRef):
+            if target.python_resolution_provenance is "module":
+                names[target.name] = True
+        elif is_node_type(target, AST_Array):
+            for value in target.flatten():
+                record_deleted_target(value)
+        elif is_node_type(target, AST_Seq):
+            for value in target.to_array():
+                record_deleted_target(value)
+
+    def detect_star_import(node, descend):
+        nonlocal has_module_star_import
+        if node is module:
+            return
+        # Deleting a module binding revives builtin fallback in every scope
+        # which reads that binding, including lambdas and nested global deletes.
+        # Attribute/subscript deletion does not delete its receiver's binding.
+        if is_node_type(node, AST_UnaryPrefix) and node.operator is "delete":
+            record_deleted_target(node.expression)
+            return True
+        if is_node_type(node, AST_Import) or (
+            node.key and (node.argnames is not undefined or node.alias is not undefined)
+        ):
+            if node.star and node.target_module:
+                has_module_star_import = True
+            return True
+
+    module.walk(TreeWalker(detect_star_import))
+
+    if output:
+        output.private_lexical_import_names = {}
+        if (
+            output.options.private_compiler_import_reads
+            and not output.options.reuse_main_module
+            and not output.options.execution_namespace_module_id
+            and not output.options.module_cache_dir
+            and module.python_lexical_hygiene is False
+            and not has_module_star_import
+        ):
+            # Only immediate imports, not imports beneath control flow or a
+            # nested scope. AST_Imports is a transparent parser container.
+            for statement in module.body:
+                imports = (
+                    statement.imports
+                    if is_node_type(statement, AST_Imports)
+                    else [statement]
+                    if is_node_type(statement, AST_Import)
+                    else []
+                )
+                for imported in imports:
+                    local_names = (
+                        [
+                            arg.alias.name if arg.alias else arg.name
+                            for arg in imported.argnames
+                        ]
+                        if imported.argnames
+                        else [imported.alias.name]
+                        if imported.alias
+                        else [imported.key.split(".")[0]]
+                    )
+                    for name in local_names:
+                        if name in (module.python_scope_bindings or []):
+                            output.private_lexical_import_names[name] = True
 
     def collect(node, descend):
         if node is module:
             return
+        if (
+            is_node_type(node, AST_SymbolRef)
+            and node.python_resolution_provenance is "module"
+            and not node.python_lexical_binding
+        ):
+            star_candidates[node.name] = True
         if is_node_type(node, AST_Import) or (
             node.key and (node.argnames is not undefined or node.alias is not undefined)
         ):
+            inside_nested_scope = False
+            for ancestor in walker.stack:
+                if is_node_type(ancestor, AST_Lambda) or is_node_type(
+                    ancestor, AST_Class
+                ):
+                    inside_nested_scope = True
+                    break
+            if inside_nested_scope:
+                return True
             # The parser's import container is transparent to this walk.  A
             # direct module import has only the toplevel as an ancestor; an
             # additional statement/block ancestor means JavaScript ``var``
@@ -50,11 +136,19 @@ def control_flow_import_names(module):
                 elif node.key:
                     names[node.key.split(".")[0]] = True
             return True
-        if is_node_type(node, AST_Lambda) or is_node_type(node, AST_Class):
+        if not has_module_star_import and (
+            is_node_type(node, AST_Lambda) or is_node_type(node, AST_Class)
+        ):
             return True
+        # Only modules with a star import descend through nested scopes to
+        # discover their nonlexical module reads. This keeps ordinary module
+        # emission on the shallow historical traversal.
 
     walker = TreeWalker(collect)
     module.walk(walker)
+    if has_module_star_import:
+        for name in star_candidates:
+            names[name] = True
     return names
 
 
@@ -116,6 +210,10 @@ def write_imports(module, output):
         imports.push(module.imports[import_id])
 
     imports.sort(lambda left, right: left.import_order - right.import_order)
+    has_lazy_imports = False
+    for module_ in imports:
+        if module_.standalone_lazy:
+            has_lazy_imports = True
     output.indent()
     if output.options.module_registry:
         output.print("var ρσ_modules = globalThis[")
@@ -156,26 +254,86 @@ def write_imports(module, output):
             "Object.assign(ρσ_modules, globalThis.__sagejs_baselib_modules__)"
         )
         output.end_statement()
-    if any(module_.module_id == "builtins" for module_ in imports):
-        output.indent()
-        output.print("ρσ_modules.builtins = {}")
-        output.end_statement()
+    if not output.options.baselib_module_id and output.options.standalone_builtins:
+        # Seed the public facade from lexical baselib exports, not host globals.
+        # Registry insertion order matches facade publication in tools/self.js;
+        # intrinsic sagejs.runtime and package shells never publish the facade.
+        # Initialize even without an import: ordinary Python name lookup uses it.
+        # The reserved-JS builtin uses an explicit public global property.
+        # Forward its deletion too, so global fallback cannot resurrect it.
+        # Other host globals are deliberately not exposed by this adapter.
         output.indent()
         output.print(
-            "Object.defineProperties(ρσ_modules.builtins, {"
-            "abs:{enumerable:true,get:function(){return abs},"
+            "if (!ρσ_modules.builtins && "
+            "Array.isArray(globalThis.__sagejs_baselib_facade_names__)) { "
+            "var builtinTarget=Object.create(null);"
+            "var facadeNames=new Set(globalThis.__sagejs_baselib_facade_names__);"
+            'facadeNames.add("super");'
+            "var baselibModules=globalThis.__sagejs_baselib_modules__ || {};"
+            "Object.keys(baselibModules).forEach(function(moduleName){"
+            'if(moduleName.indexOf("sagejs._baselib.") !== 0)return;'
+            "var namespace=baselibModules[moduleName];"
+            "Object.keys(namespace).forEach(function(name){"
+            'if(name !== "super" && facadeNames.has(name))builtinTarget[name]=namespace[name];'
+            "});});"
+            'builtinTarget.__name__="builtins";builtinTarget.__package__="";'
+            "builtinTarget.__loader__=null;builtinTarget.eval=builtinTarget.ρσ_eval;"
+            "ρσ_modules.builtins = new Proxy(builtinTarget, {"
+            'get:function(target,name){return name === "super" ? '
+            "globalThis.super : Reflect.get(target,name)},"
+            'set:function(target,name,value){return name === "super" ? '
+            "Reflect.set(globalThis,name,value) : Reflect.set(target,name,value)},"
+            'has:function(target,name){return name === "super" ? '
+            "Reflect.has(globalThis,name) : Reflect.has(target,name)},"
+            'deleteProperty:function(target,name){return name === "super" ? '
+            "Reflect.deleteProperty(globalThis,name) : Reflect.deleteProperty(target,name)},"
+            "ownKeys:function(target){var keys=Reflect.ownKeys(target);"
+            'if(Reflect.has(globalThis,"super"))keys.push("super");return keys},'
+            "getOwnPropertyDescriptor:function(target,name){"
+            'if(name === "super"){if(!Reflect.has(globalThis,name))return undefined;'
+            "return {configurable:true,enumerable:true,writable:true,value:globalThis.super}}"
+            "return Reflect.getOwnPropertyDescriptor(target,name)}"
+            "}); Object.defineProperties(ρσ_modules.builtins, {"
+            "__sagejs_builtin_facade_names__:{value:facadeNames},"
+            "abs:{configurable:true,enumerable:true,get:function(){return abs},"
             "set:function(value){abs=value}},"
-            "open:{enumerable:true,get:function(){return ρσ_open},"
+            "open:{configurable:true,enumerable:true,get:function(){return ρσ_open},"
             "set:function(value){ρσ_open=value}},"
-            "__build_class__:{enumerable:true,"
+            "__build_class__:{configurable:true,enumerable:true,"
             "get:function(){return __build_class__},"
             "set:function(value){__build_class__=value}},"
-            "__import__:{enumerable:true,"
+            "__import__:{configurable:true,enumerable:true,"
             "get:function(){return __import__},"
             "set:function(value){__import__=value}}"
-            "})"
+            "}) }"
         )
         output.end_statement()
+
+    if has_lazy_imports:
+        output.indent()
+        output.print(
+            "var ρσ_standalone_factories = globalThis.__sagejs_standalone_module_factories__ "
+            "|| (globalThis.__sagejs_standalone_module_factories__ = Object.create(null));"
+            "if (!globalThis.__sagejs_load_module__ || "
+            "!globalThis.__sagejs_load_module__.__sagejs_embedded_modules__) "
+            "globalThis.__sagejs_load_module__ = (function(previous){"
+            "function load(name){"
+            "if(Object.prototype.hasOwnProperty.call(ρσ_modules,name))return ρσ_modules[name];"
+            "var factory=globalThis.__sagejs_standalone_module_factories__[name];"
+            "if(!factory){if(previous)return previous(name);"
+            'throw new ImportError("No module named \'"+name+"\'")}'
+            "var dot=name.lastIndexOf('.');"
+            "var parent=dot<0?null:load(name.slice(0,dot));"
+            "if(Object.prototype.hasOwnProperty.call(ρσ_modules,name))return ρσ_modules[name];"
+            "var namespace=ρσ_modules[name]=Object.create(null);"
+            "if(globalThis.__sagejs_module_namespaces__)"
+            "globalThis.__sagejs_module_namespaces__.add(namespace);"
+            "try{factory();if(parent)parent[name.slice(dot+1)]=namespace;return namespace}"
+            "catch(error){delete ρσ_modules[name];throw error}}"
+            "load.__sagejs_embedded_modules__=true;return load"
+            "})(globalThis.__sagejs_load_module__);"
+        )
+        output.newline()
 
     # Declare all variable names exported from the modules as global symbols
     nonlocalvars = {}
@@ -192,7 +350,7 @@ def write_imports(module, output):
     # Create the module objects
     for module_ in imports:
         module_id = module_.module_id
-        if module_.dynamic:
+        if module_.dynamic or module_.standalone_lazy:
             continue
         output.indent()
         if module_id == "__main__" and output.options.reuse_main_module:
@@ -230,12 +388,28 @@ def write_imports(module, output):
             )
         output.end_statement()
 
+        # The runtime constructs its identity-based module registry before
+        # compiler-emitted modules (especially ``__main__``) exist. Register
+        # each new namespace immediately so Python ``type``, ``dir``, and
+        # ``__dict__`` behavior can distinguish it from an ordinary object.
+        output.indent()
+        output.print(
+            "if (globalThis.__sagejs_module_namespaces__) "
+            "globalThis.__sagejs_module_namespaces__.add("
+        )
+        if module_id.indexOf(".") is -1:
+            output.print("ρσ_modules." + module_id)
+        else:
+            output.print('ρσ_modules["' + module_id + '"]')
+        output.print(")")
+        output.end_statement()
+
     # Every loaded child module is also an attribute of its parent package.
     # Python establishes this relationship independently of whether user code
     # wrote ``import package.child`` or ``from package import child``.
     for module_ in imports:
         module_id = module_.module_id
-        if module_.dynamic or module_id.indexOf(".") is -1:
+        if module_.dynamic or module_.standalone_lazy or module_id.indexOf(".") is -1:
             continue
         parts = module_id.split(".")
         parent_id = parts.slice(0, -1).join(".")
@@ -255,7 +429,24 @@ def write_imports(module, output):
     # Output module code
     for module_ in imports:
         if module_.module_id is not "__main__" and not module_.dynamic:
-            print_module(module_, output)
+            # Imported modules are emitted by this helper rather than through
+            # `AST_Node.print`. Put their toplevel on the output stack
+            # explicitly so class-body LOAD_NAME fallbacks resolve against
+            # the imported module instead of the surrounding `__main__`.
+            output.push_node(module_)
+            try:
+                if module_.standalone_lazy:
+                    output.indent()
+                    output.print("ρσ_standalone_factories[")
+                    output.print_string(module_.module_id)
+                    output.print("] = function(){")
+                    print_module(module_, output)
+                    output.print("};")
+                    output.newline()
+                else:
+                    print_module(module_, output)
+            finally:
+                output.pop_node()
 
 
 def write_main_name(output, filename=None):
@@ -341,6 +532,8 @@ def module_directory(filename):
 
 def write_module_metadata(module, output):
     """Create the standard import globals for an ordinary Python module."""
+    if module.module_id == output.options.execution_namespace_module_id:
+        return
     module_id = module.module_id
     filename = module.filename or ""
     normalized = filename.replaceAll("\\", "/")
@@ -395,6 +588,18 @@ def bind_module_namespace(module, output, hidden_names=None):
     for symbol in (module.localvars or []).concat(module.exports or []):
         if symbol.python_identifier:
             python_bindings[symbol.name] = True
+    # Direct imports are Python module bindings, but the legacy JavaScript
+    # `localvars` analysis can omit them. They must still be visible through
+    # the live module dictionary: class LOAD_NAME falls back there for idioms
+    # such as `class C: alias = alias`. Use the import-specific inventory,
+    # not every Tree-sitter scope binding: the latter also contains erased
+    # annotation-only names and optimizer-elided implementation details.
+    for name in Object.keys(module.python_import_bindings or {}):
+        if module.python_lexical_hygiene:
+            python_bindings[name] = True
+        if not seen[name]:
+            seen[name] = True
+            names.push(name)
     for symbol in module.localvars:
         if not seen[symbol.name]:
             seen[symbol.name] = True
@@ -425,7 +630,11 @@ def bind_module_namespace(module, output, hidden_names=None):
 
     module.walk(TreeWalker(collect_control_flow_definition))
     magic_names = []
-    if module_id is not "__main__":
+    if module_id == output.options.execution_namespace_module_id:
+        # Supplied metadata remains in the caller's namespace. Explicit
+        # assignments are already covered by the ordinary binding inventory.
+        pass
+    elif module_id is not "__main__":
         magic_names = [
             "__name__",
             "__file__",
@@ -689,7 +898,7 @@ def print_top_level(self, output):
     set_module_name(effective_module_id)
     is_main = self.module_id is "__main__"
     numeric_literal_pool = prepare_numeric_literal_pool(self, output)
-    output.module_control_flow_names = control_flow_import_names(self)
+    output.module_control_flow_names = control_flow_import_names(self, output)
 
     def write_docstrings():
         if (
@@ -732,7 +941,9 @@ def print_top_level(self, output):
 
                 prologue(self, output)
                 write_imports(self, output)
-                output.module_control_flow_names = control_flow_import_names(self)
+                output.module_control_flow_names = control_flow_import_names(
+                    self, output
+                )
                 set_module_name(effective_module_id)
                 output.newline()
                 output.indent()
@@ -771,7 +982,7 @@ def print_top_level(self, output):
             write_strict_directive()
             prologue(self, output)
             write_imports(self, output)
-            output.module_control_flow_names = control_flow_import_names(self)
+            output.module_control_flow_names = control_flow_import_names(self, output)
             set_module_name(effective_module_id)
             write_main_name(output, self.filename)
         else:
@@ -788,6 +999,9 @@ def print_top_level(self, output):
 
 def print_module(self, output):
     set_module_name(self.module_id)
+    # A cached module has no live AST to classify. Never retain the previous
+    # module's private import authority while emitting cached output.
+    output.private_lexical_import_names = {}
     # Cached modules contain rendered output and lightweight symbol metadata,
     # not a live AST. Their rendered variants already include the numeric
     # literal pool produced on the cache-writing pass.
@@ -795,7 +1009,7 @@ def print_module(self, output):
         [] if self.is_cached else prepare_numeric_literal_pool(self, output)
     )
     output.module_control_flow_names = (
-        {} if self.is_cached else control_flow_import_names(self)
+        {} if self.is_cached else control_flow_import_names(self, output)
     )
 
     def output_module(output):
@@ -866,9 +1080,18 @@ def print_module(self, output):
                                     "python_attributes": output.options.python_attributes,
                                 }
                             )
-                            co.with_indent(
-                                output.indentation(), lambda: output_module(co)
-                            )
+                            # Cached variants render the module body into a
+                            # secondary stream. Preserve the authoritative
+                            # toplevel on that stream's node stack so class
+                            # LOAD_NAME fallbacks resolve through this module,
+                            # not an accidental `__main__` default.
+                            co.push_node(self)
+                            try:
+                                co.with_indent(
+                                    output.indentation(), lambda: output_module(co)
+                                )
+                            finally:
+                                co.pop_node()
                             raw = co.get()
                             cached.outputs[output_key(beautify, keep_docstrings)] = raw
                     cached_name = cache_file_name(
@@ -925,6 +1148,12 @@ def print_imports(container, output):
             print_local_name(name)
             return
         if destination.kind is "class":
+            prepared = output.prepared_namespace
+            if prepared and prepared.prefix == destination.owner:
+                output.print(prepared.state + ".bindings[")
+                output.print_string(destination.name)
+                output.print("]")
+                return
             output.print_python_name(destination.owner)
             output.print(".prototype[")
             output.print_string(destination.name)
@@ -1024,11 +1253,17 @@ def print_imports(container, output):
                 "ρσ_getattr_missing)"
             )
             output.end_statement()
-            output.indent()
-            output.print("globalThis[ρσ_star_name] = ρσ_modules[")
-            output.print_string(target_module)
-            output.print("][ρσ_star_name]")
-            output.end_statement()
+            # Hygienic Python modules resolve dynamic star-import names from
+            # their live module namespace.  Publishing them onto `globalThis`
+            # is both unnecessary and unsafe: an ordinary package exporting
+            # `Set`, `Map`, or `Object` would replace the JavaScript host
+            # intrinsic while the lazy-module loader is still running.
+            if not container.python_lexical_hygiene:
+                output.indent()
+                output.print("globalThis[ρσ_star_name] = ρσ_modules[")
+                output.print_string(target_module)
+                output.print("][ρσ_star_name]")
+                output.end_statement()
 
         output.with_block(copy_star_name)
 
@@ -1215,6 +1450,14 @@ def print_imports(container, output):
         if self.dynamic and self.key != "builtins":
             dynamic_import(self)
             continue
+        output.indent()
+        output.print("if (!Object.prototype.hasOwnProperty.call(ρσ_modules,")
+        output.print_string(self.key)
+        output.print(") && typeof globalThis.__sagejs_load_module__ === 'function') ")
+        output.print("globalThis.__sagejs_load_module__(")
+        output.print_string(self.key)
+        output.print(")")
+        output.end_statement()
         if self.star:
             import_star(self.key, self.target_module)
             continue

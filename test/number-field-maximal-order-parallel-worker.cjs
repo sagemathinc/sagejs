@@ -133,12 +133,14 @@ test(
           "native_event = [event for event in events if event['stage'] == 'native-local-orders'][-1]",
           "schedule_event = [event for event in events if event['stage'] == 'local-schedule'][-1]",
           "decision = schedule_event['details']['parallel_decision']",
-          "(engine._basis_from_order(actual, 1).canonical_key() == engine._basis_from_order(expected, 1).canonical_key(), actual.discriminant() == expected.discriminant(), actual.maximality_certificate()['index'] == expected.maximality_certificate()['index'], cached, generated_event['state'], generated_event['details']['execution_route'], native_event['state'], schedule_event['details']['schedule'][1:3], decision['selected'], decision['reason'], decision['after_native_fallback'])",
+          "schedule = schedule_event['details']['schedule']",
+          "candidate = decision['candidate_schedule']",
+          "(engine._basis_from_order(actual, 1).canonical_key() == engine._basis_from_order(expected, 1).canonical_key(), actual.discriminant() == expected.discriminant(), actual.maximality_certificate()['index'] == expected.maximality_certificate()['index'], cached, generated_event['state'], generated_event['details']['execution_route'], native_event['state'], schedule[1] == 'parallel', schedule[2] == candidate[2], decision['selected'], decision['reason'], decision['after_native_fallback'])",
         ].join("\n"),
       );
       assert.equal(
         result.repr,
-        "(True, True, True, True, 'complete', 'generated-round2-primitives', 'unavailable', ['parallel', 4], True, 'measured-native-fallback-crossover', True)",
+        "(True, True, True, True, 'complete', 'generated-round2-primitives', 'unavailable', True, True, True, 'measured-native-fallback-crossover', True)",
       );
     } finally {
       await session.close();

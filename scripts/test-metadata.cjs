@@ -49,6 +49,7 @@ function parseTestMetadata(source, filename = "test file") {
     "// sagejs-test-portable:",
     "// sagejs-test-smoke:",
     "// sagejs-test-platform:",
+    "// sagejs-test-resume-inputs:",
   ]);
   for (const line of metadataLines) {
     const key = `${line.split(":", 1)[0]}:`;
@@ -63,6 +64,18 @@ function parseTestMetadata(source, filename = "test file") {
     );
   }
   if (!TIERS.has(tier)) throw new Error(`${filename} has unknown test tier ${tier}`);
+  const resumeValue = oneMarker(lines, "// sagejs-test-resume-inputs: ", filename);
+  let resumeInputs;
+  if (resumeValue !== undefined) {
+    try { resumeInputs = JSON.parse(resumeValue); } catch { throw new Error(`${filename} has invalid resume inputs JSON`); }
+    if (!Array.isArray(resumeInputs) || resumeInputs.some((name) => typeof name !== "string" ||
+      !/^[a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]+)*$/.test(name) ||
+      name.split("/").some((part) => part === "." || part === "..") ||
+      name === "build" || name.startsWith("build/release-test-checkpoints")) ||
+      new Set(resumeInputs).size !== resumeInputs.length) {
+      throw new Error(`${filename} has invalid resume input paths`);
+    }
+  }
 
   const portableValue = oneMarker(lines, "// sagejs-test-portable: ", filename);
   if (portableValue !== undefined && !["true", "false"].includes(portableValue)) {
@@ -101,6 +114,7 @@ function parseTestMetadata(source, filename = "test file") {
     portable: tier === "unit" && portableValue !== "false",
     smoke: smokeValue === "true",
     platform: platformValue === "true",
+    ...(resumeInputs === undefined ? {} : { resumeInputs: Object.freeze(resumeInputs) }),
   });
 }
 

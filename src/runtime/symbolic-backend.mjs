@@ -9,6 +9,8 @@
 import {
   ComputeEngine,
   compile as compileExpression,
+  expand as expandExpression,
+  factor as factorExpression,
 } from "@cortex-js/compute-engine";
 
 let computeEngine;
@@ -292,6 +294,18 @@ export function createSymbolicBackend() {
 
     simplify(expression) {
       return boxed(expression).simplify().json;
+    },
+
+    expand(expression) {
+      return expandExpression(expression).json;
+    },
+
+    factor(expression) {
+      return factorExpression(expression).json;
+    },
+
+    latex(expression) {
+      return boxed(expression).latex;
     },
 
     numeric(expression, digits = 15) {

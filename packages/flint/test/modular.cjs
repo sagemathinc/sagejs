@@ -44,6 +44,54 @@ test("native polynomial inflation implements q to q^d", () => {
   assert.throws(() => flint.polyInflate(series, 0n), /positive/);
 });
 
+test("native polynomial scalars and exact integral conversion stay opaque", () => {
+  const rational = flint.qqEisensteinSeries(4, 8, "constant");
+  const integral = flint.qqPolyToZZExact(rational);
+  assert.equal(flint.polyCoefficient(integral, 3n), 6720n);
+  assert.equal(flint.polyCoefficient(integral, 100n), 0n);
+  assert.throws(
+    () => flint.polyCoefficient(integral, 1n << 63n),
+    /out of range/,
+  );
+  assert.deepEqual(flint.polyCoefficient(rational, 2n), {
+    numerator: 2160n,
+    denominator: 1n,
+  });
+  assert.deepEqual(
+    flint.polyCoefficients(integral),
+    flint.polyCoefficients(rational).map(({ numerator }) => numerator),
+  );
+  assert.throws(
+    () => flint.qqPolyToZZExact(
+      flint.qqEisensteinSeries(4, 4, "linear"),
+    ),
+    /nonintegral coefficients/,
+  );
+});
+
+test("native integral polynomial bases reduce behind one opaque boundary", () => {
+  const x = flint.zzPolyGen();
+  const one = flint.zzPolyConstant(1n);
+  const x2 = flint.polyPow(x, 2n);
+  const rows = flint.zzPolyUnitriangularBasis([
+    flint.polyAdd(
+      flint.polyAdd(one, flint.polyMul(flint.zzPolyConstant(2n), x)),
+      flint.polyMul(flint.zzPolyConstant(3n), x2),
+    ),
+    flint.polyAdd(x, flint.polyMul(flint.zzPolyConstant(4n), x2)),
+    x2,
+  ]);
+  assert.deepEqual(rows.map((row) => flint.polyCoefficients(row)), [
+    [1n],
+    [0n, 1n],
+    [0n, 0n, 1n],
+  ]);
+  assert.throws(
+    () => flint.zzPolyUnitriangularBasis([x, one]),
+    /not unitriangular/,
+  );
+});
+
 test("native Eisenstein boundary validates its parameters", () => {
   assert.throws(
     () => flint.qqEisensteinSeries(3, 5, "linear"),
@@ -86,6 +134,47 @@ test("native character Manin presentations retain cyclotomic scalars", () => {
     p1, 2, 0, 2, group, 2n,
   );
   assert.equal(flint.matrixEqual(t2, legacyT2), true);
+  const images = flint.p1ListCharacterHeckeSelectedRows(
+    p1, 2, 0, 0, [1, 2, 3, 4, 5, 6], group, 2n, full,
+  );
+  assert.equal(images.length, 6);
+  for (const [position, prime] of [[1, 2], [2, 3], [4, 5]]) {
+    const fullMatrix = flint.p1ListCharacterHeckeMatrix(
+      p1, 2, 0, prime, group, 2n, full,
+    );
+    for (let column = 0; column < full.dimension; column += 1) {
+      assert.equal(
+        String(flint.matrixEntry(images[position], 0, column)),
+        String(flint.matrixEntry(fullMatrix, 0, column)),
+      );
+    }
+  }
+  const t3 = flint.p1ListCharacterHeckeMatrix(
+    p1, 2, 0, 3, group, 2n, full,
+  );
+  const sparseT6 = flint.matrixSparseLeftMul(t2, t3);
+  const t6 = flint.matrixMul(t2, t3);
+  assert.equal(flint.matrixEqual(sparseT6, t6), true);
+  const inverseT2 = flint.matrixInverse(t2);
+  assert.equal(
+    flint.matrixEqual(
+      flint.matrixSparseLeftMul(t2, inverseT2),
+      flint.matrixMul(t2, inverseT2),
+    ),
+    true,
+  );
+  for (let column = 0; column < full.dimension; column += 1) {
+    assert.equal(
+      String(flint.matrixEntry(images[5], 0, column)),
+      String(flint.matrixEntry(t6, 0, column)),
+    );
+  }
+  assert.throws(
+    () => flint.p1ListCharacterHeckeSelectedRows(
+      p1, 2, 0, full.dimension, [1], group, 2n, full,
+    ),
+    /valid source row/,
+  );
   assert.throws(
     () => flint.p1ListCharacterHeckeMatrix(
       p1, 2, 0, 2, group, 1n, full,

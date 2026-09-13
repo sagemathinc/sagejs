@@ -1,6 +1,6 @@
 # Sage.js
 
-> **Early alpha:** Sage.js 0.4.1 is intended for outside experimentation.
+> **Early alpha:** Sage.js 0.8.0 is intended for outside experimentation.
 > Expect missing functionality, incompatible changes, and rough edges.
 
 > **Sage.js is open, portable, high-performance software for exploring
@@ -61,9 +61,9 @@ Inside Sage mode, `version()` reports the human-readable release and target;
 
 ```sage
 sage: version()
-'Sage.js v0.4.1 [linux-x64], Release Date: 2026-08-27'
+'Sage.js v0.8.0 [linux-x64], Release Date: 2026-09-03'
 sage: version(json=True)
-{'schema': 'sagejs.version/v1', 'name': 'Sage.js', 'version': '0.4.1', 'release_date': '2026-08-27', 'platform': 'linux-x64'}
+{'schema': 'sagejs.version/v1', 'name': 'Sage.js', 'version': '0.8.0', 'release_date': '2026-09-03', 'platform': 'linux-x64'}
 ```
 
 - [npm package](https://www.npmjs.com/package/@sagemath/sagejs)
@@ -76,6 +76,34 @@ sage: version(json=True)
 The [implementation dashboard](https://sagemathinc.github.io/sagejs/) is the
 living map of what Sage.js provides, how strongly each capability is tested,
 and what is prioritized next.
+
+## Numerical computing laboratory
+
+Sage.js 0.8.0 includes an agent-first numerical laboratory with validated root
+finding, approximation, dense linear algebra, integration, optimization and
+fitting, ODE solvers, polynomial roots, FFT and spectral methods, statistics,
+regression, and deterministic parameter sweeps. The canonical APIs return
+structured evidence rather than only a scalar or backend status:
+
+```python
+from sagejs.numerics import find_root
+
+result = find_root(
+    lambda x: cos(x) - x,
+    0.0,
+    1.0,
+    method="brent",
+    trace="evaluations",
+)
+result.to_dict()       # stable values, validation, diagnostics, and provenance
+result.explain()       # human-readable account of the computation
+```
+
+The same contracts support selected Sage, Python/SciPy, MATLAB, and Wolfram
+frontends, JSON, equivalent-code emission, PlotSpec/Plotly figures, and bounded
+animations. Unsupported methods and translations are classified explicitly.
+See the [interactive numerical laboratory](https://sagejs.org/numerical-computing/)
+and [numerical API contract](docs/numerical-computing/README.md).
 
 ## Download a standalone executable
 
@@ -91,7 +119,7 @@ It installs into `~/.local/bin` by default and, when necessary, adds that
 directory to the current user's shell startup file. Restart the shell (or
 source the file named by the installer) after a first installation. When run
 as root it instead installs system-wide into `/usr/local/bin`; set
-`SAGEJS_INSTALL_DIR` to choose another directory or `SAGEJS_VERSION=0.4.1` to
+`SAGEJS_INSTALL_DIR` to choose another directory or `SAGEJS_VERSION=0.8.0` to
 pin a release. The archives
 include both `sagejs`, with the native mathematics stack, and
 `sagepython`, the lightweight Python-compatible runtime. No Node.js, Python,
@@ -111,7 +139,7 @@ built on Ubuntu 24.04; a minimal Debian/Ubuntu image needs `curl`, `xz-utils`,
 and `libatomic1` for the one-command installer and official Node-based
 executable. Windows executables are intended for ordinary Windows
 10/11 x64 systems; Authenticode provisioning is still in progress, so the
-0.4.1 early-alpha executables may be unsigned. macOS executables use the hardened
+0.8.0 early-alpha executables may be unsigned. macOS executables use the hardened
 runtime, are Developer ID signed, and the downloadable ZIP and PKG are both
 submitted to Apple's notary service; the PKG also carries a stapled ticket.
 
@@ -217,7 +245,7 @@ build/sea/sagejs program.sage      # Linux/macOS: no Node or checkout
 build\sea\sagejs.exe program.sage  # Windows: no Node or checkout
 
 pnpm test:unit                     # fast JavaScript/runtime regression tier
-pnpm test:startup                  # enforce the 350 ms development startup budget
+pnpm test:startup                  # enforce the 390 ms development startup budget
 pnpm test:native                   # FLINT, igraph, and native integration tests
 pnpm test:tutorial                 # complete Sage tutorial compatibility
 pnpm test:sea                      # rebuild and relocation-test both SEAs
@@ -265,7 +293,7 @@ credentials can reproduce the signed, notarized macOS artifacts locally with:
 ```sh
 pnpm release:macos
 # Or also attach it to an existing release:
-pnpm release:macos -- --publish v0.4.1
+pnpm release:macos -- --publish v0.8.0
 ```
 
 The command uses the same credential conventions as CoCalc's macOS release
@@ -366,13 +394,13 @@ language ecosystems.
 Sage.js development after version 0.1 requires Node.js 22.22.2 or newer.
 
 ```sh
-npm install --global @sagemath/sagejs@0.4.1
+npm install --global @sagemath/sagejs@0.8.0
 ```
 
 Or, with pnpm:
 
 ```sh
-pnpm add --global @sagemath/sagejs@0.4.1
+pnpm add --global @sagemath/sagejs@0.8.0
 ```
 
 The public package keeps the Sage.js library and embedding APIs, while its
@@ -415,6 +443,16 @@ The first form opens a `wasm: ` prompt. The launcher verifies the production
 receipt and every selected asset before evaluation; a stale or incomplete
 artifact fails closed instead of falling back to native execution.
 
+Node applications can select the same addon-free runtime explicitly:
+
+```js
+import { createSage } from "@sagemath/sagejs/wasm/node";
+
+const sage = await createSage();
+console.log((await sage.evaluate("factor(2026)")).repr);
+await sage.close();
+```
+
 ## Documentation
 
 Sage.js retains public docstrings for `help(f)`, `f?`, Jupyter inspection, and
@@ -453,7 +491,7 @@ console.log(result.repr);
 await sage.close();
 ```
 
-The 0.4.1 npm embedding API starts the installed platform executable behind a
+The 0.8.0 npm embedding API starts the installed platform executable behind a
 small JSON-lines protocol, so `createSage()` exposes the same full native
 mathematics runtime as the command line without a compiler or postinstall
 script. The explicit `@sagemath/sagejs/kernel` export remains available for
@@ -526,8 +564,14 @@ sage: dimension_cusp_forms(DirichletGroup(13).0^2, 2)
 
 FLINT computes the Bernoulli constant and all divisor sums in one native
 sieve, returning the complete exact polynomial through a single Node-API
-call. Cuspidal bases, Hecke operators, composite-level Eisenstein newforms,
-and modular symbols remain separate future layers.
+call. This is complemented by a sparse prime-level supersingular
+implementation of Mestre's graph method, exact Wiedemann/CRT certificates,
+Mestre q-expansion reconstruction, expander graph views, and checked Hilbert
+Brandt modules over $\mathbf Q(\sqrt5)$ and $\mathbf Q(\sqrt3)$. See
+[Brandt modules over the rational numbers](docs/brandt-modules.md) and
+[Mestre's method of graphs and sparse modular forms](docs/mestre-method-of-graphs.md),
+as well as [half-integral-weight modular forms](docs/half-integral-modular-forms.md)
+and [modular abelian varieties](docs/modular-abelian-varieties.md).
 
 ## Sage mode
 
@@ -535,7 +579,7 @@ The `sagejs` command uses Sage-style syntax by default:
 
 ```py
 $ sagejs
-Welcome to Sage.js v0.4.1 [linux-x64].
+Welcome to Sage.js v0.8.0 [linux-x64].
 sage: 2^100
 1267650600228229401496703205376
 sage: sum([1..100])
@@ -746,6 +790,32 @@ sage: R(1.00000000000000000000000000000000000000000000000000001505) == \
 True
 ```
 
+`RealField` also supports Sage's five MPFR rounding modes (`RNDN`, `RNDU`,
+`RNDD`, `RNDZ`, and `RNDA`), adjacent representable values, exact dyadic
+reconstruction, and binary formatting. Certified real and complex intervals
+use Arb and Acb in both native builds and WebAssembly:
+
+```py
+sagejs: up = RealField(3, rnd="RNDU")
+sagejs: up(1/9).exact_rational()
+1/8
+sagejs: R = RealIntervalField(10)
+sagejs: a = R(1/9); a, 1/a
+(0.112?, 9.0?)
+sagejs: (1/a).str(style="brackets")
+'[8.9843 .. 9.0157]'
+sagejs: ComplexIntervalField(10)(a, a).sqrt()
+0.366? + 0.152?*I
+```
+
+Integer and rational inputs are enclosed from their exact values, and all
+arithmetic is outward-rounded. A backend without Arb/Acb support raises an
+explicit capability error instead of silently substituting ordinary floating
+point. The interval element implementation is loaded on first use, so merely
+starting Sage.js does not pay its code-loading cost. See
+[Certified interval arithmetic](docs/interval-arithmetic.md) for the supported
+API and guarantees.
+
 ## Parents, coercion, and native polynomials
 
 The mathematical object model implements singleton `ZZ` and `QQ` parents,
@@ -784,19 +854,21 @@ and FLINT word-characteristic extension fields use the corresponding native
 FLINT `fq_nmod_mpoly`; coefficients and the polynomial context retain the same
 opaque finite-field context rather than translating through strings.
 
-The initial ideal layer over `QQ[x_1,...,x_n]` uses FLINT's bounded
-Buchberger implementation. Rational generators are represented by primitive
-integer polynomials during the computation and normalized to a reduced monic
-basis on return. Ideal membership reduces against that basis. Explicit
-resource limits prevent an unexpectedly difficult basis from monopolizing an
-embedded evaluator.
+Polynomial ideals over prime `GF(p)` fields use a portable scalar msolve F4
+backend for global degree-reverse-lexicographic order and `p < 2^31`. It
+returns full reduced bases and supports normal forms, leading ideals, and
+membership on Linux, macOS, native Windows, Node WebAssembly, and browsers.
+Over `QQ`, FLINT's bounded exact Buchberger implementation remains the default;
+msolve's faster modular rational path is available explicitly as a
+probabilistic `proof=False` computation. Backend choice and proof status are
+inspectable through `groebner_basis_metadata()`.
 
-This is deliberately not presented as a substitute for Singular. FLINT
-provides the compact, high-quality foundation for arithmetic and useful small
-Gröbner computations. Primary decomposition, associated primes, comprehensive
-coefficient-domain support, and the broader algebraic-geometry layer remain
-the boundary at which Sage.js should evaluate a Singular integration instead
-of growing an ad hoc computer-algebra system.
+See [Gröbner bases](docs/groebner-bases.md) for examples, exact capability and
+resource limits. The [algebraic-geometry guide](docs/algebraic-geometry.md)
+builds exact affine/projective schemes, morphisms, Hilbert data, Jacobian
+geometry, plane curves, and zero-dimensional decomposition on that interface,
+without making Singular a dependency. Modules, local orders, and general
+positive-dimensional decomposition remain explicit future work.
 
 Generator declarations are parsed contextually and lowered to ordinary
 assignment AST nodes. For example, `R.<x> = ZZ[]` constructs
@@ -823,7 +895,7 @@ Python mode retains Python's meaning of `^`:
 
 ```py
 $ sagejs --python
-Welcome to Sage.js v0.4.1 (Python mode) [linux-x64].
+Welcome to Sage.js v0.8.0 (Python mode) [linux-x64].
 >>> 2^3
 1
 >>> 2**3
@@ -848,6 +920,13 @@ RustPython. It parses ordinary Python with the pinned Tree-sitter Python
 grammar, lowers it through Sage.js's Python AST, and executes generated
 JavaScript on V8. CPython is not embedded and CPython's extension-module ABI is
 not provided.
+
+The portable, user-visible language target is Python 3.14, not complete
+emulation of CPython internals. `sys.version_info` reports that language
+target; `sys.implementation.name` is `sagejs`, and
+`sys.implementation.version` describes the Sage.js product release.
+See [Python compatibility](docs/python-compatibility.md) for the implementation
+contract, intentional differences, and the scope of current test evidence.
 
 The compatibility target is increasingly ordinary, unmodified pure-Python
 code. Install platform-independent wheels with the bundled package command:
@@ -1283,11 +1362,10 @@ release claims; the scripts are included to keep comparisons reproducible.
 
 ## Status
 
-Sage.js 0.1 is a research prototype. Its existing language test suite is
-substantial, but Python compatibility is deliberately incomplete and the
-mathematical object model covers only integers, rationals, and univariate
-polynomials over `ZZ` and `QQ`. The FLINT package is an architectural
-prototype, not yet a supported or published dependency.
+Sage.js is early-alpha research software. Python language, standard-library,
+and mathematical coverage are substantial but incomplete. Consult the
+feature-specific documentation and executable compatibility corpora rather
+than assuming that every SageMath or CPython facility is available.
 
 Python compatibility is measured systematically using a pinned copy of
 MicroPython's standalone language corpus. Each applicable program must produce

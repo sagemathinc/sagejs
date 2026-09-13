@@ -1,0 +1,28 @@
+{
+  "schema": "sagejs.python-suite-source/v1",
+  "repository": "https://github.com/hukkin/tomli",
+  "revision": "3fccd16450d0f1d87c042473d95a07f60955206e",
+  "tag": "2.3.0",
+  "version": "2.3.0",
+  "license": "MIT",
+  "files": [
+    {
+      "path": "LICENSE",
+      "upstreamPath": "LICENSE",
+      "bytes": 1072,
+      "sha256": "b80816b0d530b8accb4c2211783790984a6e3b61922c2b5ee92f3372ab2742fe"
+    },
+    {
+      "path": "tests/__init__.py",
+      "upstreamPath": "tests/__init__.py",
+      "bytes": 261,
+      "sha256": "aa982afeeaf7680a506d90e6745be70e482f61921db7e76d3a0490e481f4fd7b"
+    },
+    {
+      "path": "tests/test_error.py",
+      "upstreamPath": "tests/test_error.py",
+      "bytes": 3852,
+      "sha256": "b712ea01a893f8718812639eed77eb1328b8180752f1a6f6fb54a63f8b557eaf"
+    }
+  ]
+}

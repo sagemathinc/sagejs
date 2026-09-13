@@ -2,6 +2,11 @@
 #define SAGEJS_FLOATING_H
 
 #include <node_api.h>
+#include <mpfr.h>
+
+char *sagejs_format_real_rounding(mpfr_srcptr value, mpfr_rnd_t rounding);
+char *sagejs_format_real_digits(
+    mpfr_srcptr value, mpfr_rnd_t rounding, size_t digits);
 
 napi_value sagejs_real_from_string(napi_env env, napi_callback_info info);
 napi_value sagejs_real_from_bigint(napi_env env, napi_callback_info info);
@@ -15,6 +20,8 @@ napi_value sagejs_real_neg(napi_env env, napi_callback_info info);
 napi_value sagejs_real_pow_int(napi_env env, napi_callback_info info);
 napi_value sagejs_real_equal(napi_env env, napi_callback_info info);
 napi_value sagejs_real_to_string(napi_env env, napi_callback_info info);
+napi_value sagejs_real_next(napi_env env, napi_callback_info info);
+napi_value sagejs_real_parts(napi_env env, napi_callback_info info);
 napi_value sagejs_real_to_double(napi_env env, napi_callback_info info);
 napi_value sagejs_real_precision(napi_env env, napi_callback_info info);
 

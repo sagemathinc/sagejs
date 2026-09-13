@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/numerics/linear-algebra-benchmark-v1.json",
+  "title": "Sage.js numerical linear algebra benchmark result",
+  "type": "object",
+  "required": ["schema_version", "workload", "execution", "measurements", "result"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "workload": {
+      "type": "object",
+      "required": ["id", "size", "numeric_type", "method", "result_gate"]
+    },
+    "execution": {
+      "type": "object",
+      "required": ["implementation", "runtime", "samples", "warmup", "host", "source_revision"]
+    },
+    "measurements": {
+      "type": "array",
+      "minItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["name", "samples", "warmup", "milliseconds", "median_milliseconds", "minimum_milliseconds"]
+      }
+    },
+    "trace_overhead_ratio": {"type": "number", "minimum": 0},
+    "result": {
+      "type": "object",
+      "required": ["success", "rank", "backward_residual", "solution_checksum", "retained_trace_events", "trace_truncated"]
+    }
+  },
+  "additionalProperties": false
+}

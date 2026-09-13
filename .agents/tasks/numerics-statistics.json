@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerics-statistics",
+  "title": "Validated statistics and regression",
+  "lane": "numerical-statistics",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement P5 probability, descriptive statistics, regression and robust fitting with reproducible randomness and independent diagnostics",
+  "base_commit": "61f7eef664f2d43615a50340a7d509357499d4a5",
+  "claims": [
+    "src/lib/sagejs/numerics/statistics/",
+    "test/numerics/statistics/",
+    "bench/numerics/statistics/",
+    "docs/numerical-computing/statistics/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SciPy/R differential corpus plus analytic distribution identities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

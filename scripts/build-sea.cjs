@@ -20,8 +20,16 @@ const { dirname, join, relative } = require("path");
 const {
   BASELIB_STANDALONE_CACHE_MODULES,
   BUILTINS_STANDALONE_MODULES,
+  CORE_STANDALONE_MODULES,
   MATRIX_STANDALONE_MODULES,
 } = require("../tools/standalone-library.cjs");
+const {
+  resolveNumericalRuntimeCapability,
+} = require("./numerical-product.cjs");
+const {
+  currentBuildIdentity,
+  inspectBuildReceipt,
+} = require("./build-receipt.cjs");
 
 const root = join(__dirname, "..");
 const outputDirectory = join(root, "build", "sea");
@@ -73,14 +81,44 @@ const productionPackAddon = join(
   "pack",
   "sagejs_native_kernel_pack.node",
 );
+const numericalBackendArtifact = join(
+  root,
+  "dist",
+  "numerical",
+  "cminpack.wasm",
+);
+const nloptBackendArtifact = join(
+  root,
+  "dist",
+  "numerical",
+  "nlopt-methods.wasm",
+);
 
 const embeddedStandaloneLibraryBanner = `globalThis.__sagejs_embedded_standalone_library__ = ${JSON.stringify(
   {
     builtins: BUILTINS_STANDALONE_MODULES,
+    core: CORE_STANDALONE_MODULES,
     matrix: MATRIX_STANDALONE_MODULES,
     cache: BASELIB_STANDALONE_CACHE_MODULES,
   },
 )};`;
+
+// The release SEA already contains the native Sage.js runtime. Embedding the
+// separate browser distribution as well would duplicate its large standard
+// library and Wasm payload, while its module workers still require a real
+// filesystem tree. Keep the browser-artifact harness in the public npm CLI and
+// fail explicitly here instead of letting the ordinary SEA parser report an
+// unrelated unknown-option error.
+const standaloneWasmCapabilityBanner = `
+if (process.argv[2] === "--wasm") {
+  require("node:fs").writeSync(
+    process.stderr.fd,
+    "sagejs --wasm is unavailable in the standalone executable; " +
+    "install @sagemath/sagejs with Node.js to run the authenticated " +
+    "browser WebAssembly artifact.\\n",
+  );
+  process.exit(2);
+}`;
 
 const args = new Set(process.argv.slice(2));
 const buildPython = args.size === 0 || args.has("--all") || args.has("--python");
@@ -390,6 +428,26 @@ function collectNativeKernelAssets() {
   return assets;
 }
 
+function assertLinuxProcessLifetimeAddon(filename, label) {
+  if (process.platform !== "linux") return;
+  let dynamicSection;
+  try {
+    dynamicSection = execFileSync("readelf", ["-d", filename], {
+      encoding: "utf8",
+    });
+  } catch (error) {
+    throw new Error(
+      `unable to inspect ${label} ELF lifetime flags with readelf`,
+      { cause: error },
+    );
+  }
+  if (!/\(FLAGS_1\).*\bNODELETE\b/.test(dynamicSection)) {
+    throw new Error(
+      `${label} is unsafe for Node worker teardown: missing ELF NODELETE`,
+    );
+  }
+}
+
 function buildExecutable(name, withFlint, seaNode) {
   if (withFlint && !existsSync(flintAddon)) {
     throw new Error(
@@ -428,6 +486,15 @@ function buildExecutable(name, withFlint, seaNode) {
         `${relative(root, graphFfiManifest)}; ` +
         "run `pnpm --dir packages/graph build` first",
     );
+  }
+  if (withFlint) {
+    for (const [filename, label] of [
+      [flintAddon, "FLINT addon"],
+      [flintFfiAddon, "generated FLINT FFI addon"],
+      [productionPackAddon, "production native-kernel pack"],
+    ]) {
+      assertLinuxProcessLifetimeAddon(filename, label);
+    }
   }
   const output = join(outputDirectory, name);
   const assets = {
@@ -527,6 +594,10 @@ function buildExecutable(name, withFlint, seaNode) {
       "tree-sitter-wolfram.wasm",
     ),
   };
+  if (numericalRuntime.available) {
+    assets["numerical/cminpack.wasm"] = numericalBackendArtifact;
+    assets["numerical/nlopt-methods.wasm"] = nloptBackendArtifact;
+  }
   if (withFlint) {
     assets["native/sagejs_flint.node"] = flintAddon;
     assets["native/sagejs_flint_ffi.node"] = flintFfiAddon;
@@ -569,6 +640,25 @@ function buildExecutable(name, withFlint, seaNode) {
   );
 }
 
+const numericalProvider = currentBuildIdentity(root).numericalRuntimeProvider;
+const numericalRuntime = resolveNumericalRuntimeCapability({
+  root,
+  providerAvailable: numericalProvider.available,
+  scope: "sea",
+});
+const sourceBuildReceipt = inspectBuildReceipt(root);
+if (!sourceBuildReceipt.current) {
+  throw new Error(
+    `SEA inputs are not bound to a current build receipt: ${sourceBuildReceipt.reason}`,
+  );
+}
+if (!numericalRuntime.available) {
+  process.stdout.write(
+    "Building an optional-capability SEA without cminpack or NLopt reactors; " +
+      "prepare the Wasm toolchain or configure SAGEJS_NUMERICAL_PRODUCT_ROOT to include them.\n",
+  );
+}
+
 rmSync(outputDirectory, { recursive: true, force: true });
 mkdirSync(outputDirectory, { recursive: true });
 
@@ -581,7 +671,9 @@ buildSync({
   target: "node22",
   sourcemap: false,
   minify: false,
-  banner: { js: embeddedStandaloneLibraryBanner },
+  banner: {
+    js: `${embeddedStandaloneLibraryBanner}\n${standaloneWasmCapabilityBanner}`,
+  },
   external: ["plotly.js-dist-min/plotly.min.js"],
 });
 

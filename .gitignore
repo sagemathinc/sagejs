@@ -19,5 +19,6 @@ bench/.native-tate-corpus
 bench/.native-poc
 bench/finite-field-boundary/build/
 build/*
+website/install.sh
 .artifacts/
 .cache/sagejs/optimization-engine/

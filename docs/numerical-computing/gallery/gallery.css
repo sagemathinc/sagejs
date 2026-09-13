@@ -1,0 +1,142 @@
+:root {
+  color-scheme: light dark;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.55;
+  --ink: #17202a;
+  --muted: #52606d;
+  --paper: #fbfcfe;
+  --panel: #ffffff;
+  --line: #d7dee7;
+  --accent: #285f8f;
+  --success: #246b45;
+  --failure: #9b2c2c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  margin: 0;
+}
+
+.hero, nav, main, footer, .noscript {
+  margin-inline: auto;
+  max-width: 76rem;
+  padding: 1.5rem;
+}
+
+.hero {
+  background: linear-gradient(135deg, #143a59, #285f8f 60%, #267060);
+  color: white;
+  max-width: none;
+  padding-block: clamp(2rem, 6vw, 5rem);
+}
+
+.hero > * { margin-inline: auto; max-width: 73rem; }
+.hero h1 { font-size: clamp(2.1rem, 6vw, 4.8rem); line-height: 1; margin-block: .35rem 1rem; }
+.site-links { font-weight: 650; }
+.site-links a { color: white; }
+.eyebrow, .domain, .case-kind { font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.eyebrow { color: #ccecff; }
+.domain { color: var(--accent); }
+
+nav ol { columns: 2 20rem; }
+nav li { break-inside: avoid; margin-block: .35rem; }
+a { color: var(--accent); }
+
+.gallery-story {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  margin-block: 2rem;
+  padding: clamp(1rem, 3vw, 2rem);
+  scroll-margin-top: 1rem;
+}
+
+.story-columns {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+}
+
+.gallery-case {
+  border-inline-start: .35rem solid var(--line);
+  margin-block: 2rem;
+  padding-inline-start: 1rem;
+}
+
+.gallery-case-success { border-color: var(--success); }
+.gallery-case-failure { border-color: var(--failure); }
+.gallery-case-success .case-kind { color: var(--success); }
+.gallery-case-failure .case-kind { color: var(--failure); }
+.question { font-size: 1.1rem; font-weight: 650; }
+.sweep-explanation { overflow-wrap: anywhere; }
+
+.gallery-figure {
+  border: 1px solid var(--line);
+  border-radius: .65rem;
+  margin-inline: 0;
+  overflow: hidden;
+}
+
+.gallery-plot { min-height: 22rem; padding: 1rem; }
+.gallery-plot[data-gallery-rendered="true"] { padding: 0; }
+.gallery-animation-controls {
+  align-items: center;
+  background: color-mix(in srgb, var(--panel) 88%, var(--accent));
+  border-block: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem 1rem;
+  padding: .75rem 1rem;
+}
+.gallery-animation-controls[hidden] { display: none; }
+.animation-transport { display: flex; flex-wrap: wrap; gap: .4rem; }
+.gallery-animation-controls label { align-items: center; display: flex; gap: .4rem; }
+.animation-iteration { flex: 1 1 19rem; }
+.animation-iteration input { flex: 1 1 10rem; }
+.animation-iteration output { min-width: 6rem; }
+.reduced-motion-note { color: var(--muted); flex-basis: 100%; }
+figcaption { color: var(--muted); padding: .75rem 1rem; }
+.gallery-actions { display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem 1rem 1rem; }
+button { cursor: pointer; padding: .55rem .75rem; }
+.open-in-sage {
+  background: var(--accent);
+  border-radius: .35rem;
+  color: var(--panel);
+  display: inline-block;
+  font-weight: 700;
+  padding: .5rem .75rem;
+  text-decoration: none;
+}
+
+.table-scroll { overflow-x: auto; }
+table { border-collapse: collapse; min-width: 32rem; width: 100%; }
+caption { font-weight: 650; padding: .5rem; text-align: start; }
+th, td { border-bottom: 1px solid var(--line); padding: .45rem .65rem; text-align: start; vertical-align: top; }
+th { width: 10rem; }
+pre { overflow-x: auto; padding: 1rem; }
+.no-animation, .noscript { background: #fff4cc; color: #4f3b00; padding: 1rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #eff5fb;
+    --muted: #b8c5d1;
+    --paper: #111820;
+    --panel: #18222c;
+    --line: #425160;
+    --accent: #85c8ff;
+    --success: #7ee2ac;
+    --failure: #ff9b9b;
+  }
+}

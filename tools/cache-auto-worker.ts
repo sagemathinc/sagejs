@@ -227,7 +227,13 @@ function acquireDirectoryMutex(
       };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      const metadata = lstatSync(directory);
+      let metadata: ReturnType<typeof lstatSync>;
+      try {
+        metadata = lstatSync(directory);
+      } catch (metadataError) {
+        if ((metadataError as NodeJS.ErrnoException).code === "ENOENT") continue;
+        throw metadataError;
+      }
       if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
         throw new Error("automatic cache cleanup refused unsafe mutex marker");
       }

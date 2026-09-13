@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "routine": {
+    "required": ["strict_python", "contract_schema", "focused_correctness", "failure_cases", "node_runtime", "browser_wasm_smoke"],
+    "time_budget_minutes": 15
+  },
+  "release": {
+    "required": ["backend_neutral_corpus", "differential_oracles", "linux_x64", "linux_arm64", "macos_arm64", "windows_x64", "browser_chromium", "browser_webkit", "node", "sea", "npm", "cancellation", "memory_pressure", "payload", "startup", "performance"],
+    "source_binding": ["commit_sha", "artifact_sha256", "capability_receipt_sha256"]
+  }
+}

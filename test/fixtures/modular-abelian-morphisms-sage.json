@@ -1,0 +1,279 @@
+{
+  "schema": "sagejs.modular-abelian-morphisms-oracle/v1",
+  "oracle": "SageMath 10.9.post1",
+  "date": "2026-09-12",
+  "description": "Integral homology invariants of T2-1; geometric degeneracy transfers; saturated-copy sum isogenies. Basis independent; excludes nonunit zeros from Smith factors.",
+  "cases": [
+    {
+      "system": "Sage",
+      "version": "10.9.post1",
+      "level": 11,
+      "dimension": 1,
+      "rank": 2,
+      "invariants": [
+        3,
+        3
+      ]
+    },
+    {
+      "system": "Sage",
+      "version": "10.9.post1",
+      "level": 33,
+      "dimension": 3,
+      "rank": 4,
+      "invariants": [
+        3,
+        3
+      ]
+    },
+    {
+      "system": "Sage",
+      "version": "10.9.post1",
+      "level": 37,
+      "dimension": 2,
+      "rank": 4,
+      "invariants": [
+        3,
+        3
+      ]
+    },
+    {
+      "system": "Sage",
+      "version": "10.9.post1",
+      "level": 43,
+      "dimension": 3,
+      "rank": 6,
+      "invariants": [
+        3,
+        3
+      ]
+    },
+    {
+      "system": "Sage",
+      "version": "10.9.post1",
+      "level": 101,
+      "dimension": 8,
+      "rank": 16,
+      "invariants": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "system": "Sage",
+      "version": "10.9.post1",
+      "level": 389,
+      "dimension": 32,
+      "rank": 64,
+      "invariants": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        30,
+        30
+      ]
+    },
+    {
+      "system": "Sage",
+      "version": "10.9.post1",
+      "level": 1009,
+      "dimension": 83,
+      "rank": 166,
+      "invariants": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        90,
+        90,
+        90,
+        90
+      ]
+    },
+    {
+      "kind": "degeneracy",
+      "level": 22,
+      "index": 1,
+      "rank": 2,
+      "invariants": []
+    },
+    {
+      "kind": "degeneracy",
+      "level": 22,
+      "index": 2,
+      "rank": 2,
+      "invariants": []
+    },
+    {
+      "kind": "degeneracy",
+      "level": 33,
+      "index": 1,
+      "rank": 2,
+      "invariants": []
+    },
+    {
+      "kind": "degeneracy",
+      "level": 33,
+      "index": 3,
+      "rank": 2,
+      "invariants": []
+    },
+    {
+      "kind": "degeneracy",
+      "level": 44,
+      "index": 1,
+      "rank": 2,
+      "invariants": []
+    },
+    {
+      "kind": "degeneracy",
+      "level": 44,
+      "index": 4,
+      "rank": 2,
+      "invariants": []
+    },
+    {
+      "kind": "degeneracy",
+      "level": 121,
+      "index": 1,
+      "rank": 2,
+      "invariants": []
+    },
+    {
+      "kind": "degeneracy",
+      "level": 121,
+      "index": 11,
+      "rank": 2,
+      "invariants": []
+    },
+    {
+      "kind": "decomposition",
+      "level": 22,
+      "labels": [
+        [
+          11,
+          1,
+          1
+        ],
+        [
+          11,
+          2,
+          1
+        ]
+      ],
+      "invariants": [
+        5
+      ]
+    },
+    {
+      "kind": "decomposition",
+      "level": 33,
+      "labels": [
+        [
+          11,
+          1,
+          1
+        ],
+        [
+          11,
+          3,
+          1
+        ],
+        [
+          33,
+          1,
+          1
+        ]
+      ],
+      "invariants": [
+        3,
+        15
+      ]
+    },
+    {
+      "kind": "decomposition",
+      "level": 44,
+      "labels": [
+        [
+          11,
+          1,
+          1
+        ],
+        [
+          11,
+          2,
+          1
+        ],
+        [
+          11,
+          4,
+          1
+        ],
+        [
+          44,
+          1,
+          1
+        ]
+      ],
+      "invariants": [
+        10,
+        10
+      ]
+    },
+    {
+      "kind": "decomposition",
+      "level": 121,
+      "labels": [
+        [
+          11,
+          1,
+          1
+        ],
+        [
+          11,
+          11,
+          1
+        ],
+        [
+          121,
+          1,
+          1
+        ],
+        [
+          121,
+          1,
+          1
+        ],
+        [
+          121,
+          1,
+          1
+        ],
+        [
+          121,
+          1,
+          1
+        ]
+      ],
+      "invariants": [
+        2,
+        2,
+        6,
+        6,
+        24,
+        120
+      ]
+    }
+  ]
+}

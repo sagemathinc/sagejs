@@ -15,7 +15,10 @@ const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { compile } = require("@sagemath/sagejs/native");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerCompilerFlag,
+  sanitizerEnvironment,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const packagePath = join(root, "packages", "flint");
@@ -376,7 +379,7 @@ test("exact pivot resources pass sanitizer-backed lifecycle stress", {
     const compiler = process.env.CC || "cc";
     run(compiler, [
       "-std=c11", "-O1", "-g", "-fno-omit-frame-pointer",
-      "-fsanitize=address,undefined",
+      sanitizerCompilerFlag(),
       `-I${join(packagePath, "include")}`,
       `-I${join(flintPrefix, "include")}`,
       sourcePath,

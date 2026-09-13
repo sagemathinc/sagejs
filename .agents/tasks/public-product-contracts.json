@@ -1,0 +1,137 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "public-product-contracts",
+  "title": "Public Product Contracts",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Make the advertised public npm, SEA, browser, structured-result, rich-display, documentation, and CLI numerical paths truthful and usable with focused clean-install and browser tests",
+  "base_commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+  "claims": [
+    ".agents/lanes.json",
+    "package.json",
+    "README.md",
+    "bin/sagejs",
+    "bin/wasm-launcher.cjs",
+    "scripts/build-sea.cjs",
+    "tools/cli.js",
+    "tools/installed-kernel.cjs",
+    "tools/stdio-kernel.ts",
+    "tools/kernel.ts",
+    "tools/kernel-worker.ts",
+    "tools/kernel-evaluator.ts",
+    "tools/docs.ts",
+    "tools/documentation.ts",
+    "architecture/optimizer-opportunities.manifest.json",
+    "docs/optimizer-opportunities.md",
+    "packages/flint-wasm/kernel.mjs",
+    "packages/flint-wasm/kernel.d.ts",
+    "packages/flint-wasm/kernel-worker.mjs",
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/package.json",
+    "packages/flint-wasm/.npmignore",
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/node-cli.mjs",
+    "packages/flint-wasm/node-kernel.mjs",
+    "src/lib/sagejs/plotting/model.py",
+    "src/lib/sagejs/plotting/animation.py",
+    "scripts/generate-docs.cjs",
+    "EMBEDDING.md",
+    "docs/numerical-computing/spectral/README.md",
+    "docs/reference/api.md",
+    "website/live/examples.mjs",
+    "website/reference-data.json",
+    "website/reference.html",
+    "test/installed-kernel.cjs",
+    "test/kernel.cjs",
+    "test/public-product-contracts.cjs",
+    "test/wasm-npm-package.cjs",
+    "packages/flint-wasm/test/public-product-contracts.test.mjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "tested-capability",
+    "oracles": [
+      "fresh packed npm install and public API contract tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test packages/flint-wasm/test/public-product-contracts.test.mjs test/installed-kernel.cjs test/wasm-launcher.cjs packages/flint-wasm/test/node-cli.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.156,
+      "started_at": "2026-09-02T21:23:20.203Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "9bd3d0ddcfdbccdc5379eb60fe39c0d0c78147bd37f3e9420caeea185785a89f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/wasm-npm-package.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.159,
+      "started_at": "2026-09-02T21:23:28.438Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "9bd3d0ddcfdbccdc5379eb60fe39c0d0c78147bd37f3e9420caeea185785a89f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 52.288,
+      "started_at": "2026-09-02T21:23:53.946Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "9bd3d0ddcfdbccdc5379eb60fe39c0d0c78147bd37f3e9420caeea185785a89f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.129,
+      "started_at": "2026-09-02T21:24:50.502Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "9bd3d0ddcfdbccdc5379eb60fe39c0d0c78147bd37f3e9420caeea185785a89f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 65.035,
+      "started_at": "2026-09-02T21:26:29.073Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "b4be13a8bda8e5b334d97e0a93072f441d5248704949d31be03e4a2eb6ad052b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Published the authenticated browser Wasm closure inside the root npm package, added stable root-package Wasm exports, made the installed kernel runtime match its declarations, added detached structured-result transport and clone-safe Plotly rich display, exposed browser DocSpec documentation, indexed flagship numerical APIs, corrected CLI/docs examples, and added an interactive numerical-laboratory example.",
+    "risks": [
+      "Standalone SEA binaries intentionally reject --wasm with an actionable diagnostic because their native runtime is already embedded and the browser worker tree requires filesystem assets; installed npm/Node provides the supported Wasm path.",
+      "Release integration must build or restore packages/flint-wasm/dist before the root npm pack step; current release workflow ordering may otherwise pack before the browser artifact exists.",
+      "The complete docs example verifier could not run in this source worktree because its optional local FLINT addon was absent; focused documentation generation and both installed native-kernel and packaged Wasm tests passed."
+    ],
+    "next_steps": [
+      "Merge after resolving any concurrent animation.py rich-display conflict without dropping _rich_repr_ support.",
+      "Have the release/P8 integration lane order the authenticated browser build before npm packing and run the normal four-platform release qualification."
+    ]
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-staged-exact-closure",
+  "title": "Cubic Staged Exact Closure",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Record the bounded staged-closure extraction plan and a reproducible rejected borrowed-arena signature, without changing production mathematics",
+  "base_commit": "2edc78a9f0537a759ca7bc387d081c91239c77e0",
+  "claims": [
+    "test/number-field-cubic-staged-exact-closure.cjs",
+    "docs/cubic-staged-exact-closure-design.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "ordinary exact certificate replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/number-field-cubic-staged-exact-closure.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/number-field-cubic-staged-exact-closure.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.543,
+      "started_at": "2026-09-05T02:55:57.588Z",
+      "commit": "2edc78a9f0537a759ca7bc387d081c91239c77e0",
+      "workspace_fingerprint": "36c953bd283f90dce292639c2df834b5d2f1ebbc34aed7ac5e72e401be70aa1e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Recorded a bounded resident staged-closure design driven by the 14-row effort-3 versus 30-row effort-5 forensic target. Production source remains unchanged. The compiler currently rejects a NativeExactArena helper parameter; the focused regression preserves that explicit rejection until shared ownership and lifetime support replaces it. The design separates raw relation state, resumable proposal cursors, cheap-unit scheduling state, proof-local state, classified insufficiency, and transactional publication.",
+    "risks": [
+      "No new timing or production optimization is claimed; target timings are prior campaign forensics.",
+      "Borrowed-arena/scoped-child support or an independently qualified equivalent ownership design is prerequisite to the proposed helper extraction.",
+      "Only the focused expected-rejection witness is run here. Full native validation remains pending implementation and integration; task remains active to avoid claiming its lane-wide gates passed."
+    ],
+    "next_steps": [
+      "Qualify same-budget scoped helper allocations, failure cleanup, and publication lifetime before extracting the suffix.",
+      "Implement a proposal cursor with one-shot versus pause/resume equivalence tests, then extract the unchanged exact closure and classify recoverable insufficiency.",
+      "Measure complete staged calls on opt and authenticate the frozen corpus before any frontier claim."
+    ]
+  }
+}

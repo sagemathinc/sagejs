@@ -79,7 +79,7 @@ assert A.list()[0] == large + 1
 display = matrix(ZZ, 2, 3, [1, -7, 0, 11, -2, 5])
 assert display.str() == '[ 1 -7  0]\n[11 -2  5]'
 display.subdivide(1, 1)
-assert display.str() == '[ 1|-7  0]\n[--------]\n[11|-2  5]'
+assert display.str() == '[ 1|-7  0]\n[--+-----]\n[11|-2  5]'
 assert (A + B) - B == A
 assert -(-A) == A
 assert 3*A == A + A + A

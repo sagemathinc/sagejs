@@ -1,28 +1,28 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "997a617e8f4a62554859bcf17a5e7db1b1c6aac27c2189374dd3339e0f7c467e",
+  "source_sha256": "8395edb804df508a081d68be7684d6cb5ba37d7f9705069aeab71e1eed5cf89a",
   "counts": {
-    "total": 1047,
+    "total": 1106,
     "by_kind": {
-      "declared-ffi-function": 462,
-      "declared-ffi-resource": 34,
-      "napi-export": 325,
-      "production-kernel": 53,
-      "runtime-intrinsic": 147,
-      "specialist-capability": 26
+      "declared-ffi-function": 480,
+      "declared-ffi-resource": 37,
+      "napi-export": 358,
+      "production-kernel": 55,
+      "runtime-intrinsic": 148,
+      "specialist-capability": 28
     },
     "by_disposition": {
-      "compiled-source": 53,
+      "compiled-source": 55,
       "desktop-only": 47,
-      "generated-wasm": 341,
-      "portable-fallback": 561,
-      "shared-core": 45
+      "generated-wasm": 379,
+      "portable-fallback": 575,
+      "shared-core": 50
     },
     "by_status": {
-      "available": 580,
+      "available": 625,
       "desktop-only": 47,
-      "fallback": 420
+      "fallback": 434
     }
   },
   "workflow_aliases": {
@@ -32,6 +32,10 @@
     "analytic-gamma-xi-batches": [
       "analytic:complex-gamma",
       "analytic:riemann-xi"
+    ],
+    "brandt-degeneracy-and-elliptic-scalar-fallback": [
+      "napi:@sagemath/sagejs-flint:ecScalarMulPrime",
+      "napi:@sagemath/sagejs-flint:p1ListDegeneracyMatrix"
     ],
     "capability-report-api": [
       "specialist:capability-report-api"
@@ -64,6 +68,11 @@
       "ffi:flint:fmpz_matrix_det",
       "ffi:flint:fmpz_matrix_hnf",
       "ffi:flint:fmpz_mod_polynomial_gcd"
+    ],
+    "exact-public-builtins": [
+      "napi:@sagemath/sagejs-flint:binomial",
+      "napi:@sagemath/sagejs-flint:factorial",
+      "napi:@sagemath/sagejs-flint:primePi"
     ],
     "extension-field-conway-data": [
       "ffi:flint:fq_context",
@@ -154,6 +163,10 @@
     "partition-count-and-ranking": [
       "ffi:flint:arith_number_of_partitions"
     ],
+    "portable-extension-and-complex-matrices": [
+      "napi:@sagemath/sagejs-flint:acbMatrix",
+      "napi:@sagemath/sagejs-flint:fqMatrix"
+    ],
     "python-float-underscore-separators": [
       "specialist:capability-report-api"
     ],
@@ -171,8 +184,7 @@
       "ffi:flint:fmpz_matrix_right_kernel"
     ],
     "symbolic-numerical-kernels": [
-      "specialist:symbolic-numerical-integral-wasm",
-      "specialist:symbolic-find-root-wasm"
+      "specialist:symbolic-numerical-integral-wasm"
     ]
   },
   "capabilities": [
@@ -367,10 +379,10 @@
     {
       "id": "ffi-resource:flint:byte_region",
       "family": "flint",
-      "disposition": "generated-wasm",
+      "disposition": "portable-fallback",
       "status": "available",
-      "fallback": "declared-ffi-capability-fallback",
-      "wasm_module": "flint",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
@@ -651,6 +663,42 @@
         "sagejs.ffi.flint"
       ],
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly_bytes",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly_context",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
     },
     {
       "id": "ffi-resource:flint:fq_polynomial",
@@ -1319,6 +1367,18 @@
     },
     {
       "id": "ffi:flint:fmpq_matrix_from_fmpz",
+      "family": "flint",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:fmpq_matrix_full_row_rank_pivots",
       "family": "flint",
       "disposition": "portable-fallback",
       "status": "fallback",
@@ -2686,6 +2746,18 @@
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
+      "id": "ffi:flint:fmpz_mat_gram_lll_transform",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "The exact Gram-mode FLINT LLL declaration is available in generated WebAssembly with a same-source authenticated consumer fallback."
+    },
+    {
       "id": "ffi:flint:fmpz_mat_hnf",
       "family": "flint",
       "disposition": "generated-wasm",
@@ -2974,7 +3046,31 @@
       "explanation": "The reviewed caller-owned HNF declaration is included in the generated WebAssembly resource closure for the source-transparent stable selector."
     },
     {
+      "id": "ffi:flint:fmpz_matrix_hnf_prefix_into",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "fallback",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
       "id": "ffi:flint:fmpz_matrix_hnf_transform",
+      "family": "flint",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_hnf_transform_prefix",
       "family": "flint",
       "disposition": "portable-fallback",
       "status": "fallback",
@@ -3011,6 +3107,18 @@
     },
     {
       "id": "ffi:flint:fmpz_matrix_lll_transform",
+      "family": "flint",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_lll_transform_prefix",
       "family": "flint",
       "disposition": "portable-fallback",
       "status": "fallback",
@@ -3252,6 +3360,18 @@
     {
       "id": "ffi:flint:fmpz_matrix_snf",
       "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Exact Smith invariant factors use the shared generated FLINT adapter, avoiding unnecessary unimodular transformation matrices. A correct source fallback remains for unavailable backends."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_snf_into",
+      "family": "flint",
       "disposition": "portable-fallback",
       "status": "fallback",
       "fallback": "ordinary-sagejs-exact-fallback",
@@ -3262,7 +3382,7 @@
       "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
     {
-      "id": "ffi:flint:fmpz_matrix_snf_into",
+      "id": "ffi:flint:fmpz_matrix_snf_prefix_into",
       "family": "flint",
       "disposition": "portable-fallback",
       "status": "fallback",
@@ -4570,6 +4690,138 @@
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
+      "id": "ffi:flint:fq_mpoly_binary",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_cache_bytes",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_context",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_copy",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_equal",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_factor_bytes",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_from_terms",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_gcd",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_neg",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_resultant",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_term_bytes",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
       "id": "ffi:flint:fq_polynomial",
       "family": "flint",
       "disposition": "generated-wasm",
@@ -4724,6 +4976,18 @@
         "sagejs.ffi.flint"
       ],
       "explanation": "Rigorous packed logarithm and square-root endpoints are available in the receipt-authenticated production WebAssembly artifact, with the same-source exact fallback retained."
+    },
+    {
+      "id": "ffi:flint:integer_log_sqrt_balls_prefix_resource",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "The resident logical-prefix logarithm and square-root operation is included in the receipt-authenticated production WebAssembly artifact, with exact endpoint and inactive-tail tests plus a public Chromium FFI witness."
     },
     {
       "id": "ffi:flint:integer_log_sqrt_balls_resource",
@@ -6334,6 +6598,19 @@
       "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
+      "id": "kernel:brandt-rank4-production",
+      "family": "brandt-rank4",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "eichler-ideal-classes",
+        "brandt-series"
+      ],
+      "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
       "id": "kernel:buchmann-lenstra-row-hnf-production",
       "family": "buchmann-lenstra-row-hnf",
       "disposition": "compiled-source",
@@ -6374,13 +6651,13 @@
       "id": "kernel:complex-cubic-class-group-production",
       "family": "complex-cubic-class-group",
       "disposition": "compiled-source",
-      "status": "available",
+      "status": "fallback",
       "fallback": "ordinary-sagejs-exact-fallback",
       "wasm_module": "kernel-flint",
       "public_consumers": [
         "number-field-cubic-class-number"
       ],
-      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 functions."
     },
     {
       "id": "kernel:dense-binary-m4ri-optional",
@@ -6404,7 +6681,7 @@
       "public_consumers": [
         "dense-integer-flint"
       ],
-      "explanation": "All 17 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 18 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-integer-production",
@@ -6963,6 +7240,18 @@
       "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
+      "id": "kernel:word-prime-sparse-krylov-production",
+      "family": "word-prime-sparse-krylov",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "source-kernel-pack",
+      "public_consumers": [
+        "sagejs.modular_forms.sparse_krylov"
+      ],
+      "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:acbMatrix",
       "family": "dense-matrix-storage",
       "disposition": "portable-fallback",
@@ -7143,6 +7432,114 @@
       "explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalBinary",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalFromParts",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPart",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPowInt",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPrecision",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalRelation",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalRound",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalToString",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalUnary",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:complexMul",
       "family": "numerical",
       "disposition": "generated-wasm",
@@ -7260,7 +7657,19 @@
       "public_consumers": [
         "src/baselib/dirichlet.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Browser algebraic expressions retain exact power-basis coordinates; matrix-produced values use bounded FLINT qqbar_express_in_field through the algebraic reactor. Failure to obtain a certificate is reported, never replaced by approximate coordinates."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicElementsFromIntegralCoordinates",
+      "family": "algebraic",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/lib/sagejs/modular_forms/qexp.py"
+      ],
+      "explanation": "Exact cyclotomic Eisenstein coefficients remain available through the ordinary Sage.js fallback when the batched Node representation primitive is unavailable."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixPolyEvaluate",
@@ -7272,10 +7681,22 @@
       "public_consumers": [
         "src/baselib/polynomial.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Exact matrix polynomial evaluation uses portable Horner evaluation when the native accelerator is absent."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRightKernel",
+      "family": "dense-matrix-algorithms",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/matrix.py"
+      ],
+      "explanation": "Exact cyclotomic right kernels use portable qqbar elimination when the native accelerator is absent."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRowBasis",
       "family": "dense-matrix-algorithms",
       "disposition": "portable-fallback",
       "status": "fallback",
@@ -7296,7 +7717,7 @@
       "public_consumers": [
         "src/baselib/polynomial.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Exact portable cyclotomic polynomial factorization is available; rational norm degree grows with the coefficient-field degree."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicRootCoefficients",
@@ -7308,7 +7729,7 @@
       "public_consumers": [
         "algebraic"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "The browser reduces integral monomials modulo the cyclotomic polynomial using the existing exact coordinate representation, for explicit orders 1 through 4096."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletBernoulli",
@@ -7672,6 +8093,18 @@
         "src/baselib/finite_fields.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqCoordinates",
+      "family": "extension-fields",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/finite_fields.py"
+      ],
+      "explanation": "Exact power-basis polynomial conversion uses generated FLINT resources in Wasm."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqDiv",
@@ -8912,6 +9345,18 @@
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:mpolyGroebnerMsolve",
+      "family": "multivariate",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "exact-flint-or-dynamic-polynomial-algorithm",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/baselib/polynomial.py"
+      ],
+      "explanation": "Bounded prime-field and rational msolve Gröbner computations are available through the receipt-authenticated FLINT WebAssembly artifact."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:mpolyIrreducibleFactors",
       "family": "multivariate",
       "disposition": "portable-fallback",
@@ -8922,6 +9367,18 @@
         "src/baselib/polynomial.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyLeadingMonomial",
+      "family": "multivariate",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "canonical-sparse-polynomial-leading-term",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/polynomial.py"
+      ],
+      "explanation": "Leading monomials use exact canonical polynomial order in both native and browser runtimes."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyLength",
@@ -9006,6 +9463,18 @@
         "src/baselib/polynomial.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyTerms",
+      "family": "multivariate",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "canonical-sparse-polynomial-terms",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/polynomial.py"
+      ],
+      "explanation": "Exact ordered sparse multivariate terms are available in native and browser runtimes."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyToString",
@@ -9272,6 +9741,18 @@
       "explanation": "Modular-symbol boundary data runs in the receipt-authenticated FLINT WebAssembly artifact with an ordinary exact fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeImages",
+      "family": "modular-symbols",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/modular.py"
+      ],
+      "explanation": "Exact character Hecke action and Gamma1 cusp/newform descent have a portable Python implementation using the browser's exact coefficient-field and matrix operations."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeMatrix",
       "family": "modular-symbols",
       "disposition": "portable-fallback",
@@ -9281,7 +9762,19 @@
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Exact character Hecke action and Gamma1 cusp/newform descent have a portable Python implementation using the browser's exact coefficient-field and matrix operations."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeSelectedRows",
+      "family": "modular-symbols",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/modular.py"
+      ],
+      "explanation": "Exact character Hecke action and Gamma1 cusp/newform descent have a portable Python implementation using the browser's exact coefficient-field and matrix operations."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",
@@ -9322,14 +9815,14 @@
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListDegeneracyMatrix",
       "family": "modular-symbols",
-      "disposition": "portable-fallback",
-      "status": "fallback",
+      "disposition": "shared-core",
+      "status": "available",
       "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Weight-2 degeneracy matrices run in the receipt-authenticated FLINT WebAssembly artifact with an ordinary exact fallback."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListEntry",
@@ -9496,6 +9989,18 @@
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/polynomial.py",
+        "src/baselib/series.py"
+      ],
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyCoefficient",
+      "family": "polynomials",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
         "src/baselib/series.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
@@ -9723,14 +10228,14 @@
     {
       "id": "napi:@sagemath/sagejs-flint:primePi",
       "family": "exact-arithmetic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
+      "disposition": "shared-core",
+      "status": "available",
       "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/builtins.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Exact prime counting through inputs below 2^63 runs in the receipt-authenticated FLINT WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:primorial",
@@ -10137,7 +10642,7 @@
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Native execution retains the FLINT path. The browser uses the same exact divisor-sum formula as an ordinary Python O(prec log prec) sieve in the lazy qexp module, preserving linear, constant, and integral normalization. High-weight Bernoulli computation remains an optimization opportunity, not a claimed native-speed path."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqMatrix",
@@ -10196,6 +10701,30 @@
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/polynomial.py"
+      ],
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyPacked",
+      "family": "polynomials",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/series.py"
+      ],
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyToZZExact",
+      "family": "polynomials",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/modular.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
@@ -10272,6 +10801,126 @@
       "explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalBinary",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalFromBounds",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalFromRational",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPart",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPowInt",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPrecision",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalRelation",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalRound",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalToString",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalUnary",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:realMul",
       "family": "numerical",
       "disposition": "generated-wasm",
@@ -10294,6 +10943,30 @@
         "src/baselib/real_complex.py"
       ],
       "explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realNext",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/baselib/real_complex.py"
+      ],
+      "explanation": "The public numerical operation runs through a bounded receipt-backed MPFR WebAssembly resource."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realParts",
+      "family": "numerical",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/baselib/real_complex.py"
+      ],
+      "explanation": "The public numerical operation runs through a bounded receipt-backed MPFR WebAssembly resource."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realPowInt",
@@ -10700,6 +11373,18 @@
       "wasm_module": "host-runtime",
       "public_consumers": [
         "polynomials"
+      ],
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zzPolyUnitriangularBasis",
+      "family": "polynomials",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/series.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
@@ -11665,6 +12350,18 @@
     },
     {
       "id": "runtime:list_contains",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:list_decorate",
       "family": "runtime",
       "disposition": "portable-fallback",
       "status": "available",
@@ -12833,6 +13530,25 @@
       "explanation": "The authoritative Tree-sitter frontend is already bundled as browser Wasm and tested through public evaluation."
     },
     {
+      "id": "wasm-library:cminpack:least-squares-explicit",
+      "family": "numerical",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-python-damped-gauss-newton-for-automatic-selection; explicit-requests-fail-closed",
+      "wasm_module": "cminpack",
+      "public_consumers": [
+        "sagejs.numerics.optimization.least_squares",
+        "sagejs.numerics.optimization.curve_fit"
+      ],
+      "explanation": "Explicit nonlinear least-squares requests can use authenticated cminpack lmdif or lmder in Node, browsers, and SEA; automatic planning remains on the ordinary-Python method.",
+      "resource_limits": {
+        "maximum_parameters": 256,
+        "maximum_residuals": 16384,
+        "maximum_workspace_bytes": 67108864,
+        "maximum_memory_bytes": 134217728
+      }
+    },
+    {
       "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",
       "family": "multivariate-polynomials",
       "disposition": "shared-core",
@@ -12843,6 +13559,24 @@
         "MultivariatePolynomialElement.resultant over ZZ"
       ],
       "explanation": "Supported exact ZZ multivariate resultants run as one bounded receipt-authenticated FLINT Wasm call; unsupported domains fail explicitly in browsers."
+    },
+    {
+      "id": "wasm-library:nlopt:derivative-free-explicit",
+      "family": "numerical",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-python-methods-for-automatic-selection; explicit-requests-fail-closed",
+      "wasm_module": "nlopt",
+      "public_consumers": [
+        "sagejs.numerics.optimization.minimize"
+      ],
+      "explanation": "Explicit derivative-free minimization can use authenticated NLopt Nelder-Mead in Node, browsers, and SEA. Automatic planning remains on ordinary Python, nonlinear constraints are unsupported pending a sanitizer-clean backend, and an unavailable or contradictory NLopt result fails closed.",
+      "resource_limits": {
+        "maximum_parameters": 128,
+        "maximum_constraints": 0,
+        "maximum_workspace_bytes": 67108864,
+        "maximum_memory_bytes": 134217728
+      }
     }
   ]
 }

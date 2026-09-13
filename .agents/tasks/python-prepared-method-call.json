@@ -1,0 +1,102 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-prepared-method-call",
+  "title": "Python Prepared Method Call",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Elide bound method metadata for immediate positional Python calls while preserving lookup ordering",
+  "base_commit": "008b979d5a8cc645ad231c731cb5428d516f10ac",
+  "claims": [
+    "src/baselib/builtins.py",
+    "src/baselib/internal.py",
+    "src/baselib/sagejs/runtime.pyi",
+    "src/output/functions.py",
+    "src/output/operators.py",
+    "test/python-prepared-method-call.cjs",
+    "test/callable-slot-mutation.cjs",
+    "test/fixtures/callable-slot-mutation.py",
+    "test/bound-function-identity.cjs",
+    "test/fixtures/bound-function-identity.py"
+  ],
+  "dependencies": [],
+  "references": [
+    "d7126f3d7: shared callable-slot binding prerequisite",
+    "88ac20678: canonical bound-method function identity prerequisite"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test --test-name-pattern=only immediate|prepared method calls agree test/python-prepared-method-call.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.154,
+      "started_at": "2026-09-11T06:24:33.144Z",
+      "commit": "8a8f88c92b903fc83294f9fb8f7b82003178e254",
+      "workspace_fingerprint": "3f1bd6dc8020d8a2aaa2c97f16c3e87fe9bb52b674226f74dd2627e89da91686",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/python-prepared-method-call.cjs test/bound-function-identity.cjs test/method-binding-mutations.cjs test/python-native-unbound-method.cjs test/python-attribute-constructor.cjs test/callable-slot-mutation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.016,
+      "started_at": "2026-09-11T06:35:36.444Z",
+      "commit": "99544811a7c21dd07523f4a523382616d837dc8c",
+      "workspace_fingerprint": "a19fdcd8ca3dd2c1a59a37842c10484bac55069e8379d66c7c9ac46d5cd2fd70",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.291,
+      "started_at": "2026-09-11T06:36:21.470Z",
+      "commit": "99544811a7c21dd07523f4a523382616d837dc8c",
+      "workspace_fingerprint": "6156a5fdff87055908fa3ccec86dc5812b649262167d2ace04612c3fbf8cc654",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/python-prepared-method-call.cjs test/bound-function-identity.cjs test/method-binding-mutations.cjs test/python-native-unbound-method.cjs test/python-attribute-constructor.cjs test/callable-slot-mutation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.041,
+      "started_at": "2026-09-11T06:38:00.117Z",
+      "commit": "99544811a7c21dd07523f4a523382616d837dc8c",
+      "workspace_fingerprint": "6156a5fdff87055908fa3ccec86dc5812b649262167d2ace04612c3fbf8cc654",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Prepared positional-dot-call prototype implemented with shared descriptor lookup, per-call capture, and no bound metadata allocation for ordinary instance functions. Isolated compiler converged. All 14 focused runtime/codegen checks pass with separately committed callable-slot and method-identity prerequisites. Exact newly discovered regressions remain enforced, not weakened or skipped. Full combined build and performance qualification remain pending.",
+    "risks": [
+      "Custom __getattribute__ is preexisting unsupported behavior; class definitions of the hook disable binding elision and retain normal lookup.",
+      "Fallback dot calls allocate a context and argument vector; controlled performance comparison is pending.",
+      "Diagnostic compiler/runtime-cache regeneration is not a full build qualification receipt."
+    ],
+    "next_steps": [
+      "Merge with the object-namespace getter changes and validate the exact combined source.",
+      "Measure controlled method and inexpensive fallback dot-call workloads before accepting the optimization.",
+      "Run full compiler-runtime lane qualification before marking the contract review."
+    ]
+  }
+}

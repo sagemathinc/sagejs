@@ -207,6 +207,7 @@ ae(','.join(['1','2','3']), str.join(',', ['1','2','3']))
 ae('11111'.count('1', start=1, end=1), str.count('11111', '1', start=1, end=1))
 ae('{{}}'.format(), '{}')
 ae('{x}}}'.format(x=1), '1}')
+ae('{!r}'.format(dict), "<class 'dict'>")
 a = 1
 ae(f'{{ {a} }}', '{ 1 }')
 # Keep an interpolated assignment at end-of-file: the tokenizer must stop

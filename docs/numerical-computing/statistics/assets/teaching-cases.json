@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "student-tail",
+      "concept": "tail probability",
+      "operation": "StudentT(5).curve('sf', lower=0, upper=10, points=65)",
+      "lesson": "Use the survival function directly in an upper tail; subtracting a rounded CDF can erase the probability.",
+      "boundary": "The visualizer does not widen the documented Student-t degree-of-freedom or 1e-14 quantile-tail envelope."
+    },
+    {
+      "id": "tiny-training-fit",
+      "concept": "overfit risk",
+      "operation": "linear_regression([0, 1, 2], [0, 1, 2.1])",
+      "lesson": "A visually close in-sample line from three observations supplies very little evidence about predictive performance.",
+      "boundary": "The result reports in-sample OLS evidence, not cross-validation or a causal claim."
+    },
+    {
+      "id": "huber-outlier",
+      "concept": "outlier resistance",
+      "operation": "huber_regression(range(8), [1, 3, 5, 7, 9, 11, 13, 30])",
+      "lesson": "The static view marks observations with final Huber weight below 0.8 and the animation replays retained IRLS line updates.",
+      "boundary": "Robust residual weighting does not guarantee protection from high-leverage predictor values."
+    },
+    {
+      "id": "undefined-t-statistic",
+      "concept": "honest failure",
+      "operation": "one_sample_t_test([4, 4, 4], 4)",
+      "lesson": "Zero sample variance makes the t statistic undefined, so the visualization describes the structured failure instead of drawing an infinite statistic.",
+      "boundary": "No validated statistical claim is made for an invalid problem."
+    }
+  ]
+}

@@ -75,6 +75,7 @@ let pythonFrontend;
 let dynamicCompiler;
 let baselib;
 let toplevel;
+let runtimeModuleNames = [];
 let foreignFrontendUrl;
 let treeSitterRuntimeUrl;
 let foreignGrammarUrls;
@@ -110,6 +111,7 @@ function compileWithFrontend(source, filename, frontend, language) {
     jsage: language === "sage",
     exact_integer_literals: true,
     strict_python_scopes: true,
+    runtime_module_names: runtimeModuleNames,
     optimization_level: configuredOptimizationLevel,
   });
   const javascript = outputJavaScript(
@@ -171,13 +173,23 @@ async function configureForeignGrammar(language, module) {
   configuredForeignGrammars.add(language);
 }
 
-async function compile(source, filename) {
+async function compile(source, filename, defaultLanguage = "sage") {
+  if (defaultLanguage !== "sage" && defaultLanguage !== "python") {
+    throw new TypeError(
+      `unknown Sage.js language mode ${JSON.stringify(defaultLanguage)}`,
+    );
+  }
   if (!/^[\t ]*%%[A-Za-z]/.test(source)) {
-    return compileWithFrontend(source, filename, sageFrontend, "sage");
+    return compileWithFrontend(
+      source,
+      filename,
+      defaultLanguage === "sage" ? sageFrontend : pythonFrontend,
+      defaultLanguage,
+    );
   }
   const module = await foreignModule();
   const cell = module.prepareSubmittedPolyglotCell(
-    module.parsePolyglotCell(source),
+    module.parsePolyglotCell(source, defaultLanguage),
   );
   if (cell.language === "sage") {
     return compileWithFrontend(cell.source, filename, sageFrontend, "sage");
@@ -230,6 +242,7 @@ self.onmessage = async ({ data }) => {
       dynamicCompiler = undefined;
       baselib = undefined;
       toplevel = undefined;
+      runtimeModuleNames = [];
       foreignFrontendModulePromise = undefined;
       configuredForeignGrammars.clear();
       foreignFrontends.clear();
@@ -257,6 +270,14 @@ self.onmessage = async ({ data }) => {
         compilerSource,
         standardLibrary,
       );
+      const names = standardLibrary.runtimeModules ?? [];
+      if (!Array.isArray(names) || names.some(name =>
+        typeof name !== "string" ||
+        !/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(name) ||
+        name.split(".").some(part => ["__proto__", "prototype", "constructor"].includes(part)))) {
+        throw new TypeError("invalid browser runtime module inventory");
+      }
+      runtimeModuleNames = [...new Set(names)];
       compilerFrontend.configureBrowserCompilerResources({
         treeSitterRuntime,
         pythonGrammar,
@@ -275,7 +296,15 @@ self.onmessage = async ({ data }) => {
       const initializationSource = (standardLibrary.preload ?? [])
         .map((name) => `import ${name}`)
         .join("\n");
-      const initialization = nextFrontend.parse(initializationSource, {
+      const initializationFrontend = data.mode === "python"
+        ? nextDynamicFrontend
+        : nextFrontend;
+      if (data.mode !== "sage" && data.mode !== "python") {
+        throw new TypeError(
+          `unknown Sage.js language mode ${JSON.stringify(data.mode)}`,
+        );
+      }
+      const initialization = initializationFrontend.parse(initializationSource, {
         filename: "<browser-init>",
         basedir: "__stdlib__",
         libdir: "__stdlib__",
@@ -287,6 +316,7 @@ self.onmessage = async ({ data }) => {
         initialization,
         baselibSource,
         true,
+        data.mode,
       );
       // The baselib bootstrap deliberately publishes Sage's public names on
       // the worker global.  Keep the generated strict directive out of the
@@ -300,12 +330,13 @@ self.onmessage = async ({ data }) => {
       dynamicCompiler = createBrowserDynamicCompiler(
         nextCompiler,
         nextDynamicFrontend,
+        nextFrontend,
       );
     } else if (data.type === "compile") {
       if (!compiler) {
         throw new Error("Sage.js browser compiler is not initialized");
       }
-      result = await compile(data.source, data.filename);
+      result = await compile(data.source, data.filename, data.mode);
     } else if (data.type === "compileDynamic") {
       if (!dynamicCompiler) {
         throw new Error("Sage.js browser compiler is not initialized");

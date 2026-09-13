@@ -1,0 +1,177 @@
+{
+  "schema": "sagejs.optimization-campaign2-integral-browser-execution/v1",
+  "epochId": "sha256:a8f9f317c7945ddcd931ae8eabe6482fd5feef2c95199cdcd7bd1b00a5390bb3",
+  "frozenCommit": "01011e30ef8ebd14f21ad48c42c1a90c91c2919c",
+  "engine": "chromium",
+  "executablePath": "/home/user/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome",
+  "status": "passed",
+  "diagnostics": {
+    "cross_origin_isolated": true,
+    "shared_array_buffer": true,
+    "hardware_concurrency": 16,
+    "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+    "memory": {
+      "used_js_heap_size": 1520558,
+      "total_js_heap_size": 2441022,
+      "js_heap_size_limit": 4395630592
+    }
+  },
+  "durationMs": 3819.889999985695,
+  "stdout": "CAMPAIGN2_BROWSER|{\"aggregateState\":{\"candidateEffects\":0,\"fallbackRestarts\":4,\"guardPolls\":8,\"loaderCalls\":0,\"publications\":0},\"epochId\":\"sha256:a8f9f317c7945ddcd931ae8eabe6482fd5feef2c95199cdcd7bd1b00a5390bb3\",\"roles\":[{\"equivalence\":{\"derivative\":true,\"expectedProjection\":[0,65530,32767,9,0,65530,52453],\"expectedSingularError\":[\"ZeroDivisionError\",\"inverse of Mod(0, 65537) does not exist\"],\"inputUntouched\":true,\"projection\":[0,65530,32767,9,0,65530,52453],\"projectionExact\":true,\"projectionIndices\":[0,1,2,65536,65537,65538,70000],\"singularError\":[\"ZeroDivisionError\",\"inverse of Mod(0, 65537) does not exist\"],\"singularInputUntouched\":true},\"fallback\":{\"candidateEffects\":0,\"publications\":0,\"restartCount\":2,\"route\":\"actual public Polynomial.integral\"},\"guard\":{\"beforeEffects\":true,\"capabilityAvailable\":false,\"hostPolicyAllowsDynamicFfi\":false,\"loaderCalls\":0},\"prime\":65537,\"role\":\"representative\",\"sourceLength\":70000,\"workloadId\":\"sha256:acafa1b0dde04685c7f3312bcb3bad9ee35a3a79a834ae5d27d5d982f8ef30d8\"},{\"equivalence\":{\"derivative\":true,\"expectedProjection\":[0,250,127,9,0,250,146],\"expectedSingularError\":[\"ZeroDivisionError\",\"inverse of Mod(0, 257) does not exist\"],\"inputUntouched\":true,\"projection\":[0,250,127,9,0,250,146],\"projectionExact\":true,\"projectionIndices\":[0,1,2,256,257,258,10000],\"singularError\":[\"ZeroDivisionError\",\"inverse of Mod(0, 257) does not exist\"],\"singularInputUntouched\":true},\"fallback\":{\"candidateEffects\":0,\"publications\":0,\"restartCount\":2,\"route\":\"actual public Polynomial.integral\"},\"guard\":{\"beforeEffects\":true,\"capabilityAvailable\":false,\"hostPolicyAllowsDynamicFfi\":false,\"loaderCalls\":0},\"prime\":257,\"role\":\"held-out\",\"sourceLength\":10000,\"workloadId\":\"sha256:059ee19cbae72114c77c03c944def822999fcec8c4a79b76f0265c70f0461612\"}],\"schema\":\"sagejs.optimization-campaign2-integral-browser-fallback/v1\"}\n",
+  "stderr": "",
+  "repr": "",
+  "instrumentation": {
+    "routes": [
+      {
+        "capability_id": "kernel:packed-prime-polynomial-production",
+        "selected_route": "receipt-backed-wasm-artifact",
+        "execution_target": "wasm-artifact",
+        "call_count": 8,
+        "ingress_bytes": 5120080,
+        "egress_bytes": 0
+      }
+    ],
+    "boundary_crossings": 8,
+    "copied_bytes": 5120080
+  },
+  "pageErrors": [],
+  "candidate": {
+    "aggregateState": {
+      "candidateEffects": 0,
+      "fallbackRestarts": 4,
+      "guardPolls": 8,
+      "loaderCalls": 0,
+      "publications": 0
+    },
+    "epochId": "sha256:a8f9f317c7945ddcd931ae8eabe6482fd5feef2c95199cdcd7bd1b00a5390bb3",
+    "roles": [
+      {
+        "equivalence": {
+          "derivative": true,
+          "expectedProjection": [
+            0,
+            65530,
+            32767,
+            9,
+            0,
+            65530,
+            52453
+          ],
+          "expectedSingularError": [
+            "ZeroDivisionError",
+            "inverse of Mod(0, 65537) does not exist"
+          ],
+          "inputUntouched": true,
+          "projection": [
+            0,
+            65530,
+            32767,
+            9,
+            0,
+            65530,
+            52453
+          ],
+          "projectionExact": true,
+          "projectionIndices": [
+            0,
+            1,
+            2,
+            65536,
+            65537,
+            65538,
+            70000
+          ],
+          "singularError": [
+            "ZeroDivisionError",
+            "inverse of Mod(0, 65537) does not exist"
+          ],
+          "singularInputUntouched": true
+        },
+        "fallback": {
+          "candidateEffects": 0,
+          "publications": 0,
+          "restartCount": 2,
+          "route": "actual public Polynomial.integral"
+        },
+        "guard": {
+          "beforeEffects": true,
+          "capabilityAvailable": false,
+          "hostPolicyAllowsDynamicFfi": false,
+          "loaderCalls": 0
+        },
+        "prime": 65537,
+        "role": "representative",
+        "sourceLength": 70000,
+        "workloadId": "sha256:acafa1b0dde04685c7f3312bcb3bad9ee35a3a79a834ae5d27d5d982f8ef30d8"
+      },
+      {
+        "equivalence": {
+          "derivative": true,
+          "expectedProjection": [
+            0,
+            250,
+            127,
+            9,
+            0,
+            250,
+            146
+          ],
+          "expectedSingularError": [
+            "ZeroDivisionError",
+            "inverse of Mod(0, 257) does not exist"
+          ],
+          "inputUntouched": true,
+          "projection": [
+            0,
+            250,
+            127,
+            9,
+            0,
+            250,
+            146
+          ],
+          "projectionExact": true,
+          "projectionIndices": [
+            0,
+            1,
+            2,
+            256,
+            257,
+            258,
+            10000
+          ],
+          "singularError": [
+            "ZeroDivisionError",
+            "inverse of Mod(0, 257) does not exist"
+          ],
+          "singularInputUntouched": true
+        },
+        "fallback": {
+          "candidateEffects": 0,
+          "publications": 0,
+          "restartCount": 2,
+          "route": "actual public Polynomial.integral"
+        },
+        "guard": {
+          "beforeEffects": true,
+          "capabilityAvailable": false,
+          "hostPolicyAllowsDynamicFfi": false,
+          "loaderCalls": 0
+        },
+        "prime": 257,
+        "role": "held-out",
+        "sourceLength": 10000,
+        "workloadId": "sha256:059ee19cbae72114c77c03c944def822999fcec8c4a79b76f0265c70f0461612"
+      }
+    ],
+    "schema": "sagejs.optimization-campaign2-integral-browser-fallback/v1"
+  },
+  "artifactProvenance": {
+    "currentFrozenEpochCommit": "01011e30ef8ebd14f21ad48c42c1a90c91c2919c",
+    "browserWasmBuildCommit": "e46a92d588122d63b88078073242c33ac6678297",
+    "browserWasmSourceClosureSha256": "8b4c106abbbe637e6d90aee83ae623d14a9ab5b22692fb9c11299cde98659f98",
+    "browserWasmBuildReceiptSha256": "01860c13fc9e57a427f171600c88c9d6e732be7271de2cd45f2c662d1c6e8bdc",
+    "exactCurrentClosure": false,
+    "authority": "executed candidate-specific browser fallback for both frozen workloads, but not exact-current browser build closure"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/numerics/optimization/corpus.schema.json",
+  "type": "object",
+  "required": ["schema_version", "cases"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "operation", "formula", "expect"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "operation": { "type": "string", "minLength": 1 },
+          "formula": { "type": "string", "minLength": 1 },
+          "method": { "type": "string" },
+          "dimension": { "type": "integer", "minimum": 1 },
+          "initial": { "type": "array", "items": { "type": "number" } },
+          "bounds": { "type": "array" },
+          "benchmark": { "type": "boolean" },
+          "expect": {
+            "type": "object",
+            "properties": {
+              "success": { "type": "boolean" },
+              "status": { "type": "string" },
+              "value": { "type": ["number", "array"] },
+              "distance_max": { "type": "number", "minimum": 0 },
+              "objective_max": { "type": "number", "minimum": 0 },
+              "objective_available": { "type": "boolean" },
+              "validation_residual_max": { "type": "number", "minimum": 0 },
+              "diagnostics": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 },
+                "uniqueItems": true
+              },
+              "exception": { "type": "string" }
+            },
+            "minProperties": 1,
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}

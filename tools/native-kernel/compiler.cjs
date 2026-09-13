@@ -30,6 +30,10 @@ const { macosDeploymentTarget } = require("../../scripts/darwin-native.cjs");
 const {
   normalizeAutomaticSelections,
 } = require("./automatic-selection.cjs");
+const {
+  buildJobs,
+  runBufferedCommand,
+} = require("../../scripts/build-parallelism.cjs");
 
 const root = resolve(__dirname, "..", "..");
 const windowsTriplet = "x64-windows-static-md-release";
@@ -219,10 +223,14 @@ function contentAddressedFile(filename, description, digestStore) {
   }
   const resolved = realpathSync(absolute);
   const identity = statIdentity(before);
+  // Windows can return identical nanosecond timestamps for distinct same-size
+  // writes. Neither the process cache nor a persisted stat tuple proves that
+  // compiler inputs still contain the bytes previously hashed on that host.
+  const reusableStatIdentity = process.platform !== "win32";
   const cached = foreignInputDigestCache.get(resolved);
-  if (cached?.identity === identity) return cached.value;
+  if (reusableStatIdentity && cached?.identity === identity) return cached.value;
   const persisted = digestStore?.files[portablePath(resolved)];
-  const persistedDigest = persisted?.identity === identity &&
+  const persistedDigest = reusableStatIdentity && persisted?.identity === identity &&
       typeof persisted.sha256 === "string" &&
       /^[a-f0-9]{64}$/.test(persisted.sha256)
     ? persisted.sha256
@@ -305,6 +313,7 @@ function writeDiscoveryIndex(
     sourceHash,
     nativeAbi: compatibility.nativeAbi,
     foreignDeclarations: compatibility.foreignDeclarations,
+    privateFunctions: compatibility.privateFunctions,
   };
   index.sources[sourcePath] = record;
   if (sourceKey !== undefined) {
@@ -319,12 +328,22 @@ function writeDiscoveryIndex(
   writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`);
 }
 
-function nativeCompatibility(ir, foreignInputs) {
+function nativeCompatibility(ir, foreignInputs, sourcePath) {
   const inputsByLibrary = new Map(
     foreignInputs.map((input) => [input.id, input]),
   );
   return Object.freeze({
     nativeAbi: NATIVE_ABI_VERSION,
+    privateFunctions: Object.freeze(
+      ir.functions
+        .filter((fn) =>
+          fn.lexicallyNative === true &&
+          fn.hostCallable === false &&
+          fn.provenance?.file === sourcePath
+        )
+        .map((fn) => fn.name)
+        .sort(),
+    ),
     foreignDeclarations: Object.freeze(
       (ir.foreignLibraries || [])
         .map((library) => {
@@ -348,6 +367,8 @@ function backendFingerprint() {
       readFileSync(__filename),
       readFileSync(join(__dirname, "ir.cjs")),
       readFileSync(join(__dirname, "integer-ir.cjs")),
+      readFileSync(join(__dirname, "integer-constants.cjs")),
+      readFileSync(join(__dirname, "workspace-bundles.cjs")),
       readFileSync(join(__dirname, "float64-ir.cjs")),
       readFileSync(join(__dirname, "exact-analysis.cjs")),
       readFileSync(join(__dirname, "prime-field-ir.cjs")),
@@ -359,8 +380,10 @@ function backendFingerprint() {
       readFileSync(join(__dirname, "provenance.cjs")),
       readFileSync(join(__dirname, "word-backend.cjs")),
       readFileSync(join(__dirname, "tagged-backend.cjs")),
+      readFileSync(join(__dirname, "fmpz-backend.cjs")),
       readFileSync(join(__dirname, "core-abi.cjs")),
       readFileSync(join(__dirname, "exact-runtime.cjs")),
+      readFileSync(join(__dirname, "fmpz-runtime.cjs")),
       readFileSync(join(__dirname, "c-backend.cjs")),
       readFileSync(join(__dirname, "js-backend.cjs")),
       readFileSync(join(__dirname, "ffi-codegen.cjs")),
@@ -480,6 +503,14 @@ function foreignLinkedLibraries(library, platform = process.platform) {
   }));
 }
 
+function residentFmpzLinkedLibraries(platform = process.platform) {
+  // An implicit fmpz backend still links FLINT's complete platform closure.
+  // In particular, Windows FLINT's allocator requires pthreadVC3 even when
+  // the source has no explicit foreign call to introduce that dependency.
+  const { library } = JSON.parse(readFileSync(join(root, "ffi", "flint.ffi.json"), "utf8"));
+  return foreignLinkedLibraries(library, platform);
+}
+
 function resolveDeclaredHeader(
   library,
   name,
@@ -513,7 +544,7 @@ function resolveDeclaredHeader(
   );
 }
 
-function repositoryHeaderDependencies(headers, includeDirectories, digestStore) {
+function resolvedHeaderDependencies(headers, includeDirectories, digestStore) {
   const direct = new Set(headers.map((header) => header.resolvedPath));
   const visited = new Set();
   const pending = headers.map((header) => header.path);
@@ -550,13 +581,9 @@ function repositoryHeaderDependencies(headers, includeDirectories, digestStore) 
         }
       }
       if (resolvedHeader === null) continue;
+      // Reused dependency prefixes may live outside this checkout. Their
+      // inline definitions are compiler inputs just like repository headers.
       const repositoryRelative = relative(root, resolvedHeader);
-      if (
-        repositoryRelative === "" || repositoryRelative === ".." ||
-        repositoryRelative.startsWith(`..${sep}`)
-      ) {
-        continue;
-      }
       const identity = contentAddressedFile(
         resolvedHeader,
         `transitive native header ${name}`,
@@ -580,9 +607,7 @@ function repositoryHeaderDependencies(headers, includeDirectories, digestStore) 
 
 function resolveForeignCompilationInputs(ir, digestStore) {
   const includeDirectories = compilationIncludeDirectories(ir);
-  return Object.freeze(
-    (ir.foreignLibraries || [])
-      .map((library) => {
+  const inputs = (ir.foreignLibraries || []).map((library) => {
         const headers = Object.freeze(
           [...library.native.headers]
             .sort()
@@ -595,7 +620,7 @@ function resolveForeignCompilationInputs(ir, digestStore) {
               ),
             )),
         );
-        const transitiveHeaders = repositoryHeaderDependencies(
+        const transitiveHeaders = resolvedHeaderDependencies(
           headers,
           includeDirectories,
           digestStore,
@@ -623,9 +648,43 @@ function resolveForeignCompilationInputs(ir, digestStore) {
           ...value,
           fingerprint: sha256(JSON.stringify(value)),
         });
-      })
-      .sort((left, right) => left.id.localeCompare(right.id)),
-  );
+      });
+  if ((ir.functions || []).some(
+    (fn) => fn.analysis?.backend?.kind === "fmpz"
+  )) {
+    const headers = Object.freeze([
+      Object.freeze({
+        name: "flint/fmpz.h",
+        ...contentAddressedFile(
+          join(nativePrefix, "include", "flint", "fmpz.h"),
+          "resident fmpz backend header flint/fmpz.h",
+          digestStore,
+        ),
+      }),
+    ]);
+    const libraries = Object.freeze(residentFmpzLinkedLibraries().map(
+      ({ name, path }) => Object.freeze({
+        name,
+        ...contentAddressedFile(path, `resident fmpz backend library ${name}`, digestStore),
+      }),
+    ));
+    const value = {
+      id: "sagejs-resident-fmpz",
+      prefix: portablePath(nativePrefix),
+      includeOrder: Object.freeze(includeDirectories.map(portablePath)),
+      headers,
+      transitiveHeaders: resolvedHeaderDependencies(
+        headers, includeDirectories, digestStore,
+      ),
+      libraries,
+    };
+    inputs.push(Object.freeze({
+      ...value,
+      fingerprint: sha256(JSON.stringify(value)),
+    }));
+  }
+  inputs.sort((left, right) => left.id.localeCompare(right.id));
+  return Object.freeze(inputs);
 }
 
 function foreignCompilationInputs(ir, options = {}) {
@@ -657,16 +716,27 @@ function bindingGyp(
         record.fields.some((field) => field.type === "PrimeModulusValue")
       ))
   );
+  const usesResidentFmpz = ir.functions.some(
+    (fn) => fn.analysis?.backend?.kind === "fmpz",
+  );
   const matrixOnly = ir.functions.every(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
   );
+  const floatOnly = ir.functions.length > 0 &&
+    ir.functions.every((fn) => fn.kernelKind === "float64") &&
+    (ir.foreignLibraries || []).length === 0;
+  const usesFloat64 = ir.functions.some((fn) => fn.kernelKind === "float64");
   const tuning = usesSpecializedPrimeField ? primeFieldTuning() : null;
   const foreignLibraries = Array.from(new Set(
     (ir.foreignLibraries || []).flatMap((library) =>
       foreignLinkedLibraries(library, platform).map(({ path }) => path)
     ),
   ));
-  const usesForeignLibraries = foreignLibraries.length > 0;
+  const linkedForeignLibraries = Array.from(new Set([
+    ...foreignLibraries,
+    ...(usesResidentFmpz ? residentFmpzLinkedLibraries(platform).map(({ path }) => path) : []),
+  ]));
+  const usesForeignLibraries = linkedForeignLibraries.length > 0;
   const cxxLanguage = generatedCxxLanguageSettings(platform);
   const target = {
     target_name: "sagejs_native_kernel",
@@ -695,9 +765,9 @@ function bindingGyp(
   };
   if (platform === "win32") {
     target.libraries = [
-      ...foreignLibraries,
+      ...linkedForeignLibraries,
       ...(usesExplicitPrimeModulus ? [nativeFlintLibrary] : []),
-      ...(!matrixOnly
+      ...(!matrixOnly && !floatOnly
         ? [
           nativeMpcLibrary,
           join(nativePrefix, "lib", "mpfr.lib"),
@@ -725,6 +795,9 @@ function bindingGyp(
         ...(profileSymbols ? { DebugInformationFormat: 3 } : {}),
         Optimization: 3,
         WarningLevel: 3,
+        ...(usesFloat64
+          ? { AdditionalOptions: ["/clang:-ffp-contract=off"] }
+          : {}),
         ...(hasExceptionShims
           ? {
             ExceptionHandling: 1,
@@ -742,9 +815,9 @@ function bindingGyp(
     };
   } else {
     target.libraries = [
-      ...foreignLibraries,
+      ...linkedForeignLibraries,
       ...(usesExplicitPrimeModulus ? [nativeFlintLibrary] : []),
-      ...(!matrixOnly
+      ...(!matrixOnly && !floatOnly
         ? [
           nativeMpcLibrary,
           join(nativePrefix, "lib", "libmpfr.a"),
@@ -752,7 +825,7 @@ function bindingGyp(
         ]
         : []),
       "-lm",
-      ...((ir.foreignLibraries || []).length > 0 ? ["-lpthread"] : []),
+      ...(usesForeignLibraries ? ["-lpthread"] : []),
     ];
     target.cflags = [
       "-O3",
@@ -761,6 +834,7 @@ function bindingGyp(
       "-Wextra",
       "-ffunction-sections",
       "-fdata-sections",
+      ...(usesFloat64 ? ["-ffp-contract=off"] : []),
       ...(profileSymbols ? ["-g"] : []),
     ];
     if (hasExceptionShims) {
@@ -775,6 +849,7 @@ function bindingGyp(
       target.xcode_settings = {
         GCC_OPTIMIZATION_LEVEL: "3",
         MACOSX_DEPLOYMENT_TARGET: macosDeploymentTarget(),
+        ...(usesFloat64 ? { OTHER_CFLAGS: ["-ffp-contract=off"] } : {}),
         ...(profileSymbols
           ? {
             DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym",
@@ -794,6 +869,11 @@ function bindingGyp(
         "-Wl,--gc-sections",
         "-Wl,--exclude-libs,ALL",
         ...(profileSymbols ? [] : ["-Wl,--strip-all"]),
+        // FLINT-family addons may embed OpenBLAS, whose process-wide atfork
+        // handlers cannot be deregistered safely while another Node thread is
+        // entering fork/uv_spawn. Worker isolates release DLibs asynchronously,
+        // so retain Linux ELF images until process exit.
+        ...(platform === "linux" ? ["-Wl,-z,nodelete"] : []),
       ];
     }
   }
@@ -838,7 +918,7 @@ async function compileKernel(options) {
     ir,
   );
   const foreignInputs = foreignCompilationInputs(ir, { cacheRoot });
-  const compatibility = nativeCompatibility(ir, foreignInputs);
+  const compatibility = nativeCompatibility(ir, foreignInputs, sourcePath);
   const usesSpecializedPrimeField = ir.functions.some(
     (fn) => fn.kernelKind === "prime-field-matrix",
   );
@@ -923,6 +1003,7 @@ async function compileKernel(options) {
       shimHeaderPath: exceptionShims === null ? null : shimHeaderPath,
       nativeAbi: compatibility.nativeAbi,
       foreignDeclarations: compatibility.foreignDeclarations,
+      privateFunctions: compatibility.privateFunctions,
       foreignInputs,
       automaticSelections,
       exceptionShields: exceptionShims === null ? [] :
@@ -933,7 +1014,10 @@ async function compileKernel(options) {
   const matrixOnly = ir.functions.every(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
   );
-  if (!matrixOnly && !existsSync(nativeMpcLibrary)) {
+  const floatOnly = ir.functions.length > 0 &&
+    ir.functions.every((fn) => fn.kernelKind === "float64") &&
+    (ir.foreignLibraries || []).length === 0;
+  if (!matrixOnly && !floatOnly && !existsSync(nativeMpcLibrary)) {
     throw new Error(
       "native MPC dependencies are not built; run " +
         "pnpm --dir packages/flint build",
@@ -974,6 +1058,7 @@ async function compileKernel(options) {
       sourcePath,
       nativeAbi: compatibility.nativeAbi,
       foreignDeclarations: compatibility.foreignDeclarations,
+      privateFunctions: compatibility.privateFunctions,
     }),
   );
   writeFileSync(
@@ -985,6 +1070,7 @@ async function compileKernel(options) {
         nativeAbi: NATIVE_ABI_VERSION,
         sourceHash,
         foreignDeclarations: compatibility.foreignDeclarations,
+        privateFunctions: compatibility.privateFunctions,
         foreignInputs,
         primeFieldTuning: tuning,
         sourceBoundsChecked,
@@ -1008,10 +1094,14 @@ async function compileKernel(options) {
   const buildWorkspace = nativeBuildWorkspace(outputPath);
   let build;
   try {
-    build = spawnSync(process.execPath, [nodeGyp, "rebuild"], {
+    build = await runBufferedCommand(
+      process.execPath,
+      [nodeGyp, "rebuild", "--jobs", String(options.jobs ?? buildJobs())],
+      {
       cwd: buildWorkspace.directory,
-      encoding: "utf8",
-    });
+      signal: options.signal,
+      },
+    );
   } finally {
     buildWorkspace.close();
   }
@@ -1051,6 +1141,7 @@ async function compileKernel(options) {
     shimHeaderPath: exceptionShims === null ? null : shimHeaderPath,
     nativeAbi: compatibility.nativeAbi,
     foreignDeclarations: compatibility.foreignDeclarations,
+    privateFunctions: compatibility.privateFunctions,
     foreignInputs,
     automaticSelections,
     exceptionShields: exceptionShims === null ? [] :

@@ -1,0 +1,358 @@
+{
+  "schema": "sagejs.brandt-ideal-classes-stage-profile.v1",
+  "recorded_at": "2026-08-29T05:06:33.276Z",
+  "source_commit": "07bc15f6243891173d650395fb904d1518849ce4",
+  "profiler_sha256": "a7d89adb83e2e6cd066c87bc9bd2840aafc3e2c629abef067825ca75c98d3e42",
+  "node": "v26.7.0",
+  "platform": "linux",
+  "arch": "x64",
+  "cases": [
+    [
+      11,
+      2,
+      3
+    ],
+    [
+      37,
+      2,
+      3
+    ]
+  ],
+  "memory": {
+    "rss_bytes": 255041536,
+    "heap_total_bytes": 8953856,
+    "heap_used_bytes": 6338144,
+    "external_bytes": 2299324,
+    "array_buffers_bytes": 143659
+  },
+  "records": [
+    {
+      "D": 11,
+      "N": 2,
+      "ell": 3,
+      "dimension": 3,
+      "construction_seconds": "1.1734223365783691",
+      "direct_seconds": "0.6569924354553223",
+      "brandt_series_seconds": "0.20081615447998047",
+      "primary_seconds": "2.031230926513672",
+      "named_exclusive_seconds": "2.02655220031738",
+      "named_fraction": "0.997696605474435",
+      "stages": {
+        "eichler_order": {
+          "calls": 1,
+          "inclusive_seconds": "0.634617090225220",
+          "exclusive_seconds": "0.634617090225220"
+        },
+        "lattice_canonicalization": {
+          "calls": 42,
+          "inclusive_seconds": "0.257254123687744",
+          "exclusive_seconds": "0.257254123687744"
+        },
+        "ideal_construction": {
+          "calls": 13,
+          "inclusive_seconds": "0.0608215332031250",
+          "exclusive_seconds": "0.00679135322570801"
+        },
+        "gram_lll_flint": {
+          "calls": 32,
+          "inclusive_seconds": "0.00353622436523438",
+          "exclusive_seconds": "0.00353622436523438"
+        },
+        "norm_plan_setup": {
+          "calls": 32,
+          "inclusive_seconds": "0.551034212112427",
+          "exclusive_seconds": "0.547497987747192"
+        },
+        "native_theta": {
+          "calls": 22,
+          "inclusive_seconds": "0.0471153259277344",
+          "exclusive_seconds": "0.0471153259277344"
+        },
+        "unit_weight": {
+          "calls": 3,
+          "inclusive_seconds": "0.106761217117310",
+          "exclusive_seconds": "0.00982689857482910"
+        },
+        "theta_series": {
+          "calls": 24,
+          "inclusive_seconds": "0.341930389404297",
+          "exclusive_seconds": "0.0725293159484863"
+        },
+        "neighbors": {
+          "calls": 3,
+          "inclusive_seconds": "0.253551244735718",
+          "exclusive_seconds": "0.197831153869629"
+        },
+        "classify": {
+          "calls": 12,
+          "inclusive_seconds": "0.642112493515015",
+          "exclusive_seconds": "0.00512456893920898"
+        },
+        "native_exact_vectors": {
+          "calls": 10,
+          "inclusive_seconds": "0.0139932632446289",
+          "exclusive_seconds": "0.0139932632446289"
+        },
+        "ideal_equivalence": {
+          "calls": 10,
+          "inclusive_seconds": "0.338577270507812",
+          "exclusive_seconds": "0.0418362617492676"
+        },
+        "class_enumeration": {
+          "calls": 1,
+          "inclusive_seconds": "0.445951938629150",
+          "exclusive_seconds": "0.0149199962615967"
+        },
+        "module_construction_and_jl_oracle": {
+          "calls": 1,
+          "inclusive_seconds": "1.16955399513245",
+          "exclusive_seconds": "0.0889849662780762"
+        },
+        "direct_operator": {
+          "calls": 1,
+          "inclusive_seconds": "0.626047134399414",
+          "exclusive_seconds": "0.00603294372558594"
+        },
+        "public_hecke_and_oracles": {
+          "calls": 2,
+          "inclusive_seconds": "0.856998205184937",
+          "exclusive_seconds": "0.0443365573883057"
+        },
+        "brandt_product_plans": {
+          "calls": 6,
+          "inclusive_seconds": "0.156252384185791",
+          "exclusive_seconds": "0.00396203994750977"
+        },
+        "brandt_series_operator": {
+          "calls": 1,
+          "inclusive_seconds": "0.186614513397217",
+          "exclusive_seconds": "0.0303621292114258"
+        }
+      },
+      "matrix_rows": [
+        [
+          "0",
+          "2",
+          "2"
+        ],
+        [
+          "1",
+          "1",
+          "2"
+        ],
+        [
+          "1",
+          "2",
+          "1"
+        ]
+      ],
+      "mass_verified": true
+    },
+    {
+      "D": 37,
+      "N": 2,
+      "ell": 3,
+      "dimension": 9,
+      "construction_seconds": "2.898496150970459",
+      "direct_seconds": "0.7097258567810059",
+      "brandt_series_seconds": "1.3595881462097168",
+      "primary_seconds": "4.967810153961182",
+      "named_exclusive_seconds": "4.96681094169617",
+      "named_fraction": "0.999798862630808",
+      "stages": {
+        "eichler_order": {
+          "calls": 1,
+          "inclusive_seconds": "0.609946727752686",
+          "exclusive_seconds": "0.609946727752686"
+        },
+        "lattice_canonicalization": {
+          "calls": 147,
+          "inclusive_seconds": "0.898423671722412",
+          "exclusive_seconds": "0.898423671722412"
+        },
+        "ideal_construction": {
+          "calls": 37,
+          "inclusive_seconds": "0.167657613754272",
+          "exclusive_seconds": "0.0154373645782471"
+        },
+        "gram_lll_flint": {
+          "calls": 119,
+          "inclusive_seconds": "0.00604891777038574",
+          "exclusive_seconds": "0.00604891777038574"
+        },
+        "norm_plan_setup": {
+          "calls": 119,
+          "inclusive_seconds": "2.28499102592468",
+          "exclusive_seconds": "2.27894210815430"
+        },
+        "native_theta": {
+          "calls": 64,
+          "inclusive_seconds": "0.0757369995117188",
+          "exclusive_seconds": "0.0757369995117188"
+        },
+        "unit_weight": {
+          "calls": 9,
+          "inclusive_seconds": "0.257599353790283",
+          "exclusive_seconds": "0.0110216140747070"
+        },
+        "theta_series": {
+          "calls": 72,
+          "inclusive_seconds": "0.976759910583496",
+          "exclusive_seconds": "0.190824985504150"
+        },
+        "neighbors": {
+          "calls": 9,
+          "inclusive_seconds": "0.668688058853149",
+          "exclusive_seconds": "0.505598545074463"
+        },
+        "classify": {
+          "calls": 36,
+          "inclusive_seconds": "1.94734787940979",
+          "exclusive_seconds": "0.0117833614349365"
+        },
+        "native_exact_vectors": {
+          "calls": 28,
+          "inclusive_seconds": "0.0413467884063721",
+          "exclusive_seconds": "0.0413467884063721"
+        },
+        "ideal_equivalence": {
+          "calls": 28,
+          "inclusive_seconds": "1.01164078712463",
+          "exclusive_seconds": "0.105316400527954"
+        },
+        "class_enumeration": {
+          "calls": 1,
+          "inclusive_seconds": "2.27371883392334",
+          "exclusive_seconds": "0.0276465415954590"
+        },
+        "module_construction_and_jl_oracle": {
+          "calls": 1,
+          "inclusive_seconds": "2.89796686172485",
+          "exclusive_seconds": "0.0143013000488281"
+        },
+        "direct_operator": {
+          "calls": 1,
+          "inclusive_seconds": "0.692389011383057",
+          "exclusive_seconds": "0.00742173194885254"
+        },
+        "public_hecke_and_oracles": {
+          "calls": 2,
+          "inclusive_seconds": "2.06884407997131",
+          "exclusive_seconds": "0.0335593223571777"
+        },
+        "brandt_product_plans": {
+          "calls": 45,
+          "inclusive_seconds": "1.22947907447815",
+          "exclusive_seconds": "0.0200378894805908"
+        },
+        "brandt_series_operator": {
+          "calls": 1,
+          "inclusive_seconds": "1.34289574623108",
+          "exclusive_seconds": "0.113416671752930"
+        }
+      },
+      "matrix_rows": [
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "1",
+          "2",
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "1",
+          "1",
+          "0",
+          "1",
+          "1",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "1",
+          "0",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "2"
+        ],
+        [
+          "0",
+          "1",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "2",
+          "0"
+        ],
+        [
+          "1",
+          "0",
+          "0",
+          "0",
+          "2",
+          "1",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "1",
+          "0",
+          "0",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "1",
+          "1",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "1",
+          "1"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "2",
+          "0",
+          "0",
+          "1",
+          "0",
+          "1"
+        ],
+        [
+          "0",
+          "0",
+          "2",
+          "0",
+          "0",
+          "0",
+          "1",
+          "1",
+          "0"
+        ]
+      ],
+      "mass_verified": true
+    }
+  ]
+}

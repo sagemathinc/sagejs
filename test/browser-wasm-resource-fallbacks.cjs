@@ -22,6 +22,10 @@ function sourceFiles(directory) {
   return answer;
 }
 
+function repositoryRelativePath(root, path) {
+  return relative(root, path).replaceAll("\\", "/");
+}
+
 function collectStrings(value, answer = new Set()) {
   if (typeof value === "string") {
     answer.add(value);
@@ -81,7 +85,8 @@ test("public resource constructors cannot assume unshipped Wasm exports", () => 
         ) {
           continue;
         }
-        const key = `${fn.id}:${relative(root, path)}`;
+        const sourcePath = repositoryRelativePath(root, path);
+        const key = `${fn.id}:${sourcePath}`;
         assert.ok(
           reviewedNativeOnly.has(key),
           `${key} calls ${fn.dynamic.export}, which is absent from the production Wasm closure, without an explicit capability guard`,
@@ -138,7 +143,7 @@ test("public operations on shipped resources cannot assume omitted Wasm exports"
           (enclosingPrefix.includes("_flint_backend_has_function")
             || enclosingPrefix.includes("runtime.reflect.get"))
             && enclosingPrefix.includes(fn.dynamic.export),
-          `${fn.id}:${relative(root, path)} calls ${fn.dynamic.export}, which is absent from the production Wasm closure, without an explicit capability guard`,
+          `${fn.id}:${repositoryRelativePath(root, path)} calls ${fn.dynamic.export}, which is absent from the production Wasm closure, without an explicit capability guard`,
         );
       }
     }

@@ -5,6 +5,26 @@ import { getAsset, getAssetKeys, isSea } from "node:sea";
 const CAPABILITY_REPORT_ASSET =
   "architecture/wasm-capabilities-report.json";
 
+/** Keep catalogue I/O off ordinary evaluation; validate on first query. */
+export function createLazySagejsCapabilityApi(
+  load: () => any = loadSagejsCapabilityApi,
+): any {
+  let loaded: any;
+  const api = () => {
+    // Publish only a successfully validated catalogue. A failed load remains
+    // observable and retryable rather than caching a partial report.
+    if (loaded === undefined) loaded = load();
+    return loaded;
+  };
+  return Object.freeze({
+    get report() { return api().report; },
+    sagejs_capabilities(family: string | null = null) {
+      return api().sagejs_capabilities(family);
+    },
+    workflow(tag: string) { return api().workflow(tag); },
+  });
+}
+
 function architectureDirectory(): string {
   const candidates = [
     join(__dirname, "..", "architecture"),

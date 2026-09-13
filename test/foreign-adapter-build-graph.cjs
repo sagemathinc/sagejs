@@ -61,8 +61,8 @@ test("ordinary build order generates declarations before adapter reconciliation"
   const source = readFileSync(join(repositoryRoot, "scripts", "build.cjs"), "utf8");
   const generate = source.indexOf('"ffi", "generate"');
   const moduleCache = source.indexOf('"build-module-cache.cjs"');
-  const reconcile = source.indexOf('"--reconcile-installed"');
-  const production = source.indexOf('"build-production-native-kernels.cjs"');
+  const reconcile = source.indexOf("return reconcileInstalledNative();");
+  const production = source.indexOf("return publishProductionNative();");
   assert.ok(generate >= 0);
   assert.ok(generate < moduleCache);
   assert.ok(moduleCache < reconcile);

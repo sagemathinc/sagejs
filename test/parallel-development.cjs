@@ -51,6 +51,7 @@ const {
   nativeCacheProcessIdentity,
   nativeCacheStatus,
   prepareNativeArtifact,
+  prepareNativeSpec,
   restoreNativeArtifact,
   restoreNativePackages,
   snapshot,
@@ -121,10 +122,21 @@ test("lane policy permits focused native and collateral claims", () => {
   assert.equal(laneAllowsClaim(lane, "packages/flint/src/p1.c"), true);
   assert.equal(laneAllowsClaim(lane, "bench/newspace.cjs"), true);
   assert.equal(laneAllowsClaim(lane, "src/baselib/graphics.py"), false);
+  assert.equal(laneAllowsClaim(lane, "website/reference.html"), true);
+  assert.equal(laneAllowsClaim(lane, "website/reference-data.json"), true);
+  assert.equal(laneAllowsClaim(lane, "website/app.mjs"), false);
+  assert.equal(laneAllowsClaim(lane, "website/"), false);
   assert.deepEqual(
     new Set(taskSchema.properties.lane.enum),
     new Set(lanes.keys()),
   );
+});
+
+test("compiler runtime claims include only the lazy namespace module", () => {
+  const lane = lanes.get("compiler-runtime");
+  assert.equal(laneAllowsClaim(lane, "src/lib/sagejs/_namespace.py"), true);
+  assert.equal(laneAllowsClaim(lane, "src/lib/sagejs/"), false);
+  assert.equal(laneAllowsClaim(lane, "src/lib/sagejs/number_fields.py"), false);
 });
 
 test("task contracts enforce lane checks and Windows native policy", () => {
@@ -906,6 +918,33 @@ test("native artifact cache builds cold and restores immutable warm snapshots", 
   }
 });
 
+test("warm addon preparation bypasses compiler convergence", () => {
+  const { directory, workspace, cacheRoot } = nativeCacheFixture();
+  const counter = { count: 0 };
+  let compilerChecks = 0;
+  try {
+    const spec = { ...nativeCacheSpec(workspace), stage: "addon" };
+    const options = {
+      build: buildNativeCacheFixture(counter),
+      ensureCompiler() {
+        compilerChecks += 1;
+      },
+    };
+    assert.equal(
+      prepareNativeSpec(workspace, cacheRoot, spec, options).status,
+      "built",
+    );
+    assert.equal(compilerChecks, 1);
+    assert.equal(
+      prepareNativeSpec(workspace, cacheRoot, spec, options).status,
+      "present",
+    );
+    assert.equal(compilerChecks, 1);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("native addon preparation builds the compiler once in a fresh workspace", () => {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-native-compiler-test-"));
   let builds = 0;
@@ -1380,6 +1419,24 @@ test("destructive provisioning rejects symlinked ancestors and preserves sentine
   }
 });
 
+test("native snapshots exclude transient Python bytecode caches", () => {
+  const { directory, workspace } = nativeCacheFixture();
+  try {
+    const baseline = snapshot(workspace, ["source"]);
+    const cache = join(workspace, "source", "__pycache__");
+    mkdirSync(cache);
+    writeFileSync(join(cache, "helper.cpython-314.pyc"), "first bytecode\n");
+    assert.deepEqual(snapshot(workspace, ["source"]), baseline);
+    writeFileSync(join(cache, "helper.cpython-314.pyc"), "changed bytecode\n");
+    writeFileSync(join(workspace, "source", "orphan.pyo"), "optimized bytecode\n");
+    assert.deepEqual(snapshot(workspace, ["source"]), baseline);
+    writeFileSync(join(workspace, "source", "input.c"), "changed source\n");
+    assert.notDeepEqual(snapshot(workspace, ["source"]), baseline);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("declared input leaves reject symlinks before building or publishing", () => {
   const { directory, workspace, cacheRoot } = nativeCacheFixture();
   const counter = { count: 0 };
@@ -1717,6 +1774,21 @@ test("native keys ignore invocation-only pnpm lifecycle variables", () => {
   }
 });
 
+test("native keys ignore build scheduling concurrency", () => {
+  const workspace = resolve(__dirname, "..");
+  const savedBuildJobs = process.env.SAGEJS_BUILD_JOBS;
+  try {
+    process.env.SAGEJS_BUILD_JOBS = "1";
+    const serial = nativeArtifactSpecs(workspace).map(({ id, key }) => ({ id, key }));
+    process.env.SAGEJS_BUILD_JOBS = "8";
+    const parallel = nativeArtifactSpecs(workspace).map(({ id, key }) => ({ id, key }));
+    assert.deepEqual(parallel, serial);
+  } finally {
+    if (savedBuildJobs === undefined) delete process.env.SAGEJS_BUILD_JOBS;
+    else process.env.SAGEJS_BUILD_JOBS = savedBuildJobs;
+  }
+});
+
 test("dependency keys include explicit archivers and external vcpkg executables", () => {
   const workspace = resolve(__dirname, "..");
   const directory = mkdtempSync(join(tmpdir(), "sagejs-native-tools-test-"));
@@ -1754,8 +1826,12 @@ test("dependency keys include explicit archivers and external vcpkg executables"
 
 test("a custom prefix skips only its package during cache restore", () => {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-native-prefix-test-"));
-  const previous = process.env.SAGEJS_FLINT_PREFIX;
+  const prefixNames = ["SAGEJS_FLINT_PREFIX", "SAGEJS_FFLAS_PREFIX", "SAGEJS_GRAPH_PREFIX"];
+  const previous = prefixNames.map((name) => process.env[name]);
   try {
+    // Qualification may reuse all three dependency prefixes. This fixture
+    // deliberately tests the FLINT-only case, independent of the host setup.
+    for (const name of prefixNames) delete process.env[name];
     process.env.SAGEJS_FLINT_PREFIX = join(directory, "external-flint");
     const results = restoreNativePackages(
       resolve(__dirname, ".."),
@@ -1777,8 +1853,10 @@ test("a custom prefix skips only its package during cache restore", () => {
       ],
     );
   } finally {
-    if (previous === undefined) delete process.env.SAGEJS_FLINT_PREFIX;
-    else process.env.SAGEJS_FLINT_PREFIX = previous;
+    prefixNames.forEach((name, index) => {
+      if (previous[index] === undefined) delete process.env[name];
+      else process.env[name] = previous[index];
+    });
     rmSync(directory, { recursive: true, force: true });
   }
 });
@@ -1901,7 +1979,12 @@ test("ownerless native cache locks are recovered promptly", () => {
     });
     assert.equal(result.status, "built");
     assert.equal(counter.count, 1);
-    assert.ok(Date.now() - started < 1000);
+    // Windows verifies process identity by starting PowerShell.  Recovery is
+    // still immediate (there is no stale-lock wait), but that host boundary
+    // is materially slower when the test runner has several active files.
+    const recoveryBudgetMilliseconds =
+      process.platform === "win32" ? 5000 : 1000;
+    assert.ok(Date.now() - started < recoveryBudgetMilliseconds);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -1975,7 +2058,10 @@ test("native cache heartbeat advances during a synchronous build", {
       heartbeatMilliseconds: 20,
       build(current) {
         const before = readFileSync(join(lock, "heartbeat"), "utf8");
-        Atomics.wait(pause, 0, 0, 250);
+        // Native Windows obtains a process-birth identity through PowerShell;
+        // allow that helper to initialize before requiring its first beat.
+        const heartbeatWait = process.platform === "win32" ? 2000 : 250;
+        Atomics.wait(pause, 0, 0, heartbeatWait);
         const after = readFileSync(join(lock, "heartbeat"), "utf8");
         assert.notEqual(after, before);
         buildNativeCacheFixture({ count: 0 })(current);

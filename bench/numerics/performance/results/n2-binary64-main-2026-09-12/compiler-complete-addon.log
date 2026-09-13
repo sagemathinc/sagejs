@@ -1,0 +1,112 @@
+$ node scripts/run-compiler-tests.cjs
+﹣ compiler/aes_vectors.py (2.37224ms) # historical non-Python stage-zero fixture
+✖ compiler/algebra.py (62016.387938ms)
+﹣ compiler/algebraic-geometry-affine.py (0.3208ms) # disabled by an in-file marker
+﹣ compiler/algebraic-geometry-curves.py (0.31585ms) # disabled by an in-file marker
+﹣ compiler/algebraic-geometry-ideals.py (0.18978ms) # disabled by an in-file marker
+﹣ compiler/algebraic-geometry-jacobian.py (0.18094ms) # disabled by an in-file marker
+﹣ compiler/algebraic-geometry-metamorphic.py (0.186069ms) # disabled by an in-file marker
+﹣ compiler/algebraic-geometry-morphisms.py (0.177109ms) # disabled by an in-file marker
+﹣ compiler/algebraic-geometry-polynomial.py (0.213709ms) # disabled by an in-file marker
+﹣ compiler/algebraic-geometry-projective.py (0.280489ms) # disabled by an in-file marker
+﹣ compiler/algebraic-geometry-zero-dimensional.py (0.22283ms) # disabled by an in-file marker
+﹣ compiler/annotations.py (0.11865ms) # historical non-Python stage-zero fixture
+﹣ compiler/baselib.py (0.13217ms) # historical non-Python stage-zero fixture
+✔ compiler/bytes.py (8120.167942ms)
+ℹ 8120 ms
+✔ compiler/canonical_formatting.py (8181.637059ms)
+ℹ 8181 ms
+﹣ compiler/classes.py (0.26198ms) # historical non-Python stage-zero fixture
+✔ compiler/collections_.py (8180.696639ms)
+ℹ 8180 ms
+﹣ compiler/decorators.py (0.18447ms) # historical non-Python stage-zero fixture
+﹣ compiler/docstrings.py (0.13813ms) # historical non-Python stage-zero fixture
+✔ compiler/elementmaker_.py (8637.517165ms)
+ℹ 8637 ms
+﹣ compiler/functions.py (0.26046ms) # historical non-Python stage-zero fixture
+✔ compiler/generators.py (7887.17264ms)
+ℹ 7887 ms
+﹣ compiler/generic.py (0.31129ms) # historical non-Python stage-zero fixture
+✔ compiler/groebner-buchberger.py (9468.732661ms)
+ℹ 9468 ms
+✔ compiler/groebner-elimination.py (10390.62684ms)
+ℹ 10390 ms
+✔ compiler/groebner-fglm-solving.py (10091.611482ms)
+ℹ 10092 ms
+✔ compiler/groebner-quotient.py (9375.471261ms)
+ℹ 9375 ms
+✔ compiler/groebner.py (9592.857476ms)
+ℹ 9592 ms
+✔ compiler/imports.py (8216.801611ms)
+ℹ 8216 ms
+﹣ compiler/jsage.py (0.219829ms) # historical non-Python stage-zero fixture
+✔ compiler/lambda_.py (7859.888195ms)
+ℹ 7859 ms
+﹣ compiler/lint.py (0.231071ms) # disabled by an in-file marker
+﹣ compiler/loops.py (0.1199ms) # historical non-Python stage-zero fixture
+✔ compiler/matrix.py (3997.660249ms)
+ℹ 3997 ms
+✔ compiler/newlines.py (10578.279811ms)
+ℹ 10578 ms
+﹣ compiler/number-field-class-unit-exact-public-projection.py (0.21413ms) # disabled by an in-file marker
+﹣ compiler/number-field-zeta-reference.py (0.11905ms) # disabled by an in-file marker
+﹣ compiler/operator_overloading.py (0.13016ms) # historical non-Python stage-zero fixture
+✔ compiler/polynomial.py (26312.47987ms)
+ℹ 26312 ms
+✔ compiler/proof.py (8169.963722ms)
+ℹ 8170 ms
+✔ compiler/python-format-builtin.py (8347.030554ms)
+ℹ 8347 ms
+✔ compiler/python-format-field-index.py (8341.039886ms)
+ℹ 8341 ms
+✔ compiler/python-frontend-call-contracts.py (8594.268744ms)
+ℹ 8593 ms
+✔ compiler/python-metaclass-dispatch.py (8507.313372ms)
+ℹ 8506 ms
+✔ compiler/python-prepared-namespace.py (12180.972148ms)
+ℹ 12179 ms
+✔ compiler/random_lib.py (9142.916469ms)
+ℹ 9143 ms
+✔ compiler/range_shadow.py (9012.970376ms)
+ℹ 9013 ms
+﹣ compiler/regexp.py (0.20731ms) # historical non-Python stage-zero fixture
+﹣ compiler/repl.py (0.11461ms) # disabled by an in-file marker
+﹣ compiler/scoped_flags.py (0.12288ms) # historical non-Python stage-zero fixture
+✔ compiler/series.py (5308.091176ms)
+ℹ 5308 ms
+﹣ compiler/starargs.py (0.32478ms) # historical non-Python stage-zero fixture
+﹣ compiler/str.py (0.165169ms) # historical non-Python stage-zero fixture
+✔ compiler/typing_.py (8455.813322ms)
+ℹ 8455 ms
+ℹ tests 54
+ℹ suites 0
+ℹ pass 25
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 28
+ℹ todo 0
+ℹ duration_ms 295339.380722
+
+✖ failing tests:
+
+test at test/compiler.test.cjs:21:3
+✖ compiler/algebra.py (62016.387938ms)
+  Error: spawnSync /opt/cocalc/bin/node ETIMEDOUT
+      at Object.spawnSync (node:internal/child_process:1144:20)
+      at spawnSync (node:child_process:928:24)
+      at Object.run (/home/user/sagejs-worktrees/perf-numerical-binary64-main/dist/tools/test.js:125:57)
+      at TestContext.<anonymous> (/home/user/sagejs-worktrees/perf-numerical-binary64-main/test/compiler.test.cjs:22:28)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    errno: -110,
+    code: 'ETIMEDOUT',
+    syscall: 'spawnSync /opt/cocalc/bin/node',
+    path: '/opt/cocalc/bin/node',
+    spawnargs: [ '/home/user/sagejs-worktrees/perf-numerical-binary64-main/scripts/run-compiler-fixture.cjs', '/tmp/algebra.py.js', '/home/user/sagejs-worktrees/perf-numerical-binary64-main/dist/compiler', '/home/user/sagejs-worktrees/perf-numerical-binary64-main/test' ],
+    generatedJavaScript: '/tmp/algebra.py.js'
+  }
+[ELIFECYCLE] Command failed with exit code 1.

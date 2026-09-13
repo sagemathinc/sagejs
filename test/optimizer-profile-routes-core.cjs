@@ -128,7 +128,8 @@ function profilePair(source, call, filename) {
   });
   assert.equal(ordinary.ok, true, JSON.stringify(ordinary.error));
   assert.equal(profiled.ok, true, JSON.stringify(profiled.error));
-  assert.equal(profiled.value.evaluation.stdout, ordinary.value.evaluation.stdout);
+  assert.equal(typeof profiled.value.stdout, "string");
+  assert.equal(profiled.value.stdout, ordinary.value.stdout);
   assert.equal(profiled.value.evaluation.repr, ordinary.value.evaluation.repr);
   return profiled.value.observation;
 }

@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "cpu": "AMD EPYC 7B13 virtual CPU",
+    "node": "v26.7.0"
+  },
+  "session_startup_ms": 314.688309,
+  "evaluation_wall_ms": 17561.808085999997,
+  "memory_snapshots_bytes": {
+    "before": {
+      "rss": 57212928,
+      "heapTotal": 9216000,
+      "heapUsed": 6656360,
+      "external": 2431733,
+      "arrayBuffers": 143651
+    },
+    "after_startup": {
+      "rss": 169852928,
+      "heapTotal": 9216000,
+      "heapUsed": 6812336,
+      "external": 2431773,
+      "arrayBuffers": 143659
+    },
+    "after_evaluation": {
+      "rss": 337666048,
+      "heapTotal": 9216000,
+      "heapUsed": 7556640,
+      "external": 2431773,
+      "arrayBuffers": 143659
+    }
+  },
+  "memory_interpretation": "Node process snapshots include the complete Sage.js runtime; they are not per-result peaks",
+  "workloads": {
+    "instant_classroom": {
+      "accepted_steps": 8,
+      "maximum_ms": 86.83061599731445,
+      "median_ms": 74.71656799316406,
+      "minimum_ms": 67.86775588989258,
+      "rhs_evaluations": 50,
+      "samples": 7,
+      "serialized_result_bytes": 10463
+    },
+    "interactive_exploration": {
+      "accepted_steps": 981,
+      "maximum_ms": 3500.5624294281006,
+      "median_ms": 3489.1693592071533,
+      "minimum_ms": 3477.3170948028564,
+      "rhs_evaluations": 6584,
+      "samples": 3,
+      "serialized_result_bytes": 440129
+    }
+  }
+}

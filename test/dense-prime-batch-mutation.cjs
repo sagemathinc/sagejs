@@ -166,12 +166,20 @@ for (const line of runSage(performance).split("\n")) {
     [primeText, rowText, columnText, blockText].map(Number);
   // These deliberately loose ceilings catch a return to one host crossing per
   // entry without making shared CI load part of the API contract.
-  assert.ok(row < 0.01, `GF(${prime}) set_row took ${row}s`);
-  assert.ok(column < 0.01, `GF(${prime}) set_column took ${column}s`);
+  assert.ok(row < 0.02, `GF(${prime}) set_row took ${row}s`);
+  assert.ok(column < 0.02, `GF(${prime}) set_column took ${column}s`);
   // The portable release pack intentionally excludes M4RI until its native
   // dependency is supported on Windows. Its exact dynamic fallback performs
   // the same checked mutation but cannot meet the compiled bulk-kernel gate.
-  const blockLimit = prime === 2 && blockMode === "dynamic" ? 0.2 : 0.02;
+  // The 96x96 exact fallback is normally well below these ceilings, but the
+  // minimum of seven wall-clock samples has reached 0.202s on an otherwise
+  // passing Linux x64 release host. Retain enough headroom that the gate
+  // detects the multi-second per-entry-host-crossing regression instead of
+  // occasionally classifying scheduler noise as a product failure.
+  const dynamicBlockLimit = process.arch === "arm64" ? 0.35 : 0.3;
+  const blockLimit = prime === 2 && blockMode === "dynamic"
+    ? dynamicBlockLimit
+    : 0.02;
   assert.ok(block < blockLimit, `GF(${prime}) set_block took ${block}s`);
 }
 

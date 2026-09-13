@@ -78,6 +78,95 @@ export interface DocumentationSearchOptions {
   tag?: string;
 }
 
+export interface DocumentationCatalogOptions {
+  /** Include the documented lazy numerical entry points not present in the live registry. */
+  includeNumericalFlagships?: boolean;
+}
+
+const NUMERICAL_FLAGSHIPS: ReadonlyArray<{
+  name: string;
+  module: string;
+  signature: string;
+  summary: string;
+  tags: string[];
+}> = [
+  {
+    name: "find_root",
+    module: "sagejs.numerics",
+    signature: "find_root(function, a=None, b=None, *, x0=None, method=None, **options)",
+    summary: "Find and independently validate a scalar root with diagnostics and bounded traces.",
+    tags: ["numerical", "root-finding", "validated"],
+  },
+  {
+    name: "minimize_scalar",
+    module: "sagejs.numerics.optimization",
+    signature: "minimize_scalar(function, bounds=None, *, method=None, **options)",
+    summary: "Minimize a scalar objective with explicit budgets and validation evidence.",
+    tags: ["numerical", "optimization"],
+  },
+  {
+    name: "minimize",
+    module: "sagejs.numerics.optimization",
+    signature: "minimize(function, x0, *, method=None, **options)",
+    summary: "Minimize a multivariate objective and return a structured NumericalResult.",
+    tags: ["numerical", "optimization"],
+  },
+  {
+    name: "curve_fit",
+    module: "sagejs.numerics.optimization",
+    signature: "curve_fit(function, xdata, ydata, p0, **options)",
+    summary: "Fit a nonlinear model with residual diagnostics and parameter provenance.",
+    tags: ["numerical", "fitting", "least-squares"],
+  },
+  {
+    name: "solve_ivp",
+    module: "sagejs.numerics.ode",
+    signature: "solve_ivp(function, t_span, y0, *, method=None, **options)",
+    summary: "Solve and validate an initial-value ODE problem with adaptive-step traces.",
+    tags: ["numerical", "ode", "initial-value-problem"],
+  },
+  {
+    name: "integrate",
+    module: "sagejs.numerics.integration",
+    signature: "integrate(function, a, b, *, method=None, **options)",
+    summary: "Compute an adaptive numerical integral with error and budget diagnostics.",
+    tags: ["numerical", "integration", "quadrature"],
+  },
+  {
+    name: "svd",
+    module: "sagejs.numerics.spectral",
+    signature: "svd(matrix, *, trace='none', **options)",
+    summary: "Compute and independently validate a singular-value decomposition.",
+    tags: ["numerical", "linear-algebra", "spectral"],
+  },
+  {
+    name: "fft",
+    module: "sagejs.numerics.spectral",
+    signature: "fft(samples, **options)",
+    summary: "Compute a radix-2 or Bluestein discrete Fourier transform.",
+    tags: ["numerical", "spectral", "fft"],
+  },
+];
+
+function numericalFlagshipEntry(value: (typeof NUMERICAL_FLAGSHIPS)[number]): DocumentationEntry {
+  return {
+    schema_version: DOCSPEC_VERSION,
+    name: value.name,
+    aliases: [],
+    kind: "function",
+    module: value.module,
+    signature: value.signature,
+    summary: value.summary,
+    doc: `${value.summary}\n\nImport from \`${value.module}\`. Results expose \`explain()\`, \`to_json()\`, semantic plots, and bounded animations when supported.`,
+    tags: value.tags,
+    backends: ["portable-python", "browser-wasm", "native-optional"],
+    sage_compatibility: { status: "extension", notes: "Agent-first structured numerical result contract." },
+    provenance: [{ kind: "sagejs-original" }],
+    references: [],
+    limitations: [],
+  };
+}
+
 function stringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return [
@@ -192,10 +281,21 @@ function signature(value: unknown, fallbackName: string): string {
   const name = callableName(value) || fallbackName.split(".").at(-1) || fallbackName;
   const argumentNames = Reflect.get(value, "__argnames__");
   const defaults = Reflect.get(value, "__defaults__");
+  const keywordDefaults = Reflect.get(value, "__kwdefaults__");
+  const signatureAnnotationText = Reflect.get(
+    value,
+    "__signature_annotations_text__",
+  );
+  const signatureAnnotations = Reflect.get(value, "__signature_annotations__");
   const annotationText = Reflect.get(value, "__annotations_text__");
   const annotations = Reflect.get(value, "__annotations__");
   const annotation = (argument: string): string => {
-    for (const source of [annotationText, annotations]) {
+    for (const source of [
+      signatureAnnotationText,
+      signatureAnnotations,
+      annotationText,
+      annotations,
+    ]) {
       if (
         source &&
         (typeof source === "object" || typeof source === "function") &&
@@ -208,16 +308,25 @@ function signature(value: unknown, fallbackName: string): string {
     }
     return "";
   };
-  const argumentPart = (argument: string): string => {
+  const missingDefault = Symbol("missing default");
+  const argumentPart = (argument: string, keywordOnly = false): string => {
     let part = argument;
     const typeName = annotation(argument);
     if (typeName) part += `: ${typeName}`;
-    if (
-      defaults &&
-      (typeof defaults === "object" || typeof defaults === "function") &&
-      Object.prototype.hasOwnProperty.call(defaults, argument)
-    ) {
-      const item = Reflect.get(defaults, argument);
+    let item: unknown = missingDefault;
+    const source = keywordOnly ? keywordDefaults : defaults;
+    if (source && (typeof source === "object" || typeof source === "function")) {
+      if (!keywordOnly && Array.isArray(source) && Array.isArray(argumentNames)) {
+        const index = argumentNames.indexOf(argument) + source.length - argumentNames.length;
+        if (index >= 0 && index < source.length) item = source[index];
+      } else if (keywordOnly && typeof Reflect.get(source, "get") === "function") {
+        item = Reflect.apply(Reflect.get(source, "get"), source, [argument, missingDefault]);
+      } else if (Object.prototype.hasOwnProperty.call(source, argument)) {
+        // Explicit compiler/baselib and host-callable metadata ABI.
+        item = Reflect.get(source, argument);
+      }
+    }
+    if (item !== missingDefault) {
       part += `=${item === undefined ? "None" : defaultRepr(item)}`;
     }
     return part;
@@ -235,7 +344,7 @@ function signature(value: unknown, fallbackName: string): string {
   const keywordOnly = Reflect.get(value, "__kwonly__");
   if (Array.isArray(keywordOnly) && keywordOnly.length) {
     if (typeof varargs !== "string") parts.push("*");
-    parts.push(...keywordOnly.map((argument) => argumentPart(String(argument))));
+    parts.push(...keywordOnly.map((argument) => argumentPart(String(argument), true)));
   }
   const varkw = Reflect.get(value, "__varkw__");
   if (typeof varkw === "string") {
@@ -324,6 +433,7 @@ function references(value: unknown): DocumentationReference[] {
 
 export function documentationCatalogFromRegistry(
   registry: unknown,
+  options: DocumentationCatalogOptions = {},
 ): DocumentationCatalog {
   const byName = new Map<string, DocumentationEntry>();
   if (!Array.isArray(registry)) {
@@ -383,6 +493,13 @@ export function documentationCatalogFromRegistry(
       limitations: stringArray(metadata.limitations),
     };
     byName.set(name, normalized);
+  }
+  if (options.includeNumericalFlagships) {
+    for (const flagship of NUMERICAL_FLAGSHIPS) {
+      if (!byName.has(flagship.name)) {
+        byName.set(flagship.name, numericalFlagshipEntry(flagship));
+      }
+    }
   }
   return {
     schema_version: DOCSPEC_VERSION,

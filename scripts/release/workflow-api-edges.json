@@ -1,0 +1,481 @@
+{
+  "schema": "sagejs.workflow-api-edges/v2",
+  "entries": [
+    {
+      "workflow": "release-macos-inspection.yml",
+      "job": "inspect",
+      "step": "Inspect exact selected macOS artifact",
+      "runSha256": "40f0853c90b41fa52962698571905d6b5f626c327fc0aa2f34c76b49b62c5296",
+      "helpers": [
+        {
+          "filename": "scripts/release/collect-macos-inspection.cjs",
+          "sha256": "251dc62ef9119eccb03676879ae0608f801ce6413a318826712666ca2cbf65af"
+        },
+        {
+          "filename": "scripts/release/control-artifact.cjs",
+          "sha256": "47c1a25ad8257db09eb019caece51768b100d11ada09b9e57946b6d6ae645e26"
+        },
+        {
+          "filename": "scripts/release/artifact-handoff.cjs",
+          "sha256": "bfbaf04361d3c5e1a9218c9924fd0f832dfdd7ba66035ced2f1d863c8d62e23b"
+        },
+        {
+          "filename": "scripts/release/stage-artifacts.cjs",
+          "sha256": "25d740886bd0518fd717958e689327a261b29d5119e84a7b52a25924a94c3400"
+        },
+        {
+          "filename": "scripts/release/macos-installer.cjs",
+          "sha256": "a0ecb9a0796a8783612b36195b00fecc0083fa0ff524cce623ffa26b0ebb3cda"
+        },
+        {
+          "filename": "scripts/release/numerical-recovery.cjs",
+          "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
+        }
+      ],
+      "requiresWorkflowSuccess": [
+        "release-artifact-handoff.yml"
+      ],
+      "artifactInputs": [
+        {
+          "producer": "ci.yml#macos-sign",
+          "names": [
+            "sagejs-macos-arm64"
+          ]
+        }
+      ],
+      "semantics": "Authenticates an explicit historical handoff workflow/source/attempt and immutable small artifact, then fetches only its selected macOS transport role using the complete nine-role manifest digest. Uses native trust/notarization and payload checks without signing, installation or publication. Final promotion must compare the authenticated observation to independently reconstructed product/qualified-executable identities; this job alone does not replace numerical qualification or authorize publication."
+    },
+    {
+      "workflow": "protect-latest-release.yml",
+      "job": "protect-latest-product-release",
+      "step": "Keep infrastructure and evidence releases out of latest",
+      "helpers": [
+        {
+          "filename": "scripts/release-latest-policy.cjs",
+          "sha256": "6d0aa87d78fe2b8b39d5f426ce92576cf9462558129d270f38af050eb8297a5b"
+        }
+      ],
+      "effects": [
+        {
+          "kind": "release-pointer",
+          "target": "github:releases/latest"
+        }
+      ],
+      "semantics": "Reads published non-draft/non-prerelease releases, requires all eleven installer/archive/checksum assets to be uniquely present, uploaded and nonempty, then selects the highest recognized product tag and may update Latest. No CI/job success prerequisite. Asset metadata completeness is not digest/signature verification, URL probing or npm/app coherence; this is not complete-release qualification.",
+      "runSha256": "c290371174f4dfe119fde55b557538477a763a71e3d06b46fa373d95c3c2fcb0",
+      "requiresWorkflowSuccess": []
+    },
+    {
+      "workflow": "publish-validated-release.yml",
+      "job": "request",
+      "step": "Dispatch the exact prepared request to the trusted CI workflow",
+      "effects": [
+        {
+          "kind": "dispatch",
+          "target": "ci.yml#publish-prepared"
+        }
+      ],
+      "semantics": "Validates the immutable prepared request and dispatches the npm-trusted CI workflow at its exact tag. Dispatch is not proof of completion; the consumer independently authenticates all artifact pins and product gates before publication.",
+      "runSha256": "fb1dc191f3c82315fdb2785afe3ef6d76d4bb68cc77f2a0f8e59f1e321c8eaf4",
+      "helpers": [
+        {
+          "filename": "scripts/release/request-prepared-publication.cjs",
+          "sha256": "6cb4d4dc979ba5acd3a6c5148e06484738a049c1d2ea09706711c665b0844a07"
+        },
+        {
+          "filename": "scripts/release/publish-prepared.cjs",
+          "sha256": "2e7fd0d9412bb274b1d4c82cdeb472002c92112edbd4a0000efa8c903345f243"
+        }
+      ],
+      "requiresWorkflowSuccess": []
+    },
+    {
+      "workflow": "release-artifact-handoff.yml",
+      "job": "capture",
+      "step": "Capture exact qualified artifact set",
+      "helpers": [
+        {
+          "filename": "scripts/release/artifact-set.cjs",
+          "sha256": "a2538e84cc338bcaf7cbce9dd194f557ae0bd53a0dffa43cf992c5fd866fb1bf"
+        },
+        {
+          "filename": "scripts/release/product-acceptance.cjs",
+          "sha256": "8e0418bdb1848420eb95ec79af4c128c22e2ffb153692bde54132593636d9461"
+        },
+        {
+          "filename": "scripts/release/numerical-recovery.cjs",
+          "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
+        },
+        {
+          "filename": "scripts/release/recover-handoff.cjs",
+          "sha256": "4913e6438b323f2225967a09d2aaca57619ceb00c8129be4da1936b7116dc6ef"
+        }
+      ],
+      "requiresJobSuccess": [
+        "ci.yml#native-product-acceptance",
+        "wasm-release.yml#browser-product-acceptance"
+      ],
+      "artifactInputs": [
+        {
+          "producer": "ci.yml#linux-x64",
+          "names": [
+            "sagejs-linux-x64"
+          ]
+        },
+        {
+          "producer": "ci.yml#linux-arm64",
+          "names": [
+            "sagejs-linux-arm64"
+          ]
+        },
+        {
+          "producer": "ci.yml#windows-x64",
+          "names": [
+            "sagejs-windows-x64"
+          ]
+        },
+        {
+          "producer": "ci.yml#macos-sign",
+          "names": [
+            "sagejs-macos-arm64"
+          ]
+        },
+        {
+          "producer": "ci.yml#public-npm-root",
+          "names": [
+            "sagejs-public-npm-root"
+          ]
+        },
+        {
+          "producer": "ci.yml#numerical-release-gate",
+          "names": [
+            "numerical-release-gate",
+            "numerical-release-evidence"
+          ]
+        },
+        {
+          "producer": "wasm-release.yml#clean-build",
+          "matrix": {
+            "replica": "a"
+          },
+          "names": [
+            "wasm-clean-build-a"
+          ]
+        },
+        {
+          "producer": "wasm-release.yml#reproducibility",
+          "names": [
+            "sagejs-wasm-reproducible"
+          ]
+        }
+      ],
+      "semantics": "Normal capture requires both successful product aggregates. Explicit numerical recovery instead verifies all nine original native producers, reconstructs and authenticates the unchanged candidate gate, and binds recovered evidence to this distinct successful handoff job. Original failed aggregate remains failed. Consumers require recovery steps and original job identities, and still authenticate all product contents and signatures.",
+      "runSha256": "96bd64bb4503d634e2be97e31585959382945ada0539d1a7b205053ca1c63049",
+      "requiresWorkflowSuccess": []
+    },
+    {
+      "workflow": "ci.yml",
+      "job": "verify-prepared",
+      "step": "Verify the frozen artifact set",
+      "runSha256": "279232c28f9edd11d481c817591a8c50fb2b670da7564182683e051b40e6d978",
+      "helpers": [
+        {
+          "filename": "scripts/release/publish-prepared.cjs",
+          "sha256": "2e7fd0d9412bb274b1d4c82cdeb472002c92112edbd4a0000efa8c903345f243"
+        },
+        {
+          "filename": "scripts/release/prepare-publication.cjs",
+          "sha256": "a82caa968436b0dc4b5dad72c4eb86f478cd2ff425ec47e171a3e829f9e54eca"
+        },
+        {
+          "filename": "scripts/release/artifact-handoff.cjs",
+          "sha256": "bfbaf04361d3c5e1a9218c9924fd0f832dfdd7ba66035ced2f1d863c8d62e23b"
+        },
+        {
+          "filename": "scripts/release/control-artifact.cjs",
+          "sha256": "47c1a25ad8257db09eb019caece51768b100d11ada09b9e57946b6d6ae645e26"
+        },
+        {
+          "filename": "scripts/release/stage-artifacts.cjs",
+          "sha256": "25d740886bd0518fd717958e689327a261b29d5119e84a7b52a25924a94c3400"
+        },
+        {
+          "filename": "scripts/release/extract-artifact.cjs",
+          "sha256": "05522fc6b9da9b6f5a71bb274b1b71eed449fbe430754cbb717f214f289c90df"
+        },
+        {
+          "filename": "scripts/release/numerical-support.cjs",
+          "sha256": "03fe7098a053371b67cfe24e01ffbd4010361a63790b6612314b721656031d50"
+        },
+        {
+          "filename": "scripts/release/macos-observation.cjs",
+          "sha256": "947b423488db5d678bf78f5d8922b9d753b95bdb9f2484e39346c00cfb46303a"
+        },
+        {
+          "filename": "scripts/release/macos-installer.cjs",
+          "sha256": "a0ecb9a0796a8783612b36195b00fecc0083fa0ff524cce623ffa26b0ebb3cda"
+        },
+        {
+          "filename": "scripts/release/runner.cjs",
+          "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3"
+        },
+        {
+          "filename": "scripts/release/directory-transaction.cjs",
+          "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284"
+        },
+        {
+          "filename": "scripts/release/publish-github-assets.cjs",
+          "sha256": "48fde84935030f12a59e59695c00e51f842df608f5518d458697b1acac18b03f"
+        },
+        {
+          "filename": "scripts/release/publish-npm-packages.cjs",
+          "sha256": "256c410efeb2bb3d338d0ce828a827d0c1164c9340686260f0bb4b4d6f96d4b7"
+        },
+        {
+          "filename": "scripts/release/finalize-github-release.cjs",
+          "sha256": "b0d3458001ae2a7f07cd774704ac8ce3c471d5ceb740e09a4faaba543234bf26"
+        },
+        {
+          "filename": "scripts/release/numerical-recovery.cjs",
+          "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
+        },
+        {
+          "filename": "scripts/numerical-computing/qualification/authenticate-release-gate.cjs",
+          "sha256": "a8e13176c7857b4ae8a0c3ba7ad9957f05f3fbabb3f7275d757711a1902be3b8"
+        }
+      ],
+      "requiresWorkflowSuccess": [
+        "release-artifact-handoff.yml",
+        "release-macos-inspection.yml"
+      ],
+      "semantics": "Consumes explicit historical handoff and native-inspection control run/attempt/artifact/source pins. Fetches immutable IDs with bounded digest checks; stages all nine roles, reconstructs numerical evidence, checks exact npm/SEA/browser bytes and native Mac observation against independent signer/verifier policy. Dedicated isolated source clone; clone-local generated-output excludes and journals outside it preserve clean-source checks. No producer build/install or tag mutation. Read-only permissions, no protected environment or OIDC token; publish_prepared=false returns after full authentication and never calls a publisher. A successful local result is not an independent release attestation."
+    },
+    {
+      "workflow": "ci.yml",
+      "job": "publish-prepared",
+      "step": "Publish the frozen artifact set",
+      "runSha256": "279232c28f9edd11d481c817591a8c50fb2b670da7564182683e051b40e6d978",
+      "helpers": [
+        {
+          "filename": "scripts/release/publish-prepared.cjs",
+          "sha256": "2e7fd0d9412bb274b1d4c82cdeb472002c92112edbd4a0000efa8c903345f243"
+        },
+        {
+          "filename": "scripts/release/prepare-publication.cjs",
+          "sha256": "a82caa968436b0dc4b5dad72c4eb86f478cd2ff425ec47e171a3e829f9e54eca"
+        },
+        {
+          "filename": "scripts/release/artifact-handoff.cjs",
+          "sha256": "bfbaf04361d3c5e1a9218c9924fd0f832dfdd7ba66035ced2f1d863c8d62e23b"
+        },
+        {
+          "filename": "scripts/release/control-artifact.cjs",
+          "sha256": "47c1a25ad8257db09eb019caece51768b100d11ada09b9e57946b6d6ae645e26"
+        },
+        {
+          "filename": "scripts/release/stage-artifacts.cjs",
+          "sha256": "25d740886bd0518fd717958e689327a261b29d5119e84a7b52a25924a94c3400"
+        },
+        {
+          "filename": "scripts/release/extract-artifact.cjs",
+          "sha256": "05522fc6b9da9b6f5a71bb274b1b71eed449fbe430754cbb717f214f289c90df"
+        },
+        {
+          "filename": "scripts/release/numerical-support.cjs",
+          "sha256": "03fe7098a053371b67cfe24e01ffbd4010361a63790b6612314b721656031d50"
+        },
+        {
+          "filename": "scripts/release/macos-observation.cjs",
+          "sha256": "947b423488db5d678bf78f5d8922b9d753b95bdb9f2484e39346c00cfb46303a"
+        },
+        {
+          "filename": "scripts/release/macos-installer.cjs",
+          "sha256": "a0ecb9a0796a8783612b36195b00fecc0083fa0ff524cce623ffa26b0ebb3cda"
+        },
+        {
+          "filename": "scripts/release/runner.cjs",
+          "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3"
+        },
+        {
+          "filename": "scripts/release/directory-transaction.cjs",
+          "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284"
+        },
+        {
+          "filename": "scripts/release/publish-github-assets.cjs",
+          "sha256": "48fde84935030f12a59e59695c00e51f842df608f5518d458697b1acac18b03f"
+        },
+        {
+          "filename": "scripts/release/publish-npm-packages.cjs",
+          "sha256": "256c410efeb2bb3d338d0ce828a827d0c1164c9340686260f0bb4b4d6f96d4b7"
+        },
+        {
+          "filename": "scripts/release/finalize-github-release.cjs",
+          "sha256": "b0d3458001ae2a7f07cd774704ac8ce3c471d5ceb740e09a4faaba543234bf26"
+        },
+        {
+          "filename": "scripts/release/numerical-recovery.cjs",
+          "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
+        },
+        {
+          "filename": "scripts/numerical-computing/qualification/authenticate-release-gate.cjs",
+          "sha256": "a8e13176c7857b4ae8a0c3ba7ad9957f05f3fbabb3f7275d757711a1902be3b8"
+        }
+      ],
+      "requiresWorkflowSuccess": [
+        "release-artifact-handoff.yml",
+        "release-macos-inspection.yml"
+      ],
+      "effects": [
+        {
+          "kind": "release-assets",
+          "target": "github:release-assets"
+        },
+        {
+          "kind": "npm-publication",
+          "target": "npm:registry"
+        },
+        {
+          "kind": "release-pointer",
+          "target": "github:releases/latest"
+        }
+      ],
+      "semantics": "Consumes explicit historical handoff and native-inspection control run/attempt/artifact/source pins. Fetches immutable IDs with bounded digest checks; stages all nine roles, reconstructs numerical evidence, checks exact npm/SEA/browser bytes and native Mac observation against independent signer/verifier policy. Dedicated isolated source clone; clone-local generated-output excludes and journals outside it preserve clean-source checks. No producer build/install or tag mutation. Protected sagejs-release and existing ci.yml OIDC identity. Requires existing tag equal to source and source reachable from origin/main before product downloads. Calls resumable GitHub uploads, npm publication and finalization only after full input authentication; saves progress by attempt."
+    },
+    {
+      "workflow": "wasm-deploy-cloudflare.yml",
+      "job": "deploy",
+      "step": "Prepare the frozen browser artifact set",
+      "runSha256": "48878ca6de01fbd4b7a04312e3d42200ff23fa4acd9b8e951e6b51c9d8f1f08b",
+      "helpers": [
+        {
+          "filename": "scripts/release/prepare-browser-deployment.cjs",
+          "sha256": "eada1c449be553e31b192103bb57338747a293cd085235e5e82433ada62888a4"
+        },
+        {
+          "filename": "scripts/release/publish-prepared.cjs",
+          "sha256": "2e7fd0d9412bb274b1d4c82cdeb472002c92112edbd4a0000efa8c903345f243"
+        },
+        {
+          "filename": "scripts/release/prepare-publication.cjs",
+          "sha256": "a82caa968436b0dc4b5dad72c4eb86f478cd2ff425ec47e171a3e829f9e54eca"
+        },
+        {
+          "filename": "scripts/release/artifact-handoff.cjs",
+          "sha256": "bfbaf04361d3c5e1a9218c9924fd0f832dfdd7ba66035ced2f1d863c8d62e23b"
+        },
+        {
+          "filename": "scripts/release/control-artifact.cjs",
+          "sha256": "47c1a25ad8257db09eb019caece51768b100d11ada09b9e57946b6d6ae645e26"
+        },
+        {
+          "filename": "scripts/release/stage-artifacts.cjs",
+          "sha256": "25d740886bd0518fd717958e689327a261b29d5119e84a7b52a25924a94c3400"
+        },
+        {
+          "filename": "scripts/release/extract-artifact.cjs",
+          "sha256": "05522fc6b9da9b6f5a71bb274b1b71eed449fbe430754cbb717f214f289c90df"
+        },
+        {
+          "filename": "scripts/release/numerical-support.cjs",
+          "sha256": "03fe7098a053371b67cfe24e01ffbd4010361a63790b6612314b721656031d50"
+        },
+        {
+          "filename": "scripts/release/browser-inputs.cjs",
+          "sha256": "44efb39e16f3168aca28a3e1f463d00a71a276236d5bf0a2c651ccca1d8ee633"
+        },
+        {
+          "filename": "scripts/release/browser-archive.cjs",
+          "sha256": "3f3c704ce012d07df2e0f29d45c857eb0c81c5c5ab94034a146bbdb67e7dbc3c"
+        },
+        {
+          "filename": "scripts/release/runner.cjs",
+          "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3"
+        },
+        {
+          "filename": "scripts/release/directory-transaction.cjs",
+          "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284"
+        },
+        {
+          "filename": "scripts/release/numerical-recovery.cjs",
+          "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
+        },
+        {
+          "filename": "scripts/numerical-computing/qualification/authenticate-release-gate.cjs",
+          "sha256": "a8e13176c7857b4ae8a0c3ba7ad9957f05f3fbabb3f7275d757711a1902be3b8"
+        }
+      ],
+      "requiresWorkflowSuccess": [
+        "release-artifact-handoff.yml"
+      ],
+      "semantics": "Authenticates the complete historical handoff with fixed product/source/ref/event/purpose and control run/attempt/artifact/SHA pins, then stages only the five browser/root/numerical transport roles. Reconstructs raw numerical evidence, binds the root and browser bytes, clean/reproduction archive identity and browser size limits. No native archive or Mac observation download, no product build, no publication."
+    },
+    {
+      "workflow": "wasm-deploy-cloudflare.yml",
+      "job": "deploy",
+      "step": "Recheck frozen browser bytes before activation",
+      "runSha256": "1b2c0a2a7e2a35a5a889f989c26276b50282f38150f531fc622d79aabb7d1c12",
+      "helpers": [
+        {
+          "filename": "scripts/release/prepare-browser-deployment.cjs",
+          "sha256": "eada1c449be553e31b192103bb57338747a293cd085235e5e82433ada62888a4"
+        },
+        {
+          "filename": "scripts/release/publish-prepared.cjs",
+          "sha256": "2e7fd0d9412bb274b1d4c82cdeb472002c92112edbd4a0000efa8c903345f243"
+        },
+        {
+          "filename": "scripts/release/prepare-publication.cjs",
+          "sha256": "a82caa968436b0dc4b5dad72c4eb86f478cd2ff425ec47e171a3e829f9e54eca"
+        },
+        {
+          "filename": "scripts/release/artifact-handoff.cjs",
+          "sha256": "bfbaf04361d3c5e1a9218c9924fd0f832dfdd7ba66035ced2f1d863c8d62e23b"
+        },
+        {
+          "filename": "scripts/release/control-artifact.cjs",
+          "sha256": "47c1a25ad8257db09eb019caece51768b100d11ada09b9e57946b6d6ae645e26"
+        },
+        {
+          "filename": "scripts/release/stage-artifacts.cjs",
+          "sha256": "25d740886bd0518fd717958e689327a261b29d5119e84a7b52a25924a94c3400"
+        },
+        {
+          "filename": "scripts/release/extract-artifact.cjs",
+          "sha256": "05522fc6b9da9b6f5a71bb274b1b71eed449fbe430754cbb717f214f289c90df"
+        },
+        {
+          "filename": "scripts/release/numerical-support.cjs",
+          "sha256": "03fe7098a053371b67cfe24e01ffbd4010361a63790b6612314b721656031d50"
+        },
+        {
+          "filename": "scripts/release/browser-inputs.cjs",
+          "sha256": "44efb39e16f3168aca28a3e1f463d00a71a276236d5bf0a2c651ccca1d8ee633"
+        },
+        {
+          "filename": "scripts/release/browser-archive.cjs",
+          "sha256": "3f3c704ce012d07df2e0f29d45c857eb0c81c5c5ab94034a146bbdb67e7dbc3c"
+        },
+        {
+          "filename": "scripts/release/runner.cjs",
+          "sha256": "5fd2c13ab04b9072ef02bf05f5e8770494817b7b7c1eb1a85cc9d301750620a3"
+        },
+        {
+          "filename": "scripts/release/directory-transaction.cjs",
+          "sha256": "3e0b8652c3c33c081c0d9f66f34227d5775d9ad2bd91a654b0085c46fca9e284"
+        },
+        {
+          "filename": "scripts/release/numerical-recovery.cjs",
+          "sha256": "62021e93fc6d71d0b6be7925cc49aabedaea275189044aa52b626a3d0ce0808e"
+        },
+        {
+          "filename": "scripts/numerical-computing/qualification/authenticate-release-gate.cjs",
+          "sha256": "a8e13176c7857b4ae8a0c3ba7ad9957f05f3fbabb3f7275d757711a1902be3b8"
+        }
+      ],
+      "requiresWorkflowSuccess": [
+        "release-artifact-handoff.yml"
+      ],
+      "semantics": "Reauthenticates the pinned historical handoff, derives five-role expected file identities from authenticated transport, and rejects changed local product inputs before activation without repairing them. Does not select current producer attempts, trust saved success JSON, upload, or activate."
+    }
+  ]
+}

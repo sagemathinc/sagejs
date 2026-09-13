@@ -1,0 +1,209 @@
+{
+  "date": "2026-09-12T07:17:44.622Z",
+  "revision": "572da984de4b7b90d2ed4b70d0ff92a78dbe6455",
+  "host": {
+    "cpu": "AMD EPYC 7B13",
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.8.1"
+  },
+  "artifact": "sha256:d4d33b9bb1ffaab8ebd0ef74cb092ce22a2130351ab0576f3e204d2c22b9ba3e",
+  "sourceSha256": {
+    "src/lib/sagejs/modular_abelian_varieties/__init__.py": "3c16f02391eda071724b980939d909b5b81ae91e0632da3cb7c8feeebcbf8394",
+    "src/lib/sagejs/modular_abelian_varieties/abelian_variety.py": "9427d6f924116557f904b88285668133eb0ed2f5bb54f37ccb6042e380f7ae91",
+    "src/lib/sagejs/modular_abelian_varieties/degeneracy.py": "f18847e51dfa7d536be0acb68dd50acf2b092b57d1d13d84d1584f8d6b7d1a67",
+    "src/lib/sagejs/modular_abelian_varieties/lattices.py": "449c54da0e147a9e292fe1bf1f7d09cd2dd2d658ab931c9a00085fb5efc6f201",
+    "src/lib/sagejs/modular_abelian_varieties/morphisms.py": "5b61d789eb76927f183b6408c72df892fd2f84add54e48cb928578a6cac4738a",
+    "src/lib/sagejs/modular_abelian_varieties/products.py": "59cefa90f29d013c53775d0126f9632cfc9b110743520bf3bf0b9d036931a766",
+    "src/baselib/matrix.py": "88e898ffe17cc9a4caf734e0960b2612213bf1bc52a048af6a7c253bf1c82094",
+    "src/baselib/modular.py": "569be50b927a9ac8b0b8746e1dd04b56314da4db07bf9e923e2ac19e114d904b",
+    "ffi/flint.ffi.py": "83a2ebfc4a0897dd4d15a356318f88f70a3cf1e6dc5e9d7d268709c97779f7ff",
+    "ffi/flint.ffi.json": "2bac1134ebb3ae42bfe45b76c8548f37cb6df5dd4ee0474b4fcf6e85c4eb4041",
+    "src/lib/sagejs/ffi/flint.py": "ed04c29cef58d9f15ddeb63176d2f27458364009ca1bf322b6db5a477faf946d"
+  },
+  "policy": "Sequential fresh Node/Wasm processes. Startup excluded. No library warmup. Evaluation timeout 120s; process timeout 150s. Exact comparison with the pinned Sage/native receipt; no timings of concurrent owned builds/tests.",
+  "reference": "morphisms-performance-linux-x64.json",
+  "samples": 3,
+  "results": [
+    {
+      "level": 389,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js/Wasm",
+          "workload": "T2-minus-1",
+          "level": 389,
+          "dimension": 32,
+          "rank": 64,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            30,
+            30
+          ],
+          "construction_seconds": 1.256948471069336,
+          "smith_seconds": 0.027966022491455078,
+          "warm_seconds": 0.00005548000335693359
+        }
+      ]
+    },
+    {
+      "level": 389,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js/Wasm",
+          "workload": "T2-minus-1",
+          "level": 389,
+          "dimension": 32,
+          "rank": 64,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            30,
+            30
+          ],
+          "construction_seconds": 1.2495734691619873,
+          "smith_seconds": 0.02776336669921875,
+          "warm_seconds": 0.000055837631225585935
+        }
+      ]
+    },
+    {
+      "level": 389,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js/Wasm",
+          "workload": "T2-minus-1",
+          "level": 389,
+          "dimension": 32,
+          "rank": 64,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            30,
+            30
+          ],
+          "construction_seconds": 1.233309268951416,
+          "smith_seconds": 0.02763676643371582,
+          "warm_seconds": 0.00005793571472167969
+        }
+      ]
+    },
+    {
+      "level": 1009,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js/Wasm",
+          "workload": "T2-minus-1",
+          "level": 1009,
+          "dimension": 83,
+          "rank": 166,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            90,
+            90,
+            90,
+            90
+          ],
+          "construction_seconds": 6.301031827926636,
+          "smith_seconds": 0.3671586513519287,
+          "warm_seconds": 0.00005791187286376953
+        }
+      ]
+    },
+    {
+      "level": 1009,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js/Wasm",
+          "workload": "T2-minus-1",
+          "level": 1009,
+          "dimension": 83,
+          "rank": 166,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            90,
+            90,
+            90,
+            90
+          ],
+          "construction_seconds": 6.403639793395996,
+          "smith_seconds": 0.35727500915527344,
+          "warm_seconds": 0.000054001808166503906
+        }
+      ]
+    },
+    {
+      "level": 1009,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js/Wasm",
+          "workload": "T2-minus-1",
+          "level": 1009,
+          "dimension": 83,
+          "rank": 166,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            90,
+            90,
+            90,
+            90
+          ],
+          "construction_seconds": 6.355763912200928,
+          "smith_seconds": 0.3650476932525635,
+          "warm_seconds": 0.000057244300842285155
+        }
+      ]
+    }
+  ]
+}

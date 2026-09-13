@@ -22,10 +22,13 @@ napi_value sagejs_mpoly_compose_gen(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_to_string(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_univariate_coefficients(
     napi_env env, napi_callback_info info);
+napi_value sagejs_mpoly_terms(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_length(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_degree(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_total_degree(napi_env env, napi_callback_info info);
+napi_value sagejs_mpoly_leading_monomial(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_groebner(napi_env env, napi_callback_info info);
+napi_value sagejs_mpoly_groebner_msolve(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_reduce(napi_env env, napi_callback_info info);
 
 #endif

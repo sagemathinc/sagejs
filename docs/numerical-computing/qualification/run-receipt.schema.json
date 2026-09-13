@@ -1,0 +1,495 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/numerical-qualification-run-receipt-v1.json",
+  "title": "Sage.js numerical qualification run receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "authority", "collected_at", "status", "repository", "corpus",
+    "source_bundle", "adapter", "artifacts", "capability_manifest", "platform", "runtime",
+    "metrics", "cases", "id"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.numerical-qualification-run-receipt/v1" },
+    "authority": { "const": "local-host-collector" },
+    "collected_at": { "type": "string", "format": "date-time" },
+    "status": { "$ref": "#/$defs/status" },
+    "repository": { "$ref": "#/$defs/repository" },
+    "corpus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes", "files", "snapshot"],
+      "properties": {
+        "path": { "$ref": "#/$defs/nonempty" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "$ref": "#/$defs/nonnegativeInteger" },
+        "files": { "type": "integer", "minimum": 1 },
+        "snapshot": { "$ref": "corpus.schema.json" }
+      }
+    },
+    "source_bundle": { "$ref": "#/$defs/sourceBundle" },
+    "adapter": { "$ref": "#/$defs/pathBinding" },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/namedPathBinding" }
+    },
+    "capability_manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes", "files", "snapshot"],
+      "properties": {
+        "path": { "$ref": "#/$defs/nonempty" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "$ref": "#/$defs/nonnegativeInteger" },
+        "files": { "type": "integer", "minimum": 1 },
+        "snapshot": { "$ref": "capability-manifest.schema.json" }
+      }
+    },
+    "platform": { "$ref": "#/$defs/platform" },
+    "runtime": { "$ref": "#/$defs/runtime" },
+    "metrics": { "$ref": "#/$defs/runMetrics" },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/caseEvidence" }
+    },
+    "id": { "$ref": "#/$defs/contentId" }
+  },
+  "$defs": {
+    "nonempty": { "type": "string", "minLength": 1 },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "contentId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "status": { "enum": ["passed", "failed"] },
+    "nonnegativeNumber": { "type": "number", "minimum": 0 },
+    "nonnegativeInteger": { "type": "integer", "minimum": 0 },
+    "peakMemory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bytes", "measurement_method", "measurement_scope", "authenticated_by",
+        "sample_interval_ms"
+      ],
+      "properties": {
+        "bytes": { "$ref": "#/$defs/nonnegativeInteger" },
+        "measurement_method": {
+          "enum": [
+            "node-process-rss-boundary-v1",
+            "linux-procfs-process-tree-sampled-v1",
+            "macos-ps-process-tree-sampled-v1",
+            "windows-cim-process-tree-sampled-v1",
+            "browser-performance-memory-v1"
+          ]
+        },
+        "measurement_scope": {
+          "enum": ["collector_process", "process_tree", "browser_heap"]
+        },
+        "authenticated_by": { "const": "qualification-collector" },
+        "sample_interval_ms": {
+          "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }]
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "measurement_method": { "const": "node-process-rss-boundary-v1" },
+            "measurement_scope": { "const": "collector_process" }
+          }
+        },
+        {
+          "properties": {
+            "measurement_method": { "const": "linux-procfs-process-tree-sampled-v1" },
+            "measurement_scope": { "const": "process_tree" }
+          }
+        },
+        {
+          "properties": {
+            "measurement_method": { "const": "macos-ps-process-tree-sampled-v1" },
+            "measurement_scope": { "const": "process_tree" }
+          }
+        },
+        {
+          "properties": {
+            "measurement_method": { "const": "windows-cim-process-tree-sampled-v1" },
+            "measurement_scope": { "const": "process_tree" }
+          }
+        },
+        {
+          "properties": {
+            "measurement_method": { "const": "browser-performance-memory-v1" },
+            "measurement_scope": { "const": "browser_heap" }
+          }
+        }
+      ]
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "tree", "clean", "status_sha256"],
+      "properties": {
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40,64}$" },
+        "tree": { "type": "string", "pattern": "^[0-9a-f]{40,64}$" },
+        "clean": { "type": "boolean" },
+        "status_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "pathBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes", "files"],
+      "properties": {
+        "path": { "$ref": "#/$defs/nonempty" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "$ref": "#/$defs/nonnegativeInteger" },
+        "files": { "$ref": "#/$defs/nonnegativeInteger" }
+      }
+    },
+    "namedPathBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "path", "sha256", "bytes", "files"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonempty" },
+        "path": { "$ref": "#/$defs/nonempty" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "content_sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "$ref": "#/$defs/nonnegativeInteger" },
+        "files": { "$ref": "#/$defs/nonnegativeInteger" }
+      }
+    },
+    "sourceBundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["paths", "entries", "sha256"],
+      "properties": {
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonempty" }
+        },
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/pathBinding" }
+        },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "os_platform", "architecture", "os_type", "os_release", "endianness", "cpu",
+        "logical_cpus", "total_memory_bytes", "machine_id"
+      ],
+      "properties": {
+        "id": { "enum": ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"] },
+        "os_platform": { "$ref": "#/$defs/nonempty" },
+        "architecture": { "$ref": "#/$defs/nonempty" },
+        "os_type": { "$ref": "#/$defs/nonempty" },
+        "os_release": { "$ref": "#/$defs/nonempty" },
+        "endianness": { "enum": ["BE", "LE"] },
+        "cpu": { "$ref": "#/$defs/nonempty" },
+        "logical_cpus": { "type": "integer", "minimum": 1 },
+        "total_memory_bytes": { "type": "integer", "minimum": 1 },
+        "machine_id": { "$ref": "#/$defs/contentId" }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "name", "version", "engine"],
+      "properties": {
+        "kind": { "enum": ["node", "npm", "sea", "browser", "worker", "other"] },
+        "name": { "$ref": "#/$defs/nonempty" },
+        "version": { "$ref": "#/$defs/nonempty" },
+        "engine": { "type": ["string", "null"] }
+      },
+      "allOf": [{
+        "if": {
+          "properties": { "kind": { "enum": ["browser", "worker"] } },
+          "required": ["kind"]
+        },
+        "then": { "properties": { "engine": { "$ref": "#/$defs/nonempty" } } },
+        "else": { "properties": { "engine": { "type": "null" } } }
+      }]
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collector", "subject", "observed_capability_ids"],
+      "properties": {
+        "collector": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "name", "version", "node", "v8", "modules_abi"],
+          "properties": {
+            "kind": { "const": "node" },
+            "name": { "$ref": "#/$defs/nonempty" },
+            "version": { "$ref": "#/$defs/nonempty" },
+            "node": { "$ref": "#/$defs/nonempty" },
+            "v8": { "$ref": "#/$defs/nonempty" },
+            "modules_abi": { "type": ["string", "null"] }
+          }
+        },
+        "subject": { "$ref": "#/$defs/subject" },
+        "observed_capability_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonempty" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["samples", "minimum", "median", "maximum"],
+      "properties": {
+        "samples": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/nonnegativeNumber" }
+        },
+        "minimum": { "$ref": "#/$defs/nonnegativeNumber" },
+        "median": { "$ref": "#/$defs/nonnegativeNumber" },
+        "maximum": { "$ref": "#/$defs/nonnegativeNumber" }
+      }
+    },
+    "runMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startup", "total_wall_ms", "payload"],
+      "properties": {
+        "startup": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "process_entry_to_ready_ms", "adapter_load_ms", "adapter_initialize_ms"
+          ],
+          "properties": {
+            "process_entry_to_ready_ms": { "$ref": "#/$defs/nonnegativeNumber" },
+            "adapter_load_ms": { "$ref": "#/$defs/nonnegativeNumber" },
+            "adapter_initialize_ms": { "$ref": "#/$defs/nonnegativeNumber" }
+          }
+        },
+        "total_wall_ms": { "$ref": "#/$defs/nonnegativeNumber" },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "corpus_bytes", "adapter_bytes", "capability_manifest_bytes",
+            "artifact_installed_bytes", "artifacts"
+          ],
+          "properties": {
+            "corpus_bytes": { "$ref": "#/$defs/nonnegativeInteger" },
+            "adapter_bytes": { "$ref": "#/$defs/nonnegativeInteger" },
+            "capability_manifest_bytes": { "$ref": "#/$defs/nonnegativeInteger" },
+            "artifact_installed_bytes": { "$ref": "#/$defs/nonnegativeInteger" },
+            "artifacts": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/namedPathBinding" }
+            }
+          }
+        }
+      }
+    },
+    "checkEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "status", "actual_sha256", "expected_sha256", "details"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonempty" },
+        "kind": {
+          "enum": [
+            "deep-equal", "approximate", "finite", "less-than-or-equal",
+            "greater-than-or-equal"
+          ]
+        },
+        "status": { "$ref": "#/$defs/status" },
+        "actual_sha256": { "$ref": "#/$defs/sha256" },
+        "expected_sha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "details": { "type": "object" }
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observation", "evidence", "status", "metrics"],
+      "properties": {
+        "observation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["outcome", "values", "metrics"],
+          "properties": {
+            "outcome": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "code"],
+              "properties": {
+                "kind": { "enum": ["success", "failure"] },
+                "code": { "type": ["string", "null"] }
+              }
+            },
+            "values": { "type": "object" },
+            "metrics": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["phases_ms", "counters"],
+              "properties": {
+                "phases_ms": {
+                  "type": "object",
+                  "additionalProperties": { "$ref": "#/$defs/nonnegativeNumber" }
+                },
+                "counters": {
+                  "type": "object",
+                  "additionalProperties": { "$ref": "#/$defs/nonnegativeInteger" }
+                }
+              }
+            }
+          }
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["failure", "correctness", "validation"],
+          "properties": {
+            "failure": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status", "expected_outcome", "expected_code", "observed_outcome", "observed_code"
+              ],
+              "properties": {
+                "status": { "$ref": "#/$defs/status" },
+                "expected_outcome": { "enum": ["success", "failure"] },
+                "expected_code": { "type": ["string", "null"] },
+                "observed_outcome": { "enum": ["success", "failure"] },
+                "observed_code": { "type": ["string", "null"] }
+              }
+            },
+            "correctness": { "$ref": "#/$defs/checkGroup" },
+            "validation": { "$ref": "#/$defs/checkGroup" }
+          }
+        },
+        "status": { "$ref": "#/$defs/status" },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "wall_ms", "rss_before_bytes", "rss_after_bytes", "rss_peak_sampled_bytes",
+            "process_max_rss_bytes", "memory_method", "peak_memory"
+          ],
+          "properties": {
+            "wall_ms": { "$ref": "#/$defs/nonnegativeNumber" },
+            "rss_before_bytes": { "$ref": "#/$defs/nonnegativeInteger" },
+            "rss_after_bytes": { "$ref": "#/$defs/nonnegativeInteger" },
+            "rss_peak_sampled_bytes": { "$ref": "#/$defs/nonnegativeInteger" },
+            "process_max_rss_bytes": {
+              "oneOf": [{ "$ref": "#/$defs/nonnegativeInteger" }, { "type": "null" }]
+            },
+            "memory_method": { "$ref": "#/$defs/nonempty" },
+            "peak_memory": { "$ref": "#/$defs/peakMemory" }
+          }
+        }
+      }
+    },
+    "checkGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "checks"],
+      "properties": {
+        "status": { "$ref": "#/$defs/status" },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/checkEvidence" }
+        }
+      }
+    },
+    "caseEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id", "contract_sha256", "program_phase", "layer", "workload_tier", "campaign",
+        "status", "failure_reason", "capability_evidence", "warmup", "samples", "metrics"
+      ],
+      "properties": {
+        "case_id": { "$ref": "#/$defs/nonempty" },
+        "contract_sha256": { "$ref": "#/$defs/sha256" },
+        "program_phase": { "enum": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"] },
+        "layer": { "$ref": "#/$defs/nonempty" },
+        "workload_tier": { "$ref": "#/$defs/nonempty" },
+        "campaign": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "seed", "trials", "evidence_check_ids"],
+          "properties": {
+            "kind": {
+              "enum": [
+                "fixed", "deterministic-fuzz", "metamorphic", "fault-injection",
+                "long-duration"
+              ]
+            },
+            "seed": { "type": ["string", "null"] },
+            "trials": { "type": "integer", "minimum": 1 },
+            "evidence_check_ids": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/nonempty" }
+            }
+          }
+        },
+        "status": { "$ref": "#/$defs/status" },
+        "failure_reason": { "type": ["string", "null"] },
+        "capability_evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id", "status", "manifest_status", "case_covered", "adapter_observed",
+              "reason", "envelope"
+            ],
+            "properties": {
+              "id": { "$ref": "#/$defs/nonempty" },
+              "status": { "$ref": "#/$defs/status" },
+              "manifest_status": { "enum": ["available", "unavailable", "missing"] },
+              "case_covered": { "type": "boolean" },
+              "adapter_observed": { "type": "boolean" },
+              "reason": { "type": ["string", "null"] },
+              "envelope": { "type": ["object", "null"] }
+            }
+          }
+        },
+        "warmup": { "type": "array", "items": { "$ref": "#/$defs/sample" } },
+        "samples": { "type": "array", "items": { "$ref": "#/$defs/sample" } },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "wall_ms", "rss_peak_sampled_bytes", "process_max_rss_bytes", "peak_memory",
+            "adapter_phases_ms"
+          ],
+          "properties": {
+            "wall_ms": { "oneOf": [{ "$ref": "#/$defs/summary" }, { "type": "null" }] },
+            "rss_peak_sampled_bytes": {
+              "oneOf": [{ "$ref": "#/$defs/nonnegativeInteger" }, { "type": "null" }]
+            },
+            "process_max_rss_bytes": {
+              "oneOf": [{ "$ref": "#/$defs/nonnegativeInteger" }, { "type": "null" }]
+            },
+            "peak_memory": {
+              "oneOf": [{ "$ref": "#/$defs/peakMemory" }, { "type": "null" }]
+            },
+            "adapter_phases_ms": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/summary" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

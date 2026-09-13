@@ -1,0 +1,67 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-module-namespace-lookup",
+  "title": "Python Module Namespace Lookup",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reduce live native object module namespace lookup overhead without changing binding semantics",
+  "base_commit": "ce40da9413dc635a990c174bf594be816ca6d54b",
+  "claims": [
+    "src/baselib/builtins.py",
+    "test/python-module-namespace-lookup.cjs",
+    "docs/reference/api.md",
+    "website/reference-data.json",
+    "website/reference.html",
+    "docs/python-module-namespace-main-integration.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/sagemathinc/sagejs/pull/241",
+    "docs/python-module-namespace-main-integration.md"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/python-module-namespace-lookup.cjs test/python-exec-module-origin.cjs test/python-dynamic-imports.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.659,
+      "started_at": "2026-09-12T07:09:46.256Z",
+      "commit": "cd4d959cf68b84326ff138eac3ee03682197e4f3",
+      "workspace_fingerprint": "19047a20724d46f8c1978824a912b5c4fca0b50eb4576b1a2b44d85f71d9f473",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Integrating the unchanged live object namespace specialization onto main ce40da941 in a separate worktree. Prerequisites 231 and 239 are already in main. Contract metadata is frozen before one main-integrated build; focused, portable, strict and generated-doc checks follow that build. Historical run entries below are not receipts for this integration. Final results belong in the integration handoff and PR, without mutating this contract after the build.",
+    "risks": [
+      "The existing reflected-arithmetic hotpaths case fails identically on the prerequisite and candidate; assertions remain unchanged.",
+      "Controlled helper throughput improved on the historical 231/241 pair, but both unchanged 30-second mpmath cold gates failed. No speed claim applies to this new main integration; complete compiler/integration campaigns remain pending.",
+      "A docs wrapper triggered an unnecessary rebuild after task receipt mutation. Its partial dist was quarantined; complete original dist was recovered from the same-worktree read-only snapshot with exact source/compiler/receipt hashes before final qualification."
+    ],
+    "next_steps": [
+      "Qualify this frozen contract and main-integrated source with one full build followed by direct checks, then regenerate reference documents without dropping main APIs.",
+      "Publish the integration branch for the parent to fast-forward PR241; keep draft until exact-head CI and integration review complete. No release action is authorized."
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "sagejs.python-performance-policy/v1",
+  "referenceRuntime": "python",
+  "subjectRuntime": "sagejs",
+  "minimumConfirmedSamples": 7,
+  "referenceNoiseFloorMs": 1,
+  "interactiveScopes": [
+    "cold-cli",
+    "source-compile",
+    "cold-import",
+    "first-call"
+  ],
+  "thresholds": {
+    "watch": {
+      "minimumRatio": 5,
+      "minimumDeltaMs": 25
+    },
+    "performanceCliff": {
+      "minimumRatio": 10,
+      "minimumDeltaMs": 100
+    },
+    "interactiveLatencyCliff": {
+      "minimumRatio": 3,
+      "minimumDeltaMs": 500,
+      "minimumSubjectMs": 1000
+    },
+    "criticalCliff": {
+      "minimumRatio": 50,
+      "minimumDeltaMs": 100,
+      "timeoutSubjectMs": 10000,
+      "timeoutReferenceMaximumMs": 1000
+    }
+  }
+}

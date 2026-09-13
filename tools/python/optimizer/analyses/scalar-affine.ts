@@ -3,7 +3,6 @@ import {
   ScalarExpression as ExpressionPlan,
   ScalarStatement as StatementPlan,
 } from "../ir/scalar-program";
-
 export function affineTarget(
   statements: StatementPlan[],
   stateSlots: number[],
@@ -60,4 +59,3 @@ export function affineTarget(
     incrementSlot: increment.slot,
   };
 }
-

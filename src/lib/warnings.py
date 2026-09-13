@@ -13,6 +13,29 @@ import sagejs.runtime as runtime
 filters = []
 defaultaction = "default"
 onceregistry = {}
+_recording_logs = []
+
+
+class WarningMessage:
+    """The public record shape produced by `catch_warnings(record=True)`."""
+
+    def __init__(
+        self,
+        message,
+        category,
+        filename,
+        lineno,
+        file=None,
+        line=None,
+        source=None,
+    ):
+        self.message = message
+        self.category = category
+        self.filename = filename
+        self.lineno = lineno
+        self.file = file
+        self.line = line
+        self.source = source
 
 
 def filterwarnings(
@@ -58,6 +81,12 @@ def warn(message, category=None, stacklevel=1, source=None):
         return None
     if action == "error":
         raise category(text)
+    warning = message if isinstance(message, Warning) else category(text)
+    if _recording_logs:
+        _recording_logs[-1].append(
+            WarningMessage(warning, category, "<sagejs>", 0, source=source)
+        )
+        return None
     process.emitWarning(text, {"type": category.__name__})
     return None
 
@@ -75,6 +104,34 @@ def warn_explicit(
     return warn(message, category=category)
 
 
+def formatwarning(message, category, filename, lineno, line=None):
+    """Format one warning using CPython's stable public layout."""
+    text = "%s:%s: %s: %s\n" % (
+        filename,
+        lineno,
+        category.__name__,
+        message,
+    )
+    if line:
+        text += "  " + str(line).strip() + "\n"
+    return text
+
+
+def showwarning(
+    message,
+    category,
+    filename,
+    lineno,
+    file=None,
+    line=None,
+):
+    text = formatwarning(message, category, filename, lineno, line)
+    if file is not None and hasattr(file, "write"):
+        file.write(text)
+    else:
+        process.emitWarning(str(message), {"type": category.__name__})
+
+
 class catch_warnings:
     def __init__(self, record=False, module=None):
         self._record = record
@@ -83,9 +140,13 @@ class catch_warnings:
 
     def __enter__(self):
         self._saved = list(filters)
+        if self._record:
+            _recording_logs.append(self._log)
         return self._log if self._record else None
 
     def __exit__(self, exception_type, exception, traceback):
+        if self._record:
+            _recording_logs.pop()
         filters.clear()
         filters.extend(self._saved)
         return False

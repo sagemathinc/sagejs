@@ -1,0 +1,111 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fmpz-private-helper-protocol",
+  "title": "Fmpz Private Helper Protocol",
+  "lane": "native-compiler",
+  "status": "blocked",
+  "owner": "user",
+  "objective": "Authenticate intentionally private same-source helpers in native artifacts so strict native loading permits their ordinary direct Python fallback while preserving direct internal compiled calls and rejecting genuinely missing or tampered functions",
+  "base_commit": "535915a50b5b69d8093f730fc06254e4c6ca9c4d",
+  "claims": [
+    "tools/native-kernel/compiler.cjs",
+    "tools/native-kernel/ir.cjs",
+    "tools/native-kernel/js-backend.cjs",
+    "tools/native-kernel/production-pack.cjs",
+    "tools/runtime-bootstrap.ts",
+    "scripts/build-production-native-kernels.cjs",
+    "src/lib/sagejs/native.py",
+    "test/ffi.cjs",
+    "test/native-kernel.cjs",
+    "test/native-bounded-relations.cjs",
+    "test/native-live-exact-arena.cjs",
+    "test/native-live-exact-matrix.cjs",
+    "test/native-live-exact-records.cjs",
+    "test/native-rank-four-lattice-workspace.cjs",
+    "test/native-resident-flint-resource.cjs",
+    "test/native-reusable-exact-workspace.cjs",
+    "test/native-sparse-exact-rows.cjs",
+    "test/native-uint64-bitwise.cjs",
+    "test/production-native-kernels.cjs",
+    "tools/native-kernel/test/private-helper-resolution.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "same-source dynamic fallback compared with compiled public entry execution",
+      "authenticated production cubic closure metadata and strict autoload"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test tools/native-kernel/test/private-helper-resolution.cjs test/production-native-kernels.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/private-helper-resolution.cjs test/production-native-kernels.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.917,
+      "started_at": "2026-09-04T14:03:45.079Z",
+      "commit": "535915a50b5b69d8093f730fc06254e4c6ca9c4d",
+      "workspace_fingerprint": "2f89c1cfad06b2cc4396bb009254dc91fc22bd62d75b0ed2dd1012965c38a6ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 43.998,
+      "started_at": "2026-09-04T14:04:01.005Z",
+      "commit": "535915a50b5b69d8093f730fc06254e4c6ca9c4d",
+      "workspace_fingerprint": "2f89c1cfad06b2cc4396bb009254dc91fc22bd62d75b0ed2dd1012965c38a6ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.644,
+      "started_at": "2026-09-04T14:05:35.768Z",
+      "commit": "535915a50b5b69d8093f730fc06254e4c6ca9c4d",
+      "workspace_fingerprint": "2f89c1cfad06b2cc4396bb009254dc91fc22bd62d75b0ed2dd1012965c38a6ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:wasm",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.827,
+      "started_at": "2026-09-04T14:05:45.848Z",
+      "commit": "535915a50b5b69d8093f730fc06254e4c6ca9c4d",
+      "workspace_fingerprint": "2f89c1cfad06b2cc4396bb009254dc91fc22bd62d75b0ed2dd1012965c38a6ab",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Native IR v38 now records lexical @native provenance independently of subset-selection mode. The compiler derives a canonical private-function list only from lexical, non-host-callable functions whose provenance is the artifact's own physical source; imported and undecorated helpers are excluded. That list participates in standalone discovery compatibility, generated wrapper registration and inspection, production cache records, and production-pack identity and manifests. Runtime loading validates canonical names, rejects callable/private overlap, compares index and wrapper metadata before resolving a missing export, and returns a frozen identity sentinel only for authenticated membership. The @native decorator recognizes only that exact sentinel, so private helpers remain ordinary callable Python with is_native=True, is_compiled=False, and execution_mode='dynamic' under strict mode, while internal native calls remain direct and no aggregate ABI is published. The real cubic closure records 83 functions, 61 private functions, 14 lexical-private functions, excludes its one imported lexical-private function, and authenticates exactly 13 same-source helpers. Independent review found no correctness, identity, or fail-closed blocker. A clean production build rebuilt all 39 kernel families; focused standalone plus production tests pass 12/12 and strict baselib passes with zero errors.",
+    "risks": [
+      "Native Windows x64, Linux arm64, and macOS arm64 remain required CI validation hosts; the protocol itself uses only generated JSON metadata, JavaScript sets, and existing wrapper/runtime boundaries.",
+      "The shared optimizer-opportunity manifest is intentionally not regenerated in this lane and makes the final architecture aggregate stop after its native and Wasm subchecks pass.",
+      "The integrated base has pre-existing exact-range regression drift in exact-arena temporary-name expectations and a reusable-workspace symbol-size probe; these are unrelated to private-helper resolution and remain for the dedicated regression lane.",
+      "The concurrently claimed test/number-field-cubic-native-class-number.cjs still expects IR v37 and must be mechanically updated to v38 by the cubic acceptance lane after rebasing."
+    ],
+    "next_steps": [
+      "Rebase the cubic all-83 acceptance lane onto this commit, update its single IR-version assertion to v38, and prove the complete strict production execution and exact replay.",
+      "Regenerate shared optimizer and Wasm identity artifacts once the compiler series is integrated, then let all required platform CI validate the new artifact metadata."
+    ]
+  }
+}

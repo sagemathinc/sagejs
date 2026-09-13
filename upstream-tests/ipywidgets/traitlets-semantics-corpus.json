@@ -1,0 +1,1 @@
+{"link":{"after_unlink":9,"backward":9,"forward":6,"transformed":18},"notification_order":[["left",1,3,"change"],["right",2,5,"change"]],"rollback":{"error":"right must exceed left","events":[],"state":[3,5]},"schema":"sagejs.traitlets-semantics/v1","traitlets":"5.15.1"}

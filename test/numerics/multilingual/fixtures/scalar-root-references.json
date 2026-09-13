@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "purpose": "Offline parser and semantic fixtures; no external executable or copied vendor output is required.",
+  "references": [
+    {
+      "system": "sage",
+      "source_url": "https://doc.sagemath.org/html/en/reference/calculus/sage/calculus/calculus.html",
+      "accessed": "2026-08-31",
+      "fact_used": "Sage exposes scalar real root finding over an interval.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    },
+    {
+      "system": "python-scipy",
+      "source_url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.root_scalar.html",
+      "accessed": "2026-08-31",
+      "fact_used": "SciPy root_scalar accepts bracket, method, tolerances, and an iteration limit.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    },
+    {
+      "system": "matlab",
+      "source_url": "https://www.mathworks.com/help/matlab/ref/fzero.html",
+      "accessed": "2026-08-31",
+      "fact_used": "MATLAB fzero accepts an anonymous function and scalar or two-element initial data.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    },
+    {
+      "system": "wolfram",
+      "source_url": "https://reference.wolfram.com/language/ref/FindRoot.html",
+      "accessed": "2026-08-31",
+      "fact_used": "Wolfram FindRoot uses a rule-like variable specification and returns replacement rules.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    }
+  ],
+  "cases": [
+    {
+      "id": "quadratic-bracket",
+      "expression": "x^2 - 2",
+      "variable": "x",
+      "initial": [1, 2],
+      "method": "brent",
+      "expected": 1.4142135623730951,
+      "absolute_tolerance": 1e-12
+    },
+    {
+      "id": "cosine-fixed-point",
+      "expression": "cos(x) - x",
+      "variable": "x",
+      "initial": [0, 1],
+      "method": "brent",
+      "expected": 0.7390851332151607,
+      "absolute_tolerance": 1e-12
+    },
+    {
+      "id": "exponential-fixed-point",
+      "expression": "exp(-x) - x",
+      "variable": "x",
+      "initial": [0, 1],
+      "method": "brent",
+      "expected": 0.5671432904097838,
+      "absolute_tolerance": 1e-12
+    }
+  ]
+}

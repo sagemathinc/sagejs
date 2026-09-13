@@ -19,6 +19,26 @@ test("installed kernel protocol provides a persistent native session", async (t)
   t.after(() => session.close());
 
   await session.ready();
+  for (const method of [
+    "evaluate",
+    "eval",
+    "evaluateJSON",
+    "complete",
+    "inspect",
+    "documentation",
+    "comm",
+    "commInfo",
+    "isComplete",
+    "interrupt",
+    "reset",
+    "close",
+  ]) {
+    assert.equal(
+      typeof session[method],
+      "function",
+      `missing installed kernel method ${method}`,
+    );
+  }
   const output = [];
   const first = await session.evaluate("a = 2026\nprint(sum([1..100]))\na");
   assert.equal(first.repr, "2026");
@@ -30,6 +50,14 @@ test("installed kernel protocol provides a persistent native session", async (t)
   assert.deepEqual(output, []);
   assert.equal((await session.isComplete("2 + 2")).status, "complete");
   assert.ok((await session.documentation()).entries.length > 20);
+  assert.ok(
+    (await session.documentation()).entries.some(
+      (entry) => entry.name === "find_root",
+    ),
+  );
+  assert.deepEqual(await session.commInfo(), {});
+  const json = await session.evaluateJSON("{'answer': 42, 'items': [1, 2, 3]}");
+  assert.deepEqual(json, { answer: 42, items: [1, 2, 3] });
   assert.equal(
     (await session.evaluate("version()")).repr,
     JSON.stringify(

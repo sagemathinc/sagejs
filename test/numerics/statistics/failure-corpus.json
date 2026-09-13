@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {"operation": "describe", "input": [], "failure": "ValueError", "reason": "empty sample"},
+    {"operation": "describe", "input": [1, "NaN", 2], "failure": "ValueError", "reason": "non-finite observation"},
+    {"operation": "Normal", "input": {"standard_deviation": 0}, "failure": "ValueError", "reason": "degenerate scale must be explicit, not a density"},
+    {"operation": "StudentT", "input": {"degrees_of_freedom": 0}, "failure": "ValueError", "reason": "undefined distribution"},
+    {"operation": "RandomStream", "input": {"seed": -1}, "failure": "ValueError", "reason": "seed contract is nonnegative"},
+    {"operation": "one_sample_t_test", "input": [4, 4, 4], "status": "invalid_problem", "diagnostic": "validation_failed", "reason": "zero variance makes the t statistic undefined"},
+    {"operation": "linear_regression", "input": {"x": [1, 1, 1], "y": [1, 2, 3]}, "failure": "ValueError", "reason": "slope is unidentified"},
+    {"operation": "theil_sen_regression", "input": {"x": [0, 1, 2, 3], "y": [0, 1, 2, 3], "max_evaluations": 5}, "status": "maximum_evaluations"},
+    {"operation": "huber_regression", "input": {"x": [0, 1, 2], "y": [0, 1, 2], "cancel": true}, "status": "cancelled"},
+    {"operation": "sample", "input": {"distribution": "normal", "size": 20, "max_evaluations": 1}, "status": "maximum_evaluations"}
+  ]
+}

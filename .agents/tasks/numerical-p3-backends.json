@@ -1,0 +1,297 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerical-p3-backends",
+  "title": "Qualify callback-capable P3 optimization backends",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Integrate the qualified explicit-only cminpack lmdif/lmder backend as one lazy resource across browser, Node, evaluator workers, and SEA while preserving ordinary-Python automatic fallback semantics and independent public validation",
+  "base_commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+  "claims": [
+    "bench/numerical-p3-backends/",
+    "packages/flint-wasm/experimental/numerical-p3-backends/",
+    "packages/flint-wasm/numerical/",
+    "test/numerical-p3-backends/",
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/kernel.mjs",
+    "packages/flint-wasm/kernel.d.ts",
+    "packages/flint-wasm/kernel-worker.mjs",
+    "packages/flint-wasm/package.json",
+    "packages/flint-wasm/scripts/build.cjs",
+    "src/baselib/sagejs/runtime.py",
+    "src/baselib/sagejs/runtime.pyi",
+    "src/lib/sagejs/numerics/optimization/least_squares.py",
+    "src/lib/sagejs/numerics/optimization/planning.py",
+    "tools/python/contract.ts",
+    "tools/resources.ts",
+    "scripts/build.cjs",
+    "scripts/build-receipt.cjs",
+    "scripts/build-sea.cjs",
+    "scripts/precompiled-python-packages.json",
+    "architecture/native-boundaries.json",
+    "architecture/native-audit.json",
+    "architecture/native-code.json",
+    "architecture/native-exports.json",
+    "architecture/optimizer-opportunities.manifest.json",
+    "architecture/wasm-capabilities.json",
+    "architecture/wasm-capabilities-report.json",
+    "architecture/wasm-resource-lifetimes.json",
+    "architecture/wasm-workload-dashboard.json",
+    "docs/numerical-computing/optimization/README.md",
+    "docs/optimizer-opportunities.md",
+    "packages/flint-wasm/release/production-capabilities.json",
+    "packages/flint-wasm/release/production-layout.json",
+    "packages/flint-wasm/release/wasm-abi-allowlist.json",
+    ".agents/lanes.json"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/devernay/cminpack",
+    "https://github.com/stevengj/nlopt",
+    "https://www.libprima.net/"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "scipy.optimize",
+      "native-upstream"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node packages/flint-wasm/numerical/scripts/build.cjs",
+    "node packages/flint-wasm/numerical/qualification/run.mjs",
+    "node --test test/numerical-p3-backends/lm-wasm.test.mjs test/numerical-p3-backends/abi-fuzz.test.mjs test/numerical-p3-backends/worker-owned.test.mjs test/numerical-p3-backends/browser-resource.test.mjs test/numerical-p3-backends/public-integration.cjs test/numerical-p3-backends/public-relocation.cjs",
+    "node test/numerical-p3-backends/browser-lm.mjs",
+    "node --test test/numerical-p3-backends/public-browser.mjs",
+    "node --test test/numerical-p3-backends/public-sea.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node packages/flint-wasm/experimental/numerical-p3-backends/build.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.253,
+      "started_at": "2026-08-31T15:42:13.977Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "c17abbfa0c61fc9ea6a40c2d07bb0f2e8d20e7b70f4d26ef8c405cf254c0d49e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerical-p3-backends/lm-wasm.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.133,
+      "started_at": "2026-08-31T15:42:15.938Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "c17abbfa0c61fc9ea6a40c2d07bb0f2e8d20e7b70f4d26ef8c405cf254c0d49e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-backends/browser-lm.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.877,
+      "started_at": "2026-08-31T15:42:16.764Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "c17abbfa0c61fc9ea6a40c2d07bb0f2e8d20e7b70f4d26ef8c405cf254c0d49e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.788,
+      "started_at": "2026-08-31T15:42:18.389Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "c17abbfa0c61fc9ea6a40c2d07bb0f2e8d20e7b70f4d26ef8c405cf254c0d49e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 48.974,
+      "started_at": "2026-08-31T15:42:43.170Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "c17abbfa0c61fc9ea6a40c2d07bb0f2e8d20e7b70f4d26ef8c405cf254c0d49e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.821,
+      "started_at": "2026-08-31T15:43:38.091Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "c17abbfa0c61fc9ea6a40c2d07bb0f2e8d20e7b70f4d26ef8c405cf254c0d49e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 29.915,
+      "started_at": "2026-08-31T15:43:47.144Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "c17abbfa0c61fc9ea6a40c2d07bb0f2e8d20e7b70f4d26ef8c405cf254c0d49e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/experimental/numerical-p3-backends/build.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.286,
+      "started_at": "2026-08-31T15:45:54.744Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "74e3836fff566a6007f0c3b224c63a95b2b6e78f06efd1d80403ce3a452a9064",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerical-p3-backends/lm-wasm.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.15,
+      "started_at": "2026-08-31T15:45:56.763Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "74e3836fff566a6007f0c3b224c63a95b2b6e78f06efd1d80403ce3a452a9064",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-backends/browser-lm.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.905,
+      "started_at": "2026-08-31T15:45:57.662Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "74e3836fff566a6007f0c3b224c63a95b2b6e78f06efd1d80403ce3a452a9064",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/numerical/scripts/build.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.805,
+      "started_at": "2026-08-31T16:35:41.060Z",
+      "commit": "2a7859695173ef6055a6ed13ef3c11526f3ec31d",
+      "workspace_fingerprint": "a1c1cc786fbab7f790281230a966a778c7e05f4d4f1e6d3534e82dd55a3f4306",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/numerical/qualification/run.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.176,
+      "started_at": "2026-08-31T16:35:55.993Z",
+      "commit": "2a7859695173ef6055a6ed13ef3c11526f3ec31d",
+      "workspace_fingerprint": "a1c1cc786fbab7f790281230a966a778c7e05f4d4f1e6d3534e82dd55a3f4306",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerical-p3-backends/lm-wasm.test.mjs test/numerical-p3-backends/abi-fuzz.test.mjs test/numerical-p3-backends/worker-owned.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.24,
+      "started_at": "2026-08-31T16:35:56.932Z",
+      "commit": "2a7859695173ef6055a6ed13ef3c11526f3ec31d",
+      "workspace_fingerprint": "a1c1cc786fbab7f790281230a966a778c7e05f4d4f1e6d3534e82dd55a3f4306",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-backends/browser-lm.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.195,
+      "started_at": "2026-08-31T16:35:57.926Z",
+      "commit": "2a7859695173ef6055a6ed13ef3c11526f3ec31d",
+      "workspace_fingerprint": "a1c1cc786fbab7f790281230a966a778c7e05f4d4f1e6d3534e82dd55a3f4306",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.024,
+      "started_at": "2026-08-31T18:58:32.289Z",
+      "commit": "c0b5c0b28b8c988791a0ef8a32e93148ee6bdedc",
+      "workspace_fingerprint": "cd887028dbfd87667c89eb12343b71adf4d155a1f1f00036e68f57f31c06a875",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 51.839,
+      "started_at": "2026-08-31T18:58:44.028Z",
+      "commit": "c0b5c0b28b8c988791a0ef8a32e93148ee6bdedc",
+      "workspace_fingerprint": "cd887028dbfd87667c89eb12343b71adf4d155a1f1f00036e68f57f31c06a875",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerical-p3-backends/lm-wasm.test.mjs test/numerical-p3-backends/abi-fuzz.test.mjs test/numerical-p3-backends/worker-owned.test.mjs test/numerical-p3-backends/browser-resource.test.mjs test/numerical-p3-backends/public-integration.cjs test/numerical-p3-backends/public-relocation.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.28,
+      "started_at": "2026-08-31T18:59:48.427Z",
+      "commit": "c0b5c0b28b8c988791a0ef8a32e93148ee6bdedc",
+      "workspace_fingerprint": "cd887028dbfd87667c89eb12343b71adf4d155a1f1f00036e68f57f31c06a875",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-backends/browser-lm.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.044,
+      "started_at": "2026-08-31T19:00:02.426Z",
+      "commit": "c0b5c0b28b8c988791a0ef8a32e93148ee6bdedc",
+      "workspace_fingerprint": "cd887028dbfd87667c89eb12343b71adf4d155a1f1f00036e68f57f31c06a875",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerical-p3-backends/public-browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.898,
+      "started_at": "2026-08-31T19:00:04.177Z",
+      "commit": "c0b5c0b28b8c988791a0ef8a32e93148ee6bdedc",
+      "workspace_fingerprint": "cd887028dbfd87667c89eb12343b71adf4d155a1f1f00036e68f57f31c06a875",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerical-p3-backends/public-sea.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.863,
+      "started_at": "2026-08-31T19:00:09.785Z",
+      "commit": "c0b5c0b28b8c988791a0ef8a32e93148ee6bdedc",
+      "workspace_fingerprint": "cd887028dbfd87667c89eb12343b71adf4d155a1f1f00036e68f57f31c06a875",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Integrated the content-locked, explicit-only cminpack lmdif/lmder backend through the ordinary-Python public least-squares contract as one separately lazy 72,155-byte Wasm resource in Node, browser evaluators, relocated npm packages, and Python SEA binaries. The public router preserves exact method identity, recomputes independent validation, enforces iteration, total-callback, elapsed, evaluation, cancellation, trace, dimension, and memory budgets, and normalizes missing or corrupt resources to structured backend_failure results. Browser provenance records cminpack only on actual runtime execution. The exact artifact passes 53 upstream MGH cases for each method in Node and Chromium with independent oracle residual recomputation and an identical canonical digest, plus focused fuzz, ABI-corruption, allocation-failure, callback/error/lifecycle, worker-cancellation, hard-recovery, npm relocation, SEA relocation, and public contract tests. It passes portable Node smokes on local Linux x64 and persistent Linux ARM64, macOS ARM64, and Windows x64. Automatic selection remains disabled.",
+    "risks": [
+      "The persistent Linux x64 host bench-1 rejected the available SSH identity, so local Linux x64 is only a substitute smoke and no four-persistent-host receipt is claimed.",
+      "Automatic selection is intentionally disabled until a separate public performance and correctness policy qualifies a precise envelope.",
+      "parallel:check reports the already-integrated sibling numerical lanes as unclaimed because this task's base predates their merge; the P3-owned paths are claimed and the shared branch passes architecture and strict-Python gates.",
+      "The Wasm ABI necessarily exports tracked allocation helpers for the host wrapper. Arbitrary, undersized, overlapping, untracked, and double-freed regions fail closed; integration must expose only the JavaScript wrapper as public API.",
+      "Root, browser-package, and SEA builders intentionally repeat the approximately two-second content-lock build so every independently invoked package path rejects stale artifacts; a shared cache is deferred until its small saving justifies another identity and invalidation boundary."
+    ],
+    "next_steps": [
+      "Repeat the exact final-artifact smoke on persistent Linux x64 after bench-1 SSH authentication is restored.",
+      "Add the MIT-only NLopt core with NLOPT_LUKSAN=OFF only after source/object/symbol allowlists prove Luksan absent; qualify NLOPT_LN_NELDERMEAD and NLOPT_LN_COBYLA independently, retaining PRIMA/SciPy as oracles.",
+      "Design any automatic cminpack selection as a separate receipt-backed policy; do not infer it from backend availability."
+    ]
+  }
+}

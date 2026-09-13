@@ -1,0 +1,23 @@
+{
+  "scope": "Compiler-only PR263 plus PR252 source experiment, not integrated-main/full-product qualification",
+  "baselineCommit": "ed9506f08 (compiler source unchanged from 9ad99322e)",
+  "candidateDelta": "Only src/baselib/builtins.py arraylike tag initializer and membership changed to exact PR252 head7d015d0ce bytes",
+  "sourceFileCount": 712,
+  "sourceDifferences": [{
+    "path": "baselib/builtins.py",
+    "baseline": "24f7c7b5b0a9f73d4944f01d485f2b16405772d1c749bf25def71b12a24fd9d5",
+    "candidate": "8792cecd7060f6bd6762418fd09a05c94f540fb27a76233c142c4873e1828389"
+  }],
+  "sourceHashRowsDigest": "b3dff95fe4c1054434cf5513b8cc5681bac4dc71c7679c47fedaac374ad575cb",
+  "baselineCompiler": "3a4f8c162b35ba63b49be64853046a74d8f2e6abbe3a0877b711e1674f5d8f3b",
+  "candidateCompiler": "2429c323c002b99b31a50525fb8130afb186d1d55b4515d2a34d2ee35f0b3a50",
+  "identicalSourceDriver": "48d881dfb2761bb50c1192b57df57772a6ca9ab2e162611aa93837d9ed9a2659",
+  "identicalCompiledDriver": "03f6476b6dc74635161a35d2db8bc76b79a6b9a9e9c05f1e6c80bfeffc1b2e05",
+  "candidateConvergenceLog": "6ced5aa454387419ca8f5b0d33e1b17568144286c1bc977b1c1a1f85b1b202e7",
+  "compilerBuildNode": "26.8.1",
+  "executionNode": "26.7.0",
+  "runtimeBoundary": "Both staged directories use identical retained c4 runtime/resources. Recursive diff finds only dist/compiler/compiler.js different.",
+  "preflight": "PR25263classifications and observable tag side effects, PR263 missing/live import oracles, actual old/new embedded compiler tag contracts all passed. No full product build performed.",
+  "localCandidate": "/tmp/sagejs-263-plus-252.VJ1GCw",
+  "remotePair": "/home/user/sagejs-263-plus-252-pair.q2ndoT"
+}

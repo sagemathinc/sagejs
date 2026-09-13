@@ -1,0 +1,272 @@
+{
+  "schema": "sagejs.general-class-unit-corpus.v1",
+  "frozen_at": "2026-09-12",
+  "identity_membership_frozen": true,
+  "performance_qualified": false,
+  "m0_complete": false,
+  "plan_sha256": "aceadd86d81f796740e9fa1e02c5d1a57854453ecc0d1774f3f09bf2dcd14403",
+  "authorized_milestones": [
+    "M0",
+    "M1",
+    "M2",
+    "M3",
+    "M4",
+    "M5"
+  ],
+  "optimization_campaign_limit": 12,
+  "coverage_sha256": "b53a7084f53c7dd6cb6911423daacb7f2103fb6cb075f13da2534eb0aa62f948",
+  "observations_sha256": "de1f90c7f9d719e68cc397a34958b835c9425a035d1fdfbb4f10c972f7101060",
+  "source_pins": {
+    "source-union-v1.json": "ba4faf16efaa5c442673b8425148ea0e5c1ac4f5fd079285d4e261821945c264",
+    "reference-panel-fill98-reconciliation-v1/joint-feasibility.json": "766f3f33657504cc18a280db4bb758be3932f8350e2629d2a0a597eb157e5edb",
+    "reference-panel-fill98-reconciliation-v1/summary.json": "f1f3a2b014a1fa9802dfd3875f181a802228434f1e3e473209c80605ddb7d2dd",
+    "generated-admission-v1/admission.json": "d80fc3a0b571248823398fa40fa3eade653dedb074643d16124902fa12fbedf7",
+    "joint-identity-v1/reconciliation.json": "5ea62a41c5fb0b9e30ce062349669a610477ec264938ff7562f9e96ce6c7b25c",
+    "provisional-selection-v1/selection.json": "289b243e7a42fc74f624dd00d80408feee209a9e8585c3a57f8ce3625e507053"
+  },
+  "selection_uses_sagejs_results": false,
+  "signature_quotas": {
+    "2": [
+      [
+        60,
+        60
+      ],
+      [
+        40,
+        40
+      ]
+    ],
+    "3": [
+      [
+        60,
+        60
+      ],
+      [
+        40,
+        40
+      ]
+    ],
+    "4": [
+      [
+        41,
+        41,
+        38
+      ],
+      [
+        27,
+        27,
+        26
+      ]
+    ],
+    "5": [
+      [
+        40,
+        40,
+        40
+      ],
+      [
+        27,
+        27,
+        26
+      ]
+    ],
+    "6": [
+      [
+        30,
+        30,
+        30,
+        30
+      ],
+      [
+        20,
+        20,
+        20,
+        20
+      ]
+    ],
+    "7": [
+      [
+        30,
+        30,
+        30,
+        30
+      ],
+      [
+        20,
+        20,
+        20,
+        20
+      ]
+    ],
+    "8": [
+      [
+        24,
+        24,
+        24,
+        24,
+        24
+      ],
+      [
+        16,
+        16,
+        16,
+        16,
+        16
+      ]
+    ],
+    "9": [
+      [
+        24,
+        24,
+        24,
+        24,
+        24
+      ],
+      [
+        16,
+        16,
+        16,
+        16,
+        16
+      ]
+    ],
+    "10": [
+      [
+        20,
+        20,
+        20,
+        20,
+        20,
+        20
+      ],
+      [
+        14,
+        14,
+        13,
+        13,
+        13,
+        13
+      ]
+    ]
+  },
+  "smoke_seed": "sagejs-general-class-unit-smoke-20260912-v1",
+  "smoke_ids": [
+    "10.0.1438478024887.1",
+    "10.10.1148718338533.1",
+    "10.2.1008755079424.1",
+    "10.4.1003201279231.1",
+    "10.4.1005171503071.2",
+    "10.6.1031956070400000000000000.31",
+    "10.8.1003438345279.1",
+    "10.8.1003438345279.2",
+    "10.8.1003445537459.1",
+    "10.8.1005253234491.1",
+    "2.0.107.1",
+    "2.0.123.1",
+    "2.0.132.1",
+    "2.0.87.1",
+    "2.0.88.1",
+    "2.2.104.1",
+    "2.2.124.1",
+    "2.2.28.1",
+    "2.2.53.1",
+    "2.2.89.1",
+    "3.1.1002718428660.2",
+    "3.1.1003588962376.2",
+    "3.1.1005907102200.3",
+    "3.3.1001042271441.1",
+    "3.3.1001926779700.4",
+    "3.3.1001926779700.5",
+    "3.3.1001926779700.6",
+    "3.3.1002718428660.1",
+    "3.3.1005536260872.1",
+    "3.3.1005536260872.2",
+    "4.0.1000050737193.1",
+    "4.0.1000056735233.1",
+    "4.0.1000075608937.1",
+    "4.0.1000086001849.1",
+    "4.0.1000097362529.1",
+    "4.0.1000146638400.1",
+    "4.0.1000208904385.1",
+    "4.0.1000245115136.1",
+    "4.2.1002184223040.5",
+    "4.4.1000300030001.1",
+    "5.1.1000000.1",
+    "5.1.1000616.1",
+    "5.1.1000700.1",
+    "5.1.1000704.1",
+    "5.1.1000709.1",
+    "5.1.1000836.2",
+    "5.3.1000359.1",
+    "5.3.1001187.1",
+    "5.3.1001188.1",
+    "5.5.1019601.1",
+    "6.0.1000260638139.1",
+    "6.0.1000465411095.1",
+    "6.0.1000712609303.1",
+    "6.2.1000123987968.2",
+    "6.2.1000499879808.1",
+    "6.2.1000499879808.2",
+    "6.4.1000042200000.1",
+    "6.4.1000067088384.1",
+    "6.4.1000067088384.2",
+    "6.6.1000089136128.1",
+    "7.1.1000604745000.1",
+    "7.1.1000604745000.2",
+    "7.3.1000042200000.1",
+    "7.3.1000188000000.1",
+    "7.3.1000188000000.3",
+    "7.3.1000600090000.1",
+    "7.3.1001944944784.1",
+    "7.3.1002053052676.1",
+    "7.5.1006568750000.1",
+    "7.7.1570186848832.1",
+    "8.0.1047472664332962584338085707776000000.4",
+    "8.2.1000815367923.2",
+    "8.2.1001422547307.2",
+    "8.2.1004919750000.2",
+    "8.2.1006096089088.3",
+    "8.2.1006096089088.4",
+    "8.2.1006096089088.8",
+    "8.4.1009108647936.1",
+    "8.6.1016424304200.1",
+    "8.8.1019898010000.1",
+    "9.1.1049866478469.1",
+    "9.1.1049866478469.6",
+    "9.3.1039723874496.1",
+    "9.3.1039723874496.3",
+    "9.3.1039723874496.6",
+    "9.3.1042590744000.1",
+    "9.3.1044141264576.1",
+    "9.5.1070165422144.2",
+    "9.7.1264540476096.2",
+    "9.9.1110796787008.1"
+  ],
+  "discovery_at_least_one_second": 152,
+  "discovery_at_least_ten_seconds": 46,
+  "identity_evidence": "2954 exact PARI nfisisom negative pairs; other pairs separated by source/reference field metadata. Not independent maximal-order certificates.",
+  "generated_admission": "48 exact Eisenstein/Sturm presentations,35 development/13 initial-reference-only holdout;32 explicitly development-only entries stay in development.",
+  "holdout_policy": "Do not execute or tune Sage.js on holdouts before candidate freeze; reference-only observation is not algorithm development. Smoke uses development only.",
+  "request_caps": {
+    "coverage": {
+      "wall_seconds": 600,
+      "memory_bytes": 4294967296
+    },
+    "stress": {
+      "wall_seconds": 1800,
+      "memory_bytes": 17179869184
+    }
+  },
+  "incomplete": [
+    "Matched100/200-bit complete-request baselines and repeat/batch qualification",
+    "90 additional stress identities and90 unconditional reference cases",
+    "Complete M0 capability/phase report and M1 smoke outcomes",
+    "Public custody of full raw source/reference evidence archive"
+  ],
+  "cost_caveats": [
+    "Single-sample cost discovery, not qualified comparison",
+    "PARI working precision differs from Hecke regulator enclosure accuracy",
+    "Panel98 observed apt process only after runs; overlap unknown",
+    "All87 prior unpaired discovery identities remain in observations.jsonl"
+  ]
+}

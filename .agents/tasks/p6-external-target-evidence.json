@@ -1,0 +1,102 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p6-external-target-evidence",
+  "title": "External MATLAB and Wolfram target evidence",
+  "lane": "numerical-multilingual",
+  "status": "active",
+  "owner": "user",
+  "objective": "Audit and correct every advertised MATLAB and Wolfram numerical emitter, add target-aware syntax and semantics evidence, and classify self-roundtrip versus external execution honestly",
+  "base_commit": "a4bf2feb3111e2c113b4c0f7c8df4ac4f0173116",
+  "claims": [
+    "src/lib/sagejs/numerics/frontends/operations.py",
+    "src/lib/sagejs/numerics/frontends/roundtrip.py",
+    "src/lib/sagejs/numerics/frontends/scalar_root.py",
+    "test/numerics/code-roundtrip/",
+    "test/numerics/multilingual/numerical-catalog.cjs",
+    "docs/numerical-computing/multilingual-roundtrip/",
+    "docs/numerical-computing/multilingual/support-matrix.json",
+    "docs/numerical-computing/surface.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "tested-capability",
+    "oracles": [
+      "vendored Tree-sitter MATLAB and Wolfram grammar validation",
+      "official target-language reference fixtures",
+      "Sage.js canonical intent self-roundtrip through the shared backend"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "node --test test/numerics/code-roundtrip/executable-roundtrip.cjs test/numerics/code-roundtrip/external-target-contracts.cjs test/numerics/multilingual/numerical-catalog.cjs",
+    "pnpm merge:check",
+    "pnpm architecture:numerics"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 52.539,
+      "started_at": "2026-09-02T23:47:37.117Z",
+      "commit": "7760e839f04b2a411d473715c088e4078ec8ca9d",
+      "workspace_fingerprint": "089374acbfdddeccacf0c0107903fa93d3d93fdfa5f7506316cc98a46164a273",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.602,
+      "started_at": "2026-09-02T23:48:33.799Z",
+      "commit": "7760e839f04b2a411d473715c088e4078ec8ca9d",
+      "workspace_fingerprint": "089374acbfdddeccacf0c0107903fa93d3d93fdfa5f7506316cc98a46164a273",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.608,
+      "started_at": "2026-09-02T23:49:03.667Z",
+      "commit": "7760e839f04b2a411d473715c088e4078ec8ca9d",
+      "workspace_fingerprint": "1f1df32df534d8b5d298549f0c5d86cc37292ea3d9cfccbbc8d54bddf1f83c03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 668.054,
+      "started_at": "2026-09-02T23:51:00.398Z",
+      "commit": "aaccf91a89600358f3e83594d4bece37311629a6",
+      "workspace_fingerprint": "c5df496ee6f09889672342e675cfda936f780590d49253b0c7ed9e5e9e8bbe80",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/code-roundtrip/executable-roundtrip.cjs test/numerics/code-roundtrip/external-target-contracts.cjs test/numerics/multilingual/numerical-catalog.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.92,
+      "started_at": "2026-09-03T00:03:09.926Z",
+      "commit": "07c6f45bbfb3aa59f84fd9d835ef189d57e653d4",
+      "workspace_fingerprint": "d3eab2c15ff78b1cf6ed65cd85cd8fdb442a67b2a0e52575b63c6f4bdcf9cdd4",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

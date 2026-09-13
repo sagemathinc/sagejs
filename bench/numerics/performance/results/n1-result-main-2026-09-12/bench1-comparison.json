@@ -1,0 +1,192 @@
+{
+  "schema": "sagejs.numerics.result-binding-block-check/v1",
+  "baseline": "5b307b65fc350763abd52062e57f1c7a3666f925",
+  "candidate": "b0c532cfb9b0295ae444b536027231c403214bea",
+  "order": [
+    "A1",
+    "B1",
+    "B2",
+    "A2"
+  ],
+  "warmups": 3,
+  "samples_per_block": 7,
+  "checked_observations": 40,
+  "files": [
+    {
+      "label": "A1",
+      "sha256": "00533392d3711064ec1f50c877b8b1e02b2fb20edc213eb43f2c8db3c3d8c801"
+    },
+    {
+      "label": "B1",
+      "sha256": "6826dfbcf88e5a44d7e9a7b324e333232973ed3de4a88f87bd86603a789690de"
+    },
+    {
+      "label": "B2",
+      "sha256": "b82da8de8b523994ea3079cc5c5307fef23b327d963a8b42f65c32f1eb3c1efc"
+    },
+    {
+      "label": "A2",
+      "sha256": "f8df38b78f6fbcae62a44d709f0be1f26fa793416463c4faa08fdb0f92dcc14c"
+    }
+  ],
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "cpu": "AMD EPYC 7B13",
+    "node": "v26.5.1"
+  },
+  "host_load_at_block_start": [
+    [
+      0.65,
+      0.83,
+      0.55
+    ],
+    [
+      1,
+      0.97,
+      0.69
+    ],
+    [
+      1,
+      1,
+      0.78
+    ],
+    [
+      1,
+      1,
+      0.85
+    ]
+  ],
+  "rows": [
+    {
+      "case": "root-brent",
+      "trace": "none",
+      "baseline_block_medians_ms": [
+        51.026105880737305,
+        50.77791213989258
+      ],
+      "candidate_block_medians_ms": [
+        41.49150848388672,
+        36.26585006713867
+      ],
+      "observations_equal": true
+    },
+    {
+      "case": "root-brent",
+      "trace": "summary",
+      "baseline_block_medians_ms": [
+        44.973134994506836,
+        44.904470443725586
+      ],
+      "candidate_block_medians_ms": [
+        29.709577560424805,
+        31.44526481628418
+      ],
+      "observations_equal": true
+    },
+    {
+      "case": "bounded-minimum",
+      "trace": "none",
+      "baseline_block_medians_ms": [
+        46.23055458068848,
+        47.63221740722656
+      ],
+      "candidate_block_medians_ms": [
+        32.71985054016113,
+        33.6153507232666
+      ],
+      "observations_equal": true
+    },
+    {
+      "case": "bounded-minimum",
+      "trace": "summary",
+      "baseline_block_medians_ms": [
+        115.76414108276367,
+        116.65558815002441
+      ],
+      "candidate_block_medians_ms": [
+        101.60183906555176,
+        105.53503036499023
+      ],
+      "observations_equal": true
+    },
+    {
+      "case": "dense-solve-16",
+      "trace": "none",
+      "baseline_block_medians_ms": [
+        1747.0550537109375,
+        1733.452320098877
+      ],
+      "candidate_block_medians_ms": [
+        1685.3148937225342,
+        1649.6155261993408
+      ],
+      "observations_equal": true
+    },
+    {
+      "case": "dense-solve-16",
+      "trace": "summary",
+      "baseline_block_medians_ms": [
+        1722.4376201629639,
+        1764.4922733306885
+      ],
+      "candidate_block_medians_ms": [
+        1685.8723163604736,
+        1661.6625785827637
+      ],
+      "observations_equal": true
+    },
+    {
+      "case": "fft-256",
+      "trace": "none",
+      "baseline_block_medians_ms": [
+        4668.45703125,
+        4639.162302017212
+      ],
+      "candidate_block_medians_ms": [
+        4623.168706893921,
+        4610.7823848724365
+      ],
+      "observations_equal": true
+    },
+    {
+      "case": "fft-256",
+      "trace": "summary",
+      "baseline_block_medians_ms": [
+        4669.307708740234,
+        4650.207996368408
+      ],
+      "candidate_block_medians_ms": [
+        4619.1065311431885,
+        4621.719598770142
+      ],
+      "observations_equal": true
+    },
+    {
+      "case": "describe-20000",
+      "trace": "none",
+      "baseline_block_medians_ms": [
+        4708.528518676758,
+        4687.685251235962
+      ],
+      "candidate_block_medians_ms": [
+        4715.426921844482,
+        4809.292316436768
+      ],
+      "observations_equal": true
+    },
+    {
+      "case": "describe-20000",
+      "trace": "summary",
+      "baseline_block_medians_ms": [
+        5207.091331481934,
+        4766.793251037598
+      ],
+      "candidate_block_medians_ms": [
+        5367.575407028198,
+        4873.62003326416
+      ],
+      "observations_equal": true
+    }
+  ]
+}

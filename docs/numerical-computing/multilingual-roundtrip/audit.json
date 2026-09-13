@@ -1,0 +1,36 @@
+{
+  "schema_version": 2,
+  "semantics": "sagejs-generated-numerical-code-self-roundtrip-v2",
+  "languages": ["sage", "python-scipy", "matlab", "wolfram"],
+  "proof": {
+    "parser": "src/lib/sagejs/numerics/frontends/roundtrip.py",
+    "test": "test/numerics/code-roundtrip/executable-roundtrip.cjs",
+    "meaning": "Each sagejs_self_round_trip cell parses emitted data and callback syntax without using its semantic trailer, lowers that syntax to canonical intent, byte-regenerates the program, cross-checks the trailer, and executes the reconstructed intent through the shared Sage.js numerical backend. This is not execution or numerical qualification in the named external runtime.",
+    "target_evidence": "target-evidence.json",
+    "external_runtime_execution": []
+  },
+  "operations": [
+    {"operation": "roots:scalar_root:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab", "wolfram"], "output_only": [], "unsupported": []},
+    {"operation": "linear_algebra:linear_solve:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab", "wolfram"], "output_only": [], "unsupported": []},
+    {"operation": "linear_algebra:least_squares:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab", "wolfram"], "output_only": [], "unsupported": []},
+    {"operation": "spectral:symmetric_eigen:v1", "sagejs_self_round_trip": ["sage", "python-scipy"], "output_only": [], "unsupported": ["matlab", "wolfram"]},
+    {"operation": "spectral:general_eigen:v1", "sagejs_self_round_trip": ["sage", "python-scipy"], "output_only": [], "unsupported": ["matlab", "wolfram"]},
+    {"operation": "spectral:singular_value_decomposition:v1", "sagejs_self_round_trip": ["sage", "python-scipy"], "output_only": [], "unsupported": ["matlab", "wolfram"]},
+    {"operation": "spectral:fourier_transform:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab", "wolfram"], "output_only": [], "unsupported": []},
+    {"operation": "spectral:convolution:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab"], "output_only": [], "unsupported": ["wolfram"]},
+    {"operation": "approximation:interpolation:v1", "sagejs_self_round_trip": ["sage", "python-scipy"], "output_only": [], "unsupported": ["matlab", "wolfram"]},
+    {"operation": "approximation:cubic_spline:v1", "sagejs_self_round_trip": ["sage", "python-scipy"], "output_only": [], "unsupported": ["matlab", "wolfram"]},
+    {"operation": "integration:definite_integral:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab", "wolfram"], "output_only": [], "unsupported": []},
+    {"operation": "optimization:scalar_minimum:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab", "wolfram"], "output_only": [], "unsupported": []},
+    {"operation": "optimization:minimize:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab"], "output_only": [], "unsupported": ["wolfram"]},
+    {"operation": "nonlinear_systems:nonlinear_system:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab"], "output_only": [], "unsupported": ["wolfram"]},
+    {"operation": "least_squares:nonlinear_least_squares:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab"], "output_only": [], "unsupported": ["wolfram"]},
+    {"operation": "fitting:linear_fit:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab"], "output_only": [], "unsupported": ["wolfram"]},
+    {"operation": "ode:initial_value_problem:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab"], "output_only": [], "unsupported": ["wolfram"]},
+    {"operation": "statistics:descriptive_statistics:v1", "sagejs_self_round_trip": ["sage", "python-scipy", "matlab"], "output_only": [], "unsupported": ["wolfram"]},
+    {"operation": "statistics:one_sample_t_test:v1", "sagejs_self_round_trip": ["sage", "python-scipy"], "output_only": [], "unsupported": ["matlab", "wolfram"]},
+    {"operation": "statistics:two_sample_t_test:v1", "sagejs_self_round_trip": ["sage", "python-scipy"], "output_only": [], "unsupported": ["matlab", "wolfram"]},
+    {"operation": "statistics:linear_regression:v1", "sagejs_self_round_trip": ["sage", "python-scipy"], "output_only": [], "unsupported": ["matlab", "wolfram"]},
+    {"operation": "sweeps:parameter_sweep:v1", "sagejs_self_round_trip": ["sage", "python-scipy"], "output_only": [], "unsupported": ["matlab", "wolfram"]}
+  ]
+}

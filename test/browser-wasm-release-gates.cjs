@@ -15,6 +15,7 @@ const {
   enforceBudget,
   enforceTopologyBudgets,
   inspectProductionArtifact,
+  verifyRecordedArtifact,
   sha256,
 } = require("../packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs");
 const {
@@ -61,6 +62,29 @@ function fixtureDirectory(answer = 42) {
   }));
   return directory;
 }
+
+test("recorded artifact verification checks bytes and totals without running compression", (t) => {
+  const directory = fixtureDirectory();
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const report = inspectProductionArtifact(directory);
+  const zlib = require("node:zlib");
+  t.mock.method(zlib, "gzipSync", () => { throw new Error("unexpected recompression"); });
+  t.mock.method(zlib, "brotliCompressSync", () => { throw new Error("unexpected recompression"); });
+  assert.deepEqual(verifyRecordedArtifact(directory, report), report);
+  for (const mutate of [
+    (value) => value.files.push(value.files[0]),
+    (value) => { value.files[0].sha256 = "0".repeat(64); },
+    (value) => { value.files[0].brotli_bytes = -1; },
+    (value) => { value.totals.gzip_bytes++; },
+    (value) => { value.build_receipt_sha256 = "0".repeat(64); },
+    (value) => { value.source_revision = "other"; },
+  ]) {
+    const changed = structuredClone(report); mutate(changed);
+    assert.throws(() => verifyRecordedArtifact(directory, changed), /recorded/);
+  }
+  fs.appendFileSync(path.join(directory, "kernel.mjs"), "// changed");
+  assert.throws(() => verifyRecordedArtifact(directory, report), /digest/);
+});
 
 test("release artifact receipts validate hashes, Wasm magic, compression, and reproducibility", () => {
   const left = fixtureDirectory();
@@ -122,6 +146,11 @@ test("release CI shards performance and reuses only authenticated native cache e
   assert.doesNotMatch(workflow, /\$\{\{ runner\.temp \}\}/);
   assert.match(workflow, /pnpm parallel:cache -- prepare/);
   assert.doesNotMatch(workflow, /pnpm bootstrap/);
+  assert.match(
+    workflow,
+    /--native-acceptance[\s\S]{0,160}--budget bench\/browser-wasm-budget.json[\s\S]{0,100}--output build\/wasm-native-acceptance.json/,
+    "the required native corpus must retain execution and interruption acceptance without repeated timing",
+  );
   assert.match(workflow, /browser-parity:/);
   assert.match(workflow, /browser-performance:/);
   assert.match(
@@ -134,6 +163,26 @@ test("release CI shards performance and reuses only authenticated native cache e
   assert.match(workflow, /shard: \[1, 2, 3, 4\]/);
   assert.match(workflow, /--shard \$\{\{ matrix\.shard \}\}\/4/);
   assert.match(workflow, /name: Browser release gates/);
+});
+
+test("routine browser CI cannot omit exhaustive numerical domain coverage", () => {
+  const root = path.join(__dirname, "..");
+  const workflow = fs.readFileSync(
+    path.join(root, ".github", "workflows", "wasm-routine.yml"),
+    "utf8",
+  );
+  const packageDocument = JSON.parse(
+    fs.readFileSync(path.join(root, "packages", "flint-wasm", "package.json")),
+  );
+  assert.equal(
+    packageDocument.scripts["test:browser:numerics"],
+    "node test/numerical-domains-browser.mjs",
+  );
+  assert.match(
+    workflow,
+    /pnpm --dir packages\/flint-wasm test:browser:numerics/,
+    "routine Chromium CI must import and exercise every public numerical domain",
+  );
 });
 
 test("grammar modules inherit the authenticated bounded Tree-sitter memory", () => {
@@ -286,6 +335,46 @@ test("release reproducibility uses the reviewed packaging budget", () => {
     path.join(__dirname, "..", ".github", "workflows", "wasm-release.yml"),
     "utf8",
   );
+  const cleanBuild = workflow.slice(
+    workflow.indexOf("  clean-build:"),
+    workflow.indexOf("  cross-platform-toolchain:"),
+  );
+  const crossPlatform = workflow.slice(
+    workflow.indexOf("  cross-platform-toolchain:"),
+    workflow.indexOf("  windows-prebuilt-artifact:"),
+  );
+  assert.ok(cleanBuild.includes(
+    "node scripts/numerical-product.cjs publish \\\n" +
+      "            --output build/authenticated-numerical-product",
+  ));
+  assert.match(cleanBuild, /path: \|[\s\S]*build\/authenticated-numerical-product/);
+  assert.match(crossPlatform, /needs: clean-build/);
+  assert.ok(crossPlatform.includes(
+    "SAGEJS_NUMERICAL_PRODUCT_ROOT: ${{ github.workspace }}/build/canonical/" +
+      "build/authenticated-numerical-product",
+  ));
+  assert.ok(crossPlatform.includes(
+    "name: wasm-clean-build-a\n          path: build/canonical",
+  ));
+  for (const builder of [
+    "packages/flint-wasm/numerical/scripts/build.cjs",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/build.cjs",
+  ]) {
+    assert.ok(crossPlatform.includes(
+      "env -u SAGEJS_NUMERICAL_PRODUCT_ROOT \\\n" +
+        "            -u SAGEJS_NUMERICAL_RUNTIME_REQUIRED \\\n" +
+        `            node ${builder}`,
+    ));
+  }
+  assert.ok(crossPlatform.includes(
+    "cmp packages/flint-wasm/numerical/build/cminpack.wasm \\\n" +
+      '            "$SAGEJS_NUMERICAL_PRODUCT_ROOT/browser/cminpack.wasm"',
+  ));
+  assert.ok(crossPlatform.includes(
+    "cmp src/lib/sagejs/numerics/optimization/backends/nlopt/build/" +
+      "nlopt-methods.wasm \\\n" +
+      '            "$SAGEJS_NUMERICAL_PRODUCT_ROOT/browser/nlopt-methods.wasm"',
+  ));
   assert.match(
     workflow,
     /browser-wasm-release-artifact\.cjs \\\n\s+--dist build\/a\/packages\/flint-wasm\/dist \\\n\s+--budget bench\/browser-wasm-budget\.json \\\n\s+--require-baseline \\\n\s+--compare build\/b\/packages\/flint-wasm\/dist/,
@@ -298,6 +387,17 @@ test("release reproducibility uses the reviewed packaging budget", () => {
     workflow,
     /--dist build\/a\/packages\/flint-wasm\/dist \\\n\s+--budget bench\/browser-wasm-budget\.json \\\n\s+--compare-payload build\/darwin-arm64\/packages\/flint-wasm\/dist/,
   );
+  for (const platform of ["linux-arm64", "darwin-arm64"]) {
+    assert.ok(workflow.includes(
+      "cmp build/a/packages/flint-wasm/dist/cminpack.wasm \\\n" +
+        `            build/${platform}/packages/flint-wasm/numerical/build/cminpack.wasm`,
+    ));
+    assert.ok(workflow.includes(
+      "cmp build/a/packages/flint-wasm/dist/nlopt-methods.wasm \\\n" +
+        `            build/${platform}/src/lib/sagejs/numerics/optimization/` +
+        "backends/nlopt/build/nlopt-methods.wasm",
+    ));
+  }
 });
 
 test("Cloudflare-compatible header policy is parsed and security checked", () => {
@@ -312,6 +412,14 @@ test("Cloudflare-compatible header policy is parsed and security checked", () =>
   assert.deepEqual(validateHeadersRules(rules), []);
   rules[0].headers.delete("cross-origin-opener-policy");
   assert.match(validateHeadersRules(rules).join("\n"), /cross-origin-opener-policy/);
+
+  const embedRules = parseHeadersFile(`/*
+  X-Frame-Options: DENY
+
+/embed/v1/frame.html
+  ! X-Frame-Options
+`);
+  assert.equal(embedRules[1].headers.get("x-frame-options"), null);
 });
 
 async function withDeploymentOrigin({ doubleBrotli = false, doubleImmutableBrotli = false } = {}, callback) {
@@ -603,6 +711,11 @@ test("browser/native comparison requires identical workload identities", async (
   assert.equal(comparison.startup_median_ratio, 2);
   assert.equal(comparison.operations.example.cold_median_ratio, 3);
   assert.equal(comparison.operations.example.warm_median_ratio, 2);
+  const diagnostic = compareNativeReceipts(browser, { ...native, samples: 1,
+    measurement_purpose: "native-workload-acceptance" });
+  assert.equal(diagnostic.reference_samples, 1);
+  assert.equal(diagnostic.reference_measurement_purpose, "native-workload-acceptance");
+  assert.match(diagnostic.interpretation, /not repeated timing qualification/);
   assert.throws(
     () => compareNativeReceipts(browser, { ...native, workload_identity: "other" }),
     /different workloads/,

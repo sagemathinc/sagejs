@@ -1,0 +1,59 @@
+import os,sys,pty,subprocess,select,time,re,json,tempfile,signal,hashlib,platform,datetime
+exe=sys.argv[1]
+def digest():
+  h=hashlib.sha256()
+  with open(exe,"rb") as f:
+    for part in iter(lambda:f.read(1024*1024),b""): h.update(part)
+  return h.hexdigest()
+sha256=digest()
+version=subprocess.run([exe,"--version"],capture_output=True,text=True,timeout=10,check=True).stdout.strip()
+observed_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
+before_load=os.getloadavg()
+ansi=re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+prompt=re.compile(r"(?:sagejs|sage): $")
+expected="1267650600228229401496703205376"
+rows=[]
+with tempfile.TemporaryDirectory(prefix="sagejs-startup-pty-") as cache:
+  env=dict(os.environ,XDG_CACHE_HOME=cache)
+  for sample in range(21):
+    master,slave=pty.openpty()
+    start=time.perf_counter()
+    child=subprocess.Popen([exe],stdin=slave,stdout=slave,stderr=slave,env=env,start_new_session=True)
+    os.close(slave)
+    text="";phase=0;ready=None;answer=None;second_start=None;second=None
+    deadline=start+10
+    try:
+      while time.perf_counter()<deadline:
+        if child.poll() is not None:
+          if child.returncode!=0 or phase!=4: raise RuntimeError("premature or unsuccessful child exit")
+          rows.append(dict(promptMs=1000*(ready-start),firstAnswerAfterPromptMs=1000*(answer-ready),secondRoundTripMs=1000*(second-second_start),exitAfterSecondPromptMs=1000*(time.perf_counter()-exit_start)))
+          break
+        if not select.select([master],[],[],0.002)[0]: continue
+        try: part=os.read(master,8192)
+        except OSError:
+          time.sleep(.001);continue
+        text+=part.decode("utf8",errors="replace")
+        if len(text)>65536: raise RuntimeError("excess output")
+        clean=ansi.sub("",text).replace("\r","")
+        now=time.perf_counter()
+        if phase==0 and prompt.search(clean):
+          ready=now;phase=1;text="";os.write(master,b"print(2 ** 100)\n")
+        elif phase==1 and re.search(r"(?:^|\n)"+expected+r"(?:\n|$)",clean):
+          answer=now;phase=2
+        if phase==2 and prompt.search(clean):
+          second_start=time.perf_counter();phase=3;text="";os.write(master,b"print(6 * 7)\n")
+        elif phase==3 and re.search(r"(?:^|\n)42(?:\n|$)",clean):
+          if second is None: second=now
+          if prompt.search(clean):
+            phase=4;exit_start=time.perf_counter();os.write(master,b"\x04")
+      else: raise RuntimeError("PTY observation timed out, phase "+str(phase))
+    finally:
+      if child.poll() is None:
+        os.killpg(child.pid,signal.SIGKILL)
+        child.wait(timeout=2)
+      os.close(master)
+def stats(key):
+  xs=sorted(r[key] for r in rows)
+  return dict(min=xs[0],median=xs[10],p95=xs[19],max=xs[20])
+if digest()!=sha256: raise RuntimeError("executable changed")
+print(json.dumps(dict(sha256=sha256,version=version,observedAt=observed_at,host=dict(system=platform.system(),machine=platform.machine(),controllerPython=platform.python_version(),beforeLoad=before_load,afterLoad=os.getloadavg()),schema="sagejs.startup-pty-observation/v1",executable=exe,protocol="21 fresh processes on POSIX PTY; initial prompt then 2**100 and returned prompt then 6*7 and returned prompt then Ctrl-D; isolated initially empty XDG cache shared by samples; no source changes",samples=rows,summary={k:stats(k) for k in rows[0]})))

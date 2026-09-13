@@ -1,0 +1,86 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-online-hnf-bounded-gate",
+  "title": "Gate cubic online HNF to eligible collection regimes",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Restrict online exact HNF state to relation regimes where it can close the proof: bounded PARI-shaped collection or an exhaustive retry with an already certified small unit; preserve exact early closure and final HNF/SNF replay while avoiding redundant online state for no-unit exhaustive collection.",
+  "base_commit": "5b0fb6149c8d9737789f40e4df74e6fa521ab5a5",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+    "test/number-field-cubic-online-trivial-quotient.cjs",
+    "test/number-field-cubic-native-class-number.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "ordinary-object exact certificate replay",
+      "existing large-regulator cubic receipt regressions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "env SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY=off node --test test/number-field-cubic-online-trivial-quotient.cjs",
+    "env SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY=off node --test --test-name-pattern=the complete cubic closure|one unsupported operation test/number-field-cubic-fmpz-closure.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY=off node --test test/number-field-cubic-online-trivial-quotient.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.254,
+      "started_at": "2026-09-04T18:18:30.899Z",
+      "commit": "5b0fb6149c8d9737789f40e4df74e6fa521ab5a5",
+      "workspace_fingerprint": "c33f24203a1d29feabb7aa14c7638c108d93d67dcb2d5015b9eed4c0adab0f5d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY=off node --test --test-name-pattern=the complete cubic closure|one unsupported operation test/number-field-cubic-fmpz-closure.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.174,
+      "started_at": "2026-09-04T18:18:40.948Z",
+      "commit": "5b0fb6149c8d9737789f40e4df74e6fa521ab5a5",
+      "workspace_fingerprint": "c33f24203a1d29feabb7aa14c7638c108d93d67dcb2d5015b9eed4c0adab0f5d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 44.882,
+      "started_at": "2026-09-04T18:18:57.768Z",
+      "commit": "5b0fb6149c8d9737789f40e4df74e6fa521ab5a5",
+      "workspace_fingerprint": "c33f24203a1d29feabb7aa14c7638c108d93d67dcb2d5015b9eed4c0adab0f5d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The exact online relation quotient now has one explicit eligibility predicate: it remains fully resident for bounded PARI-shaped efforts 3--5 and for exhaustive retries whose small-unit probe has already certified the rank-one unit, while no-unit exhaustive retries allocate only typed 1-by-1 placeholders and never enter an online update path. The independent adjacent-order matrix is likewise materialized and initialized only for the PARI permutation that consumes it. Existing 3.1.10636.1 and holdout early-close diagnostics remain exact, and a forced effort-1 x^3+9*x-55 computation retains 17 rows, returns C5, publishes no false trivial-close diagnostics, and passes independent conditional-GRH replay. A whole-tree allocation A/B established separately that cf1307be succeeds at the minimum 1 MiB but b7b95a2a and this source require exactly 2,656,608 temporary bytes for 3.1.69305231.3; that change is caused by the compiler's early checkpoint placement, not by online-HNF state, so this lane makes no 2 MiB restoration claim.",
+    "risks": [
+      "LMFDB 3.1.69305231.3 still exceeds the current public 2 MiB temporary cap because the earlier fmpz checkpoint now covers the complete resource lifetime; integration must requalify the cap independently.",
+      "The complete pnpm test:native gate was not rerun in this lane. Its cubic production-closure case is known to fail at the stale 2 MiB cap, and architecture:check reaches an unrelated stale optimizer-opportunity manifest after all native architecture checks pass.",
+      "Focused native validation ran on linux-x64; cross-platform production-pack CI remains authoritative."
+    ],
+    "next_steps": [
+      "Integrate with the explicit 3 MiB cubic temporary-cap requalification and its large-regulator regression.",
+      "Regenerate shared optimizer and receipt-policy artifacts, then run the complete architecture and native gates on the integrated source.",
+      "Reuse the preserved bounded online quotient for the next wide C15 support-transcript optimization."
+    ]
+  }
+}

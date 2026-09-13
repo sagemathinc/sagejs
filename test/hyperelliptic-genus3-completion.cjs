@@ -5,12 +5,13 @@ const assert = require("node:assert/strict");
 const { execFileSync } = require("node:child_process");
 const test = require("node:test");
 const { join } = require("node:path");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
 
 function python(source) {
   return JSON.parse(
-    execFileSync("python3", ["-c", `import json, sys\nsys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})\n${source}`], {
+    execFileSync(pythonExecutable(), ["-c", `import json, sys\nfrom fractions import Fraction\nsys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})\n${source}`], {
       cwd: root,
       encoding: "utf8",
       env: process.env,
@@ -264,7 +265,6 @@ print(json.dumps({
 test("completion rejects inexact integer evidence instead of truncating it", () => {
   const observed = python(String.raw`
 import json
-from fractions import Fraction
 from sagejs.hyperelliptic_curves.genus3_completion import (
     complete_genus3_lpolynomial,
     enumerate_genus3_weil_candidates,

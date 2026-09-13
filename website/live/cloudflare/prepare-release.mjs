@@ -36,6 +36,7 @@ const CONTENT_TYPES = new Map([
   [".txt", "text/plain; charset=utf-8"],
   [".wasm", "application/wasm"],
   [".webmanifest", "application/manifest+json; charset=utf-8"],
+  [".woff2", "font/woff2"],
 ]);
 
 function sha256Buffer(value) {

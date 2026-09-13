@@ -157,6 +157,52 @@ test("ConwayPolynomials matches Sage mapping and error semantics", async () => {
   }
 });
 
+test(
+  "named quadratic fields use a deterministic fallback beyond the Conway table",
+  { timeout: 120_000 },
+  async () => {
+    const session = await createSage({ mode: "python" });
+    try {
+      const result = await session.evaluate(
+        [
+          "from sage.databases.conway import ConwayPolynomials",
+          "c = ConwayPolynomials()",
+          "K = GF(117223**2, 'a')",
+          "R = PolynomialRing(GF(117223), 'x')",
+          "x = R.gen()",
+          "m = K.modulus()",
+          "assert not c.has_polynomial(117223, 2)",
+          "assert tuple(value.lift() for value in m.coefficients()) == (117220, 0, 1)",
+          "assert m == x**2 - 3",
+          "assert m.is_irreducible()",
+          "assert K is GF(117223**2, 'a')",
+          "assert K.gen()**2 == K(3)",
+          "unnamed_error = None",
+          "try:",
+          "    GF(117223**2)",
+          "except NotImplementedError as error:",
+          "    unnamed_error = str(error)",
+          "assert unnamed_error is not None",
+          "primitive_error = None",
+          "try:",
+          "    GF(117223**2, 'a', modulus='primitive')",
+          "except NotImplementedError as error:",
+          "    primitive_error = str(error)",
+          "assert primitive_error is not None",
+          "(K, m, unnamed_error == primitive_error, primitive_error)",
+        ].join("\n"),
+      );
+      assert.equal(
+        result.repr,
+        "(Finite Field in a of size 117223^2, x^2 + 117220, True, " +
+          "'Sage-compatible pseudo-Conway polynomials are not implemented for this finite field')",
+      );
+    } finally {
+      await session.close();
+    }
+  },
+);
+
 test("compact Conway materialization stays within its cold-load budget", async () => {
   const session = await createSage({ mode: "python" });
   try {
@@ -235,8 +281,10 @@ test("Conway data access fails deterministically without filesystem capability",
 });
 
 test("ordinary CPython uses the portable Conway JSON fallback", () => {
+  const python = process.env.PYTHON ||
+    (process.platform === "win32" ? "python" : "python3");
   const result = spawnSync(
-    "python3",
+    python,
     [
       "-c",
       [
@@ -253,6 +301,10 @@ test("ordinary CPython uses the portable Conway JSON fallback", () => {
       env: process.env,
     },
   );
-  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.status,
+    0,
+    result.stderr || result.error?.message || "CPython oracle failed",
+  );
   assert.equal(result.stdout.trim(), "47090 10453 (60867, 2, 0, 1)");
 });

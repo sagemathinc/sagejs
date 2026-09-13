@@ -4,6 +4,7 @@
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const { existsSync, readFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
 const { resolve } = require("node:path");
 const test = require("node:test");
 
@@ -11,7 +12,10 @@ const ROOT = resolve(__dirname, "..");
 const MANIFEST = resolve(ROOT, "bench/number-field-maximal-order-manifest.json");
 const CLI = resolve(ROOT, "tools/number-field-maximal-order/cli.cjs");
 const { canonicalBasis, polynomialDigest } = require("../tools/number-field-maximal-order/exact.cjs");
-const { PersistentLineProcess } = require("../tools/number-field-maximal-order/process.cjs");
+const {
+  PersistentLineProcess,
+  resolveExecutable,
+} = require("../tools/number-field-maximal-order/process.cjs");
 const {
   loadManifest,
   reportMarkdown,
@@ -94,6 +98,7 @@ test("independent verification checks containment, closure, index, and discrimin
 });
 
 test("persistent subprocesses expose unavailable and timeout states", async () => {
+  assert.equal(resolveExecutable(process.execPath), process.execPath);
   const unavailable = new PersistentLineProcess({
     name: "missing",
     command: "/definitely/not/a/maximal-order-oracle",
@@ -179,7 +184,7 @@ test("the CLI validates the checked manifest", () => {
 test("live GP adapter produces a verified bounded quick record when available", {
   skip: !existsSync("/usr/bin/gp"),
 }, () => {
-  const output = resolve(process.env.TMPDIR || "/tmp", `nfmo-test-${process.pid}.json`);
+  const output = resolve(tmpdir(), `nfmo-test-${process.pid}.json`);
   const result = spawnSync(process.execPath, [
     CLI, "run", "--profile", "quick", "--systems", "pari",
     "--samples", "1", "--warmups", "0", "--output", output,

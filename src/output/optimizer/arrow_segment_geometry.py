@@ -1,3 +1,4 @@
+from ast_types import AST_Toplevel, is_node_type
 from output.loop_common import (
     loop_can_catch_interrupt,
     print_interrupt_check,
@@ -54,6 +55,18 @@ def print_arrow_segment_geometry_region(self, output):
     output.print("true" if loop_can_catch_interrupt(output) else "false")
     output.comma()
     output.print(str(plan.maximumOutputEntries))
+    output.comma()
+    module_id = None
+    for node in output.stack():
+        if is_node_type(node, AST_Toplevel):
+            module_id = node.module_id
+    output.print("ρσ_modules[")
+    output.print_string(module_id or "__main__")
+    output.print("]")
+    output.comma()
+    output.print(
+        '(typeof __builtins__ !== "undefined" ? __builtins__ : ρσ_modules.builtins)'
+    )
     output.print(")")
     output.end_statement()
 

@@ -185,6 +185,37 @@ test("sagejs.runtime is a complete canonical module namespace", async (t) => {
   );
   assert.equal(
     (await session.evaluate(
+      "names = dir(runtime)\n" +
+        "names == sorted(names), any(name.startswith('ρσ') for name in names)",
+    )).repr,
+    "(True, False)",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "setattr(runtime, '_directory_probe', 42)\n" +
+        "listed = '_directory_probe' in dir(runtime)\n" +
+        "delattr(runtime, '_directory_probe')\n" +
+        "listed, '_directory_probe' not in dir(runtime)",
+    )).repr,
+    "(True, True)",
+    "the intrinsic directory must remain live, not a frozen list of names",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "runtime.reflect.set(runtime, 'test_dir_binding', runtime.undefined)\n" +
+        "'test_dir_binding' in dir(runtime)",
+    )).repr,
+    "True",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "runtime.reflect.deleteProperty(runtime, 'test_dir_binding')\n" +
+        "'test_dir_binding' in dir(runtime)",
+    )).repr,
+    "False",
+  );
+  assert.equal(
+    (await session.evaluate(
       "missing = [name for name in runtime_names " +
         "if name not in ('last_exception', 'undefined') " +
         "and not hasattr(runtime, name)]\n" +
@@ -819,6 +850,21 @@ test("kernel Python globals cannot overwrite host or compiler bindings", async (
     "import sagejs.runtime as runtime\n" +
       "host_names = ['Object', 'Reflect', 'Symbol', 'globalThis', 'Math', 'Map', 'console']\n" +
       "host_values = [runtime.reflect.get(runtime.global_object, name) for name in host_names]",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "[runtime.reflect.has(__builtins__, name) for name in host_names]",
+    )).repr,
+    "[False, False, False, False, False, False, False]",
+  );
+  assert.equal(
+    (await session.evaluate(
+      "(runtime.reflect.has(__builtins__, 'eval'), " +
+        "runtime.reflect.get(__builtins__, 'eval') is not " +
+        "runtime.reflect.get(runtime.global_object, 'eval'), " +
+        "runtime.reflect.get(__builtins__, 'eval')('value + 2', {'value': 40}))",
+    )).repr,
+    "(True, True, 42)",
   );
   await session.evaluate(
     "Object = 'Object-value'\n" +

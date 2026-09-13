@@ -15,6 +15,8 @@ napi_value sagejs_cyclotomic_root_coefficients(
     napi_env env, napi_callback_info info);
 napi_value sagejs_cyclotomic_element_coefficients(
     napi_env env, napi_callback_info info);
+napi_value sagejs_cyclotomic_elements_from_integral_coordinates(
+    napi_env env, napi_callback_info info);
 napi_value sagejs_qqbar_add(napi_env env, napi_callback_info info);
 napi_value sagejs_qqbar_sub(napi_env env, napi_callback_info info);
 napi_value sagejs_qqbar_mul(napi_env env, napi_callback_info info);

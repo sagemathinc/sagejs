@@ -1,0 +1,723 @@
+[
+  {
+    "host": {
+      "platform": "linux",
+      "architecture": "x64",
+      "cpu": "AMD EPYC 7B13",
+      "logicalCpus": 16,
+      "memory": 67418693632
+    },
+    "revision": "e3ebda3427fdde1c4457604f76fab9977d395b18",
+    "sourceSha256": {
+      "src/baselib/modular.py": "a932facf3e9d9915f77d97f5ac90cb64caa1e432e541023d126369ebc90c804d",
+      "src/lib/sagejs/modular_abelian_varieties/abelian_variety.py": "8f199b37e5c84b150ca7464f8ec1aee833b460a4210a39d8059835635fcf7061",
+      "src/lib/sagejs/modular_forms/newforms.py": "8e949e3c06a1b3ca9e6a4cce972b746116d267c3379bb6b6a45384a9b34d1933"
+    },
+    "levels": [
+      389,
+      1009,
+      2003
+    ],
+    "systems": [
+      "sagejs",
+      "sage"
+    ],
+    "workload": "decomposition",
+    "samples": 3,
+    "timeoutSeconds": 300,
+    "policy": "fresh process and parent; unrelated J0(11) warmup; default native backends; wall times exclude interpreter startup"
+  },
+  {
+    "running": {
+      "system": "sagejs",
+      "level": 389,
+      "sample": 0
+    }
+  },
+  {
+    "system": "sagejs",
+    "level": 389,
+    "sample": 0,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage.js",
+        "level": 389,
+        "workload": "decomposition",
+        "node": "v26.8.1",
+        "backend": "native-default"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 0.243519771
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.14402741500000002
+      },
+      {
+        "dimension": 32,
+        "factors": [
+          1,
+          2,
+          3,
+          6,
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sage",
+      "level": 389,
+      "sample": 0
+    }
+  },
+  {
+    "system": "sage",
+    "level": 389,
+    "sample": 0,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage",
+        "version": "10.9.post1",
+        "level": 389,
+        "workload": "decomposition"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 0.23297587100387318
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.0005090499980724417
+      },
+      {
+        "dimension": 32,
+        "factors": [
+          1,
+          2,
+          3,
+          6,
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sagejs",
+      "level": 389,
+      "sample": 1
+    }
+  },
+  {
+    "system": "sagejs",
+    "level": 389,
+    "sample": 1,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage.js",
+        "level": 389,
+        "workload": "decomposition",
+        "node": "v26.8.1",
+        "backend": "native-default"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 0.238531651
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.13996580499999983
+      },
+      {
+        "dimension": 32,
+        "factors": [
+          1,
+          2,
+          3,
+          6,
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sage",
+      "level": 389,
+      "sample": 1
+    }
+  },
+  {
+    "system": "sage",
+    "level": 389,
+    "sample": 1,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage",
+        "version": "10.9.post1",
+        "level": 389,
+        "workload": "decomposition"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 0.23130985200259602
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.0005031399996369146
+      },
+      {
+        "dimension": 32,
+        "factors": [
+          1,
+          2,
+          3,
+          6,
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sagejs",
+      "level": 389,
+      "sample": 2
+    }
+  },
+  {
+    "system": "sagejs",
+    "level": 389,
+    "sample": 2,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage.js",
+        "level": 389,
+        "workload": "decomposition",
+        "node": "v26.8.1",
+        "backend": "native-default"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 0.23743324099999996
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.14093575499999997
+      },
+      {
+        "dimension": 32,
+        "factors": [
+          1,
+          2,
+          3,
+          6,
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sage",
+      "level": 389,
+      "sample": 2
+    }
+  },
+  {
+    "system": "sage",
+    "level": 389,
+    "sample": 2,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage",
+        "version": "10.9.post1",
+        "level": 389,
+        "workload": "decomposition"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 0.22056749100011075
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.0005040300020482391
+      },
+      {
+        "dimension": 32,
+        "factors": [
+          1,
+          2,
+          3,
+          6,
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sagejs",
+      "level": 1009,
+      "sample": 0
+    }
+  },
+  {
+    "system": "sagejs",
+    "level": 1009,
+    "sample": 0,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage.js",
+        "level": 1009,
+        "workload": "decomposition",
+        "node": "v26.8.1",
+        "backend": "native-default"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 1.2573912920000003
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.2895286090000002
+      },
+      {
+        "dimension": 83,
+        "factors": [
+          37,
+          46
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sage",
+      "level": 1009,
+      "sample": 0
+    }
+  },
+  {
+    "system": "sage",
+    "level": 1009,
+    "sample": 0,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage",
+        "version": "10.9.post1",
+        "level": 1009,
+        "workload": "decomposition"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 1.6097031789977336
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.002477679998264648
+      },
+      {
+        "dimension": 83,
+        "factors": [
+          37,
+          46
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sagejs",
+      "level": 1009,
+      "sample": 1
+    }
+  },
+  {
+    "system": "sagejs",
+    "level": 1009,
+    "sample": 1,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage.js",
+        "level": 1009,
+        "workload": "decomposition",
+        "node": "v26.8.1",
+        "backend": "native-default"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 0.8563306369999999
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.285799679
+      },
+      {
+        "dimension": 83,
+        "factors": [
+          37,
+          46
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sage",
+      "level": 1009,
+      "sample": 1
+    }
+  },
+  {
+    "system": "sage",
+    "level": 1009,
+    "sample": 1,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage",
+        "version": "10.9.post1",
+        "level": 1009,
+        "workload": "decomposition"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 1.3744773379949038
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.0024626200029160827
+      },
+      {
+        "dimension": 83,
+        "factors": [
+          37,
+          46
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sagejs",
+      "level": 1009,
+      "sample": 2
+    }
+  },
+  {
+    "system": "sagejs",
+    "level": 1009,
+    "sample": 2,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage.js",
+        "level": 1009,
+        "workload": "decomposition",
+        "node": "v26.8.1",
+        "backend": "native-default"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 0.601034428
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.28017276900000004
+      },
+      {
+        "dimension": 83,
+        "factors": [
+          37,
+          46
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sage",
+      "level": 1009,
+      "sample": 2
+    }
+  },
+  {
+    "system": "sage",
+    "level": 1009,
+    "sample": 2,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage",
+        "version": "10.9.post1",
+        "level": 1009,
+        "workload": "decomposition"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 1.4098986070021056
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.0025156799965770915
+      },
+      {
+        "dimension": 83,
+        "factors": [
+          37,
+          46
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sagejs",
+      "level": 2003,
+      "sample": 0
+    }
+  },
+  {
+    "system": "sagejs",
+    "level": 2003,
+    "sample": 0,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage.js",
+        "level": 2003,
+        "workload": "decomposition",
+        "node": "v26.8.1",
+        "backend": "native-default"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 3.5494416060000002
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 2.0882525509999996
+      },
+      {
+        "dimension": 167,
+        "factors": [
+          75,
+          92
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sage",
+      "level": 2003,
+      "sample": 0
+    }
+  },
+  {
+    "system": "sage",
+    "level": 2003,
+    "sample": 0,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage",
+        "version": "10.9.post1",
+        "level": 2003,
+        "workload": "decomposition"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 17.88410496200231
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.009925888996804133
+      },
+      {
+        "dimension": 167,
+        "factors": [
+          75,
+          92
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sagejs",
+      "level": 2003,
+      "sample": 1
+    }
+  },
+  {
+    "system": "sagejs",
+    "level": 2003,
+    "sample": 1,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage.js",
+        "level": 2003,
+        "workload": "decomposition",
+        "node": "v26.8.1",
+        "backend": "native-default"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 3.1996197790000003
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 1.854390179
+      },
+      {
+        "dimension": 167,
+        "factors": [
+          75,
+          92
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sage",
+      "level": 2003,
+      "sample": 1
+    }
+  },
+  {
+    "system": "sage",
+    "level": 2003,
+    "sample": 1,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage",
+        "version": "10.9.post1",
+        "level": 2003,
+        "workload": "decomposition"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 15.781879511996522
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.010473589994944632
+      },
+      {
+        "dimension": 167,
+        "factors": [
+          75,
+          92
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sagejs",
+      "level": 2003,
+      "sample": 2
+    }
+  },
+  {
+    "system": "sagejs",
+    "level": 2003,
+    "sample": 2,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage.js",
+        "level": 2003,
+        "workload": "decomposition",
+        "node": "v26.8.1",
+        "backend": "native-default"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 3.4959918070000002
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 1.921166878
+      },
+      {
+        "dimension": 167,
+        "factors": [
+          75,
+          92
+        ]
+      }
+    ]
+  },
+  {
+    "running": {
+      "system": "sage",
+      "level": 2003,
+      "sample": 2
+    }
+  },
+  {
+    "system": "sage",
+    "level": 2003,
+    "sample": 2,
+    "status": 0,
+    "signal": null,
+    "records": [
+      {
+        "system": "Sage",
+        "version": "10.9.post1",
+        "level": 2003,
+        "workload": "decomposition"
+      },
+      {
+        "phase": "decomposition",
+        "seconds": 15.836511275003431
+      },
+      {
+        "phase": "factor_lattices",
+        "seconds": 0.009920678996422794
+      },
+      {
+        "dimension": 167,
+        "factors": [
+          75,
+          92
+        ]
+      }
+    ]
+  }
+]

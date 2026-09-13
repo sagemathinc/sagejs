@@ -31,6 +31,24 @@ const releaseWorkflow = readFileSync(
   join(root, ".github", "workflows", "ci.yml"),
   "utf8",
 );
+const validatedPublishWorkflow = readFileSync(
+  join(root, ".github", "workflows", "publish-validated-release.yml"),
+  "utf8",
+);
+const browserDeployWorkflow = readFileSync(
+  join(root, ".github", "workflows", "wasm-deploy-cloudflare.yml"),
+  "utf8",
+);
+const numericalGateAuthenticator = readFileSync(
+  join(
+    root,
+    "scripts",
+    "numerical-computing",
+    "qualification",
+    "authenticate-release-gate.cjs",
+  ),
+  "utf8",
+);
 const nativePackages = [
   "native-darwin-arm64",
   "native-linux-arm64",
@@ -78,45 +96,74 @@ for (const name of names) {
   assert.equal(rootPackage.optionalDependencies[name], "workspace:*");
 }
 
-const draftIndex = releaseWorkflow.indexOf(
-  "- name: Create or update the draft GitHub release",
-);
-const uploadIndex = releaseWorkflow.indexOf('gh release upload "$TAG"');
-const npmIndex = releaseWorkflow.indexOf(
-  "- name: Publish the platform and public npm packages",
-);
-const availabilityIndex = releaseWorkflow.indexOf("wait_for_package()", npmIndex);
-const publishIndex = releaseWorkflow.indexOf(
-  "- name: Publish the immutable GitHub release",
-);
-assert.ok(draftIndex >= 0, "release workflow must create a draft release");
+// Check the actual publisher wiring, not shell fragments from a superseded
+// inline implementation. Controller retry/integrity/ordering semantics are
+// exercised in release-finalization and publisher fixture tests.
+const ci = require("./release/workflow-inventory.cjs").parseWorkflow(releaseWorkflow, "ci.yml");
+const publisher = ci.jobs["publish-prepared"];
+assert.equal(ci.jobs["publish-release"], undefined, "legacy by-name publisher must stay retired");
+assert.equal(ci.jobs["recover-publish"], undefined, "recovery must consume the same frozen request");
+assert.equal(ci.on.push.tags, undefined, "tag creation must not launch a second producer build");
+assert.equal(publisher.permissions["id-token"], "write");
+assert.equal(publisher.environment, "sagejs-release");
+assert.equal(publisher.needs, undefined, "prepared publication does not schedule producers");
+assert.equal(publisher.concurrency.group, "sagejs-production-publication");
+assert.ok(!releaseWorkflow.includes("secrets.NPM_TOKEN"));
+assert.ok(!releaseWorkflow.includes("merge-multiple: true"));
+const publisherCommands = publisher.steps.map(step => step.run ?? "").join("\n");
+assert.match(publisherCommands, /publish-prepared\.cjs admit/);
+assert.match(publisherCommands, /publish-prepared\.cjs "\$GITHUB_WORKSPACE\/candidate"/);
+assert.doesNotMatch(publisherCommands, /pnpm (?:build|test)|gh run rerun/);
+assert.match(validatedPublishWorkflow, /node scripts\/release\/request-prepared-publication\.cjs/);
 assert.ok(
-  releaseWorkflow.indexOf("--draft", draftIndex) > draftIndex,
-  "release creation must remain draft-first for immutable repositories",
+  !validatedPublishWorkflow.includes("secrets.NPM_TOKEN") &&
+    !validatedPublishWorkflow.includes("id-token: write") &&
+    !validatedPublishWorkflow.includes("npm publish") &&
+    !validatedPublishWorkflow.includes("pnpm publish"),
+  "manual recovery must have dispatch authority only",
 );
-assert.ok(
-  draftIndex < uploadIndex &&
-    uploadIndex < npmIndex &&
-    npmIndex < availabilityIndex &&
-    availabilityIndex < publishIndex,
-  "release workflow must upload, publish npm, and await public availability before making GitHub immutable",
+
+const numericalGateJob = releaseWorkflow.slice(
+  releaseWorkflow.indexOf("numerical-release-gate:"),
+  releaseWorkflow.indexOf("verify-prepared:"),
+);
+assert.equal(
+  [...numericalGateJob.matchAll(/release:qualify:numerics:gate --/g)].length,
+  2,
+  "the release gate job must execute a real canonical second reconstruction",
 );
 assert.match(
-  releaseWorkflow,
-  /id-token:\s*write/,
-  "release workflow must be allowed to request an npm OIDC token",
+  numericalGateJob,
+  /rm -rf build\/numerical-qualification\/gate[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json/,
+  "the second release-gate reconstruction must use the exact canonical workflow layout",
 );
-assert.ok(
-  !releaseWorkflow.includes("secrets.NPM_TOKEN"),
-  "release workflow must use npm Trusted Publishing instead of a reusable token",
-);
-assert.ok(
-  releaseWorkflow.includes('npm publish "$archive"'),
-  "release workflow must invoke the OIDC-aware npm CLI directly",
-);
-assert.ok(
-  !releaseWorkflow.includes('pnpm publish "$archive"'),
-  "release workflow must not route Trusted Publishing through pnpm",
+
+for (const required of [
+  "prepared_request:",
+  "prepare-browser-deployment.cjs prepare",
+  "prepare-browser-deployment.cjs recheck",
+]) {
+  assert.ok(
+    browserDeployWorkflow.includes(required),
+    `browser deployment must authenticate numerical qualification: ${required}`,
+  );
+}
+const browserPreparation = require("./release/prepare-publication.cjs");
+assert.ok(browserPreparation.browserKeys.includes("native/numerical-release-gate"));
+assert.ok(browserPreparation.browserKeys.includes("native/numerical-release-evidence"));
+const commands = browserPreparation.verificationStages(root, "a".repeat(40), `sha256:${"b".repeat(64)}`).flatMap(stage => stage.commands);
+assert.ok(commands.some(command => command.includes("scripts/numerical-computing/qualification/assemble-release-gate.cjs") && command.includes("--candidate")));
+assert.ok(commands.some(command => command.includes("scripts/numerical-computing/qualification/authenticate-release-gate.cjs") && command.includes("--rebuilt-gate") && command.includes("--browser-distribution")));
+assert.match(numericalGateAuthenticator, /RELEASE_GATE_SCHEMA/);
+assert.match(numericalGateAuthenticator, /validateMatrixInventory/);
+assert.match(numericalGateAuthenticator, /validateSupplementalInventory/);
+assert.match(numericalGateAuthenticator, /validateScipyCoherence/);
+assert.match(numericalGateAuthenticator, /authenticatePublicNpmRoot/);
+assert.match(numericalGateAuthenticator, /authenticateRebuiltGate/);
+assert.match(
+  commands.map(command => command.join(" ")).join("\n"),
+  /--input build\/numerical-qualification[\s\S]+--output build\/numerical-qualification\/gate[\s\S]+--rebuilt-gate build\/numerical-qualification\/gate\/release-gate\.json/,
+  "browser deployment must reconstruct the compact gate from the raw evidence artifact",
 );
 
 const tagIndex = process.argv.indexOf("--tag");

@@ -1,0 +1,59 @@
+{
+  "schema": "sagejs.numerical-callback-boundary/v1",
+  "count": 1000000,
+  "samples": 9,
+  "environment": {
+    "node": "v26.7.0",
+    "platform": "linux",
+    "architecture": "x64",
+    "clang": "/home/user/sagejs/.git/sagejs-wasm-toolchains/v2/241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973/sdk/bin/clang"
+  },
+  "direct_javascript": {
+    "durations_ms": [
+      1.104091,
+      1.094409,
+      1.091499,
+      1.0931,
+      1.09802,
+      1.10225,
+      1.0948,
+      1.09854,
+      1.11077
+    ],
+    "median_ms": 1.09802,
+    "median_ns_per_call": 1.09802,
+    "checksum": 9706502.996620623
+  },
+  "wasm_local_call": {
+    "durations_ms": [
+      1.25275,
+      1.2474,
+      1.26111,
+      1.26809,
+      1.24924,
+      1.2525,
+      1.25177,
+      1.269,
+      1.24886
+    ],
+    "median_ms": 1.2525,
+    "median_ns_per_call": 1.2525,
+    "checksum": 9706502.996620623
+  },
+  "wasm_to_javascript_callback": {
+    "durations_ms": [
+      11.966239,
+      12.065419,
+      11.956869,
+      12.05714,
+      11.953109,
+      11.959449,
+      11.977599,
+      12.03029,
+      11.9411
+    ],
+    "median_ms": 11.966239,
+    "median_ns_per_call": 11.966239,
+    "checksum": 9706502.996620623
+  }
+}

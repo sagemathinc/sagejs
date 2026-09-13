@@ -32,26 +32,6 @@ function markerCell(source, position) {
   return lines.slice(first, last).join("\n").trim();
 }
 
-function paragraphCell(source, position) {
-  const [lineStart, lineEnd] = lineBounds(source, position);
-  let start = lineStart;
-  let end = lineEnd;
-  while (start > 0) {
-    const previousEnd = start - 1;
-    const previousStart = source.lastIndexOf("\n", previousEnd - 1) + 1;
-    if (source.slice(previousStart, previousEnd).trim() === "") break;
-    start = previousStart;
-  }
-  while (end < source.length) {
-    const nextStart = end + 1;
-    const nextEndIndex = source.indexOf("\n", nextStart);
-    const nextEnd = nextEndIndex < 0 ? source.length : nextEndIndex;
-    if (source.slice(nextStart, nextEnd).trim() === "") break;
-    end = nextEnd;
-  }
-  return source.slice(start, end).trim();
-}
-
 /** Select the source used by the public run-selection, run-cell and run-all controls. */
 export function executionSource(source, {
   mode = "all",
@@ -69,5 +49,8 @@ export function executionSource(source, {
   }
   if (mode !== "cell") throw new TypeError(`unknown execution mode ${JSON.stringify(mode)}`);
   if (/^\s*#\s*%%(?:\s|$)/m.test(source)) return markerCell(source, start);
-  return paragraphCell(source, start);
+  // One editor is one notebook-style cell unless the author explicitly adds
+  // `# %%` markers.  Blank lines are ordinary Python syntax: treating them as
+  // implicit boundaries can silently omit imports and setup statements.
+  return source;
 }

@@ -1,0 +1,116 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-range-integration-regressions",
+  "title": "Exact Range Integration Regressions",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Repair the two compiler integration defects and one deterministic snapshot drift exposed by IR v38 exact-range lowering: partial foreign IR handling, warning-clean unused visible range targets across native backends, and updated borrowed-temporary evidence",
+  "base_commit": "d1a670199bca9661947fc9ccae4f7ef2677d2902",
+  "claims": [
+    "tools/native-kernel/compiler.cjs",
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/word-backend.cjs",
+    "tools/native-kernel/fmpz-backend.cjs",
+    "tools/native-kernel/tagged-backend.cjs",
+    "test/native-live-exact-arena.cjs",
+    "test/ffi.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test --test-name-pattern=native foreign input identity hashes only selected platform links test/ffi.cjs",
+    "node --test test/native-live-exact-arena.cjs",
+    "node --test tools/native-kernel/test/exact-range-semantics.cjs",
+    "node --test --test-name-pattern=borrowed packed views survive success and failure under sanitizers tools/native-kernel/test/fmpz-buffer-ingress.cjs",
+    "node --test --test-name-pattern=fmpz word/container success and failure survive sanitizers tools/native-kernel/test/fmpz-word-containers.cjs",
+    "node --test --test-name-pattern=transactional fmpz projection cleanup survives sanitizers tools/native-kernel/test/fmpz-resource-projection.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test --test-name-pattern=native foreign input identity hashes only selected platform links test/ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.165,
+      "started_at": "2026-09-04T14:18:40.692Z",
+      "commit": "d1a670199bca9661947fc9ccae4f7ef2677d2902",
+      "workspace_fingerprint": "a36b1ea5c285f8f447aac68d75488c791301c4f8b4caf5ab0f0c4ecfbe68c859",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/native-live-exact-arena.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.106,
+      "started_at": "2026-09-04T14:18:41.661Z",
+      "commit": "d1a670199bca9661947fc9ccae4f7ef2677d2902",
+      "workspace_fingerprint": "a36b1ea5c285f8f447aac68d75488c791301c4f8b4caf5ab0f0c4ecfbe68c859",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/exact-range-semantics.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.101,
+      "started_at": "2026-09-04T14:18:45.466Z",
+      "commit": "d1a670199bca9661947fc9ccae4f7ef2677d2902",
+      "workspace_fingerprint": "a36b1ea5c285f8f447aac68d75488c791301c4f8b4caf5ab0f0c4ecfbe68c859",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=borrowed packed views survive success and failure under sanitizers tools/native-kernel/test/fmpz-buffer-ingress.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.938,
+      "started_at": "2026-09-04T14:18:56.587Z",
+      "commit": "d1a670199bca9661947fc9ccae4f7ef2677d2902",
+      "workspace_fingerprint": "a36b1ea5c285f8f447aac68d75488c791301c4f8b4caf5ab0f0c4ecfbe68c859",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=fmpz word/container success and failure survive sanitizers tools/native-kernel/test/fmpz-word-containers.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.04,
+      "started_at": "2026-09-04T14:18:59.186Z",
+      "commit": "d1a670199bca9661947fc9ccae4f7ef2677d2902",
+      "workspace_fingerprint": "a36b1ea5c285f8f447aac68d75488c791301c4f8b4caf5ab0f0c4ecfbe68c859",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=transactional fmpz projection cleanup survives sanitizers tools/native-kernel/test/fmpz-resource-projection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.949,
+      "started_at": "2026-09-04T14:19:01.928Z",
+      "commit": "d1a670199bca9661947fc9ccae4f7ef2677d2902",
+      "workspace_fingerprint": "a36b1ea5c285f8f447aac68d75488c791301c4f8b4caf5ab0f0c4ecfbe68c859",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Made foreign input identity tolerate partial IR, preserved Python-visible range-target assignments while marking them intentionally observed in every exact C backend, and updated the deterministic exact-arena borrowed-local evidence for IR v38. The focused FFI, arena, exact-range differential, and three affected sanitizer harnesses all pass.",
+    "risks": [
+      "The full pnpm test:native gate was started but intentionally stopped during an unrelated FLINT addon rebuild after the parent requested immediate handoff; the directly affected native and sanitizer tests are recorded as passing."
+    ],
+    "next_steps": [
+      "Rerun pnpm test:native once in the integration lane after the concurrent compiler series is assembled."
+    ]
+  }
+}

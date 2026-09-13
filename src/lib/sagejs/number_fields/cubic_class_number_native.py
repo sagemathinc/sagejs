@@ -19,10 +19,15 @@ from sagejs.ffi.flint import (
     fmpz_polynomial_set_coefficient,
     fmpz_matrix,
     fmpz_matrix_hnf_into,
+    fmpz_matrix_hnf_prefix_into,
     fmpz_matrix_hnf_transform,
+    fmpz_matrix_hnf_transform_prefix,
     fmpz_matrix_lll_transform,
+    fmpz_matrix_lll_transform_prefix,
     fmpz_matrix_snf,
     fmpz_matrix_snf_into,
+    fmpz_matrix_snf_prefix_into,
+    integer_log_sqrt_balls_prefix_resource,
     integer_log_sqrt_balls_resource,
     number_field_analysis_resource_project,
     number_field_analysis_resource_project_proof,
@@ -33,6 +38,8 @@ from sagejs.native import (
     IntegerBuffer,
     NativeExactArena,
     NativeIntegerVector,
+    NativeWorkspace,
+    UInt64Buffer,
     checked_uint64,
     native,
     uint64,
@@ -53,11 +60,16 @@ _CUBIC_COMPOUND_MULTIPLIERS = 4
 _CUBIC_MAX_RELATION_EFFORT = 8
 _CUBIC_INITIAL_ADJACENT_IDEALS = 3
 _CUBIC_SECOND_ADJACENT_IDEALS = 4
-_CUBIC_PARI_INITIAL_ADJACENT_IDEALS = 5
+_CUBIC_PARI_INITIAL_ADJACENT_IDEALS = 3
 _CUBIC_PARI_EXPANDED_ADJACENT_IDEALS = 8
 _CUBIC_NARROW_ADJACENT_MAX_FACTORS = 11
 _CUBIC_RELATION_REDUNDANCY_TAIL = 6
 _CUBIC_RELATION_RECOVERY_TAIL = 18
+_CUBIC_RELATION_RANK_PRIME = 27449
+_CUBIC_MODULAR_BASIS_ENTRIES = _CUBIC_MAX_FACTORS * _CUBIC_MAX_FACTORS
+_CUBIC_MODULAR_ROW_OFFSET = _CUBIC_MODULAR_BASIS_ENTRIES
+_CUBIC_MODULAR_RANK_OFFSET = _CUBIC_MODULAR_ROW_OFFSET + _CUBIC_MAX_FACTORS
+_CUBIC_MODULAR_WORKSPACE_LENGTH = _CUBIC_MODULAR_RANK_OFFSET + 1
 _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES = 500
 # Exact LLL-reduced T2 ellipsoids can be quite anisotropic even in degree
 # three.  A coordinate limit of 64 admits the observed 41-by-2-by-2 regime;
@@ -94,18 +106,26 @@ _ROW_SCRATCH_OFFSET = 7880
 _NORM_FORM_OFFSET = 7944
 _COMPOUND_MULTIPLIER_POWER_OFFSET = 7954
 
-_CUBIC_ANALYTIC_THRESHOLD = 997
+# The BF finite expression uses X/9 in its continuous weights. The resident
+# integer plan is theorem-aligned only when this quotient is exact.
+_CUBIC_ANALYTIC_THRESHOLD = 999
 _CUBIC_ANALYTIC_REFINED_THRESHOLD = 1494
-_CUBIC_ANALYTIC_COEFFICIENT_OFFSET = 3000
-_CUBIC_ANALYTIC_TERM_OFFSET = 4500
+_CUBIC_ANALYTIC_COEFFICIENT_OFFSET = 0
+_CUBIC_ANALYTIC_TERM_OFFSET = 1494
 _CUBIC_ANALYTIC_TERM_STRIDE = 5
 # Across every cubic splitting pattern, the two BF finite sums at X=1494 and
 # X/9 contain at most 329 prime-power terms.  The 238 rational primes plus the
 # five possible inert p^3 supports and five fixed inputs require at most 248 values.
 # These larger round capacities therefore remain complete, not merely observed.
 _CUBIC_ANALYTIC_MAX_TERMS = 384
-_CUBIC_ANALYTIC_VALUE_OFFSET = 6420
+_CUBIC_ANALYTIC_VALUE_OFFSET = (
+    _CUBIC_ANALYTIC_TERM_OFFSET
+    + _CUBIC_ANALYTIC_MAX_TERMS * _CUBIC_ANALYTIC_TERM_STRIDE
+)
 _CUBIC_ANALYTIC_MAX_VALUES = 256
+_CUBIC_ANALYTIC_WORKSPACE_LENGTH = (
+    _CUBIC_ANALYTIC_VALUE_OFFSET + _CUBIC_ANALYTIC_MAX_VALUES
+)
 _CUBIC_ANALYTIC_PRECISION = 64
 _CUBIC_PROOF_ANALYTIC_GRH = 1
 _CUBIC_PROOF_TRIVIAL_MINKOWSKI = 2
@@ -381,91 +401,43 @@ def _cubic_workspace_hnf3(
     workspace: NativeIntegerVector,
     base: uint64,
     row_count: uint64,
+    source: FmpzMatrix,
+    hermite: FmpzMatrix,
 ) -> bool:
-    """Put a full-rank `row_count` by 3 row lattice in exact HNF in place."""
+    """Put a full-rank `row_count` by 3 row lattice in exact HNF in place.
+
+    The two caller-owned FLINT matrices span the whole closed program.  Their
+    small entries remain inline in `fmpz` storage instead of repeatedly
+    promoting the handwritten elimination temporaries to GMP objects.
+    """
     if row_count < 3 or row_count > 9 or base + 3 * row_count > len(workspace):
         return False
-    pivot: uint64 = 0
-    column: uint64 = 0
-    while column < 3:
-        found = row_count
-        row = pivot
-        while row < row_count and found == row_count:
-            if workspace[base + 3 * row + column] != 0:
-                found = row
-            row += 1
-        if found == row_count:
-            return False
-        if found != pivot:
-            entry: uint64 = 0
-            while entry < 3:
-                left_index = base + 3 * pivot + entry
-                right_index = base + 3 * found + entry
-                saved = workspace[left_index]
-                workspace[left_index] = workspace[right_index]
-                workspace[right_index] = saved
-                entry += 1
-
-        row = pivot + 1
-        while row < row_count:
-            while workspace[base + 3 * row + column] != 0:
-                pivot_value = workspace[base + 3 * pivot + column]
-                row_value = workspace[base + 3 * row + column]
-                common, pivot_multiplier, row_multiplier = _cubic_extended_gcd(
-                    pivot_value,
-                    row_value,
-                )
-                if common <= 0:
+    row: uint64 = 0
+    while row < 9:
+        column: uint64 = 0
+        while column < 3:
+            value = 0
+            if row < row_count:
+                value = workspace[base + 3 * row + column]
+            source[row, column] = value
+            column += 1
+        row += 1
+    if not fmpz_matrix_hnf_into(hermite, source):
+        return False
+    row = 0
+    while row < 9:
+        column = 0
+        while column < 3:
+            value = hermite[row, column]
+            if row < 3:
+                if (column < row and value != 0) or (column == row and value <= 0):
                     return False
-                old_pivot_zero = workspace[base + 3 * pivot]
-                old_pivot_one = workspace[base + 3 * pivot + 1]
-                old_pivot_two = workspace[base + 3 * pivot + 2]
-                old_row_zero = workspace[base + 3 * row]
-                old_row_one = workspace[base + 3 * row + 1]
-                old_row_two = workspace[base + 3 * row + 2]
-                workspace[base + 3 * pivot] = (
-                    pivot_multiplier * old_pivot_zero + row_multiplier * old_row_zero
-                )
-                workspace[base + 3 * pivot + 1] = (
-                    pivot_multiplier * old_pivot_one + row_multiplier * old_row_one
-                )
-                workspace[base + 3 * pivot + 2] = (
-                    pivot_multiplier * old_pivot_two + row_multiplier * old_row_two
-                )
-                workspace[base + 3 * row] = (
-                    -(row_value // common) * old_pivot_zero
-                    + (pivot_value // common) * old_row_zero
-                )
-                workspace[base + 3 * row + 1] = (
-                    -(row_value // common) * old_pivot_one
-                    + (pivot_value // common) * old_row_one
-                )
-                workspace[base + 3 * row + 2] = (
-                    -(row_value // common) * old_pivot_two
-                    + (pivot_value // common) * old_row_two
-                )
-            row += 1
-        if workspace[base + 3 * pivot + column] < 0:
-            entry = 0
-            while entry < 3:
-                workspace[base + 3 * pivot + entry] = -workspace[
-                    base + 3 * pivot + entry
-                ]
-                entry += 1
-        pivot_value = workspace[base + 3 * pivot + column]
-        row = 0
-        while row < pivot:
-            quotient = workspace[base + 3 * row + column] // pivot_value
-            entry = 0
-            while entry < 3:
-                workspace[base + 3 * row + entry] -= (
-                    quotient * workspace[base + 3 * pivot + entry]
-                )
-                entry += 1
-            row += 1
-        pivot += 1
-        column += 1
-    return pivot == 3
+                workspace[base + 3 * row + column] = value
+            elif value != 0:
+                return False
+            column += 1
+        row += 1
+    return True
 
 
 def _cubic_multiply_coordinates(
@@ -826,6 +798,8 @@ def _cubic_ideal_product(
     left_offset: uint64,
     right_offset: uint64,
     output_offset: uint64,
+    hnf_source: FmpzMatrix,
+    hnf_result: FmpzMatrix,
 ) -> bool:
     """Multiply two rank-three order lattices and retain their exact HNF."""
     left_row: uint64 = 0
@@ -847,7 +821,13 @@ def _cubic_ideal_product(
             generated += 1
             right_row += 1
         left_row += 1
-    if not _cubic_workspace_hnf3(workspace, _HNF_SCRATCH_OFFSET, 9):
+    if not _cubic_workspace_hnf3(
+        workspace,
+        _HNF_SCRATCH_OFFSET,
+        9,
+        hnf_source,
+        hnf_result,
+    ):
         return False
     entry: uint64 = 0
     while entry < 9:
@@ -861,6 +841,8 @@ def _cubic_prime_ideal_power_basis(
     multiplier_factor_index: uint64,
     multiplier_exponent: uint64,
     output_offset: uint64,
+    hnf_source: FmpzMatrix,
+    hnf_result: FmpzMatrix,
 ) -> bool:
     """Build one exact `P_multiplier^e` lattice for resident reuse."""
     if multiplier_exponent < 1 or output_offset + 9 > len(workspace):
@@ -879,6 +861,8 @@ def _cubic_prime_ideal_power_basis(
             output_offset,
             multiplier_offset,
             output_offset,
+            hnf_source,
+            hnf_result,
         ):
             return False
         exponent_index += 1
@@ -890,6 +874,8 @@ def _cubic_compound_prime_ideal_basis(
     multiplier_power_offset: uint64,
     source_factor_index: uint64,
     output_offset: uint64,
+    hnf_source: FmpzMatrix,
+    hnf_result: FmpzMatrix,
 ) -> bool:
     """Build `P_multiplier^e * P_source` from a resident multiplier power."""
     source_offset: uint64 = _POWER_OFFSET + source_factor_index * _CUBIC_MAX_POWERS * 9
@@ -898,6 +884,8 @@ def _cubic_compound_prime_ideal_basis(
         multiplier_power_offset,
         source_offset,
         output_offset,
+        hnf_source,
+        hnf_result,
     )
 
 
@@ -930,8 +918,227 @@ def _cubic_lattice_contains(
     return coefficient_two * diagonal_two == remaining_two
 
 
+def _cubic_relation_row_in_hnf(
+    coordinates: FmpzMatrix,
+    basis: FmpzMatrix,
+    relations: FmpzMatrix,
+    relation_row: uint64,
+    dimension: uint64,
+) -> bool:
+    """Test exact membership in a full-rank upper-triangular row HNF."""
+    column: uint64 = 0
+    while column < dimension:
+        remainder = relations[relation_row, column]
+        basis_row: uint64 = 0
+        while basis_row < column:
+            remainder -= coordinates[0, basis_row] * basis[basis_row, column]
+            basis_row += 1
+        diagonal = basis[column, column]
+        if diagonal <= 0 or remainder % diagonal != 0:
+            return False
+        coordinates[0, column] = remainder // diagonal
+        column += 1
+    return True
+
+
+def _cubic_online_relation_lattice_update(
+    basis: FmpzMatrix,
+    source: FmpzMatrix,
+    reduced: FmpzMatrix,
+    support: FmpzMatrix,
+    membership_coordinates: FmpzMatrix,
+    relations: FmpzMatrix,
+    relation_row: uint64,
+    dimension: uint64,
+) -> int:
+    """Adjoin one exact row, record support, and recognize `ZZ^dimension`.
+
+    The resident `basis` is the canonical row HNF of every previously admitted
+    relation, padded to `dimension` rows.  `support[relation_row, 0]` is one
+    exactly when adjoining the row changes that canonical basis.  Thus the
+    online history is also the canonical support transcript needed by the
+    later compact relation ledger.  Returning `2` proves that the enlarged
+    lattice is exactly `ZZ^dimension`, `1` records a valid proper sublattice,
+    and `-1` reports a failed exact reduction.  This is an exact online
+    certificate, not a heuristic rank test.
+    """
+    support[relation_row, 0] = 0
+
+    # Once the prefix has full rank, exact triangular membership proves that a
+    # contained row cannot change the canonical HNF.  Before full rank we still
+    # reduce the padded basis: rank-deficient pivots need not lie on the main
+    # diagonal, so no diagonal shortcut is sound there.
+    previous_rank: uint64 = 0
+    row: uint64 = 0
+    while row < dimension:
+        row_nonzero = False
+        column: uint64 = 0
+        while column < dimension:
+            if basis[row, column] != 0:
+                row_nonzero = True
+            column += 1
+        if row_nonzero:
+            previous_rank += 1
+        row += 1
+    if previous_rank == dimension and _cubic_relation_row_in_hnf(
+        membership_coordinates,
+        basis,
+        relations,
+        relation_row,
+        dimension,
+    ):
+        index_one = True
+        row = 0
+        while row < dimension:
+            if basis[row, row] != 1:
+                index_one = False
+            row += 1
+        if index_one:
+            return 2
+        return 1
+
+    row = 0
+    while row < dimension:
+        column = 0
+        while column < dimension:
+            source[row, column] = basis[row, column]
+            column += 1
+        row += 1
+    column = 0
+    while column < dimension:
+        source[dimension, column] = relations[relation_row, column]
+        column += 1
+    if not fmpz_matrix_hnf_into(reduced, source):
+        return -1
+
+    support_used = False
+    row = 0
+    while row < dimension:
+        column = 0
+        while column < dimension:
+            if reduced[row, column] != basis[row, column]:
+                support_used = True
+            column += 1
+        row += 1
+    if support_used:
+        support[relation_row, 0] = 1
+
+    rank: uint64 = 0
+    index_one = True
+    row = 0
+    while row < dimension:
+        row_nonzero = False
+        column = 0
+        while column < dimension:
+            value = reduced[row, column]
+            basis[row, column] = value
+            if value != 0:
+                row_nonzero = True
+            column += 1
+        if row_nonzero:
+            rank += 1
+        if reduced[row, row] != 1:
+            index_one = False
+        row += 1
+    if rank == dimension and index_one:
+        return 2
+    return 1
+
+
+def _cubic_modular_relation_collection_complete(
+    modular_workspace: UInt64Buffer,
+    relation_count: uint64,
+    relation_target: uint64,
+    factor_count: uint64,
+) -> bool:
+    """Return whether the bounded relation ledger has enough modular rank."""
+    return (
+        modular_workspace[_CUBIC_MODULAR_RANK_OFFSET] == factor_count
+        and relation_count >= relation_target
+    )
+
+
+def _cubic_relation_rank_multiply(left: uint64, right: uint64) -> uint64:
+    """Multiply canonical residues modulo the fixed PARI rank prime."""
+    return (left * right) % _CUBIC_RELATION_RANK_PRIME
+
+
+def _cubic_modular_admit_relation(
+    modular_workspace: UInt64Buffer,
+    relation_matrix: FmpzMatrix,
+    relation_elements: FmpzMatrix,
+    relation_row: uint64,
+    relation_target: uint64,
+    factor_count: uint64,
+) -> bool:
+    """Admit a relation through PARI's word-prime rank scheduler.
+
+    The modular echelon basis is scheduling evidence only.  It may discard a
+    row that is useful over the integers, but it can never authenticate a
+    result: exact HNF, unit reconstruction, and the analytic index proof still
+    check the retained prefix and make an insufficient prefix decline.
+    """
+    previous_row: uint64 = 0
+    while previous_row < relation_row:
+        if (
+            relation_elements[previous_row, 0] == relation_elements[relation_row, 0]
+            and relation_elements[previous_row, 1] == relation_elements[relation_row, 1]
+            and relation_elements[previous_row, 2] == relation_elements[relation_row, 2]
+        ):
+            return False
+        previous_row += 1
+
+    column: uint64 = 0
+    while column < factor_count:
+        modular_workspace[_CUBIC_MODULAR_ROW_OFFSET + column] = checked_uint64(
+            relation_matrix[relation_row, column]
+        )
+        column += 1
+
+    column = 0
+    while column < factor_count:
+        value = modular_workspace[_CUBIC_MODULAR_ROW_OFFSET + column]
+        diagonal_offset: uint64 = column * _CUBIC_MAX_FACTORS + column
+        if value != 0 and modular_workspace[diagonal_offset] != 0:
+            pivot = modular_workspace[diagonal_offset]
+            elimination_column: uint64 = column
+            while elimination_column < factor_count:
+                modular_workspace[_CUBIC_MODULAR_ROW_OFFSET + elimination_column] = (
+                    _cubic_relation_rank_multiply(
+                        pivot,
+                        modular_workspace[
+                            _CUBIC_MODULAR_ROW_OFFSET + elimination_column
+                        ],
+                    )
+                    + _CUBIC_RELATION_RANK_PRIME
+                    - _cubic_relation_rank_multiply(
+                        value,
+                        modular_workspace[
+                            column * _CUBIC_MAX_FACTORS + elimination_column
+                        ],
+                    )
+                ) % _CUBIC_RELATION_RANK_PRIME
+                elimination_column += 1
+        elif value != 0:
+            normalization_column: uint64 = column
+            while normalization_column < factor_count:
+                modular_workspace[
+                    column * _CUBIC_MAX_FACTORS + normalization_column
+                ] = modular_workspace[_CUBIC_MODULAR_ROW_OFFSET + normalization_column]
+                normalization_column += 1
+            modular_workspace[_CUBIC_MODULAR_RANK_OFFSET] += 1
+            return True
+        column += 1
+
+    # Before reaching the bounded target, dependent rows are the exact
+    # witnesses from which the rank-one unit lattice is recovered.  Once the
+    # target is full, retain only rows that increase modular rank.
+    return relation_row < relation_target
+
+
 def _cubic_append_smooth_principal_relation(
     workspace: NativeIntegerVector,
+    modular_workspace: UInt64Buffer,
     relation_matrix: FmpzMatrix,
     relation_elements: FmpzMatrix,
     relation_count: uint64,
@@ -941,6 +1148,10 @@ def _cubic_append_smooth_principal_relation(
     coordinate_zero: int,
     coordinate_one: int,
     coordinate_two: int,
+    hnf_source: FmpzMatrix,
+    hnf_result: FmpzMatrix,
+    streaming_relation_collection: bool,
+    relation_target: uint64,
 ) -> uint64:
     """Authenticate and append one smooth principal relation.
 
@@ -966,6 +1177,15 @@ def _cubic_append_smooth_principal_relation(
         relation_elements[relation_count, 0] = coordinate_zero
         relation_elements[relation_count, 1] = coordinate_one
         relation_elements[relation_count, 2] = coordinate_two
+        if streaming_relation_collection and not _cubic_modular_admit_relation(
+            modular_workspace,
+            relation_matrix,
+            relation_elements,
+            relation_count,
+            relation_target,
+            factor_count,
+        ):
+            return relation_count
         return relation_count + 1
     if norm < 1:
         return relation_count
@@ -1002,18 +1222,38 @@ def _cubic_append_smooth_principal_relation(
                 workspace[factor_base + 7] == group_index
                 and workspace[factor_base + 8] == 0
             ):
-                residue_degree = workspace[factor_base + 2]
+                stored_valuation: uint64 = checked_uint64(workspace[factor_base + 6])
+                if rational_valuation > _CUBIC_MAX_POWERS or stored_valuation < 1:
+                    valid_relation = False
                 power_base: uint64 = (
                     _POWER_OFFSET + factor_index * _CUBIC_MAX_POWERS * 9
                 )
+                while valid_relation and stored_valuation < rational_valuation:
+                    if not _cubic_ideal_product(
+                        workspace,
+                        power_base + 9 * (stored_valuation - 1),
+                        power_base,
+                        power_base + 9 * stored_valuation,
+                        hnf_source,
+                        hnf_result,
+                    ):
+                        valid_relation = False
+                    else:
+                        stored_valuation += 1
+                workspace[factor_base + 6] = stored_valuation
+                residue_degree = workspace[factor_base + 2]
                 valuation: uint64 = 0
                 power_index: uint64 = 0
-                while power_index < rational_valuation and _cubic_lattice_contains(
-                    workspace,
-                    power_base + 9 * power_index,
-                    coordinate_zero,
-                    coordinate_one,
-                    coordinate_two,
+                while (
+                    valid_relation
+                    and power_index < rational_valuation
+                    and _cubic_lattice_contains(
+                        workspace,
+                        power_base + 9 * power_index,
+                        coordinate_zero,
+                        coordinate_one,
+                        coordinate_two,
+                    )
                 ):
                     valuation += 1
                     power_index += 1
@@ -1053,6 +1293,15 @@ def _cubic_append_smooth_principal_relation(
     relation_elements[relation_count, 0] = coordinate_zero
     relation_elements[relation_count, 1] = coordinate_one
     relation_elements[relation_count, 2] = coordinate_two
+    if streaming_relation_collection and not _cubic_modular_admit_relation(
+        modular_workspace,
+        relation_matrix,
+        relation_elements,
+        relation_count,
+        relation_target,
+        factor_count,
+    ):
+        return relation_count
     return relation_count + 1
 
 
@@ -1626,6 +1875,7 @@ def _cubic_grh_generator_bound_is_certified(
     log_denominators: FmpzMatrix,
     log_endpoints: FmpzMatrix,
     transcendental_endpoints: FmpzMatrix,
+    splitting_plan: FmpzMatrix,
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
     equation_order_index: int,
@@ -1740,22 +1990,32 @@ def _cubic_grh_generator_bound_is_certified(
     sb_upper = 0
     prime = 2
     while prime <= bound:
-        prime_is_prime = True
-        divisor = 2
-        while divisor * divisor <= prime:
-            if prime % divisor == 0:
-                prime_is_prime = False
-            divisor += 1
-        if prime_is_prime:
-            root_count = _cubic_degree_one_prime_count(
-                workspace,
-                coefficients,
-                equation_order_index,
-                identity_zero,
-                identity_one,
-                identity_two,
-                prime,
-            )
+        splitting_index: uint64 = checked_uint64(prime)
+        splitting_marker = splitting_plan[splitting_index, 0]
+        if splitting_marker == 0:
+            prime_is_prime = True
+            divisor = 2
+            while divisor * divisor <= prime:
+                if prime % divisor == 0:
+                    prime_is_prime = False
+                divisor += 1
+            splitting_marker = -1
+            if prime_is_prime:
+                root_count = _cubic_degree_one_prime_count(
+                    workspace,
+                    coefficients,
+                    equation_order_index,
+                    identity_zero,
+                    identity_one,
+                    identity_two,
+                    prime,
+                )
+                if root_count > 3:
+                    return False
+                splitting_marker = root_count + 1
+            splitting_plan[splitting_index, 0] = splitting_marker
+        if splitting_marker > 0:
+            root_count: uint64 = checked_uint64(splitting_marker - 1)
             if root_count > 3:
                 return False
             degree_one_count: uint64 = root_count
@@ -1814,6 +2074,7 @@ def _cubic_grh_generator_bound(
     log_denominators: FmpzMatrix,
     log_endpoints: FmpzMatrix,
     transcendental_endpoints: FmpzMatrix,
+    splitting_plan: FmpzMatrix,
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
     equation_order_index: int,
@@ -1835,6 +2096,7 @@ def _cubic_grh_generator_bound(
         log_denominators,
         log_endpoints,
         transcendental_endpoints,
+        splitting_plan,
         workspace,
         coefficients,
         equation_order_index,
@@ -1855,6 +2117,7 @@ def _cubic_grh_generator_bound(
         log_denominators,
         log_endpoints,
         transcendental_endpoints,
+        splitting_plan,
         workspace,
         coefficients,
         equation_order_index,
@@ -1866,7 +2129,7 @@ def _cubic_grh_generator_bound(
         scale,
         precision,
     ):
-        return unconditional_bound
+        return 0
     while high - low > 1:
         middle = (low + high) // 2
         if _cubic_grh_generator_bound_is_certified(
@@ -1874,6 +2137,7 @@ def _cubic_grh_generator_bound(
             log_denominators,
             log_endpoints,
             transcendental_endpoints,
+            splitting_plan,
             workspace,
             coefficients,
             equation_order_index,
@@ -1907,25 +2171,11 @@ def _cubic_scaled_polynomial_value(
 
 
 @native
-def _cubic_real_log_bounds(
-    log_numerators: FmpzMatrix,
-    log_denominators: FmpzMatrix,
-    log_endpoints: FmpzMatrix,
+def _cubic_real_root_interval(
     coefficients: IntegerBuffer,
-    denominator: int,
-    basis_zero_zero: int,
-    basis_zero_one: int,
-    basis_zero_two: int,
-    basis_one_one: int,
-    basis_one_two: int,
-    basis_two_two: int,
-    element_zero: int,
-    element_one: int,
-    element_two: int,
     scale: int,
-    precision: uint64,
 ) -> tuple[int, int]:
-    """Enclose the signed real-place log absolute value of one element."""
+    """Isolate the unique real root of a complex cubic at one dyadic scale."""
     root_bound = 1
     coefficient_index: uint64 = 0
     while coefficient_index < 3:
@@ -1967,7 +2217,32 @@ def _cubic_real_log_bounds(
         bisections += 1
     if root_upper - root_lower > 1:
         return (1, 0)
+    return (root_lower, root_upper)
 
+
+@native
+def _cubic_real_log_bounds_from_root_interval(
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
+    denominator: int,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    element_zero: int,
+    element_one: int,
+    element_two: int,
+    root_lower: int,
+    root_upper: int,
+    scale: int,
+    precision: uint64,
+) -> tuple[int, int]:
+    """Enclose one real-place log using a caller-owned root interval."""
+    if root_upper < root_lower or root_upper - root_lower > 1:
+        return (1, 0)
     raw_zero = element_zero * basis_zero_zero
     raw_one = element_zero * basis_zero_one + element_one * basis_one_one
     raw_two = (
@@ -2016,6 +2291,50 @@ def _cubic_real_log_bounds(
         precision,
     )
     return (logarithm_lower, logarithm_upper)
+
+
+@native
+def _cubic_real_log_bounds(
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
+    coefficients: IntegerBuffer,
+    denominator: int,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    element_zero: int,
+    element_one: int,
+    element_two: int,
+    scale: int,
+    precision: uint64,
+) -> tuple[int, int]:
+    """Enclose the signed real-place log absolute value of one element."""
+    root_lower, root_upper = _cubic_real_root_interval(coefficients, scale)
+    if root_upper < root_lower:
+        return (1, 0)
+    return _cubic_real_log_bounds_from_root_interval(
+        log_numerators,
+        log_denominators,
+        log_endpoints,
+        denominator,
+        basis_zero_zero,
+        basis_zero_one,
+        basis_zero_two,
+        basis_one_one,
+        basis_one_two,
+        basis_two_two,
+        element_zero,
+        element_one,
+        element_two,
+        root_lower,
+        root_upper,
+        scale,
+        precision,
+    )
 
 
 @native
@@ -2691,6 +3010,7 @@ def _cubic_plan_reduced_ideal_ellipsoid(
 
 def _cubic_append_reduced_ideal_ellipsoid(
     workspace: NativeIntegerVector,
+    modular_workspace: UInt64Buffer,
     basis_offset: uint64,
     transforms: FmpzMatrix,
     transform_row_offset: uint64,
@@ -2702,55 +3022,152 @@ def _cubic_append_reduced_ideal_ellipsoid(
     relation_capacity: uint64,
     factor_count: uint64,
     group_count: uint64,
-) -> tuple[uint64, uint64]:
-    """Admit every bounded ellipsoid candidate through exact valuations."""
+    relation_target: uint64,
+    hnf_source: FmpzMatrix,
+    hnf_result: FmpzMatrix,
+    streaming_relation_collection: bool,
+    online_relation_quotient_enabled: bool,
+    online_relation_basis: FmpzMatrix,
+    online_relation_source: FmpzMatrix,
+    online_relation_hnf: FmpzMatrix,
+    online_relation_support: FmpzMatrix,
+    online_membership_coordinates: FmpzMatrix,
+    online_relation_count: uint64,
+    online_relation_status: int,
+    coefficient_zero: int,
+    coefficient_one: int,
+    coefficient_two: int,
+    candidate_count: uint64,
+    proposal_budget: uint64,
+) -> tuple[uint64, uint64, uint64, int, int, int, int]:
+    """Admit a resumable prefix of the lexicographic ellipsoid proposals.
+
+    The returned coefficients identify the next unexamined proposal, including
+    when the last proposal was rejected or duplicated an existing relation.
+    `candidate_count` is cumulative for this ellipsoid, not this invocation;
+    pausing must not reset its candidate limit. Callers retain the relation and
+    online-lattice workspaces alongside this cursor, with the prepared basis,
+    ellipsoid and factor base unchanged. A zero budget is a no-op. Exhaustion
+    is represented by `coefficient_two > limit_two`. Capacity overflow and
+    negative online status are fatal: their cursors must not be resumed.
+    """
     limit_zero = parameters[parameter_row, 7]
     limit_one = parameters[parameter_row, 8]
     limit_two = parameters[parameter_row, 9]
-    candidate_count: uint64 = 0
-    coefficient_two = -limit_two
-    while coefficient_two <= limit_two:
-        coefficient_one = -limit_one
-        while coefficient_one <= limit_one:
+    proposal_count: uint64 = 0
+    while (
+        coefficient_two <= limit_two
+        and proposal_count < proposal_budget
+        and online_relation_status >= 0
+        and online_relation_status != 2
+        and not (
+            streaming_relation_collection
+            and _cubic_modular_relation_collection_complete(
+                modular_workspace,
+                relation_count,
+                relation_target,
+                factor_count,
+            )
+        )
+    ):
+        status, coordinate_zero, coordinate_one, coordinate_two = (
+            _cubic_reduced_ellipsoid_candidate(
+                workspace,
+                basis_offset,
+                transforms,
+                transform_row_offset,
+                parameters,
+                parameter_row,
+                coefficient_zero,
+                coefficient_one,
+                coefficient_two,
+            )
+        )
+        # Advance after every examined proposal, before any early return.
+        proposal_count += 1
+        coefficient_zero += 1
+        if coefficient_zero > limit_zero:
             coefficient_zero = -limit_zero
-            while coefficient_zero <= limit_zero:
-                status, coordinate_zero, coordinate_one, coordinate_two = (
-                    _cubic_reduced_ellipsoid_candidate(
-                        workspace,
-                        basis_offset,
-                        transforms,
-                        transform_row_offset,
-                        parameters,
-                        parameter_row,
+            coefficient_one += 1
+            if coefficient_one > limit_one:
+                coefficient_one = -limit_one
+                coefficient_two += 1
+        if status == 1:
+            candidate_count += 1
+            if candidate_count > _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES:
+                overflow_relation_count: uint64 = relation_capacity
+                overflow_relation_count += 1
+                return (
+                    overflow_relation_count,
+                    candidate_count,
+                    online_relation_count,
+                    online_relation_status,
+                    coefficient_zero,
+                    coefficient_one,
+                    coefficient_two,
+                )
+            relation_count = _cubic_append_smooth_principal_relation(
+                workspace,
+                modular_workspace,
+                relation_matrix,
+                relation_elements,
+                relation_count,
+                relation_capacity,
+                factor_count,
+                group_count,
+                coordinate_zero,
+                coordinate_one,
+                coordinate_two,
+                hnf_source,
+                hnf_result,
+                streaming_relation_collection,
+                relation_target,
+            )
+            if relation_count > relation_capacity:
+                return (
+                    relation_count,
+                    candidate_count,
+                    online_relation_count,
+                    online_relation_status,
+                    coefficient_zero,
+                    coefficient_one,
+                    coefficient_two,
+                )
+            while (
+                online_relation_quotient_enabled
+                and online_relation_count < relation_count
+                and online_relation_status != 2
+            ):
+                online_relation_status = _cubic_online_relation_lattice_update(
+                    online_relation_basis,
+                    online_relation_source,
+                    online_relation_hnf,
+                    online_relation_support,
+                    online_membership_coordinates,
+                    relation_matrix,
+                    online_relation_count,
+                    factor_count,
+                )
+                if online_relation_status < 0:
+                    return (
+                        relation_count,
+                        candidate_count,
+                        online_relation_count,
+                        online_relation_status,
                         coefficient_zero,
                         coefficient_one,
                         coefficient_two,
                     )
-                )
-                if status == 1:
-                    candidate_count += 1
-                    if candidate_count > _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES:
-                        overflow_relation_count: uint64 = relation_capacity
-                        overflow_relation_count += 1
-                        return (overflow_relation_count, candidate_count)
-                    relation_count = _cubic_append_smooth_principal_relation(
-                        workspace,
-                        relation_matrix,
-                        relation_elements,
-                        relation_count,
-                        relation_capacity,
-                        factor_count,
-                        group_count,
-                        coordinate_zero,
-                        coordinate_one,
-                        coordinate_two,
-                    )
-                    if relation_count > relation_capacity:
-                        return (relation_count, candidate_count)
-                coefficient_zero += 1
-            coefficient_one += 1
-        coefficient_two += 1
-    return (relation_count, candidate_count)
+                online_relation_count += 1
+    return (
+        relation_count,
+        candidate_count,
+        online_relation_count,
+        online_relation_status,
+        coefficient_zero,
+        coefficient_one,
+        coefficient_two,
+    )
 
 
 @native
@@ -2824,14 +3241,23 @@ def _cubic_relation_prefix_has_archimedean_unit(
 ) -> int:
     """Return whether a relation prefix proves a non-torsion exact unit.
 
-    The return value is `1` when the exact unit was reconstructed into
-    `prefix_unit_result`, `0` when the prefix has incomplete relation rank or
-    no reconstructible dependency, and `-1` for an invalid exact computation.
-    The analytic index proof still independently certifies whichever relation
-    set and unit are selected.
+    Return `1` only after publishing an authenticated exact unit into
+    `prefix_unit_result`. Return `0` for full relation rank with no certified
+    non-torsion candidate, and `2` for an incomplete relation rank. Neither
+    result asserts that every dependency is torsion. Negative results are
+    fatal: `-1` means an invalid exact computation, interval or resource bound;
+    `-2` means reconstruction was unavailable or failed its exact checks;
+    `-3` means reconstructed regulator authentication failed.
+
+    All matrix reductions use logical shapes, not owner capacities. Inactive
+    entries may retain previous attempts' values. Only success changes the
+    result row. The caller must interpret rank deficiency in context: after
+    full raw rank and complete support were established, it is inconsistent,
+    not permission to collect more relations. The analytic index proof still
+    independently certifies whichever relation set and unit are selected.
     """
     if relation_count < factor_count:
-        return 0
+        return 2
     relation_row: uint64 = 0
     while relation_row < relation_count:
         factor_index: uint64 = 0
@@ -2841,13 +3267,16 @@ def _cubic_relation_prefix_has_archimedean_unit(
             ]
             factor_index += 1
         relation_row += 1
-    if not fmpz_matrix_hnf_transform(
+    if not fmpz_matrix_hnf_transform_prefix(
         prefix_hnf,
         prefix_transform,
         prefix_matrix,
+        relation_count,
+        factor_count,
     ):
         return -1
     relation_rank: uint64 = 0
+    zero_row_seen = False
     relation_row = 0
     while relation_row < relation_count:
         row_nonzero = False
@@ -2857,9 +3286,17 @@ def _cubic_relation_prefix_has_archimedean_unit(
                 row_nonzero = True
             factor_index += 1
         if row_nonzero:
+            if zero_row_seen:
+                return -1
             relation_rank += 1
+        else:
+            zero_row_seen = True
         relation_row += 1
-    if relation_rank != factor_count or relation_rank >= relation_count:
+    if relation_rank > factor_count:
+        return -1
+    if relation_rank < factor_count:
+        return 2
+    if relation_rank == relation_count:
         return 0
 
     dependency_count: uint64 = relation_count - relation_rank
@@ -2872,10 +3309,12 @@ def _cubic_relation_prefix_has_archimedean_unit(
             ]
             relation_index += 1
         dependency_row += 1
-    if not fmpz_matrix_lll_transform(
+    if not fmpz_matrix_lll_transform_prefix(
         prefix_dependencies_reduced,
         prefix_dependency_transform,
         prefix_dependencies,
+        dependency_count,
+        relation_count,
     ):
         return -1
 
@@ -3080,7 +3519,7 @@ def _cubic_relation_prefix_has_archimedean_unit(
         dependency_scale,
     )
     if reconstruction_status != 1:
-        return 0
+        return -2
     reconstructed_regulator_lower, reconstructed_regulator_upper = (
         _cubic_regulator_bounds(
             log_numerators,
@@ -3112,7 +3551,7 @@ def _cubic_relation_prefix_has_archimedean_unit(
             > reconstructed_regulator_upper * dependency_scale_quotient
         )
     ):
-        return 0
+        return -3
     prefix_unit_result[0, 0] = reconstructed_zero
     prefix_unit_result[0, 1] = reconstructed_one
     prefix_unit_result[0, 2] = reconstructed_two
@@ -3237,6 +3676,168 @@ def _cubic_plan_reduced_ideal_shell(
             best_score = score
             best_pair = pair
         pair += 1
+    return best_pair + 1
+
+
+def _cubic_plan_adjacent_ideal(
+    workspace: NativeIntegerVector,
+    embedding_source: FmpzMatrix,
+    embedding_reduced: FmpzMatrix,
+    embedding_transform: FmpzMatrix,
+    transforms: FmpzMatrix,
+    ellipsoid_parameters: FmpzMatrix,
+    factor_index: uint64,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    real_root: int,
+    complex_real_root: int,
+    complex_imaginary_root: int,
+    scale: int,
+    group_count: uint64,
+    relation_effort: uint64,
+    bounded_collection: bool,
+) -> int:
+    """Build the exact reduced plan for one adjacent factor-base ideal.
+
+    Positive return values retain the historical plan encoding: `1..3` select
+    one four-direction shell, `4` is an auxiliary-factor ellipsoid, and `5..7`
+    select an ellipsoid plus its best four-direction pair.  Negative values
+    distinguish exact LLL, ellipsoid preparation, and candidate-envelope
+    failures.
+    """
+    factor_base: uint64 = _FACTOR_OFFSET + _FACTOR_STRIDE * factor_index
+    power_base: uint64 = _POWER_OFFSET + factor_index * _CUBIC_MAX_POWERS * 9
+    transform_row_offset: uint64 = 3 * factor_index
+    if not _cubic_fill_ideal_t2_embedding(
+        embedding_source,
+        workspace,
+        power_base,
+        basis_zero_zero,
+        basis_zero_one,
+        basis_zero_two,
+        basis_one_one,
+        basis_one_two,
+        basis_two_two,
+        real_root,
+        complex_real_root,
+        complex_imaginary_root,
+        scale,
+    ) or not fmpz_matrix_lll_transform(
+        embedding_reduced,
+        embedding_transform,
+        embedding_source,
+    ):
+        return -1
+    transform_row: uint64 = 0
+    while transform_row < 3:
+        transform_column: uint64 = 0
+        while transform_column < 3:
+            transforms[transform_row_offset + transform_row, transform_column] = (
+                embedding_transform[transform_row, transform_column]
+            )
+            transform_column += 1
+        transform_row += 1
+
+    use_ellipsoid = workspace[factor_base + 8] == 1 or relation_effort >= 3
+    if use_ellipsoid:
+        if not _cubic_prepare_reduced_ideal_ellipsoid(
+            workspace,
+            power_base,
+            embedding_reduced,
+            transforms,
+            transform_row_offset,
+            ellipsoid_parameters,
+            factor_index,
+        ):
+            return -2
+        ellipsoid_count: uint64 = 0
+        if not bounded_collection:
+            ellipsoid_count = _cubic_plan_reduced_ideal_ellipsoid(
+                workspace,
+                power_base,
+                transforms,
+                transform_row_offset,
+                ellipsoid_parameters,
+                factor_index,
+                group_count,
+            )
+        if ellipsoid_count > _CUBIC_REDUCED_ENUMERATION_MAX_CANDIDATES:
+            return -3
+        ellipsoid_parameters[factor_index, 10] = ellipsoid_count
+    if workspace[factor_base + 8] == 1:
+        return 4
+
+    best_score = -1
+    best_pair: uint64 = 0
+    pair: uint64 = 0
+    while pair < 3:
+        first: uint64 = 0
+        second: uint64 = 1
+        if pair == 1:
+            second = 2
+        elif pair == 2:
+            first = 1
+            second = 2
+        score = 0
+        direction: uint64 = 0
+        while direction < 4:
+            left = 1
+            right = 0
+            if direction == 1:
+                left = 0
+                right = 1
+            elif direction == 2:
+                right = 1
+            elif direction == 3:
+                left = -1
+                right = 1
+            coefficient_zero = 0
+            coefficient_one = 0
+            coefficient_two = 0
+            if first == 0:
+                coefficient_zero = left
+            elif first == 1:
+                coefficient_one = left
+            else:
+                coefficient_two = left
+            if second == 0:
+                coefficient_zero = right
+            elif second == 1:
+                coefficient_one = right
+            else:
+                coefficient_two = right
+            coordinate_zero, coordinate_one, coordinate_two = (
+                _cubic_transformed_ideal_coordinates(
+                    workspace,
+                    power_base,
+                    transforms,
+                    transform_row_offset,
+                    coefficient_zero,
+                    coefficient_one,
+                    coefficient_two,
+                )
+            )
+            norm = _cubic_norm_form_value(
+                workspace,
+                coordinate_zero,
+                coordinate_one,
+                coordinate_two,
+            )
+            if norm < 0:
+                norm = -norm
+            if _cubic_plan_smooth_norm(workspace, group_count, norm):
+                score += 1
+            direction += 1
+        if score > best_score:
+            best_score = score
+            best_pair = pair
+        pair += 1
+    if use_ellipsoid:
+        return best_pair + 5
     return best_pair + 1
 
 
@@ -3624,6 +4225,35 @@ def _cubic_coordinate_trace(
 
 
 @native
+def _cubic_floor_cube_root(value: int) -> int:
+    """Return the nonnegative floor cube root by a bounded exact search."""
+    if value < 0:
+        return -1
+    if value < 2:
+        return value
+    lower = 0
+    upper = 1
+    doubling_steps: uint64 = 0
+    while upper * upper * upper <= value:
+        upper *= 2
+        doubling_steps += 1
+        if doubling_steps > 2048:
+            return -1
+    bisection_steps: uint64 = 0
+    while upper - lower > 1:
+        middle = (lower + upper) // 2
+        middle_cube = middle * middle * middle
+        if middle_cube <= value:
+            lower = middle
+        else:
+            upper = middle
+        bisection_steps += 1
+        if bisection_steps > 2048:
+            return -1
+    return lower
+
+
+@native
 def _cubic_floor_fifth_root(value: int) -> int:
     """Return the nonnegative floor fifth root by a bounded exact search."""
     if value < 0:
@@ -3652,6 +4282,467 @@ def _cubic_floor_fifth_root(value: int) -> int:
     return lower
 
 
+def _cubic_exact_unit_fifth_root_candidate(
+    workspace: NativeIntegerVector,
+    identity_zero: int,
+    identity_one: int,
+    identity_two: int,
+    unit_zero: int,
+    unit_one: int,
+    unit_two: int,
+    unit_square_zero: int,
+    unit_square_one: int,
+    unit_square_two: int,
+    unit_norm: int,
+    root_trace: int,
+    second_symmetric: int,
+) -> tuple[int, int, int, int]:
+    """Authenticate the root determined by two symmetric coefficients."""
+    trace_square = root_trace * root_trace
+    trace_cube = trace_square * root_trace
+    second_square = second_symmetric * second_symmetric
+    formal_square_coefficient = (
+        trace_cube - 2 * root_trace * second_symmetric + unit_norm
+    )
+    formal_linear_coefficient = (
+        -trace_square * second_symmetric + second_square + root_trace * unit_norm
+    )
+    formal_constant_coefficient = unit_norm * (trace_square - second_symmetric)
+    formal_raw_zero = formal_constant_coefficient * formal_constant_coefficient
+    formal_raw_one = 2 * formal_constant_coefficient * formal_linear_coefficient
+    formal_raw_two = (
+        2 * formal_constant_coefficient * formal_square_coefficient
+        + formal_linear_coefficient * formal_linear_coefficient
+    )
+    formal_raw_three = 2 * formal_linear_coefficient * formal_square_coefficient
+    formal_raw_four = formal_square_coefficient * formal_square_coefficient
+    formal_unit_square_zero = (
+        formal_raw_zero
+        + unit_norm * formal_raw_three
+        + root_trace * unit_norm * formal_raw_four
+    )
+    formal_unit_square_one = (
+        formal_raw_one
+        - second_symmetric * formal_raw_three
+        + (unit_norm - root_trace * second_symmetric) * formal_raw_four
+    )
+    formal_unit_square_two = (
+        formal_raw_two
+        + root_trace * formal_raw_three
+        + (trace_square - second_symmetric) * formal_raw_four
+    )
+    determinant = (
+        formal_linear_coefficient * formal_unit_square_two
+        - formal_square_coefficient * formal_unit_square_one
+    )
+    if determinant == 0:
+        return (0, 0, 0, 0)
+    constant_numerator = (
+        -formal_constant_coefficient * formal_unit_square_two
+        + formal_square_coefficient * formal_unit_square_zero
+    )
+    linear_numerator = formal_unit_square_two
+    square_numerator = -formal_square_coefficient
+    candidate_zero_numerator = (
+        constant_numerator * identity_zero
+        + linear_numerator * unit_zero
+        + square_numerator * unit_square_zero
+    )
+    candidate_one_numerator = (
+        constant_numerator * identity_one
+        + linear_numerator * unit_one
+        + square_numerator * unit_square_one
+    )
+    candidate_two_numerator = (
+        constant_numerator * identity_two
+        + linear_numerator * unit_two
+        + square_numerator * unit_square_two
+    )
+    if (
+        candidate_zero_numerator % determinant != 0
+        or candidate_one_numerator % determinant != 0
+        or candidate_two_numerator % determinant != 0
+    ):
+        return (0, 0, 0, 0)
+    candidate_zero = candidate_zero_numerator // determinant
+    candidate_one = candidate_one_numerator // determinant
+    candidate_two = candidate_two_numerator // determinant
+    candidate_norm = _cubic_norm_form_value(
+        workspace,
+        candidate_zero,
+        candidate_one,
+        candidate_two,
+    )
+    if candidate_norm != unit_norm:
+        return (0, 0, 0, 0)
+    if not _cubic_multiply_coordinates(
+        workspace,
+        candidate_zero,
+        candidate_one,
+        candidate_two,
+        candidate_zero,
+        candidate_one,
+        candidate_two,
+        _MAP_SCRATCH_OFFSET,
+    ):
+        return (0, 0, 0, 0)
+    if not _cubic_multiply_coordinates(
+        workspace,
+        workspace[_MAP_SCRATCH_OFFSET],
+        workspace[_MAP_SCRATCH_OFFSET + 1],
+        workspace[_MAP_SCRATCH_OFFSET + 2],
+        workspace[_MAP_SCRATCH_OFFSET],
+        workspace[_MAP_SCRATCH_OFFSET + 1],
+        workspace[_MAP_SCRATCH_OFFSET + 2],
+        _MAP_SCRATCH_OFFSET + 3,
+    ):
+        return (0, 0, 0, 0)
+    if not _cubic_multiply_coordinates(
+        workspace,
+        workspace[_MAP_SCRATCH_OFFSET + 3],
+        workspace[_MAP_SCRATCH_OFFSET + 4],
+        workspace[_MAP_SCRATCH_OFFSET + 5],
+        candidate_zero,
+        candidate_one,
+        candidate_two,
+        _MAP_SCRATCH_OFFSET + 6,
+    ):
+        return (0, 0, 0, 0)
+    if (
+        workspace[_MAP_SCRATCH_OFFSET + 6] != unit_zero
+        or workspace[_MAP_SCRATCH_OFFSET + 7] != unit_one
+        or workspace[_MAP_SCRATCH_OFFSET + 8] != unit_two
+    ):
+        return (0, 0, 0, 0)
+    return (1, candidate_zero, candidate_one, candidate_two)
+
+
+def _cubic_exact_unit_cube_root_candidate(
+    workspace: NativeIntegerVector,
+    identity_zero: int,
+    identity_one: int,
+    identity_two: int,
+    unit_zero: int,
+    unit_one: int,
+    unit_two: int,
+    unit_norm: int,
+    root_trace: int,
+    second_symmetric: int,
+) -> tuple[int, int, int, int]:
+    """Reconstruct and authenticate a cubic root from its characteristic data."""
+    formal_constant_coefficient = unit_norm
+    formal_linear_coefficient = -second_symmetric
+    formal_square_coefficient = root_trace
+    trace_square = root_trace * root_trace
+    formal_raw_zero = formal_constant_coefficient * formal_constant_coefficient
+    formal_raw_one = 2 * formal_constant_coefficient * formal_linear_coefficient
+    formal_raw_two = (
+        2 * formal_constant_coefficient * formal_square_coefficient
+        + formal_linear_coefficient * formal_linear_coefficient
+    )
+    formal_raw_three = 2 * formal_linear_coefficient * formal_square_coefficient
+    formal_raw_four = formal_square_coefficient * formal_square_coefficient
+    formal_unit_square_zero = (
+        formal_raw_zero
+        + unit_norm * formal_raw_three
+        + root_trace * unit_norm * formal_raw_four
+    )
+    formal_unit_square_one = (
+        formal_raw_one
+        - second_symmetric * formal_raw_three
+        + (unit_norm - root_trace * second_symmetric) * formal_raw_four
+    )
+    formal_unit_square_two = (
+        formal_raw_two
+        + root_trace * formal_raw_three
+        + (trace_square - second_symmetric) * formal_raw_four
+    )
+    determinant = (
+        formal_linear_coefficient * formal_unit_square_two
+        - formal_square_coefficient * formal_unit_square_one
+    )
+    if determinant == 0:
+        return (0, 0, 0, 0)
+    constant_numerator = (
+        -formal_constant_coefficient * formal_unit_square_two
+        + formal_square_coefficient * formal_unit_square_zero
+    )
+    linear_numerator = formal_unit_square_two
+    square_numerator = -formal_square_coefficient
+    if not _cubic_multiply_coordinates(
+        workspace,
+        unit_zero,
+        unit_one,
+        unit_two,
+        unit_zero,
+        unit_one,
+        unit_two,
+        _MAP_SCRATCH_OFFSET,
+    ):
+        return (0, 0, 0, 0)
+    unit_square_zero = workspace[_MAP_SCRATCH_OFFSET]
+    unit_square_one = workspace[_MAP_SCRATCH_OFFSET + 1]
+    unit_square_two = workspace[_MAP_SCRATCH_OFFSET + 2]
+    candidate_zero_numerator = (
+        constant_numerator * identity_zero
+        + linear_numerator * unit_zero
+        + square_numerator * unit_square_zero
+    )
+    candidate_one_numerator = (
+        constant_numerator * identity_one
+        + linear_numerator * unit_one
+        + square_numerator * unit_square_one
+    )
+    candidate_two_numerator = (
+        constant_numerator * identity_two
+        + linear_numerator * unit_two
+        + square_numerator * unit_square_two
+    )
+    if (
+        candidate_zero_numerator % determinant != 0
+        or candidate_one_numerator % determinant != 0
+        or candidate_two_numerator % determinant != 0
+    ):
+        return (0, 0, 0, 0)
+    candidate_zero = candidate_zero_numerator // determinant
+    candidate_one = candidate_one_numerator // determinant
+    candidate_two = candidate_two_numerator // determinant
+    candidate_norm = _cubic_norm_form_value(
+        workspace,
+        candidate_zero,
+        candidate_one,
+        candidate_two,
+    )
+    if candidate_norm != unit_norm:
+        return (0, 0, 0, 0)
+    if not _cubic_multiply_coordinates(
+        workspace,
+        candidate_zero,
+        candidate_one,
+        candidate_two,
+        candidate_zero,
+        candidate_one,
+        candidate_two,
+        _MAP_SCRATCH_OFFSET,
+    ):
+        return (0, 0, 0, 0)
+    if not _cubic_multiply_coordinates(
+        workspace,
+        workspace[_MAP_SCRATCH_OFFSET],
+        workspace[_MAP_SCRATCH_OFFSET + 1],
+        workspace[_MAP_SCRATCH_OFFSET + 2],
+        candidate_zero,
+        candidate_one,
+        candidate_two,
+        _MAP_SCRATCH_OFFSET + 3,
+    ):
+        return (0, 0, 0, 0)
+    if (
+        workspace[_MAP_SCRATCH_OFFSET + 3] != unit_zero
+        or workspace[_MAP_SCRATCH_OFFSET + 4] != unit_one
+        or workspace[_MAP_SCRATCH_OFFSET + 5] != unit_two
+    ):
+        return (0, 0, 0, 0)
+    return (1, candidate_zero, candidate_one, candidate_two)
+
+
+def _cubic_exact_unit_cube_root(
+    workspace: NativeIntegerVector,
+    coefficients: IntegerBuffer,
+    denominator: int,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    identity_zero: int,
+    identity_one: int,
+    identity_two: int,
+    unit_zero: int,
+    unit_one: int,
+    unit_two: int,
+    scale: int,
+) -> tuple[int, int, int, int]:
+    """Recover a cubic unit root through Newton identities and exact replay."""
+    root_status, real_root, ignored_real, ignored_imaginary = (
+        _cubic_complex_root_approximations(coefficients, scale)
+    )
+    if root_status != 1 or denominator <= 0:
+        return (0, 0, 0, 0)
+    unit_norm = _cubic_norm_form_value(
+        workspace,
+        unit_zero,
+        unit_one,
+        unit_two,
+    )
+    if unit_norm != 1 and unit_norm != -1:
+        return (0, 0, 0, 0)
+    source_unit_zero = unit_zero
+    source_unit_one = unit_one
+    source_unit_two = unit_two
+    source_unit_trace = _cubic_coordinate_trace(
+        workspace,
+        source_unit_zero,
+        source_unit_one,
+        source_unit_two,
+    )
+    if not _cubic_multiply_coordinates(
+        workspace,
+        source_unit_zero,
+        source_unit_one,
+        source_unit_two,
+        source_unit_zero,
+        source_unit_one,
+        source_unit_two,
+        _MAP_SCRATCH_OFFSET,
+    ):
+        return (0, 0, 0, 0)
+    source_square_zero = workspace[_MAP_SCRATCH_OFFSET]
+    source_square_one = workspace[_MAP_SCRATCH_OFFSET + 1]
+    source_square_two = workspace[_MAP_SCRATCH_OFFSET + 2]
+    source_square_trace = _cubic_coordinate_trace(
+        workspace,
+        source_square_zero,
+        source_square_one,
+        source_square_two,
+    )
+    second_trace_numerator = source_unit_trace * source_unit_trace - source_square_trace
+    if second_trace_numerator % 2 != 0:
+        return (0, 0, 0, 0)
+    source_second_symmetric = second_trace_numerator // 2
+    inverse_zero = (
+        source_square_zero
+        - source_unit_trace * source_unit_zero
+        + source_second_symmetric * identity_zero
+    ) // unit_norm
+    inverse_one = (
+        source_square_one
+        - source_unit_trace * source_unit_one
+        + source_second_symmetric * identity_one
+    ) // unit_norm
+    inverse_two = (
+        source_square_two
+        - source_unit_trace * source_unit_two
+        + source_second_symmetric * identity_two
+    ) // unit_norm
+    if not _cubic_multiply_coordinates(
+        workspace,
+        source_unit_zero,
+        source_unit_one,
+        source_unit_two,
+        inverse_zero,
+        inverse_one,
+        inverse_two,
+        _MAP_SCRATCH_OFFSET,
+    ) or (
+        workspace[_MAP_SCRATCH_OFFSET] != identity_zero
+        or workspace[_MAP_SCRATCH_OFFSET + 1] != identity_one
+        or workspace[_MAP_SCRATCH_OFFSET + 2] != identity_two
+    ):
+        return (0, 0, 0, 0)
+
+    raw_zero = source_unit_zero * basis_zero_zero
+    raw_one = source_unit_zero * basis_zero_one + source_unit_one * basis_one_one
+    raw_two = (
+        source_unit_zero * basis_zero_two
+        + source_unit_one * basis_one_two
+        + source_unit_two * basis_two_two
+    )
+    source_real_numerator, ignored_embedding = _cubic_fixed_polynomial_embedding(
+        raw_zero,
+        raw_one,
+        raw_two,
+        real_root,
+        0,
+        scale,
+    )
+    raw_zero = inverse_zero * basis_zero_zero
+    raw_one = inverse_zero * basis_zero_one + inverse_one * basis_one_one
+    raw_two = (
+        inverse_zero * basis_zero_two
+        + inverse_one * basis_one_two
+        + inverse_two * basis_two_two
+    )
+    inverse_real_numerator, ignored_embedding = _cubic_fixed_polynomial_embedding(
+        raw_zero,
+        raw_one,
+        raw_two,
+        real_root,
+        0,
+        scale,
+    )
+    source_real_absolute = source_real_numerator
+    if source_real_absolute < 0:
+        source_real_absolute = -source_real_absolute
+    inverse_real_absolute = inverse_real_numerator
+    if inverse_real_absolute < 0:
+        inverse_real_absolute = -inverse_real_absolute
+    unit_real_numerator = source_real_numerator
+    if inverse_real_absolute > source_real_absolute:
+        unit_zero = inverse_zero
+        unit_one = inverse_one
+        unit_two = inverse_two
+        unit_real_numerator = inverse_real_numerator
+
+    unit_real = _cubic_nearest_quotient(unit_real_numerator, denominator)
+    if unit_real == 0:
+        return (0, 0, 0, 0)
+    absolute_unit_real = unit_real
+    real_sign = 1
+    if absolute_unit_real < 0:
+        absolute_unit_real = -absolute_unit_real
+        real_sign = -1
+    scale_square = scale * scale
+    real_root_cube = _cubic_floor_cube_root(absolute_unit_real * scale_square)
+    if real_root_cube <= 0:
+        return (0, 0, 0, 0)
+    real_root_cube *= real_sign
+    trace_center = _cubic_nearest_quotient(real_root_cube, scale)
+    unit_trace = _cubic_coordinate_trace(
+        workspace,
+        unit_zero,
+        unit_one,
+        unit_two,
+    )
+    trace_delta = -4
+    while trace_delta <= 4:
+        root_trace = trace_center + trace_delta
+        if root_trace != 0:
+            second_numerator = (
+                root_trace * root_trace * root_trace + 3 * unit_norm - unit_trace
+            )
+            second_denominator = 3 * root_trace
+            if second_numerator % second_denominator == 0:
+                second_symmetric = second_numerator // second_denominator
+                (
+                    candidate_status,
+                    candidate_zero,
+                    candidate_one,
+                    candidate_two,
+                ) = _cubic_exact_unit_cube_root_candidate(
+                    workspace,
+                    identity_zero,
+                    identity_one,
+                    identity_two,
+                    unit_zero,
+                    unit_one,
+                    unit_two,
+                    unit_norm,
+                    root_trace,
+                    second_symmetric,
+                )
+                if candidate_status == 1:
+                    return (
+                        candidate_status,
+                        candidate_zero,
+                        candidate_one,
+                        candidate_two,
+                    )
+        trace_delta += 1
+    return (0, 0, 0, 0)
+
+
 def _cubic_exact_unit_fifth_root(
     workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
@@ -3673,28 +4764,104 @@ def _cubic_exact_unit_fifth_root(
     """Recover an exact fifth root of a cubic unit when one is visible.
 
     For a putative root `v`, write its characteristic polynomial as
-    `Y^3-tY^2+sY-n`.  The real embedding of `u=v^5` gives a tiny deterministic
-    list of trace candidates `t`; Newton's identity
+    `Y^3-tY^2+sY-n`.  Choose whichever of `u` and `u^-1` has real absolute
+    value at least one; its real embedding gives a tiny deterministic list of
+    trace candidates `t`.  Newton's identity
 
     `Tr(v^5)=t^5-5t^3s+5ts^2+5t^2n-5sn`
 
-    then leaves only a bounded integral search for `s`.  In the formal cubic
-    algebra generated by `v`, express `v` in the basis `1,u,u^2`, evaluate that
-    expression in the resident order, and accept only after exact integral
-    division, norm, and fifth-power replay.  Missing a root is never negative
-    saturation evidence; it merely makes the closed program decline.
+    is an exact quadratic equation for `s`.  Solve its integer discriminant
+    instead of enumerating a size-dependent interval.  In the formal cubic
+    algebra generated by `v`, express `v` in the basis `1,u,u^2`, evaluate
+    that expression in the resident order, and accept only after exact
+    integral division, norm, and fifth-power replay.  Missing a root is never
+    negative saturation evidence; it merely makes the closed program decline.
     """
     root_status, real_root, ignored_real, ignored_imaginary = (
         _cubic_complex_root_approximations(coefficients, scale)
     )
     if root_status != 1 or denominator <= 0:
         return (0, 0, 0, 0)
-    raw_zero = unit_zero * basis_zero_zero
-    raw_one = unit_zero * basis_zero_one + unit_one * basis_one_one
-    raw_two = (
-        unit_zero * basis_zero_two + unit_one * basis_one_two + unit_two * basis_two_two
+    unit_norm = _cubic_norm_form_value(
+        workspace,
+        unit_zero,
+        unit_one,
+        unit_two,
     )
-    unit_real_numerator, ignored_embedding = _cubic_fixed_polynomial_embedding(
+    if unit_norm != 1 and unit_norm != -1:
+        return (0, 0, 0, 0)
+    source_unit_zero = unit_zero
+    source_unit_one = unit_one
+    source_unit_two = unit_two
+    source_unit_trace = _cubic_coordinate_trace(
+        workspace,
+        unit_zero,
+        unit_one,
+        unit_two,
+    )
+    if not _cubic_multiply_coordinates(
+        workspace,
+        unit_zero,
+        unit_one,
+        unit_two,
+        unit_zero,
+        unit_one,
+        unit_two,
+        _MAP_SCRATCH_OFFSET,
+    ):
+        return (0, 0, 0, 0)
+    unit_square_zero = workspace[_MAP_SCRATCH_OFFSET]
+    unit_square_one = workspace[_MAP_SCRATCH_OFFSET + 1]
+    unit_square_two = workspace[_MAP_SCRATCH_OFFSET + 2]
+    unit_square_trace = _cubic_coordinate_trace(
+        workspace,
+        unit_square_zero,
+        unit_square_one,
+        unit_square_two,
+    )
+    second_trace_numerator = source_unit_trace * source_unit_trace - unit_square_trace
+    if second_trace_numerator % 2 != 0:
+        return (0, 0, 0, 0)
+    source_second_symmetric = second_trace_numerator // 2
+    inverse_zero = (
+        unit_square_zero
+        - source_unit_trace * source_unit_zero
+        + source_second_symmetric * identity_zero
+    ) // unit_norm
+    inverse_one = (
+        unit_square_one
+        - source_unit_trace * source_unit_one
+        + source_second_symmetric * identity_one
+    ) // unit_norm
+    inverse_two = (
+        unit_square_two
+        - source_unit_trace * source_unit_two
+        + source_second_symmetric * identity_two
+    ) // unit_norm
+    if not _cubic_multiply_coordinates(
+        workspace,
+        source_unit_zero,
+        source_unit_one,
+        source_unit_two,
+        inverse_zero,
+        inverse_one,
+        inverse_two,
+        _MAP_SCRATCH_OFFSET,
+    ) or (
+        workspace[_MAP_SCRATCH_OFFSET] != identity_zero
+        or workspace[_MAP_SCRATCH_OFFSET + 1] != identity_one
+        or workspace[_MAP_SCRATCH_OFFSET + 2] != identity_two
+    ):
+        return (0, 0, 0, 0)
+
+    raw_zero = source_unit_zero * basis_zero_zero
+    raw_one = source_unit_zero * basis_zero_one + source_unit_one * basis_one_one
+    raw_two = (
+        source_unit_zero * basis_zero_two
+        + source_unit_one * basis_one_two
+        + source_unit_two * basis_two_two
+    )
+    source_real_numerator, ignored_embedding = _cubic_fixed_polynomial_embedding(
         raw_zero,
         raw_one,
         raw_two,
@@ -3702,6 +4869,34 @@ def _cubic_exact_unit_fifth_root(
         0,
         scale,
     )
+    raw_zero = inverse_zero * basis_zero_zero
+    raw_one = inverse_zero * basis_zero_one + inverse_one * basis_one_one
+    raw_two = (
+        inverse_zero * basis_zero_two
+        + inverse_one * basis_one_two
+        + inverse_two * basis_two_two
+    )
+    inverse_real_numerator, ignored_embedding = _cubic_fixed_polynomial_embedding(
+        raw_zero,
+        raw_one,
+        raw_two,
+        real_root,
+        0,
+        scale,
+    )
+    source_real_absolute = source_real_numerator
+    if source_real_absolute < 0:
+        source_real_absolute = -source_real_absolute
+    inverse_real_absolute = inverse_real_numerator
+    if inverse_real_absolute < 0:
+        inverse_real_absolute = -inverse_real_absolute
+    unit_real_numerator = source_real_numerator
+    if inverse_real_absolute > source_real_absolute:
+        unit_zero = inverse_zero
+        unit_one = inverse_one
+        unit_two = inverse_two
+        unit_real_numerator = inverse_real_numerator
+
     unit_real = _cubic_nearest_quotient(unit_real_numerator, denominator)
     if unit_real == 0:
         return (0, 0, 0, 0)
@@ -3718,24 +4913,6 @@ def _cubic_exact_unit_fifth_root(
         return (0, 0, 0, 0)
     real_root_fifth *= real_sign
     trace_center = _cubic_nearest_quotient(real_root_fifth, scale)
-    # The exact fifth-root approximation gives the bound needed for
-    # `|s| <= 2*sqrt(|sigma(v)|)+1`.
-    root_absolute_ceiling = real_root_fifth
-    if root_absolute_ceiling < 0:
-        root_absolute_ceiling = -root_absolute_ceiling
-    root_absolute_ceiling = (root_absolute_ceiling + scale - 1) // scale
-    second_symmetric_bound = 2 * _cubic_ceil_sqrt(root_absolute_ceiling) + 2
-    if second_symmetric_bound < 2 or second_symmetric_bound > 4096:
-        return (0, 0, 0, 0)
-
-    unit_norm = _cubic_norm_form_value(
-        workspace,
-        unit_zero,
-        unit_one,
-        unit_two,
-    )
-    if unit_norm != 1 and unit_norm != -1:
-        return (0, 0, 0, 0)
     unit_trace = _cubic_coordinate_trace(
         workspace,
         unit_zero,
@@ -3763,143 +4940,87 @@ def _cubic_exact_unit_fifth_root(
         trace_square = root_trace * root_trace
         trace_cube = trace_square * root_trace
         trace_fifth = trace_cube * trace_square
-        second_symmetric = -second_symmetric_bound
-        while second_symmetric <= second_symmetric_bound:
-            second_square = second_symmetric * second_symmetric
+        quadratic_coefficient = 5 * root_trace
+        linear_coefficient = -5 * (trace_cube + unit_norm)
+        constant_coefficient = trace_fifth + 5 * trace_square * unit_norm - unit_trace
+        if quadratic_coefficient == 0:
             if (
-                trace_fifth
-                - 5 * trace_cube * second_symmetric
-                + 5 * root_trace * second_square
-                + 5 * trace_square * unit_norm
-                - 5 * second_symmetric * unit_norm
-                == unit_trace
+                linear_coefficient != 0
+                and (-constant_coefficient) % linear_coefficient == 0
             ):
-                formal_square_coefficient = (
-                    trace_cube - 2 * root_trace * second_symmetric + unit_norm
+                second_symmetric = (-constant_coefficient) // linear_coefficient
+                (
+                    candidate_status,
+                    candidate_zero,
+                    candidate_one,
+                    candidate_two,
+                ) = _cubic_exact_unit_fifth_root_candidate(
+                    workspace,
+                    identity_zero,
+                    identity_one,
+                    identity_two,
+                    unit_zero,
+                    unit_one,
+                    unit_two,
+                    unit_square_zero,
+                    unit_square_one,
+                    unit_square_two,
+                    unit_norm,
+                    root_trace,
+                    second_symmetric,
                 )
-                formal_linear_coefficient = (
-                    -trace_square * second_symmetric
-                    + second_square
-                    + root_trace * unit_norm
-                )
-                formal_constant_coefficient = unit_norm * (
-                    trace_square - second_symmetric
-                )
-                formal_raw_zero = (
-                    formal_constant_coefficient * formal_constant_coefficient
-                )
-                formal_raw_one = (
-                    2 * formal_constant_coefficient * formal_linear_coefficient
-                )
-                formal_raw_two = (
-                    2 * formal_constant_coefficient * formal_square_coefficient
-                    + formal_linear_coefficient * formal_linear_coefficient
-                )
-                formal_raw_three = (
-                    2 * formal_linear_coefficient * formal_square_coefficient
-                )
-                formal_raw_four = formal_square_coefficient * formal_square_coefficient
-                formal_unit_square_zero = (
-                    formal_raw_zero
-                    + unit_norm * formal_raw_three
-                    + root_trace * unit_norm * formal_raw_four
-                )
-                formal_unit_square_one = (
-                    formal_raw_one
-                    - second_symmetric * formal_raw_three
-                    + (unit_norm - root_trace * second_symmetric) * formal_raw_four
-                )
-                formal_unit_square_two = (
-                    formal_raw_two
-                    + root_trace * formal_raw_three
-                    + (trace_square - second_symmetric) * formal_raw_four
-                )
-                determinant = (
-                    formal_linear_coefficient * formal_unit_square_two
-                    - formal_square_coefficient * formal_unit_square_one
-                )
-                if determinant != 0:
-                    constant_numerator = (
-                        -formal_constant_coefficient * formal_unit_square_two
-                        + formal_square_coefficient * formal_unit_square_zero
+                if candidate_status == 1:
+                    return (
+                        candidate_status,
+                        candidate_zero,
+                        candidate_one,
+                        candidate_two,
                     )
-                    linear_numerator = formal_unit_square_two
-                    square_numerator = -formal_square_coefficient
-                    candidate_zero_numerator = (
-                        constant_numerator * identity_zero
-                        + linear_numerator * unit_zero
-                        + square_numerator * unit_square_zero
-                    )
-                    candidate_one_numerator = (
-                        constant_numerator * identity_one
-                        + linear_numerator * unit_one
-                        + square_numerator * unit_square_one
-                    )
-                    candidate_two_numerator = (
-                        constant_numerator * identity_two
-                        + linear_numerator * unit_two
-                        + square_numerator * unit_square_two
-                    )
-                    if (
-                        candidate_zero_numerator % determinant == 0
-                        and candidate_one_numerator % determinant == 0
-                        and candidate_two_numerator % determinant == 0
-                    ):
-                        candidate_zero = candidate_zero_numerator // determinant
-                        candidate_one = candidate_one_numerator // determinant
-                        candidate_two = candidate_two_numerator // determinant
-                        candidate_norm = _cubic_norm_form_value(
-                            workspace,
-                            candidate_zero,
-                            candidate_one,
-                            candidate_two,
-                        )
-                        if candidate_norm == unit_norm:
-                            if not _cubic_multiply_coordinates(
-                                workspace,
-                                candidate_zero,
-                                candidate_one,
-                                candidate_two,
-                                candidate_zero,
-                                candidate_one,
-                                candidate_two,
-                                _MAP_SCRATCH_OFFSET,
-                            ):
-                                return (0, 0, 0, 0)
-                            if not _cubic_multiply_coordinates(
-                                workspace,
-                                workspace[_MAP_SCRATCH_OFFSET],
-                                workspace[_MAP_SCRATCH_OFFSET + 1],
-                                workspace[_MAP_SCRATCH_OFFSET + 2],
-                                workspace[_MAP_SCRATCH_OFFSET],
-                                workspace[_MAP_SCRATCH_OFFSET + 1],
-                                workspace[_MAP_SCRATCH_OFFSET + 2],
-                                _MAP_SCRATCH_OFFSET + 3,
-                            ):
-                                return (0, 0, 0, 0)
-                            if not _cubic_multiply_coordinates(
-                                workspace,
-                                workspace[_MAP_SCRATCH_OFFSET + 3],
-                                workspace[_MAP_SCRATCH_OFFSET + 4],
-                                workspace[_MAP_SCRATCH_OFFSET + 5],
-                                candidate_zero,
-                                candidate_one,
-                                candidate_two,
-                                _MAP_SCRATCH_OFFSET + 6,
-                            ):
-                                return (0, 0, 0, 0)
-                            if (
-                                workspace[_MAP_SCRATCH_OFFSET + 6] == unit_zero
-                                and workspace[_MAP_SCRATCH_OFFSET + 7] == unit_one
-                                and workspace[_MAP_SCRATCH_OFFSET + 8] == unit_two
-                            ):
-                                return (
-                                    1,
+        else:
+            discriminant = (
+                linear_coefficient * linear_coefficient
+                - 4 * quadratic_coefficient * constant_coefficient
+            )
+            if discriminant >= 0:
+                discriminant_root = _cubic_floor_sqrt(discriminant)
+                if discriminant_root * discriminant_root == discriminant:
+                    root_denominator = 2 * quadratic_coefficient
+                    root_sign = -1
+                    while root_sign <= 1:
+                        if root_sign != 0:
+                            root_numerator = (
+                                -linear_coefficient + root_sign * discriminant_root
+                            )
+                            if root_numerator % root_denominator == 0:
+                                second_symmetric = root_numerator // root_denominator
+                                (
+                                    candidate_status,
                                     candidate_zero,
                                     candidate_one,
                                     candidate_two,
+                                ) = _cubic_exact_unit_fifth_root_candidate(
+                                    workspace,
+                                    identity_zero,
+                                    identity_one,
+                                    identity_two,
+                                    unit_zero,
+                                    unit_one,
+                                    unit_two,
+                                    unit_square_zero,
+                                    unit_square_one,
+                                    unit_square_two,
+                                    unit_norm,
+                                    root_trace,
+                                    second_symmetric,
                                 )
-            second_symmetric += 1
+                                if candidate_status == 1:
+                                    return (
+                                        candidate_status,
+                                        candidate_zero,
+                                        candidate_one,
+                                        candidate_two,
+                                    )
+                        root_sign += 2
         trace_delta += 1
     return (0, 0, 0, 0)
 
@@ -4205,7 +5326,7 @@ def _cubic_bf_tail_bounds(
 
 
 def _cubic_bf_finite_bounds(
-    workspace: NativeIntegerVector,
+    analytic_workspace: NativeIntegerVector,
     values: FmpzMatrix,
     endpoints: FmpzMatrix,
     term_count: uint64,
@@ -4244,10 +5365,10 @@ def _cubic_bf_finite_bounds(
         term_base: uint64 = (
             _CUBIC_ANALYTIC_TERM_OFFSET + _CUBIC_ANALYTIC_TERM_STRIDE * term_index
         )
-        multiplicity = workspace[term_base]
-        scale_index = workspace[term_base + 1]
-        norm = workspace[term_base + 2]
-        exponent = workspace[term_base + 3]
+        multiplicity = analytic_workspace[term_base]
+        scale_index = analytic_workspace[term_base + 1]
+        norm = analytic_workspace[term_base + 2]
+        exponent = analytic_workspace[term_base + 3]
         value_index: uint64 = 0
         while value_index < value_count and values[value_index, 0] != norm:
             value_index += 1
@@ -4350,7 +5471,8 @@ def _cubic_bf_finite_bounds(
 
 
 def _cubic_prepare_bf_plan(
-    workspace: NativeIntegerVector,
+    field_workspace: NativeIntegerVector,
+    analytic_workspace: NativeIntegerVector,
     coefficients: IntegerBuffer,
     denominator: int,
     constant: int,
@@ -4368,14 +5490,14 @@ def _cubic_prepare_bf_plan(
 ) -> tuple[bool, uint64, uint64]:
     """Build one bounded exact Belabas--Friedman prime-power plan."""
     zero: uint64 = 0
-    if (
+    if analytic_threshold % 9 != 0 or (
         analytic_threshold != _CUBIC_ANALYTIC_THRESHOLD
         and analytic_threshold != _CUBIC_ANALYTIC_REFINED_THRESHOLD
     ):
         return (False, zero, zero)
     analytic_index: uint64 = 0
     while analytic_index < analytic_threshold:
-        workspace[_CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_index] = 0
+        analytic_workspace[_CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_index] = 0
         analytic_index += 1
     analytic_prime: uint64 = 2
     while analytic_prime < analytic_threshold:
@@ -4386,7 +5508,7 @@ def _cubic_prepare_bf_plan(
                 analytic_is_prime = False
             analytic_divisor += 1
         if analytic_is_prime:
-            workspace[_CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime] -= 1
+            analytic_workspace[_CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime] -= 1
             analytic_local_degree: uint64 = 0
             analytic_norm: uint64 = 1
             if denominator % analytic_prime != 0:
@@ -4421,7 +5543,7 @@ def _cubic_prepare_bf_plan(
                                 analytic_root_multiplicity = 3
                         analytic_multiplicity_sum += analytic_root_multiplicity
                         analytic_local_degree += analytic_root_multiplicity
-                        workspace[
+                        analytic_workspace[
                             _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime
                         ] += 1
                     analytic_root += 1
@@ -4435,7 +5557,7 @@ def _cubic_prepare_bf_plan(
                         analytic_norm *= analytic_prime
                         analytic_degree_index += 1
                     if analytic_norm < analytic_threshold:
-                        workspace[
+                        analytic_workspace[
                             _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_norm
                         ] += 1
                     analytic_local_degree += analytic_remaining_degree
@@ -4449,15 +5571,15 @@ def _cubic_prepare_bf_plan(
                         analytic_group_base: uint64 = (
                             _GROUP_OFFSET + _GROUP_STRIDE * analytic_group_index
                         )
-                        if workspace[analytic_group_base] == analytic_prime:
+                        if field_workspace[analytic_group_base] == analytic_prime:
                             if analytic_group_found:
                                 return (False, zero, zero)
                             analytic_group_found = True
                             analytic_group_factor_start: uint64 = checked_uint64(
-                                workspace[analytic_group_base + 1]
+                                field_workspace[analytic_group_base + 1]
                             )
                             analytic_group_factor_count: uint64 = checked_uint64(
-                                workspace[analytic_group_base + 2]
+                                field_workspace[analytic_group_base + 2]
                             )
                             analytic_factor_index: uint64 = 0
                             while analytic_factor_index < analytic_group_factor_count:
@@ -4469,13 +5591,13 @@ def _cubic_prepare_bf_plan(
                                         + analytic_factor_index
                                     )
                                 )
-                                if workspace[analytic_factor_base + 2] == 1:
+                                if field_workspace[analytic_factor_base + 2] == 1:
                                     analytic_map_count += 1
                                 analytic_factor_index += 1
                         analytic_group_index += 1
                 else:
                     analytic_map_count = _cubic_degree_one_prime_count(
-                        workspace,
+                        field_workspace,
                         coefficients,
                         equation_order_index,
                         identity_zero,
@@ -4487,25 +5609,31 @@ def _cubic_prepare_bf_plan(
                     analytic_local_degree = 3
                     analytic_norm = analytic_prime * analytic_prime * analytic_prime
                     if analytic_norm < analytic_threshold:
-                        workspace[
+                        analytic_workspace[
                             _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_norm
                         ] += 1
                 elif analytic_map_count == 1:
-                    workspace[_CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime] += 1
+                    analytic_workspace[
+                        _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime
+                    ] += 1
                     analytic_local_degree = 3
                     if absolute_discriminant % analytic_prime != 0:
                         analytic_norm = analytic_prime * analytic_prime
                         if analytic_norm < analytic_threshold:
-                            workspace[
+                            analytic_workspace[
                                 _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_norm
                             ] += 1
                 elif analytic_map_count == 2:
                     if absolute_discriminant % analytic_prime != 0:
                         return (False, zero, zero)
-                    workspace[_CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime] += 2
+                    analytic_workspace[
+                        _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime
+                    ] += 2
                     analytic_local_degree = 3
                 elif analytic_map_count == 3:
-                    workspace[_CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime] += 3
+                    analytic_workspace[
+                        _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_prime
+                    ] += 3
                     analytic_local_degree = 3
                 else:
                     return (False, zero, zero)
@@ -4514,11 +5642,11 @@ def _cubic_prepare_bf_plan(
         analytic_prime += 1
 
     analytic_value_count: uint64 = 5
-    workspace[_CUBIC_ANALYTIC_VALUE_OFFSET] = analytic_threshold
-    workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 1] = analytic_threshold // 9
-    workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 2] = 3 * analytic_threshold
-    workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 3] = absolute_discriminant
-    workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 4] = class_number_upper
+    analytic_workspace[_CUBIC_ANALYTIC_VALUE_OFFSET] = analytic_threshold
+    analytic_workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 1] = analytic_threshold // 9
+    analytic_workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 2] = 3 * analytic_threshold
+    analytic_workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 3] = absolute_discriminant
+    analytic_workspace[_CUBIC_ANALYTIC_VALUE_OFFSET + 4] = class_number_upper
     analytic_term_count: uint64 = 0
     analytic_scale_index: uint64 = 0
     while analytic_scale_index < 2:
@@ -4527,7 +5655,7 @@ def _cubic_prepare_bf_plan(
             analytic_cutoff = analytic_threshold // 9
         analytic_norm_index: uint64 = 2
         while analytic_norm_index < analytic_cutoff:
-            analytic_multiplicity = workspace[
+            analytic_multiplicity = analytic_workspace[
                 _CUBIC_ANALYTIC_COEFFICIENT_OFFSET + analytic_norm_index
             ]
             if analytic_scale_index == 1:
@@ -4541,7 +5669,7 @@ def _cubic_prepare_bf_plan(
                     analytic_value_index: uint64 = 0
                     while (
                         analytic_value_index < analytic_value_count
-                        and workspace[
+                        and analytic_workspace[
                             _CUBIC_ANALYTIC_VALUE_OFFSET + analytic_value_index
                         ]
                         != analytic_norm_index
@@ -4550,7 +5678,7 @@ def _cubic_prepare_bf_plan(
                     if analytic_value_index == analytic_value_count:
                         if analytic_value_count >= _CUBIC_ANALYTIC_MAX_VALUES:
                             return (False, zero, zero)
-                        workspace[
+                        analytic_workspace[
                             _CUBIC_ANALYTIC_VALUE_OFFSET + analytic_value_count
                         ] = analytic_norm_index
                         analytic_value_count += 1
@@ -4558,11 +5686,11 @@ def _cubic_prepare_bf_plan(
                         _CUBIC_ANALYTIC_TERM_OFFSET
                         + _CUBIC_ANALYTIC_TERM_STRIDE * analytic_term_count
                     )
-                    workspace[analytic_term_base] = analytic_multiplicity
-                    workspace[analytic_term_base + 1] = analytic_scale_index
-                    workspace[analytic_term_base + 2] = analytic_norm_index
-                    workspace[analytic_term_base + 3] = analytic_exponent
-                    workspace[analytic_term_base + 4] = analytic_value_index
+                    analytic_workspace[analytic_term_base] = analytic_multiplicity
+                    analytic_workspace[analytic_term_base + 1] = analytic_scale_index
+                    analytic_workspace[analytic_term_base + 2] = analytic_norm_index
+                    analytic_workspace[analytic_term_base + 3] = analytic_exponent
+                    analytic_workspace[analytic_term_base + 4] = analytic_value_index
                     analytic_term_count += 1
                     analytic_exponent += 1
                     if analytic_power > (analytic_cutoff - 1) // analytic_norm_index:
@@ -4577,23 +5705,24 @@ def _cubic_prepare_bf_plan(
 
 
 def _cubic_evaluate_bf_plan(
-    workspace: NativeIntegerVector,
+    analytic_workspace: NativeIntegerVector,
     analytic_values: FmpzMatrix,
     analytic_endpoints: FmpzMatrix,
     analytic_term_count: uint64,
     analytic_value_count: uint64,
     analytic_scale: int,
 ) -> tuple[bool, int, int, int]:
-    """Evaluate one prepared BF plan with rigorous resident intervals."""
+    """Evaluate the live BF plan, leaving oversized scratch tails untouched."""
     analytic_index: uint64 = 0
     while analytic_index < analytic_value_count:
-        analytic_values[analytic_index, 0] = workspace[
+        analytic_values[analytic_index, 0] = analytic_workspace[
             _CUBIC_ANALYTIC_VALUE_OFFSET + analytic_index
         ]
         analytic_index += 1
-    if not integer_log_sqrt_balls_resource(
+    if not integer_log_sqrt_balls_prefix_resource(
         analytic_endpoints,
         analytic_values,
+        analytic_value_count,
         _CUBIC_ANALYTIC_PRECISION,
     ):
         return (False, 0, 0, 0)
@@ -4602,7 +5731,7 @@ def _cubic_evaluate_bf_plan(
         analytic_scale,
     )
     finite_lower, finite_upper = _cubic_bf_finite_bounds(
-        workspace,
+        analytic_workspace,
         analytic_values,
         analytic_endpoints,
         analytic_term_count,
@@ -4617,6 +5746,473 @@ def _cubic_evaluate_bf_plan(
         finite_upper + tail_upper,
         tail_upper,
     )
+
+
+def _cubic_analytic_index_bounds(
+    analytic_endpoints: FmpzMatrix,
+    log_regulator_lower: int,
+    log_regulator_upper: int,
+    log_two_pi_lower: int,
+    log_two_pi_upper: int,
+    zeta_lower: int,
+    zeta_upper: int,
+) -> tuple[bool, int, int]:
+    """Enclose the logarithm of the joint relation/unit index.
+
+    The caller has authenticated the BF plan, exact presentation and unit.
+    Endpoint rows 12/13 and 16/17 belong to the live BF prefix even when its
+    owner has spare capacity. Integer half-discriminant endpoints round
+    outward. Invalid intervals are fatal, not an insufficient certificate.
+    The identical formula serves initial evaluation, saturation and refinement.
+    """
+    log_discriminant_lower = analytic_endpoints[12, 0]
+    log_discriminant_upper = analytic_endpoints[13, 0]
+    log_class_lower = analytic_endpoints[16, 0]
+    log_class_upper = analytic_endpoints[17, 0]
+    if (
+        log_regulator_upper < log_regulator_lower
+        or log_two_pi_upper < log_two_pi_lower
+        or zeta_upper < zeta_lower
+        or log_discriminant_lower <= 0
+        or log_discriminant_upper < log_discriminant_lower
+        or log_class_lower < 0
+        or log_class_upper < log_class_lower
+    ):
+        return False, 0, 0
+    half_discriminant_lower = log_discriminant_lower // 2
+    half_discriminant_upper = _cubic_dyadic_ceiling_quotient(log_discriminant_upper, 2)
+    algebraic_lower = (
+        log_class_lower
+        + log_regulator_lower
+        + log_two_pi_lower
+        - half_discriminant_upper
+    )
+    algebraic_upper = (
+        log_class_upper
+        + log_regulator_upper
+        + log_two_pi_upper
+        - half_discriminant_lower
+    )
+    return True, algebraic_lower - zeta_upper, algebraic_upper - zeta_lower
+
+
+def _cubic_classify_analytic_index(
+    index_log_lower: int,
+    index_log_upper: int,
+    log_two_lower: int,
+    log_two_upper: int,
+) -> int:
+    """Return one for index one, zero for insufficiency, minus one for error.
+
+    The exact relation and unit subgroups make their joint index a positive
+    integer. A well-formed logarithmic enclosure with upper bound below the
+    lower bound for log(2) therefore certifies index one only if it contains
+    log(1)=0. A valid wider enclosure is merely insufficient. Reversed,
+    negative-index, nonpositive-log(2), or contradictory index-one intervals
+    are errors, never authorization to resume collection.
+    """
+    if (
+        index_log_upper < index_log_lower
+        or index_log_upper < 0
+        or log_two_lower <= 0
+        or log_two_upper < log_two_lower
+    ):
+        return -1
+    if index_log_upper >= log_two_lower:
+        return 0
+    # This interval excludes log(1) as well as every log(integer >= 2).
+    # Treat that contradiction as invalid evidence, not as index-one success.
+    if index_log_lower > 0:
+        return -1
+    return 1
+
+
+def _cubic_saturate_analytic_unit(
+    workspace: NativeIntegerVector,
+    coefficients: IntegerBuffer,
+    dependency_coordinates: FmpzMatrix,
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
+    analytic_endpoints: FmpzMatrix,
+    output: IntegerBuffer,
+    denominator: int,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    identity_zero: int,
+    identity_one: int,
+    identity_two: int,
+    proof_unit_zero: int,
+    proof_unit_one: int,
+    proof_unit_two: int,
+    proof_regulator_lower: int,
+    proof_regulator_upper: int,
+    analytic_scale: int,
+    analytic_precision: uint64,
+    zeta_lower: int,
+    zeta_upper: int,
+) -> tuple[bool, int, int, int, int, int, int, int, int, int, int, int, int, int]:
+    """Attempt the existing bounded 2/3/5 unit saturation in borrowed scratch.
+
+    Root probes are opportunistic: zero means no authenticated candidate, not
+    an assertion of primitivity or permission to collect more relations.
+    Status one has already passed each probe's exact power replay. Unknown
+    probe statuses, invalid intervals, and failed regulator overlap are fatal.
+    At most eight authenticated replacements are made, in the original order.
+    The caller still must refine or classify the final joint-index enclosure.
+    """
+    if (
+        analytic_scale <= 0
+        or proof_regulator_lower <= 0
+        or proof_regulator_upper < proof_regulator_lower
+        or zeta_upper < zeta_lower
+    ):
+        return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    log_regulator_lower, log_regulator_upper = _cubic_log_interval_bounds(
+        log_numerators,
+        log_denominators,
+        log_endpoints,
+        proof_regulator_lower,
+        proof_regulator_upper,
+        analytic_scale,
+        analytic_precision,
+    )
+    log_two_pi_lower, log_two_pi_upper = _cubic_log_two_pi_bounds(
+        log_numerators,
+        log_denominators,
+        log_endpoints,
+        analytic_scale,
+        analytic_precision,
+    )
+    index_ready, index_log_lower, index_log_upper = _cubic_analytic_index_bounds(
+        analytic_endpoints,
+        log_regulator_lower,
+        log_regulator_upper,
+        log_two_pi_lower,
+        log_two_pi_upper,
+        zeta_lower,
+        zeta_upper,
+    )
+    if not index_ready:
+        return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    log_two_lower, log_two_upper = _cubic_arb_log_positive_rational_bounds(
+        log_numerators,
+        log_denominators,
+        log_endpoints,
+        2,
+        1,
+        analytic_precision,
+    )
+    if (
+        _cubic_classify_analytic_index(
+            index_log_lower, index_log_upper, log_two_lower, log_two_upper
+        )
+        < 0
+    ):
+        return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    output[63] = 45
+    saturation_attempts: uint64 = 0
+    saturation_search_active = (
+        index_log_upper >= log_two_lower and log_two_upper >= log_two_lower
+    )
+    while saturation_search_active and saturation_attempts < 8:
+        (
+            saturation_root_status,
+            saturation_root_zero,
+            saturation_root_one,
+            saturation_root_two,
+        ) = _cubic_exact_unit_square_root(
+            workspace,
+            coefficients,
+            denominator,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            identity_zero,
+            identity_one,
+            identity_two,
+            proof_unit_zero,
+            proof_unit_one,
+            proof_unit_two,
+            analytic_scale,
+            dependency_coordinates,
+        )
+        saturation_prime = 2
+        if saturation_root_status != 0 and saturation_root_status != 1:
+            return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        if saturation_root_status != 1:
+            (
+                saturation_root_status,
+                saturation_root_zero,
+                saturation_root_one,
+                saturation_root_two,
+            ) = _cubic_exact_unit_cube_root(
+                workspace,
+                coefficients,
+                denominator,
+                basis_zero_zero,
+                basis_zero_one,
+                basis_zero_two,
+                basis_one_one,
+                basis_one_two,
+                basis_two_two,
+                identity_zero,
+                identity_one,
+                identity_two,
+                proof_unit_zero,
+                proof_unit_one,
+                proof_unit_two,
+                analytic_scale,
+            )
+            saturation_prime = 3
+            if saturation_root_status != 0 and saturation_root_status != 1:
+                return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        if saturation_root_status != 1:
+            (
+                saturation_root_status,
+                saturation_root_zero,
+                saturation_root_one,
+                saturation_root_two,
+            ) = _cubic_exact_unit_fifth_root(
+                workspace,
+                coefficients,
+                denominator,
+                basis_zero_zero,
+                basis_zero_one,
+                basis_zero_two,
+                basis_one_one,
+                basis_one_two,
+                basis_two_two,
+                identity_zero,
+                identity_one,
+                identity_two,
+                proof_unit_zero,
+                proof_unit_one,
+                proof_unit_two,
+                analytic_scale,
+            )
+            saturation_prime = 5
+            if saturation_root_status != 0 and saturation_root_status != 1:
+                return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        if saturation_root_status != 1:
+            saturation_search_active = False
+        else:
+            (
+                saturation_regulator_lower,
+                saturation_regulator_upper,
+            ) = _cubic_regulator_bounds(
+                log_numerators,
+                log_denominators,
+                log_endpoints,
+                coefficients,
+                denominator,
+                basis_zero_zero,
+                basis_zero_one,
+                basis_zero_two,
+                basis_one_one,
+                basis_one_two,
+                basis_two_two,
+                saturation_root_zero,
+                saturation_root_one,
+                saturation_root_two,
+                analytic_scale,
+                analytic_precision,
+            )
+            if (
+                saturation_regulator_lower <= 0
+                or saturation_regulator_upper < saturation_regulator_lower
+                or saturation_regulator_lower * saturation_prime > proof_regulator_upper
+                or proof_regulator_lower > saturation_regulator_upper * saturation_prime
+            ):
+                return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+            proof_unit_zero = saturation_root_zero
+            proof_unit_one = saturation_root_one
+            proof_unit_two = saturation_root_two
+            proof_regulator_lower = saturation_regulator_lower
+            proof_regulator_upper = saturation_regulator_upper
+            log_regulator_lower, log_regulator_upper = _cubic_log_interval_bounds(
+                log_numerators,
+                log_denominators,
+                log_endpoints,
+                proof_regulator_lower,
+                proof_regulator_upper,
+                analytic_scale,
+                analytic_precision,
+            )
+            if log_regulator_upper < log_regulator_lower:
+                return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+            index_ready, index_log_lower, index_log_upper = (
+                _cubic_analytic_index_bounds(
+                    analytic_endpoints,
+                    log_regulator_lower,
+                    log_regulator_upper,
+                    log_two_pi_lower,
+                    log_two_pi_upper,
+                    zeta_lower,
+                    zeta_upper,
+                )
+            )
+            if not index_ready:
+                return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+            saturation_attempts += 1
+            saturation_search_active = index_log_upper >= log_two_lower
+
+    if (
+        _cubic_classify_analytic_index(
+            index_log_lower, index_log_upper, log_two_lower, log_two_upper
+        )
+        < 0
+    ):
+        return (False, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    return (
+        True,
+        proof_unit_zero,
+        proof_unit_one,
+        proof_unit_two,
+        proof_regulator_lower,
+        proof_regulator_upper,
+        log_regulator_lower,
+        log_regulator_upper,
+        log_two_pi_lower,
+        log_two_pi_upper,
+        index_log_lower,
+        index_log_upper,
+        log_two_lower,
+        log_two_upper,
+    )
+
+
+def _cubic_publish_analytic_relation_presentation(
+    workspace: NativeIntegerVector,
+    compact_relation_matrix: FmpzMatrix,
+    compact_relation_elements: FmpzMatrix,
+    output: IntegerBuffer,
+    transcript_factor_rows: IntegerBuffer,
+    transcript_relation_rows: IntegerBuffer,
+    transcript_relation_elements: IntegerBuffer,
+    transcript_mode: uint64,
+    class_number_upper: int,
+    invariant_count: uint64,
+    used_compound_multiplier_limit: uint64,
+    generator_bound: int,
+    factor_count: uint64,
+    group_count: uint64,
+    proof_relation_count: uint64,
+    proof_unit_zero: int,
+    proof_unit_one: int,
+    proof_unit_two: int,
+    order_discriminant: int,
+    equation_order_index: int,
+    denominator: int,
+    relation_box: int,
+    unit_box: int,
+    relation_rank: uint64,
+    equation_discriminant: int,
+    analytic_threshold: uint64,
+    analytic_term_count: uint64,
+    analytic_value_count: uint64,
+    analytic_precision: uint64,
+    proof_regulator_lower: int,
+    proof_regulator_upper: int,
+    zeta_lower: int,
+    zeta_upper: int,
+    index_log_lower: int,
+    index_log_upper: int,
+    tail_upper: int,
+    analytic_scale: int,
+    log_two_lower: int,
+    log_two_upper: int,
+) -> bool:
+    """Publish an authenticated index-one certificate with the existing layout.
+
+    The caller has checked exact presentation, unit and analytic evidence.
+    Recheck the pure index decision at this publication boundary. Malformed
+    intervals, publication capacity and transcript shapes fail closed; no
+    accepted marker is written on failure and no failure permits resumption.
+    """
+    if (
+        len(output) != 64
+        or transcript_mode > 1
+        or invariant_count > 8
+        or class_number_upper < 1
+        or proof_regulator_lower <= 0
+        or proof_regulator_upper < proof_regulator_lower
+        or zeta_upper < zeta_lower
+        or tail_upper < 0
+        or analytic_scale <= 0
+        or _cubic_classify_analytic_index(
+            index_log_lower, index_log_upper, log_two_lower, log_two_upper
+        )
+        != 1
+    ):
+        return False
+    # Publish detached proof data only after exact index-one acceptance.
+    if transcript_mode == 1 and not _cubic_publish_relation_factor_rows(
+        workspace,
+        factor_count,
+        transcript_factor_rows,
+    ):
+        return False
+
+    if transcript_mode == 1 and not _cubic_publish_relation_rows(
+        compact_relation_matrix,
+        compact_relation_elements,
+        proof_relation_count,
+        factor_count,
+        transcript_relation_rows,
+        transcript_relation_elements,
+    ):
+        return False
+
+    output_index: uint64 = 0
+    while output_index < len(output):
+        output[output_index] = 0
+        output_index += 1
+    output[1] = class_number_upper
+    output[2] = invariant_count
+    output_index = 0
+    while output_index < invariant_count:
+        output[3 + output_index] = workspace[_ROW_SCRATCH_OFFSET + output_index]
+        output_index += 1
+    output[19] = used_compound_multiplier_limit
+    output[20] = generator_bound
+    output[21] = factor_count
+    output[22] = group_count
+    output[23] = proof_relation_count
+    output[24] = 1
+    output[25] = proof_unit_zero
+    output[26] = proof_unit_one
+    output[27] = proof_unit_two
+    output[28] = order_discriminant
+    output[29] = equation_order_index
+    output[30] = denominator
+    output[31] = relation_box
+    output[32] = unit_box
+    output[33] = relation_rank
+    output[34] = equation_discriminant
+    output[35] = _CUBIC_PROOF_ANALYTIC_GRH
+    output[36] = analytic_threshold
+    output[37] = analytic_term_count
+    output[38] = analytic_value_count
+    output[39] = analytic_precision
+    output[40] = proof_regulator_lower
+    output[41] = proof_regulator_upper
+    output[42] = zeta_lower
+    output[43] = zeta_upper
+    output[44] = index_log_lower
+    output[45] = index_log_upper
+    output[46] = tail_upper
+    output[47] = analytic_scale
+    # Acceptance is committed only after every detached scalar is published.
+    output[0] = 2
+    return True
 
 
 def _cubic_map_is_multiplicative(
@@ -4660,6 +6256,8 @@ def _cubic_prime_kernel_basis(
     map_one: int,
     map_two: int,
     output_offset: uint64,
+    hnf_source: FmpzMatrix,
+    hnf_result: FmpzMatrix,
 ) -> bool:
     """Construct the exact HNF of the kernel of an order map to `F_p`."""
     pivot: uint64 = 0
@@ -4694,7 +6292,13 @@ def _cubic_prime_kernel_basis(
             )
             row += 1
         coordinate += 1
-    return _cubic_workspace_hnf3(workspace, output_offset, 3)
+    return _cubic_workspace_hnf3(
+        workspace,
+        output_offset,
+        3,
+        hnf_source,
+        hnf_result,
+    )
 
 
 def _cubic_complementary_prime_basis(
@@ -4705,6 +6309,8 @@ def _cubic_complementary_prime_basis(
     map_two: int,
     prime_kernel_offset: uint64,
     output_offset: uint64,
+    hnf_source: FmpzMatrix,
+    hnf_result: FmpzMatrix,
 ) -> bool:
     """Construct the residue-degree-two prime complementary to `ker(map)`.
 
@@ -4819,11 +6425,19 @@ def _cubic_complementary_prime_basis(
         entry += 1
     workspace[_HNF_SCRATCH_OFFSET] = prime
     workspace[_HNF_SCRATCH_OFFSET + 4] = prime
-    workspace[_HNF_SCRATCH_OFFSET + 8] = prime
-    workspace[_HNF_SCRATCH_OFFSET + 9] = idempotent_zero
-    workspace[_HNF_SCRATCH_OFFSET + 10] = idempotent_one
-    workspace[_HNF_SCRATCH_OFFSET + 11] = idempotent_two
-    if not _cubic_workspace_hnf3(workspace, _HNF_SCRATCH_OFFSET, 4):
+    workspace[_HNF_SCRATCH_OFFSET + 8 : _HNF_SCRATCH_OFFSET + 12] = (
+        prime,
+        idempotent_zero,
+        idempotent_one,
+        idempotent_two,
+    )
+    if not _cubic_workspace_hnf3(
+        workspace,
+        _HNF_SCRATCH_OFFSET,
+        4,
+        hnf_source,
+        hnf_result,
+    ):
         return False
     if (
         workspace[_HNF_SCRATCH_OFFSET]
@@ -4842,6 +6456,8 @@ def _cubic_complementary_prime_basis(
         prime_kernel_offset,
         output_offset,
         _MAP_SCRATCH_OFFSET,
+        hnf_source,
+        hnf_result,
     ):
         return False
     entry = 0
@@ -4894,46 +6510,6 @@ def _cubic_next_factor_by_norm(
             next_norm = factor_norm
         factor_index += 1
     return next_index
-
-
-@native
-def _cubic_small_relation_prefix_is_trivial(
-    relations: FmpzMatrix,
-    relation_count: uint64,
-    factor_count: uint64,
-) -> bool:
-    """Recognize index one in dimensions one and two by determinantal gcd."""
-    content = 0
-    if factor_count == 1:
-        row: uint64 = 0
-        while row < relation_count:
-            content, ignored_left, ignored_right = _cubic_extended_gcd(
-                content,
-                relations[row, 0],
-            )
-            if content == 1:
-                return True
-            row += 1
-        return False
-    if factor_count != 2:
-        return False
-    left_row: uint64 = 0
-    while left_row < relation_count:
-        right_row: uint64 = 0
-        while right_row < left_row:
-            determinant = (
-                relations[left_row, 0] * relations[right_row, 1]
-                - relations[left_row, 1] * relations[right_row, 0]
-            )
-            content, ignored_left, ignored_right = _cubic_extended_gcd(
-                content,
-                determinant,
-            )
-            if content == 1:
-                return True
-            right_row += 1
-        left_row += 1
-    return False
 
 
 def _cubic_publish_relation_factor_rows(
@@ -5008,10 +6584,1949 @@ def _cubic_publish_relation_rows(
     return True
 
 
+def _cubic_compact_relation_plan(
+    proof_relation_support: FmpzMatrix,
+    relation_count: uint64,
+    support_count: uint64,
+) -> tuple[uint64, uint64]:
+    """Plan the supported rows and bounded tail before allocating owners."""
+    compact_tail_start: uint64 = 0
+    if relation_count > _CUBIC_RELATION_REDUNDANCY_TAIL:
+        compact_tail_start = relation_count - _CUBIC_RELATION_REDUNDANCY_TAIL
+    compact_tail_count: uint64 = 0
+    compact_source_row = compact_tail_start
+    while compact_source_row < relation_count:
+        if proof_relation_support[compact_source_row, 0] == 0:
+            compact_tail_count += 1
+        compact_source_row += 1
+    compact_relation_count: uint64 = support_count + compact_tail_count
+    return compact_tail_start, compact_relation_count
+
+
+def _cubic_prepare_compact_presentation(
+    relation_matrix: FmpzMatrix,
+    relation_elements: FmpzMatrix,
+    relation_hnf: FmpzMatrix,
+    proof_relation_support: FmpzMatrix,
+    compact_relation_matrix: FmpzMatrix,
+    compact_relation_elements: FmpzMatrix,
+    compact_relation_hnf: FmpzMatrix,
+    output: IntegerBuffer,
+    relation_count: uint64,
+    factor_count: uint64,
+    compact_tail_start: uint64,
+    compact_relation_count: uint64,
+    support_count: uint64,
+    proof_unit_found: bool,
+    reuse_online_relation_support: bool,
+) -> bool:
+    """Copy a compact logical prefix and verify its already-established rank."""
+    compact_row: uint64 = _cubic_copy_relation_support_tail(
+        relation_matrix,
+        relation_elements,
+        proof_relation_support,
+        relation_count,
+        factor_count,
+        compact_tail_start,
+        compact_relation_matrix,
+        compact_relation_elements,
+    )
+    if compact_row != compact_relation_count:
+        return False
+    if proof_unit_found:
+        compact_row = 0
+        while compact_row < compact_relation_count:
+            compact_column: uint64 = 0
+            while compact_column < factor_count:
+                compact_relation_hnf[compact_row, compact_column] = relation_hnf[
+                    compact_row, compact_column
+                ]
+                compact_column += 1
+            compact_row += 1
+    elif not fmpz_matrix_hnf_prefix_into(
+        compact_relation_hnf,
+        compact_relation_matrix,
+        compact_relation_count,
+        factor_count,
+    ):
+        return False
+    compact_rank: uint64 = 0
+    compact_row = 0
+    while compact_row < compact_relation_count:
+        compact_nonzero = False
+        compact_column: uint64 = 0
+        while compact_column < factor_count:
+            if compact_relation_hnf[compact_row, compact_column] != 0:
+                compact_nonzero = True
+            compact_column += 1
+        if compact_nonzero:
+            compact_rank += 1
+        compact_row += 1
+    if compact_rank != factor_count:
+        return False
+    if reuse_online_relation_support:
+        compact_row = 0
+        while compact_row < factor_count:
+            compact_column = 0
+            while compact_column < factor_count:
+                if (
+                    compact_relation_hnf[compact_row, compact_column]
+                    != relation_hnf[compact_row, compact_column]
+                ):
+                    output[59] = 422
+                    output[60] = support_count
+                    return False
+                compact_column += 1
+            compact_row += 1
+    return True
+
+
+def _cubic_verify_compact_presentation_index(
+    compact_smith: FmpzMatrix,
+    compact_relation_matrix: FmpzMatrix,
+    compact_relation_count: uint64,
+    factor_count: uint64,
+    class_number_upper: int,
+) -> bool:
+    """Verify that compaction preserved the finite presentation index."""
+    if not fmpz_matrix_snf_prefix_into(
+        compact_smith,
+        compact_relation_matrix,
+        compact_relation_count,
+        factor_count,
+    ):
+        return False
+    compact_index = 1
+    compact_column: uint64 = 0
+    while compact_column < factor_count:
+        compact_invariant = compact_smith[compact_column, compact_column]
+        if compact_invariant < 0:
+            compact_invariant = -compact_invariant
+        if compact_invariant < 1:
+            return False
+        compact_index *= compact_invariant
+        compact_column += 1
+    return compact_index == class_number_upper
+
+
+def _cubic_reduce_dependency_prefix(
+    compact_relation_transform: FmpzMatrix,
+    dependency_relations: FmpzMatrix,
+    dependency_reduced: FmpzMatrix,
+    dependency_lll_transform: FmpzMatrix,
+    output: IntegerBuffer,
+    proof_relation_count: uint64,
+    relation_rank: uint64,
+    dependency_count: uint64,
+    dependency_scan_active: bool,
+    analytic_scale: int,
+) -> tuple[int, uint64, int, uint64]:
+    """Return status, coefficient bits, log scale and precision for this prefix.
+
+    Status zero means no dependency exists in this full-rank presentation.
+    Negative status is an exact-reduction or coefficient-envelope failure, not
+    evidence authorizing a larger relation prefix.
+    """
+    zero_count: uint64 = 0
+    if dependency_scan_active:
+        if dependency_count == 0:
+            return 0, zero_count, analytic_scale, zero_count
+        dependency_row: uint64 = 0
+        while dependency_row < dependency_count:
+            relation_index: uint64 = 0
+            while relation_index < proof_relation_count:
+                dependency_relations[dependency_row, relation_index] = (
+                    compact_relation_transform[
+                        relation_rank + dependency_row, relation_index
+                    ]
+                )
+                relation_index += 1
+            dependency_row += 1
+        if not fmpz_matrix_lll_transform_prefix(
+            dependency_reduced,
+            dependency_lll_transform,
+            dependency_relations,
+            dependency_count,
+            proof_relation_count,
+        ):
+            return -1, zero_count, analytic_scale, zero_count
+    # Plan log precision from the resident dependency coefficients.
+    dependency_coefficient_bits: uint64 = 0
+    if dependency_scan_active:
+        dependency_probe_row: uint64 = 0
+        while dependency_probe_row < dependency_count:
+            relation_index: uint64 = 0
+            while relation_index < proof_relation_count:
+                coefficient_bits = _cubic_bounded_bit_length(
+                    dependency_reduced[dependency_probe_row, relation_index],
+                    512,
+                )
+                if coefficient_bits > 512:
+                    return -1, zero_count, analytic_scale, zero_count
+                if coefficient_bits > dependency_coefficient_bits:
+                    dependency_coefficient_bits = coefficient_bits
+                relation_index += 1
+            dependency_probe_row += 1
+    output[59] = 432
+    output[60] = dependency_coefficient_bits
+    dependency_log_scale = analytic_scale
+    # Budget for both dependency combination and Euclidean cleanup.
+    dependency_precision_extra: uint64 = 2 * dependency_coefficient_bits + 64
+    dependency_precision_index: uint64 = 0
+    while dependency_precision_index < dependency_precision_extra:
+        dependency_log_scale *= 2
+        dependency_precision_index += 1
+    dependency_log_precision: uint64 = (
+        _CUBIC_ANALYTIC_PRECISION + dependency_precision_extra
+    )
+    return (
+        1,
+        dependency_coefficient_bits,
+        dependency_log_scale,
+        dependency_log_precision,
+    )
+
+
+def _cubic_fill_dependency_logs(
+    coefficients: IntegerBuffer,
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
+    dependency_relation_elements: FmpzMatrix,
+    relation_logs: FmpzMatrix,
+    denominator: int,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    proof_relation_count: uint64,
+    dependency_scan_active: bool,
+    dependency_log_scale: int,
+    dependency_log_precision: uint64,
+) -> bool:
+    """Fill only active witness logs using one rigorous real-root interval."""
+    if dependency_scan_active:
+        dependency_root_lower, dependency_root_upper = _cubic_real_root_interval(
+            coefficients, dependency_log_scale
+        )
+        if dependency_root_upper < dependency_root_lower:
+            return False
+        relation_index: uint64 = 0
+        while relation_index < proof_relation_count:
+            (
+                witness_log_lower,
+                witness_log_upper,
+            ) = _cubic_real_log_bounds_from_root_interval(
+                log_numerators,
+                log_denominators,
+                log_endpoints,
+                denominator,
+                basis_zero_zero,
+                basis_zero_one,
+                basis_zero_two,
+                basis_one_one,
+                basis_one_two,
+                basis_two_two,
+                dependency_relation_elements[relation_index, 0],
+                dependency_relation_elements[relation_index, 1],
+                dependency_relation_elements[relation_index, 2],
+                dependency_root_lower,
+                dependency_root_upper,
+                dependency_log_scale,
+                dependency_log_precision,
+            )
+            if witness_log_upper < witness_log_lower:
+                return False
+            relation_logs[relation_index, 0] = witness_log_lower
+            relation_logs[relation_index, 1] = witness_log_upper
+            relation_index += 1
+    return True
+
+
+def _cubic_discover_dependency_unit(
+    dependency_reduced: FmpzMatrix,
+    relation_logs: FmpzMatrix,
+    unit_combinations: FmpzMatrix,
+    proof_relation_count: uint64,
+    dependency_count: uint64,
+    dependency_scan_active: bool,
+    proof_unit_found: bool,
+    proof_regulator_lower: int,
+    proof_regulator_upper: int,
+) -> tuple[bool, int, int]:
+    """Discover a certified nonzero logarithm without materializing a unit.
+
+    A false result means only that this prefix did not expose a certified
+    candidate. The caller may still use its existing exact recovery stage.
+    """
+    dependency_row: uint64 = 0
+    while dependency_scan_active and dependency_row < dependency_count:
+        dependency_nonzero = False
+        dependency_log_lower = 0
+        dependency_log_upper = 0
+        relation_index: uint64 = 0
+        while relation_index < proof_relation_count:
+            dependency_exponent = dependency_reduced[dependency_row, relation_index]
+            if dependency_exponent != 0:
+                dependency_nonzero = True
+                witness_log_lower = relation_logs[relation_index, 0]
+                witness_log_upper = relation_logs[relation_index, 1]
+                if dependency_exponent > 0:
+                    dependency_log_lower += dependency_exponent * witness_log_lower
+                    dependency_log_upper += dependency_exponent * witness_log_upper
+                else:
+                    dependency_log_lower += dependency_exponent * witness_log_upper
+                    dependency_log_upper += dependency_exponent * witness_log_lower
+            relation_index += 1
+        dependency_orientation = 0
+        dependency_regulator_lower = dependency_log_lower
+        dependency_regulator_upper = dependency_log_upper
+        if dependency_log_lower > 0:
+            dependency_orientation = 1
+        elif dependency_log_upper < 0:
+            dependency_orientation = -1
+            dependency_regulator_lower = -dependency_log_upper
+            dependency_regulator_upper = -dependency_log_lower
+        if dependency_nonzero and dependency_orientation != 0:
+            relation_index = 0
+            while relation_index < proof_relation_count:
+                dependency_exponent = dependency_reduced[dependency_row, relation_index]
+                unit_combinations[1, relation_index] = (
+                    dependency_orientation * dependency_exponent
+                )
+                relation_index += 1
+            if not proof_unit_found:
+                relation_index = 0
+                while relation_index < proof_relation_count:
+                    unit_combinations[0, relation_index] = unit_combinations[
+                        1, relation_index
+                    ]
+                    relation_index += 1
+                proof_unit_found = True
+                proof_regulator_lower = dependency_regulator_lower
+                proof_regulator_upper = dependency_regulator_upper
+            else:
+                candidate_middle = (
+                    dependency_regulator_lower + dependency_regulator_upper
+                )
+                best_middle = proof_regulator_lower + proof_regulator_upper
+                if candidate_middle < best_middle:
+                    relation_index = 0
+                    while relation_index < proof_relation_count:
+                        saved_exponent = unit_combinations[0, relation_index]
+                        unit_combinations[0, relation_index] = unit_combinations[
+                            1, relation_index
+                        ]
+                        unit_combinations[1, relation_index] = saved_exponent
+                        relation_index += 1
+                    saved_lower = proof_regulator_lower
+                    saved_upper = proof_regulator_upper
+                    proof_regulator_lower = dependency_regulator_lower
+                    proof_regulator_upper = dependency_regulator_upper
+                    dependency_regulator_lower = saved_lower
+                    dependency_regulator_upper = saved_upper
+                reduction_step: uint64 = 0
+                reduction_active = True
+                while reduction_active and reduction_step < 1024:
+                    candidate_middle = (
+                        dependency_regulator_lower + dependency_regulator_upper
+                    )
+                    best_middle = proof_regulator_lower + proof_regulator_upper
+                    reduction_quotient = (
+                        candidate_middle + best_middle // 2
+                    ) // best_middle
+                    if reduction_quotient < 1:
+                        reduction_quotient = 1
+                    remainder_lower = (
+                        dependency_regulator_lower
+                        - reduction_quotient * proof_regulator_upper
+                    )
+                    remainder_upper = (
+                        dependency_regulator_upper
+                        - reduction_quotient * proof_regulator_lower
+                    )
+                    remainder_orientation = 0
+                    if remainder_lower > 0:
+                        remainder_orientation = 1
+                    elif remainder_upper < 0:
+                        remainder_orientation = -1
+                        saved_lower = remainder_lower
+                        remainder_lower = -remainder_upper
+                        remainder_upper = -saved_lower
+                    if (
+                        remainder_orientation == 0
+                        or remainder_upper >= proof_regulator_lower
+                    ):
+                        reduction_active = False
+                    else:
+                        relation_index = 0
+                        while relation_index < proof_relation_count:
+                            best_exponent = unit_combinations[0, relation_index]
+                            candidate_exponent = unit_combinations[1, relation_index]
+                            remainder_exponent = remainder_orientation * (
+                                candidate_exponent - reduction_quotient * best_exponent
+                            )
+                            unit_combinations[0, relation_index] = remainder_exponent
+                            unit_combinations[1, relation_index] = best_exponent
+                            relation_index += 1
+                        dependency_regulator_lower = proof_regulator_lower
+                        dependency_regulator_upper = proof_regulator_upper
+                        proof_regulator_lower = remainder_lower
+                        proof_regulator_upper = remainder_upper
+                    reduction_step += 1
+        dependency_row += 1
+    return proof_unit_found, proof_regulator_lower, proof_regulator_upper
+
+
+def _cubic_collect_adjacent_relation_prefix(
+    workspace: NativeIntegerVector,
+    modular_workspace: UInt64Buffer,
+    adjacent_order: FmpzMatrix,
+    adjacent_embedding_source: FmpzMatrix,
+    adjacent_embedding_reduced: FmpzMatrix,
+    adjacent_embedding_transform: FmpzMatrix,
+    adjacent_transforms: FmpzMatrix,
+    adjacent_ellipsoid_parameters: FmpzMatrix,
+    relation_candidates: FmpzMatrix,
+    relation_elements: FmpzMatrix,
+    hnf_source: FmpzMatrix,
+    hnf_result: FmpzMatrix,
+    online_relation_basis: FmpzMatrix,
+    online_relation_source: FmpzMatrix,
+    online_relation_hnf: FmpzMatrix,
+    relation_support: FmpzMatrix,
+    online_membership_coordinates: FmpzMatrix,
+    output: IntegerBuffer,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    adjacent_real_root: int,
+    adjacent_complex_real_root: int,
+    adjacent_complex_imaginary_root: int,
+    analytic_scale: int,
+    factor_count: uint64,
+    group_count: uint64,
+    relation_effort: uint64,
+    bounded_relation_collection: bool,
+    use_pari_permutation: bool,
+    streaming_relation_collection: bool,
+    online_relation_quotient_enabled: bool,
+    relation_collection_target: uint64,
+    relation_capacity: uint64,
+    relation_count: uint64,
+    online_relation_count: uint64,
+    online_relation_status: int,
+    adjacent_planned_count: uint64,
+    adjacent_enumerated_count: uint64,
+    adjacent_factor_cursor: uint64,
+    adjacent_phase: uint64,
+    adjacent_direction: uint64,
+    ellipsoid_zero: int,
+    ellipsoid_one: int,
+    ellipsoid_two: int,
+    ellipsoid_count: uint64,
+    proposal_budget: uint64,
+) -> tuple[
+    uint64, uint64, int, uint64, uint64, uint64, uint64, uint64, int, int, int, uint64
+]:
+    """Continue the fixed adjacent-ideal traversal without rebuilding its state.
+
+    Phase zero enters the next ideal and prepares it once; phase one resumes
+    its ellipsoid; phase two resumes its four-vector shell. The cursor always
+    denotes the next unexamined proposal, including after rejection or a
+    duplicate. The budget counts proposals, not successful relations, and a
+    zero budget changes nothing. Only the target and budget may change between
+    successful calls. All borrowed field, plan, relation and online-lattice
+    resources must stay resident. Negative online status is fatal, not a
+    recoverable lack of relations. Exhaustion is cursor >= factor_count.
+    """
+    while (
+        adjacent_factor_cursor < factor_count
+        and proposal_budget > 0
+        and online_relation_status >= 0
+        and online_relation_status != 2
+        and not (
+            streaming_relation_collection
+            and _cubic_modular_relation_collection_complete(
+                modular_workspace,
+                relation_count,
+                relation_collection_target,
+                factor_count,
+            )
+        )
+    ):
+        adjacent_factor_index: uint64 = adjacent_factor_cursor
+        if bounded_relation_collection and use_pari_permutation:
+            adjacent_order_position: uint64 = factor_count - adjacent_factor_cursor - 1
+            adjacent_order_value = adjacent_order[adjacent_order_position, 0]
+            if adjacent_order_value < 1 or adjacent_order_value > factor_count:
+                online_relation_status = -1
+                break
+            adjacent_factor_index = checked_uint64(adjacent_order_value - 1)
+        factor_base: uint64 = _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
+        adjacent_pair_code = workspace[factor_base + 9]
+        if adjacent_phase == 0:
+            if bounded_relation_collection and adjacent_pair_code > 0:
+                adjacent_planned_count += 1
+                output[62] = adjacent_factor_index
+                output[63] = 34
+                adjacent_pair_code = _cubic_plan_adjacent_ideal(
+                    workspace,
+                    adjacent_embedding_source,
+                    adjacent_embedding_reduced,
+                    adjacent_embedding_transform,
+                    adjacent_transforms,
+                    adjacent_ellipsoid_parameters,
+                    adjacent_factor_index,
+                    basis_zero_zero,
+                    basis_zero_one,
+                    basis_zero_two,
+                    basis_one_one,
+                    basis_one_two,
+                    basis_two_two,
+                    adjacent_real_root,
+                    adjacent_complex_real_root,
+                    adjacent_complex_imaginary_root,
+                    analytic_scale,
+                    group_count,
+                    relation_effort,
+                    bounded_relation_collection,
+                )
+                if adjacent_pair_code < 1:
+                    if adjacent_pair_code == -2:
+                        output[63] = 36
+                    elif adjacent_pair_code == -3:
+                        output[63] = 38
+                    output[58] = adjacent_ellipsoid_parameters[adjacent_factor_index, 7]
+                    output[59] = adjacent_ellipsoid_parameters[adjacent_factor_index, 8]
+                    output[60] = adjacent_ellipsoid_parameters[adjacent_factor_index, 9]
+                    output[61] = adjacent_ellipsoid_parameters[
+                        adjacent_factor_index, 10
+                    ]
+                    online_relation_status = -1
+                    break
+                workspace[factor_base + 9] = adjacent_pair_code
+            if adjacent_pair_code <= 0:
+                adjacent_factor_cursor += 1
+                continue
+            adjacent_direction = 0
+            ellipsoid_count = 0
+            ellipsoid_zero = -adjacent_ellipsoid_parameters[adjacent_factor_index, 7]
+            ellipsoid_one = -adjacent_ellipsoid_parameters[adjacent_factor_index, 8]
+            ellipsoid_two = -adjacent_ellipsoid_parameters[adjacent_factor_index, 9]
+            adjacent_phase = 2
+            if workspace[factor_base + 8] == 1 or adjacent_pair_code >= 5:
+                adjacent_phase = 1
+
+        adjacent_basis: uint64 = (
+            _POWER_OFFSET + adjacent_factor_index * _CUBIC_MAX_POWERS * 9
+        )
+        adjacent_transform_row: uint64 = 3 * adjacent_factor_index
+        if adjacent_phase == 1:
+            limit_zero = adjacent_ellipsoid_parameters[adjacent_factor_index, 7]
+            limit_one = adjacent_ellipsoid_parameters[adjacent_factor_index, 8]
+            limit_two = adjacent_ellipsoid_parameters[adjacent_factor_index, 9]
+            width_zero = 2 * limit_zero + 1
+            width_one = 2 * limit_one + 1
+            old_proposal_position = (
+                ((ellipsoid_two + limit_two) * width_one + ellipsoid_one + limit_one)
+                * width_zero
+                + ellipsoid_zero
+                + limit_zero
+            )
+            active_relation_target: uint64 = relation_capacity
+            if streaming_relation_collection:
+                active_relation_target = relation_collection_target
+            previous_ellipsoid_count = ellipsoid_count
+            (
+                relation_count,
+                ellipsoid_count,
+                online_relation_count,
+                online_relation_status,
+                ellipsoid_zero,
+                ellipsoid_one,
+                ellipsoid_two,
+            ) = _cubic_append_reduced_ideal_ellipsoid(
+                workspace,
+                modular_workspace,
+                adjacent_basis,
+                adjacent_transforms,
+                adjacent_transform_row,
+                adjacent_ellipsoid_parameters,
+                adjacent_factor_index,
+                relation_candidates,
+                relation_elements,
+                relation_count,
+                relation_capacity,
+                factor_count,
+                group_count,
+                active_relation_target,
+                hnf_source,
+                hnf_result,
+                streaming_relation_collection,
+                online_relation_quotient_enabled,
+                online_relation_basis,
+                online_relation_source,
+                online_relation_hnf,
+                relation_support,
+                online_membership_coordinates,
+                online_relation_count,
+                online_relation_status,
+                ellipsoid_zero,
+                ellipsoid_one,
+                ellipsoid_two,
+                ellipsoid_count,
+                proposal_budget,
+            )
+            adjacent_enumerated_count += ellipsoid_count - previous_ellipsoid_count
+            if online_relation_status < 0 or relation_count > relation_capacity:
+                online_relation_status = -1
+                break
+            new_proposal_position = (
+                ((ellipsoid_two + limit_two) * width_one + ellipsoid_one + limit_one)
+                * width_zero
+                + ellipsoid_zero
+                + limit_zero
+            )
+            used_proposals = new_proposal_position - old_proposal_position
+            if used_proposals < 0 or used_proposals > proposal_budget:
+                online_relation_status = -1
+                break
+            proposal_budget -= checked_uint64(used_proposals)
+            ellipsoid_exhausted = ellipsoid_two > limit_two
+            # Match the one-shot exhaustive route's count check at completion,
+            # never at a temporary proposal-budget pause.
+            if (
+                not streaming_relation_collection
+                and (ellipsoid_exhausted or online_relation_status == 2)
+                and ellipsoid_count
+                != adjacent_ellipsoid_parameters[adjacent_factor_index, 10]
+            ):
+                online_relation_status = -1
+                break
+            if ellipsoid_exhausted:
+                adjacent_phase = 2
+                if workspace[factor_base + 8] == 1:
+                    adjacent_phase = 0
+                    adjacent_factor_cursor += 1
+            continue
+
+        if adjacent_phase != 2 or adjacent_direction >= 4:
+            online_relation_status = -1
+            break
+        admission_pair = adjacent_pair_code - 1
+        if adjacent_pair_code >= 5:
+            admission_pair = adjacent_pair_code - 5
+        if admission_pair < 0 or admission_pair > 2:
+            online_relation_status = -1
+            break
+        adjacent_first = 0
+        adjacent_second = 1
+        if admission_pair == 1:
+            adjacent_second = 2
+        elif admission_pair == 2:
+            adjacent_first = 1
+            adjacent_second = 2
+        adjacent_left = 1
+        adjacent_right = 0
+        if adjacent_direction == 1:
+            adjacent_left = 0
+            adjacent_right = 1
+        elif adjacent_direction == 2:
+            adjacent_right = 1
+        elif adjacent_direction == 3:
+            adjacent_left = -1
+            adjacent_right = 1
+        adjacent_zero = 0
+        adjacent_one = 0
+        adjacent_two = 0
+        if adjacent_first == 0:
+            adjacent_zero = adjacent_left
+        elif adjacent_first == 1:
+            adjacent_one = adjacent_left
+        else:
+            adjacent_two = adjacent_left
+        if adjacent_second == 0:
+            adjacent_zero = adjacent_right
+        elif adjacent_second == 1:
+            adjacent_one = adjacent_right
+        else:
+            adjacent_two = adjacent_right
+        coordinate_zero, coordinate_one, coordinate_two = (
+            _cubic_transformed_ideal_coordinates(
+                workspace,
+                adjacent_basis,
+                adjacent_transforms,
+                adjacent_transform_row,
+                adjacent_zero,
+                adjacent_one,
+                adjacent_two,
+            )
+        )
+        adjacent_direction += 1
+        adjacent_enumerated_count += 1
+        proposal_budget -= 1
+        relation_count = _cubic_append_smooth_principal_relation(
+            workspace,
+            modular_workspace,
+            relation_candidates,
+            relation_elements,
+            relation_count,
+            relation_capacity,
+            factor_count,
+            group_count,
+            coordinate_zero,
+            coordinate_one,
+            coordinate_two,
+            hnf_source,
+            hnf_result,
+            streaming_relation_collection,
+            relation_collection_target,
+        )
+        if relation_count > relation_capacity:
+            online_relation_status = -1
+            break
+        while (
+            online_relation_quotient_enabled
+            and online_relation_count < relation_count
+            and online_relation_status != 2
+        ):
+            online_relation_status = _cubic_online_relation_lattice_update(
+                online_relation_basis,
+                online_relation_source,
+                online_relation_hnf,
+                relation_support,
+                online_membership_coordinates,
+                relation_candidates,
+                online_relation_count,
+                factor_count,
+            )
+            if online_relation_status < 0:
+                break
+            online_relation_count += 1
+        if adjacent_direction == 4:
+            adjacent_phase = 0
+            adjacent_factor_cursor += 1
+
+    return (
+        relation_count,
+        online_relation_count,
+        online_relation_status,
+        adjacent_planned_count,
+        adjacent_enumerated_count,
+        adjacent_factor_cursor,
+        adjacent_phase,
+        adjacent_direction,
+        ellipsoid_zero,
+        ellipsoid_one,
+        ellipsoid_two,
+        ellipsoid_count,
+    )
+
+
+def _cubic_prepare_full_relation_presentation(
+    relation_candidates: FmpzMatrix,
+    online_relation_basis: FmpzMatrix,
+    relation_matrix: FmpzMatrix,
+    relation_hnf: FmpzMatrix,
+    output: IntegerBuffer,
+    relation_count: uint64,
+    factor_count: uint64,
+    reuse_online_relation_hnf: bool,
+    established_full_rank: bool,
+) -> tuple[int, uint64]:
+    """Copy and reduce an exact live prefix into borrowed proof scratch.
+
+    Return `(1, rank)` for full rank, `(0, rank)` for insufficient relations,
+    or `(-1, rank)` for inconsistent evidence. An independently established
+    full modular or exact rank for this prefix makes rank loss inconsistent,
+    never permission to resume collection. Synchronized row counts alone do
+    not establish full rank.
+
+    All owners remain in the caller's arena. Only the logical prefixes of
+    `relation_matrix` and `relation_hnf` change; unused capacity, discovery
+    rows, and the retained online HNF are untouched. Their owners must be
+    distinct and large enough for the requested prefixes. Invalid resource
+    bounds, aliases, or exhausted allocation budgets fail through the FFI or
+    arena error path, not the mathematical-insufficiency return.
+    """
+    relation_rank: uint64 = 0
+    output[63] = 41
+    if factor_count == 0:
+        return -1, relation_rank
+    if relation_count < factor_count:
+        if established_full_rank:
+            return -1, relation_rank
+        return 0, relation_rank
+    relation_row: uint64 = 0
+    while relation_row < relation_count:
+        factor_index: uint64 = 0
+        while factor_index < factor_count:
+            relation_matrix[relation_row, factor_index] = relation_candidates[
+                relation_row, factor_index
+            ]
+            factor_index += 1
+        relation_row += 1
+    relation_hnf_rows: uint64 = relation_count
+    if reuse_online_relation_hnf:
+        relation_hnf_rows = factor_count
+        relation_row = 0
+        while relation_row < factor_count:
+            factor_index = 0
+            while factor_index < factor_count:
+                relation_hnf[relation_row, factor_index] = online_relation_basis[
+                    relation_row, factor_index
+                ]
+                factor_index += 1
+            relation_row += 1
+    elif not fmpz_matrix_hnf_prefix_into(
+        relation_hnf, relation_matrix, relation_count, factor_count
+    ):
+        return -1, relation_rank
+    relation_row = 0
+    while relation_row < relation_hnf_rows:
+        row_nonzero = False
+        factor_index = 0
+        while factor_index < factor_count:
+            if relation_hnf[relation_row, factor_index] != 0:
+                row_nonzero = True
+            factor_index += 1
+        if row_nonzero:
+            relation_rank += 1
+        relation_row += 1
+    output[53] = relation_rank
+    output[63] = 42
+    if relation_rank > factor_count:
+        return -1, relation_rank
+    if relation_rank < factor_count:
+        if established_full_rank:
+            return -1, relation_rank
+        return 0, relation_rank
+    return 1, relation_rank
+
+
+def _cubic_finish_full_relation_presentation(
+    workspace: NativeIntegerVector,
+    relation_matrix: FmpzMatrix,
+    relation_smith: FmpzMatrix,
+    output: IntegerBuffer,
+    relation_count: uint64,
+    factor_count: uint64,
+) -> tuple[int, int, uint64]:
+    """Compute the full-rank quotient in caller-owned exact Smith scratch.
+
+    The preceding presentation preparation must have established full rank.
+    Return `(1, index, invariant_count)` on success, `(-1, 0, 0)` for invalid
+    evidence, or `(-2, 0, 0)` when the eight-invariant publication envelope is
+    exhausted. Neither failure authorizes collection of more relations.
+    The returned index is only an upper class-group presentation until the
+    remaining certificate succeeds, except when that index is one.
+
+    Only the live Smith prefix and the reported invariant prefix in the
+    phase-local row scratch are written. Failed results and scratch are not
+    publishable. Keeping this separate from rank preparation lets a one-shot
+    caller allocate Smith storage only after full rank is known.
+    """
+    empty_count: uint64 = 0
+    if factor_count == 0 or relation_count < factor_count:
+        return -1, 0, empty_count
+    if not fmpz_matrix_snf_prefix_into(
+        relation_smith, relation_matrix, relation_count, factor_count
+    ):
+        return -1, 0, empty_count
+    class_number_upper = 1
+    invariant_count: uint64 = 0
+    factor_index: uint64 = 0
+    while factor_index < factor_count:
+        invariant = relation_smith[factor_index, factor_index]
+        if invariant < 0:
+            invariant = -invariant
+        if invariant < 1:
+            return -1, 0, empty_count
+        if factor_index > 0:
+            previous_invariant = relation_smith[factor_index - 1, factor_index - 1]
+            if previous_invariant < 0:
+                previous_invariant = -previous_invariant
+            if invariant % previous_invariant != 0:
+                return -1, 0, empty_count
+        class_number_upper *= invariant
+        if invariant > 1:
+            if invariant_count >= 8:
+                return -2, 0, empty_count
+            workspace[_ROW_SCRATCH_OFFSET + invariant_count] = invariant
+            invariant_count += 1
+        factor_index += 1
+    output[54] = class_number_upper
+    output[55] = invariant_count
+    output[63] = 43
+    return 1, class_number_upper, invariant_count
+
+
+def _cubic_publish_trivial_relation_presentation(
+    workspace: NativeIntegerVector,
+    relation_matrix: FmpzMatrix,
+    relation_elements: FmpzMatrix,
+    output: IntegerBuffer,
+    transcript_factor_rows: IntegerBuffer,
+    transcript_relation_rows: IntegerBuffer,
+    transcript_relation_elements: IntegerBuffer,
+    transcript_mode: uint64,
+    relation_count: uint64,
+    factor_count: uint64,
+    group_count: uint64,
+    relation_rank: uint64,
+    used_compound_multiplier_limit: uint64,
+    generator_bound: int,
+    identity_zero: int,
+    identity_one: int,
+    identity_two: int,
+    order_discriminant: int,
+    equation_order_index: int,
+    denominator: int,
+    relation_box: int,
+    unit_box: int,
+    equation_discriminant: int,
+    use_grh_generator_base: bool,
+    adjacent_planned_count: uint64,
+    adjacent_enumerated_count: uint64,
+    online_relation_count: uint64,
+) -> bool:
+    """Publish a previously established index-one relation presentation.
+
+    The caller must have checked the generator theorem, the principal rows,
+    and the exact full-rank Smith quotient of index one. No unit or analytic
+    index computation can strengthen that class-group conclusion. Transcript
+    shape failures are publication errors, not evidence insufficiency, and
+    cannot authorize a collection retry. Success preserves the established
+    scalar receipt layout and its private discovery diagnostics.
+    """
+    if transcript_mode == 1:
+        if not _cubic_publish_relation_factor_rows(
+            workspace, factor_count, transcript_factor_rows
+        ):
+            return False
+        if not _cubic_publish_relation_rows(
+            relation_matrix,
+            relation_elements,
+            relation_count,
+            factor_count,
+            transcript_relation_rows,
+            transcript_relation_elements,
+        ):
+            return False
+    output_index: uint64 = 0
+    while output_index < len(output):
+        output[output_index] = 0
+        output_index += 1
+    output[0] = 2
+    output[1] = 1
+    output[19] = used_compound_multiplier_limit
+    output[20] = generator_bound
+    output[21] = factor_count
+    output[22] = group_count
+    output[23] = relation_count
+    output[24] = 1
+    output[25] = identity_zero
+    output[26] = identity_one
+    output[27] = identity_two
+    output[28] = order_discriminant
+    output[29] = equation_order_index
+    output[30] = denominator
+    output[31] = relation_box
+    output[32] = unit_box
+    output[33] = relation_rank
+    output[34] = equation_discriminant
+    output[35] = _CUBIC_PROOF_TRIVIAL_MINKOWSKI
+    if use_grh_generator_base:
+        output[35] = _CUBIC_PROOF_TRIVIAL_GRH
+    output[50] = adjacent_planned_count
+    output[51] = adjacent_enumerated_count
+    output[52] = relation_count
+    output[53] = online_relation_count
+    return True
+
+
+def _cubic_prepare_proof_relation_support(
+    relation_matrix: FmpzMatrix,
+    relation_hnf: FmpzMatrix,
+    online_support: FmpzMatrix,
+    relation_support: FmpzMatrix,
+    online_membership_coordinates: FmpzMatrix,
+    incremental_basis: FmpzMatrix,
+    incremental_source: FmpzMatrix,
+    incremental_hnf: FmpzMatrix,
+    output: IntegerBuffer,
+    relation_count: uint64,
+    factor_count: uint64,
+    relation_rank: uint64,
+    unit_found: bool,
+    reuse_online_relation_support: bool,
+) -> tuple[uint64, bool]:
+    """Prepare attempt-local support without modifying retained discovery state.
+
+    The caller has established full rank for this exact relation prefix.
+    Only the support and reduction scratch are mutable; the online support
+    bits and original principal rows remain unchanged for resumed collection.
+    All scratch owners remain in the root arena, and each invocation resets
+    the logical prefix it uses. A failure is an internal inconsistency or
+    resource failure, never permission to collect additional relations.
+    """
+    reset_row: uint64 = 0
+    while reset_row < relation_count:
+        relation_support[reset_row, 0] = 0
+        if reuse_online_relation_support:
+            relation_support[reset_row, 0] = online_support[reset_row, 0]
+        reset_row += 1
+    if not reuse_online_relation_support:
+        reset_row = 0
+        while reset_row < factor_count:
+            reset_column: uint64 = 0
+            while reset_column < factor_count:
+                incremental_basis[reset_row, reset_column] = 0
+                reset_column += 1
+            reset_row += 1
+    support_count: uint64 = 0
+    incremental_rank: uint64 = 0
+    compact_source_row: uint64 = 0
+    if unit_found:
+        # The small-unit probe has already supplied the rank-one unit
+        # witness.  Keep every exact principal row for later transcript
+        # replay, but do not repeatedly canonicalize prefixes merely to
+        # shrink an audit payload that is not materialized on this call.
+        # The full relation HNF and Smith form above remain the class-group
+        # authority.
+        support_count = relation_count
+        incremental_rank = factor_count
+        while compact_source_row < relation_count:
+            relation_support[compact_source_row, 0] = 1
+            compact_source_row += 1
+        fast_row: uint64 = 0
+        while fast_row < factor_count:
+            fast_column: uint64 = 0
+            while fast_column < factor_count:
+                incremental_basis[fast_row, fast_column] = relation_hnf[
+                    fast_row, fast_column
+                ]
+                fast_column += 1
+            fast_row += 1
+    elif reuse_online_relation_support:
+        incremental_rank = relation_rank
+        while compact_source_row < relation_count:
+            if relation_support[compact_source_row, 0] != 0:
+                if support_count >= factor_count + 64:
+                    output[59] = 421
+                    output[60] = support_count
+                    return support_count, False
+                support_count += 1
+            compact_source_row += 1
+    while not reuse_online_relation_support and compact_source_row < relation_count:
+        support_used = True
+        if incremental_rank == factor_count:
+            support_used = not _cubic_relation_row_in_hnf(
+                online_membership_coordinates,
+                incremental_basis,
+                relation_matrix,
+                compact_source_row,
+                factor_count,
+            )
+        if support_used:
+            incremental_row: uint64 = 0
+            while incremental_row < factor_count:
+                incremental_column: uint64 = 0
+                while incremental_column < factor_count:
+                    incremental_source[incremental_row, incremental_column] = (
+                        incremental_basis[incremental_row, incremental_column]
+                    )
+                    incremental_column += 1
+                incremental_row += 1
+            incremental_column = 0
+            while incremental_column < factor_count:
+                incremental_source[factor_count, incremental_column] = relation_matrix[
+                    compact_source_row, incremental_column
+                ]
+                incremental_column += 1
+            if not fmpz_matrix_hnf_into(incremental_hnf, incremental_source):
+                return support_count, False
+            support_used = False
+            incremental_row = 0
+            while incremental_row < factor_count:
+                incremental_column = 0
+                while incremental_column < factor_count:
+                    if (
+                        incremental_hnf[incremental_row, incremental_column]
+                        != incremental_basis[incremental_row, incremental_column]
+                    ):
+                        support_used = True
+                    incremental_column += 1
+                incremental_row += 1
+        if support_used:
+            if support_count >= factor_count + 64:
+                output[59] = 421
+                output[60] = support_count
+                return support_count, False
+            relation_support[compact_source_row, 0] = 1
+            support_count += 1
+            incremental_rank = 0
+            incremental_row = 0
+            while incremental_row < factor_count:
+                incremental_nonzero = False
+                incremental_column = 0
+                while incremental_column < factor_count:
+                    incremental_value = incremental_hnf[
+                        incremental_row, incremental_column
+                    ]
+                    incremental_basis[incremental_row, incremental_column] = (
+                        incremental_value
+                    )
+                    if incremental_value != 0:
+                        incremental_nonzero = True
+                    incremental_column += 1
+                if incremental_nonzero:
+                    incremental_rank += 1
+                incremental_row += 1
+        compact_source_row += 1
+    if support_count < factor_count:
+        return support_count, False
+    if not reuse_online_relation_support:
+        incremental_row = 0
+        while incremental_row < factor_count:
+            incremental_column = 0
+            while incremental_column < factor_count:
+                if (
+                    incremental_basis[incremental_row, incremental_column]
+                    != relation_hnf[incremental_row, incremental_column]
+                ):
+                    output[59] = 422
+                    output[60] = support_count
+                    return support_count, False
+                incremental_column += 1
+            incremental_row += 1
+
+    return support_count, True
+
+
+class CubicProofWorkspace(NativeWorkspace):
+    """Caller-owned exact scratch shared across certification attempts."""
+
+    analytic_endpoints: FmpzMatrix
+    analytic_values: FmpzMatrix
+    analytic: NativeIntegerVector
+    compact_elements: FmpzMatrix
+    compact_hnf: FmpzMatrix
+    compact_matrix: FmpzMatrix
+    compact_transform: FmpzMatrix
+    compact_smith: FmpzMatrix
+    dependency_coordinates: FmpzMatrix
+    dependency_lll_transform: FmpzMatrix
+    dependency_reduced: FmpzMatrix
+    dependency_relations: FmpzMatrix
+    incremental_basis: FmpzMatrix
+    incremental_hnf: FmpzMatrix
+    incremental_source: FmpzMatrix
+    log_denominators: FmpzMatrix
+    log_endpoints: FmpzMatrix
+    log_numerators: FmpzMatrix
+    prefix_dependencies: FmpzMatrix
+    prefix_dependencies_reduced: FmpzMatrix
+    prefix_dependency_transform: FmpzMatrix
+    prefix_hnf: FmpzMatrix
+    prefix_logs: FmpzMatrix
+    prefix_matrix: FmpzMatrix
+    prefix_transform: FmpzMatrix
+    prefix_unit_combinations: FmpzMatrix
+    prefix_unit_result: FmpzMatrix
+    membership: FmpzMatrix
+    closure_support: FmpzMatrix
+    recovery_elements: FmpzMatrix
+    recovery_matrix: FmpzMatrix
+    elements: FmpzMatrix
+    hnf: FmpzMatrix
+    logs: FmpzMatrix
+    relations: FmpzMatrix
+    support: FmpzMatrix
+    units: FmpzMatrix
+    field: NativeIntegerVector
+
+
+def _cubic_try_bounded_exact_closure(
+    proof: CubicProofWorkspace,
+    absolute_discriminant: int,
+    analytic_scale: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_zero_zero: int,
+    class_number_upper: int,
+    coefficients: IntegerBuffer,
+    constant: int,
+    denominator: int,
+    equation_discriminant: int,
+    equation_order_index: int,
+    factor_count: uint64,
+    factor_search_bound: int,
+    generator_bound: int,
+    group_count: uint64,
+    identity_one: int,
+    identity_two: int,
+    identity_zero: int,
+    invariant_count: uint64,
+    linear: int,
+    order_discriminant: int,
+    output: IntegerBuffer,
+    quadratic: int,
+    relation_box: int,
+    relation_count: uint64,
+    relation_rank: uint64,
+    transcript_factor_rows: IntegerBuffer,
+    transcript_mode: uint64,
+    transcript_relation_elements: IntegerBuffer,
+    transcript_relation_rows: IntegerBuffer,
+    unit_box: int,
+    used_compound_multiplier_limit: uint64,
+) -> int:
+    """Certify a bounded prefix using only caller-owned reusable scratch.
+
+    Return 1 only after accepted publication, 0 only for mathematically
+    insufficient relation/unit/index evidence, and -1 for every invalid
+    operation, capacity or publication failure. No discovery state is changed.
+    """
+    proof_unit_found = False
+    proof_unit_zero: int = 0
+    proof_unit_one: int = 0
+    proof_unit_two: int = 0
+    proof_regulator_lower: int = 0
+    proof_regulator_upper: int = 0
+    uncompacted_relation_count: uint64 = relation_count
+    reuse_online_relation_support = True
+    support_count, support_ready = _cubic_prepare_proof_relation_support(
+        proof.relations,
+        proof.hnf,
+        proof.support,
+        proof.closure_support,
+        proof.membership,
+        proof.incremental_basis,
+        proof.incremental_source,
+        proof.incremental_hnf,
+        output,
+        relation_count,
+        factor_count,
+        relation_rank,
+        proof_unit_found,
+        reuse_online_relation_support,
+    )
+    if not support_ready:
+        return -1
+
+    # Preserve a bounded tail of final reduced-ideal witnesses not already in
+    # the HNF support.  These redundant principal relations are useful for
+    # finding a short generator of the rank-one unit lattice.
+    compact_tail_start, compact_relation_count = _cubic_compact_relation_plan(
+        proof.closure_support,
+        relation_count,
+        support_count,
+    )
+    if not _cubic_prepare_compact_presentation(
+        proof.relations,
+        proof.elements,
+        proof.hnf,
+        proof.closure_support,
+        proof.compact_matrix,
+        proof.compact_elements,
+        proof.compact_hnf,
+        output,
+        relation_count,
+        factor_count,
+        compact_tail_start,
+        compact_relation_count,
+        support_count,
+        proof_unit_found,
+        reuse_online_relation_support,
+    ):
+        output[63] = 44
+        return -1
+    if not proof_unit_found:
+        if not _cubic_verify_compact_presentation_index(
+            proof.compact_smith,
+            proof.compact_matrix,
+            compact_relation_count,
+            factor_count,
+            class_number_upper,
+        ):
+            output[63] = 44
+            return -1
+    dependency_relation_elements = proof.compact_elements
+    # Later exact materialization reuses this typed logical column cursor.
+    relation_index: uint64 = 0
+    proof_relation_count = compact_relation_count
+    output[52] = proof_relation_count
+    # Reconstruct missing units from exact HNF dependencies.
+    dependency_scan_active = not proof_unit_found
+    dependency_relation_storage: uint64 = proof_relation_count
+    dependency_row_storage: uint64 = proof_relation_count - relation_rank
+    if not dependency_scan_active:
+        dependency_relation_storage = 1
+        dependency_row_storage = 1
+    if dependency_scan_active and not fmpz_matrix_hnf_transform_prefix(
+        proof.compact_hnf,
+        proof.compact_transform,
+        proof.compact_matrix,
+        proof_relation_count,
+        factor_count,
+    ):
+        output[63] = 44
+        return -1
+    output[59] = 431
+    dependency_count: uint64 = proof_relation_count - relation_rank
+    (
+        dependency_status,
+        dependency_coefficient_bits,
+        dependency_log_scale,
+        dependency_log_precision,
+    ) = _cubic_reduce_dependency_prefix(
+        proof.compact_transform,
+        proof.dependency_relations,
+        proof.dependency_reduced,
+        proof.dependency_lll_transform,
+        output,
+        proof_relation_count,
+        relation_rank,
+        dependency_count,
+        dependency_scan_active,
+        analytic_scale,
+    )
+    if dependency_status != 1:
+        output[62] = dependency_status
+        output[63] = 44
+        if dependency_status == 0:
+            output[63] = 43
+            return 0
+        return -1
+    if not _cubic_fill_dependency_logs(
+        coefficients,
+        proof.log_numerators,
+        proof.log_denominators,
+        proof.log_endpoints,
+        dependency_relation_elements,
+        proof.logs,
+        denominator,
+        basis_zero_zero,
+        basis_zero_one,
+        basis_zero_two,
+        basis_one_one,
+        basis_one_two,
+        basis_two_two,
+        proof_relation_count,
+        dependency_scan_active,
+        dependency_log_scale,
+        dependency_log_precision,
+    ):
+        output[63] = 44
+        return -1
+    output[59] = 433
+    (
+        proof_unit_found,
+        proof_regulator_lower,
+        proof_regulator_upper,
+    ) = _cubic_discover_dependency_unit(
+        proof.dependency_reduced,
+        proof.logs,
+        proof.units,
+        proof_relation_count,
+        dependency_count,
+        dependency_scan_active,
+        proof_unit_found,
+        proof_regulator_lower,
+        proof_regulator_upper,
+    )
+    output[59] = 434
+    # If class-lattice compaction loses the unit, add a bounded witness tail.
+    if not proof_unit_found:
+        recovery_tail_start: uint64 = 0
+        if uncompacted_relation_count > _CUBIC_RELATION_RECOVERY_TAIL:
+            recovery_tail_start = (
+                uncompacted_relation_count - _CUBIC_RELATION_RECOVERY_TAIL
+            )
+        recovery_tail_count: uint64 = 0
+        recovery_source_row: uint64 = recovery_tail_start
+        while recovery_source_row < uncompacted_relation_count:
+            if proof.closure_support[recovery_source_row, 0] == 0:
+                recovery_tail_count += 1
+            recovery_source_row += 1
+        recovery_relation_count: uint64 = support_count + recovery_tail_count
+        recovery_row: uint64 = _cubic_copy_relation_support_tail(
+            proof.relations,
+            proof.elements,
+            proof.closure_support,
+            uncompacted_relation_count,
+            factor_count,
+            recovery_tail_start,
+            proof.recovery_matrix,
+            proof.recovery_elements,
+        )
+        if recovery_row != recovery_relation_count:
+            return -1
+        prefix_dependency_rows: uint64 = 1
+        if recovery_relation_count > factor_count:
+            prefix_dependency_rows = recovery_relation_count - factor_count
+        prefix_unit_status = _cubic_relation_prefix_has_archimedean_unit(
+            proof.log_numerators,
+            proof.log_denominators,
+            proof.log_endpoints,
+            proof.field,
+            coefficients,
+            proof.recovery_matrix,
+            proof.recovery_elements,
+            recovery_relation_count,
+            factor_count,
+            denominator,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            analytic_scale,
+            _CUBIC_ANALYTIC_PRECISION,
+            proof.prefix_matrix,
+            proof.prefix_hnf,
+            proof.prefix_transform,
+            proof.prefix_dependencies,
+            proof.prefix_dependencies_reduced,
+            proof.prefix_dependency_transform,
+            proof.prefix_logs,
+            proof.prefix_unit_combinations,
+            proof.prefix_unit_result,
+        )
+        if prefix_unit_status != 0 and prefix_unit_status != 1:
+            # Recovery includes complete class support. Missing rank here
+            # is inconsistent; reconstruction and interval failures are
+            # likewise not evidence authorizing another relation effort.
+            output[62] = prefix_unit_status
+            output[63] = 44
+            return -1
+        if prefix_unit_status == 1:
+            proof_unit_zero = proof.prefix_unit_result[0, 0]
+            proof_unit_one = proof.prefix_unit_result[0, 1]
+            proof_unit_two = proof.prefix_unit_result[0, 2]
+            proof_regulator_lower = proof.prefix_unit_result[0, 3]
+            proof_regulator_upper = proof.prefix_unit_result[0, 4]
+            proof_unit_found = True
+            dependency_scan_active = False
+    if proof_unit_found:
+        output[61] = 1
+    if not proof_unit_found:
+        # A bounded or compact relation prefix may have full class rank
+        # without exposing the rank-one unit lattice.  Classify this as
+        # relation exhaustion so the host may authorize the next exact
+        # effort; no partial presentation is published.
+        output[63] = 43
+        return 0
+    if dependency_scan_active:
+        output[63] = 44
+        (
+            dependency_unit_ready,
+            proof_unit_zero,
+            proof_unit_one,
+            proof_unit_two,
+            proof_regulator_lower,
+            proof_regulator_upper,
+        ) = _cubic_materialize_dependency_unit(
+            proof.field,
+            coefficients,
+            denominator,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            dependency_relation_elements,
+            proof.units,
+            proof_relation_count,
+            proof_regulator_lower,
+            proof_regulator_upper,
+            analytic_scale,
+            dependency_log_scale,
+            proof.log_numerators,
+            proof.log_denominators,
+            proof.log_endpoints,
+            proof.dependency_coordinates,
+            identity_zero,
+            identity_one,
+            identity_two,
+            proof_unit_zero,
+            proof_unit_one,
+            proof_unit_two,
+            output,
+        )
+        if not dependency_unit_ready:
+            return -1
+    output[56] = proof_unit_zero
+    output[57] = proof_unit_one
+    output[58] = proof_unit_two
+    output[63] = 44
+
+    if proof_regulator_lower <= 0 or proof_regulator_upper < proof_regulator_lower:
+        return -1
+    output[63] = 5
+
+    # Build and evaluate the first exact Belabas--Friedman plan through
+    # the same closed native helpers used by the bounded refinement.
+    analytic_threshold: uint64 = _CUBIC_ANALYTIC_THRESHOLD
+    output[63] = 6
+    (
+        analytic_plan_ready,
+        analytic_term_count,
+        analytic_value_count,
+    ) = _cubic_prepare_bf_plan(
+        proof.field,
+        proof.analytic,
+        coefficients,
+        denominator,
+        constant,
+        linear,
+        quadratic,
+        absolute_discriminant,
+        factor_search_bound,
+        group_count,
+        equation_order_index,
+        identity_zero,
+        identity_one,
+        identity_two,
+        class_number_upper,
+        analytic_threshold,
+    )
+    if not analytic_plan_ready:
+        return -1
+    output[63] = 7
+    (
+        analytic_ready,
+        zeta_lower,
+        zeta_upper,
+        tail_upper,
+    ) = _cubic_evaluate_bf_plan(
+        proof.analytic,
+        proof.analytic_values,
+        proof.analytic_endpoints,
+        analytic_term_count,
+        analytic_value_count,
+        analytic_scale,
+    )
+    if not analytic_ready:
+        return -1
+    analytic_precision: uint64 = _CUBIC_ANALYTIC_PRECISION
+    (
+        saturation_ready,
+        proof_unit_zero,
+        proof_unit_one,
+        proof_unit_two,
+        proof_regulator_lower,
+        proof_regulator_upper,
+        log_regulator_lower,
+        log_regulator_upper,
+        log_two_pi_lower,
+        log_two_pi_upper,
+        index_log_lower,
+        index_log_upper,
+        log_two_lower,
+        log_two_upper,
+    ) = _cubic_saturate_analytic_unit(
+        proof.field,
+        coefficients,
+        proof.dependency_coordinates,
+        proof.log_numerators,
+        proof.log_denominators,
+        proof.log_endpoints,
+        proof.analytic_endpoints,
+        output,
+        denominator,
+        basis_zero_zero,
+        basis_zero_one,
+        basis_zero_two,
+        basis_one_one,
+        basis_one_two,
+        basis_two_two,
+        identity_zero,
+        identity_one,
+        identity_two,
+        proof_unit_zero,
+        proof_unit_one,
+        proof_unit_two,
+        proof_regulator_lower,
+        proof_regulator_upper,
+        analytic_scale,
+        analytic_precision,
+        zeta_lower,
+        zeta_upper,
+    )
+    if not saturation_ready:
+        return -1
+
+    # Start at the theorem-aligned X=999 boundary. If all exact
+    # algebraic and interval checks succeeded but the resulting upper
+    # endpoint still cannot distinguish the positive integral index from
+    # two, make one bounded resident refinement.  This is a schedule, not
+    # a proof premise: the second BF enclosure must satisfy exactly the
+    # same index-one inequality below, and any exhausted resource declines.
+    if index_log_upper < 0 or log_two_upper < log_two_lower:
+        return -1
+    if index_log_upper >= log_two_lower:
+        analytic_threshold = _CUBIC_ANALYTIC_REFINED_THRESHOLD
+        (
+            refined_plan_ready,
+            analytic_term_count,
+            analytic_value_count,
+        ) = _cubic_prepare_bf_plan(
+            proof.field,
+            proof.analytic,
+            coefficients,
+            denominator,
+            constant,
+            linear,
+            quadratic,
+            absolute_discriminant,
+            factor_search_bound,
+            group_count,
+            equation_order_index,
+            identity_zero,
+            identity_one,
+            identity_two,
+            class_number_upper,
+            analytic_threshold,
+        )
+        if not refined_plan_ready:
+            return -1
+        output[63] = 6
+        (
+            refined_analytic_ready,
+            zeta_lower,
+            zeta_upper,
+            tail_upper,
+        ) = _cubic_evaluate_bf_plan(
+            proof.analytic,
+            proof.analytic_values,
+            proof.analytic_endpoints,
+            analytic_term_count,
+            analytic_value_count,
+            analytic_scale,
+        )
+        if not refined_analytic_ready:
+            return -1
+        output[63] = 7
+        index_ready, index_log_lower, index_log_upper = _cubic_analytic_index_bounds(
+            proof.analytic_endpoints,
+            log_regulator_lower,
+            log_regulator_upper,
+            log_two_pi_lower,
+            log_two_pi_upper,
+            zeta_lower,
+            zeta_upper,
+        )
+        if not index_ready:
+            return -1
+    output[40] = proof_regulator_lower
+    output[41] = proof_regulator_upper
+    output[42] = zeta_lower
+    output[43] = zeta_upper
+    output[44] = index_log_lower
+    output[45] = index_log_upper
+    output[46] = tail_upper
+    output[47] = analytic_scale
+    output[48] = log_two_lower
+    output[49] = log_two_upper
+    output[63] = 8
+    # Under the GRH hypothesis of Belabas--Friedman Theorem 1, this is a
+    # rigorous enclosure for the zeta residue.  The Minkowski factor base
+    # makes the relation index integral, and
+    # the retained unit subgroup has integral index in the full unit
+    # lattice.  Their product is a positive integer.  An upper logarithm
+    # strictly below log(2) therefore proves both indices are one.
+    analytic_index_status = _cubic_classify_analytic_index(
+        index_log_lower, index_log_upper, log_two_lower, log_two_upper
+    )
+    # Zero is valid but insufficient evidence. Root retries are not enabled
+    # by this extraction, and negative statuses are always fatal.
+    if analytic_index_status != 1:
+        if analytic_index_status < 0:
+            output[63] = 44
+        return analytic_index_status
+
+    # A failed publication is not missing relation evidence.
+    output[63] = 44
+    published = _cubic_publish_analytic_relation_presentation(
+        proof.field,
+        proof.compact_matrix,
+        proof.compact_elements,
+        output,
+        transcript_factor_rows,
+        transcript_relation_rows,
+        transcript_relation_elements,
+        transcript_mode,
+        class_number_upper,
+        invariant_count,
+        used_compound_multiplier_limit,
+        generator_bound,
+        factor_count,
+        group_count,
+        proof_relation_count,
+        proof_unit_zero,
+        proof_unit_one,
+        proof_unit_two,
+        order_discriminant,
+        equation_order_index,
+        denominator,
+        relation_box,
+        unit_box,
+        relation_rank,
+        equation_discriminant,
+        analytic_threshold,
+        analytic_term_count,
+        analytic_value_count,
+        analytic_precision,
+        proof_regulator_lower,
+        proof_regulator_upper,
+        zeta_lower,
+        zeta_upper,
+        index_log_lower,
+        index_log_upper,
+        tail_upper,
+        analytic_scale,
+        log_two_lower,
+        log_two_upper,
+    )
+
+    if not published:
+        return -1
+    return 1
+
+
+def _cubic_materialize_dependency_unit(
+    workspace: NativeIntegerVector,
+    coefficients: IntegerBuffer,
+    denominator: int,
+    basis_zero_zero: int,
+    basis_zero_one: int,
+    basis_zero_two: int,
+    basis_one_one: int,
+    basis_one_two: int,
+    basis_two_two: int,
+    dependency_relation_elements: FmpzMatrix,
+    unit_combinations: FmpzMatrix,
+    proof_relation_count: uint64,
+    proof_regulator_lower: int,
+    proof_regulator_upper: int,
+    analytic_scale: int,
+    dependency_log_scale: int,
+    log_numerators: FmpzMatrix,
+    log_denominators: FmpzMatrix,
+    log_endpoints: FmpzMatrix,
+    dependency_coordinates: FmpzMatrix,
+    identity_zero: int,
+    identity_one: int,
+    identity_two: int,
+    proof_unit_zero: int,
+    proof_unit_one: int,
+    proof_unit_two: int,
+    output: IntegerBuffer,
+) -> tuple[bool, int, int, int, int, int]:
+    """Authenticate or exactly materialize a dependency unit in borrowed scratch.
+
+    Every failure is fatal for this attempt, not evidence requesting relations.
+    The existing bounded product fallback and regulator-overlap test are kept.
+    No owner is allocated and no discovery or relation state is modified.
+    """
+    if (
+        analytic_scale <= 0
+        or dependency_log_scale < analytic_scale
+        or dependency_log_scale % analytic_scale != 0
+    ):
+        return (False, 0, 0, 0, 0, 0)
+    relation_index: uint64 = 0
+    dependency_scale_quotient = dependency_log_scale // analytic_scale
+    regulator_at_dependency_scale = True
+    (
+        reconstruction_status,
+        reconstructed_zero,
+        reconstructed_one,
+        reconstructed_two,
+    ) = _cubic_reconstruct_archimedean_unit(
+        workspace,
+        coefficients,
+        denominator,
+        basis_zero_zero,
+        basis_zero_one,
+        basis_zero_two,
+        basis_one_one,
+        basis_one_two,
+        basis_two_two,
+        dependency_relation_elements,
+        unit_combinations,
+        proof_relation_count,
+        proof_regulator_lower,
+        proof_regulator_upper,
+        analytic_scale,
+        dependency_log_scale,
+    )
+    output[59] = 435
+    output[62] = reconstruction_status
+    if reconstruction_status == 2:
+        output[56] = reconstructed_zero
+        output[57] = reconstructed_one
+        output[58] = reconstructed_two
+    dependency_materialization_active = reconstruction_status != 1
+    if reconstruction_status == 1:
+        (
+            reconstructed_regulator_lower,
+            reconstructed_regulator_upper,
+        ) = _cubic_regulator_bounds(
+            log_numerators,
+            log_denominators,
+            log_endpoints,
+            coefficients,
+            denominator,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            reconstructed_zero,
+            reconstructed_one,
+            reconstructed_two,
+            analytic_scale,
+            _CUBIC_ANALYTIC_PRECISION,
+        )
+        if (
+            reconstructed_regulator_lower > 0
+            and reconstructed_regulator_upper >= reconstructed_regulator_lower
+            and reconstructed_regulator_lower * dependency_scale_quotient
+            <= proof_regulator_upper
+            and proof_regulator_lower
+            <= reconstructed_regulator_upper * dependency_scale_quotient
+        ):
+            proof_unit_zero = reconstructed_zero
+            proof_unit_one = reconstructed_one
+            proof_unit_two = reconstructed_two
+            proof_regulator_lower = reconstructed_regulator_lower
+            proof_regulator_upper = reconstructed_regulator_upper
+            regulator_at_dependency_scale = False
+            dependency_materialization_active = False
+        else:
+            # Exact reconstruction alone does not authenticate the
+            # retained logarithmic unit evidence. Never publish stale
+            # coordinates after a failed regulator comparison.
+            output[59] = 44
+            return (False, 0, 0, 0, 0, 0)
+
+    if dependency_materialization_active:
+        output[59] = 436
+        # Bound the small exact-product fallback before exponentiation.
+        dependency_exponent_total = 0
+        relation_index = 0
+        while relation_index < proof_relation_count:
+            dependency_exponent = unit_combinations[0, relation_index]
+            if dependency_exponent < 0:
+                dependency_exponent = -dependency_exponent
+            if dependency_exponent > 4096:
+                output[59] = 437
+                output[60] = dependency_exponent
+                output[63] = 44
+                return (False, 0, 0, 0, 0, 0)
+            dependency_exponent_total += dependency_exponent
+            if dependency_exponent_total > 16384:
+                output[59] = 438
+                output[60] = dependency_exponent_total
+                output[63] = 44
+                return (False, 0, 0, 0, 0, 0)
+            relation_index += 1
+        coordinate_index: uint64 = 0
+        while coordinate_index < 3:
+            identity_coordinate = identity_zero
+            if coordinate_index == 1:
+                identity_coordinate = identity_one
+            elif coordinate_index == 2:
+                identity_coordinate = identity_two
+            dependency_coordinates[0, coordinate_index] = identity_coordinate
+            dependency_coordinates[1, coordinate_index] = identity_coordinate
+            coordinate_index += 1
+        relation_index = 0
+        while relation_index < proof_relation_count:
+            dependency_exponent = unit_combinations[0, relation_index]
+            absolute_exponent = dependency_exponent
+            if absolute_exponent < 0:
+                absolute_exponent = -absolute_exponent
+            if absolute_exponent > 0:
+                if not _cubic_matrix_power_coordinates(
+                    workspace,
+                    dependency_relation_elements,
+                    relation_index,
+                    absolute_exponent,
+                    dependency_coordinates,
+                    2,
+                    3,
+                ):
+                    return (False, 0, 0, 0, 0, 0)
+                product_row: uint64 = 0
+                if dependency_exponent < 0:
+                    product_row = 1
+                if not _cubic_matrix_multiply_coordinates(
+                    workspace,
+                    dependency_coordinates,
+                    product_row,
+                    dependency_coordinates,
+                    2,
+                    dependency_coordinates,
+                    product_row,
+                ):
+                    return (False, 0, 0, 0, 0, 0)
+            relation_index += 1
+        if not _cubic_matrix_exact_quotient_coordinates(
+            workspace,
+            dependency_coordinates,
+            0,
+            1,
+            4,
+            5,
+        ):
+            return (False, 0, 0, 0, 0, 0)
+        proof_unit_zero = dependency_coordinates[4, 0]
+        proof_unit_one = dependency_coordinates[4, 1]
+        proof_unit_two = dependency_coordinates[4, 2]
+        dependency_norm = _cubic_norm_form_value(
+            workspace,
+            proof_unit_zero,
+            proof_unit_one,
+            proof_unit_two,
+        )
+        if dependency_norm != 1 and dependency_norm != -1:
+            return (False, 0, 0, 0, 0, 0)
+    if regulator_at_dependency_scale:
+        proof_regulator_lower //= dependency_scale_quotient
+        proof_regulator_upper = (
+            proof_regulator_upper + dependency_scale_quotient - 1
+        ) // dependency_scale_quotient
+    return (
+        True,
+        proof_unit_zero,
+        proof_unit_one,
+        proof_unit_two,
+        proof_regulator_lower,
+        proof_regulator_upper,
+    )
+
+
 @native
 def certified_complex_cubic_class_group_v1(
     output: IntegerBuffer,
     coefficients: IntegerBuffer,
+    modular_workspace: UInt64Buffer,
     analysis_proof: IntegerBuffer,
     verification_polynomial: IntegerBuffer,
     verification_numerator: IntegerBuffer,
@@ -5038,6 +8553,7 @@ def certified_complex_cubic_class_group_v1(
     if (
         len(output) != 64
         or len(coefficients) != 4
+        or len(modular_workspace) != _CUBIC_MODULAR_WORKSPACE_LENGTH
         or len(analysis_proof) != _CUBIC_ANALYSIS_PROOF_CAPACITY
         or len(verification_polynomial) != 4
         or len(verification_numerator) != 9
@@ -5078,6 +8594,12 @@ def certified_complex_cubic_class_group_v1(
         scheduled_compound_multiplier_limit = _CUBIC_COMPOUND_MULTIPLIERS
     with NativeExactArena(memory_limit, temporary_limit) as arena:
         workspace = arena.integer_vector(_CUBIC_WORKSPACE_LENGTH, 0)
+        analytic_workspace = arena.integer_vector(
+            _CUBIC_ANALYTIC_WORKSPACE_LENGTH,
+            0,
+        )
+        hnf_source = arena.foreign_resource(fmpz_matrix, 9, 3)
+        hnf_result = arena.foreign_resource(fmpz_matrix, 9, 3)
         polynomial = arena.foreign_resource(fmpz_polynomial, 4)
         coefficient_index: uint64 = 0
         while coefficient_index < 4:
@@ -5233,10 +8755,12 @@ def certified_complex_cubic_class_group_v1(
                 coordinate_two = remaining_two // basis_two_two
                 if coordinate_two * basis_two_two != remaining_two:
                     return False
-                table_offset = (left_basis * 3 + right_basis) * 3
-                workspace[table_offset] = coordinate_zero
-                workspace[table_offset + 1] = coordinate_one
-                workspace[table_offset + 2] = coordinate_two
+                table_offset: uint64 = (left_basis * 3 + right_basis) * 3
+                workspace[table_offset : table_offset + 3] = (
+                    coordinate_zero,
+                    coordinate_one,
+                    coordinate_two,
+                )
                 right_basis += 1
             left_basis += 1
 
@@ -5259,9 +8783,11 @@ def certified_complex_cubic_class_group_v1(
             != 0
         ):
             return False
-        workspace[_IDENTITY_OFFSET] = identity_zero
-        workspace[_IDENTITY_OFFSET + 1] = identity_one
-        workspace[_IDENTITY_OFFSET + 2] = identity_two
+        workspace[_IDENTITY_OFFSET : _IDENTITY_OFFSET + 3] = (
+            identity_zero,
+            identity_one,
+            identity_two,
+        )
         basis_index: uint64 = 0
         while basis_index < 3:
             basis_coordinate_zero = 0
@@ -5317,15 +8843,17 @@ def certified_complex_cubic_class_group_v1(
             or one_two_two_numerator % 2 != 0
         ):
             return False
-        workspace[_NORM_FORM_OFFSET] = norm_zero
-        workspace[_NORM_FORM_OFFSET + 1] = zero_zero_one_numerator // 2 - norm_one
-        workspace[_NORM_FORM_OFFSET + 2] = zero_one_one_numerator // 2 - norm_zero
-        workspace[_NORM_FORM_OFFSET + 3] = norm_one
-        workspace[_NORM_FORM_OFFSET + 4] = zero_zero_two_numerator // 2 - norm_two
-        workspace[_NORM_FORM_OFFSET + 5] = zero_two_two_numerator // 2 - norm_zero
-        workspace[_NORM_FORM_OFFSET + 6] = norm_two
-        workspace[_NORM_FORM_OFFSET + 7] = one_one_two_numerator // 2 - norm_two
-        workspace[_NORM_FORM_OFFSET + 8] = one_two_two_numerator // 2 - norm_one
+        workspace[_NORM_FORM_OFFSET : _NORM_FORM_OFFSET + 9] = (
+            norm_zero,
+            zero_zero_one_numerator // 2 - norm_one,
+            zero_one_one_numerator // 2 - norm_zero,
+            norm_one,
+            zero_zero_two_numerator // 2 - norm_two,
+            zero_two_two_numerator // 2 - norm_zero,
+            norm_two,
+            one_one_two_numerator // 2 - norm_two,
+            one_two_two_numerator // 2 - norm_one,
+        )
         norm_all_one = _cubic_coordinate_norm(workspace, 1, 1, 1)
         workspace[_NORM_FORM_OFFSET + 9] = norm_all_one
         norm_coefficient_index: uint64 = 0
@@ -5359,7 +8887,14 @@ def certified_complex_cubic_class_group_v1(
             or minkowski_generator_bound > _CUBIC_MAX_GRH_BOUND_SEARCH
         ):
             return False
+        # A successful closed call cannot retain a factor base beyond the
+        # fixed production envelope below.  Certifying logarithms all the way
+        # to the much larger Minkowski bound would therefore do work whose
+        # only possible outcome is a later resource decline.  Search for a
+        # GRH cutoff inside the usable envelope and fail closed if none exists.
         bdf_value_limit = minkowski_generator_bound
+        if bdf_value_limit > _CUBIC_MAX_FACTOR_SEARCH_BOUND:
+            bdf_value_limit = _CUBIC_MAX_FACTOR_SEARCH_BOUND
         if bdf_value_limit < 32:
             bdf_value_limit = 32
         bdf_value_count: uint64 = checked_uint64(bdf_value_limit + 1)
@@ -5384,14 +8919,27 @@ def certified_complex_cubic_class_group_v1(
             _CUBIC_ANALYTIC_PRECISION,
         ):
             return False
+        # Reuse the consumed value column as a lazy compact splitting plan.
+        # Zero means uncomputed, `-1` means composite, and `1 + r` marks a
+        # prime with `r` degree-one primes in the certified maximal order.  The
+        # explicit GRH inequality probes many neighboring bounds; its helper
+        # extends this exact plan only as far as each doubling step requires.
+        bdf_value_index = 0
+        while bdf_value_index < bdf_value_count:
+            bdf_values[bdf_value_index, 0] = 0
+            bdf_value_index += 1
         generator_bound = minkowski_generator_bound
         use_grh_generator_base = False
         if minkowski_generator_bound > _CUBIC_DIRECT_MINKOWSKI_MAX_BOUND:
+            grh_search_bound = minkowski_generator_bound
+            if grh_search_bound > _CUBIC_MAX_FACTOR_SEARCH_BOUND:
+                grh_search_bound = _CUBIC_MAX_FACTOR_SEARCH_BOUND
             grh_generator_bound = _cubic_grh_generator_bound(
                 log_numerators,
                 log_denominators,
                 log_endpoints,
                 bdf_endpoints,
+                bdf_values,
                 workspace,
                 coefficients,
                 equation_order_index,
@@ -5399,11 +8947,14 @@ def certified_complex_cubic_class_group_v1(
                 identity_one,
                 identity_two,
                 absolute_discriminant,
-                minkowski_generator_bound,
+                grh_search_bound,
                 analytic_scale,
                 _CUBIC_ANALYTIC_PRECISION,
             )
-            if grh_generator_bound < minkowski_generator_bound:
+            if (
+                grh_generator_bound > 0
+                and grh_generator_bound < minkowski_generator_bound
+            ):
                 generator_bound = grh_generator_bound
                 use_grh_generator_base = True
         if (
@@ -5477,9 +9028,11 @@ def certified_complex_cubic_class_group_v1(
                             ):
                                 return False
                             map_base: uint64 = _MAP_SCRATCH_OFFSET + 3 * map_count
-                            workspace[map_base] = map_zero
-                            workspace[map_base + 1] = map_one
-                            workspace[map_base + 2] = map_two
+                            workspace[map_base : map_base + 3] = (
+                                map_zero,
+                                map_one,
+                                map_two,
+                            )
                             map_count += 1
                         root += 1
                 else:
@@ -5555,9 +9108,11 @@ def certified_complex_cubic_class_group_v1(
                                 if map_count >= 3:
                                     return False
                                 map_base = _MAP_SCRATCH_OFFSET + 3 * map_count
-                                workspace[map_base] = map_zero
-                                workspace[map_base + 1] = map_one
-                                workspace[map_base + 2] = map_two
+                                workspace[map_base : map_base + 3] = (
+                                    map_zero,
+                                    map_one,
+                                    map_two,
+                                )
                                 map_count += 1
                             second_value += 1
                         first_value += 1
@@ -5581,16 +9136,18 @@ def certified_complex_cubic_class_group_v1(
                             ramification = 3
                         elif map_count == 2:
                             ramification = 0
-                        workspace[factor_base] = prime
-                        workspace[factor_base + 1] = ramification
-                        workspace[factor_base + 2] = 1
-                        workspace[factor_base + 3] = workspace[map_base]
-                        workspace[factor_base + 4] = workspace[map_base + 1]
-                        workspace[factor_base + 5] = workspace[map_base + 2]
-                        workspace[factor_base + 6] = 1
-                        workspace[factor_base + 7] = group_count
-                        workspace[factor_base + 8] = 0
-                        workspace[factor_base + 9] = 0
+                        workspace[factor_base : factor_base + 10] = (
+                            prime,
+                            ramification,
+                            1,
+                            workspace[map_base],
+                            workspace[map_base + 1],
+                            workspace[map_base + 2],
+                            1,
+                            group_count,
+                            0,
+                            0,
+                        )
                         power_base: uint64 = (
                             _POWER_OFFSET + factor_count * _CUBIC_MAX_POWERS * 9
                         )
@@ -5601,6 +9158,8 @@ def certified_complex_cubic_class_group_v1(
                             workspace[map_base + 1],
                             workspace[map_base + 2],
                             power_base,
+                            hnf_source,
+                            hnf_result,
                         ):
                             return False
                         factor_count += 1
@@ -5611,16 +9170,18 @@ def certified_complex_cubic_class_group_v1(
                         and prime * prime <= factor_search_bound
                     ):
                         factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * factor_count
-                        workspace[factor_base] = prime
-                        workspace[factor_base + 1] = 1
-                        workspace[factor_base + 2] = 2
-                        workspace[factor_base + 3] = 0
-                        workspace[factor_base + 4] = 0
-                        workspace[factor_base + 5] = 0
-                        workspace[factor_base + 6] = 0
-                        workspace[factor_base + 7] = group_count
-                        workspace[factor_base + 8] = 1
-                        workspace[factor_base + 9] = 0
+                        workspace[factor_base : factor_base + 10] = (
+                            prime,
+                            1,
+                            2,
+                            0,
+                            0,
+                            0,
+                            0,
+                            group_count,
+                            1,
+                            0,
+                        )
                         power_base: uint64 = (
                             _POWER_OFFSET + factor_count * _CUBIC_MAX_POWERS * 9
                         )
@@ -5636,15 +9197,19 @@ def certified_complex_cubic_class_group_v1(
                             workspace[map_base + 2],
                             degree_one_power_base,
                             power_base,
+                            hnf_source,
+                            hnf_result,
                         ):
                             return False
                         workspace[factor_base + 6] = 1
                         factor_count += 1
                     group_factor_count = factor_count - group_factor_start
-                    workspace[group_base] = prime
-                    workspace[group_base + 1] = group_factor_start
-                    workspace[group_base + 2] = group_factor_count
-                    workspace[group_base + 3] = 0
+                    workspace[group_base : group_base + 4] = (
+                        prime,
+                        group_factor_start,
+                        group_factor_count,
+                        0,
+                    )
 
                     # A two-map ramified cubic has local type (2,1),(1,1).
                     # Determine which kernel has e=2 from exact P^2 membership.
@@ -5662,6 +9227,8 @@ def certified_complex_cubic_class_group_v1(
                                 power_base,
                                 power_base,
                                 power_base + 9,
+                                hnf_source,
+                                hnf_result,
                             ):
                                 return False
                             workspace[factor_base + 6] = 2
@@ -5715,33 +9282,49 @@ def certified_complex_cubic_class_group_v1(
                 output[35] = _CUBIC_PROOF_TRIVIAL_GRH
             return True
 
-        (
-            small_unit_status,
-            unit_zero,
-            unit_one,
-            unit_two,
-            regulator_lower,
-            regulator_upper,
-        ) = _cubic_small_unit_probe(
-            log_numerators,
-            log_denominators,
-            log_endpoints,
-            workspace,
-            coefficients,
-            denominator,
-            basis_zero_zero,
-            basis_zero_one,
-            basis_zero_two,
-            basis_one_one,
-            basis_one_two,
-            basis_two_two,
-            identity_zero,
-            identity_one,
-            identity_two,
-            analytic_scale,
-            _CUBIC_ANALYTIC_PRECISION,
-        )
+        bounded_relation_collection = relation_effort >= 3 and relation_effort <= 5
+        streaming_relation_collection = bounded_relation_collection
+        small_unit_status = 0
+        unit_zero = identity_zero
+        unit_one = identity_one
+        unit_two = identity_two
+        regulator_lower = 0
+        regulator_upper = 0
+        if not bounded_relation_collection:
+            (
+                small_unit_status,
+                unit_zero,
+                unit_one,
+                unit_two,
+                regulator_lower,
+                regulator_upper,
+            ) = _cubic_small_unit_probe(
+                log_numerators,
+                log_denominators,
+                log_endpoints,
+                workspace,
+                coefficients,
+                denominator,
+                basis_zero_zero,
+                basis_zero_one,
+                basis_zero_two,
+                basis_one_one,
+                basis_one_two,
+                basis_two_two,
+                identity_zero,
+                identity_one,
+                identity_two,
+                analytic_scale,
+                _CUBIC_ANALYTIC_PRECISION,
+            )
         unit_found = small_unit_status == 1
+        # The online exact quotient serves two deliberately bounded regimes:
+        # PARI-shaped relation prefixes, and exhaustive retries for which the
+        # small-unit probe has already supplied the rank-one unit certificate.
+        # A no-unit exhaustive retry must construct the final HNF/SNF anyway,
+        # so retaining a second exact row lattice there cannot close the proof
+        # and only enlarges its resident exact state.
+        online_relation_quotient_enabled = bounded_relation_collection or unit_found
         unit_box = 9
         output[63] = 31
 
@@ -5749,12 +9332,34 @@ def certified_complex_cubic_class_group_v1(
         relation_box = 2
         if not unit_found:
             relation_box = 3
+        relation_collection_target: uint64 = factor_count + 6
+        staged_certification = (
+            relation_effort == 5
+            and factor_count > 0
+            and factor_count <= 11
+            and not unit_found
+            and online_relation_quotient_enabled
+        )
+        if relation_effort == 4:
+            # The exact dependency reconstruction can need a slightly wider
+            # retained tail than PARI's approximate transformed-log sidecar.
+            # This second bounded stage is scheduling only: exact HNF, unit
+            # recovery, and the analytic index proof remain authoritative.
+            relation_collection_target = factor_count + 14
+        elif relation_effort == 5 and not staged_certification:
+            # The measured production stage retains twenty-two dependent-row
+            # opportunities across the eight-ideal prefix.  Modular admission
+            # still bounds storage, while exact certification remains final.
+            relation_collection_target = factor_count + 22
 
         # PARI's stable norm permutation starts with three independent ideals
         # of sufficient norm product, then local redundancies and the rest.
-        # Exact retries traverse five, then eight, positions backward.
+        # Exact bounded retries traverse three, then eight, positions backward
+        # while widening the retained dependency margin.
         adjacent_ideal_count: uint64 = 0
         adjacent_candidate_count: uint64 = 0
+        adjacent_planned_count: uint64 = 0
+        adjacent_enumerated_count: uint64 = 0
         adjacent_prefix_start: uint64 = 0
         adjacent_factor_cursor: uint64 = 0
         adjacent_prefix: uint64 = _CUBIC_INITIAL_ADJACENT_IDEALS
@@ -5762,7 +9367,7 @@ def certified_complex_cubic_class_group_v1(
             adjacent_prefix = _CUBIC_SECOND_ADJACENT_IDEALS
         elif relation_effort == 3:
             adjacent_prefix = _CUBIC_PARI_INITIAL_ADJACENT_IDEALS
-        elif relation_effort == 4:
+        elif relation_effort == 4 or relation_effort == 5:
             adjacent_prefix = _CUBIC_PARI_EXPANDED_ADJACENT_IDEALS
         use_canonical_prefix = (
             relation_effort <= 2
@@ -5770,11 +9375,13 @@ def certified_complex_cubic_class_group_v1(
             and factor_count > adjacent_prefix
         )
         use_pari_permutation = (
-            (relation_effort == 3 or relation_effort == 4)
+            (relation_effort >= 3 and relation_effort <= 5)
             and factor_count <= _CUBIC_NARROW_ADJACENT_MAX_FACTORS
-            and factor_count > adjacent_prefix
+            and factor_count > 0
         )
-        if use_canonical_prefix or use_pari_permutation:
+        if (use_canonical_prefix or use_pari_permutation) and (
+            factor_count > adjacent_prefix
+        ):
             adjacent_prefix_start = factor_count - adjacent_prefix
         if use_pari_permutation:
             # During planning slot +9 holds a one-based permutation position.
@@ -5888,6 +9495,29 @@ def certified_complex_cubic_class_group_v1(
                 sorted_count += 1
             if permutation_count != factor_count:
                 return False
+
+        # Preserve the permutation independently of slot +9, which becomes the
+        # reduced-plan code as soon as an ideal is visited.  PARI consumes this
+        # order backward even when the selected prefix contains the whole small
+        # factor base.
+        adjacent_order_rows: uint64 = 1
+        if use_pari_permutation:
+            adjacent_order_rows = factor_count
+        adjacent_order = arena.foreign_resource(
+            fmpz_matrix,
+            adjacent_order_rows,
+            1,
+        )
+        adjacent_order_index: uint64 = 0
+        while use_pari_permutation and adjacent_order_index < factor_count:
+            adjacent_order_factor_base: uint64 = (
+                _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_order_index
+            )
+            adjacent_order_position: uint64 = checked_uint64(
+                workspace[adjacent_order_factor_base + 9] - 1
+            )
+            adjacent_order[adjacent_order_position, 0] = adjacent_order_index + 1
+            adjacent_order_index += 1
         while adjacent_factor_cursor < factor_count:
             adjacent_factor_index: uint64 = adjacent_factor_cursor
             adjacent_factor_base: uint64 = (
@@ -5902,12 +9532,13 @@ def certified_complex_cubic_class_group_v1(
                 )
             if (
                 relation_effort >= 2
-                and relation_effort <= 4
+                and relation_effort <= 5
                 and workspace[adjacent_factor_base + 8] == 1
             ):
                 schedule_adjacent = True
             if schedule_adjacent:
-                workspace[adjacent_factor_base + 9] = 1
+                if not use_pari_permutation:
+                    workspace[adjacent_factor_base + 9] = 1
                 adjacent_ideal_count += 1
                 if workspace[adjacent_factor_base + 8] == 0:
                     adjacent_candidate_count += 4
@@ -5994,6 +9625,8 @@ def certified_complex_cubic_class_group_v1(
             workspace[group_base + 3] = 0
             group_index += 1
         planning_zero = -relation_box
+        if bounded_relation_collection:
+            planning_zero = relation_box + 1
         while planning_zero <= relation_box:
             planning_one = -relation_box
             while planning_one <= relation_box:
@@ -6043,9 +9676,10 @@ def certified_complex_cubic_class_group_v1(
 
         # Plan one checked T2/LLL shell or ellipsoid per selected ideal.
         adjacent_factor_index = 0
-        while adjacent_factor_index < factor_count:
+        while not bounded_relation_collection and adjacent_factor_index < factor_count:
             factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
             if workspace[factor_base + 9] != 0:
+                adjacent_planned_count += 1
                 output[62] = adjacent_factor_index
                 output[63] = 34
                 power_base = (
@@ -6113,8 +9747,9 @@ def certified_complex_cubic_class_group_v1(
                         ]
                         return False
                     output[63] = 37
-                    adjacent_ellipsoid_count: uint64 = (
-                        _cubic_plan_reduced_ideal_ellipsoid(
+                    adjacent_ellipsoid_count: uint64 = 0
+                    if not bounded_relation_collection:
+                        adjacent_ellipsoid_count = _cubic_plan_reduced_ideal_ellipsoid(
                             workspace,
                             adjacent_basis,
                             adjacent_transforms,
@@ -6123,7 +9758,6 @@ def certified_complex_cubic_class_group_v1(
                             adjacent_factor_index,
                             group_count,
                         )
-                    )
                     output[63] = 38
                     if (
                         adjacent_ellipsoid_count
@@ -6263,9 +9897,13 @@ def certified_complex_cubic_class_group_v1(
                         power_base + 9 * (power_index - 1),
                         power_base,
                         power_base + 9 * power_index,
+                        hnf_source,
+                        hnf_result,
                     ):
                         return False
                     power_index += 1
+                if planned_valuation < workspace[factor_base + 6]:
+                    planned_valuation = workspace[factor_base + 6]
                 workspace[factor_base + 6] = planned_valuation
             factor_index += 1
         output[63] = 4
@@ -6293,11 +9931,55 @@ def certified_complex_cubic_class_group_v1(
             relation_capacity,
             3,
         )
+        # Keep well-typed 1x1 resources when the online quotient is disabled;
+        # every access below is guarded by the same eligibility predicate.
+        online_relation_rows: uint64 = 1
+        online_relation_source_rows: uint64 = 1
+        online_relation_columns: uint64 = 1
+        if online_relation_quotient_enabled:
+            online_relation_rows = factor_count
+            online_relation_source_rows = factor_count + 1
+            online_relation_columns = factor_count
+        online_relation_basis = arena.foreign_resource(
+            fmpz_matrix,
+            online_relation_rows,
+            online_relation_columns,
+        )
+        online_relation_source = arena.foreign_resource(
+            fmpz_matrix,
+            online_relation_source_rows,
+            online_relation_columns,
+        )
+        online_relation_hnf = arena.foreign_resource(
+            fmpz_matrix,
+            online_relation_source_rows,
+            online_relation_columns,
+        )
+        # The exact support bit for every admitted row is recorded alongside
+        # the online HNF.  The full capacity is already bounded and lets every
+        # relation producer share one transcript without repacking it later.
+        relation_support = arena.foreign_resource(
+            fmpz_matrix,
+            relation_capacity,
+            1,
+        )
+        online_membership_coordinates = arena.foreign_resource(
+            fmpz_matrix,
+            1,
+            factor_count,
+        )
+        online_relation_count: uint64 = 0
+        online_relation_status = 1
         dependency_coordinates = arena.foreign_resource(
             fmpz_matrix,
             9,
             3,
         )
+        if streaming_relation_collection:
+            modular_index: uint64 = 0
+            while modular_index < _CUBIC_MODULAR_WORKSPACE_LENGTH:
+                modular_workspace[modular_index] = 0
+                modular_index += 1
         relation_row: uint64 = 0
         while relation_row < relation_capacity:
             relation_elements[relation_row, 0] = identity_zero
@@ -6346,17 +10028,72 @@ def certified_complex_cubic_class_group_v1(
                 relation_count += 1
             group_index += 1
 
-        trivial_relation_prefix = _cubic_small_relation_prefix_is_trivial(
-            relation_candidates,
-            relation_count,
-            factor_count,
+        if streaming_relation_collection:
+            modular_relation_row: uint64 = 0
+            while modular_relation_row < relation_count:
+                if not _cubic_modular_admit_relation(
+                    modular_workspace,
+                    relation_candidates,
+                    relation_elements,
+                    modular_relation_row,
+                    relation_collection_target,
+                    factor_count,
+                ):
+                    return False
+                modular_relation_row += 1
+
+        while (
+            online_relation_quotient_enabled
+            and online_relation_count < relation_count
+            and online_relation_status != 2
+        ):
+            online_relation_status = _cubic_online_relation_lattice_update(
+                online_relation_basis,
+                online_relation_source,
+                online_relation_hnf,
+                relation_support,
+                online_membership_coordinates,
+                relation_candidates,
+                online_relation_count,
+                factor_count,
+            )
+            if online_relation_status < 0:
+                return False
+            online_relation_count += 1
+
+        # PARI's Buchmann collector does not exhaust every planned reduced
+        # ideal once a presentation has acquired its bounded safety margin.
+        # For a complex cubic the unit rank is one, so the first effort asks
+        # for `factor_count + RELSUP + 1` exact rows.  This is scheduling only:
+        # the HNF, exact unit reconstruction, and rigorous index-one proof
+        # below remain the authority, and an insufficient prefix declines so
+        # that a later effort can resume with the exhaustive plan.
+        trivial_relation_prefix = (
+            online_relation_quotient_enabled and online_relation_status == 2
+        )
+        relation_collection_complete = trivial_relation_prefix or (
+            streaming_relation_collection
+            and _cubic_modular_relation_collection_complete(
+                modular_workspace,
+                relation_count,
+                relation_collection_target,
+                factor_count,
+            )
         )
         coordinate_zero = -relation_box
-        while coordinate_zero <= relation_box and not trivial_relation_prefix:
+        if bounded_relation_collection:
+            # The PARI-shaped effort starts from rational-prime rows and then
+            # traverses reduced ideals.  Generic small order elements belong
+            # to the exhaustive Sage.js fallback and would consume the row
+            # target with a structurally weaker presentation.
+            coordinate_zero = relation_box + 1
+        while coordinate_zero <= relation_box and not relation_collection_complete:
             coordinate_one = -relation_box
-            while coordinate_one <= relation_box and not trivial_relation_prefix:
+            while coordinate_one <= relation_box and not relation_collection_complete:
                 coordinate_two = -relation_box
-                while coordinate_two <= relation_box and not trivial_relation_prefix:
+                while (
+                    coordinate_two <= relation_box and not relation_collection_complete
+                ):
                     nonzero = (
                         coordinate_zero != 0
                         or coordinate_one != 0
@@ -6370,6 +10107,7 @@ def certified_complex_cubic_class_group_v1(
                     if nonzero and canonical_sign > 0:
                         next_relation_count = _cubic_append_smooth_principal_relation(
                             workspace,
+                            modular_workspace,
                             relation_candidates,
                             relation_elements,
                             relation_count,
@@ -6379,134 +10117,147 @@ def certified_complex_cubic_class_group_v1(
                             coordinate_zero,
                             coordinate_one,
                             coordinate_two,
+                            hnf_source,
+                            hnf_result,
+                            streaming_relation_collection,
+                            relation_collection_target,
                         )
                         if next_relation_count > relation_capacity:
                             return False
-                        if next_relation_count > relation_count:
-                            trivial_relation_prefix = (
-                                _cubic_small_relation_prefix_is_trivial(
+                        relation_count = next_relation_count
+                        while (
+                            online_relation_quotient_enabled
+                            and online_relation_count < relation_count
+                            and online_relation_status != 2
+                        ):
+                            online_relation_status = (
+                                _cubic_online_relation_lattice_update(
+                                    online_relation_basis,
+                                    online_relation_source,
+                                    online_relation_hnf,
+                                    relation_support,
+                                    online_membership_coordinates,
                                     relation_candidates,
-                                    next_relation_count,
+                                    online_relation_count,
                                     factor_count,
                                 )
                             )
-                        relation_count = next_relation_count
+                            if online_relation_status < 0:
+                                return False
+                            online_relation_count += 1
+                        trivial_relation_prefix = (
+                            online_relation_quotient_enabled
+                            and online_relation_status == 2
+                        )
+                        relation_collection_complete = trivial_relation_prefix or (
+                            streaming_relation_collection
+                            and _cubic_modular_relation_collection_complete(
+                                modular_workspace,
+                                relation_count,
+                                relation_collection_target,
+                                factor_count,
+                            )
+                        )
                     coordinate_two += 1
                 coordinate_one += 1
             coordinate_zero += 1
 
-        adjacent_factor_index = 0
-        while adjacent_factor_index < factor_count and not trivial_relation_prefix:
-            factor_base = _FACTOR_OFFSET + _FACTOR_STRIDE * adjacent_factor_index
-            adjacent_pair_code = workspace[factor_base + 9]
-            if adjacent_pair_code > 0:
-                power_base = (
-                    _POWER_OFFSET + adjacent_factor_index * _CUBIC_MAX_POWERS * 9
-                )
-                adjacent_basis = power_base
-                adjacent_transform_row = 3 * adjacent_factor_index
-                if workspace[factor_base + 8] == 1 or adjacent_pair_code >= 5:
-                    (
-                        next_relation_count,
-                        admitted_ellipsoid_count,
-                    ) = _cubic_append_reduced_ideal_ellipsoid(
-                        workspace,
-                        adjacent_basis,
-                        adjacent_transforms,
-                        adjacent_transform_row,
-                        adjacent_ellipsoid_parameters,
-                        adjacent_factor_index,
-                        relation_candidates,
-                        relation_elements,
-                        relation_count,
-                        relation_capacity,
-                        factor_count,
-                        group_count,
-                    )
-                    if (
-                        next_relation_count > relation_capacity
-                        or admitted_ellipsoid_count
-                        != adjacent_ellipsoid_parameters[adjacent_factor_index, 10]
-                    ):
-                        return False
-                    relation_count = next_relation_count
-                if workspace[factor_base + 8] == 0:
-                    admission_pair = adjacent_pair_code - 1
-                    if adjacent_pair_code >= 5:
-                        admission_pair = adjacent_pair_code - 5
-                    if admission_pair < 0 or admission_pair > 2:
-                        return False
-                    adjacent_first = 0
-                    adjacent_second = 1
-                    if admission_pair == 1:
-                        adjacent_second = 2
-                    elif admission_pair == 2:
-                        adjacent_first = 1
-                        adjacent_second = 2
-                    adjacent_direction: uint64 = 0
-                    while adjacent_direction < 4:
-                        adjacent_left = 1
-                        adjacent_right = 0
-                        if adjacent_direction == 1:
-                            adjacent_left = 0
-                            adjacent_right = 1
-                        elif adjacent_direction == 2:
-                            adjacent_right = 1
-                        elif adjacent_direction == 3:
-                            adjacent_left = -1
-                            adjacent_right = 1
-                        adjacent_zero = 0
-                        adjacent_one = 0
-                        adjacent_two = 0
-                        if adjacent_first == 0:
-                            adjacent_zero = adjacent_left
-                        elif adjacent_first == 1:
-                            adjacent_one = adjacent_left
-                        else:
-                            adjacent_two = adjacent_left
-                        if adjacent_second == 0:
-                            adjacent_zero = adjacent_right
-                        elif adjacent_second == 1:
-                            adjacent_one = adjacent_right
-                        else:
-                            adjacent_two = adjacent_right
-                        (
-                            coordinate_zero,
-                            coordinate_one,
-                            coordinate_two,
-                        ) = _cubic_transformed_ideal_coordinates(
-                            workspace,
-                            adjacent_basis,
-                            adjacent_transforms,
-                            adjacent_transform_row,
-                            adjacent_zero,
-                            adjacent_one,
-                            adjacent_two,
-                        )
-                        next_relation_count = _cubic_append_smooth_principal_relation(
-                            workspace,
-                            relation_candidates,
-                            relation_elements,
-                            relation_count,
-                            relation_capacity,
-                            factor_count,
-                            group_count,
-                            coordinate_zero,
-                            coordinate_one,
-                            coordinate_two,
-                        )
-                        if next_relation_count > relation_capacity:
-                            return False
-                        relation_count = next_relation_count
-                        adjacent_direction += 1
-            adjacent_factor_index += 1
+        adjacent_factor_cursor = 0
+        adjacent_phase: uint64 = 0
+        adjacent_direction: uint64 = 0
+        ellipsoid_zero: int = 0
+        ellipsoid_one: int = 0
+        ellipsoid_two: int = 0
+        ellipsoid_count: uint64 = 0
+        # At most (2 * 64 + 1)^3 ellipsoid proposals and four shell vectors
+        # per ideal. The retained cursor also supports smaller budgets.
+        adjacent_proposal_budget: uint64 = 2146693 * factor_count
+        (
+            relation_count,
+            online_relation_count,
+            online_relation_status,
+            adjacent_planned_count,
+            adjacent_enumerated_count,
+            adjacent_factor_cursor,
+            adjacent_phase,
+            adjacent_direction,
+            ellipsoid_zero,
+            ellipsoid_one,
+            ellipsoid_two,
+            ellipsoid_count,
+        ) = _cubic_collect_adjacent_relation_prefix(
+            workspace,
+            modular_workspace,
+            adjacent_order,
+            adjacent_embedding_source,
+            adjacent_embedding_reduced,
+            adjacent_embedding_transform,
+            adjacent_transforms,
+            adjacent_ellipsoid_parameters,
+            relation_candidates,
+            relation_elements,
+            hnf_source,
+            hnf_result,
+            online_relation_basis,
+            online_relation_source,
+            online_relation_hnf,
+            relation_support,
+            online_membership_coordinates,
+            output,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            adjacent_real_root,
+            adjacent_complex_real_root,
+            adjacent_complex_imaginary_root,
+            analytic_scale,
+            factor_count,
+            group_count,
+            relation_effort,
+            bounded_relation_collection,
+            use_pari_permutation,
+            streaming_relation_collection,
+            online_relation_quotient_enabled,
+            relation_collection_target,
+            relation_capacity,
+            relation_count,
+            online_relation_count,
+            online_relation_status,
+            adjacent_planned_count,
+            adjacent_enumerated_count,
+            adjacent_factor_cursor,
+            adjacent_phase,
+            adjacent_direction,
+            ellipsoid_zero,
+            ellipsoid_one,
+            ellipsoid_two,
+            ellipsoid_count,
+            adjacent_proposal_budget,
+        )
+        if online_relation_status < 0 or relation_count > relation_capacity:
+            return False
+        trivial_relation_prefix = (
+            online_relation_quotient_enabled and online_relation_status == 2
+        )
+        relation_collection_complete = trivial_relation_prefix or (
+            streaming_relation_collection
+            and _cubic_modular_relation_collection_complete(
+                modular_workspace,
+                relation_count,
+                relation_collection_target,
+                factor_count,
+            )
+        )
 
-        # The first adaptive call keeps the ordinary relation set unchanged.
-        # A later authorized retry reaches this point with a nonzero scheduled
-        # multiplier limit.  The compact dependency pipeline below therefore
-        # gets the first opportunity to reconstruct a unit.
+        # The bounded PARI-shaped stages use adjacent ideals but no compound
+        # products.  Only a later exact-status-authorized effort reaches this
+        # point with a nonzero multiplier limit, so the compact dependency
+        # pipeline gets the first opportunity to reconstruct a unit.
         compound_search_active = (
-            not trivial_relation_prefix
+            not relation_collection_complete
             and not unit_found
             and scheduled_compound_multiplier_limit > 0
         )
@@ -6549,6 +10300,8 @@ def certified_complex_cubic_class_group_v1(
                     compound_multiplier_index,
                     compound_multiplier_exponent,
                     compound_multiplier_power_offset,
+                    hnf_source,
+                    hnf_result,
                 ):
                     return False
                 compound_source_index = compound_multiplier_index + 1
@@ -6564,6 +10317,8 @@ def certified_complex_cubic_class_group_v1(
                             compound_multiplier_power_offset,
                             compound_source_index,
                             _MAP_SCRATCH_OFFSET,
+                            hnf_source,
+                            hnf_result,
                         ):
                             return False
                         compound_transform_row: uint64 = 3 * compound_plan_index
@@ -6630,6 +10385,8 @@ def certified_complex_cubic_class_group_v1(
                         power_base + 9 * (power_index - 1),
                         power_base,
                         power_base + 9 * power_index,
+                        hnf_source,
+                        hnf_result,
                     ):
                         return False
                     power_index += 1
@@ -6745,6 +10502,7 @@ def certified_complex_cubic_class_group_v1(
                             next_relation_count = (
                                 _cubic_append_smooth_principal_relation(
                                     workspace,
+                                    modular_workspace,
                                     relation_candidates,
                                     relation_elements,
                                     relation_count,
@@ -6754,6 +10512,10 @@ def certified_complex_cubic_class_group_v1(
                                     coordinate_zero,
                                     coordinate_one,
                                     coordinate_two,
+                                    hnf_source,
+                                    hnf_result,
+                                    streaming_relation_collection,
+                                    relation_collection_target,
                                 )
                             )
                             if next_relation_count > relation_capacity:
@@ -6767,228 +10529,577 @@ def certified_complex_cubic_class_group_v1(
         if compound_search_active and compound_plan_index != compound_pair_count:
             return False
 
+        # A proof attempt owns its candidate unit and regulator. Discovery
+        # retains the cheap-unit witness unchanged if certification declines.
+        proof_unit_found = unit_found
+        proof_unit_zero = unit_zero
+        proof_unit_one = unit_one
+        proof_unit_two = unit_two
+        proof_regulator_lower = regulator_lower
+        proof_regulator_upper = regulator_upper
+
         uncompacted_relation_count: uint64 = relation_count
         output[50] = factor_count
         output[51] = group_count
         output[52] = relation_count
         output[63] = 41
+        # The small-unit path deliberately retains every principal row for its
+        # later dependency transcript, so its downstream workspaces still rely
+        # on the tall HNF shape.  Reuse the square online HNF only in the
+        # no-small-unit regime where the canonical support transcript also
+        # replaces that later tall-prefix pass.
+        reuse_online_relation_hnf = (
+            not proof_unit_found
+            and online_relation_quotient_enabled
+            and online_relation_count == relation_count
+        )
+        reuse_online_relation_support = reuse_online_relation_hnf
+        presentation_storage_rows: uint64 = relation_count
+        if staged_certification:
+            # After the target is reached every admitted row increases modular
+            # rank. Across both stages there can be at most n further rows.
+            presentation_storage_rows = 2 * factor_count + 22
+            if (
+                relation_count > presentation_storage_rows
+                or not reuse_online_relation_hnf
+            ):
+                output[63] = 44
+                return False
         relation_matrix = arena.foreign_resource(
             fmpz_matrix,
-            relation_count,
+            presentation_storage_rows,
             factor_count,
         )
-        relation_row = 0
-        while relation_row < relation_count:
-            factor_index = 0
-            while factor_index < factor_count:
-                relation_matrix[relation_row, factor_index] = relation_candidates[
-                    relation_row, factor_index
-                ]
-                factor_index += 1
-            relation_row += 1
+        relation_hnf_rows: uint64 = relation_count
+        if reuse_online_relation_hnf:
+            relation_hnf_rows = factor_count
         relation_hnf = arena.foreign_resource(
             fmpz_matrix,
+            relation_hnf_rows,
+            factor_count,
+        )
+        # Modular full rank and an exact online index-one certificate are
+        # independent rank witnesses. Row synchronization alone is not one.
+        presentation_full_rank_established = (
+            streaming_relation_collection
+            and modular_workspace[_CUBIC_MODULAR_RANK_OFFSET] == factor_count
+        ) or (
+            online_relation_quotient_enabled
+            and online_relation_count == relation_count
+            and online_relation_status == 2
+        )
+        presentation_status, relation_rank = _cubic_prepare_full_relation_presentation(
+            relation_candidates,
+            online_relation_basis,
+            relation_matrix,
+            relation_hnf,
+            output,
+            relation_count,
+            factor_count,
+            reuse_online_relation_hnf,
+            presentation_full_rank_established,
+        )
+        # Status zero describes genuine rank insufficiency, not an error.
+        # This extraction does not authorize root-level resumable collection.
+        if presentation_status != 1:
+            return False
+        relation_smith = arena.foreign_resource(
+            fmpz_matrix,
+            presentation_storage_rows,
+            factor_count,
+        )
+        (
+            presentation_status,
+            class_number_upper,
+            invariant_count,
+        ) = _cubic_finish_full_relation_presentation(
+            workspace,
+            relation_matrix,
+            relation_smith,
+            output,
             relation_count,
             factor_count,
         )
-        if relation_count < factor_count or not fmpz_matrix_hnf_into(
-            relation_hnf,
-            relation_matrix,
-        ):
+        if presentation_status != 1:
             return False
-        relation_rank: uint64 = 0
-        relation_row: uint64 = 0
-        while relation_row < relation_count:
-            row_nonzero = False
-            factor_index = 0
-            while factor_index < factor_count:
-                if relation_hnf[relation_row, factor_index] != 0:
-                    row_nonzero = True
-                factor_index += 1
-            if row_nonzero:
-                relation_rank += 1
-            relation_row += 1
-        output[53] = relation_rank
-        output[63] = 42
-        if relation_rank != factor_count:
-            return False
-        relation_smith = arena.foreign_resource(
-            fmpz_matrix_snf,
-            relation_matrix,
-        )
-        class_number_upper = 1
-        invariant_count: uint64 = 0
-        factor_index = 0
-        while factor_index < factor_count:
-            invariant = relation_smith[factor_index, factor_index]
-            if invariant < 0:
-                invariant = -invariant
-            if invariant < 1:
-                return False
-            if factor_index > 0:
-                previous_invariant = relation_smith[factor_index - 1, factor_index - 1]
-                if previous_invariant < 0:
-                    previous_invariant = -previous_invariant
-                if invariant % previous_invariant != 0:
-                    return False
-            class_number_upper *= invariant
-            if invariant > 1:
-                if invariant_count >= 8:
-                    return False
-                workspace[_ROW_SCRATCH_OFFSET + invariant_count] = invariant
-                invariant_count += 1
-            factor_index += 1
-        output[54] = class_number_upper
-        output[55] = invariant_count
-        output[63] = 43
 
         # Principal rows present an upper group surjecting onto the class
         # group. If that exact quotient is trivial, no unit or analytic index
         # calculation can strengthen the class-group conclusion.
         if class_number_upper == 1:
-            if transcript_mode == 1:
-                if not _cubic_publish_relation_factor_rows(
-                    workspace,
+            return _cubic_publish_trivial_relation_presentation(
+                workspace,
+                relation_matrix,
+                relation_elements,
+                output,
+                transcript_factor_rows,
+                transcript_relation_rows,
+                transcript_relation_elements,
+                transcript_mode,
+                relation_count,
+                factor_count,
+                group_count,
+                relation_rank,
+                used_compound_multiplier_limit,
+                generator_bound,
+                identity_zero,
+                identity_one,
+                identity_two,
+                order_discriminant,
+                equation_order_index,
+                denominator,
+                relation_box,
+                unit_box,
+                equation_discriminant,
+                use_grh_generator_base,
+                adjacent_planned_count,
+                adjacent_enumerated_count,
+                online_relation_count,
+            )
+
+        if staged_certification:
+            # All owners are allocated once, outside the attempt loop. The
+            # same borrowed proof stages serve this bounded and the lazy
+            # one-shot route below; logical prefixes never include padding.
+            staged_dependency_rows: uint64 = presentation_storage_rows - factor_count
+            staged_incremental_basis = arena.foreign_resource(
+                fmpz_matrix,
+                1,
+                1,
+            )
+            staged_incremental_source = arena.foreign_resource(
+                fmpz_matrix,
+                1,
+                1,
+            )
+            staged_incremental_hnf = arena.foreign_resource(
+                fmpz_matrix,
+                1,
+                1,
+            )
+            staged_proof_relation_support = arena.foreign_resource(
+                fmpz_matrix,
+                presentation_storage_rows,
+                1,
+            )
+            staged_proof_membership_coordinates = arena.foreign_resource(
+                fmpz_matrix,
+                1,
+                factor_count,
+            )
+            staged_compact_relation_matrix = arena.foreign_resource(
+                fmpz_matrix,
+                presentation_storage_rows,
+                factor_count,
+            )
+            staged_compact_relation_hnf = arena.foreign_resource(
+                fmpz_matrix,
+                presentation_storage_rows,
+                factor_count,
+            )
+            staged_compact_relation_elements = arena.foreign_resource(
+                fmpz_matrix,
+                presentation_storage_rows,
+                3,
+            )
+            staged_compact_smith = arena.foreign_resource(
+                fmpz_matrix,
+                presentation_storage_rows,
+                factor_count,
+            )
+            staged_compact_relation_transform = arena.foreign_resource(
+                fmpz_matrix,
+                presentation_storage_rows,
+                presentation_storage_rows,
+            )
+            staged_dependency_relations = arena.foreign_resource(
+                fmpz_matrix,
+                staged_dependency_rows,
+                presentation_storage_rows,
+            )
+            staged_dependency_reduced = arena.foreign_resource(
+                fmpz_matrix,
+                staged_dependency_rows,
+                presentation_storage_rows,
+            )
+            staged_dependency_lll_transform = arena.foreign_resource(
+                fmpz_matrix,
+                staged_dependency_rows,
+                staged_dependency_rows,
+            )
+            staged_relation_logs = arena.foreign_resource(
+                fmpz_matrix,
+                presentation_storage_rows,
+                2,
+            )
+            staged_unit_combinations = arena.foreign_resource(
+                fmpz_matrix,
+                2,
+                presentation_storage_rows,
+            )
+            staged_recovery_relation_matrix = arena.foreign_resource(
+                fmpz_matrix,
+                presentation_storage_rows,
+                factor_count,
+            )
+            staged_recovery_relation_elements = arena.foreign_resource(
+                fmpz_matrix,
+                presentation_storage_rows,
+                3,
+            )
+            staged_prefix_matrix = arena.foreign_resource(
+                fmpz_matrix,
+                presentation_storage_rows,
+                factor_count,
+            )
+            staged_prefix_hnf = arena.foreign_resource(
+                fmpz_matrix,
+                presentation_storage_rows,
+                factor_count,
+            )
+            staged_prefix_transform = arena.foreign_resource(
+                fmpz_matrix,
+                presentation_storage_rows,
+                presentation_storage_rows,
+            )
+            staged_prefix_dependencies = arena.foreign_resource(
+                fmpz_matrix,
+                staged_dependency_rows,
+                presentation_storage_rows,
+            )
+            staged_prefix_dependencies_reduced = arena.foreign_resource(
+                fmpz_matrix,
+                staged_dependency_rows,
+                presentation_storage_rows,
+            )
+            staged_prefix_dependency_transform = arena.foreign_resource(
+                fmpz_matrix,
+                staged_dependency_rows,
+                staged_dependency_rows,
+            )
+            staged_prefix_logs = arena.foreign_resource(
+                fmpz_matrix,
+                presentation_storage_rows,
+                2,
+            )
+            staged_prefix_unit_combinations = arena.foreign_resource(
+                fmpz_matrix,
+                2,
+                presentation_storage_rows,
+            )
+            staged_prefix_unit_result = arena.foreign_resource(
+                fmpz_matrix,
+                1,
+                5,
+            )
+            staged_analytic_values = arena.foreign_resource(
+                fmpz_matrix,
+                256,
+                1,
+            )
+            staged_analytic_endpoints = arena.foreign_resource(
+                fmpz_matrix,
+                1024,
+                1,
+            )
+            staged_proof = CubicProofWorkspace(
+                staged_analytic_endpoints,
+                staged_analytic_values,
+                analytic_workspace,
+                staged_compact_relation_elements,
+                staged_compact_relation_hnf,
+                staged_compact_relation_matrix,
+                staged_compact_relation_transform,
+                staged_compact_smith,
+                dependency_coordinates,
+                staged_dependency_lll_transform,
+                staged_dependency_reduced,
+                staged_dependency_relations,
+                staged_incremental_basis,
+                staged_incremental_hnf,
+                staged_incremental_source,
+                log_denominators,
+                log_endpoints,
+                log_numerators,
+                staged_prefix_dependencies,
+                staged_prefix_dependencies_reduced,
+                staged_prefix_dependency_transform,
+                staged_prefix_hnf,
+                staged_prefix_logs,
+                staged_prefix_matrix,
+                staged_prefix_transform,
+                staged_prefix_unit_combinations,
+                staged_prefix_unit_result,
+                staged_proof_membership_coordinates,
+                staged_proof_relation_support,
+                staged_recovery_relation_elements,
+                staged_recovery_relation_matrix,
+                relation_elements,
+                relation_hnf,
+                staged_relation_logs,
+                relation_matrix,
+                relation_support,
+                staged_unit_combinations,
+                workspace,
+            )
+            staged_attempt: uint64 = 0
+            while staged_attempt < 2:
+                staged_status = _cubic_try_bounded_exact_closure(
+                    staged_proof,
+                    absolute_discriminant,
+                    analytic_scale,
+                    basis_one_one,
+                    basis_one_two,
+                    basis_two_two,
+                    basis_zero_one,
+                    basis_zero_two,
+                    basis_zero_zero,
+                    class_number_upper,
+                    coefficients,
+                    constant,
+                    denominator,
+                    equation_discriminant,
+                    equation_order_index,
                     factor_count,
+                    factor_search_bound,
+                    generator_bound,
+                    group_count,
+                    identity_one,
+                    identity_two,
+                    identity_zero,
+                    invariant_count,
+                    linear,
+                    order_discriminant,
+                    output,
+                    quadratic,
+                    relation_box,
+                    relation_count,
+                    relation_rank,
                     transcript_factor_rows,
-                ):
+                    transcript_mode,
+                    transcript_relation_elements,
+                    transcript_relation_rows,
+                    unit_box,
+                    used_compound_multiplier_limit,
+                )
+                if staged_status == 1:
+                    return True
+                if staged_status != 0:
+                    output[63] = 44
                     return False
-                if not _cubic_publish_relation_rows(
-                    relation_matrix,
+                if staged_attempt != 0:
+                    return False
+                # Only the proof helper's explicit insufficiency exit permits
+                # resumption. A second attempt never rebuilds the ideal plan,
+                # modular admission state, online HNF, or proposal cursor.
+                previous_relation_count: uint64 = relation_count
+                relation_collection_target = factor_count + 22
+                (
+                    relation_count,
+                    online_relation_count,
+                    online_relation_status,
+                    adjacent_planned_count,
+                    adjacent_enumerated_count,
+                    adjacent_factor_cursor,
+                    adjacent_phase,
+                    adjacent_direction,
+                    ellipsoid_zero,
+                    ellipsoid_one,
+                    ellipsoid_two,
+                    ellipsoid_count,
+                ) = _cubic_collect_adjacent_relation_prefix(
+                    workspace,
+                    modular_workspace,
+                    adjacent_order,
+                    adjacent_embedding_source,
+                    adjacent_embedding_reduced,
+                    adjacent_embedding_transform,
+                    adjacent_transforms,
+                    adjacent_ellipsoid_parameters,
+                    relation_candidates,
                     relation_elements,
+                    hnf_source,
+                    hnf_result,
+                    online_relation_basis,
+                    online_relation_source,
+                    online_relation_hnf,
+                    relation_support,
+                    online_membership_coordinates,
+                    output,
+                    basis_zero_zero,
+                    basis_zero_one,
+                    basis_zero_two,
+                    basis_one_one,
+                    basis_one_two,
+                    basis_two_two,
+                    adjacent_real_root,
+                    adjacent_complex_real_root,
+                    adjacent_complex_imaginary_root,
+                    analytic_scale,
+                    factor_count,
+                    group_count,
+                    relation_effort,
+                    bounded_relation_collection,
+                    use_pari_permutation,
+                    streaming_relation_collection,
+                    online_relation_quotient_enabled,
+                    relation_collection_target,
+                    relation_capacity,
+                    relation_count,
+                    online_relation_count,
+                    online_relation_status,
+                    adjacent_planned_count,
+                    adjacent_enumerated_count,
+                    adjacent_factor_cursor,
+                    adjacent_phase,
+                    adjacent_direction,
+                    ellipsoid_zero,
+                    ellipsoid_one,
+                    ellipsoid_two,
+                    ellipsoid_count,
+                    adjacent_proposal_budget,
+                )
+                if (
+                    online_relation_status < 0
+                    or relation_count > presentation_storage_rows
+                    or relation_count < previous_relation_count
+                    or online_relation_count != relation_count
+                ):
+                    output[63] = 44
+                    return False
+                if relation_count == previous_relation_count:
+                    output[63] = 43
+                    return False
+                staged_attempt += 1
+                # Admission reuses ROW scratch. Recompute the complete exact
+                # quotient and its invariant factors before another proof.
+                presentation_full_rank_established = True
+                presentation_status, relation_rank = (
+                    _cubic_prepare_full_relation_presentation(
+                        relation_candidates,
+                        online_relation_basis,
+                        relation_matrix,
+                        relation_hnf,
+                        output,
+                        relation_count,
+                        factor_count,
+                        reuse_online_relation_hnf,
+                        presentation_full_rank_established,
+                    )
+                )
+                if presentation_status != 1:
+                    output[63] = 44
+                    return False
+                (
+                    presentation_status,
+                    class_number_upper,
+                    invariant_count,
+                ) = _cubic_finish_full_relation_presentation(
+                    workspace,
+                    relation_matrix,
+                    relation_smith,
+                    output,
                     relation_count,
                     factor_count,
-                    transcript_relation_rows,
-                    transcript_relation_elements,
-                ):
+                )
+                if presentation_status != 1:
+                    output[63] = 44
                     return False
-            output_index = 0
-            while output_index < len(output):
-                output[output_index] = 0
-                output_index += 1
-            output[0] = 2
-            output[1] = 1
-            output[19] = used_compound_multiplier_limit
-            output[20] = generator_bound
-            output[21] = factor_count
-            output[22] = group_count
-            output[23] = relation_count
-            output[24] = 1
-            output[25] = identity_zero
-            output[26] = identity_one
-            output[27] = identity_two
-            output[28] = order_discriminant
-            output[29] = equation_order_index
-            output[30] = denominator
-            output[31] = relation_box
-            output[32] = unit_box
-            output[33] = relation_rank
-            output[34] = equation_discriminant
-            output[35] = _CUBIC_PROOF_TRIVIAL_MINKOWSKI
-            if use_grh_generator_base:
-                output[35] = _CUBIC_PROOF_TRIVIAL_GRH
-            return True
+                if class_number_upper == 1:
+                    return _cubic_publish_trivial_relation_presentation(
+                        workspace,
+                        relation_matrix,
+                        relation_elements,
+                        output,
+                        transcript_factor_rows,
+                        transcript_relation_rows,
+                        transcript_relation_elements,
+                        transcript_mode,
+                        relation_count,
+                        factor_count,
+                        group_count,
+                        relation_rank,
+                        used_compound_multiplier_limit,
+                        generator_bound,
+                        identity_zero,
+                        identity_one,
+                        identity_two,
+                        order_discriminant,
+                        equation_order_index,
+                        denominator,
+                        relation_box,
+                        unit_box,
+                        equation_discriminant,
+                        use_grh_generator_base,
+                        adjacent_planned_count,
+                        adjacent_enumerated_count,
+                        online_relation_count,
+                    )
+            return False
 
-        # Retain exactly the rows that change the incremental canonical HNF,
-        # avoiding a transformation of the wide collection matrix.
-        relation_support = arena.foreign_resource(
-            fmpz_matrix,
-            relation_count,
-            1,
-        )
+        # Retain exactly the rows that change the incremental canonical HNF.
+        # Once the prefix has full rank, an exact triangular membership test
+        # rejects contained rows without invoking FLINT.  Thus HNF is recomputed
+        # only when the integral lattice genuinely grows.
+        incremental_rows: uint64 = factor_count
+        incremental_source_rows: uint64 = factor_count + 1
+        incremental_columns: uint64 = factor_count
+        if reuse_online_relation_support:
+            incremental_rows = 1
+            incremental_source_rows = 1
+            incremental_columns = 1
         incremental_basis = arena.foreign_resource(
             fmpz_matrix,
-            factor_count,
-            factor_count,
+            incremental_rows,
+            incremental_columns,
         )
         incremental_source = arena.foreign_resource(
             fmpz_matrix,
-            factor_count + 1,
-            factor_count,
+            incremental_source_rows,
+            incremental_columns,
         )
         incremental_hnf = arena.foreign_resource(
             fmpz_matrix,
-            factor_count + 1,
+            incremental_source_rows,
+            incremental_columns,
+        )
+        proof_relation_support = arena.foreign_resource(
+            fmpz_matrix,
+            relation_count,
+            one_column,
+        )
+        proof_membership_coordinates = arena.foreign_resource(
+            fmpz_matrix,
+            one_column,
             factor_count,
         )
-        support_count: uint64 = 0
-        compact_source_row: uint64 = 0
-        while compact_source_row < relation_count:
-            incremental_row: uint64 = 0
-            while incremental_row < factor_count:
-                incremental_column: uint64 = 0
-                while incremental_column < factor_count:
-                    incremental_source[incremental_row, incremental_column] = (
-                        incremental_basis[incremental_row, incremental_column]
-                    )
-                    incremental_column += 1
-                incremental_row += 1
-            incremental_column = 0
-            while incremental_column < factor_count:
-                incremental_source[factor_count, incremental_column] = relation_matrix[
-                    compact_source_row, incremental_column
-                ]
-                incremental_column += 1
-            if not fmpz_matrix_hnf_into(incremental_hnf, incremental_source):
-                return False
-            support_used = False
-            incremental_row = 0
-            while incremental_row < factor_count:
-                incremental_column = 0
-                while incremental_column < factor_count:
-                    if (
-                        incremental_hnf[incremental_row, incremental_column]
-                        != incremental_basis[incremental_row, incremental_column]
-                    ):
-                        support_used = True
-                    incremental_column += 1
-                incremental_row += 1
-            if support_used:
-                if support_count >= factor_count + 64:
-                    output[59] = 421
-                    output[60] = support_count
-                    return False
-                relation_support[compact_source_row, 0] = 1
-                support_count += 1
-                incremental_row = 0
-                while incremental_row < factor_count:
-                    incremental_column = 0
-                    while incremental_column < factor_count:
-                        incremental_basis[incremental_row, incremental_column] = (
-                            incremental_hnf[incremental_row, incremental_column]
-                        )
-                        incremental_column += 1
-                    incremental_row += 1
-            compact_source_row += 1
-        if support_count < factor_count:
+        support_count, support_ready = _cubic_prepare_proof_relation_support(
+            relation_matrix,
+            relation_hnf,
+            relation_support,
+            proof_relation_support,
+            proof_membership_coordinates,
+            incremental_basis,
+            incremental_source,
+            incremental_hnf,
+            output,
+            relation_count,
+            factor_count,
+            relation_rank,
+            proof_unit_found,
+            reuse_online_relation_support,
+        )
+        if not support_ready:
             return False
-        incremental_row = 0
-        while incremental_row < factor_count:
-            incremental_column = 0
-            while incremental_column < factor_count:
-                if (
-                    incremental_basis[incremental_row, incremental_column]
-                    != relation_hnf[incremental_row, incremental_column]
-                ):
-                    output[59] = 422
-                    output[60] = support_count
-                    return False
-                incremental_column += 1
-            incremental_row += 1
 
         # Preserve a bounded tail of final reduced-ideal witnesses not already in
         # the HNF support.  These redundant principal relations are useful for
         # finding a short generator of the rank-one unit lattice.
-        compact_tail_start: uint64 = 0
-        if relation_count > _CUBIC_RELATION_REDUNDANCY_TAIL:
-            compact_tail_start = relation_count - _CUBIC_RELATION_REDUNDANCY_TAIL
-        compact_tail_count: uint64 = 0
-        compact_source_row = compact_tail_start
-        while compact_source_row < relation_count:
-            if relation_support[compact_source_row, 0] == 0:
-                compact_tail_count += 1
-            compact_source_row += 1
-        compact_relation_count: uint64 = support_count + compact_tail_count
+        compact_tail_start, compact_relation_count = _cubic_compact_relation_plan(
+            proof_relation_support,
+            relation_count,
+            support_count,
+        )
         compact_relation_matrix = arena.foreign_resource(
             fmpz_matrix,
             compact_relation_count,
@@ -7004,305 +11115,156 @@ def certified_complex_cubic_class_group_v1(
             compact_relation_count,
             3,
         )
-        compact_row: uint64 = _cubic_copy_relation_support_tail(
+        if not _cubic_prepare_compact_presentation(
             relation_matrix,
             relation_elements,
-            relation_support,
+            relation_hnf,
+            proof_relation_support,
+            compact_relation_matrix,
+            compact_relation_elements,
+            compact_relation_hnf,
+            output,
             relation_count,
             factor_count,
             compact_tail_start,
-            compact_relation_matrix,
-            compact_relation_elements,
-        )
-        if compact_row != compact_relation_count:
-            return False
-        if not fmpz_matrix_hnf_into(
-            compact_relation_hnf,
-            compact_relation_matrix,
-        ):
-            return False
-        compact_rank: uint64 = 0
-        compact_row = 0
-        while compact_row < compact_relation_count:
-            compact_nonzero = False
-            compact_column: uint64 = 0
-            while compact_column < factor_count:
-                if compact_relation_hnf[compact_row, compact_column] != 0:
-                    compact_nonzero = True
-                compact_column += 1
-            if compact_nonzero:
-                compact_rank += 1
-            compact_row += 1
-        if compact_rank != factor_count:
-            return False
-        compact_smith = arena.foreign_resource(
-            fmpz_matrix,
             compact_relation_count,
-            factor_count,
-        )
-        if not fmpz_matrix_snf_into(compact_smith, compact_relation_matrix):
-            return False
-        compact_index = 1
-        compact_column = 0
-        while compact_column < factor_count:
-            compact_invariant = compact_smith[compact_column, compact_column]
-            if compact_invariant < 0:
-                compact_invariant = -compact_invariant
-            if compact_invariant < 1:
-                return False
-            compact_index *= compact_invariant
-            compact_column += 1
-        if compact_index != class_number_upper:
-            return False
-        dependency_relation_elements = compact_relation_elements
-        relation_count = compact_relation_count
-        output[52] = relation_count
-
-        # Reconstruct missing units from exact HNF dependencies.
-        dependency_scan_active = not unit_found
-        relation_transform = arena.foreign_resource(
-            fmpz_matrix,
-            relation_count,
-            relation_count,
-        )
-        if dependency_scan_active and not fmpz_matrix_hnf_transform(
-            compact_relation_hnf,
-            relation_transform,
-            compact_relation_matrix,
+            support_count,
+            proof_unit_found,
+            reuse_online_relation_support,
         ):
+            output[63] = 44
+            return False
+        if not proof_unit_found:
+            compact_smith = arena.foreign_resource(
+                fmpz_matrix,
+                compact_relation_count,
+                factor_count,
+            )
+            if not _cubic_verify_compact_presentation_index(
+                compact_smith,
+                compact_relation_matrix,
+                compact_relation_count,
+                factor_count,
+                class_number_upper,
+            ):
+                output[63] = 44
+                return False
+        dependency_relation_elements = compact_relation_elements
+        # Later exact materialization reuses this typed logical column cursor.
+        relation_index: uint64 = 0
+        proof_relation_count = compact_relation_count
+        output[52] = proof_relation_count
+        # Reconstruct missing units from exact HNF dependencies.
+        dependency_scan_active = not proof_unit_found
+        dependency_relation_storage: uint64 = proof_relation_count
+        dependency_row_storage: uint64 = proof_relation_count - relation_rank
+        if not dependency_scan_active:
+            dependency_relation_storage = 1
+            dependency_row_storage = 1
+        compact_relation_transform = arena.foreign_resource(
+            fmpz_matrix,
+            dependency_relation_storage,
+            dependency_relation_storage,
+        )
+        if dependency_scan_active and not fmpz_matrix_hnf_transform_prefix(
+            compact_relation_hnf,
+            compact_relation_transform,
+            compact_relation_matrix,
+            proof_relation_count,
+            factor_count,
+        ):
+            output[63] = 44
             return False
         output[59] = 431
-        dependency_count: uint64 = relation_count - relation_rank
+        dependency_count: uint64 = proof_relation_count - relation_rank
         dependency_relations = arena.foreign_resource(
             fmpz_matrix,
-            dependency_count,
-            relation_count,
+            dependency_row_storage,
+            dependency_relation_storage,
         )
         dependency_reduced = arena.foreign_resource(
             fmpz_matrix,
-            dependency_count,
-            relation_count,
+            dependency_row_storage,
+            dependency_relation_storage,
         )
         dependency_lll_transform = arena.foreign_resource(
             fmpz_matrix,
-            dependency_count,
-            dependency_count,
+            dependency_row_storage,
+            dependency_row_storage,
         )
-        if dependency_scan_active:
-            if dependency_count == 0:
-                return False
-            dependency_row: uint64 = 0
-            while dependency_row < dependency_count:
-                relation_index: uint64 = 0
-                while relation_index < relation_count:
-                    dependency_relations[dependency_row, relation_index] = (
-                        relation_transform[
-                            relation_rank + dependency_row, relation_index
-                        ]
-                    )
-                    relation_index += 1
-                dependency_row += 1
-            if not fmpz_matrix_lll_transform(
-                dependency_reduced,
-                dependency_lll_transform,
-                dependency_relations,
-            ):
-                return False
-        # Plan log precision from the resident dependency coefficients.
-        dependency_coefficient_bits: uint64 = 0
-        if dependency_scan_active:
-            dependency_probe_row: uint64 = 0
-            while dependency_probe_row < dependency_count:
-                relation_index: uint64 = 0
-                while relation_index < relation_count:
-                    coefficient_bits = _cubic_bounded_bit_length(
-                        dependency_reduced[dependency_probe_row, relation_index],
-                        512,
-                    )
-                    if coefficient_bits > 512:
-                        return False
-                    if coefficient_bits > dependency_coefficient_bits:
-                        dependency_coefficient_bits = coefficient_bits
-                    relation_index += 1
-                dependency_probe_row += 1
-        output[59] = 432
-        output[60] = dependency_coefficient_bits
-        dependency_log_scale = analytic_scale
-        # Budget for both dependency combination and Euclidean cleanup.
-        dependency_precision_extra: uint64 = 2 * dependency_coefficient_bits + 64
-        dependency_precision_index: uint64 = 0
-        while dependency_precision_index < dependency_precision_extra:
-            dependency_log_scale *= 2
-            dependency_precision_index += 1
-        dependency_log_precision: uint64 = (
-            _CUBIC_ANALYTIC_PRECISION + dependency_precision_extra
+        (
+            dependency_status,
+            dependency_coefficient_bits,
+            dependency_log_scale,
+            dependency_log_precision,
+        ) = _cubic_reduce_dependency_prefix(
+            compact_relation_transform,
+            dependency_relations,
+            dependency_reduced,
+            dependency_lll_transform,
+            output,
+            proof_relation_count,
+            relation_rank,
+            dependency_count,
+            dependency_scan_active,
+            analytic_scale,
         )
+        if dependency_status != 1:
+            output[62] = dependency_status
+            output[63] = 44
+            if dependency_status == 0:
+                output[63] = 43
+            return False
         relation_logs = arena.foreign_resource(
             fmpz_matrix,
-            relation_count,
+            dependency_relation_storage,
             2,
         )
-        if dependency_scan_active:
-            relation_index: uint64 = 0
-            while relation_index < relation_count:
-                (
-                    witness_log_lower,
-                    witness_log_upper,
-                ) = _cubic_real_log_bounds(
-                    log_numerators,
-                    log_denominators,
-                    log_endpoints,
-                    coefficients,
-                    denominator,
-                    basis_zero_zero,
-                    basis_zero_one,
-                    basis_zero_two,
-                    basis_one_one,
-                    basis_one_two,
-                    basis_two_two,
-                    dependency_relation_elements[relation_index, 0],
-                    dependency_relation_elements[relation_index, 1],
-                    dependency_relation_elements[relation_index, 2],
-                    dependency_log_scale,
-                    dependency_log_precision,
-                )
-                if witness_log_upper < witness_log_lower:
-                    return False
-                relation_logs[relation_index, 0] = witness_log_lower
-                relation_logs[relation_index, 1] = witness_log_upper
-                relation_index += 1
+        if not _cubic_fill_dependency_logs(
+            coefficients,
+            log_numerators,
+            log_denominators,
+            log_endpoints,
+            dependency_relation_elements,
+            relation_logs,
+            denominator,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            proof_relation_count,
+            dependency_scan_active,
+            dependency_log_scale,
+            dependency_log_precision,
+        ):
+            output[63] = 44
+            return False
         output[59] = 433
         unit_combinations = arena.foreign_resource(
             fmpz_matrix,
             2,
-            relation_count,
+            dependency_relation_storage,
         )
-        dependency_row = 0
-        while dependency_scan_active and dependency_row < dependency_count:
-            dependency_nonzero = False
-            dependency_log_lower = 0
-            dependency_log_upper = 0
-            relation_index: uint64 = 0
-            while relation_index < relation_count:
-                dependency_exponent = dependency_reduced[dependency_row, relation_index]
-                if dependency_exponent != 0:
-                    dependency_nonzero = True
-                    witness_log_lower = relation_logs[relation_index, 0]
-                    witness_log_upper = relation_logs[relation_index, 1]
-                    if dependency_exponent > 0:
-                        dependency_log_lower += dependency_exponent * witness_log_lower
-                        dependency_log_upper += dependency_exponent * witness_log_upper
-                    else:
-                        dependency_log_lower += dependency_exponent * witness_log_upper
-                        dependency_log_upper += dependency_exponent * witness_log_lower
-                relation_index += 1
-            dependency_orientation = 0
-            dependency_regulator_lower = dependency_log_lower
-            dependency_regulator_upper = dependency_log_upper
-            if dependency_log_lower > 0:
-                dependency_orientation = 1
-            elif dependency_log_upper < 0:
-                dependency_orientation = -1
-                dependency_regulator_lower = -dependency_log_upper
-                dependency_regulator_upper = -dependency_log_lower
-            if dependency_nonzero and dependency_orientation != 0:
-                relation_index = 0
-                while relation_index < relation_count:
-                    dependency_exponent = dependency_reduced[
-                        dependency_row, relation_index
-                    ]
-                    unit_combinations[1, relation_index] = (
-                        dependency_orientation * dependency_exponent
-                    )
-                    relation_index += 1
-                if not unit_found:
-                    relation_index = 0
-                    while relation_index < relation_count:
-                        unit_combinations[0, relation_index] = unit_combinations[
-                            1, relation_index
-                        ]
-                        relation_index += 1
-                    unit_found = True
-                    regulator_lower = dependency_regulator_lower
-                    regulator_upper = dependency_regulator_upper
-                else:
-                    candidate_middle = (
-                        dependency_regulator_lower + dependency_regulator_upper
-                    )
-                    best_middle = regulator_lower + regulator_upper
-                    if candidate_middle < best_middle:
-                        relation_index = 0
-                        while relation_index < relation_count:
-                            saved_exponent = unit_combinations[0, relation_index]
-                            unit_combinations[0, relation_index] = unit_combinations[
-                                1, relation_index
-                            ]
-                            unit_combinations[1, relation_index] = saved_exponent
-                            relation_index += 1
-                        saved_lower = regulator_lower
-                        saved_upper = regulator_upper
-                        regulator_lower = dependency_regulator_lower
-                        regulator_upper = dependency_regulator_upper
-                        dependency_regulator_lower = saved_lower
-                        dependency_regulator_upper = saved_upper
-                    reduction_step: uint64 = 0
-                    reduction_active = True
-                    while reduction_active and reduction_step < 1024:
-                        candidate_middle = (
-                            dependency_regulator_lower + dependency_regulator_upper
-                        )
-                        best_middle = regulator_lower + regulator_upper
-                        reduction_quotient = (
-                            candidate_middle + best_middle // 2
-                        ) // best_middle
-                        if reduction_quotient < 1:
-                            reduction_quotient = 1
-                        remainder_lower = (
-                            dependency_regulator_lower
-                            - reduction_quotient * regulator_upper
-                        )
-                        remainder_upper = (
-                            dependency_regulator_upper
-                            - reduction_quotient * regulator_lower
-                        )
-                        remainder_orientation = 0
-                        if remainder_lower > 0:
-                            remainder_orientation = 1
-                        elif remainder_upper < 0:
-                            remainder_orientation = -1
-                            saved_lower = remainder_lower
-                            remainder_lower = -remainder_upper
-                            remainder_upper = -saved_lower
-                        if (
-                            remainder_orientation == 0
-                            or remainder_upper >= regulator_lower
-                        ):
-                            reduction_active = False
-                        else:
-                            relation_index = 0
-                            while relation_index < relation_count:
-                                best_exponent = unit_combinations[0, relation_index]
-                                candidate_exponent = unit_combinations[
-                                    1, relation_index
-                                ]
-                                remainder_exponent = remainder_orientation * (
-                                    candidate_exponent
-                                    - reduction_quotient * best_exponent
-                                )
-                                unit_combinations[0, relation_index] = (
-                                    remainder_exponent
-                                )
-                                unit_combinations[1, relation_index] = best_exponent
-                                relation_index += 1
-                            dependency_regulator_lower = regulator_lower
-                            dependency_regulator_upper = regulator_upper
-                            regulator_lower = remainder_lower
-                            regulator_upper = remainder_upper
-                        reduction_step += 1
-            dependency_row += 1
+        (
+            proof_unit_found,
+            proof_regulator_lower,
+            proof_regulator_upper,
+        ) = _cubic_discover_dependency_unit(
+            dependency_reduced,
+            relation_logs,
+            unit_combinations,
+            proof_relation_count,
+            dependency_count,
+            dependency_scan_active,
+            proof_unit_found,
+            proof_regulator_lower,
+            proof_regulator_upper,
+        )
         output[59] = 434
         # If class-lattice compaction loses the unit, add a bounded witness tail.
-        if not unit_found:
+        if not proof_unit_found:
             recovery_tail_start: uint64 = 0
             if uncompacted_relation_count > _CUBIC_RELATION_RECOVERY_TAIL:
                 recovery_tail_start = (
@@ -7311,7 +11273,7 @@ def certified_complex_cubic_class_group_v1(
             recovery_tail_count: uint64 = 0
             recovery_source_row: uint64 = recovery_tail_start
             while recovery_source_row < uncompacted_relation_count:
-                if relation_support[recovery_source_row, 0] == 0:
+                if proof_relation_support[recovery_source_row, 0] == 0:
                     recovery_tail_count += 1
                 recovery_source_row += 1
             recovery_relation_count: uint64 = support_count + recovery_tail_count
@@ -7328,7 +11290,7 @@ def certified_complex_cubic_class_group_v1(
             recovery_row: uint64 = _cubic_copy_relation_support_tail(
                 relation_matrix,
                 relation_elements,
-                relation_support,
+                proof_relation_support,
                 uncompacted_relation_count,
                 factor_count,
                 recovery_tail_start,
@@ -7414,29 +11376,40 @@ def certified_complex_cubic_class_group_v1(
                 prefix_unit_combinations,
                 prefix_unit_result,
             )
-            if prefix_unit_status < 0:
+            if prefix_unit_status != 0 and prefix_unit_status != 1:
+                # Recovery includes complete class support. Missing rank here
+                # is inconsistent; reconstruction and interval failures are
+                # likewise not evidence authorizing another relation effort.
+                output[62] = prefix_unit_status
+                output[63] = 44
                 return False
             if prefix_unit_status == 1:
-                unit_zero = prefix_unit_result[0, 0]
-                unit_one = prefix_unit_result[0, 1]
-                unit_two = prefix_unit_result[0, 2]
-                regulator_lower = prefix_unit_result[0, 3]
-                regulator_upper = prefix_unit_result[0, 4]
-                unit_found = True
+                proof_unit_zero = prefix_unit_result[0, 0]
+                proof_unit_one = prefix_unit_result[0, 1]
+                proof_unit_two = prefix_unit_result[0, 2]
+                proof_regulator_lower = prefix_unit_result[0, 3]
+                proof_regulator_upper = prefix_unit_result[0, 4]
+                proof_unit_found = True
                 dependency_scan_active = False
-        if unit_found:
+        if proof_unit_found:
             output[61] = 1
-        if not unit_found:
+        if not proof_unit_found:
+            # A bounded or compact relation prefix may have full class rank
+            # without exposing the rank-one unit lattice.  Classify this as
+            # relation exhaustion so the host may authorize the next exact
+            # effort; no partial presentation is published.
+            output[63] = 43
             return False
         if dependency_scan_active:
-            dependency_scale_quotient = dependency_log_scale // analytic_scale
-            regulator_at_dependency_scale = True
+            output[63] = 44
             (
-                reconstruction_status,
-                reconstructed_zero,
-                reconstructed_one,
-                reconstructed_two,
-            ) = _cubic_reconstruct_archimedean_unit(
+                dependency_unit_ready,
+                proof_unit_zero,
+                proof_unit_one,
+                proof_unit_two,
+                proof_regulator_lower,
+                proof_regulator_upper,
+            ) = _cubic_materialize_dependency_unit(
                 workspace,
                 coefficients,
                 denominator,
@@ -7448,162 +11421,33 @@ def certified_complex_cubic_class_group_v1(
                 basis_two_two,
                 dependency_relation_elements,
                 unit_combinations,
-                relation_count,
-                regulator_lower,
-                regulator_upper,
+                proof_relation_count,
+                proof_regulator_lower,
+                proof_regulator_upper,
                 analytic_scale,
                 dependency_log_scale,
+                log_numerators,
+                log_denominators,
+                log_endpoints,
+                dependency_coordinates,
+                identity_zero,
+                identity_one,
+                identity_two,
+                proof_unit_zero,
+                proof_unit_one,
+                proof_unit_two,
+                output,
             )
-            output[59] = 435
-            output[62] = reconstruction_status
-            if reconstruction_status == 2:
-                output[56] = reconstructed_zero
-                output[57] = reconstructed_one
-                output[58] = reconstructed_two
-            dependency_materialization_active = reconstruction_status != 1
-            if reconstruction_status == 1:
-                (
-                    reconstructed_regulator_lower,
-                    reconstructed_regulator_upper,
-                ) = _cubic_regulator_bounds(
-                    log_numerators,
-                    log_denominators,
-                    log_endpoints,
-                    coefficients,
-                    denominator,
-                    basis_zero_zero,
-                    basis_zero_one,
-                    basis_zero_two,
-                    basis_one_one,
-                    basis_one_two,
-                    basis_two_two,
-                    reconstructed_zero,
-                    reconstructed_one,
-                    reconstructed_two,
-                    analytic_scale,
-                    _CUBIC_ANALYTIC_PRECISION,
-                )
-                if (
-                    reconstructed_regulator_lower > 0
-                    and reconstructed_regulator_upper >= reconstructed_regulator_lower
-                    and reconstructed_regulator_lower * dependency_scale_quotient
-                    <= regulator_upper
-                    and regulator_lower
-                    <= reconstructed_regulator_upper * dependency_scale_quotient
-                ):
-                    unit_zero = reconstructed_zero
-                    unit_one = reconstructed_one
-                    unit_two = reconstructed_two
-                    regulator_lower = reconstructed_regulator_lower
-                    regulator_upper = reconstructed_regulator_upper
-                    regulator_at_dependency_scale = False
-                    dependency_materialization_active = False
-
-            if dependency_materialization_active:
-                output[59] = 436
-                # Bound the small exact-product fallback before exponentiation.
-                dependency_exponent_total = 0
-                relation_index = 0
-                while relation_index < relation_count:
-                    dependency_exponent = unit_combinations[0, relation_index]
-                    if dependency_exponent < 0:
-                        dependency_exponent = -dependency_exponent
-                    if dependency_exponent > 4096:
-                        output[59] = 437
-                        output[60] = dependency_exponent
-                        return False
-                    dependency_exponent_total += dependency_exponent
-                    if dependency_exponent_total > 16384:
-                        output[59] = 438
-                        output[60] = dependency_exponent_total
-                        return False
-                    relation_index += 1
-                coordinate_index: uint64 = 0
-                while coordinate_index < 3:
-                    identity_coordinate = identity_zero
-                    if coordinate_index == 1:
-                        identity_coordinate = identity_one
-                    elif coordinate_index == 2:
-                        identity_coordinate = identity_two
-                    dependency_coordinates[0, coordinate_index] = identity_coordinate
-                    dependency_coordinates[1, coordinate_index] = identity_coordinate
-                    coordinate_index += 1
-                relation_index = 0
-                while relation_index < relation_count:
-                    dependency_exponent = unit_combinations[0, relation_index]
-                    absolute_exponent = dependency_exponent
-                    if absolute_exponent < 0:
-                        absolute_exponent = -absolute_exponent
-                    if absolute_exponent > 0:
-                        if not _cubic_matrix_power_coordinates(
-                            workspace,
-                            dependency_relation_elements,
-                            relation_index,
-                            absolute_exponent,
-                            dependency_coordinates,
-                            2,
-                            3,
-                        ):
-                            return False
-                        product_row: uint64 = 0
-                        if dependency_exponent < 0:
-                            product_row = 1
-                        if not _cubic_matrix_multiply_coordinates(
-                            workspace,
-                            dependency_coordinates,
-                            product_row,
-                            dependency_coordinates,
-                            2,
-                            dependency_coordinates,
-                            product_row,
-                        ):
-                            return False
-                    relation_index += 1
-                if not _cubic_matrix_exact_quotient_coordinates(
-                    workspace,
-                    dependency_coordinates,
-                    0,
-                    1,
-                    4,
-                    5,
-                ):
-                    return False
-                unit_zero = dependency_coordinates[4, 0]
-                unit_one = dependency_coordinates[4, 1]
-                unit_two = dependency_coordinates[4, 2]
-                dependency_norm = _cubic_norm_form_value(
-                    workspace,
-                    unit_zero,
-                    unit_one,
-                    unit_two,
-                )
-                if dependency_norm != 1 and dependency_norm != -1:
-                    return False
-            if regulator_at_dependency_scale:
-                regulator_lower //= dependency_scale_quotient
-                regulator_upper = (
-                    regulator_upper + dependency_scale_quotient - 1
-                ) // dependency_scale_quotient
-        output[56] = unit_zero
-        output[57] = unit_one
-        output[58] = unit_two
+            if not dependency_unit_ready:
+                return False
+        output[56] = proof_unit_zero
+        output[57] = proof_unit_one
+        output[58] = proof_unit_two
         output[63] = 44
 
-        if regulator_lower <= 0 or regulator_upper < regulator_lower:
+        if proof_regulator_lower <= 0 or proof_regulator_upper < proof_regulator_lower:
             return False
         output[63] = 5
-
-        # The exact-power region spans all 64 possible factors and is reused
-        # below for dense analytic coefficient and term storage.  Preserve the
-        # factor lattices in their caller-owned audit buffer before that phase
-        # overlap; rereading the power region afterward would corrupt factor
-        # fingerprints beginning at factor index 20.
-        if transcript_mode == 1 and not _cubic_publish_relation_factor_rows(
-            workspace,
-            factor_count,
-            transcript_factor_rows,
-        ):
-            return False
 
         # Build and evaluate the first exact Belabas--Friedman plan through
         # the same closed native helpers used by the bounded refinement.
@@ -7615,6 +11459,7 @@ def certified_complex_cubic_class_group_v1(
             analytic_value_count,
         ) = _cubic_prepare_bf_plan(
             workspace,
+            analytic_workspace,
             coefficients,
             denominator,
             constant,
@@ -7649,7 +11494,7 @@ def certified_complex_cubic_class_group_v1(
             zeta_upper,
             tail_upper,
         ) = _cubic_evaluate_bf_plan(
-            workspace,
+            analytic_workspace,
             analytic_values,
             analytic_endpoints,
             analytic_term_count,
@@ -7659,182 +11504,54 @@ def certified_complex_cubic_class_group_v1(
         if not analytic_ready:
             return False
         analytic_precision: uint64 = _CUBIC_ANALYTIC_PRECISION
-        log_regulator_lower, log_regulator_upper = _cubic_log_interval_bounds(
+        (
+            saturation_ready,
+            proof_unit_zero,
+            proof_unit_one,
+            proof_unit_two,
+            proof_regulator_lower,
+            proof_regulator_upper,
+            log_regulator_lower,
+            log_regulator_upper,
+            log_two_pi_lower,
+            log_two_pi_upper,
+            index_log_lower,
+            index_log_upper,
+            log_two_lower,
+            log_two_upper,
+        ) = _cubic_saturate_analytic_unit(
+            workspace,
+            coefficients,
+            dependency_coordinates,
             log_numerators,
             log_denominators,
             log_endpoints,
-            regulator_lower,
-            regulator_upper,
+            analytic_endpoints,
+            output,
+            denominator,
+            basis_zero_zero,
+            basis_zero_one,
+            basis_zero_two,
+            basis_one_one,
+            basis_one_two,
+            basis_two_two,
+            identity_zero,
+            identity_one,
+            identity_two,
+            proof_unit_zero,
+            proof_unit_one,
+            proof_unit_two,
+            proof_regulator_lower,
+            proof_regulator_upper,
             analytic_scale,
             analytic_precision,
+            zeta_lower,
+            zeta_upper,
         )
-        log_two_pi_lower, log_two_pi_upper = _cubic_log_two_pi_bounds(
-            log_numerators,
-            log_denominators,
-            log_endpoints,
-            analytic_scale,
-            analytic_precision,
-        )
-        log_discriminant_lower = analytic_endpoints[12, 0]
-        log_discriminant_upper = analytic_endpoints[13, 0]
-        log_class_lower = analytic_endpoints[16, 0]
-        log_class_upper = analytic_endpoints[17, 0]
-        if (
-            log_regulator_upper < log_regulator_lower
-            or log_two_pi_upper < log_two_pi_lower
-            or log_discriminant_lower <= 0
-            or log_discriminant_upper < log_discriminant_lower
-            or log_class_lower < 0
-            or log_class_upper < log_class_lower
-        ):
+        if not saturation_ready:
             return False
-        half_discriminant_lower = log_discriminant_lower // 2
-        half_discriminant_upper = _cubic_dyadic_ceiling_quotient(
-            log_discriminant_upper,
-            2,
-        )
-        algebraic_lower = (
-            log_class_lower
-            + log_regulator_lower
-            + log_two_pi_lower
-            - half_discriminant_upper
-        )
-        algebraic_upper = (
-            log_class_upper
-            + log_regulator_upper
-            + log_two_pi_upper
-            - half_discriminant_lower
-        )
-        index_log_lower = algebraic_lower - zeta_upper
-        index_log_upper = algebraic_upper - zeta_lower
-        log_two_lower, log_two_upper = _cubic_arb_log_positive_rational_bounds(
-            log_numerators,
-            log_denominators,
-            log_endpoints,
-            2,
-            1,
-            analytic_precision,
-        )
-        saturation_attempts: uint64 = 0
-        saturation_search_active = (
-            index_log_upper >= log_two_lower and log_two_upper >= log_two_lower
-        )
-        while saturation_search_active and saturation_attempts < 8:
-            (
-                saturation_root_status,
-                saturation_root_zero,
-                saturation_root_one,
-                saturation_root_two,
-            ) = _cubic_exact_unit_square_root(
-                workspace,
-                coefficients,
-                denominator,
-                basis_zero_zero,
-                basis_zero_one,
-                basis_zero_two,
-                basis_one_one,
-                basis_one_two,
-                basis_two_two,
-                identity_zero,
-                identity_one,
-                identity_two,
-                unit_zero,
-                unit_one,
-                unit_two,
-                analytic_scale,
-                dependency_coordinates,
-            )
-            saturation_prime = 2
-            if saturation_root_status != 1:
-                (
-                    saturation_root_status,
-                    saturation_root_zero,
-                    saturation_root_one,
-                    saturation_root_two,
-                ) = _cubic_exact_unit_fifth_root(
-                    workspace,
-                    coefficients,
-                    denominator,
-                    basis_zero_zero,
-                    basis_zero_one,
-                    basis_zero_two,
-                    basis_one_one,
-                    basis_one_two,
-                    basis_two_two,
-                    identity_zero,
-                    identity_one,
-                    identity_two,
-                    unit_zero,
-                    unit_one,
-                    unit_two,
-                    analytic_scale,
-                )
-                saturation_prime = 5
-            if saturation_root_status != 1:
-                saturation_search_active = False
-            else:
-                (
-                    saturation_regulator_lower,
-                    saturation_regulator_upper,
-                ) = _cubic_regulator_bounds(
-                    log_numerators,
-                    log_denominators,
-                    log_endpoints,
-                    coefficients,
-                    denominator,
-                    basis_zero_zero,
-                    basis_zero_one,
-                    basis_zero_two,
-                    basis_one_one,
-                    basis_one_two,
-                    basis_two_two,
-                    saturation_root_zero,
-                    saturation_root_one,
-                    saturation_root_two,
-                    analytic_scale,
-                    analytic_precision,
-                )
-                if (
-                    saturation_regulator_lower <= 0
-                    or saturation_regulator_upper < saturation_regulator_lower
-                    or saturation_regulator_lower * saturation_prime > regulator_upper
-                    or regulator_lower > saturation_regulator_upper * saturation_prime
-                ):
-                    return False
-                unit_zero = saturation_root_zero
-                unit_one = saturation_root_one
-                unit_two = saturation_root_two
-                regulator_lower = saturation_regulator_lower
-                regulator_upper = saturation_regulator_upper
-                log_regulator_lower, log_regulator_upper = _cubic_log_interval_bounds(
-                    log_numerators,
-                    log_denominators,
-                    log_endpoints,
-                    regulator_lower,
-                    regulator_upper,
-                    analytic_scale,
-                    analytic_precision,
-                )
-                if log_regulator_upper < log_regulator_lower:
-                    return False
-                algebraic_lower = (
-                    log_class_lower
-                    + log_regulator_lower
-                    + log_two_pi_lower
-                    - half_discriminant_upper
-                )
-                algebraic_upper = (
-                    log_class_upper
-                    + log_regulator_upper
-                    + log_two_pi_upper
-                    - half_discriminant_lower
-                )
-                index_log_lower = algebraic_lower - zeta_upper
-                index_log_upper = algebraic_upper - zeta_lower
-                saturation_attempts += 1
-                saturation_search_active = index_log_upper >= log_two_lower
 
-        # Most fields close at the established X=997 boundary.  If all exact
+        # Start at the theorem-aligned X=999 boundary. If all exact
         # algebraic and interval checks succeeded but the resulting upper
         # endpoint still cannot distinguish the positive integral index from
         # two, make one bounded resident refinement.  This is a schedule, not
@@ -7850,6 +11567,7 @@ def certified_complex_cubic_class_group_v1(
                 analytic_value_count,
             ) = _cubic_prepare_bf_plan(
                 workspace,
+                analytic_workspace,
                 coefficients,
                 denominator,
                 constant,
@@ -7884,7 +11602,7 @@ def certified_complex_cubic_class_group_v1(
                 zeta_upper,
                 tail_upper,
             ) = _cubic_evaluate_bf_plan(
-                workspace,
+                analytic_workspace,
                 refined_analytic_values,
                 refined_analytic_endpoints,
                 analytic_term_count,
@@ -7894,38 +11612,21 @@ def certified_complex_cubic_class_group_v1(
             if not refined_analytic_ready:
                 return False
             output[63] = 7
-            log_discriminant_lower = refined_analytic_endpoints[12, 0]
-            log_discriminant_upper = refined_analytic_endpoints[13, 0]
-            log_class_lower = refined_analytic_endpoints[16, 0]
-            log_class_upper = refined_analytic_endpoints[17, 0]
-            if (
-                log_discriminant_lower <= 0
-                or log_discriminant_upper < log_discriminant_lower
-                or log_class_lower < 0
-                or log_class_upper < log_class_lower
-            ):
+            index_ready, index_log_lower, index_log_upper = (
+                _cubic_analytic_index_bounds(
+                    refined_analytic_endpoints,
+                    log_regulator_lower,
+                    log_regulator_upper,
+                    log_two_pi_lower,
+                    log_two_pi_upper,
+                    zeta_lower,
+                    zeta_upper,
+                )
+            )
+            if not index_ready:
                 return False
-            half_discriminant_lower = log_discriminant_lower // 2
-            half_discriminant_upper = _cubic_dyadic_ceiling_quotient(
-                log_discriminant_upper,
-                2,
-            )
-            algebraic_lower = (
-                log_class_lower
-                + log_regulator_lower
-                + log_two_pi_lower
-                - half_discriminant_upper
-            )
-            algebraic_upper = (
-                log_class_upper
-                + log_regulator_upper
-                + log_two_pi_upper
-                - half_discriminant_lower
-            )
-            index_log_lower = algebraic_lower - zeta_upper
-            index_log_upper = algebraic_upper - zeta_lower
-        output[40] = regulator_lower
-        output[41] = regulator_upper
+        output[40] = proof_regulator_lower
+        output[41] = proof_regulator_upper
         output[42] = zeta_lower
         output[43] = zeta_upper
         output[44] = index_log_lower
@@ -7941,64 +11642,59 @@ def certified_complex_cubic_class_group_v1(
         # the retained unit subgroup has integral index in the full unit
         # lattice.  Their product is a positive integer.  An upper logarithm
         # strictly below log(2) therefore proves both indices are one.
-        if (
-            index_log_upper < 0
-            or index_log_upper >= log_two_lower
-            or log_two_upper < log_two_lower
-        ):
+        analytic_index_status = _cubic_classify_analytic_index(
+            index_log_lower, index_log_upper, log_two_lower, log_two_upper
+        )
+        # Zero is valid but insufficient evidence. Root retries are not enabled
+        # by this extraction, and negative statuses are always fatal.
+        if analytic_index_status != 1:
+            if analytic_index_status < 0:
+                output[63] = 44
             return False
 
-        if transcript_mode == 1 and not _cubic_publish_relation_rows(
+        # A failed publication is not missing relation evidence.
+        output[63] = 44
+        return _cubic_publish_analytic_relation_presentation(
+            workspace,
             compact_relation_matrix,
             compact_relation_elements,
-            relation_count,
-            factor_count,
+            output,
+            transcript_factor_rows,
             transcript_relation_rows,
             transcript_relation_elements,
-        ):
-            return False
-
-        output_index: uint64 = 0
-        while output_index < len(output):
-            output[output_index] = 0
-            output_index += 1
-        output[0] = 2
-        output[1] = class_number_upper
-        output[2] = invariant_count
-        output_index = 0
-        while output_index < invariant_count:
-            output[3 + output_index] = workspace[_ROW_SCRATCH_OFFSET + output_index]
-            output_index += 1
-        output[19] = used_compound_multiplier_limit
-        output[20] = generator_bound
-        output[21] = factor_count
-        output[22] = group_count
-        output[23] = relation_count
-        output[24] = 1
-        output[25] = unit_zero
-        output[26] = unit_one
-        output[27] = unit_two
-        output[28] = order_discriminant
-        output[29] = equation_order_index
-        output[30] = denominator
-        output[31] = relation_box
-        output[32] = unit_box
-        output[33] = relation_rank
-        output[34] = equation_discriminant
-        output[35] = _CUBIC_PROOF_ANALYTIC_GRH
-        output[36] = analytic_threshold
-        output[37] = analytic_term_count
-        output[38] = analytic_value_count
-        output[39] = analytic_precision
-        output[40] = regulator_lower
-        output[41] = regulator_upper
-        output[42] = zeta_lower
-        output[43] = zeta_upper
-        output[44] = index_log_lower
-        output[45] = index_log_upper
-        output[46] = tail_upper
-        output[47] = analytic_scale
-        return True
+            transcript_mode,
+            class_number_upper,
+            invariant_count,
+            used_compound_multiplier_limit,
+            generator_bound,
+            factor_count,
+            group_count,
+            proof_relation_count,
+            proof_unit_zero,
+            proof_unit_one,
+            proof_unit_two,
+            order_discriminant,
+            equation_order_index,
+            denominator,
+            relation_box,
+            unit_box,
+            relation_rank,
+            equation_discriminant,
+            analytic_threshold,
+            analytic_term_count,
+            analytic_value_count,
+            analytic_precision,
+            proof_regulator_lower,
+            proof_regulator_upper,
+            zeta_lower,
+            zeta_upper,
+            index_log_lower,
+            index_log_upper,
+            tail_upper,
+            analytic_scale,
+            log_two_lower,
+            log_two_upper,
+        )
 
 
 __all__ = [

@@ -41,6 +41,9 @@
         "16*sin(x^2)*x^4 - 48*cos(x^2)*x^2 - 12*sin(x^2)\n"
       ]
     },
+    "src/doc/en/tutorial/tour_algebra.rst:168": {
+      "accepted": ["_C/e^t + 1\n"]
+    },
     "src/doc/en/tutorial/tour_algebra.rst:67": {
       "accepted": [
         "[[p == 1, q == 8, x == -2/3 - 4/3*sqrt(10), y == -2/3 + sqrt(10)/6], [p == 1, q == 8, x == -2/3 + 4/3*sqrt(10), y == -2/3 - sqrt(10)/6]]\n"

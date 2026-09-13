@@ -176,7 +176,13 @@ function walkPath(workspace, requestedPath, options = {}) {
   if (!metadata.isDirectory()) {
     throw new Error(`native cache cannot snapshot special file ${path}`);
   }
-  const entries = readdirSync(absolute).sort();
+  // Declared source directories may be imported by CPython while another
+  // validation shard computes a native key.  Bytecode caches are ignored
+  // build byproducts, never native compiler inputs, and including them makes
+  // otherwise identical keys depend on that scheduling race.
+  const entries = readdirSync(absolute)
+    .filter((name) => name !== "__pycache__" && !/\.py[co]$/i.test(name))
+    .sort();
   if (entries.length === 0) return [{ path, type: "directory" }];
   return entries.flatMap((name) => walkPath(workspace, join(path, name), options));
 }
@@ -339,7 +345,6 @@ function nativeBuildIdentity(workspace, overrides = {}) {
     "ProgramFiles",
     "ProgramFiles(x86)",
     "SDKROOT",
-    "SAGEJS_BUILD_JOBS",
     "SAGEJS_CLANG_BUILTINS",
     "VCPKG_DEFAULT_TRIPLET",
     "VCPKG_ROOT",
@@ -2055,6 +2060,20 @@ function prepareNativeArtifact(workspace, cacheRoot, spec, options = {}) {
   }
 }
 
+function prepareNativeSpec(workspace, cacheRoot, spec, options = {}) {
+  if (spec.stage !== "addon") {
+    return prepareNativeArtifact(workspace, cacheRoot, spec, options);
+  }
+  // A current or restorable addon is already compiled.  In particular, it
+  // does not require rebuilding the self-hosted compiler merely to prove that
+  // its immutable cache entry is present.  Only a genuine addon cache miss
+  // crosses the compiler-build boundary.
+  const restored = restoreNativeArtifact(workspace, cacheRoot, spec, options);
+  if (["present", "restored"].includes(restored.status)) return restored;
+  (options.ensureCompiler || ensureNativeCompiler)(workspace, options);
+  return prepareNativeArtifact(workspace, cacheRoot, spec, options);
+}
+
 function selectedNativeSpecs(workspace, packageIds, options = {}) {
   const selected = new Set(packageIds);
   for (const packageId of selected) {
@@ -2084,10 +2103,9 @@ function prepareNativePackages(workspace, packageIds, options = {}) {
   const preparedSpecs = new Set();
   const prepareSpec = (spec) => {
     if (preparedSpecs.has(spec.id)) return;
-    if (spec.stage === "addon") ensureNativeCompiler(workspace, options);
     results.push({
       id: spec.id,
-      ...prepareNativeArtifact(workspace, cacheRoot, spec, options),
+      ...prepareNativeSpec(workspace, cacheRoot, spec, options),
     });
     preparedSpecs.add(spec.id);
   };
@@ -2183,6 +2201,7 @@ module.exports = {
   nativeCacheProcessIdentity,
   nativeCacheStatus,
   prepareNativeArtifact,
+  prepareNativeSpec,
   prepareNativeDependencies,
   prepareNativePackages,
   publishNativeArtifact,

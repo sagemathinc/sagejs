@@ -6,6 +6,7 @@ const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
 const sourcePath = join(
@@ -15,6 +16,10 @@ const sourcePath = join(
 const runnerPath = join(
   root,
   "bench/optimization-engine/integral-library-feasibility.cjs",
+);
+const frozenEvidencePath = join(
+  root,
+  "test/fixtures/optimization-integral-library-evidence",
 );
 
 function currentPlatformId() {
@@ -35,10 +40,11 @@ function run(args, options = {}) {
 
 test("feasibility source is ordinary Python with guards before effects", () => {
   const source = readFileSync(sourcePath, "utf8");
-  const parse = spawnSync("python3", ["-c", [
+  const parse = spawnSync(pythonExecutable(), ["-c", [
     "import ast, pathlib, sys",
     "ast.parse(pathlib.Path(sys.argv[1]).read_text())",
   ].join("\n"), sourcePath], { encoding: "utf8" });
+  if (parse.error) throw parse.error;
   assert.equal(parse.status, 0, parse.stderr);
 
   assert.match(source, /MAX_BLOCK_PRIME = 65_537/);
@@ -85,7 +91,13 @@ test("Windows output is a portable command contract, never an execution claim", 
 });
 
 test("exact Node execution exhausts guard, native, and interrupt schedules", () => {
-  const result = run(["node", "--require-execution", "--require-frozen-evidence"]);
+  const result = run([
+    "node",
+    "--require-execution",
+    "--require-frozen-evidence",
+    "--frozen-evidence-dir",
+    frozenEvidencePath,
+  ]);
   assert.equal(result.status, 0, result.stderr);
   const receipt = JSON.parse(result.stdout);
   assert.equal(receipt.status, "passed");

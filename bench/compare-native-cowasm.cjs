@@ -61,7 +61,7 @@ function interpreter(command, args, mode, count) {
 
 (async () => {
   const complete = await compile({
-    sourcePath: join(__dirname, "cowasm", "src", "nt.py"),
+    sourcePath: join(__dirname, "cowasm", "src", "cowasm_nt.py"),
     ...(cacheRoot ? { cacheRoot: join(cacheRoot, "complete") } : {}),
   });
   const completeModule = require(complete.modulePath);
@@ -254,7 +254,7 @@ function interpreter(command, args, mode, count) {
     return;
   }
   console.log("Native Kernel v7 — CoWasm number theory");
-  console.log(`complete unmodified nt.py gcd(92250, 922350): ${selectedGcd}`);
+  console.log(`complete unmodified cowasm_nt.py gcd(92250, 922350): ${selectedGcd}`);
   console.table({
     "GCD resumable int64/GMP": automaticGcd.seconds,
     "GCD forced GMP": nativeGcd.seconds,

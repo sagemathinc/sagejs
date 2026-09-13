@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const fixturePath = path.join(
   __dirname,
@@ -131,7 +132,7 @@ test(
     fs.writeFileSync(sourcePath, `{ v = [${polynomial}]; }\n`);
     try {
       const result = childProcess.spawnSync(
-        "python3",
+        pythonExecutable(),
         [round4GeneratorPath, sourcePath, "--gp", gpExecutable],
         { encoding: "utf8", timeout: 30_000 },
       );

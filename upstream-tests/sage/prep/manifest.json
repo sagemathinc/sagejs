@@ -1,0 +1,121 @@
+{
+  "schema": "sagejs.sage-prep-manifest/v1",
+  "generatedBy": "scripts/extract-sage-prep.cjs",
+  "source": {
+    "title": "Sage PREP tutorials",
+    "repository": "https://github.com/sagemath/sage.git",
+    "revision": "6cd06ec1acdec7a4516ed9928bd575b7a63999b8",
+    "path": "src/doc/en/prep/**/*.rst",
+    "license": "CC-BY-SA-3.0"
+  },
+  "fixture": "prep.doctests.json",
+  "summary": {
+    "files": 17,
+    "groups": 14,
+    "examples": 759
+  },
+  "sourceFiles": [
+    {
+      "path": "src/doc/en/prep/advanced-2D-plotting.rst",
+      "sha256": "a2ddca52a8b9c52b401f98e2f94757d631f68322fd6f2665a15114c0eab4472f",
+      "lines": 707,
+      "examples": 90
+    },
+    {
+      "path": "src/doc/en/prep/calculus.rst",
+      "sha256": "292e051312ca970234d445abb924e441ea1ffcd8c61bd829a226a2c8b94fba98",
+      "lines": 779,
+      "examples": 75
+    },
+    {
+      "path": "src/doc/en/prep/index.rst",
+      "sha256": "145a70c28913533b82241d036ebdc49b7b88384d27347519384470207037bac2",
+      "lines": 45,
+      "examples": 0
+    },
+    {
+      "path": "src/doc/en/prep/intro-tutorial.rst",
+      "sha256": "590c2bbf62f69a83e86a14430615c688530e62a667f8567a7df184f1a6d29290",
+      "lines": 586,
+      "examples": 32
+    },
+    {
+      "path": "src/doc/en/prep/logging-on.rst",
+      "sha256": "9224d193dfadb5e8f5bd791022d3376dd5082265ec686e43b9e66d33cd848b1f",
+      "lines": 94,
+      "examples": 0
+    },
+    {
+      "path": "src/doc/en/prep/programming.rst",
+      "sha256": "10b7e62206cd050fbc9c617b1419811815246a8bb51e9c5a5ea889840f34b7ea",
+      "lines": 735,
+      "examples": 71
+    },
+    {
+      "path": "src/doc/en/prep/quickstart.rst",
+      "sha256": "b2fb6da659ea39aef6e3df91dfd5eb20638db6b1aafac26d7ef148fd49363edc",
+      "lines": 39,
+      "examples": 0
+    },
+    {
+      "path": "src/doc/en/prep/quickstarts/abstract-algebra.rst",
+      "sha256": "d6c4919e684bb1eafd6dad6c095b03eb2d003e3accd8a820288c386963b69435",
+      "lines": 364,
+      "examples": 63
+    },
+    {
+      "path": "src/doc/en/prep/quickstarts/differential-equations.rst",
+      "sha256": "938ce76406e9bdae13f767dd59ad9179c550a60c655258697a95724bd5bd088f",
+      "lines": 177,
+      "examples": 26
+    },
+    {
+      "path": "src/doc/en/prep/quickstarts/graphs-and-discrete.rst",
+      "sha256": "842b9765d27ddd4fe460212e80f82283bf0186874f7e8157bc9240ac683be41e",
+      "lines": 335,
+      "examples": 77
+    },
+    {
+      "path": "src/doc/en/prep/quickstarts/interact.rst",
+      "sha256": "0107061a64c104f8c12582b3de6f38fddafd848d763a52477c1074fffb90b37f",
+      "lines": 333,
+      "examples": 46
+    },
+    {
+      "path": "src/doc/en/prep/quickstarts/linear-algebra.rst",
+      "sha256": "85337e97ca2144f46414ab99e3110e8451ed3e35d8277793b1b9e74af62af04e",
+      "lines": 343,
+      "examples": 47
+    },
+    {
+      "path": "src/doc/en/prep/quickstarts/multivariable-calculus.rst",
+      "sha256": "cb92b6292d6c19651a3a0ba1e1205a1eafc7601c081296afc8ac7c223c092c6f",
+      "lines": 304,
+      "examples": 78
+    },
+    {
+      "path": "src/doc/en/prep/quickstarts/number-theory.rst",
+      "sha256": "ba384424b8da02c5d8d768e7fc0ca0e795656411610301127ee475ef5a6a23fe",
+      "lines": 270,
+      "examples": 34
+    },
+    {
+      "path": "src/doc/en/prep/quickstarts/numerical-analysis.rst",
+      "sha256": "6de306b6789a6c727c8ba6592c62ffee89c3b04132deffe83f65f4a0973bc4dd",
+      "lines": 314,
+      "examples": 46
+    },
+    {
+      "path": "src/doc/en/prep/quickstarts/statistics-and-distributions.rst",
+      "sha256": "bd34c47fd52ff359cfd2835ad1276d9fa7c291d510dbea9fd5f3409b3951b236",
+      "lines": 205,
+      "examples": 28
+    },
+    {
+      "path": "src/doc/en/prep/symbolics-and-basic-plotting.rst",
+      "sha256": "7d4678bfed16eeee8bfd9cc9fdd984817b58407e3c08d326c17948e91d63b2e1",
+      "lines": 468,
+      "examples": 46
+    }
+  ]
+}

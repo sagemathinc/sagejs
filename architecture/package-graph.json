@@ -8,9 +8,9 @@
   },
   "startup_budgets": {
     "development-cli": {
-      "normalized_median_ms": 350,
+      "normalized_median_ms": 400,
       "normalized_median_ms_by_platform_arch": {
-        "linux-arm64": 400
+        "linux-arm64": 525
       },
       "hard_limit_ms": 1500,
       "samples": 11,
@@ -25,7 +25,8 @@
     "sea-cli": {
       "normalized_median_ms": 300,
       "normalized_median_ms_by_platform_arch": {
-        "linux-arm64": 350
+        "linux-x64": 350,
+        "linux-arm64": 425
       },
       "hard_limit_ms": 1500,
       "samples": 11,
@@ -43,17 +44,19 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 805000,
+      "max_source_bytes": 903000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
         "src/baselib/__future__.py",
+        "src/baselib/bootstrap_shared.py",
         "src/baselib/builtins.py",
         "src/baselib/byte_strings.py",
         "src/baselib/compiler_bootstrap.py",
         "src/baselib/containers.py",
         "src/baselib/errors.py",
         "src/baselib/internal.py",
+        "src/baselib/interacts.py",
         "src/baselib/itertools.py",
         "src/baselib/runtime_primitives.py",
         "src/baselib/sagejs_bootstrap.py",
@@ -62,6 +65,86 @@
         "src/lib/sagejs/__init__.py",
         "src/baselib/str.py"
       ],
+      "prefixes": []
+    },
+    {
+      "id": "numerical-linear-algebra",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 360000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "modules": ["sagejs.numerics.linear_algebra"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/linear_algebra/"]
+    },
+    {
+      "id": "numerical-approximation",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 340000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "modules": ["sagejs.numerics.approximation"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/approximation/"]
+    },
+    {
+      "id": "numerical-integration",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 220000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "modules": ["sagejs.numerics.integration"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/integration/"]
+    },
+    {
+      "id": "numerical-optimization",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 440000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "modules": ["sagejs.numerics.optimization"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/optimization/"]
+    },
+    {
+      "id": "numerical-ode",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 340000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "modules": ["sagejs.numerics.ode"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/ode/"]
+    },
+    {
+      "id": "numerical-spectral",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 400000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "modules": ["sagejs.numerics.spectral"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/spectral/"]
+    },
+    {
+      "id": "numerical-statistics",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 360000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec", "native-integration"],
+      "modules": ["sagejs.numerics.statistics"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/statistics/"]
+    },
+    {
+      "id": "numerical-sweeps",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 120000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing"],
+      "modules": ["sagejs.numerics.sweeps"],
+      "files": ["src/lib/sagejs/numerics/sweeps.py"],
       "prefixes": []
     },
     {
@@ -82,7 +165,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 740000,
+      "max_source_bytes": 820000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -92,6 +175,8 @@
         "src/baselib/number_fields.py",
         "src/baselib/padics.py",
         "src/baselib/polynomial.py",
+        "src/baselib/polynomial_quotient.py",
+        "src/baselib/proof.py",
         "src/baselib/real_complex.py",
         "src/baselib/series.py",
         "src/baselib/zeta_data.py",
@@ -106,10 +191,20 @@
       "prefixes": []
     },
     {
+      "id": "interval-arithmetic",
+      "layer": 3,
+      "startup": "lazy",
+      "max_source_bytes": 30000,
+      "depends_on": ["core-runtime", "native-integration", "arithmetic"],
+      "modules": ["sagejs.intervals"],
+      "files": ["src/lib/sagejs/intervals.py"],
+      "prefixes": []
+    },
+    {
       "id": "linear-algebra",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 420000,
+      "max_source_bytes": 451000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py"
@@ -176,6 +271,7 @@
         "src/lib/sagejs/kernels/matrix/dense_rational_flint.py",
         "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py",
         "src/lib/sagejs/kernels/matrix/rank_four_lattice.py",
+        "src/lib/sagejs/kernels/matrix/sparse_prime_field.py",
         "src/lib/sagejs/kernels/matrix/word_prime_krylov.py"
       ],
       "prefixes": []
@@ -218,7 +314,7 @@
       "id": "complex-cubic-native-program",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 360000,
+      "max_source_bytes": 485000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -312,10 +408,20 @@
       "prefixes": []
     },
     {
+      "id": "analytic-special-functions",
+      "layer": 8,
+      "startup": "lazy",
+      "max_source_bytes": 10000,
+      "depends_on": ["core-runtime", "python-stdlib", "numeric-compat", "number-field-zeta-functions"],
+      "modules": ["sagejs.special_functions"],
+      "files": ["src/lib/sagejs/special_functions.py"],
+      "prefixes": []
+    },
+    {
       "id": "number-field-global-arithmetic",
       "layer": 7,
       "startup": "lazy",
-      "max_source_bytes": 1620000,
+      "max_source_bytes": 1720000,
       "depends_on": [
         "core-runtime",
         "arithmetic",
@@ -364,7 +470,7 @@
       "id": "polynomial-algorithms",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 250000,
+      "max_source_bytes": 325000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -379,6 +485,50 @@
         "src/lib/sage/databases/conway.py"
       ],
       "prefixes": ["src/lib/sagejs/polynomial_algorithms/"]
+    },
+    {
+      "id": "algebraic-geometry-shell",
+      "layer": 3,
+      "startup": "bootstrap",
+      "max_source_bytes": 50000,
+      "depends_on": ["core-runtime", "arithmetic"],
+      "files": ["src/baselib/schemes.py"],
+      "prefixes": []
+    },
+    {
+      "id": "algebraic-geometry-algorithms",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 25000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "algebraic-geometry-shell",
+        "polynomial-algorithms",
+        "python-stdlib"
+      ],
+      "modules": ["sagejs.schemes"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/schemes/"]
+    },
+    {
+      "id": "mathematical-databases",
+      "layer": 6,
+      "startup": "lazy",
+      "max_source_bytes": 57000,
+      "depends_on": [
+        "core-runtime",
+        "python-stdlib",
+        "arithmetic",
+        "hyperelliptic-curves-algorithms"
+      ],
+      "modules": ["sage.databases.lmfdb"],
+      "files": [
+        "src/lib/sage/databases/_lmfdb_bundled.py",
+        "src/lib/sage/databases/lmfdb.py"
+      ],
+      "prefixes": []
     },
     {
       "id": "linear-algebra-algorithms",
@@ -400,9 +550,9 @@
       "id": "symbolics",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 95000,
+      "max_source_bytes": 130000,
       "depends_on": ["core-runtime", "arithmetic"],
-      "files": ["src/baselib/symbolic.py"],
+      "files": ["src/baselib/symbolic.py", "src/baselib/piecewise.py"],
       "prefixes": []
     },
     {
@@ -435,11 +585,25 @@
       "id": "combinatorics",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 60000,
+      "max_source_bytes": 80000,
       "depends_on": ["core-runtime", "native-integration", "python-stdlib"],
       "files": [
         "src/baselib/combinat.py"
       ],
+      "prefixes": []
+    },
+    {
+      "id": "coding-theory",
+      "layer": 5,
+      "startup": "bootstrap",
+      "max_source_bytes": 20000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "groups-combinatorics"
+      ],
+      "files": ["src/baselib/coding.py"],
       "prefixes": []
     },
     {
@@ -473,7 +637,7 @@
       "id": "elliptic-curves",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 112000,
+      "max_source_bytes": 114000,
       "depends_on": ["core-runtime", "arithmetic"],
       "files": ["src/baselib/elliptic_curves.py"],
       "typescript_files": ["tools/serialization-codecs/elliptic-curves.ts"],
@@ -625,7 +789,7 @@
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 260000,
+      "max_source_bytes": 351000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic", "linear-algebra"],
       "files": [
         "src/baselib/dirichlet.py",
@@ -633,6 +797,178 @@
         "src/lib/sagejs/kernels/p1.py"
       ],
       "typescript_files": ["tools/serialization-codecs/modular-forms.ts"],
+      "prefixes": []
+    },
+    {
+      "id": "modular-form-expansions",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 160000,
+      "depends_on": [
+        "core-runtime", "python-stdlib", "arithmetic", "linear-algebra",
+        "modular-forms"
+      ],
+      "modules": [
+        "sagejs.modular_forms.half_integral",
+        "sagejs.modular_forms.gamma1",
+        "sagejs.modular_forms.newforms",
+        "sagejs.modular_forms.qexp"
+      ],
+      "files": [
+        "src/lib/sagejs/modular_forms/half_integral.py",
+        "src/lib/sagejs/modular_forms/gamma1.py",
+        "src/lib/sagejs/modular_forms/newforms.py",
+        "src/lib/sagejs/modular_forms/qexp.py"
+      ],
+      "prefixes": []
+    },
+    {
+      "id": "modular-character-hecke",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 8000,
+      "depends_on": ["core-runtime", "modular-forms", "linear-algebra"],
+      "modules": ["sagejs.modular_forms.character_hecke"],
+      "files": ["src/lib/sagejs/modular_forms/character_hecke.py"],
+      "prefixes": []
+    },
+    {
+      "id": "modular-form-qexp-algebra",
+      "layer": 6,
+      "startup": "lazy",
+      "max_source_bytes": 85000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "modular-forms",
+        "modular-form-expansions"
+      ],
+      "modules": [
+        "sagejs.modular_forms.qexp_algebra"
+      ],
+      "files": [
+        "src/lib/sagejs/modular_forms/qexp_algebra.py"
+      ],
+      "prefixes": []
+    },
+    {
+      "id": "modular-form-eta-products",
+      "layer": 7,
+      "startup": "lazy",
+      "max_source_bytes": 25000,
+      "depends_on": [
+        "core-runtime",
+        "modular-form-qexp-algebra"
+      ],
+      "modules": [
+        "sagejs.modular_forms.eta_products"
+      ],
+      "files": [
+        "src/lib/sagejs/modular_forms/eta_products.py"
+      ],
+      "prefixes": []
+    },
+    {
+      "id": "modular-form-object-layer",
+      "layer": 7,
+      "startup": "lazy",
+      "max_source_bytes": 70000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "modular-forms",
+        "modular-form-expansions",
+        "modular-form-qexp-algebra"
+      ],
+      "modules": [
+        "sagejs.modular_forms.object_layer"
+      ],
+      "files": [
+        "src/lib/sagejs/modular_forms/object_layer.py"
+      ],
+      "prefixes": []
+    },
+    {
+      "id": "modular-abelian-varieties",
+      "layer": 6,
+      "startup": "lazy",
+      "max_source_bytes": 86500,
+      "depends_on": [
+        "core-runtime",
+        "python-stdlib",
+        "arithmetic",
+        "linear-algebra",
+        "linear-algebra-algorithms",
+        "modular-forms",
+        "modular-form-expansions"
+      ],
+      "modules": [
+        "sagejs.modular_abelian_varieties"
+      ],
+      "files": [
+        "src/lib/sagejs/modular_abelian_varieties/__init__.py",
+        "src/lib/sagejs/modular_abelian_varieties/abelian_variety.py",
+        "src/lib/sagejs/modular_abelian_varieties/lattices.py",
+        "src/lib/sagejs/modular_abelian_varieties/morphisms.py",
+        "src/lib/sagejs/modular_abelian_varieties/products.py",
+        "src/lib/sagejs/modular_abelian_varieties/degeneracy.py"
+      ],
+      "typescript_files": ["tools/serialization-codecs/modular-abelian-varieties.ts"],
+      "prefixes": []
+    },
+    {
+      "id": "rational-quaternion-algebras",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 115000,
+      "depends_on": [
+        "core-runtime", "native-integration", "python-stdlib", "arithmetic",
+        "linear-algebra"
+      ],
+      "modules": ["sagejs.quaternion_algebras"],
+      "files": [
+        "src/lib/sagejs/quaternion_algebras/__init__.py",
+        "src/lib/sagejs/quaternion_algebras/algebra.py",
+        "src/lib/sagejs/quaternion_algebras/class_set.py",
+        "src/lib/sagejs/quaternion_algebras/ideals.py"
+      ],
+      "prefixes": ["src/lib/sagejs/kernels/quaternion/"]
+    },
+    {
+      "id": "sparse-modular-forms",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 330000,
+      "depends_on": [
+        "core-runtime", "native-integration", "python-stdlib", "arithmetic", "linear-algebra",
+        "graph-theory", "modular-forms", "matrix-native-kernels",
+        "rational-quaternion-algebras"
+      ],
+      "modules": [
+        "sage.modular.quatalg",
+        "sage.modular.ssmod",
+        "sagejs.modular_forms"
+      ],
+      "files": [
+        "src/lib/sage/modular/quatalg/__init__.py",
+        "src/lib/sage/modular/quatalg/brandt.py",
+        "src/lib/sage/modular/ssmod/__init__.py",
+        "src/lib/sage/modular/ssmod/ssmod.py",
+        "src/lib/sagejs/modular_forms/__init__.py",
+        "src/lib/sagejs/modular_forms/algebraic.py",
+        "src/lib/sagejs/modular_forms/brandt.py",
+        "src/lib/sagejs/modular_forms/component_groups.py",
+        "src/lib/sagejs/modular_forms/finite_hecke.py",
+        "src/lib/sagejs/modular_forms/hilbert_sqrt3.py",
+        "src/lib/sagejs/modular_forms/hilbert_sqrt5.py",
+        "src/lib/sagejs/modular_forms/mestre.py",
+        "src/lib/sagejs/modular_forms/modular_polynomial.py",
+        "src/lib/sagejs/modular_forms/sparse_hecke.py",
+        "src/lib/sagejs/modular_forms/sparse_krylov.py",
+        "src/lib/sagejs/modular_forms/supersingular.py"
+      ],
       "prefixes": []
     },
     {
@@ -674,15 +1010,21 @@
       "modules": [
         "_dummy_thread", "_thread", "abc", "aes", "annotationlib", "argparse", "array", "ast", "atexit", "base64", "bdb", "bisect", "calendar", "cmath", "codecs", "collections", "colorsys", "contextlib", "copy", "decimal",
         "csv", "dataclasses", "datetime", "elementmaker", "encodings", "enum", "errno", "fnmatch", "functools", "gc",
-        "genericpath", "gettext", "glob", "gzip", "hashlib", "heapq", "html", "inspect", "itertools", "linecache", "locale", "logging", "marshal",
+        "genericpath", "gettext", "glob", "gzip", "hashlib", "heapq", "html", "inspect", "itertools", "linecache", "locale", "logging", "marshal", "mimetypes",
         "http", "importlib", "io", "js", "json", "keyword", "math", "multiprocessing", "ntpath", "numbers",
         "operator", "os", "pathlib", "pdb", "pickle", "platform", "posixpath", "pprint", "pythonize", "random",
         "re", "reprlib", "sage", "sagejs_serialization", "shlex", "shutil", "socket", "string",
-        "sagejs.javascript", "sqlite3", "stat", "statistics", "struct", "subprocess", "sys", "tempfile", "textwrap", "threading", "time",
+        "sagejs._collection_helpers", "sagejs._documentation_search", "sagejs._introspection", "sagejs._namespace", "sagejs._punycode", "sagejs.class_namespace", "sagejs.javascript", "sqlite3", "stat", "statistics", "struct", "subprocess", "sys", "tempfile", "textwrap", "threading", "time",
         "tokenize", "traceback", "types", "unicodedata", "unittest", "urllib", "uuid", "warnings", "weakref", "xml", "zlib"
       ],
       "files": [
         "src/lib/sagejs/javascript.py",
+        "src/lib/sagejs/class_namespace.py",
+        "src/lib/sagejs/_documentation_search.py",
+        "src/lib/sagejs/_collection_helpers.py",
+        "src/lib/sagejs/_introspection.py",
+        "src/lib/sagejs/_namespace.py",
+        "src/lib/sagejs/_punycode.py",
         "src/lib/_dummy_thread.py", "src/lib/_thread.py", "src/lib/abc.py", "src/lib/aes.py", "src/lib/annotationlib.py", "src/lib/argparse.py", "src/lib/array.py", "src/lib/ast.py", "src/lib/atexit.py", "src/lib/base64.py", "src/lib/bdb.py", "src/lib/calendar.py", "src/lib/cmath.py", "src/lib/colorsys.py", "src/lib/copy.py", "src/lib/datetime.py", "src/lib/decimal.py", "src/lib/enum.py",
         "src/lib/codecs.py",
         "src/lib/bisect.py", "src/lib/collections.py", "src/lib/contextlib.py",
@@ -690,7 +1032,7 @@
         "src/lib/fnmatch.py", "src/lib/functools.py", "src/lib/gc.py",
         "src/lib/genericpath.py", "src/lib/gettext.py", "src/lib/glob.py",
         "src/lib/gzip.py", "src/lib/hashlib.py", "src/lib/heapq.py",
-        "src/lib/inspect.py", "src/lib/io.py", "src/lib/itertools.py", "src/lib/js.py", "src/lib/json.py", "src/lib/keyword.py", "src/lib/linecache.py", "src/lib/locale.py", "src/lib/logging.py", "src/lib/marshal.py", "src/lib/math.py",
+        "src/lib/inspect.py", "src/lib/io.py", "src/lib/itertools.py", "src/lib/js.py", "src/lib/json.py", "src/lib/keyword.py", "src/lib/linecache.py", "src/lib/locale.py", "src/lib/marshal.py", "src/lib/math.py", "src/lib/mimetypes.py",
         "src/lib/multiprocessing.py", "src/lib/ntpath.py", "src/lib/numbers.py", "src/lib/operator.py",
         "src/lib/os.py", "src/lib/pathlib.py", "src/lib/pdb.py", "src/lib/pickle.py", "src/lib/platform.py", "src/lib/posixpath.py", "src/lib/pprint.py",
         "src/lib/pythonize.py", "src/lib/random.py", "src/lib/re.py", "src/lib/reprlib.py",
@@ -701,8 +1043,43 @@
         "src/lib/uuid.py", "src/lib/warnings.py", "src/lib/weakref.py", "src/lib/zlib.py"
       ],
       "prefixes": [
-        "src/lib/collections/", "src/lib/html/", "src/lib/http/", "src/lib/importlib/", "src/lib/os/", "src/lib/sage/", "src/lib/unittest/", "src/lib/urllib/", "src/lib/xml/"
+        "src/lib/collections/", "src/lib/html/", "src/lib/http/", "src/lib/importlib/", "src/lib/logging/", "src/lib/os/", "src/lib/sage/", "src/lib/unittest/", "src/lib/urllib/", "src/lib/xml/"
       ]
+    },
+    {
+      "id": "widget-runtime",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 1200000,
+      "depends_on": ["core-runtime", "python-stdlib", "numeric-compat"],
+      "modules": ["IPython", "comm", "ipywidgets", "sage.interacts", "traitlets"],
+      "files": [
+        "src/lib/sage/interacts/__init__.py",
+        "src/lib/sage/interacts/all.py",
+        "src/lib/sage/interacts/calculus.py",
+        "src/lib/sage/interacts/library.py",
+        "src/lib/sage/interacts/statistics.py"
+      ],
+      "prefixes": ["src/lib/IPython/", "src/lib/comm/", "src/lib/ipywidgets/", "src/lib/sagejs/interacts/", "src/lib/sagejs/widgets/", "src/lib/traitlets/"]
+    },
+    {
+      "id": "numerical-computing",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 500000,
+      "depends_on": ["core-runtime", "python-stdlib", "plot-spec"],
+      "modules": ["sagejs.numerics"],
+      "files": [
+        "src/lib/sagejs/numerics/__init__.py",
+        "src/lib/sagejs/numerics/_json.py",
+        "src/lib/sagejs/numerics/capabilities.py",
+        "src/lib/sagejs/numerics/diagnostics.py",
+        "src/lib/sagejs/numerics/model.py",
+        "src/lib/sagejs/numerics/roots.py",
+        "src/lib/sagejs/numerics/trace.py",
+        "src/lib/sagejs/numerics/visualization.py"
+      ],
+      "prefixes": ["src/lib/sagejs/numerics/frontends/"]
     },
     {
       "id": "numeric-compat",
@@ -721,7 +1098,7 @@
       "max_source_bytes": 120000,
       "depends_on": [
         "core-runtime", "python-stdlib", "arithmetic", "symbolics",
-        "numeric-compat", "graphics"
+        "numeric-compat", "numerical-computing", "graphics"
       ],
       "modules": ["macaulay2", "magma", "maple", "matlab", "wolfram"],
       "files": [

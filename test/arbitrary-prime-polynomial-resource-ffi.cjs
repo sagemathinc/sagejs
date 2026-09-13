@@ -7,7 +7,10 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerCompilerFlag,
+  sanitizerEnvironment,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const prefix = resolve(
@@ -431,7 +434,7 @@ function compileUnixWitness() {
     ...(sanitize
       ? [
           "-fno-omit-frame-pointer",
-          "-fsanitize=address,undefined",
+          sanitizerCompilerFlag(),
         ]
       : []),
     `-I${join(root, "packages", "flint", "include")}`,

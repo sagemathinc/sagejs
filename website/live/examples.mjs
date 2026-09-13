@@ -1,5 +1,85 @@
 export const EXAMPLES = Object.freeze([
   {
+    id: "interactive-symbolic-plot",
+    title: "Interactive symbolic plot",
+    description: "Move a standard ipywidgets slider to update symbolic mathematics and a plot, entirely in your browser.",
+    source: `from IPython.display import display
+
+@interact
+def symbolic_plot(power=slider(1, 8, 1, 2, label='power')):
+    f = x^power
+    display(f.derivative(x))
+    display(plot(f, (x, -2, 2), ymin=-4, ymax=4))
+`,
+  },
+  {
+    id: "interactive-function-explorer",
+    title: "Interactive function explorer",
+    description: "Edit a Sage expression to update its derivative and plot locally, using the standard ipywidgets text protocol.",
+    source: `from IPython.display import display
+
+@interact
+def function_explorer(f=input_box('x^3 - 2*x', label='f(x)=')):
+    display(f)
+    display(f.derivative(x))
+    display(plot(f, (x, -2, 2), ymin=-10, ymax=10))
+`,
+  },
+  {
+    id: "ipywidgets-core-gallery",
+    title: "Core widget gallery",
+    description: "Try linked controls, rich Output capture, callback errors, and a binary file upload through the standard ipywidgets protocol.",
+    source: `import ipywidgets as widgets
+from IPython.display import display
+
+slider = widgets.IntSlider(value=4, min=0, max=10, description='Linked value')
+number = widgets.IntText(value=4, description='Mirror')
+frontend_link = widgets.jslink((slider, 'value'), (number, 'value'))
+text = widgets.Text(value='Sage.js', description='Text')
+choice = widgets.Dropdown(options=['alpha', 'beta', 'gamma'], value='beta', description='Choice')
+enabled = widgets.Checkbox(value=True, description='Enabled')
+color = widgets.ColorPicker(value='#3366cc', description='Color')
+
+output = widgets.Output(layout=widgets.Layout(border='1px solid #888'))
+capture = widgets.Button(description='Capture output', icon='check')
+clear = widgets.Button(description='Clear output')
+fail = widgets.Button(description='Raise error', button_style='warning')
+upload = widgets.FileUpload(accept='.txt', multiple=False, description='Upload text')
+
+def capture_output(_button):
+    with output:
+        print('captured', slider.value, text.value, choice.value, enabled.value, color.value)
+        display(x^2 + slider.value)
+
+def clear_output(_button):
+    output.clear_output()
+
+def fail_output(_button):
+    with output:
+        raise ValueError('deliberate widget error')
+
+def receive_upload(change):
+    if len(change['new']) == 0:
+        return
+    uploaded = change['new'][0]
+    content = uploaded['content'].tobytes()
+    with output:
+        print('uploaded', uploaded['name'], len(content), sum(content))
+
+capture.on_click(capture_output)
+clear.on_click(clear_output)
+fail.on_click(fail_output)
+upload.observe(receive_upload, names='value')
+display(widgets.VBox([
+    widgets.HBox([slider, number]),
+    widgets.HBox([text, choice]),
+    widgets.HBox([enabled, color]),
+    widgets.HBox([capture, clear, fail, upload]),
+    output,
+]))
+`,
+  },
+  {
     id: "number-field",
     title: "Number field arithmetic",
     description: "A maximal order, prime decomposition, and the first Dedekind zeta coefficients.",
@@ -29,6 +109,23 @@ complex_plot(L, (0, 2), (-4, 4), plot_points=50,
              interpolation='nearest')`,
   },
   {
+    id: "cape-man",
+    title: "Cape Man in 3D",
+    description:
+      "Build Sage's classic Cape Man by composing and transforming 3D surfaces.",
+    source: `S = sphere(size=.5, color='yellow')
+S += sphere((.45, -.1, .15), size=.1, color='white')
+S += sphere((.51,-.1,.17), size=.05, color='black')
+S += sphere((.45, .1, .15), size=.1, color='white')
+S += sphere((.51, .1,.17), size=.05, color='black')
+S += sphere((.5, 0, -.2), size=.1, color='yellow')
+f(x,y) = exp(x/5)*cos(y)
+P = plot3d(f, (-5, 4), (-5, 5),
+           color=['red','yellow'], max_depth=10, mesh=True)
+cape_man = P.scale(.2) + S.translate(1, 0, 0)
+cape_man.show(aspect_ratio=[1, 1, 1], figsize=6)`,
+  },
+  {
     id: "exact-matrices",
     title: "Exact matrices",
     description: "Exact integer and rational linear algebra backed by WebAssembly.",
@@ -37,6 +134,37 @@ print(A.det())
 print(A.hermite_form())
 B = matrix(QQ, [[1/2, 1/3], [2/5, 3/7]])
 B.inverse()`,
+  },
+  {
+    id: "algebraic-geometry",
+    title: "Algebraic geometry",
+    description: "Construct schemes, close a curve projectively, and compute exact singular data without a server.",
+    source: `A = AffineSpace(QQ, 2, names=("x", "y"))
+x, y = A.gens()
+C = Curve(y^2 - x^3)
+O = C(0, 0)
+print(C)
+print("dimension:", C.dimension())
+print("origin smooth:", C.is_smooth(O))
+print("tangent dimension:", C.tangent_space(O).dimension())
+
+projective = C.projective_closure("z")
+print("projective degree:", projective.degree())
+print("arithmetic genus:", projective.arithmetic_genus())
+projective`,
+  },
+  {
+    id: "numerical-laboratory",
+    title: "Validated numerical root",
+    description:
+      "Solve, independently validate, explain, and visualize a root-finding computation.",
+    source: `from sagejs.numerics import find_root
+
+result = find_root(lambda x: x^3 - 2, 1.0, 2.0,
+                   method="brent", trace="iterations")
+print(result.explain())
+print(result.to_json())
+result.plot()`,
   },
   {
     id: "numpy-signal-recovery",
@@ -70,7 +198,7 @@ normal_rhs = np.matmul(basis.T, noisy)
 coefficients = np.linalg.solve(normal_matrix, normal_rhs)
 fit = np.matmul(basis, coefficients)
 residual = np.subtract(fit, clean)
-rmse = np.sqrt(np.mean(np.multiply(residual, residual))).item()
+rmse = float(np.sqrt(np.mean(np.multiply(residual, residual))))
 
 print("recovered coefficients:", np.round(coefficients, 3).tolist())
 print("fit RMSE:", round(rmse, 6))`,

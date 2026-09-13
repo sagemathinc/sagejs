@@ -1,0 +1,136 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fmpz-exact-call-graph",
+  "title": "Fmpz Exact Call Graph",
+  "lane": "native-compiler",
+  "status": "complete",
+  "owner": "user",
+  "objective": "Extend the internal FLINT fmpz backend across a closed native helper call graph with bool and tuple results, demonstrated by a representative promoted exact-arithmetic witness without adding IntegerBuffer or broader FFI support",
+  "base_commit": "8eb2c19c3d88c21d35924577cc519a3affa012f8",
+  "claims": [
+    "tools/native-kernel/fmpz-backend.cjs",
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/compiler.cjs",
+    "tools/native-kernel/js-backend.cjs",
+    "tools/native-kernel/test/fmpz-call-graph.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "ARCHITECTURE.md",
+    "architecture/decisions/0004-resident-exact-native-machine.md"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "dynamic JavaScript implementation",
+      "tagged exact backend",
+      "GMP exact backend"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test tools/native-kernel/test/fmpz-backend.cjs tools/native-kernel/test/fmpz-call-graph.cjs",
+    "node test/native-kernel.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm merge:check",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/fmpz-backend.cjs tools/native-kernel/test/fmpz-call-graph.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.376,
+      "started_at": "2026-09-04T07:23:50.888Z",
+      "commit": "8eb2c19c3d88c21d35924577cc519a3affa012f8",
+      "workspace_fingerprint": "d1b034bccee0af7612fc3de54e8646fc6b0e3be31654563f31fda0c0e205d295",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/native-kernel.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 68.943,
+      "started_at": "2026-09-04T07:23:58.185Z",
+      "commit": "8eb2c19c3d88c21d35924577cc519a3affa012f8",
+      "workspace_fingerprint": "d1b034bccee0af7612fc3de54e8646fc6b0e3be31654563f31fda0c0e205d295",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 45.272,
+      "started_at": "2026-09-04T07:25:11.236Z",
+      "commit": "8eb2c19c3d88c21d35924577cc519a3affa012f8",
+      "workspace_fingerprint": "d1b034bccee0af7612fc3de54e8646fc6b0e3be31654563f31fda0c0e205d295",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.923,
+      "started_at": "2026-09-04T07:26:00.664Z",
+      "commit": "8eb2c19c3d88c21d35924577cc519a3affa012f8",
+      "workspace_fingerprint": "d1b034bccee0af7612fc3de54e8646fc6b0e3be31654563f31fda0c0e205d295",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1045.547,
+      "started_at": "2026-09-04T07:26:17.117Z",
+      "commit": "8eb2c19c3d88c21d35924577cc519a3affa012f8",
+      "workspace_fingerprint": "d1b034bccee0af7612fc3de54e8646fc6b0e3be31654563f31fda0c0e205d295",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1263.532,
+      "started_at": "2026-09-04T07:43:48.894Z",
+      "commit": "8eb2c19c3d88c21d35924577cc519a3affa012f8",
+      "workspace_fingerprint": "d1b034bccee0af7612fc3de54e8646fc6b0e3be31654563f31fda0c0e205d295",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.141,
+      "started_at": "2026-09-04T08:06:07.291Z",
+      "commit": "8eb2c19c3d88c21d35924577cc519a3affa012f8",
+      "workspace_fingerprint": "d1b034bccee0af7612fc3de54e8646fc6b0e3be31654563f31fda0c0e205d295",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The FLINT fmpz backend now qualifies an acyclic closed exact program consisting of one arena-owning root and its reachable scalar-only helpers. Integer, uint64, bool, scalar, and tuple results have a direct internal fmpz ABI, native.call lowering never crosses through mpz_t, and separately host-called helpers retain a checked public GMP bridge. The four-function witness differentially exercises small, negative-floor-division, 256-bit, and 4096-bit values and proves generated helper/root bodies contain neither mpz operations nor fmpz-mpz conversions.",
+    "risks": [
+      "Automatic selection remains fail-closed to one unbounded-vector arena root plus scalar-only acyclic helpers; this lane intentionally does not qualify IntegerBuffer, borrowed resident vector/matrix parameters, or additional FLINT resources.",
+      "Linux x64 compilation and runtime were exercised locally. The source uses only existing portable FLINT and generated-C ABI types, but Linux arm64, macOS arm64, Windows x64, and Wasm execution remain integration-lane validation.",
+      "architecture:check and test:changed reach the inherited stale optimizer-opportunity manifest (expected b7b3aa1f, found 4f6cafa7) after all preceding architecture checks pass.",
+      "test:native passes all correctness, sanitizer, lifecycle, compiler, production-pack, and migration stages, then the unrelated dense ZZ select_columns_500 performance ratchet measures 3.22 ms against a 3.00 ms shared-host budget."
+    ],
+    "next_steps": [
+      "Add a resident fmpz IntegerBuffer ingress/view with get, set, and length so the cubic root's thirteen packed exact parameters cross the host boundary once instead of per element.",
+      "Extend the direct fmpz helper ABI to borrowed NativeIntegerVector and FmpzMatrix parameters while preserving owner lifetime and alias proofs.",
+      "Lower the remaining cubic closure operations: integer.mod_uint64, loop.range_exact, and uint64.from_integer_checked (IntegerBuffer operations are covered by the ingress step).",
+      "Qualify the thirteen additional cubic FLINT/resource declarations: HNF/LLL/SNF matrix operations, fmpz polynomial construction/sealing, logarithm-ball resources, and number-field analysis/project resources.",
+      "Re-run selection on the 73-function certified_complex_cubic_class_group_v1 closure, inspect generated C for zero hot-path mpz conversions, then differential-test receipts before enabling automatic fmpz dispatch."
+    ]
+  }
+}

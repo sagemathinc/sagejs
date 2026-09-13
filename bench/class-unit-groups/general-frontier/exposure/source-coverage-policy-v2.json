@@ -1,0 +1,1215 @@
+{
+  "schema": "sagejs.general-frontier/source-coverage-policy-v2",
+  "scope": {
+    "description": "Versioned finite BENCH/TEST family dispositions plus a 65-file lexical checklist. The checklist is not an exhaustive parser or proof all tests ran; historical override invocations remain unresolved.",
+    "generic_override_history": "unresolved",
+    "universal_history_claim": false,
+    "holdout_eligible": null
+  },
+  "sources": [
+    {
+      "id": "roots",
+      "input": {
+        "path": "bench/class-unit-groups/roots-of-unity.py",
+        "sha256": "038846c83a6e9e35086d307f8608254f3f508caa157cf9dbe06872f1d8240825"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "quartic-projection",
+      "input": {
+        "path": "bench/class-unit-groups/quartic-class-number-projection.py",
+        "sha256": "837e81b4ec98d5e9d1e5fd37ac6108233fcc71b0ed9d064df8ebff99caf43ad2"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "quartic-minkowski",
+      "input": {
+        "path": "bench/class-unit-groups/quartic-minkowski-class-number.py",
+        "sha256": "0d1b8f521f7ec99dcb639934107851c2b5f6ad4b0588877d1e82048919d7290c"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "micro",
+      "input": {
+        "path": "bench/number-field-maximal-order-public-micro-perf.cjs",
+        "sha256": "ae58f56d3b82b65e2eca6b198b107f93fdefaea63f0a9533dcde2d8b0fedf247"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "relations",
+      "input": {
+        "path": "bench/number-field-class-group-relations.cjs",
+        "sha256": "2dbb114a322c7c4a37d029f9c40d07524e977ff46062337f1b0c0d50effc22ae"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "local",
+      "input": {
+        "path": "bench/number-field-local-polygons.cjs",
+        "sha256": "0506578de047157f5fa3afaeb943283caf048ba55423c7f416301796944c34bc"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "round4",
+      "input": {
+        "path": "test/fixtures/number-field-round4.json",
+        "sha256": "b272cff79aadc99cf6855aefccb8dc15a303ce543dfed98e728247b61f64067d"
+      },
+      "disposition": "reviewed-fixture-presentations"
+    },
+    {
+      "id": "maps",
+      "input": {
+        "path": "test/number-field-class-group-maps-proof.cjs",
+        "sha256": "f3b617bfddb4267e1fd16c4a173afada10f68504c7f0bfd65f1401b9e2ba1ec2"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "fields",
+      "input": {
+        "path": "test/number-fields.cjs",
+        "sha256": "df08e2d386b40c33e63826e157c42963310e263b8603b48d6b0d878bfa512494"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "bl-fixture",
+      "input": {
+        "path": "test/fixtures/number-field-buchmann-lenstra.json",
+        "sha256": "7485f6edf4b7890cf94755429cd93d0c94e003246822318e4b9955640d81297e"
+      },
+      "disposition": "reviewed-fixture-presentations"
+    },
+    {
+      "id": "bl-consumer",
+      "input": {
+        "path": "test/number-field-buchmann-lenstra.cjs",
+        "sha256": "ca2e0443f13960c52ed1cacd8bc88c9b23f5644733a79a95def5a245e1beca31"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "generic-frontier",
+      "input": {
+        "path": "bench/class-unit-groups/run-complex-cubic-frontier.cjs",
+        "sha256": "b81bc885c98e2aa43dafef4ec566f55a712c74f9f26c6dc3cbe69abb26550b68"
+      },
+      "disposition": "generic-capability-not-execution"
+    },
+    {
+      "id": "test-round4",
+      "input": {
+        "path": "test/number-field-round4.cjs",
+        "sha256": "de4396dc3679cf9ac516099a343f5594b2fe54b00f2e55c7f472423faca54f98"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "test-roots",
+      "input": {
+        "path": "test/number-field-roots-of-unity.cjs",
+        "sha256": "9975abeba9173d9919df00c995de85feae2dc8606ba6299ab5db0ffddddb64ff"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "test-packed",
+      "input": {
+        "path": "test/packed-integral-number-field.cjs",
+        "sha256": "63134eb49a36b6d38789161c4e68bdafb8109d50fb4cf62714b7afaa00208b74"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "test-crt",
+      "input": {
+        "path": "test/number-field-round4-crt-batch.cjs",
+        "sha256": "2d3836128c87aad2b2c6173c10b23cec3f8b7301790e2f2c874f1016b24bba90"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "test-selector",
+      "input": {
+        "path": "test/number-field-maximal-order-selector.cjs",
+        "sha256": "dff71dd5c4bb9afdb838df959ddd1695338072c68c076a66b4e96916d0e7f06d"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "test-parallel",
+      "input": {
+        "path": "test/number-field-maximal-order-parallel-worker.cjs",
+        "sha256": "feffc5bcb3e1f81ae29426486bf813b1c429921330dbccde4e4e5ec0c7d73bd7"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "test-cyclotomic",
+      "input": {
+        "path": "test/portable-cyclotomic-factor.cjs",
+        "sha256": "d2bcf513d78ef2407570c16c03a0dbb330d9741b4cd26ef209b4aef07dfd81a4"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "test-cyclotomic-parity",
+      "input": {
+        "path": "test/sage-result-parity.cjs",
+        "sha256": "ee16effcb9d0b633749b782bb0a893efdd45e17134048d56e4ca24fc534e5c17"
+      },
+      "disposition": "reviewed-inline-presentations"
+    },
+    {
+      "id": "test-gamma1",
+      "input": {
+        "path": "test/gamma1-modular-forms.cjs",
+        "sha256": "2d6b450686e1b9745044954dc904c0e68f3533a9bc6d4c174400eadfab2b78dd"
+      },
+      "disposition": "reviewed-inline-presentations"
+    }
+  ],
+  "presentations": [
+    {
+      "id": "translated-cyclotomic8",
+      "source_id": "roots",
+      "coefficients": [
+        "2",
+        "-4",
+        "6",
+        "-4",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "noncyclotomic-quartic",
+      "source_id": "roots",
+      "coefficients": [
+        "1",
+        "-1",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "quartic-plus2",
+      "source_id": "quartic-minkowski",
+      "coefficients": [
+        "2",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "quartic-nontrivial",
+      "source_id": "quartic-minkowski",
+      "coefficients": [
+        "4",
+        "4",
+        "0",
+        "-3",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "quartic2889",
+      "source_id": "quartic-projection",
+      "coefficients": [
+        "1",
+        "2",
+        "3",
+        "-1",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "quartic-minus8375",
+      "source_id": "quartic-projection",
+      "coefficients": [
+        "1",
+        "-3",
+        "-1",
+        "-2",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "quartic79937",
+      "source_id": "quartic-projection",
+      "coefficients": [
+        "4",
+        "5",
+        "-5",
+        "-4",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "quartic36677",
+      "source_id": "quartic-projection",
+      "coefficients": [
+        "6",
+        "-1",
+        "4",
+        "-4",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "rational-scale-micro",
+      "source_id": "micro",
+      "coefficients": [
+        "8",
+        "2",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool",
+      "derivation": "Original x^3+x/2+1; y=2x gives y^3+2y+8, preserving the field.",
+      "transform": {
+        "kind": "rational-scale",
+        "input_numerators": [
+          "2",
+          "1",
+          "0",
+          "2"
+        ],
+        "scale": "2"
+      }
+    },
+    {
+      "id": "cubic-plus2",
+      "source_id": "relations",
+      "coefficients": [
+        "2",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "local-minus31",
+      "source_id": "local",
+      "coefficients": [
+        "3",
+        "-1",
+        "5",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "local49",
+      "source_id": "local",
+      "coefficients": [
+        "-1",
+        "5",
+        "8",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "local-minus2472",
+      "source_id": "local",
+      "coefficients": [
+        "28",
+        "8",
+        "-7",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "local2177",
+      "source_id": "local",
+      "coefficients": [
+        "5",
+        "-19",
+        "-14",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "ford-letard1",
+      "source_id": "round4",
+      "coefficients": [
+        "8",
+        "8",
+        "-1",
+        "3",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "ford-letard2",
+      "source_id": "round4",
+      "coefficients": [
+        "9",
+        "12",
+        "3",
+        "1",
+        "4",
+        "1"
+      ],
+      "disposition": "fixture-discriminant-outside-pool",
+      "fixture_id": "ford-letard-example-2-p3",
+      "field_discriminant": "7291332"
+    },
+    {
+      "id": "reviewed-2.2.24.1",
+      "label": "2.2.24.1",
+      "source_id": "maps",
+      "coefficients": [
+        "-6",
+        "0",
+        "1"
+      ],
+      "disposition": "historical-quarantine"
+    },
+    {
+      "id": "reviewed-2.0.24.1",
+      "label": "2.0.24.1",
+      "source_id": "fields",
+      "coefficients": [
+        "6",
+        "0",
+        "1"
+      ],
+      "disposition": "historical-quarantine"
+    },
+    {
+      "id": "reviewed-2.0.260.1",
+      "label": "2.0.260.1",
+      "source_id": "fields",
+      "coefficients": [
+        "65",
+        "0",
+        "1"
+      ],
+      "disposition": "historical-quarantine"
+    },
+    {
+      "id": "reviewed-2.0.68.1",
+      "label": "2.0.68.1",
+      "source_id": "fields",
+      "coefficients": [
+        "17",
+        "0",
+        "1"
+      ],
+      "disposition": "historical-quarantine"
+    },
+    {
+      "id": "reviewed-2.2.65.1",
+      "label": "2.2.65.1",
+      "source_id": "bl-fixture",
+      "coefficients": [
+        "-65",
+        "0",
+        "1"
+      ],
+      "disposition": "historical-quarantine"
+    },
+    {
+      "id": "quartic-plusx",
+      "source_id": "test-round4",
+      "coefficients": [
+        "1",
+        "1",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "cyclotomic12",
+      "source_id": "test-roots",
+      "coefficients": [
+        "1",
+        "0",
+        "-1",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "cyclotomic5",
+      "source_id": "fields",
+      "coefficients": [
+        "1",
+        "1",
+        "1",
+        "1",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "quintic-minus2",
+      "source_id": "fields",
+      "coefficients": [
+        "-2",
+        "0",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "quintic-plus1-minusx",
+      "source_id": "test-round4",
+      "coefficients": [
+        "1",
+        "-1",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "sextic-plusx-plus1",
+      "source_id": "test-packed",
+      "coefficients": [
+        "1",
+        "1",
+        "0",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "octic-minus2",
+      "source_id": "test-crt",
+      "coefficients": [
+        "-2",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "quartic-plus2x-plus2",
+      "source_id": "test-round4",
+      "coefficients": [
+        "2",
+        "2",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "quartic-minus2",
+      "source_id": "test-round4",
+      "coefficients": [
+        "-2",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool"
+    },
+    {
+      "id": "rational-quartic-scale2",
+      "source_id": "fields",
+      "coefficients": [
+        "1",
+        "0",
+        "0",
+        "1",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool",
+      "transform": {
+        "kind": "rational-scale",
+        "input_numerators": [
+          "1",
+          "0",
+          "0",
+          "8",
+          "16"
+        ],
+        "scale": "2"
+      }
+    },
+    {
+      "id": "rational-half-pure-cubic",
+      "source_id": "fields",
+      "coefficients": [
+        "-2",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool",
+      "transform": {
+        "kind": "rational-scale",
+        "input_numerators": [
+          "-2",
+          "0",
+          "0",
+          "1"
+        ],
+        "scale": "1"
+      },
+      "derivation": "Source QQ(1,2)*(x^3-2): multiplying a nonzero polynomial by 1/2 does not change its quotient ideal."
+    },
+    {
+      "id": "shift100-quartic",
+      "source_id": "test-round4",
+      "coefficients": [
+        "2",
+        "2",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool",
+      "transform": {
+        "kind": "translation",
+        "shift": "1267650600228229401496703205376",
+        "input_coefficients": [
+          "2582249878086908589655919172003011874329705792829223512830659356540647622016841194629645350744836630979444368979341082626",
+          "-8148143905337944345073782753637512644205873574663745002544561797417525199053346824733589502",
+          "9641628265553941653251772554046975615133217962696757011808256",
+          "-5070602400912917605986812821504",
+          "1"
+        ]
+      }
+    },
+    {
+      "id": "shift500-quartic",
+      "source_id": "test-round4",
+      "coefficients": [
+        "2",
+        "2",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool",
+      "transform": {
+        "kind": "translation",
+        "shift": "3273390607896141870013189696827599152216642046043064789483291368096133796404674554883270092325904157150886684127560071009217256545885393053328527589376",
+        "input_coefficients": [
+          "114813069527425452423283320117768198402231770208869520047764273682576626139237031385665948631650626991844596463898746277344711896086305533142593135616665318539129989145312280000688779148240044871428926990063486244781615463646388363947317026040466353970904996558162398808944629605623311649536164221970332681344168908984458505602379484807914058900934776500429002716706625830522008132236281291761267883317206598995396418127021779858404042159853183251540882887120876128271217757210278383961777523932538496625801459000989823260755977070322287968730623975568323402067273680680824336304873682976078194093850626",
+          "-140298648441736154990510351841123431974096063521323315296303192099163855402253288814628323546339877046612601627181750069597178195765879839016684155672018803391559825941316389057947210846333851786146728737360554517805421833059785370101534477557259842578660210207005769342036996693444521423184438839542322697255816840870631389730507042932019013101268768534698814253491133188167972908210653334674039808000700213422116235521736730153546862094734852834197502",
+          "64290516431176039256905502943600108633684288702332016446625023302221063067496167349591902728941751487655680375053188809511228717141538842615907465448191448823607406648945385912526447630374226851267725092918278849901491647604392605354993263676462377487427178866119253005962578989915746321023234008416256",
+          "-13093562431584567480052758787310396608866568184172259157933165472384535185618698219533080369303616628603546736510240284036869026183541572213314110357504",
+          "1"
+        ]
+      }
+    },
+    {
+      "id": "shift500-pure-quartic",
+      "source_id": "test-round4",
+      "coefficients": [
+        "-2",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool",
+      "transform": {
+        "kind": "translation",
+        "shift": "3273390607896141870013189696827599152216642046043064789483291368096133796404674554883270092325904157150886684127560071009217256545885393053328527589376",
+        "input_coefficients": [
+          "114813069527425452423283320117768198402231770208869520047764273682576626139237031385665948631650626991844596463898746277344711896086305533142593135616665318539129989145312280000688779148240044871428926990063486244781615463646388363947317026040466353970904996558162398808944629605623311649536164221970332681344168908984458505602379484807914058900934776500429002716706625830522008132236281291761267883317206598995396418127021779858404042159853183251540889433902091920554957783589672039160081957216630582755380425583726015528348786419432054508915275783882625175435528800822842770817965453762184851149029374",
+          "-140298648441736154990510351841123431974096063521323315296303192099163855402253288814628323546339877046612601627181750069597178195765879839016684155672018803391559825941316389057947210846333851786146728737360554517805421833059785370101534477557259842578660210207005769342036996693444521423184438839542322697255816840870631389730507042932019013101268768534698814253491133188167972908210653334674039808000700213422116235521736730153546862094734852834197504",
+          "64290516431176039256905502943600108633684288702332016446625023302221063067496167349591902728941751487655680375053188809511228717141538842615907465448191448823607406648945385912526447630374226851267725092918278849901491647604392605354993263676462377487427178866119253005962578989915746321023234008416256",
+          "-13093562431584567480052758787310396608866568184172259157933165472384535185618698219533080369303616628603546736510240284036869026183541572213314110357504",
+          "1"
+        ]
+      }
+    },
+    {
+      "id": "parallel-quadratic-210",
+      "source_id": "test-parallel",
+      "coefficients": [
+        "-2",
+        "0",
+        "1"
+      ],
+      "disposition": "quadratic-index-outside-pool",
+      "transform": {
+        "kind": "rational-scale",
+        "input_numerators": [
+          "-88200",
+          "0",
+          "1"
+        ],
+        "scale": "1",
+        "scale_denominator": "210"
+      },
+      "derivation": "Exact generator division y=x/factor identifies Q(sqrt(2)); quadratic discriminant-index test excludes current pool."
+    },
+    {
+      "id": "selector-quadratic-p",
+      "source_id": "test-selector",
+      "coefficients": [
+        "-2",
+        "0",
+        "1"
+      ],
+      "disposition": "quadratic-index-outside-pool",
+      "transform": {
+        "kind": "rational-scale",
+        "input_numerators": [
+          "-680564733841876927885979906696433107282",
+          "0",
+          "1"
+        ],
+        "scale": "1",
+        "scale_denominator": "18446744073709551629"
+      },
+      "derivation": "Exact generator division y=x/factor identifies Q(sqrt(2)); quadratic discriminant-index test excludes current pool."
+    },
+    {
+      "id": "selector-quadratic-3p",
+      "source_id": "test-selector",
+      "coefficients": [
+        "-2",
+        "0",
+        "1"
+      ],
+      "disposition": "quadratic-index-outside-pool",
+      "transform": {
+        "kind": "rational-scale",
+        "input_numerators": [
+          "-6125082604576892350973819160267897965538",
+          "0",
+          "1"
+        ],
+        "scale": "1",
+        "scale_denominator": "55340232221128654887"
+      },
+      "derivation": "Exact generator division y=x/factor identifies Q(sqrt(2)); quadratic discriminant-index test excludes current pool."
+    },
+    {
+      "id": "selector-large-global-cubic",
+      "source_id": "test-selector",
+      "coefficients": [
+        "115792089237316195756257376984181988694884156463395086291278370355289167788070",
+        "1020847100762815391828969860044649660923",
+        "55340232221128654887",
+        "1"
+      ],
+      "disposition": "source-global-discriminant-outside-pool",
+      "field_discriminant": "-9187623906865338526460728740401846948307",
+      "assertion_fragments": [
+        "-9187623906865338526460728740401846948307"
+      ]
+    },
+    {
+      "id": "two-large-primes-global-cubic",
+      "source_id": "fields",
+      "coefficients": [
+        "-1000000000000000000002070000000000000000001053",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "source-global-discriminant-outside-pool",
+      "field_discriminant": "-3000000000000000000012420000000000000000019172700000000000000013078260000000000000003326427",
+      "assertion_fragments": [
+        "-3000000000000000000012420000000000000000019172700000000000000",
+        "013078260000000000000003326427"
+      ]
+    },
+    {
+      "id": "cyclotomic-order-1",
+      "source_id": "test-cyclotomic-parity",
+      "coefficients": [
+        "-1",
+        "1"
+      ],
+      "disposition": "degree-outside-campaign",
+      "derivation": "Reviewed finite CyclotomicField order; exact standard cyclotomic polynomial, not arbitrary order capability."
+    },
+    {
+      "id": "cyclotomic-order-2",
+      "source_id": "test-cyclotomic-parity",
+      "coefficients": [
+        "1",
+        "1"
+      ],
+      "disposition": "degree-outside-campaign",
+      "derivation": "Reviewed finite CyclotomicField order; exact standard cyclotomic polynomial, not arbitrary order capability."
+    },
+    {
+      "id": "cyclotomic-order-3",
+      "source_id": "test-cyclotomic",
+      "coefficients": [
+        "1",
+        "1",
+        "1"
+      ],
+      "disposition": "quadratic-index-outside-pool",
+      "derivation": "Reviewed finite CyclotomicField order; exact standard cyclotomic polynomial, not arbitrary order capability."
+    },
+    {
+      "id": "cyclotomic-order-4",
+      "source_id": "test-cyclotomic",
+      "coefficients": [
+        "1",
+        "0",
+        "1"
+      ],
+      "disposition": "quadratic-index-outside-pool",
+      "derivation": "Reviewed finite CyclotomicField order; exact standard cyclotomic polynomial, not arbitrary order capability."
+    },
+    {
+      "id": "cyclotomic-order-5",
+      "source_id": "test-cyclotomic",
+      "coefficients": [
+        "1",
+        "1",
+        "1",
+        "1",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool",
+      "derivation": "Reviewed finite CyclotomicField order; exact standard cyclotomic polynomial, not arbitrary order capability."
+    },
+    {
+      "id": "cyclotomic-order-6",
+      "source_id": "test-cyclotomic-parity",
+      "coefficients": [
+        "1",
+        "-1",
+        "1"
+      ],
+      "disposition": "quadratic-index-outside-pool",
+      "derivation": "Reviewed finite CyclotomicField order; exact standard cyclotomic polynomial, not arbitrary order capability."
+    },
+    {
+      "id": "cyclotomic-order-7",
+      "source_id": "test-cyclotomic",
+      "coefficients": [
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool",
+      "derivation": "Reviewed finite CyclotomicField order; exact standard cyclotomic polynomial, not arbitrary order capability."
+    },
+    {
+      "id": "cyclotomic-order-8",
+      "source_id": "test-cyclotomic",
+      "coefficients": [
+        "1",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool",
+      "derivation": "Reviewed finite CyclotomicField order; exact standard cyclotomic polynomial, not arbitrary order capability."
+    },
+    {
+      "id": "cyclotomic-order-9",
+      "source_id": "test-cyclotomic",
+      "coefficients": [
+        "1",
+        "0",
+        "0",
+        "1",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool",
+      "derivation": "Reviewed finite CyclotomicField order; exact standard cyclotomic polynomial, not arbitrary order capability."
+    },
+    {
+      "id": "cyclotomic-order-12",
+      "source_id": "test-cyclotomic",
+      "coefficients": [
+        "1",
+        "0",
+        "-1",
+        "0",
+        "1"
+      ],
+      "disposition": "sylvester-bound-outside-pool",
+      "derivation": "Reviewed finite CyclotomicField order; exact standard cyclotomic polynomial, not arbitrary order capability."
+    },
+    {
+      "id": "cyclotomic-order-25",
+      "source_id": "test-gamma1",
+      "coefficients": [
+        "1",
+        "0",
+        "0",
+        "0",
+        "0",
+        "1",
+        "0",
+        "0",
+        "0",
+        "0",
+        "1",
+        "0",
+        "0",
+        "0",
+        "0",
+        "1",
+        "0",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "degree-outside-campaign",
+      "derivation": "Reviewed finite CyclotomicField order; exact standard cyclotomic polynomial, not arbitrary order capability."
+    },
+    {
+      "id": "roots-degree16",
+      "source_id": "test-roots",
+      "coefficients": [
+        "1",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "0",
+        "1"
+      ],
+      "disposition": "degree-outside-campaign"
+    }
+  ],
+  "lexical_checklist": {
+    "files": [
+      {
+        "path": "test/algebra.py",
+        "sha256": "874a5a3130d7a610c7401a8c10f58de38e965c95dc324b58283f144352edc4b3"
+      },
+      {
+        "path": "test/algebraic-geometry-affine.py",
+        "sha256": "137a69a962828f276152fdb9b6ce93ab47ce9d2bd866e709b7f1e6f142dc3c75"
+      },
+      {
+        "path": "test/algebraic-numbers.cjs",
+        "sha256": "159f96383de0153d02e7fd19dc8ca3f218903f0764049528753a798dd6d5fd57"
+      },
+      {
+        "path": "test/browser-wasm-resource-fallbacks.cjs",
+        "sha256": "58839d7e3813bc359c42ed703ffca611b06f97305b184074312c1278213438e4"
+      },
+      {
+        "path": "test/class-group-relations-steering.cjs",
+        "sha256": "f6b6126ee107c24bc6903670e00a124d217c48d380ddf3986fbb0f6a2488a17b"
+      },
+      {
+        "path": "test/class-unit-groups-steering.cjs",
+        "sha256": "0675d56727c76235afd9f7bbffe96f5ae29027514213870552eb317c5b20d3bd"
+      },
+      {
+        "path": "test/class-unit-groups-three-admissions.cjs",
+        "sha256": "0529440f4c7aca96b23f32f47a0549731e8ac36b3addafb4270b81b1a753c9fd"
+      },
+      {
+        "path": "test/cyclotomic-field-polynomial.cjs",
+        "sha256": "f09252d519422bcd1689031b841db8ba452bdf5bbf21fc0236ea2c53befc9b2b"
+      },
+      {
+        "path": "test/dirichlet.cjs",
+        "sha256": "808e863cdc64f3b8b043413bd879614bde2b9a3042cc020940f4766a9ec56969"
+      },
+      {
+        "path": "test/gamma1-modular-forms.cjs",
+        "sha256": "2d6b450686e1b9745044954dc904c0e68f3533a9bc6d4c174400eadfab2b78dd"
+      },
+      {
+        "path": "test/number-field-analysis-public-hook.cjs",
+        "sha256": "59fe00083c278ce12e6b0d52ecd23f82703f0c336eb0285fd98906fd561bf651"
+      },
+      {
+        "path": "test/number-field-class-group-factor-base.cjs",
+        "sha256": "9723b5bbc0d23b18681115fa5eb4e46789c82267afaa064e5392bdd1d013ae1c"
+      },
+      {
+        "path": "test/number-field-class-group-maps-proof.cjs",
+        "sha256": "f3b617bfddb4267e1fd16c4a173afada10f68504c7f0bfd65f1401b9e2ba1ec2"
+      },
+      {
+        "path": "test/number-field-class-group-relations.cjs",
+        "sha256": "1a8b70765d9aeeb3fbcfad015287e582ae0aa2830d2202291fd93b487ed15531"
+      },
+      {
+        "path": "test/number-field-class-unit-analytic.cjs",
+        "sha256": "a623459640d243ed9eba82ca1677dae0706ddd7cf91ee161c4429005db73030a"
+      },
+      {
+        "path": "test/number-field-class-unit-auto-preflight.cjs",
+        "sha256": "2f7f816b705c07b78a65ec8fb11113cd34a8961e48576ae1de7f152f55facd39"
+      },
+      {
+        "path": "test/number-field-class-unit-context.cjs",
+        "sha256": "24630ef5add36946de7aff0653fffdec78564b32eabbd69b5ad33e553978e8e9"
+      },
+      {
+        "path": "test/number-field-class-unit-engine.cjs",
+        "sha256": "f9136c5e5d8a88d931659f0cf09618c7486e98200b24f48cf165244951072774"
+      },
+      {
+        "path": "test/number-field-class-unit-exact-public-projection.py",
+        "sha256": "88c43d98d9bbab36dc08bf19b75eab5c922a8d5c0124608696c054be922201da"
+      },
+      {
+        "path": "test/number-field-class-unit-public-projection.cjs",
+        "sha256": "907d22bf54f9b39ee5e25d71093da32dcf19cdd142c7bb39293a0ddea7b4ebdc"
+      },
+      {
+        "path": "test/number-field-class-unit-public.cjs",
+        "sha256": "998b76b5c7162bb1779056c6f6806e0427f6388e181e0e0b494b7090d98bd3f3"
+      },
+      {
+        "path": "test/number-field-class-unit-terminal-reuse.cjs",
+        "sha256": "7e87488c168307a4de25811f1351ddeb17520706406ab94d3eb3d1a62a1f7f81"
+      },
+      {
+        "path": "test/number-field-class-unit-zero-factor-preflight.cjs",
+        "sha256": "4201f8f3dd385a89b5ab3a79baee0bc43b50dc48cc523a8e43fb003101e7c80e"
+      },
+      {
+        "path": "test/number-field-coprime-composite-merge.cjs",
+        "sha256": "adb3d84d7c2ac1dcf9b56fda824b7019d31a6714b8ec8db40cebded7ba4b3c7d"
+      },
+      {
+        "path": "test/number-field-cubic-compact-relation-ledger.cjs",
+        "sha256": "8011618bc5640f174ace3b6d3ec1e46ffedceb4982c70dfaf9168a2d81ddd28f"
+      },
+      {
+        "path": "test/number-field-cubic-native-class-number.cjs",
+        "sha256": "74ebb5ce9857e73343a836fce3edd96f0ee4f99482ccc8a12e8d9677f92c1d06"
+      },
+      {
+        "path": "test/number-field-cubic-norm-kernel.cjs",
+        "sha256": "347f03679bcca37d99a3d094d13ada62c62c2b79b09f1279ed7741c908df2c14"
+      },
+      {
+        "path": "test/number-field-cubic-online-support-transcript.cjs",
+        "sha256": "cf01ffc67a77d396a3a100ca63a9e3e1bea19e4c6af7a35eae17077f374a8218"
+      },
+      {
+        "path": "test/number-field-cubic-online-trivial-quotient.cjs",
+        "sha256": "2072f21452776c438daeee831436f4e1ff440cb85dee582488f9ac4bb1de66aa"
+      },
+      {
+        "path": "test/number-field-element-valuation-kernel.cjs",
+        "sha256": "8660348e17db6f43a9a29c5be9d4d34589c4c2ea41f6b5cf5c18d353d9201c01"
+      },
+      {
+        "path": "test/number-field-fastmath-wasm.cjs",
+        "sha256": "9d38c2f677462aed39d13914d7bf9da20b3c965727d0bc74645984b7d8d17461"
+      },
+      {
+        "path": "test/number-field-foundations-performance.cjs",
+        "sha256": "220fd7ba3b4c18fde992ca5b0030f2dd672d500df23d9814898fc03e75b278ea"
+      },
+      {
+        "path": "test/number-field-foundations.cjs",
+        "sha256": "28a4817a930b2f8e7ed50f934f5a913c70c84d524506db5dcd94afe6f1fe7888"
+      },
+      {
+        "path": "test/number-field-global-arithmetic.cjs",
+        "sha256": "074091648f8b4252e8c0a9cb4739e79c3214ff514c3e58d5823c7ef2672feb99"
+      },
+      {
+        "path": "test/number-field-hard-local-selector.cjs",
+        "sha256": "646783a4cb8d9c60bd5abf3ce37383e19644acb9df640a35578d3a744f7d3bc6"
+      },
+      {
+        "path": "test/number-field-ideal-product-kernel.cjs",
+        "sha256": "ca9af8990bc279096cdf51f049f66e0578f59f15deae8a4975af1c0f1072a3a6"
+      },
+      {
+        "path": "test/number-field-ideal-serialization.cjs",
+        "sha256": "14fa76cbe74acc4a9ec3df7e8a5452b36b17c4990e6b3b2d01a610c56acb5b63"
+      },
+      {
+        "path": "test/number-field-large-prime-maximal-order.cjs",
+        "sha256": "87e7cc03ec0ec4b3651dfff5ad83a81f18cac57479a22e0d0ab23e6466ed621e"
+      },
+      {
+        "path": "test/number-field-lazy-authenticated-order.cjs",
+        "sha256": "7f1d42422d3541468deb49c8fbdf6a03864268fd19101871811b6d13e385dabc"
+      },
+      {
+        "path": "test/number-field-maximal-order-engine.cjs",
+        "sha256": "444e06e3b10277b83bdf653c8a2b97cafc0fd17374bcb814ef869f9d1d88c146"
+      },
+      {
+        "path": "test/number-field-maximal-order-parallel-worker.cjs",
+        "sha256": "feffc5bcb3e1f81ae29426486bf813b1c429921330dbccde4e4e5ec0c7d73bd7"
+      },
+      {
+        "path": "test/number-field-maximal-order-public-micro-perf.cjs",
+        "sha256": "c00a6a4f9e200c70429b470e175ca6093df631f33eb68124622d00786acdaac9"
+      },
+      {
+        "path": "test/number-field-maximal-order-selector.cjs",
+        "sha256": "dff71dd5c4bb9afdb838df959ddd1695338072c68c076a66b4e96916d0e7f06d"
+      },
+      {
+        "path": "test/number-field-om-auto-selector.cjs",
+        "sha256": "5915bb065ac3705fe257e63da19ef99b3294ce580dff70a9cfafaae5f7d4f3e8"
+      },
+      {
+        "path": "test/number-field-prime-ideal-candidate-kernel.cjs",
+        "sha256": "a2fa1b64df225a1f695270ddcb8c480ecee096c3e2f1957a417e86ed8048ed27"
+      },
+      {
+        "path": "test/number-field-quadratic-class-units.cjs",
+        "sha256": "a147a1a2c3f414a279f70b9cd0e2c28ea8f8a57a538a9e6cbfadcd6b26074afe"
+      },
+      {
+        "path": "test/number-field-quadratic-narrow-relations.cjs",
+        "sha256": "7a5536f2a7330826b32334173a830c575892e2dc48b964f9a09f478daf62a11c"
+      },
+      {
+        "path": "test/number-field-quartic-class-number-projection.cjs",
+        "sha256": "92ace747559c9a792b072f7447bc0ac375bff38522729518b83164f38ac3b7ef"
+      },
+      {
+        "path": "test/number-field-quartic-minkowski-class-number.cjs",
+        "sha256": "e2e8c839c5f28b6be4243c4a3039c1ea1e90dda4ab9da97d75a9eae8b388ef6e"
+      },
+      {
+        "path": "test/number-field-quartic-minkowski-continuation.cjs",
+        "sha256": "b561f7d94d04902e964a8b5fca16533eac119ddaf970990cdfda1ed0182c3ac8"
+      },
+      {
+        "path": "test/number-field-quartic-minkowski-public-class-group.cjs",
+        "sha256": "6d397c439918ee60c00bc3d4b6cdee2107c111801ed78506843a94447dab8822"
+      },
+      {
+        "path": "test/number-field-roots-of-unity.cjs",
+        "sha256": "9975abeba9173d9919df00c995de85feae2dc8606ba6299ab5db0ffddddb64ff"
+      },
+      {
+        "path": "test/number-field-round4-crt-batch.cjs",
+        "sha256": "2d3836128c87aad2b2c6173c10b23cec3f8b7301790e2f2c874f1016b24bba90"
+      },
+      {
+        "path": "test/number-field-round4.cjs",
+        "sha256": "de4396dc3679cf9ac516099a343f5594b2fe54b00f2e55c7f472423faca54f98"
+      },
+      {
+        "path": "test/number-field-t8-fused-analysis.cjs",
+        "sha256": "4849869db67b3b4ba267d213d636afd80cf410c37658aeb6c1a01f73921ede8c"
+      },
+      {
+        "path": "test/number-field-zeta-public.cjs",
+        "sha256": "13e95d3d8f29fff235dc8b87b32461ae05bcefda56c39288de6ddeffec2b231b"
+      },
+      {
+        "path": "test/number-field-zeta-wasm-dispatch.cjs",
+        "sha256": "f4fb1bf610f68110d09b0c72f0f941a23883ea9f2cdb1c73e70a6156686e3b05"
+      },
+      {
+        "path": "test/number-fields.cjs",
+        "sha256": "df08e2d386b40c33e63826e157c42963310e263b8603b48d6b0d878bfa512494"
+      },
+      {
+        "path": "test/packed-integral-number-field.cjs",
+        "sha256": "63134eb49a36b6d38789161c4e68bdafb8109d50fb4cf62714b7afaa00208b74"
+      },
+      {
+        "path": "test/portable-character-hecke.cjs",
+        "sha256": "18c5c7771cff66cfb1377fa7f52a58dfaff999ce4473702bb1f9b95d632a7e3e"
+      },
+      {
+        "path": "test/portable-cyclotomic-factor.cjs",
+        "sha256": "d2bcf513d78ef2407570c16c03a0dbb330d9741b4cd26ef209b4aef07dfd81a4"
+      },
+      {
+        "path": "test/sage-result-parity.cjs",
+        "sha256": "ee16effcb9d0b633749b782bb0a893efdd45e17134048d56e4ca24fc534e5c17"
+      },
+      {
+        "path": "test/serialization.cjs",
+        "sha256": "665992534f02fac3cff410f23089b6d62a2d56708015555c3d752fab0baacae4"
+      },
+      {
+        "path": "test/series.py",
+        "sha256": "3fd356ef4d593119093ce198c8ed832029ecfdcb722d9a1561b86478f971fa4f"
+      },
+      {
+        "path": "test/wasm-fmpq-polynomial-ingress.cjs",
+        "sha256": "45efa2997cde0410f748f397110190eaeb2910d49c84d62a553b1a6af896e6b9"
+      }
+    ],
+    "sha256": "f670f2247411aeb94b7ee281a86418723483814c68541b40991a6343a6e833a4",
+    "classification": "finite-lexical-path-checklist-not-exhaustive-family-parser"
+  },
+  "families": [
+    {
+      "id": "test-round4-lcg",
+      "source_id": "test-round4",
+      "kind": "reviewed-round4-lcg-v1",
+      "seed": "1729",
+      "degrees": [
+        2,
+        3,
+        4
+      ],
+      "samples_per_degree": 10
+    }
+  ]
+}

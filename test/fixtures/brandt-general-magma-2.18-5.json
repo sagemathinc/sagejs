@@ -1,0 +1,153 @@
+{
+  "schema": "sagejs.brandt-general-magma-oracle.v1",
+  "system": "Magma V2.18-5",
+  "algorithm": "BrandtModule(D,N : ComputeGrams := false)",
+  "recorded_at": "2026-08-28",
+  "convention": "Magma characteristic polynomials of good Hecke and prime-discriminant Atkin-Lehner operators",
+  "records": [
+    {
+      "D": 11,
+      "N": 1,
+      "dimension": 2,
+      "hecke_index": 2,
+      "hecke_charpoly": "x^2 - x - 6",
+      "atkin_lehner": { "11": "x^2 + 2*x + 1" }
+    },
+    {
+      "D": 3,
+      "N": 5,
+      "dimension": 2,
+      "hecke_index": 2,
+      "hecke_charpoly": "x^2 - 2*x - 3",
+      "atkin_lehner": { "3": "x^2 - 1" }
+    },
+    {
+      "D": 11,
+      "N": 5,
+      "dimension": 6,
+      "hecke_index": 2,
+      "hecke_charpoly": "x^6 - 2*x^5 - 10*x^4 + 14*x^3 + 29*x^2 - 20*x - 12",
+      "atkin_lehner": { "11": "x^6 + 4*x^5 + 5*x^4 - 5*x^2 - 4*x - 1" }
+    },
+    {
+      "D": 30,
+      "N": 1,
+      "dimension": 2,
+      "hecke_index": 7,
+      "hecke_charpoly": "x^2 - 4*x - 32",
+      "atkin_lehner": {
+        "2": "x^2 - 1",
+        "3": "x^2 + 2*x + 1",
+        "5": "x^2 - 1"
+      }
+    },
+    {
+      "D": 42,
+      "N": 1,
+      "dimension": 2,
+      "hecke_index": 5,
+      "hecke_charpoly": "x^2 - 4*x - 12",
+      "atkin_lehner": {
+        "2": "x^2 + 2*x + 1",
+        "3": "x^2 - 1",
+        "7": "x^2 - 1"
+      }
+    },
+    {
+      "D": 3,
+      "N": 7,
+      "dimension": 2,
+      "hecke_index": 2,
+      "hecke_charpoly": "x^2 - 2*x - 3",
+      "atkin_lehner": { "3": "x^2 + 2*x + 1" }
+    },
+    {
+      "D": 5,
+      "N": 2,
+      "dimension": 1,
+      "hecke_index": 3,
+      "hecke_charpoly": "x - 4",
+      "atkin_lehner": { "5": "x + 1" }
+    },
+    {
+      "D": 2,
+      "N": 1,
+      "dimension": 1,
+      "hecke_index": 3,
+      "hecke_charpoly": "x - 4",
+      "atkin_lehner": {}
+    },
+    {
+      "D": 3,
+      "N": 2,
+      "dimension": 1,
+      "hecke_index": 5,
+      "hecke_charpoly": "x - 6",
+      "atkin_lehner": {}
+    },
+    {
+      "D": 5,
+      "N": 3,
+      "dimension": 2,
+      "hecke_index": 2,
+      "hecke_charpoly": "x^2 - 2*x - 3",
+      "atkin_lehner": {}
+    },
+    {
+      "D": 7,
+      "N": 4,
+      "dimension": 3,
+      "hecke_index": 3,
+      "hecke_charpoly": "x^3 - 12*x - 16",
+      "atkin_lehner": {}
+    },
+    {
+      "D": 13,
+      "N": 5,
+      "dimension": 6,
+      "hecke_index": 2,
+      "hecke_charpoly": "x^6 - 11*x^4 - 4*x^3 + 27*x^2 + 12*x - 9",
+      "atkin_lehner": {}
+    },
+    {
+      "D": 17,
+      "N": 3,
+      "dimension": 6,
+      "hecke_index": 2,
+      "hecke_charpoly": "x^6 - 10*x^4 - 4*x^3 + 17*x^2 + 12*x",
+      "atkin_lehner": {}
+    },
+    {
+      "D": 30,
+      "N": 7,
+      "dimension": 8,
+      "hecke_index": 11,
+      "hecke_charpoly": "x^8 - 8*x^7 - 64*x^6 + 128*x^5 + 768*x^4",
+      "atkin_lehner": {}
+    },
+    {
+      "D": 42,
+      "N": 5,
+      "dimension": 8,
+      "hecke_index": 11,
+      "hecke_charpoly": "x^8 - 112*x^6 - 512*x^5 + 768*x^4 + 8192*x^3 + 12288*x^2",
+      "atkin_lehner": {}
+    },
+    {
+      "D": 66,
+      "N": 5,
+      "dimension": 12,
+      "hecke_index": 7,
+      "hecke_charpoly": "x^12 - 72*x^10 - 128*x^9 + 1296*x^8 + 3072*x^7 - 7168*x^6 - 18432*x^5 + 12288*x^4 + 32768*x^3",
+      "atkin_lehner": {}
+    },
+    {
+      "D": 70,
+      "N": 3,
+      "dimension": 8,
+      "hecke_index": 11,
+      "hecke_charpoly": "x^8 - 16*x^7 + 16*x^6 + 512*x^5 - 1280*x^4 - 4096*x^3 + 12288*x^2",
+      "atkin_lehner": {}
+    }
+  ]
+}

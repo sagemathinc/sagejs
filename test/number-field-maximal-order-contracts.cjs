@@ -6,6 +6,7 @@ const { spawnSync } = require("node:child_process");
 const { join } = require("node:path");
 const test = require("node:test");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
+const { sagejsInvocation } = require("./helpers/sagejs-cli.cjs");
 
 const root = join(__dirname, "..");
 
@@ -87,9 +88,18 @@ function run(command, args, environment = {}) {
   assert.match(result.stdout, /maximal-order-contracts-ok/);
 }
 
+function runSagejs(args, environment = {}) {
+  const [command, commandArguments] = sagejsInvocation(
+    root,
+    args,
+    { ...process.env, ...environment },
+  );
+  run(command, commandArguments, environment);
+}
+
 test("maximal-order contracts are identical in CPython and Sage.js", () => {
   run(pythonExecutable(), ["-c", source]);
-  run(join(root, "bin", "sagejs"), ["--python", "-"], {
+  runSagejs(["--python", "-"], {
     SAGEJS_NATIVE_DISABLE: "1",
   });
 });

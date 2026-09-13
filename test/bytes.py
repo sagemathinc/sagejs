@@ -41,3 +41,11 @@ assrt.ok(mutable == bytearray(b"aZc!"))
 assrt.ok(mutable[:2] == bytearray(b"aZ"))
 mutable[1:3] = b"12"
 assrt.ok(mutable == bytearray(b"a12!"))
+
+view = memoryview(b"widget bytes")
+assrt.ok(view.tobytes() == b"widget bytes")
+assrt.deepEqual(view.tolist(), list(b"widget bytes"))
+assrt.ok(view.cast("B") == view)
+assrt.equal(view.nbytes, 12)
+assrt.deepEqual(view.shape, (12,))
+assrt.deepEqual(view.strides, (1,))

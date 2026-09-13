@@ -1,0 +1,85 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-materialize-unit-witness",
+  "title": "Cubic Materialize Unit Witness",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "f7_frontier_evidence",
+  "objective": "Verify actual dependency-unit materialization arithmetic, borrowed scratch reuse, and failure semantics against the extracted pre-refactor root",
+  "base_commit": "a6f177736c9d5e14ff67fee7eb47b3603109ed7d",
+  "claims": [
+    "test/fixtures/cubic-materialize-unit.py",
+    "test/number-field-cubic-materialize-unit.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Exact arithmetic in Z[a] with a^3=a+1; GMP/fmpz agreement; AST extraction review"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "env SAGEJS_CUBIC_MATERIALIZE_SOURCE=/home/user/sagejs-worktrees/cubic-staged-exact-certification/src/lib/sagejs/number_fields/cubic_class_number_native.py SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/cubic-staged-exact-certification/packages/flint/.native/prefix node --test test/number-field-cubic-materialize-unit.cjs",
+    "git diff --check"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_CUBIC_MATERIALIZE_SOURCE=/home/user/sagejs-worktrees/cubic-staged-exact-certification/src/lib/sagejs/number_fields/cubic_class_number_native.py SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/cubic-staged-exact-certification/packages/flint/.native/prefix node --test test/number-field-cubic-materialize-unit.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.017,
+      "started_at": "2026-09-05T14:19:51.487Z",
+      "commit": "a6f177736c9d5e14ff67fee7eb47b3603109ed7d",
+      "workspace_fingerprint": "b3e399940a879fb92c00fa7f423d1e4cd3fbaed46d5bca9cdcd93da24b6f9efc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.703,
+      "started_at": "2026-09-05T14:20:04.126Z",
+      "commit": "a6f177736c9d5e14ff67fee7eb47b3603109ed7d",
+      "workspace_fingerprint": "b3e399940a879fb92c00fa7f423d1e4cd3fbaed46d5bca9cdcd93da24b6f9efc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.032,
+      "started_at": "2026-09-05T14:20:44.433Z",
+      "commit": "a6f177736c9d5e14ff67fee7eb47b3603109ed7d",
+      "workspace_fingerprint": "b3e399940a879fb92c00fa7f423d1e4cd3fbaed46d5bca9cdcd93da24b6f9efc",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a compiled actual-arithmetic unit materialization witness for a^3-a-1, with elements factor and factor*a and exponents [-1,1]. Natural reconstruction and explicitly forced reconstruction-unavailable product fallback agree in dynamic/GMP/fmpz for small and promoted signed factors, multiple logarithmic scales, and repeated poisoned borrowed owners. Failure probes cover invalid scales, individual/aggregate exponent caps, nonintegral quotient, and nonunit without publication and with fatal phase44. Canonical AST comparison against the a6f17773 original proves unchanged arithmetic modulo explicit new guards, typed local initialization, return carrier, and cap status43-to44 changes.",
+    "risks": [
+      "The helper is a coordinator-owned uncommitted dependency. Focused qualification reads its actual source via SAGEJS_CUBIC_MATERIALIZE_SOURCE; the tested whole-module SHA256 is 24cadcb863646b31d39ccfef0d266a9663803fc4d1d5c0b4a3441a84512fa2bc. This external source is not covered automatically by the lane's workspace fingerprint.",
+      "Default test execution requires the extracted helper to be integrated into this checkout. No duplicate mathematical implementation is committed in the witness lane.",
+      "Only reconstruction is fault-injected in product-only cases; exponentiation, exact quotient, norm, and regulator computations retain their actual production bodies. These injected cases are not claims that natural reconstruction fails on this field.",
+      "Full production build, broad native tests, platform matrix, source budget, and optimizer provenance are coordinator-owned and not claimed here. The contract remains active pending integrated qualification."
+    ],
+    "next_steps": [
+      "Commit the coordinator's materializer and integrate these two test files; rerun without the source override against the resulting source-current checkout.",
+      "Retain fatal phase44 for scale/cap/materialization failures and preserve the independent full-root regulator/publication guard.",
+      "Run the integrated production/cross-platform gates before promoting staged certification; no opt jobs or held-out fields were run by this lane."
+    ]
+  }
+}

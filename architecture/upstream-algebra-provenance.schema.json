@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/upstream-algebra-provenance-v1.json",
+  "title": "Sage.js algebra algorithm and oracle provenance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "policy", "projects", "records"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema": { "const": "sagejs.upstream-algebra-provenance/v1" },
+    "policy": { "type": "object" },
+    "projects": { "type": "array", "minItems": 5 },
+    "records": { "type": "array", "minItems": 8 }
+  }
+}

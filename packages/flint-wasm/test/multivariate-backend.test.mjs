@@ -73,6 +73,106 @@ test("canonical sparse construction materializes exact public polynomials", asyn
   assert.equal(backend.mpolyDegree(result, 2), 2);
 });
 
+function groebnerWorkload(backend, kind, modulus = 0n) {
+  const context = backend.mpolyContext(kind, 2, "degrevlex", modulus);
+  const x = backend.mpolyGen(context, 0);
+  const y = backend.mpolyGen(context, 1);
+  const constant = (value, denominator = 1n) =>
+    backend.mpolyConstant(context, BigInt(value), BigInt(denominator));
+  return {
+    generators: [
+      backend.mpolySub(backend.mpolyMul(x, y), constant(1)),
+      backend.mpolyAdd(
+        backend.mpolyPow(x, 3),
+        backend.mpolyMul(constant(7), backend.mpolyPow(y, 2)),
+      ),
+    ],
+  };
+}
+
+test("the production artifact computes reduced prime-field F4 bases", async () => {
+  const routes = [];
+  const backend = await instantiateFlintFactor(await readFile(artifact), {
+    recordCapability(...record) { routes.push(record); },
+  });
+  const { generators } = groebnerWorkload(backend, "nmod", 65537n);
+  const basis = backend.mpolyGroebnerMsolve(generators);
+  assert.deepEqual(
+    basis.map((value) => backend.mpolyToString(value, ["x", "y"])),
+    ["x*y+65536", "y^3+18725*x^2", "x^3+7*y^2"],
+  );
+  assert.deepEqual(
+    generators.map((value) =>
+      backend.mpolyToString(backend.mpolyReduce(value, basis), ["x", "y"])),
+    ["0", "0"],
+  );
+  assert.equal(routes.length, 1);
+  assert.equal(routes[0][0], "wasm-library:msolve:f4-prime-field-packed-v1");
+  assert.equal(routes[0][2].boundaryCrossings, 1);
+});
+
+test("the production artifact computes explicit modular QQ bases", async () => {
+  const routes = [];
+  const backend = await instantiateFlintFactor(await readFile(artifact), {
+    recordCapability(...record) { routes.push(record); },
+  });
+  const { generators } = groebnerWorkload(backend, "qq");
+  const basis = backend.mpolyGroebnerMsolve(generators);
+  assert.deepEqual(
+    basis.map((value) => backend.mpolyToString(value, ["x", "y"])),
+    ["x*y-1", "y^3+1/7*x^2", "x^3+7*y^2"],
+  );
+  assert.deepEqual(
+    generators.map((value) =>
+      backend.mpolyToString(backend.mpolyReduce(value, basis), ["x", "y"])),
+    ["0", "0"],
+  );
+  assert.equal(routes.length, 1);
+  assert.equal(routes[0][0], "wasm-library:msolve:modular-qq-packed-v1");
+  assert.equal(routes[0][2].boundaryCrossings, 1);
+});
+
+test("the packed Groebner ABI rejects malformed input without entering msolve", async () => {
+  const module = await WebAssembly.compile(await readFile(artifact));
+  const { createWasiHost } = await import("../dist/wasi-runtime.mjs");
+  const wasi = createWasiHost();
+  const instance = await WebAssembly.instantiate(module, {
+    wasi_snapshot_preview1: wasi.imports,
+  });
+  wasi.initialize(instance);
+  const exports = instance.exports;
+  const inputPointer = Number(exports.sagejs_wasm_mpoly_input()) >>> 0;
+  const input = new Uint8Array(exports.memory.buffer, inputPointer, 32);
+  input.fill(0);
+  assert.equal(Number(exports.sagejs_wasm_mpoly_groebner(31)), 1);
+  assert.equal(Number(exports.sagejs_wasm_mpoly_groebner_qq(31)), 1);
+  assert.equal(Number(exports.sagejs_wasm_mpoly_groebner(32)), 1);
+  assert.equal(Number(exports.sagejs_wasm_mpoly_groebner_qq(32)), 1);
+  assert.equal(Number(exports.sagejs_wasm_mpoly_output_length()), 0);
+});
+
+test("Groebner resource limits fail before entering the Wasm engine", async () => {
+  const module = await WebAssembly.compile(await readFile(artifact));
+  const { createWasiHost } = await import("../dist/wasi-runtime.mjs");
+  const wasi = createWasiHost();
+  const instance = await WebAssembly.instantiate(module, {
+    wasi_snapshot_preview1: wasi.imports,
+  });
+  wasi.initialize(instance);
+  let crossings = 0;
+  const backend = createMultivariateBackend(instance, {
+    recordCapability() { crossings += 1; },
+  });
+  const context = backend.mpolyContext(
+    "nmod", 4097, "degrevlex", 65537n,
+  );
+  assert.throws(
+    () => backend.mpolyGroebnerMsolve([backend.mpolyGen(context, 0)]),
+    /reviewed msolve resource envelope/,
+  );
+  assert.equal(crossings, 0);
+});
+
 test("disabled and out-of-domain resultants fail closed without a fake route", async () => {
   const module = await WebAssembly.compile(await readFile(artifact));
   const { createWasiHost } = await import("../dist/wasi-runtime.mjs");

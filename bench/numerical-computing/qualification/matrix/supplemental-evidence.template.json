@@ -1,0 +1,49 @@
+{
+  "schema": "sagejs.numerical-qualification-supplemental-template/v1",
+  "id": "sagejs-numerical-product-supplemental-evidence",
+  "description": "Fail-closed component and operating-system evidence that cannot be honestly derived from a product adapter observation alone.",
+  "requirements": [
+    {
+      "id": "cminpack-native-sanitizers",
+      "platform": "linux-x64",
+      "status": "pending",
+      "required_evidence": ["address", "undefined", "leak"],
+      "acceptance": "The exact selected cminpack native C component executes successful lmdif/lmder, callback-stop, and repeated lifecycle workloads under ASAN, UBSAN, and LSAN with no finding; the same candidate separately passes the Wasm adapter corruption, cancellation, callback, allocation-failure, and recovery gates. Neither half substitutes for the other."
+    },
+    {
+      "id": "nlopt-native-sanitizers",
+      "platform": "linux-x64",
+      "status": "pending",
+      "required_evidence": ["address", "undefined", "leak"],
+      "acceptance": "The exact selected NLopt native C component executes every algorithm retained in the final Wasm artifact, forced-stop, and repeated lifecycle workloads under ASAN, UBSAN, and LSAN with no finding; the same candidate separately passes the Wasm adapter corruption, cancellation, callback, allocation-failure, and recovery gates. COBYLA is not eligible while its upstream f2c indexing triggers object-size UBSAN (NLopt issue 611)."
+    },
+    {
+      "id": "numerical-wasm-destructive-faults",
+      "platform": "linux-x64",
+      "status": "pending",
+      "required_evidence": ["allocation-failure", "corrupt-region", "runner-build-report-artifact-mismatch", "harness-input-artifact-mismatch", "product-malformed-artifact-fail-closed", "post-failure-recovery"],
+      "acceptance": "The qualification runner rejects raw artifact bytes that disagree with the source-current build-report digest, the isolated harness authenticates its exact input bytes, and the real Sage.js runtime loader fails closed on malformed cminpack and NLopt Wasm. Both reactors reject invalid and overlapping regions for every retained method, trigger and clean the complete contiguous allocation-failure envelope, release all contexts/handles/allocations/bytes after callback failure and cancellation, and remain reusable after recovery."
+    },
+    {
+      "id": "browser-process-tree-memory",
+      "platform": "linux-x64",
+      "status": "pending",
+      "required_evidence": ["chromium", "firefox", "webkit", "worker-replacement"],
+      "acceptance": "For Chromium, Firefox, WebKit, and the Chromium worker-recovery row, the qualification collector authenticates operating-system process-tree peak memory for the exact browser executable. The dedicated baseline/64-MiB touched-worker workload must increase peak RSS by at least 32 MiB; browser-heap counters are supplemental and cannot substitute for process-tree evidence."
+    },
+    {
+      "id": "startup-package-payload-closure",
+      "platform": "linux-x64",
+      "status": "pending",
+      "required_evidence": ["package-graph-lazy-ownership", "sea-startup-budgets", "browser-artifact-payload-and-pack-topology", "numerical-trace-presentation-payload", "wasm-production-resource-closure"],
+      "acceptance": "The exact clean candidate passes the repository's authoritative lazy package ownership/source-byte budgets, eleven-sample fresh-process SEA startup limits, browser compressed-payload and eager-pack topology limits, numerical trace/story/Plotly payload ceilings, and production Wasm resource-closure gate. Evidence binds the actual SEA and browser distribution plus every policy and executable command input."
+    },
+    {
+      "id": "four-platform-numerical-soak",
+      "platform": "all-supported",
+      "status": "pending",
+      "required_evidence": ["linux-x64", "linux-arm64", "macos-arm64", "windows-x64"],
+      "acceptance": "Each supported platform runs at least twelve fresh Node/Sage.js processes for at least three aggregate minutes and 5,376 independently checked operations across roots, integration, linear algebra, optimization, ODEs, FFTs, and statistics. Every process demonstrates evaluation-budget, explicit-cancellation, and callback-failure containment followed by successful recovery. Garbage-collected within-process samples and collector samples must satisfy explicit robust memory-growth slope, total-growth, and peak-RSS bounds. The campaign is bound to one clean source commit, the exact built dist closure, the harness, collector, and Node executable."
+    }
+  ]
+}

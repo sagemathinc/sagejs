@@ -1,0 +1,139 @@
+{
+  "schema": "sagejs.numerical-p3-backend-evidence/v2",
+  "subject": {
+    "branch_base": "94d2e86ad",
+    "date": "2026-08-31",
+    "classification": "qualified explicit-only cminpack production integration"
+  },
+  "source": {
+    "name": "cminpack",
+    "revision": "32d343ac33ac297594b5ffac57741e5615b4bb07",
+    "archive_sha256": "9900b69d8ff8822c9d67cecaebb8b83c9c9e2a81a92705b8ac5f2104c459b8ae",
+    "license": "MINPACK permissive notice"
+  },
+  "artifact": {
+    "sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5",
+    "bytes": 72155,
+    "gzip_bytes": 28940,
+    "brotli_bytes": 23884,
+    "initial_memory_bytes": 2097152,
+    "maximum_memory_bytes": 134217728,
+    "toolchain_identity": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
+    "target": "wasm32-wasip1",
+    "floating_point_contract": "off",
+    "imports": [
+      {
+        "module": "sagejs_p3",
+        "name": "evaluate",
+        "kind": "function"
+      }
+    ],
+    "methods": [
+      "cminpack-lmdif",
+      "cminpack-lmder"
+    ]
+  },
+  "final_artifact_qualification": {
+    "mgh_cases_per_method": 53,
+    "total_solves_per_runtime": 106,
+    "results_sha256": "594f138289f78ee057e7f1de90a7ea2a81c9909cb732fcb38a1afbd47c09f285",
+    "node_linux_x64": "pass",
+    "chromium_linux_x64": "pass",
+    "independent_oracle_sha256": "1f513f438d5173affb47a78c271ed390a618f8eca5802007610ce02a5352fcb8",
+    "independent_final_residual_recomputation": true,
+    "live_allocations_after": 0,
+    "live_bytes_after": 0
+  },
+  "focused_validation": {
+    "deterministic_random_linear_oracles": 200,
+    "corrupt_abi_regions": 500,
+    "allocation_failure_positions": 9,
+    "repeated_reuse_solves": 250,
+    "worker_shared_memory_cancel_and_reuse": "pass",
+    "hard_stuck_worker_terminate_and_recreate": "pass",
+    "callback_exception_and_invalid_output_cleanup": "pass",
+    "cooperative_shared_memory_evaluation_and_elapsed_budgets": "pass"
+  },
+  "public_integration_source": {
+    "sha256": "578bf0f6baecf89eff3bdd04d34b71b8e283bb4668beeacb668deb1c08c492b9",
+    "definition": "sha256 of the JSON array of ordered path and file-sha256 records",
+    "files": {
+      "packages/flint-wasm/evaluator.mjs": "97ac98a6fdde618a281e259f71b191339bd3288e7e90ce1a393fb9f89b23dbc3",
+      "packages/flint-wasm/numerical/index.mjs": "17904a3eb812782836f1ffeb4c66eb0e030aca2a8e04356adaf9acdde0b77ec5",
+      "packages/flint-wasm/numerical/src/cminpack-adapter.c": "a6841d13c46370a2520bf076008e87fb93ef9c0c96c6a98d7b86bb9cb3d46965",
+      "src/baselib/sagejs/runtime.py": "c02af56733b15104675182634e99abcfa9bb39f43e7ef29a4b14850718824d39",
+      "src/baselib/sagejs/runtime.pyi": "52651e7d8fbe9a545011127386c1110db7f7cb9737bf4e3eeb079de1d06596ec",
+      "src/lib/sagejs/numerics/optimization/least_squares.py": "d7e93efb9d94a486b9f9cb00ed7877e41d2659c8f121d195b249422daa2399d1",
+      "src/lib/sagejs/numerics/optimization/planning.py": "c79dbe4487d8b586859ebb51778492051a2da86b5fd3de37341fe93c5a8aa8c7",
+      "tools/python/contract.ts": "bd1530e45f999479db5bd865e30394ca5a8d9b6e37c157e8bd4d7fdf7c6e7f33",
+      "tools/resources.ts": "65066819ec5f199b49a84d6bb31dde28140cbe0fe3f06dfcab433e608bb112ed",
+      "scripts/build-sea.cjs": "a7c48f98ba044a759303adc1742f87f710c4a7dc5071243c59e7baec0b829679"
+    }
+  },
+  "portable_smoke": [
+    {
+      "host": "local integration host (not persistent bench-1)",
+      "platform": "linux",
+      "architecture": "x64",
+      "node": "v26.7.0",
+      "artifact_sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5",
+      "residual_norm": 0,
+      "live_allocations_after": 0
+    },
+    {
+      "host": "bench-arm",
+      "platform": "linux",
+      "architecture": "arm64",
+      "node": "v26.5.1",
+      "artifact_sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5",
+      "residual_norm": 0,
+      "live_allocations_after": 0
+    },
+    {
+      "host": "m1",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "node": "v26.5.0",
+      "artifact_sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5",
+      "residual_norm": 0,
+      "live_allocations_after": 0
+    },
+    {
+      "host": "windows",
+      "platform": "win32",
+      "architecture": "x64",
+      "node": "v26.5.1",
+      "artifact_sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5",
+      "residual_norm": 0,
+      "live_allocations_after": 0
+    }
+  ],
+  "exploratory_linux_x64_timing": {
+    "samples": 50,
+    "linear_30_lmdif_median_ms": 0.05143,
+    "rosenbrock_2_lmder_median_ms": 0.10542,
+    "callback_probe_median_ns_per_call": 12.027309,
+    "warning": "Development-host evidence only; not a release performance receipt"
+  },
+  "production_integration": {
+    "lazy_node_browser_sea_resource": "pass",
+    "independent_public_validation": "pass",
+    "exact_lmdif_lmder_identity": "pass",
+    "iteration_total_callback_elapsed_and_cancellation_budgets": "pass",
+    "execution_specific_browser_provenance": "pass",
+    "structured_missing_resource_failure": "pass",
+    "browser_missing_and_corrupt_resource_isolation": "pass",
+    "relocated_npm": "pass",
+    "relocated_python_sea": "pass",
+    "content_lock_reverification": {
+      "policy": "root, browser-package, and SEA builders independently rebuild and verify the reactor",
+      "observed_cost_seconds_per_pipeline": "approximately 2",
+      "shared_cache": "deferred; current saving does not justify another identity and invalidation boundary"
+    },
+    "automatic_selection": false
+  },
+  "remaining_release_gates": [
+    "persistent Linux x64 receipt after bench-1 authentication is restored",
+    "automatic selection requires a separate performance and correctness policy"
+  ]
+}

@@ -36,6 +36,7 @@ flint = Library(
         "sagejs/fmpq_matrix_ffi.h",
         "sagejs/fmpz_mod_polynomial_ffi.h",
         "sagejs/fq_polynomial_ffi.h",
+        "sagejs/fq_mpoly_ffi.h",
         "sagejs/hyperelliptic/rational_jacobian_ffi.h",
         "sagejs/nmod_matrix_ffi.h",
         "sagejs/native_exact_workspace_ffi.h",
@@ -327,6 +328,42 @@ FmpzModPolynomialRoots = flint.resource(
 # context.  Every operation below is therefore explicitly `thread_safe=False`.
 # Dependents survive closing the public context wrapper and retain the context
 # until the last element or polynomial closes.
+FqMpolyContext = flint.resource(
+    id="fq_mpoly_context",
+    abi=sagejs_fq_mpoly_context_t,
+    ownership="owned",
+    close="ffiFqMpolyContextClose",
+    clear="sagejs_fq_mpoly_context_clear",
+    size="sagejs_fq_mpoly_context_allocated_bytes",
+    wasm=True,
+)
+
+FqMpoly = flint.resource(
+    id="fq_mpoly",
+    abi=sagejs_fq_mpoly_t,
+    ownership="owned",
+    close="ffiFqMpolyClose",
+    clear="sagejs_fq_mpoly_clear",
+    size="sagejs_fq_mpoly_allocated_bytes",
+    wasm=True,
+)
+
+FqMpolyBytes = flint.resource(
+    id="fq_mpoly_bytes",
+    abi=sagejs_fq_mpoly_bytes_t,
+    ownership="owned",
+    close="ffiFqMpolyBytesClose",
+    clear="sagejs_flint_byte_region_clear",
+    size="sagejs_flint_byte_region_allocated_bytes",
+    host_transfer=copied_bytes(
+        dynamic="ffiFqMpolyBytesCopyBytes",
+        data="sagejs_flint_byte_region_data",
+        length="sagejs_flint_byte_region_length",
+        wasm=True,
+    ),
+    wasm=True,
+)
+
 FqContext = flint.resource(
     id="fq_context",
     abi=sagejs_fq_context_t,
@@ -3947,6 +3984,37 @@ def fmpz_matrix_hnf_into(hermite: Writable[FmpzMatrix], source: FmpzMatrix) -> b
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixHnfPrefixInto",
+    symbol="sagejs_fmpz_matrix_hnf_prefix_into",
+    returns=int,
+    abi=[
+        in_("hermite", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["hermite"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix HNF logical-prefix bounds or aliases are invalid",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_hnf_prefix_into(
+    hermite: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatrixSnf",
     symbol="sagejs_fmpz_matrix_snf",
     returns=int,
@@ -3956,7 +4024,7 @@ def fmpz_matrix_hnf_into(hermite: Writable[FmpzMatrix], source: FmpzMatrix) -> b
     ],
     effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
     result=Status(1, exception=RuntimeError, message="integer matrix SNF failed"),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_snf(source: FmpzMatrix) -> FmpzMatrix: ...
 
@@ -3983,6 +4051,37 @@ def fmpz_matrix_snf(source: FmpzMatrix) -> FmpzMatrix: ...
     wasm=False,
 )
 def fmpz_matrix_snf_into(smith: Writable[FmpzMatrix], source: FmpzMatrix) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixSnfPrefixInto",
+    symbol="sagejs_fmpz_matrix_snf_prefix_into",
+    returns=int,
+    abi=[
+        in_("smith", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["smith"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix SNF logical-prefix bounds or aliases are invalid",
+    ),
+    wasm=False,
+)
+def fmpz_matrix_snf_prefix_into(
+    smith: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
 
 
 @flint.function(
@@ -4015,6 +4114,41 @@ def fmpz_matrix_hnf_transform(
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixHnfTransformPrefix",
+    symbol="sagejs_fmpz_matrix_hnf_transform_prefix",
+    returns=int,
+    abi=[
+        in_("hermite", sagejs_fmpz_matrix_t),
+        in_("transform", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["hermite", "transform"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message=(
+            "integer matrix HNF transform logical-prefix bounds or aliases are invalid"
+        ),
+    ),
+    wasm=False,
+)
+def fmpz_matrix_hnf_transform_prefix(
+    hermite: Writable[FmpzMatrix],
+    transform: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatrixLllTransform",
     symbol="sagejs_fmpz_matrix_lll_transform",
     returns=int,
@@ -4040,6 +4174,41 @@ def fmpz_matrix_lll_transform(
     reduced: Writable[FmpzMatrix],
     transform: Writable[FmpzMatrix],
     source: FmpzMatrix,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatrixLllTransformPrefix",
+    symbol="sagejs_fmpz_matrix_lll_transform_prefix",
+    returns=int,
+    abi=[
+        in_("reduced", sagejs_fmpz_matrix_t),
+        in_("transform", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("rows", uint64_t),
+        in_("columns", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["reduced", "transform"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message=(
+            "integer matrix LLL transform logical-prefix bounds or aliases are invalid"
+        ),
+    ),
+    wasm=False,
+)
+def fmpz_matrix_lll_transform_prefix(
+    reduced: Writable[FmpzMatrix],
+    transform: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
 ) -> bool: ...
 
 
@@ -5455,6 +5624,27 @@ def fmpq_matrix_echelon_pivots(source: FmpqMatrix) -> FlintByteRegion:
 
 
 @flint.function(
+    dynamic="ffiFmpqMatrixFullRowRankPivots",
+    symbol="sagejs_fmpq_matrix_full_row_rank_pivots",
+    returns=int,
+    abi=[
+        out("result", sagejs_flint_byte_region_t),
+        in_("source", sagejs_fmpq_matrix_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[RuntimeError]),
+    result=Status(
+        1,
+        exception=RuntimeError,
+        message="rational matrix was not certified to have full row rank",
+    ),
+    wasm=False,
+)
+def fmpq_matrix_full_row_rank_pivots(source: FmpqMatrix) -> FlintByteRegion:
+    """Return a certifying prime followed by full-row-rank pivot columns."""
+    ...
+
+
+@flint.function(
     dynamic="ffiFmpqValueNumerator",
     symbol="sagejs_fmpq_value_numerator",
     returns=void,
@@ -6094,6 +6284,70 @@ def fmpz_mat_hnf_transform(
     wasm=True,
 )
 def fmpz_mat_lll_transform(
+    output: Writable[IntegerBuffer],
+    transform: Writable[IntegerBuffer],
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatGramLllTransform",
+    symbol="sagejs_flint_fmpz_mat_gram_lll_transform",
+    returns=int,
+    abi=[
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="rows",
+                columns="columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "transform",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="transform",
+                rows="rows",
+                columns="rows",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output", "transform"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT integer Gram-LLL transformation failed",
+    ),
+    wasm=True,
+)
+def fmpz_mat_gram_lll_transform(
     output: Writable[IntegerBuffer],
     transform: Writable[IntegerBuffer],
     source: IntegerBuffer,
@@ -11371,6 +11625,40 @@ def integer_log_sqrt_balls_resource(
 
 
 @flint.function(
+    dynamic="ffiIntegerLogSqrtBallsPrefixResource",
+    symbol="sagejs_flint_integer_log_sqrt_balls_prefix_resource",
+    returns=int,
+    abi=[
+        in_("output", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("count", uint64_t),
+        in_("precision", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message=(
+            "FLINT resident integer logarithm/square-root prefix dimensions, "
+            "aliases, precision, or active entries are invalid"
+        ),
+    ),
+    wasm=True,
+)
+def integer_log_sqrt_balls_prefix_resource(
+    output: Writable[FmpzMatrix],
+    source: FmpzMatrix,
+    count: uint64,
+    precision: uint64,
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiPositiveRationalLogBallsResource",
     symbol="sagejs_flint_positive_rational_log_balls_resource",
     returns=int,
@@ -11404,3 +11692,283 @@ def positive_rational_log_balls_resource(
     count: uint64,
     precision: uint64,
 ) -> bool: ...
+
+
+# Bounded finite-extension multivariate representation primitives.
+
+
+@flint.function(
+    dynamic="ffiFqMpolyContextCreate",
+    symbol="sagejs_fq_mpoly_context_init",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_mpoly_context_t),
+        in_(
+            "modulus",
+            uint64_t_ptr,
+            packed_slice(
+                data="modulus",
+                length="modulus_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("modulus_length", uint64_t),
+        in_("characteristic", uint64_t),
+        in_("variables", uint64_t),
+        in_("order", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite-extension multivariate input or result is outside the declared resource envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_context(
+    modulus: UInt64Buffer,
+    modulus_length: uint64,
+    characteristic: uint64,
+    variables: uint64,
+    order: uint64,
+) -> FqMpolyContext: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyFromTerms",
+    symbol="sagejs_fq_mpoly_init_packed",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_mpoly_t),
+        in_("context", sagejs_fq_mpoly_context_t),
+        in_(
+            "data",
+            uint64_t_ptr,
+            packed_slice(
+                data="data",
+                length="length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("length", uint64_t),
+        in_("terms", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite-extension multivariate input or result is outside the declared resource envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_from_terms(
+    context: FqMpolyContext, data: UInt64Buffer, length: uint64, terms: uint64
+) -> FqMpoly: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyCopy",
+    symbol="sagejs_fq_mpoly_copy",
+    returns=int,
+    abi=[out("result", sagejs_fq_mpoly_t), in_("source", sagejs_fq_mpoly_t)],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite-extension multivariate input or result is outside the declared resource envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_copy(source: FqMpoly) -> FqMpoly: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyNeg",
+    symbol="sagejs_fq_mpoly_neg",
+    returns=int,
+    abi=[out("result", sagejs_fq_mpoly_t), in_("source", sagejs_fq_mpoly_t)],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite-extension multivariate input or result is outside the declared resource envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_neg(source: FqMpoly) -> FqMpoly: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyBinary",
+    symbol="sagejs_fq_mpoly_binary",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_mpoly_t),
+        in_("left", sagejs_fq_mpoly_t),
+        in_("right", sagejs_fq_mpoly_t),
+        in_("operation", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite-extension multivariate input or result is outside the declared resource envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_binary(left: FqMpoly, right: FqMpoly, operation: uint64) -> FqMpoly: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyTermBytes",
+    symbol="sagejs_fq_mpoly_term_bytes",
+    returns=int,
+    abi=[out("result", sagejs_fq_mpoly_bytes_t), in_("source", sagejs_fq_mpoly_t)],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="finite-extension multivariate input or result is outside the declared resource envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_term_bytes(source: FqMpoly) -> FqMpolyBytes: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyEqual",
+    symbol="sagejs_fq_mpoly_equal",
+    returns=int,
+    abi=[in_("left", sagejs_fq_mpoly_t), in_("right", sagejs_fq_mpoly_t)],
+    effects=Effects(pure=False, thread_safe=False),
+    result=Direct(),
+    wasm=True,
+)
+def fq_mpoly_equal(left: FqMpoly, right: FqMpoly) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyGcd",
+    symbol="sagejs_fq_mpoly_gcd",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_mpoly_t),
+        in_("left", sagejs_fq_mpoly_t),
+        in_("right", sagejs_fq_mpoly_t),
+    ],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT fq_mpoly_gcd failed or exceeded the finite-extension representation envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_gcd(left: FqMpoly, right: FqMpoly) -> FqMpoly: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyResultant",
+    symbol="sagejs_fq_mpoly_resultant",
+    returns=int,
+    abi=[
+        out("result", sagejs_fq_mpoly_t),
+        in_("left", sagejs_fq_mpoly_t),
+        in_("right", sagejs_fq_mpoly_t),
+        in_("variable", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT fq_mpoly_resultant failed or exceeded the finite-extension representation envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_resultant(left: FqMpoly, right: FqMpoly, variable: uint64) -> FqMpoly: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyFactorBytes",
+    symbol="sagejs_fq_mpoly_factor_bytes",
+    returns=int,
+    abi=[out("result", sagejs_fq_mpoly_bytes_t), in_("source", sagejs_fq_mpoly_t)],
+    effects=Effects(
+        pure=False,
+        deterministic=True,
+        thread_safe=False,
+        allocates=True,
+        raises=[ValueError],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT fq_mpoly_factor_bytes failed or exceeded the finite-extension representation envelope",
+    ),
+    wasm=True,
+)
+def fq_mpoly_factor_bytes(source: FqMpoly) -> FqMpolyBytes: ...
+
+
+@flint.function(
+    dynamic="ffiFqMpolyCacheBytes",
+    symbol="sagejs_fq_mpoly_cache_bytes",
+    returns=uint64_t,
+    abi=[in_("source", sagejs_fq_mpoly_t)],
+    effects=Effects(pure=False, thread_safe=False),
+    result=Direct(),
+    wasm=True,
+)
+def fq_mpoly_cache_bytes(source: FqMpoly) -> uint64: ...

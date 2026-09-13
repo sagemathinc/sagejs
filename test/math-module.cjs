@@ -12,6 +12,9 @@ async function main() {
       "large = 10**10000",
       "print(large.bit_length())",
       "print(abs(math.log(large, 10) - 10000) < 1e-10)",
+      "print(math.isinf(math.inf), math.inf > 0)",
+      "print(math.isnan(math.nan))",
+      "print(math.tau == 2 * math.pi)",
       "try:",
       "    math.log(0)",
       "except ValueError as error:",
@@ -19,6 +22,9 @@ async function main() {
     ].join("\n"));
     assert.equal(result.stdout.trim(), [
       "33220",
+      "True",
+      "True True",
+      "True",
       "True",
       "math domain error",
     ].join("\n"));

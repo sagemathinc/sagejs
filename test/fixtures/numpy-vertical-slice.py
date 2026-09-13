@@ -54,6 +54,17 @@ print(a[:, None, :][1, 0, ::2].tolist())
 scalar_array = np.squeeze(np.array([[[5]]]))
 print(scalar_array.shape, scalar_array.ndim, scalar_array.item())
 
+# Unary ufuncs preserve array outputs, but scalar and zero-dimensional inputs
+# produce scalar values just as they do in NumPy.  MATLAB anonymous callbacks
+# rely on this distinction when they lower `cos(x)`, `sin(x)`, and friends.
+scalar_cosine = np.cos(0.5)
+zero_dimensional_cosine = np.cos(np.array(0.5))
+assert not isinstance(scalar_cosine, np.ndarray)
+assert not isinstance(zero_dimensional_cosine, np.ndarray)
+assert abs(float(scalar_cosine) - 0.8775825618903728) < 1e-15
+assert abs(float(zero_dimensional_cosine) - 0.8775825618903728) < 1e-15
+assert isinstance(np.cos([0.0, 1.0]), np.ndarray)
+
 
 def error_name(function):
     try:

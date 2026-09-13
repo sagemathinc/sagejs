@@ -83,6 +83,17 @@ modules used by Node, loaded into the compiler worker from a versioned
 manifest. Ordinary imports such as `import math` therefore work without a
 browser filesystem.
 
+The published npm package also exposes that exact artifact to Node without
+loading the native addon:
+
+```js
+import { createSage } from "@sagemath/sagejs/wasm/node";
+
+const sage = await createSage();
+console.log((await sage.evaluate("factor(2026)")).repr);
+await sage.close();
+```
+
 ## Output and results
 
 `evaluate()` and its `eval()` alias return:
@@ -96,6 +107,7 @@ interface SageEvaluationResult {
     mime: string;
     data: unknown;
   };
+  json?: unknown;
 }
 ```
 
@@ -134,6 +146,26 @@ The renderer is separate from the kernel and receives Plotly explicitly. A
 Node application can preserve or transform the same figure payload without
 loading a browser plotting library. See [`PLOTTING.md`](PLOTTING.md) for the
 supported Sage API and current limits.
+
+Numerical results, `PlotSpec`, and `PlotAnimation` provide stable JSON and rich
+display boundaries. `evaluateJSON()` returns detached JavaScript data instead
+of the quoted Python representation of `to_json()`:
+
+```js
+const numericalSource = `
+from sagejs.numerics import find_root
+answer = find_root(lambda x: x*x - 2, 1.0, 2.0, trace="iterations")
+`;
+const record = await sage.evaluateJSON(`${numericalSource}\nanswer`);
+console.log(record.schema_version, record.value);
+
+const view = await sage.evaluate(`${numericalSource}\nanswer.plot()`);
+await renderSageDisplay(container, view.display, Plotly);
+```
+
+The bridge accepts ordinary JSON-compatible values and objects implementing
+`to_json()`. It rejects opaque runtime objects rather than leaking live native
+or Python state across the worker/process boundary.
 
 Browser hosts can also implement Sage's `Graphics.save()` operation:
 

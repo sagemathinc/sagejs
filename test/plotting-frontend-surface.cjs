@@ -73,6 +73,18 @@ test("surface separates plotting evidence from generic call syntax", () => {
       classification === "translated"
     ),
   );
+  for (const numericalHead of ["FindRoot", "NIntegrate"]) {
+    assert.equal(
+      surface.entries.some(
+        ({ frontend, kind, qualified_name }) =>
+          frontend === "wolfram" &&
+          kind === "plot-function" &&
+          qualified_name === numericalHead,
+      ),
+      false,
+      `${numericalHead} is numerical syntax, not a plotting head`,
+    );
+  }
 
   const matlabPlot = surface.entries.find(
     ({ id }) => id === "matlab.plot-function.plot",

@@ -11,6 +11,7 @@ const test = require("node:test");
 
 const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
 const kernelSource = join(
@@ -316,7 +317,29 @@ for fixture in fixtures:
     assert selected is not None
     selected_indices = tuple(entry[1][0] for entry in selected)
     assert selected_rank == stable.rank
-    assert selected_indices == stable.selected_candidate_indices
+    reverse_stable = matrix.stable_exact_relation_hnf_selection(
+        initial, reversed(candidates), columns
+    )
+    assert reverse_stable.basis == stable.basis
+    assert reverse_stable.rank == stable.rank
+    reverse_indices = tuple(sorted(
+        len(candidates) - 1 - index
+        for index in reverse_stable.selected_candidate_indices
+    ))
+    early_bits = sum(
+        abs(int(triples[index][2])).bit_length()
+        for index in stable.selected_candidate_indices
+    )
+    late_bits = sum(
+        abs(int(triples[index][2])).bit_length()
+        for index in reverse_indices
+    )
+    expected_indices = (
+        stable.selected_candidate_indices
+        if 20 * early_bits <= 17 * late_bits
+        else reverse_indices
+    )
+    assert selected_indices == expected_indices
 
     for backend in ('native', 'javascript'):
         answer = matrix.resident_exact_relation_hnf_selection(
@@ -713,7 +736,7 @@ print(json.dumps({'status': 'resident-hnf-ok', 'reports': reports}, sort_keys=Tr
 
 test("the ordinary CPython oracle retains the same canonical lattices", () => {
   const python = spawnSync(
-    "python3",
+    pythonExecutable(),
     [
       "-c",
       [
@@ -740,7 +763,14 @@ test("the ordinary CPython oracle retains the same canonical lattices", () => {
     ],
     { cwd: tmpdir(), encoding: "utf8", timeout: 30_000 },
   );
-  assert.equal(python.status, 0, python.stderr || python.stdout);
+  assert.equal(
+    python.status,
+    0,
+    python.error?.message ||
+      python.stderr ||
+      python.stdout ||
+      "CPython oracle exited without diagnostics",
+  );
   assert.deepEqual(JSON.parse(python.stdout), {
     status: "cpython-resident-hnf-ok",
   });

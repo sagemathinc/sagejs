@@ -118,6 +118,59 @@ Host JavaScript, parser modules, standard-library data, plotting assets, and
 the bounded first-party WASI host are authenticated assets too. Site and mobile
 staging may copy only the receipt's closure.
 
+## Artifact size gates
+
+Two independent gates bound the browser payload. Both are enforced by
+`packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs` and surface in
+the `chromium-parity` job.
+
+**Per-group ceilings** live in
+`packages/flint-wasm/release/production-layout.json`, under
+`artifactTopology.groups[].maximumCompressedDelta`. Every topology group --
+`eager-core` and each specialist -- carries its own gzip and Brotli ceiling, and
+`enforceTopologyBudgets` fails the build when a group's compressed bytes exceed
+its own. These ceilings are a *reviewed ratchet*: they are expected to rise as
+the shipped closure grows, one reviewed step at a time.
+
+**The global payload budget** lives in `bench/browser-wasm-budget.json`, whose
+`thresholds.compressed_growth_fraction` bounds total compressed growth against
+the reviewed `artifact_baseline.totals`. `enforceBudget` applies it to the whole
+artifact rather than to any one group. This is the gate that is *not* routinely
+raised: a change that stays inside its group ceiling but pushes the whole
+payload past this fraction is a size regression, not a ratchet step.
+
+Group ceilings are checked first, and a failure there throws before the global
+budget is evaluated -- so a group overshoot masks whatever the global gate would
+have reported.
+
+### Raising a group ceiling
+
+Raising a ceiling is a reviewed act with an established shape:
+
+- build a clean artifact and measure it, and cite the exact byte counts in the
+  commit message;
+- raise only the ceiling that is exceeded, to the next round number, leaving
+  minimal explicit headroom;
+- state that the specialist and global budgets are unchanged;
+- begin the commit subject with `Review`.
+
+`git log packages/flint-wasm/release/production-layout.json` is the record of
+prior reviews.
+
+### Where a payload lands
+
+Group membership follows the asset, not the source language. `lazy-modules.json`
+is an `eager-core` asset: the modules listed in it load lazily at *execution*
+time, but their compiled payload ships in the eager bundle, and the bundle is
+the delivery mechanism for those modules rather than a cache for them. Adding
+Python to the precompiled roots in `scripts/precompiled-python-packages.json`
+therefore grows `eager-core`, and dropping a module from the bundle makes it
+unreachable rather than merely slower to import.
+
+`scripts/build-lazy-module-cache.cjs` resolves each root by importing it, so a
+root whose package `__init__` re-exports eagerly pulls that entire closure into
+the bundle with it.
+
 ## Reproducibility and release gates
 
 The scheduled/tag workflow builds twice in separate canonical Linux x86-64

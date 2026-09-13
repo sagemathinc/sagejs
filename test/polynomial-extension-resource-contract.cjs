@@ -4,7 +4,6 @@
 
 const assert = require("node:assert/strict");
 const {
-  existsSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -14,6 +13,7 @@ const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { sageMathOracle } = require("./helpers/sage-math.cjs");
 
 const root = join(__dirname, "..");
 const modulePath = join(
@@ -21,6 +21,7 @@ const modulePath = join(
   "src/lib/sagejs/polynomial_algorithms/extension_resource_contract.py",
 );
 const moduleSource = readFileSync(modulePath, "utf8");
+const sage = sageMathOracle({ root, environmentVariables: ["SAGE_BIN"] });
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -305,8 +306,7 @@ test("public extension-field semantics agree with SageMath", (t) => {
     modulus: ["1", "0", "1"],
   });
 
-  const sage = process.env.SAGE_BIN || "/home/user/sagelite/sage";
-  if (!existsSync(sage)) {
+  if (sage === null) {
     t.skip("SageMath oracle is unavailable");
     return;
   }
@@ -353,8 +353,7 @@ print("nontrivial-power-basis-contract-ok")
     "nontrivial-power-basis-contract-ok",
   );
 
-  const sage = process.env.SAGE_BIN || "/home/user/sagelite/sage";
-  if (!existsSync(sage)) {
+  if (sage === null) {
     t.skip("SageMath power-basis oracle is unavailable");
     return;
   }

@@ -14,9 +14,7 @@
     "tools/native-kernel/js-backend.cjs",
     "tools/native-kernel/exact-analysis.cjs",
     "tools/native-kernel/wasm-bridge.cjs",
-    "tools/runtime-bootstrap.ts",
     "src/lib/sagejs/native.py",
-    "architecture/optimizer-opportunities.manifest.json",
     "docs/optimizer-opportunities.md",
     "tools/native-kernel/test/mixed-exact-float64.cjs",
     "tools/native-kernel/test/mixed_exact_float64_witness.py"

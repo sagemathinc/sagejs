@@ -33,6 +33,9 @@ from sagejs.ffi.flint import (
     FmpzVector,
     FqContext,
     FqElement,
+    FqMpoly,
+    FqMpolyBytes,
+    FqMpolyContext,
     FqPolynomial,
     NativeExactWorkspace,
     NativeExactWorkspaceBorrow,
@@ -208,10 +211,14 @@ from sagejs.ffi.flint import (
     fmpz_matrix_trace as _ffi_fmpz_matrix_trace,
     fmpz_matrix_hnf as _ffi_fmpz_matrix_hnf,
     fmpz_matrix_hnf_into as _ffi_fmpz_matrix_hnf_into,
+    fmpz_matrix_hnf_prefix_into as _ffi_fmpz_matrix_hnf_prefix_into,
     fmpz_matrix_snf as _ffi_fmpz_matrix_snf,
     fmpz_matrix_snf_into as _ffi_fmpz_matrix_snf_into,
+    fmpz_matrix_snf_prefix_into as _ffi_fmpz_matrix_snf_prefix_into,
     fmpz_matrix_hnf_transform as _ffi_fmpz_matrix_hnf_transform,
+    fmpz_matrix_hnf_transform_prefix as _ffi_fmpz_matrix_hnf_transform_prefix,
     fmpz_matrix_lll_transform as _ffi_fmpz_matrix_lll_transform,
+    fmpz_matrix_lll_transform_prefix as _ffi_fmpz_matrix_lll_transform_prefix,
     fmpz_matrix_snf_transform as _ffi_fmpz_matrix_snf_transform,
     fmpz_matrix_right_kernel as _ffi_fmpz_matrix_right_kernel,
     fmpz_matrix_charpoly as _ffi_fmpz_matrix_charpoly,
@@ -277,6 +284,7 @@ from sagejs.ffi.flint import (
     fmpq_matrix_augment as _ffi_fmpq_matrix_augment,
     fmpq_matrix_nonzero_count as _ffi_fmpq_matrix_nonzero_count,
     fmpq_matrix_echelon_pivots as _ffi_fmpq_matrix_echelon_pivots,
+    fmpq_matrix_full_row_rank_pivots as _ffi_fmpq_matrix_full_row_rank_pivots,
     fmpq_value_numerator as _ffi_fmpq_value_numerator,
     fmpq_value_denominator as _ffi_fmpq_value_denominator,
     fmpq_matrix_format as _ffi_fmpq_matrix_format,
@@ -299,6 +307,7 @@ from sagejs.ffi.flint import (
     fmpz_mat_hnf_modular_eldiv as _ffi_fmpz_mat_hnf_modular_eldiv,
     fmpz_mat_hnf_transform as _ffi_fmpz_mat_hnf_transform,
     fmpz_mat_lll_transform as _ffi_fmpz_mat_lll_transform,
+    fmpz_mat_gram_lll_transform as _ffi_fmpz_mat_gram_lll_transform,
     fmpz_mat_snf_transform as _ffi_fmpz_mat_snf_transform,
     fmpz_mat_right_kernel as _ffi_fmpz_mat_right_kernel,
     fmpq_mat_rank as _ffi_fmpq_mat_rank,
@@ -457,7 +466,19 @@ from sagejs.ffi.flint import (
     number_field_analysis_resource_project_proof as _ffi_number_field_analysis_resource_project_proof,
     integer_log_sqrt_balls_packed as _ffi_integer_log_sqrt_balls_packed,
     integer_log_sqrt_balls_resource as _ffi_integer_log_sqrt_balls_resource,
+    integer_log_sqrt_balls_prefix_resource as _ffi_integer_log_sqrt_balls_prefix_resource,
     positive_rational_log_balls_resource as _ffi_positive_rational_log_balls_resource,
+    fq_mpoly_context as _ffi_fq_mpoly_context,
+    fq_mpoly_from_terms as _ffi_fq_mpoly_from_terms,
+    fq_mpoly_copy as _ffi_fq_mpoly_copy,
+    fq_mpoly_neg as _ffi_fq_mpoly_neg,
+    fq_mpoly_binary as _ffi_fq_mpoly_binary,
+    fq_mpoly_term_bytes as _ffi_fq_mpoly_term_bytes,
+    fq_mpoly_equal as _ffi_fq_mpoly_equal,
+    fq_mpoly_gcd as _ffi_fq_mpoly_gcd,
+    fq_mpoly_resultant as _ffi_fq_mpoly_resultant,
+    fq_mpoly_factor_bytes as _ffi_fq_mpoly_factor_bytes,
+    fq_mpoly_cache_bytes as _ffi_fq_mpoly_cache_bytes,
 )
 from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
 
@@ -2314,6 +2335,21 @@ def ffiFmpzMatrixHnfInto(
 
 
 @native
+def ffiFmpzMatrixHnfPrefixInto(
+    hermite: FmpzMatrix,
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return _ffi_fmpz_matrix_hnf_prefix_into(
+        hermite,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
 def ffiFmpzMatrixSnf(
     source: FmpzMatrix,
 ) -> FmpzMatrix:
@@ -2334,6 +2370,21 @@ def ffiFmpzMatrixSnfInto(
 
 
 @native
+def ffiFmpzMatrixSnfPrefixInto(
+    smith: FmpzMatrix,
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return _ffi_fmpz_matrix_snf_prefix_into(
+        smith,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
 def ffiFmpzMatrixHnfTransform(
     hermite: FmpzMatrix,
     transform: FmpzMatrix,
@@ -2347,6 +2398,23 @@ def ffiFmpzMatrixHnfTransform(
 
 
 @native
+def ffiFmpzMatrixHnfTransformPrefix(
+    hermite: FmpzMatrix,
+    transform: FmpzMatrix,
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return _ffi_fmpz_matrix_hnf_transform_prefix(
+        hermite,
+        transform,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
 def ffiFmpzMatrixLllTransform(
     reduced: FmpzMatrix,
     transform: FmpzMatrix,
@@ -2356,6 +2424,23 @@ def ffiFmpzMatrixLllTransform(
         reduced,
         transform,
         source,
+    )
+
+
+@native
+def ffiFmpzMatrixLllTransformPrefix(
+    reduced: FmpzMatrix,
+    transform: FmpzMatrix,
+    source: FmpzMatrix,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return _ffi_fmpz_matrix_lll_transform_prefix(
+        reduced,
+        transform,
+        source,
+        rows,
+        columns,
     )
 
 
@@ -3095,6 +3180,15 @@ def ffiFmpqMatrixEchelonPivots(
 
 
 @native
+def ffiFmpqMatrixFullRowRankPivots(
+    source: FmpqMatrix,
+) -> FlintByteRegion:
+    return _ffi_fmpq_matrix_full_row_rank_pivots(
+        source,
+    )
+
+
+@native
 def ffiFmpqValueNumerator(
     value: FmpqValue,
 ) -> Integer:
@@ -3358,6 +3452,23 @@ def ffiFmpzMatLllTransform(
     columns: uint64,
 ) -> bool:
     return _ffi_fmpz_mat_lll_transform(
+        output,
+        transform,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
+def ffiFmpzMatGramLllTransform(
+    output: IntegerBuffer,
+    transform: IntegerBuffer,
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return _ffi_fmpz_mat_gram_lll_transform(
         output,
         transform,
         source,
@@ -5491,6 +5602,21 @@ def ffiIntegerLogSqrtBallsResource(
 
 
 @native
+def ffiIntegerLogSqrtBallsPrefixResource(
+    output: FmpzMatrix,
+    source: FmpzMatrix,
+    count: uint64,
+    precision: uint64,
+) -> bool:
+    return _ffi_integer_log_sqrt_balls_prefix_resource(
+        output,
+        source,
+        count,
+        precision,
+    )
+
+
+@native
 def ffiPositiveRationalLogBallsResource(
     output: FmpzMatrix,
     numerators: FmpzMatrix,
@@ -5504,4 +5630,129 @@ def ffiPositiveRationalLogBallsResource(
         denominators,
         count,
         precision,
+    )
+
+
+@native
+def ffiFqMpolyContextCreate(
+    modulus: UInt64Buffer,
+    modulus_length: uint64,
+    characteristic: uint64,
+    variables: uint64,
+    order: uint64,
+) -> FqMpolyContext:
+    return _ffi_fq_mpoly_context(
+        modulus,
+        modulus_length,
+        characteristic,
+        variables,
+        order,
+    )
+
+
+@native
+def ffiFqMpolyFromTerms(
+    context: FqMpolyContext,
+    data: UInt64Buffer,
+    length: uint64,
+    terms: uint64,
+) -> FqMpoly:
+    return _ffi_fq_mpoly_from_terms(
+        context,
+        data,
+        length,
+        terms,
+    )
+
+
+@native
+def ffiFqMpolyCopy(
+    source: FqMpoly,
+) -> FqMpoly:
+    return _ffi_fq_mpoly_copy(
+        source,
+    )
+
+
+@native
+def ffiFqMpolyNeg(
+    source: FqMpoly,
+) -> FqMpoly:
+    return _ffi_fq_mpoly_neg(
+        source,
+    )
+
+
+@native
+def ffiFqMpolyBinary(
+    left: FqMpoly,
+    right: FqMpoly,
+    operation: uint64,
+) -> FqMpoly:
+    return _ffi_fq_mpoly_binary(
+        left,
+        right,
+        operation,
+    )
+
+
+@native
+def ffiFqMpolyTermBytes(
+    source: FqMpoly,
+) -> FqMpolyBytes:
+    return _ffi_fq_mpoly_term_bytes(
+        source,
+    )
+
+
+@native
+def ffiFqMpolyEqual(
+    left: FqMpoly,
+    right: FqMpoly,
+) -> bool:
+    return _ffi_fq_mpoly_equal(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFqMpolyGcd(
+    left: FqMpoly,
+    right: FqMpoly,
+) -> FqMpoly:
+    return _ffi_fq_mpoly_gcd(
+        left,
+        right,
+    )
+
+
+@native
+def ffiFqMpolyResultant(
+    left: FqMpoly,
+    right: FqMpoly,
+    variable: uint64,
+) -> FqMpoly:
+    return _ffi_fq_mpoly_resultant(
+        left,
+        right,
+        variable,
+    )
+
+
+@native
+def ffiFqMpolyFactorBytes(
+    source: FqMpoly,
+) -> FqMpolyBytes:
+    return _ffi_fq_mpoly_factor_bytes(
+        source,
+    )
+
+
+@native
+def ffiFqMpolyCacheBytes(
+    source: FqMpoly,
+) -> uint64:
+    return _ffi_fq_mpoly_cache_bytes(
+        source,
     )

@@ -210,3 +210,22 @@ from sage.rings.puiseux_series_ring_element import PuiseuxSeries
 
 assert isinstance(y, PuiseuxSeries)
 assert P.Element is PuiseuxSeries
+
+# Exact coefficient-list fallback for fields without a FLINT polynomial ABI.
+Qx = PolynomialRing(QQ, "X")
+K = NumberField(Qx.gen() ** 2 + Qx.gen() - 1, "a")
+a = K.gen()
+AK = PowerSeriesRing(K, "w", default_prec=8)
+w = AK.gen()
+algebraic_series = (1 + a * w + (a + 1) * w**2).add_bigoh(4)
+assert str(algebraic_series) == "1 + a*w + (a + 1)*w^2 + O(w^4)"
+assert algebraic_series.padded_list() == [K(1), a, a + 1, K(0)]
+assert str(algebraic_series**2) == ("1 + 2*a*w + (a + 3)*w^2 + 2*w^3 + O(w^4)")
+assert str(1 / algebraic_series) == ("1 - a*w - 2*a*w^2 + (-2*a + 3)*w^3 + O(w^4)")
+
+try:
+    PowerSeriesRing(QQ, "w")(algebraic_series)
+except TypeError as error:
+    assert str(error) == "incompatible series rings"
+else:
+    raise AssertionError("generic algebraic series coerced through the FLINT ABI")

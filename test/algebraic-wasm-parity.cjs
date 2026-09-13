@@ -123,6 +123,10 @@ function fakeAlgebraicInstance(api) {
     sagejs_wasm_algebraic_matrix_entry: () => 7,
     sagejs_wasm_algebraic_matrix_det: () => 7,
     sagejs_wasm_algebraic_matrix_rank: () => 7,
+    sagejs_wasm_algebraic_matrix_select: () => 7,
+    sagejs_wasm_algebraic_matrix_right_kernel: () => 7,
+    sagejs_wasm_algebraic_matrix_pivots: () => 7,
+    sagejs_wasm_algebraic_cyclotomic_coefficients: () => 7,
     sagejs_wasm_algebraic_matrix_equal: () => 7,
     sagejs_wasm_algebraic_matrix_charpoly: () => 7,
   };

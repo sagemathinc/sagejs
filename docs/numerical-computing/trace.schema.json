@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/trace.schema.json",
+  "title": "Sage.js NumericalTrace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "policy", "observed_events", "retained_events", "dropped_events", "truncated", "events", "diagnostics"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "policy": {"$ref": "#/$defs/policy"},
+    "observed_events": {"type": "integer", "minimum": 0},
+    "retained_events": {"type": "integer", "minimum": 0},
+    "dropped_events": {"type": "integer", "minimum": 0},
+    "truncated": {"type": "boolean"},
+    "events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
+    "diagnostics": {
+      "type": "array",
+      "items": {"$ref": "diagnostic.schema.json"}
+    }
+  },
+  "$defs": {
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "max_events", "max_bytes"],
+      "properties": {
+        "level": {"enum": ["none", "summary", "iterations", "evaluations", "debug"]},
+        "max_events": {"type": "integer", "minimum": 2},
+        "max_bytes": {"type": "integer", "minimum": 1024}
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "kind", "iteration", "evaluation", "accepted", "data", "diagnostics", "important"],
+      "properties": {
+        "sequence": {"type": "integer", "minimum": 0},
+        "kind": {"type": "string", "minLength": 1},
+        "iteration": {"type": ["integer", "null"], "minimum": 0},
+        "evaluation": {"type": ["integer", "null"], "minimum": 0},
+        "accepted": {"type": ["boolean", "null"]},
+        "data": {"type": "object"},
+        "diagnostics": {
+          "type": "array",
+          "items": {"$ref": "diagnostic.schema.json"}
+        },
+        "important": {"type": "boolean"}
+      }
+    }
+  }
+}

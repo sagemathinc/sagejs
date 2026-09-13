@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-analytic-schedule",
+  "title": "Cubic Analytic Schedule",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Measure general initial analytic-cutoff schedules on the current BF candidate while preserving exact certification and all resource limits",
+  "base_commit": "d3a5973b417e7e6aab1223a25ecb585dcf524acb",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+    "bench/class-unit-groups/cubic-analytic-schedule.cjs",
+    "bench/class-unit-groups/cubic-bf-scale-audit.py",
+    "test/cubic-analytic-schedule.cjs",
+    "docs/cubic-analytic-schedule.md",
+    "docs/complex-cubic-native-class-group-proof.md",
+    "test/number-field-cubic-bf-prefix.cjs",
+    "test/number-field-cubic-native-class-number.cjs",
+    "test/fixtures/cubic-reconstructed-regulator-guard.py",
+    "test/fixtures/cubic-analytic-suffix.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "pari",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

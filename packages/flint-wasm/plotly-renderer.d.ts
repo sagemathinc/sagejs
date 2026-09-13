@@ -1,6 +1,8 @@
 import type { SageDisplayData } from "./kernel.mjs";
 
 export const PLOTLY_MIME: "application/vnd.plotly.v1+json";
+export const LATEX_MIME: "text/latex";
+export function stabilizePlotlyFigure(figure: unknown): unknown;
 
 export interface PlotlyRenderer {
   react(
@@ -25,6 +27,18 @@ export interface PlotlyRenderElement extends Element {
   style?: CSSStyleDeclaration;
 }
 
+export interface KatexRenderer {
+  render(
+    source: string,
+    element: Element,
+    options: {
+      displayMode: boolean;
+      throwOnError: boolean;
+      strict: "warn";
+    },
+  ): void;
+}
+
 export interface PlotlyImageOptions {
   filename?: string;
   format?: "png" | "jpeg" | "jpg" | "webp" | "svg";
@@ -46,6 +60,7 @@ export function renderSageDisplay(
   element: PlotlyRenderElement,
   display: SageDisplayData,
   plotly?: PlotlyRenderer,
+  katex?: KatexRenderer,
 ): Promise<Element>;
 
 export function clearSageDisplay(

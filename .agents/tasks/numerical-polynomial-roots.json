@@ -1,0 +1,135 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerical-polynomial-roots",
+  "title": "Validated numerical polynomial roots",
+  "lane": "numerical-approximation",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a bounded ordinary-Python numerical polynomial-root solver with complex roots, scale-safe validation, adversarial differential corpora, documentation, and benchmark evidence",
+  "base_commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+  "claims": [
+    "src/lib/sagejs/numerics/approximation/polynomial_roots.py",
+    "test/numerics/polynomial-roots/",
+    "bench/numerics/polynomial-roots/",
+    "docs/numerical-computing/polynomial-roots/"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/numerical-computing-product-plan.md",
+    "Bini and Fiorentino, Design, analysis, and implementation of a multiprecision polynomial rootfinder",
+    "NumPy numpy.polynomial.polynomial.polyroots",
+    "mpmath polyroots"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "NumPy companion-matrix roots",
+      "mpmath arbitrary-precision polyroots"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/numerics/polynomial-roots/polynomial-roots.test.cjs",
+    "python3 -I test/numerics/polynomial-roots/differential_oracles.py",
+    "python3 -I bench/numerics/polynomial-roots/benchmark.py",
+    "pnpm exec pyright src/lib/sagejs/numerics/approximation/polynomial_roots.py",
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/numerics/polynomial-roots/polynomial-roots.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.953,
+      "started_at": "2026-08-31T16:07:35.704Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "3cc43588f3d8fb066171d18786b54a84162a340134ab82291a6f10f17e663f19",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I test/numerics/polynomial-roots/differential_oracles.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.631,
+      "started_at": "2026-08-31T16:07:50.856Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "3cc43588f3d8fb066171d18786b54a84162a340134ab82291a6f10f17e663f19",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I bench/numerics/polynomial-roots/benchmark.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.18,
+      "started_at": "2026-08-31T16:07:52.206Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "3cc43588f3d8fb066171d18786b54a84162a340134ab82291a6f10f17e663f19",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/numerics/approximation/polynomial_roots.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.725,
+      "started_at": "2026-08-31T16:08:01.076Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "3cc43588f3d8fb066171d18786b54a84162a340134ab82291a6f10f17e663f19",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 49.658,
+      "started_at": "2026-08-31T16:08:08.509Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "3cc43588f3d8fb066171d18786b54a84162a340134ab82291a6f10f17e663f19",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 417.991,
+      "started_at": "2026-08-31T16:09:05.456Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "3cc43588f3d8fb066171d18786b54a84162a340134ab82291a6f10f17e663f19",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.94,
+      "started_at": "2026-08-31T16:17:11.692Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "3cc43588f3d8fb066171d18786b54a84162a340134ab82291a6f10f17e663f19",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a bounded degree-64 binary64 polynomial-root vertical slice with inspectable planning, Aberth--Ehrlich iteration, bounded Laguerre rescue, finite JSON, semantic traces, cancellation and resource budgets, logarithmic scaling, independent term-wise backward validation, Vieta reconstruction, condition estimates, honest numerical clusters, CPython and Sage.js integration tests, NumPy/mpmath differential oracles, algorithm survey documentation, and representative performance evidence.",
+    "risks": [
+      "This is the correct ordinary-Python fallback, not an industrial accelerator: the recorded degree-64 Linux x64 workload is about one second and roughly 450 times slower than the NumPy companion baseline.",
+      "Multiplicity is never certified; catastrophically conditioned clusters may use a shared numerical representative only when both backward residuals and complete Vieta reconstruction improve.",
+      "Only local Linux x64 CPython and Sage.js Python-mode receipts exist. Browser, SEA, Linux ARM64, macOS ARM64, and Windows x64 support remains explicitly pending qualification.",
+      "The inherited integration workspace currently fails architecture:check and merge:check before reaching this module because src/lib/sagejs/numerics/approximation/__init__.py has no package owner; this lane did not edit the shared package graph."
+    ],
+    "next_steps": [
+      "Integration must export the public symbols from src/lib/sagejs/numerics/approximation/__init__.py and add polynomial_roots.py to the centrally owned strict-Python and package-graph surfaces.",
+      "Integration must include the focused test directory in the central numerical test/discovery surface and rerun architecture:check after repairing the inherited approximation package owner.",
+      "Qualify browser, SEA, Linux ARM64, macOS ARM64, and Windows x64 before changing the capability record's pending platform claims.",
+      "Evaluate a qualified MPSolve or LAPACK-class backend later against the same corpus; retain this implementation as the dynamic fallback and independent post-validator."
+    ]
+  }
+}

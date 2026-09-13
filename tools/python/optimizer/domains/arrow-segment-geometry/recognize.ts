@@ -579,14 +579,12 @@ function rowValidation(
 ): boolean {
   const exactListTest = (value: any, rowName: string): boolean =>
     value instanceof compiler.AST_UnaryPrefix && value.operator === "!" &&
-    binary(
-      compiler,
-      value.expression,
-      "instanceof",
-      (left) => symbol(compiler, left, rowName),
-      (right) => right instanceof compiler.AST_SymbolRef &&
-        right.name === "list" && right.python_lexical_binding === false,
-    );
+    builtinCall(compiler, value.expression, "isinstance", 2) &&
+    symbol(compiler, value.expression.args[0], rowName) &&
+    value.expression.args[1] instanceof compiler.AST_SymbolRef &&
+    value.expression.args[1].name === "list" &&
+    value.expression.args[1].python_lexical_binding === false &&
+    value.expression.args[1].python_resolution_provenance === "module";
   const thrown = node?.body?.body?.[0];
   const error = thrown instanceof compiler.AST_Throw ? thrown.value : null;
   return node instanceof compiler.AST_If && node.alternative == null &&

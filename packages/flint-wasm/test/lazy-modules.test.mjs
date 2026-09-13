@@ -145,6 +145,31 @@ test("loads declared dependencies before a non-package parent body", () => {
   assert.equal(platform.path.answer, 42);
 });
 
+test("module identity is available during imports and follows replacement namespaces", () => {
+  const document = dependencyBundle();
+  for (const module of Object.values(document.modules)) {
+    module.javascriptTemplate += `
+      if (!globalThis.__sagejs_module_namespaces__.has(namespace))
+        throw new Error("unregistered module during evaluation");
+    `;
+  }
+  const globalObject = {
+    ρσ_modules: Object.create(null),
+    __sagejs_module_namespaces__: new WeakSet(),
+  };
+  const load = installLazyModuleLoader(document, {
+    globalObject,
+    evaluate(source) { Function("globalThis", source)(globalObject); },
+  });
+  const platform = load("platform");
+  for (const namespace of Object.values(globalObject.ρσ_modules)) {
+    assert.ok(globalObject.__sagejs_module_namespaces__.has(namespace));
+  }
+  assert.equal(platform.path.answer, 42);
+  assert.equal(load("platform"), platform);
+  assert.equal(globalObject.__sagejs_module_namespaces__.has({}), false);
+});
+
 test("rejects noncanonical provenance before evaluating templates", () => {
   const reserved = bundle();
   reserved.modules["demo.__proto__.escape"] = record(

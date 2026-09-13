@@ -5,6 +5,10 @@ const { createHash } = require("node:crypto");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const esbuild = require("esbuild");
+const { browserModuleCache } = require("./browser-module-cache.cjs");
+const { CORE_STANDALONE_MODULES } = require(
+  "../../../tools/standalone-library.cjs",
+);
 const { loadRegistry } = require("../../../tools/ffi/declarations.cjs");
 const {
   generatedWasmResourceAdapter,
@@ -25,6 +29,9 @@ const autoReceiptPolicyApi = require(
   "../../../tools/math-dispatch/hyperelliptic-auto-receipt-policy.cjs"
 );
 const { kernelPackExports } = require("./kernel-pack-exports.cjs");
+const {
+  productionKernelsForPack,
+} = require("../../../tools/native-kernel/wasm-production-pack.cjs");
 const wasmAbiAllowlist = path.join(__dirname, "wasm-abi-allowlist.cjs");
 
 const packageRoot = path.resolve(__dirname, "..");
@@ -59,6 +66,8 @@ const m4riDependency = {
   prefix: toolchain.paths.libraries.m4ri.prefix,
 };
 const outputDirectory = path.join(packageRoot, "dist");
+const documentationSource = path.join(repositoryRoot, "website", "reference-data.json");
+const documentationOutput = path.join(outputDirectory, "documentation.json");
 const rawOutput = path.join(outputDirectory, "flint-factor.unstripped.wasm");
 const output = path.join(outputDirectory, "flint-factor.wasm");
 const resourceAdapterSource = path.join(
@@ -77,6 +86,9 @@ const ffiClosureOutput = path.join(
   outputDirectory,
   "ffi-production-closure.json",
 );
+const extensionOutput = path.join(outputDirectory, "flint-extension-multivariate.wasm");
+const extensionAdapterSource = path.join(outputDirectory, "extension-resource-adapter.c");
+const extensionBackendOutput = path.join(outputDirectory, "extension-resource-backend.mjs");
 const m4riRawOutput = path.join(
   outputDirectory,
   "m4ri-resource.unstripped.wasm",
@@ -167,6 +179,21 @@ const serializationOutput = path.join(
   "serialization.mjs",
 );
 const plotlyOutput = path.join(outputDirectory, "plotly.min.js");
+const katexDistribution = path.dirname(
+  require.resolve("katex/dist/katex.min.js"),
+);
+const katexOutputDirectory = path.join(outputDirectory, "katex");
+const katexFontNames = fs
+  .readdirSync(path.join(katexDistribution, "fonts"))
+  .filter((name) => name.endsWith(".woff2"))
+  .sort();
+const katexSourceFiles = [
+  path.join(katexDistribution, "katex.min.js"),
+  path.join(katexDistribution, "katex.min.css"),
+  ...katexFontNames.map((name) =>
+    path.join(katexDistribution, "fonts", name),
+  ),
+];
 const capabilityApiOutput = path.join(outputDirectory, "wasm-capability-api.mjs");
 const capabilityReportOutput = path.join(outputDirectory, "wasm-capabilities-report.json");
 const autoReceiptPolicySource = path.join(
@@ -262,24 +289,12 @@ const adapterInputsFilename = path.join(
   "adapter-inputs.json",
 );
 const adapterInputs = JSON.parse(fs.readFileSync(adapterInputsFilename, "utf8"));
-if (adapterInputs.schema !== "sagejs.wasm-adapter-inputs/v2" ||
+if (adapterInputs.schema !== "sagejs.wasm-adapter-inputs/v3" ||
     adapterInputs.policy !== "all-declared-wasm" ||
     adapterInputs.modules === null ||
     typeof adapterInputs.modules !== "object") {
   throw new Error(`unsupported generated-adapter input contract: ${adapterInputsFilename}`);
 }
-const adapterSelections = Object.entries(adapterInputs.modules).map(
-  ([module, entry]) => {
-    if (entry?.declaration !== module ||
-        typeof entry.ownershipDomain !== "string") {
-      throw new Error(`invalid generated-adapter selection ${module}`);
-    }
-    return {
-      library: entry.declaration,
-      ownershipDomain: entry.ownershipDomain,
-    };
-  },
-);
 const productionLayout = JSON.parse(fs.readFileSync(
   path.join(packageRoot, "release", "production-layout.json"),
   "utf8",
@@ -354,6 +369,26 @@ requirePath(
 );
 
 fs.mkdirSync(outputDirectory, { recursive: true });
+{
+  const reference = JSON.parse(fs.readFileSync(documentationSource, "utf8"));
+  if (reference?.docs?.schema_version !== 1 || !Array.isArray(reference.docs.entries)) {
+    throw new TypeError("website/reference-data.json does not contain DocSpec v1");
+  }
+  fs.writeFileSync(documentationOutput, `${JSON.stringify(reference.docs)}\n`);
+}
+if (process.env.SAGEJS_NUMERICAL_PRODUCT_ROOT) {
+  const { installNumericalProduct } = require(
+    path.join(repositoryRoot, "scripts/numerical-product.cjs")
+  );
+  installNumericalProduct({
+    root: repositoryRoot,
+    inputDirectory: process.env.SAGEJS_NUMERICAL_PRODUCT_ROOT,
+  });
+} else {
+  run(process.execPath, [
+    path.join(packageRoot, "numerical", "scripts", "build-all.cjs"),
+  ]);
+}
 // Earlier builds copied these source modules beside the bundled runtime. They
 // are no longer served or receipted; remove them explicitly when resuming a
 // package build so the physical dist directory is as clean as its manifest.
@@ -371,7 +406,7 @@ fs.copyFileSync(
 
 const registry = loadRegistry({ root: repositoryRoot });
 const generatedClosure = generatedWasmClosure(registry, {
-  selections: adapterSelections,
+  adapterInputs,
   strict: true,
 });
 fs.writeFileSync(ffiClosureOutput, generatedClosure.manifestSource);
@@ -395,6 +430,13 @@ fs.writeFileSync(
     ");\n",
 );
 fs.writeFileSync(resourceManifestOutput, resourceAdapter.manifestSource);
+const extensionAdapter = generatedClosure.artifacts.get("flint-extension-multivariate");
+if (!extensionAdapter) throw new Error("extension multivariate closure is missing");
+fs.writeFileSync(extensionAdapterSource, extensionAdapter.cSource);
+fs.writeFileSync(extensionBackendOutput, extensionAdapter.javascriptSource +
+  "\nexport const generatedWasmManifest = Object.freeze(" +
+  JSON.stringify(extensionAdapter.manifest) + ");\n");
+fs.writeFileSync(path.join(outputDirectory, "extension-resource-manifest.json"), extensionAdapter.manifestSource);
 
 const m4riDeclaration = registry.byId.get(
   "m4ri",
@@ -460,10 +502,53 @@ const flintLinkedSources = [
   resourceAdapterSource,
   path.join(repositoryRoot, "packages", "flint", "src", "analytic_batch_core.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "charpoly.c"),
+  path.join(repositoryRoot, "packages", "flint", "src", "prime_count.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "number_field_zeta_core.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "p1_core.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "modsym_core.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "multivariate_wasm_core.c"),
+  path.join(repositoryRoot, "packages", "flint", "src", "groebner_wasm_core.c"),
+  path.join(repositoryRoot, "packages", "flint", "src", "msolve_core.c"),
+  path.join(
+    repositoryRoot,
+    "packages",
+    "flint",
+    "vendor",
+    "msolve",
+    "src",
+    "neogb",
+    "gb.c",
+  ),
+  path.join(
+    repositoryRoot,
+    "packages",
+    "flint",
+    "vendor",
+    "msolve",
+    "src",
+    "fglm",
+    "fglm_core.c",
+  ),
+  path.join(
+    repositoryRoot,
+    "packages",
+    "flint",
+    "vendor",
+    "msolve",
+    "src",
+    "usolve",
+    "usolve.c",
+  ),
+  path.join(
+    repositoryRoot,
+    "packages",
+    "flint",
+    "vendor",
+    "msolve",
+    "src",
+    "msolve",
+    "libmsolve.c",
+  ),
   path.join(packageRoot, "src", "wasi-stubs.c"),
 ];
 const m4riLocalIncludeArguments = [
@@ -495,8 +580,8 @@ const numericSource = path.join(packageRoot, "src", "numeric.c");
 const numericExports = [...fs.readFileSync(numericSource, "utf8")
   .matchAll(/EXPORT\s+[\w\s*]+\s+(sagejs_numeric_\w+)\s*\(/g)]
   .map((match) => match[1]);
-if (numericExports.length !== 34 || new Set(numericExports).size !== 34) {
-  throw new Error("the reviewed 34-function numeric Wasm export closure drifted");
+if (numericExports.length !== 59 || new Set(numericExports).size !== 59) {
+  throw new Error("the reviewed 59-function numeric Wasm export closure drifted");
 }
 const dirichletGroupHostSource = path.join(packageRoot, "dirichlet-group.mjs");
 const dirichletGroupExports = [...new Set(
@@ -582,6 +667,7 @@ const algebraicExports = [
   "sagejs_wasm_algebraic_property",
   "sagejs_wasm_algebraic_polynomial_roots",
   "sagejs_wasm_algebraic_minpoly",
+  "sagejs_wasm_algebraic_cyclotomic_coefficients",
   "sagejs_wasm_algebraic_enclosure",
   "sagejs_wasm_algebraic_format",
   "sagejs_wasm_algebraic_serialize",
@@ -591,9 +677,12 @@ const algebraicExports = [
   "sagejs_wasm_algebraic_matrix_create",
   "sagejs_wasm_algebraic_matrix_binary",
   "sagejs_wasm_algebraic_matrix_unary",
+  "sagejs_wasm_algebraic_matrix_select",
+  "sagejs_wasm_algebraic_matrix_right_kernel",
   "sagejs_wasm_algebraic_matrix_scalar_mul",
   "sagejs_wasm_algebraic_matrix_entry",
   "sagejs_wasm_algebraic_matrix_det",
+  "sagejs_wasm_algebraic_matrix_pivots",
   "sagejs_wasm_algebraic_matrix_rank",
   "sagejs_wasm_algebraic_matrix_equal",
   "sagejs_wasm_algebraic_matrix_charpoly",
@@ -608,9 +697,9 @@ const declaredAlgebraicExports = [...fs.readFileSync(
   "utf8",
 ).matchAll(/EXPORT\s+[\w\s*]+\s+(sagejs_wasm_algebraic_\w+)\s*\(/g)]
   .map((match) => match[1]);
-if (declaredAlgebraicExports.length !== 43 ||
+if (declaredAlgebraicExports.length !== 47 ||
     declaredAlgebraicExports.some((name, index) => name !== algebraicExports[index])) {
-  throw new Error("the reviewed 43-function algebraic Wasm export closure drifted");
+  throw new Error("the reviewed 47-function algebraic Wasm export closure drifted");
 }
 const exportNames = [
   "sagejs_factor_input",
@@ -620,12 +709,15 @@ const exportNames = [
   "sagejs_factor",
   "sagejs_is_prime",
   "sagejs_next_prime",
+  "sagejs_wasm_prime_pi",
   "sagejs_wasm_mpoly_input",
   "sagejs_wasm_mpoly_input_capacity",
   "sagejs_wasm_mpoly_output",
   "sagejs_wasm_mpoly_output_capacity",
   "sagejs_wasm_mpoly_output_length",
   "sagejs_wasm_mpoly_resultant",
+  "sagejs_wasm_mpoly_groebner",
+  "sagejs_wasm_mpoly_groebner_qq",
   "sagejs_integer_charpoly_begin",
   "sagejs_integer_charpoly_set",
   "sagejs_integer_charpoly_compute",
@@ -655,6 +747,7 @@ const exportNames = [
   "sagejs_p1_apply",
   "sagejs_p1_presentation_field",
   "sagejs_p1_hecke_matrix",
+  "sagejs_p1_degeneracy_matrix",
   "sagejs_p1_boundary_data",
   "sagejs_p1_cuspidal_basis",
   "sagejs_p1_star_matrix",
@@ -680,6 +773,7 @@ if (reuseLinkedArtifacts) {
   console.log("Reusing previously linked Wasm artifacts for packaging resume");
   for (const [module, filename] of [
     ["flint", output],
+    ["flint-extension-multivariate", extensionOutput],
     ["m4ri", m4riOutput],
     ["algebraic", algebraicOutput],
   ]) {
@@ -717,6 +811,16 @@ run(clang, [
 run(wasmStrip, ["--strip-all", rawOutput, "-o", output]);
 fs.rmSync(rawOutput);
 verifyWasmMemoryContract(output, productionModules.get("flint").memory);
+run(clang, [
+  ...targetCompileFlags, `--sysroot=${sysroot}`, "-Oz",
+  ...includeArguments, ...flintLocalIncludeArguments,
+  extensionAdapterSource, path.join(packageRoot, "src", "wasi-stubs.c"),
+  ...libraryArguments, "-lflint", "-lmpfr", "-lgmp", "-lm", "-lwasi-emulated-signal",
+  ...extensionAdapter.manifest.exports.map((name) => `-Wl,--export=${name}`),
+  ...toolchain.lock.build.linkFlags, "-Wl,-z,stack-size=8388608", "-o", extensionOutput,
+]);
+run(wasmStrip, ["--strip-all", extensionOutput]);
+verifyWasmMemoryContract(extensionOutput, productionModules.get("flint-extension-multivariate").memory);
 run(clang, [
   ...targetCompileFlags,
   `--sysroot=${sysroot}`,
@@ -854,7 +958,7 @@ function requireBrowserModuleCache(name) {
   );
 }
 
-for (const name of browserAdditionalModules) {
+for (const name of new Set([...browserAdditionalModules, ...CORE_STANDALONE_MODULES])) {
   requireBrowserModuleCache(name);
 }
 
@@ -871,16 +975,19 @@ for (const filename of pythonSources(standardLibrarySourceDirectory)) {
     `${name.replaceAll(".", "-")}.json`,
   );
   if (!fs.existsSync(cacheFilename)) continue;
+  const source = fs.readFileSync(filename, "utf8");
+  const cache = JSON.parse(fs.readFileSync(cacheFilename, "utf8"));
+  const sourceSignature = createHash("sha1").update(source).digest("hex");
+  if (cache.signature !== sourceSignature) {
+    throw new Error(
+      `compiled browser module ${name} is stale (run \`pnpm build\` first)`,
+    );
+  }
   standardLibraryReceiptInputs.push(filename, cacheFilename);
   standardLibraryModules[name] = {
     package: path.basename(filename) === "__init__.py",
-    source: fs.readFileSync(filename, "utf8"),
-    cache: JSON.parse(
-      fs.readFileSync(
-        cacheFilename,
-        "utf8",
-      ),
-    ),
+    source,
+    cache: browserModuleCache(cache, name),
   };
 }
 fs.writeFileSync(
@@ -888,6 +995,12 @@ fs.writeFileSync(
   JSON.stringify({
     modules: standardLibraryModules,
     preload: browserAdditionalModules,
+    // Names only: executable bodies remain in the authenticated lazy bundle.
+    // The compiler must not recreate these package shells on each cell.
+    runtimeModules: Object.keys(JSON.parse(
+      fs.readFileSync(lazyModulesSource, "utf8"),
+    ).modules).sort(),
+    coreStandalone: CORE_STANDALONE_MODULES,
   }),
 );
 fs.copyFileSync(lazyModulesSource, lazyModulesOutput);
@@ -951,6 +1064,27 @@ fs.copyFileSync(
   plotlyOutput,
 );
 const plotlySource = require.resolve("plotly.js-dist-min/plotly.min.js");
+fs.mkdirSync(path.join(katexOutputDirectory, "fonts"), { recursive: true });
+fs.copyFileSync(
+  path.join(katexDistribution, "katex.min.js"),
+  path.join(katexOutputDirectory, "katex.min.js"),
+);
+const katexCss = fs
+  .readFileSync(path.join(katexDistribution, "katex.min.css"), "utf8")
+  .replace(
+    /,url\(fonts\/[^)]*\.woff\) format\("woff"\),url\(fonts\/[^)]*\.ttf\) format\("truetype"\)/g,
+    "",
+  );
+if (katexCss.includes('format("woff")') || katexCss.includes('format("truetype")')) {
+  throw new Error("KaTeX CSS contains an unexpected non-WOFF2 font source");
+}
+fs.writeFileSync(path.join(katexOutputDirectory, "katex.min.css"), katexCss);
+for (const name of katexFontNames) {
+  fs.copyFileSync(
+    path.join(katexDistribution, "fonts", name),
+    path.join(katexOutputDirectory, "fonts", name),
+  );
+}
 const wasmPackLoaderSource = path.join(
   repositoryRoot,
   "tools",
@@ -966,6 +1100,11 @@ for (const asset of runtimeHostClosure) {
 }
 
 const bytes = fs.statSync(output).size;
+const extensionBytes = fs.readFileSync(extensionOutput);
+fs.writeFileSync(path.join(outputDirectory, "extension-resource-receipt.json"),
+  JSON.stringify({schema: "sagejs.extension-multivariate-artifact/v1",
+    declaration: extensionAdapter.manifest.declaration, bytes: extensionBytes.length,
+    sha256: createHash("sha256").update(extensionBytes).digest("hex")}, null, 2) + "\n");
 const m4riBytes = fs.statSync(m4riOutput).size;
 console.log(
   `Built ${path.relative(repositoryRoot, output)} ` +
@@ -996,6 +1135,9 @@ const receipt = writeProductionReceipt({
   outputDirectory,
   toolchain,
   sourceInputs: [
+    ...compilerDependencyClosure([extensionAdapterSource], [
+      ...includeArguments, ...flintLocalIncludeArguments,
+    ]),
     ...compilerDependencyClosure(flintLinkedSources, [
       ...includeArguments,
       ...smalljacIncludeArguments,
@@ -1039,9 +1181,12 @@ const receipt = writeProductionReceipt({
     ...dynamicProgramInputs,
     lazyModuleGenerator,
     lazyModuleConfig,
+    require.resolve("./browser-module-cache.cjs"),
+    path.join(repositoryRoot, "scripts", "numerical-product.cjs"),
     conwayDataSource,
     kernelCoverageSource,
     plotlySource,
+    ...katexSourceFiles,
     wasmPackLoaderSource,
     flintDeclaration.filename,
     flintDeclaration.sourceFilename,
@@ -1148,7 +1293,7 @@ function buildKernelPacks({ reuseLinkedArtifacts = false } = {}) {
     if (!new Set(["flint", "gmp"]).has(pack.domain)) {
       throw new Error(`unsupported production kernel domain ${pack.domain}`);
     }
-    const kernels = manifest.kernels.filter((kernel) => kernel.domain === pack.domain);
+    const kernels = productionKernelsForPack(manifest.kernels, pack);
     const sources = kernels.flatMap((kernel) => {
       const directory = path.join(
         kernelBuildDirectory,

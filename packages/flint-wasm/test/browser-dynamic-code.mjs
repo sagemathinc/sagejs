@@ -52,13 +52,23 @@ try {
             "α = 2\n" +
             "print(eval('α + 1'))\n" +
             "print(eval('sum(i*i for i in range(5))'))\n" +
+            "print(sage_eval('2^3', locals=globals()))\n" +
+            "print(sage_eval('1/2', locals=globals()))\n" +
             "try:\n" +
             "    compile('def broken(', '<dynamic-syntax>', 'exec')\n" +
             "except SyntaxError:\n" +
             "    print('syntax-error')",
         );
         assert.equal(language.repr, "");
-        assert.equal(language.stdout, "43\n-1\n3\n30\nsyntax-error\n");
+        assert.equal(language.stdout, "43\n-1\n3\n30\n8\n1/2\nsyntax-error\n");
+        const metadata = await evaluate(
+          "scope = {'__name__': 'fixture_module', '__file__': 'fixture.py'}\n" +
+          "print(eval('__name__', scope))\n" +
+          "print(eval('__file__', scope))\n" +
+          "exec('def origin():\\n    return __name__, __file__', scope)\n" +
+          "print(scope['origin']())",
+        );
+        assert.equal(metadata.stdout, "fixture_module\nfixture.py\n('fixture_module', 'fixture.py')\n");
       }
 
       const mpmath = await evaluate(
@@ -78,6 +88,9 @@ try {
           evaluate("eval('40 + 2')"),
           /authenticated portable cache.*cross-origin-isolated host/,
         );
+        // A rejected evaluation is reported through its promise, not as an
+        // unhandled exception in the embedding page.
+        assert.equal(pageErrors.length, 0);
       }
       assert.deepEqual(pageErrors, []);
       await context.close();

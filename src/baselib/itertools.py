@@ -75,7 +75,26 @@ def _sum_modular_array(iterable: Any, start: Any) -> Any:
     return runtime.reflect.apply(parent, runtime.undefined, [total])
 
 
-def sum(iterable: Iterable[Any], start: Any = 0) -> Any:
+def sum(
+    iterable: Iterable[Any],
+    start: Any = 0,
+    *symbolic_bounds: Any,
+) -> Any:
+    if len(symbolic_bounds):
+        if len(symbolic_bounds) != 2:
+            raise TypeError("symbolic sum requires a variable and both bounds")
+        symbolic_function = runtime.reflect.get(
+            runtime.global_object,
+            "symbolic_sum",
+        )
+        if runtime.jstype(symbolic_function) != "function":
+            raise RuntimeError("the symbolic summation module is unavailable")
+        return symbolic_function(
+            iterable,
+            start,
+            symbolic_bounds[0],
+            symbolic_bounds[1],
+        )
     start_type = runtime.jstype(start)
     if getattr(iterable, "__sagejs_range__", False) and (
         start_type == "bigint"

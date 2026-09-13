@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p8-soak-integration",
+  "title": "P8 Soak Integration",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Integrate four-platform numerical soak authentication, release workflow fixtures, and bounded scheduled execution",
+  "base_commit": "2c85b0ea1fe25477dc678c9b3f8716e07792568a",
+  "claims": [
+    "scripts/numerical-computing/qualification/authenticate-release-gate.cjs",
+    "test/numerics/evidence/release-workflow.cjs",
+    ".github/workflows/numerical-soak.yml"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "pnpm merge:check",
+    "node --test test/numerics/evidence/release-workflow.cjs",
+    "node --test test/numerics/evidence/qualification-soak.cjs test/numerics/evidence/qualification-supplemental.cjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Authenticated the four platform-local numerical soak categories and their exact paths/schema, updated the release-gate fixture to six requirements and eleven raw supplemental records, and added a Wednesday scheduled/manual Linux x64 campaign. The scheduled job builds source-current numerical Wasm, runs only the bounded scheduled profile, cancels superseded runs, has a 120-minute hard timeout, preserves diagnostics, and has no push or pull-request trigger.",
+    "risks": [
+      "RELEASE.md is not an allowed claim in any registered parallel lane, so root explicitly retained that edit instead of widening the lane registry.",
+      "The integration lane's broad architecture/portable/strict checks were not repeated for this three-file wiring patch; focused authentication, release-workflow, soak-evidence, merge-invariant, and syntax checks pass."
+    ],
+    "next_steps": [
+      "In RELEASE.md near the platform collector description, state that it also writes <platform>-soak.evidence.json using the release profile and that all four are mandatory. Change the gate inventory paragraph from five requirements/seven records to six requirements/eleven records, naming four-platform soak evidence. Change the tag publication prerequisite near line 272 from all five supplemental gates to all six.",
+      "After cherry-picking, run the repository-wide integration checks once alongside the other P8 lanes rather than rebuilding independently for this wiring-only patch."
+    ]
+  }
+}

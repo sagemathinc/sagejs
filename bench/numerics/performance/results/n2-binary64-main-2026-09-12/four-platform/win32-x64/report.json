@@ -1,0 +1,56 @@
+{
+  "schema": "sagejs.numerical-binary64-host/v1",
+  "source": "c092f9fe7a923da053638569d51f41619b693bcf",
+  "started": "2026-09-12T07:16:59.559Z",
+  "platform": "win32",
+  "arch": "x64",
+  "node": "v26.5.1",
+  "nodePath": "C:\\Program Files\\nodejs\\node.exe",
+  "cpu": "AMD EPYC 7B13",
+  "release": "10.0.20348",
+  "stages": [
+    {
+      "name": "build",
+      "args": [
+        "scripts/build.cjs"
+      ],
+      "elapsedMs": 674279,
+      "status": 0,
+      "signal": null,
+      "error": null,
+      "logSha256": "16722b4995107ae1964230ca86751cde7a7ee6d1b739d6ad32d254370c355b71"
+    },
+    {
+      "name": "focused",
+      "args": [
+        "--test",
+        "--test-concurrency=1",
+        "test/numerics/performance/packed-reductions.cjs",
+        "tools/native-kernel/test/float64-conditional.cjs"
+      ],
+      "elapsedMs": 29277,
+      "status": 0,
+      "signal": null,
+      "error": null,
+      "logSha256": "e048c3a5d4db45848c28bc14f920964d1d2bba91a3a32af73711ff64f6e3c4ff"
+    },
+    {
+      "name": "opportunity",
+      "args": [
+        "bench/numerics/performance/packed-sum.cjs",
+        "--output",
+        "C:\\Users\\user\\sagejs-numerical-binary64-main-20260912\\build\\numerical-binary64-qualification\\opportunity.json"
+      ],
+      "elapsedMs": 9581,
+      "status": 0,
+      "signal": null,
+      "error": null,
+      "logSha256": "52907594928ef615a91fbcd1c54e8161bd7f21b33498db88ac61dec310a59f85"
+    }
+  ],
+  "nodeSha256": "b48b0224081224cda1f49374e2fc63d143041ade51754f0cc6608fe8510ba29e",
+  "finalSource": "c092f9fe7a923da053638569d51f41619b693bcf",
+  "finalClean": true,
+  "completed": "2026-09-12T07:28:52.933Z",
+  "success": true
+}

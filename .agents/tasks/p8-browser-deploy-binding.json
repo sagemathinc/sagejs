@@ -1,0 +1,82 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p8-browser-deploy-binding",
+  "title": "P8 Browser Deploy Binding",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Bind the exact browser distribution deployed to Cloudflare to the authenticated P8 numerical release gate and reject substituted distribution bytes",
+  "base_commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+  "claims": [
+    "scripts/numerical-computing/qualification/authenticate-release-gate.cjs",
+    ".github/workflows/wasm-deploy-cloudflare.yml",
+    "test/numerics/evidence/release-workflow.cjs",
+    "test/wasm-deployment-workflow.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Release-gate unit tests with exact positive distribution and substituted-byte negative cases"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node --test test/numerics/evidence/release-workflow.cjs test/wasm-deployment-workflow.cjs",
+    "pnpm merge:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/numerics/evidence/release-workflow.cjs test/wasm-deployment-workflow.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.316,
+      "started_at": "2026-09-02T20:20:35.057Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "3af91b93e23809d44898bee32f8a0109ff780060b346fb770126c5606e3d5c24",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 565.947,
+      "started_at": "2026-09-02T20:20:39.248Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "3af91b93e23809d44898bee32f8a0109ff780060b346fb770126c5606e3d5c24",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.395,
+      "started_at": "2026-09-02T20:30:42.917Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "3af91b93e23809d44898bee32f8a0109ff780060b346fb770126c5606e3d5c24",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "The release-gate authenticator can now bind a repository-local browser distribution to artifact_coherence.browser_distribution_content_sha256. Cloudflare deployment authenticates the downloaded reproducible packages/flint-wasm/dist before receipt validation or staging, with positive workflow coverage and a byte-substitution rejection test.",
+    "risks": [
+      "The broader pnpm test:changed run reached architecture:check after a successful build, then failed because this narrowly scoped CJS/test change invalidates the repository-wide generated optimizer-opportunity input digest. Refreshing those global artifacts is intentionally left to integration so this lane stays within its deployment/gate-binding claim; the focused binding tests and merge invariants pass."
+    ],
+    "next_steps": [
+      "Cherry-pick this lane commit into the PR 95 integration branch.",
+      "When soak evidence is added to the release gate, extend the same optional authentication pattern without weakening this browser-distribution binding."
+    ]
+  }
+}

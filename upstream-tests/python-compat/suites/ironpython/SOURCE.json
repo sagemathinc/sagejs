@@ -1,0 +1,212 @@
+{
+  "schema": "sagejs.python-suite-source/v1",
+  "repository": "https://github.com/IronLanguages/ironpython3",
+  "revision": "b32412cc16f2a917b854021360f1c4b1c8815c2a",
+  "license": "Apache-2.0",
+  "selection": "Four reviewed portable unittest-style methods, with one unchanged bigint helper. Original indented spans and per-file license headers are byte-identical. Separately recorded local unittest.TestCase wrappers and explicit TestResult invocations make standalone programs; complete upstream modules are not vendored or executed.",
+  "licenseReview": "Complete pinned root LICENSE and each selected file's .NET Foundation/Apache 2.0 header retained. No LICENSE/COPYING/NOTICE exists in tests/ or tests/suite/; no NOTICE file exists in the pinned tree. Every selected program prominently identifies the local changes.",
+  "harnessReview": "Only public unittest.TestCase and unittest.TestResult are used, with explicit method invocation and testsRun/failure/error/skip/expectedFailure/unexpectedSuccess guards. No custom assertion helpers, iptest imports, CLR flags, skip rewrites, discovery, or suite-specific harness. The selected computed string-formatting method has no locale dependence and does not need its original class locale setup; no original setUp/tearDown is copied.",
+  "files": [
+    {
+      "upstreamPath": "tests/suite/test_function.py",
+      "path": "selected/test_defaults.py",
+      "bytes": 1726,
+      "sha256": "a81654ae569e14ee809af241185fde07138e93f813265f18f9a0e527566ef3d4",
+      "upstreamFileSha256": "b9a389ef760a01d1fb14d31f5722c55532ac6b6eaee9e1221d1fc62587f632e3",
+      "selection": {
+        "kind": "ordered-unchanged-upstream-spans-and-local-adapters",
+        "test": "test_defaults",
+        "segments": [
+          {
+            "origin": "upstream",
+            "kind": "license-header",
+            "byteStart": 0,
+            "byteEndExclusive": 208,
+            "startLine": 1,
+            "endLineInclusive": 4,
+            "bytes": 208,
+            "sha256": "617d347ef592b17f738b74788e690b38ad9de782c92c47ca7ce4752902be024a"
+          },
+          {
+            "origin": "Sage.js local adapter; not upstream test text",
+            "source": "# Modified by Sage.js: selected unchanged upstream method spans; a local\n# unittest class wrapper and explicit invocation replace the iptest module harness.\nimport unittest\n\n\nclass _SelectedCase(unittest.TestCase):\n",
+            "bytes": 215,
+            "sha256": "99fd46356b19b993934884deaffea9b5dc44aff3a265b9186e1d64878f95a8d3"
+          },
+          {
+            "origin": "upstream",
+            "kind": "unchanged-method-span",
+            "name": "test_defaults",
+            "byteStart": 43292,
+            "byteEndExclusive": 44209,
+            "startLine": 1010,
+            "endLineInclusive": 1032,
+            "bytes": 917,
+            "sha256": "bd3c90a4f6cab8c4d6f05a50e3620e86427e7c8e572f0d45feb719d80d3856dd"
+          },
+          {
+            "origin": "Sage.js local adapter; not upstream test text",
+            "source": "\n_result = unittest.TestResult()\n_SelectedCase(\"test_defaults\").run(_result)\nassert _result.testsRun == 1, _result.testsRun\nassert not _result.failures, _result.failures\nassert not _result.errors, _result.errors\nassert not _result.skipped, _result.skipped\nassert not _result.expectedFailures, _result.expectedFailures\nassert not _result.unexpectedSuccesses, _result.unexpectedSuccesses\n",
+            "bytes": 386,
+            "sha256": "3dc080cb11ebdc1162f9f77c8474215b30d56c0241bc1180c4953102e45c2a29"
+          }
+        ]
+      }
+    },
+    {
+      "upstreamPath": "tests/suite/test_class.py",
+      "path": "selected/test_descriptors_custom_attrs.py",
+      "bytes": 1225,
+      "sha256": "486af9eef3385e6df1d250ed5b25c88bad989db314c2e73bfdab2983eb131132",
+      "upstreamFileSha256": "852b984bf787f6401a91c248daffd03d13d5cdccf37e77fd29af5bec0a7948ec",
+      "selection": {
+        "kind": "ordered-unchanged-upstream-spans-and-local-adapters",
+        "test": "test_descriptors_custom_attrs",
+        "segments": [
+          {
+            "origin": "upstream",
+            "kind": "license-header",
+            "byteStart": 0,
+            "byteEndExclusive": 208,
+            "startLine": 1,
+            "endLineInclusive": 4,
+            "bytes": 208,
+            "sha256": "617d347ef592b17f738b74788e690b38ad9de782c92c47ca7ce4752902be024a"
+          },
+          {
+            "origin": "Sage.js local adapter; not upstream test text",
+            "source": "# Modified by Sage.js: selected unchanged upstream method spans; a local\n# unittest class wrapper and explicit invocation replace the iptest module harness.\nimport unittest\n\n\nclass _SelectedCase(unittest.TestCase):\n",
+            "bytes": 215,
+            "sha256": "99fd46356b19b993934884deaffea9b5dc44aff3a265b9186e1d64878f95a8d3"
+          },
+          {
+            "origin": "upstream",
+            "kind": "unchanged-method-span",
+            "name": "test_descriptors_custom_attrs",
+            "byteStart": 66276,
+            "byteEndExclusive": 66676,
+            "startLine": 2219,
+            "endLineInclusive": 2230,
+            "bytes": 400,
+            "sha256": "78e45ca16d8948c2b39a95e14072eba444b3113ab97a760cbe55d0b2179577cf"
+          },
+          {
+            "origin": "Sage.js local adapter; not upstream test text",
+            "source": "\n_result = unittest.TestResult()\n_SelectedCase(\"test_descriptors_custom_attrs\").run(_result)\nassert _result.testsRun == 1, _result.testsRun\nassert not _result.failures, _result.failures\nassert not _result.errors, _result.errors\nassert not _result.skipped, _result.skipped\nassert not _result.expectedFailures, _result.expectedFailures\nassert not _result.unexpectedSuccesses, _result.unexpectedSuccesses\n",
+            "bytes": 402,
+            "sha256": "0bcbb43abc0a28ed87cfc3287a43603bf236133b7962f7e084375df60313a4ad"
+          }
+        ]
+      }
+    },
+    {
+      "upstreamPath": "tests/suite/test_bigint.py",
+      "path": "selected/test_axioms.py",
+      "bytes": 1395,
+      "sha256": "755d1e18cf2fad5ecea9d2e20f37ecfbef1e5781ee79c67629f52462cec3079b",
+      "upstreamFileSha256": "5d5c81209b9d7c3cfcba4a561cb40510f8ecf7ff9b519e5a52c2aa0b84c6b622",
+      "selection": {
+        "kind": "ordered-unchanged-upstream-spans-and-local-adapters",
+        "test": "test_axioms",
+        "segments": [
+          {
+            "origin": "upstream",
+            "kind": "license-header",
+            "byteStart": 0,
+            "byteEndExclusive": 208,
+            "startLine": 1,
+            "endLineInclusive": 4,
+            "bytes": 208,
+            "sha256": "617d347ef592b17f738b74788e690b38ad9de782c92c47ca7ce4752902be024a"
+          },
+          {
+            "origin": "Sage.js local adapter; not upstream test text",
+            "source": "# Modified by Sage.js: selected unchanged upstream method spans; a local\n# unittest class wrapper and explicit invocation replace the iptest module harness.\nimport unittest\n\n\nclass _SelectedCase(unittest.TestCase):\n",
+            "bytes": 215,
+            "sha256": "99fd46356b19b993934884deaffea9b5dc44aff3a265b9186e1d64878f95a8d3"
+          },
+          {
+            "origin": "upstream",
+            "kind": "unchanged-method-span",
+            "name": "axiom_helper",
+            "byteStart": 318,
+            "byteEndExclusive": 510,
+            "startLine": 11,
+            "endLineInclusive": 13,
+            "bytes": 192,
+            "sha256": "83db378a640131a5473c1840940488a9c869574efe1eb0896082adcf1e8cc072"
+          },
+          {
+            "origin": "upstream",
+            "kind": "unchanged-method-span",
+            "name": "test_axioms",
+            "byteStart": 601,
+            "byteEndExclusive": 997,
+            "startLine": 18,
+            "endLineInclusive": 28,
+            "bytes": 396,
+            "sha256": "0a846f1dccf5e36c5da56b79a446081c395ee5fdc7094f3aa1f6fc697ebe698e"
+          },
+          {
+            "origin": "Sage.js local adapter; not upstream test text",
+            "source": "\n_result = unittest.TestResult()\n_SelectedCase(\"test_axioms\").run(_result)\nassert _result.testsRun == 1, _result.testsRun\nassert not _result.failures, _result.failures\nassert not _result.errors, _result.errors\nassert not _result.skipped, _result.skipped\nassert not _result.expectedFailures, _result.expectedFailures\nassert not _result.unexpectedSuccesses, _result.unexpectedSuccesses\n",
+            "bytes": 384,
+            "sha256": "4513e352cde53052593efbddab53eb78429d3bd8f35ea75f861b09101053e034"
+          }
+        ]
+      }
+    },
+    {
+      "upstreamPath": "tests/suite/test_strformat.py",
+      "path": "selected/test_computed_format.py",
+      "bytes": 1381,
+      "sha256": "e8d80729724b3321c53933453d62aa2073f7fe6b25d475383983b4bec67c0a69",
+      "upstreamFileSha256": "64b84f7d4bf5e1251d17f1b022e8063ad58785333a8d76b2b29811ab59430e96",
+      "selection": {
+        "kind": "ordered-unchanged-upstream-spans-and-local-adapters",
+        "test": "test_computed_format",
+        "segments": [
+          {
+            "origin": "upstream",
+            "kind": "license-header",
+            "byteStart": 0,
+            "byteEndExclusive": 208,
+            "startLine": 1,
+            "endLineInclusive": 4,
+            "bytes": 208,
+            "sha256": "617d347ef592b17f738b74788e690b38ad9de782c92c47ca7ce4752902be024a"
+          },
+          {
+            "origin": "Sage.js local adapter; not upstream test text",
+            "source": "# Modified by Sage.js: selected unchanged upstream method spans; a local\n# unittest class wrapper and explicit invocation replace the iptest module harness.\nimport unittest\n\n\nclass _SelectedCase(unittest.TestCase):\n",
+            "bytes": 215,
+            "sha256": "99fd46356b19b993934884deaffea9b5dc44aff3a265b9186e1d64878f95a8d3"
+          },
+          {
+            "origin": "upstream",
+            "kind": "unchanged-method-span",
+            "name": "test_computed_format",
+            "byteStart": 51445,
+            "byteEndExclusive": 52010,
+            "startLine": 1024,
+            "endLineInclusive": 1032,
+            "bytes": 565,
+            "sha256": "cde8b85aed6a55690529be23b147b4cc0584f22cc0ce0d0eaf3bac4768f922ae"
+          },
+          {
+            "origin": "Sage.js local adapter; not upstream test text",
+            "source": "\n_result = unittest.TestResult()\n_SelectedCase(\"test_computed_format\").run(_result)\nassert _result.testsRun == 1, _result.testsRun\nassert not _result.failures, _result.failures\nassert not _result.errors, _result.errors\nassert not _result.skipped, _result.skipped\nassert not _result.expectedFailures, _result.expectedFailures\nassert not _result.unexpectedSuccesses, _result.unexpectedSuccesses\n",
+            "bytes": 393,
+            "sha256": "67a42d075124bbcbd4c2a9b52f207b0e1dd839be58f248c373300ccb16bca6b8"
+          }
+        ]
+      }
+    },
+    {
+      "upstreamPath": "LICENSE",
+      "path": "LICENSE",
+      "bytes": 9217,
+      "sha256": "11c8b015ed198f376fd407aa23091187ee89c0f573d3df844bdd79fa02329049"
+    }
+  ]
+}

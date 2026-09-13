@@ -9,74 +9,6 @@ its own VM context.
 # globals: BigInt, Object, Reflect, TypeError
 
 
-def ρσ_native_method_adapter(target_function):
-    return r"""%js (() => {
-        function method(...args) {
-            args.unshift(this);
-            return Reflect.apply(target_function, undefined, args);
-        }
-        if (target_function.__argnames__) {
-            method.__argnames__ = target_function.__argnames__.slice(1);
-        }
-        for (const name of [
-            "__annotations__", "__annotations_text__", "__code__",
-            "__defaults__", "__doc__", "__globals__",
-            "__handles_kwarg_interpolation__", "__kwdefaults__",
-            "__kwonly__", "__module__", "__name__",
-            "__positional_only__", "__python_type__", "__qualname__",
-            "__varargs__", "__varkw__",
-        ]) {
-            const descriptor = Object.getOwnPropertyDescriptor(
-                target_function, name
-            );
-            if (descriptor && typeof descriptor.get === "function") {
-                Object.defineProperty(method, name, descriptor);
-            } else {
-                method[name] = target_function[name];
-            }
-        }
-        method.__sagejs_native_method__ = true;
-        return method;
-    })()"""
-
-
-def ρσ_unbound_method_adapter(target_function):
-    return r"""%js (() => {
-        if (target_function.__sagejs_unbound_adapter__) {
-            return target_function.__sagejs_unbound_adapter__;
-        }
-        function method(receiver, ...args) {
-            return Reflect.apply(target_function, receiver, args);
-        }
-        if (target_function.__argnames__) {
-            method.__argnames__ = ["self", ...target_function.__argnames__];
-        }
-        for (const name of [
-            "__annotations__", "__annotations_text__", "__code__",
-            "__defaults__", "__doc__", "__globals__",
-            "__handles_kwarg_interpolation__", "__kwdefaults__",
-            "__kwonly__", "__module__", "__name__",
-            "__positional_only__", "__python_type__", "__qualname__",
-            "__varargs__", "__varkw__",
-        ]) {
-            if (name !== "__argnames__") {
-                const descriptor = Object.getOwnPropertyDescriptor(
-                    target_function, name
-                );
-                if (descriptor && typeof descriptor.get === "function") {
-                    Object.defineProperty(method, name, descriptor);
-                } else {
-                    method[name] = target_function[name];
-                }
-            }
-        }
-        method.__func__ = target_function;
-        method.__python_descriptor__ = true;
-        target_function.__sagejs_unbound_adapter__ = method;
-        return method;
-    })()"""
-
-
 def ρσ_exact_integer_range_values(start, step, length):
     return r"""%js (() => {
         function exactInteger(value) {
@@ -129,7 +61,9 @@ def ρσ_exact_integer_range_iterator(start, step, length):
 
 def ρσ_dynamic_eval(javascript, input_namespace, module_id):
     return r"""%js (() => {
-        const dynamicModules = {[module_id]: Object.assign({}, input_namespace)};
+        const dynamicModules = Object.create(null,
+            Object.getOwnPropertyDescriptors(globalThis.ρσ_modules || ρσ_modules));
+        dynamicModules[module_id] = Object.assign({}, input_namespace);
         const inputNamespace = input_namespace;
         const evaluate = new Function(
             "ρσ_modules", "__sagejs_input_namespace__", "javascript",
@@ -157,24 +91,6 @@ def ρσ_register_doc(name, value, metadata):
 
 def ρσ_documentation_registry():
     return r"%js globalThis.__sagejs_doc_registry__ ?? []"
-
-
-def ρσ_check_interrupt():
-    return r"""%js (() => {
-        const state = globalThis.__sagejs_interrupt_state__;
-        if (state !== undefined && Atomics.exchange(state, 0, 0) !== 0) {
-            throw ρσ_exception_value(new KeyboardInterrupt());
-        }
-    })()"""
-
-
-def ρσ_normalize_exception(error):
-    return r"""%js (() => {
-        if (error?.code !== "ERR_SCRIPT_EXECUTION_INTERRUPTED") return error;
-        const state = globalThis.__sagejs_interrupt_state__;
-        if (state !== undefined) Atomics.store(state, 0, 0);
-        return ρσ_exception_value(new KeyboardInterrupt());
-    })()"""
 
 
 def ρσ_is_exact_integer(value):
@@ -354,7 +270,7 @@ def ρσ_brand_machine_field_element(value):
     })()"""
 
 
-def ρσ_bind_rectangular_binary64_dataflow_runtime():
+def ρσ_bind_rectangular_binary64_dataflow_runtime(list_constructor):
     """Capture the immutable host capabilities used by rectangular fast paths."""
     return r"""%js (() => {
         if (ρσ_bind_rectangular_binary64_dataflow_runtime.__context !== undefined) {
@@ -373,6 +289,12 @@ def ρσ_bind_rectangular_binary64_dataflow_runtime():
             checkInterrupt: ρσ_check_interrupt,
             intrinsicBrands: new WeakMap(),
             intrinsicsByIdentity: new Map(),
+            pythonBuiltins: Object.freeze({
+                isinstance: globalThis.isinstance,
+                list: list_constructor,
+                float: ρσ_float,
+                enumerate: ρσ_enumerate,
+            }),
         });
         Object.defineProperty(ρσ_bind_rectangular_binary64_dataflow_runtime,
             "__context", {
@@ -440,6 +362,8 @@ def ρσ_fast_arrow_segment_geometry_region(
     hypot_function,
     poll_interrupts,
     maximum_output_entries,
+    module_namespace,
+    builtin_namespace,
 ):
     """Execute one completely preflighted private arrow geometry transaction."""
     return r"""%js (() => {
@@ -450,6 +374,28 @@ def ρσ_fast_arrow_segment_geometry_region(
             context.floatResult !== ρσ_float_result ||
             context.checkInterrupt !== ρσ_check_interrupt) {
             return reject("runtime-intrinsic-identity-mismatch");
+        }
+        // Inspect descriptors, not values: a user accessor must not run during
+        // preflight, nor may missing bindings fail before a zero-trip loop.
+        if (!globalThis.__sagejs_module_namespaces__?.has(module_namespace) ||
+            builtin_namespace !== ρσ_modules.builtins) {
+            return reject("python-builtin-namespace-mismatch");
+        }
+        for (const name of ["isinstance", "list", "float", "enumerate"]) {
+            const canonical = context.pythonBuiltins[name];
+            // The Node builtin facade consults the host global. Reject a host
+            // accessor before asking that facade for its property descriptor.
+            const globalDescriptor = context.getOwnPropertyDescriptor(globalThis, name);
+            if (globalDescriptor?.get !== undefined || globalDescriptor?.set !== undefined) {
+                return reject("python-builtin-identity-mismatch");
+            }
+            const descriptor = context.getOwnPropertyDescriptor(builtin_namespace, name);
+            if (typeof canonical !== "function" ||
+                context.getOwnPropertyDescriptor(module_namespace, name) !== undefined ||
+                descriptor === undefined || descriptor.value !== canonical ||
+                descriptor.get !== undefined || descriptor.set !== undefined) {
+                return reject("python-builtin-identity-mismatch");
+            }
         }
         if (context.intrinsicsByIdentity.get(
                 "python.math.hypot.strict-binary64.v1") !== hypot_function ||
@@ -615,7 +561,9 @@ def ρσ_fast_arrow_segment_geometry_region(
 def ρσ_fast_closed_binary(left, right, operation, missing):
     return r"""%js (() => {
         if (left !== null && right !== null &&
-            typeof left === "object" && typeof right === "object") {
+            typeof left === "object" && typeof right === "object" &&
+            Object.prototype.hasOwnProperty.call(left, "_parent") &&
+            Object.prototype.hasOwnProperty.call(right, "_parent")) {
             const parent = left._parent;
             if (parent !== undefined && parent === right._parent &&
                 parent._closedScalarArithmetic === true) {

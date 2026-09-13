@@ -4,9 +4,7 @@ from utils import noop
 from js import js_instanceof, js_new  # type: ignore
 from typing import Any, Dict
 
-
-def is_node_type(node, typ):
-    return js_instanceof(node, typ)
+is_node_type = js_instanceof
 
 
 # Basic classes
@@ -29,7 +27,7 @@ class AST:
                         self[i] = initializer[i]
 
     def clone(self):
-        return js_new(self.constructor(self))
+        return js_new(self.constructor, self)
 
 
 class AST_Token(AST):
@@ -473,6 +471,8 @@ class AST_Toplevel(AST_Scope):
         "filename": "[string] The absolute path to the file from which this module was read",
         "srchash": "[string] SHA1 hash of source code, used for caching",
         "comments_after": "[array] True iff there were comments before this token",
+        "python_star_import": "[boolean?] resolve unbound globals through the module namespace after a star import",
+        "standalone_lazy": "[boolean?] embed this implicit runtime dependency as a lazy module factory",
     }
 
 
@@ -538,6 +538,7 @@ class AST_Lambda(AST_Scope):
         "name": "[AST_SymbolDeclaration?] the name of this function",
         "argnames": "[AST_SymbolFunarg*] array of function arguments",
         "decorators": "[AST_Decorator*] function decorators, if any",
+        "python_namespace_decorators": "[AST_Decorator*] original method decorators for prepared namespaces",
         "annotations": "[bool*] True iff this function should have annotations set",
         "is_generator": "[bool*] True iff this function is a generator",
         "is_coroutine": "[bool*] True iff this function was declared with async def",
@@ -585,6 +586,7 @@ class AST_Class(AST_Scope):
         "parent": "[AST_Symbol?] parent class this class inherits from",
         "bases": "[AST_Symbol*] list of base classes this class inherits from",
         "metaclass": "[AST_Node?] explicit Python 3 metaclass expression",
+        "python_namespace_body": "[AST_Node*] source-order body before legacy property alias rewriting",
         "implicit_object_base": "[boolean] object was inserted as an implementation default",
         "static": "[dict] A hash whose keys are names of static methods for this class",
         "classmethods": "[dict] A hash whose keys are names of class methods for this class",
@@ -605,6 +607,7 @@ class AST_Class(AST_Scope):
         "statements": "[AST_Node*] list of statements in the class scope (excluding method definitions)",
         "dynamic_properties": "[dict] map of dynamic property names to property descriptors of the form {getter:AST_Method, setter:AST_Method",
         "classvars": "[dict] map containing all class variables as keys, to be used to easily test for existence of a class variable",
+        "own_classvars": "[dict] map containing class variables declared in this class body only",
         "nonlocal_names": "[string*] names explicitly rebound outside the class namespace",
         "declared_globals": "[string*] names declared global directly in the class body",
     }
@@ -1073,6 +1076,10 @@ class AST_Conditional(AST_Node):
 class AST_Assign(AST_Binary):
     "An assignment expression — `a = b + 5`"
 
+    properties = {
+        "python_class_augmented_read": "[AST_SymbolRef?] LOAD_NAME source for a first class-body augmented assignment",
+    }
+
     def is_chained(self):
         return (
             is_node_type(self.right, AST_Assign)
@@ -1309,6 +1316,7 @@ class AST_SymbolRef(AST_Symbol):
     properties = {
         "parens": "[boolean/S] if true, this variable is wrapped in parentheses",
         "intrinsic_call": "[boolean/S] compiler-provided runtime symbols are directly callable",
+        "python_class_prebinding_fallback": "[boolean/S] force class LOAD_NAME fallback before the first binding",
     }
 
 

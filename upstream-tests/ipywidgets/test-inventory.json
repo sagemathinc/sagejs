@@ -1,0 +1,120 @@
+{
+  "schema": "sagejs.ipywidgets-test-inventory/v1",
+  "sources": [
+    {
+      "package": "traitlets",
+      "revision": "f82e456af4aa39e62dd2bf45c06eee9913a2e0ba",
+      "rules": [
+        {
+          "glob": "tests/test_traitlets*.py",
+          "category": "pure-python-semantics",
+          "disposition": "run in Sage.js with pytest compatibility; retain CPython differential cases for notification ordering and failures"
+        },
+        {
+          "glob": "tests/test_typing.py",
+          "category": "pure-python-semantics",
+          "disposition": "run in Sage.js; failures are general typing, generic-base or annotation conformance gaps"
+        },
+        {
+          "glob": "tests/config/test_*.py",
+          "category": "configuration-and-cli",
+          "disposition": "run configuration semantics; classify subprocess, entry-point and terminal-only cases individually when pytest collection is enabled"
+        },
+        {
+          "glob": "tests/utils/test_*.py",
+          "category": "pure-python-semantics",
+          "disposition": "run in Sage.js"
+        },
+        {
+          "glob": "traitlets/tests/test_traitlets.py",
+          "category": "installed-wheel-smoke",
+          "disposition": "run; this duplicate installed-package smoke suite remains a separate import-layout check"
+        }
+      ]
+    },
+    {
+      "package": "comm",
+      "revision": "057b00a49aabb97fb3c66eedcd97f09c6481d3c8",
+      "rules": [
+        {
+          "glob": "tests/test_comm.py",
+          "category": "comm-protocol-behavior",
+          "disposition": "run against the Sage.js comm backend and the upstream default backend"
+        }
+      ]
+    },
+    {
+      "package": "ipywidgets",
+      "revision": "15f0564eec5e6fc0d8d655c16490c2e475bdd145",
+      "rules": [
+        {
+          "glob": "ipywidgets/widgets/tests/test_datetime_serializers.py",
+          "category": "pure-python-semantics",
+          "disposition": "run"
+        },
+        {
+          "glob": "ipywidgets/widgets/tests/test_docutils.py",
+          "category": "documentation-helpers",
+          "disposition": "run where docstring inspection is supported"
+        },
+        {
+          "glob": "ipywidgets/widgets/tests/test_interaction.py",
+          "category": "interaction-api",
+          "disposition": "run; this is the direct precursor to Sage @interact"
+        },
+        {
+          "glob": "ipywidgets/widgets/tests/test_link.py",
+          "category": "traitlets-linking",
+          "disposition": "run"
+        },
+        {
+          "glob": "ipywidgets/widgets/tests/test_selectioncontainer.py",
+          "category": "widget-model-behavior",
+          "disposition": "run"
+        },
+        {
+          "glob": "ipywidgets/widgets/tests/test_send_state.py",
+          "category": "comm-protocol-behavior",
+          "disposition": "run and compare normalized publications"
+        },
+        {
+          "glob": "ipywidgets/widgets/tests/test_set_state.py",
+          "category": "comm-protocol-behavior",
+          "disposition": "run and compare validation, echo and notification ordering"
+        },
+        {
+          "glob": "ipywidgets/widgets/tests/test_traits.py",
+          "category": "traitlets-and-serialization",
+          "disposition": "run"
+        },
+        {
+          "glob": "ipywidgets/widgets/tests/test_utils.py",
+          "category": "pure-python-semantics",
+          "disposition": "run"
+        },
+        {
+          "glob": "ipywidgets/widgets/tests/test_widget*.py",
+          "category": "widget-model-behavior",
+          "disposition": "run; IPython display and output-capture cases use the narrow facade rather than full IPython"
+        },
+        {
+          "glob": "ipywidgets/tests/test_embed.py",
+          "category": "state-embedding",
+          "disposition": "defer execution until P9, but preserve as the standard state-schema oracle"
+        }
+      ]
+    }
+  ],
+  "nonRuntimeTests": [
+    {
+      "scope": "ipywidgets JavaScript package tests",
+      "category": "frontend-browser-behavior",
+      "disposition": "use the pinned @cocalc/widgets and upstream package suites during P6B; do not execute them as Python-runtime tests"
+    },
+    {
+      "scope": "documentation builds, packaging metadata and release automation",
+      "category": "packaging-or-documentation-only",
+      "disposition": "validate through Sage.js packaging/license checks rather than importing upstream build systems"
+    }
+  ]
+}

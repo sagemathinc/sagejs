@@ -6,10 +6,16 @@ import { createSage } from "../node-kernel.mjs";
 
 test("every live dropdown example executes verbatim in production Node-Wasm", async (t) => {
   const expected = new Set([
+    "interactive-symbolic-plot",
+    "interactive-function-explorer",
+    "ipywidgets-core-gallery",
     "number-field",
     "elliptic-lseries",
     "complex-plot",
+    "cape-man",
     "exact-matrices",
+    "algebraic-geometry",
+    "numerical-laboratory",
     "numpy-signal-recovery",
     "modular-symbols",
     "python-language",
@@ -29,8 +35,23 @@ test("every live dropdown example executes verbatim in production Node-Wasm", as
       try {
         const result = await sage.evaluate(example.source, { timeout: 150_000 });
         assert.equal(typeof result.repr, "string");
-        if (example.id === "complex-plot" || example.id === "random-graph-plot") {
+        if (
+          example.id === "complex-plot" ||
+          example.id === "cape-man" ||
+          example.id === "random-graph-plot"
+        ) {
           assert.equal(result.display?.mime, "application/vnd.plotly.v1+json");
+        }
+        if (example.id === "cape-man") {
+          const traces = result.display?.data?.data ?? [];
+          assert.ok(
+            traces.length >= 7,
+            `expected Cape Man surfaces, got ${traces.length}`,
+          );
+          assert.ok(traces.some((trace) => trace.type === "scatter3d"));
+          assert.ok(
+            traces.filter((trace) => trace.type === "surface").length >= 6,
+          );
         }
         if (example.id === "numpy-signal-recovery") {
           assert.equal(

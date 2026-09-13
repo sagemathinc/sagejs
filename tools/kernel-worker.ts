@@ -1,31 +1,21 @@
+import { serializeDiagnosticError } from "./python/diagnostics";
 import { parentPort, workerData } from "worker_threads";
 
+import type { SageLanguageMode } from "./kernel-evaluator";
 import {
-  createKernelEvaluatorAsync,
-  SageLanguageMode,
-} from "./kernel-evaluator";
+  useSharedSingleExecutableNativeResourceDirectory,
+} from "./resources";
 
 if (!parentPort) {
   throw new Error("the Sage.js kernel worker requires a parent port");
 }
 
-function serializeError(error: unknown) {
-  const value = error as {
-    code?: string;
-    name?: string;
-    message?: string;
-    stack?: string;
-  };
-  const interrupted = value?.code === "ERR_SCRIPT_EXECUTION_INTERRUPTED";
-  return {
-    name: interrupted ? "KeyboardInterrupt" : (value?.name ?? "Error"),
-    message: interrupted
-      ? "Sage.js evaluation interrupted"
-      : (value?.message ?? String(error)),
-    stack: value?.stack,
-  };
-}
-
+useSharedSingleExecutableNativeResourceDirectory(
+  workerData.nativeResourceDirectory,
+);
+const { createKernelEvaluatorAsync } = require(
+  "./kernel-evaluator",
+) as typeof import("./kernel-evaluator");
 let evaluationId: number | undefined;
 const interruptState = new Int32Array(
   workerData.interruptBuffer as SharedArrayBuffer,
@@ -42,6 +32,20 @@ async function main(): Promise<void> {
         text,
       });
     },
+    onEvent(event) {
+      port.postMessage({
+        type: "output-event",
+        id: evaluationId,
+        event,
+      });
+    },
+    onComm(event) {
+      port.postMessage({
+        type: "comm-event",
+        id: evaluationId,
+        event,
+      });
+    },
   });
 
   port.on("message", (message) => {
@@ -50,7 +54,9 @@ async function main(): Promise<void> {
     message.type === "complete" ||
     message.type === "inspect" ||
     message.type === "isComplete" ||
-    message.type === "documentation"
+    message.type === "documentation" ||
+    message.type === "comm" ||
+    message.type === "commInfo"
   ) {
     evaluationId = message.id;
     try {
@@ -60,6 +66,8 @@ async function main(): Promise<void> {
           filename: message.filename,
           language: message.language,
           suppressResult: message.suppressResult,
+          parentId: message.parentId,
+          structuredResult: message.structuredResult,
         });
       } else if (message.type === "complete") {
         result = evaluator.complete(message.source, message.cursorPosition);
@@ -67,6 +75,11 @@ async function main(): Promise<void> {
         result = evaluator.inspect(message.source, message.cursorPosition);
       } else if (message.type === "documentation") {
         result = evaluator.documentation();
+      } else if (message.type === "comm") {
+        evaluator.comm(message.event);
+        result = undefined;
+      } else if (message.type === "commInfo") {
+        result = evaluator.commInfo(message.targetName);
       } else {
         result = evaluator.isComplete(message.source, message.language);
       }
@@ -77,25 +90,27 @@ async function main(): Promise<void> {
         result,
       });
     } catch (error) {
-      if (
-        (error as { code?: string })?.code ===
-        "ERR_SCRIPT_EXECUTION_INTERRUPTED"
-      ) {
+      const serialized = serializeDiagnosticError(error);
+      if (serialized.name === "KeyboardInterrupt") {
         Atomics.store(interruptState, 0, 0);
       }
       port.postMessage({
         type: "result",
         id: message.id,
         ok: false,
-        error: serializeError(error),
+        error: serialized,
       });
     } finally {
       evaluationId = undefined;
     }
   } else if (message.type === "close") {
-    evaluator.close();
+    port.removeAllListeners("message");
+    try {
+      evaluator.close();
+    } finally {
       port.close();
     }
+  }
   });
 
   port.postMessage({
@@ -107,7 +122,7 @@ async function main(): Promise<void> {
 void main().catch((error) => {
   parentPort!.postMessage({
     type: "startup-error",
-    error: serializeError(error),
+    error: serializeDiagnosticError(error),
   });
   parentPort!.close();
 });

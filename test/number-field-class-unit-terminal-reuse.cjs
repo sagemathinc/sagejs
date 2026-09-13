@@ -2,25 +2,27 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { spawnSync } = require("node:child_process");
 const { join } = require("node:path");
 const test = require("node:test");
+const { spawnSagejsSync } = require("./helpers/sagejs-cli.cjs");
 
 const root = join(__dirname, "..");
-const sagejs =
-  process.env.SAGEJS_TEST_EXECUTABLE ||
-  join(root, "bin", process.platform === "win32" ? "sagejs.cmd" : "sagejs");
-
 function run(source) {
-  const result = spawnSync(sagejs, ["--python", "-"], {
+  const timeout = 600_000;
+  const result = spawnSagejsSync(root, ["--python", "-"], {
     cwd: root,
     encoding: "utf8",
     input: source,
     // This integration test intentionally performs several cold exact
     // class/unit computations in one interpreter.  Keep the subprocess bound
-    // finite, but allow slower CI architectures to finish the proof replays.
-    timeout: 300_000,
+    // finite and platform-neutral: hosted Linux x64 can also exceed five
+    // minutes when both integration workers are doing cold proof replays.
+    // This is a correctness-suite liveness bound, not a performance target.
+    timeout,
   });
+  if (result.error) {
+    throw result.error;
+  }
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return result.stdout.trim();
 }

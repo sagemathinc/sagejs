@@ -37,18 +37,58 @@ function resourceIdsForFunctions(declaration, functions) {
 }
 
 function selectedDeclarations(registry, selections) {
-  if (selections === undefined) return registry.libraries;
+  if (selections === undefined) {
+    return registry.libraries.map((declaration) => ({ declaration, selection: null }));
+  }
   if (!Array.isArray(selections) || selections.length === 0) {
     fail("selections must be a nonempty array when supplied");
   }
+  const modules = new Set();
   return selections.map((selection) => {
     const declaration = registry.byId.get(selection.library);
     if (declaration === undefined) fail(`unknown library ${selection.library}`);
-    return declaration;
+    const module = selection.module || declaration.library.id;
+    if (!/^[a-z][a-z0-9-]*$/.test(module) || modules.has(module)) {
+      fail(`invalid or duplicate ownership module ${module}`);
+    }
+    modules.add(module);
+    return { declaration, selection };
   });
 }
 
-function selectionsFromAdapterInputs(document) {
+function selectionsFromAdapterInputs(document, registry) {
+  if (["sagejs.wasm-adapter-inputs/v2", "sagejs.wasm-adapter-inputs/v3"].includes(document?.schema)) {
+    if (document.policy !== "all-declared-wasm" || registry === undefined ||
+        document.modules === null || typeof document.modules !== "object" ||
+        Array.isArray(document.modules)) fail("invalid complete adapter-input document");
+    const groups = Object.entries(document.modules).map(([module, entry]) => {
+      if (entry === null || typeof entry !== "object" ||
+          typeof entry.declaration !== "string" ||
+          typeof entry.ownershipDomain !== "string" ||
+          (document.schema.endsWith("/v2") && (module !== entry.declaration || entry.functions !== undefined))) {
+        fail(`invalid adapter-input module ${module}`);
+      }
+      const declaration = registry.byId.get(entry.declaration);
+      if (declaration === undefined) fail(`unknown library ${entry.declaration}`);
+      const selection = { library: entry.declaration, module,
+        ownershipDomain: entry.ownershipDomain, functionIds: entry.functions };
+      if (selection.functionIds !== undefined) candidateFunctions(declaration, selection);
+      return selection;
+    });
+    // One remainder group per library owns all functions not assigned to an
+    // explicit specialist. Full coverage is checked after adapter generation.
+    const defaults = new Set();
+    for (const group of groups) {
+      if (group.functionIds !== undefined) continue;
+      if (defaults.has(group.library)) fail(`multiple remainder groups for ${group.library}`);
+      defaults.add(group.library);
+      const selected = new Set(groups.filter((other) => other.library === group.library && other !== group)
+        .flatMap((other) => other.functionIds || []));
+      group.functionIds = registry.byId.get(group.library).functions
+        .filter((fn) => fn.targets.wasm && !selected.has(fn.id)).map((fn) => fn.id);
+    }
+    return groups;
+  }
   if (document?.schema !== "sagejs.wasm-adapter-inputs/v1" ||
       document.modules === null || typeof document.modules !== "object" ||
       Array.isArray(document.modules)) {
@@ -69,13 +109,6 @@ function selectionsFromAdapterInputs(document) {
       functionIds: Object.freeze([...entry.functions]),
     });
   });
-}
-
-function selectionFor(declaration, selections) {
-  if (selections === undefined) return null;
-  return selections.find(
-    (selection) => selection.library === declaration.library.id,
-  ) || null;
 }
 
 function candidateFunctions(declaration, selection) {
@@ -130,13 +163,21 @@ function generatedWasmClosure(registry, options = {}) {
     fail("supply selections or adapterInputs, not both");
   }
   const selections = options.adapterInputs === undefined
-    ? options.selections : selectionsFromAdapterInputs(options.adapterInputs);
+    ? options.selections : selectionsFromAdapterInputs(options.adapterInputs, registry);
   const declarations = selectedDeclarations(registry, selections);
   const artifacts = new Map();
   const libraries = [];
-  for (const declaration of declarations) {
-    const selection = selectionFor(declaration, selections);
+  const functionsOwned = new Set();
+  const resourcesOwned = new Map();
+  for (const { declaration, selection } of declarations) {
+    const module = selection?.module || declaration.library.id;
+    const moduleMetadata = module === declaration.library.id ? {} : { module };
     const candidates = candidateFunctions(declaration, selection);
+    for (const fn of candidates) {
+      const identity = `${declaration.library.id}:${fn.id}`;
+      if (functionsOwned.has(identity)) fail(`function ${identity} belongs to multiple modules`);
+      functionsOwned.add(identity);
+    }
     const rejected = [];
     const accepted = [];
     for (const fn of candidates) {
@@ -151,6 +192,7 @@ function generatedWasmClosure(registry, options = {}) {
     if (accepted.length === 0) {
       libraries.push(Object.freeze({
         library: declaration.library.id,
+        ...moduleMetadata,
         ownership_domain: selection?.ownershipDomain || declaration.library.id,
         declaration: declaration.identity,
         resources: Object.freeze([]),
@@ -167,13 +209,22 @@ function generatedWasmClosure(registry, options = {}) {
     const resourceIds = explicitlySelected === undefined
       ? inferredResources
       : Array.from(new Set([...explicitlySelected, ...inferredResources]));
+    for (const id of resourceIds) {
+      const identity = `${declaration.library.id}:${id}`;
+      const owner = resourcesOwned.get(identity);
+      if (owner !== undefined) {
+        fail(`resource ${identity} crosses ownership modules ${owner} and ${module}`);
+      }
+      resourcesOwned.set(identity, module);
+    }
     const artifact = generatedWasmResourceAdapter(declaration, {
       resourceIds,
       functionIds: accepted.map((fn) => fn.id),
     });
-    artifacts.set(declaration.library.id, artifact);
+    artifacts.set(module, artifact);
     libraries.push(Object.freeze({
       library: declaration.library.id,
+      ...moduleMetadata,
       ownership_domain: selection?.ownershipDomain || declaration.library.id,
       declaration: declaration.identity,
       resources: Object.freeze(resourceIds),
@@ -187,6 +238,17 @@ function generatedWasmClosure(registry, options = {}) {
         Array.from(new Set(declaration.library.native.dependencies)).sort(),
       ),
     }));
+  }
+  if (options.requireComplete === true || options.adapterInputs?.policy === "all-declared-wasm") {
+    const included = new Set(libraries.flatMap((library) =>
+      library.functions.map((id) => `${library.library}:${id}`),
+    ));
+    for (const { declaration } of declarations) {
+      for (const fn of declaration.functions.filter((fn) => fn.targets.wasm === true)) {
+        const identity = `${declaration.library.id}:${fn.id}`;
+        if (!included.has(identity)) fail(`complete closure omits ${identity}`);
+      }
+    }
   }
   const manifestBase = {
     schema: "sagejs.ffi/wasm-production-closure-v1",

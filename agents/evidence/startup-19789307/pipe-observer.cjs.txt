@@ -1,0 +1,38 @@
+
+const {spawn,spawnSync}=require("node:child_process"), fs=require("node:fs"),os=require("node:os"),{createHash}=require("node:crypto"),{performance}=require("node:perf_hooks");
+const executable=process.argv[1], n=21, rows=[];
+const hash=()=>createHash("sha256").update(fs.readFileSync(executable)).digest("hex");
+const digest=hash(), version=spawnSync(executable,["--version"],{encoding:"utf8",timeout:10000});
+if(version.status!==0)throw Error("version probe failed");
+function sample(){return new Promise((resolve,reject)=>{
+ let output="",errors="",first,second,phase=0,started=performance.now(),done=false;
+ const child=spawn(executable,[],{stdio:["pipe","pipe","pipe"],windowsHide:true,detached:process.platform!=="win32"});
+ const timer=setTimeout(()=>stop(Error("startup observation timed out")),10000);
+ function stop(error){if(done)return;done=true;clearTimeout(timer);
+   if(process.platform==="win32")spawnSync("taskkill.exe",["/pid",String(child.pid),"/t","/f"],{stdio:"ignore",timeout:3000});
+   else {try{process.kill(-child.pid,"SIGKILL")}catch{}}
+   child.stdin.destroy();child.stdout.destroy();child.stderr.destroy();reject(error);
+ }
+ child.on("error",stop);child.stdin.on("error",e=>{if(e.code!=="EPIPE")stop(e)});
+ child.stderr.on("data",chunk=>{errors+=chunk;if(errors.length>65536)stop(Error("excess stderr"))});
+ child.stdout.on("data",chunk=>{
+  output+=chunk;if(output.length>65536)return stop(Error("excess stdout"));
+  let i;while((i=output.indexOf("\n"))>=0){
+   const line=output.slice(0,i).replace(/\r$/,"");output=output.slice(i+1);
+   if(phase===0&&line==="1267650600228229401496703205376"){first=performance.now()-started;phase=1;child.stdin.write("print(6 * 7)\n")}
+   else if(phase===1&&line==="42"){second=performance.now()-started;phase=2;child.stdin.end()}
+   else if(line.trim())return stop(Error("unexpected output"));
+  }
+ });
+ child.on("close",(code,signal)=>{
+  if(done)return;done=true;clearTimeout(timer);
+  if(code!==0||signal||phase!==2||errors.trim())return reject(Error("failed answer/exit: "+errors.slice(0,400)));
+  resolve({firstAnswerMs:first,secondRoundTripMs:second-first,exitAfterAnswerMs:performance.now()-started-second});
+ });
+ child.stdin.write("print(2 ** 100)\n");
+})}
+(async()=>{const before={load:os.loadavg(),freeMemory:os.freemem()};
+for(let i=0;i<n;i++)rows.push(await sample());
+if(hash()!==digest)throw Error("executable changed");
+const summary=key=>{const xs=rows.map(r=>r[key]).sort((a,b)=>a-b);return{min:xs[0],median:xs[10],p95:xs[19],max:xs[20]}};
+console.log(JSON.stringify({schema:"sagejs.startup-pipe-observation/v1",executable,sha256:digest,version:version.stdout.trim(),host:{platform:os.platform(),arch:os.arch(),cpu:os.cpus()[0].model,controllerNode:process.version,before,after:{load:os.loadavg(),freeMemory:os.freemem()}},protocol:"21 fresh processes, existing filesystem/runtime cache, stdin pipes; first correct answer then second round trip then exit; no prompt measurement or normalization",samples:rows,summary:Object.fromEntries(Object.keys(rows[0]).map(k=>[k,summary(k)]))}));})().catch(e=>{console.error(e.message);process.exitCode=1});

@@ -1755,7 +1755,7 @@ test("generated igraph views pin owners and invalidate on explicit close", () =>
 test("typed FFI imports lower to declared host-isolated calls", async () => {
   const source = readFileSync(witness, "utf8");
   const ir = await lowerSource(source, witness);
-  assert.equal(ir.version, 36);
+  assert.equal(ir.version, 39);
   assert.equal(ir.foreignLibraries.length, 1);
   assert.equal(ir.foreignLibraries[0].id, "flint");
   assert.match(ir.foreignLibraries[0].declarationHash, /^[0-9a-f]{64}$/);
@@ -2257,6 +2257,7 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
     "-frtti",
   ]);
   assert.equal(linux.xcode_settings, undefined);
+  assert.ok(linux.ldflags.includes("-Wl,-z,nodelete"));
 
   const macos = bindingGyp(ir, true, true, "darwin").targets[0];
   assert.deepEqual(macos.cflags_cc, [
@@ -2272,6 +2273,7 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
     MACOSX_DEPLOYMENT_TARGET:
       process.env.MACOSX_DEPLOYMENT_TARGET || "13.0",
   });
+  assert.equal(macos.ldflags, undefined);
 
   const windows = bindingGyp(ir, true, true, "win32").targets[0];
   assert.equal(windows.win_delay_load_hook, "true");
@@ -2320,6 +2322,18 @@ test("generated binding.gyp pins portable C++17 settings on every host", () => {
     exactWindows.configurations.Release.msbuild_toolset,
     "ClangCL",
   );
+
+  const flintBinding = JSON.parse(readFileSync(
+    join(root, "packages", "flint", "binding.gyp"),
+    "utf8",
+  ));
+  const linuxTargets = flintBinding.targets[0].conditions
+    .filter(([condition]) => condition.startsWith("OS=='linux'"))
+    .map(([, settings]) => settings);
+  assert.equal(linuxTargets.length, 2);
+  for (const settings of linuxTargets) {
+    assert.ok(settings.ldflags.includes("-Wl,-z,nodelete"));
+  }
 });
 
 test("Windows native builds use a short disposable junction", () => {
@@ -2411,6 +2425,40 @@ test("generated binding.gyp selects exact-platform link declarations", () => {
     .includes(join(prefix, "fallback.a")), false);
 });
 
+test("native foreign identity tracks inline headers in external reused prefixes", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-inline-inputs-"));
+  const previous = process.env.SAGEJS_INLINE_TEST_PREFIX;
+  try {
+    mkdirSync(join(temporary, "include"));
+    writeFileSync(join(temporary, "include", "root.h"), '#include "leaf.h"\n');
+    const leaf = join(temporary, "include", "leaf.h");
+    writeFileSync(leaf, "static inline int answer(void) { return 1; }\n");
+    process.env.SAGEJS_INLINE_TEST_PREFIX = temporary;
+    const ir = {foreignLibraries: [{id: "inline_test", native: {
+      headers: ["root.h"], link: {unix: [], windows: []}, toolchain: {
+        prefix_environment: "SAGEJS_INLINE_TEST_PREFIX",
+        unix_default: "unused", windows_default: "unused",
+        include_dirs: ["include"], source_include_dirs: [],
+      },
+    }}]};
+    for (const options of [{}, {cacheRoot: join(temporary, "digests")}]) {
+      for (let value = 0; value < 10; value++) {
+        const before = foreignCompilationInputs(ir, options)[0];
+        assert.equal(before.transitiveHeaders.length, 1);
+        writeFileSync(leaf, `static inline int answer(void) { return ${value}; }\n`);
+        const after = foreignCompilationInputs(ir, options)[0];
+        assert.notEqual(before.fingerprint, after.fingerprint);
+        assert.deepEqual(before.headers, after.headers);
+        assert.deepEqual(before.libraries, after.libraries);
+      }
+    }
+  } finally {
+    if (previous === undefined) delete process.env.SAGEJS_INLINE_TEST_PREFIX;
+    else process.env.SAGEJS_INLINE_TEST_PREFIX = previous;
+    rmSync(temporary, {recursive: true, force: true});
+  }
+});
+
 test("native foreign input identity hashes only selected platform links", () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-platform-link-inputs-"));
   const previous = process.env.SAGEJS_PLATFORM_LINK_TEST_PREFIX;
@@ -2427,7 +2475,7 @@ test("native foreign input identity hashes only selected platform links", () => 
       linux: ["selected.a"],
       darwin: ["selected.tbd"],
     };
-    const inputs = foreignCompilationInputs({
+    const ir = {
       foreignLibraries: [{
         id: "platform_link_test",
         native: {
@@ -2442,8 +2490,17 @@ test("native foreign input identity hashes only selected platform links", () => 
           },
         },
       }],
-    });
+    };
+    const inputs = foreignCompilationInputs(ir);
     assert.deepEqual(inputs[0].libraries.map(({ name }) => name), [selected]);
+    for (const options of [{}, {cacheRoot: join(temporary, "digests")}]) {
+      for (let value = 0; value < 10; value++) {
+        const before = foreignCompilationInputs(ir, options)[0];
+        writeFileSync(join(temporary, "lib", selected), `selected platform input${value}`);
+        const after = foreignCompilationInputs(ir, options)[0];
+        assert.notEqual(before.fingerprint, after.fingerprint);
+      }
+    }
   } finally {
     if (previous === undefined) {
       delete process.env.SAGEJS_PLATFORM_LINK_TEST_PREFIX;

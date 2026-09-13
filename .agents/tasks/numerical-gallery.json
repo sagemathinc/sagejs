@@ -1,0 +1,40 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerical-gallery",
+  "title": "Numerical Gallery",
+  "lane": "documentation-compat",
+  "status": "active",
+  "owner": "user",
+  "objective": "Build an evidence-derived bounded cross-domain numerical methods gallery with accessible static stories, exportable PlotSpec/PlotAnimation/Plotly JSON, browser tests, and payload/render measurements",
+  "base_commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+  "claims": [
+    "docs/numerical-computing/gallery/",
+    "test/numerics/gallery/",
+    "bench/numerical-gallery/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm docs:check",
+    "pnpm test:tutorial"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

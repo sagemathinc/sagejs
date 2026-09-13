@@ -1,0 +1,12 @@
+{
+  "candidateCommit": "9ad99322e",
+  "sourceFiles": 712,
+  "sourceListDigest": "5742408f93540fb711e1c0ec652ae7686b5916be4f880d98db6d6729a05beef7",
+  "sourceTreesIdentical": true,
+  "driverDifference": "Only private_compiler_import_reads assignment true to false; compiled driver additionally has final newline after sourceMappingURL comment",
+  "candidateCompiler": "3a4f8c162b35ba63b49be64853046a74d8f2e6abbe3a0877b711e1674f5d8f3b",
+  "controlCompiler": "9b5a78c2e5b024f0caee7ccb02f591255a7b36cf9c2cda5c288b4c5014058d12",
+  "candidateBuildReceipt": "221d788407bd3053c854dbc120467ae4d80737a2bf87bee05f94997c3a5f1878",
+  "controlBootstrapLog": "f614022b3ac767756bc81f5989308379ef425d89310f6492c696fbea9451f1a9",
+  "controlTestLog": "5c3d1187c240b263190fb5aec252d7bd63380cc723c84eb7023f3ccbbcc4eb24"
+}

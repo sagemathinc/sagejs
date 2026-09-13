@@ -120,7 +120,8 @@ function print_usage(group) {
 } // }}}
 
 function print_top_level_usage() {
-  var executable = path.basename(process.argv[1]);
+  var executable = process.env.SAGEJS_EXECUTABLE_NAME || path.basename(process.argv[1]);
+  var pythonMode = executable === "sagepython";
   var label = function (text) {
     return colored(text, COL1);
   };
@@ -128,16 +129,26 @@ function print_top_level_usage() {
     return colored(text, COL2);
   };
 
-  console.log(label("Sage.js — research mathematics native to JavaScript\n"));
+  console.log(
+    label(
+      pythonMode
+        ? "Sage.js Python mode — research mathematics native to JavaScript\n"
+        : "Sage.js — research mathematics native to JavaScript\n",
+    ),
+  );
   console.log(label("Usage:"));
   console.log("  " + command(executable) + " [options] [program]");
   console.log("  " + command(executable) + " [subcommand] [options]\n");
   console.log(
-    "With no program, start an interactive Sage calculator. A program file",
+    pythonMode
+      ? "With no program, start an interactive Python-mode calculator. A program file"
+      : "With no program, start an interactive Sage calculator. A program file",
   );
   console.log("is executed, and piped input is evaluated. Interactive input");
   console.log(
-    "defaults to Sage syntax; .py files use Python and .sage files use Sage.\n",
+    pythonMode
+      ? "defaults to ordinary Python syntax; use `sagejs` for Sage syntax.\n"
+      : "defaults to Sage syntax; .py files use Python and .sage files use Sage.\n",
   );
 
   console.log(label("Execution backend:"));
@@ -185,6 +196,7 @@ function print_top_level_usage() {
   console.log("  pytest          run installed pytest with Sage.js Python");
   console.log("  ffi             validate and inspect foreign-library declarations");
   console.log("  math            inspect declarative mathematical dispatch decisions");
+  console.log("  inspect-foreign lower foreign source without executing it");
   console.log("  optimize        explain and verify mathematical compiler optimizations");
   console.log("  native          inspect and compile typed @native functions");
   console.log("  compile         compile Sage.js source to JavaScript");
@@ -366,6 +378,66 @@ function parse_args() {
   });
   return ans;
 } // }}}
+
+// The inspection command promises machine-readable diagnostics, including for
+// malformed CLI input. Parse its deliberately small grammar before the legacy
+// option parser, which otherwise prints human help and exits on an unknown
+// option before the inspection reporter can produce its JSON record.
+function parse_inspect_foreign_args(all_args) {
+  var ans = {
+    auto_mode: false,
+    mode: "inspect-foreign",
+    files: [],
+    inspect_foreign: true,
+  };
+  var options_ended = false;
+
+  function reject(message) {
+    if (ans.inspect_usage_error === undefined) {
+      ans.inspect_usage_error = message;
+    }
+  }
+
+  for (var index = 1; index < all_args.length; index += 1) {
+    var argument = all_args[index];
+    if (!options_ended && argument === "--") {
+      options_ended = true;
+    } else if (!options_ended && argument === "--language") {
+      var language = all_args[++index];
+      if (language === undefined) reject("--language requires a value");
+      else if (ans.language !== undefined) {
+        reject("--language may be specified only once");
+      } else ans.language = language;
+    } else if (!options_ended && argument.indexOf("--language=") === 0) {
+      if (ans.language !== undefined) {
+        reject("--language may be specified only once");
+      } else ans.language = argument.slice("--language=".length);
+    } else if (!options_ended && argument === "--source") {
+      var source = all_args[++index];
+      if (source === undefined) reject("--source requires a value");
+      else if (ans.source !== undefined) {
+        reject("--source may be specified only once");
+      } else ans.source = source;
+    } else if (!options_ended && argument.indexOf("--source=") === 0) {
+      if (ans.source !== undefined) {
+        reject("--source may be specified only once");
+      } else ans.source = argument.slice("--source=".length);
+    } else if (!options_ended && (argument === "--help" || argument === "-h")) {
+      ans.help = true;
+    } else if (
+      !options_ended && (argument === "--version" || argument === "-V")
+    ) {
+      ans.version = true;
+    } else if (!options_ended && argument === "-") {
+      ans.files.push(argument);
+    } else if (!options_ended && argument[0] === "-") {
+      reject("unknown inspect-foreign option " + JSON.stringify(argument));
+    } else {
+      ans.files.push(argument);
+    }
+  }
+  return ans;
+}
 
 create_group("compile", "[input1.py input2.py ...]", function () {
   /*
@@ -562,6 +634,32 @@ closed if any requested optimization is absent or rejected.
 opt("explain_optimizations", "", "bool", false, function () {
   /*
 Print deterministic mathematical optimizer decisions and evidence to STDERR.
+*/
+});
+
+create_group("inspect-foreign", "[input]", function () {
+  /*
+Lower foreign-language source to the shared Sage.js runtime without executing
+it. Exactly one JSON inspection record is written to standard output. Read
+source from --source, one input file, or standard input.
+*/
+});
+
+opt(
+  "language",
+  "",
+  "string",
+  "",
+  function () {
+    /*
+Foreign language to inspect.
+*/
+  }
+);
+
+opt("source", "", "string", undefined, function () {
+  /*
+Inspect this literal source instead of reading a file or standard input.
 */
 });
 
@@ -1332,7 +1430,10 @@ Use fuzzy translations, they are ignored by default.
 */
 });
 
-var argv = (module.exports.argv = parse_args());
+var raw_argv = process.argv.slice(2);
+var argv = (module.exports.argv = raw_argv[0] === "inspect-foreign"
+  ? parse_inspect_foreign_args(raw_argv)
+  : parse_args());
 
 if (argv.help) {
   print_usage(!argv.auto_mode ? groups[argv.mode] : undefined);
@@ -1343,4 +1444,9 @@ if (argv.version) {
   var json = require("../../package.json");
   console.log("sagejs " + json.version);
   process.exit(0);
+}
+
+if (argv.mode === "inspect-foreign") {
+  argv.mode = "compile";
+  argv.inspect_foreign = true;
 }

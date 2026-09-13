@@ -374,7 +374,11 @@ identity.  `stable_exact_relation_hnf_select_v1` owns only four equal-shape
 FLINT matrices: the source, its canonical basis, the mutable trial source, and
 the trial basis.  It calls the new caller-owned `fmpz_matrix_hnf_into`
 operation, compares canonical bases, and publishes one basis plus one compact
-selection mask.  It has no transformation matrix, determinant, or GMP replay
+selection mask.  Redundant candidates are tested from right to left so the
+earliest sufficient relations survive; relation discovery orders those rows
+by witness complexity, and retaining later rows can inflate an otherwise
+small public proof certificate by orders of magnitude.  It has no
+transformation matrix, determinant, or GMP replay
 accumulator from the unsafe route.  Cancellation retains the ordinary
 interruptible algorithm; a private native decline restarts the untouched
 mature FLINT route without publishing candidate state.

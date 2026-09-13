@@ -16,12 +16,71 @@ _packed_prime_polynomial_module_cache = runtime.undefined
 _packed_polynomial_flint_module_cache = runtime.undefined
 _polynomial_structural_public_module_cache = runtime.undefined
 _arbitrary_prime_public_module_cache = runtime.undefined
+_polynomial_ideal_algorithms_module_cache = runtime.undefined
+_polynomial_ideal_operations_module_cache = runtime.undefined
+_polynomial_hilbert_module_cache = runtime.undefined
+_polynomial_zero_dimensional_module_cache = runtime.undefined
+_polynomial_quotient_module_cache = runtime.undefined
 _flint_ffi_module_cache = runtime.undefined
 _generated_flint_resources_available_cache = runtime.undefined
 _generated_fmpz_polynomial_resources_available_cache = runtime.undefined
 _generated_fmpq_polynomial_resources_available_cache = runtime.undefined
 _POLYNOMIAL_RESOURCE_CACHE_LIMIT = 64
 _polynomial_resource_cache = []
+
+
+def _polynomial_ideal_algorithms() -> Any:
+    global _polynomial_ideal_algorithms_module_cache
+    if _polynomial_ideal_algorithms_module_cache is runtime.undefined:
+        _polynomial_ideal_algorithms_module_cache = __import__(
+            "sagejs.polynomial_algorithms.ideal",
+            fromlist=["groebner_basis"],
+        )
+    return _polynomial_ideal_algorithms_module_cache
+
+
+def _polynomial_quotient_module() -> Any:
+    """Load the small canonical polynomial quotient API lazily."""
+    global _polynomial_quotient_module_cache
+    if _polynomial_quotient_module_cache is runtime.undefined:
+        _polynomial_quotient_module_cache = __import__(
+            "sagejs._baselib.polynomial_quotient",
+            fromlist=["PolynomialQuotientRing"],
+        )
+    return _polynomial_quotient_module_cache
+
+
+def _polynomial_ideal_operations() -> Any:
+    """Load exact elimination-based ideal operations lazily."""
+    global _polynomial_ideal_operations_module_cache
+    if _polynomial_ideal_operations_module_cache is runtime.undefined:
+        _polynomial_ideal_operations_module_cache = __import__(
+            "sagejs.polynomial_algorithms.ideal_operations",
+            fromlist=["intersection"],
+        )
+    return _polynomial_ideal_operations_module_cache
+
+
+def _polynomial_hilbert() -> Any:
+    """Load exact monomial Hilbert combinatorics lazily."""
+    global _polynomial_hilbert_module_cache
+    if _polynomial_hilbert_module_cache is runtime.undefined:
+        _polynomial_hilbert_module_cache = __import__(
+            "sagejs.polynomial_algorithms.hilbert",
+            fromlist=["hilbert_series"],
+        )
+    return _polynomial_hilbert_module_cache
+
+
+def _polynomial_zero_dimensional() -> Any:
+    """Load exact zero-dimensional decomposition algorithms lazily."""
+    global _polynomial_zero_dimensional_module_cache
+    if _polynomial_zero_dimensional_module_cache is runtime.undefined:
+        _polynomial_zero_dimensional_module_cache = __import__(
+            "sagejs.polynomial_algorithms.zero_dimensional",
+            fromlist=["radical"],
+        )
+    return _polynomial_zero_dimensional_module_cache
 
 
 def _closed_field_horner(base: Any, coefficients: Any, value: Any) -> Any:
@@ -249,6 +308,13 @@ def _flint_backend_has_function(name: str) -> bool:
     return runtime.jstype(candidate) == "function"
 
 
+def _flint_backend_call(name: str, values: list[Any]) -> Any:
+    """Call one optional FLINT capability after checking its presence."""
+    backend = runtime.flint_backend()
+    method = runtime.reflect.get(backend, name)
+    return runtime.reflect.apply(method, backend, values)
+
+
 def _arbitrary_prime_public_module() -> Any:
     """Load stable byte codecs for arbitrary-prime polynomial resources."""
     global _arbitrary_prime_public_module_cache
@@ -447,6 +513,28 @@ def _field_polynomial_quo_rem(
         _trim_polynomial_coefficients(quotient),
         _trim_polynomial_coefficients(remainder),
     )
+
+
+def _generated_extension_field_polynomial_roots(
+    polynomial: PolynomialElement,
+) -> list[list[Any]]:
+    """Load the portable extension-field root splitter only when needed."""
+    module = __import__(
+        "sagejs.polynomial_algorithms.extension_field_roots",
+        fromlist=["generated_extension_field_polynomial_roots"],
+    )
+    return module.generated_extension_field_polynomial_roots(polynomial)
+
+
+def _generated_extension_field_polynomial_factor(
+    polynomial: PolynomialElement,
+) -> tuple[list[list[Any]], Any]:
+    """Load portable extension-field factorization only when requested."""
+    module = __import__(
+        "sagejs.polynomial_algorithms.extension_field_factor",
+        fromlist=["generated_extension_field_polynomial_factor"],
+    )
+    return module.generated_extension_field_polynomial_factor(polynomial)
 
 
 def _integer_polynomial_quo_rem(
@@ -1934,7 +2022,7 @@ class PolynomialElement(sage.Element):
             raise ZeroDivisionError("division by zero polynomial")
         base = operands.parent.base_ring()
         kind = _packed_polynomial_kind(base)
-        if scalar_divisor and kind in ["ZZ", "QQ", "GF", "GF_ARB"]:
+        if scalar_divisor and kind in ["ZZ", "QQ", "GF", "GF_ARB", "GF_EXT"]:
             divisor = base(other)
             if kind == "ZZ" and left._has_fmpz_polynomial_resource():
                 return left._new(
@@ -2047,7 +2135,7 @@ class PolynomialElement(sage.Element):
                         return left._quo_rem_same_parent(right)[0]
                     else:
                         raise
-        if kind in ["GF", "GF_ARB"]:
+        if kind in ["GF", "GF_ARB", "GF_EXT"]:
             return left._quo_rem_same_parent(right)[0]
         if base._kind == "GF_EXTENSION":
             native_value = runtime.flint_backend().fqPolyDivExact(
@@ -2140,6 +2228,10 @@ class PolynomialElement(sage.Element):
             quotient, remainder = _field_polynomial_quo_rem(
                 self.coefficients(), other.coefficients(), base(0)
             )
+        elif kind == "GF_EXT" or base._kind == "GF_EXTENSION":
+            quotient, remainder = _field_polynomial_quo_rem(
+                self.coefficients(), other.coefficients(), base(0)
+            )
         elif kind == "GF":
             quotient_length = max(
                 0, self._coefficient_length() - other._coefficient_length() + 1
@@ -2192,7 +2284,7 @@ class PolynomialElement(sage.Element):
             )
         else:
             raise NotImplementedError(
-                "quotient and remainder are implemented for ZZ, QQ, and GF(p)"
+                "quotient and remainder are implemented over exact fields and ZZ"
             )
         return runtime.math_tuple(
             [
@@ -2602,6 +2694,12 @@ class PolynomialElement(sage.Element):
                 )
             )
         if base._kind == "GF_EXTENSION":
+            if not _flint_backend_has_function("fqPolyGcd"):
+                euclidean = __import__(
+                    "sagejs.polynomial_algorithms.univariate_field",
+                    fromlist=["monic_gcd"],
+                )
+                return euclidean.monic_gcd(operands.left, operands.right)
             native_value = runtime.flint_backend().fqPolyGcd(
                 operands.left._native, operands.right._native
             )
@@ -2761,11 +2859,22 @@ class PolynomialElement(sage.Element):
                     left._new(_canonical_uint64_output(right_output)),
                 ]
             )
-        raise TypeError("polynomial xgcd is implemented over ZZ, QQ, and GF(p)")
+        if parent.base_ring()._kind == "GF_EXTENSION":
+            euclidean = __import__(
+                "sagejs.polynomial_algorithms.univariate_field",
+                fromlist=["monic_xgcd"],
+            )
+            return runtime.math_tuple(euclidean.monic_xgcd(left, right))
+        raise TypeError("polynomial xgcd is implemented over ZZ, QQ, and finite fields")
 
     def is_irreducible(self) -> bool:
         if self._parent.base_ring()._kind == "GF_EXTENSION":
-            return runtime.flint_backend().fqPolyIsIrreducible(self._native)
+            if self.degree() <= 0:
+                return False
+            if _flint_backend_has_function("fqPolyIsIrreducible"):
+                return bool(_flint_backend_call("fqPolyIsIrreducible", [self._native]))
+            records, _unit = _generated_extension_field_polynomial_factor(self)
+            return len(records) == 1 and records[0][1] == 1
         if _packed_polynomial_kind(self._parent.base_ring()) == "GF_ARB":
             if self.degree() <= 0:
                 return False
@@ -2790,12 +2899,18 @@ class PolynomialElement(sage.Element):
         parent = self._parent
         base = parent.base_ring()
         if base._kind == "GF_EXTENSION":
-            result = runtime.flint_backend().fqPolyFactor(self._native)
-            factors = [
-                [parent._from_legacy_native(pair[0]), pair[1]]
-                for pair in result.factors
-            ]
-            unit = base._from_native(result.unit)
+            if _flint_backend_has_function("fqPolyFactor"):
+                native_result = _flint_backend_call("fqPolyFactor", [self._native])
+                native_factors = [
+                    [parent._from_legacy_native(pair[0]), pair[1]]
+                    for pair in native_result.factors
+                ]
+                native_unit = base._from_native(native_result.unit)
+                return sage.Factorization(
+                    native_factors, native_unit, False, True, False
+                )
+            result, unit = _generated_extension_field_polynomial_factor(self)
+            factors = [[parent._from_coefficients(pair[0]), pair[1]] for pair in result]
             return sage.Factorization(factors, unit, False, True, False)
 
         if base is sage.ZZ and self._has_fmpz_polynomial_resource():
@@ -3002,7 +3117,9 @@ class PolynomialElement(sage.Element):
                 "ring unless the base is a finite field"
             )
         field = self._parent.base_ring()
-        if field._kind == "GF_EXTENSION":
+        if field._kind == "GF_EXTENSION" and self._has_fq_polynomial_resource():
+            raw_roots = _generated_extension_field_polynomial_roots(self)
+        elif field._kind == "GF_EXTENSION":
             raw_roots = runtime.flint_backend().fqPolyRoots(self._native)
         elif _packed_polynomial_kind(field) == "GF_ARB":
             if self.is_zero():
@@ -3059,14 +3176,23 @@ class PolynomialElement(sage.Element):
 
         def make_root(pair: list[Any]) -> Any:
             if field._kind == "GF_EXTENSION":
-                root = field._from_native(pair[0])
+                root = (
+                    pair[0]
+                    if isinstance(pair[0], field._elementType)
+                    else field._from_native(pair[0])
+                )
             else:
                 root = field(pair[0])
             return runtime.factor_pair(root, pair[1]) if multiplicities else root
 
-        return raw_roots.map(make_root)
+        answer = []
+        for pair in raw_roots:
+            answer.append(make_root(pair))
+        return answer
 
-    def coefficients(self) -> list[Any]:
+    def coefficients(self, sparse: bool = False) -> list[Any]:
+        if sparse:
+            return [value for value in self.coefficients(False) if value != 0]
         if self._machineFieldCoefficients is not runtime.undefined:
             return list(self._machineFieldCoefficients)
         base = self._parent.base_ring()
@@ -3896,19 +4022,19 @@ class MultivariatePolynomialElement(sage.Element):
         self,
         other: MultivariatePolynomialElement,
     ) -> MultivariatePolynomialElement:
-        return self._new(runtime.flint_backend().mpolyAdd(self._native, other._native))
+        return self._new(self._parent._backend.mpolyAdd(self._native, other._native))
 
     def _sub_(
         self,
         other: MultivariatePolynomialElement,
     ) -> MultivariatePolynomialElement:
-        return self._new(runtime.flint_backend().mpolySub(self._native, other._native))
+        return self._new(self._parent._backend.mpolySub(self._native, other._native))
 
     def _mul_(
         self,
         other: MultivariatePolynomialElement,
     ) -> MultivariatePolynomialElement:
-        return self._new(runtime.flint_backend().mpolyMul(self._native, other._native))
+        return self._new(self._parent._backend.mpolyMul(self._native, other._native))
 
     def __add__(self, other: object) -> Any:
         return runtime.coercion_model.binOp("add", self, other)
@@ -3920,14 +4046,14 @@ class MultivariatePolynomialElement(sage.Element):
         return runtime.coercion_model.binOp("mul", self, other)
 
     def __neg__(self) -> MultivariatePolynomialElement:
-        return self._new(runtime.flint_backend().mpolyNeg(self._native))
+        return self._new(self._parent._backend.mpolyNeg(self._native))
 
     def __pow__(self, exponent: int) -> MultivariatePolynomialElement:
         exponent = runtime.integer_bigint(exponent)
         if exponent < 0:
             raise ValueError("negative polynomial exponent")
         return self._new(
-            runtime.flint_backend().mpolyPow(self._native, runtime.number(exponent))
+            self._parent._backend.mpolyPow(self._native, runtime.number(exponent))
         )
 
     def __floordiv__(
@@ -3942,13 +4068,13 @@ class MultivariatePolynomialElement(sage.Element):
             raise TypeError("polynomial division requires polynomials")
         return MultivariatePolynomialElement(
             operands.parent,
-            runtime.flint_backend().mpolyDivExact(
+            operands.parent._backend.mpolyDivExact(
                 operands.left._native, operands.right._native
             ),
         )
 
     def _eq_(self, other: MultivariatePolynomialElement) -> bool:
-        return runtime.flint_backend().mpolyEqual(self._native, other._native)
+        return self._parent._backend.mpolyEqual(self._native, other._native)
 
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
@@ -3963,7 +4089,7 @@ class MultivariatePolynomialElement(sage.Element):
         if operands.parent.base_ring()._kind not in ["ZZ", "QQ"]:
             raise TypeError("polynomial ordering is defined only over ZZ and QQ")
         return (
-            runtime.flint_backend().mpolyCompare(
+            operands.parent._backend.mpolyCompare(
                 operands.left._native, operands.right._native
             )
             < 0
@@ -3978,7 +4104,7 @@ class MultivariatePolynomialElement(sage.Element):
             raise TypeError("polynomial gcd requires polynomials")
         return MultivariatePolynomialElement(
             operands.parent,
-            runtime.flint_backend().mpolyGcd(
+            operands.parent._backend.mpolyGcd(
                 operands.left._native, operands.right._native
             ),
         )
@@ -3994,7 +4120,7 @@ class MultivariatePolynomialElement(sage.Element):
         the constant unit are intentionally omitted; use this method when
         the geometric irreducible components are the desired result.
         """
-        native_factors = runtime.flint_backend().mpolyIrreducibleFactors(self._native)
+        native_factors = self._parent._backend.mpolyIrreducibleFactors(self._native)
         answer = []
         for pair in native_factors:
             answer.append(MultivariatePolynomialElement(self._parent, pair[0]))
@@ -4024,22 +4150,276 @@ class MultivariatePolynomialElement(sage.Element):
         index = operands.parent._generator_index(variable)
         return MultivariatePolynomialElement(
             operands.parent,
-            runtime.flint_backend().mpolyResultant(
+            operands.parent._backend.mpolyResultant(
                 operands.left._native, operands.right._native, index
             ),
         )
 
     def degree(self, variable: Any = None) -> int:
         if variable is None:
-            return runtime.flint_backend().mpolyTotalDegree(self._native)
+            return self._parent._backend.mpolyTotalDegree(self._native)
         index = self._parent._generator_index(variable)
-        return runtime.flint_backend().mpolyDegree(self._native, index)
+        return self._parent._backend.mpolyDegree(self._native, index)
 
     def total_degree(self) -> int:
-        return runtime.flint_backend().mpolyTotalDegree(self._native)
+        return self._parent._backend.mpolyTotalDegree(self._native)
 
     def number_of_terms(self) -> int:
-        return runtime.flint_backend().mpolyLength(self._native)
+        return self._parent._backend.mpolyLength(self._native)
+
+    def terms(self) -> list[Any]:
+        """Return canonical sparse `(coefficient, exponent_vector)` terms.
+
+        Terms are ordered from greatest to least in this ring's monomial
+        order. The exponent vector uses the ring's generator order.
+        """
+        base = self._parent.base_ring()
+        raw_terms = self._parent._backend.mpolyTerms(self._native)
+        if base._kind == "GF_EXTENSION":
+            return [
+                runtime.math_tuple([coefficient, runtime.math_tuple(powers)])
+                for coefficient, powers in raw_terms
+            ]
+        answer = []
+        for raw_coefficient, raw_exponents in raw_terms:
+            if base._kind == "QQ":
+                coefficient = base(
+                    runtime.reflect.get(raw_coefficient, "numerator"),
+                    runtime.reflect.get(raw_coefficient, "denominator"),
+                )
+            else:
+                coefficient = base(runtime.normalize_integer(raw_coefficient))
+            exponents = []
+            for exponent in raw_exponents:
+                exponents.append(runtime.normalize_integer(exponent))
+            answer.append(
+                runtime.math_tuple([coefficient, runtime.math_tuple(exponents)])
+            )
+        return answer
+
+    def monomial_coefficients(self) -> dict[Any, Any]:
+        """Return the sparse coefficient dictionary keyed by exponents."""
+        return {exponents: coefficient for coefficient, exponents in self.terms()}
+
+    def _substitution_pairs(self, mapping: Any) -> list[Any]:
+        """Normalize a public substitution mapping without hashing generators."""
+        if not hasattr(mapping, "items"):
+            raise TypeError("polynomial substitution needs a mapping")
+        pairs = []
+        for key, value in mapping.items():
+            index = self._parent._generator_index(key)
+            for previous_index, _previous_value in pairs:
+                if previous_index == index:
+                    raise ValueError("a polynomial generator was substituted twice")
+            pairs.append(runtime.math_tuple([index, value]))
+        return pairs
+
+    def subs(self, mapping: Any = None, **kwds: Any) -> Any:
+        """Return an exact simultaneous substitution.
+
+        Keys may be ring generators or their names. Unspecified generators
+        remain unchanged. All replacements are interpreted simultaneously,
+        so `f.subs({x: y, y: x})` really swaps `x` and `y`.
+        """
+        pairs = []
+        if mapping is not None:
+            pairs.extend(self._substitution_pairs(mapping))
+        for name in runtime.object.keys(kwds):
+            index = self._parent._generator_index(name)
+            if any(previous_index == index for previous_index, _value in pairs):
+                raise ValueError("a polynomial generator was substituted twice")
+            pairs.append(runtime.math_tuple([index, runtime.reflect.get(kwds, name)]))
+        return self._substitute_pairs(pairs)
+
+    def _substitute_pairs(self, pairs: list[Any]) -> Any:
+        """Evaluate normalized simultaneous `(generator_index, value)` pairs."""
+        replacements = list(self._parent.gens())
+        for index, value in pairs:
+            replacements[index] = value
+
+        target = None
+        for value in replacements:
+            if isinstance(value, MultivariatePolynomialElement):
+                if target is None:
+                    target = value._parent
+                elif value._parent is not target:
+                    raise TypeError(
+                        "all polynomial substitutions must have the same parent"
+                    )
+        if target is None:
+            base = self._parent.base_ring()
+            scalars = [base(value) for value in replacements]
+            answer = base(0)
+            for coefficient, exponents in self.terms():
+                term = coefficient
+                for index in range(len(exponents)):
+                    if exponents[index]:
+                        term *= scalars[index] ** exponents[index]
+                answer += term
+            return answer
+
+        polynomial_values = [target(value) for value in replacements]
+        answer = target(0)
+        for coefficient, exponents in self.terms():
+            term = target(coefficient)
+            for index in range(len(exponents)):
+                if exponents[index]:
+                    term *= polynomial_values[index] ** exponents[index]
+            answer += term
+        return answer
+
+    substitute = subs
+
+    def __call__(self, *values: Any, **kwds: Any) -> Any:
+        """Evaluate at one value per generator, or use named values."""
+        if len(values) == 1 and isinstance(values[0], (list, tuple)):
+            values = tuple(values[0])
+        if len(runtime.object.keys(kwds)):
+            if len(values):
+                raise TypeError(
+                    "polynomial evaluation cannot mix positional and named values"
+                )
+            if len(runtime.object.keys(kwds)) != self._parent.ngens():
+                raise TypeError("polynomial evaluation needs one value per generator")
+            return self.subs(**kwds)
+        if len(values) != self._parent.ngens():
+            raise TypeError("polynomial evaluation needs one value per generator")
+        pairs = []
+        for index in range(len(values)):
+            pairs.append(runtime.math_tuple([index, values[index]]))
+        return self._substitute_pairs(pairs)
+
+    def derivative(
+        self,
+        variable: Any,
+        count: int = 1,
+    ) -> MultivariatePolynomialElement:
+        """Return an exact formal partial derivative."""
+        index = self._parent._generator_index(variable)
+        if not runtime.is_exact_integer(count):
+            raise TypeError("derivative order must be an integer")
+        count = int(count)
+        if count < 0:
+            raise ValueError("derivative order must be nonnegative")
+        answer = self
+        for _iteration in range(count):
+            terms = []
+            for coefficient, exponents_value in answer.terms():
+                exponents = list(exponents_value)
+                power = exponents[index]
+                if power == 0:
+                    continue
+                exponents[index] -= 1
+                terms.append(
+                    runtime.math_tuple(
+                        [coefficient * power, runtime.math_tuple(exponents)]
+                    )
+                )
+            answer = self._parent._from_sparse_terms(terms)
+            if not terms:
+                break
+        return answer
+
+    diff = derivative
+    differentiate = derivative
+
+    def gradient(self, variables: Any = None) -> Any:
+        """Return the tuple of formal partial derivatives."""
+        if variables is None:
+            variables = self._parent.gens()
+        return runtime.math_tuple([self.derivative(variable) for variable in variables])
+
+    def is_homogeneous(self) -> bool:
+        """Return whether all nonzero terms have the same total degree."""
+        selected = None
+        for _coefficient, exponents in self.terms():
+            degree = sum(exponents)
+            if selected is None:
+                selected = degree
+            elif degree != selected:
+                return False
+        return True
+
+    def homogenize(
+        self,
+        variable: Any = "h",
+        target: Any = None,
+    ) -> MultivariatePolynomialElement:
+        """Homogenize using one explicit new coordinate."""
+        source_names = list(self._parent.variable_names())
+        if target is None:
+            if not isinstance(variable, str):
+                raise TypeError(
+                    "homogenization without a target needs a new variable name"
+                )
+            if variable in source_names:
+                raise ValueError("homogenizing variable collides with the source ring")
+            target = PolynomialRing(
+                self._parent.base_ring(),
+                len(source_names) + 1,
+                names=source_names + [variable],
+                order=self._parent._order,
+            )
+        if target.base_ring() is not self._parent.base_ring():
+            raise TypeError("homogenization target has a different base field")
+        homogenizing_index = target._generator_index(variable)
+        source_to_target = []
+        target_names = list(target.variable_names())
+        for name in source_names:
+            if name not in target_names:
+                raise ValueError("homogenization target is missing a source variable")
+            source_to_target.append(target_names.index(name))
+        if len(set(source_to_target + [homogenizing_index])) != len(source_names) + 1:
+            raise ValueError("homogenizing coordinate must be new")
+        if target.ngens() != self._parent.ngens() + 1:
+            raise ValueError("homogenization target must have exactly one new variable")
+        degree = self.total_degree()
+        if degree < 0:
+            return target(0)
+        terms = []
+        for coefficient, source_exponents in self.terms():
+            target_exponents = [0] * target.ngens()
+            term_degree = 0
+            for source_index in range(len(source_exponents)):
+                exponent = source_exponents[source_index]
+                target_exponents[source_to_target[source_index]] = exponent
+                term_degree += exponent
+            target_exponents[homogenizing_index] = degree - term_degree
+            terms.append(
+                runtime.math_tuple([coefficient, runtime.math_tuple(target_exponents)])
+            )
+        return target._from_sparse_terms(terms)
+
+    def dehomogenize(
+        self,
+        variable: Any,
+        target: Any = None,
+    ) -> Any:
+        """Set one coordinate equal to one, optionally in a smaller target."""
+        index = self._parent._generator_index(variable)
+        source_names = list(self._parent.variable_names())
+        remaining_names = source_names[:index] + source_names[index + 1 :]
+        if target is None:
+            target = PolynomialRing(
+                self._parent.base_ring(),
+                len(remaining_names),
+                names=remaining_names,
+                order=self._parent._order,
+            )
+        if target.base_ring() is not self._parent.base_ring():
+            raise TypeError("dehomogenization target has a different base field")
+        if list(target.variable_names()) != remaining_names:
+            raise ValueError(
+                "dehomogenization target names must be the remaining coordinates"
+            )
+        terms = []
+        for coefficient, source_exponents in self.terms():
+            exponents = list(source_exponents)
+            del exponents[index]
+            terms.append(
+                runtime.math_tuple([coefficient, runtime.math_tuple(exponents)])
+            )
+        return target._from_sparse_terms(terms)
 
     def univariate_polynomial(
         self,
@@ -4058,8 +4438,26 @@ class MultivariatePolynomialElement(sage.Element):
         names = self._parent.variable_names()
         base = self._parent.base_ring()
         if base._kind not in ["ZZ", "QQ"]:
-            raise TypeError("univariate extraction currently requires ZZ or QQ")
-        raw = runtime.flint_backend().mpolyUnivariateCoefficients(self._native, index)
+            if base._kind not in ["GF", "GF_EXTENSION"]:
+                raise TypeError(
+                    "univariate extraction requires ZZ, QQ, or a finite field"
+                )
+            terms = self.terms()
+            if any(
+                any(power and i != index for i, power in enumerate(powers))
+                for _, powers in terms
+            ):
+                raise TypeError("multivariate polynomial involves other generators")
+            degree = max([-1] + [powers[index] for _, powers in terms])
+            if degree > 4096:
+                raise ValueError(
+                    "finite-field univariate extraction exceeds degree 4096"
+                )
+            coefficients = [base(0)] * (degree + 1)
+            for coefficient, powers in terms:
+                coefficients[powers[index]] = coefficient
+            return PolynomialRing(base, names[index])(coefficients)
+        raw = self._parent._backend.mpolyUnivariateCoefficients(self._native, index)
         ring = PolynomialRing(base, names[index])
         generator = ring.gen()
         result = ring(0)
@@ -4075,7 +4473,7 @@ class MultivariatePolynomialElement(sage.Element):
         return result
 
     def __repr__(self) -> str:
-        raw = runtime.flint_backend().mpolyToString(
+        raw = self._parent._backend.mpolyToString(
             self._native, self._parent.variable_names()
         )
         raw = raw.replace(runtime.regexp(r"\s+", "g"), "")
@@ -4128,14 +4526,26 @@ class MultivariatePolynomialRingParent(sage.Parent):
             kind = "nmod"
             modulus = base._modulus
         elif base._kind == "GF_EXTENSION":
-            kind = "fq_nmod"
-            modulus = _untyped(base)._nativeContext
+            if _untyped(base).variable_name() in variables:
+                raise ValueError(
+                    "polynomial variables must differ from the coefficient-field generator name"
+                )
+            module = __import__(
+                "sagejs.polynomial_algorithms.extension_mpoly_backend",
+                fromlist=["ExtensionMpolyBackend"],
+            )
+            self._backend: Any = module.ExtensionMpolyBackend(
+                base, len(variables), order
+            )
+            self._nativeContext = self._backend.context
+            return
         else:
             raise TypeError(
                 "multivariate FLINT polynomials currently support "
                 + "ZZ, QQ, finite fields, and Zmod(n)"
             )
-        self._nativeContext = runtime.flint_backend().mpolyContext(
+        self._backend = runtime.flint_backend()
+        self._nativeContext = self._backend.mpolyContext(
             kind, len(variables), order, modulus
         )
 
@@ -4156,7 +4566,7 @@ class MultivariatePolynomialRingParent(sage.Parent):
             raise IndexError("generator index out of range")
         return MultivariatePolynomialElement(
             self,
-            runtime.flint_backend().mpolyGen(self._nativeContext, index),
+            self._backend.mpolyGen(self._nativeContext, index),
         )
 
     def gens(self) -> Any:
@@ -4210,16 +4620,37 @@ class MultivariatePolynomialRingParent(sage.Parent):
             denominator = runtime.bigint(1)
         elif self._base._kind == "GF_EXTENSION":
             residue = self._base(value)
-            numerator = residue._native
+            numerator = residue
             denominator = runtime.bigint(1)
         else:
             raise TypeError("unsupported coefficient parent")
         return MultivariatePolynomialElement(
             self,
-            runtime.flint_backend().mpolyConstant(
-                self._nativeContext, numerator, denominator
-            ),
+            self._backend.mpolyConstant(self._nativeContext, numerator, denominator),
         )
+
+    def _from_sparse_terms(self, terms: Any) -> MultivariatePolynomialElement:
+        """Materialize storage-neutral sparse terms in this parent."""
+        if self._base._kind == "GF_EXTENSION":
+            return MultivariatePolynomialElement(self, self._backend.from_terms(terms))
+        result = self(0)
+        generators = self.gens()
+        for coefficient, exponents in terms:
+            if len(exponents) != self.ngens():
+                raise ValueError("incorrect polynomial exponent vector")
+            if self._base._kind == "QQ" and isinstance(coefficient, (list, tuple)):
+                scalar = _untyped(self._base)(coefficient[0], coefficient[1])
+            else:
+                scalar = self._base(coefficient)
+            term = self(scalar)
+            for index in range(self.ngens()):
+                exponent = int(exponents[index])
+                if exponent < 0:
+                    raise ValueError("polynomial exponents must be nonnegative")
+                if exponent:
+                    term *= generators[index] ** exponent
+            result += term
+        return result
 
     def _coercePolynomial(
         self,
@@ -4256,9 +4687,7 @@ class MultivariatePolynomialRingParent(sage.Parent):
                 mapping.append(source_index)
         return MultivariatePolynomialElement(
             self,
-            runtime.flint_backend().mpolyComposeGen(
-                value._native, self._nativeContext, mapping
-            ),
+            self._backend.mpolyComposeGen(value._native, self._nativeContext, mapping),
         )
 
     def has_coerce_map_from(self, source: Any) -> bool:
@@ -4312,6 +4741,18 @@ class MultivariatePolynomialRingParent(sage.Parent):
     def ideal(self, *generators: Any) -> PolynomialIdeal:
         selected = _ideal_generators(generators)
         return PolynomialIdeal(self, selected)
+
+    def quotient(self, defining_ideal: Any, **options: Any) -> Any:
+        """Return this ring modulo an ideal with canonical normal forms."""
+        if not isinstance(defining_ideal, PolynomialIdeal):
+            defining_ideal = self.ideal(defining_ideal)
+        if defining_ideal.ring() is not self:
+            raise TypeError("quotient ideal belongs to a different polynomial ring")
+        return _polynomial_quotient_module().PolynomialQuotientRing(
+            self, defining_ideal, **options
+        )
+
+    quotient_ring = quotient
 
     def __rmul__(self, generators: Any) -> PolynomialIdeal:
         if not isinstance(generators, (list, tuple)):
@@ -4474,16 +4915,29 @@ class ApproximatePolynomialElement(sage.Element):
             value = values[0]
             if value.nrows() != value.ncols():
                 raise TypeError("polynomial evaluation requires a square matrix")
-            if getattr(value.base_ring(), "_kind", None) == "CyclotomicField":
+            if (
+                getattr(value.base_ring(), "_kind", None) == "CyclotomicField"
+                and runtime.jstype(
+                    runtime.reflect.get(
+                        runtime.flint_backend(), "cyclotomicMatrixPolyEvaluate"
+                    )
+                )
+                == "function"
+            ):
                 native_coefficients = []
                 for coefficient in self.coefficients():
                     native_coefficients.append(coefficient._native)
                 backend = runtime.flint_backend()
-                return value._new(
-                    backend.cyclotomicMatrixPolyEvaluate(
-                        value._native, native_coefficients
+                try:
+                    return value._new(
+                        backend.cyclotomicMatrixPolyEvaluate(
+                            value._native, native_coefficients
+                        )
                     )
-                )
+                except TypeError:
+                    # General matrices need not carry the adapter's optional
+                    # cyclotomic coordinate cache. Horner also handles zero.
+                    pass
             matrix_parent = value.parent()
             identity = matrix_parent.identity_matrix()
             coefficients = self.coefficients()
@@ -4529,7 +4983,9 @@ class ApproximatePolynomialElement(sage.Element):
                 answer = degree
         return answer
 
-    def coefficients(self) -> list[Any]:
+    def coefficients(self, sparse: bool = False) -> list[Any]:
+        if sparse:
+            return [value for value in self.coefficients(False) if value != 0]
         if self._parent.ngens() != 1:
             raise TypeError("coefficients() requires a univariate polynomial")
         if len(self._terms) == 0:
@@ -4549,6 +5005,19 @@ class ApproximatePolynomialElement(sage.Element):
         ):
             base = self._parent.base_ring()
             coefficients = self.coefficients()
+            if not coefficients:
+                raise ArithmeticError("factorization of 0 is not defined")
+            if (
+                runtime.jstype(
+                    runtime.reflect.get(runtime.flint_backend(), "cyclotomicPolyFactor")
+                )
+                != "function"
+            ):
+                portable = __import__(
+                    "sagejs.polynomial_algorithms.cyclotomic_factor",
+                    fromlist=["factor_cyclotomic"],
+                )
+                return portable.factor_cyclotomic(self)
             native_coefficients = []
             for coefficient in coefficients:
                 native_coefficients.append(coefficient._native)
@@ -4826,6 +5295,10 @@ class PolynomialSequence:
     def __repr__(self) -> str:
         return "[" + ", ".join([repr(value) for value in self._values]) + "]"
 
+    def ideal(self) -> PolynomialIdeal:
+        """Return the ideal generated by this polynomial sequence."""
+        return self._universe.ideal(self._values)
+
     __str__ = __repr__
     toString = __repr__
 
@@ -4837,14 +5310,19 @@ class PolynomialIdeal:
         ring: MultivariatePolynomialRingParent,
         generators: Any,
     ) -> None:
-        if ring.base_ring()._kind != "QQ":
-            raise NotImplementedError("FLINT ideal arithmetic currently supports QQ")
+        capabilities = __import__(
+            "sagejs.polynomial_algorithms.field_capabilities",
+            fromlist=["require_field_operation"],
+        )
+        capabilities.require_field_operation(ring.base_ring(), "ideal", ring._order)
         self._ring = ring
         self._kind = "PolynomialIdeal"
         self._generators = runtime.math_tuple(
             [ring(generator) for generator in generators]
         )
-        self._groebner = runtime.undefined
+        self._groebner_cache: dict[str, PolynomialSequence] = {}
+        self._groebner_transform_cache: dict[str, Any] = {}
+        self._groebner_metadata: dict[str, Any] = {}
 
     def ring(self) -> MultivariatePolynomialRingParent:
         return self._ring
@@ -4852,20 +5330,341 @@ class PolynomialIdeal:
     def gens(self) -> Any:
         return self._generators
 
-    def groebner_basis(self) -> PolynomialSequence:
-        if self._groebner is runtime.undefined:
-            native = runtime.flint_backend().mpolyGroebner(
-                [generator._native for generator in self._generators]
+    def is_zero(self) -> bool:
+        """Return whether this is the zero ideal."""
+        zero = self._ring(0)
+        return all(generator == zero for generator in self._generators)
+
+    def is_one(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> bool:
+        """Return whether this is the unit ideal."""
+        return self.normal_form(1, algorithm=algorithm, proof=proof) == self._ring(0)
+
+    def _require_same_ring(self, other: Any) -> PolynomialIdeal:
+        if not isinstance(other, PolynomialIdeal) or other._ring is not self._ring:
+            raise TypeError("polynomial ideals must belong to the same ring")
+        return other
+
+    def is_subset(
+        self,
+        other: Any,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> bool:
+        """Return whether every generator of this ideal lies in `other`."""
+        other = self._require_same_ring(other)
+        zero = self._ring(0)
+        return all(
+            other.normal_form(generator, algorithm=algorithm, proof=proof) == zero
+            for generator in self._generators
+        )
+
+    def is_equal(
+        self,
+        other: Any,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> bool:
+        """Return exact equality of two ideals in the same polynomial ring."""
+        other = self._require_same_ring(other)
+        return self.is_subset(other, algorithm, proof) and other.is_subset(
+            self, algorithm, proof
+        )
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PolynomialIdeal) or other._ring is not self._ring:
+            return False
+        return self.is_equal(other)
+
+    def __le__(self, other: Any) -> bool:
+        return self.is_subset(other)
+
+    def __ge__(self, other: Any) -> bool:
+        return self._require_same_ring(other).is_subset(self)
+
+    def __add__(self, other: Any) -> PolynomialIdeal:
+        """Return the sum generated by both ideals' generators."""
+        other = self._require_same_ring(other)
+        return self._ring.ideal(self._generators + other._generators)
+
+    def __mul__(self, other: Any) -> PolynomialIdeal:
+        """Return the product generated by pairwise generator products."""
+        other = self._require_same_ring(other)
+        generators = []
+        for left in self._generators:
+            for right in other._generators:
+                generators.append(left * right)
+        return self._ring.ideal(generators)
+
+    def intersection(
+        self,
+        other: Any,
+        algorithm: str = "buchberger",
+        proof: Any = None,
+    ) -> PolynomialIdeal:
+        """Return the exact intersection with another ideal."""
+        other = self._require_same_ring(other)
+        return _polynomial_ideal_operations().intersection(
+            self, other, algorithm, proof
+        )
+
+    intersect = intersection
+
+    def colon(
+        self,
+        other: Any,
+        algorithm: str = "buchberger",
+        proof: Any = None,
+    ) -> PolynomialIdeal:
+        """Return the exact ideal quotient `(self : other)`."""
+        other = self._require_same_ring(other)
+        return _polynomial_ideal_operations().colon(self, other, algorithm, proof)
+
+    ideal_quotient = colon
+
+    def saturation(
+        self,
+        other: Any,
+        algorithm: str = "buchberger",
+        proof: Any = None,
+        max_steps: int = 32,
+    ) -> PolynomialIdeal:
+        """Return the exact saturation `(self : other^infinity)`."""
+        other = self._require_same_ring(other)
+        return _polynomial_ideal_operations().saturation(
+            self, other, algorithm, proof, max_steps
+        )
+
+    saturate = saturation
+
+    def groebner_basis(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> PolynomialSequence:
+        """Return a reduced basis using msolve, FLINT, or exact Buchberger."""
+        return _polynomial_ideal_algorithms().groebner_basis(self, algorithm, proof)
+
+    def groebner_basis_metadata(self) -> dict[str, Any]:
+        """Return inspectable metadata for the most recent basis request."""
+        return _polynomial_ideal_algorithms().groebner_basis_metadata(self)
+
+    def normal_form(
+        self,
+        value: Any,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> MultivariatePolynomialElement:
+        """Return the exact normal form of `value` by the reduced basis."""
+        polynomial = self._ring(value)
+        basis = self.groebner_basis(algorithm=algorithm, proof=proof)
+        native_basis = [generator._native for generator in basis]
+        return MultivariatePolynomialElement(
+            self._ring,
+            self._ring._backend.mpolyReduce(polynomial._native, native_basis),
+        )
+
+    reduce = normal_form
+
+    def leading_ideal(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> PolynomialIdeal:
+        """Return the monomial ideal generated by leading monomials."""
+        basis = self.groebner_basis(algorithm=algorithm, proof=proof)
+        leading = []
+        for polynomial in basis:
+            leading.append(
+                MultivariatePolynomialElement(
+                    self._ring,
+                    self._ring._backend.mpolyLeadingMonomial(polynomial._native),
+                )
             )
-            values = []
-            for value in native:
-                values.append(MultivariatePolynomialElement(self._ring, value))
-            self._groebner = PolynomialSequence(values, self._ring)
-        return self._groebner
+        return PolynomialIdeal(self._ring, leading)
+
+    def elimination_ideal(
+        self,
+        variables: Any,
+        algorithm: str = "buchberger",
+        proof: Any = None,
+    ) -> PolynomialIdeal:
+        """Return the exact ideal obtained by eliminating `variables`."""
+        return _polynomial_ideal_algorithms().elimination_ideal(
+            self, variables, algorithm, proof
+        )
+
+    eliminate = elimination_ideal
+
+    def _leading_exponents(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> list[Any]:
+        return _polynomial_ideal_algorithms().leading_exponents(self, algorithm, proof)
+
+    def dimension(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> int:
+        """Return the Krull dimension using the leading monomial ideal."""
+        return _polynomial_ideal_algorithms().dimension(self, algorithm, proof)
+
+    def hilbert_series(
+        self,
+        variable: str = "t",
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> Any:
+        """Return the normalized Hilbert series of a homogeneous ideal."""
+        return _polynomial_hilbert().hilbert_series(self, variable, algorithm, proof)
+
+    def hilbert_polynomial(
+        self,
+        variable: str = "t",
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> Any:
+        """Return the exact eventual Hilbert polynomial."""
+        return _polynomial_hilbert().hilbert_polynomial(
+            self, variable, algorithm, proof
+        )
+
+    def h_vector(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> Any:
+        """Return the numerator coefficients of the reduced Hilbert series."""
+        return _polynomial_hilbert().h_vector(self, algorithm, proof)
+
+    def hilbert_data(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> dict[str, Any]:
+        """Return exact normalized Hilbert metadata."""
+        return _polynomial_hilbert().data(self, algorithm, proof)
+
+    def is_zero_dimensional(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> bool:
+        """Return whether this ideal has Krull dimension zero."""
+        return _polynomial_ideal_algorithms().dimension(self, algorithm, proof) == 0
+
+    def _standard_monomial_exponents(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> list[Any]:
+        return _polynomial_ideal_algorithms().standard_monomial_exponents(
+            self, algorithm, proof
+        )
+
+    def normal_basis(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> PolynomialSequence:
+        """Return the standard monomial basis of the quotient by this ideal."""
+        return _polynomial_ideal_algorithms().normal_basis(self, algorithm, proof)
+
+    quotient_basis = normal_basis
+
+    def quotient_coordinates(
+        self,
+        value: Any,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> Any:
+        """Return coordinates in the finite standard-monomial basis."""
+        return _polynomial_ideal_algorithms().quotient_coordinates(
+            self, value, algorithm, proof
+        )
+
+    def multiplication_matrix(
+        self,
+        variable: Any,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> Any:
+        """Return multiplication by `variable` on the finite quotient."""
+        return _polynomial_ideal_algorithms().multiplication_matrix(
+            self, variable, algorithm, proof
+        )
+
+    def fglm(
+        self,
+        order: str = "lex",
+        algorithm: str = "auto",
+        proof: Any = None,
+        other_ring: Any = None,
+    ) -> PolynomialSequence:
+        """Convert a zero-dimensional ideal to another order by exact FGLM."""
+        return _polynomial_ideal_algorithms().fglm(
+            self, order, algorithm, proof, other_ring
+        )
+
+    def transformed_basis(
+        self,
+        other_ring: Any = None,
+        algorithm: str = "fglm",
+        proof: Any = None,
+    ) -> PolynomialSequence:
+        """Return the zero-dimensional basis transformed by exact FGLM."""
+        return _polynomial_ideal_algorithms().transformed_basis(
+            self, other_ring, algorithm, proof
+        )
+
+    def variety(
+        self,
+        ring: Any = None,
+        algorithm: str = "fglm",
+        proof: Any = None,
+    ) -> list[Any]:
+        """Return all base-field points of a zero-dimensional ideal."""
+        return _polynomial_ideal_algorithms().variety(self, ring, algorithm, proof)
+
+    rational_points = variety
+
+    def vector_space_dimension(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> Any:
+        """Return the vector-space dimension of the quotient ring."""
+        return _polynomial_ideal_algorithms().vector_space_dimension(
+            self, algorithm, proof
+        )
+
+    def degree(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> int:
+        """Return the degree of a zero-dimensional ideal."""
+        dimension = self.dimension(algorithm, proof)
+        if dimension <= 0:
+            return _polynomial_ideal_algorithms().degree(self, algorithm, proof)
+        if all(generator.is_homogeneous() for generator in self._generators):
+            return _polynomial_hilbert().degree(self, algorithm, proof)
+        raise NotImplementedError(
+            "positive-dimensional degree requires a homogeneous ideal"
+        )
 
     def groebner_fan(self) -> GroebnerFan:
         """Return the Gröbner-fan computation attached to this ideal."""
         return GroebnerFan(self)
+
+    def quotient_ring(self, **options: Any) -> Any:
+        """Return the canonical quotient of the ambient ring by this ideal."""
+        return self._ring.quotient(self, **options)
 
     def _two_generator_monomial_staircase(self) -> Any:
         ring = self._ring
@@ -4894,18 +5693,38 @@ class PolynomialIdeal:
                 return [1, pure[1], mixed[1], mixed[0]]
         return runtime.undefined
 
-    def primary_decomposition(self) -> list[PolynomialIdeal]:
-        """
-        Return the primary components of a two-variable monomial staircase.
+    def radical(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> PolynomialIdeal:
+        """Return the exact radical in the supported zero-dimensional scope."""
+        return _polynomial_zero_dimensional().radical(self, algorithm, proof)
 
-        For `I=(x^a,x^b*y^c)` with `0 < b < a`, this uses the exact
-        identity `I=(x^b) intersection (x^a,y^c)`.
+    def is_radical(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> bool:
+        """Return whether a supported zero-dimensional ideal is radical."""
+        return _polynomial_zero_dimensional().is_radical(self, algorithm, proof)
+
+    def primary_decomposition(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> list[PolynomialIdeal]:
+        """Return primary components in the supported exact scope.
+
+        Zero-dimensional ideals over `QQ` and prime fields use quotient-
+        algebra splitting with exact recomposition. The historical exact
+        two-variable monomial-staircase case remains available in positive
+        dimension. Other positive-dimensional ideals are rejected.
         """
         data = self._two_generator_monomial_staircase()
         if data is runtime.undefined:
-            raise NotImplementedError(
-                "primary decomposition currently supports two-generator "
-                "monomial staircases in two variables"
+            return _polynomial_zero_dimensional().primary_decomposition(
+                self, algorithm, proof
             )
         pure_index, pure_power, shared_power, other_power = data
         other_index = 1 - pure_index
@@ -4919,13 +5738,16 @@ class PolynomialIdeal:
             ),
         ]
 
-    def associated_primes(self) -> list[PolynomialIdeal]:
-        """Return radicals of the supported monomial primary components."""
+    def associated_primes(
+        self,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> list[PolynomialIdeal]:
+        """Return the associated primes in the supported exact scope."""
         data = self._two_generator_monomial_staircase()
         if data is runtime.undefined:
-            raise NotImplementedError(
-                "associated primes currently support two-generator "
-                "monomial staircases in two variables"
+            return _polynomial_zero_dimensional().associated_primes(
+                self, algorithm, proof
             )
         pure_index = data[0]
         other_index = 1 - pure_index
@@ -4937,16 +5759,7 @@ class PolynomialIdeal:
         ]
 
     def __contains__(self, value: object) -> bool:
-        polynomial = self._ring(value)
-        basis = self.groebner_basis()
-        native_basis = []
-        for generator in basis:
-            native_basis.append(generator._native)
-        remainder = MultivariatePolynomialElement(
-            self._ring,
-            runtime.flint_backend().mpolyReduce(polynomial._native, native_basis),
-        )
-        return remainder == self._ring(0)
+        return self.normal_form(value) == self._ring(0)
 
     def __repr__(self) -> str:
         text = (
@@ -5111,231 +5924,6 @@ def ideal(*generators: Any) -> PolynomialIdeal:
     if not isinstance(first, MultivariatePolynomialElement):
         raise TypeError("the prototype ideal constructor needs polynomial generators")
     return first._parent.ideal(selected)
-
-
-@runtime.callable_instance_class
-class AffineSpaceParent(sage.Parent):
-    def __init__(
-        self,
-        dimension: int,
-        base: sage.Parent,
-        names: Any = "x",
-    ) -> None:
-        if not runtime.is_exact_integer(dimension):
-            raise TypeError("affine-space dimension must be an integer")
-        dimension = int(dimension)
-        if dimension < 0:
-            raise ValueError("affine-space dimension must be nonnegative")
-        self._dimension = dimension
-        self._base = base
-        self._coordinate_ring = PolynomialRing(base, dimension, names=names)
-
-    def dimension(self) -> int:
-        return self._dimension
-
-    def base_ring(self) -> sage.Parent:
-        return self._base
-
-    def coordinate_ring(self) -> Any:
-        return self._coordinate_ring
-
-    def gens(self) -> Any:
-        return self._coordinate_ring.gens()
-
-    def __repr__(self) -> str:
-        return (
-            "Affine Space of dimension "
-            + str(self._dimension)
-            + " over "
-            + str(self._base)
-        )
-
-    __str__ = __repr__
-    toString = __repr__
-
-
-def AffineSpace(
-    dimension: int,
-    base: sage.Parent,
-    names: Any = "x",
-) -> AffineSpaceParent:
-    """
-    Construct affine space with the requested coordinate names.
-
-    ### Example
-
-    ```sage
-    sage: A = AffineSpace(2, QQ, 'xy')
-    sage: A
-    Affine Space of dimension 2 over Rational Field
-    sage: A.gens()
-    (x, y)
-    ```
-
-    The coordinate ring is a FLINT-backed multivariate polynomial ring.
-    """
-    return AffineSpaceParent(dimension, base, names)
-
-
-@runtime.callable_instance_class
-class ClosedSubscheme:
-    def __init__(
-        self,
-        ambient: AffineSpaceParent,
-        equations: Any,
-    ) -> None:
-        self._ambient = ambient
-        ring = ambient.coordinate_ring()
-        self._equations = runtime.math_tuple([ring(equation) for equation in equations])
-
-    def ambient_space(self) -> AffineSpaceParent:
-        return self._ambient
-
-    def defining_polynomials(self) -> Any:
-        return self._equations
-
-    def irreducible_components(self) -> list[ClosedSubscheme]:
-        ring = self._ambient.coordinate_ring()
-        if (
-            len(self._equations) != 2
-            or ring.ngens() != 2
-            or ring.base_ring() is not sage.QQ
-        ):
-            raise NotImplementedError(
-                "irreducible components of general closed subschemes "
-                "require primary decomposition"
-            )
-        first = self._equations[0]
-        second = self._equations[1]
-        elimination = first.resultant(second, ring.gen(0))
-        factors = elimination.irreducible_factors()
-        ordered = []
-        for factor_value in factors:
-            insert_at = len(ordered)
-            for index in range(len(ordered)):
-                if factor_value.total_degree() < ordered[index].total_degree() or (
-                    factor_value.total_degree() == ordered[index].total_degree()
-                    and repr(factor_value) > repr(ordered[index])
-                ):
-                    insert_at = index
-                    break
-            ordered.insert(insert_at, factor_value)
-        answer = []
-        for factor_value in ordered:
-            basis = ring.ideal(first, second, factor_value).groebner_basis()
-            squarefree_basis = []
-            for polynomial in basis:
-                product = ring(1)
-                for irreducible in polynomial.irreducible_factors():
-                    product = product * irreducible
-                squarefree_basis.append(product)
-            answer.append(ClosedSubscheme(self._ambient, squarefree_basis))
-        return answer
-
-    def __repr__(self) -> str:
-        lines = ["Closed subscheme of " + str(self._ambient) + " defined by:"]
-        equations = list(self._equations)
-        if (
-            len(equations) == 2
-            and equations[0].total_degree() == 1
-            and equations[1].total_degree() == 1
-        ):
-            equations.reverse()
-        for index in range(len(equations)):
-            suffix = "," if index + 1 < len(self._equations) else ""
-            lines.append("  " + repr(equations[index]) + suffix)
-        return "\n".join(lines)
-
-    __str__ = __repr__
-    toString = __repr__
-
-
-@runtime.callable_instance_class
-class AffinePlaneCurve:
-    def __init__(self, polynomial: MultivariatePolynomialElement) -> None:
-        ring = polynomial._parent
-        if ring.ngens() != 2:
-            raise ValueError(
-                "an affine plane curve needs a polynomial in two variables"
-            )
-        self._polynomial = polynomial
-        self._ambient = AffineSpaceParent(2, ring.base_ring(), ring.variable_names())
-
-    def defining_polynomial(self) -> MultivariatePolynomialElement:
-        return self._polynomial
-
-    def ambient_space(self) -> AffineSpaceParent:
-        return self._ambient
-
-    def __add__(self, other: object) -> AffinePlaneCurve:
-        if not isinstance(other, AffinePlaneCurve):
-            raise TypeError("curves can only be added to curves")
-        if self._polynomial._parent is not other._polynomial._parent:
-            raise TypeError("curves have different ambient spaces")
-        return AffinePlaneCurve(self._polynomial * other._polynomial)
-
-    def intersection(self, other: object) -> ClosedSubscheme:
-        if not isinstance(other, AffinePlaneCurve):
-            raise TypeError("curve intersection needs another curve")
-        if self._polynomial._parent is not other._polynomial._parent:
-            raise TypeError("curves have different ambient spaces")
-        return ClosedSubscheme(
-            self._ambient,
-            [self._polynomial, other._polynomial],
-        )
-
-    def irreducible_components(self) -> list[ClosedSubscheme]:
-        factors = self._polynomial.irreducible_factors()
-        ordered = []
-        for factor_value in factors:
-            insert_at = len(ordered)
-            for index in range(len(ordered)):
-                if factor_value.total_degree() < ordered[index].total_degree() or (
-                    factor_value.total_degree() == ordered[index].total_degree()
-                    and repr(factor_value) < repr(ordered[index])
-                ):
-                    insert_at = index
-                    break
-            ordered.insert(insert_at, factor_value)
-        answer = []
-        for factor_value in ordered:
-            answer.append(ClosedSubscheme(self._ambient, [factor_value]))
-        return answer
-
-    def __repr__(self) -> str:
-        return (
-            "Affine Plane Curve over "
-            + str(self._polynomial._parent.base_ring())
-            + " defined by\n   "
-            + repr(self._polynomial)
-        )
-
-    __str__ = __repr__
-    toString = __repr__
-
-
-def Curve(polynomial: Any) -> AffinePlaneCurve:
-    """
-    Construct an affine plane curve from a multivariate polynomial.
-
-    ### Example
-
-    ```sage
-    sage: x, y = AffineSpace(2, QQ, 'xy').gens()
-    sage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))
-    sage: C.irreducible_components()
-    [Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
-      x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
-      x^3 + y^3 - 1]
-    ```
-
-    Hypersurface components use FLINT multivariate factorization. Plane-curve
-    intersections over `QQ` use a resultant followed by factorization and
-    Gröbner bases. General primary decomposition is not yet implemented.
-    """
-    if not isinstance(polynomial, MultivariatePolynomialElement):
-        raise TypeError("the current Curve constructor needs a multivariate polynomial")
-    return AffinePlaneCurve(polynomial)
 
 
 @runtime.callable_instance_class
@@ -5583,13 +6171,20 @@ def PolynomialRing(
     ):
         names = variable.names
         variable = None
+    counted = False
     if names is not None:
         if runtime.is_exact_integer(variable):
+            counted = True
             variable = _polynomial_variable_names(int(_untyped(variable)), names)
+        elif runtime.is_exact_integer(names):
+            # Sage writes the count on either side of the name, and a count
+            # given at all asks for a multivariate ring even when it is one.
+            counted = True
+            variable = _polynomial_variable_names(int(_untyped(names)), variable)
         else:
             variable = names
     variable_names = _polynomial_variable_names(runtime.undefined, variable)
-    if len(variable_names) > 1:
+    if len(variable_names) > 1 or counted:
         return _multivariate_polynomial_ring(base, variable_names, order)
     variable = variable_names[0]
     if (
@@ -5847,52 +6442,3 @@ runtime.register_doc(
         ],
     },
 )
-
-for _geometry_name, _geometry_value in [
-    ("AffineSpace", AffineSpace),
-    ("Curve", Curve),
-]:
-    runtime.register_doc(
-        _geometry_name,
-        _geometry_value,
-        {
-            "kind": "function",
-            "module": "sage.schemes",
-            "tags": [
-                "algebraic geometry",
-                "affine schemes",
-                "curves",
-                "multivariate polynomials",
-            ],
-            "backends": ["FLINT", "Sage.js algebraic geometry layer"],
-            "sage_compatibility": {
-                "status": "partial",
-                "notes": (
-                    "Affine plane curves, hypersurface components, and "
-                    "rational plane-curve intersections are supported. "
-                    "General schemes and primary decomposition remain "
-                    "outside the current implementation."
-                ),
-            },
-            "provenance": [
-                {
-                    "kind": "sage-derived",
-                    "source": "SageMath schemes and plane curves API",
-                    "url": ("https://doc.sagemath.org/html/en/reference/curves/"),
-                    "license": "GPL-2.0-or-later",
-                },
-                {
-                    "kind": "library-backed",
-                    "source": "FLINT multivariate polynomial arithmetic",
-                    "url": "https://flintlib.org/doc/",
-                },
-            ],
-            "limitations": [
-                (
-                    "General primary decomposition is not implemented, and "
-                    "complete Gröbner-fan enumeration currently covers the "
-                    "twisted-cubic determinantal ideal."
-                ),
-            ],
-        },
-    )

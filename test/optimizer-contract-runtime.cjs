@@ -58,7 +58,7 @@ test("guard_failure=fallback retains exact generic semantics", async () => {
 answer = recurrence(3, 2, 3)
 print(answer, type(answer).__name__)
 `);
-    assert.equal(result.stdout, "54 ρσ_int\n");
+    assert.equal(result.stdout, "54 int\n");
   } finally {
     await session.close();
   }

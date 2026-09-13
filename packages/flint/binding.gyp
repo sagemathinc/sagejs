@@ -17,6 +17,7 @@
         "src/elliptic_lfunction.c",
         "src/extension_field.c",
         "src/floating.c",
+        "src/intervals.c",
         "src/hyperelliptic/genus3_jacobian.c",
         "src/hyperelliptic/genus3_jacobian_addon.c",
         "src/hyperelliptic/period_quadrature.c",
@@ -24,6 +25,7 @@
         "src/hyperelliptic/smalljac.c",
         "src/matrix.c",
         "src/modsym_core.c",
+        "src/msolve_core.c",
         "src/number_field_factor.c",
         "src/number_field_zeta.c",
         "src/number_field_zeta_core.c",
@@ -32,6 +34,10 @@
         "src/multivariate.c",
         "src/p1.c",
         "src/sparse_rational.c",
+        "vendor/msolve/src/neogb/gb.c",
+        "vendor/msolve/src/fglm/fglm_core.c",
+        "vendor/msolve/src/usolve/usolve.c",
+        "vendor/msolve/src/msolve/libmsolve.c",
         "<(eclib_source)/libsrc/interface.cc",
         "<(eclib_source)/libsrc/int.cc",
         "<(eclib_source)/libsrc/unimod.cc",
@@ -133,7 +139,8 @@
           "ldflags": [
             "-Wl,--gc-sections",
             "-Wl,--exclude-libs,ALL",
-            "-Wl,--strip-all"
+            "-Wl,--strip-all",
+            "-Wl,-z,nodelete"
           ]
         }],
         ["OS=='linux' and target_arch=='arm64'", {
@@ -161,7 +168,8 @@
           "ldflags": [
             "-Wl,--gc-sections",
             "-Wl,--exclude-libs,ALL",
-            "-Wl,--strip-all"
+            "-Wl,--strip-all",
+            "-Wl,-z,nodelete"
           ]
         }],
         ["OS=='mac'", {

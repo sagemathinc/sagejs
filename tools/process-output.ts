@@ -7,8 +7,9 @@ const installedStreams = new WeakSet<object>();
  *
  * Unix pipelines routinely stop reading before a producer has finished. For
  * example, `sagejs cache prune --json | head` closes the pipe after the first
- * few lines. Node reports that condition as an `EPIPE` error event on stdout;
- * without a listener it prints an exception even though the command worked.
+ * few lines. Node reports that condition as an `EPIPE` error event on Linux
+ * and may report `ENOTCONN` on macOS; without a listener it prints an
+ * exception even though the command worked.
  *
  * Only the broken-pipe condition is handled. Other stream failures are thrown
  * so genuine output errors retain their usual nonzero failure behavior.
@@ -21,7 +22,7 @@ export function installCliOutputHandler(
   if (installedStreams.has(identity)) return;
   installedStreams.add(identity);
   stream.on("error", (error: NodeJS.ErrnoException) => {
-    if (error.code === "EPIPE") {
+    if (error.code === "EPIPE" || error.code === "ENOTCONN") {
       exit(0);
       return;
     }

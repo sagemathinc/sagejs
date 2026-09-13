@@ -14,7 +14,7 @@ mode = os.environ.get("SAGEJS_NATIVE_COWASM_MODE", "gcd")
 count = int(os.environ.get("SAGEJS_NATIVE_COWASM_COUNT", "100000"))
 
 if mode == "gcd" or mode == "large_gcd":
-    from nt import gcd
+    from cowasm_nt import gcd
 
     if mode == "large_gcd":
         gcd_left = int(
@@ -38,7 +38,7 @@ elif mode == "rfib":
     def workload():
         return rfib(count)
 elif mode == "pi":
-    from nt import pi
+    from cowasm_nt import pi
 
     def workload():
         return pi(count)

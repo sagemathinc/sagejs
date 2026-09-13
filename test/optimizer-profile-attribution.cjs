@@ -93,11 +93,15 @@ test("an ambiguous disjoint projection is reported, never guessed by span order"
     }],
     duplicateLoop: true,
   });
+  const script = new Script(base.javascript, { filename: url });
   const observation = await runAuthenticatedNodeProfile({
     map,
     javascript: base.javascript,
     samplingIntervalMicros: 100,
-    execute: () => new Script(base.javascript, { filename: url }).runInThisContext(),
+    prepare: () => undefined,
+    execute: () => script.runInThisContext(),
+    warmupRuns: 1,
+    repetitions: 3,
   });
   assert.ok(conserved(observation.positionTickAccounting));
   assert.ok(

@@ -3,27 +3,62 @@ __name__ = "sys"
 import sagejs.runtime as runtime
 
 
+_version_fields = ["major", "minor", "micro", "releaselevel", "serial"]
+version_info = runtime.named_tuple(
+    [3, 14, 4, "final", 0], "version_info", _version_fields
+)
+
+
+def _implementation_version(text):
+    """Describe the product release, independently of the Python target."""
+    parts = text.split("+", 1)[0].split("-", 1)
+    numbers = [int(part) for part in parts[0].split(".")]
+    if len(numbers) != 3 or any(part < 0 for part in numbers):
+        raise ValueError("invalid Sage.js release version: " + text)
+    level, serial = "final", 0
+    if len(parts) == 2:
+        prerelease = parts[1].split(".")
+        levels = {"alpha": "alpha", "beta": "beta", "rc": "candidate"}
+        if prerelease[0] not in levels or len(prerelease) > 2:
+            raise ValueError("unsupported Sage.js prerelease version: " + text)
+        level = levels[prerelease[0]]
+        serial = int(prerelease[1]) if len(prerelease) == 2 else 0
+        if serial < 0:
+            raise ValueError("invalid Sage.js prerelease serial: " + text)
+    return runtime.named_tuple(
+        numbers + [level, serial], "version_info", _version_fields
+    )
+
+
+_product_metadata = runtime.reflect.get(
+    runtime.global_object, "__sagejs_version_info__"
+)
+if _product_metadata is runtime.undefined:
+    raise RuntimeError("the Sage.js host did not install version metadata")
+_product_version = runtime.reflect.get(_product_metadata, "version")
+if not isinstance(_product_version, str):
+    raise RuntimeError("the Sage.js host installed invalid version metadata")
+
+
 class _Implementation:
     def __init__(self):
-        self.name = "cpython"
-        self.version = (3, 14, 4)
+        self.name = "sagejs"
+        self.version = _implementation_version(_product_version)
         # There is no CPython bytecode ABI.  A distinct stable tag keeps
         # package tooling from confusing Sage.js caches with CPython pycs.
         self.cache_tag = "sagejs-314"
 
     def __repr__(self):
-        return "namespace(name='cpython', version=" + repr(self.version) + ")"
+        return (
+            "namespace(name='sagejs', version="
+            + repr(self.version)
+            + ", cache_tag='sagejs-314')"
+        )
 
     __str__ = __repr__
 
 
 implementation = _Implementation()
-
-version_info = runtime.named_tuple(
-    [3, 14, 4, "final", 0],
-    "version_info",
-    ["major", "minor", "micro", "releaselevel", "serial"],
-)
 
 # Values follow CPython on the 64-bit platforms supported by Sage.js.  The
 # named tuple shape matters to numeric packages that reproduce Python's hash
@@ -163,10 +198,11 @@ byteorder = "little"
 maxsize = int("9223372036854775807")
 maxunicode = 0x10FFFF
 
-# CPython exposes a descriptive implementation version here.  Code should
-# generally use ``sys.version_info`` for feature checks, but ``version`` is a
-# standard public attribute and must at least be a string.
-version = "Sage.js"
+# The leading version is the language target, not the embedded Node version
+# or product version. Packages should use `version_info` for feature checks.
+version = ".".join(str(part) for part in version_info[:3]) + (
+    " (Sage.js " + _product_version + "; Python-to-JavaScript runtime)"
+)
 executable = process.execPath
 modules = runtime.live_scope_dict(runtime.modules)
 meta_path = []

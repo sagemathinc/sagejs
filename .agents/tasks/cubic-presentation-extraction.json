@@ -1,0 +1,117 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-presentation-extraction",
+  "title": "Cubic Presentation Extraction",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Extract borrowed cubic relation and analytic certification helpers while preserving lazy exact-sized one-shot allocation and distinguishing mathematical insufficiency from invalid evidence",
+  "base_commit": "813e77a1d108a7da5f37a05726f3b8a514f6e3a6",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+    "test/number-field-cubic-presentation.cjs",
+    "test/fixtures/cubic-presentation.py",
+    "docs/cubic-presentation-extraction-audit.md",
+    "test/number-field-cubic-analytic-suffix.cjs",
+    "test/fixtures/cubic-analytic-suffix.py",
+    "docs/cubic-analytic-suffix-extraction-audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "docs/cubic-presentation-extraction-audit.md",
+    "docs/cubic-staged-exact-closure-design.md",
+    "docs/cubic-analytic-suffix-extraction-audit.md"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "GMP-fmpz",
+      "FLINT-HNF-SNF"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node --test test/number-field-cubic-analytic-suffix.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node --test test/number-field-cubic-presentation.cjs test/number-field-cubic-staged-certification.cjs test/fmpz-matrix-logical-prefix.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.484,
+      "started_at": "2026-09-05T06:44:43.671Z",
+      "commit": "813e77a1d108a7da5f37a05726f3b8a514f6e3a6",
+      "workspace_fingerprint": "935dd02e0e78a020e42280cc4f01b1d86e0a26157bd4021188b153e095791073",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.798,
+      "started_at": "2026-09-05T06:44:55.510Z",
+      "commit": "813e77a1d108a7da5f37a05726f3b8a514f6e3a6",
+      "workspace_fingerprint": "935dd02e0e78a020e42280cc4f01b1d86e0a26157bd4021188b153e095791073",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.756,
+      "started_at": "2026-09-05T06:45:36.627Z",
+      "commit": "813e77a1d108a7da5f37a05726f3b8a514f6e3a6",
+      "workspace_fingerprint": "935dd02e0e78a020e42280cc4f01b1d86e0a26157bd4021188b153e095791073",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.674,
+      "started_at": "2026-09-05T06:47:15.500Z",
+      "commit": "813e77a1d108a7da5f37a05726f3b8a514f6e3a6",
+      "workspace_fingerprint": "935dd02e0e78a020e42280cc4f01b1d86e0a26157bd4021188b153e095791073",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.841,
+      "started_at": "2026-09-05T14:54:04.203Z",
+      "commit": "2554512323aa6f107e91f82567a9f408685ef9fd",
+      "workspace_fingerprint": "9c83696eaa93c7d1780000ee83d01f3b3cd9afdb88d521c67449bf6f6507b5a2",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Analytic follow-up to presentation commit 25545123: four undecorated source-transparent helpers extract rigorous index intervals, index classification, existing bounded 2/3/5 unit saturation and final publication. Initial/refined BF owner allocation barriers remain unchanged. Final contradictory intervals and publication failures are fatal phase 44; valid insufficiency retains phase 8. Accepted marker is written after all detached scalar fields, with actual late packed-buffer overflow regressions. CPython 48 rational interval cases, 11 classifier cases, 10 root-orchestration cases and 3 late-output faults pass. Real Arb saturation and exact power/divisor comparisons, transcript layouts/capacities and integer intervals agree in JavaScript/GMP/fmpz. Strict checks on 247 modules pass. Source closure has 93 functions; compiler currently exports the pure scalar classifier automatically (23 host entries), which integration will correct to 21 using generic dependency-only export policy.",
+    "risks": [
+      "The current compiler automatically exports undecorated scalar dependencies. No fake owner argument or lexical decorator was added. Integration owns generic export-policy correction, combined closure pins and expected 21 host entries.",
+      "Production rebuild, opt/holdouts, full public field replay, broad native suite and non-Linux qualification remain integration-owned and were not run here.",
+      "The focused arithmetic build uses the existing shared FLINT prefix via SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix; this worktree lacks its own prefix.",
+      "Saturation fixture supplies a modeled residue for alpha^3-alpha-1 rather than evaluating BF. It verifies real exact unit-root/Arb/classifier arithmetic, not a new class-number proof or performance result.",
+      "Shared package source-budget and optimizer provenance need coordinated refresh; no shared budget or compiler files are changed in this lane.",
+      "Historical presentation receipts remain in the manifest; follow-up analytic receipts identify current workspace separately. Task stays active/PR draft pending combined integration gates."
+    ],
+    "next_steps": [
+      "Integrate analytic source/tests/docs as the next commit after the already integrated presentation slice.",
+      "Apply dependency-only export policy and adjust closure tests from current 93 functions / 23 host entries to the combined private-helper closure; retain the existing public mathematical root.",
+      "Run one combined production build with presentation/recovery/compact/BF/materialization/staged changes, refresh budgets/provenance, and qualify public receipts/replay."
+    ]
+  }
+}

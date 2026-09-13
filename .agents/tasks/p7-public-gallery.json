@@ -1,0 +1,125 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p7-public-gallery",
+  "title": "P7 Public Gallery",
+  "lane": "documentation-compat",
+  "status": "active",
+  "owner": "user",
+  "objective": "Publish the complete P7 cross-domain numerical gallery, make all Open in Sage.js snippets executable in a fresh cell, and enforce render/time budgets",
+  "base_commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+  "claims": [
+    "website/numerical-computing/",
+    "website/README.md",
+    "docs/numerical-computing/gallery/",
+    "test/numerics/gallery/",
+    "bench/numerical-gallery/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Fresh-cell Sage.js execution of every public gallery snippet",
+      "Chromium rendering of every Plotly figure under bounded payload and time budgets"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm docs:check",
+    "pnpm test:tutorial",
+    "node --test test/numerics/gallery/root-gallery.test.cjs test/numerics/gallery/fresh-sage-examples.test.cjs test/numerics/gallery/cross-domain-gallery.test.cjs",
+    "node bench/numerical-gallery/measure.cjs",
+    "node --test test/website.cjs",
+    "pnpm merge:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 686.652,
+      "started_at": "2026-09-02T20:43:42.151Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "124319984f5ffa9ed6535b9f3037004b58eec2ca5eb35f07f542a25a918fd63c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:tutorial",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 622.686,
+      "started_at": "2026-09-02T20:55:12.443Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "124319984f5ffa9ed6535b9f3037004b58eec2ca5eb35f07f542a25a918fd63c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 567.445,
+      "started_at": "2026-09-02T21:10:18.119Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "aef93ca0ee6ae66bc5f9e66266c2b3ae6973f938053cccebf9835bde55ba25b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/gallery/root-gallery.test.cjs test/numerics/gallery/fresh-sage-examples.test.cjs test/numerics/gallery/cross-domain-gallery.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 29.316,
+      "started_at": "2026-09-02T21:19:50.831Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "aef93ca0ee6ae66bc5f9e66266c2b3ae6973f938053cccebf9835bde55ba25b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/numerical-gallery/measure.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.569,
+      "started_at": "2026-09-02T21:20:23.946Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "aef93ca0ee6ae66bc5f9e66266c2b3ae6973f938053cccebf9835bde55ba25b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/website.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.134,
+      "started_at": "2026-09-02T21:20:32.928Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "aef93ca0ee6ae66bc5f9e66266c2b3ae6973f938053cccebf9835bde55ba25b8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.53,
+      "started_at": "2026-09-02T21:20:37.622Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "aef93ca0ee6ae66bc5f9e66266c2b3ae6973f938053cccebf9835bde55ba25b8",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Publishes all nine checked cross-domain numerical stories as one accessible static gallery; pins and vendors Plotly locally; inventories payloads and capabilities in a generated manifest; adds exact source-only Open in Sage.js links; qualifies every source independently in CPython and Sage.js; and enforces generation, export, hydration, single-render, trace, animation, and deployment payload ceilings.",
+    "risks": [
+      "The public gallery adds a pinned 4.85 MB Plotly distribution and 1.82 MB evidence bundle; its generated deployment receipt measures the interactive runtime below the explicit 10 MB ceiling.",
+      "The branch-base guided tutorial has seven unrelated failures in tour_algebra and tour_rings; pnpm test:tutorial reproduced them without any changed compiler, algebra, or ring source in this lane."
+    ],
+    "next_steps": [
+      "Cherry-pick the reviewed lane commit onto the numerical product branch and smoke-test one generated Open in Sage.js link after the public site and app are deployed together."
+    ]
+  }
+}

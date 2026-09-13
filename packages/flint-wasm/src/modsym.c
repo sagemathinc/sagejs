@@ -295,6 +295,32 @@ int sagejs_p1_hecke_matrix(uint32_t handle, uint32_t prime)
 }
 
 __attribute__((visibility("default")))
+int sagejs_p1_degeneracy_matrix(
+    uint32_t source_handle,
+    uint32_t target_handle,
+    uint32_t index)
+{
+    sagejs_wasm_p1_slot *source = p1_slot(source_handle);
+    sagejs_wasm_p1_slot *target = p1_slot(target_handle);
+    sagejs_modsym_presentation_view source_view;
+    sagejs_modsym_presentation_view target_view;
+    size_t source_dimension = 0;
+    size_t target_dimension = 0;
+    slong *entries;
+
+    clear_matrix_result();
+    if (!p1_ensure_presentation(source) ||
+        !p1_ensure_presentation(target) || index == 0)
+        return 0;
+    source_view = p1_view(source);
+    target_view = p1_view(target);
+    entries = sagejs_modsym_weight2_degeneracy_matrix(
+        &source_view, &target_view, (ulong) index,
+        &source_dimension, &target_dimension);
+    return install_matrix(entries, target_dimension, source_dimension);
+}
+
+__attribute__((visibility("default")))
 int sagejs_p1_boundary_data(uint32_t handle)
 {
     sagejs_wasm_p1_slot *slot = p1_slot(handle);

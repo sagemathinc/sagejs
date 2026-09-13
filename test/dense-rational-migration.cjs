@@ -170,7 +170,7 @@ display = matrix(QQ, 2, 3, [QQ(1)/2, -7, 0, QQ(11)/13, -QQ(2)/3, QQ(5)/17])
 assert display.str() == '[  1/2    -7     0]\n[11/13  -2/3  5/17]'
 display.subdivide(1, 1)
 assert display.str() == (
-    '[  1/2|   -7     0]\n[-----------------]\n[11/13| -2/3  5/17]'
+    '[  1/2|   -7     0]\n[-----+-----------]\n[11/13| -2/3  5/17]'
 )
 assert (A + B) - B == A
 assert -(-A) == A

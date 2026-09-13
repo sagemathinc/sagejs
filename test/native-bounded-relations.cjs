@@ -16,6 +16,7 @@ const test = require("node:test");
 const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
@@ -32,7 +33,7 @@ function runNode(modulePath, source) {
 }
 
 test("portable bounded maps and sets match deterministic capacity semantics", () => {
-  const result = spawnSync("python3", ["-c", String.raw`
+  const result = spawnSync(pythonExecutable(), ["-c", String.raw`
 import importlib.util, sys, types
 package = types.ModuleType("sagejs")
 package.__path__ = []
@@ -89,12 +90,13 @@ except MemoryError as error:
 else:
     raise AssertionError("undersized shared budget unexpectedly passed")
 `], { cwd: root, encoding: "utf8", timeout: 120_000 });
+  if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 
 test("bounded relation IR records hash, probing, ownership, and effects", async () => {
   const ir = await lowerSource(readFileSync(sourcePath, "utf8"), sourcePath);
-  assert.equal(ir.version, 36);
+  assert.equal(ir.version, 39);
   const fn = ir.functions.find((candidate) =>
     candidate.name === "bounded_relation_summary"
   );

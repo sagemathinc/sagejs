@@ -1,0 +1,1953 @@
+{
+  "backend": "sagejs-ordinary-python",
+  "cases": [
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 0.0,
+        "distance_passed": true,
+        "method": true,
+        "objective": 0.0,
+        "objective_passed": true,
+        "objective_present": true,
+        "success": true,
+        "validation": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        1.205860055051744,
+        0.8985799504444003,
+        0.8378101047128439,
+        0.8010800229385495,
+        0.8463200647383928
+      ],
+      "evaluations": 11,
+      "id": "scalar-quadratic-interior",
+      "iterations": 6,
+      "median_ms": 0.8463200647383928,
+      "method": "bounded-brent",
+      "objective": 0.0,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "bound_feasibility",
+            "lower": -1.0,
+            "passed": true,
+            "upper": 5.0
+          },
+          {
+            "finite_difference_derivative": -2.2204478561861154e-16,
+            "kind": "projected_stationarity",
+            "passed": true,
+            "threshold": 1e-06,
+            "value": 2.2204478561861154e-16
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "passed": true
+          },
+          {
+            "kind": "finite_objective",
+            "passed": true
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 2.2204478561861154e-16,
+        "truth_level": "validated_approximate"
+      },
+      "value": 2.0
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 0.0,
+        "distance_passed": true,
+        "method": true,
+        "success": true,
+        "validation": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        1.5061000594869256,
+        1.4559900155290961,
+        1.4825599500909448,
+        1.4319600304588675,
+        1.4534390065819025
+      ],
+      "evaluations": 55,
+      "id": "scalar-linear-boundary",
+      "iterations": 51,
+      "median_ms": 1.4559900155290961,
+      "method": "bounded-brent",
+      "objective": 0.0,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "bound_feasibility",
+            "lower": 0.0,
+            "passed": true,
+            "upper": 3.0
+          },
+          {
+            "finite_difference_derivative": 1.0,
+            "kind": "projected_stationarity",
+            "passed": true,
+            "threshold": 1e-06,
+            "value": 0.0
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "passed": true
+          },
+          {
+            "kind": "finite_objective",
+            "passed": true
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 0.0,
+        "truth_level": "validated_approximate"
+      },
+      "value": 0.0
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 0.0,
+        "distance_passed": true,
+        "method": true,
+        "objective": 0.0,
+        "objective_passed": true,
+        "objective_present": true,
+        "success": true,
+        "validation": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        0.8348999544978142,
+        0.817430904135108,
+        0.8312199497595429,
+        0.8393899770453572,
+        0.8333000587299466
+      ],
+      "evaluations": 11,
+      "id": "scalar-tiny-interval",
+      "iterations": 6,
+      "median_ms": 0.8333000587299466,
+      "method": "bounded-brent",
+      "objective": 0.0,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "bound_feasibility",
+            "lower": 0.0,
+            "passed": true,
+            "upper": 1e-12
+          },
+          {
+            "finite_difference_derivative": 4.5917748078995606e-29,
+            "kind": "projected_stationarity",
+            "passed": true,
+            "threshold": 1e-06,
+            "value": 4.5917748078995606e-29
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "passed": true
+          },
+          {
+            "kind": "finite_objective",
+            "passed": true
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 4.5917748078995606e-29,
+        "truth_level": "validated_approximate"
+      },
+      "value": 5e-13
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "method": true,
+        "status": true,
+        "success": true
+      },
+      "durations_ms": [
+        0.21345994900912046,
+        0.20016997586935759,
+        0.19295001402497292,
+        0.21746999118477106,
+        0.18954998813569546
+      ],
+      "evaluations": 1,
+      "id": "scalar-nonfinite",
+      "iterations": 0,
+      "median_ms": 0.20016997586935759,
+      "method": "bounded-brent",
+      "objective": null,
+      "status": "nonfinite_evaluation",
+      "success": false,
+      "validation": {
+        "checks": [
+          {
+            "kind": "candidate_available",
+            "passed": false
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": false,
+        "residual": null,
+        "truth_level": "indeterminate"
+      },
+      "value": null
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 2.7714164296810395e-10,
+        "distance_passed": true,
+        "method": true,
+        "objective": 2.0109594086829624e-20,
+        "objective_passed": true,
+        "objective_present": true,
+        "success": true,
+        "validation": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        5.2895600674673915,
+        5.135280080139637,
+        5.075868917629123,
+        5.0581099931150675,
+        5.103209055960178
+      ],
+      "evaluations": 311,
+      "id": "nelder-mead-rosenbrock-2",
+      "iterations": 157,
+      "median_ms": 5.103209055960178,
+      "method": "nelder-mead",
+      "objective": 2.0109594086829624e-20,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "box_feasibility",
+            "passed": true
+          },
+          {
+            "gradient": [
+              -1.2381416285752362e-09,
+              4.79261077004911e-10
+            ],
+            "kind": "projected_gradient_kkt",
+            "passed": true,
+            "threshold": 2e-06,
+            "value": 1.23814170027714e-09
+          },
+          {
+            "kind": "coordinate_local_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "passed": true,
+            "threshold": 1e-09
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "movable_probe_count": 4,
+            "passed": true
+          },
+          {
+            "kind": "finite_objective",
+            "passed": true
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 1.23814170027714e-09,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        0.999999999860231,
+        0.9999999997228584
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 1.0943986067550452e-10,
+        "distance_passed": true,
+        "method": true,
+        "objective": 2.0727378910876513e-10,
+        "objective_passed": true,
+        "objective_present": true,
+        "success": true,
+        "validation": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        3.6323999520391226,
+        3.613980021327734,
+        3.6163500044494867,
+        3.6925700260326266,
+        3.5767100052908063
+      ],
+      "evaluations": 177,
+      "id": "nelder-mead-nonsmooth",
+      "iterations": 85,
+      "median_ms": 3.6163500044494867,
+      "method": "nelder-mead",
+      "objective": 2.0727378910876513e-10,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "box_feasibility",
+            "passed": true
+          },
+          {
+            "gradient": [
+              -9.350314653655545e-07,
+              1.0459532284364432e-06
+            ],
+            "kind": "projected_gradient_kkt",
+            "passed": true,
+            "threshold": 2e-06,
+            "value": 1.0459532284364432e-06
+          },
+          {
+            "kind": "coordinate_local_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "passed": true,
+            "threshold": 1e-09
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "movable_probe_count": 4,
+            "passed": true
+          },
+          {
+            "kind": "finite_objective",
+            "passed": true
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 1.0459532284364432e-06,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        -9.783392843326063e-11,
+        1.0943986067550452e-10
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 9.760670161007567e-09,
+        "distance_passed": true,
+        "method": true,
+        "objective": 2.7456413266280525e-17,
+        "objective_passed": true,
+        "objective_present": true,
+        "success": true,
+        "validation": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        2.3154300870373845,
+        2.275689970701933,
+        2.282629953697324,
+        2.249320037662983,
+        2.2769890492781997
+      ],
+      "evaluations": 102,
+      "id": "bfgs-rosenbrock-2",
+      "iterations": 34,
+      "median_ms": 2.2769890492781997,
+      "method": "bfgs",
+      "objective": 2.7456413266280525e-17,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "box_feasibility",
+            "passed": true
+          },
+          {
+            "gradient": [
+              7.7018226155486e-08,
+              -4.3281256356086005e-08
+            ],
+            "kind": "projected_gradient_kkt",
+            "passed": true,
+            "threshold": 2e-06,
+            "value": 7.701822613004339e-08
+          },
+          {
+            "kind": "coordinate_local_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "passed": true,
+            "threshold": 1e-09
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "movable_probe_count": 4,
+            "passed": true
+          },
+          {
+            "kind": "finite_objective",
+            "passed": true
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 7.701822613004339e-08,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        0.9999999952278681,
+        0.9999999902393298
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 3.916237445444892e-09,
+        "distance_passed": true,
+        "method": true,
+        "objective": 2.363899765999504e-16,
+        "objective_passed": true,
+        "objective_present": true,
+        "success": true,
+        "validation": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        27.891178033314645,
+        27.819468057714403,
+        27.776728034950793,
+        27.980957995168865,
+        28.029898065142334
+      ],
+      "evaluations": 617,
+      "id": "bfgs-rosenbrock-20",
+      "iterations": 148,
+      "median_ms": 27.891178033314645,
+      "method": "bfgs",
+      "objective": 2.363899765999504e-16,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "box_feasibility",
+            "passed": true
+          },
+          {
+            "gradient": [
+              1.4467937946220705e-07,
+              -2.7298143209786296e-07,
+              2.966056371173417e-07,
+              -2.188254882342274e-07,
+              8.030568951997071e-08,
+              6.904736513422604e-08,
+              -1.2401937191097723e-07,
+              1.2513707599353433e-07,
+              -8.698559012670914e-08,
+              -6.0470479836446e-08,
+              1.0773441342278496e-07,
+              -3.0662727648853955e-07,
+              1.3764804344488604e-07,
+              -1.3291988124516005e-07,
+              -1.585977320491446e-07,
+              2.234780596965802e-07,
+              -2.8124653715655423e-07,
+              2.2648961307593826e-07,
+              -1.1653348139008719e-07,
+              2.7151403347279907e-08
+            ],
+            "kind": "projected_gradient_kkt",
+            "passed": true,
+            "threshold": 2e-06,
+            "value": 3.06627276458471e-07
+          },
+          {
+            "kind": "coordinate_local_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "passed": true,
+            "threshold": 1e-09
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "movable_probe_count": 40,
+            "passed": true
+          },
+          {
+            "kind": "finite_objective",
+            "passed": true
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 3.06627276458471e-07,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        1.0000000001010005,
+        0.9999999998408078,
+        1.0000000001826765,
+        0.9999999998752827,
+        1.0000000000519702,
+        1.0000000000541387,
+        0.9999999999110288,
+        1.0000000000330371,
+        0.9999999998588864,
+        0.9999999998309373,
+        0.999999999868788,
+        0.9999999995710407,
+        0.9999999998232371,
+        0.999999999642048,
+        0.9999999996123929,
+        0.9999999997834906,
+        0.9999999992865558,
+        0.9999999991324481,
+        0.9999999979740027,
+        0.9999999960837626
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 0.0,
+        "distance_passed": true,
+        "method": true,
+        "objective": 5.0,
+        "objective_passed": true,
+        "objective_present": true,
+        "success": true,
+        "validation": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        0.5747799295932055,
+        0.5359400529414415,
+        0.49334007780998945,
+        0.5142600275576115,
+        0.4951299633830786
+      ],
+      "evaluations": 11,
+      "id": "projected-bfgs-active-box",
+      "iterations": 1,
+      "median_ms": 0.5142600275576115,
+      "method": "projected-bfgs",
+      "objective": 5.0,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "box_feasibility",
+            "passed": true
+          },
+          {
+            "gradient": [
+              -4.0,
+              2.0
+            ],
+            "kind": "projected_gradient_kkt",
+            "passed": true,
+            "threshold": 2e-06,
+            "value": 0.0
+          },
+          {
+            "kind": "coordinate_local_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "passed": true,
+            "threshold": 1e-09
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "movable_probe_count": 2,
+            "passed": true
+          },
+          {
+            "kind": "finite_objective",
+            "passed": true
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 0.0,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 0.0,
+        "distance_passed": true,
+        "method": true,
+        "objective": 4.0,
+        "objective_passed": true,
+        "objective_present": true,
+        "success": true,
+        "validation": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        0.8575399406254292,
+        0.8365999674424529,
+        0.8364799432456493,
+        0.821879948489368,
+        0.8010400924831629
+      ],
+      "evaluations": 18,
+      "id": "projected-bfgs-fixed-coordinate",
+      "iterations": 3,
+      "median_ms": 0.8364799432456493,
+      "method": "projected-bfgs",
+      "objective": 4.0,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "box_feasibility",
+            "passed": true
+          },
+          {
+            "gradient": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "kind": "projected_gradient_kkt",
+            "passed": true,
+            "threshold": 2e-06,
+            "value": 0.0
+          },
+          {
+            "kind": "coordinate_local_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "passed": true,
+            "threshold": 1e-09
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "movable_probe_count": 3,
+            "passed": true
+          },
+          {
+            "kind": "finite_objective",
+            "passed": true
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 0.0,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        1.0,
+        2.0,
+        -1.0
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "diagnostics": true,
+        "method": true,
+        "status": true,
+        "success": true
+      },
+      "durations_ms": [
+        0.41896000038832426,
+        0.3910800442099571,
+        0.43712009210139513,
+        0.38897001650184393,
+        0.4129300359636545
+      ],
+      "evaluations": 9,
+      "id": "bfgs-false-gradient-validation",
+      "iterations": 1,
+      "median_ms": 0.4129300359636545,
+      "method": "bfgs",
+      "objective": 4.0,
+      "status": "converged",
+      "success": false,
+      "validation": {
+        "checks": [
+          {
+            "kind": "box_feasibility",
+            "passed": true
+          },
+          {
+            "gradient": [
+              -4.0
+            ],
+            "kind": "projected_gradient_kkt",
+            "passed": false,
+            "threshold": 2e-06,
+            "value": 4.0
+          },
+          {
+            "kind": "coordinate_local_minimum",
+            "maximum_relative_sampled_decrease": 6.05544528520241e-06,
+            "passed": false,
+            "threshold": 1e-09
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "movable_probe_count": 2,
+            "passed": true
+          },
+          {
+            "kind": "finite_objective",
+            "passed": true
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": false,
+        "residual": 4.0,
+        "truth_level": "indeterminate"
+      },
+      "value": [
+        0.0
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "diagnostics": true,
+        "method": true,
+        "status": true,
+        "success": true
+      },
+      "durations_ms": [
+        0.394799979403615,
+        0.3890199586749077,
+        0.4237699322402477,
+        0.385299907065928,
+        0.42205897625535727
+      ],
+      "evaluations": 9,
+      "id": "bfgs-shallow-false-gradient-validation",
+      "iterations": 1,
+      "median_ms": 0.394799979403615,
+      "method": "bfgs",
+      "objective": 0.0,
+      "status": "converged",
+      "success": false,
+      "validation": {
+        "checks": [
+          {
+            "kind": "box_feasibility",
+            "passed": true
+          },
+          {
+            "gradient": [
+              0.0001
+            ],
+            "kind": "projected_gradient_kkt",
+            "passed": false,
+            "threshold": 2e-06,
+            "value": 0.0001
+          },
+          {
+            "kind": "coordinate_local_minimum",
+            "maximum_relative_sampled_decrease": 1.0,
+            "passed": false,
+            "threshold": 1e-09
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "movable_probe_count": 2,
+            "passed": true
+          },
+          {
+            "kind": "finite_objective",
+            "passed": true
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": false,
+        "residual": 0.0001,
+        "truth_level": "indeterminate"
+      },
+      "value": [
+        0.0
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "diagnostics": true,
+        "method": true,
+        "status": true,
+        "success": true
+      },
+      "durations_ms": [
+        0.39658008608967066,
+        0.3870599903166294,
+        0.41098904330283403,
+        0.3850290086120367,
+        0.4092090530321002
+      ],
+      "evaluations": 9,
+      "id": "bfgs-unresolved-variable-scale",
+      "iterations": 1,
+      "median_ms": 0.39658008608967066,
+      "method": "bfgs",
+      "objective": 1.0,
+      "status": "converged",
+      "success": false,
+      "validation": {
+        "checks": [
+          {
+            "kind": "box_feasibility",
+            "passed": true
+          },
+          {
+            "gradient": [
+              0.0
+            ],
+            "kind": "projected_gradient_kkt",
+            "passed": true,
+            "threshold": 2e-06,
+            "value": 0.0
+          },
+          {
+            "kind": "coordinate_local_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "passed": true,
+            "threshold": 1e-09
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "movable_probe_count": 2,
+            "passed": false
+          },
+          {
+            "kind": "finite_objective",
+            "passed": true
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": false,
+        "residual": 0.0,
+        "truth_level": "indeterminate"
+      },
+      "value": [
+        0.0
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "exception": "ValueError"
+      },
+      "durations_ms": [
+        0.015530036762356758,
+        0.00712997280061245,
+        0.0046798959374427795,
+        0.00858004204928875,
+        0.0038499711081385612
+      ],
+      "id": "bounded-bfgs-envelope",
+      "median_ms": 0.00712997280061245
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 0.0,
+        "distance_passed": true,
+        "method": true,
+        "success": true,
+        "validation": true,
+        "validation_residual": 2.220446049250313e-16,
+        "validation_residual_passed": true,
+        "validation_residual_present": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        1.1201599845662713,
+        1.0424499632790685,
+        1.0000000474974513,
+        1.003560028038919,
+        0.9931500535458326
+      ],
+      "evaluations": 22,
+      "id": "system-circle-line",
+      "iterations": 4,
+      "median_ms": 1.003560028038919,
+      "method": "damped-newton",
+      "objective": null,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "independent_residual",
+            "passed": true,
+            "threshold": 1e-09,
+            "value": 2.220446049250313e-16
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 2.220446049250313e-16,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        0.7071067811865476,
+        0.7071067811865476
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 4.765188243993634e-12,
+        "distance_passed": true,
+        "method": true,
+        "objective": 9.628469347052581e-23,
+        "objective_passed": true,
+        "objective_present": true,
+        "success": true,
+        "validation": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        2.0345200318843126,
+        1.9110299181193113,
+        1.9005700014531612,
+        1.878430019132793,
+        1.8714891048148274
+      ],
+      "evaluations": 38,
+      "id": "least-squares-linear-30",
+      "iterations": 4,
+      "median_ms": 1.9005700014531612,
+      "method": "damped-gauss-newton",
+      "objective": 9.628469347052581e-23,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "independent_least_squares_stationarity",
+            "normalization_scale": 2.899999999998665,
+            "passed": true,
+            "scale_resolved": true,
+            "threshold": 2e-06,
+            "value": 4.05685460123122e-12
+          },
+          {
+            "kind": "coordinate_second_order_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "minimum_sampled_curvature": 109225460.56343642,
+            "passed": true,
+            "relative_value_tolerance": 2.842170943040401e-14
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "passed": true
+          },
+          {
+            "kind": "residual_norm",
+            "passed": true,
+            "value": 1.3876937232006622e-11
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 4.05685460123122e-12,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        2.4999999999971783,
+        -0.7499999999952348
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 6.173399627051879e-07,
+        "distance_passed": true,
+        "method": true,
+        "objective": 4.7562776535237094e-14,
+        "objective_passed": true,
+        "objective_present": true,
+        "success": true,
+        "validation": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        2.4039800046011806,
+        2.36157001927495,
+        2.371950075030327,
+        2.3308999370783567,
+        2.3371789138764143
+      ],
+      "evaluations": 109,
+      "id": "least-squares-rosenbrock",
+      "iterations": 17,
+      "median_ms": 2.36157001927495,
+      "method": "damped-gauss-newton",
+      "objective": 4.7562776535237094e-14,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "independent_least_squares_stationarity",
+            "normalization_scale": 19.999993851246625,
+            "passed": true,
+            "scale_resolved": true,
+            "threshold": 2e-06,
+            "value": 6.16380464857601e-10
+          },
+          {
+            "kind": "coordinate_second_order_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "minimum_sampled_curvature": 67106153.21384097,
+            "passed": true,
+            "relative_value_tolerance": 2.842170943040401e-14
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "passed": true
+          },
+          {
+            "kind": "residual_norm",
+            "passed": true,
+            "value": 3.0842430687362206e-07
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 6.16380464857601e-10,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        0.9999996925627316,
+        0.9999993826600373
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "method": true,
+        "objective": 1.1622130695090578e-21,
+        "objective_passed": true,
+        "objective_present": true,
+        "success": true,
+        "validation": true,
+        "validation_residual": 2.6951496590015545e-11,
+        "validation_residual_passed": true,
+        "validation_residual_present": true
+      },
+      "durations_ms": [
+        1.0704289888963103,
+        1.0542789241299033,
+        1.0648199822753668,
+        1.0608199518173933,
+        1.0598200606182218
+      ],
+      "evaluations": 33,
+      "id": "least-squares-rank-deficient",
+      "iterations": 3,
+      "median_ms": 1.0608199518173933,
+      "method": "damped-gauss-newton",
+      "objective": 1.1622130695090578e-21,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "independent_least_squares_stationarity",
+            "normalization_scale": 2.0000000000021223,
+            "passed": true,
+            "scale_resolved": true,
+            "threshold": 2e-06,
+            "value": 2.6951496590015545e-11
+          },
+          {
+            "kind": "coordinate_second_order_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "minimum_sampled_curvature": 83886050.36667655,
+            "passed": true,
+            "relative_value_tolerance": 2.842170943040401e-14
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "passed": true
+          },
+          {
+            "kind": "residual_norm",
+            "passed": true,
+            "value": 4.821230277655399e-11
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 2.6951496590015545e-11,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        0.9999999999892378,
+        0.999999999989201
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "diagnostics": true,
+        "method": true,
+        "status": true,
+        "success": true
+      },
+      "durations_ms": [
+        0.4566300194710493,
+        0.47601002734154463,
+        0.44380000326782465,
+        0.44247996993362904,
+        0.47164002899080515
+      ],
+      "evaluations": 10,
+      "id": "least-squares-stationary-maximum",
+      "iterations": 0,
+      "median_ms": 0.4566300194710493,
+      "method": "damped-gauss-newton",
+      "objective": 0.5,
+      "status": "converged",
+      "success": false,
+      "validation": {
+        "checks": [
+          {
+            "kind": "independent_least_squares_stationarity",
+            "normalization_scale": 1.0,
+            "passed": true,
+            "scale_resolved": true,
+            "threshold": 2e-06,
+            "value": 0.0
+          },
+          {
+            "kind": "coordinate_second_order_minimum",
+            "maximum_relative_sampled_decrease": 2.9802322165650708e-08,
+            "minimum_sampled_curvature": -1.9999999850988388,
+            "passed": false,
+            "relative_value_tolerance": 2.842170943040401e-14
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "passed": true
+          },
+          {
+            "kind": "residual_norm",
+            "passed": true,
+            "value": 1.0
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": false,
+        "residual": 0.0,
+        "truth_level": "indeterminate"
+      },
+      "value": [
+        0.0
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "diagnostics": true,
+        "method": true,
+        "success": true,
+        "validation": true,
+        "validation_residual": 6.870268380416923e-12,
+        "validation_residual_passed": true,
+        "validation_residual_present": true
+      },
+      "durations_ms": [
+        1.109059900045395,
+        1.071479986421764,
+        1.0559099027886987,
+        1.050779945217073,
+        1.0488200932741165
+      ],
+      "evaluations": 33,
+      "id": "least-squares-ill-conditioned",
+      "iterations": 3,
+      "median_ms": 1.0559099027886987,
+      "method": "damped-gauss-newton",
+      "objective": 6.249993724617615e-14,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "independent_least_squares_stationarity",
+            "normalization_scale": 1.0000010000003385,
+            "passed": true,
+            "scale_resolved": true,
+            "threshold": 2e-06,
+            "value": 6.870268380416923e-12
+          },
+          {
+            "kind": "coordinate_second_order_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "minimum_sampled_curvature": 133669531.09502798,
+            "passed": true,
+            "relative_value_tolerance": 2.842170943040401e-14
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "passed": true
+          },
+          {
+            "kind": "residual_norm",
+            "passed": true,
+            "value": 3.535532130986117e-07
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 6.870268380416923e-12,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        0.5000000009643271,
+        0.49999974903236327
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 2.6962543309139164e-11,
+        "distance_passed": true,
+        "method": true,
+        "objective_available": true,
+        "success": true,
+        "validation": true,
+        "validation_residual": 2.6962543309124857e-11,
+        "validation_residual_passed": true,
+        "validation_residual_present": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        0.9541690815240145,
+        0.9315890492871404,
+        0.9388200705870986,
+        0.9309600573033094,
+        0.9268100839108229
+      ],
+      "evaluations": 19,
+      "id": "least-squares-residual-scale-large",
+      "iterations": 3,
+      "median_ms": 0.9315890492871404,
+      "method": "damped-gauss-newton",
+      "objective": null,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "independent_least_squares_stationarity",
+            "normalization_scale": 1.0000000000005306e+200,
+            "passed": true,
+            "scale_resolved": true,
+            "threshold": 2e-06,
+            "value": 2.6962543309124857e-11
+          },
+          {
+            "kind": "coordinate_second_order_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "minimum_sampled_curvature": 67108834.35444097,
+            "passed": true,
+            "relative_value_tolerance": 2.842170943040401e-14
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "passed": true
+          },
+          {
+            "kind": "residual_norm",
+            "passed": true,
+            "value": 2.696254330913916e+189
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 2.6962543309124857e-11,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        0.9999999999730375
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 2.6962543309139164e-11,
+        "distance_passed": true,
+        "method": true,
+        "objective_available": true,
+        "success": true,
+        "validation": true,
+        "validation_residual": 2.6962543309124863e-11,
+        "validation_residual_passed": true,
+        "validation_residual_present": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        0.9667800040915608,
+        0.9341801051050425,
+        0.92809007037431,
+        0.9310200111940503,
+        0.9296600474044681
+      ],
+      "evaluations": 19,
+      "id": "least-squares-residual-scale-small",
+      "iterations": 3,
+      "median_ms": 0.9310200111940503,
+      "method": "damped-gauss-newton",
+      "objective": null,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "independent_least_squares_stationarity",
+            "normalization_scale": 1.0000000000005304e-200,
+            "passed": true,
+            "scale_resolved": true,
+            "threshold": 2e-06,
+            "value": 2.6962543309124863e-11
+          },
+          {
+            "kind": "coordinate_second_order_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "minimum_sampled_curvature": 67108834.35444097,
+            "passed": true,
+            "relative_value_tolerance": 2.842170943040401e-14
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "passed": true
+          },
+          {
+            "kind": "residual_norm",
+            "passed": true,
+            "value": 2.6962543309139165e-211
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 2.6962543309124863e-11,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        0.9999999999730375
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "diagnostics": true,
+        "method": true,
+        "status": true,
+        "success": true
+      },
+      "durations_ms": [
+        0.4530299920588732,
+        0.4851400153711438,
+        0.4416999872773886,
+        0.4628399619832635,
+        0.4366799257695675
+      ],
+      "evaluations": 10,
+      "id": "least-squares-unresolved-variable-scale",
+      "iterations": 0,
+      "median_ms": 0.4530299920588732,
+      "method": "damped-gauss-newton",
+      "objective": 0.5,
+      "status": "converged",
+      "success": false,
+      "validation": {
+        "checks": [
+          {
+            "kind": "independent_least_squares_stationarity",
+            "normalization_scale": 1.0,
+            "passed": true,
+            "scale_resolved": true,
+            "threshold": 2e-06,
+            "value": 0.0
+          },
+          {
+            "kind": "coordinate_second_order_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "minimum_sampled_curvature": 0.0,
+            "passed": true,
+            "relative_value_tolerance": 2.842170943040401e-14
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "passed": false
+          },
+          {
+            "kind": "residual_norm",
+            "passed": true,
+            "value": 1.0
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": false,
+        "residual": 0.0,
+        "truth_level": "indeterminate"
+      },
+      "value": [
+        0.0
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 1.4058310071618507e-11,
+        "distance_passed": true,
+        "method": true,
+        "objective": 2.0381357607558322e-22,
+        "objective_passed": true,
+        "objective_present": true,
+        "success": true,
+        "validation": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        1.3716499088332057,
+        1.3851099647581577,
+        1.3744001043960452,
+        1.3883800711482763,
+        1.4005000703036785
+      ],
+      "evaluations": 38,
+      "id": "least-squares-exponential-decay",
+      "iterations": 4,
+      "median_ms": 1.3851099647581577,
+      "method": "damped-gauss-newton",
+      "objective": 2.0381357607558322e-22,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "independent_least_squares_stationarity",
+            "normalization_scale": 1.4715177647050648,
+            "passed": true,
+            "scale_resolved": true,
+            "threshold": 2e-06,
+            "value": 1.48751034412889e-11
+          },
+          {
+            "kind": "coordinate_second_order_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "minimum_sampled_curvature": 26055043.525798965,
+            "passed": true,
+            "relative_value_tolerance": 2.842170943040401e-14
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "passed": true
+          },
+          {
+            "kind": "residual_norm",
+            "passed": true,
+            "value": 2.0189778407678635e-11
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 1.48751034412889e-11,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        1.9999999999859417,
+        0.4999999999899869
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 0.0,
+        "distance_passed": true,
+        "method": true,
+        "objective": 0.0,
+        "objective_passed": true,
+        "objective_present": true,
+        "success": true,
+        "validation": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        0.6495799170807004,
+        0.592979951761663,
+        0.6085900822654366,
+        0.5743600195273757,
+        0.5961899878457189
+      ],
+      "evaluations": 13,
+      "id": "linear-fit-affine",
+      "iterations": 1,
+      "median_ms": 0.5961899878457189,
+      "method": "centered-linear-fit",
+      "objective": 0.0,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "independent_least_squares_stationarity",
+            "normalization_scale": 3.0,
+            "passed": true,
+            "scale_resolved": true,
+            "threshold": 2e-06,
+            "value": 0.0
+          },
+          {
+            "kind": "coordinate_second_order_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "minimum_sampled_curvature": 26097891.555555552,
+            "passed": true,
+            "relative_value_tolerance": 2.842170943040401e-14
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "passed": true
+          },
+          {
+            "kind": "residual_norm",
+            "passed": true,
+            "value": 0.0
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 0.0,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        2.0,
+        1.0
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "distance": 1.4058310071618507e-11,
+        "distance_passed": true,
+        "method": true,
+        "objective": 2.0381357607558322e-22,
+        "objective_passed": true,
+        "objective_present": true,
+        "success": true,
+        "validation": true,
+        "value_present": true
+      },
+      "durations_ms": [
+        1.6668600728735328,
+        1.5921600861474872,
+        1.6152899479493499,
+        1.5673500020056963,
+        1.5975399874150753
+      ],
+      "evaluations": 38,
+      "id": "curve-fit-exponential",
+      "iterations": 4,
+      "median_ms": 1.5975399874150753,
+      "method": "damped-gauss-newton",
+      "objective": 2.0381357607558322e-22,
+      "status": "converged",
+      "success": true,
+      "validation": {
+        "checks": [
+          {
+            "kind": "independent_least_squares_stationarity",
+            "normalization_scale": 1.4715177647050648,
+            "passed": true,
+            "scale_resolved": true,
+            "threshold": 2e-06,
+            "value": 1.48751034412889e-11
+          },
+          {
+            "kind": "coordinate_second_order_minimum",
+            "maximum_relative_sampled_decrease": 0.0,
+            "minimum_sampled_curvature": 26055043.525798965,
+            "passed": true,
+            "relative_value_tolerance": 2.842170943040401e-14
+          },
+          {
+            "kind": "objective_probe_resolution",
+            "passed": true
+          },
+          {
+            "kind": "residual_norm",
+            "passed": true,
+            "value": 2.0189778407678635e-11
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": true,
+        "residual": 1.48751034412889e-11,
+        "truth_level": "validated_approximate"
+      },
+      "value": [
+        1.9999999999859417,
+        0.4999999999899869
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "method": true,
+        "status": true,
+        "success": true
+      },
+      "durations_ms": [
+        0.22241089027374983,
+        0.2332510193809867,
+        0.20242005120962858,
+        0.18914008978754282,
+        0.18823100253939629
+      ],
+      "evaluations": 0,
+      "id": "scalar-cancellation",
+      "iterations": 0,
+      "median_ms": 0.20242005120962858,
+      "method": "bounded-brent",
+      "objective": null,
+      "status": "cancelled",
+      "success": false,
+      "validation": {
+        "checks": [
+          {
+            "kind": "candidate_available",
+            "passed": false
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": false,
+        "residual": null,
+        "truth_level": "indeterminate"
+      },
+      "value": null
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "method": true,
+        "status": true,
+        "success": true
+      },
+      "durations_ms": [
+        0.19424001220613718,
+        0.22148899734020233,
+        0.19204907584935427,
+        0.19094999879598618,
+        0.18821994308382273
+      ],
+      "evaluations": 1,
+      "id": "scalar-evaluation-budget",
+      "iterations": 0,
+      "median_ms": 0.19204907584935427,
+      "method": "bounded-brent",
+      "objective": null,
+      "status": "maximum_evaluations",
+      "success": false,
+      "validation": {
+        "checks": [
+          {
+            "kind": "candidate_available",
+            "passed": false
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": false,
+        "residual": null,
+        "truth_level": "indeterminate"
+      },
+      "value": null
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "method": true,
+        "status": true,
+        "success": true
+      },
+      "durations_ms": [
+        0.1881100470200181,
+        0.20568992476910353,
+        0.18504005856812,
+        0.17728994134813547,
+        0.17689995002001524
+      ],
+      "evaluations": 1,
+      "id": "invalid-scalar-callback-result",
+      "iterations": 0,
+      "median_ms": 0.18504005856812,
+      "method": "bounded-brent",
+      "objective": null,
+      "status": "invalid_problem",
+      "success": false,
+      "validation": {
+        "checks": [
+          {
+            "kind": "candidate_available",
+            "passed": false
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": false,
+        "residual": null,
+        "truth_level": "indeterminate"
+      },
+      "value": null
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "method": true,
+        "status": true,
+        "success": true
+      },
+      "durations_ms": [
+        0.2868799492716789,
+        0.2655800199136138,
+        0.23032992612570524,
+        0.22574991453438997,
+        0.2264899667352438
+      ],
+      "evaluations": 2,
+      "id": "invalid-gradient-callback-result",
+      "iterations": 0,
+      "median_ms": 0.23032992612570524,
+      "method": "bfgs",
+      "objective": null,
+      "status": "invalid_problem",
+      "success": false,
+      "validation": {
+        "checks": [
+          {
+            "kind": "validation_execution",
+            "passed": false
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": false,
+        "residual": null,
+        "truth_level": "indeterminate"
+      },
+      "value": null
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "method": true,
+        "status": true,
+        "success": true
+      },
+      "durations_ms": [
+        0.35106006544083357,
+        0.2538099652156234,
+        0.24414004292339087,
+        0.2674799179658294,
+        0.27963006868958473
+      ],
+      "evaluations": 1,
+      "id": "oversized-residual-output",
+      "iterations": 0,
+      "median_ms": 0.2674799179658294,
+      "method": "damped-gauss-newton",
+      "objective": null,
+      "status": "invalid_problem",
+      "success": false,
+      "validation": {
+        "checks": [
+          {
+            "kind": "validation_execution",
+            "passed": false
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": false,
+        "residual": null,
+        "truth_level": "indeterminate"
+      },
+      "value": null
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "exception": "ValueError"
+      },
+      "durations_ms": [
+        0.6544600473716855,
+        0.3090199315920472,
+        0.2749300329014659,
+        0.27467997279018164,
+        0.284880050458014
+      ],
+      "id": "oversized-fit-input",
+      "median_ms": 0.284880050458014
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "diagnostics": true,
+        "method": true,
+        "status": true,
+        "success": true
+      },
+      "durations_ms": [
+        0.49553008284419775,
+        0.46395009849220514,
+        0.43467001523822546,
+        0.41909993160516024,
+        0.4539199871942401
+      ],
+      "evaluations": 3,
+      "id": "validation-callback-failure",
+      "iterations": 1,
+      "median_ms": 0.4539199871942401,
+      "method": "bfgs",
+      "objective": 0.0,
+      "status": "callback_error",
+      "success": false,
+      "validation": {
+        "checks": [
+          {
+            "kind": "validation_execution",
+            "passed": false
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": false,
+        "residual": null,
+        "truth_level": "indeterminate"
+      },
+      "value": [
+        1.0
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "diagnostics": true,
+        "method": true,
+        "status": true,
+        "success": true
+      },
+      "durations_ms": [
+        0.33804005943238735,
+        0.35106996074318886,
+        0.35105005372315645,
+        0.3342900890856981,
+        0.3527000080794096
+      ],
+      "evaluations": 2,
+      "id": "validation-evaluation-budget",
+      "iterations": 1,
+      "median_ms": 0.35105005372315645,
+      "method": "bfgs",
+      "objective": 0.0,
+      "status": "maximum_evaluations",
+      "success": false,
+      "validation": {
+        "checks": [
+          {
+            "kind": "validation_execution",
+            "passed": false
+          }
+        ],
+        "condition_estimate": null,
+        "error_estimate": null,
+        "passed": false,
+        "residual": null,
+        "truth_level": "indeterminate"
+      },
+      "value": [
+        1.0
+      ]
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "exception": "NotImplementedError"
+      },
+      "durations_ms": [
+        0.006829970516264439,
+        0.0037599820643663406,
+        0.0023100292310118675,
+        0.0018998980522155762,
+        0.0018399441614747047
+      ],
+      "id": "nonlinear-constraints-fail-closed",
+      "median_ms": 0.0023100292310118675
+    }
+  ],
+  "corpus_sha256": "44557f4fe1024bbe0da333a01c549410324a19ed1f2971c80a8badeed9efa01f",
+  "passed": 35,
+  "platform": "linux-x64",
+  "runtime": "cpython 3.14.4",
+  "samples": 5,
+  "schema_version": 1,
+  "source_revision": "d48302b91f5cddf0e786693ea06f767017002ef4",
+  "total": 35
+}

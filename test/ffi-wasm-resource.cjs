@@ -85,6 +85,12 @@ test("an unprepared Wasm toolchain is reported as unavailable", async () => {
   }
 });
 
+test("an unsupported local Wasm compiler host is reported as unavailable", () => {
+  assert.equal(toolchainAvailable("flint", {
+    platform: "win32-x64",
+  }), false);
+});
+
 test("generated Wasm resource selection is explicit and fail-closed", () => {
   const declaration = flintDeclaration();
   const generated = generatedWasmResourceAdapter(declaration, {

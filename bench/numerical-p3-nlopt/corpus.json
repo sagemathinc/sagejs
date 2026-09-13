@@ -1,0 +1,158 @@
+{
+  "schema": "sagejs.numerical-nlopt-corpus/v1",
+  "cases": [
+    {
+      "id": "nelder-rosenbrock-2",
+      "method": "nlopt-nelder-mead",
+      "problem": "rosenbrock",
+      "initial": [-1.2, 1],
+      "initial_step": [0.5, 0.5],
+      "expected": [1, 1],
+      "point_tolerance": [2e-5, 2e-5],
+      "objective_tolerance": 1e-10
+    },
+    {
+      "id": "nelder-beale-2",
+      "method": "nlopt-nelder-mead",
+      "problem": "beale",
+      "initial": [1, 1],
+      "initial_step": [0.5, 0.5],
+      "expected": [3, 0.5],
+      "point_tolerance": [3e-5, 3e-5],
+      "objective_tolerance": 1e-10
+    },
+    {
+      "id": "nelder-nonsmooth-absolute",
+      "method": "nlopt-nelder-mead",
+      "problem": "absolute",
+      "initial": [2, -3],
+      "initial_step": [0.8, 0.8],
+      "expected": [0, 0],
+      "point_tolerance": [2e-6, 2e-6],
+      "objective_tolerance": 5e-6
+    },
+    {
+      "id": "nelder-bounded-boundary",
+      "method": "nlopt-nelder-mead",
+      "problem": "outside_box",
+      "initial": [0, 0],
+      "lower": [-1, -1],
+      "upper": [1, 1],
+      "initial_step": [0.4, 0.4],
+      "expected": [1, -1],
+      "point_tolerance": [2e-7, 2e-7],
+      "objective_tolerance": 5.000001
+    },
+    {
+      "id": "nelder-ill-scaled",
+      "method": "nlopt-nelder-mead",
+      "problem": "ill_scaled",
+      "initial": [100000, 1e-7],
+      "initial_step": [200000, 2e-7],
+      "expected": [1000000, 1e-6],
+      "point_tolerance": [0.2, 2e-13],
+      "objective_tolerance": 1e-12
+    },
+    {
+      "id": "cobyla-linear-active",
+      "method": "nlopt-cobyla",
+      "problem": "quadratic_2_1",
+      "initial": [0, 0],
+      "initial_step": [0.5, 0.5],
+      "inequality": "sum_le_one",
+      "inequality_count": 1,
+      "expected": [1, 0],
+      "point_tolerance": [5e-5, 5e-5],
+      "objective_tolerance": 2.000001,
+      "feasibility_tolerance": 2e-7
+    },
+    {
+      "id": "cobyla-curved-active",
+      "method": "nlopt-cobyla",
+      "problem": "quadratic_1_1",
+      "initial": [0.25, 0.25],
+      "initial_step": [0.4, 0.4],
+      "inequality": "unit_disk",
+      "inequality_count": 1,
+      "expected": [0.7071067811865476, 0.7071067811865476],
+      "point_tolerance": [3e-4, 3e-4],
+      "objective_tolerance": 0.171573,
+      "feasibility_tolerance": 2e-7
+    },
+    {
+      "id": "cobyla-redundant-active",
+      "method": "nlopt-cobyla",
+      "problem": "quadratic_2_2",
+      "initial": [0, 0],
+      "initial_step": [0.5, 0.5],
+      "inequality": "redundant_sum_le_one",
+      "inequality_count": 3,
+      "expected": [0.5, 0.5],
+      "point_tolerance": [4e-4, 4e-4],
+      "objective_tolerance": 4.500001,
+      "feasibility_tolerance": 3e-7
+    },
+    {
+      "id": "cobyla-equality-active",
+      "method": "nlopt-cobyla",
+      "problem": "quadratic_2_2",
+      "initial": [0.5, 0.5],
+      "initial_step": [0.5, 0.5],
+      "equality": "sum_eq_one",
+      "equality_count": 1,
+      "expected": [0.5, 0.5],
+      "point_tolerance": [4e-4, 4e-4],
+      "objective_tolerance": 4.500001,
+      "feasibility_tolerance": 3e-7
+    },
+    {
+      "id": "cobyla-box-boundary",
+      "method": "nlopt-cobyla",
+      "problem": "scalar_to_five",
+      "initial": [0],
+      "lower": [0],
+      "upper": [2],
+      "initial_step": [0.5],
+      "expected": [2],
+      "point_tolerance": [2e-7],
+      "objective_tolerance": 9.000001
+    },
+    {
+      "id": "cobyla-near-active",
+      "method": "nlopt-cobyla",
+      "problem": "scalar_to_one",
+      "initial": [0],
+      "initial_step": [0.2],
+      "inequality": "x_le_tiny",
+      "inequality_count": 1,
+      "expected": [1e-8],
+      "point_tolerance": [3e-7],
+      "objective_tolerance": 1.000001,
+      "feasibility_tolerance": 2e-7
+    },
+    {
+      "id": "cobyla-ill-scaled-active",
+      "method": "nlopt-cobyla",
+      "problem": "scalar_to_two_million_scaled",
+      "initial": [100000],
+      "initial_step": [200000],
+      "inequality": "x_le_million_scaled",
+      "inequality_count": 1,
+      "expected": [1000000],
+      "point_tolerance": [0.5],
+      "objective_tolerance": 1.000001,
+      "feasibility_tolerance": 1e-7
+    },
+    {
+      "id": "cobyla-infeasible",
+      "method": "nlopt-cobyla",
+      "problem": "scalar_square",
+      "initial": [0.5],
+      "initial_step": [0.2],
+      "inequality": "infeasible_interval",
+      "inequality_count": 2,
+      "expect_infeasible": true,
+      "minimum_violation": 0.49
+    }
+  ]
+}

@@ -1,21 +1,29 @@
 "use strict";
 
+const { existsSync } = require("node:fs");
 const { join } = require("node:path");
 const { pathToFileURL } = require("node:url");
+
+const wasmCliFilename = join(
+  __dirname,
+  "..",
+  "packages",
+  "flint-wasm",
+  "node-cli.mjs",
+);
 
 function wasmArguments(argv = process.argv.slice(2)) {
   return argv[0] === "--wasm" ? argv.slice(1) : undefined;
 }
 
 async function importProductionWasmCli() {
-  const filename = join(
-    __dirname,
-    "..",
-    "packages",
-    "flint-wasm",
-    "node-cli.mjs",
-  );
-  return import(pathToFileURL(filename).href);
+  if (!existsSync(wasmCliFilename)) {
+    throw new Error(
+      "this Sage.js installation does not contain the production WebAssembly " +
+        "runtime; reinstall @sagemath/sagejs from a complete published package",
+    );
+  }
+  return import(pathToFileURL(wasmCliFilename).href);
 }
 
 async function runWasmCli({
@@ -53,5 +61,6 @@ module.exports = {
   importProductionWasmCli,
   launchWasmIfRequested,
   runWasmCli,
+  wasmCliFilename,
   wasmArguments,
 };

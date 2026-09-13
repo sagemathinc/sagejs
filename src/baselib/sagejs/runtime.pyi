@@ -8,6 +8,9 @@ class _Array:
     prototype: Any
 
     @staticmethod
+    def of(*items: Any) -> Any: ...
+
+    @staticmethod
     def isArray(value: object) -> bool: ...
 
 
@@ -56,6 +59,9 @@ class _Object:
 
     @staticmethod
     def isFrozen(value: object) -> bool: ...
+
+    @staticmethod
+    def isExtensible(value: object) -> bool: ...
 
     @staticmethod
     def getOwnPropertyDescriptor(value: object, name: Any) -> Any: ...
@@ -164,6 +170,7 @@ int_builtin: Any
 bool_builtin: Any
 list_constructor: Any
 list_contains: Any
+list_decorate: Any
 map_class: Any
 math: Any
 modules: Any
@@ -267,6 +274,8 @@ def ffi_view_create(
 ) -> Any: ...
 def ffi_view_valid(token: Any) -> bool: ...
 def flint_backend() -> Any: ...
+def optional_flint_backend() -> Any | None: ...
+def numerical_backend(name: str = "cminpack") -> Any: ...
 def integer_bigint(value: object) -> int: ...
 def immutable_uint64_capsule(
     source: Any, owner: object, model: str, format: str, count: int

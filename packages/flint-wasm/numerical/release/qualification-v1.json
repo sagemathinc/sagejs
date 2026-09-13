@@ -1,0 +1,85 @@
+{
+  "schema": "sagejs.numerical-wasm-qualification-summary/v1",
+  "artifact_sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5",
+  "oracle_sha256": "1f513f438d5173affb47a78c271ed390a618f8eca5802007610ce02a5352fcb8",
+  "source_revision": "32d343ac33ac297594b5ffac57741e5615b4bb07",
+  "qualification_inputs": {
+    "cases_sha256": "4486706a38af157667b9c2523a4c037d904cb9f0dc4828d01b78183c978d0392",
+    "lmdif_reference_sha256": "93cd86536c839b49931c57e4e6f9f976493e75336088fcafe91c42fa8448ee34",
+    "lmder_reference_sha256": "35b472d0f6210557b50cae2b555a51784f9b011b7742641ca3d15242fc65db5b"
+  },
+  "mgh": {
+    "cases_per_method": 53,
+    "methods": [
+      "cminpack-lmdif",
+      "cminpack-lmder"
+    ],
+    "total_final_artifact_solves": 106,
+    "results_sha256": "594f138289f78ee057e7f1de90a7ea2a81c9909cb732fcb38a1afbd47c09f285",
+    "node_linux_x64": "pass",
+    "chromium_linux_x64": "pass",
+    "independent_final_residual_recomputation": true,
+    "live_allocations_after": 0,
+    "live_bytes_after": 0
+  },
+  "abi_and_lifecycle": {
+    "random_linear_oracles": 200,
+    "corrupt_region_cases": 500,
+    "allocation_failure_positions": 9,
+    "callback_exception_cleanup": "pass",
+    "nonfinite_callback_cleanup": "pass",
+    "iteration_total_callback_elapsed_and_shared_memory_budgets": "pass",
+    "reentrancy_rejection_and_reuse": "pass",
+    "worker_shared_memory_cancellation_and_reuse": "pass",
+    "hard_stuck_worker_termination_and_recreation": "pass"
+  },
+  "portable_final_artifact_smoke": [
+    {
+      "host": "local integration host (bench-1 unavailable)",
+      "platform": "linux",
+      "architecture": "x64",
+      "node": "v26.5.0",
+      "result": "pass"
+    },
+    {
+      "host": "bench-arm",
+      "platform": "linux",
+      "architecture": "arm64",
+      "node": "v26.5.1",
+      "result": "pass"
+    },
+    {
+      "host": "m1",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "node": "v26.7.0",
+      "result": "pass"
+    },
+    {
+      "host": "windows",
+      "platform": "win32",
+      "architecture": "x64",
+      "node": "v26.5.1",
+      "result": "pass"
+    }
+  ],
+  "production_integration": {
+    "source_sha256": "578bf0f6baecf89eff3bdd04d34b71b8e283bb4668beeacb668deb1c08c492b9",
+    "source_evidence": "bench/numerical-p3-backends/evidence.json#public_integration_source",
+    "public_node_lmdif_and_lmder_with_independent_validation": "pass",
+    "public_iteration_callback_elapsed_cancellation_and_reuse": "pass",
+    "execution_specific_browser_provenance": "pass",
+    "structured_missing_resource_failure": "pass",
+    "browser_missing_and_corrupt_resource_isolation": "pass",
+    "chromium_evaluator_lazy_fetch_and_public_lmdif": "pass",
+    "relocated_npm_package_public_lmdif": "pass",
+    "relocated_python_sea_public_lmdif": "pass",
+    "browser_lazy_module_bundle_contains_public_optimization_package": true,
+    "automatic_selection": false
+  },
+  "limitations": [
+    "bench-1 rejected the available SSH identity, so Linux x64 is not a persistent-host receipt",
+    "automatic selection remains disabled; explicit method identity is required until a separate automatic policy has public performance and correctness receipts",
+    "sanitizer instrumentation is not claimed; memory safety evidence here is bounded Wasm memory plus ABI, corruption, allocation-failure, and lifecycle tests"
+  ]
+}

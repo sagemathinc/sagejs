@@ -537,6 +537,16 @@ class EllipticCurvePoint(sage.Element):
         base = curve.base_ring()
         a1, a2, a3, _a4, _a6 = curve.ainvs()
         if getattr(base, "_kind", None) == "GF":
+            scalar_mul = runtime.reflect.get(
+                runtime.flint_backend(), "ecScalarMulPrime"
+            )
+            if runtime.jstype(scalar_mul) != "function":
+                trace = runtime.reflect.get(
+                    runtime.flint_backend(), "tracePortableEcScalarMulPrime"
+                )
+                if runtime.jstype(trace) == "function":
+                    trace()
+                return self._affine_scalar_mul(multiplier)
             native = runtime.flint_backend().ecScalarMulPrime(
                 runtime.integer_bigint(a1.lift()),
                 runtime.integer_bigint(a2.lift()),

@@ -1,0 +1,86 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-online-support-transcript-impl",
+  "title": "Cubic online HNF support transcript reuse",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Record exact HNF-changing support bits during eligible cubic relation collection and reuse them to eliminate the duplicate later tall relation HNF/support-selection pass while preserving authenticated transcripts and exact replay",
+  "base_commit": "a46f3d28d132a30f56ba755f01860f8055e42a58",
+  "claims": [
+    "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+    "test/number-field-cubic-online-support-transcript.cjs",
+    "test/number-field-cubic-native-class-number.cjs",
+    "test/number-field-cubic-fmpz-closure.cjs",
+    "bench/cubic-online-support-transcript.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Existing exact ordinary-object class-group certificate replay",
+      "Differential equality of authenticated relation transcripts before and after support reuse"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "env SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY=off node --test test/number-field-cubic-online-support-transcript.cjs test/number-field-cubic-online-trivial-quotient.cjs test/number-field-cubic-fmpz-closure.cjs test/number-field-cubic-compact-relation-ledger.cjs"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY=off node --test test/number-field-cubic-online-support-transcript.cjs test/number-field-cubic-online-trivial-quotient.cjs test/number-field-cubic-fmpz-closure.cjs test/number-field-cubic-compact-relation-ledger.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 12.507,
+      "started_at": "2026-09-05T02:35:57.210Z",
+      "commit": "a46f3d28d132a30f56ba755f01860f8055e42a58",
+      "workspace_fingerprint": "c8a4eca8821a838e3cdcd99555aeefbac7cf40e99a24c8f20e42ac8725245ec9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.161,
+      "started_at": "2026-09-05T02:36:30.832Z",
+      "commit": "a46f3d28d132a30f56ba755f01860f8055e42a58",
+      "workspace_fingerprint": "c8a4eca8821a838e3cdcd99555aeefbac7cf40e99a24c8f20e42ac8725245ec9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY=off node --test test/number-field-cubic-online-support-transcript.cjs test/number-field-cubic-online-trivial-quotient.cjs test/number-field-cubic-fmpz-closure.cjs test/number-field-cubic-native-class-number.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 71.323,
+      "started_at": "2026-09-05T02:37:31.629Z",
+      "commit": "a46f3d28d132a30f56ba755f01860f8055e42a58",
+      "workspace_fingerprint": "c8a4eca8821a838e3cdcd99555aeefbac7cf40e99a24c8f20e42ac8725245ec9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Eligible relation collection now records each exact prefix-HNF change and reuses that support history and final square HNF for quotient publication. The small-unit branch retains its tall-HNF path. C15 field 3.1.83062751.1 publishes the byte-identical 42-row transcript SHA256 b1282d038400684fb1c3116fe21e9ecddb7d20513b94a490ed6fd662c123d5e8, including 38 support rows and four tail rows, and passes independent exact conditional-GRH replay. Local ABBA prepared-fmpz timing on AMD EPYC7B13/Linux x64/Node26.8.1 measured old median 26.078325 ms versus new 23.854329 ms (1.093232x), using five warmups and eleven five-call samples per block, with separate pack processes and buffers prepared outside timing. Old source SHA256 ef3e29a26231ee956c3f8ecd9222ae152a43296cf2f292ba3af648d23fc4d0fb; new c7f2a53a4f2364dd54a34968efe72d52757b434765a9fce909d047c7eacc78c2. Reproduce with node bench/cubic-online-support-transcript.cjs OLD_ROOT NEW_ROOT against matching built production packs.",
+    "risks": [
+      "Local shared-host timing excludes public dispatch, retries, buffer construction, and independent certificate replay; it is not controlled opt/PARI or corpus evidence.",
+      "The architectural gate reaches the known stale shared optimizer-opportunity manifest; shared manifest and receipt-policy refresh are integration-owned.",
+      "Focused native checks ran on Linux x64; other native and Wasm platforms still require integration CI. The full native suite was not rerun in this lane."
+    ],
+    "next_steps": [
+      "Rebind shared source-policy and optimizer artifacts on the integrated source, then run broad architecture and native gates.",
+      "Run the authenticated 1000-field census, unseen neighboring fields, and controlled retained old/new timing on opt before claiming a broader performance frontier."
+    ]
+  }
+}

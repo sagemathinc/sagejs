@@ -305,3 +305,22 @@ test("workflow aliases name observable public artifact boundaries", () => {
     "rank must dispatch before right-kernel computation populates the rank cache",
   );
 });
+
+test("browser optimizer corpus enforces host-specific compiled-source provenance", () => {
+  const corpus = JSON.parse(fs.readFileSync(
+    path.join(root, "test", "browser-wasm-parity-corpus.json"),
+    "utf8",
+  ));
+  for (const id of ["optimizer-gf-p2-affine", "optimizer-gf-pk-affine"]) {
+    const item = corpus.cases.find((candidate) => candidate.id === id);
+    assert.ok(item, `${id} is missing from the public parity corpus`);
+    assert.match(item.expect.stdout, / wasm-compiled-source\n$/);
+    assert.match(item.node_expect.stdout, / native-compiled-source\n$/);
+    assert.equal(
+      item.node_expect.stdout.replace("native-compiled-source", "wasm-compiled-source"),
+      item.expect.stdout,
+      `${id} must differ only in its authenticated runtime route`,
+    );
+    assert.deepEqual(item.node_expect.repr, item.expect.repr);
+  }
+});

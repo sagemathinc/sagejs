@@ -1,0 +1,442 @@
+{
+  "cases": [
+    {
+      "accepted": true,
+      "checks": {
+        "expected_method": "bounded-brent",
+        "method": true,
+        "objective_difference": 0.0,
+        "objective_difference_limit": 1e-14,
+        "value_distance": 0.0,
+        "value_distance_limit": 1e-08
+      },
+      "id": "bounded-brent-quadratic",
+      "method_relationship": "same bounded Brent family",
+      "sagejs": {
+        "evaluations": 11,
+        "method": "bounded-brent",
+        "objective": 0.0,
+        "status": "converged",
+        "validation": {
+          "checks": [
+            {
+              "kind": "bound_feasibility",
+              "lower": -1.0,
+              "passed": true,
+              "upper": 5.0
+            },
+            {
+              "finite_difference_derivative": -2.2204478561861154e-16,
+              "kind": "projected_stationarity",
+              "passed": true,
+              "threshold": 1e-06,
+              "value": 2.2204478561861154e-16
+            },
+            {
+              "kind": "objective_probe_resolution",
+              "passed": true
+            },
+            {
+              "kind": "finite_objective",
+              "passed": true
+            }
+          ],
+          "condition_estimate": null,
+          "error_estimate": null,
+          "passed": true,
+          "residual": 2.2204478561861154e-16,
+          "truth_level": "validated_approximate"
+        },
+        "value": 2.0
+      },
+      "scipy": {
+        "objective": 0.0,
+        "value": 2.0
+      }
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "expected_method": "nelder-mead",
+        "method": true,
+        "objective_difference": 6.834682266146622e-20,
+        "objective_difference_limit": 1e-12,
+        "value_distance": 2.7641067212869075e-10,
+        "value_distance_limit": 2e-05
+      },
+      "id": "nelder-mead-rosenbrock-2",
+      "method_relationship": "same named algorithm; trajectories need not match",
+      "sagejs": {
+        "evaluations": 311,
+        "method": "nelder-mead",
+        "objective": 2.0109594086829624e-20,
+        "status": "converged",
+        "validation": {
+          "checks": [
+            {
+              "kind": "box_feasibility",
+              "passed": true
+            },
+            {
+              "gradient": [
+                -1.2381416285752362e-09,
+                4.79261077004911e-10
+              ],
+              "kind": "projected_gradient_kkt",
+              "passed": true,
+              "threshold": 2e-06,
+              "value": 1.23814170027714e-09
+            },
+            {
+              "kind": "coordinate_local_minimum",
+              "maximum_relative_sampled_decrease": 0.0,
+              "passed": true,
+              "threshold": 1e-09
+            },
+            {
+              "kind": "objective_probe_resolution",
+              "movable_probe_count": 4,
+              "passed": true
+            },
+            {
+              "kind": "finite_objective",
+              "passed": true
+            }
+          ],
+          "condition_estimate": null,
+          "error_estimate": null,
+          "passed": true,
+          "residual": 1.23814170027714e-09,
+          "truth_level": "validated_approximate"
+        },
+        "value": [
+          0.999999999860231,
+          0.9999999997228584
+        ]
+      },
+      "scipy": {
+        "objective": 8.845641674829584e-20,
+        "value": [
+          0.999999999718434,
+          0.9999999994464477
+        ]
+      }
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "expected_method": "bfgs",
+        "method": true,
+        "objective_difference": 2.6558068197609368e-17,
+        "objective_difference_limit": 1e-11,
+        "value_distance": 1.1252947573758831e-08,
+        "value_distance_limit": 3e-06
+      },
+      "id": "bfgs-rosenbrock-2",
+      "method_relationship": "same named algorithm",
+      "sagejs": {
+        "evaluations": 102,
+        "method": "bfgs",
+        "objective": 2.7456413266280525e-17,
+        "status": "converged",
+        "validation": {
+          "checks": [
+            {
+              "kind": "box_feasibility",
+              "passed": true
+            },
+            {
+              "gradient": [
+                7.7018226155486e-08,
+                -4.3281256356086005e-08
+              ],
+              "kind": "projected_gradient_kkt",
+              "passed": true,
+              "threshold": 2e-06,
+              "value": 7.701822613004339e-08
+            },
+            {
+              "kind": "coordinate_local_minimum",
+              "maximum_relative_sampled_decrease": 0.0,
+              "passed": true,
+              "threshold": 1e-09
+            },
+            {
+              "kind": "objective_probe_resolution",
+              "movable_probe_count": 4,
+              "passed": true
+            },
+            {
+              "kind": "finite_objective",
+              "passed": true
+            }
+          ],
+          "condition_estimate": null,
+          "error_estimate": null,
+          "passed": true,
+          "residual": 7.701822613004339e-08,
+          "truth_level": "validated_approximate"
+        },
+        "value": [
+          0.9999999952278681,
+          0.9999999902393298
+        ]
+      },
+      "scipy": {
+        "objective": 8.983450686711573e-19,
+        "value": [
+          1.000000000773525,
+          1.0000000014922774
+        ]
+      }
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "expected_method": "projected-bfgs",
+        "method": true,
+        "objective_difference": 0.0,
+        "objective_difference_limit": 1e-12,
+        "value_distance": 0.0,
+        "value_distance_limit": 1e-10
+      },
+      "id": "active-box-mathematical-oracle",
+      "method_relationship": "mathematical oracle only; projected-bfgs is not L-BFGS-B",
+      "sagejs": {
+        "evaluations": 11,
+        "method": "projected-bfgs",
+        "objective": 5.0,
+        "status": "converged",
+        "validation": {
+          "checks": [
+            {
+              "kind": "box_feasibility",
+              "passed": true
+            },
+            {
+              "gradient": [
+                -4.0,
+                2.0
+              ],
+              "kind": "projected_gradient_kkt",
+              "passed": true,
+              "threshold": 2e-06,
+              "value": 0.0
+            },
+            {
+              "kind": "coordinate_local_minimum",
+              "maximum_relative_sampled_decrease": 0.0,
+              "passed": true,
+              "threshold": 1e-09
+            },
+            {
+              "kind": "objective_probe_resolution",
+              "movable_probe_count": 2,
+              "passed": true
+            },
+            {
+              "kind": "finite_objective",
+              "passed": true
+            }
+          ],
+          "condition_estimate": null,
+          "error_estimate": null,
+          "passed": true,
+          "residual": 0.0,
+          "truth_level": "validated_approximate"
+        },
+        "value": [
+          1.0,
+          0.0
+        ]
+      },
+      "scipy": {
+        "objective": 5.0,
+        "value": [
+          1.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "expected_method": "damped-newton",
+        "method": true,
+        "objective_difference": 2.220446049250313e-16,
+        "objective_difference_limit": 1e-09,
+        "value_distance": 0.0,
+        "value_distance_limit": 1e-09
+      },
+      "id": "nonlinear-system-circle-line",
+      "method_relationship": "mathematical oracle; damped Newton versus MINPACK hybr",
+      "sagejs": {
+        "evaluations": 22,
+        "method": "damped-newton",
+        "objective": null,
+        "status": "converged",
+        "validation": {
+          "checks": [
+            {
+              "kind": "independent_residual",
+              "passed": true,
+              "threshold": 1e-09,
+              "value": 2.220446049250313e-16
+            }
+          ],
+          "condition_estimate": null,
+          "error_estimate": null,
+          "passed": true,
+          "residual": 2.220446049250313e-16,
+          "truth_level": "validated_approximate"
+        },
+        "value": [
+          0.7071067811865476,
+          0.7071067811865476
+        ]
+      },
+      "scipy": {
+        "objective": 2.220446049250313e-16,
+        "value": [
+          0.7071067811865476,
+          0.7071067811865476
+        ]
+      }
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "expected_method": "damped-gauss-newton",
+        "method": true,
+        "objective_difference": 2.0381190469965145e-22,
+        "objective_difference_limit": 1e-12,
+        "value_distance": 1.4050760555051056e-11,
+        "value_distance_limit": 2e-06
+      },
+      "id": "least-squares-exponential",
+      "method_relationship": "mathematical oracle; damped Gauss-Newton versus SciPy TRF",
+      "sagejs": {
+        "evaluations": 38,
+        "method": "damped-gauss-newton",
+        "objective": 2.0381357607558322e-22,
+        "status": "converged",
+        "validation": {
+          "checks": [
+            {
+              "kind": "independent_least_squares_stationarity",
+              "normalization_scale": 1.4715177647050648,
+              "passed": true,
+              "scale_resolved": true,
+              "threshold": 2e-06,
+              "value": 1.48751034412889e-11
+            },
+            {
+              "kind": "coordinate_second_order_minimum",
+              "maximum_relative_sampled_decrease": 0.0,
+              "minimum_sampled_curvature": 26055043.525798965,
+              "passed": true,
+              "relative_value_tolerance": 2.842170943040401e-14
+            },
+            {
+              "kind": "objective_probe_resolution",
+              "passed": true
+            },
+            {
+              "kind": "residual_norm",
+              "passed": true,
+              "value": 2.0189778407678635e-11
+            }
+          ],
+          "condition_estimate": null,
+          "error_estimate": null,
+          "passed": true,
+          "residual": 1.48751034412889e-11,
+          "truth_level": "validated_approximate"
+        },
+        "value": [
+          1.9999999999859417,
+          0.4999999999899869
+        ]
+      },
+      "scipy": {
+        "objective": 1.671375931777686e-27,
+        "value": [
+          1.9999999999999925,
+          0.4999999999999732
+        ]
+      }
+    },
+    {
+      "accepted": true,
+      "checks": {
+        "expected_method": "damped-gauss-newton",
+        "method": true,
+        "objective_difference": 1.7114179852004476e-17,
+        "objective_difference_limit": 1e-12,
+        "value_distance": 0.0,
+        "value_distance_limit": 0.0
+      },
+      "id": "least-squares-rank-deficient",
+      "method_relationship": "solution-manifold objective oracle; parameters are nonunique",
+      "sagejs": {
+        "evaluations": 33,
+        "method": "damped-gauss-newton",
+        "objective": 1.1622130695090578e-21,
+        "status": "converged",
+        "validation": {
+          "checks": [
+            {
+              "kind": "independent_least_squares_stationarity",
+              "normalization_scale": 2.0000000000021223,
+              "passed": true,
+              "scale_resolved": true,
+              "threshold": 2e-06,
+              "value": 2.6951496590015545e-11
+            },
+            {
+              "kind": "coordinate_second_order_minimum",
+              "maximum_relative_sampled_decrease": 0.0,
+              "minimum_sampled_curvature": 83886050.36667655,
+              "passed": true,
+              "relative_value_tolerance": 2.842170943040401e-14
+            },
+            {
+              "kind": "objective_probe_resolution",
+              "passed": true
+            },
+            {
+              "kind": "residual_norm",
+              "passed": true,
+              "value": 4.821230277655399e-11
+            }
+          ],
+          "condition_estimate": null,
+          "error_estimate": null,
+          "passed": true,
+          "residual": 2.6951496590015545e-11,
+          "truth_level": "validated_approximate"
+        },
+        "value": [
+          0.9999999999892378,
+          0.999999999989201
+        ]
+      },
+      "scipy": {
+        "objective": 1.7115342065073985e-17,
+        "value": [
+          0.9999999999892378,
+          0.999999999989201
+        ]
+      }
+    }
+  ],
+  "corpus_sha256": "44557f4fe1024bbe0da333a01c549410324a19ed1f2971c80a8badeed9efa01f",
+  "numpy_version": "2.5.1",
+  "oracle": "scipy",
+  "passed": 7,
+  "platform": "linux-x64",
+  "schema_version": 1,
+  "scipy_version": "1.18.0",
+  "source_revision": "d48302b91f5cddf0e786693ea06f767017002ef4",
+  "total": 7
+}

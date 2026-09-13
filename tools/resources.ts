@@ -7,16 +7,18 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  renameSync,
   readFileSync,
   rmSync,
+  unlinkSync,
   writeFileSync,
 } from "fs";
 import { tmpdir } from "os";
 import { createRequire } from "module";
-import { basename, dirname, join, normalize } from "path";
+import { basename, dirname, isAbsolute, join, normalize } from "path";
 import { getAsset, getAssetKeys, isSea } from "node:sea";
 import { runInThisContext } from "node:vm";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { measureInitialization } from "./timing";
 import { configureImmutableUInt64KernelWrapper } from "./immutable-uint64-capsule";
@@ -45,6 +47,10 @@ const GRAPH_FFI_MANIFEST_ASSET = "native/sagejs_igraph_ffi_manifest.json";
 const FFLAS_FFI_ASSET = "native/sagejs_fflas_ffi.node";
 const FFLAS_FFI_MANIFEST_ASSET = "native/sagejs_fflas_ffi_manifest.json";
 const ZEROMQ_ASSET = "native/zeromq.node";
+const NUMERICAL_BACKEND_ASSET = "numerical/cminpack.wasm";
+const NUMERICAL_BACKEND_MODULE = "@sagemath/sagejs-numerical";
+const NLOPT_BACKEND_ASSET = "numerical/nlopt-methods.wasm";
+const NLOPT_BACKEND_MODULE = "@sagemath/sagejs-numerical-nlopt";
 const PLOTLY_ASSET = "vendor/plotly.min.js";
 const KERNEL_WORKER_ASSET = "worker/kernel-worker.cjs";
 const MULTIPROCESSING_WORKER_ASSET = "worker/multiprocessing-worker.cjs";
@@ -54,7 +60,11 @@ const NATIVE_KERNEL_PACK_ASSET =
   "native-kernels/pack/sagejs_native_kernel_pack.node";
 const NATIVE_KERNEL_PACK_MANIFEST_ASSET = "native-kernels/pack/index.json";
 const NATIVE_KERNEL_PACK_ABI_VERSION = 1;
-const NATIVE_KERNEL_COMPILER_ABI_VERSION = 22;
+// This is the embedded-asset half of `NATIVE_ABI_VERSION` in
+// `tools/native-kernel/c-backend.cjs`. Production-kernel tests ratchet it to
+// both the compiler and runtime-bootstrap values so an ABI bump cannot leave
+// SEA validation silently one version behind.
+export const NATIVE_KERNEL_ASSET_ABI_VERSION = 23;
 const NATIVE_RUNTIME_MODULES = new Set([
   "@sagemath/sagejs-flint",
   "@sagemath/sagejs-fflas",
@@ -67,8 +77,11 @@ let flintModule: unknown;
 let graphModule: unknown;
 let fflasModule: unknown;
 let zeroMQModule: unknown;
+let numericalBackendModule: unknown;
+let nloptBackendModule: unknown;
 const runtimeModuleCache = new Map<string, unknown>();
 let nativeTemporaryDirectory: string | undefined;
+let nativeTemporaryDirectoryOwned = false;
 let kernelWorkerFilename: string | undefined;
 let multiprocessingWorkerFilename: string | undefined;
 const nativeKernelModules = new Map<string, unknown>();
@@ -86,6 +99,71 @@ function assetText(key: string): string {
 
 function assetBytes(key: string): Uint8Array {
   return new Uint8Array(getAsset(key));
+}
+
+function ensureNativeTemporaryDirectory(): string {
+  if (!nativeTemporaryDirectory) {
+    nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
+    nativeTemporaryDirectoryOwned = true;
+  }
+  return nativeTemporaryDirectory;
+}
+
+/**
+ * Publish an immutable embedded file without exposing a partial write to a
+ * second Node worker environment sharing the same SEA extraction directory.
+ */
+function publishEmbeddedFile(
+  filename: string,
+  bytes: Uint8Array,
+  mode = 0o700,
+): void {
+  if (existsSync(filename)) return;
+  mkdirSync(dirname(filename), { recursive: true });
+  const temporary = `${filename}.${process.pid}.${randomUUID()}.tmp`;
+  writeFileSync(temporary, bytes, { mode, flag: "wx" });
+  try {
+    renameSync(temporary, filename);
+  } catch (error) {
+    if (!existsSync(filename)) {
+      try {
+        unlinkSync(temporary);
+      } catch {
+        // Preserve the original publication error.
+      }
+      throw error;
+    }
+    // Another worker atomically published the same immutable SEA asset.
+    try {
+      unlinkSync(temporary);
+    } catch {
+      // Best effort: the parent-owned directory is removed at process exit.
+    }
+  }
+}
+
+/** Return the parent-owned directory shared by this SEA's worker isolates. */
+export function singleExecutableNativeResourceDirectory(): string | undefined {
+  return isSea() ? ensureNativeTemporaryDirectory() : undefined;
+}
+
+/** Make a SEA worker borrow, but never remove, its parent's extraction root. */
+export function useSharedSingleExecutableNativeResourceDirectory(
+  directory: unknown,
+): void {
+  if (!isSea() || directory === undefined) return;
+  if (typeof directory !== "string" || !isAbsolute(directory)) {
+    throw new TypeError("shared SEA native resource directory must be absolute");
+  }
+  const shared = normalize(directory);
+  if (
+    nativeTemporaryDirectory !== undefined &&
+    normalize(nativeTemporaryDirectory) !== shared
+  ) {
+    throw new Error("SEA native resources were extracted before worker sharing");
+  }
+  nativeTemporaryDirectory = shared;
+  nativeTemporaryDirectoryOwned = false;
 }
 
 function attachEmbeddedFfiManifest(
@@ -227,7 +305,7 @@ export function loadPrecompiledNativeKernel(
     if (
       manifest?.schema !== "sagejs.native-pack/v2" ||
       manifest.packAbi !== NATIVE_KERNEL_PACK_ABI_VERSION ||
-      manifest.nativeAbi !== NATIVE_KERNEL_COMPILER_ABI_VERSION ||
+      manifest.nativeAbi !== NATIVE_KERNEL_ASSET_ABI_VERSION ||
       manifest.platform !== process.platform ||
       manifest.architecture !== process.arch ||
       manifest.nodeModulesAbi !== process.versions.modules ||
@@ -237,27 +315,21 @@ export function loadPrecompiledNativeKernel(
     ) {
       throw new Error("embedded production native mathematics pack is invalid");
     }
-    if (!nativeTemporaryDirectory) {
-      nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
-    }
+    const temporaryDirectory = ensureNativeTemporaryDirectory();
     const outputDirectory = join(
-      nativeTemporaryDirectory,
+      temporaryDirectory,
       "native-kernels",
       cacheKey,
     );
     const outputModule = join(outputDirectory, "index.cjs");
     const outputPack = join(
-      nativeTemporaryDirectory,
+      temporaryDirectory,
       "native-kernels",
       "pack",
       "sagejs_native_kernel_pack.node",
     );
-    mkdirSync(outputDirectory, { recursive: true });
-    mkdirSync(dirname(outputPack), { recursive: true });
-    writeFileSync(outputModule, Buffer.from(getAsset(key)), { mode: 0o700 });
-    if (!existsSync(outputPack)) {
-      writeFileSync(outputPack, packBytes, { mode: 0o700 });
-    }
+    publishEmbeddedFile(outputModule, Buffer.from(getAsset(key)));
+    publishEmbeddedFile(outputPack, packBytes);
     const loaded = configureImmutableUInt64KernelWrapper(
       createRequire(outputModule)(outputModule),
     );
@@ -379,6 +451,40 @@ const reservedModuleSegments = new Set([
 ]);
 const sha1Pattern = /^[a-f0-9]{40}$/;
 const sha256Pattern = /^[a-f0-9]{64}$/;
+
+type WasmArtifactReceipt = {
+  schema?: unknown;
+  algorithm?: unknown;
+  filename?: unknown;
+  bytes?: unknown;
+  sha256?: unknown;
+};
+
+function verifyWasmArtifact(
+  bytes: Uint8Array,
+  receipt: WasmArtifactReceipt,
+  filename: string,
+  label: string,
+): void {
+  if (
+    receipt?.schema !== "sagejs.wasm-artifact-integrity/v1" ||
+    receipt?.algorithm !== "sha256" ||
+    receipt?.filename !== filename ||
+    !Number.isSafeInteger(receipt?.bytes) ||
+    Number(receipt.bytes) <= 0 ||
+    typeof receipt?.sha256 !== "string" ||
+    !sha256Pattern.test(receipt.sha256)
+  ) {
+    throw new Error(`${label} has an invalid packaged artifact receipt`);
+  }
+  if (bytes.byteLength !== receipt.bytes) {
+    throw new Error(`${label} size differs from its packaged artifact receipt`);
+  }
+  const actual = createHash("sha256").update(bytes).digest("hex");
+  if (actual !== receipt.sha256) {
+    throw new Error(`${label} SHA-256 differs from its packaged artifact receipt`);
+  }
+}
 
 function digest(algorithm: "sha1" | "sha256", value: string): string {
   return createHash(algorithm).update(value).digest("hex");
@@ -776,17 +882,14 @@ export function multiprocessingWorkerPath(fallbackFilename: string): string {
     throw new Error("multiprocessing worker is missing from this executable");
   }
   if (multiprocessingWorkerFilename) return multiprocessingWorkerFilename;
-  if (!nativeTemporaryDirectory) {
-    nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
-  }
+  const temporaryDirectory = ensureNativeTemporaryDirectory();
   multiprocessingWorkerFilename = join(
-    nativeTemporaryDirectory,
+    temporaryDirectory,
     basename(MULTIPROCESSING_WORKER_ASSET),
   );
-  writeFileSync(
+  publishEmbeddedFile(
     multiprocessingWorkerFilename,
     Buffer.from(getAsset(MULTIPROCESSING_WORKER_ASSET)),
-    { mode: 0o700 },
   );
   return multiprocessingWorkerFilename;
 }
@@ -797,17 +900,14 @@ export function kernelWorkerPath(fallbackFilename: string): string {
     throw new Error("Jupyter kernel worker is missing from this executable");
   }
   if (kernelWorkerFilename) return kernelWorkerFilename;
-  if (!nativeTemporaryDirectory) {
-    nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
-  }
+  const temporaryDirectory = ensureNativeTemporaryDirectory();
   kernelWorkerFilename = join(
-    nativeTemporaryDirectory,
+    temporaryDirectory,
     basename(KERNEL_WORKER_ASSET),
   );
-  writeFileSync(
+  publishEmbeddedFile(
     kernelWorkerFilename,
     Buffer.from(getAsset(KERNEL_WORKER_ASSET)),
-    { mode: 0o700 },
   );
   return kernelWorkerFilename;
 }
@@ -820,16 +920,12 @@ function loadEmbeddedFlint(): unknown {
     );
   }
 
-  if (!nativeTemporaryDirectory) {
-    nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
-  }
+  const temporaryDirectory = ensureNativeTemporaryDirectory();
   const addonFilename = join(
-    nativeTemporaryDirectory,
+    temporaryDirectory,
     basename(FLINT_ASSET),
   );
-  writeFileSync(addonFilename, Buffer.from(getAsset(FLINT_ASSET)), {
-    mode: 0o700,
-  });
+  publishEmbeddedFile(addonFilename, Buffer.from(getAsset(FLINT_ASSET)));
 
   const nativeExports = loadExtractedNativeAddon(addonFilename);
   if (!hasAsset(FLINT_FFI_ASSET)) {
@@ -838,12 +934,10 @@ function loadEmbeddedFlint(): unknown {
     );
   }
   const ffiAddonFilename = join(
-    nativeTemporaryDirectory,
+    temporaryDirectory,
     basename(FLINT_FFI_ASSET),
   );
-  writeFileSync(ffiAddonFilename, Buffer.from(getAsset(FLINT_FFI_ASSET)), {
-    mode: 0o700,
-  });
+  publishEmbeddedFile(ffiAddonFilename, Buffer.from(getAsset(FLINT_FFI_ASSET)));
   const ffiExports = loadExtractedNativeAddon(ffiAddonFilename);
   const combined = Object.create(null) as Record<PropertyKey, unknown>;
   for (const source of [nativeExports, ffiExports]) {
@@ -863,13 +957,9 @@ function loadEmbeddedGraph(): unknown {
       "This Sage.js executable was built without the optional igraph backend",
     );
   }
-  if (!nativeTemporaryDirectory) {
-    nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
-  }
-  const addonFilename = join(nativeTemporaryDirectory, basename(GRAPH_ASSET));
-  writeFileSync(addonFilename, Buffer.from(getAsset(GRAPH_ASSET)), {
-    mode: 0o700,
-  });
+  const temporaryDirectory = ensureNativeTemporaryDirectory();
+  const addonFilename = join(temporaryDirectory, basename(GRAPH_ASSET));
+  publishEmbeddedFile(addonFilename, Buffer.from(getAsset(GRAPH_ASSET)));
   const nativeExports = loadExtractedNativeAddon(addonFilename);
   if (!hasAsset(GRAPH_FFI_ASSET)) {
     throw new Error(
@@ -877,12 +967,10 @@ function loadEmbeddedGraph(): unknown {
     );
   }
   const ffiAddonFilename = join(
-    nativeTemporaryDirectory,
+    temporaryDirectory,
     basename(GRAPH_FFI_ASSET),
   );
-  writeFileSync(ffiAddonFilename, Buffer.from(getAsset(GRAPH_FFI_ASSET)), {
-    mode: 0o700,
-  });
+  publishEmbeddedFile(ffiAddonFilename, Buffer.from(getAsset(GRAPH_FFI_ASSET)));
   const ffiExports = loadExtractedNativeAddon(ffiAddonFilename);
   const combined = Object.create(null) as Record<PropertyKey, unknown>;
   for (const source of [nativeExports, ffiExports]) {
@@ -902,16 +990,12 @@ function loadEmbeddedFflas(): unknown {
       "This Sage.js executable was built without the optional FFLAS backend",
     );
   }
-  if (!nativeTemporaryDirectory) {
-    nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
-  }
+  const temporaryDirectory = ensureNativeTemporaryDirectory();
   const addonFilename = join(
-    nativeTemporaryDirectory,
+    temporaryDirectory,
     basename(FFLAS_FFI_ASSET),
   );
-  writeFileSync(addonFilename, Buffer.from(getAsset(FFLAS_FFI_ASSET)), {
-    mode: 0o700,
-  });
+  publishEmbeddedFile(addonFilename, Buffer.from(getAsset(FFLAS_FFI_ASSET)));
   const nativeExports = loadExtractedNativeAddon(addonFilename);
   attachEmbeddedFfiManifest(
     nativeExports,
@@ -928,13 +1012,9 @@ function loadEmbeddedZeroMQ(): unknown {
     throw new Error("ZeroMQ is missing from this Sage.js executable");
   }
 
-  if (!nativeTemporaryDirectory) {
-    nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
-  }
-  const addonFilename = join(nativeTemporaryDirectory, basename(ZEROMQ_ASSET));
-  writeFileSync(addonFilename, Buffer.from(getAsset(ZEROMQ_ASSET)), {
-    mode: 0o700,
-  });
+  const temporaryDirectory = ensureNativeTemporaryDirectory();
+  const addonFilename = join(temporaryDirectory, basename(ZEROMQ_ASSET));
+  publishEmbeddedFile(addonFilename, Buffer.from(getAsset(ZEROMQ_ASSET)));
 
   const native = loadExtractedNativeAddon(addonFilename) as {
     Socket: new (type: number, options?: unknown) => any;
@@ -983,6 +1063,136 @@ function loadEmbeddedZeroMQ(): unknown {
   return zeroMQModule;
 }
 
+function numericalBackendArtifact(): Uint8Array {
+  if (isSea()) {
+    if (!hasAsset(NUMERICAL_BACKEND_ASSET)) {
+      throw new Error(
+        "This Sage.js executable was built without the cminpack numerical backend",
+      );
+    }
+    return assetBytes(NUMERICAL_BACKEND_ASSET);
+  }
+  const candidates = [
+    join(__dirname, "..", "numerical", "cminpack.wasm"),
+    join(
+      __dirname,
+      "..",
+      "..",
+      "packages",
+      "flint-wasm",
+      "numerical",
+      "build",
+      "cminpack.wasm",
+    ),
+    join(
+      __dirname,
+      "..",
+      "packages",
+      "flint-wasm",
+      "numerical",
+      "build",
+      "cminpack.wasm",
+    ),
+  ];
+  const filename = candidates.find((candidate) => existsSync(candidate));
+  if (filename === undefined) {
+    throw new Error(
+      "The cminpack numerical backend is unavailable; run " +
+        "`node packages/flint-wasm/numerical/scripts/build.cjs`",
+    );
+  }
+  return new Uint8Array(readFileSync(filename));
+}
+
+function nloptBackendArtifact(): Uint8Array {
+  if (isSea()) {
+    if (!hasAsset(NLOPT_BACKEND_ASSET)) {
+      throw new Error(
+        "This Sage.js executable was built without the NLopt numerical backend",
+      );
+    }
+    return assetBytes(NLOPT_BACKEND_ASSET);
+  }
+  const candidates = [
+    join(__dirname, "..", "numerical", "nlopt-methods.wasm"),
+    join(
+      __dirname,
+      "..",
+      "..",
+      "packages",
+      "flint-wasm",
+      "numerical",
+      "build",
+      "nlopt-methods.wasm",
+    ),
+    join(
+      __dirname,
+      "..",
+      "packages",
+      "flint-wasm",
+      "numerical",
+      "build",
+      "nlopt-methods.wasm",
+    ),
+    join(
+      __dirname,
+      "..",
+      "..",
+      "src",
+      "lib",
+      "sagejs",
+      "numerics",
+      "optimization",
+      "backends",
+      "nlopt",
+      "build",
+      "nlopt-methods.wasm",
+    ),
+  ];
+  const filename = candidates.find((candidate) => existsSync(candidate));
+  if (filename === undefined) {
+    throw new Error(
+      "The NLopt numerical backend is unavailable; run " +
+        "`node packages/flint-wasm/numerical/scripts/build-all.cjs`",
+    );
+  }
+  return new Uint8Array(readFileSync(filename));
+}
+
+function loadNumericalBackend(): unknown {
+  if (numericalBackendModule !== undefined) return numericalBackendModule;
+  const runtime = require("../numerical/backend.cjs") as {
+    createCminpackBackendSync(bytes: Uint8Array): unknown;
+  };
+  if (typeof runtime.createCminpackBackendSync !== "function") {
+    throw new TypeError("the cminpack numerical runtime adapter is invalid");
+  }
+  numericalBackendModule = runtime.createCminpackBackendSync(
+    numericalBackendArtifact(),
+  );
+  return numericalBackendModule;
+}
+
+function loadNloptBackend(): unknown {
+  if (nloptBackendModule !== undefined) return nloptBackendModule;
+  const runtime = require("../numerical/nlopt-backend.cjs") as {
+    createNloptBackendSync(bytes: Uint8Array): unknown;
+    nloptArtifactReceipt: WasmArtifactReceipt;
+  };
+  if (typeof runtime.createNloptBackendSync !== "function") {
+    throw new TypeError("the NLopt numerical runtime adapter is invalid");
+  }
+  const bytes = nloptBackendArtifact();
+  verifyWasmArtifact(
+    bytes,
+    runtime.nloptArtifactReceipt,
+    "nlopt-methods.wasm",
+    "NLopt numerical backend",
+  );
+  nloptBackendModule = runtime.createNloptBackendSync(bytes);
+  return nloptBackendModule;
+}
+
 export function runtimeRequire(name: string): unknown {
   if (runtimeModuleCache.has(name)) return runtimeModuleCache.get(name);
   const kind = NATIVE_RUNTIME_MODULES.has(name)
@@ -998,6 +1208,10 @@ export function runtimeRequire(name: string): unknown {
       module = loadEmbeddedGraph();
     } else if (isSea() && name === "zeromq") {
       module = loadEmbeddedZeroMQ();
+    } else if (name === NUMERICAL_BACKEND_MODULE) {
+      module = loadNumericalBackend();
+    } else if (name === NLOPT_BACKEND_MODULE) {
+      module = loadNloptBackend();
     } else if (name === "numpy-ts") {
       module = require("../vendor/numpy-ts.cjs");
     } else if (name === "@sagemath/sagejs-symbolic") {
@@ -1012,16 +1226,24 @@ export function runtimeRequire(name: string): unknown {
 
 export function cleanNativeResources(): void {
   runtimeModuleCache.clear();
+  numericalBackendModule = undefined;
+  nloptBackendModule = undefined;
   nativeKernelModules.clear();
-  if (!nativeTemporaryDirectory || !existsSync(nativeTemporaryDirectory)) return;
-  try {
-    rmSync(nativeTemporaryDirectory, { recursive: true, force: true });
-  } catch {
-    // Windows can keep a loaded addon locked until process shutdown.
+  if (
+    nativeTemporaryDirectoryOwned &&
+    nativeTemporaryDirectory &&
+    existsSync(nativeTemporaryDirectory)
+  ) {
+    try {
+      rmSync(nativeTemporaryDirectory, { recursive: true, force: true });
+    } catch {
+      // Windows can keep a loaded addon locked until process shutdown.
+    }
   }
   multiprocessingWorkerFilename = undefined;
   kernelWorkerFilename = undefined;
   nativeTemporaryDirectory = undefined;
+  nativeTemporaryDirectoryOwned = false;
 }
 
 process.once("exit", cleanNativeResources);

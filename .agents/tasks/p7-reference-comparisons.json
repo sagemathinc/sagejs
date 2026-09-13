@@ -1,0 +1,60 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p7-reference-comparisons",
+  "title": "P7 retained reference-method comparisons",
+  "lane": "documentation-compat",
+  "status": "active",
+  "owner": "user",
+  "objective": "Publish a structured Brent-versus-bisection reference-method comparison in the first numerical gallery story, derived only from retained solver and validation evidence",
+  "base_commit": "4f8ed1cd040af912dae0a8f6e3bc65f84381dbeb",
+  "claims": [
+    "test/numerics/gallery/generate-root-story.cjs",
+    "test/numerics/gallery/generate-cross-domain-evidence.py",
+    "test/numerics/gallery/generate-cross-domain-gallery.cjs",
+    "test/numerics/gallery/root-gallery.test.cjs",
+    "test/numerics/gallery/cross-domain-gallery.test.cjs",
+    "docs/numerical-computing/gallery/README.md",
+    "docs/numerical-computing/gallery/cross-domain.schema.json",
+    "docs/numerical-computing/gallery/story.schema.json",
+    "docs/numerical-computing/gallery/gallery.mjs",
+    "docs/numerical-computing/gallery/evidence.json",
+    "docs/numerical-computing/gallery/index.html",
+    "website/numerical-computing/stories/root-finding.json",
+    "website/numerical-computing/gallery.mjs",
+    "website/numerical-computing/evidence.json",
+    "website/numerical-computing/index.html",
+    "website/numerical-computing/gallery-manifest.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Independent ordinary-Python Brent and bisection executions plus retained validation evidence"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm docs:check",
+    "pnpm test:tutorial",
+    "node test/numerics/gallery/generate-root-story.cjs",
+    "node test/numerics/gallery/generate-cross-domain-gallery.cjs",
+    "node --test test/numerics/gallery/cross-domain-gallery.test.cjs test/numerics/gallery/root-gallery.test.cjs",
+    "node bench/numerical-gallery/measure.cjs",
+    "pnpm parallel:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

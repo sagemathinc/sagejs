@@ -1,0 +1,31 @@
+{
+  "date": "2026-09-12",
+  "revision": "20fe2a152",
+  "artifact": "sha256:0c1a7b1e2e486be10908e81035d3b67a7e541c42080847960466da479390e04f",
+  "system": "Sage.js/Node-Wasm",
+  "host": "Linux x64, AMD EPYC 7B13, Node 26.8.1",
+  "command": "node bench/modular/abelian-varieties/morphisms-sagejs.cjs 389 1009 --wasm",
+  "cases": [
+    {
+      "level": 389,
+      "workload": "T2-minus-1 construction, rank and Smith invariants",
+      "status": "timeout",
+      "evaluation_timeout_ms": 120000,
+      "error": "SageSessionTimeoutError: Sage.js evaluation timed out after 120000 ms"
+    },
+    {
+      "level": 1009,
+      "status": "not-run",
+      "reason": "The first case timed out; the runner stopped."
+    }
+  ],
+  "construction_only_followup": {
+    "level": 389,
+    "dimension": 32,
+    "matrix_rows": 64,
+    "construction_seconds": 1.3182101249694824,
+    "status": "passed",
+    "excludes": ["rank", "Smith invariants"],
+    "interpretation": "The large delay is after map construction. Subsequent stage-by-stage diagnosis also found portable integer rank stalled; rational rank completed in milliseconds. Both invariant-only Smith and exact rational rank were accelerated."
+  }
+}

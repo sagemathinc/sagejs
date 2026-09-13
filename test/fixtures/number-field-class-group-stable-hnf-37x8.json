@@ -12,8 +12,8 @@
   "expected": {
     "basis": [[1,0,0,0,0,0,1,1],[0,1,0,0,0,0,1,0],[0,0,1,0,0,0,1,1],[0,0,0,1,0,0,0,1],[0,0,0,0,1,0,1,1],[0,0,0,0,0,1,1,0],[0,0,0,0,0,0,2,0],[0,0,0,0,0,0,0,2]],
     "rank": 8,
-    "selected_candidate_indices": [28, 30, 31, 32, 33],
-    "deletion_trials": 30,
-    "hnf_calls": 31
+    "selected_candidate_indices": [0, 2, 3, 7, 9, 14],
+    "deletion_trials": 34,
+    "hnf_calls": 35
   }
 }

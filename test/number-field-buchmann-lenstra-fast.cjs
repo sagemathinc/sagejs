@@ -182,7 +182,7 @@ function run(command, args, environment = {}) {
 }
 
 test("packed BL HNF agrees exactly and rejects corrupted T8 evidence", () => {
-  const python = run(pythonExecutable(), ["-c", source]);
+  const python = run(pythonExecutable(), ["-c", `import math\n${source}`]);
   const sagejs = run(process.execPath, [
     join(root, "bin", "sagejs"),
     "--python",

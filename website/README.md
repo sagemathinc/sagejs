@@ -1,7 +1,10 @@
 # Sage.js implementation dashboard
 
 This directory is the static source for <https://sagemathinc.github.io/sagejs/>.
-It intentionally has no build step or third-party browser dependencies.
+It intentionally has no build step. The numerical laboratory vendors the
+repository-pinned Plotly distribution under `numerical-computing/` so its
+checked interactive figures do not depend on a CDN; the package version,
+digest, byte size, and license are recorded in its generated manifest.
 
 `capabilities.json` is the project's machine-readable implementation map. Each
 entry must distinguish:

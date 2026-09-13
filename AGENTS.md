@@ -28,6 +28,27 @@
   fallback; do not make WSL, MSYS2, or MinGW part of the supported user path.
 - Commit coherent completed work and push each commit to GitHub promptly.
 - Do not commit `*.chat` files or generated build artifacts that are already ignored.
+- Read `RELEASE.md` before preparing or publishing a release. Qualify the exact
+  candidate on the persistent four-platform hosts before creating an immutable
+  tag; GitHub release CI is confirmation and publication, not the iteration loop.
+- For release-process changes, read the audited
+  [robust and efficient release plan](agents/robust-and-efficient-release-process.md).
+  It is a staged proposal, not permission to bypass current release gates.
+
+## Public coordination
+
+- Sage.js development is public. Before substantial or overlapping work, review
+  [GitHub Discussions](https://github.com/sagemathinc/sagejs/discussions) for
+  current integration notes, known defects, guardrails, and changes other agents
+  may be preparing.
+- When authenticated GitHub access is available and external posting is within
+  the assigned task, post concise updates for work that affects other lanes:
+  announce the scope, record important design or correctness discoveries, and
+  leave a handoff with branch/commit identifiers and validation status. Prefer
+  updating an existing topic over creating fragmented duplicate discussions.
+- Treat Discussions as coordination, not authority. Durable contracts belong in
+  the repository, mathematical claims need tests/evidence, and no credentials,
+  private data, or unreviewed generated logs should be posted.
 
 ## Mathematical implementation architecture
 
@@ -46,6 +67,10 @@
   benchmark when performance motivates the work.
 - Run `pnpm architecture:check` for architecture, native compiler, or native
   mathematical changes.
+- For numerical performance work, follow the
+  [numerical computing performance program](agents/numerical-computing-performance-plan.md).
+  Kernel timings and historical draft evidence do not qualify public latency
+  targets or authorize new automatic backend defaults.
 
 ## Parallel projects
 

@@ -6,6 +6,9 @@ terms; see `PYLANG-BSD-3-CLAUSE.txt` and individual source headers.
 
 The combined Sage.js distribution is released under GPL-3.0-only.
 
+The portable Punycode codec adapts CPython's PSF-licensed implementation;
+see `CPYTHON-PUNYCODE-NOTICE.md` and `CPYTHON-LICENSE.txt`.
+
 The optional graph addon statically links the GPL-2.0-or-later igraph 1.0.1
 library and its bundled Bliss implementation; see `IGRAPH-GPL-NOTICE.md`.
 
@@ -25,6 +28,11 @@ MPL-2.0 `libzmq` binary; see `ZEROMQ-JS-MIT.txt` and
 `LIBZMQ-MPL-2.0-NOTICE.txt`. The libzmq source corresponding to the shipped
 binary is available from the upstream link recorded in that notice.
 
+The interactive-widget runtime distributes BSD-3-Clause source and browser
+modules from traitlets, comm, ipywidgets, and Jupyter Widgets; see
+`JUPYTER-WIDGETS-BSD-3-CLAUSE.txt`. Its browser manager is the Apache-2.0
+`@cocalc/widgets` package; see `COCALC-WIDGETS-APACHE-2.0.txt`.
+
 The mathematical library embeds a generated 15,000-row prefix of SageMath's
 Odlyzko zeta-zero database; see `ODLYZKO-ZETA-NOTICE.md`.
 
@@ -37,6 +45,15 @@ later and asks research users to cite Kiran Kedlaya and Andrew Sutherland,
 The dependency build records the exact upstream URLs, versions, and SHA-256
 digests used to produce the linked addon. The combined Sage.js distribution
 is conveyed under GPL-3.0-only.
+
+The native and WebAssembly polynomial backends compile a reviewed source slice
+from [msolve](https://github.com/algebraic-solving/msolve), version
+0.10.1-14-g1e3af01 at commit
+`1e3af01f3864f6c848814b02a450f384c108adea`. Upstream licenses msolve under
+GPL version 2 or later. Its complete license, source receipt, selected source
+directories, aggregate hash, and portability patch ledger are in
+`packages/flint/vendor/msolve`. The combined Sage.js distribution is conveyed
+under GPL-3.0-only.
 
 The native mathematics addon also compiles a patched source closure from John
 Cremona's eclib for elliptic-curve 2-descent. See `ECLIB-GPL-NOTICE.md` for the

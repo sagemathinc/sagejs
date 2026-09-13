@@ -17,8 +17,9 @@ const kernelSource =
 // architecture/native-kernels.json; this call also keeps a standalone test
 // from silently exercising only the dynamic fallback.
 execFileSync(
-  resolve(root, "bin/sagejs"),
+  process.execPath,
   [
+    resolve(root, "bin/sagejs"),
     "native",
     "compile",
     kernelSource,

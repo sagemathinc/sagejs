@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p8-soak",
+  "title": "Numerical P8 soak and reliability qualification",
+  "lane": "numerical-qualification",
+  "status": "active",
+  "owner": "user",
+  "objective": "Replace the misleading 64-operation long-duration label with an honest source-bound numerical soak/reliability campaign that enforces work, duration, cancellation/recovery, and memory-growth thresholds while keeping routine CI bounded",
+  "base_commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+  "claims": [
+    "bench/numerical-computing/qualification/product.corpus.json",
+    "bench/numerical-computing/qualification/soak/",
+    "bench/numerical-computing/qualification/matrix/supplemental-evidence.template.json",
+    "scripts/numerical-computing/qualification/run-soak.cjs",
+    "scripts/numerical-computing/qualification/collect-platform.cjs",
+    "scripts/numerical-computing/qualification/assemble-release-gate.cjs",
+    "scripts/numerical-computing/qualification/supplemental-report.cjs",
+    "scripts/numerical-computing/qualification/validate-campaign.cjs",
+    "test/numerics/evidence/qualification-soak.cjs",
+    "docs/numerical-computing/qualification/soak.md",
+    "docs/numerical-computing/qualification/README.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Independent numerical residuals and deterministic cross-domain checks",
+      "Process/session memory samples with bounded robust growth slope"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs",
+    "pnpm architecture:check",
+    "node --test test/numerics/evidence/qualification-soak.cjs test/numerics/evidence/qualification-supplemental.cjs",
+    "node scripts/numerical-computing/qualification/validate-campaign.cjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

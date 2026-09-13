@@ -96,6 +96,11 @@ function witnessDocument(headerDirectory) {
   const resource = structuredClone(
     flint.resources.find((item) => item.id === "fmpz_matrix"),
   );
+  // This witness intentionally exercises only ownership and packed aggregate
+  // lowering.  The production matrix resource is indexable, but its accessors
+  // are not part of this deliberately minimal declaration document.
+  delete resource.item_get;
+  delete resource.item_set;
   resource.dynamic.close_export = "ffiWitnessMatrixClose";
   const constructor = structuredClone(
     flint.functions.find((item) => item.id === "fmpz_matrix"),
@@ -211,7 +216,7 @@ function witnessDocument(headerDirectory) {
           ...structuredClone(flint.library.native.toolchain),
           source_include_dirs: [
             "packages/flint/include",
-            relative(root, headerDirectory),
+            relative(root, headerDirectory).replaceAll("\\", "/"),
           ],
         },
       },

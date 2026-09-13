@@ -2,7 +2,6 @@ import {
   ScalarExpression as ExpressionPlan,
   ScalarStatement as StatementPlan,
 } from "../ir/scalar-program";
-
 export function collectExpressionSlots(value: ExpressionPlan, slots: Set<number>): void {
   if (value.kind === "slot") {
     slots.add(value.slot);
@@ -305,4 +304,3 @@ export function hoistedExpressions(
   );
   return answer;
 }
-

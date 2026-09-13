@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "purpose": "Offline API and convention facts used to bound the foundational multilingual catalog; no executable or copied vendor output is included.",
+  "references": [
+    {
+      "system": "python-scipy",
+      "domain": "linear-algebra",
+      "source_url": "https://numpy.org/doc/stable/reference/routines.linalg.html",
+      "accessed": "2026-08-31",
+      "fact_used": "NumPy exposes solve, least-squares, eigensystem, and reduced-SVD entrypoints with array return conventions.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    },
+    {
+      "system": "python-scipy",
+      "domain": "transforms",
+      "source_url": "https://docs.scipy.org/doc/scipy/reference/fft.html",
+      "accessed": "2026-08-31",
+      "fact_used": "SciPy exposes one-dimensional FFT with NumPy-compatible normalization names.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    },
+    {
+      "system": "python-scipy",
+      "domain": "integration-optimization-ode",
+      "source_url": "https://docs.scipy.org/doc/scipy/reference/integrate.html",
+      "accessed": "2026-08-31",
+      "fact_used": "SciPy exposes adaptive quadrature and explicit initial-value solvers as callback-based APIs.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    },
+    {
+      "system": "python-scipy",
+      "domain": "statistics",
+      "source_url": "https://docs.scipy.org/doc/scipy/reference/stats.html",
+      "accessed": "2026-08-31",
+      "fact_used": "SciPy exposes descriptive, t-test, and linear-regression functions with structured return values.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    },
+    {
+      "system": "matlab",
+      "domain": "linear-algebra",
+      "source_url": "https://www.mathworks.com/help/matlab/linear-algebra.html",
+      "accessed": "2026-08-31",
+      "fact_used": "MATLAB uses left division for square solves and provides linsolve, eig, svd, and fft functions.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    },
+    {
+      "system": "matlab",
+      "domain": "least-squares",
+      "source_url": "https://www.mathworks.com/help/matlab/ref/lsqminnorm.html",
+      "accessed": "2026-08-31",
+      "fact_used": "MATLAB lsqminnorm names the minimum-norm least-squares operation used by the canonical adapter.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    },
+    {
+      "system": "matlab",
+      "domain": "optimization",
+      "source_url": "https://www.mathworks.com/help/optim/optimization-toolbox.html",
+      "accessed": "2026-08-31",
+      "fact_used": "MATLAB names bounded scalar minimization, simplex minimization, nonlinear systems, and nonlinear least squares fminbnd, fminsearch, fsolve, and lsqnonlin.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    },
+    {
+      "system": "matlab",
+      "domain": "ode",
+      "source_url": "https://www.mathworks.com/help/matlab/ref/ode45.html",
+      "accessed": "2026-08-31",
+      "fact_used": "MATLAB ode45 uses a callback, interval, and initial state for a nonstiff explicit IVP.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    },
+    {
+      "system": "wolfram",
+      "domain": "linear-algebra",
+      "source_url": "https://reference.wolfram.com/language/guide/MatrixComputations.html",
+      "accessed": "2026-08-31",
+      "fact_used": "Wolfram names dense solve and least-squares operations LinearSolve and LeastSquares.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    },
+    {
+      "system": "wolfram",
+      "domain": "transforms",
+      "source_url": "https://reference.wolfram.com/language/ref/FourierParameters.html",
+      "accessed": "2026-08-31",
+      "fact_used": "Wolfram FourierParameters makes transform sign and scaling explicit; {0,-1} matches the canonical forward transform.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    },
+    {
+      "system": "wolfram",
+      "domain": "integration",
+      "source_url": "https://reference.wolfram.com/language/ref/NIntegrate.html",
+      "accessed": "2026-08-31",
+      "fact_used": "Wolfram NIntegrate expresses numerical definite integration over an explicit variable interval.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    },
+    {
+      "system": "sage",
+      "domain": "numerical-computing",
+      "source_url": "https://doc.sagemath.org/html/en/reference/numerical/index.html",
+      "accessed": "2026-08-31",
+      "fact_used": "Sage exposes numerical integration, optimization, interpolation, linear algebra, and ODE functionality through Python-callable surfaces.",
+      "redistribution": "facts-and-original-fixtures-only",
+      "vendor_output_included": false
+    }
+  ],
+  "original_cases": [
+    {"id": "dense-solve-2x2", "matrix": [[3, 1], [1, 2]], "right": [9, 8], "expected": [2, 3]},
+    {"id": "full-convolution", "left": [1, 2], "right": [3, 4], "expected": [3, 10, 8]},
+    {"id": "linear-regression", "x": [0, 1, 2], "y": [1, 3, 5], "expected_slope": 2, "expected_intercept": 1}
+  ]
+}

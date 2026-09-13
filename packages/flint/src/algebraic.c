@@ -454,6 +454,89 @@ cleanup:
     return result;
 }
 
+napi_value sagejs_cyclotomic_elements_from_integral_coordinates(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value result = NULL;
+    napi_value item;
+    napi_value wrapped;
+    bool is_array = false;
+    uint32_t length = 0;
+    size_t degree;
+    size_t rows;
+    ulong order;
+    fmpz_t coefficient;
+    fmpq_poly_t polynomial;
+    qqbar_t root;
+    qqbar_t value;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !check_napi(env, napi_is_array(env, args[0], &is_array)) ||
+        !is_array ||
+        !check_napi(env, napi_get_array_length(env, args[0], &length)) ||
+        !bigint_to_ulong(env, args[1], &order))
+        return NULL;
+    if (order == 0)
+    {
+        napi_throw_range_error(
+            env, NULL, "cyclotomic order must be positive");
+        return NULL;
+    }
+    degree = (size_t) n_euler_phi(order);
+    if (degree == 0 || (size_t) length % degree != 0)
+    {
+        napi_throw_range_error(env, NULL,
+            "cyclotomic coordinate array has the wrong length");
+        return NULL;
+    }
+    rows = (size_t) length / degree;
+    if (rows > UINT32_MAX ||
+        !check_napi(env, napi_create_array_with_length(env, rows, &result)))
+        return NULL;
+
+    fmpz_init(coefficient);
+    fmpq_poly_init(polynomial);
+    qqbar_init(root);
+    qqbar_init(value);
+    qqbar_root_of_unity(root, 1, order);
+    for (size_t row = 0; row < rows; row++)
+    {
+        fmpq_poly_zero(polynomial);
+        for (size_t column = 0; column < degree; column++)
+        {
+            size_t offset = row * degree + column;
+            if (offset > UINT32_MAX ||
+                !check_napi(env,
+                    napi_get_element(env, args[0], (uint32_t) offset, &item)) ||
+                !bigint_to_fmpz(env, item, coefficient))
+                goto cleanup;
+            if (!fmpz_is_zero(coefficient))
+                fmpq_poly_set_coeff_fmpz(
+                    polynomial, (slong) column, coefficient);
+        }
+        qqbar_evaluate_fmpq_poly(value, polynomial, root);
+        wrapped = sagejs_qqbar_wrap_copy(env, value);
+        if (wrapped == NULL ||
+            !check_napi(env,
+                napi_set_element(env, result, (uint32_t) row, wrapped)))
+            goto cleanup;
+    }
+    qqbar_clear(value);
+    qqbar_clear(root);
+    fmpq_poly_clear(polynomial);
+    fmpz_clear(coefficient);
+    return result;
+
+cleanup:
+    result = NULL;
+    qqbar_clear(value);
+    qqbar_clear(root);
+    fmpq_poly_clear(polynomial);
+    fmpz_clear(coefficient);
+    return result;
+}
+
 typedef void (*sagejs_qqbar_binary_function)(
     qqbar_t, const qqbar_t, const qqbar_t);
 

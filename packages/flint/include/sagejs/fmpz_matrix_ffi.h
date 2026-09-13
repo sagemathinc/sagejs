@@ -379,6 +379,45 @@ static inline int sagejs_fmpz_matrix_hnf_into(
     return 1;
 }
 
+/*
+ * Run exact reductions on the top-left logical shape of oversized resident
+ * matrices.  FLINT windows borrow their entries from the owned roots and own
+ * only a temporary row-pointer table.  No window escapes these calls, and
+ * every initialized window is cleared before retained-memory accounting is
+ * refreshed on the writable roots.
+ *
+ * Validate every root and alias before constructing a window: rejection is
+ * transactional, while success changes only the requested logical prefix.
+ */
+static inline int sagejs_fmpz_matrix_logical_prefix_fits(
+    const sagejs_fmpz_matrix_t matrix, uint64_t rows, uint64_t columns)
+{
+    return rows != 0 && columns != 0 &&
+        rows <= (uint64_t) fmpz_mat_nrows(matrix->value) &&
+        columns <= (uint64_t) fmpz_mat_ncols(matrix->value) &&
+        rows <= (uint64_t) WORD_MAX && columns <= (uint64_t) WORD_MAX;
+}
+
+static inline int sagejs_fmpz_matrix_hnf_prefix_into(
+    sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t source,
+    uint64_t rows, uint64_t columns)
+{
+    fmpz_mat_t result_window, source_window;
+    if (result == source ||
+        !sagejs_fmpz_matrix_logical_prefix_fits(result, rows, columns) ||
+        !sagejs_fmpz_matrix_logical_prefix_fits(source, rows, columns))
+        return 0;
+    fmpz_mat_window_init(result_window, result->value,
+        0, 0, (slong) rows, (slong) columns);
+    fmpz_mat_window_init(source_window, source->value,
+        0, 0, (slong) rows, (slong) columns);
+    fmpz_mat_hnf(result_window, source_window);
+    fmpz_mat_window_clear(source_window);
+    fmpz_mat_window_clear(result_window);
+    sagejs_fmpz_matrix_finish_result(result);
+    return 1;
+}
+
 static inline int sagejs_fmpz_matrix_snf(
     sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t source)
 {
@@ -398,6 +437,26 @@ static inline int sagejs_fmpz_matrix_snf_into(
         fmpz_mat_ncols(result->value) != fmpz_mat_ncols(source->value))
         return 0;
     fmpz_mat_snf(result->value, source->value);
+    sagejs_fmpz_matrix_finish_result(result);
+    return 1;
+}
+
+static inline int sagejs_fmpz_matrix_snf_prefix_into(
+    sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t source,
+    uint64_t rows, uint64_t columns)
+{
+    fmpz_mat_t result_window, source_window;
+    if (result == source ||
+        !sagejs_fmpz_matrix_logical_prefix_fits(result, rows, columns) ||
+        !sagejs_fmpz_matrix_logical_prefix_fits(source, rows, columns))
+        return 0;
+    fmpz_mat_window_init(result_window, result->value,
+        0, 0, (slong) rows, (slong) columns);
+    fmpz_mat_window_init(source_window, source->value,
+        0, 0, (slong) rows, (slong) columns);
+    fmpz_mat_snf(result_window, source_window);
+    fmpz_mat_window_clear(source_window);
+    fmpz_mat_window_clear(result_window);
     sagejs_fmpz_matrix_finish_result(result);
     return 1;
 }
@@ -426,6 +485,34 @@ static inline int sagejs_fmpz_matrix_hnf_transform(
     return 1;
 }
 
+static inline int sagejs_fmpz_matrix_hnf_transform_prefix(
+    sagejs_fmpz_matrix_t hermite, sagejs_fmpz_matrix_t transform,
+    const sagejs_fmpz_matrix_t source, uint64_t rows, uint64_t columns)
+{
+    fmpz_mat_t hermite_window, transform_window, source_window;
+    if (hermite == transform || hermite == source || transform == source ||
+        !sagejs_fmpz_matrix_logical_prefix_fits(
+            hermite, rows, columns) ||
+        !sagejs_fmpz_matrix_logical_prefix_fits(
+            transform, rows, rows) ||
+        !sagejs_fmpz_matrix_logical_prefix_fits(source, rows, columns))
+        return 0;
+    fmpz_mat_window_init(hermite_window, hermite->value,
+        0, 0, (slong) rows, (slong) columns);
+    fmpz_mat_window_init(transform_window, transform->value,
+        0, 0, (slong) rows, (slong) rows);
+    fmpz_mat_window_init(source_window, source->value,
+        0, 0, (slong) rows, (slong) columns);
+    fmpz_mat_hnf_transform(
+        hermite_window, transform_window, source_window);
+    fmpz_mat_window_clear(source_window);
+    fmpz_mat_window_clear(transform_window);
+    fmpz_mat_window_clear(hermite_window);
+    sagejs_fmpz_matrix_finish_result(hermite);
+    sagejs_fmpz_matrix_finish_result(transform);
+    return 1;
+}
+
 /* Exact row-LLL into caller-owned resident resources. */
 static inline int sagejs_fmpz_matrix_lll_transform(
     sagejs_fmpz_matrix_t reduced, sagejs_fmpz_matrix_t transform,
@@ -445,6 +532,38 @@ static inline int sagejs_fmpz_matrix_lll_transform(
     fmpz_mat_one(transform->value);
     fmpz_lll_context_init(context, 0.75, 0.5, Z_BASIS, EXACT);
     fmpz_lll(reduced->value, transform->value, context);
+    sagejs_fmpz_matrix_finish_result(reduced);
+    sagejs_fmpz_matrix_finish_result(transform);
+    return 1;
+}
+
+static inline int sagejs_fmpz_matrix_lll_transform_prefix(
+    sagejs_fmpz_matrix_t reduced, sagejs_fmpz_matrix_t transform,
+    const sagejs_fmpz_matrix_t source, uint64_t rows, uint64_t columns)
+{
+    fmpz_mat_t reduced_window, transform_window, source_window;
+    fmpz_lll_t context;
+    if (reduced == transform || reduced == source || transform == source ||
+        rows == 0 || columns == 0 || rows > columns ||
+        !sagejs_fmpz_matrix_logical_prefix_fits(
+            reduced, rows, columns) ||
+        !sagejs_fmpz_matrix_logical_prefix_fits(
+            transform, rows, rows) ||
+        !sagejs_fmpz_matrix_logical_prefix_fits(source, rows, columns))
+        return 0;
+    fmpz_mat_window_init(reduced_window, reduced->value,
+        0, 0, (slong) rows, (slong) columns);
+    fmpz_mat_window_init(transform_window, transform->value,
+        0, 0, (slong) rows, (slong) rows);
+    fmpz_mat_window_init(source_window, source->value,
+        0, 0, (slong) rows, (slong) columns);
+    fmpz_mat_set(reduced_window, source_window);
+    fmpz_mat_one(transform_window);
+    fmpz_lll_context_init(context, 0.75, 0.5, Z_BASIS, EXACT);
+    fmpz_lll(reduced_window, transform_window, context);
+    fmpz_mat_window_clear(source_window);
+    fmpz_mat_window_clear(transform_window);
+    fmpz_mat_window_clear(reduced_window);
     sagejs_fmpz_matrix_finish_result(reduced);
     sagejs_fmpz_matrix_finish_result(transform);
     return 1;

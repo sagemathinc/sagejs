@@ -29,6 +29,36 @@ PLOTSPEC_SCHEMA_VERSION = 1
 _UNSAFE_OVERRIDE_KEYS = ("__proto__", "constructor", "prototype")
 
 
+def _rich_record(mime: str, data: Any) -> Any:
+    """Materialize a native host record under Sage.js, or a dict on CPython."""
+    try:
+        import sagejs.runtime as runtime
+
+        def native_json(value: Any) -> Any:
+            if isinstance(value, dict):
+                record = runtime.object.create(None)
+                for key in value:
+                    runtime.reflect.set(record, key, native_json(value[key]))
+                return record
+            if isinstance(value, (list, tuple)):
+                array = runtime.reflect.construct(runtime.array, [])
+                for item in value:
+                    runtime.reflect.apply(
+                        runtime.array.prototype.push,
+                        array,
+                        [native_json(item)],
+                    )
+                return array
+            return value
+
+        answer = runtime.object.create(None)
+        runtime.reflect.set(answer, "mime", mime)
+        runtime.reflect.set(answer, "data", native_json(data))
+        return answer
+    except (ImportError, NameError):
+        return {"mime": mime, "data": data}
+
+
 def _nonempty_string(value: Any, name: str) -> str:
     if not isinstance(value, str) or value == "":
         raise TypeError(name + " must be a nonempty string")
@@ -555,6 +585,23 @@ class PlotSpec:
     def to_json(self) -> str:
         """Return stable compact UTF-8 JSON text."""
         return canonical_json(self.to_dict())
+
+    def _rich_repr_(self) -> Any:
+        """Return a clone-safe Plotly figure at the host display boundary."""
+        # Keep this import genuinely lazy.  The browser pack's conservative
+        # dependency scanner follows ordinary import statements even inside a
+        # method; spelling this as a runtime import avoids introducing the
+        # model -> lowering -> model preload cycle while preserving the same
+        # ordinary-Python behavior when rich display is actually requested.
+        lowering = __import__(
+            "sagejs.plotting.lowering",
+            fromlist=["lower_plot_spec"],
+        )
+
+        return _rich_record(
+            "application/vnd.plotly.v1+json",
+            lowering.lower_plot_spec(self),
+        )
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "PlotSpec":

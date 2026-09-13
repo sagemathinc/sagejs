@@ -1,0 +1,116 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "quartic-high-discriminant-corpus",
+  "title": "Quartic High-Discriminant Corpus",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Create and benchmark a pinned stratified higher-discriminant quartic class-number corpus with exact oracle agreement, reproducible selection, and phase diagnostics",
+  "base_commit": "3253952f4879f0d0ee34dafb26c5506c047e1eb9",
+  "claims": [
+    "bench/class-unit-groups/quartic-stratified-corpus.cjs",
+    "bench/class-unit-groups/quartic-stratified-benchmark.py",
+    "test/fixtures/number-field-lmfdb-quartic-stratified.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "lmfdb",
+      "sage-pari"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --check bench/class-unit-groups/quartic-stratified-corpus.cjs",
+    "node bench/class-unit-groups/quartic-stratified-corpus.cjs --check",
+    "pnpm format:python:check",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --check bench/class-unit-groups/quartic-stratified-corpus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.029,
+      "started_at": "2026-08-26T22:54:55.272Z",
+      "commit": "3253952f4879f0d0ee34dafb26c5506c047e1eb9",
+      "workspace_fingerprint": "08bbd324500bcde980cea1416e37cfb99465a20405548e02a619402a015f340b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/quartic-stratified-corpus.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.05,
+      "started_at": "2026-08-26T22:54:55.930Z",
+      "commit": "3253952f4879f0d0ee34dafb26c5506c047e1eb9",
+      "workspace_fingerprint": "08bbd324500bcde980cea1416e37cfb99465a20405548e02a619402a015f340b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm format:python:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.772,
+      "started_at": "2026-08-26T22:54:56.611Z",
+      "commit": "3253952f4879f0d0ee34dafb26c5506c047e1eb9",
+      "workspace_fingerprint": "08bbd324500bcde980cea1416e37cfb99465a20405548e02a619402a015f340b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 31.877,
+      "started_at": "2026-08-26T22:55:03.020Z",
+      "commit": "3253952f4879f0d0ee34dafb26c5506c047e1eb9",
+      "workspace_fingerprint": "08bbd324500bcde980cea1416e37cfb99465a20405548e02a619402a015f340b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.741,
+      "started_at": "2026-08-26T22:55:35.545Z",
+      "commit": "3253952f4879f0d0ee34dafb26c5506c047e1eb9",
+      "workspace_fingerprint": "08bbd324500bcde980cea1416e37cfb99465a20405548e02a619402a015f340b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 869.716,
+      "started_at": "2026-08-26T22:56:09.659Z",
+      "commit": "3253952f4879f0d0ee34dafb26c5506c047e1eb9",
+      "workspace_fingerprint": "08bbd324500bcde980cea1416e37cfb99465a20405548e02a619402a015f340b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Pinned 36 LMFDB quartics across all 3 signatures, 3 absolute-discriminant bands from 1e5 to 1e8, and 4 class-group shapes. Each record has an unconditional Sage 10.9/PARI 2.17.1 oracle and replayable provenance. Added one ordinary Python runner for identical Sage.js and Sage/PARI scalar/group boundaries with exact failures, retained-state shape, phase, and resource diagnostics. The 12-field conditional smoke tier completed 8/12 under default Sage.js caps (successful geometric mean 7.375s) versus 12/12 for Sage/PARI (5.432ms). Two Sage.js positives took 92.326s and 263.639s although relation phases were only 1.326s and 2.130s; both uniquely constructed a post-saturation scalar projection. One exact diagnostic took 298.867s and another exceeded a 420s external bound. A representative retained conditional scalar took 2.885s, first group materialization 4.568s, and independent group verification 8.973s.",
+    "risks": [
+      "The holdout tier is intentionally unmeasured; do not inspect it until a quartic optimization policy is frozen on smoke and tune.",
+      "Warm timing requires an already populated Sage.js generated-artifact cache. Immediately after a clean lane build the first smoke scalar was 67.136s; the identical next process was 2.452s.",
+      "pnpm test:changed passed four complete unit batches, then an unrelated Chromium Wasm test failed because dist/wasi-runtime.mjs returned 404; this lane changes only benchmark scripts and a JSON fixture."
+    ],
+    "next_steps": [
+      "Use smoke fields 4.2.3324000.1 and 4.2.32230080.1 as slow positives for eliminating post-saturation scalar proof-object construction, with 4.2.778975.1 and 4.2.31647788.1 as fast controls.",
+      "Preserve one resumable authenticated arithmetic core through class_number, optional class_group materialization, and detached verification; do not widen resource caps to hide the current incomplete cases.",
+      "After the policy is frozen on smoke, run the 12 tune fields and only then inspect the 12 holdout fields."
+    ]
+  }
+}

@@ -163,7 +163,13 @@ function recursiveFiles(directory, predicate) {
   const result = [];
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const filename = path.join(directory, entry.name);
-    if (entry.isDirectory()) result.push(...recursiveFiles(filename, predicate));
+    // Dependency build trees can live under src/lib (for example NLopt).
+    // Their upstream tests are not Sage.js source, and their presence must
+    // not change the inventory between a clean checkout and a built host.
+    if (entry.isDirectory()) {
+      if (["build", "node_modules", ".native", "__pycache__"].includes(entry.name)) continue;
+      result.push(...recursiveFiles(filename, predicate));
+    }
     else if (entry.isFile() && predicate(filename)) result.push(filename);
   }
   return result.sort();
@@ -921,9 +927,9 @@ function finalizeDashboard({ root, identity, sourceBundle, compilerIdentity: com
   };
 }
 
-function parserOptions(root, filename) {
+function parserOptions(root, filename, logicalFilename = repositoryPath(root, filename)) {
   return {
-    filename,
+    filename: logicalFilename,
     basedir: path.dirname(filename),
     libdir: path.join(root, "src", "lib"),
     import_dirs: [],
@@ -1019,7 +1025,7 @@ async function analyzeSources({ root = ROOT, compilerRoot = root, sources, ident
       try {
         const ast = frontend.parse(
           item.source,
-          parserOptions(root, item.filename),
+          parserOptions(root, item.filename, item.relativePath),
         );
         verifyOptimizationProgram(ast.optimization_ir);
         const program = explainOptimizationProgram(ast.optimization_ir);

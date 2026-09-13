@@ -5,7 +5,7 @@ from __future__ import annotations
 import sagejs.runtime as _runtime
 
 __sagejs_ffi_declaration__ = (
-    "fflas@a934cdc126dc59d3a8dda1e967ad2bd8943b13aa35ecdf497d0939c302d15684"
+    "fflas@c01ecc87bcba4bf02110ebdb7c66ac5fcd45325e538398367f2ce61d12cf1d03"
 )
 
 

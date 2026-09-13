@@ -281,8 +281,14 @@ async function main() {
     const resized = await session.evaluate(
       "show(line([(0,0), (1,1)]), figsize=[4, 2])",
     );
-    assert.equal(resized.display?.data.layout.width, 400);
-    assert.equal(resized.display?.data.layout.height, 200);
+    assert.equal(
+      resized.events[0].data["application/vnd.plotly.v1+json"].layout.width,
+      400,
+    );
+    assert.equal(
+      resized.events[0].data["application/vnd.plotly.v1+json"].layout.height,
+      200,
+    );
     await assert.rejects(
       session.evaluate("plot(x, (x, 0, 1), figsize=0)"),
       /figsize should be positive/,
@@ -366,11 +372,10 @@ async function main() {
     const shown = await session.evaluate(
       "show(plot(sin(x^2), (x, 0, pi)))",
     );
-    assert.equal(shown.display?.mime, "application/vnd.plotly.v1+json");
-    assert.equal(
-      shown.repr,
-      "Graphics object consisting of 1 graphics primitive",
+    assert.ok(
+      shown.events[0].data["application/vnd.plotly.v1+json"],
     );
+    assert.equal(shown.repr, "");
     const wolframPlot = await session.evaluate(
       "Plot[Sin[x^2],{x,0,Pi}]",
       { language: "wolfram" },

@@ -320,6 +320,60 @@ print(
     }
 
     await waitForOutput("2 * 1013");
+    const pythonModeProbe = await command("Runtime.evaluate", {
+      expression: `(async () => {
+        const { createSage } = await import("/kernel.mjs");
+        const session = await createSage({ mode: "python" });
+        try {
+          const python = await session.evaluate(
+            "print(isinstance(1.0, float))\\n" +
+            "try:\\n" +
+            "    1.0 / 0.0\\n" +
+            "except Exception as error:\\n" +
+            "    print(type(error).__name__)"
+          );
+          const matlab = await session.evaluate(
+            "%%matlab\\n" +
+            "x=arrayfun(@(x) x^2,[1 2;3 4]); size(x)"
+          );
+          const punycode = await session.evaluate(
+            "print('bücher'.encode('punycode'))\\n" +
+            "print(b'bcher-kva'.decode('punycode'))"
+          );
+          const nlopt = await session.evaluate(
+            "from sagejs.numerics.optimization import minimize\\n" +
+            "answer = minimize(\\n" +
+            "    lambda point: 1.0e9 + point[0], [1.0e-9],\\n" +
+            "    bounds=[[0.0, 1.0]], method='nlopt-nelder-mead',\\n" +
+            "    initial_step=1.0e-12, xtol=1.0e-3,\\n" +
+            "    max_evaluations=10000,\\n" +
+            ")\\n" +
+            "check = next(\\n" +
+            "    item for item in answer.validation.to_dict()['checks']\\n" +
+            "    if item['kind'] == 'strict_active_bound_consistency'\\n" +
+            ")\\n" +
+            "print(answer.success, check['passed'])"
+          );
+          return {
+            python: { stdout: python.stdout, repr: python.repr },
+            matlab: { stdout: matlab.stdout, repr: matlab.repr },
+            punycode: { stdout: punycode.stdout, stderr: punycode.stderr ?? '', repr: punycode.repr },
+            nlopt: { stdout: nlopt.stdout, repr: nlopt.repr },
+          };
+        } finally {
+          await session.close();
+        }
+      })()`,
+      awaitPromise: true,
+      returnByValue: true,
+    });
+    assert.equal(pythonModeProbe.exceptionDetails, undefined);
+    assert.deepEqual(pythonModeProbe.result.value, {
+      python: { stdout: "True\nZeroDivisionError\n", repr: "" },
+      matlab: { stdout: "", repr: "(2, 2)" },
+      punycode: { stdout: "b'bcher-kva'\nbücher\n", stderr: "", repr: "" },
+      nlopt: { stdout: "False False\n", repr: "" },
+    });
     const publicExactSubspacesOnly = process.argv.includes(
       "--public-exact-subspaces",
     );
@@ -329,6 +383,12 @@ print(
     await runSourceWithShortcut("factor(42)", "shift", "2 * 3 * 7");
     await runSourceWithShortcut("factor(66)", "ctrl", "2 * 3 * 11");
     await runSource("import math\nmath.sin(math.pi/2)", "1.0");
+    await runSource(
+      "r = numerical_root(cos(x) - x, 0, 1)\n" +
+        "(r.success, r.status, r.method, r.validation.truth_level, " +
+        "abs(r.value - 0.7390851332151607) < 1e-14)",
+      "(True, 'converged', 'brent', 'validated_approximate', True)",
+    );
     await runSource(
       "%%magma\nn := 2026;\nFactorization(n);\nIsPrime(101);",
       "2 * 1013\nTrue",
@@ -365,6 +425,20 @@ print(
       "2*x*cos(x^2)",
     );
     await runSource("QQ['x'].gen()", "x");
+    await runSource(
+      "A = AffineSpace(QQ, 2, names=('u', 'v'))\n" +
+        "u, v = A.gens()\n" +
+        "X = A.subscheme([v-u^2])\n" +
+        "print(X.dimension(), A(3,9) in X)\n" +
+        "X.coordinate_ring().gens()[1] == X.coordinate_ring().gens()[0]^2",
+      "1 True\nTrue",
+    );
+    await runSource(
+      "K = GF(4, 'a')\nA = AffineSpace(K, 2, names=('x', 'y'))\n" +
+        "x, y = A.gens()\nX = A.subscheme([y-x^2-K.gen()])\n" +
+        "print(len(X.rational_points()), X.is_smooth())",
+      "4 True\n",
+    );
     await runSource(
       "R.<x> = QQ[]\nx^2 - 2*x + 1",
       "x^2 - 2*x + 1",

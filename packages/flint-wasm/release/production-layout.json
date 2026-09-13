@@ -2,6 +2,13 @@
   "schema": "sagejs.wasm-production-layout/v1",
   "modules": [
     {
+      "id": "flint-extension-multivariate",
+      "ownershipDomain": "flint-extension-multivariate",
+      "artifact": "flint-extension-multivariate.wasm",
+      "eager": false,
+      "memory": {"pageBytes": 65536, "initialPages": 256, "maximumPages": 8192}
+    },
+    {
       "id": "flint",
       "ownershipDomain": "flint-gmp-mpfr-mpc-arb",
       "artifact": "flint-factor.wasm",
@@ -21,6 +28,28 @@
         "pageBytes": 65536,
         "initialPages": 256,
         "maximumPages": 8192
+      }
+    },
+    {
+      "id": "cminpack",
+      "ownershipDomain": "cminpack-levenberg-marquardt",
+      "artifact": "cminpack.wasm",
+      "eager": false,
+      "memory": {
+        "pageBytes": 65536,
+        "initialPages": 32,
+        "maximumPages": 2048
+      }
+    },
+    {
+      "id": "nlopt",
+      "ownershipDomain": "nlopt-mit-derivative-free",
+      "artifact": "nlopt-methods.wasm",
+      "eager": false,
+      "memory": {
+        "pageBytes": 65536,
+        "initialPages": 32,
+        "maximumPages": 2048
       }
     },
     {
@@ -61,6 +90,22 @@
     "schema": "sagejs.wasm-artifact-topology/v1",
     "groups": [
       {
+        "id": "extension-multivariate",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": [
+          "flint-extension-multivariate.wasm"
+        ],
+        "maximumCompressedDelta": {"gzipBytes": 2300000, "brotliBytes": 1900000}
+      },
+      {
+        "id": "extension-multivariate-source",
+        "kind": "support",
+        "dependencies": [],
+        "assets": ["extension-resource-adapter.c"],
+        "maximumCompressedDelta": {"gzipBytes": 16000, "brotliBytes": 14000}
+      },
+      {
         "id": "eager-core",
         "kind": "eager",
         "dependencies": [],
@@ -69,6 +114,9 @@
           "compiler-frontend.mjs",
           "compiler.js",
           "dynamic-programs.json",
+          "extension-resource-backend.mjs",
+          "extension-resource-manifest.json",
+          "extension-resource-receipt.json",
           "ffi-production-closure.json",
           "ffi-resource-backend.mjs",
           "ffi-resource-manifest.json",
@@ -86,6 +134,7 @@
           "runtime/dirichlet-group.mjs",
           "runtime/dynamic-compiler.mjs",
           "runtime/evaluator.mjs",
+          "runtime/extension-multivariate.mjs",
           "runtime/index.mjs",
           "runtime/kernel-worker.mjs",
           "runtime/kernel.d.ts",
@@ -98,8 +147,11 @@
           "runtime/node-worker.mjs",
           "runtime/number-field-zeta.mjs",
           "runtime/numeric-backend.mjs",
+          "runtime/portable-exact.mjs",
           "runtime/portable-matrix.mjs",
           "runtime/portable-polynomial.mjs",
+          "runtime/specialist-bytes-worker.mjs",
+          "runtime/specialist-bytes.mjs",
           "serialization.mjs",
           "stdlib.json",
           "symbolic-backend.mjs",
@@ -112,8 +164,8 @@
           "web-tree-sitter.wasm"
         ],
         "maximumCompressedDelta": {
-          "gzipBytes": 14000000,
-          "brotliBytes": 7800000
+          "gzipBytes": 17600000,
+          "brotliBytes": 9700000
         }
       },
       {
@@ -153,6 +205,26 @@
         }
       },
       {
+        "id": "cminpack",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": ["cminpack.wasm", "numerical-backend.mjs"],
+        "maximumCompressedDelta": {
+          "gzipBytes": 35000,
+          "brotliBytes": 30000
+        }
+      },
+      {
+        "id": "nlopt",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": ["nlopt-backend.mjs", "nlopt-methods.wasm"],
+        "maximumCompressedDelta": {
+          "gzipBytes": 55000,
+          "brotliBytes": 45000
+        }
+      },
+      {
         "id": "compiled-flint",
         "kind": "specialist",
         "dependencies": ["eager-core"],
@@ -161,8 +233,8 @@
           "native-kernels/kernel-flint.wasm"
         ],
         "maximumCompressedDelta": {
-          "gzipBytes": 2400000,
-          "brotliBytes": 1900000
+          "gzipBytes": 2500000,
+          "brotliBytes": 1950000
         }
       },
       {
@@ -194,13 +266,35 @@
         "kind": "specialist",
         "dependencies": ["eager-core"],
         "assets": [
+          "katex/fonts/KaTeX_AMS-Regular.woff2",
+          "katex/fonts/KaTeX_Caligraphic-Bold.woff2",
+          "katex/fonts/KaTeX_Caligraphic-Regular.woff2",
+          "katex/fonts/KaTeX_Fraktur-Bold.woff2",
+          "katex/fonts/KaTeX_Fraktur-Regular.woff2",
+          "katex/fonts/KaTeX_Main-Bold.woff2",
+          "katex/fonts/KaTeX_Main-BoldItalic.woff2",
+          "katex/fonts/KaTeX_Main-Italic.woff2",
+          "katex/fonts/KaTeX_Main-Regular.woff2",
+          "katex/fonts/KaTeX_Math-BoldItalic.woff2",
+          "katex/fonts/KaTeX_Math-Italic.woff2",
+          "katex/fonts/KaTeX_SansSerif-Bold.woff2",
+          "katex/fonts/KaTeX_SansSerif-Italic.woff2",
+          "katex/fonts/KaTeX_SansSerif-Regular.woff2",
+          "katex/fonts/KaTeX_Script-Regular.woff2",
+          "katex/fonts/KaTeX_Size1-Regular.woff2",
+          "katex/fonts/KaTeX_Size2-Regular.woff2",
+          "katex/fonts/KaTeX_Size3-Regular.woff2",
+          "katex/fonts/KaTeX_Size4-Regular.woff2",
+          "katex/fonts/KaTeX_Typewriter-Regular.woff2",
+          "katex/katex.min.css",
+          "katex/katex.min.js",
           "plotly.min.js",
           "runtime/plotly-renderer.d.ts",
           "runtime/plotly-renderer.mjs"
         ],
         "maximumCompressedDelta": {
-          "gzipBytes": 1600000,
-          "brotliBytes": 1250000
+          "gzipBytes": 2000000,
+          "brotliBytes": 1650000
         }
       },
       {
@@ -267,7 +361,31 @@
     "wasi-runtime.mjs",
     "ffi-production-closure.json",
     "hyperelliptic-auto-receipt-policy.json",
+    "katex/fonts/KaTeX_AMS-Regular.woff2",
+    "katex/fonts/KaTeX_Caligraphic-Bold.woff2",
+    "katex/fonts/KaTeX_Caligraphic-Regular.woff2",
+    "katex/fonts/KaTeX_Fraktur-Bold.woff2",
+    "katex/fonts/KaTeX_Fraktur-Regular.woff2",
+    "katex/fonts/KaTeX_Main-Bold.woff2",
+    "katex/fonts/KaTeX_Main-BoldItalic.woff2",
+    "katex/fonts/KaTeX_Main-Italic.woff2",
+    "katex/fonts/KaTeX_Main-Regular.woff2",
+    "katex/fonts/KaTeX_Math-BoldItalic.woff2",
+    "katex/fonts/KaTeX_Math-Italic.woff2",
+    "katex/fonts/KaTeX_SansSerif-Bold.woff2",
+    "katex/fonts/KaTeX_SansSerif-Italic.woff2",
+    "katex/fonts/KaTeX_SansSerif-Regular.woff2",
+    "katex/fonts/KaTeX_Script-Regular.woff2",
+    "katex/fonts/KaTeX_Size1-Regular.woff2",
+    "katex/fonts/KaTeX_Size2-Regular.woff2",
+    "katex/fonts/KaTeX_Size3-Regular.woff2",
+    "katex/fonts/KaTeX_Size4-Regular.woff2",
+    "katex/fonts/KaTeX_Typewriter-Regular.woff2",
+    "katex/katex.min.css",
+    "katex/katex.min.js",
     "native-kernels/index.json",
+    "nlopt-backend.mjs",
+    "numerical-backend.mjs",
     "numpy-ts.mjs",
     "kernel-flint-resource-backend.mjs",
     "wasm-pack-loader.mjs",

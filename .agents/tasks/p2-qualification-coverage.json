@@ -1,0 +1,104 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p2-qualification-coverage",
+  "title": "P2 qualification envelope coverage",
+  "lane": "numerical-qualification",
+  "status": "active",
+  "owner": "user",
+  "objective": "Bind every P2 qualification envelope member to an executable independently validated product corpus case, expanding or narrowing claims honestly and enforcing mechanical coverage",
+  "base_commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+  "claims": [
+    "bench/numerical-computing/qualification/capabilities/node-capability-spec.json",
+    "bench/numerical-computing/qualification/node-adapter.cjs",
+    "bench/numerical-computing/qualification/product.corpus.json",
+    "scripts/numerical-computing/qualification/prepare-node.cjs",
+    "scripts/numerical-computing/qualification/validate-campaign.cjs",
+    "test/numerics/evidence/qualification-campaign.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "backend-neutral expected values and independent validators"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs",
+    "node scripts/numerical-computing/qualification/validate-campaign.cjs",
+    "pnpm architecture:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.953,
+      "started_at": "2026-09-02T20:35:13.109Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "2d7468492710ff6ffd1c314c2f7b097f9a8d4d0a71301125e7dceb05f86cc834",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/numerical-computing/qualification/validate-campaign.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.067,
+      "started_at": "2026-09-02T20:37:08.303Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "68ec9a733bec79b565585c5262232faa9dd958459840e9e0dcc832d04f62846a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.738,
+      "started_at": "2026-09-02T20:37:09.043Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "68ec9a733bec79b565585c5262232faa9dd958459840e9e0dcc832d04f62846a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.762,
+      "started_at": "2026-09-02T20:37:46.510Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "68ec9a733bec79b565585c5262232faa9dd958459840e9e0dcc832d04f62846a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 12.727,
+      "started_at": "2026-09-02T20:47:44.624Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "68ec9a733bec79b565585c5262232faa9dd958459840e9e0dcc832d04f62846a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Bound every array-valued P0-P2 capability-envelope claim to an executable product-corpus validation. Four new family cases execute all scalar-root methods, spline boundary families, finite-difference stencil families, and linear-solve methods; existing cases now attest interpolation, Chebyshev, polynomial-root, quadrature, QR, and Cholesky method identities. The adapter computes independent root/function residuals, spline interpolation and endpoint equations, finite-difference analytic error, linear residuals, QR reconstruction/orthogonality, and Cholesky reconstruction/shape. Capability generation now fails closed if any early-product envelope member is unbound, duplicated, widened without a case, or linked to a non-validation check. The audit also corrected inaccurate envelope vocabulary to the actual public result methods and replaced the false finite-difference derivative-order limit with the implementation's 65-point stencil bound. The 69-case campaign validator, qualification evidence suite, numerical architecture surface, lane contract, and direct execution of every added case against the base-compatible built artifact passed.",
+    "risks": [
+      "The versioned corpus and capability specification intentionally invalidate earlier numerical qualification receipts; persistent four-platform receipts must be recollected from the integrated candidate.",
+      "A clean local build passed, and the complete architecture wrapper passed FFI, package graph, numerical surface, native, Wasm, workload, resource-lifetime, and CoWasm checks before stopping at an unrelated optimizer-opportunity manifest that was already stale at the pinned base commit. The integration lane must regenerate that shared artifact and rerun the wrapper."
+    ],
+    "next_steps": [
+      "Cherry-pick this lane onto the current numerical integration branch, regenerate its shared optimizer-opportunity artifacts, and rerun the complete architecture check.",
+      "Collect the version-14 product corpus on Node, npm, SEA, and browser subjects across the persistent four-platform qualification matrix."
+    ]
+  }
+}

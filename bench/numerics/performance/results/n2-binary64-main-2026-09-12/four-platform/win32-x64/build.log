@@ -1,0 +1,81 @@
+
+Sage.js build
+  stages:   8
+  expected: about 5m 27s on a warm Linux developer build
+  output:   one progress summary per stage; use SAGEJS_BUILD_VERBOSE=1 for child logs
+  compiler: source changes can require two self-hosting passes to reach a fixed point
+
+[build] [1/8] Compile the TypeScript runtime (expected about 15s)
+[build] TypeScript runtime compiled.
+[build] PASS 1/8: Compile the TypeScript runtime (2s); approximately 5m 12s remaining
+
+[build] [2/8] Bundle vendored language frontends (expected about 5s)
+[build] Bundled NumPy, symbolic, and foreign-language parser backends
+[build] PASS 2/8: Bundle vendored language frontends (14s); approximately 5m 07s remaining
+
+[build] [3/8] Converge the self-hosted compiler (expected about 55s)
+[build] still running 3/8 (Converge the self-hosted compiler); 15s in this stage
+[build] still running 3/8 (Converge the self-hosted compiler); 30s in this stage
+[build] still running 3/8 (Converge the self-hosted compiler); 45s in this stage
+[build] still running 3/8 (Converge the self-hosted compiler); 1m 00s in this stage
+[build] still running 3/8 (Converge the self-hosted compiler); 1m 15s in this stage
+[build] Self-hosted compiler converged in 2 passes (28.886s + 51.097s).
+[build] PASS 3/8: Converge the self-hosted compiler (1m 21s); approximately 4m 12s remaining
+
+[build] [4/8] Generate FFI and task-runtime boundaries (expected about 10s)
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 15s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 30s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 45s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 1m 00s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 1m 15s in this stage
+[build] still running 4/8 (Generate FFI and task-runtime boundaries); 1m 30s in this stage
+[build] Synchronized 4 FFI declarations and 12 generated adapters. Built lightweight multiprocessing task runtime
+[build] PASS 4/8: Generate FFI and task-runtime boundaries (1m 39s); approximately 4m 02s remaining
+
+[build] [5/8] Precompile Python modules and Node runtimes (expected about 3m 10s)
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 1m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 1m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 1m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 1m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 2m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 2m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 2m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 2m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 3m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 3m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 3m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 3m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 4m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 4m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 4m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 4m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 5m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 5m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 5m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 5m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 6m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 6m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 6m 30s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 6m 45s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 7m 00s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 7m 15s in this stage
+[build] still running 5/8 (Precompile Python modules and Node runtimes); 7m 30s in this stage
+[build] Precompiled 94 standard-library modules and 66 baselib dependencies Cached compiler and Sage/Python runtimes for Node 26.5.1 (win32-x64)
+[build] PASS 5/8: Precompile Python modules and Node runtimes (7m 35s); approximately 52s remaining
+
+[build] [6/8] Reconcile installed native addons and adapters (expected about 20s)
+[build] Native adapters: 0 current, 0 rebuilt, 5 optional/absent.
+[build] PASS 6/8: Reconcile installed native addons and adapters (1s); approximately 32s remaining
+
+[build] [7/8] Publish the production native-kernel pack (expected about 30s)
+[build] Skipped production kernels: the optional generated FLINT adapter is absent.
+[build] PASS 7/8: Publish the production native-kernel pack (0s); approximately 2s remaining
+
+[build] [8/8] Build the lazy cminpack and NLopt numerical reactors (expected about 2s)
+[build] Skipped optional numerical reactors: the reproducible Wasm toolchain is not prepared.
+[build] PASS 8/8: Build the lazy cminpack and NLopt numerical reactors (0s); approximately 0s remaining
+
+[build] PASS: complete in 11m 07s; wrote dist/build-receipt.json for safe reuse by pnpm test.

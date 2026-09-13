@@ -656,10 +656,10 @@ difference, not merely compiler or language overhead.
 ### Exact integers and CoWasm number theory
 
 Native Kernel v9 compiles every function directly from the complete unmodified
-[`cowasm/src/nt.py`](cowasm/src/nt.py):
+[`cowasm/src/cowasm_nt.py`](cowasm/src/cowasm_nt.py):
 
 ```sh
-sagejs native compile bench/cowasm/src/nt.py
+sagejs native compile bench/cowasm/src/cowasm_nt.py
 ```
 
 The resulting private C call graph contains `inverse_mod → xgcd`,

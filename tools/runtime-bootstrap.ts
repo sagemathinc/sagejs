@@ -6,11 +6,13 @@
  * architecture, then compiles the unchanged source normally.
  */
 
-import { mkdirSync, statSync } from "fs";
+import { mkdirSync, realpathSync, statSync } from "fs";
 import { homedir } from "os";
 import { dirname, join, resolve } from "path";
 import { createRequire } from "module";
 import { compileFunction, Script } from "vm";
+import { PythonSourceMap, PythonSourceMapCollector, relocatePythonSourceMap, validatePythonSourceMap } from "./python/source-map";
+import { mappedPythonScript } from "./python/stack-adapter";
 
 import { markModuleCacheInUse } from "./cache-lease";
 import { atomicWriteCacheFileSync } from "./cache-file";
@@ -37,7 +39,7 @@ import {
   readRuntimeBootstrapSource,
   standardLibraryCacheDirectory,
 } from "./resources";
-import { loadSagejsCapabilityApi } from "./capability-api";
+import { createLazySagejsCapabilityApi } from "./capability-api";
 import { installImmutableUInt64CapsuleRuntime } from "./immutable-uint64-capsule";
 import { basePath, getImportDirs, importPath, libraryPath, sha1sum } from "./utils";
 import {
@@ -189,7 +191,7 @@ function rejectOptimizerProfileRawJavaScript(root: unknown): void {
 // `tools/native-kernel/c-backend.cjs`. Production-kernel tests ratchet the two
 // values together. Keeping the expected value in the runtime makes an old
 // cache fail closed even when its Python source has not changed.
-export const NATIVE_KERNEL_ABI_VERSION = 24;
+export const NATIVE_KERNEL_ABI_VERSION = 23;
 
 // A real statement gives the output pipeline a module to which it can attach
 // the generated baselib.  This used to be a RapydScript anonymous-function
@@ -294,6 +296,7 @@ export function generateRuntimeBootstrapSource(
     pool_numeric_literals: true,
     numeric_literal_pool_prefix: `rho_runtime_${mode}_`,
     module_registry: "",
+    standalone_builtins: false,
     baselib_plain: readBaselibSource(
       join(libraryPath, "baselib-plain-pretty.js"),
     ),
@@ -313,7 +316,7 @@ export function runRuntimeBootstrap(
   installHyperellipticAutoReceiptPolicy();
   installImmutableUInt64CapsuleRuntime();
   if (Reflect.get(globalThis, "__sagejs_capability_api__") === undefined) {
-    Reflect.set(globalThis, "__sagejs_capability_api__", loadSagejsCapabilityApi());
+    Reflect.set(globalThis, "__sagejs_capability_api__", createLazySagejsCapabilityApi());
   }
   const internalRequire = Reflect.get(globalThis, "require");
   if (typeof internalRequire === "function") {
@@ -364,11 +367,57 @@ export function runRuntimeBootstrap(
   // ordinary name lookup.
   const moduleRegistry = Reflect.get(globalThis, "ρσ_modules");
   if (!Object.prototype.hasOwnProperty.call(moduleRegistry, "builtins")) {
+    const generatedFacadeNames = Reflect.get(globalThis, "__sagejs_baselib_facade_names__");
+    if (!Array.isArray(generatedFacadeNames)) {
+      throw new Error("generated baselib facade inventory is unavailable");
+    }
+    // Stage zero reserves `super`, so baselib publishes its public host
+    // property explicitly rather than declaring a Python source alias.
+    const facadeNames = [...generatedFacadeNames, "super"];
+    const builtinNames = new Set<PropertyKey>([
+      ...facadeNames,
+      "__sagejs_native_resolve__",
+      "__sagejs_native_fallback_policy__",
+      "__sagejs_native_private_fallback__",
+    ]);
+    const pythonBuiltinNames = new Set<PropertyKey>(["super"]);
+    const baselibRegistry = Reflect.get(
+      globalThis,
+      "__sagejs_baselib_modules__",
+    ) as Record<string, unknown> | undefined;
+    for (const moduleName of [
+      "sagejs._baselib.builtins",
+      "sagejs._baselib.errors",
+    ]) {
+      const namespace = baselibRegistry?.[moduleName];
+      if (namespace && (typeof namespace === "object" || typeof namespace === "function")) {
+        for (const property of Reflect.ownKeys(namespace)) {
+          pythonBuiltinNames.add(property);
+        }
+      }
+    }
     const metadata: Record<PropertyKey, any> = Object.create(null);
+    const explicitlyWrittenBuiltinNames = new Set<PropertyKey>();
+    const existingDeletedBuiltin = Reflect.get(
+      globalThis,
+      "ρσ_deleted_builtin",
+    );
+    const deletedBuiltin = existingDeletedBuiltin?.__sagejs_deleted_builtin__ === true
+      ? existingDeletedBuiltin
+      : Object.freeze({ __sagejs_deleted_builtin__: true });
+    Reflect.set(globalThis, "ρσ_deleted_builtin", deletedBuiltin);
     Object.assign(metadata, {
       __name__: "builtins",
       __package__: "",
       __loader__: null,
+      // `eval` is a reserved JavaScript binding, so the compiler publishes
+      // the Python implementation under its internal `ρσ_eval` name instead
+      // of adding an `eval` entry to the generated facade.  Expose that exact
+      // implementation explicitly: falling through to `globalThis.eval`
+      // would leak the JavaScript host primitive into Python, while omitting
+      // it breaks ordinary `import builtins; builtins.eval(...)` consumers
+      // such as `inspect.signature(..., eval_str=True)` and Traitlets.
+      eval: Reflect.get(globalThis, "ρσ_eval"),
       __spec__: {
         name: "builtins",
         parent: "",
@@ -377,28 +426,60 @@ export function runRuntimeBootstrap(
         submodule_search_locations: null,
       },
     });
+    Object.defineProperties(metadata, {
+      __sagejs_builtin_facade_names__: { value: builtinNames },
+      __sagejs_python_builtin_names__: { value: pythonBuiltinNames },
+      __sagejs_explicit_builtin_names__: {
+        value: explicitlyWrittenBuiltinNames,
+      },
+    });
     const builtins = new Proxy(metadata, {
       get(target, property) {
         if (Reflect.has(target, property)) return Reflect.get(target, property);
-        return Reflect.get(globalThis, property);
+        if (!builtinNames.has(property)) return undefined;
+        const value = Reflect.get(globalThis, property);
+        return value === deletedBuiltin ? undefined : value;
       },
       has(target, property) {
-        return Reflect.has(target, property) || Reflect.has(globalThis, property);
+        return Reflect.has(target, property) || (builtinNames.has(property) &&
+          Reflect.has(globalThis, property) &&
+          Reflect.get(globalThis, property) !== deletedBuiltin);
       },
       set(target, property, value) {
         if (Reflect.has(target, property)) return Reflect.set(target, property, value);
-        return Reflect.set(globalThis, property, value);
+        if (builtinNames.has(property)) {
+          explicitlyWrittenBuiltinNames.add(property);
+          return Reflect.set(globalThis, property, value);
+        }
+        return Reflect.set(target, property, value);
+      },
+      deleteProperty(target, property) {
+        if (Reflect.has(target, property)) {
+          return Reflect.deleteProperty(target, property);
+        }
+        if (builtinNames.has(property)) {
+          explicitlyWrittenBuiltinNames.delete(property);
+          if (Reflect.deleteProperty(globalThis, property)) return true;
+          // Top-level `var` bindings are non-configurable in the host realm.
+          // A process-wide tombstone preserves Python deletion semantics
+          // without pretending that JavaScript removed the property.
+          return Reflect.set(globalThis, property, deletedBuiltin);
+        }
+        return true;
       },
       ownKeys(target) {
         return [...new Set([
           ...Reflect.ownKeys(target),
-          ...Reflect.ownKeys(globalThis),
+          ...facadeNames.filter((property) =>
+            Reflect.has(globalThis, property) &&
+            Reflect.get(globalThis, property) !== deletedBuiltin
+          ),
         ])];
       },
       getOwnPropertyDescriptor(target, property) {
         const local = Reflect.getOwnPropertyDescriptor(target, property);
         if (local) return local;
-        if (Reflect.has(globalThis, property)) {
+        if (builtinNames.has(property) && Reflect.has(globalThis, property)) {
           return {
             configurable: true,
             enumerable: true,
@@ -478,9 +559,19 @@ export function runRuntimeBootstrap(
     "__sagejs_native_trace_enabled__",
     process.env.SAGEJS_NATIVE_TRACE === "1",
   );
+  const nativePrivateFallback = Object.freeze(Object.create(null));
+  Reflect.set(
+    globalThis,
+    "__sagejs_native_private_fallback__",
+    nativePrivateFallback,
+  );
   const nativeModules = new Map<
     string,
-    { sourceHash: string; functions: Record<string, unknown> }
+    {
+      sourceHash: string;
+      functions: Record<string, unknown>;
+      privateFunctions: ReadonlySet<string>;
+    }
   >();
   const nativeSourceHashes = new Map<string, string>();
   type NativeForeignDeclaration = {
@@ -493,6 +584,7 @@ export function runRuntimeBootstrap(
     sourceHash: string;
     nativeAbi: number;
     foreignDeclarations: NativeForeignDeclaration[];
+    privateFunctions: string[];
   };
   const nativeLogicalSourceKey = (filename: string): string | undefined => {
     const normalized = filename.replaceAll("\\", "/");
@@ -513,7 +605,14 @@ export function runRuntimeBootstrap(
         Object.hasOwn(taskSources, filename)
       ? Reflect.get(taskSources, filename)
       : undefined;
-    return resolve(typeof mapped === "string" && mapped ? mapped : filename);
+    const absolute = resolve(typeof mapped === "string" && mapped ? mapped : filename);
+    // Match the compiler's physical identity for symlinked source paths,
+    // retaining lexical names for embedded/virtual resources without a file.
+    try {
+      return realpathSync(absolute);
+    } catch {
+      return absolute;
+    }
   };
   const usableNativeCandidate = (candidate: unknown): boolean => {
     if (typeof candidate !== "function") return false;
@@ -562,16 +661,34 @@ export function runRuntimeBootstrap(
     const sourceHash = Reflect.get(value, "sourceHash");
     const nativeAbi = Reflect.get(value, "nativeAbi");
     const declarations = Reflect.get(value, "foreignDeclarations");
+    const privateNames = Reflect.get(value, "privateFunctions");
     if (
       typeof cacheKey !== "string" || !/^[a-f0-9]{64}$/.test(cacheKey) ||
       sourceHash !== expectedSourceHash ||
       nativeAbi !== NATIVE_KERNEL_ABI_VERSION ||
-      !Array.isArray(declarations)
+      !Array.isArray(declarations) ||
+      !Array.isArray(privateNames)
     ) {
       throw staleNativeArtifact(
         filename,
         "source, cache, or native ABI metadata does not match",
       );
+    }
+    const privateFunctions: string[] = [];
+    let previousPrivateName: string | undefined;
+    for (const name of privateNames) {
+      if (
+        typeof name !== "string" ||
+        !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ||
+        (previousPrivateName !== undefined && name <= previousPrivateName)
+      ) {
+        throw staleNativeArtifact(
+          filename,
+          "invalid private native-function metadata",
+        );
+      }
+      privateFunctions.push(name);
+      previousPrivateName = name;
     }
     const foreignDeclarations: NativeForeignDeclaration[] = [];
     const seen = new Set<string>();
@@ -627,7 +744,13 @@ export function runRuntimeBootstrap(
       foreignDeclarations.push({ id, declarationIdentity, dynamicPackage });
     }
     foreignDeclarations.sort((left, right) => left.id.localeCompare(right.id));
-    return { cacheKey, sourceHash, nativeAbi, foreignDeclarations };
+    return {
+      cacheKey,
+      sourceHash,
+      nativeAbi,
+      foreignDeclarations,
+      privateFunctions,
+    };
   };
   const nativeCompatibilityKey = (value: NativeCompatibility): string =>
     JSON.stringify({
@@ -635,6 +758,7 @@ export function runRuntimeBootstrap(
       sourceHash: value.sourceHash,
       nativeAbi: value.nativeAbi,
       foreignDeclarations: value.foreignDeclarations,
+      privateFunctions: value.privateFunctions,
     });
   const registerNativeModule = (
     filename: string,
@@ -651,8 +775,24 @@ export function runRuntimeBootstrap(
     ) {
       throw new TypeError("invalid Sage.js native-module registration");
     }
-    validatedNativeCompatibility(filename, compatibility, sourceHash);
-    nativeModules.set(resolve(filename), { sourceHash, functions });
+    const validated = validatedNativeCompatibility(
+      filename,
+      compatibility,
+      sourceHash,
+    );
+    if (validated.privateFunctions.some((name) =>
+      typeof Reflect.get(functions, name) === "function"
+    )) {
+      throw staleNativeArtifact(
+        filename,
+        "private native-function metadata overlaps callable exports",
+      );
+    }
+    nativeModules.set(nativeSourcePath(filename), {
+      sourceHash,
+      functions,
+      privateFunctions: new Set(validated.privateFunctions),
+    });
   };
   const resolveNativeFunction = (
     filename: string,
@@ -695,6 +835,7 @@ export function runRuntimeBootstrap(
     if (registered?.sourceHash === sourceHash) {
       const candidate = Reflect.get(registered.functions, name);
       if (usableNativeCandidate(candidate)) return candidate;
+      if (registered.privateFunctions.has(name)) return nativePrivateFallback;
     }
 
     // An explicit cache directory is an override, not an additional search
@@ -769,15 +910,17 @@ export function runRuntimeBootstrap(
             "cache index and generated wrapper metadata differ",
           );
         }
-        const candidate = Reflect.get(loaded, name);
-        if (!usableNativeCandidate(candidate)) continue;
         registerNativeModule(
           sourcePath,
           sourceHash,
           loaded,
           moduleCompatibility,
         );
-        return candidate;
+        const candidate = Reflect.get(loaded, name);
+        if (usableNativeCandidate(candidate)) return candidate;
+        if (moduleCompatibility.privateFunctions.includes(name)) {
+          return nativePrivateFallback;
+        }
       } catch (error) {
         // Generated wrappers self-register while `require` evaluates them.
         // Never retain that registration if the cache index or current FFI
@@ -1020,6 +1163,7 @@ export function runRuntimeBootstrap(
         `${name.replaceAll(".", "-")}.json`,
       );
       let javascript = "";
+      let pythonSourceMap: PythonSourceMap | undefined;
       let cachedData: Buffer | undefined;
       let cacheNeedsWrite = false;
       if (cacheFilename) {
@@ -1030,9 +1174,16 @@ export function runRuntimeBootstrap(
             cached.signature === sourceHash &&
             cached.mode === moduleMode &&
             cached.filename === filename &&
-            typeof cached.javascript === "string"
+            typeof cached.javascript === "string" &&
+            cached.pythonSourceMap?.source?.text === source &&
+            cached.pythonSourceMap?.source?.filename === filename &&
+            cached.pythonSourceMap?.generated === cached.javascript
           ) {
+            const validatedMap = validatePythonSourceMap(cached.pythonSourceMap, cached.javascript, source);
             javascript = cached.javascript;
+            // A legacy local cache is rebuilt, not assigned guessed locations.
+            // Portable records below remain explicitly unmapped in this tranche.
+            pythonSourceMap = validatedMap;
             if (typeof cached.cachedData === "string") {
               cachedData = Buffer.from(cached.cachedData, "base64");
             }
@@ -1081,6 +1232,7 @@ export function runRuntimeBootstrap(
         }
       }
       if (!javascript) {
+        const collector = new PythonSourceMapCollector(source, filename);
         const ast = pythonFrontend.parse(source, {
           filename,
           basedir: dirname(filename),
@@ -1119,22 +1271,27 @@ export function runRuntimeBootstrap(
           numeric_literal_pool_prefix:
             `rho_module_${name.replaceAll(".", "_")}_`,
           module_registry: "ρσ_modules",
+          source_map: collector,
         });
         ast.print(output);
         javascript = output.get();
+        pythonSourceMap = collector.finish(javascript);
         cacheNeedsWrite = true;
       }
       const scriptSource = `(function(){\n${javascript}\n})();`;
-      let moduleScript = new Script(scriptSource, {
+      const wrappedMap = pythonSourceMap ? relocatePythonSourceMap(pythonSourceMap, [
+        { start: 0, end: 0, text: "(function(){\n" },
+        { start: javascript.length, end: javascript.length, text: "\n})();" },
+      ]) : undefined;
+      const moduleScript = wrappedMap ? mappedPythonScript(scriptSource, source, wrappedMap, cachedData) : new Script(scriptSource, {
         filename: `sagejs/lazy-module-${name}.js`,
         cachedData,
       });
       if (moduleScript.cachedDataRejected) {
         cachedData = undefined;
         cacheNeedsWrite = true;
-        moduleScript = new Script(scriptSource, {
-          filename: `sagejs/lazy-module-${name}.js`,
-        });
+        // The rejected-data Script already contains freshly compiled code.
+        // Keep that registered identity and refresh its bytecode below.
       }
       if (cacheFilename && (cacheNeedsWrite || !cachedData)) {
         try {
@@ -1146,6 +1303,7 @@ export function runRuntimeBootstrap(
             mode: moduleMode,
             filename,
             javascript,
+            pythonSourceMap,
             cachedData: cachedData.toString("base64"),
           }));
         } catch (_error) {

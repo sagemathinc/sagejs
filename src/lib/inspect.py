@@ -9,6 +9,76 @@ pure-Python frameworks.
 _empty = object()
 
 
+def _signature_annotations(
+    callable,
+    globals_mapping=None,
+    locals_mapping=None,
+    eval_str=False,
+):
+    """Return annotations for a signature, evaluating deferred source safely."""
+    annotations = dict(
+        getattr(
+            callable,
+            "__signature_annotations__",
+            getattr(callable, "__annotations__", {}),
+        )
+    )
+    deferred = False
+    if not annotations:
+        annotations = dict(
+            getattr(
+                callable,
+                "__signature_annotations_text__",
+                getattr(callable, "__annotations_text__", {}),
+            )
+        )
+        deferred = bool(annotations)
+    if not deferred and not eval_str:
+        return annotations
+
+    if globals_mapping is None:
+        globals_mapping = getattr(callable, "__globals__", None)
+    if globals_mapping is None:
+        import sys
+
+        module = sys.modules.get(getattr(callable, "__module__", ""))
+        if module is not None:
+            globals_mapping = vars(module)
+    if globals_mapping is None:
+        globals_mapping = {}
+    if locals_mapping is None:
+        locals_mapping = globals_mapping
+
+    resolved = {}
+    for name, annotation in annotations.items():
+        if isinstance(annotation, str):
+            if annotation == "None":
+                annotation = None
+            elif annotation in locals_mapping:
+                annotation = locals_mapping[annotation]
+            elif annotation in globals_mapping:
+                annotation = globals_mapping[annotation]
+            else:
+                try:
+                    # Attribute access avoids the compiler's special lowering
+                    # for a direct ``eval(...)`` call while invoking the same
+                    # Python builtin with explicit namespaces.
+                    annotation = __builtins__.eval(
+                        annotation,
+                        globals_mapping,
+                        locals_mapping,
+                    )
+                except (NameError, SyntaxError):
+                    # Preserve unresolved forward references just as the
+                    # compiler preserves their exact spelling for
+                    # documentation.  This is more useful than discarding the
+                    # annotation entirely and remains available for a later
+                    # call with richer namespaces.
+                    pass
+        resolved[name] = annotation
+    return resolved
+
+
 class FullArgSpec:
     """The argument description returned by :func:`getfullargspec`."""
 
@@ -29,6 +99,26 @@ class FullArgSpec:
         self.kwonlyargs = kwonlyargs
         self.kwonlydefaults = kwonlydefaults
         self.annotations = annotations
+
+    def _as_tuple(self):
+        return (
+            self.args,
+            self.varargs,
+            self.varkw,
+            self.defaults,
+            self.kwonlyargs,
+            self.kwonlydefaults,
+            self.annotations,
+        )
+
+    def __len__(self):
+        return 7
+
+    def __iter__(self):
+        return iter(self._as_tuple())
+
+    def __getitem__(self, index):
+        return self._as_tuple()[index]
 
 
 class BoundArguments:
@@ -197,7 +287,7 @@ def signature(
     eval_str=False,
     annotation_format=None,
 ):
-    del globals, locals, eval_str, annotation_format
+    del annotation_format
     explicit = getattr(callable, "__signature__", None)
     if explicit is not None:
         return explicit
@@ -221,11 +311,27 @@ def signature(
         # have CPython's introspection signature; libraries such as pluggy use
         # this distinction to discover hook arguments.
         names.insert(0, "self")
-    # Compiler metadata is intentionally stored as lightweight JavaScript
-    # records.  Normalize it to Python mappings before using the public dict
-    # API; third-party decorators should never have to know the distinction.
-    defaults = dict(getattr(callable, "__defaults__", {}))
-    annotations = dict(getattr(callable, "__annotations__", {}))
+    positional_defaults = getattr(callable, "__defaults__", None)
+    if positional_defaults is None:
+        defaults = {}
+    elif isinstance(positional_defaults, tuple):
+        # Match inspect's slicing even for an overlong reassigned tuple;
+        # CPython's binder itself uses the trailing entries in that case.
+        defaults = (
+            dict(zip(names[-len(positional_defaults) :], positional_defaults))
+            if positional_defaults
+            else {}
+        )
+    else:
+        # Compiler/baselib bootstrap functions retain a host-record ABI.
+        defaults = dict(positional_defaults)
+    keyword_defaults = dict(getattr(callable, "__kwdefaults__", None) or {})
+    annotations = _signature_annotations(
+        callable,
+        globals_mapping=globals,
+        locals_mapping=locals,
+        eval_str=eval_str,
+    )
     parameters = []
     positional_only = getattr(callable, "__positional_only__", 0)
     if positional_only is True:
@@ -258,7 +364,7 @@ def signature(
             Parameter(
                 name,
                 Parameter.KEYWORD_ONLY,
-                defaults.get(name, _empty),
+                keyword_defaults.get(name, _empty),
                 annotations.get(name, _empty),
             )
         )
@@ -274,6 +380,52 @@ def signature(
     return Signature(parameters, annotations.get("return", _empty))
 
 
+def _sagejs_signature_text(callable, name):
+    """Render the existing concise help signature from the shared model."""
+    try:
+        description = signature(callable, follow_wrapped=False)
+    except (TypeError, ValueError):
+        return name + "()"
+
+    def annotation_text(value):
+        if value is _empty:
+            return ""
+        if isinstance(value, str):
+            return value
+        return getattr(value, "__name__", None) or repr(value)
+
+    parts = []
+    positional_only = False
+    keyword_marker = False
+    for parameter in description.parameters.values():
+        kind = parameter.kind
+        if positional_only and kind != Parameter.POSITIONAL_ONLY:
+            parts.append("/")
+            positional_only = False
+        if kind == Parameter.KEYWORD_ONLY and not keyword_marker:
+            parts.append("*")
+            keyword_marker = True
+        part = parameter.name
+        if kind == Parameter.POSITIONAL_ONLY:
+            positional_only = True
+        elif kind == Parameter.VAR_POSITIONAL:
+            part = "*" + part
+            keyword_marker = True
+        elif kind == Parameter.VAR_KEYWORD:
+            part = "**" + part
+        annotation = annotation_text(parameter.annotation)
+        if annotation:
+            part += ": " + annotation
+        if parameter.default is not _empty:
+            part += "=" + repr(parameter.default)
+        parts.append(part)
+    if positional_only:
+        parts.append("/")
+    result = name + "(" + ", ".join(parts) + ")"
+    annotation = annotation_text(description.return_annotation)
+    return result + " -> " + annotation if annotation else result
+
+
 def isfunction(value):
     return callable(value) and hasattr(value, "__argnames__")
 
@@ -284,6 +436,29 @@ def ismethod(value):
 
 def isclass(value):
     return isinstance(value, type)
+
+
+def isabstract(value):
+    """Return whether `value` is an abstract class.
+
+    The host runtime does not expose CPython's private type flags, so use the
+    public abstract-method protocol.  The fallback scan also covers the short
+    interval while an `ABCMeta` subclass is being initialized.
+    """
+    if not isclass(value):
+        return False
+    abstract_methods = getattr(value, "__abstractmethods__", None)
+    if abstract_methods:
+        return True
+    for member in value.__dict__.values():
+        if getattr(member, "__isabstractmethod__", False):
+            return True
+    for base in value.__bases__:
+        for name in getattr(base, "__abstractmethods__", ()):
+            member = getattr(value, name, None)
+            if getattr(member, "__isabstractmethod__", False):
+                return True
+    return False
 
 
 def isroutine(value):
@@ -304,14 +479,19 @@ def isasyncgenfunction(value):
 
 def getfullargspec(callable):
     """Return CPython-compatible argument metadata for a callable."""
-    sig = signature(callable, follow_wrapped=False)
+    # Unlike ``signature()``, CPython's legacy ``getfullargspec()`` does not
+    # strip the leading receiver from a bound method.  Traitlets intentionally
+    # relies on this distinction when adapting old ``on_trait_change``
+    # callbacks.  Inspect the underlying function when one is available.
+    inspection_target = getattr(callable, "__func__", callable)
+    sig = signature(inspection_target, follow_wrapped=False)
     args = []
     varargs = None
     varkw = None
     defaults_by_name = {}
     kwonlyargs = []
     kwonlydefaults = {}
-    annotations = dict(getattr(callable, "__annotations__", {}))
+    annotations = dict(getattr(inspection_target, "__annotations__", {}))
     for parameter in sig.parameters.values():
         if parameter.kind in (
             Parameter.POSITIONAL_ONLY,
@@ -346,9 +526,182 @@ def getfullargspec(callable):
     )
 
 
+def _missing_arguments(function_name, argument_names, positional, values):
+    names = [repr(name) for name in argument_names if name not in values]
+    missing = len(names)
+    if missing == 1:
+        rendered = names[0]
+    elif missing == 2:
+        rendered = "{} and {}".format(*names)
+    else:
+        tail = ", {} and {}".format(*names[-2:])
+        del names[-2:]
+        rendered = ", ".join(names) + tail
+    raise TypeError(
+        "%s() missing %i required %s argument%s: %s"
+        % (
+            function_name,
+            missing,
+            "positional" if positional else "keyword-only",
+            "" if missing == 1 else "s",
+            rendered,
+        )
+    )
+
+
+def _too_many(
+    function_name,
+    args,
+    keyword_only,
+    varargs,
+    default_count,
+    given,
+    values,
+):
+    at_least = len(args) - default_count
+    keyword_only_given = len([arg for arg in keyword_only if arg in values])
+    if varargs:
+        plural = at_least != 1
+        signature_text = "at least %d" % at_least
+    elif default_count:
+        plural = True
+        signature_text = "from %d to %d" % (at_least, len(args))
+    else:
+        plural = len(args) != 1
+        signature_text = str(len(args))
+    keyword_only_text = ""
+    if keyword_only_given:
+        message = " positional argument%s (and %d keyword-only argument%s)"
+        keyword_only_text = message % (
+            "s" if given != 1 else "",
+            keyword_only_given,
+            "s" if keyword_only_given != 1 else "",
+        )
+    raise TypeError(
+        "%s() takes %s positional argument%s but %d%s %s given"
+        % (
+            function_name,
+            signature_text,
+            "s" if plural else "",
+            given,
+            keyword_only_text,
+            "was" if given == 1 and not keyword_only_given else "were",
+        )
+    )
+
+
+def getcallargs(function, /, *positional, **named):
+    """Return CPython-compatible bindings of arguments to parameter names."""
+    spec = getfullargspec(function)
+    args, varargs, varkw, defaults, keyword_only, keyword_defaults, _ = spec
+    function_name = function.__name__
+    values = {}
+
+    if ismethod(function) and function.__self__ is not None:
+        positional = (function.__self__,) + positional
+    positional_count = len(positional)
+    argument_count = len(args)
+    default_count = len(defaults) if defaults else 0
+
+    assigned_count = min(positional_count, argument_count)
+    for index in range(assigned_count):
+        values[args[index]] = positional[index]
+    if varargs:
+        values[varargs] = tuple(positional[assigned_count:])
+    possible_keywords = set(args + keyword_only)
+    if varkw:
+        values[varkw] = {}
+    for name, value in named.items():
+        if name not in possible_keywords:
+            if not varkw:
+                raise TypeError(
+                    "%s() got an unexpected keyword argument %r" % (function_name, name)
+                )
+            values[varkw][name] = value
+            continue
+        if name in values:
+            raise TypeError(
+                "%s() got multiple values for argument %r" % (function_name, name)
+            )
+        values[name] = value
+    if positional_count > argument_count and not varargs:
+        _too_many(
+            function_name,
+            args,
+            keyword_only,
+            varargs,
+            default_count,
+            positional_count,
+            values,
+        )
+    if positional_count < argument_count:
+        required = args[: argument_count - default_count]
+        for name in required:
+            if name not in values:
+                _missing_arguments(function_name, required, True, values)
+        for index, name in enumerate(args[argument_count - default_count :]):
+            if name not in values:
+                values[name] = defaults[index]
+    missing = 0
+    for name in keyword_only:
+        if name not in values:
+            if keyword_defaults and name in keyword_defaults:
+                values[name] = keyword_defaults[name]
+            else:
+                missing += 1
+    if missing:
+        _missing_arguments(function_name, keyword_only, False, values)
+    return values
+
+
 def get_annotations(obj, *, globals=None, locals=None, eval_str=False):
     del globals, locals, eval_str
     return dict(getattr(obj, "__annotations__", {}))
+
+
+class _PortableFrameCode:
+    co_name = "currentframe"
+    co_filename = "<sagejs>"
+
+
+class _PortableFrame:
+    """Minimal frame protocol for libraries doing stack-level bookkeeping."""
+
+    def __init__(self):
+        self.f_code = _PortableFrameCode()
+        self.f_back = None
+        self.f_globals = {"__name__": "__main__"}
+        self.f_locals = {}
+        self.f_lineno = 0
+
+
+def currentframe():
+    """Return a minimal portable frame for introspection bookkeeping.
+
+    JavaScript does not expose CPython frame objects, but warning and
+    decorator libraries commonly need only `f_code`, `f_globals`, `f_locals`,
+    and `f_back`.  This object deliberately provides just that protocol.
+    """
+    return _PortableFrame()
+
+
+def getouterframes(frame, context=1):
+    """Return portable frame-info tuples following `frame.f_back`."""
+    del context
+    result = []
+    while frame is not None:
+        result.append(
+            (
+                frame,
+                frame.f_code.co_filename,
+                frame.f_lineno,
+                frame.f_code.co_name,
+                None,
+                None,
+            )
+        )
+        frame = frame.f_back
+    return result
 
 
 def unwrap(func, *, stop=None):
@@ -399,3 +752,29 @@ def getsourcefile(obj):
     if filename.endswith((".pyc", ".pyo")):
         return filename[:-1]
     return filename
+
+
+def getmro(cls):
+    """Return the method resolution order of `cls` as a tuple."""
+    if not isclass(cls):
+        raise AttributeError("__mro__")
+    return tuple(cls.__mro__)
+
+
+def getsourcelines(obj):
+    """Return source lines and the first line number for `obj`.
+
+    Sage.js only reports source text when the compiler attached an exact
+    `__firstlineno__`.  Raising `OSError` when that metadata is unavailable
+    matches CPython's failure contract and avoids inventing a misleading
+    location for generated callables.
+    """
+    first_line = getattr(obj, "__firstlineno__", None)
+    if first_line is None:
+        raise OSError("exact source line metadata is unavailable")
+    import linecache
+
+    lines = linecache.getlines(getsourcefile(obj))
+    if not lines:
+        raise OSError("source code is unavailable")
+    return lines[first_line - 1 :], first_line

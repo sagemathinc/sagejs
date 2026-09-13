@@ -16,9 +16,6 @@ const { PassThrough } = require("node:stream");
 const test = require("node:test");
 
 const root = resolve(__dirname, "..");
-const python =
-  process.env.PYTHON ||
-  (process.platform === "win32" ? "python" : "python3");
 const {
   buildWasmProductionPacks,
   inventoryProductionKernels,
@@ -27,6 +24,7 @@ const {
   wasmKernelToolchain,
 } = require("../packages/wasm-toolchain/scripts/toolchain.cjs");
 const { createSage } = require("../dist/tools/kernel.js");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const functions = [
   "packed_integer_matrix_permanent",
@@ -196,7 +194,7 @@ test("public heavy exact workflows retain an explicit portable route", async () 
 });
 
 test("packed combinatorial fallbacks reject malformed complete shapes", () => {
-  const result = spawnSync(python, ["-c", String.raw`
+  const result = spawnSync(pythonExecutable(), ["-c", String.raw`
 import sys
 sys.path.insert(0, "src/lib")
 from sagejs.kernels.matrix.combinatorial import (
@@ -228,6 +226,7 @@ print("malformed-ok")
     encoding: "utf8",
     env: { ...process.env, PYTHONPATH: "" },
   });
+  assert.equal(result.error, undefined, result.error?.message);
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(result.stdout.trim(), "malformed-ok");
 });

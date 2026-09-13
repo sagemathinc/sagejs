@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `4f6cafa7239afb6c271cba452b619ab2ba019b763763519203ebda89a83384ab` (515 files, 11139886 bytes).
-Analyzed source bundle: `sha256:ef27b924de705aeffff3f9b70c8eeb0850f57ea1f24645bc1d2c14aa2115f148`; compiler identity: `sha256:d0751cac5c56b078c21b5d268efaddca6c79c141d7cd675518ed1c81ca16f73b`.
+Input identity: `ba010bb412b1a3024c4c62aa0b1086bea2507388dd103943be53b07cb267cc55` (739 files, 14863251 bytes).
+Analyzed source bundle: `sha256:4a1e50d8dc598603d10217049a37350e86c23ce5a2d0eb3d00325dec03fefdaa`; compiler identity: `sha256:580d41eb79f34224d905e1cdd7c2e8d51d03b6177148f01f8b44971789c28ccc`.
 
 The complete machine census is stored outside Git as immutable GitHub Release assets.
 `architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
@@ -32,16 +32,16 @@ pnpm optimizer:opportunities:query -- sha256:<digest>
 
 | Measure | Count |
 | --- | ---: |
-| Source modules compiled | 432 / 432 |
-| Library modules compiled | 419 / 419 |
+| Source modules compiled | 656 / 656 |
+| Library modules compiled | 643 / 643 |
 | Explicit control sources compiled | 13 / 13 |
-| Functions and methods compiled | 11800 |
-| Loop-bearing functions and methods | 3773 |
-| Loops in functions | 10944 |
-| Selected optimized loops | 50 |
-| Compiler-rejected loops | 3127 |
-| Unrecognized loops | 7767 |
-| One-reason compiler near-misses | 234 |
+| Functions and methods compiled | 16874 |
+| Loop-bearing functions and methods | 5318 |
+| Loops in functions | 14658 |
+| Selected optimized loops | 57 |
+| Compiler-rejected loops | 3541 |
+| Unrecognized loops | 11060 |
+| One-reason compiler near-misses | 274 |
 
 A rejected loop has a stable reason from a domain pass. An unrecognized loop was compiled
 but no current mathematical-domain pass claimed it; dashboard reason codes for those loops
@@ -49,13 +49,13 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 75723
-- Collection-allocation sites: 8769
-- Known coercion sites: 17219
-- Potential boundary-call sites: 86
-- Unresolved call sites: 37748
-- Selected-target allocations: 3 known; 46 runtime-dependent
-- Selected-target representation conversions: 3 known; 48 runtime-dependent
+- Potential object-result sites: 97984
+- Collection-allocation sites: 11833
+- Known coercion sites: 20348
+- Potential boundary-call sites: 107
+- Unresolved call sites: 50370
+- Selected-target allocations: 3 known; 53 runtime-dependent
+- Selected-target representation conversions: 3 known; 55 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
 
 Static sites are not runtime event counts. Use profiling before prioritizing work.
@@ -69,18 +69,24 @@ convenience, not a performance ranking.
 | --- | --- | --- | --- | --- |
 | [src/lib/sagejs/number_fields/bl_composite_kernel.py:2285](../src/lib/sagejs/number_fields/bl_composite_kernel.py#L2285) | `_packed_row_hnf_in_place` | `math.bounded-integer-region.v1` | `bounded-integer.mutable-buffer-access` | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
 | [src/lib/sagejs/number_fields/om_maxmin.py:152](../src/lib/sagejs/number_fields/om_maxmin.py#L152) | `packed_incremental_row_hnf_in_place` | `math.bounded-integer-region.v1` | `bounded-integer.mutable-buffer-access` | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
+| [src/lib/sagejs/numerics/spectral/_common.py:301](../src/lib/sagejs/numerics/spectral/_common.py#L301) | `_identity` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
+| [src/lib/sagejs/numerics/spectral/dense.py:877](../src/lib/sagejs/numerics/spectral/dense.py#L877) | `_orthogonal_completion` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
+| [src/lib/sagejs/schemes/jacobian.py:28](../src/lib/sagejs/schemes/jacobian.py#L28) | `_combinations` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/linear_algebra/combinatorial.py:160](../src/lib/sagejs/linear_algebra/combinatorial.py#L160) | `_index_combinations` | `math.bounded-integer-region.v1` | `bounded-integer.mutable-buffer-access` | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
 | [src/lib/sagejs/number_fields/buchmann_lenstra.py:1642](../src/lib/sagejs/number_fields/buchmann_lenstra.py#L1642) | `_inverse_fraction_matrix` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/number_fields/buchmann_lenstra.py:2434](../src/lib/sagejs/number_fields/buchmann_lenstra.py#L2434) | `_minor_indices.visit` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/number_fields/class_unit_analytic.py:1026](../src/lib/sagejs/number_fields/class_unit_analytic.py#L1026) | `_column_subsets.visit` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
-| [src/lib/sagejs/number_fields/class_unit_analytic.py:3638](../src/lib/sagejs/number_fields/class_unit_analytic.py#L3638) | `_build_bf_plan_readable` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
-| [src/lib/sagejs/number_fields/class_unit_analytic.py:3649](../src/lib/sagejs/number_fields/class_unit_analytic.py#L3649) | `_build_bf_plan_readable` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
+| [src/lib/sagejs/number_fields/class_unit_analytic.py:3738](../src/lib/sagejs/number_fields/class_unit_analytic.py#L3738) | `_build_bf_plan_readable` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
+| [src/lib/sagejs/number_fields/class_unit_analytic.py:3749](../src/lib/sagejs/number_fields/class_unit_analytic.py#L3749) | `_build_bf_plan_readable` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/number_fields/local_polygons.py:604](../src/lib/sagejs/number_fields/local_polygons.py#L604) | `_extension_poly_divmod` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/number_fields/round4.py:1116](../src/lib/sagejs/number_fields/round4.py#L1116) | `_integer_polynomial_power` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
+| [src/lib/sagejs/polynomial_algorithms/fq_mpoly_transfer.py:98](../src/lib/sagejs/polynomial_algorithms/fq_mpoly_transfer.py#L98) | `_unpack_rows` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/hyperelliptic_curves/bad_reduction.py:225](../src/lib/sagejs/hyperelliptic_curves/bad_reduction.py#L225) | `_divmod_mod` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/hyperelliptic_curves/deficiency.py:1062](../src/lib/sagejs/hyperelliptic_curves/deficiency.py#L1062) | `_divmod_mod` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/hyperelliptic_curves/lseries.py:633](../src/lib/sagejs/hyperelliptic_curves/lseries.py#L633) | `_completed_derivatives_from_grid` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/hyperelliptic_curves/tamagawa.py:753](../src/lib/sagejs/hyperelliptic_curves/tamagawa.py#L753) | `_split_root_evidence` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
+| [src/lib/sagejs/modular_forms/sparse_krylov.py:75](../src/lib/sagejs/modular_forms/sparse_krylov.py#L75) | `_polynomial_product` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
+| [src/lib/sagejs/modular_forms/sparse_krylov.py:93](../src/lib/sagejs/modular_forms/sparse_krylov.py#L93) | `_polynomial_divmod` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/number_fields/field_analysis_resource.py:645](../src/lib/sagejs/number_fields/field_analysis_resource.py#L645) | `packed_field_analysis_fixed_points_are_valid` | `math.bounded-integer-region.v1` | `bounded-integer.mutable-buffer-access` | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
 | [src/lib/sagejs/number_fields/local_polygons.py:167](../src/lib/sagejs/number_fields/local_polygons.py#L167) | `_divmod_mod` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/hyperelliptic_curves/bad_reduction.py:646](../src/lib/sagejs/hyperelliptic_curves/bad_reduction.py#L646) | `_pair_poly_translate_scale_integer` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
@@ -95,6 +101,8 @@ convenience, not a performance ranking.
 | [src/lib/sagejs/number_fields/om_maxmin.py:92](../src/lib/sagejs/number_fields/om_maxmin.py#L92) | `packed_incremental_row_hnf_in_place` | `math.bounded-integer-region.v1` | `bounded-integer.mutable-buffer-access` | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
 | [src/lib/sagejs/number_fields/round4_state_kernel.py:175](../src/lib/sagejs/number_fields/round4_state_kernel.py#L175) | `_packed_round4_berkowitz_characteristic` | `math.bounded-integer-region.v1` | `bounded-integer.mutable-buffer-access` | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
 | [src/lib/sagejs/number_fields/units.py:1453](../src/lib/sagejs/number_fields/units.py#L1453) | `_coefficient_vectors` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
+| [src/lib/sagejs/numerics/approximation/finite_difference.py:246](../src/lib/sagejs/numerics/approximation/finite_difference.py#L246) | `_fornberg_weights` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
+| [src/lib/sagejs/numerics/spectral/dense.py:888](../src/lib/sagejs/numerics/spectral/dense.py#L888) | `_orthogonal_completion` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/elliptic_curves/analytic_rank.py:88](../src/lib/sagejs/elliptic_curves/analytic_rank.py#L88) | `_coefficient_tail_log` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/elliptic_curves/analytic_rank.py:188](../src/lib/sagejs/elliptic_curves/analytic_rank.py#L188) | `_legendre_moments` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/elliptic_curves/analytic_rank.py:237](../src/lib/sagejs/elliptic_curves/analytic_rank.py#L237) | `_completed_to_l_derivatives` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
@@ -109,59 +117,51 @@ convenience, not a performance ranking.
 | [src/lib/sagejs/hyperelliptic_curves/lseries.py:500](../src/lib/sagejs/hyperelliptic_curves/lseries.py#L500) | `_dirichlet_vertical_values` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/hyperelliptic_curves/lseries.py:523](../src/lib/sagejs/hyperelliptic_curves/lseries.py#L523) | `_theta_grid` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | [src/lib/sagejs/hyperelliptic_curves/lseries.py:839](../src/lib/sagejs/hyperelliptic_curves/lseries.py#L839) | `_central_weight_contour` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
-| [src/lib/sagejs/hyperelliptic_curves/lseries.py:847](../src/lib/sagejs/hyperelliptic_curves/lseries.py#L847) | `_central_weight_contour` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
-| [src/lib/sagejs/hyperelliptic_curves/periods.py:1557](../src/lib/sagejs/hyperelliptic_curves/periods.py#L1557) | `_periods_from_edges` | `math.bounded-integer-region.v1` | `bounded-integer.mutable-buffer-access` | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
-| [src/lib/sagejs/hyperelliptic_curves/periods.py:2181](../src/lib/sagejs/hyperelliptic_curves/periods.py#L2181) | `_serialize_model_result` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
-| [src/lib/sagejs/number_fields/analytic_zeta.py:159](../src/lib/sagejs/number_fields/analytic_zeta.py#L159) | `_series_multiply` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
-| [src/lib/sagejs/number_fields/analytic_zeta.py:213](../src/lib/sagejs/number_fields/analytic_zeta.py#L213) | `_inverse_mellin_jet` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
-| [src/lib/sagejs/number_fields/bl_composite_kernel.py:2280](../src/lib/sagejs/number_fields/bl_composite_kernel.py#L2280) | `_packed_row_hnf_in_place` | `math.bounded-integer-region.v1` | `bounded-integer.mutable-buffer-access` | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
-| [src/lib/sagejs/number_fields/bl_composite_kernel.py:2642](../src/lib/sagejs/number_fields/bl_composite_kernel.py#L2642) | `packed_prime_ideal_candidate_hnf_in_place` | `math.bounded-integer-region.v1` | `bounded-integer.mutable-buffer-access` | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
-| [src/lib/sagejs/number_fields/buchmann_lenstra.py:837](../src/lib/sagejs/number_fields/buchmann_lenstra.py#L837) | `_dedekind_generator_lattice_is_order` | `math.bounded-integer-region.v1` | `bounded-integer.dynamic-call` | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 
 ## Most frequent reason codes
 
 | Stable reason | Loops | Remediation |
 | --- | ---: | --- |
-| `dashboard.no-current-pass-claimed` | 7767 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
-| `dashboard.dynamic-call-sites` | 6975 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
-| `dashboard.no-mathematical-domain-evidence` | 6453 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
-| `dashboard.comprehension-loop` | 3661 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
-| `dashboard.indexed-access-sites` | 2710 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
-| `bounded-integer.dynamic-call` | 2555 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
-| `bounded-integer.unsupported-iterator` | 2093 | Use a proved built-in `range` iteration shape or add a verifier for the required iterator semantics. |
-| `bounded-integer.mutable-buffer-access` | 1854 | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
-| `dashboard.control-flow-sites` | 1823 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
-| `bounded-integer.unsupported-operation:=` | 1619 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `dashboard.nested-loop-sites` | 1519 | Consider a fused multidimensional region with explicit shape and work bounds. |
-| `bounded-integer.unsupported-control-flow` | 1062 | Restructure the loop into supported transactional branches or add a verified control-flow lowering. |
-| `bounded-integer.unsupported-operation:+=` | 988 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:%` | 766 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `dashboard.unsupported-while-loop` | 731 | Prove a finite progress measure and transactional exits before lowering a `while` loop. |
-| `bounded-integer.unsupported-operation:<` | 508 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation://` | 337 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:>` | 332 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:&&` | 264 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:||` | 241 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:unary!` | 223 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:>=` | 205 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:*=` | 194 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation://=` | 173 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:<=` | 130 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:-=` | 122 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-power` | 95 | Expand a small fixed power into ordered multiplications or add an exact bounded-power proof. |
-| `bounded-integer.unsupported-operation:===` | 93 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:/` | 58 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:nin` | 52 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:!==` | 51 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:in` | 47 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:&` | 44 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:<<` | 39 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:instanceof` | 31 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-operation:|` | 20 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `dashboard.no-current-pass-claimed` | 11060 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
+| `dashboard.dynamic-call-sites` | 9961 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
+| `dashboard.no-mathematical-domain-evidence` | 9375 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
+| `dashboard.comprehension-loop` | 5402 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
+| `dashboard.indexed-access-sites` | 3891 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
+| `bounded-integer.dynamic-call` | 2900 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
+| `dashboard.control-flow-sites` | 2662 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
+| `bounded-integer.unsupported-iterator` | 2321 | Use a proved built-in `range` iteration shape or add a verifier for the required iterator semantics. |
+| `dashboard.nested-loop-sites` | 2133 | Consider a fused multidimensional region with explicit shape and work bounds. |
+| `bounded-integer.mutable-buffer-access` | 2094 | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
+| `bounded-integer.unsupported-operation:=` | 1807 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-control-flow` | 1143 | Restructure the loop into supported transactional branches or add a verified control-flow lowering. |
+| `bounded-integer.unsupported-operation:+=` | 1083 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `dashboard.unsupported-while-loop` | 876 | Prove a finite progress measure and transactional exits before lowering a `while` loop. |
+| `bounded-integer.unsupported-operation:%` | 828 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:<` | 553 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation://` | 364 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:>` | 351 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:&&` | 290 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:||` | 268 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:unary!` | 254 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:>=` | 228 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:*=` | 210 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation://=` | 182 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:<=` | 146 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:-=` | 128 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-power` | 117 | Expand a small fixed power into ordered multiplications or add an exact bounded-power proof. |
+| `bounded-integer.unsupported-operation:===` | 104 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:/` | 91 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:!==` | 62 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:nin` | 54 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:in` | 48 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:&` | 47 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:<<` | 41 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:|` | 21 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:>>` | 15 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:%=` | 8 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `modular-sequence.element-representation-unproved` | 5 | Resolve the stable compiler rejection "modular-sequence.element-representation-unproved" and rerun the dashboard. |
-| `modular-sequence.iterator-semantics-unproved` | 5 | Resolve the stable compiler rejection "modular-sequence.iterator-semantics-unproved" and rerun the dashboard. |
+| `modular-sequence.element-representation-unproved` | 6 | Resolve the stable compiler rejection "modular-sequence.element-representation-unproved" and rerun the dashboard. |
+| `modular-sequence.iterator-semantics-unproved` | 6 | Resolve the stable compiler rejection "modular-sequence.iterator-semantics-unproved" and rerun the dashboard. |
+| `modular-sequence.machine-range-unproved` | 6 | Resolve the stable compiler rejection "modular-sequence.machine-range-unproved" and rerun the dashboard. |
 
 ## Interpretation limits
 

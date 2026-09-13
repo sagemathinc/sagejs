@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "dense_eigen": [
+    {
+      "id": "symmetric-clustered",
+      "kind": "symmetric",
+      "matrix": [[1.0, 1e-10, 0.0], [1e-10, 1.000000000001, 0.0], [0.0, 0.0, 4.0]],
+      "classification": "translated",
+      "expected_eigenvalues": [0.9999999999004988, 1.0000000001005012, 4.0]
+    },
+    {
+      "id": "hermitian-complex",
+      "kind": "symmetric",
+      "matrix": [[2.0, [0.0, 1.0]], [[0.0, -1.0], 3.0]],
+      "classification": "translated",
+      "expected_eigenvalues": [1.381966011250105, 3.618033988749895]
+    },
+    {
+      "id": "general-complex-pair",
+      "kind": "general",
+      "matrix": [[0.0, -1.0], [1.0, 0.0]],
+      "classification": "extension",
+      "expected_eigenvalues": [[0.0, -1.0], [0.0, 1.0]]
+    },
+    {
+      "id": "general-nonnormal",
+      "kind": "general",
+      "matrix": [[3.0, -1.0, 2.0], [2.0, 5.0, -5.0], [-2.0, -3.0, 7.0]],
+      "classification": "extension",
+      "expected_eigenvalues": [2.0, 4.0, 9.0]
+    },
+    {
+      "id": "general-clustered-triangular",
+      "kind": "general",
+      "matrix": [[1.0, 1e-6, 0.0], [0.0, 1.00000001, 2e-6], [0.0, 0.0, 2.0]],
+      "classification": "extension",
+      "expected_eigenvalues": [1.0, 1.00000001, 2.0]
+    }
+  ],
+  "svd": [
+    {
+      "id": "known-spectrum",
+      "matrix": [[2.0, -2.0, -1.0], [3.0, 4.0, -2.0], [-2.0, -2.0, 0.0]],
+      "classification": "translated",
+      "expected_singular_values": [6.0, 3.0, 1.0]
+    },
+    {
+      "id": "wide",
+      "matrix": [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
+      "classification": "translated",
+      "expected_singular_values": [9.508032000695724, 0.7728696356734844]
+    },
+    {
+      "id": "rank-deficient",
+      "matrix": [[1.0, 2.0], [2.0, 4.0], [3.0, 6.0]],
+      "classification": "translated",
+      "expected_singular_values": [8.366600265340756, 0.0]
+    }
+  ],
+  "fft": [
+    {
+      "id": "radix2-impulse",
+      "samples": [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+      "classification": "translated",
+      "expected": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    },
+    {
+      "id": "bluestein-prime-complex",
+      "samples": [[1.0, 0.5], 2.0, [-1.0, 2.0], 0.25, -3.0, 4.0, [0.0, -1.0]],
+      "classification": "translated"
+    }
+  ],
+  "convolution": [
+    {
+      "id": "direct-full",
+      "left": [1.0, 2.0, 3.0],
+      "right": [4.0, 5.0],
+      "mode": "full",
+      "method": "direct",
+      "classification": "translated",
+      "expected": [4.0, 13.0, 22.0, 15.0]
+    },
+    {
+      "id": "fft-complex-same",
+      "left": [[1.0, 1.0], 2.0, -1.0, 0.5, 3.0],
+      "right": [2.0, [0.0, -1.0], 0.25],
+      "mode": "same",
+      "method": "fft",
+      "classification": "translated"
+    }
+  ],
+  "sparse": [
+    {
+      "id": "cg-spd",
+      "operation": "solve",
+      "matrix": [[4.0, 1.0, 0.0], [1.0, 3.0, 1.0], [0.0, 1.0, 2.0]],
+      "right_hand_side": [1.0, 2.0, 3.0],
+      "method": "cg",
+      "classification": "extension"
+    },
+    {
+      "id": "bicgstab-nonsymmetric",
+      "operation": "solve",
+      "matrix": [[4.0, 1.0, 0.0], [2.0, 3.0, 1.0], [0.0, -1.0, 2.0]],
+      "right_hand_side": [1.0, 2.0, 3.0],
+      "method": "bicgstab",
+      "classification": "extension"
+    },
+    {
+      "id": "power-dominant",
+      "operation": "eigen",
+      "matrix": [[5.25, 1.0, 0.0, 0.0], [1.0, 3.0, 0.0, 0.0], [0.0, 0.0, 2.0, 0.5], [0.0, 0.0, 0.5, 1.0]],
+      "classification": "extension"
+    }
+  ]
+}

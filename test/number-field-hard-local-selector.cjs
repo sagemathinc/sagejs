@@ -8,12 +8,10 @@ const { join } = require("node:path");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
-const python =
-  process.env.SAGEJS_PYTHON ??
-  process.env.PYTHON ??
-  (process.platform === "win32" ? "python" : "python3");
+const python = pythonExecutable();
 const fixture = JSON.parse(
   readFileSync(join(__dirname, "fixtures", "number-field-round4.json"), "utf8"),
 );

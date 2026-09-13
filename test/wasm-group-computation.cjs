@@ -19,14 +19,13 @@ const { PassThrough } = require("node:stream");
 const test = require("node:test");
 
 const root = resolve(__dirname, "..");
-const python =
-  process.env.PYTHON ||
-  (process.platform === "win32" ? "python" : "python3");
 const {
   buildWasmProductionPacks,
   inventoryProductionKernels,
 } = require("../tools/native-kernel/wasm-production-pack.cjs");
 const { createSage } = require("../dist/tools/kernel.js");
+const disabledNativePublicCenter = require("./helpers/disabled-native-group-center.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const descriptor = {
   id: "packed-permutation-center-production",
@@ -140,29 +139,6 @@ function symmetricEightGenerators() {
   ]);
 }
 
-function disabledNativePublicCenter() {
-  const result = spawnSync(
-    process.execPath,
-    [join(root, "bin", "sagejs"), "--python"],
-    {
-      cwd: root,
-      encoding: "utf8",
-      env: { ...process.env, SAGEJS_NATIVE_DISABLE: "1" },
-      input: [
-        "G=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,2)'])",
-        "expected=G._portable_center().gens()",
-        "H=PermutationGroup(['(1,2,3,4,5,6,7,8)','(1,2)'])",
-        "actual=H.center().gens()",
-        "r=H._last_center_acceleration",
-        "print([H.order(),repr(actual)==repr(expected),r.route,r.reason,r.boundaryCrossings,r.work])",
-      ].join("\n"),
-      timeout: 30_000,
-    },
-  );
-  assert.equal(result.status, 0, result.stderr || result.stdout);
-  return result.stdout.trim().split("\n")[0];
-}
-
 async function createProxyServer(upstreamOrigin, manifest, outputRoot) {
   const browserSupport = await import(
     "../packages/flint-wasm/test/browser-wasm-support.mjs"
@@ -254,7 +230,7 @@ test.after(async () => {
 });
 
 test("the CPython body preserves closure order and all finite bounds", () => {
-  const oracle = spawnSync(python, ["-c", String.raw`
+  const oracle = spawnSync(pythonExecutable(), ["-c", String.raw`
 import sys
 sys.path.insert(0, "src/lib")
 from sagejs.kernels.groups.permutation import packed_permutation_center
@@ -313,15 +289,16 @@ print("cpython-bounds-ok")
     encoding: "utf8",
     env: { ...process.env, PYTHONPATH: "" },
   });
+  assert.equal(oracle.error, undefined, oracle.error?.message);
   assert.equal(oracle.status, 0, oracle.stderr || oracle.stdout);
   assert.equal(oracle.stdout.trim(), "cpython-bounds-ok");
 });
 
 test("disabled native execution agrees with the independent public fallback", () => {
   assert.equal(
-    disabledNativePublicCenter(),
-    "[40320, True, 'portable-computation', " +
-      "'compiled-source-unavailable', 0, 1034577]",
+    disabledNativePublicCenter(["(1,2,3,4,5,6,7,8)", "(2,8)(3,7)(4,6)"]),
+    "[16, True, 'portable-computation', " +
+      "'compiled-source-unavailable', 0, 558]",
   );
 });
 
@@ -412,6 +389,10 @@ test("the same public source selects the group pack in Chromium", {
   const executablePath = browserSupport.executablePathFor("chromium", chromium);
   if (!executablePath) {
     context.skip("Chromium is unavailable");
+    return;
+  }
+  if (!existsSync(join(root, "packages", "flint-wasm", "dist", "baselib.js"))) {
+    context.skip("build packages/flint-wasm to run the Chromium workflow");
     return;
   }
   const { manifest, outputRoot } = await builtPack();

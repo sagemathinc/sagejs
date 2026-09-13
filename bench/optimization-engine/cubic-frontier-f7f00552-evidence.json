@@ -1,0 +1,45 @@
+{
+  "schema": "sagejs.benchmark/complex-cubic-retained-evidence-manifest-v1",
+  "candidate_commit": "f7f00552dd4178993ceef4522cc2897622cdf2c6",
+  "recorded_at": "2026-09-05T06:40:27.214Z",
+  "release": "https://github.com/sagemathinc/sagejs/releases/tag/cubic-frontier-baseline-f7f00552",
+  "release_tag": "cubic-frontier-baseline-f7f00552",
+  "corpus_manifest": "complex-cubic-frontier-manifest-sha256-6704032b98b7c2ec353ab5e5435fac62682ccd8d2fb14ab467e58aa1f655fbb6.json",
+  "full_runtime_closure_sha256": "94b0de42e0bc8cf44eaecf6a179b2127fc27e903ff0ee4f25985d566a0d65dee",
+  "direct_environment_closure_sha256": "eb902eabc2b696cbeb19f31e4ff135964ad8a10d3f7102433ac574abc04ede9b",
+  "interpretation": "Frozen pre-staging baseline; all ratios are Sage.js/PARI, with smaller better. Census replay is attested, not rerun during publication. Generated adapter proves the root auto dispatcher selects fmpz; mathematical receipts do not contain per-call backend telemetry.",
+  "assets": [
+    {
+      "role": "census",
+      "filename": "complex-cubic-f7f00552-census-81ee1b5cf9823731806e4de61f56e3796cf3a958bb0342bbe7e3a2a0803039b1.json.gz",
+      "sha256": "81ee1b5cf9823731806e4de61f56e3796cf3a958bb0342bbe7e3a2a0803039b1",
+      "bytes": 19642568,
+      "gzip_sha256": "41c90661f30e602776d2ca7f43f265d7a80cf7f003c62e84a0bb40a06e78b1a7",
+      "gzip_bytes": 1058099
+    },
+    {
+      "role": "timing",
+      "filename": "complex-cubic-f7f00552-timing-25fb63dcec844adb170f0df599263d91843f972fa162267567523ca2b4ccfef5.json.gz",
+      "sha256": "25fb63dcec844adb170f0df599263d91843f972fa162267567523ca2b4ccfef5",
+      "bytes": 1373089,
+      "gzip_sha256": "1c479ab742db115293fbb606dd7dae0a02ea06b226638a19f05356ca0d98d22d",
+      "gzip_bytes": 166393
+    },
+    {
+      "role": "native-index",
+      "filename": "complex-cubic-f7f00552-native-index-1cdce7ccd6471c63bdb86a5c5acb037410360760bfa6418de1663da5cd6459fe.json.gz",
+      "sha256": "1cdce7ccd6471c63bdb86a5c5acb037410360760bfa6418de1663da5cd6459fe",
+      "bytes": 55336,
+      "gzip_sha256": "3d56dafbb15221791415080830d078183b716049fa249dec92bba92dd1861ade",
+      "gzip_bytes": 5727
+    },
+    {
+      "role": "cubic-kernel-index",
+      "filename": "complex-cubic-f7f00552-cubic-kernel-index-b20258a1568d8191c61f5240cb174e9b5a9aba9594578f73132702d5a03916f4.cjs.gz",
+      "sha256": "b20258a1568d8191c61f5240cb174e9b5a9aba9594578f73132702d5a03916f4",
+      "bytes": 1740953,
+      "gzip_sha256": "0ad64d1e879085a159918e8cc27f6fad4cc5ab8bfcff92d2116139b33d969be2",
+      "gzip_bytes": 198455
+    }
+  ]
+}

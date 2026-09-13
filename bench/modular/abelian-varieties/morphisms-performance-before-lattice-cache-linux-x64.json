@@ -1,0 +1,1209 @@
+{
+  "date": "2026-09-12T06:06:27.486Z",
+  "revision": "cffbbc5ddc3c58fcca736c194368080d150a28e3",
+  "host": {
+    "cpu": "AMD EPYC 7B13",
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.8.1"
+  },
+  "sourceSha256": {
+    "src/lib/sagejs/modular_abelian_varieties/__init__.py": "3c16f02391eda071724b980939d909b5b81ae91e0632da3cb7c8feeebcbf8394",
+    "src/lib/sagejs/modular_abelian_varieties/abelian_variety.py": "9427d6f924116557f904b88285668133eb0ed2f5bb54f37ccb6042e380f7ae91",
+    "src/lib/sagejs/modular_abelian_varieties/degeneracy.py": "f18847e51dfa7d536be0acb68dd50acf2b092b57d1d13d84d1584f8d6b7d1a67",
+    "src/lib/sagejs/modular_abelian_varieties/lattices.py": "dfdcddb6a605aad3960f3da3ca0a7d730fb00b9d3a056181cf086e1d784d8be4",
+    "src/lib/sagejs/modular_abelian_varieties/morphisms.py": "58392364f9d79d467af7e3329c84b73ad2432811159ba601e7f0b983cc42f9d7",
+    "src/lib/sagejs/modular_abelian_varieties/products.py": "59cefa90f29d013c53775d0126f9632cfc9b110743520bf3bf0b9d036931a766",
+    "src/baselib/matrix.py": "88e898ffe17cc9a4caf734e0960b2612213bf1bc52a048af6a7c253bf1c82094",
+    "src/baselib/modular.py": "569be50b927a9ac8b0b8746e1dd04b56314da4db07bf9e923e2ac19e114d904b"
+  },
+  "policy": "Sequential fresh processes. No library warmup. Timed construction forces integral matrices. Startup excluded. Warm reuse averages ten requests on the same matrix/map. Default native backends; not pinned single-core.",
+  "samples": 3,
+  "results": [
+    {
+      "system": "sagejs",
+      "level": 389,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "T2-minus-1",
+          "level": 389,
+          "dimension": 32,
+          "rank": 64,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            30,
+            30
+          ],
+          "construction_seconds": 0.3513772487640381,
+          "smith_seconds": 0.012023448944091797,
+          "warm_seconds": 0.00010058879852294921
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 389,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "T2-minus-1",
+          "level": 389,
+          "dimension": 32,
+          "rank": 64,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            30,
+            30
+          ],
+          "construction_seconds": 2.316437880974263,
+          "smith_seconds": 0.00888362800469622,
+          "warm_seconds": 0.000013275997480377555
+        }
+      ]
+    },
+    {
+      "system": "sagejs",
+      "level": 389,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "T2-minus-1",
+          "level": 389,
+          "dimension": 32,
+          "rank": 64,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            30,
+            30
+          ],
+          "construction_seconds": 0.5007340908050537,
+          "smith_seconds": 0.03858065605163574,
+          "warm_seconds": 0.00008599758148193359
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 389,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "T2-minus-1",
+          "level": 389,
+          "dimension": 32,
+          "rank": 64,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            30,
+            30
+          ],
+          "construction_seconds": 2.8518460289924406,
+          "smith_seconds": 0.008096398029010743,
+          "warm_seconds": 0.000007860001642256974
+        }
+      ]
+    },
+    {
+      "system": "sagejs",
+      "level": 389,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "T2-minus-1",
+          "level": 389,
+          "dimension": 32,
+          "rank": 64,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            30,
+            30
+          ],
+          "construction_seconds": 0.33138060569763184,
+          "smith_seconds": 0.012958288192749023,
+          "warm_seconds": 0.000186920166015625
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 389,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "T2-minus-1",
+          "level": 389,
+          "dimension": 32,
+          "rank": 64,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            30,
+            30
+          ],
+          "construction_seconds": 2.2863511180039495,
+          "smith_seconds": 0.008168687985744327,
+          "warm_seconds": 0.000007887004176154733
+        }
+      ]
+    },
+    {
+      "system": "sagejs",
+      "level": 1009,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "T2-minus-1",
+          "level": 1009,
+          "dimension": 83,
+          "rank": 166,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            90,
+            90,
+            90,
+            90
+          ],
+          "construction_seconds": 0.6393885612487793,
+          "smith_seconds": 0.1862649917602539,
+          "warm_seconds": 0.00009486675262451171
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 1009,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "T2-minus-1",
+          "level": 1009,
+          "dimension": 83,
+          "rank": 166,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            90,
+            90,
+            90,
+            90
+          ],
+          "construction_seconds": 57.22099081799388,
+          "smith_seconds": 0.10042454703943804,
+          "warm_seconds": 0.000017916999058797956
+        }
+      ]
+    },
+    {
+      "system": "sagejs",
+      "level": 1009,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "T2-minus-1",
+          "level": 1009,
+          "dimension": 83,
+          "rank": 166,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            90,
+            90,
+            90,
+            90
+          ],
+          "construction_seconds": 0.5505602359771729,
+          "smith_seconds": 0.19743800163269043,
+          "warm_seconds": 0.00007448196411132812
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 1009,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "T2-minus-1",
+          "level": 1009,
+          "dimension": 83,
+          "rank": 166,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            90,
+            90,
+            90,
+            90
+          ],
+          "construction_seconds": 56.00017014599871,
+          "smith_seconds": 0.10032413701992482,
+          "warm_seconds": 0.00001698500127531588
+        }
+      ]
+    },
+    {
+      "system": "sagejs",
+      "level": 1009,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "T2-minus-1",
+          "level": 1009,
+          "dimension": 83,
+          "rank": 166,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            90,
+            90,
+            90,
+            90
+          ],
+          "construction_seconds": 0.6038892269134521,
+          "smith_seconds": 0.22101593017578125,
+          "warm_seconds": 0.00007882118225097657
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 1009,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "T2-minus-1",
+          "level": 1009,
+          "dimension": 83,
+          "rank": 166,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            90,
+            90,
+            90,
+            90
+          ],
+          "construction_seconds": 56.05816447298275,
+          "smith_seconds": 0.10231288702925667,
+          "warm_seconds": 0.000017622997984290122
+        }
+      ]
+    },
+    {
+      "system": "sagejs",
+      "level": 121,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "oldform-isogeny",
+          "level": 121,
+          "dimension": 6,
+          "rank": 12,
+          "invariants": [
+            2,
+            2,
+            6,
+            6,
+            24,
+            120
+          ],
+          "construction_seconds": 1.162740707397461,
+          "smith_seconds": 0.0014641284942626953,
+          "warm_seconds": 0.00006499290466308594
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 121,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "oldform-isogeny",
+          "level": 121,
+          "dimension": 6,
+          "rank": 12,
+          "invariants": [
+            2,
+            2,
+            6,
+            6,
+            24,
+            120
+          ],
+          "construction_seconds": 0.19734757498372346,
+          "smith_seconds": 0.00040052999975159764,
+          "warm_seconds": 0.000002658000448718667
+        }
+      ]
+    },
+    {
+      "system": "sagejs",
+      "level": 121,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "oldform-isogeny",
+          "level": 121,
+          "dimension": 6,
+          "rank": 12,
+          "invariants": [
+            2,
+            2,
+            6,
+            6,
+            24,
+            120
+          ],
+          "construction_seconds": 1.1105034351348877,
+          "smith_seconds": 0.00173187255859375,
+          "warm_seconds": 0.00006177425384521485
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 121,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "oldform-isogeny",
+          "level": 121,
+          "dimension": 6,
+          "rank": 12,
+          "invariants": [
+            2,
+            2,
+            6,
+            6,
+            24,
+            120
+          ],
+          "construction_seconds": 0.20193421398289502,
+          "smith_seconds": 0.00040712003828957677,
+          "warm_seconds": 0.000002680899342522025
+        }
+      ]
+    },
+    {
+      "system": "sagejs",
+      "level": 121,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "oldform-isogeny",
+          "level": 121,
+          "dimension": 6,
+          "rank": 12,
+          "invariants": [
+            2,
+            2,
+            6,
+            6,
+            24,
+            120
+          ],
+          "construction_seconds": 1.1353120803833008,
+          "smith_seconds": 0.001499176025390625,
+          "warm_seconds": 0.0000615835189819336
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 121,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "oldform-isogeny",
+          "level": 121,
+          "dimension": 6,
+          "rank": 12,
+          "invariants": [
+            2,
+            2,
+            6,
+            6,
+            24,
+            120
+          ],
+          "construction_seconds": 0.1953442950034514,
+          "smith_seconds": 0.00038109003799036145,
+          "warm_seconds": 0.000002629996743053198
+        }
+      ]
+    },
+    {
+      "system": "sagejs",
+      "level": 242,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "oldform-isogeny",
+          "level": 242,
+          "dimension": 22,
+          "rank": 44,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            12,
+            12,
+            24,
+            24,
+            120,
+            120,
+            1320,
+            1320,
+            2640,
+            13200
+          ],
+          "construction_seconds": 3.9797096252441406,
+          "smith_seconds": 0.007225513458251953,
+          "warm_seconds": 0.00006418228149414062
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 242,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "oldform-isogeny",
+          "level": 242,
+          "dimension": 22,
+          "rank": 44,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            12,
+            12,
+            24,
+            24,
+            120,
+            120,
+            1320,
+            1320,
+            2640,
+            13200
+          ],
+          "construction_seconds": 0.567436870012898,
+          "smith_seconds": 0.0053082689992152154,
+          "warm_seconds": 0.000007837999146431684
+        }
+      ]
+    },
+    {
+      "system": "sagejs",
+      "level": 242,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "oldform-isogeny",
+          "level": 242,
+          "dimension": 22,
+          "rank": 44,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            12,
+            12,
+            24,
+            24,
+            120,
+            120,
+            1320,
+            1320,
+            2640,
+            13200
+          ],
+          "construction_seconds": 3.899982452392578,
+          "smith_seconds": 0.007184743881225586,
+          "warm_seconds": 0.00006206035614013672
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 242,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "oldform-isogeny",
+          "level": 242,
+          "dimension": 22,
+          "rank": 44,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            12,
+            12,
+            24,
+            24,
+            120,
+            120,
+            1320,
+            1320,
+            2640,
+            13200
+          ],
+          "construction_seconds": 0.5522805740474723,
+          "smith_seconds": 0.005020418961066753,
+          "warm_seconds": 0.00000852100201882422
+        }
+      ]
+    },
+    {
+      "system": "sagejs",
+      "level": 242,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "oldform-isogeny",
+          "level": 242,
+          "dimension": 22,
+          "rank": 44,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            12,
+            12,
+            24,
+            24,
+            120,
+            120,
+            1320,
+            1320,
+            2640,
+            13200
+          ],
+          "construction_seconds": 3.9501755237579346,
+          "smith_seconds": 0.00714421272277832,
+          "warm_seconds": 0.00006372928619384766
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 242,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "oldform-isogeny",
+          "level": 242,
+          "dimension": 22,
+          "rank": 44,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            12,
+            12,
+            24,
+            24,
+            120,
+            120,
+            1320,
+            1320,
+            2640,
+            13200
+          ],
+          "construction_seconds": 0.5632744210306555,
+          "smith_seconds": 0.005171308992430568,
+          "warm_seconds": 0.0000071319984272122385
+        }
+      ]
+    },
+    {
+      "system": "sagejs",
+      "level": 363,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "oldform-isogeny",
+          "level": 363,
+          "dimension": 33,
+          "rank": 66,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            12,
+            12,
+            12,
+            12,
+            12,
+            12,
+            60,
+            60,
+            60,
+            60,
+            660,
+            660,
+            660,
+            1320,
+            3960,
+            3960,
+            3960,
+            19800
+          ],
+          "construction_seconds": 7.612547397613525,
+          "smith_seconds": 0.08815479278564453,
+          "warm_seconds": 0.0000675201416015625
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 363,
+      "sample": 0,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "oldform-isogeny",
+          "level": 363,
+          "dimension": 33,
+          "rank": 66,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            12,
+            12,
+            12,
+            12,
+            12,
+            12,
+            60,
+            60,
+            60,
+            60,
+            660,
+            660,
+            660,
+            1320,
+            3960,
+            3960,
+            3960,
+            19800
+          ],
+          "construction_seconds": 0.8190028929966502,
+          "smith_seconds": 0.02685189398471266,
+          "warm_seconds": 0.000011954002548009158
+        }
+      ]
+    },
+    {
+      "system": "sagejs",
+      "level": 363,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "oldform-isogeny",
+          "level": 363,
+          "dimension": 33,
+          "rank": 66,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            12,
+            12,
+            12,
+            12,
+            12,
+            12,
+            60,
+            60,
+            60,
+            60,
+            660,
+            660,
+            660,
+            1320,
+            3960,
+            3960,
+            3960,
+            19800
+          ],
+          "construction_seconds": 7.642085313796997,
+          "smith_seconds": 0.08861780166625977,
+          "warm_seconds": 0.00006704330444335937
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 363,
+      "sample": 1,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "oldform-isogeny",
+          "level": 363,
+          "dimension": 33,
+          "rank": 66,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            12,
+            12,
+            12,
+            12,
+            12,
+            12,
+            60,
+            60,
+            60,
+            60,
+            660,
+            660,
+            660,
+            1320,
+            3960,
+            3960,
+            3960,
+            19800
+          ],
+          "construction_seconds": 0.8162785539752804,
+          "smith_seconds": 0.027241224015597254,
+          "warm_seconds": 0.00001074200263246894
+        }
+      ]
+    },
+    {
+      "system": "sagejs",
+      "level": 363,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage.js",
+          "workload": "oldform-isogeny",
+          "level": 363,
+          "dimension": 33,
+          "rank": 66,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            12,
+            12,
+            12,
+            12,
+            12,
+            12,
+            60,
+            60,
+            60,
+            60,
+            660,
+            660,
+            660,
+            1320,
+            3960,
+            3960,
+            3960,
+            19800
+          ],
+          "construction_seconds": 7.595107793807983,
+          "smith_seconds": 0.08795571327209473,
+          "warm_seconds": 0.00006678104400634766
+        }
+      ]
+    },
+    {
+      "system": "sage",
+      "level": 363,
+      "sample": 2,
+      "status": 0,
+      "signal": null,
+      "records": [
+        {
+          "system": "Sage",
+          "version": "10.9.post1",
+          "workload": "oldform-isogeny",
+          "level": 363,
+          "dimension": 33,
+          "rank": 66,
+          "invariants": [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            12,
+            12,
+            12,
+            12,
+            12,
+            12,
+            60,
+            60,
+            60,
+            60,
+            660,
+            660,
+            660,
+            1320,
+            3960,
+            3960,
+            3960,
+            19800
+          ],
+          "construction_seconds": 0.7912978690001182,
+          "smith_seconds": 0.02662976400461048,
+          "warm_seconds": 0.000010333000682294369
+        }
+      ]
+    }
+  ]
+}

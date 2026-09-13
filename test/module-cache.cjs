@@ -37,6 +37,8 @@ const circularAPath = join(sourceDirectory, "circular_a.py");
 const circularBPath = join(sourceDirectory, "circular_b.py");
 const circularMainPath = join(sourceDirectory, "circular_main.py");
 const localNumbersPath = join(sourceDirectory, "numbers.py");
+const classScopePath = join(sourceDirectory, "cached_class_scope.py");
+const classScopeMainPath = join(sourceDirectory, "class_scope_main.py");
 const shadowMainPath = join(sourceDirectory, "shadow_main.py");
 const shadowOutputPath = join(temporary, "shadow-main.cjs");
 const precompiledNumpyCache = join(
@@ -107,9 +109,24 @@ try {
     run([], { input: "import numpy\nprint(numpy.arange(3))\n" }),
     "[0 1 2]",
   );
+  const replModuleRoot = join(replCache, "sagejs", "modules");
+  const replVersionCache = join(replModuleRoot, numpyCache.version);
+  // Detached cache maintenance records metadata beside version directories.
+  // Keep it present deterministically: cache-entry checks must never mistake
+  // this root-level control record for compiled module bytecode.
+  const now = Date.now();
+  writeFileSync(
+    join(replModuleRoot, ".sagejs-auto-cleanup.json"),
+    JSON.stringify({
+      schema: "sagejs.module-cache-auto-cleanup/v1",
+      last_attempt_ms: now,
+      next_attempt_ms: now + 60_000,
+      last_status: "test-fixture",
+    }),
+  );
   // Runtime imports maintain their own V8 bytecode cache even when the
   // compiler used a shipped syntax/module artifact for the calling cell.
-  for (const filename of filesBelow(join(replCache, "sagejs", "modules"))) {
+  for (const filename of filesBelow(replVersionCache)) {
     const cached = JSON.parse(readFileSync(filename, "utf8"));
     assert.equal(cached.version, numpyCache.version);
     assert.equal(typeof cached.cachedData, "string");
@@ -131,6 +148,30 @@ try {
   const expected = "123456789012345678901234567890";
   assert.equal(run(compileArgs), expected);
   assert.equal(run(compileArgs), expected);
+
+  writeFileSync(
+    classScopePath,
+    "from collections import namedtuple\n" +
+      "MODULE_DEFAULT = 17\n" +
+      "class CachedClassScope:\n" +
+      "    Element = MODULE_DEFAULT\n" +
+      "    Factory = namedtuple\n" +
+      "    def __init__(self, value=MODULE_DEFAULT):\n" +
+      "        self.value = value\n",
+  );
+  writeFileSync(
+    classScopeMainPath,
+    "from cached_class_scope import CachedClassScope\n" +
+      "print(CachedClassScope.Element, CachedClassScope().value, " +
+      "CachedClassScope.Factory.__name__)\n",
+  );
+  const classScopeArgs = [
+    "compile", "--cache-dir", compilerCache, "--execute", classScopeMainPath,
+  ];
+  assert.equal(run(classScopeArgs), "17 17 namedtuple");
+  // The second execution consumes the rendered module-cache variant. Class
+  // variables and method defaults must retain the imported module namespace.
+  assert.equal(run(classScopeArgs), "17 17 namedtuple");
 
   const compilerEntries = filesBelow(compilerCache);
   // Bootstrap modules may declare lazy source-transparent kernel dependencies.
@@ -195,7 +236,7 @@ try {
     }),
     `True\n${expected}\n17`,
   );
-  const replEntries = filesBelow(join(replCache, "sagejs", "modules"));
+  const replEntries = filesBelow(replVersionCache);
   assert.equal(replEntries.filter((filename) => {
     const entry = JSON.parse(readFileSync(filename, "utf8"));
     return entry.filename === modulePath;
@@ -210,9 +251,7 @@ try {
     "3141592653589793238462643383279",
   );
 
-  const currentCacheFilename = filesBelow(
-    join(replCache, "sagejs", "modules"),
-  ).find((filename) => {
+  const currentCacheFilename = filesBelow(replVersionCache).find((filename) => {
     const cached = JSON.parse(readFileSync(filename, "utf8"));
     return cached.filename === modulePath;
   });
@@ -251,7 +290,7 @@ try {
     "3141592653589793238462643383279",
   );
   const materializedFilename = filesBelow(
-    join(portableReplCache, "sagejs", "modules"),
+    join(portableReplCache, "sagejs", "modules", numpyCache.version),
   ).find((filename) => {
     const cached = JSON.parse(readFileSync(filename, "utf8"));
     return cached.filename === modulePath;

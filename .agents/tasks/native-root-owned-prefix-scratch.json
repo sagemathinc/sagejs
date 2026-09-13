@@ -1,0 +1,70 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-root-owned-prefix-scratch",
+  "title": "Native Root Owned Prefix Scratch",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Qualify fixed root-owned logical-prefix scratch for repeated resident helper calls",
+  "base_commit": "b7139cea3d3844b572c11a26f291e1e0b937753e",
+  "claims": [
+    "tools/native-kernel/exact-analysis.cjs",
+    "test/native-root-owned-prefix-scratch.cjs",
+    "bench/native_root_owned_prefix_scratch.py",
+    "docs/root-owned-staged-closure-scratch.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "docs/cubic-staged-exact-closure-design.md",
+    "docs/root-owned-staged-closure-scratch.md",
+    "https://github.com/sagemathinc/sagejs/pull/123"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "Same-source dynamic JavaScript, native GMP, and native fmpz agreement",
+      "Exact determinant-30 row-lattice proof and HNF/dependency/LLL transform identities",
+      "Generated GMP/fmpz entry ASan/UBSan exhaustion, exception, retained-parent and publication checks"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix SAGEJS_TEST_FFI_ROOT=/home/user/sagejs node --test test/native-root-owned-prefix-scratch.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.144,
+      "started_at": "2026-09-05T03:29:11.734Z",
+      "commit": "b7139cea3d3844b572c11a26f291e1e0b937753e",
+      "workspace_fingerprint": "7329dd345dc322156e4bb19206ca6fbff548d4c88eacceda8863965edf481091",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Choose the simpler fixed-root alternative: qualify four existing logical-prefix FLINT matrix operations for fmpz, without adding borrowed-arena syntax, child owners, checkpoint rewinds, or new native code. A same-source witness repeatedly attempts 2/6/4/6 logical rows using borrowed root-owned scratch. Dynamic/GMP/fmpz differential tests and isolated generated GMP/fmpz sanitizer tests pass; maximum witness checkpoint high-water was 201136 bytes (fmpz) and 208640 bytes (GMP), with no upstream checkpoint allocations. Architecture, merge inventories and strict Python checks pass. Builds used isolated temporary native caches and a read-only prepared FLINT/compiler/parser installation; root and opt were untouched.",
+    "risks": [
+      "This establishes the integer-lattice mechanism, not extraction or performance of the complete class-group suffix. Capacities must follow actual stage bounds rather than the global 1024-row maximum.",
+      "BF interval evaluation currently consumes whole matrix shapes; fixed positive-one padding is mathematically possible but has not been implemented or timed in the actual suffix. A logical-prefix interval adapter may be preferable.",
+      "Checkpoint bump high-water accumulates across attempts; root-owned matrices live until the outer exit. The witness does not prove the complete cubic suffix fits the unchanged 3 MiB cap.",
+      "Full changed-check build/unit/compiler/integration and platform-native suites remain pending. Windows and Wasm were not executed locally; keep the contract active pending integration validation."
+    ],
+    "next_steps": [
+      "Integrate separately from PR123's bounded guard; do not alter the frozen opt census/timing snapshot.",
+      "Extract proof attempts using typed borrowed scratch parameters and explicit logical dimensions; preserve raw relation/witness state and distinguish recoverable insufficiency from invalid execution.",
+      "Measure full-suffix root memory and total attempt cost before deciding whether a more general shared-budget child-resource API is necessary."
+    ]
+  }
+}

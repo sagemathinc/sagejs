@@ -56,6 +56,17 @@ export interface BinaryExpression extends NodeBase {
   right: MatlabExpression;
 }
 
+export interface LambdaExpression extends NodeBase {
+  kind: "lambda";
+  parameters: string[];
+  body: MatlabExpression;
+}
+
+export interface HandleExpression extends NodeBase {
+  kind: "handle";
+  name: string;
+}
+
 export type MatlabExpression =
   | NameExpression
   | LiteralExpression
@@ -65,7 +76,9 @@ export type MatlabExpression =
   | RangeExpression
   | AllExpression
   | UnaryExpression
-  | BinaryExpression;
+  | BinaryExpression
+  | LambdaExpression
+  | HandleExpression;
 
 export interface AssignmentStatement extends NodeBase {
   kind: "assignment";

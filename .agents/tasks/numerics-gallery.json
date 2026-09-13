@@ -1,0 +1,85 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerics-gallery",
+  "title": "Interactive numerical methods gallery",
+  "lane": "documentation-compat",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement the P7 gallery infrastructure and complete root-finding teaching story from structured evidence, with extensible manifests for later domain stories",
+  "base_commit": "61f7eef664f2d43615a50340a7d509357499d4a5",
+  "claims": [
+    "docs/numerical-computing/gallery/",
+    "website/numerical-computing/",
+    "test/numerics/gallery/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Structured NumericalResult and trace fixtures; browser PlotSpec rendering tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/numerics/gallery/root-gallery.test.cjs",
+    "pnpm docs:check",
+    "pnpm test:tutorial"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/numerics/gallery/root-gallery.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.151,
+      "started_at": "2026-08-31T06:36:43.971Z",
+      "commit": "61f7eef664f2d43615a50340a7d509357499d4a5",
+      "workspace_fingerprint": "1bd0d7246e2fb8b1a2e035ea06eeb7b6da9b8285067c57720d78c0c96c156a7a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/gallery/root-gallery.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.773,
+      "started_at": "2026-08-31T13:42:27.025Z",
+      "commit": "61f7eef664f2d43615a50340a7d509357499d4a5",
+      "workspace_fingerprint": "1b90d3d20c8b1ba55096f940ba9f4c19dada6efcc18a137f12f71fd88273d501",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 392.32,
+      "started_at": "2026-08-31T13:42:38.218Z",
+      "commit": "61f7eef664f2d43615a50340a7d509357499d4a5",
+      "workspace_fingerprint": "1b90d3d20c8b1ba55096f940ba9f4c19dada6efcc18a137f12f71fd88273d501",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the P7 dependency-free numerical teaching gallery and its extensible manifest/story schemas. The generated root-finding story is derived from current NumericalResult, NumericalTrace, and PlotAnimation objects and contrasts a validated Brent solve (independently checked by bisection) with discontinuity, invalid-bracket, and Newton-cycle failures. The browser selects explanations and actions only from cited structured fields, renders the semantic PlotSpec with manual/reduced-motion-safe controls, preserves a complete static SVG/trace/failure/language lesson, and exports the original PlotSpec/PlotAnimation JSON, portable Plotly JSON, and script-free accessible HTML. Fail-closed budgets cover story size, all five result/verification trace event and byte counts, animation frames, samples, and semantic/Plotly payloads, including stale-measurement detection. The fresh focused receipt passes all 9 tests, including live Chromium interaction, reduced motion, mobile overflow, and no-script behavior; merge invariants also pass.",
+    "risks": [
+      "`pnpm docs:check` is recorded as a baseline failure after its full seven-stage build passed: untouched shared `docs/reference/api.md`, `website/reference-data.json`, or the fingerprinted `website/reference.html` is stale. These outputs are outside this task's claims and the gallery paths do not feed `scripts/generate-docs.cjs`.",
+      "`pnpm test:tutorial` is a baseline failure on the untouched numerical foundation: Sage Guided Tour reports 325 passed and 337 failed across 662 selected examples. Repairing shared tutorial/runtime compatibility is outside this gallery task's claims.",
+      "The base-relative `pnpm test:changed` plan selects merge checks, unit tests, and docs checks. Merge checks pass, but `pnpm test:unit` stops after 8 of 115 files because three inherited `test/gf2-polynomial-packed-core.cjs` native compilation cases cannot find `flint/nmod_mat.h`; 2 cases in that file pass and 3 fail. The shared docs check then remains blocked as above.",
+      "The current shared `sagejs.plotting.lower_plot_animation` rejects the numerical PlotAnimation axis representation. The story records that blocked lowering honestly and uses a deterministic checked Plotly adapter until the shared graphics/numerics boundary is reconciled.",
+      "Live browser validation was run on linux-x64; required linux-arm64 and macos-arm64 coverage remains for central CI/qualification."
+    ],
+    "next_steps": [
+      "In the integration lane, refresh or repair the shared generated reference documentation and tutorial baseline, provision the FLINT native headers/cache for unit validation, then rerun the declared shared checks and move this task to review.",
+      "Link `/numerical-computing/` from shared website navigation or routing in an integration-owned change.",
+      "Reconcile numerical PlotSpec axis fields with the shared Plotly lowering contract, regenerate `root-finding.json`, and change the checked shared-lowering record from blocked only when that real lowering succeeds.",
+      "Run the focused browser suite on the required linux-arm64 and macos-arm64 hosts."
+    ]
+  }
+}

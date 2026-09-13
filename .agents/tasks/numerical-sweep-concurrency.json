@@ -1,0 +1,86 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerical-sweep-concurrency",
+  "title": "Deterministic concurrent numerical sweeps",
+  "lane": "numerical-sweeps",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement and qualify deterministic bounded parameter-sweep concurrency with explicit fail-closed runtime support",
+  "base_commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+  "claims": [
+    "src/lib/sagejs/numerics/sweeps.py",
+    "test/cpython/numerical-sweeps.py",
+    "test/numerics/sweeps/bounded-sweeps.cjs",
+    "test/numerics/ode/ode-sweeps.cjs",
+    "docs/numerical-computing/bounded-sweeps.md",
+    "docs/numerical-computing/ode/README.md",
+    "docs/numerical-computing/ode/integration-requests.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Deterministic sequential execution and overlap instrumentation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 773.717,
+      "started_at": "2026-09-02T20:46:49.227Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "a6956b73a06bc398506ce9b287d6ca27696a06d5dd5e7fe87b8ee142a92bb8b7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.371,
+      "started_at": "2026-09-02T20:59:51.237Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "a6956b73a06bc398506ce9b287d6ca27696a06d5dd5e7fe87b8ee142a92bb8b7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 11.146,
+      "started_at": "2026-09-02T21:00:54.000Z",
+      "commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+      "workspace_fingerprint": "a6956b73a06bc398506ce9b287d6ca27696a06d5dd5e7fe87b8ee142a92bb8b7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Parameter sweeps now use one reusable, bounded CPython thread pool when concurrency is requested, preserve input-index result ordering and deterministic per-item quotas/seeds, and retain batch-boundary fail-fast and cancellation semantics. Sage.js Node, browser, and SEA runtimes explicitly report a sequential capability fallback for arbitrary live callables, or reject the request before dispatch when concurrency_fallback='error'. Focused overlap instrumentation proves jobs actually overlap while respecting the bound; the complete numerical suite and strict-Python suite pass.",
+    "risks": [
+      "CPython threads overlap blocking callbacks and native code that releases the GIL, but do not provide CPU parallelism for pure-Python callbacks.",
+      "Arbitrary live Sage.js closures cannot yet be transferred safely to Node or browser workers under the synchronous sweep contract, so those runtimes deliberately fall back or fail closed rather than claim concurrency.",
+      "The repository-wide optimizer-opportunity generated digest becomes stale whenever sweeps.py changes. The architecture receipt passed all preceding gates and failed only at that generated-artifact verification, which is outside this lane's claims."
+    ],
+    "next_steps": [
+      "Regenerate the integration-owned optimizer-opportunity artifacts after merging this lane, then rerun pnpm architecture:check.",
+      "Expose concurrency_fallback through the ODE-specific sweep adapter in its owning lane.",
+      "Design a module-addressed, transferable callback protocol before enabling isolated Node or browser worker execution."
+    ]
+  }
+}

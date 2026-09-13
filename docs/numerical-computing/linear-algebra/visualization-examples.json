@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "description": "Executable accessible explanation and visualization examples for the dense binary64 linear-algebra domain.",
+  "examples": [
+    {
+      "id": "pivoted-lu-success",
+      "operation": "lu",
+      "matrix": [[0.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 10.0]],
+      "trace": "iterations",
+      "view": "factorization",
+      "expected_success": true,
+      "expected_status": "converged",
+      "expected_animation_view": "factorization",
+      "alt_text_contains": "factorization diagonal profile"
+    },
+    {
+      "id": "hilbert-five-conditioning",
+      "operation": "condition_number",
+      "matrix": [[1.0, 0.5, 0.3333333333333333, 0.25, 0.2], [0.5, 0.3333333333333333, 0.25, 0.2, 0.16666666666666666], [0.3333333333333333, 0.25, 0.2, 0.16666666666666666, 0.14285714285714285], [0.25, 0.2, 0.16666666666666666, 0.14285714285714285, 0.125], [0.2, 0.16666666666666666, 0.14285714285714285, 0.125, 0.1111111111111111]],
+      "trace": "iterations",
+      "view": "conditioning",
+      "expected_success": true,
+      "expected_status": "converged",
+      "expected_animation_view": "convergence",
+      "alt_text_contains": "Relative singular-value profile"
+    },
+    {
+      "id": "nonsymmetric-cholesky-failure",
+      "operation": "cholesky",
+      "matrix": [[2.0, 1.0], [0.0, 2.0]],
+      "trace": "iterations",
+      "view": "validation",
+      "expected_success": false,
+      "expected_status": "invalid_problem",
+      "expected_failure_code": "not_symmetric",
+      "alt_text_contains": "did not pass"
+    }
+  ]
+}

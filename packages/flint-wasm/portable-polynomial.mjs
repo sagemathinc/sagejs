@@ -135,6 +135,68 @@ function multiplyCoefficient(kind, left, right, modulus) {
   return kind === "nmod" ? mod(result, modulus) : result;
 }
 
+function extendedGcd(left, right) {
+  let oldRemainder = left;
+  let remainder = right;
+  let oldCoefficient = 1n;
+  let coefficient = 0n;
+  while (remainder !== 0n) {
+    const quotient = oldRemainder / remainder;
+    [oldRemainder, remainder] = [
+      remainder,
+      oldRemainder - quotient * remainder,
+    ];
+    [oldCoefficient, coefficient] = [
+      coefficient,
+      oldCoefficient - quotient * coefficient,
+    ];
+  }
+  return [oldRemainder, oldCoefficient];
+}
+
+function invertCoefficient(kind, value, modulus) {
+  if (kind === "QQ") {
+    if (value.numerator === 0n) {
+      throw new RangeError("constant coefficient is not invertible");
+    }
+    return rational(value.denominator, value.numerator);
+  }
+  if (kind === "ZZ") {
+    if (value !== 1n && value !== -1n) {
+      throw new RangeError("constant coefficient is not invertible");
+    }
+    return value;
+  }
+  const [divisor, inverse] = extendedGcd(value, modulus);
+  if (divisor !== 1n && divisor !== -1n) {
+    throw new RangeError("constant coefficient is not invertible");
+  }
+  return mod(divisor === 1n ? inverse : -inverse, modulus);
+}
+
+function divideCoefficientExact(kind, numerator, denominator, modulus) {
+  if (kind === "QQ" || kind === "nmod") {
+    return multiplyCoefficient(
+      kind,
+      numerator,
+      invertCoefficient(kind, denominator, modulus),
+      modulus,
+    );
+  }
+  if (denominator === 0n || numerator % denominator !== 0n) {
+    throw new RangeError("polynomial division is not exact");
+  }
+  return numerator / denominator;
+}
+
+function polynomialLength(value, name = "polynomial length") {
+  const length = BigInt(value);
+  if (length < 0n || length > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new RangeError(`${name} is out of range`);
+  }
+  return Number(length);
+}
+
 function equalCoefficient(kind, left, right) {
   return kind === "QQ"
     ? left.numerator === right.numerator &&
@@ -265,6 +327,189 @@ function polyPow(value, exponent) {
   return result;
 }
 
+function polyTruncate(value, precision) {
+  value = assertPolynomial(value);
+  const length = polynomialLength(precision, "polynomial precision");
+  return polynomial(
+    value.kind,
+    value.coefficients.slice(0, length),
+    value.modulus,
+  );
+}
+
+function polyShiftLeft(value, amount) {
+  value = assertPolynomial(value);
+  const shift = polynomialLength(amount, "polynomial shift");
+  if (value.coefficients.length === 0) {
+    return value;
+  }
+  return polynomial(
+    value.kind,
+    [
+      ...Array.from({ length: shift }, () => zeroCoefficient(value.kind)),
+      ...value.coefficients,
+    ],
+    value.modulus,
+  );
+}
+
+function polyShiftRight(value, amount) {
+  value = assertPolynomial(value);
+  const shift = polynomialLength(amount, "polynomial shift");
+  return polynomial(
+    value.kind,
+    value.coefficients.slice(shift),
+    value.modulus,
+  );
+}
+
+function polyInflate(value, factor) {
+  value = assertPolynomial(value);
+  const inflation = polynomialLength(factor, "polynomial inflation factor");
+  if (inflation === 0) {
+    throw new RangeError("polynomial inflation factor must be positive");
+  }
+  if (value.coefficients.length === 0 || inflation === 1) {
+    return value;
+  }
+  const coefficients = Array.from(
+    { length: (value.coefficients.length - 1) * inflation + 1 },
+    () => zeroCoefficient(value.kind),
+  );
+  value.coefficients.forEach((coefficient, index) => {
+    coefficients[index * inflation] = coefficient;
+  });
+  return polynomial(value.kind, coefficients, value.modulus);
+}
+
+function polyMullow(left, right, precision) {
+  return polyTruncate(polyMul(left, right), precision);
+}
+
+function polyPowTrunc(value, exponent, precision) {
+  value = assertPolynomial(value);
+  exponent = BigInt(exponent);
+  const length = polynomialLength(precision, "polynomial precision");
+  if (exponent < 0n) {
+    throw new RangeError("negative polynomial exponent");
+  }
+  let result = polynomial(
+    value.kind,
+    [value.kind === "QQ" ? rational(1n) : 1n],
+    value.modulus,
+  );
+  let power = polyTruncate(value, BigInt(length));
+  while (exponent > 0n) {
+    if (exponent & 1n) {
+      result = polyTruncate(polyMul(result, power), BigInt(length));
+    }
+    exponent >>= 1n;
+    if (exponent > 0n) {
+      power = polyTruncate(polyMul(power, power), BigInt(length));
+    }
+  }
+  return polyTruncate(result, BigInt(length));
+}
+
+function polyValuation(value) {
+  value = assertPolynomial(value);
+  const index = value.coefficients.findIndex(
+    (coefficient) => !isZero(value.kind, coefficient),
+  );
+  return index;
+}
+
+function polyInvSeries(value, precision) {
+  value = assertPolynomial(value);
+  const length = polynomialLength(precision, "series precision");
+  if (value.coefficients.length === 0) {
+    throw new RangeError("constant coefficient is not invertible");
+  }
+  const inverseConstant = invertCoefficient(
+    value.kind,
+    value.coefficients[0],
+    value.modulus,
+  );
+  const coefficients = [];
+  if (length > 0) {
+    coefficients.push(inverseConstant);
+  }
+  for (let degree = 1; degree < length; degree += 1) {
+    let sum = zeroCoefficient(value.kind);
+    const stop = Math.min(degree, value.coefficients.length - 1);
+    for (let index = 1; index <= stop; index += 1) {
+      sum = addCoefficient(
+        value.kind,
+        sum,
+        multiplyCoefficient(
+          value.kind,
+          value.coefficients[index],
+          coefficients[degree - index],
+          value.modulus,
+        ),
+        value.modulus,
+      );
+    }
+    coefficients.push(
+      multiplyCoefficient(
+        value.kind,
+        negateCoefficient(value.kind, sum, value.modulus),
+        inverseConstant,
+        value.modulus,
+      ),
+    );
+  }
+  return polynomial(value.kind, coefficients, value.modulus);
+}
+
+function polyDivExact(left, right) {
+  [left, right] = assertSameParent(left, right);
+  if (right.coefficients.length === 0) {
+    throw new RangeError("polynomial division by zero");
+  }
+  let remainder = left.coefficients.slice();
+  const quotient = Array.from(
+    {
+      length: Math.max(
+        0,
+        left.coefficients.length - right.coefficients.length + 1,
+      ),
+    },
+    () => zeroCoefficient(left.kind),
+  );
+  const divisorDegree = right.coefficients.length - 1;
+  const divisorLeading = right.coefficients[divisorDegree];
+  while (remainder.length >= right.coefficients.length) {
+    const degree = remainder.length - right.coefficients.length;
+    const coefficient = divideCoefficientExact(
+      left.kind,
+      remainder[remainder.length - 1],
+      divisorLeading,
+      left.modulus,
+    );
+    quotient[degree] = coefficient;
+    for (let index = 0; index <= divisorDegree; index += 1) {
+      const target = degree + index;
+      remainder[target] = subtractCoefficient(
+        left.kind,
+        remainder[target],
+        multiplyCoefficient(
+          left.kind,
+          coefficient,
+          right.coefficients[index],
+          left.modulus,
+        ),
+        left.modulus,
+      );
+    }
+    remainder = normalizeCoefficients(left.kind, remainder);
+  }
+  if (remainder.length !== 0) {
+    throw new RangeError("polynomial division is not exact");
+  }
+  return polynomial(left.kind, quotient, left.modulus);
+}
+
 function polyEqual(left, right) {
   try {
     [left, right] = assertSameParent(left, right);
@@ -356,6 +601,15 @@ function polyCoefficients(value) {
   return assertPolynomial(value).coefficients.slice();
 }
 
+function polyCoefficient(value, index) {
+  value = assertPolynomial(value);
+  index = BigInt(index);
+  if (index < 0n || index > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new RangeError("polynomial coefficient index is out of range");
+  }
+  return coefficientAt(value, Number(index));
+}
+
 function zzPolyGen() {
   return polynomial("ZZ", [0n, 1n]);
 }
@@ -397,6 +651,60 @@ function zzPolyToQQ(value) {
   );
 }
 
+function qqPolyToZZExact(value) {
+  value = assertPolynomial(value);
+  if (value.kind !== "QQ") {
+    throw new TypeError("expected a polynomial over QQ");
+  }
+  if (
+    value.coefficients.some((coefficient) => coefficient.denominator !== 1n)
+  ) {
+    throw new RangeError("rational polynomial has nonintegral coefficients");
+  }
+  return polynomial(
+    "ZZ",
+    value.coefficients.map((coefficient) => coefficient.numerator),
+  );
+}
+
+function zzPolyUnitriangularBasis(values) {
+  if (!Array.isArray(values)) {
+    throw new TypeError("expected an array of ZZ polynomials");
+  }
+  const rows = values.map((value) => {
+    value = assertPolynomial(value);
+    if (value.kind !== "ZZ") {
+      throw new TypeError("expected a polynomial over ZZ");
+    }
+    return value.coefficients.slice();
+  });
+  for (let row = 0; row < rows.length; row += 1) {
+    for (let column = 0; column < row; column += 1) {
+      if ((rows[row][column] ?? 0n) !== 0n) {
+        throw new RangeError("polynomial basis is not unitriangular");
+      }
+    }
+    if ((rows[row][row] ?? 0n) !== 1n) {
+      throw new RangeError("polynomial basis is not unitriangular");
+    }
+  }
+  for (let pivot = 1; pivot < rows.length; pivot += 1) {
+    for (let previous = 0; previous < pivot; previous += 1) {
+      const coefficient = rows[previous][pivot] ?? 0n;
+      if (coefficient === 0n) {
+        continue;
+      }
+      const length = Math.max(rows[previous].length, rows[pivot].length);
+      for (let column = 0; column < length; column += 1) {
+        rows[previous][column] =
+          (rows[previous][column] ?? 0n) -
+          coefficient * (rows[pivot][column] ?? 0n);
+      }
+    }
+  }
+  return rows.map((coefficients) => polynomial("ZZ", coefficients));
+}
+
 function zzPolyToNmod(value, modulus) {
   value = assertPolynomial(value);
   if (value.kind !== "ZZ") {
@@ -412,24 +720,45 @@ function zzPolyToNmod(value, modulus) {
 
 const zzPolyToZmod = zzPolyToNmod;
 
-export function createPortablePolynomialBackend() {
+export function createPortablePolynomialBackend({ recordCapability = () => {} } = {}) {
+  const traced = (name, operation) => (...arguments_) => {
+    const result = operation(...arguments_);
+    recordCapability(
+      `napi:@sagemath/sagejs-flint:${name}`,
+      "shared-runtime-js",
+      { executionTarget: "host-runtime-js", ingressBytes: 0, egressBytes: 0 },
+    );
+    return result;
+  };
   return Object.freeze({
     nmodPolyConstant,
     nmodPolyGen,
     zmodPolyConstant,
     zmodPolyGen,
     polyAdd,
+    polyCoefficient,
     polyCoefficients,
+    polyDivExact: traced("polyDivExact", polyDivExact),
     polyEqual,
+    polyInflate: traced("polyInflate", polyInflate),
+    polyInvSeries: traced("polyInvSeries", polyInvSeries),
     polyMul,
+    polyMullow: traced("polyMullow", polyMullow),
     polyNeg,
     polyPow,
+    polyPowTrunc: traced("polyPowTrunc", polyPowTrunc),
+    polyShiftLeft: traced("polyShiftLeft", polyShiftLeft),
+    polyShiftRight: traced("polyShiftRight", polyShiftRight),
     polySub,
     polyToString,
+    polyTruncate: traced("polyTruncate", polyTruncate),
+    polyValuation: traced("polyValuation", polyValuation),
     qqPolyConstant,
     qqPolyGen,
+    qqPolyToZZExact,
     zzPolyConstant,
     zzPolyGen,
+    zzPolyUnitriangularBasis,
     zzPolyToNmod,
     zzPolyToZmod,
     zzPolyToQQ,

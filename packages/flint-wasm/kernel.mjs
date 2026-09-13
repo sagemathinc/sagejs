@@ -23,6 +23,9 @@ function deserializeError(serialized) {
   const error = new Error(serialized.message);
   error.name = serialized.name;
   if (serialized.stack) error.stack = serialized.stack;
+  if (typeof serialized.sagejsErrorName === "string") {
+    error.sagejsErrorName = serialized.sagejsErrorName;
+  }
   return error;
 }
 
@@ -34,6 +37,7 @@ function deserializeError(serialized) {
  */
 export class SageSession {
   constructor({
+    mode = "sage",
     worker = new URL("./kernel-worker.mjs", import.meta.url),
     compiler = new URL("./dist/compiler.js", import.meta.url),
     baselib = new URL("./dist/baselib.js", import.meta.url),
@@ -45,6 +49,9 @@ export class SageSession {
     algebraic = new URL("./dist/flint-algebraic.wasm", import.meta.url),
     nativeKernels = new URL("./dist/native-kernels/index.json", import.meta.url),
     m4ri = new URL("./dist/m4ri-resource.wasm", import.meta.url),
+    numerical = new URL("./dist/cminpack.wasm", import.meta.url),
+    numericalNlopt = new URL("./dist/nlopt-methods.wasm", import.meta.url),
+    nloptAdapter = new URL("./dist/nlopt-backend.mjs", import.meta.url),
     symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
     compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
     compilerFrontend = new URL("./dist/compiler-frontend.mjs", import.meta.url),
@@ -60,9 +67,13 @@ export class SageSession {
       wolfram: new URL("./dist/tree-sitter-wolfram.wasm", import.meta.url),
     }),
     capabilityReport = new URL("./dist/wasm-capabilities-report.json", import.meta.url),
+    documentation = new URL("./dist/documentation.json", import.meta.url),
     optimizationLevel,
     onGraphicsSave,
   } = {}) {
+    if (mode !== "sage" && mode !== "python") {
+      throw new TypeError(`unknown Sage.js language mode ${JSON.stringify(mode)}`);
+    }
     if (
       optimizationLevel !== undefined &&
       !["O0", "O1", "O2", "O3", "Os"].includes(optimizationLevel)
@@ -76,6 +87,7 @@ export class SageSession {
       configuredCompilerWorker = String(compilerWorkerUrl);
     }
     this.resources = {
+      mode,
       worker: String(worker),
       compiler: String(compiler),
       baselib: String(baselib),
@@ -87,6 +99,9 @@ export class SageSession {
       algebraic: String(algebraic),
       nativeKernels: String(nativeKernels),
       m4ri: String(m4ri),
+      numerical: String(numerical),
+      numericalNlopt: String(numericalNlopt),
+      nloptAdapter: String(nloptAdapter),
       symbolic: String(symbolic),
       compilerWorker: configuredCompilerWorker,
       compilerFrontend: String(compilerFrontend),
@@ -98,6 +113,7 @@ export class SageSession {
         Object.entries(foreignGrammars).map(([name, url]) => [name, String(url)]),
       ),
       capabilityReport: String(capabilityReport),
+      documentation: String(documentation),
     };
     this.onGraphicsSave = onGraphicsSave;
     this.listeners = new Map();
@@ -148,7 +164,7 @@ export class SageSession {
         return;
       }
       if (data.type === "ready") {
-        if (data.protocol !== 2) {
+        if (data.protocol !== 3) {
           this.readyReject(
             new Error(`unsupported Sage.js worker protocol ${data.protocol}`),
           );
@@ -166,6 +182,16 @@ export class SageSession {
         return;
       }
 
+      if (data.type === "output-event") {
+        this.pending.get(data.id)?.onEvent?.(data.event);
+        this.emit("output", data.event, { requestId: data.id });
+        return;
+      }
+      if (data.type === "comm-event") {
+        this.pending.get(data.id)?.onComm?.(data.event);
+        this.emit("comm", data.event, { requestId: data.id });
+        return;
+      }
       const pending = this.pending.get(data.id);
       if (!pending) return;
       if (data.type === "stdout") {
@@ -185,6 +211,10 @@ export class SageSession {
       this.pending.delete(data.id);
       if (pending.timer) clearTimeout(pending.timer);
       if (data.ok) {
+        if (pending.kind !== "evaluate") {
+          pending.resolve(data.result);
+          return;
+        }
         const { saveRequests = [], ...result } = data.result;
         void (async () => {
           if (saveRequests.length && !this.onGraphicsSave) {
@@ -222,7 +252,8 @@ export class SageSession {
     worker.postMessage(
       {
         type: "initialize",
-        protocol: 2,
+        protocol: 3,
+        mode: this.resources.mode,
         compiler: this.resources.compiler,
         baselib: this.resources.baselib,
         standardLibrary: this.resources.standardLibrary,
@@ -233,6 +264,9 @@ export class SageSession {
         algebraic: this.resources.algebraic,
         nativeKernels: this.resources.nativeKernels,
         m4ri: this.resources.m4ri,
+        numerical: this.resources.numerical,
+        numericalNlopt: this.resources.numericalNlopt,
+        nloptAdapter: this.resources.nloptAdapter,
         symbolic: this.resources.symbolic,
         compilerWorker: this.resources.compilerWorker,
         compilerFrontend: this.resources.compilerFrontend,
@@ -268,6 +302,8 @@ export class SageSession {
       timeout,
       onOutput,
       onError,
+      onEvent,
+      onComm,
     } = {},
   ) {
     if (this.closed) throw new SageSessionClosedError();
@@ -287,10 +323,13 @@ export class SageSession {
 
     return new Promise((resolve, reject) => {
       const pending = {
+        kind: "evaluate",
         output: "",
         errorOutput: "",
         onOutput,
         onError,
+        onEvent,
+        onComm,
         resolve,
         reject,
       };
@@ -310,12 +349,104 @@ export class SageSession {
         id,
         source,
         filename,
+        parentId: `browser-${id}`,
       });
     });
   }
 
   eval(source, options) {
     return this.evaluate(source, options);
+  }
+
+  async request(
+    type,
+    fields = {},
+    { onOutput, onError, onEvent, onComm } = {},
+  ) {
+    if (this.closed) throw new SageSessionClosedError();
+    await this.ready();
+    const channel = this.channel;
+    if (!channel) throw new SageSessionClosedError();
+    const id = ++this.nextId;
+    return new Promise((resolve, reject) => {
+      this.pending.set(id, {
+        kind: type,
+        output: "",
+        errorOutput: "",
+        onOutput,
+        onError,
+        onEvent,
+        onComm,
+        resolve,
+        reject,
+      });
+      channel.postMessage({ type, id, ...fields });
+    });
+  }
+
+  comm(event, handlers) {
+    return this.request("comm", { event }, handlers);
+  }
+
+  commInfo(targetName) {
+    return this.request("commInfo", { targetName });
+  }
+
+  /** Evaluate and return the final value as detached JSON-compatible data. */
+  async evaluateJSON(source, options = {}) {
+    if (typeof source !== "string" || !source.trim()) {
+      throw new TypeError("evaluateJSON() requires Sage/Python source");
+    }
+    const token = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const marker = `__SAGEJS_JSON_${token}__`;
+    const lines = source.trimEnd().split("\n");
+    const finalExpression = lines.pop().trim();
+    const setup = lines.join("\n");
+    const valueName = `__sagejs_json_value_${token}`;
+    const methodName = `__sagejs_json_method_${token}`;
+    const { onOutput: _onOutput, onError: _onError, ...evaluationOptions } = options;
+    const result = await this.evaluate(
+      (setup ? `${setup}\n` : "") +
+        `import json\n` +
+        `${valueName} = (${finalExpression})\n` +
+        `${methodName} = getattr(${valueName}, "to_json", None)\n` +
+        `print(${JSON.stringify(marker)} + (` +
+        `${methodName}() if callable(${methodName}) ` +
+        `else json.dumps(${valueName})))`,
+      evaluationOptions,
+    );
+    const line = result.stdout
+      .split("\n")
+      .find((candidate) => candidate.startsWith(marker));
+    if (line === undefined) {
+      throw new TypeError("evaluateJSON() did not receive a structured result");
+    }
+    return JSON.parse(line.slice(marker.length));
+  }
+
+  /** Return the same installed DocSpec v1 catalog exposed by Node sessions. */
+  async documentation() {
+    await this.ready();
+    if (!this.documentationPromise) {
+      const hostLoader = globalThis.__sagejs_read_json_resource__;
+      const loaded = typeof hostLoader === "function"
+        ? hostLoader(this.resources.documentation)
+        : fetch(this.resources.documentation).then(async (response) => {
+          if (!response.ok) {
+            throw new Error(
+              `unable to load Sage.js documentation (${response.status} ${response.statusText})`,
+            );
+          }
+          return response.json();
+        });
+      this.documentationPromise = loaded.then((catalog) => {
+        if (catalog?.schema_version !== 1 || !Array.isArray(catalog.entries)) {
+          throw new TypeError("Sage.js browser documentation is not DocSpec v1");
+        }
+        return catalog;
+      });
+    }
+    return this.documentationPromise;
   }
 
   async replaceWorker(error, waitForReady = true) {

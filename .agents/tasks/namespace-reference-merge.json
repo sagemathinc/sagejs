@@ -1,0 +1,125 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "namespace-reference-merge",
+  "title": "Namespace Reference Merge",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Merge current main into PR 241 and regenerate complete reference artifacts",
+  "base_commit": "56a4f1be4db7ab5ccf0e5d25d2dee47b1b889d94",
+  "claims": [
+    "website/reference.html",
+    "website/reference-data.json",
+    "docs/validation/namespace-reference-merge.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "PR 241 parent: 419a10fb1f34c6ade3fa41061fd6143bfe51f875",
+    "Imported main parent: 02a683d213072c3129da1f71e2aa47de447cfc4a"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "deterministic-reference-generation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node docs/validation/namespace-reference-merge.cjs",
+    "node scripts/build-reference-prism.cjs --check",
+    "git diff --check"
+  ],
+  "runs": [
+    {
+      "command": "node test/validation/namespace-reference-merge.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.873,
+      "started_at": "2026-09-12T10:29:49.958Z",
+      "commit": "56a4f1be4db7ab5ccf0e5d25d2dee47b1b889d94",
+      "workspace_fingerprint": "2a4adb81b77fbde7566d076b5d9e39e38289c73906466131a53a68796e016a03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/build-reference-prism.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.03,
+      "started_at": "2026-09-12T10:29:52.479Z",
+      "commit": "56a4f1be4db7ab5ccf0e5d25d2dee47b1b889d94",
+      "workspace_fingerprint": "2a4adb81b77fbde7566d076b5d9e39e38289c73906466131a53a68796e016a03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.037,
+      "started_at": "2026-09-12T10:29:53.153Z",
+      "commit": "56a4f1be4db7ab5ccf0e5d25d2dee47b1b889d94",
+      "workspace_fingerprint": "2a4adb81b77fbde7566d076b5d9e39e38289c73906466131a53a68796e016a03",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node docs/validation/namespace-reference-merge.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.98,
+      "started_at": "2026-09-12T10:31:12.948Z",
+      "commit": "56a4f1be4db7ab5ccf0e5d25d2dee47b1b889d94",
+      "workspace_fingerprint": "037a9c47748a9524c16320dba55aac18fa5dc899db602e777ca847d32a7f826a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/build-reference-prism.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.031,
+      "started_at": "2026-09-12T10:31:15.606Z",
+      "commit": "56a4f1be4db7ab5ccf0e5d25d2dee47b1b889d94",
+      "workspace_fingerprint": "037a9c47748a9524c16320dba55aac18fa5dc899db602e777ca847d32a7f826a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.034,
+      "started_at": "2026-09-12T10:31:16.300Z",
+      "commit": "56a4f1be4db7ab5ccf0e5d25d2dee47b1b889d94",
+      "workspace_fingerprint": "037a9c47748a9524c16320dba55aac18fa5dc899db602e777ca847d32a7f826a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.644,
+      "started_at": "2026-09-12T10:31:16.976Z",
+      "commit": "56a4f1be4db7ab5ccf0e5d25d2dee47b1b889d94",
+      "workspace_fingerprint": "037a9c47748a9524c16320dba55aac18fa5dc899db602e777ca847d32a7f826a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Reviewed merge foundation 56a4f1be4 imports both recorded parents. The only manual merge resolution is the generated reference-data URL hash 4ae1525549569b0f; the auto-merged JSON exactly reproduces current source coordinates while retaining all 323 current-main catalog entries. Follow-up scope contains only this task and reproducible deterministic evidence.",
+    "risks": [
+      "Committed-catalog replay is not fresh runtime validation. The imported main changes and new merged head require CI; the prior frozen 419a10fb1 artifact was not touched.",
+      "Task remains active because broad integration-lane runtime gates require the new-head CI or separately authorized qualification; no full build is authorized for this reference-only resolution."
+    ],
+    "next_steps": [
+      "Root reviews the merge and advances the PR 241 branch, then observes new-head CI."
+    ]
+  }
+}

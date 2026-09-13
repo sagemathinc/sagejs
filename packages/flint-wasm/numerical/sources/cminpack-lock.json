@@ -1,0 +1,21 @@
+{
+  "schema": "sagejs.numerical-wasm-source-lock/v1",
+  "cminpack": {
+    "repository": "https://github.com/devernay/cminpack",
+    "revision": "32d343ac33ac297594b5ffac57741e5615b4bb07",
+    "archive": "https://codeload.github.com/devernay/cminpack/tar.gz/32d343ac33ac297594b5ffac57741e5615b4bb07",
+    "archive_sha256": "9900b69d8ff8822c9d67cecaebb8b83c9c9e2a81a92705b8ac5f2104c459b8ae",
+    "license_file": "CopyrightMINPACK.txt",
+    "license_sha256": "8887036b1039e299ebcc8b95a73ea1538df548393fb8462361c80bea605a4fbe",
+    "distributed_license_sha256": "c87b7f8ee88f6195e91743820c00354833583aef091b72e2d4a49c8e28e798a0",
+    "license": "MINPACK permissive notice",
+    "qualification": {
+      "cases": "examples/testdata/ssq.data",
+      "cases_sha256": "4486706a38af157667b9c2523a4c037d904cb9f0dc4828d01b78183c978d0392",
+      "lmdif_reference": "examples/ref/lmfdrvc.ref",
+      "lmdif_reference_sha256": "93cd86536c839b49931c57e4e6f9f976493e75336088fcafe91c42fa8448ee34",
+      "lmder_reference": "examples/ref/lmddrvc.ref",
+      "lmder_reference_sha256": "35b472d0f6210557b50cae2b555a51784f9b011b7742641ca3d15242fc65db5b"
+    }
+  }
+}

@@ -8,6 +8,8 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
+const { pythonExecutable } = require("../tools/python-executable.cjs");
+
 const root = path.resolve(__dirname, "..");
 const {
   PROFILE_SOURCE,
@@ -89,7 +91,7 @@ test("the phase program partitions normalization and fold without overlap", () =
     65_537,
     12_345,
   );
-  const syntax = spawnSync("python3", ["-c", "compile(__import__('sys').stdin.read(), '<workload>', 'exec')"], {
+  const syntax = spawnSync(pythonExecutable(), ["-c", "compile(__import__('sys').stdin.read(), '<workload>', 'exec')"], {
     cwd: root,
     encoding: "utf8",
     input: source,

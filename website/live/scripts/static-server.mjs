@@ -26,6 +26,40 @@ const securityHeaders = {
   "X-Content-Type-Options": "nosniff",
 };
 
+const EMBED_SUPPORT_MODULES = new Set([
+  "cell-controller.mjs",
+  "cell-session-pool.mjs",
+  "codemirror-editor.mjs",
+  "output-renderer.mjs",
+  "resource-policy.mjs",
+  "runtime-api.mjs",
+  "runtime-version.json",
+  "widget-manager.mjs",
+]);
+const EMBED_FRAME_PATH = "embed/v1/frame.html";
+
+export function isPublicEmbedResource(relative) {
+  return (
+    relative.startsWith("assets/sha256-") ||
+    relative.startsWith("embed/v1/") ||
+    relative.startsWith("vendor/") ||
+    EMBED_SUPPORT_MODULES.has(relative)
+  );
+}
+
+function responseSecurityHeaders(relative) {
+  const headers = isPublicEmbedResource(relative) ? {
+    ...securityHeaders,
+    "Access-Control-Allow-Origin": "*",
+    "Cross-Origin-Resource-Policy": "cross-origin",
+  } : { ...securityHeaders };
+  if (relative === EMBED_FRAME_PATH) {
+    headers["Content-Security-Policy"] = securityHeaders["Content-Security-Policy"]
+      .replace("frame-ancestors 'none'", "frame-ancestors *");
+  }
+  return headers;
+}
+
 export function startStaticServer({ directory = root, host = "127.0.0.1", port = 0 } = {}) {
   directory = path.resolve(directory);
   const server = http.createServer(async (request, response) => {
@@ -38,7 +72,7 @@ export function startStaticServer({ directory = root, host = "127.0.0.1", port =
       const information = await stat(filename);
       if (!information.isFile()) throw new Error("not a file");
       response.writeHead(200, {
-        ...securityHeaders,
+        ...responseSecurityHeaders(relative),
         "Content-Length": information.size,
         "Content-Type": types.get(path.extname(filename)) ?? "application/octet-stream",
         "Cache-Control": relative === "sw.js" || relative === "runtime-version.json" || relative === "asset-manifest.json" ? "no-cache" : relative.startsWith("assets/sha256-") ? "public, max-age=31536000, immutable" : "public, max-age=0, must-revalidate",

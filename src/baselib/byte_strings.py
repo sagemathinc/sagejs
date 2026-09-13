@@ -81,6 +81,38 @@ def _encode_utf8(value: _Str) -> list[_Int]:
     return answer
 
 
+def _encode_unicode_escape(value: _Str) -> list[_Int]:
+    """Encode text using CPython's ASCII-only `unicode_escape` form."""
+    digits = "0123456789abcdef"
+    answer = []
+    for character in value:
+        code = ord(character)
+        if code == 9:
+            escaped = r"\t"
+        elif code == 10:
+            escaped = r"\n"
+        elif code == 13:
+            escaped = r"\r"
+        elif code == 92:
+            escaped = r"\\"
+        elif 32 <= code <= 126:
+            answer.append(code)
+            continue
+        elif code <= 0xFF:
+            escaped = r"\x" + digits[(code >> 4) & 15] + digits[code & 15]
+        elif code <= 0xFFFF:
+            escaped = r"\u"
+            for shift in (12, 8, 4, 0):
+                escaped += digits[(code >> shift) & 15]
+        else:
+            escaped = r"\U"
+            for shift in (28, 24, 20, 16, 12, 8, 4, 0):
+                escaped += digits[(code >> shift) & 15]
+        for escaped_character in escaped:
+            answer.append(ord(escaped_character))
+    return answer
+
+
 def _decode_utf8(values: list[_Int], errors: _Str) -> _Str:
     decoder_class = runtime.reflect.get(runtime.global_object, "TextDecoder")
     uint8_array = runtime.reflect.get(runtime.global_object, "Uint8Array")
@@ -499,11 +531,8 @@ class SageBytes:
         if normalised in ("latin-1", "latin1", "iso-8859-1"):
             return self._binary_string()
         if normalised == "punycode":
-            module = runtime.require_module("punycode")
-            decoder = runtime.reflect.get(module, "decode")
-            return runtime.reflect.apply(
-                decoder, runtime.undefined, [self._binary_string()]
-            )
+            module = __import__("sagejs._punycode", fromlist=["punycode_decode"])
+            return module.punycode_decode(self, errors)
         raise ValueError("unknown encoding: " + encoding)
 
     def find(
@@ -1157,6 +1186,42 @@ class SageMemoryView:
         return self._itemsize
 
     @property
+    def nbytes(self) -> _Int:
+        return len(self._bytes_values())
+
+    @property
+    def ndim(self) -> _Int:
+        return 1
+
+    @property
+    def shape(self) -> Any:
+        return runtime.math_tuple([self._length])
+
+    @property
+    def strides(self) -> Any:
+        return runtime.math_tuple([self._itemsize])
+
+    @property
+    def suboffsets(self) -> Any:
+        return runtime.math_tuple([])
+
+    @property
+    def c_contiguous(self) -> _Bool:
+        return True
+
+    @property
+    def f_contiguous(self) -> _Bool:
+        return True
+
+    @property
+    def contiguous(self) -> _Bool:
+        return True
+
+    @property
+    def obj(self) -> Any:
+        return self._source
+
+    @property
     def readonly(self) -> _Bool:
         return self._readonly
 
@@ -1296,6 +1361,33 @@ class SageMemoryView:
     ) -> _Str:
         return SageBytes(self._bytes_values()).hex(separator, bytes_per_separator)
 
+    def tobytes(self, order: _Str = "C") -> SageBytes:
+        if order not in ("C", "A", "F"):
+            raise ValueError("order must be 'C', 'F' or 'A'")
+        return SageBytes(self._bytes_values())
+
+    def tolist(self) -> list[_Int]:
+        return self._values()[:]
+
+    def cast(
+        self,
+        format: _Str,
+        shape: Any = runtime.undefined,
+    ) -> SageMemoryView:
+        if not runtime.strict_equal(runtime.jstype(format), "string"):
+            raise TypeError("memoryview: format argument must be a string")
+        if shape is not runtime.undefined and shape is not None:
+            dimensions = list(shape)
+            if len(dimensions) != 1 or _coerce_index(dimensions[0]) != len(
+                self._bytes_values()
+            ):
+                raise TypeError("memoryview: product(shape) * itemsize != buffer size")
+        if format == "B":
+            return SageMemoryView(SageByteArray(self._bytes_values()))
+        if format == self.format:
+            return SageMemoryView(self)
+        raise TypeError("memoryview: cannot cast to unsupported format " + format)
+
     def _bytes_values(self) -> list[_Int]:
         if hasattr(self._source, "_bytes_values"):
             return self._source._bytes_values(self._offset, self._length)
@@ -1362,15 +1454,16 @@ def _construct_bytes(
             "latin-1",
             "latin1",
             "punycode",
+            "unicode-escape",
         ):
             raise ValueError("unknown encoding: " + encoding)
         if normalised in ("utf-8", "utf8"):
             values = _encode_utf8(source)
+        elif normalised == "unicode-escape":
+            values = _encode_unicode_escape(source)
         elif normalised == "punycode":
-            module = runtime.require_module("punycode")
-            encoder = runtime.reflect.get(module, "encode")
-            encoded = runtime.reflect.apply(encoder, runtime.undefined, [source])
-            values = _byte_values_from_binary_string(encoded)
+            module = __import__("sagejs._punycode", fromlist=["punycode_encode"])
+            return module.punycode_encode(source)
         elif normalised == "ascii":
             values = []
             for character in source:
@@ -1692,3 +1785,26 @@ runtime.reflect.set(
     "prototype",
     runtime.reflect.get(SageMemoryView, "prototype"),
 )
+
+
+def _publish_builtin_byte_type(
+    _builtin_byte_type: Any, _builtin_byte_name: str
+) -> None:
+    runtime.object.defineProperty(
+        _builtin_byte_type,
+        "__python_type__",
+        {"value": type, "writable": True, "configurable": True},
+    )
+    runtime.reflect.set(_builtin_byte_type, "__name__", _builtin_byte_name)
+    runtime.reflect.set(_builtin_byte_type, "__qualname__", _builtin_byte_name)
+    runtime.reflect.set(
+        runtime.reflect.get(_builtin_byte_type, "prototype"),
+        "__python_type__",
+        _builtin_byte_type,
+    )
+    runtime.set_class_repr(_builtin_byte_type, "<class '" + _builtin_byte_name + "'>")
+
+
+_publish_builtin_byte_type(ρσ_bytes, "bytes")
+_publish_builtin_byte_type(ρσ_bytearray, "bytearray")
+_publish_builtin_byte_type(ρσ_memoryview, "memoryview")

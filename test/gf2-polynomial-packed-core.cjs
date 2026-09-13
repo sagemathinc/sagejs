@@ -3,11 +3,12 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { existsSync, mkdtempSync, rmSync } = require("node:fs");
+const { mkdtempSync, rmSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { sageMathOracle } = require("./helpers/sage-math.cjs");
 
 const root = join(__dirname, "..");
 const sagejs = join(root, "bin", "sagejs");
@@ -20,19 +21,11 @@ const kernelSource = join(
   "polynomial",
   "gf2_packed.py",
 );
-const sage = process.env.SAGE_EXECUTABLE || "/home/user/sagelite/sage";
-
-function hasSageMath() {
-  if (!existsSync(sage)) return false;
-  const result = spawnSync(sage, ["-c", "from sage.all import ZZ"], {
-    cwd: root,
-    encoding: "utf8",
-    timeout: 30_000,
-  });
-  return result.error === undefined && result.status === 0;
-}
-
-const sageMathAvailable = hasSageMath();
+const sage = sageMathOracle({
+  root,
+  environmentVariables: ["SAGE_EXECUTABLE"],
+});
+const sageMathAvailable = sage !== null;
 
 function runSage(source, environment = {}) {
   const result = spawnSync(process.execPath, [sagejs, "--python"], {

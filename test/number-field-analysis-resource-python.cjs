@@ -10,6 +10,7 @@ const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { createSage } = require("../dist/tools/kernel.js");
 const { removeLoadedNativeCache } = require("./helpers/native-cache-cleanup.cjs");
+const { sagejsInvocation } = require("./helpers/sagejs-cli.cjs");
 
 const root = resolve(__dirname, "..");
 
@@ -383,7 +384,6 @@ test("packed field-analysis proof is source-transparent and differential", () =>
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-field-analysis-kernel-"));
   const cache = join(temporary, "cache");
   const witness = join(temporary, "witness.py");
-  const sagejs = join(root, "bin", "sagejs");
   const source = join(
     root,
     "src",
@@ -504,11 +504,17 @@ print("round2_proof_compiled=" + str(is_compiled(packed_round2_order_proof_is_va
 print("FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK")
 `;
   function run(args, env = {}) {
-    const result = spawnSync(process.execPath, args, {
+    const environment = { ...process.env, ...env };
+    const [command, commandArguments] = sagejsInvocation(
+      root,
+      args,
+      environment,
+    );
+    const result = spawnSync(command, commandArguments, {
       cwd: root,
       encoding: "utf8",
-      timeout: 120_000,
-      env: { ...process.env, ...env },
+      timeout: ["darwin", "win32"].includes(process.platform) ? 300_000 : 120_000,
+      env: environment,
     });
     if (result.error) throw result.error;
     assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -517,7 +523,6 @@ print("FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK")
   try {
     writeFileSync(witness, program);
     const explanation = run([
-      sagejs,
       "native",
       "explain",
       source,
@@ -527,10 +532,10 @@ print("FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK")
     assert.match(explanation, /source-transparent: yes/);
     assert.match(explanation, /host boundary: 1 public crossing\/call/);
     assert.match(explanation, /0 callbacks inside core/);
-    run([sagejs, "native", "compile", source, "--cache-root", cache]);
-    run([sagejs, "native", "compile", blSource, "--cache-root", cache]);
-    run([sagejs, "native", "compile", prefactorSource, "--cache-root", cache]);
-    const nativeResult = run([sagejs, witness], {
+    run(["native", "compile", source, "--cache-root", cache]);
+    run(["native", "compile", blSource, "--cache-root", cache]);
+    run(["native", "compile", prefactorSource, "--cache-root", cache]);
+    const nativeResult = run([witness], {
       SAGEJS_NATIVE_CACHE_DIR: cache,
       SAGEJS_NATIVE_REQUIRED: "1",
     });
@@ -545,7 +550,7 @@ print("FIELD_ANALYSIS_KERNEL_DIFFERENTIAL_OK")
         program,
       ].join("\n"),
     );
-    const dynamicResult = run([sagejs, witness], {
+    const dynamicResult = run([witness], {
       SAGEJS_NATIVE_DISABLE: "1",
     });
     assert.match(nativeResult, /compiled=True/);

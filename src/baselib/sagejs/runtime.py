@@ -43,7 +43,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_ffi_view_create, ρσ_ffi_view_valid
 # globals: ρσ_iterator_symbol, ρσ_kwargs_symbol
 # globals: ρσ_non_exception_throw
-# globals: ρσ_float, ρσ_int, ρσ_list_constructor, ρσ_list_contains, ρσ_str
+# globals: ρσ_float, ρσ_int, ρσ_list_constructor, ρσ_list_contains, ρσ_list_decorate, ρσ_str
 # globals: ρσ_tuple
 # globals: ρσ_lightweight_math_class, ρσ_sequence_class
 # globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power, ρσ_modules
@@ -134,7 +134,6 @@ def native_ge(left, right):
 
 
 def native_get(value, property_name):
-    """Read a JavaScript property, allowing ordinary primitive boxing."""
     return r"%js value[property_name]"
 
 
@@ -610,9 +609,12 @@ def ρσ_dynamic_eval(
     module_id,
 ):
     return r"""%js (() => {
-        const ρσ_dynamic_modules = {
-            [module_id]: Object.assign({}, input_namespace)
-        };
+        // Baselib's lexical registry is a prototype view with a private
+        // __main__. Imports belong to the canonical interpreter registry.
+        // Copy descriptors, not values, so lazy entries stay lazy.
+        const ρσ_dynamic_modules = Object.create(null,
+            Object.getOwnPropertyDescriptors(globalThis.ρσ_modules || ρσ_modules));
+        ρσ_dynamic_modules[module_id] = Object.assign({}, input_namespace);
         const __sagejs_input_namespace__ = input_namespace;
         const evaluate = new Function(
             "ρσ_modules",
@@ -630,7 +632,6 @@ def ρσ_dynamic_eval(
 
 
 def register_doc(name, value, metadata=None):
-    """Register a public runtime object and optional DocSpec metadata."""
     registry = reflect.get(global_object, "__sagejs_doc_registry__")
     if registry is undefined:
         registry = []
@@ -645,11 +646,40 @@ def register_doc(name, value, metadata=None):
 
 
 def documentation_registry():
-    """Return public names explicitly registered for documentation."""
     registry = reflect.get(global_object, "__sagejs_doc_registry__")
     if registry is undefined:
         return []
     return registry
+
+
+_numerical_backends = {}
+_optional_flint_state = {"attempted": False, "backend": None}
+
+
+def optional_flint_backend():
+    """Return the FLINT backend when installed, otherwise `None`.
+
+    Portable callers use this capability boundary before choosing an exact
+    dynamic fallback.  `flint_backend()` remains the strict accessor for code
+    whose contract requires FLINT.
+    """
+    if not _optional_flint_state["attempted"]:
+        _optional_flint_state["attempted"] = True
+        try:
+            _optional_flint_state["backend"] = ρσ_flint_backend()
+        except Exception:
+            _optional_flint_state["backend"] = None
+    return _optional_flint_state["backend"]
+
+
+def numerical_backend(name="cminpack"):
+    if name not in ("cminpack", "nlopt"):
+        raise ValueError("unknown numerical backend")
+    if name not in _numerical_backends:
+        _numerical_backends[name] = require_module(
+            "@sagemath/sagejs-numerical" + ("" if name == "cminpack" else "-nlopt")
+        )
+    return _numerical_backends[name]
 
 
 array = Array
@@ -693,6 +723,7 @@ kwargs_symbol = ρσ_kwargs_symbol
 lightweight_math_class = ρσ_lightweight_math_class
 list_constructor = ρσ_list_constructor
 list_contains = ρσ_list_contains
+list_decorate = ρσ_list_decorate
 map_class = Map
 math = Math
 math_tuple = ρσ_math_tuple
@@ -743,3 +774,12 @@ tuple_builtin = ρσ_tuple
 undefined = r"%js undefined"
 weak_ref_class = WeakRef
 zero_division_error = ZeroDivisionError
+
+
+def __dir__():
+    """Include host bindings even when their value is `undefined`."""
+    return [
+        name
+        for name in Object.getOwnPropertyNames(ρσ_modules["sagejs.runtime"])
+        if not name.startswith("ρσ")
+    ]

@@ -21,6 +21,7 @@ var {
 
 const COMPILER_BASELIB_MODULES = new Set([
   "__future__.py",
+  "bootstrap_shared.py",
   "builtins.py",
   "compiler_bootstrap.py",
   "containers.py",
@@ -30,6 +31,14 @@ const COMPILER_BASELIB_MODULES = new Set([
   "runtime_primitives.py",
   "str.py",
 ]);
+
+function supportsCompactStatements(PyLang) {
+  const probe = new PyLang.OutputStream({ beautify: false });
+  probe.print("(() => { const value = 1; return value; })()");
+  probe.semicolon();
+  probe.print("next");
+  return probe.get().endsWith("();next");
+}
 
 async function compile_baselib(PyLang, src_path, compiler_only = false) {
   let supportsPythonOrdering = false;
@@ -49,6 +58,14 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
       // modules and can then select the compiler-only bootstrap.
       compiler_only = false;
     }
+  }
+  // Stage zero and older self-hosted compilers can omit a statement separator
+  // after a fragment with internal semicolons. Keep their bootstrap pass
+  // readable; the corrected compiler can compact its private support modules
+  // on the next pass without stripping names, docstrings or annotations.
+  let beautify = true;
+  if (compiler_only) {
+    beautify = !supportsCompactStatements(PyLang);
   }
   const { createPythonCompilerFrontend } = require("./python/compiler-frontend");
   const frontend = PyLang.AST_AnnotatedAssignment
@@ -76,6 +93,8 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
   items.sort(function (left, right) {
     if (left === "runtime_primitives.py") return -1;
     if (right === "runtime_primitives.py") return 1;
+    if (left === "bootstrap_shared.py") return -1;
+    if (right === "bootstrap_shared.py") return 1;
     if (left === "builtins.py") return -1;
     if (right === "builtins.py") return 1;
     return left.localeCompare(right);
@@ -176,7 +195,7 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
         "globalThis.__sagejs_baselib_modules__ = Object.create(null);\n";
       for (const module of modules) {
         const output = new PyLang.OutputStream({
-          beautify: true,
+          beautify,
           keep_docstrings: true,
           write_name: false,
           private_scope: false,
@@ -212,7 +231,8 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
     // values later in the same deterministic sequence.
     modules.sort(function (left, right) {
       const priority = function (module) {
-        if (module.filename === "runtime_primitives.py") return 0;
+        if (module.filename === "runtime_primitives.py") return -1;
+        if (module.filename === "bootstrap_shared.py") return 0;
         if (
           module.filename === "sagejs_bootstrap.py" ||
           module.filename === "compiler_bootstrap.py"
@@ -270,7 +290,7 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
 
     modules.forEach(function (module) {
       const outputOptions = {
-        beautify: true,
+        beautify,
         keep_docstrings: true,
         write_name: false,
         private_scope: false,
@@ -321,6 +341,10 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
     ans.pretty +=
       'ρσ_baselib_modules["sagejs"].runtime = ' +
       'ρσ_baselib_modules["sagejs.runtime"];\n';
+    // Retain the exact Python/Sage facade for builtins lookup.
+    ans.pretty +=
+      "globalThis.__sagejs_baselib_facade_names__ = " +
+      "Object.freeze(Object.keys(ρσ_baselib_facade));\n";
     ans.pretty += "ρσ_baselib_facade = null;\n";
   } finally {
     frontend?.close();
@@ -438,7 +462,11 @@ async function compile(
   // explicit; generated Python and ordinary baselib modules default to Python
   // truth testing.
   output_options = {
-    beautify: true,
+    // The private compiler implementation follows its bootstrap's compact
+    // formatting policy. Keep names and metadata intact; ordinary user output
+    // and the readable full baselib retain their separate formatting policies.
+    // Stage zero still uses readable output until separators are safe.
+    beautify: !supportsCompactStatements(PyLang),
     baselib_plain: compiler_baselib.pretty,
   };
   try {
@@ -451,6 +479,28 @@ async function compile(
   try {
     new PyLang.OutputStream({ python_ordering: false });
     output_options.python_ordering = false;
+  } catch (_error) {}
+
+  try {
+    // Only private self-hosting opts in. Ordinary Python and baselib retain
+    // authoritative namespace reads; the immutable seed lacks this option.
+    new PyLang.OutputStream({ private_compiler_import_reads: true });
+    output_options.private_compiler_import_reads = true;
+  } catch (_error) {}
+
+  try {
+    // Compiler implementation modules do not shadow the literal constructors.
+    // Hoist their immutable numeric constants once per module instead of
+    // parsing them again on every emitter operation. Do not change baselib
+    // compilation or user-output policy; stage zero predates these options.
+    const literalOptions = {
+      pool_numeric_literals: true,
+      numeric_literal_pool_prefix: "compiler_",
+    };
+    // OutputStream fills defaults into its options object; probe a copy so
+    // those defaults cannot overwrite baselib_plain or bootstrap policies.
+    new PyLang.OutputStream({ ...literalOptions });
+    Object.assign(output_options, literalOptions);
   } catch (_error) {}
 
   var raw = sources[file],
@@ -466,6 +516,12 @@ async function compile(
       basedir: path.dirname(file),
       libdir: path.join(src_path, "lib"),
       compiler_bootstrap: true,
+      // The compiler implementation uses native JavaScript receiver calls.
+      // Match the immutable bootstrap's class policy instead of allocating
+      // Python bound-method caches on every AST node and token. This setting
+      // propagates to imported compiler modules, not the separately compiled
+      // Python baselib, whose bound methods remain enabled above.
+      scoped_flags: { bound_methods: false },
     });
   }
 

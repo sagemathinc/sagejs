@@ -44,6 +44,8 @@ async function main(t) {
   const documentation = await session.documentation();
   assert.equal(documentation.schema_version, 1);
   assert.ok(documentation.entries.length >= 26);
+  assert.ok(documentation.entries.some((entry) => entry.name === "find_root"));
+  assert.ok(documentation.entries.some((entry) => entry.name === "solve_ivp"));
   const dimensionDocumentation = documentation.entries.find(
     (entry) => entry.name === "dimension_cusp_forms",
   );
@@ -54,7 +56,7 @@ async function main(t) {
   assert.ok(dimensionDocumentation.tags.includes("modular forms"));
   assert.equal(
     documentation.entries.find((entry) => entry.name === "matrix").signature,
-    "matrix(*args: Any) -> Matrix",
+    "matrix(*args: Any, **options: Any) -> Matrix",
   );
   assert.deepEqual(
     documentation.entries.flatMap((entry) =>
@@ -65,6 +67,26 @@ async function main(t) {
     [],
     "registered public docstrings must use canonical Markdown",
   );
+
+  const numericalJson = await session.evaluateJSON(`
+from sagejs.numerics import find_root
+numerical_answer = find_root(lambda x: x*x - 2, 1.0, 2.0,
+                             method="brent", trace="iterations")
+numerical_answer
+`);
+  assert.equal(numericalJson.schema_version, 1);
+  assert.equal(numericalJson.success, true);
+  assert.ok(Math.abs(numericalJson.value - Math.sqrt(2)) < 1e-12);
+  const numericalPlot = await session.evaluate("numerical_answer.plot()");
+  assert.equal(numericalPlot.display.mime, "application/vnd.plotly.v1+json");
+  assert.doesNotThrow(() => structuredClone(numericalPlot.display));
+  const numericalAnimation = await session.evaluate("numerical_answer.animate()");
+  assert.equal(
+    numericalAnimation.display.mime,
+    "application/vnd.plotly.v1+json",
+  );
+  assert.ok(Array.isArray(numericalAnimation.display.data.frames));
+  assert.doesNotThrow(() => structuredClone(numericalAnimation.display));
   assert.equal(
     readFileSync(
       join(__dirname, "..", "docs", "reference", "api.md"),
@@ -305,7 +327,10 @@ imported_method = ImportedMethod()
   if (process.platform === "win32") {
     // Windows has no thread-directed POSIX SIGINT. An uncooperative loop is
     // interrupted by replacing its worker, so state from that worker is lost.
-    await assert.rejects(session.evaluate("value"), /value is not defined/);
+    await assert.rejects(
+      session.evaluate("value"),
+      /name ['"]value['"] is not defined/,
+    );
     await session.evaluate("value = 12");
   } else {
     assert.equal((await session.evaluate("value")).repr, "12");

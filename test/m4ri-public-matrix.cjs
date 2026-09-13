@@ -127,7 +127,7 @@ assert not hasattr(A, "_prime_residues_cache")
 assert zero_matrix(F, 0, 7).str() == "[]"
 assert identity_matrix(F, 3).is_one()
 A.subdivide([1], [2])
-assert A.str() == "[0 0|1 1]\n[-------]\n[0 1|1 0]\n[1 1|0 1]"
+assert A.str() == "[0 0|1 1]\n[---+---]\n[0 1|1 0]\n[1 1|0 1]"
 A.subdivide([], [])
 A.list = lambda: 1/0
 encoded = dumps(A)

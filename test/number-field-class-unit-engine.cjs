@@ -47,7 +47,18 @@ function run(source, timeout = 120_000) {
       encoding: "utf8",
       timeout,
     });
-    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.equal(
+      result.status,
+      0,
+      [
+        result.stderr,
+        result.stdout,
+        result.error?.stack,
+        result.signal ? `terminated by ${result.signal}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
     return result.stdout.trim();
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -1177,7 +1188,7 @@ print((
   assert.equal(output, "(1, 1, 0, 1, 1, 1, 1, 128)");
 });
 
-test("cubic class saturation searches nonzero p-torsion cosets", () => {
+test("reduced cubic ideals avoid unnecessary p-torsion saturation", () => {
   const output = run(String.raw`
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -1190,11 +1201,18 @@ assert result.class_group().invariants() == (9,)
 assert result.saturation_record.verify(K, K.maximal_order())
 assert result.saturation_record.remaining_index_bound == 1
 resources = result.diagnostics["resources"]
-assert resources["class_p_torsion_source_searches"] == 1
-assert resources["class_p_torsion_source_work"] == 924
-assert resources["class_p_torsion_source_candidates"] == 12
-assert resources["class_p_torsion_source_uses"] >= 1
+assert resources["class_p_torsion_source_searches"] == 0
+assert resources["class_p_torsion_source_work"] == 0
+assert resources["class_p_torsion_source_candidates"] == 0
+assert resources["class_p_torsion_source_uses"] == 0
 assert resources["class_p_torsion_source_fallbacks"] == 0
+assert resources["saturation_rounds"] == 0
+assert resources["cubic_reduced_ideal_resident_uses"] == 1
+assert resources["cubic_reduced_ideal_resident_generated_candidates"] == 12
+assert resources["cubic_reduced_ideal_resident_smooth_candidates"] == 12
+assert resources["cubic_reduced_ideal_sieve_uses"] == 1
+assert resources["cubic_reduced_ideal_sieve_candidates"] == 12
+assert resources["cubic_reduced_ideal_sieve_relations"] == 6
 maps = __import__(
     "sagejs.number_fields.class_group_maps",
     fromlist=["class_group_from_engine_result"],
@@ -1205,7 +1223,9 @@ receipts = payload["conditional_evidence"]["generator_relations"]
 assert len(receipts) == 1
 receipt = receipts[0]
 assert receipt["coordinates"] == [0]
-assert sum(abs(value) for value in receipt["relation_coefficients"]) == 336499
+# The reduced-ideal relation neighborhood now yields a much shorter exact
+# generator relation than the former p-torsion coset search.
+assert sum(abs(value) for value in receipt["relation_coefficients"]) == 56
 seal_verify_calls = [0]
 original_group_verify = maps.IdealClassGroup.verify
 def counted_seal_verify(group):
@@ -1245,7 +1265,7 @@ assert not view.verify_proof_payload(bad_generator)
 print((
     result.class_number(),
     result.class_group().invariants(),
-    resources["class_p_torsion_source_candidates"],
+    resources["cubic_reduced_ideal_sieve_candidates"],
     result.saturation_record.remaining_index_bound,
 ))
 `, 300_000);
@@ -1297,17 +1317,19 @@ maps = __import__(
     "sagejs.number_fields.class_group_maps",
     fromlist=["class_group_from_engine_result"],
 )
-public_verify_calls = [0]
+interposed_verify_calls = [0]
 original_group_verify = maps.IdealClassGroup.verify
-def counted_public_verify(group):
-    public_verify_calls[0] += 1
+def interposed_public_verify(group):
+    interposed_verify_calls[0] += 1
     return original_group_verify(group)
-maps.IdealClassGroup.verify = counted_public_verify
+maps.IdealClassGroup.verify = interposed_public_verify
 try:
     group = class_group(K, proof=False)
 finally:
     maps.IdealClassGroup.verify = original_group_verify
-assert public_verify_calls[0] == 1
+# The standard adapter captures its exact verifier at module load.  An
+# interposed public method must stay cold while that one final replay runs.
+assert interposed_verify_calls[0] == 0
 assert result.proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
 assert result.class_number() == 3
 assert result.class_group().invariants() == (3,)
@@ -1997,16 +2019,44 @@ class Components:
         return ()
 
 class FakePresentation:
+    order = 1
     dependency_transforms = ()
     invariants = ()
 
 class FakeCollector:
+    factor_base = ()
     records = []
 
+class FakePlan:
+    pass
+
 class SaturationProbe(ClassUnitGroupEngine):
+    def _relation_stage_exactly_authenticated(self, collector, presentation):
+        return collector.factor_base == () and presentation.order == 1
+    def _generation_authority(self, plan, factor_base, collector, presentation,
+                              proof_status, **options):
+        del plan, factor_base, collector, presentation, options
+        evidence = {"schema": "fake-generation-authority-v1"}
+        def verify(field, order, units, class_number, supplied, status):
+            del units
+            return (
+                field is self.field
+                and order is self.order
+                and int(class_number) == 1
+                and supplied is evidence
+                and status == proof_status
+            )
+        return evidence, verify
     def _analytic_index(self, presentation, units, unit_rank):
         bound = 1 if units[0].name == "new" else 2
-        return FakeTorsion(), FakeRegulator(), FakeIndex(bound)
+        torsion = FakeTorsion()
+        regulator = FakeRegulator()
+        index = FakeIndex(bound)
+        self._bind_context_analytic_proof(
+            (tuple(units), int(presentation.order), int(torsion.order),
+             regulator, object(), index)
+        )
+        return torsion, regulator, index
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -2017,7 +2067,7 @@ engine = SaturationProbe(
 old = (FakeUnit("old", 2.0),)
 values = engine._adaptive_saturation(
     (), FakeCollector(), FakePresentation(), old,
-    FakeTorsion(), FakeRegulator(), FakeIndex(2), 1,
+    FakeTorsion(), FakeRegulator(), FakeIndex(2), 1, plan=FakePlan(),
 )
 units, index, record = values[2], values[5], values[6]
 assert units == (FakeUnit("new", 1.0),)
@@ -2557,14 +2607,15 @@ engine = BoundedProbe(
 )
 values = engine._adaptive_saturation(
     (), FakeCollector(), FakePresentation(), (FakeUnit(),), object(),
-    FakeRegulator(), FakeIndex(), 1,
+    FakeRegulator(), FakeIndex(), 1, defer_record=True,
 )
-record = values[6]
-assert not record.complete and not record.verify()
-assert record.remaining_index_bound == 2
-assert record.attempts[0]["producer"] == "unavailable"
-assert "no exact unit p-saturation producer" in record.attempts[0]["reason"]
+index, state = values[5], values[6]
+assert not index.index_one and index.upper_index == 2
+assert state.matches(engine)
+assert state.attempts[0]["producer"] == "unavailable"
+assert "no exact unit p-saturation producer" in state.attempts[0]["reason"]
 assert engine.stages[-1].state == "bounded"
+assert engine.stages[-1].details["certificate_deferred"]
 print("honest-incomplete")
 `);
   assert.equal(output, "honest-incomplete");
@@ -2643,13 +2694,13 @@ engine = ClassSaturationProbe(
 collector = FakeCollector()
 values = engine._adaptive_saturation(
     (), collector, FakePresentation(2), (), FakeTorsion(),
-    FakeRegulator(), FakeIndex(2), 0,
+    FakeRegulator(), FakeIndex(2), 0, defer_record=True,
 )
-presentation, index, record = values[1], values[5], values[6]
+presentation, index, state = values[1], values[5], values[6]
 assert presentation.order == 1 and index.index_one
-assert record.complete and record.remaining_index_bound == 1
+assert state.matches(engine)
 class_attempt = [
-    attempt for attempt in record.attempts
+    attempt for attempt in state.attempts
     if attempt["schema"] == "sagejs.number-fields/class-saturation-attempt-v1"
 ][0]
 assert class_attempt["prime"] == 2

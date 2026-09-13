@@ -8,7 +8,10 @@ const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerCompilerFlag,
+  sanitizerEnvironment,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const prefix = resolve(
@@ -47,7 +50,7 @@ function compile(output, defines = [], sanitize = false) {
     "-Wall",
     "-Wextra",
     "-Werror",
-    ...(sanitize ? ["-fno-omit-frame-pointer", "-fsanitize=address,undefined"] : []),
+    ...(sanitize ? ["-fno-omit-frame-pointer", sanitizerCompilerFlag()] : []),
     ...defines.map((value) => `-D${value}`),
     `-I${join(root, "packages", "flint", "include")}`,
     `-I${join(prefix, "include")}`,

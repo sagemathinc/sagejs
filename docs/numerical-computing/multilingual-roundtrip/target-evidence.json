@@ -1,0 +1,261 @@
+{
+  "schema_version": 1,
+  "semantics": "sagejs-external-numerical-target-evidence-v1",
+  "as_of": "2026-09-03",
+  "evidence_levels": {
+    "sagejs_self_round_trip": "Sage.js parses its own emitted finite-value and callback subset back to canonical intent and executes that intent through the shared Sage.js backend.",
+    "vendored_grammar": "The emitted body parses without an error node under Sage.js's vendored Tree-sitter grammar for the target language.",
+    "official_reference_contract": "Original Sage.js assertions about call syntax, shapes, callbacks, and target-native result conventions are linked to official vendor documentation.",
+    "external_runtime_execution": "The emitted program is executed in MATLAB, GNU Octave, or Wolfram Language and its target-native result is checked. This level has not been run."
+  },
+  "external_runtime_execution": {
+    "matlab": {
+      "status": "not_run",
+      "qualified": false,
+      "reason": "No MATLAB or GNU Octave executable was available on the persistent qualification hosts."
+    },
+    "wolfram": {
+      "status": "not_run",
+      "qualified": false,
+      "reason": "No Wolfram Language executable was available on the persistent qualification hosts."
+    }
+  },
+  "references": {
+    "matlab_anonymous": "https://www.mathworks.com/help/matlab/matlab_prog/anonymous-functions.html",
+    "matlab_backslash": "https://www.mathworks.com/help/matlab/ref/double.mldivide.html",
+    "matlab_conv": "https://www.mathworks.com/help/matlab/ref/conv.html",
+    "matlab_fft": "https://www.mathworks.com/help/matlab/ref/fft.html",
+    "matlab_fminbnd": "https://www.mathworks.com/help/matlab/ref/fminbnd.html",
+    "matlab_fminsearch": "https://www.mathworks.com/help/matlab/ref/fminsearch.html",
+    "matlab_fsolve": "https://www.mathworks.com/help/optim/ug/fsolve.html",
+    "matlab_fzero": "https://www.mathworks.com/help/matlab/ref/fzero.html",
+    "matlab_integral": "https://www.mathworks.com/help/matlab/ref/integral.html",
+    "matlab_lsqminnorm": "https://www.mathworks.com/help/matlab/ref/lsqminnorm.html",
+    "matlab_lsqnonlin": "https://www.mathworks.com/help/optim/ug/lsqnonlin.html",
+    "matlab_ode45": "https://www.mathworks.com/help/matlab/ref/ode45.html",
+    "matlab_operators": "https://www.mathworks.com/help/matlab/matlab_prog/matlab-operators-and-special-characters.html",
+    "matlab_polyfit": "https://www.mathworks.com/help/matlab/ref/polyfit.html",
+    "matlab_sort": "https://www.mathworks.com/help/matlab/ref/double.sort.html",
+    "matlab_struct": "https://www.mathworks.com/help/matlab/ref/struct.html",
+    "matlab_sum": "https://www.mathworks.com/help/matlab/ref/double.sum.html",
+    "wolfram_findroot": "https://reference.wolfram.com/language/ref/FindRoot.html",
+    "wolfram_fourier": "https://reference.wolfram.com/language/ref/Fourier.html",
+    "wolfram_fourier_parameters": "https://reference.wolfram.com/language/ref/FourierParameters.html",
+    "wolfram_least_squares": "https://reference.wolfram.com/language/ref/LeastSquares.html",
+    "wolfram_linear_solve": "https://reference.wolfram.com/language/ref/LinearSolve.html",
+    "wolfram_nintegrate": "https://reference.wolfram.com/language/ref/NIntegrate.html",
+    "wolfram_nminimize": "https://reference.wolfram.com/language/ref/NMinimize.html"
+  },
+  "programs": [
+    {
+      "operation": "roots:scalar_root:v1",
+      "language": "matlab",
+      "official_references": ["matlab_anonymous", "matlab_fzero"],
+      "shape_convention": "A two-element row literal is the documented bracketing input to fzero; the returned root is scalar.",
+      "result_convention": "result is MATLAB's scalar root estimate, not a Sage.js NumericalResult or evidence envelope.",
+      "required_source_fragments": ["options = optimset(", "result = fzero(@(x)", "[1 2], options);"],
+      "forbidden_source_fragments": ["function ="],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "roots:scalar_root:v1",
+      "language": "wolfram",
+      "official_references": ["wolfram_findroot"],
+      "shape_convention": "The three-element variable specification carries a variable and two starting values.",
+      "result_convention": "FindRoot returns replacement rules; result is not the scalar Sage.js root or its evidence envelope.",
+      "required_source_fragments": ["result = FindRoot[", "{x, 1, 2}", "MaxIterations ->"],
+      "forbidden_source_fragments": [],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "linear_algebra:linear_solve:v1",
+      "language": "matlab",
+      "official_references": ["matlab_backslash", "matlab_operators"],
+      "shape_convention": "A flat canonical right-hand side is converted from a row literal to a column with the nonconjugating transpose .'.",
+      "result_convention": "result is MATLAB's solution column; residual/evidence records are not transported.",
+      "required_source_fragments": ["right = [(1.0 + 2.0i), (3.0 - 4.0i)].';", "result = matrix \\ right;"],
+      "forbidden_source_fragments": ["right = [(1.0 + 2.0i), (3.0 - 4.0i)]';"],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "linear_algebra:linear_solve:v1",
+      "language": "wolfram",
+      "official_references": ["wolfram_linear_solve"],
+      "shape_convention": "Nested lists are matrices and flat lists are vectors.",
+      "result_convention": "result is the solution vector returned by LinearSolve; Sage.js evidence is not transported.",
+      "required_source_fragments": ["matrix = {{3, 1}, {1, 2}};", "result = LinearSolve[matrix, right];"],
+      "forbidden_source_fragments": [],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "linear_algebra:least_squares:v1",
+      "language": "matlab",
+      "official_references": ["matlab_lsqminnorm", "matlab_operators"],
+      "shape_convention": "The flat right-hand side is explicitly made a column with the nonconjugating transpose .'.",
+      "result_convention": "result is MATLAB's minimum-norm least-squares solution column; diagnostics are not transported.",
+      "required_source_fragments": ["right = [1, 2, 3].';", "result = lsqminnorm(matrix, right);"],
+      "forbidden_source_fragments": ["right = [1, 2, 3]';"],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "linear_algebra:least_squares:v1",
+      "language": "wolfram",
+      "official_references": ["wolfram_least_squares"],
+      "shape_convention": "Nested lists are matrices and flat lists are vectors.",
+      "result_convention": "result is the parameter vector returned by LeastSquares; validation evidence is not transported.",
+      "required_source_fragments": ["right = {1, 2, 3};", "result = LeastSquares[matrix, right];"],
+      "forbidden_source_fragments": [],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "spectral:fourier_transform:v1",
+      "language": "matlab",
+      "official_references": ["matlab_fft"],
+      "shape_convention": "The sample vector remains a row and fft preserves vector orientation.",
+      "result_convention": "result is MATLAB's unnormalized forward transform in the input orientation.",
+      "required_source_fragments": ["samples = [1, 2, 3];", "result = fft(samples);"],
+      "forbidden_source_fragments": ["samples = [1, 2, 3].';"],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "spectral:fourier_transform:v1",
+      "language": "wolfram",
+      "official_references": ["wolfram_fourier", "wolfram_fourier_parameters"],
+      "shape_convention": "A flat list is transformed to a flat list.",
+      "result_convention": "FourierParameters -> {0, -1} selects the unscaled negative-sign forward convention used by Sage.js.",
+      "required_source_fragments": ["samples = {1, 2, 3};", "FourierParameters -> {0, -1}"],
+      "forbidden_source_fragments": [],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "spectral:convolution:v1",
+      "language": "matlab",
+      "official_references": ["matlab_conv"],
+      "shape_convention": "Both canonical flat vectors remain rows; full convolution therefore has row orientation.",
+      "result_convention": "result is MATLAB's full linear convolution vector.",
+      "required_source_fragments": ["left = [1, 2];", "right = [3, 4];", "result = conv(left, right, 'full');"],
+      "forbidden_source_fragments": ["left = [1, 2].';", "right = [3, 4].';"],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "integration:definite_integral:v1",
+      "language": "matlab",
+      "official_references": ["matlab_anonymous", "matlab_integral", "matlab_operators"],
+      "shape_convention": "integral may supply array inputs, so multiplication, division, and powers in the scalar expression are emitted elementwise.",
+      "result_convention": "result is MATLAB's scalar quadrature estimate; error estimates and Sage.js evidence are not transported.",
+      "required_source_fragments": ["callback = @(x)", ".*", "./", ".^", "result = integral(callback, lower, upper);"],
+      "forbidden_source_fragments": ["function =", "integral(function"],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "integration:definite_integral:v1",
+      "language": "wolfram",
+      "official_references": ["wolfram_nintegrate"],
+      "shape_convention": "The integration variable is applied explicitly to a pure Function and the bounds are scalar.",
+      "result_convention": "result is NIntegrate's approximate scalar; Sage.js error/evidence records are not transported.",
+      "required_source_fragments": ["function = Function[{x}", "result = NIntegrate[function[x], {x, lower, upper}];"],
+      "forbidden_source_fragments": [],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "optimization:scalar_minimum:v1",
+      "language": "matlab",
+      "official_references": ["matlab_anonymous", "matlab_fminbnd"],
+      "shape_convention": "The callback and bounds are scalar.",
+      "result_convention": "result is the scalar minimizer returned by fminbnd, without the objective value or diagnostics.",
+      "required_source_fragments": ["callback = @(x)", "result = fminbnd(callback, lower, upper);"],
+      "forbidden_source_fragments": ["function ="],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "optimization:scalar_minimum:v1",
+      "language": "wolfram",
+      "official_references": ["wolfram_nminimize"],
+      "shape_convention": "The scalar decision variable and scalar interval constraints are explicit.",
+      "result_convention": "The replacement rule from NMinimize is projected to a scalar minimizer with ReplaceAll and Last.",
+      "required_source_fragments": ["function = Function[{x}", "x /. Last[NMinimize[", "lower <= x <= upper"],
+      "forbidden_source_fragments": [],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "optimization:minimize:v1",
+      "language": "matlab",
+      "official_references": ["matlab_anonymous", "matlab_fminsearch"],
+      "shape_convention": "The canonical initial vector is a row; p(1) and p(2) bridge MATLAB's one-based indexing to named scalar callback parameters.",
+      "result_convention": "result has the orientation of x0 and contains only fminsearch's minimizer in this single-output form.",
+      "required_source_fragments": ["x0 = [0, 0];", "callback = @(p) feval(@(x0, x1)", "p(1), p(2)", "result = fminsearch(callback, x0);"],
+      "forbidden_source_fragments": ["function ="],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "nonlinear_systems:nonlinear_system:v1",
+      "language": "matlab",
+      "official_references": ["matlab_anonymous", "matlab_fsolve"],
+      "shape_convention": "The callback emits a column residual with semicolon-separated entries and indexes the row initial vector from one.",
+      "result_convention": "result is fsolve's solution with the orientation of x0; exit flags and diagnostics are not transported.",
+      "required_source_fragments": ["callback = @(p) feval(@(x0, x1) [", ";", "p(1), p(2)", "result = fsolve(callback, x0);"],
+      "forbidden_source_fragments": ["function ="],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "least_squares:nonlinear_least_squares:v1",
+      "language": "matlab",
+      "official_references": ["matlab_anonymous", "matlab_lsqnonlin"],
+      "shape_convention": "The residual callback emits a column and uses one-based indexing into the row initial vector.",
+      "result_convention": "result is lsqnonlin's solution in x0 orientation; residual and optimality diagnostics are not transported.",
+      "required_source_fragments": ["residuals = @(p) feval(@(x0, x1) [", ";", "p(1), p(2)", "result = lsqnonlin(residuals, x0);"],
+      "forbidden_source_fragments": [],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "fitting:linear_fit:v1",
+      "language": "matlab",
+      "official_references": ["matlab_polyfit"],
+      "shape_convention": "xdata and ydata remain paired row vectors of equal length.",
+      "result_convention": "For degree one, polyfit returns [slope, intercept], matching the canonical primary coefficient order; inference evidence is not transported.",
+      "required_source_fragments": ["xdata = [0, 1, 2];", "ydata = [1, 3, 5];", "result = polyfit(xdata, ydata, 1);"],
+      "forbidden_source_fragments": ["xdata = [0, 1, 2].';", "ydata = [1, 3, 5].';"],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "ode:initial_value_problem:v1",
+      "language": "matlab",
+      "official_references": ["matlab_anonymous", "matlab_ode45"],
+      "shape_convention": "The derivative callback emits a column and maps y(1), y(2) to named state parameters; t_span and y0 remain input rows.",
+      "result_convention": "Single-output ode45 returns a MATLAB solution structure, not the Sage.js trajectory/events/evidence result.",
+      "required_source_fragments": ["t_span = [0, 1];", "y0 = [1, 0];", "callback = @(t, y) feval(@(t, y0, y1) [y1; -y0], t, y(1), y(2));", "result = ode45(callback, t_span, y0);"],
+      "forbidden_source_fragments": ["function ="],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    },
+    {
+      "operation": "statistics:descriptive_statistics:v1",
+      "language": "matlab",
+      "official_references": ["matlab_sort", "matlab_struct", "matlab_sum"],
+      "shape_convention": "The canonical flat sample is normalized to a column for reductions. Quartiles and median absolute deviation explicitly use zero-based (n-1)p positions translated to MATLAB's one-based indexing.",
+      "result_convention": "result is a MATLAB struct carrying every canonical default descriptive-statistics field, ddof=1, and the explicit linear-r-type-7 quantile label; target-native floating reduction order may differ in the last bits from Sage.js.",
+      "required_source_fragments": ["observations = data(:);", "if sample_count <= 1", "if any(~isfinite(observations))", "centered_sum_squares =", "quantile_positions = (sample_count - 1) .* quantile_probabilities;", "median_absolute_deviation =", "result = struct( ...", "'quantile_method', 'linear-r-type-7'"],
+      "forbidden_source_fragments": ["result = [mean(data), std(data), min(data), max(data)]"],
+      "vendor_runtime_executed": false,
+      "vendor_runtime_qualified": false
+    }
+  ],
+  "rejected_emitters": []
+}

@@ -1,0 +1,65 @@
+{
+  "schema": "sagejs.extension-fields-qualification/v1",
+  "status": "passed",
+  "candidate_commit": "077b648611cf49c9112588fa873977342a76ae9c",
+  "runtime_implementation_commit": "83836bbb85daffeb8c30147571593b7392b2a2f7",
+  "candidate_tree": "b3bb70f01ee29f462134e80b75ccb7be18be6086",
+  "mobile_merge_commit": "0adaf27ffbb0c6e4c660488ce3cd0d8bf53343d0",
+  "mobile_merge_tree_equals_candidate": true,
+  "native": {
+    "linux-x64": {"status": "passed", "node": "26.8.1", "public_tests": 21, "live_sage_skips": 0, "lifecycle_tests": 2, "distribution_fixture": "passed", "portable_files": 210},
+    "linux-arm64": {"status": "passed", "node": "26.5.1", "public_tests": 19, "live_sage_skips": 2, "lifecycle_tests": 2, "distribution_fixture": "passed", "portable_files": 210},
+    "windows-x64": {"status": "passed", "node": "26.5.1", "public_tests": 19, "live_sage_skips": 2, "lifecycle_tests": 2, "distribution_fixture": "passed", "portable_files": 210},
+    "macos-arm64": {"status": "passed", "node": "26.5.0", "public_tests": 19, "live_sage_skips": 2, "lifecycle_tests": 2, "distribution_fixture": "passed", "portable_files": 210}
+  },
+  "portable_artifact": {
+    "identity": "sha256:3922594ee69fa695efbeb8c03ce53dd9ced18fbfc96d67536aa2a5df96a6fb1f",
+    "origin": "retained sagejs-mobile-portable-runtime artifact from run 34680927349",
+    "source_closure_sha256": "3ce33cf6c564e262a7016cb448d45642acfddccf0dbfe09bbbf96eea6e847f39",
+    "production_receipt": "validated locally before execution",
+    "geometry_batches": {"node_wasm": 29, "chromium": 29},
+    "geometry_elapsed_ms": {"node_wasm": 698267.46046, "chromium": 640574.222761},
+    "independent_groebner_cases": {"node_wasm": 108, "chromium": 108},
+    "core_tests": {"node_wasm": 8, "chromium": 2},
+    "lifetime_tests": {"node_wasm": "passed", "chromium": "passed", "firefox": "unavailable; skipped", "desktop_webkit": "unavailable; skipped"},
+    "browser_compile_eval_exec_mpmath": "passed",
+    "fresh_npm_without_optional_native_packages": "passed",
+    "payload": {"raw_bytes": 180264896, "gzip_bytes": 25667587, "brotli_bytes": 17355439, "eager_brotli_bytes": 9696733, "eager_brotli_limit": 9700000, "all_budgets": "passed"}
+  },
+  "mobile": {
+    "status": "passed",
+    "artifact_identity": "sha256:3922594ee69fa695efbeb8c03ce53dd9ced18fbfc96d67536aa2a5df96a6fb1f",
+    "asset_manifest_sha256": "34c23e35c796cab3f93fecfeffd6c96962b81650ecb278a8289c92ef0a182fb2",
+    "destinations": ["iPhone 16 Pro", "iPad Pro 11-inch (M4)"],
+    "scope": "exact-asset simulator application builds; not execution of the full geometry corpus on iOS"
+  },
+  "ci": {
+    "routine_and_platform_smoke": "https://github.com/sagemathinc/sagejs/actions/runs/34680927354",
+    "chromium": "https://github.com/sagemathinc/sagejs/actions/runs/34680927368",
+    "mobile": "https://github.com/sagemathinc/sagejs/actions/runs/34680927349",
+    "status": "all passed"
+  },
+  "macos_numerical_product": "sha256:19ad140e37f7f71776b96140f8e9c1c862e8a78bfa7d7f745634e13220d10887",
+  "source_checks": {"strict_python_modules": 396, "strict_python_errors": 0, "architecture": "passed", "executable_documentation_examples": 17},
+  "linux_sea": {"build_command": "pnpm build:sea:reuse", "status": "passed", "smoke_command": "node test/sea-smoke.cjs", "scope": "relocated sagejs and sagepython; includes GF(9) distribution fixture and unchanged cold-mpmath gate"},
+  "retained_logs_directory": "/home/user/sagejs-extension-qualification-20260912",
+  "log_sha256": {
+    "linux-native-077b64861.log": "0132acd15eb0c13ab746f843fc472a869a4268447efc2c416d02410ab6a2a9f3",
+    "linux-portable-077b64861.log": "d3b5729839eed4f942afb939eb822698175594373754fcae3a9656da4d8a028e",
+    "arm64-077b64861.log": "1bc7097c343453a841b3b29497b991cdc7287595475e2ec76b8a0a694f2328da",
+    "macos-077b64861.log": "32290e9f97d28f1cd81349a6d4cd6f31145c07d3c2071ff636ceb6c0ea8d77db",
+    "windows-077b64861.log": "a571156a8e91f5162324660e0fe4226237714cb305695b535060eb2ef781a8c7",
+    "node-mobile-artifact-077b64861.log": "7d6fa332d1e778563e92a817f098d9af5dcd205411373544d5ebb7d2ffac38be",
+    "chromium-mobile-artifact-077b64861.log": "f70f4a2c54dbba276623fd5935cf0a122e8b76eed1a588cded8febee52d9a46e",
+    "node-mobile-core-077b64861.log": "9b00c0def65a91a8792e526553f02be863f8f1ed83f92ec8a09173754459bf5c",
+    "chromium-mobile-core-077b64861.log": "8ee34cfa4d60d7678eae2471d03435efdd5beb1db5014cdf1c5886bd217666b1",
+    "npm-mobile-artifact-077b64861.log": "dbd4b9650052621090f7a4c752f6c7191f278524e2f58ad5f0a2889410417679",
+    "sea-077b64861-prepared-smoke.log": "e675d3a4a478189fb661c50a48b4fc3a3dbf230927f7c414071b96fa21fa5fb4"
+  },
+  "caveats": [
+    "Timings are qualification observations, not controlled performance benchmarks.",
+    "The initial 077b64861 low-level SEA invocation omitted required Python precompilation and failed the unchanged cold-mpmath gate. The supported pnpm build:sea:reuse command precompiled 436 modules and 8 dynamic programs; its rebuilt distributions pass the complete smoke test. No threshold was changed.",
+    "The earlier 7fba0fa77 local routine startup gate failed at 415.7ms; a standalone repeat failed at 405.9ms and the frozen pre-fix baseline failed at 419.8ms. GitHub routine passes; no timing threshold was raised.",
+    "No number-field milestone or release is claimed by this record."
+  ]
+}

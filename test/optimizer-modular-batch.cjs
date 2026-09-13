@@ -6,6 +6,7 @@ const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const { default: createCompiler } = require("../dist/tools/compiler.js");
 const {
@@ -399,9 +400,16 @@ test("the Python emitter is standalone, CPython-parseable, and transactional", (
   assert.match(source, /prepare_machine_field_region/);
   assert.match(source, /sequence-element-representation-mismatch/);
   assert.match(source, /private output storage|verified complete modular residue batch/i);
-  const parsed = spawnSync("python3", ["-c", "import ast,sys; ast.parse(sys.stdin.read())"], {
-    input: source,
-    encoding: "utf8",
-  });
+  const parsed = spawnSync(
+    pythonExecutable(),
+    [
+      "-c",
+      "import ast,sys; ast.parse(sys.stdin.buffer.read().decode('utf-8'))",
+    ],
+    {
+      input: Buffer.from(source, "utf8"),
+      encoding: "utf8",
+    },
+  );
   assert.equal(parsed.status, 0, parsed.stderr || parsed.stdout);
 });

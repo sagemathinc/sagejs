@@ -1,0 +1,108 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerics-multilingual",
+  "title": "Complete numerical multilingual frontends and translation",
+  "lane": "numerical-multilingual",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement P6 canonical frontend intent, natural MATLAB and Wolfram numerical lowering, outward Sage/Python-SciPy/MATLAB/Wolfram code generation, round trips, explicit unsupported diagnostics, docs, fixtures, and benchmarks over the shared numerical semantics",
+  "base_commit": "f345b6ba80c649e010dae202d076a97b86ccccab",
+  "claims": [
+    "src/lib/sagejs/numerics/frontends/",
+    "src/lib/matlab.py",
+    "src/lib/wolfram.py",
+    "test/numerics/multilingual/",
+    "docs/numerical-computing/multilingual/",
+    "bench/numerics/multilingual/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "canonical problem/result round trips",
+      "existing MATLAB and Wolfram parser/runtime behavior"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm test:integration",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 50.598,
+      "started_at": "2026-08-31T14:12:39.145Z",
+      "commit": "4adb196626230b9b99673a31225fa20d7fa00110",
+      "workspace_fingerprint": "36d57665baa3635b67257c0ab4f23a712d735b05384e698cc61189be9e6c1749",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 409.612,
+      "started_at": "2026-08-31T14:13:38.551Z",
+      "commit": "4adb196626230b9b99673a31225fa20d7fa00110",
+      "workspace_fingerprint": "36d57665baa3635b67257c0ab4f23a712d735b05384e698cc61189be9e6c1749",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 244.154,
+      "started_at": "2026-08-31T14:20:36.900Z",
+      "commit": "4adb196626230b9b99673a31225fa20d7fa00110",
+      "workspace_fingerprint": "36d57665baa3635b67257c0ab4f23a712d735b05384e698cc61189be9e6c1749",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 819.149,
+      "started_at": "2026-08-31T14:38:10.018Z",
+      "commit": "4adb196626230b9b99673a31225fa20d7fa00110",
+      "workspace_fingerprint": "36d57665baa3635b67257c0ab4f23a712d735b05384e698cc61189be9e6c1749",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.874,
+      "started_at": "2026-08-31T14:52:46.733Z",
+      "commit": "4adb196626230b9b99673a31225fa20d7fa00110",
+      "workspace_fingerprint": "36d57665baa3635b67257c0ab4f23a712d735b05384e698cc61189be9e6c1749",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented versioned canonical numerical frontend intents with detached live bindings, stable unsupported diagnostics, a checked portable scalar-expression IR, caller-owned adapter composition, and the complete P1 scalar-root path. MATLAB fzero and Wolfram FindRoot now execute through canonical root intent; Sage, Python-SciPy, MATLAB, and Wolfram generation round-trips to identical semantic digests. Added CPython and Sage.js tests, offline provenance fixtures, public schema/documentation, integration instructions, and a representation-overhead benchmark.",
+    "risks": [
+      "The unclaimed shared architecture/package-graph.json does not yet own src/lib/sagejs/numerics/frontends/, so architecture and merge gates stop at that integration boundary.",
+      "The full integration suite is blocked by an unchanged number-field baseline: test/number-field-class-unit-engine.cjs consistently reports result.complete false for cubic unit saturation after 34 neighboring tests pass.",
+      "Only the proven P1 scalar-root domain is registered on this branch; P2-P5 packages must provide their own OperationAdapter values when integrated."
+    ],
+    "next_steps": [
+      "Integration lane: add the frontend prefix to the numerical-computing package owner, add the five frontend modules to pyrightconfig.json, and re-export the selected API from sagejs.numerics.",
+      "Integration lane: compose adapters from the P2-P5 domain packages and add MATLAB/Wolfram parser routing for aliases beyond the existing fzero and FindRoot paths.",
+      "Number-field owner: resolve or classify the persistent cubic unit-saturation integration failure, then rerun the exact integration receipt.",
+      "After shared integration changes land, rerun all four receipts and set this task to review."
+    ]
+  }
+}

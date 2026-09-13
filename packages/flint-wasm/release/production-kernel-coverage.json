@@ -2,12 +2,12 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 53,
-    "production_kernels": 45,
-    "compiled_functions": 281,
-    "unsupported_production_functions": 0,
+    "registered_kernels": 55,
+    "production_kernels": 47,
+    "compiled_functions": 286,
+    "unsupported_production_functions": 1,
     "non_production_functions": 54,
-    "same_source_fallback_functions": 54
+    "same_source_fallback_functions": 55
   },
   "kernels": [
     {
@@ -17,6 +17,15 @@
       "compiled_functions": 1,
       "fallback_functions": 0,
       "total_functions": 1,
+      "fallback_reasons": []
+    },
+    {
+      "id": "brandt-rank4-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 2,
+      "fallback_functions": 0,
+      "total_functions": 2,
       "fallback_reasons": []
     },
     {
@@ -51,11 +60,13 @@
     {
       "id": "complex-cubic-class-group-production",
       "production": true,
-      "status": "available",
-      "compiled_functions": 1,
-      "fallback_functions": 0,
+      "status": "fallback",
+      "compiled_functions": 0,
+      "fallback_functions": 1,
       "total_functions": 1,
-      "fallback_reasons": []
+      "fallback_reasons": [
+        "fmpz-integer-buffer-requires-64-bit-flint-limbs"
+      ]
     },
     {
       "id": "dense-binary-m4ri-optional",
@@ -72,9 +83,9 @@
       "id": "dense-integer-flint-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 17,
+      "compiled_functions": 18,
       "fallback_functions": 0,
-      "total_functions": 17,
+      "total_functions": 18,
       "fallback_reasons": []
     },
     {
@@ -496,6 +507,15 @@
     },
     {
       "id": "word-prime-krylov-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 3,
+      "fallback_functions": 0,
+      "total_functions": 3,
+      "fallback_reasons": []
+    },
+    {
+      "id": "word-prime-sparse-krylov-production",
       "production": true,
       "status": "available",
       "compiled_functions": 3,

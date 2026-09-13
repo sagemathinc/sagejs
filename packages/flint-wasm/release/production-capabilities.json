@@ -1,6 +1,40 @@
 {
   "schema": "sagejs.wasm-production-capabilities/v1",
   "modules": {
+    "flint-extension-multivariate": {
+      "artifact": "flint-extension-multivariate.wasm",
+      "capabilities": [
+        "ffi-resource:flint:fq_mpoly",
+        "ffi-resource:flint:fq_mpoly_bytes",
+        "ffi-resource:flint:fq_mpoly_context",
+        "ffi:flint:fq_mpoly_binary",
+        "ffi:flint:fq_mpoly_cache_bytes",
+        "ffi:flint:fq_mpoly_context",
+        "ffi:flint:fq_mpoly_copy",
+        "ffi:flint:fq_mpoly_equal",
+        "ffi:flint:fq_mpoly_factor_bytes",
+        "ffi:flint:fq_mpoly_from_terms",
+        "ffi:flint:fq_mpoly_gcd",
+        "ffi:flint:fq_mpoly_neg",
+        "ffi:flint:fq_mpoly_resultant",
+        "ffi:flint:fq_mpoly_term_bytes"
+      ],
+      "additionalCapabilities": []
+    },
+    "cminpack": {
+      "artifact": "cminpack.wasm",
+      "capabilities": [],
+      "additionalCapabilities": [
+        "wasm-library:cminpack:least-squares-explicit"
+      ]
+    },
+    "nlopt": {
+      "artifact": "nlopt-methods.wasm",
+      "capabilities": [],
+      "additionalCapabilities": [
+        "wasm-library:nlopt:derivative-free-explicit"
+      ]
+    },
     "flint": {
       "artifact": "flint-factor.wasm",
       "additionalCapabilities": [
@@ -21,6 +55,15 @@
         "napi:@sagemath/sagejs-flint:complexFromReals",
         "napi:@sagemath/sagejs-flint:complexImag",
         "napi:@sagemath/sagejs-flint:complexImagDouble",
+        "napi:@sagemath/sagejs-flint:complexIntervalBinary",
+        "napi:@sagemath/sagejs-flint:complexIntervalFromParts",
+        "napi:@sagemath/sagejs-flint:complexIntervalPart",
+        "napi:@sagemath/sagejs-flint:complexIntervalPowInt",
+        "napi:@sagemath/sagejs-flint:complexIntervalPrecision",
+        "napi:@sagemath/sagejs-flint:complexIntervalRelation",
+        "napi:@sagemath/sagejs-flint:complexIntervalRound",
+        "napi:@sagemath/sagejs-flint:complexIntervalToString",
+        "napi:@sagemath/sagejs-flint:complexIntervalUnary",
         "napi:@sagemath/sagejs-flint:complexMul",
         "napi:@sagemath/sagejs-flint:complexNeg",
         "napi:@sagemath/sagejs-flint:complexPowInt",
@@ -30,20 +73,35 @@
         "napi:@sagemath/sagejs-flint:complexRound",
         "napi:@sagemath/sagejs-flint:complexSub",
         "napi:@sagemath/sagejs-flint:complexToString",
+        "napi:@sagemath/sagejs-flint:mpolyGroebnerMsolve",
         "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
         "napi:@sagemath/sagejs-flint:p1List",
         "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
         "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
+        "napi:@sagemath/sagejs-flint:p1ListDegeneracyMatrix",
         "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
         "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
+        "napi:@sagemath/sagejs-flint:primePi",
         "napi:@sagemath/sagejs-flint:realAdd",
         "napi:@sagemath/sagejs-flint:realDiv",
         "napi:@sagemath/sagejs-flint:realEqual",
         "napi:@sagemath/sagejs-flint:realFromBigInt",
         "napi:@sagemath/sagejs-flint:realFromRational",
         "napi:@sagemath/sagejs-flint:realFromString",
+        "napi:@sagemath/sagejs-flint:realIntervalBinary",
+        "napi:@sagemath/sagejs-flint:realIntervalFromBounds",
+        "napi:@sagemath/sagejs-flint:realIntervalFromRational",
+        "napi:@sagemath/sagejs-flint:realIntervalPart",
+        "napi:@sagemath/sagejs-flint:realIntervalPowInt",
+        "napi:@sagemath/sagejs-flint:realIntervalPrecision",
+        "napi:@sagemath/sagejs-flint:realIntervalRelation",
+        "napi:@sagemath/sagejs-flint:realIntervalRound",
+        "napi:@sagemath/sagejs-flint:realIntervalToString",
+        "napi:@sagemath/sagejs-flint:realIntervalUnary",
         "napi:@sagemath/sagejs-flint:realMul",
         "napi:@sagemath/sagejs-flint:realNeg",
+        "napi:@sagemath/sagejs-flint:realNext",
+        "napi:@sagemath/sagejs-flint:realParts",
         "napi:@sagemath/sagejs-flint:realPowInt",
         "napi:@sagemath/sagejs-flint:realPrecision",
         "napi:@sagemath/sagejs-flint:realRound",
@@ -141,6 +199,7 @@
         "ffi:flint:fmpz_mat_hnf",
         "ffi:flint:fmpz_mat_hnf_modular_eldiv",
         "ffi:flint:fmpz_mat_hnf_transform",
+        "ffi:flint:fmpz_mat_gram_lll_transform",
         "ffi:flint:fmpz_mat_lll_transform",
         "ffi:flint:fmpz_mat_mul",
         "ffi:flint:fmpz_mat_rank",
@@ -170,6 +229,7 @@
         "ffi:flint:fmpz_matrix_serialize",
         "ffi:flint:fmpz_matrix_set_block",
         "ffi:flint:fmpz_matrix_set_entry",
+        "ffi:flint:fmpz_matrix_snf",
         "ffi:flint:fmpz_matrix_stack",
         "ffi:flint:fmpz_matrix_submatrix",
         "ffi:flint:fmpz_matrix_swap_columns",
@@ -247,6 +307,7 @@
         "ffi:flint:fq_polynomial_pow",
         "ffi:flint:fq_polynomial_sub",
         "ffi:flint:integer_log_sqrt_balls_packed",
+        "ffi:flint:integer_log_sqrt_balls_prefix_resource",
         "ffi:flint:integer_log_sqrt_balls_resource",
         "ffi:flint:positive_rational_log_balls_resource",
         "ffi:flint:native_exact_workspace",
@@ -408,7 +469,6 @@
       "additionalCapabilities": [
         "kernel:arbitrary-prime-polynomial-resource-production",
         "kernel:class-group-resident-hnf-production",
-        "kernel:complex-cubic-class-group-production",
         "kernel:dense-integer-flint-production",
         "kernel:dense-prime-flint-production",
         "kernel:dense-prime-production",
@@ -425,13 +485,15 @@
         "kernel:packed-prime-polynomial-production",
         "kernel:rank-four-lattice-workspace-production",
         "kernel:sparse-random-matrix-production",
-        "kernel:word-prime-krylov-production"
+        "kernel:word-prime-krylov-production",
+        "kernel:word-prime-sparse-krylov-production"
       ]
     },
     "kernel-gmp": {
       "artifact": "native-kernels/kernel-gmp.wasm",
       "capabilities": [],
       "additionalCapabilities": [
+        "kernel:brandt-rank4-production",
         "kernel:buchmann-lenstra-row-hnf-production",
         "kernel:dense-integer-production",
         "kernel:dense-rational-production",

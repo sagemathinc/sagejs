@@ -52,6 +52,15 @@ const DEFAULT_HISTORY_SIZE = 1000;
 const HOME =
   process.env[process.platform == "win32" ? "USERPROFILE" : "HOME"] ?? "/tmp";
 
+function userErrorText(error: unknown): string {
+  const value = error as { name?: string; message?: string };
+  const name = value?.name === "ReferenceError"
+    ? "NameError"
+    : value?.name ?? "Error";
+  const message = value?.message ?? String(error);
+  return message.startsWith(`${name}:`) ? message : `${name}: ${message}`;
+}
+
 function expandUser(x: string): string {
   return x.replace(/^~/, HOME);
 }
@@ -125,7 +134,7 @@ function replDefaults(options: Partial<Options>): Options {
         ? foreignPrompt(foreignLanguage)
         : "";
     } else if (options.sage) {
-      options.ps1 = process.stdin.isTTY ? "sage: " : "";
+      options.ps1 = process.stdin.isTTY ? "sagejs: " : "";
     } else {
       options.ps1 = process.stdin.isTTY ? ">>> " : "";
     }
@@ -357,6 +366,14 @@ export default async function Repl(
       importDirs,
       moduleCacheDir,
     );
+    if (options.sage) {
+      Reflect.set(
+        globalThis,
+        "__sagejs_parse_sage__",
+        (source: string, parserOptions: Record<string, any>) =>
+          pythonFrontend!.parse(source, parserOptions),
+      );
+    }
     runInThisContext('var __name__ = "__main__"; show_js=false;');
     contextInitialized = true;
   }
@@ -415,11 +432,7 @@ export default async function Repl(
           options.console.error(String(code));
           process.exit(1);
         }
-        if (err?.stack) {
-          options.console.error(err?.stack);
-        } else {
-          options.console.error(err);
-        }
+        options.console.error(userErrorText(err));
         markUncaughtInputFailure();
         return undefined;
       }
@@ -432,11 +445,7 @@ export default async function Repl(
       try {
         global.ρσ_print(result);
       } catch (err) {
-        if (err?.stack) {
-          options.console.error(err?.stack);
-        } else {
-          options.console.error(err);
-        }
+        options.console.error(userErrorText(err));
         markUncaughtInputFailure();
       }
     }
@@ -457,7 +466,7 @@ export default async function Repl(
       }
     }
     if (options.sage) {
-      const sagePrompt = line.match(/^sage:\s?/);
+      const sagePrompt = line.match(/^(?:sagejs|sage):\s?/);
       if (sagePrompt) return line.slice(sagePrompt[0].length);
       const sageContinuation = line.match(/^\.\.\.\.:\s?/);
       if (sageContinuation) {
@@ -488,7 +497,7 @@ export default async function Repl(
         allowLoadDirective: false,
       });
     } catch (err) {
-      options.console.error(err?.stack ?? err);
+      options.console.error(userErrorText(err));
       markUncaughtInputFailure();
     }
   }
@@ -502,7 +511,7 @@ export default async function Repl(
           loadFile(filename, true);
         }
       } catch (err) {
-        options.console.error(err?.stack ?? err);
+        options.console.error(userErrorText(err));
         markUncaughtInputFailure();
       }
     }
@@ -740,7 +749,7 @@ export default async function Repl(
       initContext();
       readLine(line);
     }).catch((error) => {
-      options.console.error(error?.stack ?? error);
+      options.console.error(userErrorText(error));
       process.exitCode = 1;
     });
   }

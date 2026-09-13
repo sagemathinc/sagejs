@@ -1,0 +1,106 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "native-while-control-transfer",
+  "title": "Native While Control Transfer",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Support generic native integer while-loop break and continue with nested-loop targeting and fail-closed lexical resource lifetimes",
+  "base_commit": "10bfadf1d04f8be45265ef076cd32fdcdd092d39",
+  "claims": [
+    "tools/native-kernel/integer-ir.cjs",
+    "tools/native-kernel/ir.cjs",
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/fmpz-backend.cjs",
+    "tools/native-kernel/tagged-backend.cjs",
+    "tools/native-kernel/word-backend.cjs",
+    "tools/native-kernel/js-backend.cjs",
+    "test/native-while-control-transfer.cjs",
+    "test/ffi.cjs",
+    "test/native-sparse-exact-rows.cjs",
+    "test/native-kernel.cjs",
+    "test/native-reusable-exact-workspace.cjs",
+    "test/native-resident-flint-resource.cjs",
+    "test/native-rank-four-lattice-workspace.cjs",
+    "test/native-bounded-relations.cjs",
+    "test/native-live-exact-records.cjs",
+    "test/native-live-exact-matrix.cjs",
+    "test/native-live-exact-arena.cjs",
+    "test/number-field-cubic-native-class-number.cjs",
+    "test/native-uint64-bitwise.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "docs/cubic-staged-exact-closure-design.md",
+    "https://github.com/sagemathinc/sagejs/pull/131"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython",
+      "same-source-JavaScript-GMP-fmpz",
+      "generated-C-sanitizers"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node --test test/native-while-control-transfer.cjs test/native-live-exact-arena.cjs test/native-live-exact-matrix.cjs tools/native-kernel/test/exact-range-semantics.cjs tools/native-kernel/test/nested-arena-call-guard.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.972,
+      "started_at": "2026-09-05T05:45:56.698Z",
+      "commit": "10bfadf1d04f8be45265ef076cd32fdcdd092d39",
+      "workspace_fingerprint": "12bee1b4b78d6306936792bd919594232f964a59163309bba331d2dccdd2f4ed",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.845,
+      "started_at": "2026-09-05T05:46:03.290Z",
+      "commit": "10bfadf1d04f8be45265ef076cd32fdcdd092d39",
+      "workspace_fingerprint": "12bee1b4b78d6306936792bd919594232f964a59163309bba331d2dccdd2f4ed",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 40.223,
+      "started_at": "2026-09-05T05:46:13.768Z",
+      "commit": "10bfadf1d04f8be45265ef076cd32fdcdd092d39",
+      "workspace_fingerprint": "12bee1b4b78d6306936792bd919594232f964a59163309bba331d2dccdd2f4ed",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "IR39 adds source-provenanced loop.break and loop.continue for the nearest enclosing while loop. Lowering tracks lexical owner depth and rejects transfers that would bypass vector/matrix/arena cleanup or target a range loop. GMP, fmpz, tagged, machine-word and generated JavaScript emit the same direct transfer. Fourteen focused tests cover nested while/range control, promoted exact counters, CPython/dynamic/native agreement, explicit rejected scopes, one unchanged root arena, and generated GMP/fmpz ASan/UBSan failure, exhaustion, reuse and publication preservation. Eighteen existing range, matrix, arena and nested-arena-guard tests also pass. Architecture, merge inventories and strict Python checks pass.",
+    "risks": [
+      "Range-loop break/continue and transfers exiting a lexical exact-resource scope deliberately remain unsupported; implementing their advance and cleanup semantics is outside this while-only slice.",
+      "The full build, broad changed-check suites, production-pack refresh and Windows/Wasm execution remain integration qualifications. This draft lane reused the source-matched prepared frontend/parser and a read-only FLINT prefix; it does not claim a freshly rebuilt production pack.",
+      "Root owns test/number-field-cubic-fmpz-closure.cjs concurrently and must update its IR-version assertion from38 to39 when integrating. Other existing IR-version assertions are updated mechanically here.",
+      "PR131 changes different resource-item regions of integer-ir.cjs and ir.cjs. The logical-prefix Arb lane changes only FMPZ_FFI_DECLARATIONS in exact-analysis.cjs; coordinate the same-file cherry-picks."
+    ],
+    "next_steps": [
+      "Integrate into the staged certification branch and recompile the actual borrowed cursor under one root arena.",
+      "Run the complete source-matched production build, compiler/native/platform qualification and staged mathematical replay before promotion.",
+      "Keep opt exclusively on the frozen timing artifact; this lane made no opt changes or benchmark claims."
+    ]
+  }
+}

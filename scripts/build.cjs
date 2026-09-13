@@ -11,6 +11,15 @@ const {
   writeBuildReceipt,
 } = require("./build-receipt.cjs");
 const { formatDuration } = require("./run-test-tier.cjs");
+const {
+  buildNumericalRuntimeAdapters,
+  installNumericalProduct,
+  numericalRuntimeRequired,
+  validateInstalledNumericalProduct,
+} = require("./numerical-product.cjs");
+const { inspectToolchain } = require(
+  "../packages/wasm-toolchain/scripts/toolchain.cjs"
+);
 
 const root = join(__dirname, "..");
 const dist = join(root, "dist");
@@ -29,6 +38,7 @@ const stages = [
   ["Precompile Python modules and Node runtimes", 190],
   ["Reconcile installed native addons and adapters", 20],
   ["Publish the production native-kernel pack", 30],
+  ["Build the lazy cminpack and NLopt numerical reactors", 2],
 ];
 
 function commandText(command, arguments_) {
@@ -129,6 +139,82 @@ function kernelSummary(output) {
   );
 }
 
+async function reconcileInstalledNative() {
+  const flintAdapter = join(
+    root,
+    "packages",
+    "flint",
+    "build",
+    "generated-ffi",
+    "sagejs_flint_ffi.node",
+  );
+  const hadFlintAdapter = existsSync(flintAdapter);
+  const addon = await run(process.execPath, [
+    join(root, "packages", "flint", "scripts", "build-addon.cjs"),
+    "--reconcile-installed",
+  ]);
+  const restoredFlintAdapter = hadFlintAdapter && !existsSync(flintAdapter)
+    ? await run(process.execPath, [
+        join(root, "scripts", "build-ffi-host-adapter.cjs"),
+        "flint",
+      ])
+    : "";
+  const adapters = await run(process.execPath, [
+    join(root, "scripts", "build-ffi-host-adapter.cjs"),
+    "--reconcile-installed",
+  ]);
+  return adapterSummary(`${addon}\n${restoredFlintAdapter}\n${adapters}`);
+}
+
+async function publishProductionNative() {
+  const generatedFlintAdapter = join(
+    root,
+    "packages",
+    "flint",
+    "build",
+    "generated-ffi",
+    "sagejs_flint_ffi.node",
+  );
+  if (existsSync(generatedFlintAdapter)) {
+    const output = await run(process.execPath, [
+      join(root, "scripts", "build-production-native-kernels.cjs"),
+    ]);
+    return kernelSummary(output);
+  }
+  return "Skipped production kernels: the optional generated FLINT adapter is absent.";
+}
+
+async function buildLazyNumericalReactors({
+  environment = process.env,
+  buildAdapters = buildNumericalRuntimeAdapters,
+  inspect = () => inspectToolchain({ root }),
+  install = installNumericalProduct,
+  runCommand = run,
+  validate = validateInstalledNumericalProduct,
+} = {}) {
+  const productRoot = environment.SAGEJS_NUMERICAL_PRODUCT_ROOT;
+  if (productRoot) {
+    const product = install({ root, inputDirectory: productRoot });
+    return `Installed source-bound numerical product ${product.identity}.`;
+  }
+  const inspection = inspect();
+  if (!inspection.ready) {
+    if (numericalRuntimeRequired(environment)) {
+      throw new Error(
+        "the numerical runtime is required, but neither an authenticated product " +
+          "nor a prepared reproducible Wasm toolchain is available",
+      );
+    }
+    buildAdapters(root);
+    return "Skipped optional numerical reactors: the reproducible Wasm toolchain is not prepared.";
+  }
+  const output = await runCommand(process.execPath, [
+    join(root, "packages", "flint-wasm", "numerical", "scripts", "build-all.cjs"),
+  ]);
+  validate(root);
+  return nonemptyLines(output).at(-1) ?? "Lazy numerical reactors built.";
+}
+
 async function runStage(index, action) {
   const [label, expectedSeconds] = stages[index];
   const started = Date.now();
@@ -164,7 +250,7 @@ async function main() {
     const status = inspectBuildReceipt(root);
     if (status.current) {
       process.stdout.write(
-        `[build] REUSE: successful build from ${status.completedAt}; exact inputs ` +
+        `[build] REUSE: successful build from ${status.completedAt}; artifact inputs ` +
           `and required outputs still match.\n`,
       );
       return 0;
@@ -253,48 +339,15 @@ async function main() {
   });
 
   await runStage(5, async () => {
-    const flintAdapter = join(
-      root,
-      "packages",
-      "flint",
-      "build",
-      "generated-ffi",
-      "sagejs_flint_ffi.node",
-    );
-    const hadFlintAdapter = existsSync(flintAdapter);
-    const addon = await run(process.execPath, [
-      join(root, "packages", "flint", "scripts", "build-addon.cjs"),
-      "--reconcile-installed",
-    ]);
-    const restoredFlintAdapter = hadFlintAdapter && !existsSync(flintAdapter)
-      ? await run(process.execPath, [
-        join(root, "scripts", "build-ffi-host-adapter.cjs"),
-        "flint",
-      ])
-      : "";
-    const adapters = await run(process.execPath, [
-      join(root, "scripts", "build-ffi-host-adapter.cjs"),
-      "--reconcile-installed",
-    ]);
-    return adapterSummary(`${addon}\n${restoredFlintAdapter}\n${adapters}`);
+    return reconcileInstalledNative();
   });
 
   await runStage(6, async () => {
-    const generatedFlintAdapter = join(
-      root,
-      "packages",
-      "flint",
-      "build",
-      "generated-ffi",
-      "sagejs_flint_ffi.node",
-    );
-    if (existsSync(generatedFlintAdapter)) {
-      const output = await run(process.execPath, [
-        join(root, "scripts", "build-production-native-kernels.cjs"),
-      ]);
-      return kernelSummary(output);
-    }
-    return "Skipped production kernels: the optional generated FLINT adapter is absent.";
+    return publishProductionNative();
+  });
+
+  await runStage(7, async () => {
+    return buildLazyNumericalReactors();
   });
 
   writeBuildReceipt({ root, durationMilliseconds: Date.now() - started });
@@ -319,9 +372,12 @@ if (require.main === module) {
 
 module.exports = {
   adapterSummary,
+  buildLazyNumericalReactors,
   compilerSummary,
   ffiSummary,
   kernelSummary,
   main,
+  publishProductionNative,
+  reconcileInstalledNative,
   stages,
 };

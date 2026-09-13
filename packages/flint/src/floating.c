@@ -45,6 +45,100 @@ static int require_arguments(
     return 1;
 }
 
+static int require_optional_argument(
+    napi_env env,
+    napi_callback_info info,
+    size_t required,
+    napi_value *args,
+    size_t *argc_result)
+{
+    size_t argc = required + 1;
+
+    if (!check_napi(env, napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
+        return 0;
+    if (argc < required || argc > required + 1)
+    {
+        napi_throw_type_error(env, NULL, "wrong number of arguments");
+        return 0;
+    }
+    *argc_result = argc;
+    return 1;
+}
+
+static int require_argument_range(
+    napi_env env,
+    napi_callback_info info,
+    size_t minimum,
+    size_t maximum,
+    napi_value *args,
+    size_t *argc_result)
+{
+    size_t argc = maximum;
+
+    if (!check_napi(env, napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
+        return 0;
+    if (argc < minimum || argc > maximum)
+    {
+        napi_throw_type_error(env, NULL, "wrong number of arguments");
+        return 0;
+    }
+    *argc_result = argc;
+    return 1;
+}
+
+static int get_rounding(
+    napi_env env, napi_value value, mpfr_rnd_t *rounding)
+{
+    int32_t code;
+
+    if (!check_napi(env, napi_get_value_int32(env, value, &code)))
+        return 0;
+    switch (code)
+    {
+        case 0: *rounding = MPFR_RNDN; return 1;
+        case 1: *rounding = MPFR_RNDU; return 1;
+        case 2: *rounding = MPFR_RNDD; return 1;
+        case 3: *rounding = MPFR_RNDZ; return 1;
+        case 4: *rounding = MPFR_RNDA; return 1;
+        default:
+            napi_throw_range_error(env, NULL, "invalid MPFR rounding mode");
+            return 0;
+    }
+}
+
+static napi_value mpz_to_bigint(napi_env env, const mpz_t value)
+{
+    napi_value result;
+    int sign = mpz_sgn(value) < 0;
+    size_t count = 0;
+    uint64_t *words = NULL;
+    mpz_t magnitude;
+
+    mpz_init(magnitude);
+    mpz_abs(magnitude, value);
+    if (mpz_sgn(magnitude) != 0)
+    {
+        count = (mpz_sizeinbase(magnitude, 2) + 63) / 64;
+        words = calloc(count, sizeof(uint64_t));
+        if (words == NULL)
+        {
+            mpz_clear(magnitude);
+            napi_throw_error(env, NULL, "unable to allocate BigInt limbs");
+            return NULL;
+        }
+        mpz_export(words, &count, -1, sizeof(uint64_t), 0, 0, magnitude);
+    }
+    mpz_clear(magnitude);
+    if (!check_napi(env,
+        napi_create_bigint_words(env, sign, count, words, &result)))
+    {
+        free(words);
+        return NULL;
+    }
+    free(words);
+    return result;
+}
+
 static int get_precision(
     napi_env env, napi_value value, mpfr_prec_t *precision)
 {
@@ -127,16 +221,27 @@ static char *value_string(napi_env env, napi_value value)
 
 napi_value sagejs_real_from_string(napi_env env, napi_callback_info info)
 {
-    napi_value args[2];
+    napi_value args[4];
+    size_t argc;
     mpfr_prec_t precision;
+    mpfr_rnd_t rounding = MPFR_RNDN;
+    int32_t base = 10;
     sagejs_real *real;
     char *text;
     char *read;
     char *write;
 
-    if (!require_arguments(env, info, 2, args) ||
-        !get_precision(env, args[1], &precision))
+    if (!require_argument_range(env, info, 2, 4, args, &argc) ||
+        !get_precision(env, args[1], &precision) ||
+        (argc >= 3 && !get_rounding(env, args[2], &rounding)) ||
+        (argc == 4 &&
+            !check_napi(env, napi_get_value_int32(env, args[3], &base))))
         return NULL;
+    if (base != 2 && base != 10)
+    {
+        napi_throw_range_error(env, NULL, "real input base must be 2 or 10");
+        return NULL;
+    }
     text = value_string(env, args[0]);
     if (text == NULL)
         return NULL;
@@ -150,7 +255,7 @@ napi_value sagejs_real_from_string(napi_env env, napi_callback_info info)
         free(text);
         return NULL;
     }
-    if (mpfr_set_str(real->value, text, 10, MPFR_RNDN) != 0)
+    if (mpfr_set_str(real->value, text, base, rounding) != 0)
     {
         free(text);
         finalize_real(env, real, NULL);
@@ -163,13 +268,16 @@ napi_value sagejs_real_from_string(napi_env env, napi_callback_info info)
 
 napi_value sagejs_real_from_bigint(napi_env env, napi_callback_info info)
 {
-    napi_value args[2];
+    napi_value args[3];
+    size_t argc;
     mpfr_prec_t precision;
+    mpfr_rnd_t rounding = MPFR_RNDN;
     sagejs_real *real;
     mpz_t integer;
 
-    if (!require_arguments(env, info, 2, args) ||
-        !get_precision(env, args[1], &precision))
+    if (!require_optional_argument(env, info, 2, args, &argc) ||
+        !get_precision(env, args[1], &precision) ||
+        (argc == 3 && !get_rounding(env, args[2], &rounding)))
         return NULL;
     real = new_real(env, precision);
     if (real == NULL)
@@ -181,21 +289,25 @@ napi_value sagejs_real_from_bigint(napi_env env, napi_callback_info info)
         finalize_real(env, real, NULL);
         return NULL;
     }
-    mpfr_set_z(real->value, integer, MPFR_RNDN);
+    mpfr_set_z(real->value, integer, rounding);
     mpz_clear(integer);
     return wrap_real(env, real);
 }
 
 napi_value sagejs_real_from_rational(napi_env env, napi_callback_info info)
 {
-    napi_value args[3];
+    napi_value args[4];
+    size_t argc;
     mpfr_prec_t precision;
+    mpfr_rnd_t rounding = MPFR_RNDN;
     sagejs_real *real;
     mpz_t numerator;
     mpz_t denominator;
+    mpq_t rational;
 
-    if (!require_arguments(env, info, 3, args) ||
-        !get_precision(env, args[2], &precision))
+    if (!require_optional_argument(env, info, 3, args, &argc) ||
+        !get_precision(env, args[2], &precision) ||
+        (argc == 4 && !get_rounding(env, args[3], &rounding)))
         return NULL;
     real = new_real(env, precision);
     if (real == NULL)
@@ -218,8 +330,12 @@ napi_value sagejs_real_from_rational(napi_env env, napi_callback_info info)
         napi_throw_range_error(env, NULL, "rational denominator is zero");
         return NULL;
     }
-    mpfr_set_z(real->value, numerator, MPFR_RNDN);
-    mpfr_div_z(real->value, real->value, denominator, MPFR_RNDN);
+    mpq_init(rational);
+    mpq_set_num(rational, numerator);
+    mpq_set_den(rational, denominator);
+    mpq_canonicalize(rational);
+    mpfr_set_q(real->value, rational, rounding);
+    mpq_clear(rational);
     mpz_clear(numerator);
     mpz_clear(denominator);
     return wrap_real(env, real);
@@ -227,19 +343,22 @@ napi_value sagejs_real_from_rational(napi_env env, napi_callback_info info)
 
 napi_value sagejs_real_round(napi_env env, napi_callback_info info)
 {
-    napi_value args[2];
+    napi_value args[3];
+    size_t argc;
     mpfr_prec_t precision;
+    mpfr_rnd_t rounding = MPFR_RNDN;
     sagejs_real *source;
     sagejs_real *result;
 
-    if (!require_arguments(env, info, 2, args) ||
+    if (!require_optional_argument(env, info, 2, args, &argc) ||
         !get_precision(env, args[1], &precision) ||
+        (argc == 3 && !get_rounding(env, args[2], &rounding)) ||
         (source = unwrap_real(env, args[0])) == NULL)
         return NULL;
     result = new_real(env, precision);
     if (result == NULL)
         return NULL;
-    mpfr_set(result->value, source->value, MPFR_RNDN);
+    mpfr_set(result->value, source->value, rounding);
     return wrap_real(env, result);
 }
 
@@ -249,19 +368,22 @@ typedef int (*real_binary_op)(
 static napi_value real_binary(
     napi_env env, napi_callback_info info, real_binary_op operation)
 {
-    napi_value args[2];
+    napi_value args[3];
+    size_t argc;
+    mpfr_rnd_t rounding = MPFR_RNDN;
     sagejs_real *left;
     sagejs_real *right;
     sagejs_real *result;
 
-    if (!require_arguments(env, info, 2, args) ||
+    if (!require_optional_argument(env, info, 2, args, &argc) ||
+        (argc == 3 && !get_rounding(env, args[2], &rounding)) ||
         (left = unwrap_real(env, args[0])) == NULL ||
         (right = unwrap_real(env, args[1])) == NULL)
         return NULL;
     result = new_real(env, mpfr_get_prec(left->value));
     if (result == NULL)
         return NULL;
-    operation(result->value, left->value, right->value, MPFR_RNDN);
+    operation(result->value, left->value, right->value, rounding);
     return wrap_real(env, result);
 }
 
@@ -300,12 +422,15 @@ napi_value sagejs_real_neg(napi_env env, napi_callback_info info)
 
 napi_value sagejs_real_pow_int(napi_env env, napi_callback_info info)
 {
-    napi_value args[2];
+    napi_value args[3];
+    size_t argc;
+    mpfr_rnd_t rounding = MPFR_RNDN;
     sagejs_real *source;
     sagejs_real *result;
     mpz_t exponent;
 
-    if (!require_arguments(env, info, 2, args) ||
+    if (!require_optional_argument(env, info, 2, args, &argc) ||
+        (argc == 3 && !get_rounding(env, args[2], &rounding)) ||
         (source = unwrap_real(env, args[0])) == NULL)
         return NULL;
     mpz_init(exponent);
@@ -320,7 +445,7 @@ napi_value sagejs_real_pow_int(napi_env env, napi_callback_info info)
         mpz_clear(exponent);
         return NULL;
     }
-    mpfr_pow_z(result->value, source->value, exponent, MPFR_RNDN);
+    mpfr_pow_z(result->value, source->value, exponent, rounding);
     mpz_clear(exponent);
     return wrap_real(env, result);
 }
@@ -342,10 +467,9 @@ napi_value sagejs_real_equal(napi_env env, napi_callback_info info)
     return result;
 }
 
-static char *format_real(mpfr_srcptr value)
+char *sagejs_format_real_digits(
+    mpfr_srcptr value, mpfr_rnd_t rounding, size_t digits)
 {
-    mpfr_prec_t precision = mpfr_get_prec(value);
-    size_t digits = (size_t) floor((precision - 1) * 0.30102999566398119521);
     mpfr_exp_t exponent;
     char *raw;
     char *magnitude;
@@ -370,7 +494,7 @@ static char *format_real(mpfr_srcptr value)
         return result;
     }
 
-    raw = mpfr_get_str(NULL, &exponent, 10, digits, value, MPFR_RNDN);
+    raw = mpfr_get_str(NULL, &exponent, 10, digits, value, rounding);
     if (raw == NULL)
         return NULL;
     sign = raw[0] == '-' ? 1 : 0;
@@ -439,17 +563,136 @@ static char *format_real(mpfr_srcptr value)
     return result;
 }
 
+char *sagejs_format_real_rounding(mpfr_srcptr value, mpfr_rnd_t rounding)
+{
+    size_t digits = (size_t) floor(
+        (mpfr_get_prec(value) - 1) * 0.30102999566398119521);
+    return sagejs_format_real_digits(value, rounding, digits);
+}
+
+static char *format_real_full(mpfr_srcptr value, mpfr_rnd_t rounding)
+{
+    size_t digits = (size_t) ceil(
+        mpfr_get_prec(value) * 0.30102999566398119521) + 1;
+    return sagejs_format_real_digits(value, rounding, digits);
+}
+
+static char *format_real(mpfr_srcptr value)
+{
+    return sagejs_format_real_rounding(value, MPFR_RNDN);
+}
+
+static char *format_real_base2(mpfr_srcptr value)
+{
+    mpfr_prec_t precision = mpfr_get_prec(value);
+    mpfr_exp_t exponent;
+    char *raw;
+    char *magnitude;
+    char *result;
+    char *out;
+    size_t sign;
+    size_t digits = (size_t) precision;
+    size_t leading;
+    size_t integer_digits;
+    size_t length;
+
+    if (mpfr_nan_p(value))
+        return strdup("NaN");
+    if (mpfr_inf_p(value))
+        return strdup(mpfr_signbit(value) ? "-infinity" : "+infinity");
+    if (mpfr_zero_p(value))
+    {
+        result = malloc(digits + 4);
+        if (result == NULL)
+            return NULL;
+        snprintf(result, digits + 4, "%s0.", mpfr_signbit(value) ? "-" : "");
+        memset(result + (mpfr_signbit(value) ? 3 : 2), '0', digits);
+        result[(mpfr_signbit(value) ? 3 : 2) + digits] = '\0';
+        return result;
+    }
+
+    raw = mpfr_get_str(NULL, &exponent, 2, digits, value, MPFR_RNDN);
+    if (raw == NULL)
+        return NULL;
+    sign = raw[0] == '-' ? 1 : 0;
+    magnitude = raw + sign;
+    leading = exponent <= 0 ? (size_t) (-exponent) : 0;
+    integer_digits = exponent > 0 ? (size_t) exponent : 1;
+    length = sign + integer_digits + 1 +
+        (exponent > 0
+            ? (digits > (size_t) exponent ? digits - (size_t) exponent : 1)
+            : leading + digits);
+    result = malloc(length + 1);
+    if (result == NULL)
+    {
+        mpfr_free_str(raw);
+        return NULL;
+    }
+    out = result;
+    if (sign)
+        *out++ = '-';
+    if (exponent <= 0)
+    {
+        *out++ = '0';
+        *out++ = '.';
+        memset(out, '0', leading);
+        out += leading;
+        memcpy(out, magnitude, digits);
+        out += digits;
+    }
+    else
+    {
+        size_t copied = integer_digits < digits ? integer_digits : digits;
+        memcpy(out, magnitude, copied);
+        out += copied;
+        if (integer_digits > copied)
+        {
+            memset(out, '0', integer_digits - copied);
+            out += integer_digits - copied;
+        }
+        *out++ = '.';
+        if (digits > integer_digits)
+        {
+            memcpy(out, magnitude + integer_digits, digits - integer_digits);
+            out += digits - integer_digits;
+        }
+        else
+            *out++ = '0';
+    }
+    *out = '\0';
+    mpfr_free_str(raw);
+    return result;
+}
+
 napi_value sagejs_real_to_string(napi_env env, napi_callback_info info)
 {
-    napi_value args[1];
+    napi_value args[4];
+    size_t argc = 4;
     napi_value result;
     sagejs_real *real;
     char *text;
+    int32_t base = 10;
+    mpfr_rnd_t rounding = MPFR_RNDN;
+    bool full = false;
 
-    if (!require_arguments(env, info, 1, args) ||
+    if (!require_argument_range(env, info, 1, 4, args, &argc) ||
+        (argc == 2 &&
+            !check_napi(env, napi_get_value_int32(env, args[1], &base))) ||
+        (argc >= 3 &&
+            (!check_napi(env, napi_get_value_int32(env, args[1], &base)) ||
+             !get_rounding(env, args[2], &rounding))) ||
+        (argc == 4 &&
+            !check_napi(env, napi_get_value_bool(env, args[3], &full))) ||
         (real = unwrap_real(env, args[0])) == NULL)
         return NULL;
-    text = format_real(real->value);
+    if (base != 2 && base != 10)
+    {
+        napi_throw_range_error(env, NULL, "real string base must be 2 or 10");
+        return NULL;
+    }
+    text = base == 2 ? format_real_base2(real->value)
+        : full ? format_real_full(real->value, rounding)
+        : sagejs_format_real_rounding(real->value, rounding);
     if (text == NULL)
     {
         napi_throw_error(env, NULL, "unable to format an MPFR value");
@@ -462,6 +705,68 @@ napi_value sagejs_real_to_string(napi_env env, napi_callback_info info)
         return NULL;
     }
     free(text);
+    return result;
+}
+
+napi_value sagejs_real_next(napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    int32_t direction;
+    sagejs_real *source;
+    sagejs_real *result;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !check_napi(env, napi_get_value_int32(env, args[1], &direction)) ||
+        (source = unwrap_real(env, args[0])) == NULL)
+        return NULL;
+    if (direction != -1 && direction != 1)
+    {
+        napi_throw_range_error(env, NULL, "real next direction must be -1 or 1");
+        return NULL;
+    }
+    result = new_real(env, mpfr_get_prec(source->value));
+    if (result == NULL)
+        return NULL;
+    mpfr_set(result->value, source->value, MPFR_RNDN);
+    if (direction < 0)
+        mpfr_nextbelow(result->value);
+    else
+        mpfr_nextabove(result->value);
+    return wrap_real(env, result);
+}
+
+napi_value sagejs_real_parts(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    napi_value item;
+    sagejs_real *real;
+    mpz_t mantissa;
+    mpfr_exp_t exponent;
+    int sign;
+
+    if (!require_arguments(env, info, 1, args) ||
+        (real = unwrap_real(env, args[0])) == NULL)
+        return NULL;
+    mpz_init(mantissa);
+    exponent = mpfr_get_z_2exp(mantissa, real->value);
+    sign = mpz_sgn(mantissa);
+    mpz_abs(mantissa, mantissa);
+    if (!check_napi(env, napi_create_array_with_length(env, 3, &result)) ||
+        !check_napi(env, napi_create_int32(env, sign, &item)) ||
+        !check_napi(env, napi_set_element(env, result, 0, item)))
+    {
+        mpz_clear(mantissa);
+        return NULL;
+    }
+    item = mpz_to_bigint(env, mantissa);
+    mpz_clear(mantissa);
+    if (item == NULL ||
+        !check_napi(env, napi_set_element(env, result, 1, item)) ||
+        !check_napi(env,
+            napi_create_bigint_int64(env, (int64_t) exponent, &item)) ||
+        !check_napi(env, napi_set_element(env, result, 2, item)))
+        return NULL;
     return result;
 }
 

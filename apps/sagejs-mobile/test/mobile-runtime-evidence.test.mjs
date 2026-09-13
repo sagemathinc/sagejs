@@ -111,6 +111,13 @@ test('simulator CI builds both form factors from the exact attested closure', as
   );
   assert.match(workflow, /runs-on: macos-15/);
   assert.match(workflow, /production-receipt\.cjs validate/);
+  assert.match(
+    workflow,
+    /name: sagejs-mobile-portable-runtime\s+path: packages\/flint-wasm\/dist\s+if-no-files-found: error/,
+  );
+  const retainedRuntime = workflow.indexOf('name: sagejs-mobile-portable-runtime');
+  assert.ok(retainedRuntime > workflow.indexOf('production-receipt.cjs validate'));
+  assert.ok(retainedRuntime < workflow.indexOf('assets:prepare'));
   assert.match(workflow, /assets:prepare/);
   assert.match(workflow, /assets:verify/);
   assert.match(

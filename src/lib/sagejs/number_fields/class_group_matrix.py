@@ -2571,9 +2571,13 @@ def stable_exact_relation_hnf_selection(
     Basing public relation discovery on that incidental support made a slow
     Python transformation part of the mathematical policy.  This selector
     instead starts with every source-ordered candidate and deletes candidates
-    from left to right exactly when the canonical HNF basis is unchanged.
-    The retained subset therefore depends only on the ordered rows and their
-    lattice, not on a backend's choice of transformation matrix.
+    from right to left exactly when the canonical HNF basis is unchanged.
+    Retaining the earliest sufficient rows is important beyond determinism:
+    relation searches deliberately present smaller witnesses first, while
+    later rows tend to have larger generators and produce much more expensive
+    public proof certificates.  The retained subset therefore depends only on
+    the ordered rows and their lattice, not on a backend's choice of
+    transformation matrix.
 
     Qualified basis-only workspaces use a distinct four-matrix native kernel.
     It contains no transformation matrix, determinant, or replay accumulator
@@ -2661,14 +2665,14 @@ def stable_exact_relation_hnf_selection(
     all_library = primary_backend == "flint"
     library_calls = int(all_library)
     selected = list(range(len(candidates)))
-    cursor = 0
+    cursor = len(selected) - 1
     trials = 0
-    while cursor < len(selected) and trials < bounded_trials:
+    while cursor >= 0 and trials < bounded_trials:
         _resident_hnf_cancelled(cancelled)
         trial_indices = selected[:cursor] + selected[cursor + 1 :]
         trial_rows = initial + tuple(candidates[index] for index in trial_indices)
         if len(trial_rows) < len(basis):
-            cursor += 1
+            cursor -= 1
             continue
         trial_basis, trial_backend = _exact_relation_hnf_basis_from_source(
             trial_rows, columns
@@ -2680,8 +2684,7 @@ def stable_exact_relation_hnf_selection(
             all_library = False
         if trial_basis == basis:
             selected = trial_indices
-        else:
-            cursor += 1
+        cursor -= 1
     _resident_hnf_cancelled(cancelled)
     source_support = tuple(range(len(initial))) + tuple(
         len(initial) + index for index in selected
@@ -2693,7 +2696,7 @@ def stable_exact_relation_hnf_selection(
         rank=len(basis),
         deletion_trials=trials,
         hnf_calls=1 + trials,
-        deletion_complete=cursor >= len(selected),
+        deletion_complete=cursor < 0,
         backend=(
             "stable-flint-basis-deletions"
             if all_library

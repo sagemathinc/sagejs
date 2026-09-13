@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/numerical-gallery-story-v1.json",
+  "title": "Sage.js numerical teaching story",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "domain",
+    "operation",
+    "title",
+    "summary",
+    "learning_objectives",
+    "method_assumptions",
+    "language_examples",
+    "narrative_catalog",
+    "cases",
+    "visualization",
+    "accessibility",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "domain": {"type": "string", "minLength": 1},
+    "operation": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "summary": {"type": "string", "minLength": 1},
+    "learning_objectives": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "method_assumptions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/method_assumption"}
+    },
+    "language_examples": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/language_example"},
+      "required": ["sage", "python", "matlab", "wolfram"]
+    },
+    "narrative_catalog": {"$ref": "#/$defs/narrative_catalog"},
+    "cases": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"$ref": "#/$defs/case"}
+    },
+    "visualization": {"$ref": "#/$defs/visualization"},
+    "accessibility": {"$ref": "#/$defs/accessibility"},
+    "provenance": {"type": "object"}
+  },
+  "$defs": {
+    "method_assumption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "requires", "guarantee", "warning"],
+      "properties": {
+        "method": {"enum": ["bisection", "brent", "secant", "newton"]},
+        "requires": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "guarantee": {"type": "string", "minLength": 1},
+        "warning": {"type": "string", "minLength": 1}
+      }
+    },
+    "language_example": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "source", "classification", "result_shape"],
+      "properties": {
+        "label": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "minLength": 1},
+        "classification": {"enum": ["canonical", "faithful", "translated"]},
+        "result_shape": {"type": "string", "minLength": 1}
+      }
+    },
+    "narrative_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["heading", "explanation", "action", "evidence"],
+      "properties": {
+        "heading": {"type": "string", "minLength": 1},
+        "explanation": {"type": "string", "minLength": 1},
+        "action": {"type": "string", "minLength": 1},
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "pattern": "^/"}
+        }
+      }
+    },
+    "narrative_catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["success", "diagnostics", "status_fallbacks"],
+      "properties": {
+        "success": {"$ref": "#/$defs/narrative_rule"},
+        "diagnostics": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/narrative_rule"},
+          "minProperties": 1
+        },
+        "status_fallbacks": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/narrative_rule"},
+          "minProperties": 1
+        }
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "kind",
+        "question",
+        "static_description",
+        "result",
+        "evidence_expectations"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "title": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["success", "failure"]},
+        "question": {"type": "string", "minLength": 1},
+        "static_description": {"type": "string", "minLength": 1},
+        "result": {"$ref": "../result.schema.json"},
+        "verification": {"$ref": "../result.schema.json"},
+        "reference_comparison": {"$ref": "#/$defs/reference_comparison"},
+        "evidence_expectations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "success", "validation_passed", "diagnostic_codes"],
+          "properties": {
+            "status": {"type": "string", "minLength": 1},
+            "success": {"type": "boolean"},
+            "validation_passed": {"type": "boolean"},
+            "diagnostic_codes": {
+              "type": "array",
+              "items": {"type": "string", "minLength": 1},
+              "uniqueItems": true
+            }
+          }
+        }
+      }
+    },
+    "method_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "value",
+        "residual",
+        "iterations",
+        "evaluations",
+        "callback_calls",
+        "validation_passed",
+        "truth_level"
+      ],
+      "properties": {
+        "method": {"type": "string", "minLength": 1},
+        "value": {"type": "number"},
+        "residual": {"type": "number", "minimum": 0},
+        "iterations": {"type": "integer", "minimum": 0},
+        "evaluations": {"type": "integer", "minimum": 0},
+        "callback_calls": {"type": "integer", "minimum": 0},
+        "validation_passed": {"const": true},
+        "truth_level": {"const": "validated_approximate"}
+      }
+    },
+    "reference_comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "claim",
+        "primary",
+        "reference",
+        "agreement",
+        "execution",
+        "reference_result",
+        "evidence"
+      ],
+      "properties": {
+        "schema": {"const": "sagejs.numerics.reference-comparison/v1"},
+        "claim": {"type": "string", "minLength": 1},
+        "primary": {"$ref": "#/$defs/method_summary"},
+        "reference": {"$ref": "#/$defs/method_summary"},
+        "agreement": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["absolute_value_difference", "threshold", "passed"],
+          "properties": {
+            "absolute_value_difference": {"type": "number", "minimum": 0},
+            "threshold": {"type": "number", "exclusiveMinimum": 0},
+            "passed": {"const": true}
+          }
+        },
+        "execution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "independent_runs",
+            "distinct_callback_instances",
+            "callback_reevaluated_for_presentation"
+          ],
+          "properties": {
+            "independent_runs": {"const": true},
+            "distinct_callback_instances": {"const": true},
+            "callback_reevaluated_for_presentation": {"const": false}
+          }
+        },
+        "reference_result": {"$ref": "../result.schema.json"},
+        "evidence": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^/"}
+        }
+      }
+    },
+    "visualization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "plot_spec_animation", "plotly", "budget_measurements"],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1},
+        "plot_spec_animation": {"type": "object"},
+        "plotly": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema", "source", "shared_lowering", "figure"],
+          "properties": {
+            "schema": {"const": "plotly-compatible/v1"},
+            "source": {"type": "string", "minLength": 1},
+            "shared_lowering": {"type": "object"},
+            "figure": {"type": "object"}
+          }
+        },
+        "budget_measurements": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["trace_records", "frames", "max_samples_per_frame", "semantic_payload_bytes", "plotly_payload_bytes"],
+          "properties": {
+            "trace_records": {
+              "type": "array",
+              "minItems": 2,
+              "items": {"$ref": "#/$defs/trace_measurement"}
+            },
+            "frames": {"type": "integer", "minimum": 2},
+            "max_samples_per_frame": {"type": "integer", "minimum": 1},
+            "semantic_payload_bytes": {"type": "integer", "minimum": 1},
+            "plotly_payload_bytes": {"type": "integer", "minimum": 1}
+          }
+        }
+      }
+    },
+    "trace_measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "retained_events", "payload_bytes"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:(?:result|verification)$"},
+        "retained_events": {"type": "integer", "minimum": 0},
+        "payload_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "accessibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["static_plot_description", "animation_policy", "table_policy", "color_policy"],
+      "properties": {
+        "static_plot_description": {"type": "string", "minLength": 1},
+        "animation_policy": {"type": "string", "minLength": 1},
+        "table_policy": {"type": "string", "minLength": 1},
+        "color_policy": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

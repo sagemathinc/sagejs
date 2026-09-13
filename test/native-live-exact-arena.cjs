@@ -19,6 +19,7 @@ const {
 } = require("../tools/native-kernel/c-backend.cjs");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const sourcePath = resolve(__dirname, "../bench/native_live_exact_arena.py");
 
@@ -33,7 +34,7 @@ function runCompiledWitness(modulePath, source) {
 }
 
 test("the portable exact arena shares one deterministic budget", () => {
-  const result = spawnSync("python3", ["-c", String.raw`
+  const result = spawnSync(pythonExecutable(), ["-c", String.raw`
 import importlib.util, runpy, sys, types
 package = types.ModuleType("sagejs")
 package.__path__ = []
@@ -71,21 +72,22 @@ assert source["live_arena_shared_limit"](264, 1) == 2
     env: process.env,
     timeout: 120_000,
   });
+  if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 
 test("the compiler emits one shared-budget exact ownership graph", async () => {
   const source = readFileSync(sourcePath, "utf8");
   const ir = await lowerSource(source, sourcePath);
-  assert.equal(ir.version, 36);
+  assert.equal(ir.version, 39);
   const fn = ir.functions.find(
     (candidate) => candidate.name === "live_arena_relation_step",
   );
   assert.equal(fn.analysis.backend.kind, "gmp");
   assert.equal(fn.analysis.execution.liveExactScopes, 1);
   assert.deepEqual(fn.analysis.storage.borrowedLocals, [
-    "sagejs_native_tmp_13",
-    "sagejs_native_tmp_9",
+    "sagejs_native_tmp_15",
+    "sagejs_native_tmp_19",
   ]);
   assert.deepEqual(fn.analysis.liveExactWorkspace.scopes, [{
     owner: "workspace",
@@ -127,8 +129,8 @@ test("the compiler emits one shared-budget exact ownership graph", async () => {
   assert.match(core.source, /sagejs_native_integer_matrix_init_in_budget/);
   assert.match(core.source, /sagejs_native_integer_vector_init_in_budget/);
   assert.match(core.source, /mpz_init2/);
-  assert.match(core.source, /mpz_srcptr sagejs_sagejs_native_tmp_9/);
-  assert.match(core.source, /mpz_srcptr sagejs_sagejs_native_tmp_13/);
+  assert.match(core.source, /mpz_srcptr sagejs_sagejs_native_tmp_15/);
+  assert.match(core.source, /mpz_srcptr sagejs_sagejs_native_tmp_19/);
   assert.match(core.source, /arithmetic_scratch/);
   assert.match(core.source, /NativeExactArena memory limit exceeded/);
   assert.match(core.source, /SAGEJS_NATIVE_RETRY/);

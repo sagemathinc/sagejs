@@ -6,6 +6,7 @@ const { readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
 const corpusPath = join(
@@ -158,7 +159,7 @@ print("P2-LENGTH-EIGHT-SAGEJS")
 `;
 
 test("length-eight F4 residues equal the frozen PARI p-local lattice", () => {
-  const result = spawnSync("python3", ["-"], {
+  const result = spawnSync(pythonExecutable(), ["-"], {
     cwd: root,
     encoding: "utf8",
     input: witness,

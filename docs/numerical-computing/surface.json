@@ -1,0 +1,2119 @@
+{
+  "schema_version": 2,
+  "classifications": [
+    "faithful",
+    "translated",
+    "extension",
+    "unsupported"
+  ],
+  "capability_operations": [
+    {
+      "id": "approximation.cubic_spline",
+      "phase": "P2",
+      "classification": "translated",
+      "status": "implemented",
+      "methods": [
+        "explicit",
+        "not-a-knot",
+        "periodic"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "approximation.finite_difference_derivative",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "fornberg-backward",
+        "fornberg-central",
+        "fornberg-forward"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "approximation.piecewise_interpolation",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "linear"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "approximation.polynomial_approximation",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "chebyshev"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "approximation.polynomial_interpolation",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "barycentric"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "approximation.polynomial_roots",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "aberth-ehrlich",
+        "laguerre-deflation"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "integration.composite_quadrature",
+      "phase": "P2",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
+        "platforms": [],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      },
+      "reason": "no public fixed-partition composite quadrature operation is implemented",
+      "alternative": "use the adaptive definite-integral operation or sum explicitly chosen panels"
+    },
+    {
+      "id": "integration.definite_integral",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "adaptive_gauss_kronrod"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "integration.multidimensional_integral",
+      "phase": "P2",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
+        "platforms": [],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      },
+      "reason": "no bounded multidimensional integration method has been selected",
+      "alternative": "use explicitly budgeted iterated one-dimensional integrals only when the problem justifies that reduction"
+    },
+    {
+      "id": "linear_algebra.cholesky_factorization",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "cholesky"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "linear_algebra.condition_number",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "one_sided_jacobi"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "linear_algebra.determinant",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "partial_pivot_lu"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "linear_algebra.least_squares",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "column_pivoted_householder_qr",
+        "column_pivoted_householder_qr_of_transpose"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "linear_algebra.linear_solve",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "cholesky",
+        "column_pivoted_householder_qr",
+        "partial_pivot_lu"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "linear_algebra.lu_factorization",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "partial_pivot_lu"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "linear_algebra.matrix_inverse",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "partial_pivot_lu"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "linear_algebra.matrix_rank",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "one_sided_jacobi"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "linear_algebra.nullspace",
+      "phase": "P2",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
+        "platforms": [],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      },
+      "reason": "no validated dense numerical nullspace operation is implemented",
+      "alternative": "inspect the singular-value decomposition or use a qualified external nullspace implementation"
+    },
+    {
+      "id": "linear_algebra.pseudoinverse",
+      "phase": "P2",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
+        "platforms": [],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      },
+      "reason": "no validated dense numerical pseudoinverse operation is implemented",
+      "alternative": "use a qualified external pseudoinverse or solve the supported least-squares problem directly"
+    },
+    {
+      "id": "linear_algebra.qr_factorization",
+      "phase": "P2",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "column_pivoted_householder_qr",
+        "householder_qr"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "ode.boundary_value_problem",
+      "phase": "P4",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
+        "platforms": [],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      },
+      "reason": "no mature portable boundary-value backend has been integrated",
+      "alternative": "use a qualified external BVP solver or a carefully validated shooting reduction when appropriate"
+    },
+    {
+      "id": "ode.initial_value_problem",
+      "phase": "P4",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "rk4",
+        "rk45",
+        "rosenbrock4"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "ode.parameter_sweep",
+      "phase": "P4",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "bounded-batch-v1"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "optimization.curve_fit",
+      "phase": "P3",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "cminpack-lmder",
+        "cminpack-lmdif",
+        "damped-gauss-newton"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "optimization.linear_fit",
+      "phase": "P3",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "centered-linear-fit"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-x64"
+        ],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "optimization.minimize",
+      "phase": "P3",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "bfgs",
+        "nelder-mead",
+        "nlopt-nelder-mead",
+        "projected-bfgs"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "optimization.nonlinear_constrained_minimize",
+      "phase": "P3",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
+        "platforms": [],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      },
+      "reason": "general nonlinear constraints have no qualified portable backend",
+      "alternative": "use bounded minimization for box constraints or a qualified external constrained optimizer"
+    },
+    {
+      "id": "optimization.nonlinear_least_squares",
+      "phase": "P3",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "cminpack-lmder",
+        "cminpack-lmdif",
+        "damped-gauss-newton"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "optimization.nonlinear_system",
+      "phase": "P3",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "damped-newton"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-x64"
+        ],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "optimization.scalar_minimum",
+      "phase": "P3",
+      "classification": "translated",
+      "status": "implemented",
+      "methods": [
+        "bounded-brent"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-x64"
+        ],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "roots.fixed_point_iteration",
+      "phase": "P1",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
+        "platforms": [],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      },
+      "reason": "no bounded fixed-point solver with contraction diagnostics is implemented",
+      "alternative": "solve x - g(x) = 0 with a qualified scalar-root method when that reformulation is numerically appropriate"
+    },
+    {
+      "id": "roots.scalar_root",
+      "phase": "P1",
+      "classification": "translated",
+      "status": "implemented",
+      "methods": [
+        "bisection",
+        "brent",
+        "newton",
+        "secant"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "spectral.convolution",
+      "phase": "P5",
+      "classification": "translated",
+      "status": "implemented",
+      "methods": [
+        "direct",
+        "fft"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "spectral.digital_filter",
+      "phase": "P5",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
+        "platforms": [],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      },
+      "reason": "no public bounded digital-filter operation is implemented",
+      "alternative": "apply the supported convolution operation to an explicitly supplied finite impulse response"
+    },
+    {
+      "id": "spectral.fourier_transform",
+      "phase": "P5",
+      "classification": "translated",
+      "status": "implemented",
+      "methods": [
+        "bluestein_radix2",
+        "radix2_cooley_tukey"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "spectral.general_eigen",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "complex_shifted_qr"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "spectral.inverse_fourier_transform",
+      "phase": "P5",
+      "classification": "translated",
+      "status": "implemented",
+      "methods": [
+        "bluestein_radix2",
+        "radix2_cooley_tukey"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "spectral.singular_value_decomposition",
+      "phase": "P5",
+      "classification": "translated",
+      "status": "implemented",
+      "methods": [
+        "one_sided_jacobi"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "spectral.sparse_dominant_eigen",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "power_iteration"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "spectral.sparse_linear_solve",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "bicgstab",
+        "cg"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "spectral.sparse_singular_value_decomposition",
+      "phase": "P5",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
+        "platforms": [],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      },
+      "reason": "no validated sparse singular-value method is implemented",
+      "alternative": "use the supported dense reduced SVD within its allocation envelope or a qualified external sparse solver"
+    },
+    {
+      "id": "spectral.symmetric_eigen",
+      "phase": "P5",
+      "classification": "translated",
+      "status": "implemented",
+      "methods": [
+        "cyclic_jacobi"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "spectral.window_function",
+      "phase": "P5",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "methods": [],
+      "implementation_targets": {
+        "platforms": [],
+        "runtimes": []
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      },
+      "reason": "no public window-function operation is implemented",
+      "alternative": "supply explicit window coefficients and apply them before the supported Fourier transform"
+    },
+    {
+      "id": "statistics.cauchy_loss",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "analytic-cauchy"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "statistics.correlation",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "scaled-centered-products"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "statistics.covariance",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "corrected-two-pass"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "statistics.descriptive_statistics",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "corrected-two-pass"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "statistics.distribution_curve",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "analytic-cdf",
+        "analytic-pdf",
+        "analytic-pmf",
+        "analytic-sf"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "statistics.huber_loss",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "analytic-huber"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "statistics.huber_regression",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "huber-irls"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "statistics.linear_regression",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "ordinary-least-squares"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "statistics.mean_confidence_interval",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "student-t-pivot"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "statistics.one_sample_t_test",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "one-sample-student-t"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "statistics.quantile",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "linear-r-type-7"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "statistics.random_sample",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "binomial-sampler",
+        "chi_square-sampler",
+        "normal-sampler",
+        "poisson-sampler",
+        "student_t-sampler"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "statistics.soft_l1_loss",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "analytic-soft-l1"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "statistics.theil_sen_regression",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "theil-sen"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "statistics.two_sample_t_test",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "pooled-two-sample-t",
+        "welch-two-sample-t"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "cpython",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    },
+    {
+      "id": "sweeps.parameter_sweep",
+      "phase": "P4",
+      "classification": "extension",
+      "status": "implemented",
+      "methods": [
+        "bounded-batch-v1"
+      ],
+      "implementation_targets": {
+        "platforms": [
+          "linux-arm64",
+          "linux-x64",
+          "macos-arm64",
+          "windows-x64"
+        ],
+        "runtimes": [
+          "browser",
+          "node",
+          "sea"
+        ]
+      },
+      "receipt_qualification": {
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": []
+      }
+    }
+  ],
+  "frontend_operations": [
+    {
+      "id": "approximation:cubic_spline:v1",
+      "phase": "P2",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "approximation.cubic_spline"
+      ],
+      "source_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "target_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "approximation:interpolation:v1",
+      "phase": "P2",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "approximation.piecewise_interpolation",
+        "approximation.polynomial_interpolation"
+      ],
+      "source_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "target_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "fitting:linear_fit:v1",
+      "phase": "P3",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "optimization.linear_fit"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "target_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "integration:definite_integral:v1",
+      "phase": "P2",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "integration.definite_integral"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "target_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "round_trip_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "executable": true
+    },
+    {
+      "id": "least_squares:nonlinear_least_squares:v1",
+      "phase": "P3",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "optimization.nonlinear_least_squares"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "target_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "linear_algebra:least_squares:v1",
+      "phase": "P2",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "linear_algebra.least_squares"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "target_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "round_trip_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "executable": true
+    },
+    {
+      "id": "linear_algebra:linear_solve:v1",
+      "phase": "P2",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "linear_algebra.linear_solve"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "target_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "round_trip_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "executable": true
+    },
+    {
+      "id": "nonlinear_systems:nonlinear_system:v1",
+      "phase": "P3",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "optimization.nonlinear_system"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "target_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "ode:initial_value_problem:v1",
+      "phase": "P4",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "ode.initial_value_problem"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "target_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "optimization:minimize:v1",
+      "phase": "P3",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "optimization.minimize"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "target_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "optimization:scalar_minimum:v1",
+      "phase": "P3",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "optimization.scalar_minimum"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "target_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "round_trip_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "executable": true
+    },
+    {
+      "id": "roots:scalar_root:v1",
+      "phase": "P1",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "roots.scalar_root"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "target_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "round_trip_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "executable": true
+    },
+    {
+      "id": "spectral:convolution:v1",
+      "phase": "P5",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "spectral.convolution"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "target_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "spectral:fourier_transform:v1",
+      "phase": "P5",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "spectral.fourier_transform"
+      ],
+      "source_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "target_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "round_trip_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "executable": true
+    },
+    {
+      "id": "spectral:general_eigen:v1",
+      "phase": "P5",
+      "classification": "extension",
+      "status": "implemented",
+      "capability_operations": [
+        "spectral.general_eigen"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "target_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "spectral:singular_value_decomposition:v1",
+      "phase": "P5",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "spectral.singular_value_decomposition"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "target_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "spectral:symmetric_eigen:v1",
+      "phase": "P5",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "spectral.symmetric_eigen"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "target_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "statistics:descriptive_statistics:v1",
+      "phase": "P5",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "statistics.descriptive_statistics"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "target_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "matlab",
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "statistics:linear_regression:v1",
+      "phase": "P5",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "statistics.linear_regression"
+      ],
+      "source_languages": [
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "target_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "statistics:one_sample_t_test:v1",
+      "phase": "P5",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "statistics.one_sample_t_test"
+      ],
+      "source_languages": [
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "target_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "statistics:two_sample_t_test:v1",
+      "phase": "P5",
+      "classification": "translated",
+      "status": "implemented",
+      "capability_operations": [
+        "statistics.two_sample_t_test"
+      ],
+      "source_languages": [
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "target_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    },
+    {
+      "id": "sweeps:parameter_sweep:v1",
+      "phase": "P4",
+      "classification": "extension",
+      "status": "implemented",
+      "capability_operations": [
+        "sweeps.parameter_sweep"
+      ],
+      "source_languages": [
+        "matlab",
+        "python-scipy",
+        "sage",
+        "wolfram"
+      ],
+      "target_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "round_trip_languages": [
+        "python-scipy",
+        "sage"
+      ],
+      "executable": true
+    }
+  ]
+}

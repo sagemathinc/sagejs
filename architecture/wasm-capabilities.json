@@ -26,11 +26,90 @@
       "specialist-capability"
     ],
     "test_evidence": {
+      "finite-extension-multivariate-boundary": {
+        "differential": true,
+        "paths": [
+          "test/extension-mpoly-resource-ffi.cjs",
+          "packages/flint/test/fq_mpoly_resource_ffi.c",
+          "test/extension-multivariate.cjs",
+          "packages/flint-wasm/test/extension-multivariate.test.mjs",
+          "packages/flint-wasm/test/extension-multivariate-browser.mjs"
+        ]
+      },
+      "finite-extension-coordinate-differential": {
+        "differential": true,
+        "paths": [
+          "packages/flint/test/extension-field-lifecycle.cjs",
+          "packages/flint-wasm/test/extension-field-coordinates.test.mjs",
+          "test/extension-field-coordinates.cjs",
+          "test/extension-field-coordinates.py"
+        ]
+      },
+      "portable-cyclotomic-factor": {
+        "differential": true,
+        "paths": [
+          "test/portable-cyclotomic-factor.cjs",
+          "packages/flint-wasm/test/character-hecke.test.mjs",
+          "packages/flint-wasm/test/character-hecke-browser.mjs"
+        ]
+      },
+      "portable-character-hecke-differential": {
+        "differential": true,
+        "paths": [
+          "test/portable-character-hecke.cjs",
+          "packages/flint-wasm/test/character-hecke.test.mjs",
+          "packages/flint-wasm/test/character-hecke-browser.mjs"
+        ]
+      },
+      "gamma1-algebraic-wasm-differential": {
+        "differential": true,
+        "paths": [
+          "packages/flint-wasm/test/algebraic-gamma1-boundaries.test.mjs",
+          "packages/flint-wasm/test/gamma1-modular-forms.test.mjs"
+        ]
+      },
+      "classical-eisenstein-differential": {
+        "differential": true,
+        "paths": [
+          "test/classical-eisenstein-portable.cjs",
+          "packages/flint-wasm/test/gamma1-modular-forms.test.mjs"
+        ]
+      },
+      "certified-interval-wasm-differential": {
+        "differential": true,
+        "paths": [
+          "packages/flint-wasm/test/numeric-intervals.test.mjs",
+          "packages/flint-wasm/test/numeric-public-workflow.test.mjs",
+          "test/real-intervals.cjs"
+        ]
+      },
       "browser-public-smoke": {
         "differential": true,
         "paths": [
           "packages/flint-wasm/test/browser-smoke.mjs",
           "packages/flint-wasm/test/resource-browser-smoke.mjs"
+        ]
+      },
+      "cminpack-public-differential": {
+        "differential": true,
+        "paths": [
+          "test/numerical-p3-backends/browser-lm.mjs",
+          "test/numerical-p3-backends/lm-wasm.test.mjs",
+          "test/numerical-p3-backends/public-browser.mjs",
+          "test/numerical-p3-backends/public-integration.cjs",
+          "test/numerical-p3-backends/public-relocation.cjs",
+          "test/numerical-p3-backends/public-sea.cjs"
+        ]
+      },
+      "nlopt-public-differential": {
+        "differential": true,
+        "paths": [
+          "bench/numerical-p3-nlopt/scipy_oracle.py",
+          "test/numerical-p3-nlopt/backend.test.mjs",
+          "test/numerical-p3-nlopt/browser.mjs",
+          "test/numerical-p3-nlopt/public-browser.mjs",
+          "test/numerical-p3-nlopt/public-integration.cjs",
+          "test/numerical-p3-nlopt/public-relocation.cjs"
         ]
       },
       "finite-field-boundary-benchmark": {
@@ -80,6 +159,13 @@
           "test/baselib-boundaries.cjs"
         ]
       },
+      "brandt-rank4-differential": {
+        "differential": true,
+        "paths": [
+          "test/brandt-rank4-native.cjs",
+          "test/brandt-ideal-classes.cjs"
+        ]
+      },
       "flint-wasm-resource-differential": {
         "differential": true,
         "paths": [
@@ -87,6 +173,22 @@
           "test/ffi-wasm-fmpz-resource-core.cjs",
           "test/ffi-wasm-fmpq-resource-core.cjs",
           "test/native-reusable-exact-workspace.cjs"
+        ]
+      },
+      "integer-log-sqrt-prefix-differential": {
+        "differential": true,
+        "paths": [
+          "test/integer-log-sqrt-prefix-resource.cjs",
+          "test/fixtures/integer-log-sqrt-prefix-resource.py",
+          "packages/flint-wasm/test/integer-log-sqrt-prefix.test.mjs"
+        ]
+      },
+      "groebner-msolve-wasm-differential": {
+        "differential": true,
+        "paths": [
+          "packages/flint-wasm/test/multivariate-backend.test.mjs",
+          "packages/flint-wasm/test/groebner-browser-smoke.mjs",
+          "test/groebner.py"
         ]
       },
       "partition-count-wasm-differential": {
@@ -238,6 +340,15 @@
         "paths": [
           "packages/flint/test/test.cjs",
           "test/baselib-boundaries.cjs"
+        ]
+      },
+      "wasm-public-fallback-differential": {
+        "differential": true,
+        "paths": [
+          "packages/flint-wasm/test/factor.test.mjs",
+          "packages/flint-wasm/test/public-fallback-inventory.test.mjs",
+          "packages/flint-wasm/test/public-fallbacks.test.mjs",
+          "test/browser-wasm-parity-corpus.json"
         ]
       },
       "numpy-ts-browser-differential": {
@@ -464,6 +575,16 @@
         "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",
         "family": "multivariate-polynomials",
         "source": "packages/flint/src/multivariate_wasm_core.c"
+      },
+      {
+        "id": "wasm-library:cminpack:least-squares-explicit",
+        "family": "numerical",
+        "source": "packages/flint-wasm/numerical/src/cminpack-adapter.c"
+      },
+      {
+        "id": "wasm-library:nlopt:derivative-free-explicit",
+        "family": "numerical",
+        "source": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c"
       }
     ],
     "production_manifests": [
@@ -476,6 +597,10 @@
     "analytic-gamma-xi-batches": [
       "analytic:complex-gamma",
       "analytic:riemann-xi"
+    ],
+    "brandt-degeneracy-and-elliptic-scalar-fallback": [
+      "napi:@sagemath/sagejs-flint:ecScalarMulPrime",
+      "napi:@sagemath/sagejs-flint:p1ListDegeneracyMatrix"
     ],
     "capability-report-api": [
       "specialist:capability-report-api"
@@ -525,6 +650,11 @@
     "exact-integer-factorization": [
       "specialist:integer-factorization-wasm"
     ],
+    "exact-public-builtins": [
+      "napi:@sagemath/sagejs-flint:binomial",
+      "napi:@sagemath/sagejs-flint:factorial",
+      "napi:@sagemath/sagejs-flint:primePi"
+    ],
     "exact-matrices-and-finite-field-polynomials": [
       "ffi:flint:fmpz_matrix_det",
       "ffi:flint:fmpz_matrix_hnf",
@@ -560,6 +690,10 @@
     ],
     "partition-count-and-ranking": [
       "ffi:flint:arith_number_of_partitions"
+    ],
+    "portable-extension-and-complex-matrices": [
+      "napi:@sagemath/sagejs-flint:acbMatrix",
+      "napi:@sagemath/sagejs-flint:fqMatrix"
     ],
     "multivariate-resultant-packed": [
       "wasm-library:flint:fmpz-mpoly-resultant-packed-v1"
@@ -618,11 +752,332 @@
       "ffi:flint:fmpz_matrix_right_kernel"
     ],
     "symbolic-numerical-kernels": [
-      "specialist:symbolic-numerical-integral-wasm",
-      "specialist:symbolic-find-root-wasm"
+      "specialist:symbolic-numerical-integral-wasm"
     ]
   },
   "capabilities": [
+    {
+      "id": "ffi-resource:flint:fq_mpoly",
+      "kind": "declared-ffi-resource",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly_bytes",
+      "kind": "declared-ffi-resource",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi-resource:flint:fq_mpoly_context",
+      "kind": "declared-ffi-resource",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_binary",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_cache_bytes",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_context",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_copy",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_equal",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_factor_bytes",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_from_terms",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_gcd",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_neg",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_resultant",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
+    {
+      "id": "ffi:flint:fq_mpoly_term_bytes",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "wasm_declared": true,
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint-extension-multivariate",
+      "public_consumers": [
+        "sagejs.polynomial_algorithms.extension_mpoly_backend"
+      ],
+      "tests": [
+        "finite-extension-multivariate-boundary"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The linked specialist passes public Linux x64, Node-Wasm, and Chromium arithmetic and bounded-spill regressions. Standalone representation witnesses pass on all four native platforms; complete milestone qualification remains separate.",
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "Finite-extension multivariate arithmetic executes in an authenticated, separately owned Wasm specialist. Availability describes this source candidate, not a published release."
+    },
     {
       "id": "specialist:capability-report-api",
       "kind": "specialist-capability",
@@ -981,9 +1436,9 @@
       "kind": "declared-ffi-resource",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "generated-wasm",
-      "fallback": "declared-ffi-capability-fallback",
-      "wasm_module": "flint",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
@@ -2552,6 +3007,26 @@
         "status": "included"
       },
       "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi:flint:fmpq_matrix_full_row_rank_pivots",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
     {
       "id": "ffi:flint:fmpq_matrix_from_fmpz",
@@ -4577,6 +5052,30 @@
       "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
+      "id": "ffi:flint:fmpz_mat_gram_lll_transform",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential",
+        "brandt-rank4-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The exact Gram-mode FLINT LLL declaration shares the generated Wasm adapter contract and has exact unimodular-transform replay in the Brandt lattice consumer.",
+      "wasm_declared": true,
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "The exact Gram-mode FLINT LLL declaration is available in generated WebAssembly with a same-source authenticated consumer fallback."
+    },
+    {
       "id": "ffi:flint:integer_log_sqrt_balls_packed",
       "kind": "declared-ffi-function",
       "family": "flint",
@@ -4599,6 +5098,30 @@
         "status": "included"
       },
       "public_explanation": "Rigorous packed logarithm and square-root endpoints are available in the receipt-authenticated production WebAssembly artifact, with the same-source exact fallback retained."
+    },
+    {
+      "id": "ffi:flint:integer_log_sqrt_balls_prefix_resource",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "integer-log-sqrt-prefix-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The borrowed-prefix adapter reuses the shared Arb endpoint implementation. Native differential and checkpoint sanitizer tests cover the prefix contract. The production Wasm regression checks exact endpoints, poisoned inactive tails, active-input rejection without mutation and resource cleanup; the public Chromium FFI witness executes the same logical-prefix operation.",
+      "wasm_declared": true,
+      "wasm_closure": {
+        "status": "included",
+        "explanation": "The generated prefix adapter is included in the reviewed ABI and production capability ledgers and executes in the production Wasm and public Chromium witnesses."
+      },
+      "public_explanation": "The resident logical-prefix logarithm and square-root operation is included in the receipt-authenticated production WebAssembly artifact, with exact endpoint and inactive-tail tests plus a public Chromium FFI witness."
     },
     {
       "id": "ffi:flint:integer_log_sqrt_balls_resource",
@@ -5100,6 +5623,26 @@
       "public_explanation": "The reviewed caller-owned HNF declaration is included in the generated WebAssembly resource closure for the source-transparent stable selector."
     },
     {
+      "id": "ffi:flint:fmpz_matrix_hnf_prefix_into",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The bounded caller-owned HNF prefix operation is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
       "id": "ffi:flint:fmpz_matrix_hnf_transform",
       "kind": "declared-ffi-function",
       "family": "flint",
@@ -5120,6 +5663,26 @@
       "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
     {
+      "id": "ffi:flint:fmpz_matrix_hnf_transform_prefix",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The bounded caller-owned HNF transform is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
       "id": "ffi:flint:fmpz_matrix_lll_transform",
       "kind": "declared-ffi-function",
       "family": "flint",
@@ -5136,6 +5699,26 @@
       "status": "fallback",
       "reviewed": true,
       "review_note": "The caller-owned LLL transform is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_lll_transform_prefix",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The bounded caller-owned LLL transform is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
       "wasm_declared": false,
       "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
@@ -5598,20 +6181,23 @@
       "kind": "declared-ffi-function",
       "family": "flint",
       "source": "ffi/flint.ffi.json",
-      "disposition": "portable-fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
       "tests": [
-        "declared-ffi-differential"
+        "flint-wasm-resource-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation.",
-      "wasm_declared": false,
-      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "review_note": "The existing FLINT invariant-only Smith adapter is included in the production Wasm closure. Shared integral-morphism tests compare its factors with transformed Smith and Sage, including rectangular, zero and large-integer inputs.",
+      "wasm_declared": true,
+      "public_explanation": "Exact Smith invariant factors use the shared generated FLINT adapter, avoiding unnecessary unimodular transformation matrices. A correct source fallback remains for unavailable backends.",
+      "wasm_closure": {
+        "status": "included"
+      }
     },
     {
       "id": "ffi:flint:fmpz_matrix_snf_into",
@@ -5630,6 +6216,26 @@
       "status": "fallback",
       "reviewed": true,
       "review_note": "The caller-owned SNF operation is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
+      "wasm_declared": false,
+      "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_snf_prefix_into",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The bounded caller-owned SNF operation is not yet Wasm-enabled; public callers retain the ordinary exact implementation.",
       "wasm_declared": false,
       "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
@@ -10942,16 +11548,18 @@
         "production-kernel-differential",
         "complex-cubic-native-class-group-differential"
       ],
-      "status": "available",
+      "status": "fallback",
       "reviewed": true,
-      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
-      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "review_note": "The production pack compiles 0 of 1 functions. The remaining 1 functions use their tested same-source dynamic fallback (fmpz-integer-buffer-requires-64-bit-flint-limbs).",
+      "public_explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 functions.",
       "compiled_coverage": {
-        "compiled_functions": 1,
-        "fallback_functions": 0,
+        "compiled_functions": 0,
+        "fallback_functions": 1,
         "total_functions": 1,
         "production_pack": true,
-        "fallback_reasons": []
+        "fallback_reasons": [
+          "fmpz-integer-buffer-requires-64-bit-flint-limbs"
+        ]
       }
     },
     {
@@ -11210,12 +11818,40 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "The receipt-authenticated production pack compiles all 17 registered functions in this source-transparent kernel family.",
-      "public_explanation": "All 17 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "review_note": "The receipt-authenticated production pack compiles all 18 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 18 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 17,
+        "compiled_functions": 18,
         "fallback_functions": 0,
-        "total_functions": 17,
+        "total_functions": 18,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:brandt-rank4-production",
+      "kind": "production-kernel",
+      "family": "brandt-rank4",
+      "source": "src/lib/sagejs/kernels/quaternion/brandt_rank4.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "eichler-ideal-classes",
+        "brandt-series"
+      ],
+      "tests": [
+        "brandt-rank4-differential",
+        "production-kernel-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 2 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 2,
+        "fallback_functions": 0,
+        "total_functions": 2,
         "production_pack": true,
         "fallback_reasons": []
       }
@@ -12281,6 +12917,32 @@
       }
     },
     {
+      "id": "kernel:word-prime-sparse-krylov-production",
+      "kind": "production-kernel",
+      "family": "word-prime-sparse-krylov",
+      "source": "src/lib/sagejs/kernels/matrix/sparse_prime_field.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "source-kernel-pack",
+      "public_consumers": [
+        "sagejs.modular_forms.sparse_krylov"
+      ],
+      "tests": [
+        "production-kernel-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 3 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 3,
+        "fallback_functions": 0,
+        "total_functions": 3,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:acbMatrix",
       "kind": "napi-export",
       "family": "dense-matrix-storage",
@@ -12292,7 +12954,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -12311,7 +12974,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -12330,7 +12994,8 @@
         "src/baselib/builtins.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -12592,6 +13257,204 @@
       }
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalBinary",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalFromParts",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPart",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPowInt",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalPrecision",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalRelation",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalRound",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalToString",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexIntervalUnary",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:complexMul",
       "kind": "napi-export",
       "family": "numerical",
@@ -12801,12 +13664,31 @@
         "src/baselib/dirichlet.py"
       ],
       "tests": [
+        "gamma1-algebraic-wasm-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "Browser algebraic expressions retain exact power-basis coordinates; matrix-produced values use bounded FLINT qqbar_express_in_field through the algebraic reactor. Failure to obtain a certificate is reported, never replaced by approximate coordinates.",
+      "public_explanation": "Browser algebraic expressions retain exact power-basis coordinates; matrix-produced values use bounded FLINT qqbar_express_in_field through the algebraic reactor. Failure to obtain a certificate is reported, never replaced by approximate coordinates."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicElementsFromIntegralCoordinates",
+      "kind": "napi-export",
+      "family": "algebraic",
+      "source": "packages/flint/src/algebraic.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/lib/sagejs/modular_forms/qexp.py"
+      ],
+      "tests": [
         "native-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The Node adapter batches exact cyclotomic materialization; browser execution uses the coefficientwise exact constructor in the same public formula.",
+      "public_explanation": "Exact cyclotomic Eisenstein coefficients remain available through the ordinary Sage.js fallback when the batched Node representation primitive is unavailable."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixPolyEvaluate",
@@ -12820,15 +13702,34 @@
         "src/baselib/polynomial.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "portable-cyclotomic-factor"
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The optional fused adapter falls back to exact Python matrix Horner evaluation; the browser corpus verifies Cayley-Hamilton and character decomposition.",
+      "public_explanation": "Exact matrix polynomial evaluation uses portable Horner evaluation when the native accelerator is absent."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRightKernel",
+      "kind": "napi-export",
+      "family": "dense-matrix-algorithms",
+      "source": "packages/flint/src/matrix.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/matrix.py"
+      ],
+      "tests": [
+        "portable-cyclotomic-factor"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The optional cyclotomic-coordinate accelerator falls back to exact qqbar elimination, including degree-greater-than-two fields; browser tests check kernel dimension and annihilation.",
+      "public_explanation": "Exact cyclotomic right kernels use portable qqbar elimination when the native accelerator is absent."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRowBasis",
       "kind": "napi-export",
       "family": "dense-matrix-algorithms",
       "source": "packages/flint/src/matrix.c",
@@ -12858,12 +13759,12 @@
         "src/baselib/polynomial.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "portable-cyclotomic-factor"
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "Ordinary Python Trager reduction via exact cyclotomic Galois norms, rational factorization, and gcd recovery; tested against native factorization and higher-dimensional character decomposition in Chromium.",
+      "public_explanation": "Exact portable cyclotomic polynomial factorization is available; rational norm degree grows with the coefficient-field degree."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicRootCoefficients",
@@ -12877,12 +13778,12 @@
         "algebraic"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "gamma1-algebraic-wasm-differential"
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The browser reduces integral monomials modulo the cyclotomic polynomial using the existing exact coordinate representation, for explicit orders 1 through 4096.",
+      "public_explanation": "The browser reduces integral monomials modulo the cyclotomic polynomial using the existing exact coordinate representation, for explicit orders 1 through 4096."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletBernoulli",
@@ -13295,7 +14196,8 @@
         "src/baselib/elliptic_curves.py"
       ],
       "tests": [
-        "elliptic-lseries-differential"
+        "elliptic-lseries-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13355,7 +14257,8 @@
         "src/baselib/builtins.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13437,6 +14340,21 @@
       "reviewed": true,
       "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqCoordinates",
+      "kind": "napi-export",
+      "family": "extension-fields",
+      "source": "packages/flint/src/extension_field.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": ["src/baselib/finite_fields.py"],
+      "tests": ["finite-extension-coordinate-differential"],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "Native legacy handles export canonical coordinates with fq_default_get_fmpz_poly and reduction modulo p. Wasm public elements use the declared fq_element_coordinate_bytes generated-resource operation instead; the N-API callback is never loaded in a browser.",
+      "public_explanation": "Exact power-basis polynomial conversion uses generated FLINT resources in Wasm."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqContextWithModulus",
@@ -13583,7 +14501,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13602,7 +14521,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13640,7 +14560,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13659,7 +14580,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13678,7 +14600,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13716,7 +14639,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13735,7 +14659,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13754,7 +14679,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13773,7 +14699,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13792,7 +14719,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13811,7 +14739,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13849,7 +14778,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13868,7 +14798,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -14709,7 +15640,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -14842,7 +15774,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -15420,6 +16353,29 @@
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:mpolyGroebnerMsolve",
+      "kind": "napi-export",
+      "family": "multivariate",
+      "source": "packages/flint/src/multivariate.c",
+      "disposition": "shared-core",
+      "fallback": "exact-flint-or-dynamic-polynomial-algorithm",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/baselib/polynomial.py"
+      ],
+      "tests": [
+        "groebner-msolve-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "Prime-field F4 and explicitly selected modular rational Gröbner bases use the pinned scalar msolve core through bounded native and Wasm adapters.",
+      "shared_core": "packages/flint/src/msolve_core.c",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      },
+      "public_explanation": "Bounded prime-field and rational msolve Gröbner computations are available through the receipt-authenticated FLINT WebAssembly artifact."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:mpolyIrreducibleFactors",
       "kind": "napi-export",
       "family": "multivariate",
@@ -15456,6 +16412,25 @@
       "reviewed": true,
       "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyLeadingMonomial",
+      "kind": "napi-export",
+      "family": "multivariate",
+      "source": "packages/flint/src/multivariate.c",
+      "disposition": "portable-fallback",
+      "fallback": "canonical-sparse-polynomial-leading-term",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/polynomial.py"
+      ],
+      "tests": [
+        "groebner-msolve-wasm-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The native adapter asks FLINT for the leading monomial; browser execution obtains the same monomial from the canonical ordered sparse representation.",
+      "public_explanation": "Leading monomials use exact canonical polynomial order in both native and browser runtimes."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyMul",
@@ -15570,6 +16545,25 @@
       "reviewed": true,
       "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyTerms",
+      "kind": "napi-export",
+      "family": "multivariate",
+      "source": "packages/flint/src/multivariate.c",
+      "disposition": "portable-fallback",
+      "fallback": "canonical-sparse-polynomial-terms",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/polynomial.py"
+      ],
+      "tests": [
+        "native-public-fallback-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The native adapter extracts canonical FLINT terms; browser execution reads the equivalent canonical ordered sparse representation without a Wasm boundary crossing.",
+      "public_explanation": "Exact ordered sparse multivariate terms are available in native and browser runtimes."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyToString",
@@ -16004,12 +16998,50 @@
         "src/baselib/modular.py"
       ],
       "tests": [
-        "modular-symbols-differential"
+        "portable-character-hecke-differential"
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The ordinary Python character-weighted Heilbronn action reduces into the existing exact Manin quotient when the optional native adapter is absent.",
+      "public_explanation": "Exact character Hecke action and Gamma1 cusp/newform descent have a portable Python implementation using the browser's exact coefficient-field and matrix operations."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeImages",
+      "kind": "napi-export",
+      "family": "modular-symbols",
+      "source": "packages/flint/src/p1.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/modular.py"
+      ],
+      "tests": [
+        "portable-character-hecke-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The optional native bulk adapter falls back to the exact prime-power recurrence, whose prime matrices are now implemented in portable ordinary Python.",
+      "public_explanation": "Exact character Hecke action and Gamma1 cusp/newform descent have a portable Python implementation using the browser's exact coefficient-field and matrix operations."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeSelectedRows",
+      "kind": "napi-export",
+      "family": "modular-symbols",
+      "source": "packages/flint/src/p1.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/modular.py"
+      ],
+      "tests": [
+        "portable-character-hecke-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The optional native bulk adapter falls back to the exact prime-power recurrence, whose prime matrices are now implemented in portable ordinary Python.",
+      "public_explanation": "Exact character Hecke action and Gamma1 cusp/newform descent have a portable Python implementation using the browser's exact coefficient-field and matrix operations."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",
@@ -16074,19 +17106,21 @@
       "kind": "napi-export",
       "family": "modular-symbols",
       "source": "packages/flint/src/p1.c",
-      "disposition": "portable-fallback",
+      "disposition": "shared-core",
       "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
       "tests": [
-        "modular-symbols-differential"
+        "modular-symbols-differential",
+        "wasm-public-fallback-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The host-neutral weight-2 degeneracy core executes in the receipt-authenticated FLINT WebAssembly artifact; only the typed host adapter differs.",
+      "public_explanation": "Weight-2 degeneracy matrices run in the receipt-authenticated FLINT WebAssembly artifact with an ordinary exact fallback.",
+      "shared_core": "packages/flint/src/modsym_core.c"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListEntry",
@@ -16347,6 +17381,25 @@
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/polynomial.py",
+        "src/baselib/series.py"
+      ],
+      "tests": [
+        "native-public-fallback-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
+      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyCoefficient",
+      "kind": "napi-export",
+      "family": "polynomials",
+      "source": "packages/flint/src/addon.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
         "src/baselib/series.py"
       ],
       "tests": [
@@ -16709,19 +17762,21 @@
       "kind": "napi-export",
       "family": "exact-arithmetic",
       "source": "packages/flint/src/addon.c",
-      "disposition": "portable-fallback",
+      "disposition": "shared-core",
       "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/builtins.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The host-neutral exact prime-counting core executes in the receipt-authenticated FLINT WebAssembly artifact; only the typed host adapter differs.",
+      "public_explanation": "Exact prime counting through inputs below 2^63 runs in the receipt-authenticated FLINT WebAssembly artifact.",
+      "shared_core": "packages/flint/src/prime_count.c"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:primorial",
@@ -17378,12 +18433,12 @@
         "src/baselib/modular.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "classical-eisenstein-differential"
       ],
       "status": "fallback",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "Native execution retains the FLINT path. The browser uses the same exact divisor-sum formula as an ordinary Python O(prec log prec) sieve in the lazy qexp module, preserving linear, constant, and integral normalization. High-weight Bernoulli computation remains an optimization opportunity, not a claimed native-speed path.",
+      "public_explanation": "Native execution retains the FLINT path. The browser uses the same exact divisor-sum formula as an ordinary Python O(prec log prec) sieve in the lazy qexp module, preserving linear, constant, and integral normalization. High-weight Bernoulli computation remains an optimization opportunity, not a claimed native-speed path."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqMatrix",
@@ -17471,6 +18526,44 @@
       "wasm_module": "host-runtime",
       "public_consumers": [
         "src/baselib/polynomial.py"
+      ],
+      "tests": [
+        "native-public-fallback-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
+      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyPacked",
+      "kind": "napi-export",
+      "family": "polynomials",
+      "source": "packages/flint/src/addon.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/series.py"
+      ],
+      "tests": [
+        "native-public-fallback-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
+      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyToZZExact",
+      "kind": "napi-export",
+      "family": "polynomials",
+      "source": "packages/flint/src/addon.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/modular.py"
       ],
       "tests": [
         "native-public-fallback-differential"
@@ -17608,6 +18701,270 @@
       "reviewed": true,
       "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
       "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalBinary",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalFromBounds",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalFromRational",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPart",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPowInt",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalPrecision",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalRelation",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalRound",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalToString",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realIntervalUnary",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/intervals.c",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-error-rather-than-uncertified-floating-point",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/lib/sagejs/intervals.py"
+      ],
+      "tests": [
+        "certified-interval-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public certified interval operation is implemented by a bounded generation-tagged Arb or Acb resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public certified interval operation runs through a bounded receipt-backed Arb or Acb WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realNext",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/floating.c",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/baselib/real_complex.py"
+      ],
+      "tests": [
+        "numeric-symbolic-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR WebAssembly resource.",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      }
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realParts",
+      "kind": "napi-export",
+      "family": "numerical",
+      "source": "packages/flint/src/floating.c",
+      "disposition": "generated-wasm",
+      "fallback": "ordinary-bounded-numeric-operation",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/baselib/real_complex.py"
+      ],
+      "tests": [
+        "numeric-symbolic-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The public numerical operation is implemented by a bounded generation-tagged MPFR resource in the receipt-authenticated FLINT WebAssembly reactor.",
+      "public_explanation": "The public numerical operation runs through a bounded receipt-backed MPFR WebAssembly resource.",
       "availability_evidence": {
         "path": "packages/flint-wasm/release/production-capabilities.json"
       }
@@ -18316,6 +19673,25 @@
       "wasm_module": "host-runtime",
       "public_consumers": [
         "polynomials"
+      ],
+      "tests": [
+        "native-public-fallback-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
+      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zzPolyUnitriangularBasis",
+      "kind": "napi-export",
+      "family": "polynomials",
+      "source": "packages/flint/src/addon.c",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/series.py"
       ],
       "tests": [
         "native-public-fallback-differential"
@@ -19851,6 +21227,25 @@
     },
     {
       "id": "runtime:list_contains",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation.",
+      "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:list_decorate",
       "kind": "runtime-intrinsic",
       "family": "runtime",
       "source": "tools/python/contract.ts",
@@ -21555,6 +22950,65 @@
       },
       "public_explanation": "Bounded genus-2 local-polynomial batches use portable smalljac and ffpoly inside the authenticated FLINT Wasm artifact; genus 3 remains unavailable.",
       "shared_core": "packages/flint-wasm/src/curves/smalljac-coefficients.c"
+    },
+    {
+      "id": "wasm-library:cminpack:least-squares-explicit",
+      "family": "numerical",
+      "source": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-python-damped-gauss-newton-for-automatic-selection; explicit-requests-fail-closed",
+      "wasm_module": "cminpack",
+      "public_consumers": [
+        "sagejs.numerics.optimization.least_squares",
+        "sagejs.numerics.optimization.curve_fit"
+      ],
+      "tests": [
+        "cminpack-public-differential"
+      ],
+      "review_note": "The separately lazy 72,149-byte reactor executes exact cminpack lmdif/lmder identities through one packed synchronous callback and recomputes public validation independently.",
+      "kind": "specialist-capability",
+      "reviewed": true,
+      "availability_evidence": {
+        "path": "packages/flint-wasm/numerical/release/qualification-v1.json"
+      },
+      "public_explanation": "Explicit nonlinear least-squares requests can use authenticated cminpack lmdif or lmder in Node, browsers, and SEA; automatic planning remains on the ordinary-Python method.",
+      "shared_core": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
+      "resource_limits": {
+        "maximum_parameters": 256,
+        "maximum_residuals": 16384,
+        "maximum_workspace_bytes": 67108864,
+        "maximum_memory_bytes": 134217728
+      }
+    },
+    {
+      "id": "wasm-library:nlopt:derivative-free-explicit",
+      "family": "numerical",
+      "source": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-python-methods-for-automatic-selection; explicit-requests-fail-closed",
+      "wasm_module": "nlopt",
+      "public_consumers": [
+        "sagejs.numerics.optimization.minimize"
+      ],
+      "tests": [
+        "nlopt-public-differential"
+      ],
+      "review_note": "The separately lazy 72,592-byte reactor executes exact NLopt Nelder-Mead through one packed synchronous callback; source/license closure excludes Luksan and the sanitizer-rejected COBYLA source. Public success is explicitly heuristic after independent finiteness, feasibility, stationarity-consistency, and bounded contradiction probes; no local or global optimum is certified.",
+      "kind": "specialist-capability",
+      "reviewed": true,
+      "availability_evidence": {
+        "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/release/qualification-v1.json"
+      },
+      "public_explanation": "Explicit derivative-free minimization can use authenticated NLopt Nelder-Mead in Node, browsers, and SEA. Automatic planning remains on ordinary Python, nonlinear constraints are unsupported pending a sanitizer-clean backend, and an unavailable or contradictory NLopt result fails closed.",
+      "shared_core": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+      "resource_limits": {
+        "maximum_parameters": 128,
+        "maximum_constraints": 0,
+        "maximum_workspace_bytes": 67108864,
+        "maximum_memory_bytes": 134217728
+      }
     },
     {
       "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",

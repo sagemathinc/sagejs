@@ -1,0 +1,68 @@
+{
+  "schema": "sagejs.mestre-hilbert-sqrt5-psage/v1",
+  "source": {
+    "repository": "https://github.com/williamstein/psage",
+    "commit": "5adc61d280c949343b4ef661654611f01d8dcb19",
+    "sqrt5_py_sha256": "1198715d0acfa1f62044c81c004c90ea35d41187cf2d59d646e2c36d988445bb",
+    "sqrt5_fast_pyx_sha256": "c2792b15ad0aa32b45c25678513217d1fa775096cd302cd15276cae63c9a8281",
+    "license": "GPL-3.0-or-later"
+  },
+  "conventions": {
+    "field": "Q(omega), omega^2-omega-1=0",
+    "level": "(p, omega-root)",
+    "projective_points": "(0:1), then (1:a) for a=0,...,p-1",
+    "operator_orientation": "row i is the image of basis vector i",
+    "weight": [2, 2]
+  },
+  "levels": [
+    {
+      "rational_prime": 31,
+      "omega_residue": 19,
+      "generator": [-2, 5],
+      "dimension": 2,
+      "orbit_sizes": [12, 20],
+      "operators": {
+        "2": [[0, 5], [3, 2]],
+        "3": [[5, 5], [3, 7]],
+        "5": [[1, 5], [3, 3]],
+        "11a": [[7, 5], [3, 9]],
+        "11b": [[2, 10], [6, 6]]
+      }
+    },
+    {
+      "rational_prime": 389,
+      "omega_residue": 238,
+      "generator": [-5, 18],
+      "dimension": 7,
+      "orbit_sizes": [60, 60, 60, 60, 60, 30, 60],
+      "t2": [
+        [0, 3, 0, 1, 1, 0, 0],
+        [3, 0, 0, 0, 1, 0, 1],
+        [0, 0, 2, 1, 0, 1, 1],
+        [1, 0, 1, 0, 1, 0, 2],
+        [1, 1, 0, 1, 0, 1, 1],
+        [0, 0, 2, 0, 2, 1, 0],
+        [0, 1, 1, 2, 1, 0, 0]
+      ],
+      "characteristic_factorizations": {
+        "2": "(x - 5)*(x^2 + 5*x + 5)*(x^4 - 3*x^3 - 3*x^2 + 10*x - 4)",
+        "3": "(x - 10)*(x^2 + 3*x - 9)*(x^4 - 5*x^3 + 3*x^2 + 6*x - 4)",
+        "5": "(x - 6)*(x^2 + 4*x - 1)*(x^2 - x - 4)^2",
+        "11a": "(x - 12)*(x + 3)^2*(x^4 - 17*x^2 + 68)",
+        "11b": "(x - 12)*(x^2 + 5*x + 5)*(x^4 - x^3 - 23*x^2 + 18*x + 52)"
+      }
+    },
+    {
+      "rational_prime": 809,
+      "omega_residue": 467,
+      "generator": [-7, 26],
+      "dimension": 14
+    },
+    {
+      "rational_prime": 2011,
+      "omega_residue": 736,
+      "generator": [-11, 41],
+      "dimension": 35
+    }
+  ]
+}

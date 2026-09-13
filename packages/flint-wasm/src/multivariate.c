@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "multivariate_wasm_core.h"
+#include "groebner_wasm_core.h"
 
 #if defined(__wasm__)
 #define EXPORT __attribute__((visibility("default")))
@@ -60,6 +61,36 @@ EXPORT int sagejs_wasm_mpoly_resultant(size_t input_length)
     if (!sagejs_mpoly_reserve())
         return SAGEJS_MPOLY_PACKED_RESULT_LIMIT;
     return sagejs_fmpz_mpoly_resultant_packed(
+        sagejs_mpoly_input_bytes,
+        input_length,
+        sagejs_mpoly_output_bytes,
+        SAGEJS_MPOLY_MAX_OUTPUT_BYTES,
+        &sagejs_mpoly_output_size);
+}
+
+EXPORT int sagejs_wasm_mpoly_groebner(size_t input_length)
+{
+    sagejs_mpoly_output_size = 0;
+    if (input_length > SAGEJS_MPOLY_MAX_INPUT_BYTES)
+        return SAGEJS_GROEBNER_PACKED_UNSUPPORTED;
+    if (!sagejs_mpoly_reserve())
+        return SAGEJS_GROEBNER_PACKED_RESULT_LIMIT;
+    return sagejs_msolve_f4_packed(
+        sagejs_mpoly_input_bytes,
+        input_length,
+        sagejs_mpoly_output_bytes,
+        SAGEJS_MPOLY_MAX_OUTPUT_BYTES,
+        &sagejs_mpoly_output_size);
+}
+
+EXPORT int sagejs_wasm_mpoly_groebner_qq(size_t input_length)
+{
+    sagejs_mpoly_output_size = 0;
+    if (input_length > SAGEJS_MPOLY_MAX_INPUT_BYTES)
+        return SAGEJS_GROEBNER_PACKED_UNSUPPORTED;
+    if (!sagejs_mpoly_reserve())
+        return SAGEJS_GROEBNER_PACKED_RESULT_LIMIT;
+    return sagejs_msolve_qq_packed(
         sagejs_mpoly_input_bytes,
         input_length,
         sagejs_mpoly_output_bytes,

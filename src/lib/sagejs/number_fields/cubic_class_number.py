@@ -10,17 +10,17 @@ from typing import Any, Callable, Iterable
 import sagejs as sage
 import sagejs.runtime as runtime
 from sagejs.number_fields.class_groups import (
-    _CUBIC_MINKOWSKI_REPLAY_MAX_BOUND,
-    _CUBIC_MINKOWSKI_REPLAY_MAX_MEMORY_BYTES,
-    _CUBIC_MINKOWSKI_REPLAY_MAX_PRIME_IDEALS,
-    _CUBIC_MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES,
-    DEFAULT_CUBIC_MINKOWSKI_MAX_BOUND,
-    DEFAULT_CUBIC_MINKOWSKI_MAX_MEMORY_BYTES,
-    DEFAULT_CUBIC_MINKOWSKI_MAX_PRIME_IDEALS,
-    DEFAULT_CUBIC_MINKOWSKI_MAX_RATIONAL_PRIMES,
+    _MINKOWSKI_REPLAY_MAX_BOUND,
+    _MINKOWSKI_REPLAY_MAX_MEMORY_BYTES,
+    _MINKOWSKI_REPLAY_MAX_PRIME_IDEALS,
+    _MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES,
+    DEFAULT_MINKOWSKI_MAX_BOUND,
+    DEFAULT_MINKOWSKI_MAX_MEMORY_BYTES,
+    DEFAULT_MINKOWSKI_MAX_PRIME_IDEALS,
+    DEFAULT_MINKOWSKI_MAX_RATIONAL_PRIMES,
     _canonical_json,
     _content_hash,
-    _cubic_minkowski_payload_within_caps,
+    _minkowski_payload_within_caps,
     _positive_integer,
 )
 
@@ -2817,12 +2817,20 @@ def _select_cubic_relation_candidates(
     tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None,
     int,
 ]:
-    """Select original rows supporting one resident exact HNF basis.
+    """Select a bounded, height-aware support for one resident exact HNF basis.
 
     The provisional packed rows are not proof evidence. The matrix boundary
     authenticates the HNF transform, exact replay, source support, and bounded
     deletion schedule before any selected proposal proceeds to the independent
-    ideal-containment admission boundary.
+    ideal-containment admission boundary.  We obtain the two deterministic
+    edge-minimal supports by presenting candidates in each order.  Later
+    relations often give useful unit dependencies and shorter class-group
+    coordinates.  We therefore choose the earlier support when its sum of
+    principal-norm bit lengths is at least fifteen percent smaller, retaining
+    the later, unit-friendly support across incidental height differences.
+    This exact height test avoids pathological proof generators without
+    assuming either source edge is universally cheaper.  Both supports must
+    authenticate the same canonical lattice basis.
     """
     if selection_receipt is not None:
         source_rows = initial_rows + tuple(entry[0] for entry in candidates)
@@ -2852,30 +2860,73 @@ def _select_cubic_relation_candidates(
     if not candidates:
         return (), 0
     try:
-        selection = matrix_module.stable_exact_relation_hnf_selection(
+        early_selection = matrix_module.stable_exact_relation_hnf_selection(
             initial_rows,
             (entry[0] for entry in candidates),
             width,
         )
+        late_selection = matrix_module.stable_exact_relation_hnf_selection(
+            initial_rows,
+            (entry[0] for entry in reversed(candidates)),
+            width,
+        )
+        selections = (early_selection, late_selection)
         if selection_receipt is not None:
             selection_receipt.update(
                 {
-                    "completed": int(selection.deletion_complete),
-                    "rank": int(selection.rank),
-                    "deletion_trials": int(selection.deletion_trials),
-                    "hnf_calls": int(selection.hnf_calls),
-                    "native_boundary_calls": int(selection.boundary_calls),
-                    "library_boundary_calls": int(selection.library_boundary_calls),
-                    "flint_basis_deletions": int(
-                        selection.backend.endswith("flint-basis-deletions")
+                    "completed": int(
+                        all(selection.deletion_complete for selection in selections)
+                    ),
+                    "rank": int(early_selection.rank),
+                    "deletion_trials": sum(
+                        int(selection.deletion_trials) for selection in selections
+                    ),
+                    "hnf_calls": sum(
+                        int(selection.hnf_calls) for selection in selections
+                    ),
+                    "native_boundary_calls": sum(
+                        int(selection.boundary_calls) for selection in selections
+                    ),
+                    "library_boundary_calls": sum(
+                        int(selection.library_boundary_calls)
+                        for selection in selections
+                    ),
+                    "flint_basis_deletions": sum(
+                        int(selection.backend.endswith("flint-basis-deletions"))
+                        for selection in selections
                     ),
                 }
             )
-        if selection.rank < 1 or not selection.deletion_complete:
+        if (
+            early_selection.rank < 1
+            or late_selection.rank != early_selection.rank
+            or late_selection.basis != early_selection.basis
+            or not early_selection.deletion_complete
+            or not late_selection.deletion_complete
+        ):
             return None, 0
+        early_indices = tuple(early_selection.selected_candidate_indices)
+        candidate_count = len(candidates)
+        late_indices = tuple(
+            sorted(
+                candidate_count - 1 - index
+                for index in late_selection.selected_candidate_indices
+            )
+        )
+        early_norm_bits = sum(
+            abs(int(candidates[index][2])).bit_length() for index in early_indices
+        )
+        late_norm_bits = sum(
+            abs(int(candidates[index][2])).bit_length() for index in late_indices
+        )
+        selected_indices = (
+            early_indices
+            if 20 * early_norm_bits <= 17 * late_norm_bits
+            else late_indices
+        )
         return (
-            tuple(candidates[index] for index in selection.selected_candidate_indices),
-            selection.rank,
+            tuple(candidates[index] for index in selected_indices),
+            early_selection.rank,
         )
     except (ArithmeticError, TypeError, ValueError):
         return None, 0
@@ -3431,7 +3482,7 @@ class CubicMinkowskiClassNumberCertificate:
         # memory caps at their individual construction boundaries.
         if (
             _live_token is not _LIVE_CUBIC_CERTIFICATE_TOKEN
-            and not _cubic_minkowski_payload_within_caps(tree)
+            and not _minkowski_payload_within_caps(tree)
         ):
             raise ValueError("cubic class-number evidence exceeds replay limits")
         self.field = field
@@ -3600,13 +3651,13 @@ class CubicMinkowskiClassNumberCertificate:
             stored_plan = self.plan
             plan_caps = stored_plan["caps"]
             for name, limit in (
-                ("max_bound", _CUBIC_MINKOWSKI_REPLAY_MAX_BOUND),
+                ("max_bound", _MINKOWSKI_REPLAY_MAX_BOUND),
                 (
                     "max_rational_primes",
-                    _CUBIC_MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES,
+                    _MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES,
                 ),
-                ("max_prime_ideals", _CUBIC_MINKOWSKI_REPLAY_MAX_PRIME_IDEALS),
-                ("max_memory_bytes", _CUBIC_MINKOWSKI_REPLAY_MAX_MEMORY_BYTES),
+                ("max_prime_ideals", _MINKOWSKI_REPLAY_MAX_PRIME_IDEALS),
+                ("max_memory_bytes", _MINKOWSKI_REPLAY_MAX_MEMORY_BYTES),
             ):
                 if _positive_integer(plan_caps[name], name.replace("_", " ")) > limit:
                     return False
@@ -3723,7 +3774,7 @@ class CubicMinkowskiClassNumberCertificate:
     ) -> CubicMinkowskiClassNumberCertificate:
         if not isinstance(payload, dict):
             raise TypeError("a cubic class-number certificate must be a dictionary")
-        if not _cubic_minkowski_payload_within_caps(payload):
+        if not _minkowski_payload_within_caps(payload):
             raise ValueError("cubic class-number evidence exceeds replay limits")
         expected = {
             "schema",
@@ -4976,10 +5027,10 @@ def _complete_zero_width_cubic_class_number(
 def bounded_cubic_minkowski_class_number(
     field: Any,
     *,
-    max_bound: int = DEFAULT_CUBIC_MINKOWSKI_MAX_BOUND,
-    max_rational_primes: int = DEFAULT_CUBIC_MINKOWSKI_MAX_RATIONAL_PRIMES,
-    max_prime_ideals: int = DEFAULT_CUBIC_MINKOWSKI_MAX_PRIME_IDEALS,
-    max_memory_bytes: int = DEFAULT_CUBIC_MINKOWSKI_MAX_MEMORY_BYTES,
+    max_bound: int = DEFAULT_MINKOWSKI_MAX_BOUND,
+    max_rational_primes: int = DEFAULT_MINKOWSKI_MAX_RATIONAL_PRIMES,
+    max_prime_ideals: int = DEFAULT_MINKOWSKI_MAX_PRIME_IDEALS,
+    max_memory_bytes: int = DEFAULT_MINKOWSKI_MAX_MEMORY_BYTES,
     max_relation_attempts: int = DEFAULT_CUBIC_CLASS_NUMBER_MAX_RELATION_ATTEMPTS,
     max_relations: int = DEFAULT_CUBIC_CLASS_NUMBER_MAX_RELATIONS,
     max_candidates_per_ideal: int = DEFAULT_CUBIC_CLASS_NUMBER_MAX_CANDIDATES_PER_IDEAL,

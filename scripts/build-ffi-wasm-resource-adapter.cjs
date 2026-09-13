@@ -92,6 +92,7 @@ function toolchainAvailable(library = "flint", options = {}) {
   return inspectToolchain({
     root: options.root ?? root,
     environment: options.environment ?? process.env,
+    ...(options.platform === undefined ? {} : { platform: options.platform }),
   }).ready;
 }
 

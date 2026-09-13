@@ -284,7 +284,10 @@ function inspectCache(options: PruneCacheOptions): CachePruneReport {
 
   for (const name of readdirSync(root)) {
     const path = join(root, name);
-    const metadata = lstatSync(path);
+    // Guard release and generation retirement can race this directory listing.
+    // Ignore only an entry that disappeared at this exact metadata probe.
+    const metadata = lstatIfPresent(path);
+    if (metadata === undefined) continue;
     if (metadata.isSymbolicLink()) {
       throw new Error(`cache prune refused symlinked root entry: ${path}`);
     }

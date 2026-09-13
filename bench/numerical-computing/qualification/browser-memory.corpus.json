@@ -1,0 +1,70 @@
+{
+  "schema": "sagejs.numerical-qualification-corpus/v1",
+  "id": "sagejs-numerical-browser-memory-v1",
+  "version": 1,
+  "domain": "numerical-computing-browser-memory",
+  "description": "A focused real-browser baseline/pressure pair for collector-authenticated process-tree memory evidence.",
+  "program_phases": ["P8"],
+  "source_paths": [
+    "src/lib/sagejs/numerics",
+    "packages/flint-wasm/numerical/index.mjs",
+    "packages/flint-wasm/numerical/licenses",
+    "packages/flint-wasm/numerical/scripts/build.cjs",
+    "packages/flint-wasm/numerical/src",
+    "packages/flint-wasm/numerical/sources",
+    "packages/flint-wasm/numerical/release"
+  ],
+  "cases": [
+    {
+      "id": "p8-browser-memory-baseline",
+      "description": "A real Sage.js browser worker executes a small baseline program while the collector samples its operating-system process tree.",
+      "program_phase": "P8",
+      "layer": "conditioned-stress",
+      "workload_tier": "substantial-local",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "browser-memory-baseline", "bytes": 0},
+      "required_capabilities": ["numerics.lifecycle.browser_process_tree_memory"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "baseline-worker-executed", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/worker_executed", "expected": {"literal": true}},
+        {"id": "baseline-allocation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/allocated_bytes", "expected": {"literal": 0}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p8-browser-memory-pressure",
+      "description": "A real Sage.js browser worker touches 64 MiB while the collector samples its operating-system process tree.",
+      "program_phase": "P8",
+      "layer": "conditioned-stress",
+      "workload_tier": "substantial-local",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": ["pressure-allocation"]},
+      "input": {"operation": "browser-memory-pressure", "bytes": 67108864},
+      "required_capabilities": ["numerics.lifecycle.browser_process_tree_memory"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "pressure-worker-executed", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/worker_executed", "expected": {"literal": true}},
+        {"id": "pressure-checksum", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/checksum_nonzero", "expected": {"literal": true}},
+        {"id": "pressure-allocation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/allocated_bytes", "expected": {"literal": 67108864}},
+        {"id": "pressure-pages-touched", "evidence": "validation", "kind": "deep-equal", "actual": "/values/touched_pages", "expected": {"literal": 16384}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p8-browser-worker-replacement",
+      "description": "Interrupting a nonterminating browser-worker evaluation replaces the worker and preserves subsequent execution while process-tree sampling remains live.",
+      "program_phase": "P8",
+      "layer": "failure-semantics",
+      "workload_tier": "substantial-local",
+      "campaign": {"kind": "fault-injection", "seed": null, "trials": 1, "evidence_check_ids": ["worker-recovered"]},
+      "input": {"operation": "browser-worker-replacement"},
+      "required_capabilities": ["numerics.lifecycle.browser_process_tree_memory"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "worker-interrupted", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/interrupted", "expected": {"literal": true}},
+        {"id": "worker-interruption-type", "evidence": "validation", "kind": "deep-equal", "actual": "/values/interruption_name", "expected": {"literal": "SageSessionInterruptedError"}},
+        {"id": "worker-recovered", "evidence": "validation", "kind": "deep-equal", "actual": "/values/recovered_value", "expected": {"literal": 2}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    }
+  ]
+}

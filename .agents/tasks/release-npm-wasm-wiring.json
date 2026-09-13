@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "release-npm-wasm-wiring",
+  "title": "Release Npm Wasm Wiring",
+  "lane": "distribution",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make tagged release CI build one authenticated browser distribution, pack one public root npm tarball, and qualify and publish byte-identical root package bytes through a one-way artifact DAG",
+  "base_commit": "ddb3543d144ac60ecd0ec15a5ae40ca98f0f657f",
+  "claims": [
+    ".github/workflows/ci.yml",
+    "test/numerical-product-handoff.cjs",
+    "test/numerics/evidence/release-workflow.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Fail-closed release workflow structural tests and root archive content digests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:portable",
+    "pnpm test:native",
+    "pnpm test:sea"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Tagged release CI now builds and authenticates packages/flint-wasm/dist once, packs exactly one public root npm archive around it, restores those exact bytes for all platform and browser qualification, and authenticates both artifacts again at the gate and publisher. Structural tests enforce producer ordering, single-pack identity, consumer restoration, and an acyclic job graph.",
+    "risks": [
+      "The full source-mirror Wasm producer is intentionally exercised only by release/scheduled CI; local validation covered workflow structure and release invariants rather than rebuilding the complete private-mirror artifact."
+    ],
+    "next_steps": [
+      "Cherry-pick the lane commit onto the current numerical integration tip and confirm the first tagged or explicit full release run completes the new public-npm-root producer within its 120-minute budget."
+    ]
+  }
+}

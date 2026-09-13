@@ -1,0 +1,2298 @@
+{
+  "capability": {
+    "currentHostAvailable": true,
+    "guardBeforeCandidateEffects": true,
+    "hostPolicy": "Node process.versions.node plus trusted runtime.require_module",
+    "package": "@sagemath/sagejs-flint",
+    "requiredExport": "ffiNmodPolyIntegral"
+  },
+  "epochId": "sha256:a8f9f317c7945ddcd931ae8eabe6482fd5feef2c95199cdcd7bd1b00a5390bb3",
+  "failureContract": {
+    "KeyboardInterrupt": "propagate without fallback or publication",
+    "guardFailure": "untouched generic restart before candidate effects",
+    "nativeFalseOrException": "discard private buffers and restart untouched generic route"
+  },
+  "roles": [
+    {
+      "guardFailures": [
+        {
+          "injection": "host-policy-denied",
+          "state": {
+            "aggregateBuffers": 0,
+            "blockBuffers": 0,
+            "fallbackRestarts": 1,
+            "foreignCalls": 0,
+            "inputViews": 0,
+            "placements": 0,
+            "publications": 0
+          }
+        },
+        {
+          "injection": "trusted-loader-failure",
+          "state": {
+            "aggregateBuffers": 0,
+            "blockBuffers": 0,
+            "fallbackRestarts": 1,
+            "foreignCalls": 0,
+            "inputViews": 0,
+            "placements": 0,
+            "publications": 0
+          }
+        },
+        {
+          "injection": "missing-ffiNmodPolyIntegral-export",
+          "state": {
+            "aggregateBuffers": 0,
+            "blockBuffers": 0,
+            "fallbackRestarts": 1,
+            "foreignCalls": 0,
+            "inputViews": 0,
+            "placements": 0,
+            "publications": 0
+          }
+        }
+      ],
+      "nativeFailures": {
+        "exception": [
+          {
+            "foreignCallsBeforeRestart": 1,
+            "placementsBeforeRestart": 0,
+            "publications": 0,
+            "targetCall": 0
+          },
+          {
+            "foreignCallsBeforeRestart": 2,
+            "placementsBeforeRestart": 1,
+            "publications": 0,
+            "targetCall": 1
+          }
+        ],
+        "false": [
+          {
+            "foreignCallsBeforeRestart": 1,
+            "placementsBeforeRestart": 0,
+            "publications": 0,
+            "targetCall": 0
+          },
+          {
+            "foreignCallsBeforeRestart": 2,
+            "placementsBeforeRestart": 1,
+            "publications": 0,
+            "targetCall": 1
+          }
+        ]
+      },
+      "nativeInterruptions": {
+        "allPropagatedKeyboardInterrupt": true,
+        "allPublicationsZero": true,
+        "designedCallCount": 2,
+        "injections": [
+          {
+            "calls": 1,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetCall": 0
+          },
+          {
+            "calls": 2,
+            "placementsBeforeInterrupt": 1,
+            "publications": 0,
+            "targetCall": 1
+          }
+        ]
+      },
+      "pollInterruptions": {
+        "allPropagatedKeyboardInterrupt": true,
+        "allPublicationsZero": true,
+        "designedPollCount": 12,
+        "eventSchedule": [
+          "guard:before",
+          "guard:after",
+          "preflight:65536",
+          "allocation:before",
+          "allocation:after",
+          "native:before:0",
+          "native:after:0",
+          "placement:after:0",
+          "native:before:65537",
+          "native:after:65537",
+          "placement:after:65537",
+          "publication:before"
+        ],
+        "injections": [
+          {
+            "event": "guard:before",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 0
+          },
+          {
+            "event": "guard:after",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 1
+          },
+          {
+            "event": "preflight:65536",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 2
+          },
+          {
+            "event": "allocation:before",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 3
+          },
+          {
+            "event": "allocation:after",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 4
+          },
+          {
+            "event": "native:before:0",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 5
+          },
+          {
+            "event": "native:after:0",
+            "foreignCallsBeforeInterrupt": 1,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 6
+          },
+          {
+            "event": "placement:after:0",
+            "foreignCallsBeforeInterrupt": 1,
+            "placementsBeforeInterrupt": 1,
+            "publications": 0,
+            "targetPoll": 7
+          },
+          {
+            "event": "native:before:65537",
+            "foreignCallsBeforeInterrupt": 1,
+            "placementsBeforeInterrupt": 1,
+            "publications": 0,
+            "targetPoll": 8
+          },
+          {
+            "event": "native:after:65537",
+            "foreignCallsBeforeInterrupt": 2,
+            "placementsBeforeInterrupt": 1,
+            "publications": 0,
+            "targetPoll": 9
+          },
+          {
+            "event": "placement:after:65537",
+            "foreignCallsBeforeInterrupt": 2,
+            "placementsBeforeInterrupt": 2,
+            "publications": 0,
+            "targetPoll": 10
+          },
+          {
+            "event": "publication:before",
+            "foreignCallsBeforeInterrupt": 2,
+            "placementsBeforeInterrupt": 2,
+            "publications": 0,
+            "targetPoll": 11
+          }
+        ]
+      },
+      "prime": 65537,
+      "projection": [
+        0,
+        65530,
+        32767,
+        9,
+        0,
+        65530,
+        52453
+      ],
+      "role": "representative",
+      "sourceLength": 70000,
+      "successState": {
+        "aggregateBuffers": 1,
+        "blockBuffers": 2,
+        "fallbackRestarts": 0,
+        "foreignCalls": 2,
+        "inputViews": 2,
+        "placements": 2,
+        "publications": 1
+      }
+    },
+    {
+      "guardFailures": [
+        {
+          "injection": "host-policy-denied",
+          "state": {
+            "aggregateBuffers": 0,
+            "blockBuffers": 0,
+            "fallbackRestarts": 1,
+            "foreignCalls": 0,
+            "inputViews": 0,
+            "placements": 0,
+            "publications": 0
+          }
+        },
+        {
+          "injection": "trusted-loader-failure",
+          "state": {
+            "aggregateBuffers": 0,
+            "blockBuffers": 0,
+            "fallbackRestarts": 1,
+            "foreignCalls": 0,
+            "inputViews": 0,
+            "placements": 0,
+            "publications": 0
+          }
+        },
+        {
+          "injection": "missing-ffiNmodPolyIntegral-export",
+          "state": {
+            "aggregateBuffers": 0,
+            "blockBuffers": 0,
+            "fallbackRestarts": 1,
+            "foreignCalls": 0,
+            "inputViews": 0,
+            "placements": 0,
+            "publications": 0
+          }
+        }
+      ],
+      "nativeFailures": {
+        "exception": [
+          {
+            "foreignCallsBeforeRestart": 1,
+            "placementsBeforeRestart": 0,
+            "publications": 0,
+            "targetCall": 0
+          },
+          {
+            "foreignCallsBeforeRestart": 2,
+            "placementsBeforeRestart": 1,
+            "publications": 0,
+            "targetCall": 1
+          },
+          {
+            "foreignCallsBeforeRestart": 3,
+            "placementsBeforeRestart": 2,
+            "publications": 0,
+            "targetCall": 2
+          },
+          {
+            "foreignCallsBeforeRestart": 4,
+            "placementsBeforeRestart": 3,
+            "publications": 0,
+            "targetCall": 3
+          },
+          {
+            "foreignCallsBeforeRestart": 5,
+            "placementsBeforeRestart": 4,
+            "publications": 0,
+            "targetCall": 4
+          },
+          {
+            "foreignCallsBeforeRestart": 6,
+            "placementsBeforeRestart": 5,
+            "publications": 0,
+            "targetCall": 5
+          },
+          {
+            "foreignCallsBeforeRestart": 7,
+            "placementsBeforeRestart": 6,
+            "publications": 0,
+            "targetCall": 6
+          },
+          {
+            "foreignCallsBeforeRestart": 8,
+            "placementsBeforeRestart": 7,
+            "publications": 0,
+            "targetCall": 7
+          },
+          {
+            "foreignCallsBeforeRestart": 9,
+            "placementsBeforeRestart": 8,
+            "publications": 0,
+            "targetCall": 8
+          },
+          {
+            "foreignCallsBeforeRestart": 10,
+            "placementsBeforeRestart": 9,
+            "publications": 0,
+            "targetCall": 9
+          },
+          {
+            "foreignCallsBeforeRestart": 11,
+            "placementsBeforeRestart": 10,
+            "publications": 0,
+            "targetCall": 10
+          },
+          {
+            "foreignCallsBeforeRestart": 12,
+            "placementsBeforeRestart": 11,
+            "publications": 0,
+            "targetCall": 11
+          },
+          {
+            "foreignCallsBeforeRestart": 13,
+            "placementsBeforeRestart": 12,
+            "publications": 0,
+            "targetCall": 12
+          },
+          {
+            "foreignCallsBeforeRestart": 14,
+            "placementsBeforeRestart": 13,
+            "publications": 0,
+            "targetCall": 13
+          },
+          {
+            "foreignCallsBeforeRestart": 15,
+            "placementsBeforeRestart": 14,
+            "publications": 0,
+            "targetCall": 14
+          },
+          {
+            "foreignCallsBeforeRestart": 16,
+            "placementsBeforeRestart": 15,
+            "publications": 0,
+            "targetCall": 15
+          },
+          {
+            "foreignCallsBeforeRestart": 17,
+            "placementsBeforeRestart": 16,
+            "publications": 0,
+            "targetCall": 16
+          },
+          {
+            "foreignCallsBeforeRestart": 18,
+            "placementsBeforeRestart": 17,
+            "publications": 0,
+            "targetCall": 17
+          },
+          {
+            "foreignCallsBeforeRestart": 19,
+            "placementsBeforeRestart": 18,
+            "publications": 0,
+            "targetCall": 18
+          },
+          {
+            "foreignCallsBeforeRestart": 20,
+            "placementsBeforeRestart": 19,
+            "publications": 0,
+            "targetCall": 19
+          },
+          {
+            "foreignCallsBeforeRestart": 21,
+            "placementsBeforeRestart": 20,
+            "publications": 0,
+            "targetCall": 20
+          },
+          {
+            "foreignCallsBeforeRestart": 22,
+            "placementsBeforeRestart": 21,
+            "publications": 0,
+            "targetCall": 21
+          },
+          {
+            "foreignCallsBeforeRestart": 23,
+            "placementsBeforeRestart": 22,
+            "publications": 0,
+            "targetCall": 22
+          },
+          {
+            "foreignCallsBeforeRestart": 24,
+            "placementsBeforeRestart": 23,
+            "publications": 0,
+            "targetCall": 23
+          },
+          {
+            "foreignCallsBeforeRestart": 25,
+            "placementsBeforeRestart": 24,
+            "publications": 0,
+            "targetCall": 24
+          },
+          {
+            "foreignCallsBeforeRestart": 26,
+            "placementsBeforeRestart": 25,
+            "publications": 0,
+            "targetCall": 25
+          },
+          {
+            "foreignCallsBeforeRestart": 27,
+            "placementsBeforeRestart": 26,
+            "publications": 0,
+            "targetCall": 26
+          },
+          {
+            "foreignCallsBeforeRestart": 28,
+            "placementsBeforeRestart": 27,
+            "publications": 0,
+            "targetCall": 27
+          },
+          {
+            "foreignCallsBeforeRestart": 29,
+            "placementsBeforeRestart": 28,
+            "publications": 0,
+            "targetCall": 28
+          },
+          {
+            "foreignCallsBeforeRestart": 30,
+            "placementsBeforeRestart": 29,
+            "publications": 0,
+            "targetCall": 29
+          },
+          {
+            "foreignCallsBeforeRestart": 31,
+            "placementsBeforeRestart": 30,
+            "publications": 0,
+            "targetCall": 30
+          },
+          {
+            "foreignCallsBeforeRestart": 32,
+            "placementsBeforeRestart": 31,
+            "publications": 0,
+            "targetCall": 31
+          },
+          {
+            "foreignCallsBeforeRestart": 33,
+            "placementsBeforeRestart": 32,
+            "publications": 0,
+            "targetCall": 32
+          },
+          {
+            "foreignCallsBeforeRestart": 34,
+            "placementsBeforeRestart": 33,
+            "publications": 0,
+            "targetCall": 33
+          },
+          {
+            "foreignCallsBeforeRestart": 35,
+            "placementsBeforeRestart": 34,
+            "publications": 0,
+            "targetCall": 34
+          },
+          {
+            "foreignCallsBeforeRestart": 36,
+            "placementsBeforeRestart": 35,
+            "publications": 0,
+            "targetCall": 35
+          },
+          {
+            "foreignCallsBeforeRestart": 37,
+            "placementsBeforeRestart": 36,
+            "publications": 0,
+            "targetCall": 36
+          },
+          {
+            "foreignCallsBeforeRestart": 38,
+            "placementsBeforeRestart": 37,
+            "publications": 0,
+            "targetCall": 37
+          },
+          {
+            "foreignCallsBeforeRestart": 39,
+            "placementsBeforeRestart": 38,
+            "publications": 0,
+            "targetCall": 38
+          }
+        ],
+        "false": [
+          {
+            "foreignCallsBeforeRestart": 1,
+            "placementsBeforeRestart": 0,
+            "publications": 0,
+            "targetCall": 0
+          },
+          {
+            "foreignCallsBeforeRestart": 2,
+            "placementsBeforeRestart": 1,
+            "publications": 0,
+            "targetCall": 1
+          },
+          {
+            "foreignCallsBeforeRestart": 3,
+            "placementsBeforeRestart": 2,
+            "publications": 0,
+            "targetCall": 2
+          },
+          {
+            "foreignCallsBeforeRestart": 4,
+            "placementsBeforeRestart": 3,
+            "publications": 0,
+            "targetCall": 3
+          },
+          {
+            "foreignCallsBeforeRestart": 5,
+            "placementsBeforeRestart": 4,
+            "publications": 0,
+            "targetCall": 4
+          },
+          {
+            "foreignCallsBeforeRestart": 6,
+            "placementsBeforeRestart": 5,
+            "publications": 0,
+            "targetCall": 5
+          },
+          {
+            "foreignCallsBeforeRestart": 7,
+            "placementsBeforeRestart": 6,
+            "publications": 0,
+            "targetCall": 6
+          },
+          {
+            "foreignCallsBeforeRestart": 8,
+            "placementsBeforeRestart": 7,
+            "publications": 0,
+            "targetCall": 7
+          },
+          {
+            "foreignCallsBeforeRestart": 9,
+            "placementsBeforeRestart": 8,
+            "publications": 0,
+            "targetCall": 8
+          },
+          {
+            "foreignCallsBeforeRestart": 10,
+            "placementsBeforeRestart": 9,
+            "publications": 0,
+            "targetCall": 9
+          },
+          {
+            "foreignCallsBeforeRestart": 11,
+            "placementsBeforeRestart": 10,
+            "publications": 0,
+            "targetCall": 10
+          },
+          {
+            "foreignCallsBeforeRestart": 12,
+            "placementsBeforeRestart": 11,
+            "publications": 0,
+            "targetCall": 11
+          },
+          {
+            "foreignCallsBeforeRestart": 13,
+            "placementsBeforeRestart": 12,
+            "publications": 0,
+            "targetCall": 12
+          },
+          {
+            "foreignCallsBeforeRestart": 14,
+            "placementsBeforeRestart": 13,
+            "publications": 0,
+            "targetCall": 13
+          },
+          {
+            "foreignCallsBeforeRestart": 15,
+            "placementsBeforeRestart": 14,
+            "publications": 0,
+            "targetCall": 14
+          },
+          {
+            "foreignCallsBeforeRestart": 16,
+            "placementsBeforeRestart": 15,
+            "publications": 0,
+            "targetCall": 15
+          },
+          {
+            "foreignCallsBeforeRestart": 17,
+            "placementsBeforeRestart": 16,
+            "publications": 0,
+            "targetCall": 16
+          },
+          {
+            "foreignCallsBeforeRestart": 18,
+            "placementsBeforeRestart": 17,
+            "publications": 0,
+            "targetCall": 17
+          },
+          {
+            "foreignCallsBeforeRestart": 19,
+            "placementsBeforeRestart": 18,
+            "publications": 0,
+            "targetCall": 18
+          },
+          {
+            "foreignCallsBeforeRestart": 20,
+            "placementsBeforeRestart": 19,
+            "publications": 0,
+            "targetCall": 19
+          },
+          {
+            "foreignCallsBeforeRestart": 21,
+            "placementsBeforeRestart": 20,
+            "publications": 0,
+            "targetCall": 20
+          },
+          {
+            "foreignCallsBeforeRestart": 22,
+            "placementsBeforeRestart": 21,
+            "publications": 0,
+            "targetCall": 21
+          },
+          {
+            "foreignCallsBeforeRestart": 23,
+            "placementsBeforeRestart": 22,
+            "publications": 0,
+            "targetCall": 22
+          },
+          {
+            "foreignCallsBeforeRestart": 24,
+            "placementsBeforeRestart": 23,
+            "publications": 0,
+            "targetCall": 23
+          },
+          {
+            "foreignCallsBeforeRestart": 25,
+            "placementsBeforeRestart": 24,
+            "publications": 0,
+            "targetCall": 24
+          },
+          {
+            "foreignCallsBeforeRestart": 26,
+            "placementsBeforeRestart": 25,
+            "publications": 0,
+            "targetCall": 25
+          },
+          {
+            "foreignCallsBeforeRestart": 27,
+            "placementsBeforeRestart": 26,
+            "publications": 0,
+            "targetCall": 26
+          },
+          {
+            "foreignCallsBeforeRestart": 28,
+            "placementsBeforeRestart": 27,
+            "publications": 0,
+            "targetCall": 27
+          },
+          {
+            "foreignCallsBeforeRestart": 29,
+            "placementsBeforeRestart": 28,
+            "publications": 0,
+            "targetCall": 28
+          },
+          {
+            "foreignCallsBeforeRestart": 30,
+            "placementsBeforeRestart": 29,
+            "publications": 0,
+            "targetCall": 29
+          },
+          {
+            "foreignCallsBeforeRestart": 31,
+            "placementsBeforeRestart": 30,
+            "publications": 0,
+            "targetCall": 30
+          },
+          {
+            "foreignCallsBeforeRestart": 32,
+            "placementsBeforeRestart": 31,
+            "publications": 0,
+            "targetCall": 31
+          },
+          {
+            "foreignCallsBeforeRestart": 33,
+            "placementsBeforeRestart": 32,
+            "publications": 0,
+            "targetCall": 32
+          },
+          {
+            "foreignCallsBeforeRestart": 34,
+            "placementsBeforeRestart": 33,
+            "publications": 0,
+            "targetCall": 33
+          },
+          {
+            "foreignCallsBeforeRestart": 35,
+            "placementsBeforeRestart": 34,
+            "publications": 0,
+            "targetCall": 34
+          },
+          {
+            "foreignCallsBeforeRestart": 36,
+            "placementsBeforeRestart": 35,
+            "publications": 0,
+            "targetCall": 35
+          },
+          {
+            "foreignCallsBeforeRestart": 37,
+            "placementsBeforeRestart": 36,
+            "publications": 0,
+            "targetCall": 36
+          },
+          {
+            "foreignCallsBeforeRestart": 38,
+            "placementsBeforeRestart": 37,
+            "publications": 0,
+            "targetCall": 37
+          },
+          {
+            "foreignCallsBeforeRestart": 39,
+            "placementsBeforeRestart": 38,
+            "publications": 0,
+            "targetCall": 38
+          }
+        ]
+      },
+      "nativeInterruptions": {
+        "allPropagatedKeyboardInterrupt": true,
+        "allPublicationsZero": true,
+        "designedCallCount": 39,
+        "injections": [
+          {
+            "calls": 1,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetCall": 0
+          },
+          {
+            "calls": 2,
+            "placementsBeforeInterrupt": 1,
+            "publications": 0,
+            "targetCall": 1
+          },
+          {
+            "calls": 3,
+            "placementsBeforeInterrupt": 2,
+            "publications": 0,
+            "targetCall": 2
+          },
+          {
+            "calls": 4,
+            "placementsBeforeInterrupt": 3,
+            "publications": 0,
+            "targetCall": 3
+          },
+          {
+            "calls": 5,
+            "placementsBeforeInterrupt": 4,
+            "publications": 0,
+            "targetCall": 4
+          },
+          {
+            "calls": 6,
+            "placementsBeforeInterrupt": 5,
+            "publications": 0,
+            "targetCall": 5
+          },
+          {
+            "calls": 7,
+            "placementsBeforeInterrupt": 6,
+            "publications": 0,
+            "targetCall": 6
+          },
+          {
+            "calls": 8,
+            "placementsBeforeInterrupt": 7,
+            "publications": 0,
+            "targetCall": 7
+          },
+          {
+            "calls": 9,
+            "placementsBeforeInterrupt": 8,
+            "publications": 0,
+            "targetCall": 8
+          },
+          {
+            "calls": 10,
+            "placementsBeforeInterrupt": 9,
+            "publications": 0,
+            "targetCall": 9
+          },
+          {
+            "calls": 11,
+            "placementsBeforeInterrupt": 10,
+            "publications": 0,
+            "targetCall": 10
+          },
+          {
+            "calls": 12,
+            "placementsBeforeInterrupt": 11,
+            "publications": 0,
+            "targetCall": 11
+          },
+          {
+            "calls": 13,
+            "placementsBeforeInterrupt": 12,
+            "publications": 0,
+            "targetCall": 12
+          },
+          {
+            "calls": 14,
+            "placementsBeforeInterrupt": 13,
+            "publications": 0,
+            "targetCall": 13
+          },
+          {
+            "calls": 15,
+            "placementsBeforeInterrupt": 14,
+            "publications": 0,
+            "targetCall": 14
+          },
+          {
+            "calls": 16,
+            "placementsBeforeInterrupt": 15,
+            "publications": 0,
+            "targetCall": 15
+          },
+          {
+            "calls": 17,
+            "placementsBeforeInterrupt": 16,
+            "publications": 0,
+            "targetCall": 16
+          },
+          {
+            "calls": 18,
+            "placementsBeforeInterrupt": 17,
+            "publications": 0,
+            "targetCall": 17
+          },
+          {
+            "calls": 19,
+            "placementsBeforeInterrupt": 18,
+            "publications": 0,
+            "targetCall": 18
+          },
+          {
+            "calls": 20,
+            "placementsBeforeInterrupt": 19,
+            "publications": 0,
+            "targetCall": 19
+          },
+          {
+            "calls": 21,
+            "placementsBeforeInterrupt": 20,
+            "publications": 0,
+            "targetCall": 20
+          },
+          {
+            "calls": 22,
+            "placementsBeforeInterrupt": 21,
+            "publications": 0,
+            "targetCall": 21
+          },
+          {
+            "calls": 23,
+            "placementsBeforeInterrupt": 22,
+            "publications": 0,
+            "targetCall": 22
+          },
+          {
+            "calls": 24,
+            "placementsBeforeInterrupt": 23,
+            "publications": 0,
+            "targetCall": 23
+          },
+          {
+            "calls": 25,
+            "placementsBeforeInterrupt": 24,
+            "publications": 0,
+            "targetCall": 24
+          },
+          {
+            "calls": 26,
+            "placementsBeforeInterrupt": 25,
+            "publications": 0,
+            "targetCall": 25
+          },
+          {
+            "calls": 27,
+            "placementsBeforeInterrupt": 26,
+            "publications": 0,
+            "targetCall": 26
+          },
+          {
+            "calls": 28,
+            "placementsBeforeInterrupt": 27,
+            "publications": 0,
+            "targetCall": 27
+          },
+          {
+            "calls": 29,
+            "placementsBeforeInterrupt": 28,
+            "publications": 0,
+            "targetCall": 28
+          },
+          {
+            "calls": 30,
+            "placementsBeforeInterrupt": 29,
+            "publications": 0,
+            "targetCall": 29
+          },
+          {
+            "calls": 31,
+            "placementsBeforeInterrupt": 30,
+            "publications": 0,
+            "targetCall": 30
+          },
+          {
+            "calls": 32,
+            "placementsBeforeInterrupt": 31,
+            "publications": 0,
+            "targetCall": 31
+          },
+          {
+            "calls": 33,
+            "placementsBeforeInterrupt": 32,
+            "publications": 0,
+            "targetCall": 32
+          },
+          {
+            "calls": 34,
+            "placementsBeforeInterrupt": 33,
+            "publications": 0,
+            "targetCall": 33
+          },
+          {
+            "calls": 35,
+            "placementsBeforeInterrupt": 34,
+            "publications": 0,
+            "targetCall": 34
+          },
+          {
+            "calls": 36,
+            "placementsBeforeInterrupt": 35,
+            "publications": 0,
+            "targetCall": 35
+          },
+          {
+            "calls": 37,
+            "placementsBeforeInterrupt": 36,
+            "publications": 0,
+            "targetCall": 36
+          },
+          {
+            "calls": 38,
+            "placementsBeforeInterrupt": 37,
+            "publications": 0,
+            "targetCall": 37
+          },
+          {
+            "calls": 39,
+            "placementsBeforeInterrupt": 38,
+            "publications": 0,
+            "targetCall": 38
+          }
+        ]
+      },
+      "pollInterruptions": {
+        "allPropagatedKeyboardInterrupt": true,
+        "allPublicationsZero": true,
+        "designedPollCount": 160,
+        "eventSchedule": [
+          "guard:before",
+          "guard:after",
+          "preflight:256",
+          "preflight:513",
+          "preflight:770",
+          "preflight:1027",
+          "preflight:1284",
+          "preflight:1541",
+          "preflight:1798",
+          "preflight:2055",
+          "preflight:2312",
+          "preflight:2569",
+          "preflight:2826",
+          "preflight:3083",
+          "preflight:3340",
+          "preflight:3597",
+          "preflight:3854",
+          "preflight:4111",
+          "preflight:4368",
+          "preflight:4625",
+          "preflight:4882",
+          "preflight:5139",
+          "preflight:5396",
+          "preflight:5653",
+          "preflight:5910",
+          "preflight:6167",
+          "preflight:6424",
+          "preflight:6681",
+          "preflight:6938",
+          "preflight:7195",
+          "preflight:7452",
+          "preflight:7709",
+          "preflight:7966",
+          "preflight:8223",
+          "preflight:8480",
+          "preflight:8737",
+          "preflight:8994",
+          "preflight:9251",
+          "preflight:9508",
+          "preflight:9765",
+          "allocation:before",
+          "allocation:after",
+          "native:before:0",
+          "native:after:0",
+          "placement:after:0",
+          "native:before:257",
+          "native:after:257",
+          "placement:after:257",
+          "native:before:514",
+          "native:after:514",
+          "placement:after:514",
+          "native:before:771",
+          "native:after:771",
+          "placement:after:771",
+          "native:before:1028",
+          "native:after:1028",
+          "placement:after:1028",
+          "native:before:1285",
+          "native:after:1285",
+          "placement:after:1285",
+          "native:before:1542",
+          "native:after:1542",
+          "placement:after:1542",
+          "native:before:1799",
+          "native:after:1799",
+          "placement:after:1799",
+          "native:before:2056",
+          "native:after:2056",
+          "placement:after:2056",
+          "native:before:2313",
+          "native:after:2313",
+          "placement:after:2313",
+          "native:before:2570",
+          "native:after:2570",
+          "placement:after:2570",
+          "native:before:2827",
+          "native:after:2827",
+          "placement:after:2827",
+          "native:before:3084",
+          "native:after:3084",
+          "placement:after:3084",
+          "native:before:3341",
+          "native:after:3341",
+          "placement:after:3341",
+          "native:before:3598",
+          "native:after:3598",
+          "placement:after:3598",
+          "native:before:3855",
+          "native:after:3855",
+          "placement:after:3855",
+          "native:before:4112",
+          "native:after:4112",
+          "placement:after:4112",
+          "native:before:4369",
+          "native:after:4369",
+          "placement:after:4369",
+          "native:before:4626",
+          "native:after:4626",
+          "placement:after:4626",
+          "native:before:4883",
+          "native:after:4883",
+          "placement:after:4883",
+          "native:before:5140",
+          "native:after:5140",
+          "placement:after:5140",
+          "native:before:5397",
+          "native:after:5397",
+          "placement:after:5397",
+          "native:before:5654",
+          "native:after:5654",
+          "placement:after:5654",
+          "native:before:5911",
+          "native:after:5911",
+          "placement:after:5911",
+          "native:before:6168",
+          "native:after:6168",
+          "placement:after:6168",
+          "native:before:6425",
+          "native:after:6425",
+          "placement:after:6425",
+          "native:before:6682",
+          "native:after:6682",
+          "placement:after:6682",
+          "native:before:6939",
+          "native:after:6939",
+          "placement:after:6939",
+          "native:before:7196",
+          "native:after:7196",
+          "placement:after:7196",
+          "native:before:7453",
+          "native:after:7453",
+          "placement:after:7453",
+          "native:before:7710",
+          "native:after:7710",
+          "placement:after:7710",
+          "native:before:7967",
+          "native:after:7967",
+          "placement:after:7967",
+          "native:before:8224",
+          "native:after:8224",
+          "placement:after:8224",
+          "native:before:8481",
+          "native:after:8481",
+          "placement:after:8481",
+          "native:before:8738",
+          "native:after:8738",
+          "placement:after:8738",
+          "native:before:8995",
+          "native:after:8995",
+          "placement:after:8995",
+          "native:before:9252",
+          "native:after:9252",
+          "placement:after:9252",
+          "native:before:9509",
+          "native:after:9509",
+          "placement:after:9509",
+          "native:before:9766",
+          "native:after:9766",
+          "placement:after:9766",
+          "publication:before"
+        ],
+        "injections": [
+          {
+            "event": "guard:before",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 0
+          },
+          {
+            "event": "guard:after",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 1
+          },
+          {
+            "event": "preflight:256",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 2
+          },
+          {
+            "event": "preflight:513",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 3
+          },
+          {
+            "event": "preflight:770",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 4
+          },
+          {
+            "event": "preflight:1027",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 5
+          },
+          {
+            "event": "preflight:1284",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 6
+          },
+          {
+            "event": "preflight:1541",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 7
+          },
+          {
+            "event": "preflight:1798",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 8
+          },
+          {
+            "event": "preflight:2055",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 9
+          },
+          {
+            "event": "preflight:2312",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 10
+          },
+          {
+            "event": "preflight:2569",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 11
+          },
+          {
+            "event": "preflight:2826",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 12
+          },
+          {
+            "event": "preflight:3083",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 13
+          },
+          {
+            "event": "preflight:3340",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 14
+          },
+          {
+            "event": "preflight:3597",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 15
+          },
+          {
+            "event": "preflight:3854",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 16
+          },
+          {
+            "event": "preflight:4111",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 17
+          },
+          {
+            "event": "preflight:4368",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 18
+          },
+          {
+            "event": "preflight:4625",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 19
+          },
+          {
+            "event": "preflight:4882",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 20
+          },
+          {
+            "event": "preflight:5139",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 21
+          },
+          {
+            "event": "preflight:5396",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 22
+          },
+          {
+            "event": "preflight:5653",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 23
+          },
+          {
+            "event": "preflight:5910",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 24
+          },
+          {
+            "event": "preflight:6167",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 25
+          },
+          {
+            "event": "preflight:6424",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 26
+          },
+          {
+            "event": "preflight:6681",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 27
+          },
+          {
+            "event": "preflight:6938",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 28
+          },
+          {
+            "event": "preflight:7195",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 29
+          },
+          {
+            "event": "preflight:7452",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 30
+          },
+          {
+            "event": "preflight:7709",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 31
+          },
+          {
+            "event": "preflight:7966",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 32
+          },
+          {
+            "event": "preflight:8223",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 33
+          },
+          {
+            "event": "preflight:8480",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 34
+          },
+          {
+            "event": "preflight:8737",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 35
+          },
+          {
+            "event": "preflight:8994",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 36
+          },
+          {
+            "event": "preflight:9251",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 37
+          },
+          {
+            "event": "preflight:9508",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 38
+          },
+          {
+            "event": "preflight:9765",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 39
+          },
+          {
+            "event": "allocation:before",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 40
+          },
+          {
+            "event": "allocation:after",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 41
+          },
+          {
+            "event": "native:before:0",
+            "foreignCallsBeforeInterrupt": 0,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 42
+          },
+          {
+            "event": "native:after:0",
+            "foreignCallsBeforeInterrupt": 1,
+            "placementsBeforeInterrupt": 0,
+            "publications": 0,
+            "targetPoll": 43
+          },
+          {
+            "event": "placement:after:0",
+            "foreignCallsBeforeInterrupt": 1,
+            "placementsBeforeInterrupt": 1,
+            "publications": 0,
+            "targetPoll": 44
+          },
+          {
+            "event": "native:before:257",
+            "foreignCallsBeforeInterrupt": 1,
+            "placementsBeforeInterrupt": 1,
+            "publications": 0,
+            "targetPoll": 45
+          },
+          {
+            "event": "native:after:257",
+            "foreignCallsBeforeInterrupt": 2,
+            "placementsBeforeInterrupt": 1,
+            "publications": 0,
+            "targetPoll": 46
+          },
+          {
+            "event": "placement:after:257",
+            "foreignCallsBeforeInterrupt": 2,
+            "placementsBeforeInterrupt": 2,
+            "publications": 0,
+            "targetPoll": 47
+          },
+          {
+            "event": "native:before:514",
+            "foreignCallsBeforeInterrupt": 2,
+            "placementsBeforeInterrupt": 2,
+            "publications": 0,
+            "targetPoll": 48
+          },
+          {
+            "event": "native:after:514",
+            "foreignCallsBeforeInterrupt": 3,
+            "placementsBeforeInterrupt": 2,
+            "publications": 0,
+            "targetPoll": 49
+          },
+          {
+            "event": "placement:after:514",
+            "foreignCallsBeforeInterrupt": 3,
+            "placementsBeforeInterrupt": 3,
+            "publications": 0,
+            "targetPoll": 50
+          },
+          {
+            "event": "native:before:771",
+            "foreignCallsBeforeInterrupt": 3,
+            "placementsBeforeInterrupt": 3,
+            "publications": 0,
+            "targetPoll": 51
+          },
+          {
+            "event": "native:after:771",
+            "foreignCallsBeforeInterrupt": 4,
+            "placementsBeforeInterrupt": 3,
+            "publications": 0,
+            "targetPoll": 52
+          },
+          {
+            "event": "placement:after:771",
+            "foreignCallsBeforeInterrupt": 4,
+            "placementsBeforeInterrupt": 4,
+            "publications": 0,
+            "targetPoll": 53
+          },
+          {
+            "event": "native:before:1028",
+            "foreignCallsBeforeInterrupt": 4,
+            "placementsBeforeInterrupt": 4,
+            "publications": 0,
+            "targetPoll": 54
+          },
+          {
+            "event": "native:after:1028",
+            "foreignCallsBeforeInterrupt": 5,
+            "placementsBeforeInterrupt": 4,
+            "publications": 0,
+            "targetPoll": 55
+          },
+          {
+            "event": "placement:after:1028",
+            "foreignCallsBeforeInterrupt": 5,
+            "placementsBeforeInterrupt": 5,
+            "publications": 0,
+            "targetPoll": 56
+          },
+          {
+            "event": "native:before:1285",
+            "foreignCallsBeforeInterrupt": 5,
+            "placementsBeforeInterrupt": 5,
+            "publications": 0,
+            "targetPoll": 57
+          },
+          {
+            "event": "native:after:1285",
+            "foreignCallsBeforeInterrupt": 6,
+            "placementsBeforeInterrupt": 5,
+            "publications": 0,
+            "targetPoll": 58
+          },
+          {
+            "event": "placement:after:1285",
+            "foreignCallsBeforeInterrupt": 6,
+            "placementsBeforeInterrupt": 6,
+            "publications": 0,
+            "targetPoll": 59
+          },
+          {
+            "event": "native:before:1542",
+            "foreignCallsBeforeInterrupt": 6,
+            "placementsBeforeInterrupt": 6,
+            "publications": 0,
+            "targetPoll": 60
+          },
+          {
+            "event": "native:after:1542",
+            "foreignCallsBeforeInterrupt": 7,
+            "placementsBeforeInterrupt": 6,
+            "publications": 0,
+            "targetPoll": 61
+          },
+          {
+            "event": "placement:after:1542",
+            "foreignCallsBeforeInterrupt": 7,
+            "placementsBeforeInterrupt": 7,
+            "publications": 0,
+            "targetPoll": 62
+          },
+          {
+            "event": "native:before:1799",
+            "foreignCallsBeforeInterrupt": 7,
+            "placementsBeforeInterrupt": 7,
+            "publications": 0,
+            "targetPoll": 63
+          },
+          {
+            "event": "native:after:1799",
+            "foreignCallsBeforeInterrupt": 8,
+            "placementsBeforeInterrupt": 7,
+            "publications": 0,
+            "targetPoll": 64
+          },
+          {
+            "event": "placement:after:1799",
+            "foreignCallsBeforeInterrupt": 8,
+            "placementsBeforeInterrupt": 8,
+            "publications": 0,
+            "targetPoll": 65
+          },
+          {
+            "event": "native:before:2056",
+            "foreignCallsBeforeInterrupt": 8,
+            "placementsBeforeInterrupt": 8,
+            "publications": 0,
+            "targetPoll": 66
+          },
+          {
+            "event": "native:after:2056",
+            "foreignCallsBeforeInterrupt": 9,
+            "placementsBeforeInterrupt": 8,
+            "publications": 0,
+            "targetPoll": 67
+          },
+          {
+            "event": "placement:after:2056",
+            "foreignCallsBeforeInterrupt": 9,
+            "placementsBeforeInterrupt": 9,
+            "publications": 0,
+            "targetPoll": 68
+          },
+          {
+            "event": "native:before:2313",
+            "foreignCallsBeforeInterrupt": 9,
+            "placementsBeforeInterrupt": 9,
+            "publications": 0,
+            "targetPoll": 69
+          },
+          {
+            "event": "native:after:2313",
+            "foreignCallsBeforeInterrupt": 10,
+            "placementsBeforeInterrupt": 9,
+            "publications": 0,
+            "targetPoll": 70
+          },
+          {
+            "event": "placement:after:2313",
+            "foreignCallsBeforeInterrupt": 10,
+            "placementsBeforeInterrupt": 10,
+            "publications": 0,
+            "targetPoll": 71
+          },
+          {
+            "event": "native:before:2570",
+            "foreignCallsBeforeInterrupt": 10,
+            "placementsBeforeInterrupt": 10,
+            "publications": 0,
+            "targetPoll": 72
+          },
+          {
+            "event": "native:after:2570",
+            "foreignCallsBeforeInterrupt": 11,
+            "placementsBeforeInterrupt": 10,
+            "publications": 0,
+            "targetPoll": 73
+          },
+          {
+            "event": "placement:after:2570",
+            "foreignCallsBeforeInterrupt": 11,
+            "placementsBeforeInterrupt": 11,
+            "publications": 0,
+            "targetPoll": 74
+          },
+          {
+            "event": "native:before:2827",
+            "foreignCallsBeforeInterrupt": 11,
+            "placementsBeforeInterrupt": 11,
+            "publications": 0,
+            "targetPoll": 75
+          },
+          {
+            "event": "native:after:2827",
+            "foreignCallsBeforeInterrupt": 12,
+            "placementsBeforeInterrupt": 11,
+            "publications": 0,
+            "targetPoll": 76
+          },
+          {
+            "event": "placement:after:2827",
+            "foreignCallsBeforeInterrupt": 12,
+            "placementsBeforeInterrupt": 12,
+            "publications": 0,
+            "targetPoll": 77
+          },
+          {
+            "event": "native:before:3084",
+            "foreignCallsBeforeInterrupt": 12,
+            "placementsBeforeInterrupt": 12,
+            "publications": 0,
+            "targetPoll": 78
+          },
+          {
+            "event": "native:after:3084",
+            "foreignCallsBeforeInterrupt": 13,
+            "placementsBeforeInterrupt": 12,
+            "publications": 0,
+            "targetPoll": 79
+          },
+          {
+            "event": "placement:after:3084",
+            "foreignCallsBeforeInterrupt": 13,
+            "placementsBeforeInterrupt": 13,
+            "publications": 0,
+            "targetPoll": 80
+          },
+          {
+            "event": "native:before:3341",
+            "foreignCallsBeforeInterrupt": 13,
+            "placementsBeforeInterrupt": 13,
+            "publications": 0,
+            "targetPoll": 81
+          },
+          {
+            "event": "native:after:3341",
+            "foreignCallsBeforeInterrupt": 14,
+            "placementsBeforeInterrupt": 13,
+            "publications": 0,
+            "targetPoll": 82
+          },
+          {
+            "event": "placement:after:3341",
+            "foreignCallsBeforeInterrupt": 14,
+            "placementsBeforeInterrupt": 14,
+            "publications": 0,
+            "targetPoll": 83
+          },
+          {
+            "event": "native:before:3598",
+            "foreignCallsBeforeInterrupt": 14,
+            "placementsBeforeInterrupt": 14,
+            "publications": 0,
+            "targetPoll": 84
+          },
+          {
+            "event": "native:after:3598",
+            "foreignCallsBeforeInterrupt": 15,
+            "placementsBeforeInterrupt": 14,
+            "publications": 0,
+            "targetPoll": 85
+          },
+          {
+            "event": "placement:after:3598",
+            "foreignCallsBeforeInterrupt": 15,
+            "placementsBeforeInterrupt": 15,
+            "publications": 0,
+            "targetPoll": 86
+          },
+          {
+            "event": "native:before:3855",
+            "foreignCallsBeforeInterrupt": 15,
+            "placementsBeforeInterrupt": 15,
+            "publications": 0,
+            "targetPoll": 87
+          },
+          {
+            "event": "native:after:3855",
+            "foreignCallsBeforeInterrupt": 16,
+            "placementsBeforeInterrupt": 15,
+            "publications": 0,
+            "targetPoll": 88
+          },
+          {
+            "event": "placement:after:3855",
+            "foreignCallsBeforeInterrupt": 16,
+            "placementsBeforeInterrupt": 16,
+            "publications": 0,
+            "targetPoll": 89
+          },
+          {
+            "event": "native:before:4112",
+            "foreignCallsBeforeInterrupt": 16,
+            "placementsBeforeInterrupt": 16,
+            "publications": 0,
+            "targetPoll": 90
+          },
+          {
+            "event": "native:after:4112",
+            "foreignCallsBeforeInterrupt": 17,
+            "placementsBeforeInterrupt": 16,
+            "publications": 0,
+            "targetPoll": 91
+          },
+          {
+            "event": "placement:after:4112",
+            "foreignCallsBeforeInterrupt": 17,
+            "placementsBeforeInterrupt": 17,
+            "publications": 0,
+            "targetPoll": 92
+          },
+          {
+            "event": "native:before:4369",
+            "foreignCallsBeforeInterrupt": 17,
+            "placementsBeforeInterrupt": 17,
+            "publications": 0,
+            "targetPoll": 93
+          },
+          {
+            "event": "native:after:4369",
+            "foreignCallsBeforeInterrupt": 18,
+            "placementsBeforeInterrupt": 17,
+            "publications": 0,
+            "targetPoll": 94
+          },
+          {
+            "event": "placement:after:4369",
+            "foreignCallsBeforeInterrupt": 18,
+            "placementsBeforeInterrupt": 18,
+            "publications": 0,
+            "targetPoll": 95
+          },
+          {
+            "event": "native:before:4626",
+            "foreignCallsBeforeInterrupt": 18,
+            "placementsBeforeInterrupt": 18,
+            "publications": 0,
+            "targetPoll": 96
+          },
+          {
+            "event": "native:after:4626",
+            "foreignCallsBeforeInterrupt": 19,
+            "placementsBeforeInterrupt": 18,
+            "publications": 0,
+            "targetPoll": 97
+          },
+          {
+            "event": "placement:after:4626",
+            "foreignCallsBeforeInterrupt": 19,
+            "placementsBeforeInterrupt": 19,
+            "publications": 0,
+            "targetPoll": 98
+          },
+          {
+            "event": "native:before:4883",
+            "foreignCallsBeforeInterrupt": 19,
+            "placementsBeforeInterrupt": 19,
+            "publications": 0,
+            "targetPoll": 99
+          },
+          {
+            "event": "native:after:4883",
+            "foreignCallsBeforeInterrupt": 20,
+            "placementsBeforeInterrupt": 19,
+            "publications": 0,
+            "targetPoll": 100
+          },
+          {
+            "event": "placement:after:4883",
+            "foreignCallsBeforeInterrupt": 20,
+            "placementsBeforeInterrupt": 20,
+            "publications": 0,
+            "targetPoll": 101
+          },
+          {
+            "event": "native:before:5140",
+            "foreignCallsBeforeInterrupt": 20,
+            "placementsBeforeInterrupt": 20,
+            "publications": 0,
+            "targetPoll": 102
+          },
+          {
+            "event": "native:after:5140",
+            "foreignCallsBeforeInterrupt": 21,
+            "placementsBeforeInterrupt": 20,
+            "publications": 0,
+            "targetPoll": 103
+          },
+          {
+            "event": "placement:after:5140",
+            "foreignCallsBeforeInterrupt": 21,
+            "placementsBeforeInterrupt": 21,
+            "publications": 0,
+            "targetPoll": 104
+          },
+          {
+            "event": "native:before:5397",
+            "foreignCallsBeforeInterrupt": 21,
+            "placementsBeforeInterrupt": 21,
+            "publications": 0,
+            "targetPoll": 105
+          },
+          {
+            "event": "native:after:5397",
+            "foreignCallsBeforeInterrupt": 22,
+            "placementsBeforeInterrupt": 21,
+            "publications": 0,
+            "targetPoll": 106
+          },
+          {
+            "event": "placement:after:5397",
+            "foreignCallsBeforeInterrupt": 22,
+            "placementsBeforeInterrupt": 22,
+            "publications": 0,
+            "targetPoll": 107
+          },
+          {
+            "event": "native:before:5654",
+            "foreignCallsBeforeInterrupt": 22,
+            "placementsBeforeInterrupt": 22,
+            "publications": 0,
+            "targetPoll": 108
+          },
+          {
+            "event": "native:after:5654",
+            "foreignCallsBeforeInterrupt": 23,
+            "placementsBeforeInterrupt": 22,
+            "publications": 0,
+            "targetPoll": 109
+          },
+          {
+            "event": "placement:after:5654",
+            "foreignCallsBeforeInterrupt": 23,
+            "placementsBeforeInterrupt": 23,
+            "publications": 0,
+            "targetPoll": 110
+          },
+          {
+            "event": "native:before:5911",
+            "foreignCallsBeforeInterrupt": 23,
+            "placementsBeforeInterrupt": 23,
+            "publications": 0,
+            "targetPoll": 111
+          },
+          {
+            "event": "native:after:5911",
+            "foreignCallsBeforeInterrupt": 24,
+            "placementsBeforeInterrupt": 23,
+            "publications": 0,
+            "targetPoll": 112
+          },
+          {
+            "event": "placement:after:5911",
+            "foreignCallsBeforeInterrupt": 24,
+            "placementsBeforeInterrupt": 24,
+            "publications": 0,
+            "targetPoll": 113
+          },
+          {
+            "event": "native:before:6168",
+            "foreignCallsBeforeInterrupt": 24,
+            "placementsBeforeInterrupt": 24,
+            "publications": 0,
+            "targetPoll": 114
+          },
+          {
+            "event": "native:after:6168",
+            "foreignCallsBeforeInterrupt": 25,
+            "placementsBeforeInterrupt": 24,
+            "publications": 0,
+            "targetPoll": 115
+          },
+          {
+            "event": "placement:after:6168",
+            "foreignCallsBeforeInterrupt": 25,
+            "placementsBeforeInterrupt": 25,
+            "publications": 0,
+            "targetPoll": 116
+          },
+          {
+            "event": "native:before:6425",
+            "foreignCallsBeforeInterrupt": 25,
+            "placementsBeforeInterrupt": 25,
+            "publications": 0,
+            "targetPoll": 117
+          },
+          {
+            "event": "native:after:6425",
+            "foreignCallsBeforeInterrupt": 26,
+            "placementsBeforeInterrupt": 25,
+            "publications": 0,
+            "targetPoll": 118
+          },
+          {
+            "event": "placement:after:6425",
+            "foreignCallsBeforeInterrupt": 26,
+            "placementsBeforeInterrupt": 26,
+            "publications": 0,
+            "targetPoll": 119
+          },
+          {
+            "event": "native:before:6682",
+            "foreignCallsBeforeInterrupt": 26,
+            "placementsBeforeInterrupt": 26,
+            "publications": 0,
+            "targetPoll": 120
+          },
+          {
+            "event": "native:after:6682",
+            "foreignCallsBeforeInterrupt": 27,
+            "placementsBeforeInterrupt": 26,
+            "publications": 0,
+            "targetPoll": 121
+          },
+          {
+            "event": "placement:after:6682",
+            "foreignCallsBeforeInterrupt": 27,
+            "placementsBeforeInterrupt": 27,
+            "publications": 0,
+            "targetPoll": 122
+          },
+          {
+            "event": "native:before:6939",
+            "foreignCallsBeforeInterrupt": 27,
+            "placementsBeforeInterrupt": 27,
+            "publications": 0,
+            "targetPoll": 123
+          },
+          {
+            "event": "native:after:6939",
+            "foreignCallsBeforeInterrupt": 28,
+            "placementsBeforeInterrupt": 27,
+            "publications": 0,
+            "targetPoll": 124
+          },
+          {
+            "event": "placement:after:6939",
+            "foreignCallsBeforeInterrupt": 28,
+            "placementsBeforeInterrupt": 28,
+            "publications": 0,
+            "targetPoll": 125
+          },
+          {
+            "event": "native:before:7196",
+            "foreignCallsBeforeInterrupt": 28,
+            "placementsBeforeInterrupt": 28,
+            "publications": 0,
+            "targetPoll": 126
+          },
+          {
+            "event": "native:after:7196",
+            "foreignCallsBeforeInterrupt": 29,
+            "placementsBeforeInterrupt": 28,
+            "publications": 0,
+            "targetPoll": 127
+          },
+          {
+            "event": "placement:after:7196",
+            "foreignCallsBeforeInterrupt": 29,
+            "placementsBeforeInterrupt": 29,
+            "publications": 0,
+            "targetPoll": 128
+          },
+          {
+            "event": "native:before:7453",
+            "foreignCallsBeforeInterrupt": 29,
+            "placementsBeforeInterrupt": 29,
+            "publications": 0,
+            "targetPoll": 129
+          },
+          {
+            "event": "native:after:7453",
+            "foreignCallsBeforeInterrupt": 30,
+            "placementsBeforeInterrupt": 29,
+            "publications": 0,
+            "targetPoll": 130
+          },
+          {
+            "event": "placement:after:7453",
+            "foreignCallsBeforeInterrupt": 30,
+            "placementsBeforeInterrupt": 30,
+            "publications": 0,
+            "targetPoll": 131
+          },
+          {
+            "event": "native:before:7710",
+            "foreignCallsBeforeInterrupt": 30,
+            "placementsBeforeInterrupt": 30,
+            "publications": 0,
+            "targetPoll": 132
+          },
+          {
+            "event": "native:after:7710",
+            "foreignCallsBeforeInterrupt": 31,
+            "placementsBeforeInterrupt": 30,
+            "publications": 0,
+            "targetPoll": 133
+          },
+          {
+            "event": "placement:after:7710",
+            "foreignCallsBeforeInterrupt": 31,
+            "placementsBeforeInterrupt": 31,
+            "publications": 0,
+            "targetPoll": 134
+          },
+          {
+            "event": "native:before:7967",
+            "foreignCallsBeforeInterrupt": 31,
+            "placementsBeforeInterrupt": 31,
+            "publications": 0,
+            "targetPoll": 135
+          },
+          {
+            "event": "native:after:7967",
+            "foreignCallsBeforeInterrupt": 32,
+            "placementsBeforeInterrupt": 31,
+            "publications": 0,
+            "targetPoll": 136
+          },
+          {
+            "event": "placement:after:7967",
+            "foreignCallsBeforeInterrupt": 32,
+            "placementsBeforeInterrupt": 32,
+            "publications": 0,
+            "targetPoll": 137
+          },
+          {
+            "event": "native:before:8224",
+            "foreignCallsBeforeInterrupt": 32,
+            "placementsBeforeInterrupt": 32,
+            "publications": 0,
+            "targetPoll": 138
+          },
+          {
+            "event": "native:after:8224",
+            "foreignCallsBeforeInterrupt": 33,
+            "placementsBeforeInterrupt": 32,
+            "publications": 0,
+            "targetPoll": 139
+          },
+          {
+            "event": "placement:after:8224",
+            "foreignCallsBeforeInterrupt": 33,
+            "placementsBeforeInterrupt": 33,
+            "publications": 0,
+            "targetPoll": 140
+          },
+          {
+            "event": "native:before:8481",
+            "foreignCallsBeforeInterrupt": 33,
+            "placementsBeforeInterrupt": 33,
+            "publications": 0,
+            "targetPoll": 141
+          },
+          {
+            "event": "native:after:8481",
+            "foreignCallsBeforeInterrupt": 34,
+            "placementsBeforeInterrupt": 33,
+            "publications": 0,
+            "targetPoll": 142
+          },
+          {
+            "event": "placement:after:8481",
+            "foreignCallsBeforeInterrupt": 34,
+            "placementsBeforeInterrupt": 34,
+            "publications": 0,
+            "targetPoll": 143
+          },
+          {
+            "event": "native:before:8738",
+            "foreignCallsBeforeInterrupt": 34,
+            "placementsBeforeInterrupt": 34,
+            "publications": 0,
+            "targetPoll": 144
+          },
+          {
+            "event": "native:after:8738",
+            "foreignCallsBeforeInterrupt": 35,
+            "placementsBeforeInterrupt": 34,
+            "publications": 0,
+            "targetPoll": 145
+          },
+          {
+            "event": "placement:after:8738",
+            "foreignCallsBeforeInterrupt": 35,
+            "placementsBeforeInterrupt": 35,
+            "publications": 0,
+            "targetPoll": 146
+          },
+          {
+            "event": "native:before:8995",
+            "foreignCallsBeforeInterrupt": 35,
+            "placementsBeforeInterrupt": 35,
+            "publications": 0,
+            "targetPoll": 147
+          },
+          {
+            "event": "native:after:8995",
+            "foreignCallsBeforeInterrupt": 36,
+            "placementsBeforeInterrupt": 35,
+            "publications": 0,
+            "targetPoll": 148
+          },
+          {
+            "event": "placement:after:8995",
+            "foreignCallsBeforeInterrupt": 36,
+            "placementsBeforeInterrupt": 36,
+            "publications": 0,
+            "targetPoll": 149
+          },
+          {
+            "event": "native:before:9252",
+            "foreignCallsBeforeInterrupt": 36,
+            "placementsBeforeInterrupt": 36,
+            "publications": 0,
+            "targetPoll": 150
+          },
+          {
+            "event": "native:after:9252",
+            "foreignCallsBeforeInterrupt": 37,
+            "placementsBeforeInterrupt": 36,
+            "publications": 0,
+            "targetPoll": 151
+          },
+          {
+            "event": "placement:after:9252",
+            "foreignCallsBeforeInterrupt": 37,
+            "placementsBeforeInterrupt": 37,
+            "publications": 0,
+            "targetPoll": 152
+          },
+          {
+            "event": "native:before:9509",
+            "foreignCallsBeforeInterrupt": 37,
+            "placementsBeforeInterrupt": 37,
+            "publications": 0,
+            "targetPoll": 153
+          },
+          {
+            "event": "native:after:9509",
+            "foreignCallsBeforeInterrupt": 38,
+            "placementsBeforeInterrupt": 37,
+            "publications": 0,
+            "targetPoll": 154
+          },
+          {
+            "event": "placement:after:9509",
+            "foreignCallsBeforeInterrupt": 38,
+            "placementsBeforeInterrupt": 38,
+            "publications": 0,
+            "targetPoll": 155
+          },
+          {
+            "event": "native:before:9766",
+            "foreignCallsBeforeInterrupt": 38,
+            "placementsBeforeInterrupt": 38,
+            "publications": 0,
+            "targetPoll": 156
+          },
+          {
+            "event": "native:after:9766",
+            "foreignCallsBeforeInterrupt": 39,
+            "placementsBeforeInterrupt": 38,
+            "publications": 0,
+            "targetPoll": 157
+          },
+          {
+            "event": "placement:after:9766",
+            "foreignCallsBeforeInterrupt": 39,
+            "placementsBeforeInterrupt": 39,
+            "publications": 0,
+            "targetPoll": 158
+          },
+          {
+            "event": "publication:before",
+            "foreignCallsBeforeInterrupt": 39,
+            "placementsBeforeInterrupt": 39,
+            "publications": 0,
+            "targetPoll": 159
+          }
+        ]
+      },
+      "prime": 257,
+      "projection": [
+        0,
+        250,
+        127,
+        9,
+        0,
+        250,
+        146
+      ],
+      "role": "held-out",
+      "sourceLength": 10000,
+      "successState": {
+        "aggregateBuffers": 1,
+        "blockBuffers": 39,
+        "fallbackRestarts": 0,
+        "foreignCalls": 39,
+        "inputViews": 39,
+        "placements": 39,
+        "publications": 1
+      }
+    }
+  ],
+  "schema": "sagejs.optimization-campaign2-integral-guard-failure-interrupt/v1"
+}

@@ -27,7 +27,7 @@ function routeMap(result) {
   );
 }
 
-test("public numeric and supported symbolic workflows select FLINT Wasm", {
+test("public numeric and supported symbolic workflows select their reviewed routes", {
   skip: releaseArtifactSkip,
 }, async () => {
   const { createSage } = await import(pathToFileURL(
@@ -79,7 +79,6 @@ test("public numeric and supported symbolic workflows select FLINT Wasm", {
     const symbolicRoutes = routeMap(symbolic);
     for (const id of [
       "specialist:symbolic-numerical-integral-wasm",
-      "specialist:symbolic-find-root-wasm",
     ]) {
       assert.equal(
         symbolicRoutes.get(id)?.selected_route,

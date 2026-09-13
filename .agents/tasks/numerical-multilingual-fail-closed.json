@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerical-multilingual-fail-closed",
+  "title": "Fail-closed numerical foreign frontends",
+  "lane": "polyglot",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reject unknown and unsupported MATLAB and Wolfram numerical functions with stable structured diagnostics while preserving qualified numerical callbacks",
+  "base_commit": "65730b29c4d48900bbf65487e3d3b66c746ae481",
+  "claims": [
+    "tools/matlab/",
+    "tools/wolfram/",
+    "tools/foreign/",
+    "src/lib/matlab.py",
+    "src/lib/wolfram.py",
+    "test/numerical-multilingual-parsers.cjs",
+    "test/numerics/multilingual/",
+    "test/numerical-root-laboratory.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Supported MATLAB fzero and integral evaluation plus unknown-function rejection",
+      "Supported Wolfram numerical callback evaluation plus unknown-function rejection"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:integration",
+    "pnpm bench:polyglot"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

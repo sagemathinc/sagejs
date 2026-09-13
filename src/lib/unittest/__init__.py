@@ -1,14 +1,16 @@
-"""A compact, compatible foundation for Python's :mod:`unittest`.
+"""A compact, compatible foundation for Python's `unittest`.
 
 The implementation intentionally covers the portable core used by ordinary
 pure-Python libraries: test cases and assertions, exception/warning context
-managers, suites, results, a text runner, and the standard decorators.  Test
-discovery and `unittest.mock` remain separate compatibility milestones.
+managers, suites, results, a text runner, standard decorators, and test-case
+discovery. The portable
+`unittest.mock` core is available as the standard child module.
 """
 
 from __future__ import annotations
 
 import traceback
+import sys
 
 
 class SkipTest(Exception):
@@ -41,6 +43,93 @@ class _OutcomeContext:
                     "%r does not match %r" % (str(exception), self.regex)
                 )
         return True
+
+
+def _is_warning_type(expected):
+    if isinstance(expected, tuple):
+        return all(_is_warning_type(item) for item in expected)
+    return isinstance(expected, type) and issubclass(expected, Warning)
+
+
+class _WarningContext:
+    """Capture the first matching warning without suppressing body exceptions."""
+
+    def __init__(self, test_case, expected, regex=None):
+        self.test_case = test_case
+        self.expected = expected
+        if regex is not None:
+            import re
+
+            regex = re.compile(regex)
+        self.regex = regex
+        self.msg = None
+        self.obj_name = None
+
+    def handle(self, name, args, kwargs):
+        if not _is_warning_type(self.expected):
+            raise TypeError(
+                "%s() arg 1 must be a warning type or tuple of warning types" % name
+            )
+        if not args:
+            self.msg = kwargs.pop("msg", None)
+            if kwargs:
+                raise TypeError(
+                    "%r is an invalid keyword argument for this function"
+                    % next(iter(kwargs))
+                )
+            return self
+        function = args[0]
+        try:
+            self.obj_name = function.__name__
+        except AttributeError:
+            self.obj_name = str(function)
+        with self:
+            function(*args[1:], **kwargs)
+
+    def __enter__(self):
+        import warnings
+
+        self.manager = warnings.catch_warnings(record=True)
+        self.warnings = self.manager.__enter__()
+        try:
+            warnings.simplefilter("always", self.expected)
+        except BaseException:
+            self.manager.__exit__(*sys.exc_info())
+            raise
+        return self
+
+    def _fail(self, standard):
+        self.test_case.fail(self.test_case._formatMessage(self.msg, standard))
+
+    def __exit__(self, exception_type, exception, tb):
+        self.manager.__exit__(exception_type, exception, tb)
+        if exception_type is not None:
+            return False
+        first = None
+        for record in self.warnings:
+            warning = record.message
+            if not isinstance(warning, self.expected):
+                continue
+            if first is None:
+                first = warning
+            if self.regex is not None and self.regex.search(str(warning)) is None:
+                continue
+            self.warning = warning
+            # Forward the warnings module's metadata. It currently reports
+            # unknown locations as <sagejs>:0; do not invent Python frames.
+            self.filename = record.filename
+            self.lineno = record.lineno
+            return
+        if first is not None:
+            self._fail('"%s" does not match "%s"' % (self.regex.pattern, first))
+        try:
+            name = self.expected.__name__
+        except AttributeError:
+            name = str(self.expected)
+        standard = "%s not triggered" % name
+        if self.obj_name:
+            standard += " by %s" % self.obj_name
+        self._fail(standard)
 
 
 class TestCase:
@@ -106,6 +195,15 @@ class TestCase:
     def assertEqual(self, first, second, msg=None):
         if first != second:
             self.fail(self._formatMessage(msg, "%r != %r" % (first, second)))
+
+    # CPython dispatches these through type-specific comparison helpers for
+    # improved diagnostics.  The equality semantics are identical, and the
+    # compact Sage.js test framework keeps the shared implementation.
+    assertListEqual = assertEqual
+    assertTupleEqual = assertEqual
+    assertSequenceEqual = assertEqual
+    assertDictEqual = assertEqual
+    assertSetEqual = assertEqual
 
     def assertNotEqual(self, first, second, msg=None):
         if first == second:
@@ -216,6 +314,14 @@ class TestCase:
 
     assertRaisesRegexp = assertRaisesRegex
 
+    def assertWarns(self, expected_warning, *args, **kwargs):
+        context = _WarningContext(self, expected_warning)
+        return context.handle("assertWarns", args, kwargs)
+
+    def assertWarnsRegex(self, expected_warning, expected_regex, *args, **kwargs):
+        context = _WarningContext(self, expected_warning, expected_regex)
+        return context.handle("assertWarnsRegex", args, kwargs)
+
     def assertRegex(self, text, regex, msg=None):
         import re
 
@@ -239,14 +345,15 @@ class TestCase:
         result.startTest(self)
         try:
             self.setUp()
-            getattr(self, self._testMethodName)()
+            method = getattr(self, self._testMethodName)
+            method()
             self.tearDown()
         except SkipTest as error:
             result.addSkip(self, str(error))
         except self.failureException:
-            result.addFailure(self, traceback.format_exc())
+            result.addFailure(self, sys.exc_info())
         except Exception:
-            result.addError(self, traceback.format_exc())
+            result.addError(self, sys.exc_info())
         else:
             result.addSuccess(self)
         result.stopTest(self)
@@ -353,6 +460,48 @@ class TextTestRunner:
         return result
 
 
+class TestLoader:
+    """Discover `TestCase` methods using the standard naming convention."""
+
+    testMethodPrefix = "test"
+    sortTestMethodsUsing = None
+    suiteClass = TestSuite
+
+    def getTestCaseNames(self, testCaseClass):
+        names = []
+        for name in dir(testCaseClass):
+            if not name.startswith(self.testMethodPrefix):
+                continue
+            if callable(getattr(testCaseClass, name)):
+                names.append(name)
+        names.sort()
+        return names
+
+    def loadTestsFromTestCase(self, testCaseClass):
+        if not issubclass(testCaseClass, TestCase):
+            raise TypeError("testCaseClass must be a subclass of TestCase")
+        names = self.getTestCaseNames(testCaseClass)
+        if not names and testCaseClass.runTest is not TestCase.runTest:
+            names = ["runTest"]
+        return self.suiteClass(testCaseClass(name) for name in names)
+
+    def loadTestsFromModule(self, module, pattern=None):
+        tests = []
+        for name in dir(module):
+            candidate = getattr(module, name)
+            try:
+                is_test_case = issubclass(candidate, TestCase)
+            except TypeError:
+                is_test_case = False
+            if is_test_case:
+                tests.append(self.loadTestsFromTestCase(candidate))
+        suite = self.suiteClass(tests)
+        hook = getattr(module, "load_tests", None)
+        if hook is not None:
+            return hook(self, suite, pattern)
+        return suite
+
+
 def skip(reason):
     def decorator(test_item):
         def skipped(*args, **kwargs):
@@ -376,7 +525,7 @@ def expectedFailure(function):
     return function
 
 
-defaultTestLoader = None
+defaultTestLoader = TestLoader()
 
 
 def main(*args, **kwargs):

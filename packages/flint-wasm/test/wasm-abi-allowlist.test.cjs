@@ -26,9 +26,11 @@ const repositoryRoot = resolve(__dirname, "..", "..", "..");
 
 test("every production Wasm module matches its exact reviewed ABI", async () => {
   const inventory = await checkAbi({ dist, allowlist: tracked });
-  assert.equal(Object.keys(inventory.modules).length, 13);
+  assert.equal(Object.keys(inventory.modules).length, 15);
   assert.ok(inventory.modules["flint-factor.wasm"]);
   assert.ok(inventory.modules["m4ri-resource.wasm"]);
+  assert.ok(inventory.modules["cminpack.wasm"]);
+  assert.ok(inventory.modules["nlopt-methods.wasm"]);
   assert.ok(inventory.modules["native-kernels/kernel-flint.wasm"]);
 });
 

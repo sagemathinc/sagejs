@@ -1,5 +1,6 @@
 import { instantiateFlintFactor } from "./index.mjs";
 import { instantiateM4ri } from "./m4ri.mjs";
+import { createExtensionMultivariate } from "./extension-multivariate.mjs";
 import {
   canSeedDynamicName,
   createPrecompiledDynamicCompiler,
@@ -363,32 +364,203 @@ function createGlobalInstaller(target) {
   };
 }
 
+function hexadecimal(bytes) {
+  return [...new Uint8Array(bytes)]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function verifyBrowserWasmArtifact(bytes, receipt, filename, label) {
+  if (
+    receipt?.schema !== "sagejs.wasm-artifact-integrity/v1" ||
+    receipt?.algorithm !== "sha256" ||
+    receipt?.filename !== filename ||
+    !Number.isSafeInteger(receipt?.bytes) ||
+    receipt.bytes <= 0 ||
+    typeof receipt?.sha256 !== "string" ||
+    !/^[a-f0-9]{64}$/.test(receipt.sha256)
+  ) {
+    throw new TypeError(`${label} has an invalid packaged artifact receipt`);
+  }
+  if (bytes.byteLength !== receipt.bytes) {
+    throw new TypeError(`${label} size differs from its packaged artifact receipt`);
+  }
+  const subtle = globalThis.crypto?.subtle;
+  if (typeof subtle?.digest !== "function") {
+    throw new TypeError(`${label} SHA-256 verification is unavailable`);
+  }
+  const actual = hexadecimal(await subtle.digest("SHA-256", bytes));
+  if (actual !== receipt.sha256) {
+    throw new TypeError(`${label} SHA-256 differs from its packaged artifact receipt`);
+  }
+}
+
 export function createBrowserRuntimeModules({
   numpy = new URL("./dist/numpy-ts.mjs", import.meta.url),
   importNumpy = (url) => import(String(url)),
+  numerical = new URL("./dist/cminpack.wasm", import.meta.url),
+  numericalNlopt = new URL("./dist/nlopt-methods.wasm", import.meta.url),
+  numericalAdapter = new URL("./dist/numerical-backend.mjs", import.meta.url),
+  nloptAdapter = new URL("./dist/nlopt-backend.mjs", import.meta.url),
+  fetchNumerical = globalThis.fetch,
+  importNumerical = (url) => import(String(url)),
+  instantiateNumerical,
+  instantiateNlopt,
+  recordCapability = () => {},
 } = {}) {
   const modules = new Map();
   let numpyPromise;
+  let numericalPromise;
+  let nloptPromise;
+  let numericalAdapterPromise;
+  let nloptAdapterPromise;
   const requiresNumpy = (imports) => imports.some(
     (name) => name === "numpy" || name.startsWith("numpy."),
   );
+  const requiresNumerical = (imports) => imports.some(
+    (name) =>
+      name === "sagejs.numerics.optimization" ||
+      name.startsWith("sagejs.numerics.optimization."),
+  );
   return Object.freeze({
     async prepare(imports) {
-      if (!requiresNumpy(imports)) return [];
-      numpyPromise ??= Promise.resolve(importNumpy(numpy)).then((module) => {
-        if (module === null || typeof module !== "object" ||
-            typeof module.array !== "function" ||
-            typeof module.NDArray !== "function") {
-          throw new TypeError("browser numpy-ts specialist is invalid");
-        }
-        modules.set("numpy-ts", module);
-        return module;
-      });
-      await numpyPromise;
-      return ["specialist:numpy-ts"];
+      const capabilities = [];
+      const pending = [];
+      if (requiresNumpy(imports)) {
+        numpyPromise ??= Promise.resolve(importNumpy(numpy)).then((module) => {
+          if (module === null || typeof module !== "object" ||
+              typeof module.array !== "function" ||
+              typeof module.NDArray !== "function") {
+            throw new TypeError("browser numpy-ts specialist is invalid");
+          }
+          modules.set("numpy-ts", module);
+          return module;
+        });
+        pending.push(numpyPromise);
+        capabilities.push("specialist:numpy-ts");
+      }
+      if (requiresNumerical(imports)) {
+        numericalPromise ??= Promise.resolve(fetchNumerical(String(numerical)))
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(
+                `unable to load cminpack numerical backend (${response.status})`,
+              );
+            }
+            return response.arrayBuffer();
+          })
+          .then(async (bytes) => {
+            let instantiate = instantiateNumerical;
+            if (instantiate === undefined) {
+              const adapter = await (numericalAdapterPromise ??= Promise.resolve(
+                importNumerical(numericalAdapter),
+              ));
+              instantiate = adapter?.createCminpackBackend;
+            }
+            if (typeof instantiate !== "function") {
+              throw new TypeError("browser cminpack numerical adapter is invalid");
+            }
+            return instantiate(bytes);
+          })
+          .then((backend) => {
+            if (backend === null || typeof backend !== "object" ||
+                typeof backend.leastSquares !== "function" ||
+                backend.capability?.backend !== "cminpack-wasm") {
+              throw new TypeError("browser cminpack numerical backend is invalid");
+            }
+            modules.set("@sagemath/sagejs-numerical", backend);
+            return backend;
+          })
+          .catch((error) => {
+            // Optimization imports must remain usable when the explicit-only
+            // cminpack resource is absent or corrupt. Install a synchronous
+            // throwing boundary so an exact cminpack request is normalized by
+            // the ordinary-Python public contract without making `auto`
+            // depend on this optional backend.
+            const unavailable = Object.freeze({
+              capability: Object.freeze({ backend: "cminpack-unavailable" }),
+              leastSquares() {
+                throw error;
+              },
+            });
+            modules.set("@sagemath/sagejs-numerical", unavailable);
+            return unavailable;
+          });
+        nloptPromise ??= Promise.resolve(fetchNumerical(String(numericalNlopt)))
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(
+                `unable to load NLopt numerical backend (${response.status})`,
+              );
+            }
+            return response.arrayBuffer();
+          })
+          .then(async (bytes) => {
+            const adapter = await (nloptAdapterPromise ??= Promise.resolve(
+              importNumerical(nloptAdapter),
+            ));
+            const instantiate = instantiateNlopt ?? adapter?.createNloptBackend;
+            if (typeof instantiate !== "function") {
+              throw new TypeError("browser NLopt numerical adapter is invalid");
+            }
+            await verifyBrowserWasmArtifact(
+              bytes,
+              adapter?.nloptArtifactReceipt,
+              "nlopt-methods.wasm",
+              "browser NLopt numerical backend",
+            );
+            return instantiate(bytes);
+          })
+          .then((backend) => {
+            if (backend === null || typeof backend !== "object" ||
+                typeof backend.solve !== "function" ||
+                backend.capability?.backend !== "nlopt-mit-wasm") {
+              throw new TypeError("browser NLopt numerical backend is invalid");
+            }
+            modules.set("@sagemath/sagejs-numerical-nlopt", backend);
+            return backend;
+          })
+          .catch((error) => {
+            // Like cminpack, NLopt is an explicit-only optimization resource.
+            // Keep ordinary optimization imports usable when it is absent or
+            // corrupt, while making an exact NLopt request fail synchronously
+            // at the public boundary.
+            const unavailable = Object.freeze({
+              capability: Object.freeze({ backend: "nlopt-unavailable" }),
+              solve() {
+                throw error;
+              },
+            });
+            modules.set("@sagemath/sagejs-numerical-nlopt", unavailable);
+            return unavailable;
+          });
+        pending.push(numericalPromise, nloptPromise);
+      }
+      await Promise.all(pending);
+      return capabilities;
     },
     get(name) {
-      return modules.get(name);
+      const module = modules.get(name);
+      if (
+        name === "@sagemath/sagejs-numerical" &&
+        module?.capability?.backend === "cminpack-wasm"
+      ) {
+        recordCapability(
+          "wasm-library:cminpack:least-squares-explicit",
+          "receipt-backed-wasm-artifact",
+          { executionTarget: "wasm-artifact" },
+        );
+      } else if (
+        name === "@sagemath/sagejs-numerical-nlopt" &&
+        module?.capability?.backend === "nlopt-mit-wasm"
+      ) {
+        recordCapability(
+          "wasm-library:nlopt:derivative-free-explicit",
+          "receipt-backed-wasm-artifact",
+          { executionTarget: "wasm-artifact" },
+        );
+      }
+      return module;
     },
   });
 }
@@ -401,6 +573,7 @@ export function createBrowserRuntimeModules({
  * non-isolated hosts can execute authenticated precompiled dynamic programs.
  */
 export async function instantiateSageEvaluator({
+  mode = "sage",
   compiler,
   baselib,
   standardLibrary,
@@ -411,6 +584,10 @@ export async function instantiateSageEvaluator({
   algebraic = undefined,
   nativeKernels = undefined,
   m4ri,
+  numerical = new URL("./dist/cminpack.wasm", import.meta.url),
+  numericalNlopt = new URL("./dist/nlopt-methods.wasm", import.meta.url),
+  numericalAdapter = new URL("./dist/numerical-backend.mjs", import.meta.url),
+  nloptAdapter = new URL("./dist/nlopt-backend.mjs", import.meta.url),
   symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
   numpy = new URL("./dist/numpy-ts.mjs", import.meta.url),
   compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
@@ -434,8 +611,13 @@ export async function instantiateSageEvaluator({
   WorkerConstructor = globalThis.Worker,
   instantiateFlint = instantiateFlintFactor,
   instantiateM4riBackend = instantiateM4ri,
+  instantiateExtensionBackend = createExtensionMultivariate,
   importSymbolic = (url) => import(String(url)),
   importNumpy = (url) => import(String(url)),
+  fetchNumerical = globalThis.fetch,
+  importNumerical = (url) => import(String(url)),
+  instantiateNumerical,
+  instantiateNlopt,
   fetchLazyModules = fetchLazyModuleBundle,
   createConwayData = createLazyAuthenticatedConwayData,
   fetchDynamicPrograms = async (url) => {
@@ -451,13 +633,31 @@ export async function instantiateSageEvaluator({
   fetchCapabilityReport = globalThis.fetch,
   fetchAutoReceiptPolicy = globalThis.fetch,
 }) {
+  if (mode !== "sage" && mode !== "python") {
+    throw new TypeError(`unknown Sage.js language mode ${JSON.stringify(mode)}`);
+  }
   const language = new CompilerWorker(compilerWorker, WorkerConstructor);
   const globals = createGlobalInstaller(globalThis);
   const capabilityDispatchTrace = createCapabilityDispatchTrace();
-  const runtimeModules = createBrowserRuntimeModules({ numpy, importNumpy });
+  const runtimeModules = createBrowserRuntimeModules({
+    numpy,
+    importNumpy,
+    numerical,
+    numericalNlopt,
+    numericalAdapter,
+    nloptAdapter,
+    fetchNumerical,
+    importNumerical,
+    instantiateNumerical,
+    instantiateNlopt,
+    recordCapability: (id, route, options) =>
+      capabilityDispatchTrace.record(id, route, options),
+  });
   const abort = (error) => {
+    initializationAborted = true;
     try {
       conwayDataResource?.close();
+      extensionResource?.close();
     } catch (cleanupError) {
       if (error && typeof error === "object") error.cleanupError = cleanupError;
     }
@@ -486,6 +686,8 @@ export async function instantiateSageEvaluator({
   let lazyModuleBundle;
   let conwayDataReady;
   let conwayDataResource;
+  let extensionResource;
+  let initializationAborted = false;
   let flintBackend;
   let m4riBackend;
   let symbolicBackendModule;
@@ -509,8 +711,10 @@ export async function instantiateSageEvaluator({
       capabilityReportResponse,
       autoReceiptPolicyResponse,
       dynamicProgramBundle,
+      extensionResource,
     ] = await Promise.all([
       language.request("initialize", {
+        mode,
         compiler: String(compiler),
         baselib: String(baselib),
         standardLibrary: String(standardLibrary),
@@ -540,7 +744,39 @@ export async function instantiateSageEvaluator({
       useSynchronousCompilerWorker
         ? Promise.resolve(undefined)
         : fetchDynamicPrograms(dynamicPrograms),
+      instantiateExtensionBackend({WorkerConstructor,
+        recordCapability: (id, route, options) => capabilityDispatchTrace.record(id, route, options),
+      }).then((resource) => {
+        if (initializationAborted) {
+          resource.close();
+          throw new Error("extension backend initialized after evaluator abort");
+        }
+        extensionResource = resource;
+        return resource;
+      }),
     ]);
+    const primaryManifest = flintBackend.__sagejs_ffi_manifest__;
+    if (primaryManifest?.declaration !== extensionResource.manifest.declaration) {
+      throw new Error("FLINT core and specialist declaration identities disagree");
+    }
+    const mergedManifest = Object.freeze({...primaryManifest,
+      resources: [...primaryManifest.resources, ...extensionResource.manifest.resources],
+      functions: [...primaryManifest.functions, ...extensionResource.manifest.functions],
+    });
+    const descriptors = Object.getOwnPropertyDescriptors(flintBackend);
+    // Copy descriptors onto a fresh object: the core manifest is frozen, and
+    // a get-only Proxy would hide methods from capability enumeration.
+    delete descriptors.__sagejs_ffi_manifest__;
+    for (const [key, descriptor] of Object.entries(
+      Object.getOwnPropertyDescriptors(extensionResource.backend),
+    )) {
+      if (Object.hasOwn(descriptors, key)) {
+        throw new Error(`FLINT specialist adapter collision: ${key}`);
+      }
+      descriptors[key] = descriptor;
+    }
+    descriptors.__sagejs_ffi_manifest__ = {value: mergedManifest};
+    flintBackend = Object.freeze(Object.defineProperties({}, descriptors));
     if (conwayDataReady !== true) {
       throw new Error("the authenticated Conway data worker did not become ready");
     }
@@ -679,6 +915,14 @@ export async function instantiateSageEvaluator({
     }
     if (name === "@sagemath/sagejs-symbolic") {
       return symbolicBackendModule;
+    }
+    if (name === "@sagemath/sagejs-numerical" ||
+        name === "@sagemath/sagejs-numerical-nlopt") {
+      const backend = runtimeModules.get(name);
+      if (backend !== undefined) return backend;
+      throw new Error(
+        "the requested numerical backend was not prepared for this browser optimization program",
+      );
     }
     const runtimeModule = runtimeModules.get(name);
     if (runtimeModule !== undefined) return runtimeModule;
@@ -828,7 +1072,7 @@ export async function instantiateSageEvaluator({
   installGlobal("__sagejs_output_write__", (text) => {
     outputHandler(String(text));
   });
-  installGlobal("__sagejs_sage_mode__", true);
+  installGlobal("__sagejs_sage_mode__", mode === "sage");
   try {
     globalEvaluate(initialization);
     if (wasmNativeResolver !== undefined) {
@@ -937,6 +1181,7 @@ export async function instantiateSageEvaluator({
     const compiled = await language.request("compile", {
       source,
       filename,
+      mode,
     });
     if (
       compiled === null ||
@@ -1007,6 +1252,7 @@ export async function instantiateSageEvaluator({
 
   function terminate() {
     conwayDataResource.close();
+    extensionResource.close();
     language.terminate();
     globals.restoreAll();
   }

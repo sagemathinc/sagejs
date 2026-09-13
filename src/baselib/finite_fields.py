@@ -137,8 +137,11 @@ def _machine_extension_kernel_modules() -> tuple[Any, Any]:
 def _touch_fq_context_resource(storage: Any) -> None:
     if _fq_context_resource_cache and _fq_context_resource_cache[-1] is storage:
         return
-    if storage in _fq_context_resource_cache:
-        _fq_context_resource_cache.remove(storage)
+    # Cache membership is resource identity, never mathematical equality.
+    for index in range(len(_fq_context_resource_cache)):
+        if _fq_context_resource_cache[index] is storage:
+            _fq_context_resource_cache.pop(index)
+            break
     _fq_context_resource_cache.append(storage)
     while len(_fq_context_resource_cache) > _FQ_CONTEXT_RESOURCE_CACHE_LIMIT:
         victim = _fq_context_resource_cache[0]
@@ -149,8 +152,12 @@ def _touch_fq_context_resource(storage: Any) -> None:
 def _touch_fq_element_resource(storage: Any) -> None:
     if _fq_element_resource_cache and _fq_element_resource_cache[-1] is storage:
         return
-    if storage in _fq_element_resource_cache:
-        _fq_element_resource_cache.remove(storage)
+    # Avoid Python equality dispatch on every coefficient access. A wrapper
+    # occurs at most once; locating its identity preserves the exact LRU order.
+    for index in range(len(_fq_element_resource_cache)):
+        if _fq_element_resource_cache[index] is storage:
+            _fq_element_resource_cache.pop(index)
+            break
     _fq_element_resource_cache.append(storage)
     while len(_fq_element_resource_cache) > _FQ_ELEMENT_RESOURCE_CACHE_LIMIT:
         victim = _fq_element_resource_cache[0]
@@ -821,10 +828,24 @@ class FiniteFieldExtensionElement(sage.Element):
                 for coefficient in self._machineCoordinates
             ]
         if not self._parent._generatedResourceBackend:
-            raise TypeError("power-basis export requires generated `fq` resources")
+            return [
+                runtime.normalize_integer(coefficient)
+                for coefficient in runtime.flint_backend().fqCoordinates(self._native)
+            ]
         region = _flint_ffi_module().fq_element_coordinate_bytes(self._native)
         return _decode_extension_element_coordinates(
             region.take_bytes(), self._parent._degree
+        )
+
+    def polynomial(self, variable: str = "x") -> Any:
+        """Return the canonical power-basis polynomial over the prime field.
+
+        Its degree is less than the extension degree. Evaluating it at the
+        defining generator recovers this element, regardless of the modulus
+        or whether that generator is multiplicatively primitive.
+        """
+        return _polynomial_from_coefficients(
+            self._parent.prime_subfield(), variable, self._power_basis_coordinates()
         )
 
     def __repr__(self) -> str:
@@ -1680,14 +1701,32 @@ class FiniteFieldExtensionParent(sage.Parent):
         return runtime.math_tuple([sage.AlgebraicExtensionFunctor, self._primeSubfield])
 
     def __iter__(self) -> Iterator[FiniteFieldExtensionElement]:
-        yield self.zero()
-        value = self.gen()
-        generator = value
-        index = runtime.bigint(1)
+        """Enumerate power-basis coordinates with the constant digit first.
+
+        A defining generator need not generate the multiplicative group.
+        Carrying in base `p` visits every element even for nonprimitive moduli.
+        The iterator retains only `degree()` digits and basis elements.
+        """
+        powers = [self.one()]
+        generator = self.gen()
+        for _index in range(1, self._degree):
+            powers.append(powers[-1]._mul_(generator))
+        digits = [runtime.bigint(0) for _index in range(self._degree)]
+        value = self.zero()
+        index = runtime.bigint(0)
         while index < self._order:
             yield value
-            value = value._mul_(generator)
             index += runtime.bigint(1)
+            if index == self._order:
+                break
+            for position in range(self._degree):
+                # Adding the basis element wraps this coordinate to zero
+                # exactly when its digit carries into the next position.
+                value = value._add_(powers[position])
+                digits[position] += runtime.bigint(1)
+                if digits[position] < self._prime:
+                    break
+                digits[position] = runtime.bigint(0)
 
 
 @runtime.callable_instance_class
@@ -1849,6 +1888,36 @@ def _database_conway_coefficients(prime: int, degree: int) -> list[int] | None:
     return [runtime.integer_bigint(value) for value in coefficients]
 
 
+def _deterministic_quadratic_modulus_coefficients(prime: int) -> list[int]:
+    """Return a canonical irreducible quadratic when Conway data is absent.
+
+    For odd `prime`, the polynomial is `x^2 - d`, where `d` is the least
+    positive quadratic nonresidue.  This is deterministic, requires no
+    factorization of `prime - 1`, and gives the named finite-field constructor
+    the same freedom Sage has to choose an arbitrary irreducible modulus.  In
+    characteristic two the unique monic irreducible quadratic is used.
+    """
+    prime = runtime.integer_bigint(prime)
+    if prime == runtime.bigint(2):
+        return [runtime.bigint(1), runtime.bigint(1), runtime.bigint(1)]
+
+    exponent = (prime - runtime.bigint(1)) // runtime.bigint(2)
+    nonresidue = runtime.bigint(2)
+    minus_one = prime - runtime.bigint(1)
+    while runtime.modular_power(nonresidue, exponent, prime) != minus_one:
+        nonresidue += runtime.bigint(1)
+    return [prime - nonresidue, runtime.bigint(0), runtime.bigint(1)]
+
+
+def _deterministic_extension_modulus_coefficients(
+    prime: int, degree: int
+) -> list[int] | None:
+    """Return a deterministic non-Conway modulus for supported degrees."""
+    if degree == 2:
+        return _deterministic_quadratic_modulus_coefficients(prime)
+    return None
+
+
 def _make_extension_field(
     order: int,
     prime: int,
@@ -1857,8 +1926,15 @@ def _make_extension_field(
     names: Any,
     modulus: Any,
 ) -> FiniteFieldExtensionParent:
+    named_extension = (
+        name is not runtime.undefined
+        and name is not None
+        or names is not runtime.undefined
+        and names is not None
+    )
     variable = _finite_field_name(name, names, degree)
     prime_field = GF(prime)
+    primitive_requested = modulus == "primitive"
     coefficients = None
     explicit_modulus = False
     if (
@@ -1893,7 +1969,9 @@ def _make_extension_field(
         ]
 
     key = runtime.string(order) + "|" + variable
-    if coefficients is not None:
+    if primitive_requested:
+        key += "|primitive"
+    elif coefficients is not None:
         key += "|mod:" + ",".join(
             [runtime.string(coefficient) for coefficient in coefficients]
         )
@@ -1918,6 +1996,8 @@ def _make_extension_field(
     )
     if coefficients is None and generated_resource_backend:
         coefficients = _database_conway_coefficients(prime, degree)
+        if coefficients is None and named_extension and not primitive_requested:
+            coefficients = _deterministic_extension_modulus_coefficients(prime, degree)
         if coefficients is None:
             generated_resource_backend = False
     try:
@@ -1941,6 +2021,10 @@ def _make_extension_field(
             "Conway polynomial"
         ).test(message):
             coefficients = _database_conway_coefficients(prime, degree)
+            if coefficients is None and named_extension and not primitive_requested:
+                coefficients = _deterministic_extension_modulus_coefficients(
+                    prime, degree
+                )
             if coefficients is None:
                 missing_conway = True
             else:
@@ -2018,8 +2102,10 @@ def GF(
     Univariate Polynomial Ring in x over Finite Field in a of size 3^2
     ```
 
-    Extension moduli are irreducible and normalized to monic. Passing
-    `modulus='primitive'` uses the backend's primitive Conway polynomial.
+    Extension moduli are irreducible and normalized to monic. Named quadratic
+    extensions use a deterministic irreducible polynomial when the Conway
+    tables have no entry. Passing `modulus='primitive'` requires a primitive
+    Conway polynomial and does not use this fallback.
     """
     order = runtime.integer_bigint(order)
     if order < runtime.bigint(2):
@@ -2105,9 +2191,18 @@ def Zmod(order: Any) -> IntegerModRing:
 Integers = Zmod
 
 
-def Mod(value: Any, modulus: Any) -> IntegerModElement:
+def Mod(value: Any, modulus: Any) -> Any:
     """Construct `value` in the ring of integers modulo `modulus`."""
+    modulus = runtime.integer_bigint(modulus)
+    if modulus == 0:
+        return sage.ZZ(value)
+    if modulus < 0:
+        modulus = -modulus
     return Zmod(modulus)(value)
+
+
+# Sage publishes both spellings.
+mod = Mod
 
 
 runtime.set_class_repr(FiniteFieldElement, "<class 'FiniteFieldElement'>")

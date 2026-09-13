@@ -3,9 +3,9 @@ import test from "node:test";
 import { assertDisplayWithinLimit, boundedTimeout, OutputCollector, utf8Size } from "../resource-policy.mjs";
 import { requestCredentials } from "../runtime-api.mjs";
 
-test("credentialed project previews are explicit and production stays credentialless", () => {
-  assert.equal(requestCredentials(""), "omit");
-  assert.equal(requestCredentials("?unrelated=1"), "omit");
+test("runtime metadata fetches retain same-origin app authentication", () => {
+  assert.equal(requestCredentials(""), "same-origin");
+  assert.equal(requestCredentials("?unrelated=1"), "same-origin");
   assert.equal(requestCredentials("?cocalc-preview=1"), "same-origin");
 });
 

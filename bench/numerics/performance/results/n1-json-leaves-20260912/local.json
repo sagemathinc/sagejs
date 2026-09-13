@@ -1,0 +1,400 @@
+{
+  "schema": 1,
+  "scope": "same-runtime renamed source-body materialization; not complete public-query qualification",
+  "baseline_commit": "c4c126d09ba4f5c2fb30001fd8b561b24105d80f",
+  "baseline_source_sha256": "c83567983bb5f48a95fa8aacfa9e2db9640f177f820747d9fa5191a846a9cde1",
+  "candidate_source_sha256": "86a9f58fe3d17669c078c1db6aa6ab56c92107dd09572334142d55ba8ddb9487",
+  "generated_probe_sha256": "a4f89d413d4e3e3ec0735d74b4817cce1f3a2b83cd67fe196a26ca686473632e",
+  "collector_sha256": "2e76ea9bcc9a4de2900418a8962a0db3681aadedddd31a23ee4f21cb92b04740",
+  "node": "v26.8.1",
+  "platform": "linux",
+  "arch": "x64",
+  "cpu": "AMD EPYC 7B13",
+  "runtime_commit": "c4c126d09ba4f5c2fb30001fd8b561b24105d80f",
+  "runtime_worktree_status": "M architecture/optimizer-opportunities.manifest.json\n M docs/optimizer-opportunities.md\n M src/lib/sagejs/numerics/_json.py\n?? agents/numerical-json-leaves-checkpoint.md\n?? bench/numerics/performance/\n?? test/numerics/performance/",
+  "load": [
+    21.5,
+    21.75,
+    18.87
+  ],
+  "python": "Python 3.14.4",
+  "warmups": 3,
+  "samples": 7,
+  "order": [
+    "A1",
+    "B1",
+    "B2",
+    "A2"
+  ],
+  "native_disabled": true,
+  "source_transformation": "Extract only materialize_json and rename its definition and recursive calls; both bodies compiled together",
+  "build_receipt": {
+    "current": false,
+    "reason": "build inputs changed"
+  },
+  "generated_probe": "/tmp/sagejs-json-leaves-SymZX9/probe.py",
+  "sagejs": [
+    {
+      "case": "plot_float_leaves_514",
+      "round": "A1",
+      "samples_ms": [
+        19.211292266845703,
+        20.09415626525879,
+        21.076202392578125,
+        16.203641891479492,
+        16.19863510131836,
+        18.075227737426758,
+        16.834259033203125
+      ],
+      "median_ms": 18.075227737426758,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "plot_float_leaves_514",
+      "round": "B1",
+      "samples_ms": [
+        7.500886917114258,
+        7.582426071166992,
+        7.580280303955078,
+        7.030487060546875,
+        6.815195083618164,
+        6.814002990722656,
+        9.166717529296875
+      ],
+      "median_ms": 7.500886917114258,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "plot_float_leaves_514",
+      "round": "B2",
+      "samples_ms": [
+        6.805181503295898,
+        6.868124008178711,
+        6.720066070556641,
+        6.908655166625977,
+        7.5893402099609375,
+        6.758928298950195,
+        6.55055046081543
+      ],
+      "median_ms": 6.805181503295898,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "plot_float_leaves_514",
+      "round": "A2",
+      "samples_ms": [
+        17.656326293945312,
+        15.899658203125,
+        17.796754837036133,
+        16.556739807128906,
+        15.212774276733398,
+        15.364408493041992,
+        15.29073715209961
+      ],
+      "median_ms": 15.899658203125,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "integer_leaves_514",
+      "round": "A1",
+      "samples_ms": [
+        9.676933288574219,
+        7.751226425170898,
+        7.579803466796875,
+        7.660150527954102,
+        7.737636566162109,
+        7.660865783691406,
+        7.917642593383789
+      ],
+      "median_ms": 7.737636566162109,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "integer_leaves_514",
+      "round": "B1",
+      "samples_ms": [
+        4.076719284057617,
+        4.060506820678711,
+        4.111289978027344,
+        4.016876220703125,
+        3.795623779296875,
+        3.815889358520508,
+        3.8061141967773438
+      ],
+      "median_ms": 4.016876220703125,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "integer_leaves_514",
+      "round": "B2",
+      "samples_ms": [
+        3.8368701934814453,
+        3.8175582885742188,
+        3.791332244873047,
+        3.787517547607422,
+        3.817319869995117,
+        3.839731216430664,
+        3.7610530853271484
+      ],
+      "median_ms": 3.817319869995117,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "integer_leaves_514",
+      "round": "A2",
+      "samples_ms": [
+        7.861852645874023,
+        7.5969696044921875,
+        7.53021240234375,
+        7.62176513671875,
+        7.559061050415039,
+        8.699178695678711,
+        7.730722427368164
+      ],
+      "median_ms": 7.62176513671875,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "mixed_metadata",
+      "round": "A1",
+      "samples_ms": [
+        0.431060791015625,
+        0.3018379211425781,
+        0.31375885009765625,
+        0.32711029052734375,
+        0.34332275390625,
+        0.2956390380859375,
+        0.3006458282470703
+      ],
+      "median_ms": 0.31375885009765625,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "mixed_metadata",
+      "round": "B1",
+      "samples_ms": [
+        0.2777576446533203,
+        0.29277801513671875,
+        0.2777576446533203,
+        0.2701282501220703,
+        0.2925395965576172,
+        0.27632713317871094,
+        0.26035308837890625
+      ],
+      "median_ms": 0.2777576446533203,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "mixed_metadata",
+      "round": "B2",
+      "samples_ms": [
+        0.29587745666503906,
+        0.2713203430175781,
+        0.2598762512207031,
+        0.2918243408203125,
+        0.2732276916503906,
+        0.2613067626953125,
+        0.29015541076660156
+      ],
+      "median_ms": 0.2732276916503906,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "mixed_metadata",
+      "round": "A2",
+      "samples_ms": [
+        0.31447410583496094,
+        0.5230903625488281,
+        0.40221214294433594,
+        0.3635883331298828,
+        0.3287792205810547,
+        0.3151893615722656,
+        0.3223419189453125
+      ],
+      "median_ms": 0.3287792205810547,
+      "equivalent_and_detached": true
+    }
+  ],
+  "cpython": [
+    {
+      "case": "plot_float_leaves_514",
+      "round": "A1",
+      "samples_ms": [
+        0.2950999769382179,
+        0.22574001923203468,
+        0.21000002743676305,
+        0.23190997308120131,
+        0.21425000159069896,
+        0.2090299967676401,
+        0.21023995941504836
+      ],
+      "median_ms": 0.21425000159069896,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "plot_float_leaves_514",
+      "round": "B1",
+      "samples_ms": [
+        0.049959984607994556,
+        0.05226000212132931,
+        0.0511599937453866,
+        0.054311007261276245,
+        0.05031999899074435,
+        0.05032902117818594,
+        0.04988902946934104
+      ],
+      "median_ms": 0.05032902117818594,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "plot_float_leaves_514",
+      "round": "B2",
+      "samples_ms": [
+        0.05045102443546057,
+        0.050008995458483696,
+        0.04981999518349767,
+        0.05000003147870302,
+        0.04990899469703436,
+        0.05004898412153125,
+        0.04988000728189945
+      ],
+      "median_ms": 0.05000003147870302,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "plot_float_leaves_514",
+      "round": "A2",
+      "samples_ms": [
+        0.1702000154182315,
+        0.17082999693229795,
+        0.17081998521462083,
+        0.21277996711432934,
+        0.17399998614564538,
+        0.16842002514749765,
+        0.16752001829445362
+      ],
+      "median_ms": 0.17081998521462083,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "integer_leaves_514",
+      "round": "A1",
+      "samples_ms": [
+        0.13961998047307134,
+        0.1354300184175372,
+        0.1348400255665183,
+        0.13495003804564476,
+        0.136160000693053,
+        0.13583997497335076,
+        0.1465399982407689
+      ],
+      "median_ms": 0.13583997497335076,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "integer_leaves_514",
+      "round": "B1",
+      "samples_ms": [
+        0.048479996621608734,
+        0.05150004290044308,
+        0.04361994797363877,
+        0.04367996007204056,
+        0.04364002961665392,
+        0.04373100819066167,
+        0.04352896939963102
+      ],
+      "median_ms": 0.04367996007204056,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "integer_leaves_514",
+      "round": "B2",
+      "samples_ms": [
+        0.0434800167568028,
+        0.0436109839938581,
+        0.043440028093755245,
+        0.043459993321448565,
+        0.04348898073658347,
+        0.04365999484434724,
+        0.043580017518252134
+      ],
+      "median_ms": 0.04348898073658347,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "integer_leaves_514",
+      "round": "A2",
+      "samples_ms": [
+        0.13657001545652747,
+        0.13605999993160367,
+        0.1357999863103032,
+        0.135709997266531,
+        0.1438399776816368,
+        0.14029000885784626,
+        0.1347700017504394
+      ],
+      "median_ms": 0.13605999993160367,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "mixed_metadata",
+      "round": "A1",
+      "samples_ms": [
+        0.0039800070226192474,
+        0.0037599820643663406,
+        0.003609980922192335,
+        0.003290013410151005,
+        0.0034800032153725624,
+        0.003390014171600342,
+        0.003430002834647894
+      ],
+      "median_ms": 0.0034800032153725624,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "mixed_metadata",
+      "round": "B1",
+      "samples_ms": [
+        0.003029999788850546,
+        0.002709974069148302,
+        0.0026900088414549828,
+        0.0027199857868254185,
+        0.0026999623514711857,
+        0.0027100322768092155,
+        0.0026199850253760815
+      ],
+      "median_ms": 0.002709974069148302,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "mixed_metadata",
+      "round": "B2",
+      "samples_ms": [
+        0.0026799971237778664,
+        0.002700020559132099,
+        0.002620043233036995,
+        0.0025599729269742966,
+        0.0025799963623285294,
+        0.0025599729269742966,
+        0.0025599729269742966
+      ],
+      "median_ms": 0.0025799963623285294,
+      "equivalent_and_detached": true
+    },
+    {
+      "case": "mixed_metadata",
+      "round": "A2",
+      "samples_ms": [
+        0.003530003596097231,
+        0.0036400160752236843,
+        0.00377994729205966,
+        0.003469991497695446,
+        0.0032999669201672077,
+        0.0032999669201672077,
+        0.0032899552024900913
+      ],
+      "median_ms": 0.003469991497695446,
+      "equivalent_and_detached": true
+    }
+  ]
+}

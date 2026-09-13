@@ -1,0 +1,49 @@
+{
+  "schema": "sagejs.numerics.ode-budget-diagnostic/v1",
+  "classification": "single-diagnostic-not-performance-qualification",
+  "case": "existing ODE rejections witness: y′=-10y, [0,1], y0=1, first_step=.5, rtol=1e-8, atol=1e-11",
+  "limits_changed": false,
+  "nominal_cooperative_budget_ms": 30000,
+  "limitation": "Original full-suite failures did not capture result status. The isolated calls and later instrumented full baseline retry passed; budget sensitivity is an inference, not a captured failure reason.",
+  "rows": [
+    {
+      "source": "5b307b65fc350763abd52062e57f1c7a3666f925",
+      "observation": {
+        "elapsed_ms": 30581.080436706543,
+        "evaluations": 601,
+        "final_time": 1,
+        "iterations": 100,
+        "reason": "reached_t_bound",
+        "rejected_steps": 3,
+        "status": "converged",
+        "success": true
+      }
+    },
+    {
+      "source": "b0c532cfb9b0295ae444b536027231c403214bea",
+      "observation": {
+        "elapsed_ms": 30505.40781021118,
+        "evaluations": 601,
+        "final_time": 1,
+        "iterations": 100,
+        "reason": "reached_t_bound",
+        "rejected_steps": 3,
+        "status": "converged",
+        "success": true
+      }
+    },
+    {
+      "source": "db7c806b072b6f1d181f92532b75f1d395428a42",
+      "observation": {
+        "elapsed_ms": 1553.0924797058105,
+        "evaluations": 601,
+        "final_time": 1,
+        "iterations": 100,
+        "reason": "reached_t_bound",
+        "rejected_steps": 3,
+        "status": "converged",
+        "success": true
+      }
+    }
+  ]
+}

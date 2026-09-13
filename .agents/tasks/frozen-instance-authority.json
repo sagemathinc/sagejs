@@ -1,0 +1,58 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "frozen-instance-authority",
+  "title": "Frozen Instance Authority",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Restore atomic namespace transitions and shallow frozen instance authority",
+  "base_commit": "1fb3b400e767098c60e1c9d43195e4699550ead1",
+  "claims": [
+    "src/lib/sagejs/_namespace.py",
+    "src/baselib/sagejs/runtime.pyi",
+    "test/frozen-instance-authority.cjs",
+    "test/fixtures/frozen-instance-authority.py",
+    "docs/frozen-instance-authority.md"
+  ],
+  "dependencies": [
+    "frozen-namespace-claim"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Internal shallow freeze mutation matrix and ordinary CPython instance namespace differential cases"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 872.178,
+      "started_at": "2026-09-12T08:32:05.342Z",
+      "commit": "79712ed1b1dc9c632782861912c80d9f25a5fb71",
+      "workspace_fingerprint": "96972b55002bc88205194d5cda71e7212ed900a40e4ea85adeeed260c9530117",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Atomic ordinary-instance namespace transition and frozen class guard; full shallow storage freeze remains a separate follow-up. Metadata frozen active for final direct-build and read-only qualification.",
+    "risks": ["Historical parallel run predates main reconciliation and the isExtensible type declaration; it is not final-candidate validation.", "Retained namespace aliases remain mutable after shell freeze; hostile proxy transactions and deep freezing are not covered."],
+    "next_steps": ["Complete final direct build and read-only focused/compiler/integration/portable/strict checks; publish their exact source evidence on the dependent PR.", "Qualify stable dict reinitialization before implementing owner-aware storage mutation guards."]
+  }
+}

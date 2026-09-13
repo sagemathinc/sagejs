@@ -1,0 +1,2274 @@
+{
+  "schema": "sagejs.numerical-nlopt-qualification-summary/v3",
+  "status": "qualified",
+  "candidate_commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+  "method": "nlopt-nelder-mead",
+  "upstream_identity": "NLOPT_LN_NELDERMEAD",
+  "automatic_selection": false,
+  "optimality_claim": "heuristic-only; neither local nor global optimality is certified",
+  "campaign_challenge": "57b0e34a2502b14265778fd3be9631744479f3c407913e86ab5c90d1598f4302",
+  "artifact": {
+    "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+    "bytes": 72592
+  },
+  "source": {
+    "revision": "6e6593f131ba3a38bc9edbed0a357bc01526e54b",
+    "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
+    "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+    "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41"
+  },
+  "public_semantics_bundle": {
+    "encoding": "sorted-repository-path-nul-sha256-nul/v1",
+    "sha256": "fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b"
+  },
+  "qualification_tooling_bundle": {
+    "encoding": "sorted-repository-path-nul-sha256-nul/v1",
+    "sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167"
+  },
+  "selection": {
+    "sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+    "bytes": 5064,
+    "case_ids": [
+      "nelder-rosenbrock-2",
+      "nelder-beale-2",
+      "nelder-nonsmooth-absolute",
+      "nelder-bounded-boundary",
+      "nelder-ill-scaled"
+    ]
+  },
+  "corpus": {
+    "sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+    "bytes": 4451
+  },
+  "oracle": {
+    "sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
+    "bytes": 2602,
+    "oracle_source_sha256": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+    "selected_results_sha256": "97ed532b80ec63b3ab23ce9146fc52f8563c870fdd450cf533a092a43ac30a80"
+  },
+  "case_execution": {
+    "sha256": "48bf345b712849f3029bbb04b8b19c094919568d461b12f1d6242badcb997a2b",
+    "bytes": 4592,
+    "receipt": {
+      "schema": "sagejs.numerical-nlopt-case-execution/v3",
+      "candidate_commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+      "artifact": {
+        "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+        "bytes": 72592
+      },
+      "public_semantics_bundle_sha256": "fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b",
+      "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
+      "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
+      "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+      "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
+      "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+      "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
+      "oracle_source_sha256": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+      "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+      "selected_case_ids": [
+        "nelder-rosenbrock-2",
+        "nelder-beale-2",
+        "nelder-nonsmooth-absolute",
+        "nelder-bounded-boundary",
+        "nelder-ill-scaled"
+      ],
+      "runtime": {
+        "node": "v26.5.1",
+        "os": "linux",
+        "architecture": "x64"
+      },
+      "method": "nlopt-nelder-mead",
+      "results": [
+        {
+          "id": "nelder-rosenbrock-2",
+          "method": "nlopt-nelder-mead",
+          "backend_status": 4,
+          "backend_converged": true,
+          "value": [
+            0.9999999987760098,
+            0.999999997798519
+          ],
+          "objective": 7.574351846926756e-18,
+          "maximum_violation": 0,
+          "evaluations": 214,
+          "callbacks": 214,
+          "independently_accepted": true
+        },
+        {
+          "id": "nelder-beale-2",
+          "method": "nlopt-nelder-mead",
+          "backend_status": 4,
+          "backend_converged": true,
+          "value": [
+            3.000000000492727,
+            0.5000000000058128
+          ],
+          "objective": 3.511581030697623e-19,
+          "maximum_violation": 0,
+          "evaluations": 147,
+          "callbacks": 147,
+          "independently_accepted": true
+        },
+        {
+          "id": "nelder-nonsmooth-absolute",
+          "method": "nlopt-nelder-mead",
+          "backend_status": 4,
+          "backend_converged": true,
+          "value": [
+            -9.072487686994956e-13,
+            3.1814315772989937e-13
+          ],
+          "objective": 1.5435350841592943e-12,
+          "maximum_violation": 0,
+          "evaluations": 190,
+          "callbacks": 190,
+          "independently_accepted": true
+        },
+        {
+          "id": "nelder-bounded-boundary",
+          "method": "nlopt-nelder-mead",
+          "backend_status": 4,
+          "backend_converged": true,
+          "value": [
+            1,
+            -1
+          ],
+          "objective": 5,
+          "maximum_violation": 0,
+          "evaluations": 13,
+          "callbacks": 13,
+          "independently_accepted": true
+        },
+        {
+          "id": "nelder-ill-scaled",
+          "method": "nlopt-nelder-mead",
+          "backend_status": 4,
+          "backend_converged": true,
+          "value": [
+            1000000.0002090444,
+            9.999999998160128e-7
+          ],
+          "objective": 7.755086547339846e-20,
+          "maximum_violation": 0,
+          "evaluations": 132,
+          "callbacks": 132,
+          "independently_accepted": true
+        }
+      ],
+      "results_sha256": "825fb48a64877a694587be2bbbd7af14868609f2678dc7d810411d2f637fa4d3",
+      "lifecycle_after": {
+        "activeContexts": 0,
+        "activeHandle": 0,
+        "liveAllocations": 0,
+        "liveBytes": 0,
+        "memoryBytes": 2097152
+      },
+      "automatic_selection": false,
+      "origin": {
+        "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
+        "platform_id": "linux-x64",
+        "host_alias": "bench-1",
+        "campaign_challenge": "57b0e34a2502b14265778fd3be9631744479f3c407913e86ab5c90d1598f4302",
+        "algorithm": "rsa-pkcs1-sha256",
+        "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
+        "payload_sha256": "6a79fa1bae1c0a9f1d047114beda228567b61c7b83322f90f84cb9ee12031139",
+        "payload_bytes": 3556,
+        "signature": "B+peNE0rnu117C6yw7RVrRhRY5+4XizjuahgLr8i9CRM4mVNSb+ljAQN2d0YsM8VnBxj+94Giv2wRuEvtDhl7WB656w+3uUES3EpptF+bVhqVRJdRl7WjGUBexB/G4Vvh/JdB+DGBiNm+SgNiRNQ8lreIk59lUgn9BWsrtW+DB9up1DUFeiwhSEE6+AgONoobQr37pytLuq0+utpu/l7/88RjlfCWHHDyK2D+f1rSMk55wwHnU1T+olIC3eDvSldXrrXQ9DH8czablTe1suC3k1qnR4tXU9IMn3uYw6znZ11cSh/lOY2rk0FFaKwAOm0XuDXhJM+2YiqjI3NbcrkCJ7J6wnJRY8Jh7y7anN/UcfHz6zsUeIEKIj+VkvnouD3zns4Jx9HvuUf2lwDhIJmZGasboBz8D/2unclK+5nj/Mur8/oy/0dNKNlSpP9OYN3ALtIUzzORBBfyMldCj+peHzn9jVtSW/btrneK3J7DXiU7oSBBAKV2brevefrc0zL"
+      }
+    }
+  },
+  "evidence": {
+    "sanitizer": {
+      "sha256": "a326f489e85e74f32a1076583ea775f8ac7aa582a2bcf5a7639ccfae580bc050",
+      "bytes": 39691,
+      "receipt": {
+        "schema": "sagejs.numerical-nlopt-release-evidence/v2",
+        "candidate_commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+        "artifact": {
+          "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+          "bytes": 72592
+        },
+        "public_semantics_bundle_sha256": "fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
+        "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
+        "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+        "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
+        "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+        "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
+        "oracle_source_sha256": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+        "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+        "selected_case_ids": [
+          "nelder-rosenbrock-2",
+          "nelder-beale-2",
+          "nelder-nonsmooth-absolute",
+          "nelder-bounded-boundary",
+          "nelder-ill-scaled"
+        ],
+        "kind": "sanitizer",
+        "status": "passed",
+        "platform": {
+          "id": "linux-x64",
+          "os": "linux",
+          "architecture": "x64"
+        },
+        "checks": [
+          "address",
+          "undefined",
+          "leak"
+        ],
+        "collector": {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs",
+          "sha256": "f99aed93937473cd43c6ea7150b641c98230fbbe4c1a4bf8f5a99c90169563c5"
+        },
+        "source_evidence": {
+          "schema": "sagejs.numerical-nlopt-program-evidence/v1",
+          "sha256": "c437479753f33bb6099745091a803d8bf742e96019ea462a9d00ccde78d68169",
+          "bytes": 34101,
+          "payload": {
+            "programs": [
+              {
+                "id": "native-sanitizers",
+                "executable": "node",
+                "arguments": [
+                  "scripts/numerical-computing/qualification/run-native-sanitizers.cjs",
+                  "--output",
+                  "<collector-output>"
+                ],
+                "status": 0,
+                "signal": null,
+                "stdout": "passed: sha256:887931b20673c284938a53d7d75416599e597fe37a2e65c066436ae0f6a7dae4 -> /tmp/sagejs-nlopt-evidence-tuIktD/sanitizer.json\n",
+                "stderr": "",
+                "stdout_sha256": "1633e231001aa5c7e305a8b197345407ac71a45e77f2d4292c425add7a04f534",
+                "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "result": {
+                  "schema": "sagejs.numerical-native-sanitizer-evidence/v1",
+                  "generated_at": "2026-09-07T23:07:40.727Z",
+                  "status": "passed",
+                  "repository": {
+                    "commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+                    "tree": "bf3b92b2f7fe632872f5c3ee8978c6f6c7449b65",
+                    "clean": true,
+                    "status_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  },
+                  "platform": {
+                    "id": "linux-x64",
+                    "os_platform": "linux",
+                    "architecture": "x64",
+                    "os_type": "Linux",
+                    "os_release": "6.17.0-1022-gcp",
+                    "endianness": "LE",
+                    "cpu": "AMD EPYC 7B13",
+                    "logical_cpus": 8,
+                    "total_memory_bytes": 33649025024,
+                    "machine_id": "sha256:d36594359f7ee30fe9af0b8ef2ea4ecb95713d95e9b8218f4a1767e5eb7600dd"
+                  },
+                  "collector": {
+                    "path": "scripts/numerical-computing/qualification/run-native-sanitizers.cjs",
+                    "sha256": "3c73e0158badf8cc02491ac8bd115fd11c7757fc064cb82c637c75a3cfc7525d",
+                    "bytes": 17234,
+                    "files": 1
+                  },
+                  "compiler": {
+                    "command": "cc",
+                    "path": "/usr/bin/x86_64-linux-gnu-gcc-13",
+                    "sha256": "1b99826121ae6682a634e5efe09bd3e3df58ce58e0b28f849114ab5b89139c26",
+                    "bytes": 1023032,
+                    "version": "x86_64-linux-gnu-gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0\nCopyright (C) 2023 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+                  },
+                  "scope": {
+                    "claim": "native-source-component-sanitizer-evidence",
+                    "wasm_sanitized": false,
+                    "qualification_rule": "pair with exact-candidate Wasm ABI, corruption, allocation, callback, cancellation, and lifecycle gates"
+                  },
+                  "components": [
+                    {
+                      "id": "cminpack",
+                      "status": "passed",
+                      "revision": "32d343ac33ac297594b5ffac57741e5615b4bb07",
+                      "lock": {
+                        "path": "packages/flint-wasm/numerical/sources/cminpack-lock.json",
+                        "sha256": "87bf0c72cbfb94dae286c44a49da37cc38a082a0f630e316726d867d0cd92e92",
+                        "bytes": 1145,
+                        "files": 1
+                      },
+                      "build_report": {
+                        "path": "packages/flint-wasm/numerical/build/build-report.json",
+                        "sha256": "b128169e192deb3557464c4cfb9cfaa8e5061cd30a204891acc3e246a61fa7e9",
+                        "bytes": 7954,
+                        "files": 1
+                      },
+                      "source_closure_sha256": "9ab1162ed190ffe731c2f9ce78848045b59f0a9904e34b767746b063e7cb8d8e",
+                      "harness": {
+                        "path": "bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c",
+                        "sha256": "d809c90e6c8e3809b9613486cf80ae496e2e09cac8759edf7af510b379ffc917",
+                        "bytes": 2940,
+                        "files": 1
+                      },
+                      "artifact": {
+                        "path": "packages/flint-wasm/numerical/build/cminpack.wasm",
+                        "sha256": "6db92c7412f72166dd7925d169428aa936efd539240f35cd090539bc320341e0",
+                        "bytes": 72155,
+                        "files": 1,
+                        "content_sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5"
+                      },
+                      "source_files": [
+                        {
+                          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/dpmpar.c",
+                          "sha256": "ef255111dc84d1876faa381df78671fd9e27bcd8f12982457a167bcde7a0c811",
+                          "bytes": 6439
+                        },
+                        {
+                          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c",
+                          "sha256": "47a6c5f754dbfc02b36ba57f5e552cf06d264aa2d4a5f7e15c99c44f4a4ca2c8",
+                          "bytes": 8227
+                        },
+                        {
+                          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/fdjac2.c",
+                          "sha256": "fcf1863876e8a6db56d7a2ea6412800d1c83d844466e0f1aef0ad0c3cadd2fc0",
+                          "bytes": 3826
+                        },
+                        {
+                          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmdif.c",
+                          "sha256": "8c580dbb3ccbce1c660ce72b5120b296accbf9efbd335e4fabdfb6bb61a5ff3a",
+                          "bytes": 17370
+                        },
+                        {
+                          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmder.c",
+                          "sha256": "d323ec3cd70a88294101daf7e316c35ceee8455e43fded97914c76b2db21304f",
+                          "bytes": 17226
+                        },
+                        {
+                          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmpar.c",
+                          "sha256": "fc4cbc2b272734f408547f05dd4841b8831f6790b3ef3f95a437215f6a5cc23a",
+                          "bytes": 11163
+                        },
+                        {
+                          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrfac.c",
+                          "sha256": "42a6e138848606ebe45bee2ad2ed93c268e808f9502bd8dfc6879e6455158bad",
+                          "bytes": 10811
+                        },
+                        {
+                          "path": "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrsolv.c",
+                          "sha256": "72d2819a77c172070d4905b84bcb1f21aac6b9ae0d5138bf7bc343a84fe5dd4b",
+                          "bytes": 7343
+                        }
+                      ],
+                      "scope": {
+                        "native_component": "locked cminpack lmdif/lmder source selected by the Sage.js Wasm build",
+                        "workloads": [
+                          "successful-lmdif",
+                          "successful-lmder",
+                          "callback-stop",
+                          "repeated-lifecycle-512"
+                        ],
+                        "excludes": [
+                          "Wasm-linear-memory-boundary",
+                          "host-callback-runtime",
+                          "artifact-authentication"
+                        ],
+                        "paired_gate": "test/numerical-p3-backends/abi-fuzz.test.mjs and test/numerical-p3-backends/lm-wasm.test.mjs"
+                      },
+                      "runs": [
+                        {
+                          "sanitizer": "address",
+                          "status": "passed",
+                          "compiler_flags": [
+                            "-std=c11",
+                            "-O1",
+                            "-g",
+                            "-fno-omit-frame-pointer",
+                            "-fno-common",
+                            "-Wall",
+                            "-Wextra",
+                            "-fsanitize=address"
+                          ],
+                          "environment": {
+                            "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1"
+                          },
+                          "compile": {
+                            "command": "/usr/bin/x86_64-linux-gnu-gcc-13",
+                            "arguments": [
+                              "-std=c11",
+                              "-O1",
+                              "-g",
+                              "-fno-omit-frame-pointer",
+                              "-fno-common",
+                              "-Wall",
+                              "-Wextra",
+                              "-fsanitize=address",
+                              "-DCMINPACK_NO_DLL",
+                              "-I",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/include",
+                              "-I",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src",
+                              "<repository>/bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/dpmpar.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/fdjac2.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmdif.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmder.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmpar.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrfac.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrsolv.c",
+                              "-lm",
+                              "-o",
+                              "<temporary>/cminpack-address"
+                            ],
+                            "status": 0,
+                            "signal": null,
+                            "error": null,
+                            "stdout": "",
+                            "stderr": "/home/user/sagejs-release-process-4eb17222/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:51:34: warning: \"/*\" within comment [-Wcomment]\n   51 |   correct. cminpack's pure C (src/*.c) is a hand-cleaned-up rewrite of the f2c\n      |                                   \n/home/user/sagejs-release-process-4eb17222/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:52:18: warning: \"/*\" within comment [-Wcomment]\n   52 |   output (src/f2c/*.c): they agree on well-conditioned inputs, but the cleanup\n      |                   \n",
+                            "elapsed_ms": 635.218749
+                          },
+                          "executable_sha256": "edc1f90168721bb766a659ab5b3864259aad62fbb4bf7bc8a83dac260163ad5e",
+                          "execute": {
+                            "command": "<temporary>/cminpack-address",
+                            "arguments": [],
+                            "status": 0,
+                            "signal": null,
+                            "error": null,
+                            "stdout": "",
+                            "stderr": "",
+                            "elapsed_ms": 9.01227
+                          }
+                        },
+                        {
+                          "sanitizer": "undefined",
+                          "status": "passed",
+                          "compiler_flags": [
+                            "-std=c11",
+                            "-O1",
+                            "-g",
+                            "-fno-omit-frame-pointer",
+                            "-fno-common",
+                            "-Wall",
+                            "-Wextra",
+                            "-fsanitize=undefined"
+                          ],
+                          "environment": {
+                            "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+                          },
+                          "compile": {
+                            "command": "/usr/bin/x86_64-linux-gnu-gcc-13",
+                            "arguments": [
+                              "-std=c11",
+                              "-O1",
+                              "-g",
+                              "-fno-omit-frame-pointer",
+                              "-fno-common",
+                              "-Wall",
+                              "-Wextra",
+                              "-fsanitize=undefined",
+                              "-DCMINPACK_NO_DLL",
+                              "-I",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/include",
+                              "-I",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src",
+                              "<repository>/bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/dpmpar.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/fdjac2.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmdif.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmder.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmpar.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrfac.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrsolv.c",
+                              "-lm",
+                              "-o",
+                              "<temporary>/cminpack-undefined"
+                            ],
+                            "status": 0,
+                            "signal": null,
+                            "error": null,
+                            "stdout": "",
+                            "stderr": "/home/user/sagejs-release-process-4eb17222/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:51:34: warning: \"/*\" within comment [-Wcomment]\n   51 |   correct. cminpack's pure C (src/*.c) is a hand-cleaned-up rewrite of the f2c\n      |                                   \n/home/user/sagejs-release-process-4eb17222/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:52:18: warning: \"/*\" within comment [-Wcomment]\n   52 |   output (src/f2c/*.c): they agree on well-conditioned inputs, but the cleanup\n      |                   \n",
+                            "elapsed_ms": 919.822282
+                          },
+                          "executable_sha256": "ef813a595b484089a73ed7952a167aab71df63ba16f0c3d0e86ea925ec3ceca5",
+                          "execute": {
+                            "command": "<temporary>/cminpack-undefined",
+                            "arguments": [],
+                            "status": 0,
+                            "signal": null,
+                            "error": null,
+                            "stdout": "",
+                            "stderr": "",
+                            "elapsed_ms": 3.88045
+                          }
+                        },
+                        {
+                          "sanitizer": "leak",
+                          "status": "passed",
+                          "compiler_flags": [
+                            "-std=c11",
+                            "-O1",
+                            "-g",
+                            "-fno-omit-frame-pointer",
+                            "-fno-common",
+                            "-Wall",
+                            "-Wextra",
+                            "-fsanitize=leak"
+                          ],
+                          "environment": {
+                            "LSAN_OPTIONS": "exitcode=23"
+                          },
+                          "compile": {
+                            "command": "/usr/bin/x86_64-linux-gnu-gcc-13",
+                            "arguments": [
+                              "-std=c11",
+                              "-O1",
+                              "-g",
+                              "-fno-omit-frame-pointer",
+                              "-fno-common",
+                              "-Wall",
+                              "-Wextra",
+                              "-fsanitize=leak",
+                              "-DCMINPACK_NO_DLL",
+                              "-I",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/include",
+                              "-I",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src",
+                              "<repository>/bench/numerical-computing/qualification/native-sanitizers/cminpack-component-harness.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/dpmpar.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/fdjac2.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmdif.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmder.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/lmpar.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrfac.c",
+                              "<repository>/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/qrsolv.c",
+                              "-lm",
+                              "-o",
+                              "<temporary>/cminpack-leak"
+                            ],
+                            "status": 0,
+                            "signal": null,
+                            "error": null,
+                            "stdout": "",
+                            "stderr": "/home/user/sagejs-release-process-4eb17222/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:51:34: warning: \"/*\" within comment [-Wcomment]\n   51 |   correct. cminpack's pure C (src/*.c) is a hand-cleaned-up rewrite of the f2c\n      |                                   \n/home/user/sagejs-release-process-4eb17222/packages/flint-wasm/numerical/build/source/cminpack-32d343ac33ac297594b5ffac57741e5615b4bb07/src/enorm.c:52:18: warning: \"/*\" within comment [-Wcomment]\n   52 |   output (src/f2c/*.c): they agree on well-conditioned inputs, but the cleanup\n      |                   \n",
+                            "elapsed_ms": 506.614352
+                          },
+                          "executable_sha256": "3ca1bdbe33c4354d23121acfaa10082f602f6ef432694b13de337b7b705dd922",
+                          "execute": {
+                            "command": "<temporary>/cminpack-leak",
+                            "arguments": [],
+                            "status": 0,
+                            "signal": null,
+                            "error": null,
+                            "stdout": "",
+                            "stderr": "",
+                            "elapsed_ms": 6.21558
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "id": "nlopt",
+                      "status": "passed",
+                      "revision": "6e6593f131ba3a38bc9edbed0a357bc01526e54b",
+                      "lock": {
+                        "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/source-lock.json",
+                        "sha256": "2662ef91a65017fe3a4259e1c52f48904f5dcc88fd05a212d4b995684ace05dc",
+                        "bytes": 868,
+                        "files": 1
+                      },
+                      "build_report": {
+                        "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/build/build-report.json",
+                        "sha256": "15ccf6c1b25d3aad01c4f02932d3b6746bfcdd9d8afc407ae8ee3cfabd8f6e8e",
+                        "bytes": 5003,
+                        "files": 1
+                      },
+                      "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+                      "harness": {
+                        "path": "bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c",
+                        "sha256": "0dcc7eaf3a602e73a64147046a2cd22ca2a3abffcd3335f85ca9f840bcc0203d",
+                        "bytes": 4501,
+                        "files": 1
+                      },
+                      "artifact": {
+                        "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/build/nlopt-methods.wasm",
+                        "sha256": "5335de2c914d28de69dd18ded5a3df5cc86df3be95db5ce07ca61db177c1a7ac",
+                        "bytes": 72592,
+                        "files": 1,
+                        "content_sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb"
+                      },
+                      "source_files": [
+                        {
+                          "path": "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/neldermead/nldrmd.c",
+                          "sha256": "f535c71a6710e46a7fa0d3675186eac260f565bda5be8681586b64ed54c07376",
+                          "bytes": 10860
+                        },
+                        {
+                          "path": "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/stop.c",
+                          "sha256": "d96262bf61e3ed1169eee98e7b19699939b8c7859b7e8442680cbfdedc90d762",
+                          "bytes": 7961
+                        },
+                        {
+                          "path": "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/redblack.c",
+                          "sha256": "da5063670df2e2d85615cc072d7ebf877d208c82e2f384427944382f5f4af831",
+                          "bytes": 12198
+                        },
+                        {
+                          "path": "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/rescale.c",
+                          "sha256": "2681664ccc48d10d17ee2f4553dae62343bd47cd08b3be484496b22ef481abcb",
+                          "bytes": 3169
+                        }
+                      ],
+                      "scope": {
+                        "native_component": "locked NLopt Nelder-Mead C source selected by the Sage.js Wasm build; COBYLA is excluded",
+                        "workloads": [
+                          "successful-nelder-mead",
+                          "forced-stop",
+                          "repeated-lifecycle-512"
+                        ],
+                        "excludes": [
+                          "Wasm-linear-memory-boundary",
+                          "host-callback-runtime",
+                          "artifact-authentication"
+                        ],
+                        "paired_gate": "test/numerical-p3-nlopt/abi-fuzz.test.mjs and test/numerical-p3-nlopt/backend.test.mjs"
+                      },
+                      "runs": [
+                        {
+                          "sanitizer": "address",
+                          "status": "passed",
+                          "compiler_flags": [
+                            "-std=c11",
+                            "-O1",
+                            "-g",
+                            "-fno-omit-frame-pointer",
+                            "-fno-common",
+                            "-Wall",
+                            "-Wextra",
+                            "-fsanitize=address"
+                          ],
+                          "environment": {
+                            "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1"
+                          },
+                          "compile": {
+                            "command": "/usr/bin/x86_64-linux-gnu-gcc-13",
+                            "arguments": [
+                              "-std=c11",
+                              "-O1",
+                              "-g",
+                              "-fno-omit-frame-pointer",
+                              "-fno-common",
+                              "-Wall",
+                              "-Wextra",
+                              "-fsanitize=address",
+                              "-DSAGEJS_NLOPT_HAVE_COBYLA=0",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/config",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/api",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/neldermead",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/cobyla",
+                              "<repository>/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/neldermead/nldrmd.c",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/stop.c",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/redblack.c",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/rescale.c",
+                              "-lm",
+                              "-o",
+                              "<temporary>/nlopt-address"
+                            ],
+                            "status": 0,
+                            "signal": null,
+                            "error": null,
+                            "stdout": "",
+                            "stderr": "/home/user/sagejs-release-process-4eb17222/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c:49:15: warning: ‘equality_constraint’ defined but not used [-Wunused-function]\n   49 | static double equality_constraint(unsigned n, const double *x,\n      |               ^~~~~~~~~~~~~~~~~~~\n",
+                            "elapsed_ms": 505.249561
+                          },
+                          "executable_sha256": "d79eef1a3d4c16b7ce6d2844d513ab590c34d2246f944400d63d427d4d859bc6",
+                          "execute": {
+                            "command": "<temporary>/nlopt-address",
+                            "arguments": [],
+                            "status": 0,
+                            "signal": null,
+                            "error": null,
+                            "stdout": "",
+                            "stderr": "",
+                            "elapsed_ms": 13.929269
+                          }
+                        },
+                        {
+                          "sanitizer": "undefined",
+                          "status": "passed",
+                          "compiler_flags": [
+                            "-std=c11",
+                            "-O1",
+                            "-g",
+                            "-fno-omit-frame-pointer",
+                            "-fno-common",
+                            "-Wall",
+                            "-Wextra",
+                            "-fsanitize=undefined"
+                          ],
+                          "environment": {
+                            "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+                          },
+                          "compile": {
+                            "command": "/usr/bin/x86_64-linux-gnu-gcc-13",
+                            "arguments": [
+                              "-std=c11",
+                              "-O1",
+                              "-g",
+                              "-fno-omit-frame-pointer",
+                              "-fno-common",
+                              "-Wall",
+                              "-Wextra",
+                              "-fsanitize=undefined",
+                              "-DSAGEJS_NLOPT_HAVE_COBYLA=0",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/config",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/api",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/neldermead",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/cobyla",
+                              "<repository>/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/neldermead/nldrmd.c",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/stop.c",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/redblack.c",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/rescale.c",
+                              "-lm",
+                              "-o",
+                              "<temporary>/nlopt-undefined"
+                            ],
+                            "status": 0,
+                            "signal": null,
+                            "error": null,
+                            "stdout": "",
+                            "stderr": "/home/user/sagejs-release-process-4eb17222/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c:49:15: warning: ‘equality_constraint’ defined but not used [-Wunused-function]\n   49 | static double equality_constraint(unsigned n, const double *x,\n      |               ^~~~~~~~~~~~~~~~~~~\n",
+                            "elapsed_ms": 744.759259
+                          },
+                          "executable_sha256": "37b1c1cff54f5c9f20de02a8240453c9cbb8e1ac3edaa44bd525a5c4dc718118",
+                          "execute": {
+                            "command": "<temporary>/nlopt-undefined",
+                            "arguments": [],
+                            "status": 0,
+                            "signal": null,
+                            "error": null,
+                            "stdout": "",
+                            "stderr": "",
+                            "elapsed_ms": 9.805109
+                          }
+                        },
+                        {
+                          "sanitizer": "leak",
+                          "status": "passed",
+                          "compiler_flags": [
+                            "-std=c11",
+                            "-O1",
+                            "-g",
+                            "-fno-omit-frame-pointer",
+                            "-fno-common",
+                            "-Wall",
+                            "-Wextra",
+                            "-fsanitize=leak"
+                          ],
+                          "environment": {
+                            "LSAN_OPTIONS": "exitcode=23"
+                          },
+                          "compile": {
+                            "command": "/usr/bin/x86_64-linux-gnu-gcc-13",
+                            "arguments": [
+                              "-std=c11",
+                              "-O1",
+                              "-g",
+                              "-fno-omit-frame-pointer",
+                              "-fno-common",
+                              "-Wall",
+                              "-Wextra",
+                              "-fsanitize=leak",
+                              "-DSAGEJS_NLOPT_HAVE_COBYLA=0",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/config",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/api",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/neldermead",
+                              "-I",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/cobyla",
+                              "<repository>/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/algs/neldermead/nldrmd.c",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/stop.c",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/redblack.c",
+                              "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/source/nlopt-6e6593f131ba3a38bc9edbed0a357bc01526e54b/src/util/rescale.c",
+                              "-lm",
+                              "-o",
+                              "<temporary>/nlopt-leak"
+                            ],
+                            "status": 0,
+                            "signal": null,
+                            "error": null,
+                            "stdout": "",
+                            "stderr": "/home/user/sagejs-release-process-4eb17222/bench/numerical-computing/qualification/native-sanitizers/nlopt-component-harness.c:49:15: warning: ‘equality_constraint’ defined but not used [-Wunused-function]\n   49 | static double equality_constraint(unsigned n, const double *x,\n      |               ^~~~~~~~~~~~~~~~~~~\n",
+                            "elapsed_ms": 376.243324
+                          },
+                          "executable_sha256": "60e7460b61ef05e44c343f9324b1fed6aa19feaec957778df74efc580edf258e",
+                          "execute": {
+                            "command": "<temporary>/nlopt-leak",
+                            "arguments": [],
+                            "status": 0,
+                            "signal": null,
+                            "error": null,
+                            "stdout": "",
+                            "stderr": "",
+                            "elapsed_ms": 11.015389
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "id": "sha256:887931b20673c284938a53d7d75416599e597fe37a2e65c066436ae0f6a7dae4"
+                }
+              }
+            ]
+          }
+        },
+        "execution": {
+          "status": 0,
+          "signal": null,
+          "stdout_sha256": "cfd8086f66c5718d5999d06ae8a771b77e289eb0b216cb50115d42bb0ed2552b",
+          "stderr_sha256": "73f832082e08279e2351cd52a6decd257d86e0c971b00e408671234074f3276b"
+        },
+        "origin": {
+          "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
+          "platform_id": "linux-x64",
+          "host_alias": "bench-1",
+          "campaign_challenge": "57b0e34a2502b14265778fd3be9631744479f3c407913e86ab5c90d1598f4302",
+          "algorithm": "rsa-pkcs1-sha256",
+          "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
+          "payload_sha256": "812192072971c9a1f894ef89c8681c809e81f1e3ed6403bdb0dd2110cb5accfd",
+          "payload_bytes": 38654,
+          "signature": "QmWfN4HWM71MmowC6XWH07kiciTIv2fZTNb+uAre2DtOOrrlNQQ8/CIQniSyGz5ODoqYlAVTR7oJ6n3mrk+vU1YB7oNFD4CNFJ+okv5PPj5mUcYbk5eJM1I/N4fVf/eIaGx8zeeQP1B+yCEGSnxh0WvmiyP1BIcJZQUZ6v2tTjLHOOdTenItAqIElLy1p3nhcjyU1iohEsonCrjAx+ECgNhprn/zHxh64XMCRlH02w5OgStQqOG6nZhc28YNsQ3Ox7Hl3uQ6cUL70w0r9qv0cRo+U2zr7ElRQE9G9yGFZMGvXNNzFNjhlgPBU+WyJeZbRwHFt3OT6yEF62uZ+3obeETSHD0J6NarAEdgHuRLppKWwXV8J2zTUBsnWcOjE67zGn2bswYjwGU97pGHOp5zTrQQ6UE+KcTnabybhsflvAlIY/iQYpKw+MDgpw1abyFlYHFnU7zsRapx02hB113DddImi6QaZQQZRMBb9J9Y9d+cQDSWYF7sdmG3TZXEvnHW"
+        }
+      }
+    },
+    "destructive-wasm": {
+      "sha256": "77c0e53ab2b4753d6970c0478ec268b312ffc87a389d0d7da06617f7dc11b847",
+      "bytes": 13623,
+      "receipt": {
+        "schema": "sagejs.numerical-nlopt-release-evidence/v2",
+        "candidate_commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+        "artifact": {
+          "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+          "bytes": 72592
+        },
+        "public_semantics_bundle_sha256": "fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
+        "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
+        "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+        "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
+        "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+        "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
+        "oracle_source_sha256": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+        "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+        "selected_case_ids": [
+          "nelder-rosenbrock-2",
+          "nelder-beale-2",
+          "nelder-nonsmooth-absolute",
+          "nelder-bounded-boundary",
+          "nelder-ill-scaled"
+        ],
+        "kind": "destructive-wasm",
+        "status": "passed",
+        "platform": {
+          "id": "linux-x64",
+          "os": "linux",
+          "architecture": "x64"
+        },
+        "checks": [
+          "allocation-failure",
+          "corrupt-region",
+          "malformed-artifact",
+          "post-failure-recovery"
+        ],
+        "collector": {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs",
+          "sha256": "f99aed93937473cd43c6ea7150b641c98230fbbe4c1a4bf8f5a99c90169563c5"
+        },
+        "source_evidence": {
+          "schema": "sagejs.numerical-nlopt-program-evidence/v1",
+          "sha256": "b0fe5b9476a50365f7011f781690a27c39ce35c0f1190ca74ad20688fe47006a",
+          "bytes": 9448,
+          "payload": {
+            "programs": [
+              {
+                "id": "wasm-destructive",
+                "executable": "node",
+                "arguments": [
+                  "scripts/numerical-computing/qualification/run-wasm-destructive.cjs",
+                  "--output",
+                  "<collector-output>"
+                ],
+                "status": 0,
+                "signal": null,
+                "stdout": "passed: sha256:49d49632518148f45368ebaae11173ffdcf1c76c196d8570553ad35a044da219 -> /tmp/sagejs-nlopt-evidence-a9aGsZ/destructive-wasm.json\n",
+                "stderr": "",
+                "stdout_sha256": "bd4e9c476ae53e846744e405ba389012612ecbd5a25b2a72b517b55d8e361d24",
+                "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "result": {
+                  "schema": "sagejs.numerical-wasm-destructive-evidence/v1",
+                  "generated_at": "2026-09-07T23:20:37.448Z",
+                  "status": "passed",
+                  "repository": {
+                    "commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+                    "tree": "bf3b92b2f7fe632872f5c3ee8978c6f6c7449b65",
+                    "clean": true,
+                    "status_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  },
+                  "platform": {
+                    "id": "linux-x64",
+                    "os_platform": "linux",
+                    "architecture": "x64",
+                    "os_type": "Linux",
+                    "os_release": "6.17.0-1022-gcp",
+                    "endianness": "LE",
+                    "cpu": "AMD EPYC 7B13",
+                    "logical_cpus": 8,
+                    "total_memory_bytes": 33649025024,
+                    "machine_id": "sha256:d36594359f7ee30fe9af0b8ef2ea4ecb95713d95e9b8218f4a1767e5eb7600dd"
+                  },
+                  "collector": {
+                    "path": "scripts/numerical-computing/qualification/run-wasm-destructive.cjs",
+                    "sha256": "38a1dd353ca8cce405651a14c81f75eed4dc511d39246d1488dc118aee5daa95",
+                    "bytes": 14831,
+                    "files": 1
+                  },
+                  "tool": {
+                    "path": "/home/user/.local/lib/node-v26.5.1-linux-x64/bin/node",
+                    "version": "v26.5.1",
+                    "sha256": "fb48e77df2f8e92fedfec39afa60a5f41563441f6b61316ada5fb295a431c2c6",
+                    "bytes": 148011296
+                  },
+                  "harness": {
+                    "path": "bench/numerical-computing/qualification/wasm-destructive/destructive-faults.mjs",
+                    "sha256": "7dfb56111e3aa5ffd488957f5dd3b7c67036447a8b15064e8e900c3774e39949",
+                    "bytes": 12310,
+                    "files": 1
+                  },
+                  "build_reports": {
+                    "cminpack": {
+                      "path": "packages/flint-wasm/numerical/build/build-report.json",
+                      "sha256": "b128169e192deb3557464c4cfb9cfaa8e5061cd30a204891acc3e246a61fa7e9",
+                      "bytes": 7954,
+                      "files": 1
+                    },
+                    "nlopt": {
+                      "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/build/build-report.json",
+                      "sha256": "15ccf6c1b25d3aad01c4f02932d3b6746bfcdd9d8afc407ae8ee3cfabd8f6e8e",
+                      "bytes": 5003,
+                      "files": 1
+                    }
+                  },
+                  "source_closures": {
+                    "cminpack": "9ab1162ed190ffe731c2f9ce78848045b59f0a9904e34b767746b063e7cb8d8e",
+                    "nlopt": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e"
+                  },
+                  "modules": [
+                    {
+                      "name": "cminpack-host",
+                      "path": "packages/flint-wasm/numerical/index.mjs",
+                      "sha256": "90d0cf03951ee579b3834235004099456944e26d4492561785c4eed72967ca40",
+                      "bytes": 18001,
+                      "files": 1
+                    },
+                    {
+                      "name": "nlopt-host",
+                      "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/index.mjs",
+                      "sha256": "3a0b0ea709b934d799652c483e92d57b27bda0de09033ebe4518bbbef1801aef",
+                      "bytes": 24517,
+                      "files": 1
+                    },
+                    {
+                      "name": "browser-runtime-loader",
+                      "path": "packages/flint-wasm/evaluator.mjs",
+                      "sha256": "a2dac825b7fc6db718c42a74509e7dda8c68cf87996d2f71e55c8fff519d4e5e",
+                      "bytes": 42693,
+                      "files": 1
+                    }
+                  ],
+                  "artifacts": [
+                    {
+                      "name": "cminpack-wasm",
+                      "path": "packages/flint-wasm/numerical/build/cminpack.wasm",
+                      "sha256": "6db92c7412f72166dd7925d169428aa936efd539240f35cd090539bc320341e0",
+                      "bytes": 72155,
+                      "files": 1,
+                      "content_sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5"
+                    },
+                    {
+                      "name": "nlopt-wasm",
+                      "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/build/nlopt-methods.wasm",
+                      "sha256": "5335de2c914d28de69dd18ded5a3df5cc86df3be95db5ce07ca61db177c1a7ac",
+                      "bytes": 72592,
+                      "files": 1,
+                      "content_sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb"
+                    }
+                  ],
+                  "runtime_artifacts": [
+                    {
+                      "name": "node-cminpack-wasm",
+                      "component": "cminpack",
+                      "path": "packages/flint-wasm/numerical/build/cminpack.wasm",
+                      "sha256": "6db92c7412f72166dd7925d169428aa936efd539240f35cd090539bc320341e0",
+                      "bytes": 72155,
+                      "files": 1,
+                      "content_sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5"
+                    },
+                    {
+                      "name": "node-nlopt-wasm",
+                      "component": "nlopt",
+                      "path": "dist/numerical/nlopt-methods.wasm",
+                      "sha256": "82907745273d79df7b9cb168808379cd3a0c7a53544da7b65412572f72c6e3da",
+                      "bytes": 72592,
+                      "files": 1,
+                      "content_sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb"
+                    },
+                    {
+                      "name": "browser-cminpack-wasm",
+                      "component": "cminpack",
+                      "path": "packages/flint-wasm/dist/cminpack.wasm",
+                      "sha256": "50b39900709c09ae350e9e79e62e3b1e37fa50c6bcf2c2b2691ad97f0f4b8a78",
+                      "bytes": 72155,
+                      "files": 1,
+                      "content_sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5"
+                    },
+                    {
+                      "name": "browser-nlopt-wasm",
+                      "component": "nlopt",
+                      "path": "packages/flint-wasm/dist/nlopt-methods.wasm",
+                      "sha256": "4c51c6e74e3e03138c6830a86f76a45925ecd7645d439c7513452b46e698de20",
+                      "bytes": 72592,
+                      "files": 1,
+                      "content_sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb"
+                    }
+                  ],
+                  "execution": {
+                    "command": "<node>",
+                    "arguments": [
+                      "<repository>/bench/numerical-computing/qualification/wasm-destructive/destructive-faults.mjs",
+                      "--cminpack",
+                      "<repository>/packages/flint-wasm/numerical/build/cminpack.wasm",
+                      "--cminpack-sha256",
+                      "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5",
+                      "--cminpack-module",
+                      "<repository>/packages/flint-wasm/numerical/index.mjs",
+                      "--nlopt",
+                      "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/build/nlopt-methods.wasm",
+                      "--nlopt-sha256",
+                      "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+                      "--nlopt-module",
+                      "<repository>/src/lib/sagejs/numerics/optimization/backends/nlopt/index.mjs",
+                      "--nlopt-methods",
+                      "1",
+                      "--evaluator-module",
+                      "<repository>/packages/flint-wasm/evaluator.mjs"
+                    ],
+                    "status": 0,
+                    "signal": null,
+                    "elapsed_ms": 92.896341,
+                    "stdout_sha256": "c69f283d5fdc4689979399949134ed387b3d1e6bdd42e68fe7cb5f930d74aa62",
+                    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                    "stdout_bytes": 930,
+                    "stderr_bytes": 0
+                  },
+                  "checks": {
+                    "allocation-failure": {
+                      "status": "passed",
+                      "cminpack_positions": {
+                        "cminpack-lmdif": 9,
+                        "cminpack-lmder": 9
+                      },
+                      "nlopt_positions": {
+                        "1": {
+                          "triggered": 4,
+                          "first_normal_success": 4
+                        }
+                      }
+                    },
+                    "corrupt-region": {
+                      "status": "passed",
+                      "cminpack_cases": 774,
+                      "nlopt_cases": 901
+                    },
+                    "harness-input-artifact-mismatch": {
+                      "status": "passed",
+                      "components": [
+                        "cminpack",
+                        "nlopt"
+                      ]
+                    },
+                    "product-malformed-artifact-fail-closed": {
+                      "status": "passed",
+                      "components": [
+                        "cminpack",
+                        "nlopt"
+                      ]
+                    },
+                    "post-failure-recovery": {
+                      "status": "passed",
+                      "callback_failure_cleanup": true,
+                      "cancellation_cleanup": true,
+                      "zero_live_allocation_components": [
+                        "cminpack",
+                        "nlopt"
+                      ]
+                    },
+                    "runner-build-report-artifact-mismatch": {
+                      "status": "passed",
+                      "components": [
+                        "cminpack",
+                        "nlopt"
+                      ]
+                    }
+                  },
+                  "scope": {
+                    "claim": "exact-candidate-destructive-wasm-boundary-evidence",
+                    "source_and_artifact_bound": true,
+                    "host_output_independently_validated": true
+                  },
+                  "id": "sha256:49d49632518148f45368ebaae11173ffdcf1c76c196d8570553ad35a044da219"
+                }
+              }
+            ]
+          }
+        },
+        "execution": {
+          "status": 0,
+          "signal": null,
+          "stdout_sha256": "4f191f7d1a6615a386dd35bb3a046c6950199e9d46fb4c8c8476961a7e89c5f0",
+          "stderr_sha256": "8d1d9d104f9921dea99783b3872effb714f1336f6d4635e4a460248fa4980f3a"
+        },
+        "origin": {
+          "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
+          "platform_id": "linux-x64",
+          "host_alias": "bench-1",
+          "campaign_challenge": "57b0e34a2502b14265778fd3be9631744479f3c407913e86ab5c90d1598f4302",
+          "algorithm": "rsa-pkcs1-sha256",
+          "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
+          "payload_sha256": "ad290056668052831da989c87e59ef49963edce10e049a8295c9aee1d384652c",
+          "payload_bytes": 12586,
+          "signature": "I6XPmPf9dvSbG0X2/XMKHhnyelZH36owtZ7c8Nquq4iCBnGtHTeAJERCJ86EHyAYWtOdBKn/BvPFEvDJQzwqNpUg1m/UAvl1DEkQ5D1cU0sWdpGyEcH+k7UNrKRxSC49JP8Ek8DCx75ZDpFT2igr+ffvypHbjnh7HUmMJg+1PbvWDzFYILY4m6KlywdmVHJ7GR4WOimyj/bK4qe+umOEd6N8kDqHZB9Y8M+Uv9y2SRluQSYpCtjEk5gP8uFP6OpTWUHLlySa9AIEOsn5/CUZj2RTco+NFjZoWVmHcoQg7lobQxDTUO4vr2CbYRRZLwxJC9DpZwhaICwID8rekU1Idc+u0hmaTaKIdsD7FVvLrVHMNgY9EokvPUPBk7f2e/jVGq83NBehj1Tg5z9L/CwTHSlV4+hGGDtK75m8PUZ/7lAtNCogslAPCphBJ8YXEJW5nYFyciLABP8tALSztMYPvTEyRbiktl7htZVEcmUnnhukZtfLyFHMg8eoVhNr8WOc"
+        }
+      }
+    },
+    "browser-lifecycle": {
+      "sha256": "5dbb1cdc1f91ac3948087a435b5413bd91c6cfbec93f7110948813d5c37c6ecf",
+      "bytes": 5410,
+      "receipt": {
+        "schema": "sagejs.numerical-nlopt-release-evidence/v2",
+        "candidate_commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+        "artifact": {
+          "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+          "bytes": 72592
+        },
+        "public_semantics_bundle_sha256": "fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
+        "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
+        "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+        "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
+        "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+        "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
+        "oracle_source_sha256": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+        "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+        "selected_case_ids": [
+          "nelder-rosenbrock-2",
+          "nelder-beale-2",
+          "nelder-nonsmooth-absolute",
+          "nelder-bounded-boundary",
+          "nelder-ill-scaled"
+        ],
+        "kind": "browser-lifecycle",
+        "status": "passed",
+        "platform": {
+          "id": "linux-x64",
+          "os": "linux",
+          "architecture": "x64"
+        },
+        "checks": [
+          "selected-corpus",
+          "cooperative-cancel",
+          "hard-worker-replacement",
+          "zero-live-allocations"
+        ],
+        "collector": {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs",
+          "sha256": "f99aed93937473cd43c6ea7150b641c98230fbbe4c1a4bf8f5a99c90169563c5"
+        },
+        "source_evidence": {
+          "schema": "sagejs.numerical-nlopt-program-evidence/v1",
+          "sha256": "c9aac70e30c22780b956737e69de7dfb661000bdb34d9bab46e9329b8043e86e",
+          "bytes": 2037,
+          "payload": {
+            "programs": [
+              {
+                "id": "browser-selected-corpus",
+                "executable": "node",
+                "arguments": [
+                  "test/numerical-p3-nlopt/browser.mjs"
+                ],
+                "status": 0,
+                "signal": null,
+                "stdout": "{\n  \"schema\": \"sagejs.numerical-nlopt-browser/v1\",\n  \"chromium\": \"149.0.7827.196\",\n  \"cases\": 5,\n  \"result_case_ids\": [\n    \"nelder-rosenbrock-2\",\n    \"nelder-beale-2\",\n    \"nelder-nonsmooth-absolute\",\n    \"nelder-bounded-boundary\",\n    \"nelder-ill-scaled\"\n  ],\n  \"results_sha256\": \"db90cb27296d477fc73a9521acea629f6471da257879cf738a500f7bcc339c76\",\n  \"public_semantics_bundle_sha256\": \"fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b\",\n  \"pre_set_shared_atomic_force_stop\": \"pass\",\n  \"hard_worker_replacement\": \"pass\",\n  \"lifecycle_after\": {\n    \"activeContexts\": 0,\n    \"activeHandle\": 0,\n    \"liveAllocations\": 0,\n    \"liveBytes\": 0,\n    \"memoryBytes\": 2097152\n  }\n}\n",
+                "stderr": "",
+                "stdout_sha256": "162c5b4b0018e006e14fb56159425f40e39f49a8ed5388047f74db320f3f9b65",
+                "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "result": {
+                  "schema": "sagejs.numerical-nlopt-browser/v1",
+                  "chromium": "149.0.7827.196",
+                  "cases": 5,
+                  "result_case_ids": [
+                    "nelder-rosenbrock-2",
+                    "nelder-beale-2",
+                    "nelder-nonsmooth-absolute",
+                    "nelder-bounded-boundary",
+                    "nelder-ill-scaled"
+                  ],
+                  "results_sha256": "db90cb27296d477fc73a9521acea629f6471da257879cf738a500f7bcc339c76",
+                  "public_semantics_bundle_sha256": "fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b",
+                  "pre_set_shared_atomic_force_stop": "pass",
+                  "hard_worker_replacement": "pass",
+                  "lifecycle_after": {
+                    "activeContexts": 0,
+                    "activeHandle": 0,
+                    "liveAllocations": 0,
+                    "liveBytes": 0,
+                    "memoryBytes": 2097152
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "execution": {
+          "status": 0,
+          "signal": null,
+          "stdout_sha256": "9e59a073bd2e9be59babd84041c5e6ae3bfd6b77022dda03a7b3e9bc4da01dec",
+          "stderr_sha256": "5ce676ab2149529be2e479689f83b82a1845508d7fad16e5cf094dd1bec21005"
+        },
+        "origin": {
+          "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
+          "platform_id": "linux-x64",
+          "host_alias": "bench-1",
+          "campaign_challenge": "57b0e34a2502b14265778fd3be9631744479f3c407913e86ab5c90d1598f4302",
+          "algorithm": "rsa-pkcs1-sha256",
+          "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
+          "payload_sha256": "90127d1ff5a0ba2ad171519d8216341717d8b8e89ad996ea5329d2a7a2af8c9f",
+          "payload_bytes": 4374,
+          "signature": "B8gy1ieQInnK+ipEhaZRCwJA3e8rhCzUf4IHv+C4ZkPiJaCaCLDhWA0LOqM1UawQIEOOKso/HoWUNijJXk/7skygrjPQbDO37dkIRJuk6xb5CKXeAcHxsqrUYMb355eTeuJrjAN9a+FD46CBv4dMvttuPXNcLdljeTFKGwWLklUcKxFtYdkM6Z/I68sEnSOO8vV+EPbITI9Tss8hWjhOcAc9isr2ls5lD044Iv7+xc0s0av14Ee+pvPE4U244wCA+MsYAedFmEJ26t+aCAuI2wxEhuKJKPtAd8Iwt9McA2oL7zSrQw3EsB/1t8lsZdgMmVgRHL0K31RV8ZlszABsSOMxVzsZIll0RaimA1ODQnuGntNjaMkrbpq52/52wsGOMWXRix+XDse69GV/qSvnzY3pO1fZsTjVaTwn1ueQHcsh43Q7CpxhHjnoxIixwLDfPc9m4nUzHbgTiwuOS30gMx8cAGw3S1MAP3mmNf43R3TMMZeEAbWap/2ED8XgsacH"
+        }
+      }
+    },
+    "public-integration": {
+      "sha256": "e2ea239a7ba7cae0bc3dd26fa8f9d924f9250f60b36cb83a12ff6a95e27bcdc0",
+      "bytes": 6630,
+      "receipt": {
+        "schema": "sagejs.numerical-nlopt-release-evidence/v2",
+        "candidate_commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+        "artifact": {
+          "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+          "bytes": 72592
+        },
+        "public_semantics_bundle_sha256": "fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
+        "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
+        "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+        "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
+        "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+        "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
+        "oracle_source_sha256": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+        "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+        "selected_case_ids": [
+          "nelder-rosenbrock-2",
+          "nelder-beale-2",
+          "nelder-nonsmooth-absolute",
+          "nelder-bounded-boundary",
+          "nelder-ill-scaled"
+        ],
+        "kind": "public-integration",
+        "status": "passed",
+        "platform": {
+          "id": "linux-x64",
+          "os": "linux",
+          "architecture": "x64"
+        },
+        "checks": [
+          "explicit-identity",
+          "heuristic-only",
+          "optimality-not-certified",
+          "cobyla-unsupported",
+          "failure-attribution"
+        ],
+        "collector": {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs",
+          "sha256": "f99aed93937473cd43c6ea7150b641c98230fbbe4c1a4bf8f5a99c90169563c5"
+        },
+        "source_evidence": {
+          "schema": "sagejs.numerical-nlopt-program-evidence/v1",
+          "sha256": "3d7aa06d4ada23b612321a90af18f2e93679af4f01c68201f64b21645d9ee8bf",
+          "bytes": 3237,
+          "payload": {
+            "programs": [
+              {
+                "id": "public-integration",
+                "executable": "node",
+                "arguments": [
+                  "--test",
+                  "--test-reporter=tap",
+                  "test/numerical-p3-nlopt/public-integration.cjs"
+                ],
+                "status": 0,
+                "signal": null,
+                "stdout": "TAP version 13\n# Subtest: public NLopt Nelder-Mead has an exact identity and heuristic conclusion\nok 1 - public NLopt Nelder-Mead has an exact identity and heuristic conclusion\n  ---\n  duration_ms: 1938.796243\n  type: 'test'\n  ...\n# Subtest: representably lower independent probes veto heuristic success\nok 2 - representably lower independent probes veto heuristic success\n  ---\n  duration_ms: 1299.240895\n  type: 'test'\n  ...\n# Subtest: opaque black-box optimality is never certified\nok 3 - opaque black-box optimality is never certified\n  ---\n  duration_ms: 1022.707212\n  type: 'test'\n  ...\n# Subtest: finite high-scale objectives fail closed without nonfinite diagnostics\nok 4 - finite high-scale objectives fail closed without nonfinite diagnostics\n  ---\n  duration_ms: 1745.407033\n  type: 'test'\n  ...\n# Subtest: COBYLA and nonlinear constraints are explicitly deferred\nok 5 - COBYLA and nonlinear constraints are explicitly deferred\n  ---\n  duration_ms: 910.645842\n  type: 'test'\n  ...\n# Subtest: NLopt failures are attributed honestly and leave the backend reusable\nok 6 - NLopt failures are attributed honestly and leave the backend reusable\n  ---\n  duration_ms: 1393.613726\n  type: 'test'\n  ...\n# Subtest: NLopt option and unavailable-resource failures stay structured and unexecuted\nok 7 - NLopt option and unavailable-resource failures stay structured and unexecuted\n  ---\n  duration_ms: 96.37509\n  type: 'test'\n  ...\n# Subtest: NLopt rejects contradictory termination and counter evidence\nok 8 - NLopt rejects contradictory termination and counter evidence\n  ---\n  duration_ms: 38.475477\n  type: 'test'\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 8508.16085\n",
+                "stderr": "",
+                "stdout_sha256": "29a1cf19dc55dd56e1512e4ca1959baee3b3d666e8010283a58c2aecaccb0266",
+                "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "result": {
+                  "schema": "sagejs.node-test-tap-summary/v1",
+                  "tests": 8,
+                  "passed": 8,
+                  "failed": 0,
+                  "cancelled": 0,
+                  "skipped": 0,
+                  "todo": 0,
+                  "subtest_names": [
+                    "public NLopt Nelder-Mead has an exact identity and heuristic conclusion",
+                    "representably lower independent probes veto heuristic success",
+                    "opaque black-box optimality is never certified",
+                    "finite high-scale objectives fail closed without nonfinite diagnostics",
+                    "COBYLA and nonlinear constraints are explicitly deferred",
+                    "NLopt failures are attributed honestly and leave the backend reusable",
+                    "NLopt option and unavailable-resource failures stay structured and unexecuted",
+                    "NLopt rejects contradictory termination and counter evidence"
+                  ],
+                  "stdout_sha256": "29a1cf19dc55dd56e1512e4ca1959baee3b3d666e8010283a58c2aecaccb0266"
+                }
+              }
+            ]
+          }
+        },
+        "execution": {
+          "status": 0,
+          "signal": null,
+          "stdout_sha256": "41eb058e21b5b17db14ddaac9ae2a81ca33cbfacdace44ec30cc2dcdf8dbfdc4",
+          "stderr_sha256": "82a235ff43e26edb4ecfbdc3b4122e7c2c1a575a89e09af300a42da5617ffaea"
+        },
+        "origin": {
+          "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
+          "platform_id": "linux-x64",
+          "host_alias": "bench-1",
+          "campaign_challenge": "57b0e34a2502b14265778fd3be9631744479f3c407913e86ab5c90d1598f4302",
+          "algorithm": "rsa-pkcs1-sha256",
+          "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
+          "payload_sha256": "11fb0456f16abf1ac568202ed4e389f1ca71dca6e782858fd813e29d1deb7bc9",
+          "payload_bytes": 5594,
+          "signature": "XtHt6JbEWOAs89hKsrLUk5Q8WyxbJKru9sX19pr2kc+sJ300nDDYhyAjXZ1xU3K2rw7yIDW/YJNtySG6A4qoUnDupo+jo9Lcztf3AIshEN0v8KYrA4JKspYBF4u/jNAFjYx0Ckgl/Ll5bFuZWZ5IRYVZ8q5ippt0oM02eVbggIC6iReaACyfslEBmmw4plcdxUMF44WCu53DdnkoxWsUIsYnx/+v2JNLCBaIL6d1mO+h5aH7+EAOWx01HJp1J2xO6MvVHgPk7CVJQVLnWwQwaET5uLZAUYKf29zHSSXhWdf+Vlj+uCQL0/mTmtJmer8ncH/hCKTVlWnB/u5muU4r2nrU/QjzWq0lJYCZPYuvImYpBpKxoHS2feuIZZ/S9dtEJ/Mn9rtH2V+FCHB2thnYDkTY9WENbdqepqHtCPHKWO856+s0L2wufTsxQIxmAkhG5ga1PffQUdntz+JwRI7S98O5OP5V3tBO4DSstvAzm0uU514eNvnftvJMeNCWzP0m"
+        }
+      }
+    },
+    "resource-corruption": {
+      "sha256": "f12786476d18a155c60bd10574317dde39acce959ec7f3ce3b0aea1cf62cb3da",
+      "bytes": 5899,
+      "receipt": {
+        "schema": "sagejs.numerical-nlopt-release-evidence/v2",
+        "candidate_commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+        "artifact": {
+          "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+          "bytes": 72592
+        },
+        "public_semantics_bundle_sha256": "fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
+        "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
+        "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+        "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
+        "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+        "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
+        "oracle_source_sha256": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+        "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+        "selected_case_ids": [
+          "nelder-rosenbrock-2",
+          "nelder-beale-2",
+          "nelder-nonsmooth-absolute",
+          "nelder-bounded-boundary",
+          "nelder-ill-scaled"
+        ],
+        "kind": "resource-corruption",
+        "status": "passed",
+        "platform": {
+          "id": "linux-x64",
+          "os": "linux",
+          "architecture": "x64"
+        },
+        "checks": [
+          "browser-corrupt-fail-closed",
+          "npm-corrupt-fail-closed",
+          "npm-missing-fail-closed"
+        ],
+        "collector": {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs",
+          "sha256": "f99aed93937473cd43c6ea7150b641c98230fbbe4c1a4bf8f5a99c90169563c5"
+        },
+        "source_evidence": {
+          "schema": "sagejs.numerical-nlopt-program-evidence/v1",
+          "sha256": "19f08ed61f5b7b25a5acaef9a27f8f55dde74d6ad8a0f9e9c3c877c673b59efa",
+          "bytes": 2456,
+          "payload": {
+            "programs": [
+              {
+                "id": "browser-resource-corruption",
+                "executable": "node",
+                "arguments": [
+                  "--test",
+                  "--test-reporter=tap",
+                  "test/numerical-p3-nlopt/public-browser.mjs"
+                ],
+                "status": 0,
+                "signal": null,
+                "stdout": "TAP version 13\n# Subtest: a real browser routes explicit minimize through NLopt\nok 1 - a real browser routes explicit minimize through NLopt\n  ---\n  duration_ms: 7906.29125\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 8285.788554\n",
+                "stderr": "",
+                "stdout_sha256": "5ffad33ec8a5ef5151dfdcf7267361527fdea4ab5f4bd9b4edf1d7ccf9be9ee1",
+                "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "result": {
+                  "schema": "sagejs.node-test-tap-summary/v1",
+                  "tests": 1,
+                  "passed": 1,
+                  "failed": 0,
+                  "cancelled": 0,
+                  "skipped": 0,
+                  "todo": 0,
+                  "subtest_names": [
+                    "a real browser routes explicit minimize through NLopt"
+                  ],
+                  "stdout_sha256": "5ffad33ec8a5ef5151dfdcf7267361527fdea4ab5f4bd9b4edf1d7ccf9be9ee1"
+                }
+              },
+              {
+                "id": "npm-resource-corruption",
+                "executable": "node",
+                "arguments": [
+                  "--test",
+                  "--test-reporter=tap",
+                  "test/numerical-p3-nlopt/public-relocation.cjs"
+                ],
+                "status": 0,
+                "signal": null,
+                "stdout": "TAP version 13\n# $ node scripts/prepack.cjs\n# Subtest: a packed and relocated npm package executes public NLopt\nok 1 - a packed and relocated npm package executes public NLopt\n  ---\n  duration_ms: 21911.061453\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 21969.336688\n",
+                "stderr": "",
+                "stdout_sha256": "3be41d326ef64e5131d375c293170d79f41d38621059cef9714146e87cde22fd",
+                "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "result": {
+                  "schema": "sagejs.node-test-tap-summary/v1",
+                  "tests": 1,
+                  "passed": 1,
+                  "failed": 0,
+                  "cancelled": 0,
+                  "skipped": 0,
+                  "todo": 0,
+                  "subtest_names": [
+                    "a packed and relocated npm package executes public NLopt"
+                  ],
+                  "stdout_sha256": "3be41d326ef64e5131d375c293170d79f41d38621059cef9714146e87cde22fd"
+                }
+              }
+            ]
+          }
+        },
+        "execution": {
+          "status": 0,
+          "signal": null,
+          "stdout_sha256": "3b1509be901adf5d2fdbada2c40fc829b2f0680b201b0b7d4beba89664ca7652",
+          "stderr_sha256": "5a89917223fc404f91b806410e53e57848a90cd24b2dcf6a1ddaad278bb17385"
+        },
+        "origin": {
+          "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
+          "platform_id": "linux-x64",
+          "host_alias": "bench-1",
+          "campaign_challenge": "57b0e34a2502b14265778fd3be9631744479f3c407913e86ab5c90d1598f4302",
+          "algorithm": "rsa-pkcs1-sha256",
+          "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
+          "payload_sha256": "579cb194afb8c84536bc72e7af9c0dd00587356c3f070265519eafcd0f1f82a2",
+          "payload_bytes": 4863,
+          "signature": "iihNMTnSO67hq4iLnJDswrnBlo7kQ5xe/hnQ8abmap2Hv2OKVvj5MSj6vEREFlP8TLwcBpsF20wtdZXssjtVrPqcPo0TSnQ6ZWQBxdU3aNEBnsqvkBRlzJ5IrH1t+jS1vBwPs9bC1MtYIAAmoOXCldMnLdf/SRsnL+EPU0NxOfPmTYcFZe4Sx0IJoPYv6qF8jR06J9ZlHbfV9Ub6kuflFyBMeVtaekq2FaH1RRdW2z+xYWlZ8YA2EaIFhqKU/LtzBTae/Yh3KebcjlU3KzBbOUbO+50z9Ry20d5PC+2MkXM8/OxoTf0tBX6fPSVBKsA7krV/Ug+XH8qPvMEvhsQq2wJbC629Bbi23bLJOTE3cAKQayN1v8qrwK+eD8JMqb6XLQeMfUSw+kfZmNGjxmxJx1zbMS4BLh5NWF63u2dnbRAydnDC3xiF9cp7yHOw6hWw85EaE6ow9dT7sR17Gcx5o6MVbfY/nTr69mbG7L3XPwxec3W8RuJRViAqxn793OlD"
+        }
+      }
+    },
+    "relocation": {
+      "sha256": "c0e162975878dbf8908db669bf1b863da09b2fc58274671afa711a30e8a661ec",
+      "bytes": 4540,
+      "receipt": {
+        "schema": "sagejs.numerical-nlopt-release-evidence/v2",
+        "candidate_commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+        "artifact": {
+          "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+          "bytes": 72592
+        },
+        "public_semantics_bundle_sha256": "fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
+        "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
+        "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+        "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
+        "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+        "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
+        "oracle_source_sha256": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+        "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+        "selected_case_ids": [
+          "nelder-rosenbrock-2",
+          "nelder-beale-2",
+          "nelder-nonsmooth-absolute",
+          "nelder-bounded-boundary",
+          "nelder-ill-scaled"
+        ],
+        "kind": "relocation",
+        "status": "passed",
+        "platform": {
+          "id": "linux-x64",
+          "os": "linux",
+          "architecture": "x64"
+        },
+        "checks": [
+          "npm-pack",
+          "fresh-install",
+          "relocated-execution"
+        ],
+        "collector": {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs",
+          "sha256": "f99aed93937473cd43c6ea7150b641c98230fbbe4c1a4bf8f5a99c90169563c5"
+        },
+        "source_evidence": {
+          "schema": "sagejs.numerical-nlopt-program-evidence/v1",
+          "sha256": "fd2b9aff85e8fb87937fb10a6f5b807f59db280e08e10753f3f245301b76e07c",
+          "bytes": 1251,
+          "payload": {
+            "programs": [
+              {
+                "id": "npm-relocation",
+                "executable": "node",
+                "arguments": [
+                  "--test",
+                  "--test-reporter=tap",
+                  "test/numerical-p3-nlopt/public-relocation.cjs"
+                ],
+                "status": 0,
+                "signal": null,
+                "stdout": "TAP version 13\n# $ node scripts/prepack.cjs\n# Subtest: a packed and relocated npm package executes public NLopt\nok 1 - a packed and relocated npm package executes public NLopt\n  ---\n  duration_ms: 18709.617091\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 18773.228724\n",
+                "stderr": "",
+                "stdout_sha256": "853ddebeb62fe1257fa2dd9fea0077a29a81d35ad46b9cd251806efbff9f6fec",
+                "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "result": {
+                  "schema": "sagejs.node-test-tap-summary/v1",
+                  "tests": 1,
+                  "passed": 1,
+                  "failed": 0,
+                  "cancelled": 0,
+                  "skipped": 0,
+                  "todo": 0,
+                  "subtest_names": [
+                    "a packed and relocated npm package executes public NLopt"
+                  ],
+                  "stdout_sha256": "853ddebeb62fe1257fa2dd9fea0077a29a81d35ad46b9cd251806efbff9f6fec"
+                }
+              }
+            ]
+          }
+        },
+        "execution": {
+          "status": 0,
+          "signal": null,
+          "stdout_sha256": "1d099dfd63f39bc9fa51c1cd895d2f2b104316a822b082afde15235e77b9e729",
+          "stderr_sha256": "7bfaeb43800862d5e4faebd5951d42c84aa580849c61575c7145670aef04503f"
+        },
+        "origin": {
+          "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
+          "platform_id": "linux-x64",
+          "host_alias": "bench-1",
+          "campaign_challenge": "57b0e34a2502b14265778fd3be9631744479f3c407913e86ab5c90d1598f4302",
+          "algorithm": "rsa-pkcs1-sha256",
+          "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
+          "payload_sha256": "1c874479fa03a1663bfa215932c2289d41c48e69e95952a6d0e3bd07904d882d",
+          "payload_bytes": 3504,
+          "signature": "MAvyfJkbbtZ1izeW4YIgcyim/ySE+89E4deqtreGyqNrRwW+yOuyjTkQreDjOQe+O+4r13bPTnOCujxE+AZfdkw8xNYbD0kbObDChwD9Zt1VA++v9MlH8uAyBIfpHe164M2/yYbcucNpBMldm5Jfu1fbybFSq9UBHAsdZ7cLQnxh4zA9YIgqE8u4Xz2l80ttp886VdsjYh3Jk1ONK8utbFShN6ffvmksRe0S34JkwJ/C41Qpbpfg12f7T+2/waBOAiWTtnna/zsrrJjo0Q41HHX+ufyMc6RpVoLENyBQQM4/BkFaOooufqdEQ1u1rX60FW21hxi8Hu5Ah3zCnRjSxvEE7lxflf/XfQgyJPqHwne4S+iZDctYWFJsHdijJOUntUJKlXYpSi4LUihn1Q5MchYOyqdytlu1U45UFn6LJ+4NvhEbUHkp2aO2M3nJ3bU6dRQyHTm5NgZtlNcc+jfd7RH5p/uWLPOjcVMGV9GNAQa6bhCVrL8bFRsaASjrm/es"
+        }
+      }
+    },
+    "sea": {
+      "sha256": "0c9c6393df057f83622ed94bcfadbc826e18681c0a88ad1a29ecb744e3fda097",
+      "bytes": 6090,
+      "receipt": {
+        "schema": "sagejs.numerical-nlopt-release-evidence/v2",
+        "candidate_commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+        "artifact": {
+          "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+          "bytes": 72592
+        },
+        "public_semantics_bundle_sha256": "fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
+        "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
+        "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+        "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
+        "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+        "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
+        "oracle_source_sha256": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+        "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+        "selected_case_ids": [
+          "nelder-rosenbrock-2",
+          "nelder-beale-2",
+          "nelder-nonsmooth-absolute",
+          "nelder-bounded-boundary",
+          "nelder-ill-scaled"
+        ],
+        "kind": "sea",
+        "status": "passed",
+        "platform": {
+          "id": "linux-x64",
+          "os": "linux",
+          "architecture": "x64"
+        },
+        "checks": [
+          "embedded-artifact-identity",
+          "relocated-execution"
+        ],
+        "collector": {
+          "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs",
+          "sha256": "f99aed93937473cd43c6ea7150b641c98230fbbe4c1a4bf8f5a99c90169563c5"
+        },
+        "source_evidence": {
+          "schema": "sagejs.numerical-nlopt-program-evidence/v1",
+          "sha256": "7454f225bbd9ea3933171569219436afd65a42cf40af269d34a37d740f9bf1da",
+          "bytes": 2679,
+          "payload": {
+            "programs": [
+              {
+                "id": "sea-relocation",
+                "executable": "node",
+                "arguments": [
+                  "--test",
+                  "--test-reporter=tap",
+                  "test/numerical-p3-nlopt/public-sea.cjs"
+                ],
+                "status": 0,
+                "signal": null,
+                "stdout": "TAP version 13\n# Subtest: a relocated Python SEA executes explicit NLopt Nelder-Mead\nok 1 - a relocated Python SEA executes explicit NLopt Nelder-Mead\n  ---\n  duration_ms: 15242.420714\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 15306.345008\n",
+                "stderr": "",
+                "stdout_sha256": "449af9c809e3e8f1b38f29128f39838a57da394414cf6e37960c21d50feafab1",
+                "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "result": {
+                  "schema": "sagejs.node-test-tap-summary/v1",
+                  "tests": 1,
+                  "passed": 1,
+                  "failed": 0,
+                  "cancelled": 0,
+                  "skipped": 0,
+                  "todo": 0,
+                  "subtest_names": [
+                    "a relocated Python SEA executes explicit NLopt Nelder-Mead"
+                  ],
+                  "stdout_sha256": "449af9c809e3e8f1b38f29128f39838a57da394414cf6e37960c21d50feafab1"
+                }
+              },
+              {
+                "id": "sea-resource-probe",
+                "executable": "sagepython",
+                "arguments": [
+                  "--qualification-resource-digests"
+                ],
+                "status": 0,
+                "signal": null,
+                "stdout": "{\"schema\":\"sagejs.sea-qualification-resource-digests/v1\",\"schema_version\":1,\"platform\":{\"os\":\"linux\",\"arch\":\"x64\"},\"resources\":[{\"name\":\"numerical/cminpack.wasm\",\"sha256\":\"4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5\",\"bytes\":72155},{\"name\":\"numerical/nlopt-methods.wasm\",\"sha256\":\"8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb\",\"bytes\":72592}]}\n",
+                "stderr": "",
+                "stdout_sha256": "24decf4fe96e469c52b2385ce74916e69fdff84bb9451b82e10cfee4bee665f8",
+                "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "result": {
+                  "schema": "sagejs.sea-qualification-resource-digests/v1",
+                  "schema_version": 1,
+                  "platform": {
+                    "os": "linux",
+                    "arch": "x64"
+                  },
+                  "resources": [
+                    {
+                      "name": "numerical/cminpack.wasm",
+                      "sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5",
+                      "bytes": 72155
+                    },
+                    {
+                      "name": "numerical/nlopt-methods.wasm",
+                      "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+                      "bytes": 72592
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "execution": {
+          "status": 0,
+          "signal": null,
+          "stdout_sha256": "10e98cb56e123973da7acd483c9a51873b7300495ab18149dda9506c423940d0",
+          "stderr_sha256": "f044a295270c8cc535236b80b1f837519a1c2eb32be6d80a38593d2f75ce6a86"
+        },
+        "origin": {
+          "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
+          "platform_id": "linux-x64",
+          "host_alias": "bench-1",
+          "campaign_challenge": "57b0e34a2502b14265778fd3be9631744479f3c407913e86ab5c90d1598f4302",
+          "algorithm": "rsa-pkcs1-sha256",
+          "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
+          "payload_sha256": "fb0b04dc8d58e78e39d9176b271bdeb4daf08fce627c92c8e46702456db698b3",
+          "payload_bytes": 5054,
+          "signature": "hD8HJIeQI4w3idB9uqHxmcJm1oYQEJCoL6LmME2KSh4Ntd5VwVr2YpyrwKQBbrNgrj14obXfLUi/+P1PXvGeJDHnIh4MRbeqkT9/2O7uUuBOB5LvzgHiyV5uPnaCN8jQKmQc7GMMiGE0nK3ttT9vPJkNQ93PyH+ltlgCoejIuBpcMl7v1ydIHtvEOSpRvhU5MfWYLfLF53i/BFbc541nhYXpUE0isUpYW/eHL6UOVZyZALvSLCtIa37ViQ4WeL4MHOeKjLGAd4pVFZbjPyKGFtRZKRiW6RRnP4aYUvXun17tCzLFELyXWtr3jUP6MpfEkHuK4ymUMRgoIPRb5PeTenqI8hzq5XAAQM8clVHRaxDbjckmZ8RYCmLeKYQ9G8fHUIyHwK0wTW33DmMHPF8mWv4+EW/qhINZ2qKdafPOjqpOpC+8TGhfDCfzz/3mFmXzbQs76rTZ4qOMcm/yO7h4UezIbRZCPITB514jSJNUU8+gby43baUXpvQkKcF0unhE"
+        }
+      }
+    }
+  },
+  "portable_receipts": {
+    "linux-x64": {
+      "sha256": "48bf345b712849f3029bbb04b8b19c094919568d461b12f1d6242badcb997a2b",
+      "bytes": 4592,
+      "node": "v26.5.1",
+      "receipt": {
+        "schema": "sagejs.numerical-nlopt-case-execution/v3",
+        "candidate_commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+        "artifact": {
+          "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+          "bytes": 72592
+        },
+        "public_semantics_bundle_sha256": "fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
+        "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
+        "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+        "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
+        "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+        "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
+        "oracle_source_sha256": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+        "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+        "selected_case_ids": [
+          "nelder-rosenbrock-2",
+          "nelder-beale-2",
+          "nelder-nonsmooth-absolute",
+          "nelder-bounded-boundary",
+          "nelder-ill-scaled"
+        ],
+        "runtime": {
+          "node": "v26.5.1",
+          "os": "linux",
+          "architecture": "x64"
+        },
+        "method": "nlopt-nelder-mead",
+        "results": [
+          {
+            "id": "nelder-rosenbrock-2",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              0.9999999987760098,
+              0.999999997798519
+            ],
+            "objective": 7.574351846926756e-18,
+            "maximum_violation": 0,
+            "evaluations": 214,
+            "callbacks": 214,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-beale-2",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              3.000000000492727,
+              0.5000000000058128
+            ],
+            "objective": 3.511581030697623e-19,
+            "maximum_violation": 0,
+            "evaluations": 147,
+            "callbacks": 147,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-nonsmooth-absolute",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              -9.072487686994956e-13,
+              3.1814315772989937e-13
+            ],
+            "objective": 1.5435350841592943e-12,
+            "maximum_violation": 0,
+            "evaluations": 190,
+            "callbacks": 190,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-bounded-boundary",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              1,
+              -1
+            ],
+            "objective": 5,
+            "maximum_violation": 0,
+            "evaluations": 13,
+            "callbacks": 13,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-ill-scaled",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              1000000.0002090444,
+              9.999999998160128e-7
+            ],
+            "objective": 7.755086547339846e-20,
+            "maximum_violation": 0,
+            "evaluations": 132,
+            "callbacks": 132,
+            "independently_accepted": true
+          }
+        ],
+        "results_sha256": "825fb48a64877a694587be2bbbd7af14868609f2678dc7d810411d2f637fa4d3",
+        "lifecycle_after": {
+          "activeContexts": 0,
+          "activeHandle": 0,
+          "liveAllocations": 0,
+          "liveBytes": 0,
+          "memoryBytes": 2097152
+        },
+        "automatic_selection": false,
+        "origin": {
+          "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
+          "platform_id": "linux-x64",
+          "host_alias": "bench-1",
+          "campaign_challenge": "57b0e34a2502b14265778fd3be9631744479f3c407913e86ab5c90d1598f4302",
+          "algorithm": "rsa-pkcs1-sha256",
+          "public_key_spki_sha256": "90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374",
+          "payload_sha256": "6a79fa1bae1c0a9f1d047114beda228567b61c7b83322f90f84cb9ee12031139",
+          "payload_bytes": 3556,
+          "signature": "B+peNE0rnu117C6yw7RVrRhRY5+4XizjuahgLr8i9CRM4mVNSb+ljAQN2d0YsM8VnBxj+94Giv2wRuEvtDhl7WB656w+3uUES3EpptF+bVhqVRJdRl7WjGUBexB/G4Vvh/JdB+DGBiNm+SgNiRNQ8lreIk59lUgn9BWsrtW+DB9up1DUFeiwhSEE6+AgONoobQr37pytLuq0+utpu/l7/88RjlfCWHHDyK2D+f1rSMk55wwHnU1T+olIC3eDvSldXrrXQ9DH8czablTe1suC3k1qnR4tXU9IMn3uYw6znZ11cSh/lOY2rk0FFaKwAOm0XuDXhJM+2YiqjI3NbcrkCJ7J6wnJRY8Jh7y7anN/UcfHz6zsUeIEKIj+VkvnouD3zns4Jx9HvuUf2lwDhIJmZGasboBz8D/2unclK+5nj/Mur8/oy/0dNKNlSpP9OYN3ALtIUzzORBBfyMldCj+peHzn9jVtSW/btrneK3J7DXiU7oSBBAKV2brevefrc0zL"
+        }
+      }
+    },
+    "linux-arm64": {
+      "sha256": "8ff2b1203693df0426217fd972e8207e4618d626e42508af78869d4e31eb5ae4",
+      "bytes": 4598,
+      "node": "v26.5.1",
+      "receipt": {
+        "schema": "sagejs.numerical-nlopt-case-execution/v3",
+        "candidate_commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+        "artifact": {
+          "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+          "bytes": 72592
+        },
+        "public_semantics_bundle_sha256": "fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
+        "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
+        "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+        "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
+        "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+        "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
+        "oracle_source_sha256": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+        "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+        "selected_case_ids": [
+          "nelder-rosenbrock-2",
+          "nelder-beale-2",
+          "nelder-nonsmooth-absolute",
+          "nelder-bounded-boundary",
+          "nelder-ill-scaled"
+        ],
+        "runtime": {
+          "node": "v26.5.1",
+          "os": "linux",
+          "architecture": "arm64"
+        },
+        "method": "nlopt-nelder-mead",
+        "results": [
+          {
+            "id": "nelder-rosenbrock-2",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              0.9999999987760098,
+              0.999999997798519
+            ],
+            "objective": 7.574351846926756e-18,
+            "maximum_violation": 0,
+            "evaluations": 214,
+            "callbacks": 214,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-beale-2",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              3.000000000492727,
+              0.5000000000058128
+            ],
+            "objective": 3.511581030697623e-19,
+            "maximum_violation": 0,
+            "evaluations": 147,
+            "callbacks": 147,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-nonsmooth-absolute",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              -9.072487686994956e-13,
+              3.1814315772989937e-13
+            ],
+            "objective": 1.5435350841592943e-12,
+            "maximum_violation": 0,
+            "evaluations": 190,
+            "callbacks": 190,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-bounded-boundary",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              1,
+              -1
+            ],
+            "objective": 5,
+            "maximum_violation": 0,
+            "evaluations": 13,
+            "callbacks": 13,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-ill-scaled",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              1000000.0002090444,
+              9.999999998160128e-7
+            ],
+            "objective": 7.755086547339846e-20,
+            "maximum_violation": 0,
+            "evaluations": 132,
+            "callbacks": 132,
+            "independently_accepted": true
+          }
+        ],
+        "results_sha256": "825fb48a64877a694587be2bbbd7af14868609f2678dc7d810411d2f637fa4d3",
+        "lifecycle_after": {
+          "activeContexts": 0,
+          "activeHandle": 0,
+          "liveAllocations": 0,
+          "liveBytes": 0,
+          "memoryBytes": 2097152
+        },
+        "automatic_selection": false,
+        "origin": {
+          "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
+          "platform_id": "linux-arm64",
+          "host_alias": "bench-arm",
+          "campaign_challenge": "57b0e34a2502b14265778fd3be9631744479f3c407913e86ab5c90d1598f4302",
+          "algorithm": "rsa-pkcs1-sha256",
+          "public_key_spki_sha256": "78d44c4f7112a2f36eaddfa53fe5b375c2eec232bc0a1bee203da287aac6fbad",
+          "payload_sha256": "10441eceaf2c5480c2a7eac675632fdb193ec44ecd7a4f607aeddb1371aa883c",
+          "payload_bytes": 3558,
+          "signature": "E1kFfh/Ey/Vas+5YCRlNz5CZhjcJbIP2shLwpJT4P1RZp2iblstWlRyL1c2NhIT1YacjahUtc4QnOLqAVwlx4W9sU3jfyr5eoGpZ1HunWaI6T38iInqdLStjT72hQuw3r80g9+kD+6Hbw8M51FdrbtAQotABvBMs4T2iIWwg9ar+mF6YBJGnPLzMeGpyl6EEm5DsYAz7Dsq200hecpY1d2fNJZhWd8h2qr1gPUhIyvSff5JTcdCbMyh8NeOv2PLklpkU2U2qND4mzDCL+AFaajbMOEPbGTwV7WCYtoghLgX4VDf1dTfYto4CezB4VtjrZ0iAXrcYLYGH0uSpv6dCFxtBl3iRmhchdR9caB3t+ywQbHexkCCSDuGGDc5jeJPeKEDfR2b5nzgZ+ato02aZ+pvB0tmokHgzmsvBV8T4djn1g/4+JbLx65V6iwoLWJ3YULNPfzbQkFIWeATySTWYpWOigW0iLznafobuRuTYPOWdNKoEl0vKSR6vcMhShTn+"
+        }
+      }
+    },
+    "macos-arm64": {
+      "sha256": "e31406e54e328d5f24542ba46e51839eed6eb7c083c064a5f76c6b07d595e4c7",
+      "bytes": 4592,
+      "node": "v26.5.1",
+      "receipt": {
+        "schema": "sagejs.numerical-nlopt-case-execution/v3",
+        "candidate_commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+        "artifact": {
+          "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+          "bytes": 72592
+        },
+        "public_semantics_bundle_sha256": "fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
+        "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
+        "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+        "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
+        "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+        "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
+        "oracle_source_sha256": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+        "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+        "selected_case_ids": [
+          "nelder-rosenbrock-2",
+          "nelder-beale-2",
+          "nelder-nonsmooth-absolute",
+          "nelder-bounded-boundary",
+          "nelder-ill-scaled"
+        ],
+        "runtime": {
+          "node": "v26.5.1",
+          "os": "darwin",
+          "architecture": "arm64"
+        },
+        "method": "nlopt-nelder-mead",
+        "results": [
+          {
+            "id": "nelder-rosenbrock-2",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              0.9999999987760098,
+              0.999999997798519
+            ],
+            "objective": 7.574351846926756e-18,
+            "maximum_violation": 0,
+            "evaluations": 214,
+            "callbacks": 214,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-beale-2",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              3.000000000492727,
+              0.5000000000058128
+            ],
+            "objective": 3.511581030697623e-19,
+            "maximum_violation": 0,
+            "evaluations": 147,
+            "callbacks": 147,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-nonsmooth-absolute",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              -9.072487686994956e-13,
+              3.1814315772989937e-13
+            ],
+            "objective": 1.5435350841592943e-12,
+            "maximum_violation": 0,
+            "evaluations": 190,
+            "callbacks": 190,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-bounded-boundary",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              1,
+              -1
+            ],
+            "objective": 5,
+            "maximum_violation": 0,
+            "evaluations": 13,
+            "callbacks": 13,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-ill-scaled",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              1000000.0002090444,
+              9.999999998160128e-7
+            ],
+            "objective": 7.755086547339846e-20,
+            "maximum_violation": 0,
+            "evaluations": 132,
+            "callbacks": 132,
+            "independently_accepted": true
+          }
+        ],
+        "results_sha256": "825fb48a64877a694587be2bbbd7af14868609f2678dc7d810411d2f637fa4d3",
+        "lifecycle_after": {
+          "activeContexts": 0,
+          "activeHandle": 0,
+          "liveAllocations": 0,
+          "liveBytes": 0,
+          "memoryBytes": 2097152
+        },
+        "automatic_selection": false,
+        "origin": {
+          "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
+          "platform_id": "macos-arm64",
+          "host_alias": "m1",
+          "campaign_challenge": "57b0e34a2502b14265778fd3be9631744479f3c407913e86ab5c90d1598f4302",
+          "algorithm": "rsa-pkcs1-sha256",
+          "public_key_spki_sha256": "ad9ad8bcd3f244220017efc0127bf7c094487c828d3f6e2e8b36f96855d7e654",
+          "payload_sha256": "10c280b70cfce9ed4db0f890458a8f9d6a19ccc6210228a5f35eafe12bdd57ec",
+          "payload_bytes": 3559,
+          "signature": "fKiFELXXUzAkrVMm9WeSnq+isiVSEir39e4Os9xVSOjN6HkOsippQQrTVmWv/lPCT+9LSs4RTsIfCpAiltwM+ri5yx8y9PiMkW29SEpl2fSCK5nvIx8DC3NKbDmB9tTO5ZjOJEQJwoVyfTotpB2QiKkYjotGxd61dF4+NTb2GttXHDOnhAcTWxtV7lOVpoEN9P5rJmiqzjS7Lh4prNzzsp3cIvPuy5Ei+/Vi7lRc/Dv8NZ5VsUp+NO6Ucm3/ZTGxNW37elXuLcnO/xDHGh3qz6KAPPoGTqtUmvWITwISkdkD2ZnelHZOlEIvHURorUDmQeccM7sa3dCAWu9dsHeuCNQIsuvO9rIjv86SOXiiMuRDQJfKQGt85pSJzid615VUhuTufLM4SMoYLDYkqAnOPGt3B1jvw3PYIVtOulq8HjMBYNf55+P2IUop45Y2GKjM3yhfHHf/oGyf1gIF81PevY9kP/3ccDBDxx6ICLavw1kUnLAaCmrgLEQOmiauvmuq"
+        }
+      }
+    },
+    "windows-x64": {
+      "sha256": "55736bd8aee50b30570454e4687d6166076c2fad45c2c5e4031464dbd923df59",
+      "bytes": 4594,
+      "node": "v26.5.1",
+      "receipt": {
+        "schema": "sagejs.numerical-nlopt-case-execution/v3",
+        "candidate_commit": "4eb172220532b7ded167abce85cbc57fc9b0135f",
+        "artifact": {
+          "sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
+          "bytes": 72592
+        },
+        "public_semantics_bundle_sha256": "fcaf22c325e2df64f05f4452b4729daf382c32d15fa388548826510fd851172b",
+        "qualification_tooling_bundle_sha256": "b92e16e8916f7ace284e7bd01a41d6bffd3bc6a65b8191b8a7c55a585aa38167",
+        "source_lock_sha256": "6baa03d79ed6ba22278af1b422fd31c28b1bfc76fc191729d54addf569c2f192",
+        "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
+        "build_report_sha256": "7740b507278697cd4bcf58bda363c407a2af16c1c94a0a5b45b8ee3118826f41",
+        "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+        "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
+        "oracle_source_sha256": "b56e6e1c4b07653567fd0c8ec98bd99305584129940f3633d662b0df4f22f26e",
+        "selection_sha256": "606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8",
+        "selected_case_ids": [
+          "nelder-rosenbrock-2",
+          "nelder-beale-2",
+          "nelder-nonsmooth-absolute",
+          "nelder-bounded-boundary",
+          "nelder-ill-scaled"
+        ],
+        "runtime": {
+          "node": "v26.5.1",
+          "os": "win32",
+          "architecture": "x64"
+        },
+        "method": "nlopt-nelder-mead",
+        "results": [
+          {
+            "id": "nelder-rosenbrock-2",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              0.9999999987760098,
+              0.999999997798519
+            ],
+            "objective": 7.574351846926756e-18,
+            "maximum_violation": 0,
+            "evaluations": 214,
+            "callbacks": 214,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-beale-2",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              3.000000000492727,
+              0.5000000000058128
+            ],
+            "objective": 3.511581030697623e-19,
+            "maximum_violation": 0,
+            "evaluations": 147,
+            "callbacks": 147,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-nonsmooth-absolute",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              -9.072487686994956e-13,
+              3.1814315772989937e-13
+            ],
+            "objective": 1.5435350841592943e-12,
+            "maximum_violation": 0,
+            "evaluations": 190,
+            "callbacks": 190,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-bounded-boundary",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              1,
+              -1
+            ],
+            "objective": 5,
+            "maximum_violation": 0,
+            "evaluations": 13,
+            "callbacks": 13,
+            "independently_accepted": true
+          },
+          {
+            "id": "nelder-ill-scaled",
+            "method": "nlopt-nelder-mead",
+            "backend_status": 4,
+            "backend_converged": true,
+            "value": [
+              1000000.0002090444,
+              9.999999998160128e-7
+            ],
+            "objective": 7.755086547339846e-20,
+            "maximum_violation": 0,
+            "evaluations": 132,
+            "callbacks": 132,
+            "independently_accepted": true
+          }
+        ],
+        "results_sha256": "825fb48a64877a694587be2bbbd7af14868609f2678dc7d810411d2f637fa4d3",
+        "lifecycle_after": {
+          "activeContexts": 0,
+          "activeHandle": 0,
+          "liveAllocations": 0,
+          "liveBytes": 0,
+          "memoryBytes": 2097152
+        },
+        "automatic_selection": false,
+        "origin": {
+          "schema": "sagejs.numerical-nlopt-persistent-host-operator-signature/v1",
+          "platform_id": "windows-x64",
+          "host_alias": "windows",
+          "campaign_challenge": "57b0e34a2502b14265778fd3be9631744479f3c407913e86ab5c90d1598f4302",
+          "algorithm": "rsa-pkcs1-sha256",
+          "public_key_spki_sha256": "4b4fc63d18802dbf3faaf7c5bbc90e25d152ad30ab90e754be61beb6f17f5bce",
+          "payload_sha256": "c23bdcd793dcba30fd3f80585e0f014f04b786a6b706fff0fdd4e901ff7d5084",
+          "payload_bytes": 3556,
+          "signature": "batPY+j5CeAUN/KHgBoLmAKG0N+zkmW3P4bg/MVjSlq7dri3LVkUiuGa656t6IJ/gwv7Fvx9HBRr/aOUXkRl4jMZlu4kWlx0OZITDQdhSoGsIjZTpXiqCfzGAr3hcW4XVJ3PAD+lzw/n3gTFqbkjWtM9aFQL1bax7Hdx4PQ4/tH9/U9poySJKBit0vWTkxJKyErgXsbWVJqJkgxM3iAOpID4DlMZVrnoRdKYjbEavH9VTgkMmG7xhMPs/lKci+szZWX+PgSVaMcBUcvU6rklY7KOdYF1Ni9USTEaIB+Re48WdXAgZunpPtvfAWBHYzmZu1i7UIxlwG+s4k8M1Bvpz7HN9dM8iIWvomraAclL8eWppOH9uHed2VJBd9I7woWHLfEsO9AH7RlrneX6K1+C9nXZr8PWaKXNg72dg8yjl34QWVdoq9LTF2saNIXFqm0u6e+eZVf7IfEWWcE2B8sDHLSS9ntKZF41DJNwbMZOXvElmS35Up/mjk4Pnmp+THJG"
+        }
+      }
+    }
+  },
+  "historical_exclusions": {
+    "nlopt-cobyla": {
+      "status": "excluded",
+      "reason": "Source-bound UBSAN found unresolved pointer-provenance undefined behavior in the selected upstream f2c COBYLA source.",
+      "qualification_rule": "Historical COBYLA oracle, corpus, artifact, or platform evidence is never accepted as current Nelder-Mead qualification evidence."
+    }
+  }
+}

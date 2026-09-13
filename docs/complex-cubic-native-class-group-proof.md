@@ -43,6 +43,18 @@ uses the ordinary exact implementation. A raw native output buffer has no
 mathematical authority: only the adapter can issue an immutable receipt bound
 to the live irreducible field.
 
+The public native call currently admits a $1$ MiB resident exact-object budget
+and a $3$ MiB fmpz checkpoint soft limit. The checkpoint cap is a measured
+resource contract, not a mathematical premise. After the fmpz backend moved
+its checkpoint before child initialization so that all live GMP allocation is
+accounted, LMFDB field `3.1.69305231.3` required $2{,}656{,}608$ charged bytes
+on the measured Linux-x64 build's effort-$1$ path. That number is build and
+platform evidence, not a portable ABI promise or a theorem. The former $2$ MiB
+cap therefore declined on a valid computation; $3$ MiB restores that
+authenticated path with finite headroom. A computation that exceeds either
+cap still publishes no receipt and continues through the ordinary exact
+fallback.
+
 ## Proof ledger
 
 The accepted result follows from the following chain.
@@ -262,6 +274,48 @@ conditionally expands to the same canonical class support plus eighteen final
 witnesses and attempts exact unit reconstruction there. It never makes the
 exceptional HNF/LLL/log workspace operate on the entire raw collection matrix.
 
+For eligible searches without an already known small unit, the collector
+records this support during its online HNF updates. If the admitted rows are
+$r_0,\ldots,r_i\in\mathbb Z^n$, define
+
+$$
+L_i=\langle r_0,\ldots,r_i\rangle_{\mathbb Z},\qquad L_{-1}=0.
+$$
+
+Starting with the zero $n\times n$ matrix $B_{-1}$, let $B_i$ be the first
+$n$ rows of the row HNF of $\begin{pmatrix}B_{i-1}\\r_i\end{pmatrix}$.
+FLINT's canonical row HNF places nonzero rows before trailing zero rows;
+there are at most $n$ nonzero rows. Induction therefore gives
+$\operatorname{rowspan}_{\mathbb Z}(B_i)=L_i$. Uniqueness of this padded
+canonical basis gives the exact support criterion
+
+$$
+s_i=1\iff B_i\ne B_{i-1}\iff r_i\notin L_{i-1}.
+$$
+
+The rows marked by $s_i=1$ span every prefix lattice. The online marks thus
+select exactly the same source rows, in the same order, as the former second
+support-selection pass. At full rank, exact triangular membership can skip
+an HNF computation for a contained row. Before full rank, the update computes
+the HNF even when pivots skip columns. A same-rank decrease in lattice index
+still sets the support bit.
+
+Reuse requires every admitted row to have been processed online and no
+small-unit shortcut to be active. The small-unit branch keeps its original
+tall HNF, because it retains all principal rows. The reused square HNF
+supplies rank, while Smith reduction of the complete relation matrix and
+independent compact HNF and Smith-index checks remain in place. Publication
+retains the original principal elements associated with the selected rows;
+it does not substitute HNF basis rows without corresponding elements.
+
+LMFDB `3.1.83062751.1`, defined by $x^3-x^2-146x-22763$, checks this reuse
+with $36$ factor-base ideals, $38$ support rows, and $4$ redundant tail rows.
+Its compact $C_{15}$ transcript is identical to the preceding implementation
+($4405$ JSON bytes, SHA-256
+`b1282d038400684fb1c3116fe21e9ecddb7d20513b94a490ed6fd662c123d5e8`)
+and passes ordinary exact conditional-GRH replay. Transcript equality is a
+regression check; the prefix-lattice argument above justifies the reuse.
+
 Relation effort remains adaptive. For factor bases of dimension at most $11$,
 the host first invokes the closed native program with the three largest
 canonical factor-base ideals and no compound multiplier. Larger bases start
@@ -358,7 +412,7 @@ still decline rather than inheriting PARI's nonfatal unit omission.
 ### 5. Belabas--Friedman encloses the zeta residue under GRH
 
 Let $\kappa_K$ be the residue of $\zeta_K(s)$ at $s=1$. The program first uses
-the fixed cutoff $X=997$. If every exact algebraic and interval check succeeds
+the fixed cutoff $X=999$. If every exact algebraic and interval check succeeds
 but the resulting enclosure cannot yet distinguish the positive integral
 index from $2$, it makes one bounded refinement at $X=1494$. The retry rebuilds
 the Euler plan and rigorous enclosure from scratch in the same resident arena;
@@ -386,14 +440,26 @@ $$
 \right),
 $$
 
-where $n=[K:\mathbb Q]=3$ here.
+where $n=[K:\mathbb Q]=3$ here. The finite expression is
+
+$$
+f_K(X)=\frac{3\bigl(B_K(X)-B_K(X/9)\bigr)}{2\sqrt X\log(3X)}.
+$$
+
+The planner requires a cutoff divisible by $9$, so its integer `X // 9`
+equals the real scale $X/9$ in both the logarithmic and square-root weights.
+Rounding only the enumeration boundary is different from rounding these
+continuous weights. The former initial cutoff $997$ did not satisfy this
+contract; the [exact scale audit](cubic-analytic-schedule.md) records the
+discrepancy and its correction. No wrong class number was observed in that
+audit, but agreement with an oracle does not repair a proof-contract gap.
 
 The implementation evaluates the finite expression and this error bound with
 outward-rounded dyadic intervals. Both cutoffs use the identical strict
 index-one criterion below. Thus $X=1494$ is only a bounded proof-search
 schedule, not an additional mathematical assumption. LMFDB field
 `3.1.93074700.2`, defined by $x^3-5570$, exercises the refinement: the native
-program obtains the same exact $C_{42}$ presentation and unit at $X=997$, then
+program obtains the same exact $C_{42}$ presentation and unit at $X=999$, then
 publishes only after the $X=1494$ enclosure proves index one.
 
 ### 6. The analytic class-number formula proves both indices are one

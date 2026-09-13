@@ -7,6 +7,8 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
+const { pythonExecutable } = require("../tools/python-executable.cjs");
+
 const root = path.resolve(__dirname, "..");
 const {
   canonicalWorkloadCompilerIdentity,
@@ -183,7 +185,7 @@ test("every machine control has immutable CPython-parseable source provenance", 
       inventory.sha256,
     );
     assert.ok(sourcePath.startsWith("bench/optimizer-workloads/"));
-    const result = spawnSync("python3", ["-m", "py_compile", path.join(root, sourcePath)], {
+    const result = spawnSync(pythonExecutable(), ["-m", "py_compile", path.join(root, sourcePath)], {
       cwd: root,
       encoding: "utf8",
     });

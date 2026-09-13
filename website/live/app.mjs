@@ -1,10 +1,17 @@
-import { loadSageRuntime, requestCredentials } from "./runtime-api.mjs";
-import { createSourceEditor } from "./codemirror-editor.mjs";
+import { requestCredentials } from "./runtime-api.mjs";
+import { createSageCellController } from "./cell-controller.mjs";
+import {
+  createReadOnlySource,
+  createSourceEditor,
+} from "./codemirror-editor.mjs";
 import { executionSource } from "./execution-source.mjs";
 import { EXAMPLES } from "./examples.mjs";
+import {
+  createOutputRenderer,
+  evaluationResultBundle,
+} from "./output-renderer.mjs";
 import { capabilityFamilies, filterCapabilities, validateCapabilityReport } from "./capability-report.mjs";
 import {
-  assertDisplayWithinLimit,
   boundedTimeout,
   DEFAULT_LIMITS,
   OutputCollector,
@@ -16,6 +23,9 @@ import {
   newWorkspace,
   WorkspaceStore,
 } from "./session-store.mjs";
+import {
+  DEFAULT_WIDGET_LIMITS,
+} from "./widget-manager.mjs";
 
 const $ = (selector) => document.querySelector(selector);
 const fetchCredentials = requestCredentials(location.search);
@@ -36,20 +46,79 @@ const elements = {
   capabilitySearch: $("#capability-search"),
   capabilitySummary: $("#capability-summary"),
   capabilityRecords: $("#capability-records"),
+  typesetMath: $("#typeset-math"),
+  theme: $("#theme"),
 };
+
+const THEME_KEY = "sagejs-theme";
+const themeMedia = matchMedia("(prefers-color-scheme: dark)");
+
+function storedTheme() {
+  try {
+    const value = localStorage.getItem(THEME_KEY);
+    return value === "light" || value === "dark" ? value : "system";
+  } catch {
+    return "system";
+  }
+}
+
+function applyTheme(preference, { persist = false } = {}) {
+  if (!new Set(["system", "light", "dark"]).has(preference)) {
+    preference = "system";
+  }
+  const resolved = preference === "system"
+    ? (themeMedia.matches ? "dark" : "light")
+    : preference;
+  document.documentElement.dataset.theme = resolved;
+  document.documentElement.dataset.themePreference = preference;
+  elements.theme.value = preference;
+  if (persist) {
+    try { localStorage.setItem(THEME_KEY, preference); } catch { /* storage is optional */ }
+  }
+}
+
+applyTheme(storedTheme());
+elements.theme.addEventListener("change", () => {
+  applyTheme(elements.theme.value, { persist: true });
+  setLive(`Theme set to ${elements.theme.selectedOptions[0].textContent}.`);
+});
+themeMedia.addEventListener("change", () => {
+  if (elements.theme.value === "system") applyTheme("system");
+});
 
 const store = new WorkspaceStore();
 let workspace;
+let cellController;
 let session;
 let sessionPromise;
-let createSage;
 let downloadSageDisplay;
 let renderSageDisplay;
+let widgetHost;
 let SageSessionInterruptedError;
 let SageSessionTimeoutError;
 let running = false;
 let runCounter = 0;
 let autosaveTimer;
+
+const outputRenderer = createOutputRenderer({
+  getWidgetHost: () => widgetHost,
+  getRenderSageDisplay: () => renderSageDisplay,
+  typesetMath: () => elements.typesetMath.checked,
+});
+const {
+  createEventRenderer,
+  renderMimeBundle,
+  renderWidgetOutput,
+} = outputRenderer;
+
+function userErrorText(error) {
+  const name = typeof error?.sagejsErrorName === "string"
+    ? error.sagejsErrorName
+    : error?.name === "ReferenceError"
+    ? "NameError"
+    : error?.name || "Error";
+  return `${name}: ${error?.message || String(error)}`;
+}
 
 function setLive(message) {
   elements.live.textContent = message;
@@ -68,38 +137,46 @@ function updateControls() {
 
 function createSession() {
   setStatus("loading", "Loading kernel");
-  const promise = loadSageRuntime().then((runtime) => {
+  cellController = createSageCellController({
+    renderWidgetOutput,
+    async onGraphicsSave(request) {
+      await downloadSageDisplay(
+        request.display,
+        request.filename,
+        request.options,
+      );
+    },
+  });
+  cellController.addEventListener("error", ({ detail }) => {
+    if (detail.phase !== "worker") return;
+    setStatus("loading", "Recovering kernel");
+    setLive(`The kernel worker failed and is being replaced: ${detail.error.message}`);
+    void cellController.reset().then(
+      () => {
+        setStatus("ready", "Ready — recovered session");
+        setLive("The kernel restarted with a clean session.");
+        updateControls();
+      },
+      (replacementError) => {
+        setStatus("error", "Kernel recovery failed");
+        setLive(`Kernel recovery failed: ${replacementError.message}`);
+      },
+    );
+  });
+  const promise = cellController.ready().then((controller) => {
+    const runtime = controller.runtime;
     ({
-      createSage,
       downloadSageDisplay,
       renderSageDisplay,
       SageSessionInterruptedError,
       SageSessionTimeoutError,
     } = runtime);
-    return createSage({
-      async onGraphicsSave(request) {
-        await downloadSageDisplay(request.display, request.filename, request.options);
-      },
-    });
+    return controller.session;
   });
   promise.then(
     (value) => {
       session = value;
-      value.on("error", (error) => {
-        setStatus("loading", "Recovering kernel");
-        setLive(`The kernel worker failed and is being replaced: ${error.message}`);
-        void value.reset().then(
-          () => {
-            setStatus("ready", "Ready — recovered session");
-            setLive("The kernel restarted with a clean session.");
-            updateControls();
-          },
-          (replacementError) => {
-            setStatus("error", "Kernel recovery failed");
-            setLive(`Kernel recovery failed: ${replacementError.message}`);
-          },
-        );
-      });
+      widgetHost = cellController.widgetHost;
       setStatus("ready", "Ready — local WebAssembly");
       setLive("Sage.js is ready.");
       updateControls();
@@ -198,11 +275,10 @@ function renderMessage(kind, title, text = "", input = "") {
       }
     });
     inputHeading.append(inputLabel, copy);
-    const inputSource = document.createElement("pre");
+    const inputSource = document.createElement("div");
     inputSource.className = "result-input";
-    inputSource.textContent = input;
-    inputSource.tabIndex = 0;
     article.append(inputHeading, inputSource);
+    createReadOnlySource(inputSource, input, `Input for ${title}`);
   }
   article.append(outputLabel, pre);
   elements.output.prepend(article);
@@ -238,6 +314,7 @@ async function run(mode) {
   const plot = document.createElement("div");
   plot.className = "plot";
   article.append(plot);
+  const eventRenderer = createEventRenderer(article, pre);
   const start = performance.now();
   let outputLimitRestarted = false;
   running = true;
@@ -245,8 +322,8 @@ async function run(mode) {
   setLive(`Running ${mode}. Interrupt is available.`);
   updateControls();
   try {
-    const activeSession = session ?? await sessionPromise;
-    const result = await activeSession.evaluate(source, {
+    if (!session) await sessionPromise;
+    const result = await cellController.run(source, {
       filename: `<sagejs.org:${workspace.id}>`,
       timeout: boundedTimeout(elements.timeout.value),
       onOutput(text) {
@@ -254,17 +331,28 @@ async function run(mode) {
         pre.textContent = collector.text || "Running…";
         if (collector.exceeded && !outputLimitRestarted) {
           outputLimitRestarted = true;
-          void activeSession.interrupt();
+          void cellController.interrupt();
         }
         return appended;
       },
+      onEvent(event) {
+        eventRenderer.event(event);
+      },
     });
-    if (result.repr) collector.append((collector.text && !collector.text.endsWith("\n") ? "\n" : "") + result.repr);
-    pre.textContent = collector.text || "Completed without textual output.";
-    if (result.display) {
-      const plotBytes = assertDisplayWithinLimit(result.display);
-      await renderSageDisplay(plot, result.display);
-      plot.dataset.bytes = String(plotBytes);
+    await eventRenderer.settled();
+    const finalBundle = evaluationResultBundle(result, {
+      typesetMath: elements.typesetMath.checked,
+    });
+    if (result.repr && !finalBundle.rich) {
+      collector.append((collector.text && !collector.text.endsWith("\n") ? "\n" : "") + result.repr);
+    }
+    pre.textContent = collector.text || (eventRenderer.count
+      ? ""
+      : "Completed without textual output.");
+    if (!pre.textContent) pre.remove();
+    if (finalBundle.rich) {
+      await renderMimeBundle(plot, finalBundle.data, finalBundle.metadata);
+      if (!collector.text) pre.remove();
     } else {
       plot.remove();
     }
@@ -278,14 +366,20 @@ async function run(mode) {
     if (outputLimitRestarted) {
       pre.textContent = collector.text;
       setLive("The output limit was reached. The kernel was restarted and variables were cleared.");
-    } else if (error instanceof SageSessionTimeoutError) {
+    } else if (
+      typeof SageSessionTimeoutError === "function" &&
+      error instanceof SageSessionTimeoutError
+    ) {
       pre.textContent = `Time limit reached.\n\n${collector.text}`;
       setLive("The time limit was reached. The kernel was restarted and variables were cleared.");
-    } else if (error instanceof SageSessionInterruptedError) {
+    } else if (
+      typeof SageSessionInterruptedError === "function" &&
+      error instanceof SageSessionInterruptedError
+    ) {
       pre.textContent = `${collector.text}\n[Interrupted; variables were cleared.]`.trim();
       setLive("Interrupted. The kernel restarted with a clean session.");
     } else {
-      pre.textContent = `${collector.text}${collector.text ? "\n" : ""}${error.stack ?? error.message}`;
+      pre.textContent = `${collector.text}${collector.text ? "\n" : ""}${userErrorText(error)}`;
       setLive(`Run ${currentRun} failed: ${error.message}`);
     }
   } finally {
@@ -322,7 +416,7 @@ async function exportSagePack() {
   const expression = window.prompt("Expression to serialize as SagePack", selection || "_");
   if (!expression) return;
   setLive("Serializing the selected expression…");
-  const result = await session.evaluate(`import base64\nbase64.b64encode(dumps((${expression}))).decode('ascii')`, { timeout: boundedTimeout(elements.timeout.value) });
+  const result = await cellController.run(`import base64\nbase64.b64encode(dumps((${expression}))).decode('ascii')`, { timeout: boundedTimeout(elements.timeout.value) });
   if (!/^'[A-Za-z0-9+/]*={0,2}'$/.test(result.repr)) {
     throw new TypeError("SagePack export returned an invalid base64 value");
   }
@@ -359,6 +453,11 @@ async function loadCapabilities() {
     ["Time limit", `up to ${DEFAULT_LIMITS.maximumTimeoutMs / 1000} seconds per run`],
     ["Output limit", `${DEFAULT_LIMITS.outputBytes.toLocaleString()} bytes per run`],
     ["Plot limit", `${DEFAULT_LIMITS.plotBytes.toLocaleString()} bytes per display`],
+    ["Widget model limit", `${DEFAULT_WIDGET_LIMITS.liveModels.toLocaleString()} per session`],
+    ["Widget view limit", `${DEFAULT_WIDGET_LIMITS.liveViews.toLocaleString()} per session`],
+    ["Widget retained output", `${DEFAULT_WIDGET_LIMITS.outputBytes.toLocaleString()} bytes per Output control`],
+    ["Widget event queue", `${DEFAULT_WIDGET_LIMITS.queuedEvents.toLocaleString()} pending callbacks`],
+    ["Widget callback limit", `${DEFAULT_WIDGET_LIMITS.callbackTimeoutMs / 1000} seconds`],
   ];
   try {
     const response = await fetch("./runtime-version.json", { cache: "no-store", credentials: fetchCredentials });
@@ -443,11 +542,11 @@ $("#interrupt").addEventListener("click", async () => {
   if (!running) return;
   runCounter += 1;
   setStatus("loading", "Restarting after interrupt");
-  await session.interrupt();
+  await cellController.interrupt();
 });
 $("#reset").addEventListener("click", async () => {
   setStatus("loading", "Resetting kernel");
-  await session.reset();
+  await cellController.reset();
   setStatus("ready", "Ready — clean session");
   setLive("Kernel reset. All variables were cleared.");
 });
@@ -481,7 +580,10 @@ $("#share").addEventListener("click", async () => {
     setLive("A local source-only share URL was copied. It contains no saved results or credentials.");
   } catch (error) { setLive(`Could not create the share URL: ${error.message}`); }
 });
-$("#clear-output").addEventListener("click", () => elements.output.replaceChildren());
+$("#clear-output").addEventListener("click", () => {
+  widgetHost?.clearViews();
+  elements.output.replaceChildren();
+});
 $("#about").addEventListener("click", () => elements.about.showModal());
 $("#close-about").addEventListener("click", () => elements.about.close());
 

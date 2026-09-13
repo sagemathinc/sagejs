@@ -25,6 +25,9 @@
     {"library":"flint","id":"fq_context","policy":"bounded-context-with-child-spill","evidence":"src/baselib/finite_fields.py"},
     {"library":"flint","id":"fq_element","policy":"bounded-exact-spill","evidence":"src/baselib/finite_fields.py"},
     {"library":"flint","id":"fq_polynomial","policy":"bounded-exact-spill","evidence":"src/baselib/polynomial.py"},
+    {"library":"flint","id":"fq_mpoly_context","policy":"bounded-context-with-child-spill","evidence":"src/lib/sagejs/polynomial_algorithms/extension_mpoly_backend.py"},
+    {"library":"flint","id":"fq_mpoly","policy":"bounded-exact-spill","evidence":"src/lib/sagejs/polynomial_algorithms/extension_mpoly_backend.py"},
+    {"library":"flint","id":"fq_mpoly_bytes","policy":"copy-and-close","evidence":"src/lib/sagejs/polynomial_algorithms/extension_mpoly_backend.py"},
     {"library":"flint","id":"exact_polynomial_factorization","policy":"copy-and-close","evidence":"src/baselib/polynomial.py"},
     {"library":"flint","id":"fmpz_polynomial_division_result","policy":"operation-scoped-close","evidence":"src/baselib/polynomial.py"},
     {"library":"flint","id":"fmpq_polynomial_division_result","policy":"operation-scoped-close","evidence":"src/baselib/polynomial.py"},
@@ -38,13 +41,13 @@
   "direct_finalizer_sites": [
     {"path":"packages/flint-wasm/algebraic.mjs","count":2,"policy":"bounded exact snapshots; finalizer is last-resort cleanup"},
     {"path":"packages/flint-wasm/index.mjs","count":1,"policy":"bounded reconstructible P1 handles; finalizer is last-resort cleanup"},
-    {"path":"packages/flint-wasm/numeric-backend.mjs","count":2,"policy":"bounded exact MPFR snapshots; finalizer is last-resort cleanup"},
+    {"path":"packages/flint-wasm/numeric-backend.mjs","count":4,"policy":"bounded exact MPFR, Arb, and Acb snapshots; finalizer is last-resort cleanup"},
     {"path":"src/baselib/sagejs_bootstrap.py","count":1,"policy":"generated generic resource token; persistent public owners require an audited policy above"},
     {"path":"tools/ffi/wasm-adapters.cjs","count":1,"policy":"generated backend wrapper; persistent public owners require an audited policy above"},
     {"path":"tools/native-kernel/ffi-codegen.cjs","count":1,"policy":"generated native-module resource wrapper"}
   ],
   "non_ffi_persistent_families": [
-    {"id":"numeric-real-complex","policy":"bounded-exact-spill","evidence":"packages/flint-wasm/numeric-backend.mjs"},
+    {"id":"numeric-real-complex-interval","policy":"bounded-exact-spill","evidence":"packages/flint-wasm/numeric-backend.mjs"},
     {"id":"algebraic-scalar-matrix","policy":"bounded-exact-spill","evidence":"packages/flint-wasm/algebraic.mjs"},
     {"id":"modular-p1-list","policy":"bounded-reconstructible-cache","evidence":"packages/flint-wasm/index.mjs"}
   ],

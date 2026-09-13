@@ -17,6 +17,7 @@ export const omittedResourceExports = [
 ];
 
 export const requiredResourceExports = [
+  "ffiFmpzMatrixSnf",
   "ffiFmpzMatrixAugment",
   "ffiFmpzMatrixExportModUi",
   "ffiFmpzMatrixFromFmpqIntegral",
@@ -36,6 +37,7 @@ export const requiredResourceExports = [
 ];
 
 export const requiredResourceCapabilities = [
+  "ffi:flint:fmpz_matrix_snf",
   "ffi:flint:fmpz_matrix_augment",
   "ffi:flint:fmpz_matrix_export_mod_ui",
   "ffi:flint:fmpz_matrix_is_one",
@@ -72,6 +74,7 @@ print(Z.is_zero(), zero_matrix(ZZ, 3, 4).is_zero())
 print(Z.charpoly(), Z.minpoly())
 H, U = Z.hermite_form(transformation=True)
 D, L, R = Z.smith_form()
+assert Z.elementary_divisors() == D.diagonal()
 print((U * Z).list() == H.list(), (L * Z * R).list() == D.list())
 print(Z.is_one(), identity_matrix(ZZ, 3).is_one(), Z.trace())
 print(Z.matrix_from_columns([2, 0]).list())

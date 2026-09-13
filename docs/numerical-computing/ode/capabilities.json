@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "operation": "initial_value_problem",
+  "numeric_type": "real-binary64-vector",
+  "methods": [
+    {
+      "id": "rk4",
+      "classification": "extension",
+      "status": "implemented",
+      "family": "classical-fixed-step-runge-kutta",
+      "solution_order": 4,
+      "error_control": "none",
+      "dense_output": "cubic-hermite",
+      "stiff": false
+    },
+    {
+      "id": "rk45",
+      "classification": "translated",
+      "status": "implemented",
+      "family": "dormand-prince-5-4",
+      "solution_order": 5,
+      "error_estimator_order": 4,
+      "error_control": "component-scaled-weighted-rms",
+      "dense_output": "shampine-quartic",
+      "stiff": false
+    },
+    {
+      "id": "rosenbrock4",
+      "classification": "translated",
+      "status": "implemented",
+      "family": "kaps-rentrop-rosenbrock-4-3",
+      "solution_order": 4,
+      "error_estimator_order": 3,
+      "error_control": "component-scaled-weighted-rms-plus-midpoint-defect",
+      "dense_output": "endpoint-derivative-cubic-hermite",
+      "jacobian": ["supplied-dense", "forward-finite-difference-dense"],
+      "linear_solver": "partial-pivoting-dense-lu-with-normalized-residual-check",
+      "nonlinear_solver": "not-applicable-linearly-implicit-no-newton-iterations",
+      "automatic_selection": false,
+      "stiff": true
+    },
+    {
+      "id": "radau",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "reason": "no qualified Jacobian, linear-solve, and collocation-iteration path"
+    },
+    {
+      "id": "bdf",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "reason": "no qualified implicit multistep state and nonlinear-solve path"
+    },
+    {
+      "id": "lsoda",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "reason": "no qualified ODEPACK runtime or stiffness-switching path"
+    },
+    {
+      "id": "sundials",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "reason": "native/Wasm callback, payload, and four-platform qualification remain outstanding"
+    }
+  ],
+  "features": {
+    "backward_integration": "implemented",
+    "component_absolute_tolerance": "implemented",
+    "dense_output": "implemented",
+    "event_direction": "implemented",
+    "terminal_events": "implemented",
+    "bounded_semantic_trace": "implemented",
+    "cooperative_cancellation": "implemented",
+    "step_callback_jacobian_elapsed_output_event_validation_budgets": "implemented_and_post_callback_checked",
+    "stiff_workspace_and_linear_failure_budgets": "implemented",
+    "bounded_vector_trace_payload": "implemented",
+    "independent_dense_defect": "quantitatively_gated_state_equivalent_residual",
+    "invariant_drift": "sample_scope_explicit",
+    "analytic_reference_error": "sample_scope_explicit",
+    "trajectory_plotspec": "implemented",
+    "phase_plotspec": "implemented",
+    "step_error_plotspec": "implemented",
+    "trajectory_phase_event_animation": "implemented",
+    "step_size_local_error_animation": "implemented_from_retained_trace",
+    "complex_state": "unsupported",
+    "mass_matrix": "unsupported",
+    "dae": "unsupported",
+    "parameter_sweep": "shared-bounded-batch-v1-adapter",
+    "automatic_stiffness_detection": "unsupported",
+    "stiff_solver": "rosenbrock4-dense-jacobian-qualified"
+  },
+  "portability_evidence": {
+    "qualified_runtimes": [
+      "cpython-linux-x64",
+      "sagejs-node-linux-x64"
+    ],
+    "pending_targets": [
+      "browser-wasm",
+      "sagejs-sea",
+      "linux-arm64",
+      "macos-arm64",
+      "windows-x64"
+    ]
+  }
+}

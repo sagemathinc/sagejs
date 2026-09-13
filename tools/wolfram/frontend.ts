@@ -6,7 +6,9 @@ import {
   SourceSpan,
 } from "../foreign/tree-sitter";
 import {
+  foreignFrontendDiagnostic,
   ForeignFrontend,
+  ForeignFrontendDiagnostic,
   ForeignLowering,
   ForeignLowerOptions,
 } from "../foreign/types";
@@ -24,17 +26,25 @@ export class WolframSyntaxError extends SyntaxError {
   readonly line: number;
   readonly column: number;
   readonly incomplete: boolean;
+  readonly diagnostic: ForeignFrontendDiagnostic;
 
   constructor(
     message: string,
     span: SourceSpan,
     incomplete = false,
+    diagnostic?: ForeignFrontendDiagnostic,
   ) {
     super(message);
     this.name = "WolframSyntaxError";
     this.line = span.start.line;
     this.column = span.start.column;
     this.incomplete = incomplete;
+    this.diagnostic = diagnostic ?? foreignFrontendDiagnostic(
+      "wolfram",
+      "parse_failure",
+      message,
+      { source_span: span },
+    );
   }
 
   override toString(): string {
@@ -205,24 +215,86 @@ const PYTHON_KEYWORDS = new Set([
 ]);
 
 class SageLowerer {
+  private callbackRequirements: Map<string, string> | undefined;
   private readonly names = new Map<string, string>();
   private readonly plotVariables = new Set<string>();
   private readonly directHeads: Record<string, string> = {
     Abs: "abs",
     Cos: "cos",
     Exp: "exp",
+    LeastSquares: "_wolfram.LeastSquares",
+    LinearModelFitData: "_wolfram.LinearModelFitData",
+    LinearSolve: "_wolfram.LinearSolve",
     Log: "log",
+    Map: "_wolfram.Map",
+    OneSampleTTest: "_wolfram.OneSampleTTest",
     Plot: "plot",
     PrimePi: "prime_pi",
+    SageJSDescribe: "_wolfram.SageJSDescribe",
     Sin: "sin",
     Sqrt: "sqrt",
     Tan: "tan",
+    TwoSampleTTest: "_wolfram.TwoSampleTTest",
   };
+  private readonly unsupportedNumericalHeads = new Set([
+    "CubicSplineInterpolation",
+    "Eigensystem",
+    "FindMinimum",
+    "FindRootSystem",
+    "Fourier",
+    "GeneralEigensystem",
+    "Interpolation",
+    "ListConvolve",
+    "NDSolveValue",
+    "NMinimizeScalar",
+    "NonlinearLeastSquares",
+    "SingularValueDecomposition",
+  ]);
 
   constructor(
     private readonly source: string,
     private readonly filename?: string,
   ) {}
+
+  private unsupportedNumerical(
+    name: string,
+    span: SourceSpan,
+    reason = "numerical syntax is not supported by the Sage.js Wolfram frontend",
+  ): never {
+    const message = `${name} ${reason}`;
+    throw new WolframSyntaxError(
+      message,
+      span,
+      false,
+      foreignFrontendDiagnostic(
+        "wolfram",
+        "unsupported_operation",
+        message,
+        {
+          surface: "natural-vendor-alias",
+          source_name: name,
+          source_span: span,
+        },
+      ),
+    );
+  }
+
+  private callback(variable: string, lowerBody: () => string): string {
+    const previousRequirements = this.callbackRequirements;
+    const requirements = new Map<string, string>();
+    this.callbackRequirements = requirements;
+    let body: string;
+    try {
+      body = lowerBody();
+    } finally {
+      this.callbackRequirements = previousRequirements;
+    }
+    const callback = `(lambda ${variable}: ${body})`;
+    if (requirements.size === 0) return callback;
+    return `_wolfram.validate_callback_names(${callback}, ${
+      this.stringLiteral(JSON.stringify([...requirements]))
+    }, globals())`;
+  }
 
   program(program: WolframProgram, captureResult = false): string {
     const statements: string[] = [];
@@ -324,6 +396,8 @@ class SageLowerer {
     }
     const head = expression.head.name;
     if (head === "Table") return this.table(expression);
+    if (head === "FindRoot") return this.findRoot(expression);
+    if (head === "NIntegrate") return this.nIntegrate(expression);
     if (head === "Plot") return this.plot(expression);
     if (head === "ParametricPlot") {
       return this.singleRangePlot(expression, "parametric_plot", head);
@@ -377,6 +451,9 @@ class SageLowerer {
       return this.graphicsCall(expression, head);
     }
     if (head === "Show") return this.showCall(expression);
+    if (this.unsupportedNumericalHeads.has(head)) {
+      return this.unsupportedNumerical(head, expression.span);
+    }
     const graphicsHeads: Record<string, string> = {
       Arrow: "Arrow",
       Circle: "Circle",
@@ -411,8 +488,18 @@ class SageLowerer {
       ["Dimensions", "FactorInteger", "Head", "Length", "Prime", "Range"]
         .includes(head)
         ? `_wolfram.${head}`
-        : this.name(head)
+        : undefined
     );
+    if (target === undefined) {
+      const emittedName = this.name(head);
+      this.callbackRequirements?.set(head, emittedName);
+      return `_wolfram.call_named(${this.stringLiteral(head)}, ${
+        this.stringLiteral(emittedName)
+      }, globals()${expression.arguments.length ? ", " : ""}${
+        expression.arguments.map((argument) => this.expression(argument))
+          .join(", ")
+      })`;
+    }
     return `${target}(${
       expression.arguments.map((argument) => this.expression(argument))
         .join(", ")
@@ -467,6 +554,189 @@ class SageLowerer {
     return `_wolfram.Table(lambda ${iterator.variable}: ${
       this.expression(expression.arguments[0])
     }, ${iterator.start}, ${iterator.stop}, ${iterator.step})`;
+  }
+
+  private findRoot(expression: CallExpression): string {
+    if (expression.arguments.length !== 2) {
+      throw new WolframSyntaxError(
+        "FindRoot currently requires an expression and one variable specification",
+        expression.span,
+      );
+    }
+    const specification = expression.arguments[1];
+    if (
+      specification.kind !== "list" ||
+      specification.elements.length < 2 ||
+      specification.elements.length > 3 ||
+      specification.elements[0].kind !== "symbol"
+    ) {
+      throw new WolframSyntaxError(
+        "FindRoot currently requires {variable, initial} or {variable, lower, upper}",
+        expression.span,
+      );
+    }
+    const variable = this.name(specification.elements[0].name);
+    const objective = expression.arguments[0];
+    const callback = this.callback(
+      variable,
+      () => objective.kind === "binary" && objective.operator === "=="
+        ? `(${this.expression(objective.left)} - ${this.expression(objective.right)})`
+        : this.expression(objective),
+    );
+    const initial = `[${specification.elements.slice(1).map((value) =>
+      this.expression(value)
+    ).join(", ")}]`;
+    return `_wolfram.FindRoot(${callback}, ${
+      JSON.stringify(specification.elements[0].name)
+    }, ${initial})`;
+  }
+
+  private isStaticNumeric(expression: WolframExpression): boolean {
+    if (expression.kind === "literal") {
+      if (
+        expression.literalKind !== "integer" &&
+        expression.literalKind !== "real"
+      ) return false;
+      const value = Number(
+        expression.value.replace(/\*\^/g, "e").replace(/`+[^e]*/g, ""),
+      );
+      return Number.isFinite(value);
+    }
+    if (expression.kind === "symbol") {
+      return expression.name === "E" || expression.name === "Pi";
+    }
+    if (expression.kind === "unary") {
+      return ["+", "-"].includes(expression.operator) &&
+        this.isStaticNumeric(expression.operand);
+    }
+    if (expression.kind === "binary") {
+      return ["+", "-", "*", "/", "^"].includes(expression.operator) &&
+        this.isStaticNumeric(expression.left) &&
+        this.isStaticNumeric(expression.right);
+    }
+    return false;
+  }
+
+  private validateNumericalScalar(
+    expression: WolframExpression,
+    variable: string,
+    operation: string,
+  ): void {
+    if (expression.kind === "literal") {
+      if (!this.isStaticNumeric(expression)) {
+        throw new WolframSyntaxError(
+          `${operation} expressions require finite numeric literals`,
+          expression.span,
+        );
+      }
+      return;
+    }
+    if (expression.kind === "symbol") {
+      if (![variable, "E", "Pi"].includes(expression.name)) {
+        throw new WolframSyntaxError(
+          `${operation} expressions contain unsupported free symbol ${expression.name}`,
+          expression.span,
+        );
+      }
+      return;
+    }
+    if (expression.kind === "unary") {
+      if (!["+", "-"].includes(expression.operator)) {
+        throw new WolframSyntaxError(
+          `${operation} expressions contain an unsupported unary operator`,
+          expression.span,
+        );
+      }
+      this.validateNumericalScalar(expression.operand, variable, operation);
+      return;
+    }
+    if (expression.kind === "binary") {
+      if (!["+", "-", "*", "/", "^"].includes(expression.operator)) {
+        throw new WolframSyntaxError(
+          `${operation} expressions contain an unsupported binary operator`,
+          expression.span,
+        );
+      }
+      this.validateNumericalScalar(expression.left, variable, operation);
+      this.validateNumericalScalar(expression.right, variable, operation);
+      return;
+    }
+    if (expression.kind === "call" && expression.head.kind === "symbol") {
+      const numericHeads = new Set([
+        "Abs",
+        "Cos",
+        "Exp",
+        "Log",
+        "Sin",
+        "Sqrt",
+        "Tan",
+      ]);
+      if (
+        !numericHeads.has(expression.head.name)
+      ) {
+        return this.unsupportedNumerical(
+          expression.head.name,
+          expression.span,
+          `is not supported in ${operation} numerical expressions`,
+        );
+      }
+      if (expression.arguments.length !== 1) {
+        const message = `${operation} expressions require unary ${expression.head.name}`;
+        throw new WolframSyntaxError(
+          message,
+          expression.span,
+          false,
+          foreignFrontendDiagnostic(
+            "wolfram",
+            "invalid_frontend_arguments",
+            message,
+            {
+              source_name: expression.head.name,
+              source_span: expression.span,
+            },
+          ),
+        );
+      }
+      this.validateNumericalScalar(expression.arguments[0], variable, operation);
+      return;
+    }
+    throw new WolframSyntaxError(
+      `${operation} expression syntax is outside the qualified numerical subset`,
+      expression.span,
+    );
+  }
+
+  private nIntegrate(expression: CallExpression): string {
+    if (expression.arguments.length !== 2) {
+      throw new WolframSyntaxError(
+        "NIntegrate currently requires one expression and one finite numeric interval",
+        expression.span,
+      );
+    }
+    const interval = expression.arguments[1];
+    if (
+      interval.kind !== "list" ||
+      interval.elements.length !== 3 ||
+      interval.elements[0].kind !== "symbol" ||
+      !this.isStaticNumeric(interval.elements[1]) ||
+      !this.isStaticNumeric(interval.elements[2])
+    ) {
+      throw new WolframSyntaxError(
+        "NIntegrate currently requires {variable, finiteNumericLower, finiteNumericUpper}",
+        expression.span,
+      );
+    }
+    this.validateNumericalScalar(
+      expression.arguments[0],
+      interval.elements[0].name,
+      "NIntegrate",
+    );
+    const variable = this.name(interval.elements[0].name);
+    return `_wolfram.NIntegrate(lambda ${variable}: ${
+      this.expression(expression.arguments[0])
+    }, ${this.expression(interval.elements[1])}, ${
+      this.expression(interval.elements[2])
+    })`;
   }
 
   private plot(expression: CallExpression): string {

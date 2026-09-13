@@ -1,0 +1,395 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p3-nlopt-qualification",
+  "title": "Deterministic NLopt Nelder-Mead qualification",
+  "lane": "numerical-optimization",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generate and promote source-current fail-closed NLopt Nelder-Mead qualification evidence without admitting stale COBYLA evidence",
+  "base_commit": "d10948f6014a31faf22c2ad9d66a5aec935bff97",
+  "claims": [
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/collect-evidence.cjs",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/contracts.cjs",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle-summary.json",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/oracle.py",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/selection-v1.json",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/verify-platform-enrollment.cjs",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/release/qualification-v1.json",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/promote-qualification.cjs",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs",
+    "test/numerical-p3-nlopt/browser.mjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/stevengj/nlopt"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Dynamic Sage.js Nelder-Mead over the selected immutable corpus",
+      "Independent qualification receipt validators and adversarial fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:numerics",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 599.188,
+      "started_at": "2026-09-01T03:46:45.364Z",
+      "commit": "f296ab7867e5613c586e9c0ba1a0831861396a19",
+      "workspace_fingerprint": "3b878f933be1f66f09f69a571f8e79e327860480d657f8ac2c6af681fb8d2c21",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 51.46,
+      "started_at": "2026-09-01T03:57:00.034Z",
+      "commit": "f296ab7867e5613c586e9c0ba1a0831861396a19",
+      "workspace_fingerprint": "3b878f933be1f66f09f69a571f8e79e327860480d657f8ac2c6af681fb8d2c21",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.628,
+      "started_at": "2026-09-01T03:57:57.938Z",
+      "commit": "f296ab7867e5613c586e9c0ba1a0831861396a19",
+      "workspace_fingerprint": "3b878f933be1f66f09f69a571f8e79e327860480d657f8ac2c6af681fb8d2c21",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs test/numerical-p3-nlopt/backend.test.mjs test/numerical-p3-nlopt/abi-fuzz.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.176,
+      "started_at": "2026-09-01T03:59:18.061Z",
+      "commit": "ad2bbbd055bb43d47038edad1495a019b95da71c",
+      "workspace_fingerprint": "3b878f933be1f66f09f69a571f8e79e327860480d657f8ac2c6af681fb8d2c21",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.084,
+      "started_at": "2026-09-01T03:59:23.674Z",
+      "commit": "ad2bbbd055bb43d47038edad1495a019b95da71c",
+      "workspace_fingerprint": "3b878f933be1f66f09f69a571f8e79e327860480d657f8ac2c6af681fb8d2c21",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.316,
+      "started_at": "2026-09-01T03:59:25.406Z",
+      "commit": "ad2bbbd055bb43d47038edad1495a019b95da71c",
+      "workspace_fingerprint": "3b878f933be1f66f09f69a571f8e79e327860480d657f8ac2c6af681fb8d2c21",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs test/numerical-p3-nlopt/backend.test.mjs test/numerical-p3-nlopt/abi-fuzz.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.54,
+      "started_at": "2026-09-01T04:45:55.653Z",
+      "commit": "2f69103981d757ee603c908efc852354b2bbb6b6",
+      "workspace_fingerprint": "14f7d750d0fd75697edc6667256297c62a13232abe412a00f2742bc4da07ffc3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.983,
+      "started_at": "2026-09-01T04:45:58.848Z",
+      "commit": "2f69103981d757ee603c908efc852354b2bbb6b6",
+      "workspace_fingerprint": "14f7d750d0fd75697edc6667256297c62a13232abe412a00f2742bc4da07ffc3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm merge:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.344,
+      "started_at": "2026-09-01T04:46:00.490Z",
+      "commit": "2f69103981d757ee603c908efc852354b2bbb6b6",
+      "workspace_fingerprint": "14f7d750d0fd75697edc6667256297c62a13232abe412a00f2742bc4da07ffc3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs test/numerical-p3-nlopt/backend.test.mjs test/numerical-p3-nlopt/abi-fuzz.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.768,
+      "started_at": "2026-09-01T05:25:35.342Z",
+      "commit": "7f03148aff99bf0a061b1552f906440cd7af1ce5",
+      "workspace_fingerprint": "c141b682e380b2cbd91e6c5e25246282700603352802e71a0f7927bf3d32b676",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.934,
+      "started_at": "2026-09-01T05:25:38.759Z",
+      "commit": "7f03148aff99bf0a061b1552f906440cd7af1ce5",
+      "workspace_fingerprint": "c141b682e380b2cbd91e6c5e25246282700603352802e71a0f7927bf3d32b676",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.204,
+      "started_at": "2026-09-01T05:25:40.326Z",
+      "commit": "7f03148aff99bf0a061b1552f906440cd7af1ce5",
+      "workspace_fingerprint": "c141b682e380b2cbd91e6c5e25246282700603352802e71a0f7927bf3d32b676",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs test/numerical-p3-nlopt/backend.test.mjs test/numerical-p3-nlopt/abi-fuzz.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.576,
+      "started_at": "2026-09-01T05:26:27.933Z",
+      "commit": "a88ba3f08f59e5adf851aeb83d85737f3152b308",
+      "workspace_fingerprint": "454f1909cfaeaf33621799086dd86126e927147679d574673830cb23fa2ebc80",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.954,
+      "started_at": "2026-09-01T05:26:31.152Z",
+      "commit": "a88ba3f08f59e5adf851aeb83d85737f3152b308",
+      "workspace_fingerprint": "454f1909cfaeaf33621799086dd86126e927147679d574673830cb23fa2ebc80",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.055,
+      "started_at": "2026-09-01T05:26:32.727Z",
+      "commit": "a88ba3f08f59e5adf851aeb83d85737f3152b308",
+      "workspace_fingerprint": "454f1909cfaeaf33621799086dd86126e927147679d574673830cb23fa2ebc80",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs test/numerical-p3-nlopt/backend.test.mjs test/numerical-p3-nlopt/abi-fuzz.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.073,
+      "started_at": "2026-09-01T05:27:51.603Z",
+      "commit": "f448b7cf26ea803d87330912c38f4308c2c10e9b",
+      "workspace_fingerprint": "2b172b2085532ee152ad0de19f09ee808f054e64594f23f899467a1a6a7471cd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.945,
+      "started_at": "2026-09-01T05:27:55.329Z",
+      "commit": "f448b7cf26ea803d87330912c38f4308c2c10e9b",
+      "workspace_fingerprint": "2b172b2085532ee152ad0de19f09ee808f054e64594f23f899467a1a6a7471cd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.225,
+      "started_at": "2026-09-01T05:27:56.934Z",
+      "commit": "f448b7cf26ea803d87330912c38f4308c2c10e9b",
+      "workspace_fingerprint": "2b172b2085532ee152ad0de19f09ee808f054e64594f23f899467a1a6a7471cd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 51.362,
+      "started_at": "2026-09-01T05:29:09.535Z",
+      "commit": "4f541fa642b8b944bce9f7c24e4da4c09710929f",
+      "workspace_fingerprint": "2b172b2085532ee152ad0de19f09ee808f054e64594f23f899467a1a6a7471cd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.573,
+      "started_at": "2026-09-01T05:30:10.087Z",
+      "commit": "4f541fa642b8b944bce9f7c24e4da4c09710929f",
+      "workspace_fingerprint": "2b172b2085532ee152ad0de19f09ee808f054e64594f23f899467a1a6a7471cd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 557.919,
+      "started_at": "2026-09-01T05:30:46.595Z",
+      "commit": "4f541fa642b8b944bce9f7c24e4da4c09710929f",
+      "workspace_fingerprint": "2b172b2085532ee152ad0de19f09ee808f054e64594f23f899467a1a6a7471cd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.429,
+      "started_at": "2026-09-01T05:40:30.311Z",
+      "commit": "4f541fa642b8b944bce9f7c24e4da4c09710929f",
+      "workspace_fingerprint": "2b172b2085532ee152ad0de19f09ee808f054e64594f23f899467a1a6a7471cd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 540.975,
+      "started_at": "2026-09-01T05:44:17.349Z",
+      "commit": "f23fde59c2abad2e981600f272f0e2a613ff82a1",
+      "workspace_fingerprint": "b90bb33c0cb190abe0a2dfb8cbce52edcf83316154df816c510e3b2ae82fef5b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.284,
+      "started_at": "2026-09-01T05:53:44.275Z",
+      "commit": "f23fde59c2abad2e981600f272f0e2a613ff82a1",
+      "workspace_fingerprint": "b90bb33c0cb190abe0a2dfb8cbce52edcf83316154df816c510e3b2ae82fef5b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs test/numerical-p3-nlopt/backend.test.mjs test/numerical-p3-nlopt/abi-fuzz.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.493,
+      "started_at": "2026-09-01T05:54:23.413Z",
+      "commit": "f23fde59c2abad2e981600f272f0e2a613ff82a1",
+      "workspace_fingerprint": "b90bb33c0cb190abe0a2dfb8cbce52edcf83316154df816c510e3b2ae82fef5b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.945,
+      "started_at": "2026-09-01T05:54:26.550Z",
+      "commit": "f23fde59c2abad2e981600f272f0e2a613ff82a1",
+      "workspace_fingerprint": "b90bb33c0cb190abe0a2dfb8cbce52edcf83316154df816c510e3b2ae82fef5b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.202,
+      "started_at": "2026-09-01T05:54:28.125Z",
+      "commit": "f23fde59c2abad2e981600f272f0e2a613ff82a1",
+      "workspace_fingerprint": "b90bb33c0cb190abe0a2dfb8cbce52edcf83316154df816c510e3b2ae82fef5b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 675.051,
+      "started_at": "2026-09-01T06:03:35.704Z",
+      "commit": "e6d14365f426af3ea828f0e86e7449d16e24e390",
+      "workspace_fingerprint": "eabb2bf9e91419b62edba712dcaa7401074d9aaa5e20e9f29488899c72613e3a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.471,
+      "started_at": "2026-09-01T06:14:58.698Z",
+      "commit": "e6d14365f426af3ea828f0e86e7449d16e24e390",
+      "workspace_fingerprint": "eabb2bf9e91419b62edba712dcaa7401074d9aaa5e20e9f29488899c72613e3a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 50.642,
+      "started_at": "2026-09-01T06:15:41.017Z",
+      "commit": "e6d14365f426af3ea828f0e86e7449d16e24e390",
+      "workspace_fingerprint": "eabb2bf9e91419b62edba712dcaa7401074d9aaa5e20e9f29488899c72613e3a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test src/lib/sagejs/numerics/optimization/backends/nlopt/test/qualification-promotion.test.cjs test/numerical-p3-nlopt/backend.test.mjs test/numerical-p3-nlopt/abi-fuzz.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.687,
+      "started_at": "2026-09-01T06:16:47.720Z",
+      "commit": "e6d14365f426af3ea828f0e86e7449d16e24e390",
+      "workspace_fingerprint": "eabb2bf9e91419b62edba712dcaa7401074d9aaa5e20e9f29488899c72613e3a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.973,
+      "started_at": "2026-09-01T06:16:55.806Z",
+      "commit": "e6d14365f426af3ea828f0e86e7449d16e24e390",
+      "workspace_fingerprint": "eabb2bf9e91419b62edba712dcaa7401074d9aaa5e20e9f29488899c72613e3a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.203,
+      "started_at": "2026-09-01T06:17:04.500Z",
+      "commit": "e6d14365f426af3ea828f0e86e7449d16e24e390",
+      "workspace_fingerprint": "eabb2bf9e91419b62edba712dcaa7401074d9aaa5e20e9f29488899c72613e3a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented deterministic fail-closed Nelder-Mead-only case, evidence, portable, durable-verification, and atomic-promotion tooling, then closed the independent review's receipt-forgery findings. Every case and supplemental receipt is now campaign-bound and signed by a candidate-reviewed operator-controlled persistent-host software key; this authenticates host/operator origin and does not claim hardware or remote attestation. Exact structured program evidence, strict duplicate-free JSON, exact summary bytes, browser identity/results, full lifecycle cleanup, and the 4000-evaluation bound are enforced. Source-current enrollment verification derives each public identity directly from its installed private key and enforces the canonical key path and private permissions. Against selection 606aa0209679751a3b53d877a1a3f2e3e8ea764c1c953e3ac4c28cb9db58d4b8, exact host verification passed for Linux x64 90e32c225499e35a6b19805c6b40f2e261c72eb5814e89358718c56246c43374, Linux ARM64 78d44c4f7112a2f36eaddfa53fe5b375c2eec232bc0a1bee203da287aac6fbad, macOS ARM64 ad9ad8bcd3f244220017efc0127bf7c094487c828d3f6e2e8b36f96855d7e654, and Windows x64 4b4fc63d18802dbf3faaf7c5bbc90e25d152ad30ab90e754be61beb6f17f5bce. The exact five-case runner passes against artifact 8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb. The production manifest remains in the one documented pending state and no final platform receipts were minted.",
+    "risks": [
+      "The production manifest intentionally remains pending and no final platform qualification receipts were minted in this tooling lane.",
+      "The exact Chromium identity is intentionally candidate-bound; the persistent Linux evidence host must have that reviewed browser build available before final collection.",
+      "Source-current test:numerics passes 23/23 and every architecture stage through CoWasm passes. The final integration-owned optimizer-opportunity manifest necessarily becomes stale when this lane's new qualification source is added: the lane expects 7f14119f1b52010c0668eb6230312a6bbacb652c6385a77d7f24624ef61f1d12 while the pre-merge shared artifact records a059f9c1f08bd4e93fcd2455b9d4dc53a792490213318a9b983a4160c49185cf. Integration must regenerate it after merging this lane."
+    ],
+    "next_steps": [
+      "Re-review the authenticated evidence boundary and exact manifest/summary state machine.",
+      "Merge this lane into integration, regenerate the shared optimizer-opportunity artifacts from the combined source, and rerun the full architecture gate there.",
+      "Freeze the final clean candidate, generate one fresh campaign challenge, run qualification/run.mjs with each host-local key on all four persistent platforms, collect all seven signed Linux x64 evidence kinds, and promote only the exact canonical receipts."
+    ]
+  }
+}

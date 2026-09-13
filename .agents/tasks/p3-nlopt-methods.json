@@ -1,0 +1,376 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p3-nlopt-methods",
+  "title": "Qualify explicit NLopt Nelder-Mead and COBYLA Wasm methods",
+  "lane": "numerical-optimization",
+  "status": "active",
+  "owner": "user",
+  "objective": "Pin and license-close a permissive NLopt build with Luksan disabled, implement a bounded packed callback Wasm backend package, and independently qualify exact outward Nelder-Mead and COBYLA method identities without automatic selection",
+  "base_commit": "a06676b0bbc7a907373c66013decffbfa7b0a90c",
+  "claims": [
+    ".agents/lanes.json",
+    "architecture/native-audit.json",
+    "architecture/native-boundaries.json",
+    "architecture/native-code.json",
+    "architecture/native-exports.json",
+    "architecture/package-graph.json",
+    "architecture/wasm-capabilities.json",
+    "architecture/wasm-capabilities-report.json",
+    "architecture/wasm-workload-dashboard.json",
+    "docs/numerical-computing/optimization/README.md",
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/",
+    "src/lib/sagejs/numerics/optimization/_constraints.py",
+    "src/lib/sagejs/numerics/optimization/_core.py",
+    "src/lib/sagejs/numerics/optimization/multivariate.py",
+    "src/lib/sagejs/numerics/optimization/planning.py",
+    "src/lib/sagejs/numerics/optimization/validation.py",
+    "src/lib/sagejs/numerics/model.py",
+    "src/baselib/sagejs/runtime.py",
+    "src/baselib/sagejs/runtime.pyi",
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/kernel-worker.mjs",
+    "packages/flint-wasm/kernel.d.ts",
+    "packages/flint-wasm/kernel.mjs",
+    "packages/flint-wasm/package.json",
+    "packages/flint-wasm/numerical/",
+    "packages/flint-wasm/release/production-capabilities.json",
+    "packages/flint-wasm/release/production-layout.json",
+    "packages/flint-wasm/release/wasm-abi-allowlist.json",
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/test/",
+    "scripts/build.cjs",
+    "scripts/build-receipt.cjs",
+    "scripts/build-sea.cjs",
+    "tools/resources.ts",
+    "test/numerical-p3-nlopt/",
+    "test/numerical-p3-backends/browser-resource.test.mjs",
+    "bench/numerical-p3-nlopt/",
+    "docs/numerical-computing/optimization/nlopt-methods.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/stevengj/nlopt",
+    "https://nlopt.readthedocs.io/en/stable/NLopt_Installation/",
+    "https://docs.scipy.org/doc/scipy/reference/optimize.html",
+    "agents/numerical-optimization-backend-strategy.md"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "SciPy optimize and PRIMA differential corpora plus independent feasibility/stationarity validation",
+      "NLopt upstream method tests and exact source/license/artifact inventories"
+    ],
+    "exceptions": [
+      "Packed handwritten C is restricted to the NLopt foreign-library callback, ownership, status, cancellation, and memory adapter; NLopt owns the mathematical algorithms"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/build.cjs",
+    "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
+    "node --test test/numerical-p3-nlopt/backend.test.mjs test/numerical-p3-nlopt/abi-fuzz.test.mjs",
+    "node src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs",
+    "python3 bench/numerical-p3-nlopt/scipy_oracle.py",
+    "node test/numerical-p3-nlopt/browser.mjs",
+    "node test/numerical-p3-nlopt/portable-smoke.mjs",
+    "node --test test/numerical-p3-nlopt/public-integration.cjs test/numerical-p3-nlopt/public-browser.mjs test/numerical-p3-nlopt/public-relocation.cjs test/numerical-p3-nlopt/public-sea.cjs test/numerical-p3-backends/browser-resource.test.mjs",
+    "pnpm --dir packages/flint-wasm build",
+    "node --test packages/flint-wasm/test/production-receipt.test.cjs packages/flint-wasm/test/wasm-abi-allowlist.test.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/build.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.766,
+      "started_at": "2026-08-31T18:04:15.199Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "4439f9c9eb37638f9e78e3f7c8f41410315a5285e1af2948e044011a5b1cc493",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.053,
+      "started_at": "2026-08-31T18:04:33.166Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "4439f9c9eb37638f9e78e3f7c8f41410315a5285e1af2948e044011a5b1cc493",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerical-p3-nlopt/backend.test.mjs test/numerical-p3-nlopt/abi-fuzz.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.22,
+      "started_at": "2026-08-31T18:04:33.961Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "4439f9c9eb37638f9e78e3f7c8f41410315a5285e1af2948e044011a5b1cc493",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.121,
+      "started_at": "2026-08-31T18:04:34.942Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "4439f9c9eb37638f9e78e3f7c8f41410315a5285e1af2948e044011a5b1cc493",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/numerical-p3-nlopt/scipy_oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.012,
+      "started_at": "2026-08-31T18:04:35.787Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "4439f9c9eb37638f9e78e3f7c8f41410315a5285e1af2948e044011a5b1cc493",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.352,
+      "started_at": "2026-08-31T18:04:37.586Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "4439f9c9eb37638f9e78e3f7c8f41410315a5285e1af2948e044011a5b1cc493",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/portable-smoke.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.121,
+      "started_at": "2026-08-31T18:04:39.716Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "4439f9c9eb37638f9e78e3f7c8f41410315a5285e1af2948e044011a5b1cc493",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.966,
+      "started_at": "2026-08-31T18:04:48.172Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "4439f9c9eb37638f9e78e3f7c8f41410315a5285e1af2948e044011a5b1cc493",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.526,
+      "started_at": "2026-08-31T18:14:20.775Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "4439f9c9eb37638f9e78e3f7c8f41410315a5285e1af2948e044011a5b1cc493",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.35,
+      "started_at": "2026-08-31T18:14:32.535Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "4439f9c9eb37638f9e78e3f7c8f41410315a5285e1af2948e044011a5b1cc493",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/build.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.782,
+      "started_at": "2026-08-31T18:21:16.497Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "50d5a5afaef1bcf79521caf854e85b5635086e685dc935c6549cf2dc4b5db5ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.052,
+      "started_at": "2026-08-31T18:21:19.978Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "50d5a5afaef1bcf79521caf854e85b5635086e685dc935c6549cf2dc4b5db5ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerical-p3-nlopt/backend.test.mjs test/numerical-p3-nlopt/abi-fuzz.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.212,
+      "started_at": "2026-08-31T18:21:20.757Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "50d5a5afaef1bcf79521caf854e85b5635086e685dc935c6549cf2dc4b5db5ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.124,
+      "started_at": "2026-08-31T18:21:21.713Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "50d5a5afaef1bcf79521caf854e85b5635086e685dc935c6549cf2dc4b5db5ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/numerical-p3-nlopt/scipy_oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.954,
+      "started_at": "2026-08-31T18:21:22.569Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "50d5a5afaef1bcf79521caf854e85b5635086e685dc935c6549cf2dc4b5db5ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.066,
+      "started_at": "2026-08-31T18:21:24.270Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "50d5a5afaef1bcf79521caf854e85b5635086e685dc935c6549cf2dc4b5db5ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/portable-smoke.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.122,
+      "started_at": "2026-08-31T18:21:26.057Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "50d5a5afaef1bcf79521caf854e85b5635086e685dc935c6549cf2dc4b5db5ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 53.926,
+      "started_at": "2026-08-31T18:21:32.445Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "50d5a5afaef1bcf79521caf854e85b5635086e685dc935c6549cf2dc4b5db5ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.304,
+      "started_at": "2026-08-31T18:22:57.793Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "50d5a5afaef1bcf79521caf854e85b5635086e685dc935c6549cf2dc4b5db5ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/build.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.765,
+      "started_at": "2026-08-31T18:25:45.561Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "db628ca18375927919b2d8240ebe950364cfcc18a3cb2212362e98c148373c65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/scripts/verify-release.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.051,
+      "started_at": "2026-08-31T18:25:49.041Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "db628ca18375927919b2d8240ebe950364cfcc18a3cb2212362e98c148373c65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerical-p3-nlopt/backend.test.mjs test/numerical-p3-nlopt/abi-fuzz.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.19,
+      "started_at": "2026-08-31T18:25:49.782Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "db628ca18375927919b2d8240ebe950364cfcc18a3cb2212362e98c148373c65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node src/lib/sagejs/numerics/optimization/backends/nlopt/qualification/run.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.116,
+      "started_at": "2026-08-31T18:25:50.668Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "db628ca18375927919b2d8240ebe950364cfcc18a3cb2212362e98c148373c65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/numerical-p3-nlopt/scipy_oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.905,
+      "started_at": "2026-08-31T18:25:51.498Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "db628ca18375927919b2d8240ebe950364cfcc18a3cb2212362e98c148373c65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/browser.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.112,
+      "started_at": "2026-08-31T18:25:53.097Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "db628ca18375927919b2d8240ebe950364cfcc18a3cb2212362e98c148373c65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-nlopt/portable-smoke.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.115,
+      "started_at": "2026-08-31T18:25:54.871Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "db628ca18375927919b2d8240ebe950364cfcc18a3cb2212362e98c148373c65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 51.164,
+      "started_at": "2026-08-31T18:25:55.678Z",
+      "commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+      "workspace_fingerprint": "db628ca18375927919b2d8240ebe950364cfcc18a3cb2212362e98c148373c65",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Integrated the pinned, Luksan-disabled NLopt closure as exact explicit-only nlopt-nelder-mead and nlopt-cobyla public methods. The implementation adds first-class scalar constraints, independently validates objective, bounds, feasibility, and local evidence, fails closed around unavailable or invalid resources, and preserves the ordinary-Python automatic route. Separate cminpack and NLopt adapter bundles are wired through Node, browser, relocated npm, Python SEA, production topology, capability, ABI, native-code, and Wasm inventories. The qualified source/artifact corpus, SciPy/PRIMA oracles, real Chromium, four supported hosts, public integration, resource-corruption, infeasibility, lifecycle, allocation, cancellation, and one-dimensional stopping regressions pass. Automatic selection remains disabled.",
+    "risks": [
+      "NLopt can return a positive termination code for an infeasible COBYLA point; the public integration deliberately recomputes and rejects such results independently.",
+      "The full mathematical SEA was not rebuilt locally because this worktree lacks the optional native FLINT addon. Relocated sagepython SEA execution passes for both exact NLopt methods; repeat the full mathematical SEA in the native-prepared integration qualification.",
+      "Optimizer-opportunity artifacts were intentionally not regenerated because the integration lane owns that shared dashboard.",
+      "The browser cooperative receipt proves a pre-set shared-atomic force-stop; hard interruption of a non-returning callback is correctly provided by terminating and replacing its worker."
+    ],
+    "next_steps": [
+      "Merge the complete lane tip so both the qualified low-level backend and central public integration land together.",
+      "Regenerate the optimizer-opportunity artifacts from the final integrated tree without enabling automatic NLopt selection.",
+      "Repeat the full mathematical SEA qualification in a native-prepared checkout and retain the passing relocated sagepython SEA receipt."
+    ]
+  }
+}

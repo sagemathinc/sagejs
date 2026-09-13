@@ -146,14 +146,15 @@ for (const [engine, browserType] of Object.entries(browserTypes)) {
     timeout: 180_000,
   }, async () => {
     const server = await createBrowserWasmServer();
-    const browser = await browserType.launch({
-      executablePath,
-      headless: true,
-      args: engine === "chromium"
-        ? ["--no-sandbox", "--disable-dev-shm-usage"]
-        : [],
-    });
+    let browser;
     try {
+      browser = await browserType.launch({
+        executablePath,
+        headless: true,
+        args: engine === "chromium"
+          ? ["--no-sandbox", "--disable-dev-shm-usage"]
+          : [],
+      });
       const page = await browser.newPage();
       await page.goto(`${server.origin}/browser-wasm-harness.html`, {
         waitUntil: "load",
@@ -166,7 +167,7 @@ for (const [engine, browserType] of Object.entries(browserTypes)) {
       );
       assertWorkload(result);
     } finally {
-      await browser.close();
+      await browser?.close();
       await server.close();
     }
   });

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "updated": "2026-08-22",
+  "updated": "2026-09-02",
   "capabilities": [
     {
       "id": "sage-language",
@@ -153,15 +153,15 @@
       "state": "partial",
       "quality": "tested",
       "coverage": {
-        "level": "focused",
-        "label": "Small and medium exact ideal workflows",
-        "summary": "Provides usable Gröbner bases and reduction, but not yet the high-performance commutative-algebra surface needed for large research problems.",
-        "includes": ["ideal.groebner_basis()", "normal-form reduction", "ideal membership", "elimination foundations", "small book and teaching examples"]
+        "level": "substantial",
+        "label": "Portable modern ideal workflows over prime fields and QQ",
+        "summary": "Provides scalar msolve F4 over prime fields and an explicit modular rational path, with reduced bases, normal forms, leading ideals, membership, and inspectable proof metadata.",
+        "includes": ["ideal.groebner_basis()", "msolve F4 over prime GF(p)", "modular QQ bases", "normal-form reduction", "leading ideals", "ideal membership", "native and browser WebAssembly"]
       },
-      "summary": "Polynomial ideals provide useful Gröbner basis and reduction functionality; large research workloads need stronger engines.",
-      "implementation": "Readable Sage.js algorithms with native polynomial foundations.",
-      "evidence": "Polynomial-ideal regression tests and book examples.",
-      "target": "Integrate or port msolve-class algorithms, then add syzygies and free resolutions.",
+      "summary": "Polynomial ideals have a modern portable F4 backend over prime fields and an experimental fast modular backend over the rationals.",
+      "implementation": "A reviewed msolve source slice shares Sage.js's FLINT/GMP layer through bounded native and Wasm packet ABIs; FLINT remains the exact rational default.",
+      "evidence": "Versioned multi-oracle corpus, independent exact verifier, four-platform native suite, sanitizers, Node-Wasm, and real Chromium tests.",
+      "target": "Add certified modular QQ output, FGLM/order conversion, broader coefficient fields, modules, syzygies, and an optional Singular breadth tier.",
       "priority": "next"
     },
     {
@@ -518,6 +518,24 @@
       "priority": "now"
     },
     {
+      "id": "numerical-laboratory",
+      "area": "Symbolics & numerics",
+      "feature": "Agent-first numerical computing laboratory",
+      "state": "available",
+      "quality": "tested",
+      "coverage": {
+        "level": "broad",
+        "label": "Broad validated numerical methods",
+        "summary": "Shared problem, plan, result, diagnostic, provenance, validation, and bounded-trace contracts span the core undergraduate numerical curriculum and expose machine-readable evidence.",
+        "includes": ["root finding", "approximation", "dense linear algebra", "adaptive integration", "optimization and fitting", "ODE solvers", "polynomial roots", "FFT and spectral methods", "statistics and regression", "parameter sweeps", "Sage / Python / MATLAB / Wolfram adapters", "PlotSpec and bounded animations"]
+      },
+      "summary": "Validated numerical methods return inspectable evidence, explanations, plots, traces, and explicitly classified multilingual views.",
+      "implementation": "Ordinary strict-Python solvers and frontends over shared NumericalProblem, NumericalPlan, NumericalResult, capability, provenance, validation, and budget contracts, with separately component-qualified optional Wasm reactors.",
+      "evidence": "Backend-neutral correctness corpora, independent NumPy/SciPy/mpmath oracles, failure and metamorphic tests, and real-browser integration tests. Exact four-platform Node/npm/SEA/browser qualification is established only by an authenticated release gate for one frozen candidate.",
+      "target": "Broaden qualified problem envelopes and teaching stories while preserving explicit unsupported classifications and independent validation.",
+      "priority": "now"
+    },
+    {
       "id": "numerical-integration",
       "area": "Symbolics & numerics",
       "feature": "Numerical integration",
@@ -647,13 +665,13 @@
         "summary": "Implements many modules needed by mathematical scripts and notebooks over Node APIs; unsupported CPython modules and edge semantics remain explicit.",
         "score": {
           "kind": "measured",
-          "value": 43.8,
-          "numerator": 85,
+          "value": 44.8,
+          "numerator": 87,
           "denominator": 194,
           "unit": "public top-level standard-library modules import successfully",
           "reference": "CPython 3.14 public top-level module set",
           "method": "Probe every name in CPython 3.14 sys.stdlib_module_names after excluding names beginning with an underscore. This measures module breadth only, not the fraction of APIs implemented inside each module.",
-          "audited": "2026-08-08"
+          "audited": "2026-09-04"
         },
         "includes": ["os and pathlib-style files", "time and datetime", "subprocess", "networking", "random", "serialization", "arrays", "multiprocessing foundations", "sqlite3"]
       },
@@ -729,7 +747,7 @@
         "summary": "Covers package-manager and standalone installation across the supported desktop targets, including relocation and checksums.",
         "includes": ["npm global install", "npm embedding package", "curl | sh installer", "Linux x64 / arm64", "macOS arm64", "Windows x64", "SHA-256 verification", "relocatable SEA executables"]
       },
-      "summary": "Sage.js 0.4.1 is installable from npm on every supported platform, with a curl-to-shell native installer for macOS and Linux.",
+      "summary": "Sage.js 0.8.0 is installable from npm on every supported platform, with a curl-to-shell native installer for macOS and Linux.",
       "implementation": "Meta-package plus platform packages for npm, checksum-verifying macOS/Linux installation, and standalone native archives.",
       "evidence": "Package, relocation, and installer tests in release CI.",
       "target": "Learn from early-alpha installations, add native Windows installer ergonomics, and provide automatic update guidance.",
@@ -747,7 +765,7 @@
         "summary": "macOS releases are required to pass Developer ID signing and notarization. Windows Authenticode automation exists, but the early-alpha release may be unsigned while identity provisioning is completed.",
         "includes": ["Apple Developer ID", "Apple notarization", "Windows Authenticode", "protected environments", "release checksums", "artifact verification"]
       },
-      "summary": "macOS signing and notarization are release gates; Windows signing is explicitly reported and remains optional for the 0.4.1 early alpha.",
+      "summary": "macOS signing and notarization are release gates; Windows signing is explicitly reported and remains optional for the 0.8.0 early alpha.",
       "implementation": "Apple Developer ID/notarization, optional Azure or PFX Windows Authenticode, checksums, and CI release gates.",
       "evidence": "The release workflow fails closed for macOS trust and labels the selected Windows signing policy in its job summary.",
       "target": "Every public desktop artifact signed and verified automatically from protected CI environments.",

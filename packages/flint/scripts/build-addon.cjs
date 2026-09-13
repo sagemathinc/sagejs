@@ -22,6 +22,7 @@ const defaultInputPaths = [
   "package.json",
   "include",
   "src",
+  "vendor/msolve",
   "scripts/build-addon.cjs",
   "scripts/eclib-source.cjs",
   "scripts/native-prefix.cjs",

@@ -28,6 +28,32 @@ test("the Node host runs the isolated WebAssembly Sage kernel", async () => {
       version.repr,
       new RegExp(`'version': '${sagejsVersion.version.replaceAll(".", "\\.")}'`),
     );
+    const groebner = await session.evaluate(`
+R = PolynomialRing(GF(65537), names=("x", "y"), order="degrevlex")
+x, y = R.gens()
+I = R.ideal(x*y - 1, x**3 + 7*y**2)
+print(I.groebner_basis())
+print(I.normal_form(x*y - 1))
+print(I.groebner_basis_metadata()["backend"])
+S = PolynomialRing(QQ, names=("u", "v"), order="degrevlex")
+u, v = S.gens()
+J = S.ideal(u*v - 1, u**3 + 7*v**2)
+print(J.groebner_basis(algorithm="msolve", proof=False))
+print(J.groebner_basis_metadata()["probabilistic"])
+`);
+    assert.equal(
+      groebner.stdout,
+      "[x*y + 65536, y^3 + 18725*x^2, x^3 + 7*y^2]\n" +
+        "0\n" +
+        "msolve:f4-prime-field-v1\n" +
+        "[u*v - 1, v^3 + 1/7*u^2, u^3 + 7*v^2]\n" +
+        "True\n",
+    );
+    assert.ok(
+      groebner.instrumentation.routes.some(
+        (route) => route.execution_target === "wasm-artifact",
+      ),
+    );
   } finally {
     await session.close();
   }

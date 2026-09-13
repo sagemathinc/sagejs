@@ -1,0 +1,229 @@
+{
+  "schema": "sagejs.numerical-qualification-corpus/v1",
+  "id": "sagejs-p1-scalar-root-backend-performance-v1",
+  "version": 1,
+  "domain": "scalar-root-backend-performance",
+  "description": "Backend-neutral correctness and warm-kernel performance cases for all four scalar-root methods, both trace policies, and three deterministic callback-cost tiers.",
+  "program_phases": ["P1"],
+  "source_paths": [
+    "src/lib/sagejs/numerics"
+  ],
+  "cases": [
+    {
+      "id": "p1-root-bisection-cheap",
+      "description": "Bisection with a cheap polynomial callback, measured with and without iteration traces.",
+      "program_phase": "P1",
+      "layer": "independent-residual",
+      "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"method": "bisection", "callback_tier": "cheap", "callback_work": 0, "repetitions": 4, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 5000},
+      "required_capabilities": ["numerics.root.scalar.performance"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
+        {"id": "independent-root-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-11}},
+        {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
+        {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
+        {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "methods-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/methods_executed", "expected": {"literal": ["bisection"]}},
+        {"id": "callback-tier-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/callback_cost_tiers_executed", "expected": {"literal": ["cheap"]}},
+        {"id": "trace-policies-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_policies_executed", "expected": {"literal": ["none", "iterations"]}},
+        {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 5000}}
+      ],
+      "measurement": {"warmup": 1, "samples": 5}
+    },
+    {
+      "id": "p1-root-bisection-moderate",
+      "description": "Bisection with a moderate deterministic transcendental callback, measured with and without traces.",
+      "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"method": "bisection", "callback_tier": "moderate", "callback_work": 16, "repetitions": 3, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 5000},
+      "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
+        {"id": "independent-root-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-11}},
+        {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
+        {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
+        {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "callback-tier-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/callback_cost_tiers_executed", "expected": {"literal": ["moderate"]}},
+        {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 5000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
+    },
+    {
+      "id": "p1-root-bisection-expensive",
+      "description": "Bisection with an expensive deterministic transcendental callback, measured with and without traces.",
+      "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"method": "bisection", "callback_tier": "expensive", "callback_work": 256, "repetitions": 2, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 5000},
+      "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
+        {"id": "independent-root-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-11}},
+        {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
+        {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
+        {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "callback-tier-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/callback_cost_tiers_executed", "expected": {"literal": ["expensive"]}},
+        {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 5000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
+    },
+    {
+      "id": "p1-root-brent-cheap",
+      "description": "Brent's method with a cheap polynomial callback, measured with and without iteration traces.",
+      "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"method": "brent", "callback_tier": "cheap", "callback_work": 0, "repetitions": 4, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
+      "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
+        {"id": "independent-root-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-11}},
+        {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
+        {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
+        {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "methods-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/methods_executed", "expected": {"literal": ["brent"]}},
+        {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
+    },
+    {
+      "id": "p1-root-brent-moderate",
+      "description": "Brent's method with a moderate deterministic transcendental callback, measured with and without traces.",
+      "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"method": "brent", "callback_tier": "moderate", "callback_work": 16, "repetitions": 3, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
+      "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
+        {"id": "independent-root-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-11}},
+        {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
+        {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
+        {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
+    },
+    {
+      "id": "p1-root-brent-expensive",
+      "description": "Brent's method with an expensive deterministic transcendental callback, measured with and without traces.",
+      "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"method": "brent", "callback_tier": "expensive", "callback_work": 256, "repetitions": 2, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
+      "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
+        {"id": "independent-root-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-11}},
+        {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
+        {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
+        {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
+    },
+    {
+      "id": "p1-root-secant-cheap",
+      "description": "Secant iteration with a cheap polynomial callback, measured with and without iteration traces.",
+      "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"method": "secant", "callback_tier": "cheap", "callback_work": 0, "repetitions": 4, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
+      "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
+        {"id": "independent-root-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-11}},
+        {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
+        {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
+        {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "methods-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/methods_executed", "expected": {"literal": ["secant"]}},
+        {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
+    },
+    {
+      "id": "p1-root-secant-moderate",
+      "description": "Secant iteration with a moderate deterministic transcendental callback, measured with and without traces.",
+      "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"method": "secant", "callback_tier": "moderate", "callback_work": 16, "repetitions": 3, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
+      "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
+        {"id": "independent-root-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-11}},
+        {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
+        {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
+        {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
+    },
+    {
+      "id": "p1-root-secant-expensive",
+      "description": "Secant iteration with an expensive deterministic transcendental callback, measured with and without traces.",
+      "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"method": "secant", "callback_tier": "expensive", "callback_work": 256, "repetitions": 2, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
+      "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
+        {"id": "independent-root-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-11}},
+        {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
+        {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
+        {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
+    },
+    {
+      "id": "p1-root-newton-cheap",
+      "description": "Newton iteration with cheap function and derivative callbacks, measured with and without iteration traces.",
+      "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"method": "newton", "callback_tier": "cheap", "callback_work": 0, "repetitions": 4, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
+      "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
+        {"id": "independent-root-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-11}},
+        {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
+        {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
+        {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "methods-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/methods_executed", "expected": {"literal": ["newton"]}},
+        {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
+    },
+    {
+      "id": "p1-root-newton-moderate",
+      "description": "Newton iteration with moderate deterministic transcendental callback work, measured with and without traces.",
+      "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"method": "newton", "callback_tier": "moderate", "callback_work": 16, "repetitions": 3, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
+      "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
+        {"id": "independent-root-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-11}},
+        {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
+        {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
+        {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
+    },
+    {
+      "id": "p1-root-newton-expensive",
+      "description": "Newton iteration with expensive deterministic transcendental callback work, measured with and without traces.",
+      "program_phase": "P1", "layer": "independent-residual", "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"method": "newton", "callback_tier": "expensive", "callback_work": 256, "repetitions": 2, "untraced_release_ceiling_ms_per_solve": 500, "traced_release_ceiling_ms_per_solve": 1000},
+      "required_capabilities": ["numerics.root.scalar.performance"], "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "all-solves-valid", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/all_success", "expected": {"literal": true}},
+        {"id": "independent-root-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-11}},
+        {"id": "independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_residual", "expected": {"literal": 5e-11}},
+        {"id": "method-and-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/identity_matches", "expected": {"literal": true}},
+        {"id": "trace-policy-observed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trace_modes_observed", "expected": {"literal": true}},
+        {"id": "untraced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/untraced_solve", "expected": {"literal": 500}},
+        {"id": "traced-release-ceiling", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/metrics/phases_ms/traced_solve", "expected": {"literal": 1000}}
+      ], "measurement": {"warmup": 1, "samples": 5}
+    }
+  ]
+}

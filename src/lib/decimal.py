@@ -5,6 +5,8 @@ use binary double precision; exact base-10 contexts and signals remain a
 separate numerical-backend milestone.
 """
 
+import numbers
+
 
 class Decimal:
     def __init__(self, value="0"):
@@ -16,6 +18,9 @@ class Decimal:
 
     def __float__(self):
         return self._value
+
+    def __int__(self):
+        return int(self._value)
 
     def __abs__(self):
         return Decimal(abs(self._value))
@@ -62,3 +67,6 @@ class Decimal:
 
     def __str__(self):
         return str(self._value)
+
+
+numbers.Number.register(Decimal)

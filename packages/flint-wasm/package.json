@@ -41,11 +41,17 @@
   },
   "files": [
     "dist/flint-factor.wasm",
+    "dist/flint-extension-multivariate.wasm",
+    "dist/extension-resource-adapter.c",
+    "dist/extension-resource-backend.mjs",
+    "dist/extension-resource-manifest.json",
+    "dist/extension-resource-receipt.json",
     "dist/flint-algebraic.wasm",
     "dist/native-kernels/",
     "dist/wasm-pack-loader.mjs",
     "dist/ffi-production-closure.json",
     "dist/lazy-modules.json",
+    "dist/documentation.json",
     "dist/dynamic-programs.json",
     "dist/production-kernel-coverage.json",
     "dist/production-manifest.json",
@@ -55,6 +61,10 @@
     "dist/ffi-resource-backend.mjs",
     "dist/ffi-resource-manifest.json",
     "dist/m4ri-resource.wasm",
+    "dist/cminpack.wasm",
+    "dist/nlopt-methods.wasm",
+    "dist/nlopt-backend.mjs",
+    "dist/numerical-backend.mjs",
     "dist/m4ri-resource-adapter.c",
     "dist/m4ri-resource-backend.mjs",
     "dist/m4ri-resource-manifest.json",
@@ -71,6 +81,7 @@
     "dist/tree-sitter-matlab.wasm",
     "dist/tree-sitter-wolfram.wasm",
     "dist/baselib.js",
+    "dist/katex/",
     "dist/plotly.min.js",
     "dist/stdlib.json",
     "dist/symbolic-backend.mjs",
@@ -85,6 +96,9 @@
     "curve-backend.mjs",
     "dirichlet-group.mjs",
     "evaluator.mjs",
+    "extension-multivariate.mjs",
+    "specialist-bytes.mjs",
+    "specialist-bytes-worker.mjs",
     "index.mjs",
     "m4ri.mjs",
     "multivariate-backend.mjs",
@@ -99,6 +113,7 @@
     "node-worker-bootstrap.mjs",
     "plotly-renderer.d.ts",
     "plotly-renderer.mjs",
+    "portable-exact.mjs",
     "portable-matrix.mjs",
     "portable-polynomial.mjs",
     "README.md"
@@ -106,7 +121,9 @@
   "scripts": {
     "build": "node scripts/build.cjs",
     "test": "pnpm run build && node --expose-gc --test test/*.test.mjs test/*.test.cjs",
-    "test:browser": "pnpm run build && node test/browser-smoke.mjs",
+    "test:browser": "pnpm run build && node test/browser-smoke.mjs && node test/public-gap-closure-browser.mjs",
+    "test:browser:numerics": "node test/numerical-domains-browser.mjs",
+    "test:browser:groebner": "pnpm run build && node test/groebner-browser-smoke.mjs",
     "test:browser:partitions": "node test/partition-count-browser.mjs",
     "test:browser:finite-field-compiler": "node test/finite-field-compiler-browser.mjs",
     "test:browser:webkit-file-origin": "node test/browser-wasm-webkit-file-origin.mjs",
@@ -118,6 +135,7 @@
     "path-browserify": "1.0.1"
   },
   "devDependencies": {
+    "katex": "0.18.4",
     "plotly.js-dist-min": "3.7.0"
   }
 }

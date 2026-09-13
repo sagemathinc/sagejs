@@ -1,0 +1,30 @@
+{
+  "schema": "sagejs.numerics.approximation.benchmark-baseline/v1",
+  "date": "2026-08-31",
+  "host": "Linux 6.17.0-1022-gcp x86_64",
+  "samples": 1,
+  "qualification": "development observation, not a release receipt",
+  "result_equivalence": {
+    "checksum_cpython": 2877.3865722529335,
+    "checksum_sagejs": 2877.386572252928,
+    "absolute_difference": 5.5e-12
+  },
+  "cpython_3_14_4_ms": {
+    "barycentric_construct_32": 2.77,
+    "barycentric_query_1000": 8.24,
+    "natural_spline_construct_2001": 22.26,
+    "natural_spline_query_1000": 2.91,
+    "diagnosed_derivative_200": 79.07,
+    "chebyshev_construct_degree_64": 2.69,
+    "chebyshev_query_1000": 7.61
+  },
+  "sagejs_node_26_7_0_ms": {
+    "barycentric_construct_32": 239.04,
+    "barycentric_query_1000": 818.82,
+    "natural_spline_construct_2001": 968.07,
+    "natural_spline_query_1000": 109.84,
+    "diagnosed_derivative_200": 7912.50,
+    "chebyshev_construct_degree_64": 153.04,
+    "chebyshev_query_1000": 193.86
+  }
+}

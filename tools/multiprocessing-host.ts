@@ -7,7 +7,10 @@ import {
 } from "node:worker_threads";
 
 import type { SageLanguageMode } from "./kernel-evaluator";
-import { multiprocessingWorkerPath } from "./resources";
+import {
+  multiprocessingWorkerPath,
+  singleExecutableNativeResourceDirectory,
+} from "./resources";
 import type { SagePacket } from "./serialization";
 
 interface EncodedFunction {
@@ -202,6 +205,7 @@ function encode(value: unknown, ancestors = new Set<unknown>()): EncodedValue {
     for (const name of [
       "__argnames__",
       "__defaults__",
+      "__kwdefaults__",
       "__handles_kwarg_interpolation__",
       "__kwonly__",
       "__varkw__",
@@ -262,12 +266,6 @@ function callableSpec(callable: unknown): CallableSpec {
   const nameValue = Reflect.get(callable, "__name__");
   const source = Function.prototype.toString.call(callable);
   const moduleGlobals = Reflect.get(callable, "__sagejs_module_globals__") ?? {};
-  const bindings = referencedBindings(
-    callable as (...args: unknown[]) => unknown,
-    source,
-    new Set([callable]),
-    moduleGlobals,
-  );
   const publishInModule =
     typeof moduleValue === "string" &&
     typeof nameValue === "string" &&
@@ -275,6 +273,18 @@ function callableSpec(callable: unknown): CallableSpec {
         callableGlobals(callable as (...args: unknown[]) => unknown),
         nameValue,
       ) === callable;
+  // Fixed baselib callables are already present in every task runtime. Once
+  // the parent has proved exact live-module identity, do not recursively copy
+  // their large generated dependency graph across the worker boundary.
+  const bindings =
+    publishInModule && moduleValue.startsWith("sagejs._baselib.")
+      ? {}
+      : referencedBindings(
+          callable as (...args: unknown[]) => unknown,
+          source,
+          new Set([callable]),
+          moduleGlobals,
+        );
   return {
     module: typeof moduleValue === "string" ? moduleValue : undefined,
     name: typeof nameValue === "string" ? nameValue : undefined,
@@ -307,6 +317,8 @@ class SynchronousWorkerPool {
     const workerFilename = multiprocessingWorkerPath(
       join(__dirname, "multiprocessing-worker.js"),
     );
+    const nativeResourceDirectory =
+      singleExecutableNativeResourceDirectory();
     const initializerSpec =
       initializer === undefined || initializer === null
         ? undefined
@@ -323,6 +335,7 @@ class SynchronousWorkerPool {
           initializer: initializerSpec,
           initargs: encodedInitargs,
           precompiledNativeRuntime,
+          nativeResourceDirectory,
         },
         transferList: [channel.port2],
       });

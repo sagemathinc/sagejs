@@ -11,7 +11,6 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { join, relative, resolve } = require("node:path");
-const { spawnSync } = require("node:child_process");
 
 const {
   NATIVE_ABI_VERSION,
@@ -21,6 +20,10 @@ const {
   NATIVE_PACK_ABI_VERSION,
 } = require("./js-backend.cjs");
 const { portableKernelIdentity } = require("./portable-identity.cjs");
+const {
+  buildJobs,
+  runBufferedCommand,
+} = require("../../scripts/build-parallelism.cjs");
 const {
   GMP_CHECKPOINT_ALLOCATOR_C_SOURCE,
 } = require("./gmp-checkpoint-allocator.cjs");
@@ -80,6 +83,7 @@ function packIdentity(items) {
         oracleIdentity: portable.oracleIdentity,
         portableIdentity: portable.identityHash,
         nativeAbi: item.nativeAbi,
+        privateFunctions: item.privateFunctions,
         functionDeclarations: portable.functionDeclarations,
         foreignInputs: item.foreignInputs.map((input) => ({
           id: input.id,
@@ -139,6 +143,17 @@ function aggregatorSource(items, packKey) {
   const sorted = [...items].sort((left, right) =>
     left.logicalSource.localeCompare(right.logicalSource)
   );
+  // Match the standalone compiler's narrow dependency exemption. Unknown,
+  // empty, mixed, or foreign-library IR retains the shared exact allocator;
+  // an all-binary64 isolated pack must not acquire GMP just by aggregation.
+  const prefixFree = sorted.length > 0 && sorted.every((item) =>
+    Array.isArray(item.ir?.functions) && item.ir.functions.length > 0 &&
+    item.ir.functions.every((fn) => fn.kernelKind === "float64") &&
+    (item.ir.foreignLibraries === undefined ||
+      (Array.isArray(item.ir.foreignLibraries) && item.ir.foreignLibraries.length === 0))
+  );
+  const allocator = prefixFree ? "" :
+    `#define SAGEJS_NATIVE_GMP_ALLOCATOR_API\n${GMP_CHECKPOINT_ALLOCATOR_C_SOURCE}`;
   const declarations = sorted.map((item) =>
     `napi_value sagejs_native_pack_init_m_${item.moduleIdentity}(` +
       "napi_env env, napi_value exports);"
@@ -154,8 +169,7 @@ function aggregatorSource(items, packKey) {
   return `/* Generated Sage.js production native-kernel pack. */
 #include <node_api.h>
 
-#define SAGEJS_NATIVE_GMP_ALLOCATOR_API
-${GMP_CHECKPOINT_ALLOCATOR_C_SOURCE}
+${allocator}
 
 ${declarations}
 
@@ -285,6 +299,7 @@ function manifestFor(items, identity, packKey, addonPath) {
           moduleIdentity: item.moduleIdentity,
           sourceHash: item.sourceHash,
           nativeAbi: item.nativeAbi,
+          privateFunctions: item.privateFunctions,
           functionDeclarations: portable.functionDeclarations,
           foreignDeclarations: item.foreignDeclarations,
         };
@@ -311,7 +326,7 @@ function validCachedPack(directory, identity, packKey) {
   }
 }
 
-function buildProductionPack({ items, cacheRoot }) {
+async function buildProductionPack({ items, cacheRoot, signal }) {
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error("a production native pack requires at least one kernel");
   }
@@ -339,10 +354,14 @@ function buildProductionPack({ items, cacheRoot }) {
   const workspace = nativeBuildWorkspace(packDirectory);
   let build;
   try {
-    build = spawnSync(process.execPath, [nodeGyp, "rebuild"], {
+    build = await runBufferedCommand(
+      process.execPath,
+      [nodeGyp, "rebuild", "--jobs", String(buildJobs())],
+      {
       cwd: workspace.directory,
-      encoding: "utf8",
-    });
+      signal,
+      },
+    );
   } finally {
     workspace.close();
   }

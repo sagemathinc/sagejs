@@ -1,0 +1,76 @@
+{
+  "schema": "sagejs.optimization-campaign2-integral-windows-portability/v1",
+  "epochId": "sha256:a8f9f317c7945ddcd931ae8eabe6482fd5feef2c95199cdcd7bd1b00a5390bb3",
+  "frozenCommit": "01011e30ef8ebd14f21ad48c42c1a90c91c2919c",
+  "workloadIds": [
+    "sha256:acafa1b0dde04685c7f3312bcb3bad9ee35a3a79a834ae5d27d5d982f8ef30d8",
+    "sha256:059ee19cbae72114c77c03c944def822999fcec8c4a79b76f0265c70f0461612"
+  ],
+  "assessment": {
+    "status": "source-and-ci-portability-proof-only",
+    "windowsCompatibleFallback": true,
+    "executedWindowsCandidateReceipt": null,
+    "exactCurrentExecutedAuthority": false,
+    "hardGateAuthority": false,
+    "failClosedReason": "No Windows runtime is available in this workspace and no exact-current, candidate-specific Windows execution receipt was found."
+  },
+  "candidate": {
+    "path": "/scratch/campaign2-integral-guard-failure-interrupt.py",
+    "sha256": "477dd1a47a11d31222ea3e8269d40289e0328ed1ef4836062754f8363e16089e",
+    "cpythonParseCommand": "python3 -m py_compile /scratch/campaign2-integral-guard-failure-interrupt.py",
+    "cpythonParseStatus": "pass",
+    "osSpecificImports": [],
+    "pathAssumptions": [],
+    "fallbackContract": "The exact host-policy and ffiNmodPolyIntegral capability guard completes before allocation, views, foreign calls, placement, or publication; denial, loader failure, missing export, native false, and ordinary native exception restart the untouched public source operation.",
+    "interruptContract": "KeyboardInterrupt is explicitly re-raised before broad Exception handling; it never enters fallback or publishes a result."
+  },
+  "currentSourceAuthorities": [
+    {
+      "path": "architecture/native-boundaries.json",
+      "sha256": "72b77f591d66eefe4ff3a01aba64624580f15a83f298f7857ac7878779d8d372",
+      "authority": "Declares ffi:flint:nmod_poly_integral, dynamic package @sagemath/sagejs-flint, export ffiNmodPolyIntegral, and the packed FLINT symbol."
+    },
+    {
+      "path": "architecture/wasm-capabilities.json",
+      "sha256": "d44f7253420f7b98d0be5db4c0d230455e89b91e1e58d2f8c447b901ff811894",
+      "authority": "Marks ffi:flint:nmod_poly_integral reviewed and available through generated Wasm with a declared capability fallback."
+    },
+    {
+      "path": "packages/flint/generated/ffi_host.py",
+      "sha256": "c012c543e357ac0174dbd1932eb0db4133fb025f6a74af7c814120484b5e421e",
+      "authority": "Defines the typed ffiNmodPolyIntegral host adapter."
+    },
+    {
+      "path": "packages/flint/package.json",
+      "sha256": "cc593164d6b66cbaecf010ebcb9f94dd2b5fd1989a6eb2d5bb88a111100692ea",
+      "authority": "Defines the native FLINT package and generated FFI build."
+    }
+  ],
+  "currentCiPortabilityProof": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "da0e14822a6239d74da0f21eff5a7cc15898609b5ab92e2025f3dc3ab9bb7151",
+      "proof": "The windows-x64 job builds packages/flint, the compiler, and Sage.js, then runs portable, integration, and native tests on a Windows 2025 runner."
+    },
+    {
+      "path": ".github/workflows/wasm-release.yml",
+      "sha256": "27347d8bc0d6962cbbfe35575e652d0ee5e8e63159c7264d13ad8c447b931b66",
+      "proof": "The windows-prebuilt-artifact job restores, authenticates, and executes the Wasm artifact on windows-2025 without a POSIX toolchain."
+    }
+  ],
+  "testedFaultAuthority": {
+    "path": "/scratch/campaign2-integral-guard-failure-interrupt.json",
+    "sha256": "9f6f616f0d7a5d91d6693a75ef8bf02c362e29da5a81ccdc544c220b6469385f",
+    "hostPolicyDeniedBeforeEffects": true,
+    "trustedLoaderFailureBeforeEffects": true,
+    "missingExportBeforeEffects": true,
+    "nativeFalseUntouchedRestart": true,
+    "nativeExceptionUntouchedRestart": true,
+    "keyboardInterruptPropagation": true,
+    "noPartialPublication": true
+  },
+  "claimBoundary": {
+    "supported": "The scratch source is OS-neutral, parses as ordinary Python, and has a fail-closed dynamic capability path whose generic fallback is Windows-compatible by construction and backed by current Windows CI architecture.",
+    "notSupported": "This is not proof that this candidate ran on Windows, not an exact Windows performance receipt, and not authority to add windows-x64 to the evidence bundle's executed fallbackPlatforms."
+  }
+}

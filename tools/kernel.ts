@@ -1,6 +1,15 @@
+import type { PythonDiagnostic } from "./python/diagnostics";
+export type { PythonDiagnostic } from "./python/diagnostics";
+
+/** Worker evaluation errors expose a JSON-safe diagnostic without parsing host stacks. */
+export interface SageDiagnosticError extends Error {
+  pythonDiagnostic: PythonDiagnostic;
+}
+
 import { EventEmitter } from "events";
 import { join } from "path";
 import { Worker } from "worker_threads";
+import { closeKernelWorker } from "./kernel-worker-lifecycle";
 
 import {
   createForeignFrontend,
@@ -14,13 +23,19 @@ import {
   KernelCompleteness,
   KernelInspection,
   SageOptimizationReport,
+  SageCommEvent,
+  SageCommInfo,
+  SageOutputEvent,
 } from "./kernel-evaluator";
 import {
   isSageSourceLanguage,
   SageSourceLanguage,
 } from "./polyglot";
 import { DocumentationCatalog } from "./documentation";
-import { kernelWorkerPath } from "./resources";
+import {
+  kernelWorkerPath,
+  singleExecutableNativeResourceDirectory,
+} from "./resources";
 
 export interface SageDisplayData {
   /** MIME type understood by an embedding renderer. */
@@ -34,16 +49,41 @@ export interface SageEvaluationResult {
   stdout: string;
   durationMs: number;
   display?: SageDisplayData;
+  /** Standard Python/Jupyter MIME bundle for the final expression. */
+  mimeBundle?: {
+    data: Record<string, unknown>;
+    metadata: Record<string, unknown>;
+  };
+  /** Ordered stream/display events published while evaluating the cell. */
+  events: SageOutputEvent[];
+  /** Ordered comm events published while evaluating the cell. */
+  commEvents: SageCommEvent[];
   /** Compiler-verified static optimizer decisions for this evaluation. */
   optimization: SageOptimizationReport;
+  /** Detached JSON-compatible result, present for `evaluateJSON()`. */
+  json?: unknown;
 }
 
 export interface SageEvaluationOptions {
   filename?: string;
   timeout?: number;
   onOutput?: (text: string) => void;
+  onEvent?: (event: SageOutputEvent) => void;
+  onComm?: (event: SageCommEvent) => void;
+  /** Parent execution identifier propagated to display and comm events. */
+  parentId?: string;
   /** Parse this evaluation using a supported Sage.js language frontend. */
   language?: SageSourceLanguage;
+  /** @internal Request structured JSON transport. Prefer `evaluateJSON()`. */
+  structuredResult?: boolean;
+}
+
+export interface SageRequestHandlers {
+  onOutput?: (text: string) => void;
+  onEvent?: (event: SageOutputEvent) => void;
+  onComm?: (event: SageCommEvent) => void;
+  /** Replace the worker if this request does not finish within this many milliseconds. */
+  timeout?: number;
 }
 
 export interface SageSessionOptions {
@@ -55,9 +95,11 @@ export interface SageLanguageOptions {
 }
 
 interface PendingRequest {
-  kind: "evaluate" | "request";
+  kind: "evaluate" | "comm" | "request";
   output: string;
   onOutput?: (text: string) => void;
+  onEvent?: (event: SageOutputEvent) => void;
+  onComm?: (event: SageCommEvent) => void;
   resolve(result: unknown): void;
   reject(error: Error): void;
   settled: Promise<void>;
@@ -92,12 +134,23 @@ function deserializeError(serialized): Error {
       serialized.message || undefined,
     );
     if (serialized.stack) interrupted.stack = serialized.stack;
+    if (serialized.pythonDiagnostic) {
+      (interrupted as SageDiagnosticError).pythonDiagnostic = serialized.pythonDiagnostic;
+    }
     return interrupted;
   }
   const error = new Error(serialized.message);
   error.name = serialized.name;
   if (serialized.stack) error.stack = serialized.stack;
+  if (serialized.pythonDiagnostic) {
+    (error as SageDiagnosticError).pythonDiagnostic = serialized.pythonDiagnostic;
+  }
   return error;
+}
+
+function userErrorText(error: Error): string {
+  const name = error.name === "ReferenceError" ? "NameError" : error.name;
+  return `${name || "Error"}: ${error.message}`;
 }
 
 /**
@@ -123,6 +176,7 @@ export class SageSession extends EventEmitter {
   >();
   private nextId = 0;
   private closed = false;
+  private closePromise?: Promise<void>;
 
   constructor({ mode = "sage" }: SageSessionOptions = {}) {
     super();
@@ -147,12 +201,18 @@ export class SageSession extends EventEmitter {
       new SharedArrayBuffer(2 * Int32Array.BYTES_PER_ELEMENT),
     );
     this.interruptState = interruptState;
+    const workerFilename = kernelWorkerPath(
+      join(__dirname, "kernel-worker.js"),
+    );
+    const nativeResourceDirectory =
+      singleExecutableNativeResourceDirectory();
     const worker = new Worker(
-      kernelWorkerPath(join(__dirname, "kernel-worker.js")),
+      workerFilename,
       {
         workerData: {
           mode: this.mode,
           interruptBuffer: interruptState.buffer,
+          nativeResourceDirectory,
         },
       },
     );
@@ -184,6 +244,16 @@ export class SageSession extends EventEmitter {
         this.emit("stdout", message.text, { evaluationId: message.id });
         return;
       }
+      if (message.type === "output-event") {
+        pending.onEvent?.(message.event);
+        this.emit("output", message.event, { evaluationId: message.id });
+        return;
+      }
+      if (message.type === "comm-event") {
+        pending.onComm?.(message.event);
+        this.emit("comm", message.event, { evaluationId: message.id });
+        return;
+      }
       if (message.type !== "result") return;
 
       this.pending.delete(message.id);
@@ -201,7 +271,7 @@ export class SageSession extends EventEmitter {
       } else {
         const error = deserializeError(message.error);
         pending.reject(error);
-        this.emit("stderr", `${error.stack ?? error.message}\n`, {
+        this.emit("stderr", `${userErrorText(error)}\n`, {
           evaluationId: message.id,
         });
       }
@@ -248,7 +318,11 @@ export class SageSession extends EventEmitter {
       filename = "<embedded>",
       timeout,
       onOutput,
+      onEvent,
+      onComm,
+      parentId,
       language = this.mode,
+      structuredResult = false,
     }: SageEvaluationOptions = {},
   ): Promise<SageEvaluationResult> {
     if (this.closed) throw new SageSessionClosedError();
@@ -280,6 +354,8 @@ export class SageSession extends EventEmitter {
         kind: "evaluate",
         output: "",
         onOutput,
+        onEvent,
+        onComm,
         resolve,
         reject,
         settled,
@@ -303,6 +379,8 @@ export class SageSession extends EventEmitter {
         filename,
         language: prepared.compilerLanguage,
         suppressResult: prepared.suppressResult,
+        parentId,
+        structuredResult,
       });
     });
   }
@@ -314,14 +392,33 @@ export class SageSession extends EventEmitter {
     return this.evaluate(source, options);
   }
 
+  /** Evaluate and return the final value as detached JSON-compatible data. */
+  async evaluateJSON(
+    source: string,
+    options: SageEvaluationOptions = {},
+  ): Promise<unknown> {
+    const result = await this.evaluate(source, {
+      ...options,
+      structuredResult: true,
+    });
+    return result.json;
+  }
+
   private async request<T>(
-    type: "complete" | "inspect" | "isComplete" | "documentation",
+    type: "complete" | "inspect" | "isComplete" | "documentation" | "comm" | "commInfo",
     source: string,
     extra: Record<string, unknown> = {},
+    handlers: SageRequestHandlers = {},
   ): Promise<T> {
     if (this.closed) throw new SageSessionClosedError();
     if (typeof source !== "string") {
       throw new TypeError("Sage.js source must be a string");
+    }
+    if (
+      handlers.timeout !== undefined &&
+      (!Number.isFinite(handlers.timeout) || handlers.timeout <= 0)
+    ) {
+      throw new TypeError("Sage.js request timeout must be a positive number");
     }
     await this.ready();
     const worker = this.worker;
@@ -333,13 +430,27 @@ export class SageSession extends EventEmitter {
         settle = done;
       });
       this.pending.set(id, {
-        kind: "request",
+        kind: type === "comm" ? "comm" : "request",
         output: "",
+        onOutput: handlers.onOutput,
+        onEvent: handlers.onEvent,
+        onComm: handlers.onComm,
         resolve,
         reject,
         settled,
         settle,
       });
+      const pending = this.pending.get(id)!;
+      if (handlers.timeout !== undefined) {
+        pending.timer = setTimeout(() => {
+          if (!this.pending.has(id)) return;
+          void this.replaceWorker(
+            new SageSessionTimeoutError(
+              `Sage.js ${type} request timed out after ${handlers.timeout} ms`,
+            ),
+          );
+        }, handlers.timeout);
+      }
       worker.postMessage({ type, id, source, ...extra });
     });
   }
@@ -360,6 +471,19 @@ export class SageSession extends EventEmitter {
    */
   documentation(): Promise<DocumentationCatalog> {
     return this.request("documentation", "");
+  }
+
+  /** Deliver one normalized frontend comm event on the session queue. */
+  comm(
+    event: SageCommEvent,
+    handlers: SageRequestHandlers = {},
+  ): Promise<void> {
+    return this.request("comm", "", { event }, handlers);
+  }
+
+  /** Return the exact live comm registry, optionally filtered by target. */
+  commInfo(targetName?: string): Promise<SageCommInfo> {
+    return this.request("commInfo", "", { targetName });
   }
 
   async isComplete(
@@ -433,13 +557,18 @@ export class SageSession extends EventEmitter {
   private async replaceWorker(error: Error): Promise<void> {
     if (this.closed) throw new SageSessionClosedError();
     const worker = this.worker;
+    const hasPendingWork = this.pending.size !== 0;
     this.worker = undefined;
     this.interruptState = undefined;
     // Publish the replacement's readiness before rejecting the interrupted
     // evaluation. Its caller may immediately submit another evaluation.
     this.prepareReadyPromise();
     this.rejectPending(error);
-    if (worker) await worker.terminate();
+    if (worker) {
+      // Resetting an idle session deserves the same evaluator cleanup as close.
+      // Timeouts and interrupts still stop active work without another grace wait.
+      await (hasPendingWork ? worker.terminate() : closeKernelWorker(worker));
+    }
     if (this.closed) return;
     this.spawnWorker(true);
     await this.readyPromise;
@@ -449,7 +578,7 @@ export class SageSession extends EventEmitter {
     if (this.closed) throw new SageSessionClosedError();
     await this.ready();
     const active = [...this.pending.entries()].filter(
-      ([, pending]) => pending.kind === "evaluate",
+      ([, pending]) => pending.kind === "evaluate" || pending.kind === "comm",
     );
     const state = this.interruptState;
     if (!state || active.length === 0) {
@@ -514,8 +643,8 @@ export class SageSession extends EventEmitter {
     );
   }
 
-  async close(): Promise<void> {
-    if (this.closed) return;
+  close(): Promise<void> {
+    if (this.closePromise) return this.closePromise;
     this.closed = true;
     const error = new SageSessionClosedError();
     this.readyReject(error);
@@ -523,8 +652,9 @@ export class SageSession extends EventEmitter {
     this.worker = undefined;
     this.interruptState = undefined;
     this.rejectPending(error);
-    if (worker) await worker.terminate();
-    this.removeAllListeners();
+    this.closePromise = (worker ? closeKernelWorker(worker) : Promise.resolve())
+      .finally(() => this.removeAllListeners());
+    return this.closePromise;
   }
 }
 

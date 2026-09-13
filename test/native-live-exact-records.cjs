@@ -18,6 +18,7 @@ const {
 } = require("../tools/native-kernel/c-backend.cjs");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
@@ -34,7 +35,7 @@ function runNode(modulePath, source) {
 }
 
 test("portable record vectors reserve, copy, validate, and close", () => {
-  const result = spawnSync("python3", ["-c", String.raw`
+  const result = spawnSync(pythonExecutable(), ["-c", String.raw`
 import importlib.util, sys, types
 package = types.ModuleType("sagejs")
 package.__path__ = []
@@ -86,13 +87,14 @@ except ValueError as error:
 else:
     raise AssertionError("closed record vector remained usable")
 `], { cwd: root, encoding: "utf8", timeout: 120_000 });
+  if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 
 test("record-vector IR retains its schema and lexical ownership", async () => {
   const source = readFileSync(sourcePath, "utf8");
   const ir = await lowerSource(source, sourcePath);
-  assert.equal(ir.version, 36);
+  assert.equal(ir.version, 39);
   assert.deepEqual(ir.records, [{
     name: "RelationMetadata",
     type: "Record:RelationMetadata",

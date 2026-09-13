@@ -3,11 +3,12 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { existsSync, readFileSync } = require("node:fs");
+const { readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { compile } = require("@sagemath/sagejs/native");
+const { sageMathOracle } = require("./helpers/sage-math.cjs");
 
 const root = resolve(__dirname, "..");
 const packagePath = join(root, "packages", "flint");
@@ -20,6 +21,7 @@ const witnessPath = join(
   "test/fixtures/native-ffi-flint-extension/witness.py",
 );
 const expectedProduct = [[2n, 1n], [2n, 2n], [0n, 2n], [0n, 1n]];
+const sage = sageMathOracle({ root, environmentVariables: ["SAGE_BIN"] });
 
 function decodeCoordinateBytes(bytes) {
   assert.equal(bytes.subarray(0, 4).toString(), "SJFC");
@@ -269,9 +271,11 @@ test("typed Python safely borrows and traverses an extension resource", async ()
   }
 });
 
-test("generated product coordinates agree with SageMath", () => {
-  const sage = process.env.SAGE_BIN || "/home/user/sagelite/sage";
-  if (!existsSync(sage)) return;
+test("generated product coordinates agree with SageMath", (context) => {
+  if (sage === null) {
+    context.skip("a working SageMath oracle is unavailable");
+    return;
+  }
   const source = [
     "import json",
     "F.<a> = GF(9, modulus=x^2 + 1)",
@@ -284,9 +288,11 @@ test("generated product coordinates agree with SageMath", () => {
   assert.deepEqual(actual, expectedProduct.map((row) => row.map(Number)));
 });
 
-test("production degree-three coordinates agree over GF(125)", () => {
-  const sage = process.env.SAGE_BIN || "/home/user/sagelite/sage";
-  if (!existsSync(sage)) return;
+test("production degree-three coordinates agree over GF(125)", (testContext) => {
+  if (sage === null) {
+    testContext.skip("a working SageMath oracle is unavailable");
+    return;
+  }
   const flint = require(packagePath);
   const modulus = new BigUint64Array([3n, 3n, 0n, 1n]);
   const leftCoordinates = new BigUint64Array([

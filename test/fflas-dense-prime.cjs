@@ -242,6 +242,6 @@ test("clean native builds retain optional FFLAS outside the portable release pac
 
   const scripts = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).scripts;
   assert.doesNotMatch(scripts["build:sea:python"], /packages\/fflas/);
-  assert.match(scripts["build:sea:math"], /packages\/flint build.*packages\/graph build.*pnpm run build/);
+  assert.match(scripts["build:sea:math"], /native:prepare:sea/);
   assert.doesNotMatch(scripts["build:sea:math"], /packages\/(?:fflas|m4ri)/);
 });
