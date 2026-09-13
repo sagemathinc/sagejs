@@ -214,3 +214,47 @@ first quartic, so the patch uses a dedicated flag instead. PARI's real-number
 formatter can separate an exponent with whitespace (`2.04 e-38`); the parser
 now consumes the complete real value, with a focused regression assertion.
 Neither apparent ordering mismatch required changing the translated algorithm.
+
+## Next boundary: prepared arbitrary-precision embeddings
+
+`prepared_real_probe.py` demonstrates a second capability gap, distinct from
+mixed binary64/integer workspaces. Lowering a function that multiplies two
+supplied `RealNumber` arguments fails with:
+
+```text
+native kernel: unsupported native argument type RealNumber
+```
+
+The legacy field lowering in `tools/native-kernel/ir.cjs` accepts parent fields,
+integers and unsigned iteration counts, but not prepared real/complex values
+as arguments. It has scalar MPFR/MPC arithmetic for values constructed inside
+the kernel; that is not resident access to a prepared embedding matrix.
+The four current FFI declarations (FLINT, M4RI, igraph, FFLAS) provide no
+MPFR/MPC owned resource alternative. This is evidence about current interfaces,
+not a claim that implementing the capability is impossible or slow.
+
+The next upstream operation needing it is `factorgen` (`buch2.c`): multiply
+the prepared embedding matrix by the exact candidate coordinates, compute
+`embed_norm` (`base1.c`), divide by the ideal norm when supplied, and apply
+`grndtoi` with its `e > -32` rejection. `embed_norm` multiplies real embeddings
+in order and multiplies squared complex absolute values separately before
+combining them. PARI's precision and rounding behavior must be investigated
+and preserved at the relevant acceptance branches; merely choosing MPFR's
+default rounding is not an equivalence argument.
+
+Potential exits have different meanings:
+
+- Add resident arbitrary-precision scalar/container ingress and the required
+  rounding operations: a second compiler/runtime or representation capability,
+  needing explicit reassessment of the one-correction budget and ownership.
+- Let PARI supply norm/factorization/admission outputs at an outer boundary:
+  permitted diagnostic scaffolding, but not a translated connected discovery
+  segment or evidence for whole-engine speed.
+- Replace the norm by binary64 or exact determinants: different arithmetic and
+  potentially different accepted relations; excluded from a language-only claim.
+
+The existing one general correction is the mixed integer/binary64 workspace
+support. No second correction has been started. The experiment remains
+incomplete and inconclusive about whole-engine parity. The minimal probe and
+its rejection are now regression-tested; no production API or proof state is
+changed.

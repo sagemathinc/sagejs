@@ -27,4 +27,11 @@ const { lowerSource } = require("../tools/native-kernel/ir.cjs");
   });
   assert.equal(compiled.status, 0, compiled.stderr);
   process.stdout.write(compiled.stdout);
+  // A distinct, still-unimplemented boundary: legacy MPFR/MPC lowering can
+  // construct field constants, but cannot borrow prepared embedding entries.
+  const realProbe = path.join(base, "prepared_real_probe.py");
+  await assert.rejects(
+    () => lowerSource(fs.readFileSync(realProbe, "utf8"), realProbe),
+    /unsupported native argument type RealNumber/,
+  );
 })().catch(error => { console.error(error); process.exitCode = 1; });
