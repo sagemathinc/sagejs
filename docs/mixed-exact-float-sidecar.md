@@ -44,3 +44,27 @@ mutate the destination while computing the index or RHS.
 No ABI layout changes are introduced: source/IR generator identities invalidate
 compiled caches. No class-group policy, proof authority or public dispatch is
 changed. Keep this prerequisite draft until qualification closes.
+# Prepared field ingress follow-up (experimental)
+
+The user approved further reasonably justified compiler changes for the PARI
+language experiment; the former one-correction count is no longer a stopping
+rule. Existing time/compute limits and faithful-work comparison remain in force.
+
+The first additional slice admits matching `RealNumber`/`ComplexNumber` scalar
+inputs to legacy field kernels. Isolated cores borrow const MPFR/MPC operands;
+Node checks the native type tags and precision before calling them. Public
+wrappers require the same parent and nearest rounding, rather than silently
+changing precision or accepting directed-rounding fields. Input rebinding is
+still unsupported. This does not yet supply embedding containers or PARI's
+rounding-error exponent calculation.
+
+Focused validation:
+`SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node --test tools/native-kernel/test/prepared-field-inputs.cjs`.
+It exercises standalone real/complex arithmetic against MPFR/MPC controls at
+192 bits, unchanged inputs, precision rejection, forged handles and a minimal
+JS fallback check. Windows and Wasm have not been qualified for this addition.
+The broad `test/native-kernel.cjs` first stopped at a missing MPFR include;
+with `CPATH` and `LIBRARY_PATH` pointed at the same explicit diagnostic prefix,
+it passed that MPFR/MPC section and later stopped at a hard-coded missing
+worktree `libgmp.a` path (line 2441). This is not a full-suite pass. The
+architecture gate retains the previously reported stale optimizer manifest.

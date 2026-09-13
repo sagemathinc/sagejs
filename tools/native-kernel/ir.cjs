@@ -36,6 +36,7 @@ const PARENT_ELEMENT_TYPES = new Map([
 ]);
 const SUPPORTED_ARGUMENT_TYPES = new Set([
   ...PARENT_ELEMENT_TYPES.keys(),
+  ...PARENT_ELEMENT_TYPES.values(),
   "Integer",
   "uint64",
 ]);
@@ -520,9 +521,8 @@ function lowerLegacyFunction(fn, decorated = false) {
     expect(
       parentParams.length === 1 &&
         integerParams.length === 0 &&
-        iterationParams.length === 1 &&
-        params.length === 2,
-      "a real or complex native kernel requires one supported field and one uint64 argument",
+        iterationParams.length <= 1,
+      "a real or complex native kernel requires one supported field and at most one uint64 argument",
     );
     parent = parentParams[0];
     elementType = PARENT_ELEMENT_TYPES.get(parent.type);
@@ -530,11 +530,15 @@ function lowerLegacyFunction(fn, decorated = false) {
       returnType === elementType,
       `${fn.name.name} with ${parent.type} must return ${elementType}`,
     );
+    expect(params.every((param) => param === parent ||
+      param.type === "uint64" || param.type === elementType),
+    "prepared field inputs must match the result field type");
   }
-  const iterationName = iterationParams[0].name;
+  const iterationName = iterationParams[0]?.name;
   const context = {
     elementType,
-    localTypes: new Map(),
+    localTypes: new Map(params.filter((param) => param.type === elementType)
+      .map((param) => [param.name, param.type])),
     nextTemporary: 0,
     paramNames: new Set(params.map((param) => param.name)),
     parentName: parent?.name,
@@ -595,12 +599,14 @@ function lowerLegacyFunction(fn, decorated = false) {
 
     if (nodeType(statement) === "AST_Return") {
       expect(returned === undefined, "native function has multiple returns");
-      expect(
-        nodeType(statement.value) === "AST_SymbolRef" &&
-          context.localTypes.get(statement.value.name) === elementType,
-        `native function must return a ${elementType} local`,
-      );
-      returned = statement.value.name;
+      if (nodeType(statement.value) === "AST_SymbolRef" &&
+          context.localTypes.get(statement.value.name) === elementType &&
+          !context.paramNames.has(statement.value.name)) {
+        returned = statement.value.name;
+      } else {
+        returned = temporary(context);
+        lowerExpression(statement.value, returned, context, body);
+      }
       body.push({ kind: "return", value: returned });
       continue;
     }
@@ -615,7 +621,8 @@ function lowerLegacyFunction(fn, decorated = false) {
     body[body.length - 1]?.kind === "return",
     "native return must be the final statement",
   );
-  const locals = Array.from(context.localTypes, ([name, type]) => ({
+  const locals = Array.from(context.localTypes).filter(([name]) =>
+    !context.paramNames.has(name)).map(([name, type]) => ({
     name,
     type,
     storage: name === returned ? "return" : "local",

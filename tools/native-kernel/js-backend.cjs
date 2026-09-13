@@ -135,6 +135,7 @@ function emitPublicFunction(fn) {
     .map((param) =>
       param.type === "RealField" || param.type === "ComplexField"
         ? `${param.name}.precision()`
+        : param.type === fn.returnType ? `${param.name}._native`
         : param.name,
     )
     .join(", ");
@@ -145,7 +146,14 @@ function validate_${fn.name}(${params}) {
       typeof ${parent.name}._fromNative !== "function") {
     throw new TypeError("${parent.name} must be a Sage.js ${parent.type}");
   }
-${uint64Validation(iterations.name)}
+${iterations ? uint64Validation(iterations.name) : ""}
+${fn.params.filter((param) => param.type === fn.returnType).map((param) => `
+  if (${param.name} == null || ${param.name}._parent !== ${parent.name}) {
+    throw new TypeError("prepared input must belong to the supplied field");
+  }
+  if (${parent.name}._rounding_code !== undefined && ${parent.name}._rounding_code !== 0) {
+    throw new TypeError("prepared field kernels currently require nearest rounding");
+  }`).join("\n")}
 }
 
 function ${fn.name}(${params}) {
@@ -154,11 +162,11 @@ function ${fn.name}(${params}) {
     const nativeValue = nativeAddon.${fn.name}(${nativeArgs});
     return ${parent.name}._fromNative(nativeValue);
   }
-  if (typeof ${iterations.name} === "bigint" &&
+${iterations ? `  if (typeof ${iterations.name} === "bigint" &&
       ${iterations.name} > BigInt(Number.MAX_SAFE_INTEGER)) {
     throw new RangeError(
       "JavaScript fallback cannot iterate beyond Number.MAX_SAFE_INTEGER");
-  }
+  }` : ""}
   return javascript_${fn.name}(
     ${fn.params
       .map((param) =>

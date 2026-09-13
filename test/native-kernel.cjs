@@ -702,14 +702,13 @@ assert.equal(
   ).analysis.backend.kind,
   "gmp",
 );
-await assert.rejects(
-  () =>
-    lowerSource(
+assert.equal(
+  (await lowerSource(
       "def f(field: ComplexField, n: uint64) -> ComplexNumber:\n" +
         "    return field(\"1\", \"0\")\n",
-      "invalid.sage",
-    ),
-  /native function must return a ComplexNumber local/,
+      "return-expression.sage",
+    )).functions[0].body.at(-1).kind,
+  "return",
 );
 await assert.rejects(
   () =>
