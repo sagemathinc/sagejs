@@ -23,6 +23,11 @@ mutate the destination while computing the index or RHS.
 
 - Focused IR test and generated JS/native execution tests pass; standalone
   Wasm test is skipped because its SDK is not prepared.
+  After the interrupted broad dependency preparation left the local prefix
+  incomplete, the final passing focused run explicitly used
+  `SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix`.
+  A default-prefix retry failed at missing MPC before compilation; it is not
+  counted as passing. No performance comparison uses this diagnostic prefix.
 - The actual PARI enumeration scaffold agrees in CPython, generated JS and
   native execution on 24 synthetic cases, including candidate order. Run:
   `node /home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/check_compiled.cjs /home/user/sagejs-worktrees/mixed-exact-float-sidecar`.
