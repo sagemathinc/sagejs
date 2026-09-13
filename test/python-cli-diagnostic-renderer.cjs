@@ -21,6 +21,42 @@ const python = error => attach(error, {
   phase: "execute", pythonExecution: true, filename: "actual-entry.py",
 });
 
+test('Jupyter reply adapter preserves transported logical frames', () => {
+  const path=join(__dirname,'../tools/jupyter-kernel.ts');
+  const adapter=new Module(path,module);
+  adapter.require=id => {
+    if(id==='./kernel') return {SageSessionInterruptedError:class extends Error{}};
+    if(id==='./zeromq-runtime' || id==='./polyglot') return {};
+    if(id==='./python/diagnostics') return helper.exports;
+    return require(id);
+  };
+  adapter._compile(esbuild.transformSync(readFileSync(path,'utf8')+'\nexport {traceback as testTraceback};',
+    {loader:'ts',format:'cjs',target:'es2022'}).code,path);
+  const error=python({name:'ValueError',message:'boom',__traceback__:{
+    __sagejs_traceback_record__:true,tb_lineno:2,tb_next:null,
+    code:{filename:'cell.py',name:'f',first_lineno:1,source:'def f():\n    fail()'}}});
+  const reply=adapter.exports.testTraceback(structuredClone(serialize(error)));
+  assert.equal(reply.ename,'ValueError');
+  assert.equal(reply.evalue,'boom');
+  assert.match(reply.traceback.join('\n'), /File "cell.py", line 2, in f/);
+  assert.match(reply.traceback.join('\n'), /ValueError: boom/);
+});
+
+test('CLI renders and freezes compiler traceback records without a native stack', () => {
+  const record={__sagejs_traceback_record__:true,tb_lineno:2,tb_next:null,
+    code:{filename:'logical.py',name:'leaf',first_lineno:1,
+      source:"def leaf():\n    raise ValueError('boom')"}};
+  const error=python({name:'ValueError',message:'boom',__traceback__:record});
+  assert.equal(render(error), 'Traceback (most recent call last):\n' +
+    '  File "logical.py", line 2, in leaf\n' +
+    "    raise ValueError('boom')\nValueError: boom\n");
+  const diagnostic=serialize(error).pythonDiagnostic;
+  assert.ok(Object.isFrozen(diagnostic.frames[0]));
+  record.code.name='mutated';
+  assert.equal(diagnostic.frames[0].name,'leaf');
+  assert.equal(structuredClone(serialize(error)).pythonDiagnostic.frames[0].name,'leaf');
+});
+
 test("CLI renderer preserves empty, multiline and complex messages without host internals", () => {
   for (const message of ["", "line one\nline two π", "('first', 3)"]) {
     const error = python(Object.assign(new Error(message), { name: "ValueError" }));

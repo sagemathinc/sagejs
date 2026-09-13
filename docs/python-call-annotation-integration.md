@@ -316,3 +316,20 @@ honors a supplied record chain or explicit `None`; clearing a traceback also
 suppresses frames in the one-argument formatter. These are consumer changes,
 not a change to capture policy or a new performance result. Focused tests cover
 the handoff, explicit inner-chain selection, clearing, and handler restoration.
+
+### Structured diagnostic transport and Node consumers
+
+After merging main `4834ec0cb`, structured diagnostics carry detached
+`python-record` frames and an explicit `framesTruncated` flag. Traversal stops
+at 256 frames, malformed records or cycles. Live activation objects and source
+descriptors are not transported; attached frames are frozen. Host-only errors
+do not acquire inferred Python frames. CLI rendering, Jupyter reply formatting
+and the Node kernel output-event path consume this shared representation.
+
+The merged-source full build passed in 6m 54s. Thirty-three focused tests pass,
+including actual compiled records normalized into diagnostics, kernel output
+event transport, and a Jupyter reply-adapter test (not a live client session).
+TypeScript checking also passes. Browser worker transport, production capture
+policy, mixed-code coverage and suspended-frame ownership remain unqualified;
+the feature is still off by default. All four persistent qualification hosts
+were reachable, but no new remote qualification or timing is claimed here.

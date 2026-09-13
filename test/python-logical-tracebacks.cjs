@@ -8,6 +8,7 @@ const test = require("node:test");
 const createCompiler = require("../dist/tools/compiler.js").default;
 const {createPythonCompilerFrontend} = require("../dist/tools/python/compiler-frontend.js");
 const {createSage} = require("../dist/tools/kernel.js");
+const {normalizePythonDiagnostic, renderPythonDiagnostic} = require("../dist/tools/python/diagnostics.js");
 const source = `def leaf():
     raise ValueError('boom')
 def middle():
@@ -83,6 +84,11 @@ for (const mode of ["python", "sage"]) test(`${mode}: compiler unwind records av
     assert.deepEqual(frames(caught),[["finalized",24],["leaf",2]]);
     try {functions.recursive(3);} catch(e) {caught=e;}
     assert.deepEqual(frames(caught).map(frame => frame[0]),Array(4).fill('recursive'));
+    const diagnostic=normalizePythonDiagnostic(caught,{phase:'execute',pythonExecution:true});
+    assert.deepEqual(diagnostic.frames.map(frame=>frame.name),Array(4).fill('recursive'));
+    assert.deepEqual(structuredClone(diagnostic),diagnostic);
+    assert.match(renderPythonDiagnostic(diagnostic), /File "logical.py"/);
+    assert.match(renderPythonDiagnostic(diagnostic), /ValueError: depth/);
     assert.equal(captures,0);
     context.__sagejs_traceback_records_enabled__ = false;
     const native = functions.constructed();
@@ -95,6 +101,7 @@ for (const mode of ["python", "sage"]) test(`${mode}: compiler unwind records av
 test('stdlib extracts logical records with Python limit direction', async (t) => {
   const session = await createSage({mode:'python'});
   t.after(() => session.close());
+  const events=[];
   const result = await session.evaluate(`
 import traceback
 import sys
@@ -143,8 +150,14 @@ assert sys.exc_info()[2] is None
 assert traceback.format_exception(error) == ['ValueError: boom\\n']
 runtime.reflect.set(runtime.global_object, '__sagejs_last_exception__', None)
 assert sys.exc_info() == (None, None, None)
+error.__traceback__ = outer
+runtime.reflect.apply(runtime.reflect.get(runtime.global_object, '__sagejs_showtraceback__'), None, [error])
 print('logical-format-ok')
-`);
+`, {onEvent:event=>events.push(event)});
   assert.equal(result.stderr ?? '', '');
   assert.equal(result.stdout, 'logical-format-ok\n');
+  const event=events.find(event=>event.type==='error');
+  assert.ok(event);
+  assert.match(event.traceback.join('\n'), /File "saved.py", line 3, in outer/);
+  assert.match(event.traceback.join('\n'), /ValueError: boom/);
 });
