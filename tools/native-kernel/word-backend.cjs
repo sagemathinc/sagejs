@@ -689,7 +689,7 @@ function emitWordStatements(statements, context, indent) {
     }
     if (statement.kind === "raise") {
       lines.push(
-        `${indent}sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ${cString(statement.message)});`,
+        `${indent}sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ${cString(statement.exception === "ValueError" ? `ValueError: ${statement.message}` : statement.message)});`,
         `${indent}${context.failure}`,
       );
       continue;

@@ -46,6 +46,21 @@ compiled caches. No class-group policy, proof authority or public dispatch is
 changed. Keep this prerequisite draft until qualification closes.
 # Prepared field ingress follow-up (experimental)
 
+The short-product prototype additionally exposed constant and augmented exact
+shifts, and a tagged C local named `shift` colliding with the generated runtime
+helper. Constant-literal shifts now retain exact semantics (including
+`1 << 64`); augmented shifts reuse checked lowering. Tagged locals have a
+separate name prefix from helpers. Focused shift tests cover these cases.
+
+Native integer code now accepts explicit `ValueError` and `ZeroDivisionError`
+with an optional constant message. Public dispatch preserves the exception
+through native helper calls; a typed prefix in the raw ValueError status
+prevents an explicit message from reclassifying an implicit division failure.
+Dynamic messages and arbitrary exception construction remain unsupported.
+`explicit-errors.cjs` checks dynamic, forced GMP and tagged paths, nested calls,
+and message collisions. The effect analysis now records the IR exception
+field rather than an absent property. No status ABI layout is changed.
+
 The PARI rounding translation additionally motivates exact `int.bit_length()`.
 It now lowers for Integer/uint64 expressions, with Python's sign-independent
 result and zero returning zero. Tagged word and GMP paths and generated JS

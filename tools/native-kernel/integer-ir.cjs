@@ -2205,7 +2205,8 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
     const right = lowerUint64Operand(node.right, context, operations);
     if ((node.operator === "<<" || node.operator === ">>") &&
         (left.type === "Integer" ||
-          (integerLiteral(node.left) !== undefined && right.type === "Integer"))) {
+          (integerLiteral(node.left) !== undefined &&
+            (right.type === "Integer" || integerLiteral(node.right) !== undefined)))) {
       const a = coerceInteger(left, context, node.left, operations);
       const b = coerceInteger(right, context, node.right, operations);
       const target = temporary(context, node, "Integer");
@@ -3312,6 +3313,13 @@ function lowerAssignment(statement, context) {
     assign.right,
     operations,
   );
+  if (symbol === "<<" || symbol === ">>") {
+    operations.push({kind: "integer.shift", operation: symbol === "<<" ? "left" : "right",
+      target, left: target, right: right.name});
+    return operations;
+  }
+  expect(context, assign, operation !== undefined,
+    `unsupported Integer augmented operator ${assign.operator}`);
   operations.push({
     kind: "integer.binary",
     operation,
@@ -3886,17 +3894,23 @@ function lowerStatements(statements, context) {
       continue;
     }
     if (nodeType(statement) === "AST_Throw") {
+      const value = statement.value;
+      const called = nodeType(value) === "AST_Call" || nodeType(value) === "AST_New";
+      const callee = called ? value.expression : value;
+      const args = called ? array(value.args) : [];
+      const exception = nodeType(callee) === "AST_SymbolRef" ? callee.name : undefined;
       expect(
         context,
         statement,
-        nodeType(statement.value) === "AST_SymbolRef" &&
-          statement.value.name === "ZeroDivisionError",
-        "native raise currently supports ZeroDivisionError",
+        (exception === "ZeroDivisionError" || exception === "ValueError") &&
+          (!called || (!value.args?.starargs && !value.args?.kwargs?.length && !value.args?.kwarg_items?.length)) &&
+          args.length <= 1 && (args.length === 0 || nodeType(args[0]) === "AST_String"),
+        "native raise supports ZeroDivisionError or ValueError with a constant string",
       );
       const operation = {
         kind: "raise",
-        exception: "ZeroDivisionError",
-        message: "division by zero",
+        exception,
+        message: args.length ? args[0].value : exception === "ZeroDivisionError" ? "division by zero" : "",
       };
       annotateOperations([operation], sourceSpan(statement, context.filename));
       result.push(operation);

@@ -41,7 +41,7 @@ function int64Constant(value) {
 }
 
 function taggedName(name) {
-  return `sagejs_tagged_${name}`;
+  return `sagejs_local_tagged_${name}`;
 }
 
 function scalarType(type, fn) {
@@ -699,7 +699,7 @@ function emitTaggedStatements(statements, context, indent) {
     }
     if (statement.kind === "raise") {
       lines.push(
-        `${indent}sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ${cString(statement.message)});`,
+        `${indent}sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ${cString(statement.exception === "ValueError" ? `ValueError: ${statement.message}` : statement.message)});`,
         `${indent}goto fail;`,
       );
       continue;
