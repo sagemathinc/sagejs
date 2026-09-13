@@ -22,12 +22,25 @@ def complex_product(field: ComplexField, a: ComplexNumber, b: ComplexNumber) -> 
 @native
 def real_identity(field: RealField, a: RealNumber) -> RealNumber:
     return a
+@native
+def real_sum(field: RealField, a: RealNumberBuffer, n: uint64) -> RealNumber:
+    value = field("0")
+    for i in range(n):
+        value += a[i]
+    return value
+@native
+def complex_first(field: ComplexField, a: ComplexNumberBuffer) -> ComplexNumber:
+    return a[0]
+@native
+def real_two(field: RealField) -> RealNumber:
+    return field("2")
 `);
   const built = await compileKernel({ sourcePath: source });
   const mod = require(built.modulePath);
   assert.equal(mod.real_product.nativeAvailable, true);
   assert.throws(() => mod.real_product({}, {}, {}), /RealField/);
   const field = { _kind: "RealField", precision: () => 192, _fromNative: x => x };
+  field._fromNative = value => ({_native: value, _parent: field});
   assert.throws(() => mod.real_product(field, {}, {}), /supplied field/);
   const fake = { _parent: field, _native: {} };
   assert.throws(() => mod.real_product(field, fake, fake), /MPFR real/);
@@ -35,6 +48,14 @@ def real_identity(field: RealField, a: RealNumber) -> RealNumber:
   const a = { _mul_: b => 7 * b }, b = 9;
   assert.equal(mod.real_product.javascript(field, a, b), 63);
   assert.equal(mod.real_identity.javascript(field, a), a);
+  const two = mod.real_two(field);
+  assert.ok(mod.real_sum(field, [two, two], 2)._native);
+  assert.throws(() => mod.real_sum(field, [two], 2), /index out of range/);
+  assert.throws(() => mod.real_sum(field, [two, fake], 2), /MPFR real/);
+  const dyn = value => ({value: BigInt(value), _add_(rhs) { return dyn(this.value + rhs.value); }});
+  assert.equal(mod.real_sum.javascript(dyn, [dyn(3), dyn(-5)], 2).value, -2n);
+  assert.throws(() => mod.real_sum.javascript(dyn, [], 1), /index out of range/);
+  assert.equal(mod.complex_first.javascript(null, [a]), a);
 
   const control = join(dir, "control.c");
   writeFileSync(control, `#include <assert.h>
@@ -53,6 +74,12 @@ int main(void) {
   assert(mpfr_equal_p(r,expected)); assert(mpfr_equal_p(a,saved));
   assert(sagejs_kernel_real_identity(&status,r,192,a));
   assert(mpfr_equal_p(r,a));
+  mpfr_srcptr entries[] = {a,b};
+  mpfr_add(expected,a,b,MPFR_RNDN);
+  assert(sagejs_kernel_real_sum(&status,r,192,entries,2,2));
+  assert(mpfr_equal_p(r,expected));
+  assert(!sagejs_kernel_real_sum(&status,r,192,entries,2,3));
+  assert(status.code == SAGEJS_NATIVE_RANGE_ERROR);
   assert(!sagejs_kernel_real_product(&status,r,128,a,b));
   assert(status.code == SAGEJS_NATIVE_TYPE_ERROR);
   mpc_init2(c,192); mpc_init2(d,192); mpc_init2(z,192); mpc_init2(w,192);
@@ -60,6 +87,10 @@ int main(void) {
   mpc_mul(w,c,d,MPC_RNDNN);
   assert(sagejs_kernel_complex_product(&status,z,192,c,d));
   assert(mpc_cmp(z,w)==0);
+  mpc_srcptr cent[] = {c,d};
+  assert(sagejs_kernel_complex_first(&status,z,192,cent,2));
+  assert(mpc_cmp(z,c)==0);
+  assert(!sagejs_kernel_complex_first(&status,z,192,NULL,0));
   mpc_clear(c); mpc_clear(d); mpc_clear(z); mpc_clear(w);
   mpfr_clear(a);mpfr_clear(b);mpfr_clear(r);mpfr_clear(expected);mpfr_clear(saved);
   return 0;
@@ -76,4 +107,5 @@ int main(void) {
   const run = spawnSync(exe, [], {encoding:"utf8",timeout:30000});
   assert.equal(run.status,0,run.stderr);
   await assert.rejects(() => lowerSource(`def bad(f: RealField, a: ComplexNumber) -> RealNumber:\n    return a\n`, "bad.py"), /match the result field type/);
+  await assert.rejects(() => lowerSource(`def bad(f: RealField, a: RealNumberBuffer) -> RealNumber:\n    return a[-1]\n`, "bad.py"), /nonnegative constant or uint64/);
 });

@@ -46,6 +46,19 @@ compiled caches. No class-group policy, proof authority or public dispatch is
 changed. Keep this prerequisite draft until qualification closes.
 # Prepared field ingress follow-up (experimental)
 
+Borrowed `RealNumberBuffer` and `ComplexNumberBuffer` arguments additionally
+admit read-only indexing by nonnegative constants or uint64 indices inside
+field loops. They are ordinary lists dynamically. The Node adapter constructs
+a temporary pointer array, roots its handles for the synchronous call, and
+checks type tags and precision; it frees the view on success and failure.
+The isolated core receives const pointers and lengths and checks accesses.
+Input limb storage is not copied during marshalling. Each read currently
+copies into a precision-matched local; no zero-allocation performance claim is
+made. Standalone callers must provide valid arrays and disjoint output storage.
+Negative indexing and mutation are currently rejected at compilation; native
+range failures use the existing RangeError status. These are explicit narrow
+native capabilities, not changes to ordinary Python list semantics.
+
 The user approved further reasonably justified compiler changes for the PARI
 language experiment; the former one-correction count is no longer a stopping
 rule. Existing time/compute limits and faithful-work comparison remain in force.
