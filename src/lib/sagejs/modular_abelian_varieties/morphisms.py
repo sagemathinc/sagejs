@@ -178,6 +178,15 @@ class ModularAbelianVarietyMap:
     def matrix(self) -> Any:
         return self._matrix
 
+    def parent(self) -> Any:
+        return self.domain().Hom(self.codomain())
+
+    def complementary_isogeny(self) -> Any:
+        """Return the least positive integral scalar multiple of the inverse."""
+        from sagejs.modular_abelian_varieties.homspace import complementary_isogeny
+
+        return complementary_isogeny(self)
+
     def rank(self) -> int:
         if self._rank_cache is None:
             # Rank is rational: use the exact QQ matrix path in every runtime.
@@ -431,6 +440,12 @@ def replay_map(domain: Any, codomain: Any, recipe: Any, seen: Any = None) -> Any
         result = domain.projection(recipe[1])
     elif tag == "degeneracy" and len(recipe) == 2:
         result = domain.degeneracy_map(codomain.level(), recipe[1])
+    elif tag == "complement" and len(recipe) == 2:
+        if not recipe[1]._verify_graph(seen):
+            raise ValueError("invalid complementary isogeny certificate")
+        result = recipe[1].complementary_isogeny()
+    elif tag == "hom_coordinates" and len(recipe) == 2:
+        result = domain.Hom(codomain).from_coordinates(recipe[1])
     elif tag == "product" and len(recipe) == 2:
         maps = recipe[1]
         if not all(m._verify_graph(seen) for m in maps):

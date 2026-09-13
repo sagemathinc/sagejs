@@ -4,6 +4,8 @@ title: "Modular abelian varieties"
 
 # Modular abelian varieties over $\mathbf Q$
 
+See also the [certified Hom spaces and endomorphism rings tour](modular-abelian-hom.md).
+
 Sage.js represents the first modular-abelian-variety slice using exact
 weight-$2$ modular symbols and saturated integral homology.  The initial scope
 includes $J_0(N)$, its rational Hecke constituents, products, and certified
