@@ -4,8 +4,26 @@ Status: ownership approved; mixed-buffer prerequisite integrated experimentally.
 The user subsequently approved additional reasonably justified compiler changes
 on this experimental branch. The original one-correction count is superseded;
 the experiment's time/compute budgets and faithful-work criteria are unchanged.
-The prepared-field ingress correction is in progress in the prerequisite
-worktree; later historical references to awaiting permission are resolved.
+Prepared scalar ingress is integrated at `824909b63`; later historical
+references to awaiting permission or rejecting scalar inputs are resolved.
+Embedding containers and PARI's norm-rounding semantics remain unimplemented.
+
+### Rounding contract identified before implementation
+
+Pinned `gen3.c:round_i` (line 2429) computes `floor(x + 1/2)`, not
+ties-to-even or ties-away-from-zero. Given the full signed mantissa `m` and
+its denominator exponent `e` (`x = m / 2^e`), an integral value with `e <= 0`
+returns error exponent `-e`. For `e > 0`, an exact represented integer returns
+`-e`, while a half-integer returns `-1`. Nonzero residuals use their binary
+exponent minus `e`. Thus simply measuring an MPFR subtraction from the rounded
+integer loses a precision-dependent case, and normalizing away trailing zero
+mantissa bits is not interchangeable with PARI's stored precision.
+
+`grndtoi` (line 2544) additionally handles zero and values of exponent below
+`-1` directly using the stored real exponent. `factorgen` rejects an error
+exponent greater than `-32`. The planned interchange must therefore preserve
+precision and the zero exponent as well as numerical value. These source
+observations define tests to implement, not a completed rounding primitive.
 No class-group or performance result is claimed. Earlier obstruction evidence
 below is retained as history, not the current ownership state.
 

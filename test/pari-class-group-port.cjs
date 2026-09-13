@@ -27,11 +27,9 @@ const { lowerSource } = require("../tools/native-kernel/ir.cjs");
   });
   assert.equal(compiled.status, 0, compiled.stderr);
   process.stdout.write(compiled.stdout);
-  // A distinct, still-unimplemented boundary: legacy MPFR/MPC lowering can
-  // construct field constants, but cannot borrow prepared embedding entries.
+  // Prepared scalar ingress is implemented; embedding containers and PARI's
+  // norm rounding remain separate, unimplemented dependencies.
   const realProbe = path.join(base, "prepared_real_probe.py");
-  await assert.rejects(
-    () => lowerSource(fs.readFileSync(realProbe, "utf8"), realProbe),
-    /unsupported native argument type RealNumber/,
-  );
+  const prepared = await lowerSource(fs.readFileSync(realProbe, "utf8"), realProbe);
+  assert.equal(prepared.functions[0].params[1].type, "RealNumber");
 })().catch(error => { console.error(error); process.exitCode = 1; });
