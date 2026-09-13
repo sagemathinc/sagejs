@@ -6,15 +6,13 @@
   "lane": "arithmetic-algebra",
   "status": "review",
   "owner": "user",
-  "objective": "Deliver the bounded reference laboratory and source-exposure tooling for the general class-unit campaign; mathematical qualification continues separately",
-  "base_commit": "916baca462e85dd7767c5a328fa33b7ff4e0f54b",
+  "objective": "Publish approved bounded M0 reassessment, final frozen smoke accounting and reference-readiness evidence without claiming mathematical qualification",
+  "base_commit": "2564190042e003176ada3a71700f946ae992f973",
   "claims": [
-    "bench/class-unit-groups/general-frontier/campaign.json",
-    "bench/class-unit-groups/general-frontier/reference/pari-screen.gp",
-    "bench/class-unit-groups/general-frontier/reference/sagejs-diagnostic.py",
-    "bench/class-unit-groups/general-frontier/reference/README.md",
-    "bench/class-unit-groups/general-frontier/reference/hecke/README.md",
-    "bench/class-unit-groups/general-frontier/reference/runner/",
+    "bench/class-unit-groups/general-frontier/reference/runner/hecke-proof-policy-controls-20260912.json",
+    "bench/class-unit-groups/general-frontier/reference/runner/m0-effort-amendment-20260912.json",
+    "bench/class-unit-groups/general-frontier/reference/runner/smoke-prefix-037-052-observation.json",
+    "bench/class-unit-groups/general-frontier/reference/runner/smoke90-final-accounting.json",
     "docs/general-class-unit-frontier.md"
   ],
   "dependencies": [
@@ -25,7 +23,9 @@
     "general-class-unit-exposure-inventory"
   ],
   "references": [
-    "Main mathematical baseline remains d654e3d45d8c066b979566338a53647a37ab8d00; task scope base includes separately claimed developer tooling and build-input partition review, not a changed mathematical engine."
+    "Original laboratory base916baca462e85dd7767c5a328fa33b7ff4e0f54b and frozen smoke runtimeb1740b787 are preserved in prior receipts. This documentation-only follow-up incorporated currentmain256419004 and uses that ownership base. Claims narrowed to actual checkpoint artifacts; no mathematical/runtime source changes relative to main.",
+    "Latest user authorization adopts full M0-M5 plan09e9d35328bb3a42834aaf81699c95f99034446c. On2026-09-12 the user explicitly approved16 additional aggregate M0 active hours: cumulative ceiling56, with120CPUh, frozen inputs and all acceptance criteria unchanged. Four reassessment work packages each retain4activehours; no budget reset or M1 extension.",
+    "This documentation/data-only branch uses an explicit --task selector and retains all arithmetic-lane checks. All required checks passed on exact committed43ed1752065ca9d5a25be33251e715f818c288f7: full native318.866s, strict403 modules55.469s, changed242 unit files plus merge/docs134.102s, offline29 tests0.10s. Current fingerprint49a46d6cc961eb7ea076ce969f95b9470f521b5877c8c9380c408314a85c6d23 is retained by this metadata-only handoff. Independent review verified the summary against custody. No required check is waived."
   ],
   "architecture": {
     "strategy": "source-transparent-native",
@@ -47,9 +47,8 @@
   "validation": [
     "pnpm test:baselib:strict",
     "pnpm test:native",
-    "python3 -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
-    "pnpm docs:check",
-    "pnpm format:python:check"
+    "pnpm test:changed -- --base 2564190042e003176ada3a71700f946ae992f973",
+    "python3 -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py"
   ],
   "runs": [
     {
@@ -131,19 +130,160 @@
       "commit": "9dd8714f43ba3135bfac0c04edb36b001dc606dd",
       "workspace_fingerprint": "12be83ef6127bfad29bb10ee207a0fa7ffdf1a7c0f8e0d14e9288b2f040aa500",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.382,
+      "started_at": "2026-09-12T11:30:45.092Z",
+      "commit": "b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "workspace_fingerprint": "8790a8e682e3a920215633971d7663d7558981a31f6cfbfd14d697c14280a053",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 111.652,
+      "started_at": "2026-09-12T11:32:49.943Z",
+      "commit": "b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "workspace_fingerprint": "a5d39c37ab65677d12c7e9af8d086006e940690c6b8c8f6a81750603683505cb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base b1740b78722ea3c8f22aa1df97823a75e40bf78b",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 110.929,
+      "started_at": "2026-09-12T11:36:34.243Z",
+      "commit": "2410323ac2a79e88aae4054ae47d68d1a491c631",
+      "workspace_fingerprint": "dda59120cd2316d7b181f9f1e0a64b576470c867c2e33dd3ea4eb6261b978ca8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.11,
+      "started_at": "2026-09-12T12:39:28.155Z",
+      "commit": "2410323ac2a79e88aae4054ae47d68d1a491c631",
+      "workspace_fingerprint": "dda59120cd2316d7b181f9f1e0a64b576470c867c2e33dd3ea4eb6261b978ca8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 318.417,
+      "started_at": "2026-09-12T17:02:18.528Z",
+      "commit": "fdc35c06f2db4550ea051cc7c21d1d25e33f4d78",
+      "workspace_fingerprint": "4de3dc090c10b5cb7b2350c00b1e3178bee55585e8bf0f5fa6984b9bed8d46f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.416,
+      "started_at": "2026-09-12T17:29:13.141Z",
+      "commit": "0bb9a51ac77e34fcc94d61c2a04610756e3f2f09",
+      "workspace_fingerprint": "5f8ef4696c65ed3e6889663182b8e0d2793e426861420f79ac6c6eb4cf3fa548",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 984.485,
+      "started_at": "2026-09-12T17:35:20.856Z",
+      "commit": "0bb9a51ac77e34fcc94d61c2a04610756e3f2f09",
+      "workspace_fingerprint": "02ef9b5f17b69990cd0e4f517f6fdb3870b123b5b5d295d450b16ccd2de0b85b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.293,
+      "started_at": "2026-09-12T17:52:20.841Z",
+      "commit": "0bb9a51ac77e34fcc94d61c2a04610756e3f2f09",
+      "workspace_fingerprint": "02ef9b5f17b69990cd0e4f517f6fdb3870b123b5b5d295d450b16ccd2de0b85b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 2564190042e003176ada3a71700f946ae992f973",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 151.202,
+      "started_at": "2026-09-12T17:53:18.784Z",
+      "commit": "0bb9a51ac77e34fcc94d61c2a04610756e3f2f09",
+      "workspace_fingerprint": "02ef9b5f17b69990cd0e4f517f6fdb3870b123b5b5d295d450b16ccd2de0b85b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.107,
+      "started_at": "2026-09-12T17:55:50.633Z",
+      "commit": "0bb9a51ac77e34fcc94d61c2a04610756e3f2f09",
+      "workspace_fingerprint": "02ef9b5f17b69990cd0e4f517f6fdb3870b123b5b5d295d450b16ccd2de0b85b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 318.866,
+      "started_at": "2026-09-12T18:11:04.267Z",
+      "commit": "43ed1752065ca9d5a25be33251e715f818c288f7",
+      "workspace_fingerprint": "49a46d6cc961eb7ea076ce969f95b9470f521b5877c8c9380c408314a85c6d23",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.469,
+      "started_at": "2026-09-12T18:16:23.796Z",
+      "commit": "43ed1752065ca9d5a25be33251e715f818c288f7",
+      "workspace_fingerprint": "49a46d6cc961eb7ea076ce969f95b9470f521b5877c8c9380c408314a85c6d23",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 2564190042e003176ada3a71700f946ae992f973",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 134.101,
+      "started_at": "2026-09-12T18:17:19.925Z",
+      "commit": "43ed1752065ca9d5a25be33251e715f818c288f7",
+      "workspace_fingerprint": "49a46d6cc961eb7ea076ce969f95b9470f521b5877c8c9380c408314a85c6d23",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m unittest discover -s bench/class-unit-groups/general-frontier/reference/runner -p test_*.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.101,
+      "started_at": "2026-09-12T18:19:34.666Z",
+      "commit": "43ed1752065ca9d5a25be33251e715f818c288f7",
+      "workspace_fingerprint": "49a46d6cc961eb7ea076ce969f95b9470f521b5877c8c9380c408314a85c6d23",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Reviewed developer-only laboratory: pinned candidate acquisitions, finite exposure reconciliation, controlled persistent PARI/Hecke workers, conservative execution ledger, raw-receipt pairing and source-bound cost readiness. Full baseline validation passed 201 unit files; later source-union and exposure adapters have focused tests and independent review. Mathematical baseline is unchanged.",
+    "summary": "Documentation/data-only follow-up to merged PR217 and main256419004: approved cumulative56-hour M0 allowance with unchanged120CPUh/inputs/criteria; complete frozen90 baseline accounting/custody with zero complete requests on oldb1740; pinned Hecke13 and full-batch24/36 local/target readiness evidence; precise remaining M0/M1 gates. Independent review checked raw hashes and required stale pending-target wording to be refreshed. No mathematical source or performance qualification changes.",
     "risks": [
-      "M0 corpus is not frozen and cost strata are not yet filled.",
-      "Matching exact summaries is not detached mathematical replay; regulator request guarantees differ between references.",
-      "Finite retained-source exposure proofs do not reconstruct arbitrary unrecorded historical work."
+      "M0 and M1 are incomplete. Frozen90 baseline is closed and attested, with all failures retained; cohort selection and toy readiness do not qualify matched costs, stress/unconditional admissions, general maps or complete results.",
+      "The16-row observation contains no complete public request. Two long quintic contexts report conditional index one without detached replay; missing aggregate timers prevent precise saturation/certificate attribution.",
+      "User approved16 additional aggregate M0 hours, cumulative56. The120CPUh ceiling and all frozen inputs/acceptance criteria remain unchanged; readiness prepayment totals98172.300seconds. PARI approximate regulator and Hecke enclosure remain unmatched; toy equations are not independent completeness proofs.",
+      "Dictionary PR268/269 remain draft with actual source/startup failures and allocation costs. Corpus PR257 is merged independently. Target dependency evidence explicitly labels source-modeled JLL preload edges; prior preflight failures are retained."
     ],
     "next_steps": [
-      "Finish the predeclared reference batches within the M0 budget and decide scoped corpus eligibility.",
-      "Freeze coverage/performance and bridge panels before shared-engine optimization.",
-      "Implement and qualify the missing shared unit-coordinate/context work under a new narrow contract."
+      "All exact-commit handoff checks passed; make this independently reviewed narrow checkpoint non-draft for merge-manager review. Its publication is not completion of M0 or M1.",
+      "Operationally the unchanged18 unconditional reference sentinels have now closed with18 paired exact-summary agreements and unchanged runtime inventory; publish their separate evidence and continue remaining72 fixed primaries within approved work packages. Resolve matched-reference/stress admission gaps without silently altering bounds or criteria.",
+      "Resolve coordinated runtime resource and M1 exact-replay/platform gates before making complete class/unit or competitive performance claims."
     ]
   }
 }

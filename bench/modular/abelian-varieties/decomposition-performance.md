@@ -1,6 +1,124 @@
 # Integral decomposition-isogeny performance
 
-## Native comparison
+## Qualified large-level portable follow-up
+
+Composite Hecke operators now reuse cached prime operators in the public row
+basis. Integral homology lattices retain a rational coordinate right inverse;
+every use still reconstructs the complete image to reject off-span vectors.
+Together with persistent ambient operators, this removes repeated exact work
+without changing the mathematical representation or increasing timeouts.
+
+Final sequential, fresh-process medians (seconds, three samples per system;
+startup excluded, shared host not CPU-isolated):
+
+| Level | Native construction | Native Smith + rank | Native total | Sage total | Node/Wasm total |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 121 | 0.630 | 0.002 | 0.633 | 0.202 | — |
+| 242 | 1.170 | 0.047 | 1.217 | 0.559 | 3.486 |
+| 363 | 1.447 | 0.073 | 1.519 | 0.834 | — |
+| 726 | 5.820 | 0.918 | 6.739 | 16.397 | 60.214 |
+| 1089 | 5.080 | 0.855 | 5.883 | 17.862 | 70.828 |
+
+All dimensions, ranks and nonunit Smith invariants match the Sage oracle.
+Real Chromium also completes both large levels within the unchanged 120 s
+limit: **58.002 s at 726 and 68.624 s at 1089**, one fresh-context sample each.
+These are completed browser qualifications, not three-run browser medians.
+The old level-726 portable run timed out at 120 s. Wasm remains roughly
+3.7–4.0 times slower than native Sage on these large workloads; this is not
+a Wasm/Sage parity claim. Native totals are 2.43–3.04 times faster than Sage,
+including faster construction, but small-level native setup remains slower.
+
+Receipts: [native/Sage](decomposition-prime-coordinate-linux-x64.json),
+[Node/Wasm](decomposition-prime-coordinate-wasm-linux-x64.json), and
+[Chromium](decomposition-prime-coordinate-chromium-linux-x64.json).
+They record exact invariants and source hashes; the portable artifact is
+`sha256:89ad8024d6210631db4d6421a91843e269c316d3d6365c83e7d61ff57db88377`.
+Phase medians need not sum to the median total.
+
+The intermediate operator-cache Wasm receipt is retained for provenance:
+its level-1089 attempt was intentionally stopped before the final optimization,
+not a completed sample or a mathematical failure.
+
+## Persistent ambient Hecke operators
+
+The next measured bottleneck was repeated ambient Hecke construction during
+subspace restriction and factor validation. An instrumented old-artifact run
+at level 726 spent 57.50 s constructing the new-level factors alone, versus
+1.70 s constructing that newspace and 3.87 s on the final Smith calculation.
+The entire diagnostic took 150.38 s; it was not a qualified median.
+
+`ModularSymbolsSpace.T(n)` now retains its operator, and weight-2 subspaces
+restrict the retained ambient matrix. Previously every `T(n)` call created a
+new operator, so its private matrix cache did not survive the call. Returned
+Hecke matrices are immutable; use `copy(T.matrix())` for an editable matrix.
+The cache lasts as long as its space and grows with distinct requested
+operators. No handwritten native mathematics or new foreign binding was added.
+
+The regression explicitly forbids backend reconstruction after ambient
+operators are warmed, and checks exact intertwining at good, bad and composite
+indices, including the special level-11 coordinate convention. All 42 focused
+native modular-symbol, Gamma1 and modular-abelian tests pass, as do both
+packaged Node/Wasm tests and the shared real-Chromium corpus.
+
+Intermediate native/Sage receipt (before prime and coordinate reuse):
+[`decomposition-hecke-cache-linux-x64.json`](decomposition-hecke-cache-linux-x64.json).
+These are three-run cold medians in seconds, collected sequentially without
+concurrent owned builds or tests. Startup is excluded. Source hashes identify
+the tested working tree based on `cc053a05c`; the host is not CPU-isolated.
+
+| Level | Sage.js construction | Sage.js Smith + rank | Sage.js total | Sage total | Sage.js / Sage |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 121 | 0.664 | 0.002 | 0.666 | 0.197 | 3.38 |
+| 242 | 1.178 | 0.046 | 1.224 | 0.549 | 2.23 |
+| 363 | 1.469 | 0.072 | 1.541 | 0.831 | 1.85 |
+| 726 | 5.822 | 0.872 | 6.748 | 16.314 | 0.41 |
+| 1089 | 5.639 | 0.823 | 6.462 | 18.025 | 0.36 |
+
+All 30 records agree on dimension, rank and nonunit Smith invariants. At the
+two larger levels, construction alone is now faster than contemporaneous
+Sage medians of 7.390 and 8.041 s. Small-level cold setup remains slower.
+
+## Batched portable matrix access follow-up
+
+The follow-up removes scalar resource traffic without changing the exact
+algorithms: rectangular solves export their RREF entries once, and geometric
+transfers accumulate integer counts before constructing a rational matrix.
+On the preceding portable artifact, a level-726 homology coordinate solve
+took 4.06 s although RREF took 0.034 s; assembling transfer counts from level
+33 to 726 took 16.15 s although the two matrix products took 0.27 s combined.
+These phase probes motivated the changes; they are not whole-workload medians.
+
+[`decomposition-batched-linux-x64.json`](decomposition-batched-linux-x64.json)
+records three sequential fresh runs per system, after all owned builds and
+tests finished. The source hashes identify the tested working tree based on
+`02a683d21`; startup is excluded and no library warmup is performed.
+
+| Level | Sage.js construction | Sage.js Smith + rank | Sage.js total | Sage total | Sage.js / Sage |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 121 | 0.773 | 0.002 | 0.775 | 0.208 | 3.73 |
+| 242 | 1.476 | 0.048 | 1.524 | 0.558 | 2.73 |
+| 363 | 1.837 | 0.075 | 1.911 | 0.835 | 2.29 |
+| 726 | 7.955 | 0.857 | 8.837 | 16.544 | 0.53 |
+| 1089 | 8.160 | 0.850 | 9.010 | 17.504 | 0.51 |
+
+All 30 records match the exact dimensions, ranks and nonunit Smith invariants.
+The full large-level workload is 1.87–1.94 times faster than Sage, but small
+levels remain slower and large-level construction alone is still slightly
+slower. Historical timings below were collected separately on a shared host;
+use the contemporaneous Sage comparisons above, not a ratio between campaigns.
+
+Portable receipt:
+[`decomposition-batched-wasm-linux-x64.json`](decomposition-batched-wasm-linux-x64.json),
+artifact `sha256:d2aa066d16fdcd33d7aba29879a5e5568f1a8129493d4a6c1750814fc81aeb8d`.
+Level 242 has three exact-checked runs with median 6.336 s. Level 726 still
+exceeds the 120 s evaluation limit; the receipt retains that failure and
+the harness stops before level 1089. Do not interpret the requested sample
+count as completed samples for those levels. All 13 native tests, both
+Node/Wasm tests and the shared real-Chromium corpus pass, including multiple
+right sides, free variables, inconsistent systems and empty rectangular solves.
+Large-level portable throughput remains open despite the native speedup.
+
+## Earlier native comparison (PR 243)
 
 Source: `abced86d3` (full commit and source hashes in the receipt). The receipt
 [`decomposition-performance-linux-x64.json`](decomposition-performance-linux-x64.json)

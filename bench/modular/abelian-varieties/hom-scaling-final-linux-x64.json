@@ -1,0 +1,179 @@
+{
+  "revision": "72abdc6a1402587dd59db8eb39a8589a69a83732",
+  "artifact": "sha256:12514552c5bfb9e69c498180e1ec6119148d7d13e7e54427337eeb628f8a591e",
+  "policy": "Sequential fresh processes, startup excluded, no warmup. Full End generators timed; completeness replay outside timer. Exact native/Wasm basis equality, NOT a Sage Hom lattice comparison. No concurrent owned builds/tests.",
+  "results": [
+    {
+      "level": 242,
+      "sample": 0,
+      "mode": "native",
+      "status": 0,
+      "signal": null,
+      "record": {
+        "dimension": 22,
+        "rank": 42,
+        "seconds": 2.698538303375244
+      },
+      "basisSha256": "ab4331975c6da402a08100f7d73c8689a0196749ead2b394215a757f58c439cd"
+    },
+    {
+      "level": 242,
+      "sample": 0,
+      "mode": "wasm",
+      "status": 0,
+      "signal": null,
+      "record": {
+        "dimension": 22,
+        "rank": 42,
+        "seconds": 8.051047801971436
+      },
+      "basisSha256": "ab4331975c6da402a08100f7d73c8689a0196749ead2b394215a757f58c439cd"
+    },
+    {
+      "level": 242,
+      "sample": 1,
+      "mode": "native",
+      "status": 0,
+      "signal": null,
+      "record": {
+        "dimension": 22,
+        "rank": 42,
+        "seconds": 2.6719019412994385
+      },
+      "basisSha256": "ab4331975c6da402a08100f7d73c8689a0196749ead2b394215a757f58c439cd"
+    },
+    {
+      "level": 242,
+      "sample": 1,
+      "mode": "wasm",
+      "status": 0,
+      "signal": null,
+      "record": {
+        "dimension": 22,
+        "rank": 42,
+        "seconds": 8.130939245223999
+      },
+      "basisSha256": "ab4331975c6da402a08100f7d73c8689a0196749ead2b394215a757f58c439cd"
+    },
+    {
+      "level": 242,
+      "sample": 2,
+      "mode": "native",
+      "status": 0,
+      "signal": null,
+      "record": {
+        "dimension": 22,
+        "rank": 42,
+        "seconds": 2.7354865074157715
+      },
+      "basisSha256": "ab4331975c6da402a08100f7d73c8689a0196749ead2b394215a757f58c439cd"
+    },
+    {
+      "level": 242,
+      "sample": 2,
+      "mode": "wasm",
+      "status": 0,
+      "signal": null,
+      "record": {
+        "dimension": 22,
+        "rank": 42,
+        "seconds": 8.066251039505005
+      },
+      "basisSha256": "ab4331975c6da402a08100f7d73c8689a0196749ead2b394215a757f58c439cd"
+    },
+    {
+      "level": 389,
+      "sample": 0,
+      "mode": "native",
+      "status": 0,
+      "signal": null,
+      "record": {
+        "dimension": 32,
+        "rank": 32,
+        "seconds": 2.9053258895874023
+      },
+      "basisSha256": "ba61bb2647daca75bd73a61a01a174552827e0d356e44f2b86b60fe134b48b86"
+    },
+    {
+      "level": 389,
+      "sample": 0,
+      "mode": "wasm",
+      "status": 0,
+      "signal": null,
+      "record": {
+        "dimension": 32,
+        "rank": 32,
+        "seconds": 10.558401107788086
+      },
+      "basisSha256": "ba61bb2647daca75bd73a61a01a174552827e0d356e44f2b86b60fe134b48b86"
+    },
+    {
+      "level": 389,
+      "sample": 1,
+      "mode": "native",
+      "status": 0,
+      "signal": null,
+      "record": {
+        "dimension": 32,
+        "rank": 32,
+        "seconds": 2.8004038333892822
+      },
+      "basisSha256": "ba61bb2647daca75bd73a61a01a174552827e0d356e44f2b86b60fe134b48b86"
+    },
+    {
+      "level": 389,
+      "sample": 1,
+      "mode": "wasm",
+      "status": 0,
+      "signal": null,
+      "record": {
+        "dimension": 32,
+        "rank": 32,
+        "seconds": 10.584408521652222
+      },
+      "basisSha256": "ba61bb2647daca75bd73a61a01a174552827e0d356e44f2b86b60fe134b48b86"
+    },
+    {
+      "level": 389,
+      "sample": 2,
+      "mode": "native",
+      "status": 0,
+      "signal": null,
+      "record": {
+        "dimension": 32,
+        "rank": 32,
+        "seconds": 2.8384687900543213
+      },
+      "basisSha256": "ba61bb2647daca75bd73a61a01a174552827e0d356e44f2b86b60fe134b48b86"
+    },
+    {
+      "level": 389,
+      "sample": 2,
+      "mode": "wasm",
+      "status": 0,
+      "signal": null,
+      "record": {
+        "dimension": 32,
+        "rank": 32,
+        "seconds": 10.50072193145752
+      },
+      "basisSha256": "ba61bb2647daca75bd73a61a01a174552827e0d356e44f2b86b60fe134b48b86"
+    }
+  ],
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.8.1",
+    "cpu": "AMD EPYC 7B13"
+  },
+  "sourceSha256": {
+    "src/baselib/modular.py": "099e10f20e64cc9ecc4daa002f5e7883d2b76513cebfea7c28e4ac06c7951866",
+    "src/lib/sagejs/modular_abelian_varieties/__init__.py": "889924b0ee0f1a99865d93ae718639a3b5f6e19b9cef2d4ad271aecae2609c98",
+    "src/lib/sagejs/modular_abelian_varieties/abelian_variety.py": "c484ce338613471e2024122bb46281d458fed9c70c2e34b347c2a59c0590423b",
+    "src/lib/sagejs/modular_abelian_varieties/homspace.py": "e7c55754fd1545915113ddf8b9b1b22b4a238b20c79fc13e7cee30da887c810e",
+    "src/lib/sagejs/modular_abelian_varieties/lattices.py": "b5a2c3a6eb3f2b62fe2f1ab1922e6925adaf66e658675d30c286fda2521acef8",
+    "src/lib/sagejs/modular_abelian_varieties/morphisms.py": "70cb182a15ab5db3dfd50788da8e033949890c86caf2cf2d3c7077d355f749b4",
+    "src/lib/sagejs/modular_abelian_varieties/products.py": "59cefa90f29d013c53775d0126f9632cfc9b110743520bf3bf0b9d036931a766",
+    "src/lib/sagejs/modular_abelian_varieties/degeneracy.py": "cecf56ff1884889f1e9031202aede1029bb97a8aef50c637045cc1db080aaa81"
+  }
+}

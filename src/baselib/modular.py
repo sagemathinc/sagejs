@@ -121,6 +121,28 @@ def _modular_abelian_variety_module() -> Any:
     return _modular_abelian_variety_module_cache
 
 
+def Hom(domain: Any, codomain: Any) -> Any:
+    """Return the complete integral Hom group of modular abelian varieties over QQ.
+
+    ```sage
+    sage: Hom(J0(11), J0(22)).rank()
+    2
+    ```
+    """
+    return _modular_abelian_variety_module().Hom(domain, codomain)
+
+
+def End(variety: Any) -> Any:
+    """Return the full endomorphism order of a modular abelian variety over QQ.
+
+    ```sage
+    sage: End(J0(23)).rank()
+    2
+    ```
+    """
+    return _modular_abelian_variety_module().End(variety)
+
+
 def J0(N: Any) -> Any:
     r"""Return the modular Jacobian $J_0(N)$ over $\mathbf Q$.
 
@@ -3997,6 +4019,7 @@ class HeckeOperator:
     def matrix(self) -> Any:
         if self._matrix_cache is None:
             self._matrix_cache = self._compute_matrix()
+            self._matrix_cache.set_immutable()
         return self._matrix_cache
 
     def __call__(self, element: Any) -> ModularSymbolElement:
@@ -4124,6 +4147,7 @@ class ModularSymbolsSpace(sage.Parent):
         self._boundary_data_cache = None
         self._boundary_map_cache = None
         self._star_matrix_cache = None
+        self._hecke_operator_cache = runtime.map()
         self._cuspidal_cache = None
         self._plus_cache = None
         self._minus_cache = None
@@ -5559,38 +5583,42 @@ class ModularSymbolsSpace(sage.Parent):
 
     def _native_weight2_hecke_matrix(self, index: int) -> Any:
         ambient = self.ambient_module()
+        if not self.is_ambient():
+            return self._restrict_ambient_matrix(ambient.T(index).matrix())
         projective_line = ambient.p1list()
         dimension = ambient.dimension()
-        result = None
+        if sage.is_prime(index):
+            result = projective_line._hecke_matrix(index, dimension).change_ring(
+                ambient.base_ring()
+            )
+            change = ambient._ambient_change_of_basis()
+            if change is not None:
+                result = change.inverse() * result * change
+            return result.transpose()
+        identity = identity_matrix(  # type: ignore[name-defined]  # noqa: F821
+            ambient.base_ring(), dimension
+        )
+        result = identity
         for prime, exponent in sage.factor(index):
             p = runtime.number(prime)
             e = runtime.number(exponent)
-            prime_matrix = projective_line._hecke_matrix(p, dimension)
+            # These matrices are already in the public row-action basis.
+            # Reusing them matters especially for repeated large bad primes.
+            prime_matrix = ambient.T(p).matrix()
             if e == 1:
                 prime_power = prime_matrix
             elif ambient.level() % p == 0:
                 prime_power = prime_matrix**e
             else:
-                previous = prime_matrix**0
+                previous = identity
                 current = prime_matrix
                 for _power in range(2, e + 1):
                     following = prime_matrix * current - previous * p
                     previous = current
                     current = following
                 prime_power = current
-            if result is None:
-                result = prime_power
-            else:
-                result = result * prime_power
-        if result is None:
-            result = projective_line._hecke_matrix(2, dimension) ** 0
-        result = result.change_ring(ambient.base_ring())
-        change_of_basis = ambient._ambient_change_of_basis()
-        if change_of_basis is None:
-            result = result.transpose()
-        else:
-            result = (change_of_basis.inverse() * result * change_of_basis).transpose()
-        return self._restrict_ambient_matrix(result)
+            result = result * prime_power
+        return result
 
     def _native_weight2_degeneracy_matrix(
         self,
@@ -5720,7 +5748,12 @@ class ModularSymbolsSpace(sage.Parent):
         return self.T(index).matrix()
 
     def T(self, index: Any) -> HeckeOperator:
-        return HeckeOperator(self, _positive_integer(index, "Hecke index"))
+        index = _positive_integer(index, "Hecke index")
+        cached = self._hecke_operator_cache.get(index)
+        if cached is runtime.undefined:
+            cached = HeckeOperator(self, index)
+            self._hecke_operator_cache.set(index, cached)
+        return cached
 
     hecke_operator = T
 
@@ -7288,6 +7321,45 @@ runtime.register_doc(
                 "Full-Jacobian component groups are implemented; newform-quotient "
                 "groups await audited integral modular-degree maps."
             ),
+        ],
+    },
+)
+
+runtime.register_doc(
+    "Hom",
+    Hom,
+    {
+        "kind": "function",
+        "module": "sage.modular.abvar.homspace",
+        "tags": ["modular abelian varieties", "homomorphisms", "integral homology"],
+        "backends": [
+            "Sage.js exact newform decomposition",
+            "FLINT integral saturation",
+        ],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": "Complete Hom over QQ for the supported weight-two Gamma0 varieties.",
+        },
+        "limitations": [
+            "Only supported modular abelian varieties over QQ; not a generic categorical Hom constructor."
+        ],
+    },
+)
+
+runtime.register_doc(
+    "End",
+    End,
+    {
+        "kind": "function",
+        "module": "sage.modular.abvar.homspace",
+        "tags": ["modular abelian varieties", "endomorphism rings"],
+        "backends": ["Sage.js complete integral Hom lattice"],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": "Full endomorphism order over QQ, including repeated factors and integral gluing.",
+        },
+        "limitations": [
+            "Does not compute geometric endomorphisms over an algebraic closure."
         ],
     },
 )

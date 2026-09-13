@@ -32,15 +32,52 @@ def materialize_json(value: Any, path: str = "$") -> JSONValue:
             keys.append(key)
         keys.sort()
         answer: dict[str, JSONValue] = {}
+        plain_path = type(path) is str
         for key in keys:
-            answer[key] = materialize_json(value[key], path + "." + key)
+            item = value[key]
+            kind = type(item)
+            if (
+                plain_path
+                and type(key) is str
+                and (
+                    item is None
+                    or kind is float
+                    or kind is int
+                    or kind is bool
+                    or kind is str
+                )
+            ):
+                if item is not None and kind is float and not math.isfinite(item):
+                    raise ValueError(path + "." + key + " contains a non-finite float")
+                answer[key] = item
+            else:
+                answer[key] = materialize_json(item, path + "." + key)
         return answer
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         answer_list: list[JSONValue] = []
+        plain_path = type(path) is str
         for index in range(len(value)):
-            answer_list.append(
-                materialize_json(value[index], path + "[" + str(index) + "]")
-            )
+            item = value[index]
+            kind = type(item)
+            # Exact scalar leaves need neither recursive dispatch nor a path
+            # string unless invalid. Subclasses and custom paths retain the
+            # general validator and its observable operations.
+            if plain_path and (
+                item is None
+                or kind is float
+                or kind is int
+                or kind is bool
+                or kind is str
+            ):
+                if item is not None and kind is float and not math.isfinite(item):
+                    raise ValueError(
+                        path + "[" + str(index) + "] contains a non-finite float"
+                    )
+                answer_list.append(item)
+            else:
+                answer_list.append(
+                    materialize_json(item, path + "[" + str(index) + "]")
+                )
         return answer_list
     raise TypeError(path + " contains a non-JSON value of type " + type(value).__name__)
 

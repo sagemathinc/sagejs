@@ -1,0 +1,137 @@
+{
+  "schema": "sagejs.m0-reference-checkpoint.v1",
+  "M0_complete": false,
+  "general_competitiveness_established": false,
+  "optimization_campaigns_started": 0,
+  "frozen_populations": {
+    "coverage": 1800,
+    "performance": 360,
+    "smoke": 90
+  },
+  "historical": {
+    "paired_fields": 360,
+    "recovered_partition": [
+      319,
+      24,
+      17
+    ],
+    "faster_cost_bands": {
+      "below_1s": 208,
+      "from_1_to_10s": 106,
+      "from_10_to_60s": 46
+    },
+    "at_least_one_second": 152,
+    "at_least_ten_seconds": 46,
+    "current_timing_qualification": false,
+    "failed_attempts_preserved": true,
+    "proposed_worker_hours": "17.045310422305",
+    "estimate_is_admission": false
+  },
+  "unconditional": {
+    "fields": 90,
+    "retained_reference_outputs": 180,
+    "exact_summary_pairs_agree": true,
+    "independent_completeness_replay": false,
+    "Sagejs_qualified": false
+  },
+  "repeats": {
+    "selected_fields": 14,
+    "declared_samples": 168,
+    "eligible_samples": 168,
+    "rejections": {},
+    "exact_summary_panel": true,
+    "remaining_full_panel_fields": 346,
+    "independent_replay": false,
+    "regulator_guarantees_equivalent": false,
+    "warm_jit_qualification": false,
+    "runtime_inventory_unchanged": true,
+    "services_closed": true,
+    "pending_ledger_reservation": null
+  },
+  "failed_repeat_v2": {
+    "status": "infrastructure-aborted-incomplete",
+    "pending_reservation_charged_seconds": 610
+  },
+  "stress": {
+    "preselected_presentations": 90,
+    "sentinels": 18,
+    "generated_presentations": 38,
+    "final_stress_qualification": false,
+    "order_fixture_processes": 6,
+    "order_diagnostic_processes": 76,
+    "order_diagnostic_status_counts": {
+      "ok": 76
+    },
+    "paired_reference_maximal_orders": 38,
+    "exact_order_consistency_replayed": true,
+    "independent_maximality_replay": false,
+    "distinct_field_admission": false,
+    "identity_status_at_this_checkpoint": "order-only diagnostic closed; distinct-field and stress-cost admission remain separate"
+  },
+  "old_Sagejs_smoke": {
+    "complete": 0,
+    "capability_gap": 28,
+    "incomplete": 40,
+    "timeout": 14,
+    "OOM": 2,
+    "request_error": 6
+  },
+  "budget": {
+    "active_hours_as_of_utc": "2026-09-12T20:23:00Z",
+    "M0_active_hours": 52.9,
+    "M0_active_hour_limit": 56,
+    "last_closed_M0_CPU_seconds": 110987.8563933596,
+    "M0_CPU_second_limit": 432000
+  },
+  "pins": [
+    {
+      "artifact": "performance-historical360-v1/reconciliation.json",
+      "sha256": "0a01a57e6a767adbbc917b7a730c46df0fa921849b31079f8889b961c3936d3d"
+    },
+    {
+      "artifact": "performance-historical360-v1/repeat-cost-planning-v5.json",
+      "sha256": "279377571724af5d3a1b6a8a4c662ff710c077d3f510789e021d0b25dcd41ec8"
+    },
+    {
+      "artifact": "unconditional-remainder-dispatch-v1/closure.json",
+      "sha256": "b385bba744906a1e0b0c01f56a60cb9b0bdb9e879e023caf140035ef00636afb"
+    },
+    {
+      "artifact": "unconditional-remainder-dispatch-v1/validated-results.json",
+      "sha256": "2eadaca67a34cd6a28842875b01f62f04b44a133104a58496a1ae29681fa2c03"
+    },
+    {
+      "artifact": "reference-repeat-rank-two-v3/closure.json",
+      "sha256": "0983bced80a86417d64031c239851d599d6c23c8a03f21e40d5d8e745409a414"
+    },
+    {
+      "artifact": "reference-repeat-rank-two-v3/report-final.json",
+      "sha256": "9e8f78b66fc80cb63b4f38abe0be761c649ee0588b506b92471570a1e250af33"
+    },
+    {
+      "artifact": "reference-repeat-rank-two-v2/aborted-closure.json",
+      "sha256": "f189a41d4cd43e67df5f7078e0590c1c7131019e83748076164fcdaa86701aec"
+    },
+    {
+      "artifact": "stress-preselection-v1/selection.json",
+      "sha256": "b31777994c5768fcf18bb9453f10fe80c2b0dd8071e3a6382fbb681e4a8da131"
+    },
+    {
+      "artifact": "effort-checkpoint-20260912T2023Z.json",
+      "sha256": "7a68e1beb966f4f894394edd338ff4ead01508808658a4c2602fb4e7b3bf9126"
+    },
+    {
+      "artifact": "stress-identity-preparation-v1/fixture-closure-verified.json",
+      "sha256": "45476e9c1633f7aa032cc8acdee07a7f5ef12d5f40417afd3b9da7196c86c0b0"
+    },
+    {
+      "artifact": "stress-identity-preparation-v1/stress38-closure.json",
+      "sha256": "2a12bbc6a726edffe331e91ee81aebc504988f4a23841421826f43a1f6aa5510"
+    },
+    {
+      "artifact": "repository:reference/runner/smoke90-final-accounting.json",
+      "sha256": "4bef633faa1d1e89ff2da19354292c690c17f9b5e168d7b8ea12ae34d67d6913"
+    }
+  ],
+  "archive_scope": "Raw receipts and original reproducers are retained in backed-up campaign storage, not bundled by this compact checkpoint. This summary is not independent raw or mathematical replay."
+}

@@ -114,6 +114,7 @@ jobs:
             --tier routine --engines chromium --require-engines chromium \
             --receipt build/wasm-routine-parity.json
           pnpm --dir packages/flint-wasm test:browser:numerics
+          node packages/flint-wasm/test/browser-module-identity.mjs
           node packages/flint-wasm/test/character-hecke-browser.mjs
           node packages/flint-wasm/test/modular-abelian-morphisms-browser.mjs
           node packages/flint-wasm/test/browser-wasm-serialization.mjs

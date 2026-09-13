@@ -85,12 +85,13 @@ def _transfer(source: Any, target: Any) -> Any:
     _, lifts, reductions = _manin_coordinate_data(source)
     presentation, _, target_coordinates = _manin_coordinate_data(target)
     line = target.p1list()
-    counts = _global("matrix")(sage.QQ, len(lifts), len(line))
+    counts = [0] * (len(lifts) * len(line))
     for i, lift in enumerate(lifts):
         for h in cosets:
             _, _, c, d = _multiply(h, lift)
             j = line.index(c, d)
-            counts[i, j] += 1
+            counts[i * len(line) + j] += 1
+    counts = _global("matrix")(sage.QQ, len(lifts), len(line), counts)
     image_matrix = counts * presentation.reduction_matrix() * target_coordinates
     image_matrix = reductions.solve_right(image_matrix)
     change = source._ambient_change_of_basis()
@@ -144,7 +145,7 @@ def degeneracy_map(variety: Any, level: Any, index: Any = 1) -> Any:
             return answer
     images = variety.lattice().basis_matrix() * ambient_matrix
     matrix = _integral_matrix(
-        target.lattice().basis_matrix().solve_left(images), "geometric degeneracy map"
+        target.lattice()._rational_coordinates(images), "geometric degeneracy map"
     )
     answer = _create_map(variety, target, matrix, ("degeneracy", index))
     if source_level < target_level:

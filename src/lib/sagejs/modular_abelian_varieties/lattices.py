@@ -154,8 +154,22 @@ class IntegralHomologyLattice(sage.Parent):
         self._basis.set_immutable()
         self._model = str(model)
         self._saturated = bool(saturated)
+        self._coordinate_right_inverse = None
         if self._basis.rank() != self._basis.nrows():
             raise ValueError("a lattice basis must have independent rows")
+
+    def _rational_coordinates(self, images: Any) -> Any:
+        """Reuse a right inverse; verify the full image, not just pivot entries."""
+        if images.ncols() != self._basis.ncols():
+            raise ValueError("homology coordinates have the wrong ambient degree")
+        if self._coordinate_right_inverse is None:
+            self._coordinate_right_inverse = self._basis.solve_right(
+                _identity_matrix(sage.QQ, self.rank())
+            )
+        coordinates = images * self._coordinate_right_inverse
+        if coordinates * self._basis != images:
+            raise ValueError("image is outside the rational homology span")
+        return coordinates
 
     def base_ring(self) -> Any:
         return sage.ZZ

@@ -1,7 +1,10 @@
 """Shared native/browser public-API corpus for integral morphism geometry."""
 
+from copy import copy
+
 J = J0(11)
 from sagejs.modular_abelian_varieties.lattices import (
+    IntegralHomologyLattice,
     _clear_denominators,
     _saturated_integer_intersection,
 )
@@ -29,6 +32,21 @@ for rows in range(6):
         assert _saturated_integer_intersection(actual) == actual
 coupled = matrix(QQ, [[1, 0, 1 / 2], [0, 1, 1 / 2]])
 assert _saturated_integer_intersection(coupled) == matrix(ZZ, [[1, 1, 1], [0, 2, 1]])
+
+# Repeated coordinates reuse an exact right inverse, with full reconstruction
+# to reject off-span images. Include rational embeddings and zero rank.
+for B in [coupled, matrix(QQ, [[2, 1, 0], [0, 3, 1]]), matrix(QQ, 0, 3)]:
+    L = IntegralHomologyLattice(B, "coordinate regression", False)
+    C = matrix(QQ, 4, B.nrows(), [QQ(i - 2) / 3 for i in range(4 * B.nrows())])
+    assert L._rational_coordinates(C * B) == C
+    inverse = L._coordinate_right_inverse
+    assert L._rational_coordinates(C * B) == C
+    assert L._coordinate_right_inverse is inverse
+    try:
+        L._rational_coordinates(matrix(QQ, 1, 3, [0, 0, 1]))
+        assert False
+    except ValueError:
+        pass
 
 # Independently reduce translated paths instead of counting projective
 # generators. Level 11 also exercises the public change of E1 basis.
@@ -293,4 +311,58 @@ try:
     assert preconditioned_elementary_divisors(A) == [6] * 16
 finally:
     smith_helpers._modular_hnf = original_modular_hnf
+# Rectangular coordinate solves use bulk extraction after exact RREF in Wasm.
+# Keep multiple right sides, free variables and inconsistent zero rows covered.
+for base in [ZZ, QQ]:
+    B = matrix(base, [[1, 0, 2], [0, 1, 3]])
+    C = matrix(base, [[2, 3, 13], [-1, 4, 10]])
+    assert B.solve_left(C) == matrix(QQ, [[2, 3], [-1, 4]])
+    A = B.transpose()
+    assert A * A.solve_right(C.transpose()) == C.transpose()
+    W = matrix(base, [[1, 2, 0], [0, 0, 1]])
+    assert W.solve_right(matrix(base, [[3, 4], [5, 6]])) == matrix(
+        QQ, [[3, 4], [0, 0], [5, 6]]
+    )
+    try:
+        A.solve_right(vector(base, [0, 0, 1]))
+        raise AssertionError("inconsistent coordinate solve accepted")
+    except ValueError:
+        pass
+assert matrix(QQ, 0, 3).solve_right(matrix(QQ, 0, 2)) == matrix(QQ, 3, 2)
+assert matrix(QQ, 3, 0).solve_right(matrix(QQ, 3, 2)) == matrix(QQ, 0, 2)
+# Independent subspace Hecke operators must reuse the ambient cache. Keep
+# good, bad and composite indices, and the level-11 basis convention covered.
+for level in [11, 22, 33, 37]:
+    M = ModularSymbols(level, 2)
+    S = M.cuspidal_subspace().plus_submodule()
+    indices = [2, 3, 4, 6, 9]
+    T2, T3 = M.hecke_matrix(2), M.hecke_matrix(3)
+    identity = identity_matrix(QQ, M.dimension())
+    ambient_operators = [
+        T2,
+        T3,
+        T2**2 - (0 if level % 2 == 0 else 2) * identity,
+        T2 * T3,
+        T3**2 - (0 if level % 3 == 0 else 3) * identity,
+    ]
+    assert M.T(2) is M.T(2)
+    assert not T2.is_mutable() and not T3.is_mutable()
+    changed = copy(ambient_operators[0])
+    changed[0, 0] += 1
+    assert changed != M.hecke_matrix(2)
+    line = M.p1list()
+    original_hecke = line._hecke_matrix
+
+    def recomputation_forbidden(*args):
+        raise AssertionError("subspace rebuilt a cached ambient Hecke operator")
+
+    try:
+        line._hecke_matrix = recomputation_forbidden
+        assert M.hecke_matrix(1) == identity
+        B = S.basis_matrix()
+        for n, T in zip(indices, ambient_operators):
+            assert M.hecke_matrix(n) == T
+            assert S.hecke_matrix(n) * B == B * T
+    finally:
+        line._hecke_matrix = original_hecke
 print("integral morphism geometry passed")

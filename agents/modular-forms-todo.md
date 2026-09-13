@@ -562,17 +562,31 @@ $401$ receipt ranges from $3\times$ to $10\times$ faster than SageMath.
   $16.994$ s, versus Sage's $21.614$ s and $21.756$ s, with every integral
   kernel invariant matching. Native, Node/Wasm and Chromium regressions pass.
 - [ ] Universal composite-level decomposition-isogeny performance parity:
-  cold totals at levels $121$, $242$, $363$ still take $3.99$, $3.14$,
-  $2.70\times$ Sage's time. Large-level construction alone also remains slower;
-  faster Smith reduction wins the complete large-level workload. Exact
+  cold totals at levels $121$, $242$, $363$ still take $3.13$,
+  $2.18$, $1.82\times$ Sage's time. At $726$ and $1089$, three-run native
+  totals are now $6.739$ s and $5.883$ s versus Sage's $16.397$ s and $17.862$ s.
+  Large-level construction alone is now faster too. Exact
   receipts and phase timings:
   `bench/modular/abelian-varieties/decomposition-performance.md`.
-- [ ] Large-composite-level browser throughput qualification. The native
-  speedup is not a Wasm speedup claim: the level-$726$ portable diagnostic
-  exceeded its $120$ s limit, despite passing the shared Chromium correctness
-  corpus and the smaller exact portable decomposition comparison.
-- [ ] Homomorphism and endomorphism rings of supported modular abelian
-  varieties.
+- [x] Large-composite-level browser throughput qualification. Cached prime
+  operators and exact coordinate reuse give Node/Wasm three-run medians of
+  $3.486$, $60.214$, $70.828$ s at $242$, $726$, $1089$. Real Chromium large-level
+  samples complete in $58.002$, $68.624$ s with all Smith invariants matching.
+  Wasm remains $3.7$–$4.0\times$ slower than native Sage at the larger levels;
+  browser throughput qualification does not establish universal parity.
+  Shared native, Node/Wasm and Chromium correctness tests pass. See receipts
+  in `bench/modular/abelian-varieties/decomposition-performance.md`.
+- [x] Certified complete Hom spaces and endomorphism rings over QQ for the
+  supported weight-two Gamma0 varieties, products, subvarieties and connected
+  quotient models. Integral bases, coordinates/membership, complementary
+  isogenies, ring composition and authenticated serialization are implemented.
+  Complete Sage lattice comparisons pass (including integral basis transport);
+  native, Node/Wasm and real Chromium pass the shared corpus through level 389.
+  At levels 101/121/169, native medians are 0.523/0.802/0.590 s versus
+  Sage 1.632/25.508/6.288 s. Larger native/Wasm basis parity passes at 242/389;
+  Sage 242 timed out at 300 s, so no large-level Sage ratio is claimed.
+  See `docs/modular-abelian-hom.md` and
+  `bench/modular/abelian-varieties/hom-performance.md`.
 - [ ] Rational torsion and finite subgroup schemes in the supported domain.
 - [ ] Modular degree, congruence number, and congruence exponent.
 - [ ] Tamagawa and component-group data for newform quotients.

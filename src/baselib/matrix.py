@@ -8132,24 +8132,31 @@ class Matrix(sage.Element):
                 right_matrix.change_ring(solve_base)
             )
             reduced = augmented.echelon_form()
+            # Export once: scalar resource reads otherwise cross the Wasm
+            # boundary for every pivot candidate and solution coefficient.
+            reduced_entries = reduced.list()
+            reduced_columns = reduced.ncols()
             solution_entries = [
                 solve_base(0) for _entry in range(self.ncols() * right_matrix.ncols())
             ]
             for row in range(reduced.nrows()):
                 pivot = None
                 for col in range(self.ncols()):
-                    if reduced[row, col] != 0:
+                    if reduced_entries[row * reduced_columns + col] != 0:
                         pivot = col
                         break
                 if pivot is None:
                     for col in range(right_matrix.ncols()):
-                        if reduced[row, self.ncols() + col] != 0:
+                        if (
+                            reduced_entries[row * reduced_columns + self.ncols() + col]
+                            != 0
+                        ):
                             raise ValueError("matrix equation has no solutions")
                 else:
                     for col in range(right_matrix.ncols()):
-                        solution_entries[pivot * right_matrix.ncols() + col] = reduced[
-                            row, self.ncols() + col
-                        ]
+                        solution_entries[pivot * right_matrix.ncols() + col] = (
+                            reduced_entries[row * reduced_columns + self.ncols() + col]
+                        )
             solution = matrix(
                 solve_base,
                 self.ncols(),
