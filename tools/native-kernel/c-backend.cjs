@@ -2691,7 +2691,7 @@ function emitFieldNodeAdapter(fn) {
   const nativeType = prefix === "real" ? "sagejs_real" : "sagejs_complex";
   const parentType = prefix === "real" ? "RealField" : "ComplexField";
   const parent = fn.params.find((param) => param.type === parentType);
-  const iterations = fn.params.find((param) => param.type === "uint64");
+  const iterations = fn.params.filter((param) => param.type === "uint64");
   const coreArguments = fn.params.map((param) =>
     param.type === "uint64"
       ? cName(param.name)
@@ -2709,7 +2709,7 @@ function emitFieldNodeAdapter(fn) {
     size_t argc = ${fn.params.length};
     sagejs_native_status status = {0, NULL};
     mpfr_prec_t ${cName(parent.name)}_precision;
-    ${iterations ? `uint64_t ${cName(iterations.name)};` : ""}
+${iterations.map((param) => `    uint64_t ${cName(param.name)};`).join("\n")}
 ${inputs.map((param) => `    ${nativeType} *${cName(param.name)};`).join("\n")}
 ${buffers.map((param) => `    ${prefix === "real" ? "mpfr_srcptr" : "mpc_srcptr"} *${cName(param.name)} = NULL;
     uint32_t ${cName(param.name)}_length = 0;`).join("\n")}
@@ -2726,8 +2726,8 @@ ${buffers.map((param) => `    ${prefix === "real" ? "mpfr_srcptr" : "mpc_srcptr"
     if (!get_precision(env, args[${fn.params.indexOf(parent)}],
             &${cName(parent.name)}_precision))
         return NULL;
-${iterations ? `    if (!get_uint64(env, args[${fn.params.indexOf(iterations)}],
-            &${cName(iterations.name)})) return NULL;` : ""}
+${iterations.map((param) => `    if (!get_uint64(env, args[${fn.params.indexOf(param)}],
+            &${cName(param.name)})) return NULL;`).join("\n")}
 ${inputs.map((param) => `    ${cName(param.name)} = sagejs_native_unwrap_${prefix}(
         env, args[${fn.params.indexOf(param)}]);
     if (${cName(param.name)} == NULL) return NULL;
