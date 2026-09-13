@@ -2163,6 +2163,12 @@ class NumberFieldParent(sage.Parent):
     def defining_polynomial(self) -> Any:
         return self._polynomial
 
+    def characteristic(self) -> int:
+        return 0
+
+    def is_field(self) -> bool:
+        return True
+
     def polynomial_quotient_ring(self) -> NumberFieldPolynomialQuotient:
         return NumberFieldPolynomialQuotient(self)
 

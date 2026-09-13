@@ -38,10 +38,11 @@ Constructing a polynomial from this dictionary round-trips exactly.
 
 `quo_rem` is exact division with remainder; `/` currently requires zero
 remainder and otherwise raises `ArithmeticError`. Unlike Sage, this N1 route
-does not construct rational functions. Multivariate gcd, factorization,
-ideals, and geometry are not enabled by N1. Squarefree decomposition is not
-irreducible factorization. All implemented operations are unconditional,
-irrespective of `proof.polynomial()`; N2/N3 routing remains gated.
+does not construct rational functions. Multivariate gcd and multivariate
+factorization remain unsupported. N2/N3 add exact ideals, geometry and univariate
+irreducible factorization; see [number-field geometry](number-field-geometry.md).
+Squarefree decomposition alone is not irreducible factorization. All implemented
+operations are unconditional, irrespective of `proof.polynomial()`.
 
 Explicit interchange uses `encode(f)` and `decode(R, packet)` from
 `sagejs.polynomial_algorithms.generic_public`. Packets record a normalized

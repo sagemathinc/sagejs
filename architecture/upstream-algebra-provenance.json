@@ -52,6 +52,17 @@
   ],
   "records": [
     {
+      "id": "number-field-trager-factorization",
+      "project": "sagemath-10.9-oracle",
+      "relationship": "independent-oracle",
+      "copied_code": false,
+      "sources": ["src/sage/rings/polynomial/polynomial_element.py", "https://www.cecm.sfu.ca/~monaganm/teaching/TopicsinCA09/TragerFactor.pdf"],
+      "symbols_or_lines": "factor public semantics; Trager (1976), Theorem 2.2",
+      "sagejs_files": ["src/lib/sagejs/polynomial_algorithms/number_field_factor.py", "test/fixtures/generate-number-field-geometry-sage.py", "test/number-field-oracles.py"],
+      "algorithm_citation": "Barry M. Trager, Algebraic Factoring and Rational Function Integration, SYMSAC 1976. Squarefree shifted norm and complete rational factorization certify recovered gcd factors.",
+      "note": "Independent public-K[x] implementation, using a fraction-free determinant norm. No upstream implementation copied. SageMath factorization and libSingular standard bases are independent fixture oracles, not runtime dependencies."
+    },
+    {
       "id": "extension-field-groebner-oracles",
       "project": "sagemath-10.9-oracle",
       "relationship": "independent-oracle",

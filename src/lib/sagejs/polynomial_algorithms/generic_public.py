@@ -27,15 +27,23 @@ MAX_HEIGHT = sage.ZZ(2) ** MAX_BITS
 class PolynomialField(ExactField):
     """Bound inputs and results, including intermediate sparse coefficients."""
 
+    max_coordinate_bits = 0
+
     def coerce(self, value: Any) -> Any:
         value = self.parent(value)
         for coefficient in value.list():
+            bits = max(
+                int(coefficient.numerator()).bit_length(),
+                int(coefficient.denominator()).bit_length(),
+            )
+            self.max_coordinate_bits = max(self.max_coordinate_bits, bits)
             if (
                 abs(coefficient.numerator()) >= MAX_HEIGHT
                 or coefficient.denominator() >= MAX_HEIGHT
             ):
                 raise ValueError(
-                    "number-field polynomial coefficient height exceeds 4096 bits"
+                    "number-field polynomial coefficient height exceeds 4096 bits; observed="
+                    + str(bits)
                 )
         return value
 
@@ -149,6 +157,20 @@ def evaluate(value: Any, coordinates: Any) -> Any:
     return _sparse(value).evaluate(coordinates)
 
 
+def normal_form(value: Any, basis: Any) -> Any:
+    from sagejs.polynomial_algorithms.groebner_contract import (
+        normal_form as reduce_terms,
+    )
+
+    parent = value.parent()
+    terms = reduce_terms(
+        value.terms(),
+        tuple(g.terms() for g in basis),
+        parent._exact_context.workspace(),
+    )
+    return parent._from_terms(terms)
+
+
 def term_dictionary(value: Any) -> Any:
     return {
         (e[0] if value.parent().ngens() == 1 else tuple(e)): c for c, e in value.terms()
@@ -212,41 +234,113 @@ def substitute(value: Any, substitutions: Any, keywords: Any) -> Any:
         (name, runtime.reflect.get(keywords, name))
         for name in runtime.object.keys(keywords)
     )
+    target = parent
+    for _variable, replacement in entries:
+        if hasattr(replacement, "terms") and hasattr(replacement, "parent"):
+            candidate = replacement.parent()
+            if candidate.base_ring() is not parent.base_ring():
+                raise TypeError("substitution coefficient fields must agree")
+            if target is not parent and candidate is not target:
+                raise TypeError("substitution polynomials must share a target parent")
+            target = candidate
+    if target is not parent:
+        names = list(target.variable_names())
+        replaced = [parent._generator_index(variable) for variable, _ in entries]
+        replacements = [
+            target.gen(names.index(name)) if name in names else target(0)
+            for name in parent.variable_names()
+        ]
+        if any(
+            i not in replaced and name not in names
+            for i, name in enumerate(parent.variable_names())
+        ):
+            raise ValueError("substitution target is missing an unsubstituted variable")
     for variable, replacement in entries:
-        replacements[parent._generator_index(variable)] = parent(replacement)
-    answer = parent(0)
+        replacements[parent._generator_index(variable)] = target(replacement)
+    answer = target(0)
     started = monotonic()
     for coefficient, exponents in value.terms():
         if monotonic() - started > 30:
             raise RuntimeError("number-field substitution time limit exceeded")
-        term = parent(coefficient)
+        term = target(coefficient)
         for index, exponent in enumerate(exponents):
             term *= replacements[index] ** exponent
         answer += term
     return answer
 
 
-def homogenize(value: Any, variable: Any) -> Any:
+def homogenize(value: Any, variable: Any, target: Any = None) -> Any:
     parent = value.parent()
     _sparse(value)
-    target = parent
+    supplied = target is not None
+    if target is None:
+        target = parent
     names = list(parent.variable_names())
-    if isinstance(variable, str) and variable not in names:
+    if not supplied and isinstance(variable, str) and variable not in names:
         target = sage.PolynomialRing(
             parent.base_ring(), names + [variable], order=parent._order
         )
         index = len(names)
     else:
-        index = parent._generator_index(variable)
+        index = target._generator_index(variable)
+    target_names = list(target.variable_names())
+    if target.base_ring() is not parent.base_ring() or any(
+        name not in target_names for name in names
+    ):
+        raise TypeError(
+            "homogenization target must preserve source variables and field"
+        )
+    mapping = [target_names.index(name) for name in names]
+    if target is not parent and (
+        target.ngens() != parent.ngens() + 1 or index in mapping
+    ):
+        raise ValueError("homogenization target must add exactly one new coordinate")
     degree = value.total_degree()
     terms = []
     for coefficient, exponents in value.terms():
-        powers = list(exponents)
-        if target is not parent:
-            powers.append(0)
+        powers = [0] * target.ngens()
+        for i, exponent in enumerate(exponents):
+            powers[mapping[i]] = exponent
         powers[index] += degree - sum(exponents)
         terms.append((coefficient, tuple(powers)))
     return target._from_terms(terms)
+
+
+def dehomogenize(value: Any, variable: Any, target: Any = None) -> Any:
+    parent = value.parent()
+    index = parent._generator_index(variable)
+    if target is None:
+        return substitute(value, {parent.variable_names()[index]: 1}, {})
+    names = list(target.variable_names())
+    source_names = list(parent.variable_names())
+    if target.base_ring() is not parent.base_ring() or names != [
+        n for i, n in enumerate(source_names) if i != index
+    ]:
+        raise TypeError(
+            "dehomogenization target must remove only the selected coordinate"
+        )
+    return target._from_terms(
+        [
+            (c, tuple(e for i, e in enumerate(exponents) if i != index))
+            for c, exponents in value.terms()
+        ]
+    )
+
+
+def factor(value: Any) -> Any:
+    from sagejs.polynomial_algorithms.number_field_factor import (
+        factor as implementation,
+    )
+
+    return implementation(value)
+
+
+def is_irreducible(value: Any) -> bool:
+    from sagejs.polynomial_algorithms.number_field_factor import (
+        is_irreducible as implementation,
+    )
+
+    return implementation(value)
 
 
 def resultant(left: Any, right: Any) -> Any:

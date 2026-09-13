@@ -61,12 +61,7 @@ assert extension_space.dimension() == 2
 assert len(extension_space.rational_points()) == 16
 
 K = NumberField(PolynomialRing(QQ, "w").gen() ** 2 + 1, "i")
-try:
-    AffineSpace(K, 1)
-    raise AssertionError("number fields are outside this milestone")
-except NotImplementedError as error:
-    assert "exact coefficient adapter" in str(error)
-    assert "operation=geometry" in str(error)
+assert AffineSpace(K, 1).dimension() == 1
 
 try:
     AffineSpace(True, QQ)

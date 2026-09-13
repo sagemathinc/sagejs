@@ -154,6 +154,55 @@ addon is reused only after the current source/runtime/environment/content-hash
 validator accepts it, then independently copied into this worktree. Existing
 validated dependency prefixes are reused rather than rebuilt.
 
-No N1/N2/N3/N5 acceptance checklist is complete at this checkpoint. Native
+No N1/N2/N3/N5 acceptance checklist is complete at this historical checkpoint. Native
 four-platform parity, production Wasm and browser tests, independent fixtures,
 resource-envelope evidence and final capability promotion remain required.
+
+## N2/N3 implementation checkpoint (2026-09-13; qualification pending)
+
+The public generic number-field polynomial parent now participates in exact
+ideal dispatch, certified Buchberger, all three global orders, ideal operations,
+quotients, FGLM, and affine/projective geometry. Multiplication matrices retain
+K-valued entries in the existing portable storage; their minimal and
+characteristic polynomials do not coerce coefficients to QQ. This does not add
+a native matrix backend.
+
+The new lazy Trager factorizer uses public K[x] Euclidean operations and a
+fraction-free QQ[x] determinant norm. Squarefree separating norms, complete
+rational irreducible factors, nonconstant gcd recovery, and reconstruction
+jointly justify the answer. Zero-dimensional decomposition reuses the existing
+perfect-field algorithms and retains nonsplit residue extensions.
+
+Local checks have passed for five field presentations, 75 independent SageMath
+10.9.post1 fixtures (libSingular standard bases and independent number-field
+factorization), basic geometry, FGLM, and primary decomposition/reintersection.
+The fixture generator and full field coordinates are committed with the tests;
+Sage and Singular remain oracle-only. Automated regressions and production
+qualification are still in progress. No four-platform or Wasm success is
+claimed by this checkpoint.
+
+Reviewed source-budget changes: linear-algebra bootstrap allocation increases
+451000 -> 453000 bytes for the K-valued storage/characteristic-polynomial
+boundary (actual 451807 before final formatting). Polynomial-algorithms lazy
+allocation increases 340000 -> 350000 for the factorizer and generic dispatch
+(actual about 349 KB). Compressed production/startup gates remain unchanged.
+
+See [number-field geometry](../docs/number-field-geometry.md) for supported
+operations, exact solving semantics, and explicit resource limits. PR #274
+remains draft until the production qualification gates are satisfied.
+
+Local post-build evidence: eight-stage build passed in 7m49s (41 authenticated
+native kernel families reused); strict Python passes for 405 modules; complete
+architecture checks pass. Existing QQ/prime-field geometry, finite-extension
+geometry/decomposition, 108 finite-extension Sage fixtures, and the new
+number-field factorization/decomposition/75-oracle checks pass. The proof-policy
+fixture originally compared Sequence object identities; comparing polynomial
+lists fixes that test, and its certified ideal checks pass. A fresh complete
+number-field batch is retained in `n23-numberfield-final.log`.
+
+The earlier `n23-unit.log` is invalid evidence: a concurrent full build replaced
+the compiler while that batch ran. It is superseded by the post-build runs.
+Logs are in `/home/user/sagejs-extension-qualification-20260912/` with `n23-`
+prefixes. Optimizer identity is
+`34e22a53c8d947ab1c8cdf1d3a7b2743c456d5af181b3e9e5a5c0914d3f64d80`;
+its infrastructure assets remain local at this checkpoint.

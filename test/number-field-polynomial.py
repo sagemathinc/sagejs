@@ -46,7 +46,7 @@ for defining in [t**2 - 2, t**2 + 1, t**3 - 2, t**3 - t - 1, 6 * t**2 + 3 * t - 
     assert f.leading_coefficient() == 1
     assert f.coefficients(sparse=True) == [-a, K(1)]
     rejected(lambda: R(0).squarefree_decomposition())
-    rejected(lambda: f.factor())
+    assert f.factor().value() == f
     rejected(lambda: R(1) / f)
     H = f.homogenize()
     assert H.parent().variable_names() == ("x", "h")

@@ -70,13 +70,13 @@ def field_capability(
     if field is not None:
         descriptor = field.descriptor()
         if field.family == "number-field":
-            supported = operation == "univariate.euclidean"
+            supported = operation != "groebner.packed-v1"
             reason = (
-                "exact generic number-field Euclidean arithmetic"
+                "exact generic number-field polynomial arithmetic"
                 if supported
-                else "number-field ideals and factorization await Milestone N2/N3"
+                else "packed Groebner v1 excludes number-field coefficients"
             )
-            resource_envelope = "N1: degree <= 4096, coefficient height <= 4096 bits, 65536 coordinate cells, cooperative 30-second operations"
+            resource_envelope = "degree <= 4096, coefficient height <= 4096 bits, 65536 coordinate cells, cooperative 30-second polynomial operations; GroebnerBudget for ideals; factorization field degree <= 16, norm degree <= 64, 32 shifts, cooperative 120-second deadline"
         elif operation in ("geometry", "ideal", "groebner.packed-v1"):
             supported = field.family in _CORE_FAMILIES
             reason = (

@@ -791,6 +791,11 @@ Acceptance:
 
 ### Phase N2: exact Gröbner, quotient, and geometry baseline
 
+Implementation is now present on `agent/no-singular-number-fields`; local
+fixtures pass. Production qualification remains open in N5. See the
+[current audit](no-singular-number-fields-completion-audit.md) rather than
+treating source capability availability as a platform receipt.
+
 1. Enable `PolynomialIdeal` over simple number fields through the generic
    exact-field implementation from Phase F1.
 2. Normalize every nonzero basis polynomial by its invertible number-field
@@ -822,6 +827,10 @@ Acceptance:
   not a generic backend exception.
 
 ### Phase N3: univariate factorization and zero-dimensional decomposition
+
+The bounded Trager baseline and generic decomposition integration are now
+implemented, with independent Sage fixtures and explicit norm witnesses.
+N5 production qualification remains open; no optimized msolve path is enabled.
 
 This phase builds on the exact `K[x]` Euclidean substrate established in Phase
 N1; it must not introduce a second private univariate representation.

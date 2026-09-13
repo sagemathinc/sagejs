@@ -96,7 +96,7 @@ def _groebner_contract() -> Any:
 
 
 def _groebner_contract_ring(ring: Any) -> Any:
-    if ring.base_ring()._kind == "GF_EXTENSION":
+    if ring.base_ring()._kind in ("GF_EXTENSION", "NumberField"):
         from sagejs.polynomial_algorithms.extension_ideal import contract_ring
 
         return contract_ring(ring)
@@ -107,7 +107,7 @@ def _groebner_contract_ring(ring: Any) -> Any:
 
 
 def _pack_groebner_polynomial(polynomial: Any) -> Any:
-    if polynomial.parent().base_ring()._kind == "GF_EXTENSION":
+    if polynomial.parent().base_ring()._kind in ("GF_EXTENSION", "NumberField"):
         from sagejs.polynomial_algorithms.extension_ideal import sparse_terms
 
         return sparse_terms(polynomial)
@@ -289,7 +289,7 @@ def groebner_basis(
     from sagejs.polynomial_algorithms.field_capabilities import require_field_operation
 
     require_field_operation(base, "ideal", ring._order, proof_required)
-    if base._kind == "GF_EXTENSION":
+    if base._kind in ("GF_EXTENSION", "NumberField"):
         from sagejs.polynomial_algorithms.extension_ideal import (
             groebner_basis as extension_groebner_basis,
         )
@@ -457,6 +457,9 @@ def leading_exponents(
     generators = ideal._ring.gens()
     exponents = []
     for polynomial in basis:
+        if ideal._ring.base_ring()._kind == "NumberField":
+            exponents.append(tuple(polynomial.terms()[0][1]))
+            continue
         leading = _element(
             ideal._ring,
             ideal._ring._backend.mpolyLeadingMonomial(polynomial._native),

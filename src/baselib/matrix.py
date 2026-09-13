@@ -1032,7 +1032,8 @@ def _is_symbolic_base(value: object) -> bool:
 
 def _is_base_ring(value: object) -> bool:
     return (
-        value is sage.ZZ
+        getattr(value, "_kind", None) == "NumberField"
+        or value is sage.ZZ
         or value is sage.QQ
         or getattr(value, "_kind", None) == "ZZ"
         or getattr(value, "_kind", None) == "QQ"
@@ -1148,6 +1149,10 @@ def _native_matrix(
     cols: int,
     values: list[Any],
 ) -> Any:
+    if getattr(base, "_kind", None) == "NumberField":
+        if rows * cols * _untyped(base).degree() > 65536:
+            raise ValueError("number-field matrix coordinate allocation limit exceeded")
+        return _PortableMatrixStorage([base(value) for value in values])
     backend = runtime.flint_backend()
     if base is sage.ZZ:
         raise RuntimeError(
@@ -7349,6 +7354,21 @@ class Matrix(sage.Element):
         if cached is not runtime.undefined:
             return cached
         ring = sage.PolynomialRing(self.base_ring(), variable)
+        if getattr(self.base_ring(), "_kind", None) == "NumberField":
+            # Faddeev--LeVerrier is exact in characteristic zero; division is
+            # in K, never an integer or floating-point coefficient adapter.
+            size = self.nrows()
+            identity = self.parent().identity_matrix()
+            residual = identity
+            coefficients = [self.base_ring()(1)]
+            for index in range(1, size + 1):
+                product = self * residual
+                coefficient = -product.trace() / self.base_ring()(index)
+                coefficients.append(coefficient)
+                residual = product + coefficient * identity
+            answer = ring(list(reversed(coefficients)))
+            self._charpoly_cache.set(variable, answer)
+            return answer
         if self._has_fmpz_matrix_resource() and _flint_backend_has_function(
             "ffiFmpzMatrixCharpoly"
         ):
@@ -7624,6 +7644,7 @@ class Matrix(sage.Element):
                 finite_coefficients = getattr(self.base_ring(), "_kind", None) in [
                     "GF",
                     "GF_EXTENSION",
+                    "NumberField",
                 ]
                 if finite_coefficients:
                     coefficients = [coefficient / leading for coefficient in relation]
@@ -9520,6 +9541,7 @@ def MatrixSpace(
         and not _is_extension_field_base(base)
         and not _is_algebraic_base(base)
         and not _is_approximate_base(base)
+        and getattr(base, "_kind", None) != "NumberField"
     ):
         raise TypeError(
             "matrices currently require ZZ, QQ, AA, QQbar, GF, Zmod, "
@@ -9554,6 +9576,7 @@ def VectorSpace(
         and not _is_algebraic_base(base)
         and not _is_approximate_base(base)
         and not _is_symbolic_base(base)
+        and getattr(base, "_kind", None) != "NumberField"
     ):
         raise TypeError(
             "vectors currently require ZZ, QQ, SR, AA, QQbar, GF, Zmod, "

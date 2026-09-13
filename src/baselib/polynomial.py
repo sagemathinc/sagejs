@@ -5016,11 +5016,23 @@ class GenericPolynomialElement(sage.Element):
     def terms(self) -> Any:
         return tuple((c, tuple(e)) for c, e in self._terms)
 
+    def number_of_terms(self) -> int:
+        return len(self._terms)
+
     def subs(self, substitutions: Any = None, **kwds: Any) -> Any:
         return _generic_polynomial_module().substitute(self, substitutions, kwds)
 
-    def homogenize(self, variable: Any = "h") -> Any:
-        return _generic_polynomial_module().homogenize(self, variable)
+    def homogenize(self, variable: Any = "h", target: Any = None) -> Any:
+        return _generic_polynomial_module().homogenize(self, variable, target)
+
+    def dehomogenize(self, variable: Any, target: Any = None) -> Any:
+        return _generic_polynomial_module().dehomogenize(self, variable, target)
+
+    def is_homogeneous(self) -> bool:
+        return len(set(sum(e) for _c, e in self._terms)) <= 1
+
+    def gradient(self) -> Any:
+        return runtime.math_tuple([self.derivative(v) for v in self._parent.gens()])
 
     def dict(self) -> Any:
         return _generic_polynomial_module().term_dictionary(self)
@@ -5071,11 +5083,12 @@ class GenericPolynomialElement(sage.Element):
     def squarefree_decomposition(self) -> Any:
         return _generic_polynomial_module().squarefree(self)
 
+    def is_irreducible(self) -> bool:
+        return _generic_polynomial_module().is_irreducible(self)
+
     def factor(self) -> sage.Factorization:
         if self._parent._exact_context is not None:
-            raise NotImplementedError(
-                "number-field factorization requires Milestone N3"
-            )
+            return _generic_polynomial_module().factor(self)
         if (
             self._parent.ngens() == 1
             and self._parent.base_ring()._kind == "CyclotomicField"
@@ -5268,6 +5281,21 @@ class GenericPolynomialRingParent(sage.Parent):
     def base_ring(self) -> sage.Parent:
         return self._base
 
+    def ideal(self, *generators: Any) -> Any:
+        return PolynomialIdeal(self, _ideal_generators(generators))
+
+    def quotient(self, defining_ideal: Any, **options: Any) -> Any:
+        if not isinstance(defining_ideal, PolynomialIdeal):
+            defining_ideal = self.ideal(defining_ideal)
+        if defining_ideal.ring() is not self:
+            raise TypeError("quotient ideal belongs to a different polynomial ring")
+        return _polynomial_quotient_module().PolynomialQuotientRing(
+            self, defining_ideal, **options
+        )
+
+    def _from_sparse_terms(self, terms: Any) -> Any:
+        return self._from_terms(terms)
+
     def variable_name(self) -> str:
         if len(self._variables) != 1:
             raise AttributeError("a multivariate ring has no single variable name")
@@ -5407,7 +5435,7 @@ class PolynomialSequence:
 class PolynomialIdeal:
     def __init__(
         self,
-        ring: MultivariatePolynomialRingParent,
+        ring: Any,
         generators: Any,
     ) -> None:
         capabilities = __import__(
@@ -5561,6 +5589,8 @@ class PolynomialIdeal:
         """Return the exact normal form of `value` by the reduced basis."""
         polynomial = self._ring(value)
         basis = self.groebner_basis(algorithm=algorithm, proof=proof)
+        if self._ring.base_ring()._kind == "NumberField":
+            return _generic_polynomial_module().normal_form(polynomial, basis)
         native_basis = [generator._native for generator in basis]
         return MultivariatePolynomialElement(
             self._ring,
@@ -5578,6 +5608,11 @@ class PolynomialIdeal:
         basis = self.groebner_basis(algorithm=algorithm, proof=proof)
         leading = []
         for polynomial in basis:
+            if self._ring.base_ring()._kind == "NumberField":
+                leading.append(
+                    self._ring._from_sparse_terms([(1, polynomial.terms()[0][1])])
+                )
+                continue
             leading.append(
                 MultivariatePolynomialElement(
                     self._ring,

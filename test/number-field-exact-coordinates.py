@@ -62,7 +62,7 @@ for f, inverse_coordinates in [
         bad_coordinates = pair + [0, 1] * (K.degree() - 1)
         rejected(lambda: field.from_coordinates(bad_coordinates))
     rejected(lambda: field.from_coordinates([1, 1]))
-    # N1 promotes Euclidean arithmetic only, never N2/N3 algorithms.
+    # The rational packed ABI must never accept number-field coordinates.
     for operation in [
         "geometry",
         "ideal",
@@ -72,7 +72,7 @@ for f, inverse_coordinates in [
         "univariate.factor",
     ]:
         capability = field_capability(K, operation)
-        assert capability["supported"] == (operation == "univariate.euclidean")
+        assert capability["supported"] == (operation != "groebner.packed-v1")
         assert capability["base_field_descriptor"]["family"] == "number-field"
 
 # Isomorphic but differently presented fields are not automatically identified.

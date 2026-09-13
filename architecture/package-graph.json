@@ -204,7 +204,7 @@
       "id": "linear-algebra",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 451000,
+      "max_source_bytes": 453000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py"
@@ -470,7 +470,7 @@
       "id": "polynomial-algorithms",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 340000,
+      "max_source_bytes": 350000,
       "depends_on": [
         "core-runtime",
         "native-integration",
