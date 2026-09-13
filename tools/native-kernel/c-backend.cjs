@@ -93,6 +93,10 @@ function isUInt64BufferType(type) {
   return type === "UInt64Buffer";
 }
 
+function isFloat64BufferType(type) {
+  return type === "Float64Buffer";
+}
+
 /**
  * Classify target properties that affect the generated isolated C core.
  *
@@ -132,7 +136,15 @@ function exactBufferCType(type) {
   if (isInt64BufferType(type)) return "sagejs_int64_buffer";
   if (isUInt64BufferType(type)) return "sagejs_uint64_buffer";
   if (isIntegerBufferType(type)) return "sagejs_integer_buffer";
+  if (isFloat64BufferType(type)) return "sagejs_float64_buffer";
   return undefined;
+}
+
+function usesMixedFloat64(fn) {
+  return fn.kernelKind === "integer" &&
+    [...fn.params, ...fn.locals].some((value) =>
+      value.type === "Float64" || value.type === "Float64Buffer"
+    );
 }
 
 function cString(value) {
@@ -323,9 +335,13 @@ function internalArgument(fn, param) {
   if (param.type === "Integer") return `const mpz_t ${name}`;
   if (param.type === "uint64") return `uint64_t ${name}`;
   if (param.type === "bool") return `int ${name}`;
+  if (param.type === "Float64") return `double ${name}`;
   if (isInt64BufferType(param.type)) return `sagejs_int64_buffer ${name}`;
   if (isUInt64BufferType(param.type)) return `sagejs_uint64_buffer ${name}`;
   if (isIntegerBufferType(param.type)) return `sagejs_integer_buffer ${name}`;
+  if (isFloat64BufferType(param.type)) {
+    return `sagejs_float64_buffer ${name}`;
+  }
   if (param.type === "NativeIntegerVector") {
     return `sagejs_native_integer_vector *${name}`;
   }
@@ -353,6 +369,7 @@ function internalResults(fn, type) {
   if (type === "Integer") return ["mpz_t sagejs_native_output"];
   if (type === "uint64") return ["uint64_t *sagejs_native_output"];
   if (type === "bool") return ["int *sagejs_native_output"];
+  if (type === "Float64") return ["double *sagejs_native_output"];
   const resource = resourceForFunctionType(fn, type);
   if (resource !== undefined) {
     return [`${resource.abi_type} sagejs_native_output`];
@@ -1359,6 +1376,37 @@ function emitExactOperation(operation, context, indent) {
     return `${indent}${target} = ` +
       `${exactValue(operation.source, context)} != 0;`;
   }
+  if (operation.kind === "integer.from_float64") {
+    const source = exactValue(operation.source, context);
+    return [
+      `${indent}if (!isfinite(${source}))`,
+      `${indent}{`,
+      `${indent}    if (isnan(${source})) {`,
+      statusFailure("range", "cannot convert float NaN to integer", `${indent}        `),
+      `${indent}    } else {`,
+      statusFailure("range", "cannot convert float infinity to integer", `${indent}        `),
+      `${indent}    }`,
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}mpz_set_d(${target}, ${source});`,
+    ].join("\n");
+  }
+  if (operation.kind === "float64.from_integer_checked") {
+    const source = exactValue(operation.source, context);
+    return [
+      `${indent}if (mpz_cmpabs_d(${source}, 9007199254740992.0) > 0)`,
+      `${indent}{`,
+      statusFailure(
+        "range", "integer is outside exact binary64 range", `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}${target} = mpz_get_d(${source});`,
+    ].join("\n");
+  }
+  if (operation.kind.startsWith("float64.")) {
+    return emitFloat64Operation(operation, indent);
+  }
   if (operation.kind === "native.call") {
     const callee = context.functions.get(operation.function);
     if (callee === undefined) {
@@ -1378,8 +1426,11 @@ function emitExactOperation(operation, context, indent) {
           : `&${exactValue(argument.name, context)}`
         : exactValue(argument.name, context)
     );
+    const calleeName = callee.kernelKind === "float64"
+      ? `sagejs_kernel_${operation.function}`
+      : `native_${operation.function}`;
     return [
-      `${indent}if (!native_${operation.function}(status, ${outputs.join(", ")}` +
+      `${indent}if (!${calleeName}(status, ${outputs.join(", ")}` +
         `${args.length ? `, ${args.join(", ")}` : ""}))`,
       `${indent}    goto fail;`,
     ].join("\n");
@@ -1685,6 +1736,8 @@ function exactDeclarations(fn) {
     if (resourceForFunctionType(fn, param.type) !== undefined) continue;
     const type = param.type === "uint64"
       ? "uint64_t"
+      : param.type === "Float64"
+        ? "double"
       : exactBufferCType(param.type) !== undefined
         ? exactBufferCType(param.type)
         : "int";
@@ -1785,6 +1838,8 @@ function exactDeclarations(fn) {
     }
     const type = local.type === "uint64"
       ? "uint64_t"
+      : local.type === "Float64"
+        ? "double"
       : exactBufferCType(local.type) !== undefined
         ? exactBufferCType(local.type)
         : "int";
@@ -2096,6 +2151,16 @@ function emitTaggedWrapper(fn, options = {}) {
       parse = `if (!get_uint64(env, args[${index}], &${value}))\n` +
         "            goto fail;";
       defaultValue = `${value} = UINT64_C(${param.default});`;
+    } else if (param.type === "Float64") {
+      declarations.push(`    double ${value};`);
+      parse = `if (!sagejs_native_check_napi(env, ` +
+        `napi_get_value_double(env, args[${index}], &${value})))\n` +
+        "            goto fail;";
+    } else if (isFloat64BufferType(param.type)) {
+      declarations.push(`    sagejs_float64_buffer ${value};`);
+      parse = `if (!sagejs_native_get_float64_buffer(env, args[${index}], ` +
+        `&${value}, ${cString(param.name + " must be a Float64Array")}))\n` +
+        "            goto fail;";
     } else if (isInt64BufferType(param.type)) {
       declarations.push(`    sagejs_int64_buffer ${value};`);
       parse = `if (!sagejs_native_get_int64_buffer(env, args[${index}], ` +
@@ -2303,6 +2368,16 @@ function emitExactWrapper(fn, options = {}) {
       parse = `if (!get_uint64(env, args[${index}], &${value}))\n` +
         "            goto fail;";
       defaultValue = `${value} = UINT64_C(${param.default});`;
+    } else if (param.type === "Float64") {
+      declarations.push(`    double ${value};`);
+      parse = `if (!sagejs_native_check_napi(env, ` +
+        `napi_get_value_double(env, args[${index}], &${value})))\n` +
+        "            goto fail;";
+    } else if (isFloat64BufferType(param.type)) {
+      declarations.push(`    sagejs_float64_buffer ${value};`);
+      parse = `if (!sagejs_native_get_float64_buffer(env, args[${index}], ` +
+        `&${value}, ${cString(param.name + " must be a Float64Array")}))\n` +
+        "            goto fail;";
     } else if (isInt64BufferType(param.type)) {
       declarations.push(`    sagejs_int64_buffer ${value};`);
       parse = `if (!sagejs_native_get_int64_buffer(env, args[${index}], ` +
@@ -2470,6 +2545,12 @@ ${cleanup.join("\n")}
 }
 
 function emitExactWrappers(fn) {
+  if (usesMixedFloat64(fn)) {
+    return `${emitExactWrapper(fn)}\n\n` +
+      `static napi_value compiled_${fn.name}(` +
+      `napi_env env, napi_callback_info info)\n` +
+      `{\n    return compiled_${fn.name}_gmp(env, info);\n}`;
+  }
   if (fn.analysis?.backend?.kind === "fmpz") {
     return [
       emitExactWrapper(fn, {
@@ -4029,7 +4110,7 @@ typedef struct
     size_t length;
     size_t word_capacity;
 } sagejs_integer_buffer;
-` : ""}${floats.some((fn) =>
+` : ""}${functions.some((fn) =>
     fn.params.some((param) => param.type === "Float64Buffer") ||
     fn.locals.some((local) =>
       ["Float64Buffer", "Float64Record"].includes(local.type)
@@ -4117,12 +4198,13 @@ function generateHostCore(ir, options = {}) {
   const primeFields = functions.filter((fn) =>
     fn.kernelKind === "prime-field-matrix"
   );
-  const functionMap = new Map(exact.map((fn) => [fn.name, fn]));
+  const functionMap = new Map(functions.map((fn) => [fn.name, fn]));
   const fmpz = generateFmpzFunctions(exact);
   // Scalar dependency-only functions still need internal tagged/word bodies.
   // Host export selection is distinct from representation eligibility: live
   // owned and fmpz-only aggregate borrows continue to use their direct core.
   const bridgeFunctions = exact.filter((fn) =>
+    !usesMixedFloat64(fn) &&
     !fn.params.some((param) => isLiveExactOwnerType(param.type)) &&
     fn.analysis?.fmpzExact?.hostBoundary !== "none-internal-borrowed-aggregate-only"
   );
@@ -4336,7 +4418,7 @@ static int get_precision(
     usesUInt64Buffers ? generateUInt64BufferNodeAdapter() : "",
     usesIntegerBuffers ? generateIntegerBufferNodeAdapter() : "",
   ].filter(Boolean).join("\n\n");
-  const floatBuffers = floats.some((fn) =>
+  const floatBuffers = functions.some((fn) =>
     fn.params.some((param) => param.type === "Float64Buffer") ||
     fn.locals.some((local) =>
       ["Float64Buffer", "Float64Record"].includes(local.type)
