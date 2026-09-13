@@ -67,18 +67,24 @@ def _stack(error):
 
 
 def format_exception(
-    exc=runtime.undefined, value=None, tb=None, limit=None, chain=True
+    exc=runtime.undefined, value=None, tb=runtime.undefined, limit=None, chain=True
 ):
     """Format an exception using its native JavaScript stack when present."""
     if exc is runtime.undefined:
         exc = runtime.last_exception
     elif value is not None:
         exc = value
+    if tb is None:
+        return format_exception_only(exc)
     logical_tb = (
         runtime.reflect.get(exc, "__traceback__")
         if exc is not None and exc is not runtime.undefined
         else None
     )
+    if tb is not runtime.undefined:
+        logical_tb = tb
+    if logical_tb is None and exc is not None and exc is not runtime.undefined:
+        return format_exception_only(exc)
     if (
         logical_tb is not None
         and logical_tb is not runtime.undefined

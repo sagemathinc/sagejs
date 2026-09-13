@@ -9,6 +9,7 @@
   "objective": "Qualify prepared calls, reflected divmod and annotation metadata on current main without widening budgets",
   "base_commit": "2564190042e003176ada3a71700f946ae992f973",
   "claims": [
+    "src/lib/sys.py",
     "src/lib/traceback.py",
     "src/output/statements.py",
     "src/output/stream.py",

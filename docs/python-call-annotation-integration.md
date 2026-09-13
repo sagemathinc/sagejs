@@ -276,7 +276,7 @@ native stack; ordinary operation remains on the native path. Foreign errors
 are not converted into fabricated Python records. This is an experiment, **not
 a supported global runtime switch**: uninstrumented callers, module execution,
 generators/async, argument-binding failures before the instrumented body,
-`sys.exc_info()` integration and all CLI/notebook display consumers still need
+all CLI/notebook display consumers still need
 qualification before production adoption. Generators and lambdas are rejected
 by the experimental emitter. Code metadata allocation/deduplication, nested
 expression call-site precision, traceback mutation and ordinary-call overhead
@@ -305,3 +305,14 @@ changes converged in two self-hosting passes; all 15 focused tests and strict
 identity, local catches, bare reraises, `finally` call sites, native fallback,
 zero native captures on the logical path, and stdlib formatting/limit direction.
 This is not a claim of a final four-platform build or a closed performance cliff.
+
+### Logical traceback consumer handoff
+
+`sys.exc_info()` now exposes the current logical record by identity, including
+replacement or clearing of the exception's traceback. Native carriers retain
+the legacy empty tuple rather than pretending a JavaScript Error is a Python
+frame chain. The three-argument `traceback.format_exception(type, value, tb)`
+honors a supplied record chain or explicit `None`; clearing a traceback also
+suppresses frames in the one-argument formatter. These are consumer changes,
+not a change to capture policy or a new performance result. Focused tests cover
+the handoff, explicit inner-chain selection, clearing, and handler restoration.
