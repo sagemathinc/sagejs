@@ -2,6 +2,7 @@
 
 import importlib.util
 import itertools
+import json
 import pathlib
 import sys
 
@@ -23,6 +24,7 @@ def run(n, bound, skip, shear):
     x, inc, state = [0] * stride, [0] * stride, [0] * 4
     y, z = [0.0] * stride, [0.0] * stride
     args = (q, v, x, y, z, inc, state, n, bound, skip)
+    module.validate_prepared_state(*args)
     got = []
     while module.pari_fp_next(*args):
         got.append(tuple(x[1:]))
@@ -41,7 +43,7 @@ def run(n, bound, skip, shear):
             expected.add(row)
     assert len(got) == len(set(got))
     assert set(got) == expected, (n, bound, skip, shear, set(got) ^ expected)
-    return len(got)
+    return {"degree": n, "bound": bound, "skip": skip, "shear": shear, "rows": got}
 
 
 counts = [
@@ -51,4 +53,9 @@ counts = [
     for skip in (0, 1)
     for shear in (0.0, 0.5)
 ]
-print(f"CPython enumeration scaffolding: {len(counts)} cases, {sum(counts)} vectors")
+if "--json" in sys.argv:
+    print(json.dumps(counts))
+else:
+    print(
+        f"CPython enumeration scaffolding: {len(counts)} cases, {sum(len(c['rows']) for c in counts)} vectors"
+    )

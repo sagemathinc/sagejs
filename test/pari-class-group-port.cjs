@@ -15,15 +15,16 @@ const { lowerSource } = require("../tools/native-kernel/ir.cjs");
   });
   assert.equal(result.status, 0, result.stderr);
   process.stdout.write(result.stdout);
-  // This is an explicit unresolved-obstruction receipt, NOT native validation.
-  // Replace this expectation with a native/JS differential when the prerequisite
-  // compiler lane is integrated, rather than calling rejection a port success.
+  // The mixed-buffer prerequisite must lower both the minimal probe and the
+  // actual enumeration. This still does not qualify the full class-group path.
   for (const name of ["mixed_buffer_probe.py", "enumeration.py"]) {
     const source = path.join(base, name);
-    await assert.rejects(
-      () => lowerSource(fs.readFileSync(source, "utf8"), source),
-      /native indexing currently requires a local constant sequence/,
-    );
+    const ir = await lowerSource(fs.readFileSync(source, "utf8"), source);
+    assert.ok(ir.functions.length > 0);
   }
-  console.log("Confirmed unresolved mixed-buffer compiler obstruction; native execution unavailable.");
+  const compiled = spawnSync(process.execPath, [path.join(base, "check_compiled.cjs")], {
+    cwd: root, encoding: "utf8", timeout: 120000,
+  });
+  assert.equal(compiled.status, 0, compiled.stderr);
+  process.stdout.write(compiled.stdout);
 })().catch(error => { console.error(error); process.exitCode = 1; });

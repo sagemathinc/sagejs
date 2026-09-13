@@ -17,7 +17,40 @@ are NOT implemented here. This helper cannot establish whole-engine parity.
 
 from __future__ import annotations
 
-from sagejs.native import Float64Buffer, Int64Buffer, native, uint64
+from sagejs.native import (
+    Float64Buffer,
+    Int64Buffer,
+    checked_float64,
+    checked_uint64,
+    native,
+    uint64,
+)
+
+
+def validate_prepared_state(q, v, x, y, z, inc, state, degree, bound, skipfirst):
+    """Validate the private buffer boundary before entering the native loop.
+
+    Checked exact-to-double conversion currently limits coordinates to 2^53;
+    a larger coordinate is a censored unsupported case, never exhaustion or
+    a class-group answer. PARI's wider machine-integer envelope is not claimed.
+    """
+    import math
+
+    if degree < 2 or len(state) < 4 or skipfirst not in (0, 1):
+        raise ValueError("invalid PARI enumeration state")
+    stride = degree + 1
+    if len(q) < stride * stride or any(len(a) < stride for a in (v, x, y, z, inc)):
+        raise ValueError("short PARI enumeration workspace")
+    if len({id(a) for a in (q, v, x, y, z, inc, state)}) != 7:
+        raise ValueError("PARI enumeration buffers must be distinct")
+    if not math.isfinite(bound) or bound < 0:
+        raise ValueError("invalid PARI enumeration bound")
+    if any(not math.isfinite(a) for a in q + v + y + z):
+        raise ValueError("nonfinite PARI enumeration workspace")
+    if any(a <= 0 for a in v[1:stride]):
+        raise ValueError("PARI enumeration diagonals must be positive")
+    if state[2] and not state[3] and not 1 <= state[0] <= degree:
+        raise ValueError("invalid PARI enumeration cursor")
 
 
 @native
@@ -60,16 +93,10 @@ def pari_fp_next(
     diagonals and representable coordinates; this is a private prepared-state
     interface. Primitive/scalar rejection remains the caller's responsibility.
     """
-    if degree < 2 or len(state) < 4:
-        raise ValueError("invalid PARI enumeration state")
     if state[3] != 0:
         return 0
     stride = degree + 1
-    if len(q) < stride * stride or len(v) < stride or len(x) < stride:
-        raise ValueError("short PARI enumeration input")
-    if len(y) < stride or len(z) < stride or len(inc) < stride:
-        raise ValueError("short PARI enumeration workspace")
-    k = int(degree)
+    k = degree
     if state[2] == 0:
         for j in range(1, stride):
             inc[j] = 1
@@ -78,22 +105,22 @@ def pari_fp_next(
         x[degree] = 0
         state[2] = 1
     else:
-        k = state[0]
-        pari_fp_step(x, y, inc, k)
+        k = checked_uint64(state[0])
+        ignored = pari_fp_step(x, y, inc, k)
     while True:
         fl = 0
         if k > 1:
-            l = k - 1
+            l = checked_uint64(k - 1)
             z[l] = 0.0
             for j in range(k, stride):
-                z[l] += q[l * stride + j] * float(x[j])
-            p = float(x[k]) + z[k]
+                z[l] += q[l * stride + j] * checked_float64(x[j])
+            p = checked_float64(x[k]) + z[k]
             y[l] = y[k] + p * p * v[k]
             if l <= skipfirst and y[1] == 0.0:
                 fl = 1
             nearest = -z[l] + 0.5
             rounded = int(nearest)
-            if float(rounded) > nearest:
+            if checked_float64(rounded) > nearest:
                 rounded -= 1
             x[l] = rounded
             k = l
@@ -104,11 +131,11 @@ def pari_fp_next(
                     state[0] = k
                     state[3] = 1
                     return 0
-                p = float(x[k]) + z[k]
+                p = checked_float64(x[k]) + z[k]
                 if y[k] + p * p * v[k] <= bound:
                     break
-                pari_fp_step(x, y, inc, k)
-                p = float(x[k]) + z[k]
+                ignored = pari_fp_step(x, y, inc, k)
+                p = checked_float64(x[k]) + z[k]
                 if y[k] + p * p * v[k] <= bound:
                     break
             fl = 0
@@ -118,7 +145,7 @@ def pari_fp_next(
                 state[0] = k
                 state[3] = 1
                 return 0
-            pari_fp_step(x, y, inc, k)
+            ignored = pari_fp_step(x, y, inc, k)
         if k == 1:
             state[0] = k
             return 1
