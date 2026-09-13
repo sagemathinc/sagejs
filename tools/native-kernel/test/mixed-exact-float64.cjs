@@ -215,6 +215,28 @@ print("MIXED_EXACT_FLOAT64_OK")
     assert.ok(compiled.addonPath);
     const compiledModule = require(compiled.modulePath);
     const compiledFunction = compiledModule.exact_with_float64_sidecar;
+    for (const execute of [compiledModule.truncate_float, compiledModule.truncate_float.javascript]) {
+      for (const value of [0, -0, 1.75, -1.75, Number.MIN_VALUE, 2 ** 100, -(2 ** 100), Number.MAX_VALUE]) {
+        assert.equal(execute([value]), BigInt(Math.trunc(value)));
+      }
+      assert.throws(() => execute([NaN]), /cannot convert float NaN to integer/);
+      assert.throws(() => execute([Infinity]), /cannot convert float infinity to integer/);
+      assert.throws(() => execute([-Infinity]), /cannot convert float infinity to integer/);
+    }
+    for (const mode of ["native", "javascript"]) {
+      const fn = name => mode === "native" ? compiledModule[name] : compiledModule[name].javascript;
+      for (const name of ["assignment_order", "augmented_order"]) {
+        const value = [3.0];
+        assert.equal(fn(name)(value), 3n);
+        assert.deepEqual(value, [3.0]);
+      }
+      const value = [7.0];
+      assert.equal(fn("indexed_float")(value, 0n), 3n);
+      assert.deepEqual(value, [3.5]);
+      for (const index of [-1n, 1n, 1n << 100n]) {
+        assert.throws(() => fn("indexed_float")([7.0], index));
+      }
+    }
     assert.equal(
       compiledFunction.backendFor(7n, new Float64Array([3.0, 0.0, 0.0])),
       "gmp",

@@ -1376,6 +1376,21 @@ function emitExactOperation(operation, context, indent) {
     return `${indent}${target} = ` +
       `${exactValue(operation.source, context)} != 0;`;
   }
+  if (operation.kind === "integer.from_float64") {
+    const source = exactValue(operation.source, context);
+    return [
+      `${indent}if (!isfinite(${source}))`,
+      `${indent}{`,
+      `${indent}    if (isnan(${source})) {`,
+      statusFailure("range", "cannot convert float NaN to integer", `${indent}        `),
+      `${indent}    } else {`,
+      statusFailure("range", "cannot convert float infinity to integer", `${indent}        `),
+      `${indent}    }`,
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}mpz_set_d(${target}, ${source});`,
+    ].join("\n");
+  }
   if (operation.kind === "float64.from_integer_checked") {
     const source = exactValue(operation.source, context);
     return [

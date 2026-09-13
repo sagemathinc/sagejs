@@ -5,6 +5,36 @@ from __future__ import annotations
 from sagejs.native import Float64Buffer, checked_float64, native
 
 
+@native
+def truncate_float(value: Float64Buffer) -> int:
+    """Use Python truncation, including arbitrary-size integer results."""
+    return int(value[0])
+
+
+@native
+def indexed_float(value: Float64Buffer, index: int) -> int:
+    value[index] /= 2.0
+    return int(value[index])
+
+
+@native
+def mutate_float(value: Float64Buffer) -> int:
+    value[0] = 100.0
+    return 0
+
+
+@native
+def assignment_order(value: Float64Buffer) -> int:
+    value[mutate_float(value)] = value[0]
+    return int(value[0])
+
+
+@native
+def augmented_order(value: Float64Buffer) -> int:
+    value[0] += checked_float64(mutate_float(value))
+    return int(value[0])
+
+
 def approximate_score(left: float, right: float) -> float:
     """Compute one pure approximate scheduling score."""
     centered = left - right

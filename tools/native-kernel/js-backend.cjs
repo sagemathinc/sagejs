@@ -418,6 +418,11 @@ function emitExactStatement(operation, indent, resourceStack = null) {
       `nativeRaise("OverflowError", "integer is outside unsigned 64-bit");\n` +
       `${indent}${operation.target} = ${operation.source};`;
   }
+  if (operation.kind === "integer.from_float64") {
+    return `${indent}if (Number.isNaN(${operation.source})) nativeRaise("ValueError", "cannot convert float NaN to integer");\n` +
+      `${indent}if (!Number.isFinite(${operation.source})) nativeRaise("OverflowError", "cannot convert float infinity to integer");\n` +
+      `${indent}${operation.target} = BigInt(Math.trunc(${operation.source}));`;
+  }
   if (operation.kind === "float64.from_integer_checked") {
     return `${indent}if (${operation.source} < -9007199254740992n || ` +
       `${operation.source} > 9007199254740992n) ` +
@@ -2925,6 +2930,12 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
         message.includes("Float64 buffer index") ||
         message.includes("NativeIntegerVector slice out of range")) {
       nativeRaise("IndexError", message);
+    }
+    if (message.includes("cannot convert float NaN to integer")) {
+      nativeRaise("ValueError", message);
+    }
+    if (message.includes("cannot convert float infinity to integer")) {
+      nativeRaise("OverflowError", message);
     }
     if (message.includes("NativeIntegerVector slice cannot resize storage")) {
       nativeRaise("ValueError", message);

@@ -822,6 +822,10 @@ function emitUint64Constant(context, node, operations, value) {
 }
 
 function emitFloat64Constant(context, node, operations, value) {
+  if (typeof value === "bigint") {
+    expect(context, node, value >= -9007199254740992n && value <= 9007199254740992n,
+      "contextual integer literal is outside exact binary64 range");
+  }
   const target = temporary(context, node, "Float64");
   operations.push({ kind: "float64.constant", target, value: String(value) });
   return { name: target, type: "Float64" };
@@ -829,6 +833,16 @@ function emitFloat64Constant(context, node, operations, value) {
 
 function lowerUint64Operand(node, context, operations) {
   return lowerExpression(node, context, operations, "uint64");
+}
+
+function lowerFloat64BufferIndex(node, context, operations) {
+  const value = lowerUInt64BufferIndex(node, context, operations);
+  if (value.type === "uint64") return value;
+  expect(context, node, value.type === "Integer",
+    "Float64Buffer indexing requires an exact integer index");
+  const target = temporary(context, node, "uint64");
+  operations.push({ kind: "uint64.from_integer_checked", target, source: value.name });
+  return { name: target, type: "uint64" };
 }
 
 /* UInt64Buffer stores uint64 values, but its subscript still has ordinary
@@ -1544,6 +1558,15 @@ function lowerCall(node, context, operations) {
     return { name: target, type: "uint64" };
   }
 
+  if (name === "int") {
+    expect(context, node, args.length === 1, "int() requires one argument");
+    const value = lowerExpression(args[0], context, operations);
+    if (value.type !== "Float64") return coerceInteger(value, context, node, operations);
+    const target = temporary(context, node, "Integer");
+    operations.push({ kind: "integer.from_float64", target, source: value.name });
+    return { name: target, type: "Integer" };
+  }
+
   if (name === "checked_float64") {
     expect(
       context,
@@ -1775,6 +1798,10 @@ function lowerCall(node, context, operations) {
 
 function lowerExpression(node, context, operations, expectedType = undefined) {
   if (expectedType === "Float64") {
+    const integer = integerLiteral(node);
+    if (integer !== undefined) {
+      return emitFloat64Constant(context, node, operations, integer);
+    }
     const numeric = numericLiteral(node);
     if (numeric !== undefined) {
       return emitFloat64Constant(context, node, operations, numeric);
@@ -1953,7 +1980,7 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
       const loweredIndex = buffer.type === "UInt64Buffer"
         ? lowerUInt64BufferIndex(node.property, context, operations)
         : buffer.type === "Float64Buffer"
-        ? lowerUint64Operand(node.property, context, operations)
+        ? lowerFloat64BufferIndex(node.property, context, operations)
         : lowerExpression(node.property, context, operations);
       const index = buffer.type === "UInt64Buffer" ||
           buffer.type === "Float64Buffer"
@@ -2076,6 +2103,8 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
       expectedType,
     );
     if (left.type === "Float64" || right.type === "Float64") {
+      expect(context, node, FLOAT64_BINARY.has(node.operator),
+        `unsupported Float64 operator ${node.operator}`);
       expect(
         context,
         node,
@@ -2507,8 +2536,22 @@ function lowerBufferAssignment(item, right, operator, context) {
   }
   const buffer = lowerExpression(item.expression, context, operations);
   if (buffer.type === "Float64Buffer") {
-    const index = lowerUint64Operand(item.property, context, operations);
-    let value = lowerExpression(right, context, operations, "Float64");
+    // Ordinary assignment evaluates its RHS before the target subscript;
+    // augmented assignment evaluates and reads the target first.
+    let value = operator === "="
+      ? lowerExpression(right, context, operations, "Float64")
+      : undefined;
+    const index = lowerFloat64BufferIndex(item.property, context, operations);
+    // Augmented assignment reads its old value before evaluating the RHS.
+    let current;
+    if (operator !== "=") {
+      current = temporary(context, item, "Float64");
+      operations.push({ kind: "float64.buffer.get", target: current,
+        buffer: buffer.name, index: index.name, indexType: index.type });
+    }
+    if (value === undefined) {
+      value = lowerExpression(right, context, operations, "Float64");
+    }
     expect(
       context,
       right,
@@ -2525,14 +2568,6 @@ function lowerBufferAssignment(item, right, operator, context) {
         arithmetic !== undefined,
         `unsupported indexed Float64 augmented operator ${operator}`,
       );
-      const current = temporary(context, item, "Float64");
-      operations.push({
-        kind: "float64.buffer.get",
-        target: current,
-        buffer: buffer.name,
-        index: index.name,
-        indexType: index.type,
-      });
       const target = temporary(context, item, "Float64");
       operations.push({
         kind: "float64.binary",
@@ -3180,7 +3215,8 @@ function lowerAssignment(statement, context) {
   expect(
     context,
     assign,
-    operation !== undefined || bitwise !== undefined,
+    operation !== undefined || bitwise !== undefined ||
+      (context.variables.get(target) === "Float64" && FLOAT64_BINARY.has(symbol)),
     `unsupported augmented operator ${assign.operator}`,
   );
   const type = context.variables.get(target);
