@@ -57,6 +57,7 @@
     "commit": "0116e28051cd1fc0f9e38cda2b6e30176b2ea77f",
     "result": "integration-failed",
     "failure": "test/cli-smoke.cjs:800: class help omits Methods section; reproduced on Linux",
+    "repair": "Fixed in subsequent documentation-runtime source; 11 local regression tests pass. Fresh Windows qualification is still required.",
     "numberFieldFixtures": "not run: fail-fast cancellation",
     "sea": "not run"
   },

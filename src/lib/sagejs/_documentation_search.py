@@ -162,6 +162,30 @@ def _builtins_indent_doc(doc: _Str, prefix: _Str) -> _Str:
     return str.join("\n", lines)
 
 
+def _builtins_help_method(prototype: Any, name: _Str) -> Any:
+    """Read method metadata without executing properties or binding getters."""
+    current = prototype
+    while current is not None and current is not runtime.undefined:
+        descriptor = runtime.object.getOwnPropertyDescriptor(current, name)
+        if descriptor is not runtime.undefined:
+            member = runtime.reflect.get(descriptor, "value")
+            getter = runtime.reflect.get(descriptor, "get")
+            if (
+                member is runtime.undefined
+                and getter is not runtime.undefined
+                and _core._builtins_get_member(getter, "__sagejs_lazy_method_getter__")
+                is True
+            ):
+                method = _core._builtins_get_member(getter, "__sagejs_unbound_method__")
+                # Preserve concise receiver-free help signatures without
+                # calling the binding getter or constructing an instance.
+                return _core._builtins_bind_python_function(method, prototype)
+            # A property or non-method override masks any inherited method.
+            return member
+        current = runtime.object.getPrototypeOf(current)
+    return runtime.undefined
+
+
 def _builtins_class_help(value: Any, instance: _Bool) -> _Str:
     cls = value
     if instance:
@@ -182,7 +206,7 @@ def _builtins_class_help(value: Any, instance: _Bool) -> _Str:
     prototype = _core._builtins_get_member(cls, "prototype")
     methods = []
     for method_name in _core.ρσ_dir(cls):
-        method = _core._builtins_prototype_member(prototype, method_name)
+        method = _builtins_help_method(prototype, method_name)
         if runtime.string_find(method_name, "_") != 0 and runtime.strict_equal(
             runtime.jstype(method), "function"
         ):
@@ -190,7 +214,7 @@ def _builtins_class_help(value: Any, instance: _Bool) -> _Str:
     if len(methods) > 0:
         lines.extend(["", "Methods:"])
         for method_name in methods:
-            method = _core._builtins_prototype_member(prototype, method_name)
+            method = _builtins_help_method(prototype, method_name)
             lines.append("    " + _builtins_signature(method, method_name))
             method_doc = _builtins_doc(method)
             if method_doc:

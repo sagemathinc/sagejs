@@ -96,6 +96,11 @@ for (const scope of ["private", "global"]) {
       writeFileSync(input, [
         "class Listed:",
         "    marker = 7",
+        "    def documented_method(self, value=5):",
+        "        return value",
+        "    @property",
+        "    def dangerous(self):",
+        "        raise AssertionError('help invoked a property')",
         "assert 'marker' in dir(Listed)",
         "assert 'marker' in dir(Listed())",
         "assert Listed.__dict__['marker'] == 7",
@@ -137,6 +142,8 @@ for (const scope of ["private", "global"]) {
       assert.match(result.stdout, /Welcome to Sage.js help/);
       assert.match(result.stdout, /Help on class Listed/);
       assert.match(result.stdout, /Help on Listed object/);
+      assert.match(result.stdout, /Methods:\s+documented_method\(value=5\)/);
+      assert.doesNotMatch(result.stdout, /dangerous\(/);
       assert.match(result.stdout, /documented\(value=3\)/);
       assert.match(result.stdout, /documented -- standalone documentation sentinel/);
       assert.equal(executionBytes(result, "stderr").length, 0, result.stderr);

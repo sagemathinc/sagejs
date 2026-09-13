@@ -1,6 +1,6 @@
 # No-Singular number fields: implementation audit
 
-Status: **N1/N2/N3 implemented; N5 blocked at the Windows integration gate.**
+Status: **N1/N2/N3 implemented; CLI blocker fixed locally, Windows N5 rerun required.**
 
 ## Current production checkpoint
 
@@ -60,6 +60,17 @@ is `sha256:82957eff19c01111030001d6bdb4ddade1cbeb63f560901d8de5954b950de0f6`.
 The first failed build remains separate evidence, not a complete receipt.
 
 ### Remaining integration blocker
+
+Update: the shared CLI defect is repaired in the following source change.
+Compiler-generated lazy method getters carry `__sagejs_unbound_method__`
+metadata; class help now reads this known metadata without invoking the
+getter and renders the established receiver-free signature. Ordinary
+properties and non-method overrides still mask inherited methods. The repair
+is confined to the lazy documentation module, not general descriptor lookup.
+Eleven local regressions pass, including the original CLI smoke failure,
+Sage/Python class and instance help, inherited/masked methods, getter safety,
+and standalone private/global output without a host loader. The historical
+Windows failure below remains failed evidence until a fresh qualification run.
 
 [Windows CI run 34728729942](https://github.com/sagemathinc/sagejs/actions/runs/34728729942)
 ran at `0116e28051cd1fc0f9e38cda2b6e30176b2ea77f`, a documentation-only
