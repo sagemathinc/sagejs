@@ -54,4 +54,26 @@ try:
 except KeyError:
     assert current() is inner
 assert current() is None
+
+
+def reraiser():
+    raise
+
+
+try:
+    reraiser()
+except RuntimeError as error:
+    assert str(error) == "No active exception to reraise"
+else:
+    assert False
+assert current() is None
+try:
+    raise outer
+except ValueError:
+    try:
+        reraiser()
+    except ValueError as error:
+        assert error is outer
+    assert current() is outer
+assert current() is None
 print("exception-state-ok")

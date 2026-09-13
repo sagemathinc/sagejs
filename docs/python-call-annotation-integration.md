@@ -192,7 +192,15 @@ It covers nested handlers, helper calls, returns, break/continue and propagation
 through a nonmatching handler. Strict checks pass. This is a correctness
 prerequisite for traceback redesign, not a claimed performance improvement.
 
-Generator suspension/resumption and dynamically scoped bare reraising remain
-separate required work; the synchronous restoration test does not qualify them.
-Current bare-raise lowering uses lexical catch depth and must be replaced with
-dynamic active-exception lookup before full semantics can be claimed.
+Generator suspension/resumption remains separate required work; the synchronous
+restoration test does not qualify it.
+
+Bare `raise` now calls a runtime helper to read the shared active exception,
+rather than selecting a lexical catch variable or unconditionally failing
+outside a syntactic handler. The fixture covers a helper called within a
+handler and the required RuntimeError when it is called outside one. The full
+build passed in 7m 05s and all nine selected state/stack/lookup tests passed.
+A subsequent narrow Pyright annotation documents the existing host-backed
+exception inheritance boundary; this typing-only change is not covered by the
+earlier source-identity build receipt. No new speedup, generator isolation,
+chaining or logical traceback completion is claimed.

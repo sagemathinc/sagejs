@@ -484,18 +484,14 @@ export class PythonCstLowerer {
         let raised: any;
         if (value) {
           raised = this.lowerExpression(value);
-        } else if (this.catchDepth > 0) {
-          raised = this.make("AST_SymbolCatch", node, { name: "ρσ_Exception" });
         } else {
-          const args: any[] = [this.make("AST_String", node, {
-            value: "No active exception to reraise",
-          })];
+          const args: any[] = [];
           (args as any).kwargs = [];
           (args as any).kwarg_items = [];
           (args as any).starargs = false;
-          raised = this.make("AST_New", node, {
+          raised = this.make("AST_Call", node, {
             expression: this.make("AST_SymbolRef", node, {
-              name: "RuntimeError",
+              name: "ρσ_reraise_exception",
             }),
             args,
             python_class: false,
