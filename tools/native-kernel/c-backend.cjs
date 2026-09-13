@@ -2577,6 +2577,8 @@ function fieldCoreSignature(fn, prototype = false) {
       ? `uint64_t ${cName(param.name)}`
       : param.type === "RealNumber" ? `mpfr_srcptr ${cName(param.name)}`
       : param.type === "ComplexNumber" ? `mpc_srcptr ${cName(param.name)}`
+      : param.type === "RealNumberBuffer" ? `mpfr_srcptr const *${cName(param.name)}, uint64_t ${cName(param.name)}_length`
+      : param.type === "ComplexNumberBuffer" ? `mpc_srcptr const *${cName(param.name)}, uint64_t ${cName(param.name)}_length`
       : `mpfr_prec_t ${cName(param.name)}_precision`
   );
   return `int sagejs_kernel_${fn.name}(` + [
@@ -2625,6 +2627,17 @@ function emitFieldCoreFunction(fn) {
   }
 
   const statements = [];
+  function fieldOperation(operation, indent) {
+    if (operation.kind === `${prefix}.buffer.get`) {
+      const index = operation.constantIndex ? `UINT64_C(${operation.index})` : cName(operation.index);
+      return `${indent}if (${index} >= ${cName(operation.buffer)}_length) {
+${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, "field buffer index out of range");
+${indent}    goto fail;
+${indent}}
+${indent}${real ? "mpfr_set" : "mpc_set"}(${nativeValue(locals.get(operation.target))}, ${cName(operation.buffer)}[${index}], ${real ? "MPFR_RNDN" : "MPC_RNDNN"});`;
+    }
+    return emitOperation(operation, locals, indent);
+  }
   for (const operation of fn.body) {
     if (operation.kind === "loop.range") {
       statements.push(
@@ -2636,10 +2649,10 @@ function emitFieldCoreFunction(fn) {
         "    {",
       );
       for (const item of operation.body)
-        statements.push(emitOperation(item, locals, "        "));
+        statements.push(fieldOperation(item, "        "));
       statements.push("    }");
     } else if (operation.kind !== "return") {
-      statements.push(emitOperation(operation, locals, "    "));
+      statements.push(fieldOperation(operation, "    "));
     }
   }
 
@@ -2652,6 +2665,12 @@ ${declarations.join("\n")}
 ${fn.params.filter((param) => param.type === fn.returnType).map((param) => `    if (${real ? "mpfr_get_prec" : "mpc_get_prec"}(${cName(param.name)}) != precision) {
         sagejs_native_status_set(status, SAGEJS_NATIVE_TYPE_ERROR, "prepared input precision must match field");
         return 0;
+    }`).join("\n")}
+${fn.params.filter((param) => param.type === fn.returnType + "Buffer").map((param) => `    for (uint64_t i = 0; i < ${cName(param.name)}_length; i++) {
+        if (${real ? "mpfr_get_prec" : "mpc_get_prec"}(${cName(param.name)}[i]) != precision) {
+            sagejs_native_status_set(status, SAGEJS_NATIVE_TYPE_ERROR, "prepared input precision must match field");
+            return 0;
+        }
     }`).join("\n")}
 ${initialization.join("\n")}
 ${statements.join("\n")}
@@ -2677,9 +2696,12 @@ function emitFieldNodeAdapter(fn) {
     param.type === "uint64"
       ? cName(param.name)
       : param.type === fn.returnType ? `${cName(param.name)}->value`
+      : param.type === fn.returnType + "Buffer" ? `${cName(param.name)}, ${cName(param.name)}_length`
       : `${cName(param.name)}_precision`
   );
   const inputs = fn.params.filter((param) => param.type === fn.returnType);
+  const buffers = fn.params.filter((param) => param.type === fn.returnType + "Buffer");
+  const freeBuffers = buffers.map((param) => `    free(${cName(param.name)});`).join("\n");
   return `static napi_value compiled_${fn.name}(
     napi_env env, napi_callback_info info)
 {
@@ -2689,6 +2711,8 @@ function emitFieldNodeAdapter(fn) {
     mpfr_prec_t ${cName(parent.name)}_precision;
     ${iterations ? `uint64_t ${cName(iterations.name)};` : ""}
 ${inputs.map((param) => `    ${nativeType} *${cName(param.name)};`).join("\n")}
+${buffers.map((param) => `    ${prefix === "real" ? "mpfr_srcptr" : "mpc_srcptr"} *${cName(param.name)} = NULL;
+    uint32_t ${cName(param.name)}_length = 0;`).join("\n")}
     ${nativeType} *result = NULL;
     napi_value wrapped;
     if (!sagejs_native_check_napi(env,
@@ -2715,15 +2739,42 @@ ${inputs.map((param) => `    ${cName(param.name)} = sagejs_native_unwrap_${prefi
         env, ${cName(parent.name)}_precision);
     if (result == NULL)
         return NULL;
+${buffers.map((param) => `    {
+        bool is_array = false;
+        if (!sagejs_native_check_napi(env, napi_is_array(env, args[${fn.params.indexOf(param)}], &is_array))) goto fail;
+        if (!is_array) { napi_throw_type_error(env, NULL, "field buffer must be an array"); goto fail; }
+        if (!sagejs_native_check_napi(env, napi_get_array_length(env, args[${fn.params.indexOf(param)}], &${cName(param.name)}_length))) goto fail;
+        if (${cName(param.name)}_length > SIZE_MAX / sizeof(*${cName(param.name)})) {
+            napi_throw_range_error(env, NULL, "field buffer size overflow"); goto fail;
+        }
+        if (${cName(param.name)}_length) {
+            ${cName(param.name)} = malloc(${cName(param.name)}_length * sizeof(*${cName(param.name)}));
+            if (!${cName(param.name)}) { napi_throw_error(env, NULL, "field buffer allocation failed"); goto fail; }
+        }
+        for (uint32_t i = 0; i < ${cName(param.name)}_length; i++) {
+            napi_value entry;
+            if (!sagejs_native_check_napi(env, napi_get_element(env, args[${fn.params.indexOf(param)}], i, &entry))) goto fail;
+            ${nativeType} *value = sagejs_native_unwrap_${prefix}(env, entry);
+            if (!value) goto fail;
+            if (${prefix === "real" ? "mpfr_get_prec" : "mpc_get_prec"}(value->value) != ${cName(parent.name)}_precision) {
+                napi_throw_type_error(env, NULL, "prepared input precision must match field"); goto fail;
+            }
+            ${cName(param.name)}[i] = value->value;
+        }
+    }`).join("\n")}
     if (!sagejs_kernel_${fn.name}(&status, result->value,
             ${coreArguments.join(", ")}))
     {
         sagejs_native_throw_status(env, &status);
-        sagejs_native_finalize_${prefix}(env, result, NULL);
-        return NULL;
+        goto fail;
     }
+${freeBuffers}
     wrapped = sagejs_native_wrap_${prefix}(env, result);
     return wrapped;
+fail:
+${freeBuffers}
+    sagejs_native_finalize_${prefix}(env, result, NULL);
+    return NULL;
 }`;
 }
 

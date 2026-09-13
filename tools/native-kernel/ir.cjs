@@ -37,6 +37,8 @@ const PARENT_ELEMENT_TYPES = new Map([
 const SUPPORTED_ARGUMENT_TYPES = new Set([
   ...PARENT_ELEMENT_TYPES.keys(),
   ...PARENT_ELEMENT_TYPES.values(),
+  "RealNumberBuffer",
+  "ComplexNumberBuffer",
   "Integer",
   "uint64",
 ]);
@@ -275,6 +277,18 @@ function lowerOperand(node, context, operations) {
 
 function lowerExpression(node, target, context, operations) {
   ensureLocal(context, target);
+  if (nodeType(node) === "AST_ItemAccess" &&
+      nodeType(node.expression) === "AST_SymbolRef" &&
+      context.bufferNames?.has(node.expression.name)) {
+    const literal = integerLiteral(node.property);
+    const index = literal !== undefined ? literal.toString() : node.property.name;
+    expect((literal !== undefined && literal >= 0n && literal <= 18446744073709551615n) ||
+      (nodeType(node.property) === "AST_SymbolRef" && context.scalarTypes.get(index) === "uint64"),
+    "field buffer indexing requires a nonnegative constant or uint64 index");
+    operations.push({kind: elementKind(context, "buffer.get"), target,
+      buffer: node.expression.name, index, constantIndex: literal !== undefined});
+    return;
+  }
 
   if (context.elementType === "Integer") {
     const value = integerLiteral(node);
@@ -531,12 +545,15 @@ function lowerLegacyFunction(fn, decorated = false) {
       `${fn.name.name} with ${parent.type} must return ${elementType}`,
     );
     expect(params.every((param) => param === parent ||
-      param.type === "uint64" || param.type === elementType),
+      param.type === "uint64" || param.type === elementType ||
+      param.type === elementType + "Buffer"),
     "prepared field inputs must match the result field type");
   }
   const iterationName = iterationParams[0]?.name;
   const context = {
     elementType,
+    bufferNames: new Set(params.filter((param) => param.type === elementType + "Buffer")
+      .map((param) => param.name)),
     localTypes: new Map(params.filter((param) => param.type === elementType)
       .map((param) => [param.name, param.type])),
     nextTemporary: 0,

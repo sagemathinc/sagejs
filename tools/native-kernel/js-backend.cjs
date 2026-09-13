@@ -34,6 +34,10 @@ function exactUsesFloat64(fn) {
 }
 
 function emitStatement(operation, indent) {
+  if (operation.kind === "real.buffer.get" || operation.kind === "complex.buffer.get") {
+    return `${indent}if (${operation.index} >= ${operation.buffer}.length) throw new RangeError("field buffer index out of range");\n` +
+      `${indent}${operation.target} = ${operation.buffer}[${operation.index}];`;
+  }
   if (operation.kind === "integer.constant") {
     return `${indent}${operation.target} = BigInt(` +
       `${jsString(operation.value)});`;
@@ -136,6 +140,7 @@ function emitPublicFunction(fn) {
       param.type === "RealField" || param.type === "ComplexField"
         ? `${param.name}.precision()`
         : param.type === fn.returnType ? `${param.name}._native`
+        : param.type === fn.returnType + "Buffer" ? `${param.name}.map(value => value._native)`
         : param.name,
     )
     .join(", ");
@@ -150,6 +155,13 @@ ${iterations ? uint64Validation(iterations.name) : ""}
 ${fn.params.filter((param) => param.type === fn.returnType).map((param) => `
   if (${param.name} == null || ${param.name}._parent !== ${parent.name}) {
     throw new TypeError("prepared input must belong to the supplied field");
+  }
+  if (${parent.name}._rounding_code !== undefined && ${parent.name}._rounding_code !== 0) {
+    throw new TypeError("prepared field kernels currently require nearest rounding");
+  }`).join("\n")}
+${fn.params.filter((param) => param.type === fn.returnType + "Buffer").map((param) => `
+  if (!Array.isArray(${param.name}) || !${param.name}.every(value => value != null && value._parent === ${parent.name})) {
+    throw new TypeError("field buffer entries must belong to the supplied field");
   }
   if (${parent.name}._rounding_code !== undefined && ${parent.name}._rounding_code !== 0) {
     throw new TypeError("prepared field kernels currently require nearest rounding");

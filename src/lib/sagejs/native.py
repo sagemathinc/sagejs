@@ -61,6 +61,11 @@ UInt64Buffer = list[int]
 IntegerBuffer = list[int]
 Int64Buffer = list[int]
 Float64Buffer = list[float]
+# Borrowed, read-only field-element arrays for legacy field kernels. Values
+# remain ordinary lists in dynamic execution; the native boundary checks every
+# element's field and precision before constructing a temporary pointer view.
+RealNumberBuffer = list[Any]
+ComplexNumberBuffer = list[Any]
 # Legacy annotation-only witness for an opaque dense matrix over ``GF(p)``.
 # Production kernels instead use UInt64Buffer plus PrimeFieldModulus so their
 # public ABI is independent of a host matrix object.
