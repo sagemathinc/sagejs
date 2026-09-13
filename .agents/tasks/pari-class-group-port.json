@@ -7,14 +7,14 @@
   "status": "active",
   "owner": "user",
   "objective": "Measure faithful PARI 2.17.4 class-group translation feasibility",
-  "base_commit": "938ccd425f0a322bafb1375968d5e24b38d5cde5",
+  "base_commit": "7fac97ebf368b596b7da8af00cb71aa237c8364a",
   "claims": [
     "src/lib/sagejs/number_fields/pari_class_group/",
     "test/pari-class-group-port.cjs",
     "bench/pari-class-group-port/",
     "docs/pari-class-group-port.md"
   ],
-  "dependencies": [],
+  "dependencies": ["mixed-exact-float-sidecar"],
   "references": [],
   "architecture": {
     "strategy": "source-transparent-native",

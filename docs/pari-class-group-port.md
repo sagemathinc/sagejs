@@ -1,7 +1,33 @@
 # Faithful PARI class-group language experiment
 
-Status: initial audit/prototype checkpoint; native port blocked on an existing
-compiler lane's ownership. No class-group or performance result is claimed.
+Status: ownership approved; mixed-buffer prerequisite integrated experimentally.
+No class-group or performance result is claimed. Earlier obstruction evidence
+below is retained as history, not the current ownership state.
+
+## Ownership takeover checkpoint
+
+The user approved takeover of `mixed-exact-float-sidecar`. Its original changes
+were preserved, integrated with this experiment's base, and reviewed for index
+conversion, float operators, and Python assignment evaluation order. Prerequisite
+draft PR #283 is integrated here at `7fac97ebf`; this experiment remains draft.
+
+The actual enumeration scaffold now runs in CPython, generated JS and native
+code with matching candidate order on 24 synthetic cases (184 vectors). Run
+`SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix node test/pari-class-group-port.cjs`.
+This uses an explicitly identified existing diagnostic prefix, not a new
+matched performance baseline. The prototype admits exact-double integer
+coordinates only through ±2^53 and declines larger ones; this narrower
+representation envelope is not PARI's full machine-integer range.
+
+Compiler qualification still has visible gaps: standalone Wasm SDK absent,
+full build blocked by optional FFLAS installation, and generated optimizer
+manifest awaiting integration review. Strict Python and focused compiler tests
+pass. None of these checks establishes a complete class-group port.
+
+Next: collect an upstream small-relation trace, compare candidate/admission
+state, and extend the connected segment through norm/factorization and relation
+admission. Prepared-field and full-path timings remain unmeasured. The original
+scope and acceptance criteria are unchanged.
 
 This executes `agents/pari-class-group-language-experiment.md` with the user's
 explicit override to **PARI 2.17.4**. The old release identifiers in that plan
