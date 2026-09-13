@@ -1346,6 +1346,18 @@ function lowerForeignInvocation(
 function lowerCall(node, context, operations) {
   if (nodeType(node.expression) === "AST_Dot") {
     const owner = node.expression.expression;
+    if (node.expression.property === "bit_length") {
+      expect(context, node, array(node.args).length === 0 &&
+        array(node.args?.kwarg_items).length === 0 && !node.args?.starargs,
+      "int.bit_length() takes no arguments");
+      const value = lowerExpression(owner, context, operations);
+      expect(context, owner, value.type === "Integer" || value.type === "uint64",
+        "bit_length() requires an integer");
+      const source = coerceInteger(value, context, owner, operations);
+      const target = temporary(context, node, "Integer");
+      operations.push({kind:"integer.bit_length",target,source:source.name});
+      return {name:target,type:"Integer"};
+    }
     const ownerType = nodeType(owner) === "AST_SymbolRef"
       ? context.variables.get(owner.name)
       : undefined;
@@ -2191,6 +2203,16 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
   if (bitwise !== undefined) {
     const left = lowerUint64Operand(node.left, context, operations);
     const right = lowerUint64Operand(node.right, context, operations);
+    if ((node.operator === "<<" || node.operator === ">>") &&
+        (left.type === "Integer" ||
+          (integerLiteral(node.left) !== undefined && right.type === "Integer"))) {
+      const a = coerceInteger(left, context, node.left, operations);
+      const b = coerceInteger(right, context, node.right, operations);
+      const target = temporary(context, node, "Integer");
+      operations.push({kind:"integer.shift", operation:node.operator === "<<" ? "left" : "right",
+        target, left:a.name, right:b.name});
+      return {name:target,type:"Integer"};
+    }
     expect(
       context,
       node,

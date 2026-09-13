@@ -104,6 +104,7 @@ function mayPromote(operation) {
     "integer.from_uint64",
     "integer.neg",
     "integer.abs",
+    "integer.shift",
     "integer.pow_uint",
     "integer.divmod",
     "integer.binary",
@@ -417,6 +418,16 @@ function emitWordOperation(operation, context, indent) {
       `${indent}${target} = ${expression};`,
     ].join("\n");
   }
+  if (operation.kind === "integer.bit_length") {
+    const source = value(operation.source);
+    return `${indent}{
+${indent}    uint64_t magnitude = ${source} < 0 ? UINT64_C(0) - (uint64_t)${source} : (uint64_t)${source};
+${indent}    int64_t bits = 0;
+${indent}    while (magnitude) { bits++; magnitude >>= 1; }
+${indent}    ${target} = bits;
+${indent}}`;
+  }
+  if (operation.kind === "integer.shift") return promote();
   if (operation.kind === "integer.pow_uint") {
     return [
       `${indent}if (!sagejs_word_pow_int64(${value(operation.base)}, ` +
