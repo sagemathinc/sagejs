@@ -27,7 +27,7 @@ static void load(mpfr_t out, GEN x) {
 }
 static GEN unload(mpfr_t x,long prec) {
   mpz_t z;mpz_init(z);long e=mpfr_get_z_2exp(z,x);
-  char *s=mpz_get_str(NULL,10,z);GEN n=strtoi(s);free(s);mpz_clear(z);
+  char *s=mpz_get_str(NULL,10,z);GEN n=s[0]=='-'?negi(strtoi(s+1)):strtoi(s);free(s);mpz_clear(z);
   return gmul2n(itor(n,prec),e);
 }
 int main(void) {

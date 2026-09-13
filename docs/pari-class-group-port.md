@@ -45,6 +45,39 @@ Per-entry precision and arithmetic result-precision rules are the next required
 representation/lowering work. Uniformizing all entries to the requested field
 precision or the maximum observed precision is not assumed equivalent to PARI.
 
+### Per-operation arithmetic control
+
+`check_multiply_precision.py` exports operands without rounding and compares
+PARI `mulrr` with direct MPFR multiplication at the shorter operand precision.
+For the first two real embeddings of eight candidates on each of the four
+declared tuning fields, all **32 products** match exactly, including their
+subsequent rounded integer and error exponent. Input precision patterns are
+`(256,320)` and `(320,256)`, both producing 256-bit PARI results.
+
+Two constructed signed halfway products at 64 bits disagree with MPFR's default
+nearest-even mode. MPFR's `mpfr_round_nearest_away` control matches both, as well
+as all 32 prepared pairs. This supports a concrete arithmetic mapping, not a
+claim that every PARI real operation is now covered. Pinned `mulrr` chooses the
+shorter precision; its guard-bit rounding increments magnitude at a tie.
+`addrr_sign` additionally has exponent-alignment, word-extension, cancellation
+and zero-exponent branches. A generic minimum-precision policy for all operators
+is therefore not justified by the multiplication result.
+
+Run the untimed control with:
+
+```sh
+python3 bench/pari-class-group-port/check_multiply_precision.py \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 \
+  /home/user/sagejs/packages/flint/.native/prefix
+```
+
+The initial diagnostic incorrectly used PARI's unsigned decimal `strtoi` on
+negative strings exported by GMP. Explicit sign handling fixed the bridge;
+the same bridge fix was applied to the norm diagnostic. Those initial mismatches
+were not arithmetic evidence. The control now includes both signed tie cases.
+No class-group result, norm-chain equivalence or performance follows from these
+34 primitive comparisons alone.
+
 ### Rounding contract identified before implementation
 
 Pinned `gen3.c:round_i` (line 2429) computes `floor(x + 1/2)`, not
