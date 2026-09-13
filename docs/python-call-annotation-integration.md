@@ -333,3 +333,31 @@ TypeScript checking also passes. Browser worker transport, production capture
 policy, mixed-code coverage and suspended-frame ownership remain unqualified;
 the feature is still off by default. All four persistent qualification hosts
 were reachable, but no new remote qualification or timing is claimed here.
+
+Required follow-up gates on this combined candidate:
+
+- `node scripts/check-package-graph.cjs` fails: core-runtime is 904,070 source
+  bytes against 903,000. The allowance remains unchanged.
+- Suspended generator ownership is still incorrect. This reducer prints `ok`
+  on CPython and fails its final assertion on the current Python kernel:
+
+  ```python
+  import sys
+  def gen():
+      try:
+          raise ValueError('owned')
+      except ValueError:
+          yield 1
+  g = gen()
+  assert next(g) == 1
+  assert sys.exception() is None
+  print('ok')
+  ```
+
+  PR244 (`9c46612c1`) contains an ownership-aware stack and generator adapter
+  to audit/reconcile, not blindly merge: its reviewed evidence is historical,
+  and it interacts with the current synchronous restoration and traceback work.
+  Native stack capture by itself is not a fallback for this state-isolation bug.
+
+These are required failures, not accepted incompatibilities. The 33 focused
+diagnostic passes do not supersede them. PR272 must remain draft.
