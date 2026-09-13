@@ -4,9 +4,46 @@ Status: ownership approved; mixed-buffer prerequisite integrated experimentally.
 The user subsequently approved additional reasonably justified compiler changes
 on this experimental branch. The original one-correction count is superseded;
 the experiment's time/compute budgets and faithful-work criteria are unchanged.
-Prepared scalar ingress is integrated at `824909b63`; later historical
+Prepared scalar/array ingress and independent loop counts are integrated at
+`a306e2974`; later historical
 references to awaiting permission or rejecting scalar inputs are resolved.
 Embedding containers and PARI's norm-rounding semantics remain unimplemented.
+
+### First actual embedding-norm ingress finding
+
+The uniform-precision borrowed-array API is implemented and tested, but it is
+not sufficient for PARI's actual prepared embeddings. `embedding_norm.py`
+expresses the real-only and mixed nonempty product blocks, with separate loop
+counts and no inserted multiply-by-one. The untimed `check_embedding_norm.cjs`
+uses PARI's prepared matrix-vector product as input scaffolding and compares
+against `embed_norm`. It currently **fails before norm arithmetic**, intentionally
+refusing precision coercion:
+
+```text
+field=0 candidate=1 first_bits=256
+nonuniform prepared precision: input=320 target=256
+```
+
+Field zero is the frozen tuning polynomial `x^3-20018*x+20034`; candidate one
+has integral-basis coordinates `[1,-3,3]`. `nfinit` was requested at 192 bits.
+The first attempted fixed-192-bit ingress had already rejected a 256-bit entry.
+The follow-up preserved the first entry's precision and exposed the 320-bit
+entry. No input was rounded to make the comparison pass. The fourth field was
+changed from an initially drafted synthetic control to the second frozen
+quartic; execution never reached that field in either attempt.
+
+Reproduce with the integrated compiler:
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_embedding_norm.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
+This is a failing capability diagnostic, not a norm or performance result.
+Per-entry precision and arithmetic result-precision rules are the next required
+representation/lowering work. Uniformizing all entries to the requested field
+precision or the maximum observed precision is not assumed equivalent to PARI.
 
 ### Rounding contract identified before implementation
 
