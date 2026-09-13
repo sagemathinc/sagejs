@@ -84,6 +84,14 @@ committed or assumed correct. Taking over that prerequisite requires an explicit
 ownership decision. Creating another overlapping compiler implementation would
 violate the parallel-development contract.
 
+A read-only follow-up ran the new probe through that unfinished worktree's
+existing `lowerSource`: the minimal mixed-buffer probe lowers successfully,
+but the enumeration prototype stops at its `ValueError` guard (`native raise
+currently supports ZeroDivisionError`). This confirms that the proposed work
+addresses the first obstruction, but its older compiler is not a drop-in
+replacement for the current base. No code was copied or guards removed, and
+successful IR lowering alone does not validate generated native execution.
+
 Encoding integer state as doubles is not adopted as a workaround: it changes
 the admitted integer range and still leaves conversion/helper-call dependencies.
 Calling the interpreter inside the native search is prohibited. Replacing the
