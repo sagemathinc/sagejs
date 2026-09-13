@@ -24,6 +24,24 @@ mantissa bits is not interchangeable with PARI's stored precision.
 exponent greater than `-32`. The planned interchange must therefore preserve
 precision and the zero exponent as well as numerical value. These source
 observations define tests to implement, not a completed rounding primitive.
+
+`bench/pari-class-group-port/rounding.py` now directly translates this prepared
+real rounding branch in ordinary Python. `check_rounding.py` compares its
+integer and error exponent to the pinned library's `grndtoi`, exporting actual
+mantissas with `mantissa_real`. All 75 cases agree (25 values at three requested
+decimal precisions): signed ties, exact integers, small exponents, and values
+around the `-32` rejection boundary. Run:
+
+```sh
+python3 bench/pari-class-group-port/check_rounding.py \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
+This is an untimed Python differential, not native rounding qualification or
+an embedding-norm implementation. The driver uses the existing instrumented
+library only as an oracle, never as a timed comparator. Its initial setup
+failed because `setrealprecision` requires a non-null output pointer; the
+driver was corrected without changing the translated rounding algorithm.
 No class-group or performance result is claimed. Earlier obstruction evidence
 below is retained as history, not the current ownership state.
 
