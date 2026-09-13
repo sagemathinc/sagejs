@@ -18,7 +18,7 @@ below are historical checkpoints, not current capability restrictions.
 | Strict Python / architecture | 405 modules, zero errors; complete architecture check passes |
 | Documentation | Four executable Sage examples in the two number-field guides pass |
 | Linux ARM64 | Focused tests, 222/222 portable files, fresh 41-family production native pack, and all five direct number-field fixtures pass |
-| macOS ARM64 | Qualification running; numerical artifact setup failure described below, not yet accepted |
+| macOS ARM64 | Full authenticated build, 41-family production pack, focused/direct fixtures, 75 independent oracles, and 222/222 portable files pass |
 | Windows x64 | Persistent host has approximately 1.1 GB free; alternate native CI run 34728729942 started without signing/publication; no success claimed |
 | Mobile simulators | Existing iPhone/iPad checks pass in workflow 34727914092; this is not the full Chromium number-field corpus |
 | npm / relocated SEA | Fresh Linux install, public APIs, lazy resources, and relocated SEA pass; additional installed-kernel/SEA number-field ideal, factorization, geometry, and radical smoke passes |
@@ -52,8 +52,12 @@ reactor step with `manifest/build artifact gzip_bytes mismatch`. The recovery
 uses the authenticated numerical product from successful simulator run
 34727914092 at the same commit, through the existing `SAGEJS_NUMERICAL_PRODUCT_ROOT`
 installation/validation path. It does not change the manifest or bypass its
-checks. The repeated full build and tests remain pending; the failed first
-build is not a complete macOS receipt.
+checks. The repeated full build passes in 12m42s; all focused and direct
+fixtures pass, followed by 222/222 portable files in 7m48s. The successful log
+is `n5-macos-arm64-890e83ba4.log`, at the frozen commit with Node 26.5.0.
+Its 41-family native pack is 22.47 MiB and its authenticated numerical product
+is `sha256:82957eff19c01111030001d6bdb4ddade1cbeb63f560901d8de5954b950de0f6`.
+The first failed build remains separate evidence, not a complete receipt.
 
 Logs are retained under `/home/user/sagejs-extension-qualification-20260912/`
 with the `n5-` prefix; the [checkpoint manifest](number-fields-qualification-890e83ba4.json)

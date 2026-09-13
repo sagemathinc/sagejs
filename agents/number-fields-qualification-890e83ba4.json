@@ -6,6 +6,11 @@
   "logDirectory": "/home/user/sagejs-extension-qualification-20260912",
   "logs": [
     {
+      "file": "n5-macos-arm64-890e83ba4.log",
+      "sha256": "a4a028287e663d11f93d113c18c537a37e4452b41a8531037db68ae29b5cfb0d",
+      "result": "passed"
+    },
+    {
       "file": "n5-arm64-890e83ba4-patched-source.log",
       "sha256": "1f3e6e72cdb6f2840cdf6fd463e04c3bf5ee32271c4efa404b7e5c099ce93c7d",
       "result": "passed"
@@ -46,7 +51,7 @@
     "result": "passed",
     "scope": "existing iPhone/iPad simulator checks, not the full number-field oracle corpus"
   },
-  "open": ["macos-arm64", "windows-x64"],
+  "open": ["windows-x64"],
   "notes": [
     "Logs are retained locally; hashes identify evidence but are not public artifact hosting.",
     "Distribution root archive includes documentation-only descendants; mathematical payload is unchanged.",
