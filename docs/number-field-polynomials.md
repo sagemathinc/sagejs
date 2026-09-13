@@ -4,7 +4,7 @@ N1 provides univariate and multivariate polynomials over an explicitly
 presented simple absolute `NumberField`. No Singular dependency is used.
 Finite-extension fields retain their existing implementation.
 
-```sage
+```sage test
 T = PolynomialRing(QQ, 't')
 t = T.gen()
 K = NumberField(t**3 - 2, 'a')

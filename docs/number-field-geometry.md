@@ -4,7 +4,7 @@ Simple absolute number fields use exact power-basis coefficients throughout.
 They do not require Singular or a host Sage installation. Relative fields and
 implicit embeddings between different presentations are not supported.
 
-```python
+```sage test
 T = PolynomialRing(QQ, "t")
 t = T.gen()
 K = NumberField(t**2 - 2, "a")
@@ -26,7 +26,7 @@ Elimination, intersection, colon, saturation, FGLM, quotient multiplication
 matrices, dimension, homogeneous Hilbert data, and the documented scheme and
 plane-curve operations reuse the generic ideal algorithms.
 
-```python
+```sage test
 A = AffineSpace(K, 2, names=("u", "v"))
 u, v = A.gens()
 C = A.subscheme([v - a*u**2])
@@ -37,7 +37,7 @@ assert C.projective_closure("z").degree() == 2
 
 ## Factorization and solutions
 
-```python
+```sage test
 U = PolynomialRing(K, "z")
 z = U.gen()
 f = (z - a)**3 * (z**2 - 3)
