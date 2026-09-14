@@ -204,13 +204,12 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
 def display_traceback_body(node, output, body):
     if output.options.python_traceback_records:
         previous = output.traceback_function
+        name = "<lambda>" if node.is_lambda else "<anonymous>"
+        if not node.is_lambda and node.name:
+            name = node.name.name
         output.traceback_function = {
             "filename": node.start.file,
-            "name": "<lambda>"
-            if node.is_lambda
-            else node.name.name
-            if node.name
-            else "<anonymous>",
+            "name": name,
             "source": node.start.raw,
             "first_lineno": node.start.line,
         }
