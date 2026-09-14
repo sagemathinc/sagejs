@@ -564,6 +564,40 @@ validation cycle. Further compiled implementation needs additional CPU-budget
 approval, not a silent change to the experiment's acceptance criteria. The
 active-agent-hour allowance has not been exhausted.
 
+### Source audit for the next block (CPU extension not yet approved)
+
+Read-only inspection after `e8203c35a` identifies the following actual boundary;
+it does not start another build or authorize additional computation.
+
+- Zero exponent: `base4.c:idealpow_aux` returns `matid(N)` before inspecting
+  the ideal type. The connected translation should construct identity HNF,
+  norm one and retained exponent zero, without calling the positive-power
+  helper. Test this upstream branch, its subsequent ideal multiplication,
+  trivial-relation skip rule, and terminal reentry; do not substitute exponent
+  one or increase the positive-power cap.
+- Initial permutation: `buch2.c:subFBgen` rebuilds `LP` from rational-prime
+  groups, sorts norm indices, applies `bad_subFB`, and places selected subfactor
+  primes first. `LP` itself is not the sorted permutation. Preserve that
+  distinction when taking its last prime for exponent selection. Sorting alone
+  does not construct the full schedule.
+- Orbit trimming: `buch2.c:trim_list` retains the first representative for
+  each `minidx` orbit. Its input comes from the current permutation/list, not
+  a fixed two-prime packet. Automorphism-free identity orbits are one explicit
+  branch, not general automorphism support.
+- Outer small-relation scheduling: the `Buchall_param` block near lines
+  3900–3960 uses `need`, `done_small`, `small_fail`, `A`, `R`, `W`, and resident
+  `small_multiplier`. It suppresses repeated `P_i P_j` / `P_j P_i` searches.
+  Its later `LIE` branch selects class-group generators from the changed
+  permutation and temporarily adjusts relation-cache missing pivots, restoring
+  them afterward. This is coupled to the unported linear-algebra state.
+
+After zero-exponent coverage, the next substantial segment should construct
+and advance this initial scheduling state, with every still-supplied
+factor-base/automorphism/linear-algebra dependency named. Upstream snapshots
+may test transitions, but cannot count as an independent prepared-field engine.
+Do not spend the next block merely translating a norm sorter and claim that
+visit discovery is complete. Preserve the full class/unit termination objective.
+
 ## Bounded checkpoint assessment: the full objective is not achieved
 
 Audit of implementation commit `6bb89f177` against the original experiment:
