@@ -84,6 +84,56 @@ def pari_real_truncate(
 
 
 @native
+def pari_real_reciprocal(
+    mantissa: int, precision: int, exponent: int
+) -> tuple[int, int, int]:
+    """Represent invr_basecase's quotient and upstream leading-word rounding.
+
+    Exact integer division replaces the low-level quotient-word loop. This is
+    an explicit arithmetic-leaf substitution, not a language-only cost claim.
+    Keep the distinct one-word division path and non-ties-to-even rounding.
+    """
+    if mantissa == 0:
+        raise ZeroDivisionError("zero reciprocal")
+    if precision < 64 or precision > 2048 or precision % 64 != 0:
+        raise ValueError("unsupported reciprocal precision")
+    magnitude = abs(mantissa)
+    if magnitude.bit_length() != precision:
+        raise ValueError("reciprocal requires a full mantissa")
+    result_exponent = -exponent
+    if precision == 64:
+        numerator = 1 << 127
+        if magnitude == 1 << 63:
+            numerator >>= 1
+        else:
+            result_exponent -= 1
+        quotient = numerator // magnitude
+        if numerator % magnitude > magnitude >> 1:
+            quotient += 1
+        if quotient.bit_length() > 64:
+            quotient = 1 << 63
+            result_exponent += 1
+    else:
+        numerator = 1 << (2 * precision - 1)
+        quotient = numerator // magnitude
+        remainder = numerator % magnitude
+        leading_remainder = remainder >> (precision - 64)
+        leading_divisor = magnitude >> (precision - 64)
+        if leading_remainder > leading_divisor >> 1:
+            quotient += 1
+        if quotient.bit_length() == precision:
+            result_exponent -= 1
+        elif quotient.bit_length() == precision + 1:
+            quotient >>= 1
+        else:
+            quotient = 1 << (precision - 1)
+            result_exponent += 1
+    if mantissa < 0:
+        quotient = -quotient
+    return quotient, precision, result_exponent
+
+
+@native
 def pari_exp1r_abs(
     mantissa: int, precision: int, exponent: int
 ) -> tuple[int, int, int]:

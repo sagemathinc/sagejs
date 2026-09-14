@@ -1,5 +1,27 @@
 # Faithful PARI class-group language experiment
 
+## Reciprocal dependency
+
+`pari_real_reciprocal` represents `invr_basecase`'s result, retaining the
+separate one-word case, leading-remainder-word rounding and exponent/sign
+normalization. **Exact integer division substitutes for PARI's quotient-word
+loop.** This is a disclosed arithmetic leaf substitution, not evidence of
+language-only performance equivalence or a line-for-line division port.
+
+The oracle invokes actual `invr` on 560 controls: precisions 64, 128, 192,
+256, 512, 1024 and 2048; both signs; leading-one, adjacent and all-one
+mantissas plus deterministic random mantissas. CPython/JS/GMP/tagged outputs
+agree exactly with PARI, including stored precision and exponent. This spans
+the pinned 256-bit GMP division crossover but does not prove equivalence on
+every possible quotient/remainder. Zero is explicitly rejected. The chosen
+precision ceiling remains below the upstream inverse-Newton path.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_reciprocal.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Connected exponential series (not yet the exponential entry)
 
 `pari_exp1r_abs` translates `trans1.c:exp1r_abs`: binary64 term/scale selection,
@@ -19,7 +41,7 @@ that operation; it does not silently pad or claim equivalence. The test
 freezes these six failures and rejects new failures or output disagreements.
 This observation is not yet an upstream memory-safety diagnosis.
 
-`modlog2`, the logarithm-of-two constant, inversion, and the full `mpexp`
+`modlog2`, the logarithm-of-two constant, and the full `mpexp`
 entry remain dependencies. These series checks are not a complete residue
 calculation, class-group computation, or performance qualification.
 
