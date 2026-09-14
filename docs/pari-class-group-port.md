@@ -34,11 +34,47 @@ machine-sized-degree annotation control gave approximately 0.185s GMP/0.096s
 tagged batched and a larger core (1,630,782 bytes); it was not retained on this
 limited evidence.
 
-Next concrete checks: the new GCD currently forces word execution to promote
-even for tiny operands, and packed large-value reads/writes import/export GMP
-limbs. Tagged storage already has a direct small-integer path, so conversion
+The small-GCD promotion issue identified by this diagnostic is fixed above.
+Packed large-value reads/writes still import/export GMP limbs. Tagged storage
+already has a direct small-integer path, so conversion
 cannot be assumed to explain the entire small-case gap. Profile or isolate
 these costs before attributing them to the language or changing mathematics.
+
+## Word-factorization front checkpoint
+
+`bench/pari-class-group-port/factorization.py` translates the initial
+`ifactor1.c:factoru_sign` stages: stripping powers of two, prepared prime-table
+membership, the exact `tridiv_boundu` cutoffs, product-GCD extraction with a
+recursive fast-disabled call, and ordinary `u_lvalrem_stop` trial steps.
+The prepared prime catalog and cumulative products are input-independent
+arithmetic constants obtained from the pinned PARI build, not supplied input
+factorizations. Binary search, scalar power-of-two stripping, and the corrected
+rounded square-root leaf are explicitly substituted arithmetic implementations;
+this is not evidence of matching arithmetic-leaf performance.
+
+The checkpoint returns `(count, unresolved_cofactor)`. A residual other than
+one means **incomplete**, not a prime or an accepted relation. It stops before
+the unported primality decision at prime 673, the second prime-iterator pass,
+and later primality/factor-search paths. Multiword factorization also remains
+unported. It is not yet connected to `can_factor`.
+
+`check_compiled_factor_front.cjs` checks 138 inputs with both fast settings,
+including prime powers around trial boundaries and an existing output prefix.
+All 276 cases agree across CPython, generated JS, GMP and tagged execution:
+261 complete factorizations agree with PARI `factoru`; 15 retain explicitly
+unresolved cofactors. Every extracted prime/exponent is checked against PARI,
+and extracted powers times residual reconstruct the original input. The test
+does not claim upstream intermediate-trace equality or performance qualification.
+The CPython oracle preloads the standard `decimal` module before adding the
+Sage.js source path (which contains its own `decimal` module); a bounded 100,000
+decimal-digit conversion allowance applies only to this test's prepared prime
+products. No native arithmetic safety limit is raised.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_factor_front.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
 
 ## Prime-group admission loop checkpoint
 
