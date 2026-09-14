@@ -127,10 +127,13 @@ const BUILTINS_STANDALONE_MODULES = Object.freeze(
 // Private core support is required even by standalone programs without an
 // import statement. Keep it separate from optional mathematical algorithms.
 const CORE_STANDALONE_MODULES = Object.freeze(
-  EMBEDDED_STANDALONE_LIBRARY?.core ?? moduleClosure(
-    BUILTINS_STANDALONE_MODULES.filter(name =>
+  EMBEDDED_STANDALONE_LIBRARY?.core ?? moduleClosure([
+    ...BUILTINS_STANDALONE_MODULES.filter(name =>
       name.startsWith("sagejs._") || name === "sagejs.class_namespace"),
-  ),
+    // Byte construction/decoding can import codecs without an explicit user
+    // import. Browser workers need the same private support as builtins.
+    ...baselibLazyModules("byte_strings.py"),
+  ]),
 );
 
 const MATRIX_STANDALONE_MODULES = Object.freeze(
@@ -157,6 +160,7 @@ const GROEBNER_STANDALONE_MODULES = Object.freeze([
 const BASELIB_STANDALONE_MODULES = Object.freeze([
   ...new Set([
     ...BUILTINS_STANDALONE_MODULES,
+    ...baselibLazyModules("byte_strings.py"),
     ...MATRIX_STANDALONE_MODULES,
     ...POLYNOMIAL_STANDALONE_MODULES,
     "sagejs.plotting",
