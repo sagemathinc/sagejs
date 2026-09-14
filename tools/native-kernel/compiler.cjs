@@ -366,6 +366,7 @@ function backendFingerprint() {
     [
       readFileSync(__filename),
       readFileSync(join(__dirname, "ir.cjs")),
+      readFileSync(join(__dirname, "native-imports.cjs")),
       readFileSync(join(__dirname, "integer-ir.cjs")),
       readFileSync(join(__dirname, "integer-constants.cjs")),
       readFileSync(join(__dirname, "workspace-bundles.cjs")),

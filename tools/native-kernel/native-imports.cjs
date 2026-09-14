@@ -2,7 +2,7 @@
 
 const { createHash } = require("node:crypto");
 const { existsSync, readFileSync, realpathSync } = require("node:fs");
-const { resolve, sep } = require("node:path");
+const { dirname, resolve, sep } = require("node:path");
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -22,16 +22,45 @@ function createNativeImportResolver({
   displayPath = (filename) => filename,
 }) {
   const resolving = new Set([realpathSync(initialSourcePath)]);
+  const physicalSources = new Map([
+    [displayPath(realpathSync(initialSourcePath)), realpathSync(initialSourcePath)],
+  ]);
 
   async function resolveNativeImport(request) {
-    const relativeModule = request.moduleName.replaceAll(".", sep) + ".py";
-    const candidates = [
-      resolve(root, "src", "lib", relativeModule),
-      resolve(root, "src", "baselib", relativeModule),
-    ];
+    let candidates;
+    if (request.moduleName.startsWith(".")) {
+      const match = /^(\.+)([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)$/.exec(request.moduleName);
+      if (!match) throw new Error("native kernel: unsupported relative native import");
+      const importer = physicalSources.get(request.importer);
+      if (!importer) throw new Error("native kernel: unknown relative import source");
+      let directory = dirname(importer);
+      // Namespace-package roots depend on the dynamic import search path. The
+      // isolated compiler admits only an explicit regular-package chain.
+      for (let level = 0; level < match[1].length; level++) {
+        if (level) directory = dirname(directory);
+        if (!existsSync(resolve(directory, "__init__.py"))) {
+          throw new Error("native kernel: relative import requires a regular package and cannot cross its root");
+        }
+      }
+      const components = match[2].split(".");
+      for (const component of components.slice(0, -1)) {
+        directory = resolve(directory, component);
+        if (!existsSync(resolve(directory, "__init__.py"))) {
+          throw new Error("native kernel: relative native submodules require regular packages");
+        }
+      }
+      candidates = [resolve(directory, components.at(-1) + ".py")];
+    } else {
+      const relativeModule = request.moduleName.replaceAll(".", sep) + ".py";
+      candidates = [
+        resolve(root, "src", "lib", relativeModule),
+        resolve(root, "src", "baselib", relativeModule),
+      ];
+    }
     const importedPath = candidates.find((candidate) => existsSync(candidate));
     if (importedPath === undefined) return null;
     const physicalPath = realpathSync(importedPath);
+    physicalSources.set(displayPath(physicalPath), physicalPath);
     const importedSource = readFileSync(physicalPath, "utf8");
     const escapedName = request.importedName.replace(
       /[.*+?^${}()|[\]\\]/g,
