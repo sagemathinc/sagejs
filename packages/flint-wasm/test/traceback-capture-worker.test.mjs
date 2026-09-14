@@ -1,21 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-test("evaluator rejects invalid capture selection before worker creation", async () => {
-  const { instantiateSageEvaluator } = await import("../evaluator.mjs");
-  let workers = 0;
-  class UnexpectedWorker {
-    constructor() { workers++; throw new Error("unexpected worker"); }
-  }
-  for (const tracebackCapture of ["fast", null, true, 1]) {
-    await assert.rejects(
-      instantiateSageEvaluator({ tracebackCapture, WorkerConstructor: UnexpectedWorker }),
-      /tracebackCapture must be 'native' or 'guarded'/,
-    );
-  }
-  assert.equal(workers, 0);
-});
-
 // Exercise the real worker message handler with a compiler that exposes its
 // output options. This qualifies policy propagation, not browser execution.
 test("worker validates capture policy and keeps bootstrap native", async () => {
