@@ -1,5 +1,25 @@
 # Faithful PARI class-group language experiment
 
+## Exact post-rank assembly (2026-09-14)
+
+`hnfspec_assembly.py` follows the certified rank checkpoint through its exact
+permutation, matbnew/dep/B construction and independent HNFLLL H/U result.
+The intervening C*T and subsequent hnffinal are excluded from this particular
+entry; it is not a source-order timing comparator. Unresolved rank -1/-2
+leaves all owners unchanged, and empty-column branches skip HNF.
+
+The 467 connected cases include 459 certified and 24 collector matrices,
+with 2,793 independent A*U checks, 90 empty HNF branches, eight malformed
+owner/profile guards per backend and 26 genuine sticky rank-frontier states.
+The real nonempty dependent matrices are two 48x1 and two 37x1 matrices;
+the other twenty collector cases have empty dependent blocks. Generated core:
+2,758,773 bytes; trace
+`da39fd6106bb9fd8f6f4f9675c2c9155f087ad1050fdadbc370f16a725c50bc5`.
+Reproduce with `check_hnfspec_assembly.cjs PARI_SOURCE PARI_ARCHIVE`.
+An oracle-only `nbrows` call on an empty matrix was corrected; the final
+source-extracted control runs under UBSan. Subagent charge: 12m40 active,
+120.268915 child CPU seconds including failures, already in the ledger.
+
 ## Logarithm matrix transformations (2026-09-14)
 
 `log_matrix_transform.py` implements the real/complex-by-integer matrix

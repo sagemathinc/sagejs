@@ -1188,6 +1188,46 @@
       "commit": "a05de3f79d382a6c1ba11293c7005475c4b232c6",
       "workspace_fingerprint": "07d15dabff7881b24f3c99ad29067aa37b8e7ad5f3cb61754f6489b8df75bfb9",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_integer_matrix_product.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.551,
+      "started_at": "2026-09-14T21:53:49.409Z",
+      "commit": "f6e2be2230cff657faad07397eec9fc9e8240306",
+      "workspace_fingerprint": "436a40c1f67536d4b27bb948237ebb8f44a855251f3bf97ab3d77fc692e2df85",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_integer_matrix_product.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.971,
+      "started_at": "2026-09-14T21:56:22.442Z",
+      "commit": "f6e2be2230cff657faad07397eec9fc9e8240306",
+      "workspace_fingerprint": "acee55a57011a999a0299ed7215d42d88131718bd868f8bee4a4a73e988838d2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_hnffinal.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 41.918,
+      "started_at": "2026-09-14T22:02:54.659Z",
+      "commit": "f6e2be2230cff657faad07397eec9fc9e8240306",
+      "workspace_fingerprint": "cfe14ab34711ce0cca20310b8c4660f1516b1c64911f2340650e0f3ec25a5513",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_hnfspec_assembly.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.897,
+      "started_at": "2026-09-14T22:04:08.696Z",
+      "commit": "f6e2be2230cff657faad07397eec9fc9e8240306",
+      "workspace_fingerprint": "2dfd03b216b266e4321b754dc75edf00b6bee59ae7fa835bf82254c087d7fa13",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

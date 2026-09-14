@@ -59,6 +59,9 @@ printf(",\\"pivots\\":");ints(audit_last?audit_last:cgetg(1,t_VECSMALL));printf(
  assert.equal(expected.length,cases.length);
  const success=expected.filter(e=>e.state[9]==='0').length,verification=expected.filter(e=>e.state[9]==='-1').length,cup=expected.filter(e=>e.state[9]==='-2').length;
  assert(success&&verification&&cup);assert(expected.some(e=>e.state[0]==='2'&&e.state[9]==='0'));assert(expected.some(e=>e.state[6]==='1'&&e.state[9]==='-1'));
+ if(process.argv.includes('--export-assembly-fixtures')){
+  console.log(JSON.stringify({cases,expected,sourceHash}));return;
+ }
  run('python3',['-c',`import sys,json,importlib
 sys.path[:0]=sys.argv[1:3];m=importlib.import_module('bench.pari-class-group-port.hnfspec_rank_prefix');cl=importlib.import_module('bench.pari-class-group-port.hnfspec_cleanup')
 for r,e in json.load(sys.stdin):
