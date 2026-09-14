@@ -7,6 +7,20 @@ const {spawnSync} = require("node:child_process");
 const test = require("node:test");
 const {compileKernel} = require("../compiler.cjs"), {lowerSource} = require("../ir.cjs");
 const {createNativeImportResolver} = require("../native-imports.cjs");
+test("portable root provenance may differ from imported dependency display paths",async()=>{
+  const dir=mkdtempSync(join(tmpdir(),"sagejs-portable-relative-")),pkg=join(dir,"src","lib","example");
+  mkdirSync(pkg,{recursive:true});writeFileSync(join(pkg,"__init__.py"),"");
+  const source=join(pkg,"entry.py"),body="from sagejs.native import native\nfrom .helper import shifted\n@native\ndef entry(x:int)->int:\n    return shifted(x)\n";
+  writeFileSync(source,body);
+  writeFileSync(join(pkg,"helper.py"),"from sagejs.native import native\nfrom .leaf import square\n@native\ndef shifted(x:int)->int:\n    return square(x)+1\n");
+  writeFileSync(join(pkg,"leaf.py"),"from sagejs.native import native\n@native\ndef square(x:int)->int:\n    return x*x\n");
+  const logical="example/entry.py";
+  const resolver=createNativeImportResolver({root:dir,lowerSource,initialSourcePath:source,initialDisplayPath:logical,displayPath:p=>relative(dir,p).replaceAll("\\","/")});
+  const ir=await lowerSource(body,logical,{resolveNativeImport:resolver});
+  assert.deepEqual(ir.nativeSourceDependencies.map(d=>d.path).sort(),["src/lib/example/helper.py","src/lib/example/leaf.py"]);
+  assert(!JSON.stringify(ir).includes(dir));
+  await assert.rejects(()=>resolver({moduleName:".helper",importedName:"shifted",importer:"unregistered/entry.py"}),/unknown relative import source/);
+});
 test("multiple entries from one source share a helper but distinct sources still conflict",async()=>{
   const dir=mkdtempSync(join(tmpdir(),"sagejs-shared-import-")),pkg=join(dir,"example");
   mkdirSync(pkg);writeFileSync(join(pkg,"__init__.py"),"");

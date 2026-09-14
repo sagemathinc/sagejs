@@ -1,5 +1,29 @@
 # Mixed exact/binary64 prerequisite checkpoint
 
+## Portable root names and relative imports
+
+The class-group branch's changed-file checks exposed a production inventory
+failure: `lowerSource` receives a root name relative to `src/lib`, whereas
+the import resolver records dependencies relative to the repository root.
+Relative imports from that root therefore failed with `unknown relative import
+source`. The resolver now accepts an explicit `initialDisplayPath`, supplied
+by production inventory as the same logical root name passed to lowering.
+It maps that name to the already authenticated physical root; imported
+dependency paths, hashes, cycle checks and package-boundary checks are unchanged.
+Unknown importer names still fail closed. No path guessing or working-directory
+fallback is introduced, and portable root identities are not renamed.
+
+A focused regression reproduces the failure before the fix using a root with
+a different display convention and a two-level relative dependency chain.
+It checks checkout-independent provenance and rejects an unregistered root.
+The full graph-production inventory test is the integration regression.
+
+The focused import and graph-production tests pass (six passes, one real-Wasm
+skip for the unavailable pinned toolchain). Strict Python remains at zero
+errors across 403 modules and parallel checks pass. Architecture checking still
+fails at the separately recorded stale optimizer manifest. These results do
+not qualify Windows or real Wasm execution.
+
 ## JavaScript reserved local and parameter names
 
 The real-root translation exposed `new` emitted as a JavaScript local even
