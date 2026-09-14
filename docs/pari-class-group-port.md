@@ -1,5 +1,60 @@
 # Faithful PARI class-group language experiment
 
+## Composite-modulus HNF and two-element ideal products
+
+`composite_ideal_hnf.py` translates the scalar-modulus `hnf_MODID` branch of
+`hnf_snf.c:ZM_hnfmodall_i`, including its moving pivot, inserted columns,
+`optimal_D`, diagonal accumulator and final integer reductions. It also
+connects `base4.c:idealHNF_mul_two`'s matrix-generator branch: form
+`alpha * I | a * I`, then reduce modulo `a * I[0,0]`. Original ideal and alpha
+multiplication table are supplied; the product HNF is computed, not supplied.
+Scalar-alpha handling, prime powering, outer content removal and the
+distinguished-ideal collector connection are still dependencies.
+
+The prototype handles 3/4 rows, 1..2*n columns and positive moduli below 2^64.
+It fails explicitly if a Bézout pivot needs more than one word. This can occur
+even with a word modulus, so this is not a complete word-modulus HNF API.
+It does not replace that dependency with another HNF algorithm.
+
+```sh
+node bench/pari-class-group-port/check_hnf_word_arithmetic.cjs PARI_DIRECTORY PARI_ARCHIVE
+node bench/pari-class-group-port/check_composite_ideal_hnf.cjs PARI_DIRECTORY PARI_ARCHIVE
+```
+
+The word arithmetic check matches 1,177 exact PARI/CPython/JS/GMP choices,
+including signs, equal/zero operands, word boundaries and noninvertible
+composite pivots. It ports the word Bézout recurrence and `Fp_invgen`'s
+word branch, including the unit correction. A fidelity regression matters:
+`Fp_invgen(12,18)` returns gcd 6 and multiplier 11, not the equivalent
+multiplier 5 from a canonical CRT rewrite. Preserve `Fl_sub`/`Fl_add`'s
+single corrections and unsigned wrap, even when the intermediate is not
+canonical modulo the smaller CRT modulus. Exact Python reductions modulo
+2^64 express wrap; an initial `& mask` expression exposed mixed uint64/exact
+typing rejection in the native compiler. No compiler semantics were weakened.
+Arithmetic trace SHA-256:
+`0a0c8b2837185fe7b79780c8c4eb00da2cfc787f00eaa1cf262fa1593661fa51`.
+
+Of 208 HNF cases, 158 match exactly in all three translated backends and 50
+explicitly reject the unported multiword Bézout dependency. These counts are
+asserted, not inferred as acceptable from whichever cases happen to pass.
+All 16 actual ideal products (four tuning fields, powers 1..4 of the first
+prime over 2, multiplied by the first prime over 3) pass, including construction
+of the rectangular generator matrix. PARI constructs the ideal powers outside
+the translated boundary. The other controls include deficient rank, inserted
+pivots, modulus one, negative entries, large moduli and multiword inputs.
+Unsupported paths leave the result buffer unpublished; input matrices remain
+unchanged. HNF trace SHA-256:
+`4e3c86bf7e9ee030a0da79951fc3f65910aa6560372ef7d32bc7a0e89ee914f6`.
+These are final-state and arithmetic-choice comparisons, not a full internal
+branch trace, timing qualification, or complete class-group output.
+The combined HNF/product closure has seven IR functions, 2,381,810 generated
+C bytes and a 596,576-byte Linux addon. Strict baselib checks pass (403 modules,
+971 formatted Python files). The changed-file gate passes merge invariants,
+then stops at the existing `test/module-cache.cjs` undefined-`Any` failure;
+remaining units and docs are not qualified by that run. Architecture checks
+again stop at the stale optimizer manifest. These failures and the 50
+unsupported mathematical paths remain visible; neither PR is review-ready.
+
 ## Prime descriptors through resident collection
 
 `unreduced_small_norm.py` now has an explicit prime-construction mode for
