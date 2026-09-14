@@ -602,3 +602,40 @@ strict checking passes for 404 modules and the unchanged source allowance holds
 at 902,999 / 903,000 bytes. This revision has converged-compiler/runtime-cache
 qualification, not a new full-build, timing or four-platform receipt. Earlier
 receipts remain bound to their original source/artifact identities.
+
+### Lambda, chaining and native-evidence checkpoint
+
+At `2178fcaf92396ee0dd4ccbc5b2c2c1b68b1094b3`, lambda expressions use the
+shared unwind emitter, including multiline body locations; binding errors
+exclude unentered lambda bodies. `traceback.format_exception` now follows
+explicit causes and unsuppressed contexts, respects `chain=False`, and breaks
+identity cycles. Native-only self-carriers also retain their native evidence
+in the structured diagnostic/Jupyter renderer.
+
+The first full build exposed a stage-zero parser rejection of a formatted
+multiline conditional in the emitter. The follow-up rewrites name selection
+before constructing the metadata literal. The corrected full build passes in
+7m05s, all 125 focused tests pass again against rebuilt artifacts, and the pinned
+pyparsing 3.3.2 workflow passes. Strict checking passes for 404 modules. Logs:
+`/home/user/exception-lambda-chain-build-retry.log`,
+`/home/user/exception-lambda-chain-rebuilt-tests.log`,
+`/home/user/exception-lambda-chain-strict.log`, and
+`/home/user/exception-lambda-chain-pyparsing.json`.
+
+Frozen standalone probes cover 11 generator/binding/async cases and five lambda
+cases in each language mode. All pass on Linux x64 (Node 26.7.0), Linux ARM64
+(26.5.1), macOS ARM64 (26.5.0), and native Windows x64 (26.5.1). Artifacts and
+their exporter are in `/home/user/exception-lambda-portable.n7W9ne`; every host
+reports matching SHA-256 hashes:
+
+- Python: `80d59034ca303b589d0de4cef017a7e03395fd56da76b4249ef40de628436005`.
+- Sage: `2e1fef8b9f6655c5e0979b5e4e121f2ab4021d10dba0452f9539c03101eb18d6`.
+
+This is targeted compiler/runtime portability, not full browser/package
+qualification on all hosts. No new performance claim is made by this correctness
+checkpoint. Native suppression remains experimental and disabled by default;
+module-level coverage, opaque ancestry, browser consumers and broad gates remain
+open. Rechecking `test/extension-field-capabilities.py` on this build still fails
+to resolve `sagejs.kernels.polynomial.packed_prime_field` (12.7s, not a timeout);
+see `/home/user/exception-extension-gate-recheck.log`. The earlier broad failures
+are not waived by the focused passes. PR272 remains draft.
