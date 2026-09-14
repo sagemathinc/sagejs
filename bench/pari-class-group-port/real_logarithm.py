@@ -1,8 +1,9 @@
-"""PARI 2.17.4 low-precision real logarithm used to initialize higher roots.
+"""PARI 2.17.4 non-AGM real logarithm and one-word root initializer.
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 Translate trans1.c:logr_abs and logr_aux, retaining their precision schedule.
-Only the 64-bit entry required by sqrtnr_abs initialization is exposed here.
+The supported 64--384-bit range includes the prepared-field precision.
+This is the real absolute logarithm, not a replacement for complex `glog`.
 """
 
 from sagejs.native import IntegerBuffer, checked_float64, checked_uint64, native
@@ -67,6 +68,73 @@ def pari_logarithm_series(m: int, p: int, e: int) -> tuple[int, int, int]:
 
 
 @native
+def pari_real_logarithm_multiword(
+    mantissa: int,
+    precision: int,
+    exponent: int,
+    cache: IntegerBuffer,
+    a: IntegerBuffer,
+    b: IntegerBuffer,
+    p: IntegerBuffer,
+    q: IntegerBuffer,
+    stack: IntegerBuffer,
+) -> tuple[int, int, int]:
+    """Follow upstream word scanning, cancellation and root/series schedule.
+
+    Work buffers are disjoint; `cache` is the resident log(2) cache.
+    Higher precision fails rather than substituting for the AGM branch.
+    """
+    if precision < 64 or precision > 384 or precision % 64 != 0:
+        raise ValueError("unsupported non-AGM logarithm precision")
+    magnitude = abs(mantissa)
+    if magnitude.bit_length() != precision:
+        raise ValueError("logarithm requires a full nonzero mantissa")
+    if exponent < -10000 or exponent > 10000:
+        raise ValueError("unsupported logarithm initializer exponent")
+    ex = exponent
+    leading = magnitude >> (precision - 64)
+    if leading > (((1 << 64) - 1) // 3) * 2:
+        ex += 1
+        tail = ((1 << precision) - 1) - magnitude
+    else:
+        tail = magnitude - (1 << (precision - 1))
+    if tail == 0:
+        if ex == 0:
+            return 0, 0, -precision
+        lm, lp, le = pari_log2_constant(precision, cache, a, b, p, q, stack)
+        return pari_word_integer_real_product(ex, lm, lp, le)
+    accuracy = precision - tail.bit_length()
+    skipped = (accuracy // 64) * 64
+    working = precision + 64
+    bits = working - skipped
+    target = precision
+    if ex == 0:
+        target -= skipped
+    d = -checked_float64(accuracy) / 2.0
+    roots = int(d + pari_exp_schedule_sqrt(d * d + checked_float64(bits // 6)))
+    if roots > bits - accuracy:
+        roots = bits - accuracy
+    if checked_float64(roots) < 0.2 * checked_float64(accuracy):
+        roots = 0
+    else:
+        working += ((roots + 63) // 64) * 64
+    xm, xp, xe = pari_real_resize(magnitude, precision, exponent, working)
+    xe -= ex
+    for i in range(roots):
+        xm, xp, xe = pari_real_square_root_abs(xm, xp, xe)
+    nm, np, ne = pari_word_integer_real_sum(-1, xm, xp, xe)
+    dm, dp, de = pari_word_integer_real_sum(1, xm, xp, xe)
+    ym, yp, ye = pari_real_division(nm, np, ne, dm, dp, de)
+    ym, yp, ye = pari_logarithm_series(ym, yp, ye)
+    ye += roots + 1
+    if ex != 0:
+        lm, lp, le = pari_log2_constant(precision + 64, cache, a, b, p, q, stack)
+        lm, lp, le = pari_word_integer_real_product(ex, lm, lp, le)
+        ym, yp, ye = pari_signed_real_sum(ym, yp, ye, lm, lp, le)
+    return pari_real_resize(ym, yp, ye, target)
+
+
+@native
 def pari_real_logarithm_64(
     mantissa: int,
     exponent: int,
@@ -77,44 +145,7 @@ def pari_real_logarithm_64(
     q: IntegerBuffer,
     stack: IntegerBuffer,
 ) -> tuple[int, int, int]:
-    """logr_abs on a one-word real, with a resident computed log(2) cache."""
-    magnitude = abs(mantissa)
-    if magnitude.bit_length() != 64:
-        raise ValueError("logarithm initializer requires a full 64-bit mantissa")
-    if exponent < -10000 or exponent > 10000:
-        raise ValueError("unsupported logarithm initializer exponent")
-    ex = exponent
-    if magnitude > (((1 << 64) - 1) // 3) * 2:
-        ex += 1
-        tail = ((1 << 64) - 1) - magnitude
-    else:
-        tail = magnitude % (1 << 63)
-    if tail == 0:
-        if ex == 0:
-            return 0, 0, -64
-        lm, lp, le = pari_log2_constant(64, cache, a, b, p, q, stack)
-        return pari_word_integer_real_product(ex, lm, lp, le)
-    accuracy = 64 - tail.bit_length()
-    working = 128
-    d = -checked_float64(accuracy) / 2.0
-    roots = int(d + pari_exp_schedule_sqrt(d * d + checked_float64(128 // 6)))
-    if roots > 128 - accuracy:
-        roots = 128 - accuracy
-    if checked_float64(roots) < 0.2 * checked_float64(accuracy):
-        roots = 0
-    else:
-        working += ((roots + 63) // 64) * 64
-    xm, xp, xe = pari_real_resize(magnitude, 64, exponent, working)
-    xe -= ex
-    for i in range(roots):
-        xm, xp, xe = pari_real_square_root_abs(xm, xp, xe)
-    nm, np, ne = pari_word_integer_real_sum(-1, xm, xp, xe)
-    dm, dp, de = pari_word_integer_real_sum(1, xm, xp, xe)
-    ym, yp, ye = pari_real_division(nm, np, ne, dm, dp, de)
-    ym, yp, ye = pari_logarithm_series(ym, yp, ye)
-    ye += roots + 1
-    if ex != 0:
-        lm, lp, le = pari_log2_constant(128, cache, a, b, p, q, stack)
-        lm, lp, le = pari_word_integer_real_product(ex, lm, lp, le)
-        ym, yp, ye = pari_signed_real_sum(ym, yp, ye, lm, lp, le)
-    return pari_real_resize(ym, yp, ye, 64)
+    """Use the shared logarithm at sqrtnr_abs's one-word initialization."""
+    return pari_real_logarithm_multiword(
+        mantissa, 64, exponent, cache, a, b, p, q, stack
+    )

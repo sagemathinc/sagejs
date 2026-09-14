@@ -63,6 +63,37 @@ This integration subtask used 428.671354 CPU seconds already in the persistent
 ledger. Its 847 active seconds are conservatively charged as 15 additional
 aggregate active-agent minutes. No new timing qualification is claimed.
 
+### Multiword real logarithm for the embedding frontier
+
+`real_logarithm.py` now follows `trans1.c:logr_abs` at 64 through 384 bits,
+below the pinned GMP build's AGM crossover. The old one-word root initializer
+calls this shared body. Whole zero mantissa words near one affect the output
+precision and series schedule exactly as upstream; the implementation does
+not silently pad that lost precision. Complex `glog`, argument computation,
+and higher-precision AGM remain outside this entry.
+
+All 5,184 signed-mantissa/cancellation/crossover cases, with exponents from
+-10,000 to 10,000, match PARI, CPython, JS and native GMP. The 2,304 existing
+one-word controls still pass. The connected outer collector also retains its
+trace after using the shared initializer. Its core now measures 26,525,258
+bytes versus 26,510,924 before this extension; no timing gain is asserted.
+The initial separate prototype was folded into the existing module before
+handoff to avoid maintaining two copies of the logarithm.
+
+The checker verifies `trans1.c` SHA-256
+`287fbc089af72e8abcae073ea059880fdb138d7b4cd3c2bea39be547f3ca7835`.
+Expanded trace SHA-256:
+`c270ddcad541fdb447573e6345e67d648eda33f5c8717e7a3306ac6a549bae67`.
+Unsupported precision, malformed mantissas and exponent bounds reject without
+mutating the coefficient/cache buffers.
+
+```sh
+node bench/pari-class-group-port/check_real_logarithm_multiword.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+node bench/pari-class-group-port/check_compiled_real_logarithm.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ### Distinguished exponent zero
 
 The connected collector now follows `base4.c:idealpow_aux`'s early identity
