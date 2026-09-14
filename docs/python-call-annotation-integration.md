@@ -832,6 +832,42 @@ before/after/after/before order. Run medians fall from 316.1–316.4ms to
 229.9–232.4ms (about 27% less time). This is a Node adapter comparison, not a
 CPython/package speedup or a closure of the remaining exception cliffs.
 
+### Reuse the original initializer without an extra ordinary-exception frame
+
+Binding errors now invoke a saved reference to `BaseException`'s original
+initializer. Ordinary exceptions initialize inline again, avoiding the extra
+helper frame introduced in `f84d17a24`. The private binding marker temporarily
+carries the target during capture and becomes `True` before publication; it is
+not retained as a function reference. Reinitialization safely ignores the
+completed boolean marker. Public initializer replacement cannot redirect the
+automatic binding-error factory. The shared class classifier also uses static
+`Object.hasOwn` without a temporary argument array; own/inherited markers,
+non-invocation of a bases getter and callable-instance exclusion are checked.
+
+The frozen build passes in 7m09s, 404 strict modules pass, all 173 selected
+exception/diagnostic tests pass, and pyparsing passes. Core source is exactly
+903,000 / 903,000 bytes; the allowance is unchanged. Extended binding probes
+pass on all four native hosts. Python/Sage artifact hashes are
+`70b9ff9d3cb7c094366ea51d68a60d5b900f2cdeeb575a83c16d2f15d40a58dc`
+and `09646043f8bb214780fb499fd38c33344e40116b698fd63a5e62121661b0815d`.
+
+`/home/user/exception-inline-pair.KLOIfb/report.json` repeats the locked,
+opposite-order comparison directly against preserved `70ad1a13f` artifacts:
+
+| Workload | Native original → follow-up | Records original → follow-up | CPython |
+| --- | --- | --- | --- |
+| Binding failure | 1690–1701 → 1553–1593 | 1801–1839 → 923–931 | 45–46 |
+| Construct `ValueError` | 960–966 → 941–943 | 324–338 → 331–332 | 10 |
+| Construct/raise/catch | 1054–1071 → 1037–1045 | 471–478 → 498–506 | 12.6–12.7 |
+| Successful call | 8.96–8.97 → 8.97–8.98 | 8.97–8.99 → 9.50 | 3.89–3.90 |
+
+Values are run medians in milliseconds per 100,000 operations, not confidence
+intervals. The native regression is removed, but records raise/catch remains
+about 4–7% behind the original in this combined-workload process. Its warmup
+order and shared-initializer effects require investigation. Binding's remaining
+roughly 20–21× records/CPython gap is still open. No production suppression
+policy or package performance claim follows from these results.
+
 ### Keyword hook disambiguation
 
 Plain keyword packets now treat callable `keys`, `__getitem__`, and

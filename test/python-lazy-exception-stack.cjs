@@ -103,6 +103,9 @@ except TypeError as binding_error:
     assert len(binding_error.args) == 1
     assert 'value' in binding_error.args[0]
     assert str(binding_error) == binding_error.args[0]
+    BaseException.__init__(binding_error, 'reset binding')
+    assert binding_error.args == ('reset binding',)
+    assert str(binding_error) == 'reset binding'
 try:
     raise created
 except ValueError as caught:
@@ -213,6 +216,34 @@ for handlers in [(ValueError, 3), (ValueError, (ValueError,))]:
       assert.equal(logicalProbe.error.__context__, null);
       assert.equal(logicalProbe.error.__suppress_context__, false);
       assert.match(context.__binding_fallback_probe__, /TypeError: missing argument/);
+      runInContext(`
+        (() => {
+          const factory = __sagejs_baselib_modules__["sagejs._baselib.errors"].ρσ_function_argument_error;
+          const prototype = BaseException.prototype;
+          const descriptor = Object.getOwnPropertyDescriptor(prototype, '__init__');
+          Object.defineProperty(prototype, '__init__', {
+            configurable: true, value() { throw new Error('public initializer replacement'); }
+          });
+          function binding_target() { return factory('original initializer', binding_target); }
+          try { globalThis.__binding_original_initializer__ = binding_target(); }
+          finally { Object.defineProperty(prototype, '__init__', descriptor); }
+        })();
+      `, context);
+      assert.deepEqual(Array.from(context.__binding_original_initializer__.args), ['original initializer']);
+      assert.equal(context.__binding_original_initializer__.__sagejs_argument_error__, true);
+      runInContext(`
+        (() => {
+          function direct() {}
+          Object.defineProperty(direct, '__bases__', {get() { throw new Error('must not read bases'); }});
+          function inherited() {}
+          Object.setPrototypeOf(inherited, direct);
+          const own = _builtins_is_python_class(direct);
+          const inheritedOnly = _builtins_is_python_class(inherited);
+          direct.__sagejs_callable_instance__ = true;
+          globalThis.__class_ownership_probe__ = [own, inheritedOnly, _builtins_is_python_class(direct)];
+        })();
+      `, context);
+      assert.deepEqual(Array.from(context.__class_ownership_probe__), [true, false, false]);
     } finally { frontend.close(); }
   });
 }

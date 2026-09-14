@@ -3726,11 +3726,7 @@ def _builtins_is_python_class(value: Any) -> _Bool:
     if _builtins_get_member(value, "__sagejs_callable_instance__") is True:
         return False
     # Class statements and dynamic type calls mark the constructor itself.
-    if runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty,
-        value,
-        ["__bases__"],
-    ):
+    if runtime.object.hasOwn(value, "__bases__"):
         return True
     # Native builtin constructors instead carry the Python metaclass marker.
     return _builtins_get_member(value, "__python_type__") is ρσ_type

@@ -90,11 +90,10 @@ def ρσ_function_argument_error(
         runtime.type_error.prototype,
         {"message": {"value": message, "writable": True, "configurable": True}},
     )
-    error.args = runtime.reflect.apply(
-        runtime.math_tuple, runtime.undefined, [runtime.array.of(message)]
-    )
+    runtime.reflect.set(error, "__sagejs_argument_error__", target_function)
+    runtime.reflect.apply(_initialize_exception, error, [message])
     runtime.reflect.set(error, "__sagejs_argument_error__", True)
-    return ρσ_prepare_raise(_initialize_exception(error, target_function))
+    return ρσ_prepare_raise(error)
 
 
 def ρσ_positional_default(target_function: Any, from_end: int, name: str) -> Any:
@@ -111,44 +110,40 @@ def ρσ_positional_default(target_function: Any, from_end: int, name: str) -> A
     return defaults[defaults.length - from_end]
 
 
-def _initialize_exception(error: Any, target: Any) -> Any:
-    args = error.args
-    count = runtime.native_get(args, "length")
-    if runtime.strict_equal(count, 0):
-        message = ""
-    elif runtime.strict_equal(count, 1):
-        message = runtime.string(args[0])
-    else:
-        message = runtime.repr(args)
-    error.message = message
-    python_name = error.constructor.__name__
-    error.name = (
-        error.constructor.name
-        if python_name is runtime.undefined
-        else runtime.string(python_name)
-    )
-    logical = runtime.global_object.__sagejs_traceback_records_enabled__ is True
-    error.__sagejs_logical_exception__ = logical
-    error.__traceback__ = None if logical else error
-    if not logical:
-        capture = runtime.error.captureStackTrace
-        if runtime.strict_equal(runtime.jstype(capture), "function"):
-            # Capture once, format lazily; omit an unentered binding target.
-            runtime.reflect.apply(capture, runtime.error, [error, target])
-        else:
-            native = runtime.error(message)
-            native.name = error.name
-            error.stack = native.stack
-    error.__cause__ = error.__context__ = None
-    error.__suppress_context__ = False
-    return error
-
-
 class BaseException(runtime.error):
     def __init__(self, *args: object) -> None:
         # Transfer the fresh variadic array without another copy.
+        count = runtime.native_get(args, "length")
         self.args = runtime.reflect.apply(runtime.math_tuple, runtime.undefined, [args])
-        _initialize_exception(self, _initialize_exception)
+        if runtime.strict_equal(count, 0):
+            message = ""
+        elif runtime.strict_equal(count, 1):
+            message = runtime.string(args[0])
+        else:
+            message = runtime.repr(self.args)
+        self.message = message
+        python_name = self.constructor.__name__
+        self.name = (
+            self.constructor.name
+            if python_name is runtime.undefined
+            else runtime.string(python_name)
+        )
+        logical = runtime.global_object.__sagejs_traceback_records_enabled__ is True
+        self.__sagejs_logical_exception__ = logical
+        self.__traceback__ = None if logical else self
+        if not logical:
+            capture = runtime.error.captureStackTrace
+            if runtime.strict_equal(runtime.jstype(capture), "function"):
+                target = runtime.native_get(self, "__sagejs_argument_error__")
+                if not runtime.strict_equal(runtime.jstype(target), "function"):
+                    target = runtime.undefined
+                runtime.reflect.apply(capture, runtime.error, [self, target])
+            else:
+                native = runtime.error(message)
+                native.name = self.name
+                self.stack = native.stack
+        self.__cause__ = self.__context__ = None
+        self.__suppress_context__ = False
 
     def __repr__(self) -> str:
         return self.name + runtime.repr(self.args)
@@ -159,6 +154,10 @@ class BaseException(runtime.error):
     def with_traceback(self, traceback: object) -> BaseException:
         self.__traceback__ = traceback
         return self
+
+
+# Binding errors use the original initializer, not a mutable public replacement.
+_initialize_exception = runtime.native_get(BaseException, "prototype").__init__
 
 
 class Exception(BaseException):
