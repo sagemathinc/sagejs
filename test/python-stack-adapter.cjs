@@ -4,6 +4,7 @@
 const assert = require("node:assert/strict");
 const { Script } = require("node:vm");
 const test = require("node:test");
+const { types: { isNativeError } } = require("node:util");
 const { mappedPythonScript } = require("../dist/tools/python/stack-adapter.js");
 
 function mapped(generated, start, end, exclusions = [], cachedData) {
@@ -25,6 +26,36 @@ test("opaque URLs accept reusable bytecode and preserve rejected-bytecode signal
   const rejected = mapped(generated, 0, generated.length, [], Buffer.from("invalid bytecode"));
   assert.equal(rejected.cachedDataRejected, true);
   assert.equal(rejected.runInThisContext(), 42);
+});
+
+test("current-stack collection captures once without constructing a native Error", () => {
+  mapped("42", 0, 2);
+  const original = Error.captureStackTrace;
+  const captures = [];
+  Error.captureStackTrace = function(carrier, boundary) {
+    captures.push({ carrier, boundary });
+    return original(carrier, boundary);
+  };
+  function adapter_boundary() {
+    return globalThis.__sagejs_capture_python_frames__(null, adapter_boundary);
+  }
+  function adapter_caller() { return adapter_boundary(); }
+  try {
+    const frames = adapter_caller();
+    assert.equal(captures.length, 1);
+    assert.equal(isNativeError(captures[0].carrier), false);
+    assert.equal(captures[0].boundary, adapter_boundary);
+    assert.ok(frames.some(frame => frame.name === "adapter_caller"));
+    assert.ok(frames.every(frame => frame.name !== "adapter_boundary"));
+    assert.ok(Object.isFrozen(frames));
+    assert.ok(frames.every(Object.isFrozen));
+    const foreign = new TypeError("foreign body");
+    const stack = foreign.stack;
+    globalThis.__sagejs_capture_python_frames__(foreign);
+    assert.equal(captures.length, 1);
+    assert.equal(foreign.stack, stack);
+    assert.equal(isNativeError(foreign), true);
+  } finally { Error.captureStackTrace = original; }
 });
 
 for (const mode of ["python", "sage"]) {

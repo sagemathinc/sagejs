@@ -11,7 +11,9 @@ const captureHook = "__sagejs_capture_python_frames__";
 function capture(error: Error | null, boundary?: Function): readonly unknown[] {
   const currentStack = error === null;
   if (currentStack) {
-    error = new Error();
+    // This private carrier is never exposed: capture once at the requested
+    // boundary instead of constructing an Error and immediately recapturing.
+    error = Object.create(Error.prototype) as Error;
     Error.captureStackTrace(error, boundary ?? capture);
   }
   const frames: unknown[] = [];

@@ -815,6 +815,23 @@ of an unqualified performance win. Pyparsing above is a correctness workflow,
 not a timed package speedup. These warm mechanism runs do not replace startup,
 package, mixed-code, browser or full four-platform performance qualification.
 
+### Current-stack adapter capture
+
+Node's current-stack adapter now uses a private `Error.prototype` carrier and
+captures once, rather than constructing an `Error` and immediately recapturing
+at the requested boundary. This carrier never escapes to Python. Existing
+exception inputs are still read without conversion, recapture or mutation.
+Mapped/excluded/foreign frames and boundary/trampoline rules are unchanged.
+
+TypeScript compilation and all 34 selected adapter/CLI/diagnostic checks pass.
+The five adapter checks also pass on all four native hosts. Frozen artifacts
+in `/home/user/exception-current-stack.9hQ6vh` were measured under the bench-1
+exclusive lock after the initializer probe finished: 10,000 current-stack
+collections, each returning ten frames, three warmups and seven samples,
+before/after/after/before order. Run medians fall from 316.1–316.4ms to
+229.9–232.4ms (about 27% less time). This is a Node adapter comparison, not a
+CPython/package speedup or a closure of the remaining exception cliffs.
+
 ### Keyword hook disambiguation
 
 Plain keyword packets now treat callable `keys`, `__getitem__`, and
