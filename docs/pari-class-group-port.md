@@ -1,5 +1,27 @@
 # Faithful PARI class-group language experiment
 
+## Integral-HNF ideal valuation checkpoint
+
+`pari_prepared_hnf_valuation` now follows `idealval`'s integral matrix branch:
+remove content, handle inert primes, compute Zval/Nval bounds, and execute
+`idealHNF_val` with per-column primitive parts and shrinking prime-power
+moduli. Signed remainders follow PARI's truncation convention rather than
+Python's nonnegative remainder. The caller supplies disjoint packed scratch.
+Scalar p-valuations currently use repeated division and initial prime powers
+use repeated multiplication; these are explicit arithmetic-cost differences,
+not evidence of language-only overhead.
+
+406 HNF controls agree with PARI in CPython, JS, GMP and tagged execution. They
+include powers through exponent 257, multiplication by another prime above the
+same rational prime, and scalar content. The 406 element-valuation controls
+remain green. Nonintegral ideal conversion and the other `idealtyp` dispatch
+branches remain outside this entry, and prime decomposition is still supplied
+by PARI preparation. No full relation or class-group computation is claimed.
+
+```text
+SAGEJS_FLINT_PREFIX=<prefix> node bench/pari-class-group-port/check_compiled_valuation.cjs <pari-2.17.4-source> --hnf
+```
+
 ## Prepared prime-ideal valuation checkpoint
 
 `valuation.py` translates `base3.c:ZC_nfval`'s no-remainder path from prepared

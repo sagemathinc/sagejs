@@ -7,6 +7,108 @@ decomposition is supplied by this module. Scratch owners must be disjoint.
 """
 
 from sagejs.native import IntegerBuffer, native
+from math import gcd
+
+
+@native
+def pari_scalar_pval_control(x: int, prime: int) -> int:
+    """Exact scalar valuation leaf; repeated division, not PARI's tuned kernel."""
+    if x == 0 or prime < 2:
+        raise ValueError("scalar valuation needs nonzero x and prime >= 2")
+    value = 0
+    while x % prime == 0:
+        x //= prime
+        value += 1
+    return value
+
+
+@native
+def pari_prepared_hnf_valuation(
+    ideal: IntegerBuffer,
+    tau: IntegerBuffer,
+    primitive: IntegerBuffer,
+    columns: IntegerBuffer,
+    values: IntegerBuffer,
+    temporary: IntegerBuffer,
+    degree: int,
+    prime: int,
+    ramification: int,
+    residue_degree: int,
+    inert: int,
+) -> int:
+    """Integral-HNF idealval and idealHNF_val, using prepared prime data.
+
+    Row-major matrices and disjoint workspaces. The input must be a nonzero
+    integral ideal in HNF, not an arbitrary lattice. Rational input conversion
+    and other idealtyp branches are outside this entry. Scalar p-valuation and
+    initial prime-power construction are labeled arithmetic substitutions.
+    """
+    if degree <= 0 or prime < 2 or ramification < 1 or residue_degree < 1:
+        raise ValueError("invalid prepared HNF valuation input")
+    content = 0
+    for i in range(degree * degree):
+        content = gcd(content, ideal[i])
+    if content == 0:
+        raise ValueError("zero ideal valuation is not finite")
+    for i in range(degree * degree):
+        primitive[i] = ideal[i] // content
+    vc = pari_scalar_pval_control(content, prime)
+    if inert != 0:
+        return vc
+    zval = pari_scalar_pval_control(primitive[0], prime)
+    if zval == 0:
+        return vc * ramification
+    nval = zval
+    for i in range(1, degree):
+        nval += pari_scalar_pval_control(primitive[i * degree + i], prime)
+    if nval < residue_degree:
+        return vc * ramification
+    maximum = zval * ramification
+    if nval // residue_degree < maximum:
+        maximum = nval // residue_degree
+    for j in range(1, degree):
+        for i in range(degree):
+            total = primitive[j] * tau[i * degree]
+            for k in range(1, j + 1):
+                total += primitive[k * degree + j] * tau[i * degree + k]
+            if total % prime != 0:
+                return vc * ramification
+            columns[i * degree + j] = total // prime
+    for j in range(1, degree):
+        column_content = 0
+        for i in range(degree):
+            column_content = gcd(column_content, columns[i * degree + j])
+        values[j] = 1 + ramification * pari_scalar_pval_control(column_content, prime)
+        for i in range(degree):
+            columns[i * degree + j] //= column_content
+    pk = 1
+    for i in range((maximum + ramification - 1) // ramification):
+        pk *= prime
+    value = 1
+    while value < maximum:
+        if ramification == 1 or (maximum - value) % ramification == 0:
+            pk //= prime
+        for j in range(1, degree):
+            if value >= values[j]:
+                for i in range(degree):
+                    total = columns[j] * tau[i * degree]
+                    for k in range(1, degree):
+                        total += columns[k * degree + j] * tau[i * degree + k]
+                    if total % prime != 0:
+                        return value + vc * ramification
+                    total //= prime
+                    if (abs(total).bit_length() + 63) // 64 > (
+                        pk.bit_length() + 63
+                    ) // 64:
+                        remainder = abs(total) % pk
+                        if total < 0:
+                            remainder = -remainder
+                        total = remainder
+                    temporary[i] = total
+                for i in range(degree):
+                    columns[i * degree + j] = temporary[i]
+        value += 1
+    return value + vc * ramification
 
 
 @native
