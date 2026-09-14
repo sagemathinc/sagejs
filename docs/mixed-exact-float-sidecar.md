@@ -375,3 +375,11 @@ The integration tier stops at the Cantor test's missing default MPC prefix
 passes both Cantor checks in 330.8 seconds wall time, including native and
 dynamic execution. This resolves that test's setup failure, not the unrun
 integration tier. None of the full broad gates is claimed green.
+
+The subsequent port unit gate caught a regression in the new source-call
+scan: walking workspace-expanded synthetic AST nodes raised
+`stat._walk is not a function` during production graph inventory. The scan
+now runs on the original parser AST, before expansion, and only for floating
+signatures that need that lowering decision. The exponent test file and
+`test/wasm-graph-components.cjs` then pass seven checks, with actual Wasm
+execution skipped; production graph core inventory is included in that pass.

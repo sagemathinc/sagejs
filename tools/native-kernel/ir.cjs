@@ -1138,19 +1138,21 @@ async function lowerSource(source, filename, options = {}) {
     );
   }
   function lowerDefinition(fn) {
-    const expanded = workspaces.lower(fn);
-    fn = expanded.fn;
     const signature = signatures.get(fn.name.name);
     // These binary64 operations and typed helper calls may carry exact integer
     // locals even when the public signature contains only floats. The pure
     // buffer lowering does not admit native calls; use the mixed typed body.
     let integerExponentMath = false;
-    fn.walk({_visit(node, descend) {
+    // Inspect the original parser AST, before workspace expansion introduces
+    // synthetic structural nodes which deliberately have no parser walker.
+    if (signature !== undefined && isFloat64Signature(signature)) fn.walk({_visit(node, descend) {
       if (nodeType(node) === "AST_Call" && nodeType(node.expression) === "AST_SymbolRef" &&
           (["ldexp", "frexp"].includes(mathFunctions.get(node.expression.name)) ||
             signatures.has(node.expression.name))) integerExponentMath = true;
       if (descend !== undefined) descend();
     }});
+    const expanded = workspaces.lower(fn);
+    fn = expanded.fn;
     const result = signature === undefined
       ? lowerLegacyFunction(fn, decoratedMode)
       : isFloat64Signature(signature) && !integerExponentMath
