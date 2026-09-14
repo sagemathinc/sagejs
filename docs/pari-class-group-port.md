@@ -2,6 +2,27 @@
 
 ## Connected Babai iteration prototype
 
+The `--actual` mode now captures **80 calls** made by PARI's normal
+`ZM_lll_norms(..., .99, LLL_IM, NULL)` path on 32 prepared ideals: the existing
+four tuning polynomials at primes 2, 3, 5, 7, 11, 13, 17 and 19, using
+`nfinit(P, nbits2prec(192))` and `roundG * idealhnf(prime)` as input. This does
+not bypass the upstream FLATTER/fast/DPE selection. The instrumentation also
+compares its final transformation with uninstrumented PARI for every ideal.
+Each captured Babai input is replayed separately in CPython, JS and native
+execution, with full mutable-state agreement. **26 calls change the basis,
+37 have nonzero incoming mu, and none takes the stagnation return.**
+The serialized trace hash is
+`688721a36b613872f2724ca796a0e8d5f5c8d09149b6362d8bb4a36651aa50dc`.
+
+For defined diagnostic output, the instrumented double-vector allocator zeros
+all slots before upstream initialization; otherwise printing unused GSO slots
+would read uninitialized storage. No normal algorithm control or arithmetic is
+changed, and the uninstrumented final-transform comparison is an additional
+check, not a proof of identical unused state. Trace collection is capped at 512
+calls and excluded from timing. This is still replay scaffolding, not an
+independent whole LLL execution or a new performance result. The original 28
+synthetic cases remain a separate passing mode.
+
 `lll_babai.py` translates `lll.c:Babai_fast`, including GSO updates, descending
 size reduction, exact basis/transformation updates, column renormalization,
 Gram refresh and the three-generation exponent stagnation test. Indices are
@@ -20,7 +41,7 @@ status. Native test buffers predeclare 64 words per integer, since the default
 eight-word transformation capacity is insufficient for these large outputs.
 The first native run hit that capacity; this was not an upstream stopping rule.
 
-This is not full LLL or actual prepared-field coverage yet. In particular, a
+This is not full LLL. In particular, a
 zero floating GSO divisor explicitly raises an untranslated-boundary error
 rather than pretending to reproduce C's infinity/NaN behavior. The synthetic
 inputs use orthogonal preceding columns and do not cover every reduction or
