@@ -9,6 +9,8 @@
   "objective": "Qualify prepared calls, reflected divmod and annotation metadata on current main without widening budgets",
   "base_commit": "01248b45f047b12047c28885c3624dc2f217f36e",
   "claims": [
+    "test/python-super-prepared-binding.cjs",
+    "test/fixtures/python-super-prepared-binding.py",
     "tools/python/traceback-capture.ts",
     "tools/compile.ts",
     "tools/kernel.ts",

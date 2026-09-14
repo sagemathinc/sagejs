@@ -563,6 +563,12 @@ def _print_legacy_class(self, output):
         output.spaced("function", name, "()", "")
         output.with_block(lambda: [output.indent(), body()])
         output.end_statement()
+        output.indent()
+        self.name.print(output)
+        output.print(
+            ".prototype." + name + ".__sagejs_method_signature_excludes_self__ = true"
+        )
+        output.end_statement()
 
     def add_hidden_property(name, proceed, writable=False):
         output.indent(), output.print("Object.defineProperty(")

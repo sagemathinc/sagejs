@@ -1048,3 +1048,14 @@ policies. Local seven-sample phase observations are retained at
 Guarded capture shows no material package speedup here; both warm ratios remain
 around 200x. These are provisional local observations, not controlled VM
 acceptance measurements. No threshold or budget was changed.
+
+The subsequent super-binding checkpoint repairs that Jupyter prerequisite.
+Super now uses the shared Python/native function binder, avoids rebinding its
+already-resolved static/descriptor results, and generated forwarding methods
+carry the receiver calling-convention marker. The minimized CPython-oracle
+fixture covers prepared methods, saved methods, class/static methods and an
+inherited initializer with keyword/default arguments in both language modes
+and capture policies. The frozen full build passes in 7m34s, 54 focused checks
+pass, all 404 strict modules pass, and the actual Jupyter wire-protocol suite
+passes under both native and guarded capture. Browser and four-platform
+consumer qualification remain separate gates; the default is still native.

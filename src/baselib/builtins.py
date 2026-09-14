@@ -5477,6 +5477,7 @@ def _builtins_getattr_impl(
             runtime.strict_equal(runtime.jstype(member), "function")
             and not _builtins_is_python_class(member)
             and not ρσ_is_bound_method(member)
+            and _builtins_get_member(value, "__sagejs_super__") is not True
             and not runtime.reflect.apply(
                 runtime.object.prototype.hasOwnProperty,
                 value,
@@ -6448,12 +6449,7 @@ def ρσ_py_super(
             receiver = instance
             if _builtins_has_member(member, "__classmethod__"):
                 receiver = instance_class
-            bound = runtime.reflect.apply(
-                runtime.reflect.get(member, "bind"),
-                member,
-                [receiver],
-            )
-            return ρσ_finish_bound_method(bound, member, receiver)
+            return _builtins_bind_python_function(member, receiver)
         if _builtins_member_is_function(member, "__get__"):
             return _builtins_call_member(member, "__get__", [instance, instance_class])
         return member
