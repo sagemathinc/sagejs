@@ -47,6 +47,15 @@ for(long t=0;t<8;t++){GEN p=stoi(primes[t]),dec=idealprimedec(nf,p);for(long j=1
 avma=av;}pari_close();return 0;}`);
  run("cc", ["-O2", "-I" + path.join(pari, "src/headers"), "-I" + lib, c, "-L" + lib, "-Wl,-rpath," + lib, "-lpari", "-lm", "-o", exe]);
  const trace = run(exe, []), rows = trace.trim().split("\n").map(JSON.parse);
+ if (process.argv.includes("--export-fixtures")) {
+  // The C loop emits each field's primes in increasing order, restarting at 2.
+  let field = -1, previous = Infinity;
+  const actual = rows.filter(r => r.actual).map(r => {
+   if (Number(r.p) < previous) field++;
+   previous = Number(r.p); return { ...r, field };
+  });
+  assert.equal(field, 3); console.log(JSON.stringify(actual)); return;
+ }
  assert(rows.some(r => r.rank === 0) && rows.some(r => r.rank === r.n));
  assert(rows.some(r => r.actual && r.rank > 0 && r.rank < r.n));
  run("python3", ["-c", `import sys,json,importlib

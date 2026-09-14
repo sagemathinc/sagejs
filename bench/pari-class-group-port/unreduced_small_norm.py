@@ -1,14 +1,16 @@
 """Unreduced ideal packets through PARI 2.17.4 small_norm collection.
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
-Original ideal HNFs and norms are supplied; rank, LLL, embeddings and QR are
-computed in this closure. Ideal products, L_jid construction, automorphism
-images and the outer class/unit driver remain explicit dependencies.
+Original ideal HNFs/norms or prime descriptors are supplied. Prime mode builds
+the ideal HNF and norm; both modes compute rank, LLL, embeddings and QR in this
+closure. Ideal products, L_jid construction, automorphism images and the outer
+class/unit driver remain explicit dependencies.
 """
 
 from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
 from .unreduced_ideal_collector import pari_collect_unreduced_ideal
 from .ideal_schedule import pari_next_small_norm_ideal
+from .prime_ideal_hnf import pari_prime_ideal_hnf
 
 
 @native
@@ -144,20 +146,41 @@ def pari_collect_unreduced_ideals(
     packet_ideals: IntegerBuffer,
     packet_norms: IntegerBuffer,
     schedule: Int64Buffer,
+    construct_primes: int,
+    basis_table: IntegerBuffer,
+    packet_primes: IntegerBuffer,
+    packet_generators: IntegerBuffer,
+    packet_inert: IntegerBuffer,
+    hnf_generator: IntegerBuffer,
+    hnf_matrix: IntegerBuffer,
+    hnf_work: IntegerBuffer,
+    hnf_pivots: IntegerBuffer,
 ) -> int:
     """Visit original ideal packets, retaining relations across preparations.
 
-    Each packet contains only an original ideal HNF and norm, keyed by its
-    factor-base ID. All packet inputs are disjoint from mutable workspaces.
+    Packets supply either original HNF/norms or prime descriptors. In the
+    latter mode compute HNF and norm inside this closure, using the prepared
+    field basis table; distinguished-ideal products are not yet supported.
+    All packet inputs are disjoint from mutable workspaces.
     Follow the existing upstream schedule/stop policy; unsupported preparation
     stops this schedule with a sticky dependency status rather than advancing.
     """
     packets = len(packet_ids)
     square = n * n
-    if n < 3 or n > 4 or len(packet_norms) != packets:
+    if n < 3 or n > 4 or construct_primes < 0 or construct_primes > 1:
         raise ValueError("invalid unreduced ideal packets")
-    if len(packet_ideals) < packets * square or len(admission_ideal) < square:
+    if len(admission_ideal) < square:
         raise ValueError("insufficient original ideal packet storage")
+    if construct_primes == 0:
+        if len(packet_norms) != packets or len(packet_ideals) < packets * square:
+            raise ValueError("insufficient original ideal packet data")
+    else:
+        if jid0 != 0 or e0 != 0:
+            raise ValueError("distinguished-ideal products remain unported")
+        if len(packet_primes) != packets or len(packet_inert) != packets:
+            raise ValueError("invalid prime descriptor count")
+        if len(packet_generators) < packets * n or len(hnf_generator) < n:
+            raise ValueError("insufficient prime generator storage")
     if len(preparation_state) < 1:
         raise ValueError("insufficient resident preparation state")
     while True:
@@ -180,8 +203,39 @@ def pari_collect_unreduced_ideals(
             packet += 1
         if packet == packets:
             raise ValueError("scheduled ideal has no original packet")
-        for i in range(square):
-            admission_ideal[i] = packet_ideals[packet * square + i]
+        if construct_primes == 0:
+            for i in range(square):
+                admission_ideal[i] = packet_ideals[packet * square + i]
+            ideal_norm = packet_norms[packet]
+        else:
+            for i in range(n):
+                hnf_generator[i] = packet_generators[packet * n + i]
+            pari_prime_ideal_hnf(
+                basis_table,
+                hnf_generator,
+                n,
+                packet_primes[packet],
+                packet_inert[packet],
+                hnf_matrix,
+                hnf_work,
+                hnf_pivots,
+                admission_ideal,
+            )
+            # pr_norm = powiu(p, f). Native variable-exponent integer powers
+            # are not yet supported. Dispatch this bounded residue degree to
+            # constant exact powers; PARI's word-power fast path is an explicit
+            # arithmetic-leaf substitution, not presumed equal backend cost.
+            residue_degree = admission_group_f[selected - 1]
+            if residue_degree < 1 or residue_degree > n:
+                raise ValueError("invalid prime residue degree")
+            if residue_degree == 1:
+                ideal_norm = packet_primes[packet]
+            elif residue_degree == 2:
+                ideal_norm = packet_primes[packet] ** 2
+            elif residue_degree == 3:
+                ideal_norm = packet_primes[packet] ** 3
+            else:
+                ideal_norm = packet_primes[packet] ** 4
         preparation_state[0] = 0
         status = pari_collect_unreduced_ideal(
             matrix,
@@ -219,7 +273,7 @@ def pari_collect_unreduced_ideals(
             admission_embedding_p,
             admission_embedding_e,
             admission_real_count,
-            packet_norms[packet],
+            ideal_norm,
             admission_ideal,
             admission_mode,
             admission_factor_product,

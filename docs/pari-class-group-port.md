@@ -1,5 +1,68 @@
 # Faithful PARI class-group language experiment
 
+## Prime descriptors through resident collection
+
+`unreduced_small_norm.py` now has an explicit prime-construction mode for
+`small_norm`'s `j0 = 0` branch. Before each visit it builds `pr_hnf` from the
+prepared field basis table and prime generator, and computes `pr_norm = p^f`.
+Rank, LLL, embeddings, QR, enumeration, admission and cache updates remain
+inside the same compiled closure. The supplied-HNF mode is retained as an
+explicit test/scaffolding boundary, not an automatic alternate algorithm.
+Distinguished-ideal powers/products are rejected in construction mode until
+ported; they are not silently replaced by unmultiplied prime ideals.
+
+```sh
+node bench/pari-class-group-port/check_prepared_small_norm.cjs PARI_DIRECTORY PARI_ARCHIVE --unreduced --distinct --construct-primes
+```
+
+The constructed-mode test supplies empty HNF and norm packets. It joins
+prime-descriptor fixtures to the existing four-field collector fixtures and
+checks that their oracle HNFs agree outside execution. The translated call
+receives only descriptors/table, never those oracle HNFs. This remains an
+explicit supplied schedule and factor base, not the complete prepared-`nf`
+class-group engine. The selected prime above 3 in one quartic has residue
+degree two; the other selected prime norms have residue degree one.
+The initial connected run passes all 16 distinct-ideal scenarios in PARI,
+CPython, generated JS and GMP with the unchanged relation trace
+`517bae7177fcc6c56ee1a6c504e11669a7d189da3b73311dd9962e7eb1c13eeb`.
+The generated closure has 128 IR functions, occupies 19,555,592 C bytes and its Linux addon
+3,295,936 bytes; this is not a timing or RSS result.
+The new guard test rejects distinguished-ideal construction before changing
+any resident buffer, in CPython, JS and GMP.
+
+The current changed-file gate selects merge invariants and docs checks; both
+pass, including a full eight-stage build in 7m22s. Five optional native addons
+are absent; the production native pack and numerical Wasm reactors are
+explicitly skipped, not qualified. Strict baselib checks pass (403 modules).
+Architecture checks still stop at the stale optimizer manifest. Initial
+focused receipt attempts overlapped the rebuild and failed on missing or
+partially regenerated compiler files; those failures remain in the ledger.
+After the build terminates, all three focused modes pass: distinct constructed
+primes (16 scenarios), distinct supplied HNFs (16, including sticky preparation
+failures), and repeated constructed primes (16). The repeated-prime trace
+remains `c7584ba55c17364224aecd400d70bdb45e7e9d87c173efcd6196d91e95f6cd38`.
+These share four tuning fields, not 48 distinct fields. The current changed-file
+gate does not run the full unit suite, so it does not supersede the earlier
+unit failure recorded below.
+
+A demonstrated compiler obstruction is dynamic integer exponentiation:
+`prime ** residue_degree` fails lowering because exponents must currently be
+constants from 0 through 64. This degree-three/four prototype uses explicit
+constant powers for residue degrees 1 through 4 and rejects invalid degrees.
+This preserves `pr_norm` but substitutes exact backend powering for PARI's
+word-power fast path (`trans1.c:powiu_sign`); equal arithmetic cost is not
+claimed. General variable-exponent native support remains a compiler item,
+not a reason to alter the mathematical bound or supply a precomputed norm.
+
+The next construction frontier is `base4.c:idealpows -> idealpow ->
+idealpowprime` for the distinguished prime, then `idealmul_aux ->
+idealHNF_mul_two` for its product with each selected prime. The latter forms
+the columns of `alpha * I` and `p * I`, followed by `ZM_hnfmodid` with modulus
+`p * I[0,0]`. That modulus need not be prime: reusing `ZM_hnfmodprime` here
+would not implement the upstream operation. Prime-power special cases,
+content factors and field-element powering are also part of this dependency,
+not permission to replace it by a fixed number of prime-ideal visits.
+
 ## Prime-ideal construction dependency
 
 `prime_ideal_hnf.py` translates `base4.c:pr_hnf`, the integral multiplication
@@ -24,8 +87,9 @@ the constructed multiplication matrix, inert handling and unchanged input
 buffers. Trace SHA-256:
 `c946fd7b6a4481133c65937ff9d8eee794524b7c6759d23e434b6e05a90a256d`.
 No timing qualification is claimed. The test pins all three upstream source
-files against the archive and local build source. This construction entry is
-not yet wired into the multi-ideal collector below; distinguished-ideal
+files against the archive and local build source. At this initial checkpoint,
+the construction entry was not yet wired into the multi-ideal collector (the
+later connection is recorded above); distinguished-ideal
 powers/products, prime decomposition and the full class/unit driver remain
 dependencies. Existing whole-engine limitations are unchanged.
 The generated core is 1,191,081 bytes and the Linux addon is 424,544 bytes;
@@ -48,10 +112,11 @@ counters survive between visits. Per-ideal preparation and cursor state reset
 only when the scheduler selects another ideal. An unsupported preparation
 stops the schedule with its sticky dependency status; it is not skipped.
 
-This is still a supplied-packet boundary, **not full `small_norm` or `bnfinit`**.
-Prime-ideal HNF construction, distinguished-ideal products/norms, construction
+This section describes the supplied-HNF mode, **not full `small_norm` or `bnfinit`**.
+Prime-ideal HNF construction is outside this mode (the constructed-prime mode
+above removes that dependency). Distinguished-ideal products/norms, construction
 of `L_jid`, automorphism images and the outer class/unit driver remain outside
-this entry. The two-visit control deliberately supplies its schedule rather
+both modes. The two-visit control deliberately supplies its schedule rather
 than claiming it is PARI's complete factor-base traversal. No new timing or
 seconds-scale coverage is claimed.
 

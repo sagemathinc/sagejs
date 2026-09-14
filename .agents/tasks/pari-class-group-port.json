@@ -648,6 +648,76 @@
       "commit": "5207ab12245946c4451716e050f7c366a9fcc9f2",
       "workspace_fingerprint": "d316f8fb16c12d39b56bc854cb5fd78479e4978faf1ad824d66168d7b716e430",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_small_norm.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --unreduced --distinct --construct-primes",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 12.247,
+      "started_at": "2026-09-14T12:19:06.853Z",
+      "commit": "62bd07c190f36a65180ef150642dc3f6117370ee",
+      "workspace_fingerprint": "b1bc0555cc6be63d6b2d9a95852060069ece1642b3fd57819941c1f9b6751f2c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_small_norm.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --unreduced --distinct",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 11.73,
+      "started_at": "2026-09-14T12:19:19.857Z",
+      "commit": "62bd07c190f36a65180ef150642dc3f6117370ee",
+      "workspace_fingerprint": "b1bc0555cc6be63d6b2d9a95852060069ece1642b3fd57819941c1f9b6751f2c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_small_norm.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --unreduced --construct-primes",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 8.482,
+      "started_at": "2026-09-14T12:19:32.266Z",
+      "commit": "62bd07c190f36a65180ef150642dc3f6117370ee",
+      "workspace_fingerprint": "b1bc0555cc6be63d6b2d9a95852060069ece1642b3fd57819941c1f9b6751f2c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_small_norm.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --unreduced --distinct --construct-primes",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.188,
+      "started_at": "2026-09-14T12:26:56.906Z",
+      "commit": "62bd07c190f36a65180ef150642dc3f6117370ee",
+      "workspace_fingerprint": "add40c8a91229bbac66311afbfd8fd22823f82c86a908904ef03bce60f17b608",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_small_norm.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --unreduced --distinct",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.865,
+      "started_at": "2026-09-14T12:27:24.753Z",
+      "commit": "62bd07c190f36a65180ef150642dc3f6117370ee",
+      "workspace_fingerprint": "e51938219b39f613e9d87b4efdf7a9775e9fb37e9acb6bbebd2a7f3cf0149720",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_small_norm.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --unreduced --construct-primes",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.217,
+      "started_at": "2026-09-14T12:27:52.285Z",
+      "commit": "62bd07c190f36a65180ef150642dc3f6117370ee",
+      "workspace_fingerprint": "e51938219b39f613e9d87b4efdf7a9775e9fb37e9acb6bbebd2a7f3cf0149720",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prime_ideal_hnf.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.266,
+      "started_at": "2026-09-14T12:28:48.215Z",
+      "commit": "62bd07c190f36a65180ef150642dc3f6117370ee",
+      "workspace_fingerprint": "c6cb330ca291aea1c131094569803044398ecee7a79cb05f491bf1985e9051aa",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

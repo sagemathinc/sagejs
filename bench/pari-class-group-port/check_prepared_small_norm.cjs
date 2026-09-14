@@ -7,12 +7,15 @@ function run(command,args,options={}){const r=spawnSync(command,args,{encoding:'
 (async()=>{
  const distinct=process.argv.includes('--distinct');
  const unreduced=process.argv.includes('--unreduced');
+ const constructPrimes=process.argv.includes('--construct-primes');
+ assert(!constructPrimes||unreduced,'prime construction requires unreduced mode');
  const moduleName=unreduced?'unreduced_small_norm':'prepared_small_norm';
  const entry=unreduced?'pari_collect_unreduced_ideals':'pari_collect_prepared_ideals';
  const pari=path.resolve(process.argv[2]),archive=path.resolve(process.argv[3]),lib=path.join(pari,'Olinux-x86_64');
  const fixtureArgs=[path.join(__dirname,'check_compiled_ideal_collector.cjs'),pari,'--export-fixtures',...(unreduced?['--unreduced']:[])];
  const fixture=JSON.parse(run(process.execPath,fixtureArgs));
  const second=distinct?JSON.parse(run(process.execPath,[...fixtureArgs,'--packet-prime=3'])):fixture;
+ const primeFixtures=constructPrimes?JSON.parse(run(process.execPath,[path.join(__dirname,'check_prime_ideal_hnf.cjs'),pari,archive,'--export-fixtures'])):[];
  let control=source(run('tar',['-xOf',archive,'pari-2.17.4/src/basemath/buch2.c']),{unreduced});
  function replace(a,b){assert.equal(control.split(a).length,2);control=control.replace(a,b);}
  // Repeated same-ideal visits deliberately force duplicate/cache interactions.
@@ -37,6 +40,17 @@ function run(command,args,options={}){const r=spawnSync(command,args,{encoding:'
  const inputs=fixture.cases.map(({input:v},index)=>{const w=second.cases[index].input;
   for(const name of ['n','precision','admission_matrix_m','admission_matrix_p','admission_matrix_e','admission_group_e','admission_group_f','admission_group_tau'])assert.deepEqual(v[name],w[name],name);
   const all={...v,search_ideals:[w.jid,v.jid],packet_ids:distinct?[v.jid,w.jid]:[v.jid],packet_matrices:distinct?v.matrix.concat(w.matrix):v.matrix.slice(),packet_reduced_ideals:distinct?v.ideal.concat(w.ideal):v.ideal.slice(),packet_ideals:distinct?v.admission_ideal.concat(w.admission_ideal):v.admission_ideal.slice(),packet_norms:distinct?[v.admission_ideal_norm,w.admission_ideal_norm]:[v.admission_ideal_norm],packet_skips:distinct?[v.skipfirst,w.skipfirst]:[v.skipfirst],schedule:['0','0','0','0']};
+  if(unreduced){
+   const n=Number(v.n),zero=k=>Array(k).fill('0');
+   Object.assign(all,{construct_primes:constructPrimes?'1':'0',basis_table:[],packet_primes:[],packet_generators:[],packet_inert:[],hnf_generator:zero(n),hnf_matrix:zero(n*n),hnf_work:zero(n*n),hnf_pivots:zero(n)});
+   if(constructPrimes){
+    const selected=(distinct?[2,3]:[2]).map(p=>primeFixtures.find(r=>r.field===Math.floor(index/4)&&r.p===String(p)));
+    assert(selected.every(Boolean));assert.deepEqual(selected[0].output,v.admission_ideal.map(String));
+    if(distinct)assert.deepEqual(selected[1].output,w.admission_ideal.map(String));
+    all.basis_table=selected[0].table;all.packet_primes=selected.map(r=>r.p);all.packet_inert=selected.map(r=>String(r.inert));all.packet_generators=selected.flatMap(r=>r.generator);
+    all.packet_ideals=[];all.packet_norms=[]; // no supplied ideal HNF or norm
+   }
+  }
   return Object.fromEntries(names.map(([name])=>{assert.notEqual(all[name],undefined,name);return [name,all[name]];}));});
  const py=run('python3',['-c',`
 import sys,json,decimal,importlib
@@ -63,7 +77,16 @@ for raw,w in zip(d['inputs'],d['expected']):
  assert v['schedule'][2]==1
  if d['unreduced']:assert qr_calls[0]==2-v['schedule'][0],(qr_calls,v['schedule'])
  before=str(v);assert f(*(v[name] for name,kind in d['names']))==status and str(v)==before
-if d['unreduced']:
+if d['constructPrimes']:
+ v={}
+ for name,kind in d['names']:
+  conv=float if kind in ('float','Float64Buffer') else int;x=d['inputs'][0][name];v[name]=list(map(conv,x)) if isinstance(x,list) else conv(x)
+ v['jid0']=1;v['e0']=1;before=str(v)
+ try:f(*(v[name] for name,kind in d['names']))
+ except ValueError as error:assert 'distinguished-ideal products remain unported' in str(error)
+ else:raise AssertionError('must reject distinguished-ideal products')
+ assert str(v)==before
+if d['unreduced'] and not d['constructPrimes']:
  for scale,status_expected in [(0,-11),(2147483659*2147483693,-17)]:
   v={}
   for name,kind in d['names']:
@@ -83,7 +106,7 @@ if d['unreduced']:
   assert v['relation_state'][0]==last and v['relation_basis']==w['basis']
   assert v['relation_records'][:last*size]==w['records'] and list(map(str,v['generators'][:last*n]))==w['generators']
   before=str(v);assert f(*(v[name] for name,kind in d['names']))==-11 and str(v)==before
-`,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify({inputs,expected,names,unreduced,distinct,first_expected:fixture.cases[1].expected})});
+`,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify({inputs,expected,names,unreduced,distinct,constructPrimes,first_expected:fixture.cases[1].expected})});
  const built=await compileKernel({sourcePath}),mod=require(built.modulePath);
  assert.equal(mod[entry].nativeAvailable,true);
  assert.doesNotMatch(fs.readFileSync(built.coreSourcePath,'utf8'),/napi_call_function|PyObject_Call/);
@@ -94,14 +117,20 @@ if d['unreduced']:
   assert.deepEqual(actual,expected[index]);assert.equal(v.schedule[2],1n);
   const dump=()=>JSON.stringify(v,(_,x)=>typeof x==='bigint'?String(x):x),before=dump();assert.equal(invoke(),status);assert.equal(dump(),before);
  }
- if(unreduced)for(const backend of ['javascript','gmp'])for(const scale of [0n,2147483659n*2147483693n]){
+ if(constructPrimes)for(const backend of ['javascript','gmp']){
+  const v={};for(const [name,kind]of names){const conv=kind==='float'||kind==='Float64Buffer'?Number:BigInt,x=inputs[0][name];v[name]=Array.isArray(x)?x.map(conv):conv(x);}
+  v.jid0=1n;v.e0=1n;
+  const dump=()=>JSON.stringify(v,(_,x)=>typeof x==='bigint'?String(x):x),before=dump();
+  assert.throws(()=>mod[entry][backend](...names.map(([name])=>v[name])),/distinguished-ideal products remain unported/);assert.equal(dump(),before);
+ }
+ if(unreduced&&!constructPrimes)for(const backend of ['javascript','gmp'])for(const scale of [0n,2147483659n*2147483693n]){
   const v={};for(const [name,kind]of names){const conv=kind==='float'||kind==='Float64Buffer'?Number:BigInt,x=inputs[0][name];v[name]=Array.isArray(x)?x.map(conv):conv(x);}
   const n=Number(v.n);v.packet_ideals=Array.from({length:v.packet_ids.length*n*n},(_,i)=>i%(n*n)%n===Math.floor(i%(n*n)/n)?scale:0n);
   const invoke=()=>mod[entry][backend](...names.map(([name])=>v[name])),expectedStatus=scale===0n?-11n:-17n;
   assert.equal(invoke(),expectedStatus);assert.deepEqual(v.schedule.map(BigInt).slice(2),[1n,expectedStatus]);assert.equal(BigInt(v.schedule[0]),1n);
   const dump=()=>JSON.stringify(v,(_,x)=>typeof x==='bigint'?String(x):x),before=dump();assert.equal(invoke(),expectedStatus);assert.equal(dump(),before);
  }
- if(unreduced&&distinct)for(const backend of ['javascript','gmp']){
+ if(unreduced&&distinct&&!constructPrimes)for(const backend of ['javascript','gmp']){
   const v={};for(const [name,kind]of names){const conv=kind==='float'||kind==='Float64Buffer'?Number:BigInt,x=inputs[1][name];v[name]=Array.isArray(x)?x.map(conv):conv(x);}
   const n=Number(v.n);v.packet_ideals.fill(0n,n*n);
   const invoke=()=>mod[entry][backend](...names.map(([name])=>v[name]));assert.equal(invoke(),-11n);
@@ -113,5 +142,5 @@ if d['unreduced']:
  assert(expected.some((r,i)=>r.last>fixture.cases[i].expected.last),'must exercise new relations after first quota');
  if(distinct)assert(inputs.every(v=>v.packet_ids[0]!==v.packet_ids[1]));
  console.log('16 two-visit '+(unreduced?'unreduced':'prepared')+' schedules match PARI/CPython/JS/GMP with resident caches and factor lists; published relation state, aggregate counters and terminal idempotence checked; distinct='+distinct);
- console.log(JSON.stringify({unreduced,distinct,qualifiedTiming:false,traceSha256:createHash('sha256').update(JSON.stringify(expected)).digest('hex'),modulePath:built.modulePath}));
+ console.log(JSON.stringify({unreduced,distinct,constructPrimes,qualifiedTiming:false,traceSha256:createHash('sha256').update(JSON.stringify(expected)).digest('hex'),modulePath:built.modulePath}));
 })().catch(e=>{console.error(e);process.exitCode=1;});
