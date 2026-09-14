@@ -24,6 +24,13 @@ errors across 403 modules and parallel checks pass. Architecture checking still
 fails at the separately recorded stale optimizer manifest. These results do
 not qualify Windows or real Wasm execution.
 
+The changed-file gate passed merge checks and build stages 1–5, then failed
+addon reconciliation because this worktree lacks
+`packages/fflas/.native/prefix/lib/libgivaro.a`. Its subsequent architecture,
+unit, compiler, integration and documentation commands were not reached.
+This missing library installation is separate from the fixed import resolver
+failure; no full-build success is claimed.
+
 ## JavaScript reserved local and parameter names
 
 The real-root translation exposed `new` emitted as a JavaScript local even
