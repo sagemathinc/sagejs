@@ -4,12 +4,26 @@ Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 Corresponds to `lll.c:itodbl_exp` and `set_line`.
 """
 
-from math import frexp, ldexp
+from math import copysign, frexp, ldexp
 
 from sagejs.native import Float64Buffer, IntegerBuffer, checked_uint64, native
 
 from .float_conversion import pari_real_to_float
 from .real_conversion import pari_integer_to_real
+
+
+@native
+def pari_lll_divide(numerator: float, denominator: float) -> float:
+    """C floating division policy used by `Babai_fast`, not Python `/` policy."""
+    if denominator != 0.0:
+        return numerator / denominator
+    if numerator != numerator:
+        return numerator
+    largest = 1.7976931348623157e308
+    infinity = largest * 2.0
+    if numerator == 0.0:
+        return infinity - infinity
+    return copysign(infinity, numerator) * copysign(1.0, denominator)
 
 
 @native

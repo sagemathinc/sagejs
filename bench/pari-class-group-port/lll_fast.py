@@ -97,7 +97,7 @@ def pari_lll_fast(
     All buffers are independent and caller-owned. `column`, `column_exponents`
     and `normalized` have at least max(n,d,transform_rows) entries, `temporary`
     at least one. Initialize transform as desired (normally identity), or use
-    transform_rows=0 for U=NULL. The Babai zero-divisor policy remains explicit.
+    transform_rows=0 for U=NULL. Babai's C zero-divisor policy is explicit.
     """
     for j in range(d):
         for i in range(d):

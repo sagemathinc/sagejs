@@ -39,6 +39,8 @@ int main(int argc,char **argv){if(argc!=2)return 4;selected=atol(argv[1]);pari_i
    rows.push(result.stdout.trim().split(" "));
  }
  assert.equal(rows.length+censored.length,declaredCases);
+ assert(censored.every(index=>declaredCases===84 && index===81),"unexpected reference censoring");
+ assert(rows.length>=declaredCases-1,"insufficient completed reference cases");
  console.log(JSON.stringify({referenceCompleted:rows.length,referenceCensored:censored,referenceCaseTimeoutMs:2000}));
  run("python3",["-c",`
 import sys,json,importlib

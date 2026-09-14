@@ -2,21 +2,32 @@
 
 ## Fast outer-loop work in progress
 
+Current checkpoint: the explicit `pari_lll_divide` helper now reproduces C's
+zero-divisor infinity/NaN policy without changing Python `/`. It uses native
+`copysign` from compiler prerequisite `946b35071` (IR 43), preserving signed
+zero divisors. **All 83 completed reference cases now match status, basis and
+transformation in CPython, JS and native execution.** The declared 84-case set
+still records the case-81 reference timeout; additional censoring is rejected.
+The historical Python failure below is resolved, not removed from the corpus.
+`check_lll_scaling.cjs` adds 225 C-division differential cases, including signed
+zeros and nonfinite values, alongside its 3,814 scaling controls. NaN payload
+identity and floating exception flags are not part of the port contract.
+
 `lll_fast.py` currently connects Babai to the upstream initialization, Lovasz
 decision, insertion-index search, alpha updates and triangular Gram rotation.
 Flat column rotations copy entries rather than rotating PARI pointers; this is
 a declared representation cost, not yet benchmarked. The prototype compiles.
 
 The new `check_lll_fast.cjs` declares 84 cases: 32 prepared ideals with keepfirst
-off/on (64), and 20 identity/zero/dependent/dense-column controls. Its current
-run is **failing, not qualified**. CPython matches the first 71 completed cases,
+off/on (64), and 20 identity/zero/dependent/dense-column controls. Its initial
+run was **failing, not qualified**. CPython matched the first 71 completed cases,
 including all 64 prepared-ideal cases, then reaches the explicit untranslated
 zero-GSO-divisor boundary on case 71: columns `(1,0,0)`, `(0,1,0)`, `(1,0,0)`
-with keepfirst enabled. The full harness stops at that Python disagreement.
+with keepfirst enabled. The initial full harness stopped at that disagreement.
 An explicit `--prepared-only` diagnostic mode separately checks all 64 prepared
 ideal runs in CPython, JS and GMP-native, and **all 64 match status, reduced
 basis and transformation with no reference censoring**. This focused success
-does not replace the failing 84-case gate or remove its controls.
+did not replace the failing 84-case gate or remove its controls.
 
 The initial aggregate reference run timed out after 60 seconds. Isolating
 cases in separate processes with a declared two-second diagnostic cap identifies
@@ -24,8 +35,8 @@ case 81 (the analogous 4x4 dependent-column, keepfirst control) as reference
 censored. The other 83 reference cases complete. The corpus is not reduced:
 the censored case remains listed, and the harness reports its index/cap. This
 does not establish that PARI never terminates, nor authorize altering its LLL
-stopping rules. Next is the C floating zero-divisor policy, followed by a full
-rerun and native state comparison. These are fast-pass checks, not a replacement
+stopping rules. The zero-divisor policy and native rerun are now covered above.
+These are fast-pass checks, not a replacement
 for the complete FLATTER/fast/DPE path.
 
 ## Connected Babai iteration prototype
@@ -69,11 +80,11 @@ status. Native test buffers predeclare 64 words per integer, since the default
 eight-word transformation capacity is insufficient for these large outputs.
 The first native run hit that capacity; this was not an upstream stopping rule.
 
-This is not full LLL. In particular, a
-zero floating GSO divisor explicitly raises an untranslated-boundary error
-rather than pretending to reproduce C's infinity/NaN behavior. The synthetic
+This is not full LLL. The initial zero-GSO-divisor boundary has subsequently
+been translated by the explicit C-policy helper described above. The synthetic
 inputs use orthogonal preceding columns and do not cover every reduction or
-stagnation branch. The fast LLL outer loop and mandatory DPE pass remain open.
+stagnation branch. The fast outer-loop checkpoint is above; the mandatory DPE
+pass remains open.
 No speed or whole-engine correctness claim follows from this checkpoint.
 
 ## Babai's C scaling policy

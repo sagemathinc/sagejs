@@ -2,15 +2,15 @@
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 Matrices use column-major storage; GSO arrays retain PARI's first-index order.
-The public indices are zero-based. A zero floating GSO divisor is an explicit
-untranslated C/Python exception boundary, not an upstream LLL failure status.
+The public indices are zero-based. Floating division retains PARI's explicit
+C infinity/NaN policy through a source helper rather than changing Python `/`.
 """
 
 from math import frexp, ldexp
 
 from sagejs.native import Float64Buffer, IntegerBuffer, native
 
-from .lll_float_preparation import pari_lll_scale, pari_lll_set_line
+from .lll_float_preparation import pari_lll_divide, pari_lll_scale, pari_lll_set_line
 
 
 @native
@@ -67,9 +67,7 @@ def pari_babai_fast(
             for k in range(zeros, j):
                 value -= mu[j * d + k] * r[kappa * d + k]
             r[kappa * d + j] = value
-            if r[j * d + j] == 0.0:
-                raise ValueError("Babai zero GSO divisor policy is not translated")
-            mu[kappa * d + j] = value / r[j * d + j]
+            mu[kappa * d + j] = pari_lll_divide(value, r[j * d + j])
             difference = exponents[kappa] - exponents[j]
             if difference > maximum:
                 maximum = difference
