@@ -432,3 +432,10 @@ The full build passes (7m 02s), and all 42 exception/diagnostic tests pass on
 the revised compiler with a recorded parallel receipt. The source budget is
 unchanged. Broader compiler-suite qualification is separate from those focused
 passes; neither result qualifies generator ownership.
+
+The subsequent broad compiler run has 24 passes, 34 fixture-declared skips,
+and eight failures: `algebra.py` times out, and seven polynomial/extension
+fixtures fail module resolution (`packed_prime_field`, `field_capabilities`,
+or `extension_mpoly_backend`). These are not waived or yet attributed by a
+parent-revision comparison. The pinned pyparsing workflow passes again on the
+cleanup revision. PR272 remains draft, and the full compiler gate remains open.
