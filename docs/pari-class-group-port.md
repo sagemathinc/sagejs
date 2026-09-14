@@ -1,5 +1,34 @@
 # Faithful PARI class-group language experiment
 
+## Eight-active-hour coverage checkpoint
+
+Goal accounting now reports 28,475 root active seconds (7.91 hours), plus the
+previously recorded 12 panel-agent minutes: approximately 8.11 aggregate active
+hours of the 16-hour timebox. No extension is assumed. The current executable
+frontier is prepared ideal/embedding matrices through QR, bound selection and
+resumable factor candidates. Separate translated components cover numerical
+norm admission, partial factorization/valuations, relation normalization and
+resident relation-cache insertion, but those components are not yet a complete
+connected collector. Neither rank-two degree has a translated `bnfinit` result.
+
+Still missing from the connected path are ideal/LLL preparation, factor
+admission and its unresolved factorization cases, exact generator ownership,
+automorphisms, the small/random relation loops, unit/regulator recovery,
+relation linear algebra and upstream stopping/retry logic. The eight reserved
+panel fields remain unused. There are no qualified seconds-scale or full-path
+speed comparisons. Component agreement cannot answer the language-parity
+question yet. The next integration target is candidate-to-relation collection;
+new scalar translations should be driven by that path's concrete dependencies.
+
+Compiler follow-up `4d658f3fa` fixes the production-inventory relative-import
+failure described below: production's logical root name is now explicitly
+registered against the authenticated physical source. The minimal regression
+fails before the fix and passes after it, as does the graph-production
+inventory integration test (six focused passes, one unavailable-Wasm skip).
+The fix is integrated here without changing the translated mathematical source.
+All 72 connected search controls pass again after integration, with the same
+3 exhaustions, 48 factor-limit exits and 21 capped prefixes.
+
 ## Connected search through the factor-admission boundary
 
 `candidate_search.py` now connects prepared QR/bound computation, the resident
