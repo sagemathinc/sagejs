@@ -1,5 +1,32 @@
 # Faithful PARI class-group language experiment
 
+## Prepared prime-ideal valuation checkpoint
+
+`valuation.py` translates `base3.c:ZC_nfval`'s no-remainder path from prepared
+`pr_get_tau` multiplication matrices, including inert primes, ordered exact
+row products, periodic rational-prime stripping and ramification weighting.
+`gen_pvalrem_DC` uses an explicit caller-owned stack with the same descending
+division/squaring and unwinding order, rather than recursive allocations.
+This does not compute prime decompositions or ideal valuations of general
+nonprincipal ideals; those remain preparation/dependency boundaries.
+
+406 controls use prime ideals over 2,3,5,7,11,13,17,19 in the same four tuning
+fields and candidate scales through `p**257`. They include inert and ramified
+primes, signed and zero coordinates, and high-valuation stripping. Results
+match direct PARI `ZC_nfval` in CPython, generated JS, GMP and tagged execution.
+Scratch is explicit disjoint packed storage (64 words per slot, 32 stack slots
+in this control); the default 8-word scratch capacity correctly rejected the
+larger cases. No internal limit was relaxed.
+
+The `p=2` scalar valuation leaf currently uses exact repeated halving instead
+of PARI's trailing-zero primitive. This is a declared representation/cost gap,
+not equivalent instruction counts or a compiler-only slowdown claim. None of
+these controls is a timed full relation-collection or class-group computation.
+
+```text
+SAGEJS_FLINT_PREFIX=<prefix> node bench/pari-class-group-port/check_compiled_valuation.cjs <pari-2.17.4-source>
+```
+
 ## Smoothness precheck checkpoint
 
 Compiler prerequisite `62cdc3d74` adds explicitly imported two-argument
