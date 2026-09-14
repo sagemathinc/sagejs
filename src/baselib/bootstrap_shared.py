@@ -14,7 +14,7 @@ builtins. This module has no mathematical implementation.
             if (Object.hasOwn(node, "error")) return node.error;
         return null;
     }
-    function resumeMethod(native) {
+    function resumeMethod(native, name) {
         if (wrappers.has(native)) return wrappers.get(native);
         function resume(...args) {
             const state = states.get(this);
@@ -25,6 +25,10 @@ builtins. This module has no mathematical implementation.
             state.running = true;
             let complete = true;
             try {
+                // Injection raises inside the resumed owner's handler chain,
+                // not inside the caller that invoked generator.throw/close.
+                if (name === "throw" && state.top !== state.root && args[0] instanceof Error)
+                    ρσ_prepare_raise(args[0]);
                 const result = Reflect.apply(native, this, args);
                 complete = result.done;
                 return result;
@@ -63,7 +67,7 @@ builtins. This module has no mathematical implementation.
                 adapter = Object.create(prototype);
                 for (const name of ["next", "throw", "return"]) {
                     Object.defineProperty(adapter, name, {
-                        value: resumeMethod(iterator[name]), writable: true, configurable: true
+                        value: resumeMethod(iterator[name], name), writable: true, configurable: true
                     });
                 }
                 prototypes.set(prototype, adapter);

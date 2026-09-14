@@ -508,3 +508,16 @@ bench-1 in `/home/user/exception-propagation-pair.QRgeEH`; `report.json` records
 hashes, all samples and process order. This is an experimental synchronous
 record comparison, not mixed-execution, package-record or four-platform
 qualification. The pyparsing check above still uses the native default.
+
+### Injected generator exceptions
+
+The CPython oracle exposed missing implicit context on `generator.throw()` and
+`close()` while a generator is suspended in its own handler. Injection now
+prepares that context after reconnecting the generator's owned chain. It does
+not use an inherited caller handler: CPython leaves injection context unchanged
+when the generator has no owned handler, including before startup and after
+completion. Explicit causes, suppression and reverse context cycles are tested.
+The converged compiler and refreshed runtime pass the three new differential
+cases in both modes and all 75 focused exception/diagnostic tests with a recorded
+receipt; strict checking still passes for 404 modules. This is a
+native-path correctness fix, not qualification of generator logical records.

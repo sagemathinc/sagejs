@@ -1,7 +1,99 @@
-"""State-only differential cases; no traceback or chaining assertions."""
+"""Handled-state ownership and injected-exception chaining differential cases."""
 
 import sys
 import types
+
+
+def test_generator_injection_context():
+    owned = ValueError("owned")
+    caller = KeyError("caller")
+
+    def suspended(with_handler):
+        try:
+            if with_handler:
+                raise owned
+            yield 1
+        except ValueError:
+            try:
+                yield 1
+            except BaseException as caught:
+                assert caught.__context__ is owned
+                assert sys.exception() is caught
+                raise
+
+    for with_handler in (False, True):
+        for closing in (False, True):
+            generator = suspended(with_handler)
+            next(generator)
+            injected = TypeError("injected")
+            try:
+                raise caller
+            except KeyError:
+                if closing:
+                    generator.close()
+                else:
+                    try:
+                        generator.throw(injected)
+                    except TypeError as caught:
+                        assert caught is injected
+                        assert caught.__context__ is (owned if with_handler else None)
+                    else:
+                        assert False
+                assert sys.exception() is caller
+            assert sys.exception() is None
+
+
+def test_generator_injection_cause_and_cycle():
+    owned = ValueError("owned")
+    injected = TypeError("injected")
+    cause = RuntimeError("cause")
+    injected.__cause__ = cause
+    injected.__suppress_context__ = True
+    owned.__context__ = injected
+
+    def suspended():
+        try:
+            raise owned
+        except ValueError:
+            yield 1
+
+    generator = suspended()
+    next(generator)
+    try:
+        generator.throw(injected)
+    except TypeError as caught:
+        assert caught is injected
+        assert caught.__context__ is owned
+        assert caught.__cause__ is cause
+        assert caught.__suppress_context__ is True
+        assert owned.__context__ is None
+    else:
+        assert False
+
+
+def test_generator_injection_before_start_and_after_completion():
+    caller = ValueError("caller")
+
+    def empty():
+        if False:
+            yield 1
+
+    for completed in (False, True):
+        generator = empty()
+        if completed:
+            assert next(generator, "done") == "done"
+        injected = TypeError("injected")
+        try:
+            raise caller
+        except ValueError:
+            try:
+                generator.throw(injected)
+            except TypeError as caught:
+                assert caught is injected
+                assert caught.__context__ is None
+            else:
+                assert False
+            assert sys.exception() is caller
 
 
 def active(error):
