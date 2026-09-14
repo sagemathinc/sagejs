@@ -1,5 +1,34 @@
 # Faithful PARI class-group language experiment
 
+## Connected prepared-real exponential
+
+`exponential_entry.py` connects `modlog2` and the `mpexp` base case:
+upstream binary64 quotient selection, computed cached log(2), real subtraction,
+`exp1r_abs`, addition of one, reciprocal for negative remainders, exponent
+shift and conditional precision reduction. Zero inputs retain `mpexp0`'s
+precision convention. The input remains a prepared real triple, not yet the
+binary64 ingress used by the residue computation. Caller-owned scratch stays
+resident. Inputs above 1920 bits are explicitly outside this base-case port.
+
+The checker compares 646 inputs (321 sixteenth steps from -10 to 10, 202
+signed powers of two, and 123 eighth steps at 128/192/512-bit precision).
+Of these, 642 produce identical stored result triples
+in PARI 2.17.4, CPython, generated JavaScript and GMP native execution. Four
+inputs, precision 64 and exponent -60 or -50, explicitly fail at the existing
+`exp1r_abs` truncating-precision growth boundary. They are recorded failures,
+not omitted cases or successful computations. No timing claim follows.
+The reciprocal's previously documented integer-division substitution remains.
+
+Compiler prerequisite `97858eab0` permits the actual diamond imports of shared
+real-arithmetic helpers. The focused import regressions pass; the architecture
+gate still fails at the previously recorded stale optimizer manifest.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_exponential_entry.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## PARI real-to-binary64 conversion
 
 `float_conversion.py` preserves the 64-bit `rtodbl` path: rounding from the
