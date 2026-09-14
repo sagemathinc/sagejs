@@ -21,6 +21,12 @@ A second read-only reviewer examined word arithmetic for approximately five
 active minutes. Reserve its complete ten-minute allowance: the root ceiling
 is now 84,420 seconds. It ran no tests/builds and made no edits.
 
+A third reviewer covered the one-word product, checked-word compiler identity,
+and integral-log/selected-exponent changes in approximately 460 active seconds.
+Reserve its full ten-minute allowance: the root ceiling is now 83,820 seconds.
+Its small unmetered Python checks are disclosed below; later reviews were
+static only. No concurrent benchmark coordinator was introduced.
+
 The first priorities are connecting the distinguished-ideal relation path and
 obtaining a qualified work-matched comparison. The full prepared-field
 class-group objective, frozen inputs, PARI 2.17.4 pin, safety limits and
@@ -491,6 +497,72 @@ The next full-path dependency remains the upstream distinguished exponent
 selection and factor-base visit discovery, followed by the unported relation,
 unit and termination paths. Further arithmetic experiments must identify a
 dominant cost; this leaf improvement alone does not justify extrapolation.
+
+### Upstream distinguished exponent selection
+
+`integral_log.py` translates the positive-integer branches of PARI 2.17.4
+`ispower.c:logintall` (source SHA-256
+`94628ef035ec7882452c36b2fd9656246519e70cfe307f5662470c6f9bc6c449`).
+It retains word overflow, small-exponent iteration, and binary splitting.
+Exact products replace the machine overflow sentinel, and a caller-owned
+power array replaces stack allocation. The scratch-size bound uses integer
+bit length rather than floating `log2`; branch decisions remain integral.
+The 211-case oracle covers exact powers and their neighbors across word and
+large inputs, matching PARI, CPython, JS, GMP and tagged execution. The first
+native test exhausted its default output-word capacity; explicit 512-word
+scratch entries, justified by the bounded input heights, correct the test
+allocation without changing any compiler limit.
+
+Collector mode 3 selects
+`floor(log(pr_norm(last_factor_base_prime)**2) / log(pr_norm(p0)))`
+using this integer algorithm, not floating logarithms. It preserves the
+ordered last prime (not a maximum norm), constructs the power once, and retains
+the exponent in metadata slot 4 for terminal/reentrant schedule handling.
+Factor-base construction and visit discovery still come from outer prepared
+inputs. Mode 2 retains the supplied-exponent diagnostic boundary.
+
+`check_prepared_small_norm.cjs PARI ARCHIVE --unreduced --distinct
+--construct-primes --distinguished --selected-exponent` matches all 16 cases
+across PARI, CPython, JS and GMP, checks the exponent-defining inequality,
+single power construction, and terminal idempotence. All selected exponents
+are **26**, versus the earlier supplied value 2. The final relation-state
+trace happens to remain unchanged; it is not evidence that the work is equal.
+No timing comparison between these different exponent workloads is claimed.
+
+Independent static review found no arithmetic or resident-state defect.
+The connected positive-power domain still explicitly rejects selected zero
+and exponents at least 512; PARI itself permits zero. Implementing the identity
+ideal for zero, factor-base/visit discovery, other unsupported relation paths,
+and the coupled class/unit termination remain unfinished. Do not call this a
+full `small_norm` or class-group port.
+
+| Further metered execution | User CPU | System CPU | Outcome |
+| --- | ---: | ---: | --- |
+| Initial integral-log test | 1.576780 | 0.319657 | Test scratch capacity exhausted |
+| Corrected integral-log test | 0.527533 | 0.105255 | 211 cases pass |
+| Formatter | 10.204525 | 0.530371 | One source file formatted |
+| Initial selected-exponent collector | 106.577053 | 3.163324 | 16 cases pass |
+| Selected-exponent receipt | 32.943420 | 1.985977 | Native/JS retained exponents checked |
+
+Recorded subtotal is **3,234.609001 CPU seconds**, or **3,474.609001**
+including the unchanged 240-second allowance. The additional static review
+used about 130 active seconds without executing tests, bringing that reviewer's
+total to 460 seconds within the original 600-second reservation.
+
+Fresh strict Python validation passes all 403 registered modules and checks
+979 formatted source files (80.324898 user + 3.272448 system CPU seconds).
+The architecture run still stops at the same stale optimizer manifest
+(11.466007 user + 2.406872 system seconds); no manifest was refreshed to mask
+that failure. Full changed-file build and the old supplied-exponent collector
+were not rerun after this addition; their earlier receipts retain their own
+source identities.
+
+The recorded continuation subtotal is now **3,332.079226 CPU seconds**;
+with the unchanged 240-second allowance it is **3,572.079226 of 3,600**.
+About 28 seconds remain, insufficient for another collector rebuild and
+validation cycle. Further compiled implementation needs additional CPU-budget
+approval, not a silent change to the experiment's acceptance criteria. The
+active-agent-hour allowance has not been exhausted.
 
 ## Bounded checkpoint assessment: the full objective is not achieved
 

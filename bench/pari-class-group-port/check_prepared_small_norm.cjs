@@ -9,6 +9,8 @@ function run(command,args,options={}){const r=spawnSync(command,args,{encoding:'
  const unreduced=process.argv.includes('--unreduced');
  const constructPrimes=process.argv.includes('--construct-primes');
  const distinguished=process.argv.includes('--distinguished');
+ const selectedExponent=process.argv.includes('--selected-exponent');
+ assert(!selectedExponent||distinguished,'exponent selection requires distinguished mode');
  assert(!distinguished||(constructPrimes&&distinct),'distinguished mode requires constructed distinct primes');
  assert(!constructPrimes||unreduced,'prime construction requires unreduced mode');
  const moduleName=unreduced?'unreduced_small_norm':'prepared_small_norm';
@@ -40,6 +42,12 @@ function run(command,args,options={}){const r=spawnSync(command,args,{encoding:'
   replace('I=idealhnf(nf,gel(gel(groups,2+visit),1));NI=idealnorm(nf,I);',
    'I=idealmul(nf,distinguished_power,gel(gel(groups,2+visit),1));NI=idealnorm(nf,I);');
   replace('offsets[2+visit]+1,0,0,&ns','offsets[2+visit]+1,offsets[2]+1,2,&ns');
+  if(selectedExponent){
+   replace('GEN distinguished_pr=gel(gel(groups,2),1),distinguished_power=idealpows(nf,distinguished_pr,2);',
+    'GEN distinguished_pr=gel(gel(groups,2),1);long selected_exponent=logint0(sqri(pr_norm(veclast(F.LP))),pr_norm(distinguished_pr),NULL);GEN distinguished_power=idealpows(nf,distinguished_pr,selected_exponent);');
+   replace('3%pr_get_e(distinguished_pr)','(selected_exponent+1)%pr_get_e(distinguished_pr)');
+   replace('offsets[2+visit]+1,offsets[2]+1,2,&ns','offsets[2+visit]+1,offsets[2]+1,selected_exponent,&ns');
+  }
  }
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'sagejs-small-norm-')),c=path.join(dir,'oracle.c'),exe=path.join(dir,'oracle');fs.writeFileSync(c,control);
  run('cc',['-O2','-I'+path.join(pari,'src/headers'),'-I'+lib,c,'-L'+lib,'-Wl,-rpath,'+lib,'-lpari','-lm','-o',exe]);
@@ -59,12 +67,12 @@ function run(command,args,options={}){const r=spawnSync(command,args,{encoding:'
     if(distinct)assert.deepEqual(selected[1].output,w.admission_ideal.map(String));
     all.basis_table=selected[0].table;all.packet_primes=selected.map(r=>r.p);all.packet_inert=selected.map(r=>String(r.inert));all.packet_generators=selected.flatMap(r=>r.generator);
     all.packet_ideals=[];all.packet_norms=[]; // no supplied ideal HNF or norm
-    if(distinguished){all.construct_primes='2';all.jid0=v.jid;all.e0='2';}
+    if(distinguished){all.construct_primes=selectedExponent?'3':'2';all.jid0=v.jid;all.e0=selectedExponent?'0':'2';if(selectedExponent)all.power_metadata.push('0');}
    }
   }
   return Object.fromEntries(names.map(([name])=>{assert.notEqual(all[name],undefined,name);return [name,all[name]];}));});
  if(process.argv.includes('--export-fixtures')){
-  console.log(JSON.stringify({schema:'pari-small-norm-collector-v1',entry,names,unreduced,distinct,constructPrimes,distinguished,controlSource:control,cases:inputs.map((input,index)=>({input,expected:expected[index]}))}));return;
+  console.log(JSON.stringify({schema:'pari-small-norm-collector-v1',entry,names,unreduced,distinct,constructPrimes,distinguished,selectedExponent,controlSource:control,cases:inputs.map((input,index)=>({input,expected:expected[index]}))}));return;
  }
  const py=run('python3',['-c',`
 import sys,json,decimal,importlib
@@ -101,7 +109,12 @@ for raw,w in zip(d['inputs'],d['expected']):
  if d['distinguished']:assert power_calls[0]==1,power_calls
  if d['unreduced']:
   consumed=list(reversed(v['search_ideals']))[:2-v['schedule'][0]]
-  visits=sum(not(j==v['jid0'] and (v['e0']+1)%v['ramification'][j-1]==0 and v['ramification'][j-1]*v['admission_group_f'][j-1]==n) for j in consumed)
+  exponent=v['power_metadata'][4] if d['selectedExponent'] else v['e0']
+  if d['selectedExponent']:
+   base=v['relation_primes'][v['jid0']-1]**v['admission_group_f'][v['jid0']-1]
+   limit=v['relation_primes'][-1]**(2*v['admission_group_f'][-1])
+   assert base**exponent<=limit<base**(exponent+1)
+  visits=sum(not(j==v['jid0'] and (exponent+1)%v['ramification'][j-1]==0 and v['ramification'][j-1]*v['admission_group_f'][j-1]==n) for j in consumed)
   assert qr_calls[0]==visits,(qr_calls,v['schedule'],consumed)
  before=str(v);assert f(*(v[name] for name,kind in d['names']))==status and str(v)==before
 if d['distinguished']:
@@ -142,8 +155,9 @@ if d['unreduced'] and not d['constructPrimes']:
   assert v['relation_state'][0]==last and v['relation_basis']==w['basis']
   assert v['relation_records'][:last*size]==w['records'] and list(map(str,v['generators'][:last*n]))==w['generators']
   before=str(v);assert f(*(v[name] for name,kind in d['names']))==-11 and str(v)==before
-`,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify({inputs,expected,names,unreduced,distinct,constructPrimes,distinguished,first_expected:fixture.cases[1].expected})});
+`,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify({inputs,expected,names,unreduced,distinct,constructPrimes,distinguished,selectedExponent,first_expected:fixture.cases[1].expected})});
  const built=await compileKernel({sourcePath}),mod=require(built.modulePath);
+ const selectedExponents=[];
  assert.equal(mod[entry].nativeAvailable,true);
  assert.doesNotMatch(fs.readFileSync(built.coreSourcePath,'utf8'),/napi_call_function|PyObject_Call/);
  for(let index=0;index<inputs.length;index++)for(const backend of ['javascript','gmp']){
@@ -151,6 +165,12 @@ if d['unreduced'] and not d['constructPrimes']:
   const invoke=()=>mod[entry][backend](...names.map(([name])=>v[name])),status=invoke(),last=Number(v.relation_state[0]),size=v.relation.length,n=Number(v.n);
   const actual={status:Number(status),small:Number(v.counters[1]),trials:Number(v.state[1]),attempts:Number(v.counters[0]),relid:Number(v.progress[0]),nfact:Number(v.progress[1]),fact_count:Number(v.counters[2]),last,missing:Number(v.relation_state[2]),sup:Number(v.relation_state[3]),basis:v.relation_basis.map(Number),hashes:v.relation_hashes.slice(0,last).map(Number),records:v.relation_records.slice(0,last*size).map(Number),generators:v.generators.slice(0,last*n).map(String)};
   assert.deepEqual(actual,expected[index]);assert.equal(v.schedule[2],1n);
+  if(selectedExponent){
+   const exponent=v.power_metadata[4],j=Number(v.jid0)-1,k=v.relation_primes.length-1;
+   const base=v.relation_primes[j]**v.admission_group_f[j],bound=v.relation_primes[k]**(2n*v.admission_group_f[k]);
+   assert(base**exponent<=bound&&bound<base**(exponent+1n));
+   if(backend==='gmp')selectedExponents.push(String(exponent));
+  }
   const dump=()=>JSON.stringify(v,(_,x)=>typeof x==='bigint'?String(x):x),before=dump();assert.equal(invoke(),status);assert.equal(dump(),before);
  }
  if(distinguished)for(const backend of ['javascript','gmp']){
@@ -185,5 +205,5 @@ if d['unreduced'] and not d['constructPrimes']:
  else assert(expected.some(r=>r.last>0),'distinguished path must discover relations');
  if(distinct)assert(inputs.every(v=>v.packet_ids[0]!==v.packet_ids[1]));
  console.log('16 two-visit '+(unreduced?'unreduced':'prepared')+' schedules match PARI/CPython/JS/GMP with resident caches and factor lists; published relation state, aggregate counters and terminal idempotence checked; distinct='+distinct);
- console.log(JSON.stringify({unreduced,distinct,constructPrimes,distinguished,qualifiedTiming:false,traceSha256:createHash('sha256').update(JSON.stringify(expected)).digest('hex'),modulePath:built.modulePath}));
+ console.log(JSON.stringify({unreduced,distinct,constructPrimes,distinguished,selectedExponent,selectedExponents,qualifiedTiming:false,traceSha256:createHash('sha256').update(JSON.stringify(expected)).digest('hex'),modulePath:built.modulePath}));
 })().catch(e=>{console.error(e);process.exitCode=1;});

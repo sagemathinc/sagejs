@@ -4,7 +4,8 @@ Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 Original ideal HNFs/norms or prime descriptors are supplied. Prime mode builds
 the ideal HNF and norm; both modes compute rank, LLL, embeddings and QR in this
 closure. Mode 2 also constructs a supplied distinguished prime power and its
-products. Exponent selection, L_jid construction, automorphism images and the
+products. Mode 3 selects its exponent from the supplied ordered factor base.
+L_jid construction, automorphism images and the
 outer class/unit driver remain explicit dependencies.
 """
 
@@ -15,6 +16,7 @@ from .prime_ideal_hnf import pari_prime_ideal_hnf
 from .prime_ideal_hnf import pari_basis_multiplication_table
 from .prime_ideal_power import pari_positive_prime_power_hnf
 from .integral_power import pari_nonnegative_integer_power
+from .integral_log import pari_integral_log
 from .composite_ideal_hnf import pari_integral_ideal_mul_two
 
 
@@ -179,14 +181,15 @@ def pari_collect_unreduced_ideals(
     latter mode compute HNF and norm inside this closure, using the prepared
     field basis table. Mode 2 additionally constructs the distinguished prime
     power once and multiplies it by each visited prime. Its exponent and prime
-    descriptor are explicit inputs; upstream exponent selection remains outside.
+    descriptor are explicit inputs. Mode 3 instead computes the upstream
+    exponent from the last factor-base prime norm and retains it in metadata.
     All packet inputs are disjoint from mutable workspaces.
     Follow the existing upstream schedule/stop policy; unsupported preparation
     stops this schedule with a sticky dependency status rather than advancing.
     """
     packets = len(packet_ids)
     square = n * n
-    if n < 3 or n > 4 or construct_primes < 0 or construct_primes > 2:
+    if n < 3 or n > 4 or construct_primes < 0 or construct_primes > 3:
         raise ValueError("invalid unreduced ideal packets")
     if len(admission_ideal) < square:
         raise ValueError("insufficient original ideal packet storage")
@@ -198,23 +201,45 @@ def pari_collect_unreduced_ideals(
             raise ValueError("distinguished-ideal products remain unported")
         if construct_primes == 2 and (jid0 < 1 or e0 < 1 or e0 >= 512):
             raise ValueError("invalid distinguished prime power")
+        if construct_primes == 3 and (jid0 < 1 or e0 != 0):
+            raise ValueError("selected distinguished exponent requires zero input")
         if len(packet_primes) != packets or len(packet_inert) != packets:
             raise ValueError("invalid prime descriptor count")
         if len(packet_generators) < packets * n or len(hnf_generator) < n:
             raise ValueError("insufficient prime generator storage")
     if len(preparation_state) < 1:
         raise ValueError("insufficient resident preparation state")
-    if construct_primes == 2:
+    if construct_primes >= 2:
         if len(schedule) < 4 or len(power_metadata) < 4:
             raise ValueError("insufficient distinguished power state")
         if len(ramification) != len(admission_group_f):
             raise ValueError("inconsistent distinguished prime descriptors")
+        if construct_primes == 3:
+            if len(power_metadata) < 5 or len(relation_primes) == 0:
+                raise ValueError("insufficient selected exponent state")
+            if len(relation_primes) != len(admission_group_f):
+                raise ValueError("inconsistent ordered factor base")
+            if schedule[2] != 0 or schedule[1] != 0:
+                e0 = power_metadata[4]
         if schedule[2] == 0 and schedule[1] == 0:
             power_packet = 0
             while power_packet < packets and packet_ids[power_packet] != jid0:
                 power_packet += 1
             if power_packet == packets or jid0 > len(ramification):
                 raise ValueError("distinguished prime has no descriptor")
+            prime_norm = pari_nonnegative_integer_power(
+                packet_primes[power_packet], admission_group_f[jid0 - 1]
+            )
+            if construct_primes == 3:
+                last = len(relation_primes) - 1
+                last_norm = pari_nonnegative_integer_power(
+                    relation_primes[last], admission_group_f[last]
+                )
+                e0 = pari_integral_log(last_norm * last_norm, prime_norm, power_work)
+                if e0 < 1 or e0 >= 512:
+                    raise ValueError(
+                        "selected distinguished exponent outside supported power domain"
+                    )
             for i in range(n):
                 hnf_generator[i] = packet_generators[power_packet * n + i]
             pari_positive_prime_power_hnf(
@@ -236,10 +261,9 @@ def pari_collect_unreduced_ideals(
                 power_moduli,
                 power_ideal,
             )
-            prime_norm = pari_nonnegative_integer_power(
-                packet_primes[power_packet], admission_group_f[jid0 - 1]
-            )
             power_metadata[3] = pari_nonnegative_integer_power(prime_norm, e0)
+            if construct_primes == 3:
+                power_metadata[4] = e0
     while True:
         selected = pari_next_small_norm_ideal(
             search_ideals,
@@ -267,7 +291,7 @@ def pari_collect_unreduced_ideals(
         else:
             for i in range(n):
                 hnf_generator[i] = packet_generators[packet * n + i]
-            if construct_primes == 2:
+            if construct_primes >= 2:
                 if packet_inert[packet] == 0:
                     pari_basis_multiplication_table(
                         basis_table, hnf_generator, n, hnf_matrix
@@ -304,7 +328,7 @@ def pari_collect_unreduced_ideals(
             ideal_norm = pari_nonnegative_integer_power(
                 packet_primes[packet], residue_degree
             )
-            if construct_primes == 2:
+            if construct_primes >= 2:
                 ideal_norm *= power_metadata[3]
         preparation_state[0] = 0
         status = pari_collect_unreduced_ideal(
