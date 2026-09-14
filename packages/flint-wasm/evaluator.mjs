@@ -574,6 +574,7 @@ export function createBrowserRuntimeModules({
  */
 export async function instantiateSageEvaluator({
   mode = "sage",
+  tracebackCapture = "native",
   compiler,
   baselib,
   standardLibrary,
@@ -635,6 +636,9 @@ export async function instantiateSageEvaluator({
 }) {
   if (mode !== "sage" && mode !== "python") {
     throw new TypeError(`unknown Sage.js language mode ${JSON.stringify(mode)}`);
+  }
+  if (tracebackCapture !== "native" && tracebackCapture !== "guarded") {
+    throw new TypeError("tracebackCapture must be 'native' or 'guarded'");
   }
   const language = new CompilerWorker(compilerWorker, WorkerConstructor);
   const globals = createGlobalInstaller(globalThis);
@@ -715,6 +719,7 @@ export async function instantiateSageEvaluator({
     ] = await Promise.all([
       language.request("initialize", {
         mode,
+        tracebackCapture,
         compiler: String(compiler),
         baselib: String(baselib),
         standardLibrary: String(standardLibrary),

@@ -94,6 +94,8 @@ export interface BrowserSageSessionOptions {
   foreignGrammars?: Record<string, string | URL>;
   capabilityReport?: string | URL;
   optimizationLevel?: "O0" | "O1" | "O2" | "O3" | "Os";
+  /** Compiler-assisted records for qualified calls; native boundaries remain supported. */
+  tracebackCapture?: "native" | "guarded";
   onGraphicsSave?: (request: SageGraphicsSaveRequest) => void | Promise<void>;
 }
 
