@@ -9,6 +9,81 @@ from sagejs.native import IntegerBuffer, native
 
 
 @native
+def pari_prepared_initialize_relations(
+    additional: int,
+    primes: IntegerBuffer,
+    offsets: IntegerBuffer,
+    counts: IntegerBuffer,
+    complete: IntegerBuffer,
+    ramification: IntegerBuffer,
+    state: IntegerBuffer,
+    basis: IntegerBuffer,
+    records: IntegerBuffer,
+    hashes: IntegerBuffer,
+    metadata: IntegerBuffer,
+    relation: IntegerBuffer,
+    scratch: IntegerBuffer,
+) -> int:
+    """Initialize a fresh cache and build complete-prime-group relations.
+
+    Input groups are active FB order; offsets index the active ideal vector.
+    state extends add_rel_i's four slots with checkpoint and target offsets.
+    The caller allocates PARI's 10*(KC+additional)+50 record capacity.
+    Initial generators are the rational primes themselves, not opaque IDs.
+    """
+    size = int(len(relation))
+    groups = len(primes)
+    capacity = 10 * (size + additional) + 50
+    if additional < 0 or len(state) < 6 or len(basis) < size * size:
+        raise ValueError("invalid initial relation state")
+    if len(offsets) != groups or len(counts) != groups or len(complete) != groups:
+        raise ValueError("invalid initial prime groups")
+    if len(ramification) != size or len(scratch) < size:
+        raise ValueError("invalid initial ideal data")
+    if (
+        len(records) < capacity * size
+        or len(hashes) < capacity
+        or len(metadata) < capacity * 3
+    ):
+        raise ValueError("insufficient initial relation allocation")
+    for cell in range(size * size):
+        basis[cell] = 0
+    state[0] = 0
+    state[1] = capacity
+    state[2] = size
+    state[3] = additional
+    state[4] = 0
+    state[5] = size + additional
+    for group in range(groups):
+        if complete[group] != 0:
+            start = offsets[group]
+            count = counts[group]
+            if start < 0 or count < 1 or start + count > size or primes[group] < 2:
+                raise ValueError("invalid complete prime group")
+            for cell in range(size):
+                relation[cell] = 0
+            j = count - 1
+            while j >= 0:
+                relation[start + j] = ramification[start + j]
+                j -= 1
+            result, appended = pari_prepared_add_relation(
+                relation,
+                start + 1,
+                primes[group],
+                0,
+                0,
+                0,
+                state,
+                basis,
+                records,
+                hashes,
+                metadata,
+                scratch,
+            )
+    return state[0]
+
+
+@native
 def pari_relation_mod_inverse(value: int) -> int:
     """Preserve Fl_inv/xgcduu(f=1), including unsigned subtraction wrap."""
     word = 1 << 64

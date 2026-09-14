@@ -1,5 +1,38 @@
 # Faithful PARI class-group language experiment
 
+## Connected fresh relation-cache initialization
+
+`pari_prepared_initialize_relations` now connects fresh basis/cache setup to
+`init_rel`'s complete-prime-group loop and the translated insertion routine.
+It constructs `(p) = product(P^e)` from active prime-group offsets, counts,
+completeness flags and ramification indices. Relation vectors are not inputs.
+For these initial integer generators, the stored generator slot contains p
+itself. General field-element ownership remains a separate boundary.
+
+The allocation rule `10*(KC+additional)+50`, missing-rank count, dependent
+allowance, checkpoint and target offsets follow PARI. Caller-owned buffers
+must already have that capacity; no global resource limit is raised. The
+wrapper also zeroes the fresh modular basis, corresponding to the driver
+operation preceding `init_rel`, and routes each relation through `add_rel_i`.
+The outer automorphism branch is inactive for these integer generators.
+
+All 24 cases (four tuning fields, three factor-base bounds, two additional
+relation allowances) match actual PARI/CPython/JS/GMP for every basis entry,
+relation vector, hash, generator and state offset. Inputs are prepared active
+decompositions, not a completed bnf or previously known relations. This is
+still not a full relation collector or class-group timing result.
+
+At this checkpoint goal accounting reports 23,908 root active seconds
+(6.64 hours), plus the previously recorded 12 panel-agent minutes. The
+16-hour aggregate experiment boundary has not been reached. The frozen panel
+and reserves are unchanged; full-path dependency and performance work remain.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_relation_initialization.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Resident relation-cache insertion
 
 `relation_cache.py` translates `already_known` and `add_rel_i` over resident
