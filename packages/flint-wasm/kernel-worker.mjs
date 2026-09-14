@@ -393,6 +393,7 @@ async function initialize(message) {
   }
   evaluatorPromise = instantiateSageEvaluator({
     mode: message.mode,
+    tracebackCapture: message.tracebackCapture,
     compiler: message.compiler,
     baselib: message.baselib,
     standardLibrary: message.standardLibrary,

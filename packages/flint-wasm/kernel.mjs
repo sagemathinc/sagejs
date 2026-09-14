@@ -40,6 +40,7 @@ function deserializeError(serialized) {
 export class SageSession {
   constructor({
     mode = "sage",
+    tracebackCapture = "native",
     worker = new URL("./kernel-worker.mjs", import.meta.url),
     compiler = new URL("./dist/compiler.js", import.meta.url),
     baselib = new URL("./dist/baselib.js", import.meta.url),
@@ -76,6 +77,9 @@ export class SageSession {
     if (mode !== "sage" && mode !== "python") {
       throw new TypeError(`unknown Sage.js language mode ${JSON.stringify(mode)}`);
     }
+    if (tracebackCapture !== "native" && tracebackCapture !== "guarded") {
+      throw new TypeError("tracebackCapture must be 'native' or 'guarded'");
+    }
     if (
       optimizationLevel !== undefined &&
       !["O0", "O1", "O2", "O3", "Os"].includes(optimizationLevel)
@@ -90,6 +94,7 @@ export class SageSession {
     }
     this.resources = {
       mode,
+      tracebackCapture,
       worker: String(worker),
       compiler: String(compiler),
       baselib: String(baselib),
@@ -256,6 +261,7 @@ export class SageSession {
         type: "initialize",
         protocol: 3,
         mode: this.resources.mode,
+        tracebackCapture: this.resources.tracebackCapture,
         compiler: this.resources.compiler,
         baselib: this.resources.baselib,
         standardLibrary: this.resources.standardLibrary,
