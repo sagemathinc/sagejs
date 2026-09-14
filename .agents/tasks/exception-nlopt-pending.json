@@ -1,0 +1,39 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exception-nlopt-pending",
+  "title": "Exception Nlopt Pending",
+  "lane": "numerical-optimization",
+  "status": "active",
+  "owner": "user",
+  "objective": "Refresh only the pending NLopt evaluator source binding without promoting qualification",
+  "base_commit": "d32d92695e207210447497594e9787508de1debd",
+  "claims": [
+    "src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
