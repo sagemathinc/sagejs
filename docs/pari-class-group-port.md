@@ -1,5 +1,33 @@
 # Faithful PARI class-group language experiment
 
+## Exponential precision primitives
+
+`exponential.py` begins the direct base-case port with `rtor`/`affrr` and
+shrinking `setprec` value operations. The former pads on growth and rounds
+away from zero on a set leading guard bit when shortening, including carry
+renormalization. The latter truncates without rounding. A zero passed through
+`affrr` retains the smaller of its previous exponent and minus target precision.
+
+The test compares 460 controls against actual PARI, CPython, JS, GMP and tagged
+execution, including signs, halfway mantissas, all-one carries, precision growth
+and zero-exponent changes. Growing `setprec` is not modeled as a value operation:
+upstream restores still-retained allocation words, so the future series port
+must retain its complete X separately. Zero value triples do not represent
+allocation length. These are explicit representation boundaries, not permission
+to discard precision restoration in the exponential.
+
+Eight invalid precision/mantissa requests are also rejected by CPython and
+all three execution backends. Strict Python validation passes (403 modules).
+The architecture check passes its native/FFI/Wasm audits but still fails the
+existing stale optimizer-opportunity manifest; that unrelated manifest has
+not been regenerated to hide the failure.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_real_resize.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Final exponential dependency: MPFR is not bit-identical
 
 `check_residue_exponential.py` observes the actual `mpexp` input/output from
