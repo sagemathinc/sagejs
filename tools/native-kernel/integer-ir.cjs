@@ -3903,6 +3903,8 @@ function lowerStatements(statements, context) {
         context,
         statement,
         (exception === "ZeroDivisionError" || exception === "ValueError") &&
+          !context.variables.has(exception) && !context.signatures.has(exception) &&
+          !context.integerConstants.has(exception) && !context.foreignFunctions.has(exception) &&
           (!called || (!value.args?.starargs && !value.args?.kwargs?.length && !value.args?.kwarg_items?.length)) &&
           args.length <= 1 && (args.length === 0 || nodeType(args[0]) === "AST_String"),
         "native raise supports ZeroDivisionError or ValueError with a constant string",

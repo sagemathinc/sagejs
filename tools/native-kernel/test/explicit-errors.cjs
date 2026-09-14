@@ -6,6 +6,7 @@ const {tmpdir} = require("node:os");
 const {join} = require("node:path");
 const test = require("node:test");
 const {compileKernel} = require("../compiler.cjs");
+const {lowerSource} = require("../ir.cjs");
 test("explicit integer-kernel errors survive nested native calls", async () => {
   globalThis.ValueError = class ValueError extends Error {};
   globalThis.ZeroDivisionError = class ZeroDivisionError extends Error {};
@@ -41,4 +42,10 @@ def collision(x: int) -> int:
     assert.throws(() => f(-1n), error => error instanceof globalThis.ValueError && error.message === "division by zero");
     assert.throws(() => f(0n), error => error instanceof globalThis.ZeroDivisionError);
   }
+  for (const source of [
+    'def f(ValueError: int) -> int:\n    if ValueError:\n        raise ValueError("bad")\n    return 0\n',
+    'ValueError = 7\ndef f(x: int) -> int:\n    if x:\n        raise ValueError("bad")\n    return 0\n',
+    'def f(x: int) -> int:\n    if x:\n        raise ValueError(x)\n    return 0\n',
+    'def f(x: int) -> int:\n    if x:\n        raise ValueError(message="bad")\n    return 0\n',
+  ]) await assert.rejects(() => lowerSource('from sagejs.native import native\n' + source.replace('def f(', '@native\ndef f('), "invalid-error.py"), /native raise supports/);
 });
