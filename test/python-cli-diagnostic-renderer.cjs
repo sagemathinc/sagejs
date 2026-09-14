@@ -65,6 +65,18 @@ test('CLI renders and freezes compiler traceback records without a native stack'
   assert.equal(structuredClone(serialize(error)).pythonDiagnostic.frames[0].name,'leaf');
 });
 
+test('CLI keeps native evidence in transport without dumping it by default', () => {
+  const error=Object.assign(new Error('owned'), {name:'ValueError'});
+  error.stack='ValueError: owned\n    at opaqueCaller (foreign.js:7:3)';
+  error.__traceback__=error;
+  const attached=python(error);
+  assert.equal(render(attached),'ValueError: owned\n');
+  const diagnostic=serialize(attached).pythonDiagnostic;
+  assert.match(diagnostic.nativeTraceback,/opaqueCaller/);
+  assert.match(helper.exports.renderPythonDiagnostic(diagnostic),/opaqueCaller/);
+  assert.match(render(attached,{includeHostStack:true}),/opaqueCaller/);
+});
+
 test("CLI renderer preserves empty, multiline and complex messages without host internals", () => {
   for (const message of ["", "line one\nline two π", "('first', 3)"]) {
     const error = python(Object.assign(new Error(message), { name: "ValueError" }));

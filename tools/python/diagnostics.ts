@@ -255,7 +255,11 @@ export function serializeDiagnosticError(error: unknown) {
 }
 
 /** Render an envelope obtained from a trusted evaluation/worker boundary. */
-export function renderPythonDiagnostic(diagnostic: PythonDiagnostic, hostBoundary = false): string {
+export function renderPythonDiagnostic(
+  diagnostic: PythonDiagnostic,
+  hostBoundary = false,
+  includeNativeCapture = true,
+): string {
   function render(value: PythonDiagnostic): string {
     let prefix = "";
     if (value.cause) {
@@ -276,7 +280,7 @@ export function renderPythonDiagnostic(diagnostic: PythonDiagnostic, hostBoundar
       }
       if (value.framesTruncated) traceback += "  [traceback records truncated or invalid]\n";
     }
-    const native = value.nativeTraceback === undefined ? "" :
+    const native = !includeNativeCapture || value.nativeTraceback === undefined ? "" :
       "\nNative capture (may overlap Python frames):\n" + value.nativeTraceback;
     return prefix + traceback + host + value.exceptionType + message + native;
   }
@@ -292,7 +296,9 @@ export function renderCliDiagnostic(
     ? attachedDiagnostics.get(error) : undefined;
   // A public user-assigned pythonDiagnostic is not a trusted envelope.
   const diagnostic = attached ?? normalizePythonDiagnostic(error, { phase: "host" });
-  let output = renderPythonDiagnostic(diagnostic, !attached);
+  // The envelope retains native evidence for rich consumers. The concise CLI
+  // exposes raw implementation stacks only under the developer opt-in.
+  let output = renderPythonDiagnostic(diagnostic, !attached, options.includeHostStack === true);
   if (options.includeHostStack) {
     const stack = string(get(error, "stack"));
     if (stack !== undefined) output += `\nHost stack (developer diagnostics):\n${stack}\n`;
