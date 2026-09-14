@@ -14,17 +14,24 @@ function sha256(value) {
  * The physical path is the cycle and source identity. `displayPath` controls
  * recorded provenance: desktop caches retain canonical absolute paths while
  * portable production identities use repository-relative paths.
+ * `initialDisplayPath` is the exact root name passed to lowerSource when its
+ * public identity differs from the dependency display convention.
  */
 function createNativeImportResolver({
   root,
   lowerSource,
   initialSourcePath,
   displayPath = (filename) => filename,
+  initialDisplayPath,
 }) {
-  const resolving = new Set([realpathSync(initialSourcePath)]);
+  const initialPhysicalPath = realpathSync(initialSourcePath);
+  const resolving = new Set([initialPhysicalPath]);
   const physicalSources = new Map([
-    [displayPath(realpathSync(initialSourcePath)), realpathSync(initialSourcePath)],
+    [displayPath(initialPhysicalPath), initialPhysicalPath],
   ]);
+  if (initialDisplayPath !== undefined) {
+    physicalSources.set(initialDisplayPath, initialPhysicalPath);
+  }
 
   async function resolveNativeImport(request) {
     let candidates;
