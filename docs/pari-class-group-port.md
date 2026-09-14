@@ -1,5 +1,36 @@
 # Faithful PARI class-group language experiment
 
+## Resident binary splitting and connected atanhuu
+
+`binary_splitting.py` translates `abpq_sum`, including the distinct one-,
+two- and three-term formulas and the original midpoint splits. An explicit
+depth-first stack replaces recursive stack frames, retaining multiplication
+association and the four unreduced P,Q,B,T results. Input arrays are not
+mutated. Scratch must be separate from inputs; the 4096-term experimental
+boundary uses a conservative 91-entry stack allocation.
+
+The oracle compares 256 intervals against actual PARI, CPython, JS, GMP and
+tagged execution, covering small cases, odd/even splits and nonzero starts.
+An all-one 4096-term control and exhausted-storage checks exercise the depth
+boundary. This is not a binary-splitting performance claim.
+
+`pari_atanhuu` connects PARI's binary64 term selection, coefficient setup,
+splitting and rational-to-real conversion. Twenty outputs match actual PARI,
+CPython, JS and GMP: five precisions through 512 bits and arguments 1/26,
+1/4801, 1/8749 and 2/3. The first three are the actual log(2) construction
+arguments. Its input integers are explicitly restricted to exact binary64
+conversion and it rejects more than 4096 terms. Tests supply 64-word entries
+for large intermediate scratch values; the default per-entry capacity and
+global safety limits are unchanged. Mixed Float64 tagged execution remains
+unavailable. The final log(2) combination/cache and range reduction are still
+unconnected dependencies.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_binary_splitting.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Rational conversion for logarithm-of-two construction
 
 `real_conversion.py` follows `affir` and `rdiviiz`'s branch selection: a
@@ -13,8 +44,9 @@ The test compares 1,248 rational conversions against actual PARI and
 CPython/JS/GMP/tagged execution, spanning zero, signs, 63/64/65-bit boundaries,
 and numerator/denominator sizes on both sides of the branch thresholds.
 Integer arithmetic uses the existing backend; no new language-only timing
-claim follows. PARI's binary-split `atanhuu` sums and cached `constlog2`
-construction are the next dependencies, not yet replaced by a constant table.
+claim follows. PARI's binary-split `atanhuu` sums are connected in the
+checkpoint above; cached `constlog2` construction remains incomplete. No
+constant table substitutes for their computation.
 
 ```sh
 SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
