@@ -2194,6 +2194,53 @@ wall seconds, using 13.351 user plus 1.872 system CPU seconds and peak child RSS
 conservatively, including any compilation in the run. These are validation
 resource figures, not arithmetic or class-group performance measurements.
 
+## Connected FLATTER compression loop
+
+`flatter.py` connects adaptive QR, recursive 1D/2D block reduction, cross-block
+size reduction, exact block assembly and transformation accumulation into
+one source-transparent native `ZM_flatter`-equivalent call for dimensions three
+and four, with `LLL_IM` and no keep-first flag. The `drop` and `potential`
+values are taken from the same intermediate QR factor as upstream, before
+the middle-block transformation. A computed compression step is **not**
+committed when PARI's termination test discards it. No new iteration stopping
+bound replaces PARI's decisions.
+
+`check_flatter.cjs` compares 32 actual rounded-embedding ideal bases and eight
+badly ordered signed diagonal bases. All forty match pinned PARI, CPython,
+generated JavaScript and GMP in the current basis, accumulated integer
+transform, attempted/accepted step counts, last drop and observed stop reason.
+All eight diagonal controls require accepted steps (at most three attempted
+steps), so the test cannot pass solely
+by returning identity on already easy inputs. The oracle also verifies
+`input * transform == current` exactly. These controls terminate with zero
+drop; plateau and post-20-step deterioration branches are retained in source
+but are not exercised by this corpus.
+
+An upstream precision request beyond the current QR capability returns
+unresolved status 2, with a dedicated stop reason and no falsely accepted
+step. This boundary is tested in all three translated execution modes.
+Independent caller-owned buffers retain all work inside the native call.
+General dimensions, keep-first behavior, and recursive quadratic-form inputs
+beyond their existing capability guard are not covered by this implementation.
+
+Native lowering rejected fixed slice stores on `IntegerBuffer` (it currently
+admits them only for `NativeIntegerVector`). A small ordinary-Python four-slot
+store helper expresses the repeated operation without introducing a hidden
+backend; the demonstrated compiler limitation remains open.
+
+This provides a connected FLATTER preparation segment for the selected
+dimensions, **not** PARI's `ZM_lll` dispatcher: binary64 LLL and its
+extended-exponent verification must still run afterwards. Selector integration,
+ideal-to-collector connection, and the class/unit engine remain incomplete.
+No whole-engine or qualified performance result follows from these controls.
+Formatting, strict Python (403 modules) and focused checks pass. Architecture
+retains the stale optimizer manifest failure; the changed-file portable gate
+stops at the module-cache `Any` reference error after four passing files,
+leaving 214 files unstarted.
+The final focused run has a passing parallel receipt (53.73 seconds wall,
+including oracle setup, CPython/JS/native checks and compiler/cache loading;
+this is not a FLATTER kernel timing).
+
 ## Cross-block size reduction
 
 `lll_sizered.py` translates `lll.c:sizered` for the 1x1 and 2x2 left blocks
