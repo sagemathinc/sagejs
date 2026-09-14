@@ -58,6 +58,16 @@
       "commit": "b24042a617c5cfc69e81f9fb173e274380e77b5f",
       "workspace_fingerprint": "d286702a7dd4bc1bb23efa931b1256f73116f9440cdf09d074d97fa10c05ca50",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_lll_binary.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.071,
+      "started_at": "2026-09-14T07:50:38.648Z",
+      "commit": "e38448f009ff15c39adb1f595425b6c724ec59d9",
+      "workspace_fingerprint": "70ba18b5652c3c52486f21f0a217abd9c01c4260317b152bce763d7a6f860f14",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

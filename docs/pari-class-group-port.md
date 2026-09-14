@@ -2194,6 +2194,40 @@ wall seconds, using 13.351 user plus 1.872 system CPU seconds and peak child RSS
 conservatively, including any compilation in the run. These are validation
 resource figures, not arithmetic or class-group performance measurements.
 
+## Two-dimensional recursive LLL branch
+
+`lll_binary.py` translates `ZM2_lll_norms`' positive-definite integer-basis
+shortcut through `Qfb.c:qfbredsl2_imag_basecase`. FLATTER uses this branch for
+its two-dimensional recursive blocks even when `LLL_NOCERTIFY` is set; replacing
+it with the general floating LLL loop would not preserve the upstream path.
+The port retains sign/swap decisions, the `-a < r <= a` remainder convention,
+and exact reconstruction of the second transformation row. The rounded
+division is expressed as its equivalent integer-floor formula.
+
+`check_lll_binary.cjs` checks 1,451 small positive-definite forms (including
+negative coefficients and equality boundaries) and twenty integer-rescaled
+blocks from actual FLATTER Gram-Schmidt preparations across the four tuning
+fields and primes 2 and 3. All 1,471 exact outputs match PARI, CPython, generated
+JavaScript and GMP native execution. Every transformation has determinant one;
+the form controls also replay all three transformed coefficients exactly.
+The oracle pins `lll.c` and `Qfb.c`; the latter has SHA-256
+`861f61aecae22771bd1a9679b6913bafc6325e89ee3147b8d1516ed5cee535d6`.
+
+The upstream `QFBRED_LIMIT=9000` branch condition is retained. Inputs requiring
+the unported recursive quadratic-form algorithm are explicitly rejected, as
+are singular/non-positive-definite forms. Those failure paths are tested.
+The actual-block test still supplies rescaling through PARI: this is a leaf
+correspondence result, not complete FLATTER recursion or class-group coverage.
+Recursive block assembly, size reduction, real-to-integer rescaling and the
+remaining LLL passes still need to be connected. No timing parity is claimed.
+
+The focused test has a passing parallel receipt (3.07 seconds wall, including
+its cached native load and oracle compilation). Formatting, strict Python,
+documentation and contract checks pass. Architecture again stops at the stale
+optimizer manifest. The changed-file unit gate and direct algebraic-geometry
+rerun fail on the missing `sagejs_flint.node` adapter; this remains a failed
+broad gate, not a complete validation receipt.
+
 ## Adaptive Gram-Schmidt preparation for FLATTER
 
 `lll_preparation.py` translates `condition_bound`, `spread`, `GS_extraprec`,
