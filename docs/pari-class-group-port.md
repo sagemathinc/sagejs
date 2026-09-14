@@ -1,5 +1,30 @@
 # Faithful PARI class-group language experiment
 
+## Complete exact HNFLLL dependency (2026-09-14)
+
+`hnflll.py` translates the complete `ZM_hnflll(A,&U,0)` path needed by
+`hnffinal`: reversed-row normalization, exact reduction, lambda/D updates,
+swap decisions, backtracking and the final full transformation. It retains
+zero columns. It does not call the existing floating LLL implementation or
+replace PARI's algorithm with a different HNF routine.
+
+All 276 matrices (including 12 actual relation matrices) agree with both
+the source-extracted control and unmodified PARI, for H, U, lambda, D and
+nine schedule counters. Independent replay checks 5,301 entries of A*U=H;
+1,071 quotient probes cover signed rounding and exact division. Eight invalid
+shapes reject before mutation. Intermediates reach 4,110 bits inside test
+owners sized for 16,384 bits. Source allocation/GC is represented by packed
+owners, so these results do not establish equal memory or execution cost.
+Generated core: 1,762,249 bytes; trace
+`19090eaf8dfa30ef8a07040ddf997975095aac5106e24727bb6ea249f4303347`.
+Reproduce with `check_hnflll.cjs PARI_SOURCE PARI_ARCHIVE`.
+
+The compiler initially rejected definite assignment through an early-return
+branch. An explicit initialization resolves that analysis limitation; every
+continuing path overwrites the value before use. No mathematical branch was
+changed. Subagent charge: 7m17 active, 56.673353 metered child CPU seconds.
+The larger `hnffinal` and its synchronized dep/B/C updates remain incomplete.
+
 ## Multiword transformation coefficients (2026-09-14)
 
 `integer_real_product.py` and `integer_real_sum.py` extend the required
