@@ -1,12 +1,48 @@
 # Faithful PARI class-group language experiment
 
+## Connected residue-bound selection
+
+`residue_bound.py` translates `tailresback`, `tailres` and `primeneeded`.
+The pinned source passes several analytic coefficients into integer-typed
+parameters of `tailresback` in a surprising order. This port deliberately
+retains that order and truncation; it does not repair upstream mathematics
+while claiming work equivalence. The 31 constants are copied from the pinned
+table and loaded into caller-owned scratch once per search. That initialization
+differs from C static storage and is not hidden in a language-only speed claim.
+
+The standalone oracle calls actual upstream routines on 238 degree/signature/
+log-discriminant parameter controls (degrees 2–10), checking 7,616 tail values,
+including the table-to-zero transition at index 31. CPython, JavaScript and
+GMP agree on selected bounds and threshold decisions; these synthetic parameter
+controls are not new number-field corpus entries or general performance data.
+
+`pari_prepared_residue_front` now selects the bound and runs the accumulation
+in one native call. Four existing tuning fields match PARI/CPython/JS/GMP on
+the selected bounds, processed-prime counts and logarithmic results. Only
+decompositions and LOGD remain prepared inputs; cached logarithms and tail
+coefficients are computed inside this connected front. The prior bound-3
+mixed-library replay divergence remains reported in the separate controls.
+The final PARI-real exponential and hR normalization are still unported.
+
+Compiler prerequisite `58bafbf92` permits ignored scalar results of known
+source-native calls, supporting ordinary scratch-initialization statements
+without fake assignments. Unknown callbacks and tuple/resource-result disposal
+remain rejected; mutation and error propagation are checked against CPython.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_residue_bound.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Inverse-residue accumulation and a numerical work divergence
 
 `residue.py` translates the binary64 accumulation in `compute_invres`, up to
 but not including `mpexp(dbltor(loginvres))`. The final exponential must retain
 PARI-real precision semantics; binary64 `exp` is not a substitute. The residue
-bound and cached decompositions/logarithms remain prepared inputs. `primeneeded`
-and the final exponential are still dependencies, not omitted work in a claimed
+bound and cached decompositions/logarithms remain prepared inputs in this
+standalone test. The bound selector is now connected above; the final
+exponential remains a dependency, not omitted work in a claimed
 whole-engine timing. The explicit experimental bound range keeps integer p*p
 exactly convertible to binary64; unsupported ranges fail rather than clamp.
 

@@ -8,6 +8,42 @@ from math import log, pow
 
 from sagejs.native import Float64Buffer, IntegerBuffer, checked_float64, native
 
+from .residue_bound import pari_prepared_primeneeded
+
+
+@native
+def pari_prepared_residue_front(
+    degree: int,
+    r1: int,
+    r2: int,
+    log_discriminant: Float64Buffer,
+    primes: IntegerBuffer,
+    offsets: IntegerBuffer,
+    counts: IntegerBuffer,
+    degrees: IntegerBuffer,
+    multiplicities: IntegerBuffer,
+    coefficients: Float64Buffer,
+    table: Float64Buffer,
+    tail: Float64Buffer,
+    logarithms: Float64Buffer,
+    output: Float64Buffer,
+) -> tuple[int, int]:
+    """Select the residue bound and accumulate its logarithm in one call.
+
+    Decompositions and LOGD remain prepared; all other buffers are scratch.
+    Return selected bound and processed rational-prime count. Final PARI-real
+    exponential and hR normalization are not part of this connected front.
+    """
+    bound = pari_prepared_primeneeded(
+        degree, r1, r2, log_discriminant, coefficients, table, tail
+    )
+    for i in range(len(primes)):
+        logarithms[i] = log(checked_float64(primes[i]))
+    processed = pari_prepared_log_inverse_residue(
+        bound, primes, offsets, counts, degrees, multiplicities, logarithms, output
+    )
+    return bound, processed
+
 
 @native
 def pari_prepared_log_inverse_residue(
