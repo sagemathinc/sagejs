@@ -9,6 +9,7 @@ function outputJavaScript(
   baselib,
   includeBaselib,
   language = "sage",
+  tracebackCapture = "native",
 ) {
   const output = new compiler.OutputStream({
     omit_baselib: !includeBaselib,
@@ -21,6 +22,8 @@ function outputJavaScript(
     python_tuples: true,
     python_truthiness: true,
     python_attributes: true,
+    python_traceback_records: tracebackCapture === "guarded",
+    python_traceback_guarded: tracebackCapture === "guarded",
     baselib_plain: includeBaselib ? baselib : undefined,
   });
   ast.print(output);
@@ -70,6 +73,7 @@ async function fetchBytes(url) {
 }
 
 let compiler;
+let configuredTracebackCapture = "native";
 let sageFrontend;
 let pythonFrontend;
 let dynamicCompiler;
@@ -120,6 +124,7 @@ function compileWithFrontend(source, filename, frontend, language) {
     baselib,
     false,
     language,
+    configuredTracebackCapture,
   );
 
   if (classes) {
@@ -236,6 +241,12 @@ self.onmessage = async ({ data }) => {
   try {
     let result;
     if (data.type === "initialize") {
+      const tracebackCapture = data.tracebackCapture === undefined
+        ? "native" : data.tracebackCapture;
+      if (tracebackCapture !== "native" && tracebackCapture !== "guarded") {
+        throw new TypeError("tracebackCapture must be 'native' or 'guarded'");
+      }
+      configuredTracebackCapture = tracebackCapture;
       compiler = undefined;
       sageFrontend = undefined;
       pythonFrontend = undefined;

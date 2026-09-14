@@ -1,0 +1,42 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exception-browser-capture",
+  "title": "Exception Browser Capture",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Propagate explicit native/guarded traceback capture through browser compiler workers",
+  "base_commit": "8988db696f123f7e54fc82fddcaa2aa97506afd3",
+  "claims": [
+    "packages/flint-wasm/test/traceback-capture-worker.test.mjs",
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/compiler-worker.mjs",
+    "packages/flint-wasm/kernel.d.ts"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
