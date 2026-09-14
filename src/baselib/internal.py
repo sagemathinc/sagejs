@@ -6,14 +6,14 @@ from typing import Any
 
 import sagejs.runtime as runtime
 
-_internal_symbol_class = runtime.reflect.get(runtime.global_object, "Symbol")
+_internal_symbol_class = runtime.global_object.Symbol
 _INTERNAL_CALLABLE_ALLOCATION_KEY = runtime.reflect.apply(
     runtime.reflect.get(_internal_symbol_class, "for"),
     runtime.undefined,
     ["sagejs.python.callable-instance-allocation"],
 )
 _internal_keyword_constructor_prototypes = runtime.reflect.construct(
-    runtime.reflect.get(runtime.global_object, "WeakSet"), []
+    runtime.global_object.WeakSet, []
 )
 
 
@@ -94,10 +94,7 @@ def _internal_type_is(actual: Any, expected: str) -> bool:
 
 def _internal_builtin(name: str) -> Any:
     """Resolve one compiler builtin through its lexical module namespace."""
-    baselib_modules = runtime.reflect.get(
-        runtime.global_object,
-        "__sagejs_baselib_modules__",
-    )
+    baselib_modules = runtime.global_object.__sagejs_baselib_modules__
     if baselib_modules is runtime.undefined:
         return runtime.undefined
     builtins_module = runtime.reflect.get(
@@ -318,9 +315,7 @@ class _PythonSequenceIterator:
             raise StopIteration  # noqa: B904
 
 
-ρσ_cleared_exception = runtime.reflect.get(
-    runtime.global_object, "ρσ_cleared_exception"
-)
+ρσ_cleared_exception = runtime.global_object.ρσ_cleared_exception
 if ρσ_cleared_exception is runtime.undefined:
     # Multiple compiled artifacts can initialize the compatibility runtime in
     # one process.  Keep one process-wide identity so every cached module and
@@ -329,7 +324,7 @@ if ρσ_cleared_exception is runtime.undefined:
     runtime.reflect.set(
         runtime.global_object, "ρσ_cleared_exception", ρσ_cleared_exception
     )
-ρσ_deleted_builtin = runtime.reflect.get(runtime.global_object, "ρσ_deleted_builtin")
+ρσ_deleted_builtin = runtime.global_object.ρσ_deleted_builtin
 if ρσ_deleted_builtin is runtime.undefined:
     ρσ_deleted_builtin = runtime.object.create(None)
     runtime.reflect.set(ρσ_deleted_builtin, "__sagejs_deleted_builtin__", True)
@@ -759,9 +754,7 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
     runtime.reflect.set(wrapper, "__sagejs_callable_instance_class__", True)
     alias_heap_class = _internal_builtin("ρσ_alias_heap_class")
     if not _internal_type_is(runtime.jstype(alias_heap_class), "function"):
-        alias_heap_class = runtime.reflect.get(
-            runtime.global_object, "ρσ_alias_heap_class"
-        )
+        alias_heap_class = runtime.global_object.ρσ_alias_heap_class
     if _internal_type_is(runtime.jstype(alias_heap_class), "function"):
         runtime.reflect.apply(alias_heap_class, runtime.undefined, [wrapper, target])
     target.prototype.constructor = wrapper
@@ -1354,10 +1347,7 @@ def ρσ_generic_alias(origin: Any, type_arguments: Any) -> Any:
         runtime.reflect.set(keywords, runtime.kwargs_symbol, True)
         call_args = list(args)
         runtime.reflect.apply(runtime.array.prototype.push, call_args, [keywords])
-        interpolate = runtime.reflect.get(
-            runtime.global_object,
-            "ρσ_interpolate_kwargs",
-        )
+        interpolate = runtime.global_object.ρσ_interpolate_kwargs
         return runtime.reflect.apply(
             interpolate,
             runtime.undefined,
@@ -1377,10 +1367,10 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
         or value is runtime.tuple_builtin
         or value is runtime.string_builtin
         or value is runtime.int_builtin
-        or value is runtime.reflect.get(runtime.global_object, "ρσ_dict")
-        or value is runtime.reflect.get(runtime.global_object, "ρσ_set")
-        or value is runtime.reflect.get(runtime.global_object, "ρσ_frozenset")
-        or value is runtime.reflect.get(runtime.global_object, "ρσ_type")
+        or value is runtime.global_object.ρσ_dict
+        or value is runtime.global_object.ρσ_set
+        or value is runtime.global_object.ρσ_frozenset
+        or value is runtime.global_object.ρσ_type
     ):
         return ρσ_generic_alias(value, key)
     # Native lists and tuples are JavaScript arrays.  Keep their overwhelmingly
@@ -1525,7 +1515,7 @@ def ρσ_setitem(value: Any, key: Any, member: Any) -> None:
             key += value.length
         runtime.reflect.set(value, key, member)
         return
-    dict_constructor = runtime.reflect.get(runtime.global_object, "ρσ_dict")
+    dict_constructor = runtime.global_object.ρσ_dict
     if dict_constructor is not runtime.undefined and runtime.object.getPrototypeOf(
         value
     ) is runtime.reflect.get(dict_constructor, "prototype"):
@@ -1727,10 +1717,7 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
             if ρσ_instanceof_one(value, nested_candidate):
                 return True
         return False
-    function_type = runtime.reflect.get(
-        runtime.global_object,
-        "ρσ_function_type",
-    )
+    function_type = runtime.global_object.ρσ_function_type
     if (
         candidate is function_type
         and _internal_is_baselib_function(value)
@@ -1741,15 +1728,13 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
         )
     ):
         return True
-    module_namespaces = runtime.reflect.get(
-        runtime.global_object, "__sagejs_module_namespaces__"
-    )
+    module_namespaces = runtime.global_object.__sagejs_module_namespaces__
     if module_namespaces is not runtime.undefined:
         has_module = runtime.reflect.get(module_namespaces, "has")
         is_module = runtime.reflect.apply(has_module, module_namespaces, [value])
         if is_module and (
             _internal_get_member(candidate, "__sagejs_module_type__") is True
-            or candidate is runtime.reflect.get(runtime.global_object, "object")
+            or candidate is runtime.global_object.object
         ):
             return True
     # Check the native representations of Python's fundamental types before
@@ -1881,10 +1866,7 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
 
 
 def _internal_error_type(name: str) -> Any:
-    baselib_modules = runtime.reflect.get(
-        runtime.global_object,
-        "__sagejs_baselib_modules__",
-    )
+    baselib_modules = runtime.global_object.__sagejs_baselib_modules__
     if baselib_modules is not runtime.undefined:
         errors_module = runtime.reflect.get(
             baselib_modules,

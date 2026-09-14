@@ -87,14 +87,15 @@ def print_handled_body(output, name, body, conditional=False):
     output.print("let ρσ_previous_exception = ρσ_last_exception")
     output.end_statement()
     output.indent()
-    output.print(
-        "let ρσ_previous_global_exception = globalThis.__sagejs_last_exception__"
-    )
+    output.print("const ρσ_handled_exception = ")
+    if conditional:
+        output.print(name + " ? ")
+    output.print("ρσ_handled_state.enter(" + name + ")")
+    if conditional:
+        output.print(" : null")
     output.end_statement()
     output.indent()
-    if conditional:
-        output.print("if (" + name + ") ")
-    output.print("ρσ_last_exception = globalThis.__sagejs_last_exception__ = " + name)
+    output.print("if (ρσ_handled_exception) ρσ_last_exception = " + name)
     output.end_statement()
     output.indent(), output.print("try ")
     output.with_block(body)
@@ -106,7 +107,7 @@ def print_handled_body(output, name, body, conditional=False):
         output.end_statement()
         output.indent()
         output.print(
-            "globalThis.__sagejs_last_exception__ = ρσ_previous_global_exception"
+            "if (ρσ_handled_exception) ρσ_handled_state.leave(ρσ_handled_exception)"
         )
         output.end_statement()
 

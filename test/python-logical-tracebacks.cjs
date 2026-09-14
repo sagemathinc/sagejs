@@ -159,19 +159,20 @@ assert 'ValueError: boom' in text
 assert 'raise ValueError()' in text
 assert 'inner' not in ''.join(traceback.format_exception(error, limit=1))
 assert 'outer' not in ''.join(traceback.format_exception(error, limit=-1))
-runtime.reflect.set(runtime.global_object, '__sagejs_last_exception__', error)
-assert sys.exception() is error
-assert sys.exc_info()[0] is ValueError
-assert sys.exc_info()[1] is error
-assert sys.exc_info()[2] is outer
-assert 'outer' not in ''.join(traceback.format_exception(ValueError, error, inner))
-assert traceback.format_exception(ValueError, error, None) == ['ValueError: boom\\n']
-error.__traceback__ = inner
-assert sys.exc_info()[2] is inner
-error.__traceback__ = None
-assert sys.exc_info()[2] is None
-assert traceback.format_exception(error) == ['ValueError: boom\\n']
-runtime.reflect.set(runtime.global_object, '__sagejs_last_exception__', None)
+try:
+    raise error
+except ValueError:
+    assert sys.exception() is error
+    assert sys.exc_info()[0] is ValueError
+    assert sys.exc_info()[1] is error
+    assert sys.exc_info()[2] is outer
+    assert 'outer' not in ''.join(traceback.format_exception(ValueError, error, inner))
+    assert traceback.format_exception(ValueError, error, None) == ['ValueError: boom\\n']
+    error.__traceback__ = inner
+    assert sys.exc_info()[2] is inner
+    error.__traceback__ = None
+    assert sys.exc_info()[2] is None
+    assert traceback.format_exception(error) == ['ValueError: boom\\n']
 assert sys.exc_info() == (None, None, None)
 error.__traceback__ = outer
 runtime.reflect.apply(runtime.reflect.get(runtime.global_object, '__sagejs_showtraceback__'), None, [error])

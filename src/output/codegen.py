@@ -623,7 +623,9 @@ def generate_code():
                     output.print("," + str(self.start.line))
                     bare = (
                         is_node_type(self.value, AST_Call)
-                        and self.value.expression.name is "ρσ_reraise_exception"
+                        and is_node_type(self.value.expression, AST_Dot)
+                        and self.value.expression.property is "reraise"
+                        and self.value.expression.expression.name is "ρσ_handled_state"
                     )
                     output.print(
                         ",ρσ_trace_activation || (ρσ_trace_activation = {}),"

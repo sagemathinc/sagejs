@@ -439,3 +439,33 @@ fixtures fail module resolution (`packed_prime_field`, `field_capabilities`,
 or `extension_mpoly_backend`). These are not waived or yet attributed by a
 parent-revision comparison. The pinned pyparsing workflow passes again on the
 cleanup revision. PR272 remains draft, and the full compiler gate remains open.
+
+### Ownership reconciliation and capture-policy guardrail
+
+The ownership adapter under qualification follows PR244's linked-handler
+model: a suspended generator retains its own chain; its root reconnects to
+the current caller on each resume. Shared adapters intercept native next,
+throw and return while preserving native receiver/reentrancy checks. Cleanup
+and context-manager exit scopes participate in the same ownership model.
+The adapter is singleton per realm so repeated bootstrap initialization cannot
+orphan a live or suspended chain. The initial reconciliation passed 30 of 33
+focused cases; its three context-manager exit failures prompted a correction,
+not a reclassification. After the exit-scope correction and singleton guard,
+all 34 ownership/state/logical tests pass; the other 36 exception/diagnostic
+tests also pass. Strict checking passes for 404 modules. This checkpoint uses
+a converged compiler and refreshed runtime cache; it is not a final
+four-platform or fully rebuilt package qualification.
+
+Direct reads of the known host global object replace reflective reads;
+caller-owned member access is not broadly rewritten. Repeated builtin weak-map
+initialization shares one allocator. These changes keep ownership support
+within the existing source allowance (902,765 / 903,000 bytes at this checkpoint).
+
+Production capture must not be justified by these state-only tests. In
+particular, the experimental global skip-capture switch cannot distinguish an
+instrumented callback entered through opaque JavaScript or uninstrumented
+Python. A safe policy must retain native capture for opaque call ancestry,
+including callbacks and generator/coroutine resumes, and preserve those native
+diagnostics when logical callers add frames. An instrumented callee must not
+blindly re-enable stack suppression beneath an opaque ancestor. The switch
+remains experimental until that boundary is implemented and tested.

@@ -9,6 +9,9 @@
   "objective": "Qualify prepared calls, reflected divmod and annotation metadata on current main without widening budgets",
   "base_commit": "4834ec0cb7e2fe84de418f0573f2a6d27f34c955",
   "claims": [
+    "src/baselib/bootstrap_shared.py",
+    "test/python-handled-state.cjs",
+    "test/fixtures/python-handled-state.py",
     "tools/jupyter-kernel.ts",
     "tools/kernel-evaluator.ts",
     "tools/python/diagnostics.ts",

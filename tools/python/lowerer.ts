@@ -503,8 +503,9 @@ export class PythonCstLowerer {
           (args as any).kwarg_items = [];
           (args as any).starargs = false;
           raised = this.make("AST_Call", node, {
-            expression: this.make("AST_SymbolRef", node, {
-              name: "ρσ_reraise_exception",
+            expression: this.make("AST_Dot", node, {
+              expression: this.make("AST_SymbolRef", node, {name: "ρσ_handled_state"}),
+              property: "reraise",
             }),
             args,
             python_class: false,

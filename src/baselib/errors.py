@@ -13,18 +13,6 @@ import sagejs.runtime as runtime
 NameError = runtime.reference_error
 
 
-def ρσ_reraise_exception() -> object:
-    """Read the dynamically active handler, including across module calls."""
-    value = runtime.global_object.__sagejs_last_exception__
-    if value is runtime.undefined or value is None:
-        # Like the group constructors below, this host-backed hierarchy is
-        # established at runtime rather than visible to Pyright.
-        raise RuntimeError(  # pyright: ignore[reportGeneralTypeIssues]
-            "No active exception to reraise"
-        )
-    return value
-
-
 def ρσ_exception_value(value: object) -> object:
     if runtime.strict_equal(runtime.jstype(value), "function"):
         value = runtime.reflect.construct(value, [])
