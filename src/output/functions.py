@@ -1331,8 +1331,42 @@ def print_function_call(self, output):
                     output.print(")")
 
     def print_kwargs():
+        if output.options.python_attributes and self.args.keyword_order:
+            # Merge each mapping before evaluating the next keyword segment.
+            # One compiler-owned accumulator avoids quadratic copying while
+            # preserving duplicate-key and __getitem__ exception precedence.
+            groups = []
+            for kind, index in self.args.keyword_order:
+                if kind is "mapping":
+                    groups.push([kind, self.args.kwarg_items[index]])
+                else:
+                    if (
+                        not groups.length
+                        or groups[groups.length - 1][0] is not "formal"
+                    ):
+                        groups.push(["formal", []])
+                    groups[groups.length - 1][1].push(self.args.kwargs[index])
+            for group in groups:
+                output.print("ρσ_desugar_kwargs(")
+            output.print("Object.create(null)")
+            for kind, value in groups:
+                output.print(",[")
+                if kind is "mapping":
+                    value.print(output)
+                else:
+                    output.print("{")
+                    for index, pair in enumerate(value):
+                        if index:
+                            output.comma()
+                        output.print("[")
+                        output.print_string(pair[0].name)
+                        output.print("]:")
+                        pair[1].print(output)
+                    output.print("}")
+                output.print("])")
+            return
         output.print(
-            "ρσ_desugar_kwargs(["
+            "ρσ_desugar_kwargs(Object.create(null),["
             if output.options.python_attributes
             else "ρσ_desugar_kwargs_legacy(["
         )

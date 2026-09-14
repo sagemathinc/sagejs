@@ -3369,6 +3369,7 @@ export class PythonCstLowerer {
           is_tuple: false,
         }),
       ]);
+      value.args.keyword_order?.push(["formal", value.args.kwargs.length - 1]);
     }
     const targets = [parent, ...additional].map((target) =>
       this.pythonSymbol("AST_SymbolRef", target, { name: target.text })
@@ -3585,6 +3586,7 @@ export class PythonCstLowerer {
     const args: any[] = [];
     (args as any).kwargs = [];
     (args as any).kwarg_items = [];
+    (args as any).keyword_order = [];
     (args as any).starargs = false;
     const argumentsNode = this.field(node, "arguments");
     const argumentNodes = argumentsNode.type === "argument_list"
@@ -3607,11 +3609,13 @@ export class PythonCstLowerer {
           }),
           this.lowerExpression(this.field(argument, "value")),
         ]);
+        (args as any).keyword_order.push(["formal", (args as any).kwargs.length - 1]);
       } else if (argument.type === "dictionary_splat") {
         sawDictionarySplat = true;
         (args as any).kwarg_items.push(
           this.lowerExpression(significantChildren(argument)[0]),
         );
+        (args as any).keyword_order.push(["mapping", (args as any).kwarg_items.length - 1]);
         (args as any).starargs = true;
       } else {
         const splatFunction = argument.type === "call" &&

@@ -724,3 +724,31 @@ A fresh prepared-call gate is 41/45: duplicate mapping access order and custom
 failures. Native suppression stays experimental/off by default, PR272 stays
 draft, and opaque ancestry/default policy and final package/platform qualification
 remain required.
+
+### Source-ordered keyword failure checkpoint
+
+Keyword lowering now retains the order of explicit keyword segments and
+`**mapping` expansions. Each segment merges into one compiler-owned accumulator
+before the next segment is evaluated. This fixes duplicate-key versus item-read
+and later-argument exception precedence without quadratic packet copying or an
+extra closure that could change `yield`/`await` scope. Computed literal keys also
+preserve the Python keyword `__proto__`. The private merge helper and its
+`js_new` caller change together; old generated code must be rebuilt.
+
+The clean build passes in 7m10s; strict checking passes for 404 modules, and
+the pinned pyparsing 3.3.2 workflow passes. The prepared-call selection improves
+to 58/60, with only the existing custom-`__getattribute__` failures in both
+modes remaining. All 113 selected traceback/diagnostic regressions pass.
+Six additional source-order/generator checks pass against CPython and both
+language modes. Logs: `/home/user/exception-keyword-build.log`,
+`/home/user/exception-keyword-focused.log`,
+`/home/user/exception-keyword-records-regressions.log`,
+`/home/user/exception-keyword-segments.log`, and
+`/home/user/exception-keyword-pyparsing.json`.
+
+Core source usage decreases to 902,971 / 903,000 bytes. The architecture chain
+passes that gate but later stops at the stale optimizer-opportunity manifest
+(expected input `51678a4c17954ed55f5817523c1b69458aeadf71f0d102276c2a5fa89bcdc93b`,
+found `5a861be64dd133755c35ef93f89fcc2f4a68846f62c6c1553b9a013e8cbef5dc`).
+That is not a passing architecture receipt and has not been waived.
+This checkpoint makes no new performance or production-capture-policy claim.

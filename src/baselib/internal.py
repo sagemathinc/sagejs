@@ -814,8 +814,7 @@ def ρσ_Iterable(iterable: Any) -> Any:
     raise TypeError("object is not iterable")
 
 
-def ρσ_desugar_kwargs(sources: Any) -> Any:
-    answer = runtime.object.create(None)
+def ρσ_desugar_kwargs(answer: Any, sources: Any) -> Any:
     answer[runtime.kwargs_symbol] = True
     for source in sources:
         if _internal_member_is_function(source, "keys"):

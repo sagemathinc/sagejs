@@ -9,6 +9,7 @@
   "objective": "Qualify prepared calls, reflected divmod and annotation metadata on current main without widening budgets",
   "base_commit": "4834ec0cb7e2fe84de418f0573f2a6d27f34c955",
   "claims": [
+    "src/lib/js.py",
     "website/live/app.mjs",
     "website/live/embed/v1/sagejs-cell.mjs",
     "packages/flint-wasm/kernel-worker.mjs",

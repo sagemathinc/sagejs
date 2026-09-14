@@ -98,6 +98,65 @@ def test_noncallable_after_argument_expansion():
     assert events == ["get", "keys", "item", "error"]
 
 
+def test_keyword_segments_evaluate_and_merge_in_source_order():
+    events = []
+
+    def argument(name):
+        events.append(name)
+        return name
+
+    class Mapping:
+        def __init__(self, name):
+            self.name = name
+
+        def keys(self):
+            events.append("keys:" + self.name)
+            return [self.name]
+
+        def __getitem__(self, key):
+            events.append("item:" + key)
+            return key
+
+    def target(**keywords):
+        events.append("body")
+        return keywords
+
+    answer = target(a=argument("a"), **Mapping("b"), c=argument("c"), **Mapping("d"))
+    assert events == ["a", "keys:b", "item:b", "c", "keys:d", "item:d", "body"]
+    assert answer == dict(a="a", b="b", c="c", d="d")
+    events.clear()
+    try:
+        target(a=argument("a"), **Mapping("a"), later=argument("unexpected"))
+    except TypeError:
+        events.append("error")
+    else:
+        assert False
+    assert events == ["a", "keys:a", "error"]
+    events.clear()
+    try:
+        target(**42, later=argument("unexpected"))
+    except TypeError:
+        events.append("error")
+    else:
+        assert False
+    assert events == ["error"]
+    assert target(__proto__=7, constructor=9) == {"__proto__": 7, "constructor": 9}
+
+
+def test_keyword_segments_suspend_in_the_callers_generator():
+    def target(**keywords):
+        return keywords
+
+    def generate():
+        result = target(first=(yield 1), **{"middle": 2}, last=(yield 3))
+        yield result
+
+    iterator = generate()
+    assert next(iterator) == 1
+    assert iterator.send(10) == 3
+    assert iterator.send(30) == {"first": 10, "middle": 2, "last": 30}
+
+
 def test_duplicate_mapping_before_item_and_callability():
     events = []
 
