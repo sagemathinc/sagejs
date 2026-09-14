@@ -40,6 +40,14 @@ test('Jupyter reply adapter preserves transported logical frames', () => {
   assert.equal(reply.evalue,'boom');
   assert.match(reply.traceback.join('\n'), /File "cell.py", line 2, in f/);
   assert.match(reply.traceback.join('\n'), /ValueError: boom/);
+  const native = Object.assign(new Error('native failure'), {name: 'ValueError'});
+  native.stack = 'ValueError: native failure\n    at opaqueCallback (foreign.js:7:3)';
+  native.__traceback__ = native;
+  const nativeReply = adapter.exports.testTraceback(structuredClone(serialize(python(native))));
+  assert.equal(nativeReply.ename, 'ValueError');
+  assert.equal(nativeReply.evalue, 'native failure');
+  assert.match(nativeReply.traceback.join('\n'), /Native capture/);
+  assert.match(nativeReply.traceback.join('\n'), /opaqueCallback \(foreign.js:7:3\)/);
 });
 
 test('CLI renders and freezes compiler traceback records without a native stack', () => {

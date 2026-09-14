@@ -23,6 +23,37 @@ function record(name, next = null) {
       first_lineno:11,source:'def f():\n    fail()'}};
 }
 
+test('native-only and mixed traceback carriers retain evidence at transport boundaries', () => {
+  const { attachPythonDiagnostic: attach, serializeDiagnosticError: serialize,
+    renderPythonDiagnostic: render } = helper.exports;
+  for (const mixed of [false, true]) {
+    const error = new Error('native evidence');
+    error.stack = 'Error: native evidence\n    at opaqueCallback (foreign.js:7:3)';
+    error.__traceback__ = mixed ? record('known') : error;
+    if (mixed) error.__sagejs_native_tb__ = error;
+    attach(error, { phase: 'execute', pythonExecution: true });
+    const transported = structuredClone(serialize(error)).pythonDiagnostic;
+    assert.equal(transported.nativeTraceback, error.stack);
+    assert.deepEqual(transported.frames.map(frame => frame.name), mixed ? ['known'] : []);
+    assert.match(render(transported), /Native capture \(may overlap Python frames\):/);
+    assert.match(render(transported), /opaqueCallback \(foreign.js:7:3\)/);
+    assert.equal('nativeTraceback' in normalize(error, {phase: 'host'}), false);
+  }
+});
+
+test('native carrier stack access is deferred to normalization and safely guarded', () => {
+  let reads = 0;
+  const error = {name: 'ValueError', message: 'bad'};
+  error.__traceback__ = error;
+  Object.defineProperty(error, 'stack', {get() { reads++; throw new Error('hostile stack'); }});
+  assert.equal(reads, 0);
+  const result = normalize(error, {phase: 'execute', pythonExecution: true});
+  assert.equal(reads, 1);
+  assert.equal(result.message, 'bad');
+  assert.deepEqual(result.frames, []);
+  assert.equal('nativeTraceback' in result, false);
+});
+
 test('logical frames survive JSON transport without live activation state', () => {
   const error = {name:'ValueError', message:'bad', __traceback__:record('outer',record('inner'))};
   const diagnostic = normalize(error,{phase:'execute',pythonExecution:true});

@@ -198,7 +198,12 @@ export function normalizePythonDiagnostic(
       if (stack !== undefined) result.hostStack = stack;
     }
     if (options.pythonExecution) {
-      const native = string(get(get(value, "__sagejs_native_tb__"), "stack"));
+      // The native-only runtime uses the exception itself as its traceback
+      // carrier. Instrumentation moves that carrier to __sagejs_native_tb__.
+      // Preserve both formats without interpreting a JS stack as Python frames.
+      const carrier = get(value, "__sagejs_native_tb__") ??
+        (get(value, "__traceback__") === value ? value : undefined);
+      const native = string(get(carrier, "stack"));
       if (native !== undefined) result.nativeTraceback = native;
     }
     ancestors.add(value);
