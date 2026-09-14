@@ -993,3 +993,25 @@ found roughly 20% guarded successful-call overhead. Removing an identity
 function's unreachable body unwind handler in a generated-code-only prototype
 reduced that to roughly 10%; this is evidence for investigating a conservative
 nonthrowing-body proof, not a shipped optimization or a waived overhead gate.
+
+The subsequent compiler change implements that narrow proof for guarded
+function bodies consisting only of a bare return or a bound-parameter return.
+Binding diagnostics remain outside the body handler; global reads, callbacks
+and generators are not elided. Two-pass compiler convergence and all 50 focused
+checks pass. Real generated outputs, not hand-edited prototypes, were compared
+on the locked benchmark host in opposite process order:
+
+- Isolated one-million successful calls: native 90.77–90.79ms, previous guarded
+  110.64–112.54ms, elided guarded 100.46–103.08ms (roughly 8–11% improvement,
+  still 11–14% above native).
+- Mixed 100,000-call campaign after binding failures: previous guarded
+  9.68–10.01ms, elided guarded 9.90–10.12ms; no demonstrated gain there.
+- Exception costs remain approximately 997–1007ms binding, 458–468ms
+  construction, and 607–614ms raise/catch. CPython remains approximately
+  45–46ms, 10.1–10.3ms, and 12.6ms respectively. These cliffs remain open.
+
+Frozen inputs, hashes, all samples, startup observations and both runners are
+retained in `/home/user/exception-nonthrowing-pair.e9XOpn` and
+`bench-1:/home/user/exception-binding.DPGjJs/nonthrowing`. Isolated and mixed
+results are both retained; the favorable isolated result does not supersede
+the mixed result or qualify a default-policy change.

@@ -12,7 +12,15 @@ for (const mode of ["python", "sage"]) test(`${mode}: guarded compiled and opaqu
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, mode);
   try {
-    const source = `def leaf():
+    const source = `def echo(value):
+    return value
+def nothing():
+    return
+def global_read():
+    return missing_global
+def callback_read(callback):
+    return callback()
+def leaf():
     raise ValueError('guarded')
 def caught():
     try:
@@ -123,8 +131,22 @@ comprehension = (caught() for i in [1])
     assert.equal(main.identity(), main.identity);
     assert.equal(Number(main.tagged()), 19);
     const policy = context.ρσ_traceback_policy;
+    assert.doesNotMatch(policy.target(main.echo).toString(), /ρσ_record_traceback/,
+      "returning a bound parameter needs no body unwind handler");
+    assert.doesNotMatch(policy.target(main.nothing).toString(), /ρσ_record_traceback/);
+    assert.match(policy.target(main.global_read).toString(), /ρσ_record_traceback/,
+      "a possibly failing global read must retain its unwind handler");
+    assert.match(policy.target(main.callback_read).toString(), /ρσ_record_traceback/,
+      "a callback must retain its unwind handler");
+    const sentinel = {};
+    assert.equal(main.echo(sentinel), sentinel);
+    assert.equal(main.nothing(), null);
     const token = policy.enter();
     try {
+      const failedBinding = policy.target(main.captured)(main.echo);
+      assert.equal(failedBinding.__sagejs_logical_exception__, true);
+      assert.deepEqual(names(failedBinding), ["captured"],
+        "eliding a nonthrowing body must not add an unentered binding frame");
       const defaultError = main.factory.make();
       assert.equal(defaultError.__sagejs_logical_exception__, false,
         "a nested default expression executes in its uninstrumented enclosing method");

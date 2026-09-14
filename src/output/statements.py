@@ -7,6 +7,9 @@ from ast_types import (
     AST_Scope,
     AST_Toplevel,
     AST_Method,
+    AST_Return,
+    AST_Yield,
+    AST_SymbolRef,
     AST_Except,
     AST_EmptyStatement,
     AST_Statement,
@@ -202,7 +205,37 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
         display_body(node.body, is_toplevel, output)
 
 
+def guarded_body_cannot_throw(node, output):
+    # Binding has already completed outside the body unwind handler. Only a
+    # bare return or a read of an already-bound parameter is proved here: no
+    # global lookup, conversion, descriptor, or user callback can occur.
+    context = output.guarded_call_context
+    if (
+        not output.options.python_traceback_guarded
+        or not context
+        or context.node is not node
+        or node.body.length is not 1
+        or not is_node_type(node.body[0], AST_Return)
+        or is_node_type(node.body[0], AST_Yield)
+    ):
+        return False
+    value = node.body[0].value
+    if not value:
+        return True
+    if is_node_type(value, AST_SymbolRef):
+        for arg in node.argnames:
+            if arg.name is value.name:
+                return True
+    return False
+
+
 def display_traceback_body(node, output, body, block_scope=False, line=None):
+    if guarded_body_cannot_throw(node, output):
+        previous = output.traceback_function
+        output.traceback_function = None
+        body()
+        output.traceback_function = previous
+        return
     if output.options.python_traceback_records:
         guarded_root = (
             output.options.python_traceback_guarded
