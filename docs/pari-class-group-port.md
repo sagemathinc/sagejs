@@ -1,5 +1,43 @@
 # Faithful PARI class-group language experiment
 
+## Regulator preparation and rank path (2026-09-14)
+
+`regulator_preparation.py` translates `clean_cols`, exact signature column T
+and `compute_multiple_of_R_pivot`. `regulator_pivots.py` follows `RgM_pivots`
+on [T | real logarithms], including the separate integer-matrix dispatch and
+the complete generic Gaussian update order. Mixed-signature T can select 2
+as its first pivot: the local reciprocal remains the exact fraction -1/2,
+and its multiplication follows `mulrfrac` (divide first, then negate), not
+a floating approximation to the fraction. Real reciprocals follow the
+`divir`/`divur` guard-word path below Newton's crossover. Prepared inexact
+precision is explicitly capped at 1,856 bits to fit the existing division
+leaf's guard window; this is not a global precision limit change.
+
+Preparation passes 96 PARI/CPython/JS/GMP cases; trace
+`8fc15cd62edd7d539cb2df1bfaded23055614892fcdf64a2f8bbb759851fa92e`,
+core 713,743 bytes. Rank controls pass 389 cases through 1,856-bit precision,
+comparing pivots, nullity, eliminated matrix and occupancy against both
+source-extracted and unmodified PARI. Of 53 integer-dispatch controls,
+52 complete and one intentionally stops before CUP without publishing
+pivots; all 336 generic cases complete. Trace
+`a8b04b0321712ab4d172269baf0269cffac47bfbf7ac389afae4c3d9b30ea3b1`,
+core 4,855,001 bytes. The extracted Gaussian oracle aborts if stack repacking
+is needed; none of these bounded controls needs it. Four malformed workspace
+guards per backend reject before mutation. Independent source review found
+no numerical/order mismatch within the declared scope.
+
+Reproduce with `check_regulator_preparation.cjs PARI_SOURCE PARI_ARCHIVE`
+and `check_regulator_pivots.cjs PARI_SOURCE PARI_ARCHIVE`. These are prepared
+matrix controls, not a complete regulator or class-group computation.
+Determinants, inversion, residual checking and `compute_R` remain unported.
+
+Two syntax/storage limitations were made explicit rather than hidden:
+the native compiler rejects a `-> None` validator signature (an ignored
+integer status is used), and fixed-length slices currently require
+NativeIntegerVector rather than IntegerBuffer (three direct buffer stores
+are used). Their failed attempts are in the ledger. These are compiler
+ergonomics findings, not measured explanations for a runtime speed gap.
+
 ## Connected initial sparse reduction (2026-09-14)
 
 `hnfspec_complete.py` connects original sparse relation words, row permutation
