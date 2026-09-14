@@ -172,6 +172,16 @@ experiment's Python modules merely to compile a connected segment.
 
 ## Imported binary64 logarithm
 
+`math.log2` uses the same source-resolved binding and domain rules, with its
+own `float64.log2` IR operation and direct libc/JavaScript `log2` calls. This
+is required by PARI's exponential series schedule: replacing it by `log(x)`
+divided by a constant would introduce another rounding decision. The focused
+test exercises both logarithms against CPython on 92 positive inputs, aliases,
+shadowing, invalid arity, signed zero, infinities and NaN. For base two it also
+checks all 2,098 representable powers of two, from subnormal `2**-1074` through
+`2**1023`, in pure and mixed native/fallback paths. No general bitwise
+agreement between different platform math libraries is claimed.
+
 PARI's bound check uses the C binary64 logarithm. Explicit `from math import
 log` (including aliases) now lowers to `float64.log` and libc `log` in the
 isolated core, with `Math.log` in the generated fallback. Both pure binary64

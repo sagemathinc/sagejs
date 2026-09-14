@@ -465,10 +465,10 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "float64.negate") {
     return `${indent}${operation.target} = -${operation.source};`;
   }
-  if (operation.kind === "float64.log") {
+  if (operation.kind === "float64.log" || operation.kind === "float64.log2") {
     return `${indent}if (${operation.source} <= 0) ` +
       `nativeRaise("ValueError", "math domain error");\n` +
-      `${indent}${operation.target} = Math.log(${operation.source});`;
+      `${indent}${operation.target} = Math.${operation.kind.slice(8)}(${operation.source});`;
   }
   if (operation.kind === "float64.pow") return emitFloat64Pow(operation, indent);
   if (operation.kind === "float64.buffer.length") {
@@ -1452,11 +1452,11 @@ function generateJavaScript(ir, options = {}) {
       return `${indent}${operation.target} = Math.abs(${operation.source});`;
     }
     if (operation.kind === "float64.pow") return emitFloat64Pow(operation, indent);
-    if (operation.kind === "float64.sqrt" || operation.kind === "float64.log") {
-      const logarithm = operation.kind === "float64.log";
+    if (["float64.sqrt", "float64.log", "float64.log2"].includes(operation.kind)) {
+      const logarithm = operation.kind !== "float64.sqrt";
       return `${indent}if (${operation.source} ${logarithm ? "<=" : "<"} 0) ` +
         `throw new RangeError("math domain error");\n` +
-        `${indent}${operation.target} = Math.${logarithm ? "log" : "sqrt"}(${operation.source});`;
+        `${indent}${operation.target} = Math.${operation.kind.slice(8)}(${operation.source});`;
     }
     if (operation.kind === "float64.negate") {
       return `${indent}${operation.target} = -${operation.source};`;

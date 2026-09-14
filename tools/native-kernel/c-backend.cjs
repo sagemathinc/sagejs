@@ -2823,16 +2823,16 @@ function emitFloat64Operation(operation, indent) {
   if (operation.kind === "float64.abs") {
     return `${indent}${target} = fabs(${cName(operation.source)});`;
   }
-  if (operation.kind === "float64.sqrt" || operation.kind === "float64.log") {
+  if (["float64.sqrt", "float64.log", "float64.log2"].includes(operation.kind)) {
     const source = cName(operation.source);
-    const logarithm = operation.kind === "float64.log";
+    const logarithm = operation.kind !== "float64.sqrt";
     return [
       `${indent}if (${source} ${logarithm ? "<=" : "<"} 0.0)`,
       `${indent}{`,
       statusFailure("range", "math domain error", `${indent}    `),
       `${indent}    goto fail;`,
       `${indent}}`,
-      `${indent}${target} = ${logarithm ? "log" : "sqrt"}(${source});`,
+      `${indent}${target} = ${operation.kind.slice(8)}(${source});`,
     ].join("\n");
   }
   if (operation.kind === "float64.negate") {

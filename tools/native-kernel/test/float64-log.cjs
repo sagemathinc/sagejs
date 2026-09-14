@@ -51,10 +51,10 @@ print(json.dumps(out))`],{input:JSON.stringify(pairs.map(pair=>pair.map(token)))
     await assert.rejects(()=>lowerSource(`from math import pow as power\ndef f(x:float)->float:\n    return ${call}\n`,"bad.py"),/positional/);
   await assert.rejects(()=>lowerSource("from math import pow as power\ndef f(power:float)->float:\n    return power(2.0,3.0)\n","shadow.py"),/shadowed/);
 });
-test("imported math.log preserves binding and binary64 domains",async()=>{
+for(const operation of ["log", "log2"])test(`imported math.${operation} preserves binding and binary64 domains`,async()=>{
   const dir=mkdtempSync(join(tmpdir(),"sagejs-log-")),source=join(dir,"logarithm.py");
   writeFileSync(source,`from sagejs.native import native, Float64Buffer
-from math import log as logarithm
+from math import ${operation} as logarithm
 @native
 def scalar(x: float) -> float:
     return logarithm(x)
@@ -66,11 +66,11 @@ def mixed(x: Float64Buffer, out: Float64Buffer) -> int:
   const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
   assert.equal(mod.scalar.nativeAvailable,true);
   const scalarBackends=[mod.scalar.javascript,mod.scalar];
-  assert.match(readFileSync(built.coreSourcePath,"utf8"),/ = log\(/);
+  assert.match(readFileSync(built.coreSourcePath,"utf8"),new RegExp(` = ${operation}\\(`));
   assert.doesNotMatch(readFileSync(built.coreSourcePath,"utf8"),/napi_call_function|PyObject_Call/);
   const values=[Number.MIN_VALUE,2**-1022,0.125,0.5,1-Number.EPSILON/2,1,1+Number.EPSILON,2,3,101,Number.MAX_VALUE];
   for(let exponent=-1000;exponent<=1000;exponent+=25)values.push(1.125*2**exponent);
-  const oracle=spawnSync("python3",["-c","import json,sys,math;print(json.dumps([math.log(x) for x in json.load(sys.stdin)]))"],{input:JSON.stringify(values),encoding:"utf8",timeout:30000});assert.equal(oracle.status,0,oracle.stderr);
+  const oracle=spawnSync("python3",["-c",`import json,sys,math;print(json.dumps([math.${operation}(x) for x in json.load(sys.stdin)]))`],{input:JSON.stringify(values),encoding:"utf8",timeout:30000});assert.equal(oracle.status,0,oracle.stderr);
   const expected=JSON.parse(oracle.stdout);
   for(let i=0;i<values.length;i++){
     for(const backend of scalarBackends){
@@ -84,9 +84,18 @@ def mixed(x: Float64Buffer, out: Float64Buffer) -> int:
     for(const backend of ["javascript","gmp"])assert.throws(()=>mod.mixed[backend]([x],[0]),/math domain error/);
   }
   for(const backend of scalarBackends){assert.equal(backend(Infinity),Infinity);assert(Number.isNaN(backend(NaN)));}
+  for(const backend of ["javascript","gmp"]){
+    const out=[0];mod.mixed[backend]([Infinity],out);assert.equal(out[0],Infinity);
+    mod.mixed[backend]([NaN],out);assert(Number.isNaN(out[0]));
+  }
+  if(operation === "log2")for(let exponent=-1074;exponent<=1023;exponent++){
+    const value=2**exponent;
+    for(const backend of scalarBackends)assert.equal(backend(value),exponent);
+    for(const backend of ["javascript","gmp"]){const out=[0];mod.mixed[backend]([value],out);assert.equal(out[0],exponent);}
+  }
   for(const alias of ["float","RealNumber","abs","sqrt","len"]){
-    const ir=await lowerSource(`from math import log as ${alias}\ndef f(x:float)->float:\n    return ${alias}(x)\n`,"alias.py");
-    assert.match(JSON.stringify(ir),/float64.log/);
+    const ir=await lowerSource(`from math import ${operation} as ${alias}\ndef f(x:float)->float:\n    return ${alias}(x)\n`,"alias.py");
+    assert(JSON.stringify(ir).includes(`float64.${operation}`));
   }
   for(const body of [
     "from math import log\ndef f(log:float)->float:\n    return log(1.0)\n",
@@ -98,6 +107,6 @@ def mixed(x: Float64Buffer, out: Float64Buffer) -> int:
     "def f(x:float)->float:\n    return log(x)\n",
     "from .math import log\ndef f(x:float)->float:\n    return log(x)\n",
   ])await assert.rejects(()=>lowerSource(
-    "from sagejs.native import native\n" + body.replace("def f(","@native\ndef f("),
+    "from sagejs.native import native\n" + body.replace(/\blog\b/g,operation).replace("def f(","@native\ndef f("),
     "log-binding.py"),/shadowed|argument|positional|ambiguous|unsupported/);
 });

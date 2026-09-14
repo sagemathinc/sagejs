@@ -1380,7 +1380,7 @@ function lowerCall(node, context, operations) {
   const name = node.expression.name;
   const args = array(node.args);
 
-  if (["log", "pow"].includes(context.mathFunctions.get(name))) {
+  if (["log", "log2", "pow"].includes(context.mathFunctions.get(name))) {
     const kind = context.mathFunctions.get(name);
     expect(context, node, !context.variables.has(name) && !context.lexicalLocals.has(name) &&
       !context.signatures.has(name) && !context.integerConstants.has(name) && !context.foreignFunctions.has(name),
@@ -1395,7 +1395,7 @@ function lowerCall(node, context, operations) {
       const exponent = lowerExpression(args[1], context, operations);
       expect(context, node, exponent.type === "Float64", "native math.pow requires Float64");
       operations.push({kind: "float64.pow", target, left: source.name, right: exponent.name});
-    } else operations.push({kind: "float64.log", target, source: source.name});
+    } else operations.push({kind: `float64.${kind}`, target, source: source.name});
     return {name: target, type: "Float64"};
   }
 
