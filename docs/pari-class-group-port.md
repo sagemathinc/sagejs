@@ -1,5 +1,38 @@
 # Faithful PARI class-group language experiment
 
+## Real logarithm used by higher-root initialization
+
+`real_logarithm.py` translates the 64-bit entry of `logr_abs` used explicitly
+by `sqrtnr_abs` to initialize its Newton iteration. It chooses the same
+normalization around one, square-root count, internal working precision and
+`logr_aux` odd-power series schedule. The existing source-transparent log(2)
+computation supplies a resident cache; no host logarithm supplies the answer.
+The scheduling estimate uses the upstream binary64 logarithm of a leading
+word, separately from the arbitrary-precision result computation.
+
+The current entry accepts only a full one-word nonzero mantissa, matching that
+initializer boundary, not arbitrary-precision public `log`. Internal arithmetic
+retains extra words. The higher-root iteration and its connection to the
+enumeration bound are still pending. Previously declared integer quotient and
+square-root substitutions remain in the dependency graph.
+
+The 2,304 oracle controls include powers of two, tiny mantissa perturbations,
+upper-endpoint tails, random mantissas, both input signs and nine exponents
+from -1000 to 1000. They compare stored PARI `logr_abs` triples, not rounded
+decimal printouts. This remains component correspondence, not whole-engine
+performance evidence.
+
+All controls pass CPython, dynamic JS and GMP-native execution. Mixed floating
+arithmetic still lacks the tagged backend capability, so no tagged qualification
+is claimed. Formatting, strict-Python and parallel checks pass; the architecture
+gate retains the known stale optimizer manifest failure.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_real_logarithm.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Real division for the pending enumeration-bound connection
 
 `real_division.py` implements the real quotient value operation required by
@@ -1408,6 +1441,11 @@ are historical and do not govern this experiment. Mathematical choices remain
   or later. Translated files must retain that attribution and license notice.
 
 ## Resource ledger
+
+The cached-build logarithm validation used 10.189 wall seconds, 11.829 user
+plus 0.611 system child CPU seconds, and peak child RSS 403,656 KiB. Charge
+12.440 CPU seconds conservatively, including the small oracle build; this is
+a validation receipt, not a logarithm timing comparison.
 
 At the QR checkpoint, goal accounting reported 25,247 root active seconds
 (7.01 hours), plus the previously recorded 12 panel-agent minutes. The
