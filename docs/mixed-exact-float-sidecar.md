@@ -1,5 +1,33 @@
 # Mixed exact/binary64 prerequisite checkpoint
 
+## Exact integer bit masks
+
+The PARI short-product experiment exposed rejection of ordinary Python
+`(x >> k) & ((1 << 64) - 1)` for an exact mantissa: bitwise dispatch previously
+required two `uint64` operands. Exact `&` and `&=` now lower to integer IR,
+GMP `mpz_and` and JavaScript BigInt `&`. Tagged and machine-word paths preserve
+signed two's-complement semantics; large tagged operands use GMP. Mixed exact
+and checked-word operands promote to exact integers, while two bounded-word
+operands retain their existing behavior. Other missing bitwise operators are
+not implicitly claimed as implemented.
+
+The focused shift/mask test compares negative and 64–511-bit inputs with
+CPython, exercises aliasing, augmented assignment, mixed operand order and
+automatic/native/tagged/JavaScript paths, and retains prior shift limits.
+The experimental short-product client matches 228 PARI cases after replacing
+power-of-two remainder extraction by masks. Short diagnostic timings suggest
+an improvement, but are not paired performance qualification or class-group
+parity. This feature removes a demonstrated language obstruction; it does not
+replace arbitrary-precision word products with PARI's limb/carry representation.
+
+Broad checks remain incomplete: `architecture:check` reaches the previously
+documented stale optimizer manifest. `test:changed --base b294bcc05` passes
+merge checks, self-hosted convergence and module precompilation, then its build
+fails reconciling the installed FFLAS adapter because this worktree lacks
+`packages/fflas/.native/prefix/lib/libgivaro.a`. The later compiler/integration
+and documentation gates were not reached. No dependency installation or safety
+limit was changed to conceal either failure.
+
 ## Reuse shared source-transparent import lowering
 
 Connecting the PARI selector, FLATTER, fast and DPE passes exposed repeated

@@ -501,6 +501,7 @@ ${indent}}`;
   if (operation.kind === "integer.binary") {
     const left = value(operation.left);
     const right = value(operation.right);
+    if (operation.operation === "and") return `${indent}${target} = ${left} & ${right};`;
     const checked = { add: "add", sub: "sub", mul: "mul" }[
       operation.operation
     ];

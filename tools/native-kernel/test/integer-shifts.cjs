@@ -7,6 +7,48 @@ const {join}=require("node:path");
 const {spawnSync}=require("node:child_process");
 const test=require("node:test");
 const {compileKernel}=require("../compiler.cjs");
+test("exact integer masks preserve unbounded signed and mixed-word semantics",async()=>{
+ const dir=mkdtempSync(join(tmpdir(),"sagejs-integer-and-")),source=join(dir,"mask.py");
+ writeFileSync(source,`from sagejs.native import native, checked_uint64
+@native
+def mask(x: int, y: int) -> int:
+    return x & y
+@native
+def inplace_mask(x: int, y: int) -> int:
+    x &= y
+    return x
+@native
+def alias_mask(x: int) -> int:
+    x &= x
+    return x
+@native
+def extract(x: int, k: int) -> int:
+    return (x >> k) & ((1 << 64) - 1)
+@native
+def mixed_left(x: int, y: int) -> int:
+    return checked_uint64(y) & x
+@native
+def mixed_right(x: int, y: int) -> int:
+    return x & checked_uint64(y)
+@native
+def words(x: int, y: int) -> int:
+    return checked_uint64(x) & checked_uint64(y)
+`);
+ const b=await compileKernel({sourcePath:source}),m=require(b.modulePath);
+ const values=[0n,1n,-1n,7n,-9n,(1n<<63n)-1n,-(1n<<63n),1n<<63n,(1n<<64n)-1n,(1n<<192n)+17n,-(1n<<511n)-3n];
+ const pairs=values.flatMap(x=>values.map(y=>[x,y]));
+ const oracle=spawnSync("python3",["-c","import json,sys; print(json.dumps([str(int(x)&int(y)) for x,y in json.load(sys.stdin)]))"],{input:JSON.stringify(pairs.map(p=>p.map(String))),encoding:"utf8"});
+ assert.equal(oracle.status,0,oracle.stderr);const expected=JSON.parse(oracle.stdout).map(BigInt);
+ for(let i=0;i<pairs.length;i++)assert.equal(m.mask(...pairs[i]),expected[i]);
+ for(const backend of ["javascript","gmp","tagged"]){
+  for(let i=0;i<pairs.length;i++)for(const name of ["mask","inplace_mask"])assert.equal(m[name][backend](...pairs[i]),expected[i]);
+  for(const x of values){assert.equal(m.alias_mask[backend](x),x);
+   for(const k of [0n,64n,128n,512n])assert.equal(m.extract[backend](x,k),(x>>k)&((1n<<64n)-1n));
+   for(const y of [0n,1n,(1n<<64n)-1n])for(const name of ["mixed_left","mixed_right"])assert.equal(m[name][backend](x,y),x&y);
+  }
+  assert.equal(m.words[backend]((1n<<64n)-1n,1n<<63n),1n<<63n);
+ }
+});
 test("exact integer shifts preserve Python signs and checked count semantics",async(t)=>{
   const dir=mkdtempSync(join(tmpdir(),"sagejs-shifts-")),source=join(dir,"shifts.py");
   writeFileSync(source,`from sagejs.native import native

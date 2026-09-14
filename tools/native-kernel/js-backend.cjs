@@ -144,6 +144,7 @@ function emitStatement(operation, indent) {
       add: "+",
       sub: "-",
       mul: "*",
+      and: "&",
     }[operation.operation];
     if (operator === undefined)
       throw new Error(`unsupported integer operation ${operation.operation}`);
@@ -630,7 +631,7 @@ ${indent}}`;
       `${JSON.stringify(operation.values.map(String))}, ${operation.index});`;
   }
   if (operation.kind === "integer.binary") {
-    const operator = { add: "+", sub: "-", mul: "*" }[
+    const operator = { add: "+", sub: "-", mul: "*", and: "&" }[
       operation.operation
     ];
     if (operator !== undefined) {

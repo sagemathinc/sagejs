@@ -1085,6 +1085,22 @@ static double sagejs_tagged_get_double(sagejs_tagged_int *value)
     return value->is_big ? mpz_get_d(value->big) : (double) value->small;
 }
 
+static void sagejs_tagged_and(
+    sagejs_tagged_int *target,
+    sagejs_tagged_int *left,
+    sagejs_tagged_int *right)
+{
+    if (!left->is_big && !right->is_big)
+    {
+        sagejs_tagged_set_small(target, left->small & right->small);
+        return;
+    }
+    sagejs_tagged_make_big(left);
+    sagejs_tagged_make_big(right);
+    sagejs_tagged_make_big(target);
+    mpz_and(target->big, left->big, right->big);
+}
+
 static void sagejs_tagged_add(
     sagejs_tagged_int *target,
     sagejs_tagged_int *left,
