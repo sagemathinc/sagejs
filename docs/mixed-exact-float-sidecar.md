@@ -1,5 +1,23 @@
 # Mixed exact/binary64 prerequisite checkpoint
 
+## Range control transfers (IR 41)
+
+The Babai prototype requires both `break` and `continue` in descending range
+loops. Mixed/exact lowering now admits both, retaining the existing rejection
+of transfers that exit a live resource scope. `continue` records its target
+range's iterator, step and stop in IR and performs exactly the normal range
+advance before transferring. JS, GMP, tagged and guarded-word emission preserve
+the unsigned terminal-overflow check; signed guarded-word iteration likewise
+retains its overflow termination. Normal loop tails are unchanged, and nested
+while transfers do not acquire a range increment. The IR version is bumped
+because consumers must understand this additional transfer metadata.
+
+Focused controls cover ascending/descending and empty ranges, large integers,
+terminal overflow, and nested range/while targets. Both explicit-error/control
+tests pass across JS/GMP/tagged entry points. This is not a performance or
+Windows/Wasm qualification. The next Babai lowering obstruction is general
+`round(float)`; only `round(sqrt(Integer))` currently lowers in the mixed path.
+
 ## Mixed scalar absolute value
 
 The connected `Babai_fast` prototype exposed rejection of `abs(Float64)` in
@@ -12,8 +30,8 @@ through a mixed buffer/exponent function, including negative zero and NaNs;
 all four focused log/scaling tests pass. These are correctness checks, not a
 performance measurement. Broad build/architecture gaps below remain open.
 
-The prototype's next compile failure is `break` targeting a `range` loop;
-this change does not address or hide that separate control-flow limitation.
+At this checkpoint the next compile failure was `break` targeting a `range`
+loop; the subsequent IR 41 change above addresses that separate limitation.
 
 ## Portable root names and relative imports
 

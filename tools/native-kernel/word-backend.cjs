@@ -624,6 +624,15 @@ function emitWordStatements(statements, context, indent) {
       continue;
     }
     if (statement.kind === "loop.break" || statement.kind === "loop.continue") {
+      if (statement.range) {
+        const {kind} = statement.range;
+        const iterator = context.value(statement.range.iterator);
+        const step = context.value(statement.range.step);
+        const stop = context.value(statement.range.stop);
+        if (kind === "loop.range") {
+          lines.push(`${indent}if (${step} >= ${stop} - ${iterator}) break;`, `${indent}${iterator} += ${step};`);
+        } else lines.push(`${indent}if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator})) break;`);
+      }
       lines.push(`${indent}${statement.kind.slice(5)};`);
       continue;
     }

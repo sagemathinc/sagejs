@@ -1515,6 +1515,15 @@ function emitExactStatements(statements, context, indent) {
       continue;
     }
     if (statement.kind === "loop.break" || statement.kind === "loop.continue") {
+      if (statement.range) {
+        const {kind} = statement.range;
+        const iterator = exactValue(statement.range.iterator, context);
+        const step = exactValue(statement.range.step, context);
+        const stop = exactValue(statement.range.stop, context);
+        if (kind === "loop.range") {
+          lines.push(`${indent}if (${step} >= ${stop} - ${iterator}) break;`, `${indent}${iterator} += ${step};`);
+        } else lines.push(`${indent}mpz_add(${iterator}, ${iterator}, ${step});`);
+      }
       lines.push(`${indent}${statement.kind.slice(5)};`);
       continue;
     }

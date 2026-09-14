@@ -119,6 +119,26 @@
       "commit": "1927840fc1f813c137ea86c0b7b9146f0ce2f0cb",
       "workspace_fingerprint": "3744538fcd7fcaf29cd53bcdc85ec075fb04154de741a649bb2af2b07f532790",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/explicit-errors.cjs tools/native-kernel/test/float64-log.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.398,
+      "started_at": "2026-09-14T09:15:49.040Z",
+      "commit": "4419d6cff023c92c824f241abb2b8b4c6c540b0b",
+      "workspace_fingerprint": "a5c6f719c8f845a04ae992d861dbdc452a21d6b12273490756c7fee8738b85d6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/explicit-errors.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.883,
+      "started_at": "2026-09-14T09:16:20.814Z",
+      "commit": "4419d6cff023c92c824f241abb2b8b4c6c540b0b",
+      "workspace_fingerprint": "e8853e6bf7235a2e3828b94b9018eef24cc5275c430f0bb2ddb877f07454548b",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
