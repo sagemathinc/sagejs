@@ -286,9 +286,23 @@ strict Python pass (403 modules); architecture validation still stops at the
 previously recorded optimizer manifest mismatch, not at a new native violation.
 
 This resolves a representation mismatch between initialization and collection.
-The collector has not yet been tested starting from these initialized caches;
-that connected test is the next integration step. No initialized-field timing
-or complete `bnfinit` result follows from the initializer tests alone.
+The collector now has a connected populated-cache test:
+`check_compiled_ideal_collector.cjs PARI_DIRECTORY --initialized-cache`.
+It seeds rational relations for the same prepared complete prime groups before
+running the original sixteen collector scenarios. The C oracle uses upstream
+`add_rel_i`; the translated paths use the owned initializer. Integer C
+generators are decoded as coordinate vectors only when comparing outputs.
+All sixteen populated-cache cases match in PARI, CPython, JS and GMP, including
+full bases, relations, owned generators, counts, quotas/targets and idempotent
+terminal state. This validates initialization-to-collection compatibility,
+not upstream factor-base selection or the surrounding ideal-search schedule.
+
+The populated mode intentionally rejects `--export-fixtures`: the existing
+empty-cache timing schema and controls must not silently acquire a different
+starting state. These are correctness runs, not initialized-field timing or
+a complete `bnfinit` result.
+The original sixteen empty-cache cases also pass after the harness extension;
+documentation, syntax and parallel checks pass.
 
 ## Normalization, insertion and exact generator ownership
 

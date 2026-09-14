@@ -3,6 +3,8 @@ const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("n
 const {createHash}=require('node:crypto');
 const {spawnSync}=require("node:child_process"),{compileKernel}=require("../../tools/native-kernel/compiler.cjs");
 (async()=>{
+const initialized=process.argv.includes('--initialized-cache');
+assert(!(initialized&&process.argv.includes('--export-fixtures')),'initialized cache export needs a separate schema');
 const pari=path.resolve(process.argv[2]),lib=path.join(pari,"Olinux-x86_64"),dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-ideal-collector-")),source=path.join(dir,"oracle.c"),exe=path.join(dir,"oracle");
 const upstream=fs.readFileSync(path.join(pari,"src/basemath/buch2.c"),"utf8"),start=upstream.indexOf("  k = N; fp->y[N] = fp->z[N] = 0; fp->x[N] = 0;"),end=upstream.indexOf("    /* element complete */",start);
 assert(start>=0&&end>start);const loop=upstream.slice(start,end);
@@ -29,6 +31,19 @@ long quotas[]={0,1,8,8},targets[]={100,100,2,100};for(long f=0;f<4;f++)for(long 
 FB_t F={0};F.LV=groups;F.iLP=offsets;F.prodZ=support;F.KC=total;F.LP=cgetg(total+1,t_VEC);long next=1;for(long pp=2;pp<=101;pp++)for(long ii=1;ii<lg(gel(groups,pp));ii++)gel(F.LP,next++)=gel(gel(groups,pp),ii);GEN I=idealhnf(nf,gel(gel(groups,2),1)),u=ZM_lll(ZM_mul(nf_get_roundG(nf),I),.99,LLL_IM),ideal=ZM_mul(I,u),G=RgM_mul(nf_get_G(nf),ideal),r=gaussred_from_QR(G,nbits2prec(192));long skip=ZV_isscalar(gel(ideal,1));double v1,v2,q12;gisdouble(gcoeff(r,1,1),&v1);gisdouble(gcoeff(r,2,2),&v2);gisdouble(gcoeff(r,1,2),&q12);double bound=maxdd(2*(v2+v1*q12*q12),Fincke_Pohst_bound(4.,r));
 printf("{\\\"n\\\":%ld,\\\"real\\\":%ld,\\\"skip\\\":%ld,\\\"normI\\\":",n,r1,skip);integer(idealnorm(nf,I));printf(",\\\"support\\\":");integer(support);printf(",\\\"factorlimit\\\":%lu,\\\"primeLimit\\\":%lu,",GP_DATA->factorlimit,maxprimelim());printf("%cnrelid%c:%ld,%ctarget%c:%ld,",34,34,quotas[scenario],34,34,targets[scenario]);matrix("matrix",G,1);matrix("ideal",ideal,0);matrix("I",I,0);
 printf("\\\"M\\\":[");GEN M=nf_get_M(nf);for(long i=0;i<n;i++)for(long j=1;j<=n;j++){if(i||j!=1)printf(",");triple(component(gel(M,j),i,r1));}printf("],\\\"groups\\\":[");long first=1;for(long p=2;p<=101;p++)if(offsets[p]>=0){if(!first)printf(",");first=0;GEN group=gel(groups,p);printf("[%ld,%ld,%ld",p,offsets[p],lg(group)-1);for(long j=1;j<lg(group);j++){GEN P=gel(group,j),tau=pr_get_tau(P);long inert=typ(tau)==t_INT;printf(",%ld,%ld,%ld",pr_get_e(P),pr_get_f(P),inert);for(long row=1;row<=n;row++)for(long col=1;col<=n;col++){printf(",");integer(inert?gen_0:gcoeff(tau,row,col));}}printf("]");}printf("],\\\"primes\\\":[");for(long i=1;i<=pari_PRIMES[0];i++){if(i>1)printf(",");printf("%lu",pari_PRIMES[i]);}printf("],\\\"products\\\":[");GEN products=prodprimes();for(long i=1;i<lg(products);i++){if(i>1)printf(",");integer(gel(products,i));}printf("],");trace(&F,nf,I,ideal,r,bound,skip,quotas[scenario],targets[scenario]);puts("");avma=av;}pari_close();return 0;}`);
+if(initialized){
+ let code=fs.readFileSync(source,'utf8');
+ const replace=(a,b)=>{assert.equal(code.split(a).length,2);code=code.replace(a,b);};
+ replace('C.end=C.base+target;fp->x=',`C.end=C.base+target;
+ for(long prime=2;prime<lg(F->LV);prime++)if(F->iLP[prime]>=0){
+  GEN group=gel(F->LV,prime),initial=zero_zv(F->KC);long offset=F->iLP[prime];
+  for(long j=1;j<lg(group);j++)initial[offset+j]=pr_get_e(gel(group,j));
+  (void)add_rel_i(&C,initial,offset+1,stoi(prime),0,0,NULL,0);
+ }
+ fp->x=`);
+ replace('integer(gel(C->base[j].m,i));','integer(typ(C->base[j].m)==t_INT?(i==1?C->base[j].m:gen_0):gel(C->base[j].m,i));');
+ fs.writeFileSync(source,code);
+}
 const cc=spawnSync("cc",["-O2","-I"+path.join(pari,"src/headers"),"-I"+lib,source,"-L"+lib,"-Wl,-rpath,"+lib,"-lpari","-lm","-o",exe],{encoding:"utf8",timeout:30000});assert.equal(cc.status,0,cc.stderr);
 const run=spawnSync(exe,[],{encoding:"utf8",timeout:30000,maxBuffer:8*1024*1024});assert.equal(run.status,0,run.stderr);
 const rows=run.stdout.trim().split("\n").map(JSON.parse);assert.equal(rows.length,16);
@@ -57,16 +72,21 @@ if(process.argv.includes('--export-fixtures')){
  return;
 }
 const built=await compileKernel({sourcePath:path.join(__dirname,"ideal_collector.py")}),mod=require(built.modulePath);
+const initializer=initialized?require((await compileKernel({sourcePath:path.join(__dirname,'relation_insertion.py')})).modulePath):null;
 const py=spawnSync('python3',['-c',`
 import sys,json,decimal,importlib
 sys.set_int_max_str_digits(100000)
 sys.path[:0]=sys.argv[1:3]
 f=importlib.import_module('bench.pari-class-group-port.ideal_collector').pari_collect_ideal_relations
+initialize=importlib.import_module('bench.pari-class-group-port.relation_insertion').pari_initialize_owned_relations
 payload=json.load(sys.stdin)
 for r,v in zip(payload['rows'],payload['inputs']):
  for name,kind in payload['names']:
   conv=float if kind in ('float','Float64Buffer') else int
   v[name]=list(map(conv,v[name])) if isinstance(v[name],list) else conv(v[name])
+ if payload['initialized']:
+  initialize(2,[g[0] for g in r['groups']],[g[1] for g in r['groups']],[g[2] for g in r['groups']],[1]*len(r['groups']),v['ramification'],v['relation_state'],v['relation_basis'],v['relation_records'],v['relation_hashes'],v['relation_metadata'],v['relation'],v['relation_scratch'],r['n'],v['generators'])
+  v['relation_state'][5]=r['target']
  status=f(*(v[name] for name,kind in payload['names']))
  last=r['last'];size=len(v['relation']);capacity=10*(size+2)+50;n=r['n']
  assert status==r['status'],(r['n'],r['nrelid'],r['target'],status,r['status'])
@@ -82,9 +102,11 @@ for r,v in zip(payload['rows'],payload['inputs']):
  before=json.dumps(v)
  assert f(*(v[name] for name,kind in payload['names']))==status and json.dumps(v)==before
 print('CPython collector state matches all 16 PARI scenarios')
-`,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:stringify({rows,names,inputs:rows.map(inputs)}),encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});assert.equal(py.status,0,py.stderr);
+`,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:stringify({rows,names,initialized,inputs:rows.map(inputs)}),encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});assert.equal(py.status,0,py.stderr);
 for(const r of rows)for(const backend of ['javascript','gmp']){
- const v=inputs(r),invoke=()=>mod.pari_collect_ideal_relations[backend](...names.map(([name])=>v[name])),status=invoke(),last=r.last,size=v.relation.length,capacity=10*(size+2)+50;
+ const v=inputs(r),invoke=()=>mod.pari_collect_ideal_relations[backend](...names.map(([name])=>v[name]));
+ if(initialized){initializer.pari_initialize_owned_relations[backend](2n,...[0,1,2].map(i=>r.groups.map(g=>BigInt(g[i]))),r.groups.map(()=>1n),v.ramification,v.relation_state,v.relation_basis,v.relation_records,v.relation_hashes,v.relation_metadata,v.relation,v.relation_scratch,BigInt(r.n),v.generators);v.relation_state[5]=BigInt(r.target);}
+ const status=invoke(),last=r.last,size=v.relation.length,capacity=10*(size+2)+50;
  assert.equal(status,BigInt(r.status));assert.deepEqual(v.counters.map(BigInt),[r.attempts,r.attempts,r.fact_count,0].map(BigInt));assert.equal(v.state[1],BigInt(r.trials));
  assert.deepEqual(v.progress.map(BigInt),[r.relid,r.nfact,1,r.status].map(BigInt));
  assert.deepEqual(v.relation_state,[last,capacity,r.missing,r.sup,0,r.target].map(BigInt));
@@ -93,9 +115,9 @@ for(const r of rows)for(const backend of ['javascript','gmp']){
  assert.deepEqual(v.relation_metadata.slice(0,last*3),Array.from({length:last},(_,i)=>[BigInt(i+1),0n,0n]).flat());
  const before=stringify(v);assert.equal(invoke(),status);assert.equal(stringify(v),before);
 }
-assert(rows.some(r=>r.nrelid===0&&r.status===1&&r.last===0&&r.nfact===0));
+assert(rows.some(r=>r.nrelid===0&&r.status===1&&(initialized?r.last>0:r.last===0)&&r.nfact===0));
 assert(rows.some(r=>r.nrelid===1&&r.status===0&&r.relid===1));
 assert(rows.some(r=>r.target===2&&r.status===1&&r.last>=2&&r.relid<r.last));
 assert(rows.some(r=>r.target===100&&r.nrelid===8&&r.status===0&&r.relid<8));
-console.log('16 prepared ideal collectors match PARI/CPython/JS/GMP: probes, quotas, cache targets and exhaustion; relation bases, exact generators and terminal state agree');
+console.log('16 prepared ideal collectors match PARI/CPython/JS/GMP: probes, quotas, cache targets and exhaustion; relation bases, exact generators and terminal state agree; initial rational cache='+initialized);
 })().catch(e=>{console.error(e);process.exitCode=1;});
