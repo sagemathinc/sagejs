@@ -558,3 +558,29 @@ must be recorded separately, not borrowed from earlier runs. A direct probe
 confirms a remaining binding defect: a generator called without a required
 argument returns an iterator and only fails on resume. Moving binding to call
 time remains required; suspension frame qualification does not close it.
+
+For `1dd497dec`, the full build passes in 7m 08s and the pinned pyparsing 3.3.2
+workflow passes on that build (native default policy). Frozen standalone probes
+pass all nine suspension/native-diagnostic cases in both modes on bench-1
+(Linux x64, Node 26.7.0), bench-arm (Linux ARM64, Node 26.5.1), m1 (macOS ARM64,
+Node 26.5.0), and native Windows x64 (Node 26.5.1). Artifact hashes agree on all
+hosts: Python `39c292655e845cf1`, Sage `8569f322b9d6fe28`. Full artifacts and the
+scoped report are in `/home/user/exception-portable-probes.bOBERD`. This is
+targeted portability evidence, not four-platform package/browser qualification.
+
+The same-candidate bench-1 comparison was rerun with the same 100,000-operation,
+three-warmup, seven-sample, two-opposite-order protocol. Per-round medians (ms):
+
+| Workload | Native capture | Records | CPython |
+| --- | ---: | ---: | ---: |
+| Construction | 954–972 | 316–322 | 10.06–10.10 |
+| Construction, raise and catch | 1072–1075 | 482–483 | 13.15–13.25 |
+| Successful call | 8.99–9.30 | 9.17–9.87 | 3.88–3.90 |
+
+Raise/catch is about 2.2× faster than this candidate's native policy, but still
+about 37× CPython: the cliff remains open. The small successful-call probe does
+not establish a package-level overhead bound. Emitted native/record source is
+14,209,547 / 14,445,066 bytes (+1.66%); two bootstrap samples per policy are not
+a startup distribution. Evidence and input/binary hashes are retained in
+`/home/user/exception-suspension-pair.hZk01j` locally and
+`/home/user/exception-suspension-pair.wdessh` on bench-1.
