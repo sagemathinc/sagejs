@@ -1,5 +1,48 @@
 # Faithful PARI class-group language experiment
 
+## Connected rank-supplied LLL preparation
+
+`lll_ranked_basis.py` now executes the selector, FLATTER when selected,
+`fplll_fast`, and the mandatory `fplll_dpe` pass in one source-transparent
+native call. It preserves the selector's initial low-precision QR, the
+full-rank FLATTER iterations and stopping decisions, and the subsequent
+`U*T`/`B*T` products before LLL. The row-major QR/FLATTER and column-major
+LLL representations cross an explicit in-core copy, not a host callback.
+
+`check_lll_ranked_basis.cjs PARI_DIRECTORY PARI_ARCHIVE` matches normal PARI's
+transformation and stage decisions for **32 prepared ideals from four tuning
+fields**, in CPython, generated JS and GMP-native execution. Each reduced
+basis is checked against the original times U. All 32 select FLATTER, then
+complete fast and DPE passes; the preceding low-precision QR fails as upstream
+does. Rank is still supplied externally: this is not a complete `ZM_lll`
+implementation or a changed claim about the nfinit preparation boundary.
+Unported rank handling, the existing 512-bit FLATTER QR capability boundary,
+and required heuristic/proved fallbacks have distinct unresolved statuses,
+not false mathematical rejection or silently skipped stages. Whole class
+groups, seconds-scale coverage and qualified runtime comparisons remain open.
+
+`lll_selection.py` separately matches **116** upstream selector cases, including
+64 prepared-ideal/keepfirst combinations, upper/lower knapsack and general
+triangular thresholds at one below/equal/one above, and successful small QR
+controls. Thresholds are the actual pinned cubic/quartic table values; this
+does not replace them by stronger proved bounds. Selector trace SHA-256:
+`549af4d78e49b9216956a83f398424b6c9514c1db4d11a88a9da5a2b23643d54`.
+
+The first connected compilation aborted inside Tree-sitter. A bounded lowering
+probe revealed 251 import-lowering requests for only 23 distinct pairs before
+its cap (48.27s). Compiler prerequisite `68fbe4029` caches shared selected-entry
+IR within one compilation, checking transitive source hashes and isolating
+caller copies. The same source now finishes lowering with 47 requests for 47
+unique pairs, yielding 55 functions (6.69s diagnostic). This is a compiler
+scalability improvement, not a mathematical runtime-speed measurement. Twelve
+focused compiler tests pass, one Wasm test skips for missing tooling; the stale
+optimizer manifest still prevents a green broad architecture gate.
+
+A subsequent `pnpm test:changed -- --base HEAD` run passed merge checks and
+started the unit suite, but its terminal output was not recovered after the
+session boundary. Its final result is unknown and is not counted as a pass.
+The focused selector and connected-entry checks have separate recorded runs.
+
 ## DPE Babai and outer-loop checkpoint
 
 `lll_babai_dpe.py` translates the complete `Babai_dpe` loop: extended-exponent
