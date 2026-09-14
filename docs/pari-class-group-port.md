@@ -1,5 +1,43 @@
 # Faithful PARI class-group language experiment
 
+## Prepared matrix to resumable candidate batches
+
+`enumeration_batch.py` connects QR/bound preparation to the existing translated
+`Fincke_Pohst_ideal` cursor in one native call graph. The first batch computes
+preparation; subsequent batches keep its resident coefficients and bound and
+resume at the upstream outer-loop increment. Output records contain the
+cumulative trial counter and coordinates, not accepted relations. The cursor's
+fixed million-trial limit is unchanged.
+
+The oracle extracts the enumeration block directly from the pinned `buch2.c`
+and executes it using PARI-computed QR/bounds. It compares up to 32 candidate
+records on each of 24 prepared ideal matrices/scales, across batch sizes 1,
+7 and 32. The same four tuning fields and primes 2/3/7 are retained; scales
+4 and 1e6 are diagnostic inputs. The port receives the prepared embedding
+matrix, not the oracle's coefficients, bound or candidate list. A scratch
+sentinel checks that resumed batches do not execute QR preparation again.
+
+The 24 prefixes and their cumulative trial counters match PARI in CPython,
+dynamic JavaScript and GMP-native execution at all three batch sizes. Three
+cases exhaust before the 32-candidate cap and match that exhaustion status;
+the remaining cases establish prefix agreement only. Strict-Python and
+parallel checks pass. The known stale optimizer manifest still prevents a
+green full architecture gate.
+
+This boundary is still scaffolding: PARI supplies ideal/LLL preparation,
+`skipfirst` is supplied from the ideal's first column, and the trial scale is
+prepared. Primitive/scalar rejection, candidate multiplication, factor admission
+and relation insertion are not performed by this batch entry. Prefix agreement
+does not establish the full collector's stopping behavior or class-group
+performance. All buffers remain distinct and caller-owned; changing field or
+preparation parameters requires a fresh state.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_enumeration_batch.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Connected QR and enumeration-bound preparation
 
 `enumeration_preparation.py` connects the translated Householder QR to the
@@ -1522,6 +1560,11 @@ are historical and do not govern this experiment. Mathematical choices remain
   or later. Translated files must retain that attribution and license notice.
 
 ## Resource ledger
+
+The formatted connected-batch validation/build used 49.432 wall seconds,
+54.755 user plus 2.037 system child CPU seconds and peak child RSS
+576,380 KiB. Charge 56.792 CPU seconds conservatively. This includes oracle
+construction and three execution modes, not a paired performance sample.
 
 The successful 180-case connected QR/bound validation used 32.748 wall
 seconds, 38.269 user plus 1.263 system child CPU seconds and peak child RSS
