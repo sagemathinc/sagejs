@@ -805,7 +805,7 @@ function ffiImports(topLevel, filename) {
   for (const statement of topLevel) {
     if (nodeType(statement) !== "AST_Imports") continue;
     for (const item of array(statement.imports)) {
-      const moduleName = item.key;
+      const moduleName = item.level ? null : item.key;
       if (typeof moduleName !== "string" ||
           !moduleName.startsWith("sagejs.ffi.")) continue;
       const library = registry.byModule.get(moduleName);
@@ -959,9 +959,10 @@ async function lowerSource(source, filename, options = {}) {
     for (const statement of topLevel) {
       if (nodeType(statement) !== "AST_Imports") continue;
       for (const item of array(statement.imports)) {
-        const moduleName = item.key;
+        const moduleName = typeof item.key === "string"
+          ? ".".repeat(item.level || 0) + item.key : item.key;
         if (typeof moduleName !== "string" ||
-            !moduleName.startsWith("sagejs.") ||
+            (!moduleName.startsWith("sagejs.") && !moduleName.startsWith(".")) ||
             moduleName === "sagejs.native" ||
             moduleName.startsWith("sagejs.ffi.") || item.star) continue;
         for (const imported of array(item.argnames)) {
@@ -1003,7 +1004,7 @@ async function lowerSource(source, filename, options = {}) {
         const local = imported.alias?.name || imported.name;
         importCounts.set(local, (importCounts.get(local) || 0) + 1);
       }
-      if (item.module?.name !== "math") continue;
+      if (item.level || item.module?.name !== "math") continue;
       for (const imported of array(item.argnames)) {
         if (imported.name === "gcd") mathFunctions.set(imported.alias?.name || imported.name, "gcd");
       }

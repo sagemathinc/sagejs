@@ -147,3 +147,25 @@ with `CPATH` and `LIBRARY_PATH` pointed at the same explicit diagnostic prefix,
 it passed that MPFR/MPC section and later stopped at a hard-coded missing
 worktree `libgmp.a` path (line 2441). This is not a full-suite pass. The
 architecture gate retains the previously reported stale optimizer manifest.
+# Explicit relative native imports
+
+The PARI experiment needs separate numerical, valuation and factorization
+modules in one isolated call graph. Native import resolution now admits
+`from .helper import function` and parent-relative forms inside regular Python
+packages. Every traversed package must have `__init__.py`; namespace packages,
+import search-path customization and imports beyond the regular-package root
+remain unsupported. This is static source closure, not execution of Python
+package initialization inside a kernel.
+
+Imported source hashes, physical-path cycle detection and function provenance
+are retained, including repository-relative display paths used by portable
+artifacts. Imported-source changes invalidate native artifacts. Relative
+`math` or `sagejs.ffi` names do not acquire the identities of absolute standard
+or foreign imports. Existing alias, symbol-collision and decorated-entry
+restrictions remain unchanged.
+
+`tools/native-kernel/test/relative-native-imports.cjs` checks a two-level import
+chain against CPython/JS/GMP/tagged, cache invalidation after an imported edit,
+portable dependency provenance, relative-math identity, cycles, missing modules
+and crossing the package root. This removes the need to concatenate the PARI
+experiment's Python modules merely to compile a connected segment.
