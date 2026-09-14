@@ -20,7 +20,7 @@ long degree=nf_get_degree(nf),r1=nf_get_r1(nf),r2=(degree-r1)/2;double ld=dbllog
 long selected=primeneeded(degree,r1,r2,ld);init_GRHcheck(&S,degree,r1,ld);cache_prime_dec(&S,selected>10000?selected+1:10001,nf);
 printf("%ld",S.nprimes);
 for(long i=0;i<S.nprimes;i++){GEN f=gel(S.primes[i].dec,1),n=gel(S.primes[i].dec,2);printf(" %lu %.17g %ld",S.primes[i].p,S.primes[i].logp,lg(f)-1);for(long j=1;j<lg(f);j++)printf(" %ld %ld",f[j],n[j]);}
-for(long bi=0;bi<13;bi++){long bound=bounds[bi],count=0;GEN value=compute_invres(&S,bound);(void)value;while(count<S.nprimes && (long)(log((double)bound)/S.primes[count].logp)>=1)count++;printf(" %ld %.17g",count,captured_log);}
+for(long bi=0;bi<13;bi++){long bound=bounds[bi],count=0,shift;GEN value=compute_invres(&S,bound);while(count<S.nprimes && (long)(log((double)bound)/S.primes[count].logp)>=1)count++;printf(" %ld %.17g",count,captured_log);pari_printf(" %Ps %ld %ld",mantissa_real(value,&shift),bit_prec(value),expo(value));}
 long processed=0;compute_invres(&S,selected);while(processed<S.nprimes && (long)(log((double)selected)/S.primes[processed].logp)>=1)processed++;
 printf(" %ld %ld %ld %.17g %ld %ld %.17g",degree,r1,r2,ld,selected,processed,captured_log);
 puts("");free_GRHcheck(&S);
@@ -31,9 +31,9 @@ puts("");free_GRHcheck(&S);
     const r=line.split(" "),size=Number(r[0]);let pos=1;
     const primes=[],offsets=[],counts=[],degrees=[],multiplicities=[],logs=[];
     for(let i=0;i<size;i++){primes.push(r[pos++]);logs.push(Number(r[pos++]));const count=Number(r[pos++]);offsets.push(String(degrees.length));counts.push(String(count));for(let j=0;j<count;j++){degrees.push(r[pos++]);multiplicities.push(r[pos++]);}}
-    const expected=[];for(let i=0;i<13;i++)expected.push([Number(r[pos++]),Number(r[pos++])]);
+    const expected=[],exponentials=[];for(let i=0;i<13;i++){expected.push([Number(r[pos++]),Number(r[pos++])]);exponentials.push(r.slice(pos,pos+3));pos+=3;}
     const selected=r.slice(pos).map(Number);assert.equal(selected.length,7);
-    return {primes,offsets,counts,degrees,multiplicities,logs,expected,selected};
+    return {primes,offsets,counts,degrees,multiplicities,logs,expected,exponentials,selected};
   });
   const bounds=[2,3,4,5,8,16,31,32,64,101,300,1000,10000];
   for(const r of records)r.replayLogs=bounds.map(Math.log);
@@ -43,6 +43,11 @@ sys.path[:0]=[${JSON.stringify(path.resolve(__dirname,"../.."))},${JSON.stringif
 residue=importlib.import_module('bench.pari-class-group-port.residue')
 pari_prepared_log_inverse_residue=residue.pari_prepared_log_inverse_residue
 replays=[]
+def connected(bound,args,out,scratch):
+    try:return list(map(str,residue.pari_prepared_inverse_residue(bound,*args,out,*scratch)))
+    except ValueError as error:
+        assert str(error)=='unsupported truncating real precision'
+        return {'error':str(error)}
 for r in json.load(sys.stdin):
     args=[list(map(int,r[k])) for k in ['primes','offsets','counts','degrees','multiplicities']]+[r['logs']]
     replay=[]
@@ -51,9 +56,12 @@ for r in json.load(sys.stdin):
         out=[0.0];got=pari_prepared_log_inverse_residue(bound,*args,out)
         assert got==count
         assert math.isclose(out[0],want,rel_tol=1e-12,abs_tol=1e-14),(bound,out,want)
+        scratch=[[0]*3]+[[0]*1024 for _ in range(4)]+[[0]*91]
+        exact=connected(bound,args,out,scratch)
         residue.log=lambda value:r['replayLogs'][bi]
         out=[0.0];got=pari_prepared_log_inverse_residue(bound,*args,out)
-        replay.append([got,out[0]])
+        replay_exact=connected(bound,args,out,scratch)
+        replay.append([got,out[0],exact,replay_exact])
     replays.append(replay)
     residue.log=math.log
     n,r1,r2,ld,bound,count,want=r['selected']
@@ -64,13 +72,20 @@ for r in json.load(sys.stdin):
 print(json.dumps(replays))
 `],{input:JSON.stringify(records),encoding:"utf8",timeout:30000});assert.equal(py.status,0,py.stderr);
   const built=await compileKernel({sourcePath:path.join(__dirname,"residue.py")}),mod=require(built.modulePath);
-  const replays=JSON.parse(py.stdout),divergences=[];
+  const replays=JSON.parse(py.stdout),divergences=[],realDivergences=[],failures=[];
   for(const r of records)for(const backend of ["javascript","gmp"]){
     const args=[...['primes','offsets','counts','degrees','multiplicities'].map(k=>r[k].map(BigInt)),r.logs];
     for(const [i,bound] of bounds.entries()){
       const out=[0],got=mod.pari_prepared_log_inverse_residue[backend](BigInt(bound),...args,out),[count,want]=backend==="javascript"?replays[records.indexOf(r)][i]:r.expected[i];
       assert.equal(got,BigInt(count),`${backend} bound=${bound} output=${out[0]} reference=${want}`);assert(Math.abs(out[0]-want)<=1e-14+1e-12*Math.abs(want),`${backend} bound=${bound}: ${out[0]} != ${want}`);
       if(backend==="javascript"&&count!==r.expected[i][0])divergences.push({field:records.indexOf(r),bound,pariCount:r.expected[i][0],javascriptCount:count});
+      const scratch=[mod.createIntegerBuffer(3,64),...Array.from({length:4},()=>mod.createIntegerBuffer(1024,64)),mod.createIntegerBuffer(91,64)];
+      const expectedExact=replays[records.indexOf(r)][i][backend==='javascript'?3:2];
+      if(expectedExact.error){assert.throws(()=>mod.pari_prepared_inverse_residue[backend](BigInt(bound),...args,out,...scratch),new RegExp(expectedExact.error));failures.push({backend,field:records.indexOf(r),bound,error:expectedExact.error});continue;}
+      const exact=mod.pari_prepared_inverse_residue[backend](BigInt(bound),...args,out,...scratch);
+      const python=expectedExact.map(BigInt);
+      assert.deepEqual(exact,python,`${backend} connected bound=${bound}`);
+      if(exact.slice(1).some((v,j)=>v!==BigInt(r.exponentials[i][j])))realDivergences.push({backend,field:records.indexOf(r),bound,pari:r.exponentials[i],port:exact.slice(1).map(String)});
     }
     assert.throws(()=>mod.pari_prepared_log_inverse_residue[backend](BigInt(r.primes.at(-1)),...args,[0]),/catalog exhausted/);
     const [n,r1,r2,ld,bound,count,want]=r.selected,out=[0];
@@ -79,6 +94,9 @@ print(json.dumps(replays))
     assert(Math.abs(out[0]-want)<=1e-14+1e-12*Math.abs(want));
   }
   console.log("52 inverse-residue log accumulations and work counts match PARI/CPython/GMP; JavaScript matches a separately labeled CPython logarithm replay");
-  console.log(JSON.stringify({javascriptWorkDivergences:divergences,finalPariRealExponential:"unported"}));
+  assert.deepEqual(failures.map(x=>[x.backend,x.field,x.bound]),[['javascript',0,5],['gmp',0,5],['gmp',2,3],['gmp',3,3]]);
+  assert.deepEqual(realDivergences.map(x=>[x.backend,x.field,x.bound]),[['javascript',2,3],['javascript',3,3]]);
+  console.log(JSON.stringify({javascriptWorkDivergences:divergences,connectedRealDivergences:realDivergences,connectedFailures:failures}));
+  console.log('Connected inverse-residue native GMP: 49/52 exact PARI stored results, 3 explicit failures; JS: 49 exact, 2 divergent, 1 failure');
   console.log("Four connected residue-bound selections and accumulations match PARI/CPython/JS/GMP");
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -1,5 +1,38 @@
 # Faithful PARI class-group language experiment
 
+## Binary64 ingress and connected inverse residue
+
+`pari_float_to_real` constructs PARI `dbltor`'s exact stored triple, including
+subnormal normalization, signed-zero collapse and nonfinite rejection.
+The current representation substitution finds the exponent by a bounded
+binary search over exact powers of two rather than C-union bit access. It
+therefore has a different conversion cost, explicitly excluded from a claim
+that only the language changed. All 12,392 bit-pattern controls agree with
+PARI/CPython/generated JS/GMP: every exponent encoding with zero, minimal and
+maximal fraction fields, both signs, and every single-bit subnormal.
+
+`pari_prepared_inverse_residue` now connects the accumulated logarithm,
+binary64 ingress, and the real exponential in one native call. Prime
+decompositions and cached logarithms remain prepared inputs. It returns the
+processed count and complete stored result; hR normalization is still absent.
+On the existing 52 controls, native GMP has 49 exact PARI results and three
+explicit precision-growth failures (field 0/bound 5, fields 2 and 3/bound 3).
+Generated JS has 49 exact results, two divergent stored results and one
+failure. The two divergences are the already observed bound-3 logarithm/work
+differences; separately labeled CPython logarithm replay matches the JS path.
+All failures and divergence identities are asserted, so a new failure cannot
+silently become a passing test. This is incomplete connected coverage, not
+successful qualification of the whole residue routine or class-group engine.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_float_ingress.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_residue.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Connected prepared-real exponential
 
 `exponential_entry.py` connects `modlog2` and the `mpexp` base case:

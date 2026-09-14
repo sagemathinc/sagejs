@@ -9,6 +9,38 @@ from math import log, pow
 from sagejs.native import Float64Buffer, IntegerBuffer, checked_float64, native
 
 from .residue_bound import pari_prepared_primeneeded
+from .float_conversion import pari_float_to_real
+from .exponential_entry import pari_prepared_exp
+
+
+@native
+def pari_prepared_inverse_residue(
+    bound: int,
+    primes: IntegerBuffer,
+    offsets: IntegerBuffer,
+    counts: IntegerBuffer,
+    degrees: IntegerBuffer,
+    multiplicities: IntegerBuffer,
+    logarithms: Float64Buffer,
+    output: Float64Buffer,
+    cache: IntegerBuffer,
+    a: IntegerBuffer,
+    b: IntegerBuffer,
+    p: IntegerBuffer,
+    q: IntegerBuffer,
+    stack: IntegerBuffer,
+) -> tuple[int, int, int, int]:
+    """Execute compute_invres through its final prepared-real exponential.
+
+    Return processed prime count followed by the stored real triple.
+    Decompositions and cached prime logarithms remain prepared inputs.
+    """
+    processed = pari_prepared_log_inverse_residue(
+        bound, primes, offsets, counts, degrees, multiplicities, logarithms, output
+    )
+    xm, xp, xe = pari_float_to_real(output[0])
+    rm, rp, re = pari_prepared_exp(xm, xp, xe, cache, a, b, p, q, stack)
+    return processed, rm, rp, re
 
 
 @native

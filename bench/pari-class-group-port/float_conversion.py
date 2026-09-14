@@ -10,6 +10,36 @@ from sagejs.native import checked_float64, native
 
 
 @native
+def pari_float_to_real(value: float) -> tuple[int, int, int]:
+    """Construct dbltor's exact stored value without a C union.
+
+    Binary search over exact powers of two replaces bit reinterpretation.
+    This explicit representation substitution has different conversion cost;
+    it is not evidence of language-only performance equivalence.
+    """
+    if value == 0.0:
+        return 0, 0, -1023
+    magnitude = value
+    if magnitude < 0.0:
+        magnitude = -magnitude
+    if magnitude != magnitude or magnitude > 1.7976931348623157e308:
+        raise OverflowError("dbltor [NaN or Infinity]")
+    lower = -1074
+    upper = 1024
+    while upper - lower > 1:
+        middle = (lower + upper) // 2
+        if magnitude < pow(2.0, checked_float64(middle)):
+            upper = middle
+        else:
+            lower = middle
+    normalized = magnitude / pow(2.0, checked_float64(lower))
+    mantissa = int(normalized * 4503599627370496.0) << 11
+    if value < 0.0:
+        mantissa = -mantissa
+    return mantissa, 64, lower
+
+
+@native
 def pari_real_to_float(mantissa: int, precision: int, exponent: int) -> float:
     """Preserve rtodbl's leading-word rounding and exceptional boundaries.
 
