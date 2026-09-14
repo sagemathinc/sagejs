@@ -145,6 +145,36 @@ SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
   /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz
 ```
 
+### Standalone generated-core diagnostic
+
+`measure_collector_core.cjs` builds a standalone executable around the emitted
+core header and source. The handwritten driver only reads/allocates packed
+buffers, calls the declared core ABI, serializes outputs and frees storage;
+it implements no mathematical operation. Expected answers are never sent to
+that executable. All 16 complete output states are checked against the
+diagnostic fixtures after timing, including modular bases and exact generators.
+
+The first successful run totaled **0.034761 seconds** across the 16 cases;
+the standalone C compilation took 16.868 seconds. The generated core itself
+is unchanged from the host-call diagnostic. This is again an unpaired,
+single-call diagnostic, without warmup, not a qualified speed ratio. Its
+similarity to the 0.040509-second packed-host total suggests that bypassing
+the host alone will not explain most of the residual cost. Profile inside
+the generated core next: distinguish integer temporary/indexing and buffer
+representation overhead from the translated numerical/arithmetic routines.
+Do not classify all residual cost as a compiler defect without that evidence.
+
+The first harness build failed because `<stdio.h>` followed GMP's header and
+timer variables collided with workspace names; fixing those adapter issues
+required no compiler or mathematical changes. This standalone check does not
+qualify Windows or Wasm.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/measure_collector_core.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Normalization, insertion and exact generator ownership
 
 `relation_insertion.py` connects smooth-relation assembly/content normalization
