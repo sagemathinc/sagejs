@@ -3542,8 +3542,11 @@ function lowerStatements(statements, context) {
           expect(
             context,
             statement,
-            last?.kind === "ffi.call" && last.target === value.name,
-            "native expression statements require one declared FFI call; " +
+            (last?.kind === "ffi.call" ||
+              (last?.kind === "native.call" &&
+                ["Integer", "Float64", "uint64", "bool"].includes(value.type))) &&
+              last.target === value.name,
+            "native expression statements require a declared FFI call or scalar native call; " +
               "host callbacks are prohibited",
           );
           operations.push({ kind: "value.discard", source: value.name });
