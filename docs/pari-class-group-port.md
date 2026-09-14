@@ -230,6 +230,41 @@ wins this small probe. Next examine fixed-precision bookkeeping and shift/count
 arithmetic currently represented as arbitrary-precision integers, separating
 unnecessary bookkeeping cost from necessary mantissa arithmetic.
 
+### Machine-sized short-product bookkeeping
+
+`pari_short_product` now uses checked machine word counts and offsets after
+its existing 64–2,048-bit validation. Thus `nx` and `ny` are in `[1,32]`.
+For `i < nx` and `j < min(nx-i+1,ny)`, both operand extraction offsets are
+nonnegative. The old test `64*(nx-1-i-j) >= 0` is exactly `i+j < nx`; the
+nonnegative subtraction is now evaluated only in that branch. The other
+branch still discards each product's low half separately, exactly as before.
+Mantissas, accumulated products, exponents, rounding and bounds are unchanged.
+Zero operands retain their original early-return semantics.
+
+All 228 product records match PARI in CPython, generated JS and forced native
+execution, and all 16 standalone collector states still match. Formatting and
+strict Python pass (403 modules). Architecture checks again reach only the
+known unrelated stale optimizer manifest failure.
+
+Inspection of the generated GMP product body shows initialized `mpz_t`
+temporaries decreasing from 27 to 10, with machine declarations replacing
+bookkeeping. Three short alternating standalone comparisons, validating both
+executables against the same fresh inputs, gave:
+
+| Pair | Before total seconds | After total seconds |
+| --- | ---: | ---: |
+| 1 | 0.034453 | 0.029479 |
+| 2 | 0.035082 | 0.030041 |
+| 3 | 0.034607 | 0.029697 |
+
+`compare_collector_cores.cjs PARI_DIRECTORY BEFORE_EXECUTABLE AFTER_EXECUTABLE`
+repeats this diagnostic using executables emitted by the standalone runner.
+The core cache identities were `e58e9d56da4269eb...` before and
+`2399cd2bc8352cca...` after. These sub-second, unpinned comparisons are
+encouraging but remain **unqualified**, not the plan's performance gate.
+They support extending this bounded representation diagnosis; they do not
+establish parity with PARI or a complete class-group implementation.
+
 ## Normalization, insertion and exact generator ownership
 
 `relation_insertion.py` connects smooth-relation assembly/content normalization

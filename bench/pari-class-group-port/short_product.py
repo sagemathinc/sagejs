@@ -12,7 +12,7 @@ without a same-representation control. Squares have a separate upstream
 algorithm and must not be routed here merely because their values agree.
 """
 
-from sagejs.native import IntegerBuffer, native
+from sagejs.native import IntegerBuffer, checked_uint64, native
 from math import gcd
 
 
@@ -199,20 +199,24 @@ def pari_short_product(
     if px > py:
         mx, my = my, mx
         px, py = py, px
-    nx = px // 64
-    ny = py // 64
+    # Validation above bounds these word counts by 32. Keep loop bookkeeping
+    # machine-sized, as in PARI; mantissas/products remain exact integers.
+    nx = checked_uint64(px // 64)
+    ny = checked_uint64(py // 64)
+    one = checked_uint64(1)
+    word_bits = checked_uint64(64)
     word = 1 << 64
     high = 0
     for i in range(nx):
-        a = (mx >> (64 * (nx - 1 - i))) % word
-        stop = nx - i + 1
+        a = (mx >> (word_bits * (nx - one - i))) % word
+        stop = nx - i + one
         if stop > ny:
             stop = ny
         for j in range(stop):
-            b = (my >> (64 * (ny - 1 - j))) % word
+            b = (my >> (word_bits * (ny - one - j))) % word
             term = a * b
-            shift = 64 * (nx - 1 - i - j)
-            if shift >= 0:
+            if i + j < nx:
+                shift = word_bits * (nx - one - i - j)
                 high += term << shift
             else:
                 # The upstream short product discards each low half here;
