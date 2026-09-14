@@ -1008,6 +1008,16 @@
       "commit": "152ced20fade2b576cf001a013f8084f17943aee",
       "workspace_fingerprint": "eda4c78c04be5c9829b54782a60e1f36357007d0c6f4ac2ab8ba7f6a29e7c1ba",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.231,
+      "started_at": "2026-09-14T20:33:24.579Z",
+      "commit": "926a7ec862f490f07d5464cdb83efee73e146d6d",
+      "workspace_fingerprint": "224ea98d0f05882a4ba1a1d03252ed0658b10141c5cd75dda2504be25fec5d46",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

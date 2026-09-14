@@ -5,8 +5,9 @@ Original ideal HNFs/norms or prime descriptors are supplied. Prime mode builds
 the ideal HNF and norm; both modes compute rank, LLL, embeddings and QR in this
 closure. Mode 2 also constructs a supplied distinguished prime power and its
 products. Mode 3 selects its exponent from the supplied ordered factor base.
-L_jid construction, automorphism images and the
-outer class/unit driver remain explicit dependencies.
+Input L_jid/factor-base preparation, automorphism images and the full class/unit
+driver remain explicit dependencies. The optional outer mode connects one
+scheduling iteration (trim, gating, LIE, pair suppression and finish).
 """
 
 from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
@@ -18,6 +19,10 @@ from .prime_ideal_power import pari_positive_prime_power_hnf
 from .integral_power import pari_nonnegative_integer_power
 from .integral_log import pari_integral_log
 from .composite_ideal_hnf import pari_integral_ideal_mul_two
+from .connected_outer_schedule import (
+    pari_start_connected_outer,
+    pari_end_connected_outer,
+)
 
 
 @native
@@ -175,6 +180,14 @@ def pari_collect_unreduced_ideals(
     power_moduli: IntegerBuffer,
     product_primitive: IntegerBuffer,
     product_matrix: IntegerBuffer,
+    outer_mode: int,
+    outer_ru: int,
+    outer_state: Int64Buffer,
+    outer_minidx: IntegerBuffer,
+    outer_present: IntegerBuffer,
+    outer_live: IntegerBuffer,
+    outer_perm: IntegerBuffer,
+    outer_multiplier: IntegerBuffer,
 ) -> int:
     """Visit original ideal packets, retaining relations across preparations.
 
@@ -188,9 +201,48 @@ def pari_collect_unreduced_ideals(
     Follow the existing upstream schedule/stop policy; unsupported preparation
     stops this schedule with a sticky dependency status rather than advancing.
     `search_count` is the live search prefix length, not its buffer capacity.
+    With `outer_mode=1`, also execute one outer scheduling iteration in this
+    closure. Prepared need/preallocation/A/R/W and factor-base state are still
+    supplied. Outer j selects constructed primes (zero) or the selected-exponent
+    distinguished path (positive); do not supply j/e0 as an alternative policy.
+    See `connected_outer_schedule.py` for sticky outcome-state codes. Mode zero
+    leaves the outer buffers unused and retains the original collector entry.
     """
+    if outer_mode < 0 or outer_mode > 1:
+        raise ValueError("invalid outer collection mode")
+    if outer_mode == 1:
+        if len(outer_state) < 19:
+            raise ValueError("invalid connected outer state")
+        if outer_state[17] != 0:
+            return int(outer_state[18])
     if search_count < 0 or search_count > len(search_ideals):
         raise ValueError("invalid live ideal search length")
+    if outer_mode == 1:
+        if len(schedule) < 4 or schedule[1] != 0 or schedule[2] != 0:
+            raise ValueError("connected outer collector schedule is not fresh")
+        outcome = pari_start_connected_outer(
+            len(relation),
+            outer_ru,
+            outer_state,
+            search_ideals,
+            search_count,
+            outer_minidx,
+            outer_present,
+            outer_live,
+            outer_perm,
+            outer_multiplier,
+            relation_state,
+            relation_basis,
+        )
+        if outcome == 0:
+            return int(outer_state[18])
+        jid0 = outer_state[12]
+        e0 = 0
+        construct_primes = 1
+        if jid0 != 0:
+            construct_primes = 3
+        nrelid = outer_state[1]
+        search_count = outer_state[13]
     packets = len(packet_ids)
     square = n * n
     if n < 3 or n > 4 or construct_primes < 0 or construct_primes > 3:
@@ -278,20 +330,45 @@ def pari_collect_unreduced_ideals(
             if construct_primes == 3:
                 power_metadata[4] = e0
     while True:
-        selected = pari_next_small_norm_ideal(
-            search_ideals,
-            search_count,
-            ramification,
-            admission_group_f,
-            n,
-            jid0,
-            e0,
-            schedule,
-            state,
-            counters,
-            progress,
-        )
+        if outer_mode == 1:
+            selected = pari_next_small_norm_ideal(
+                outer_live,
+                search_count,
+                ramification,
+                admission_group_f,
+                n,
+                jid0,
+                e0,
+                schedule,
+                state,
+                counters,
+                progress,
+            )
+        else:
+            selected = pari_next_small_norm_ideal(
+                search_ideals,
+                search_count,
+                ramification,
+                admission_group_f,
+                n,
+                jid0,
+                e0,
+                schedule,
+                state,
+                counters,
+                progress,
+            )
         if selected == 0:
+            if outer_mode == 1:
+                return pari_end_connected_outer(
+                    int(schedule[3]),
+                    len(relation),
+                    outer_state,
+                    outer_live,
+                    outer_perm,
+                    relation_state,
+                    relation_basis,
+                )
             return int(schedule[3])
         packet = 0
         while packet < packets and packet_ids[packet] != selected:
@@ -478,4 +555,14 @@ def pari_collect_unreduced_ideals(
         if status <= -11:
             schedule[2] = 1
             schedule[3] = status
+            if outer_mode == 1:
+                return pari_end_connected_outer(
+                    status,
+                    len(relation),
+                    outer_state,
+                    outer_live,
+                    outer_perm,
+                    relation_state,
+                    relation_basis,
+                )
             return status

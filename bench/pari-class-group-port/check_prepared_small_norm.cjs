@@ -68,6 +68,7 @@ function run(command,args,options={}){const r=spawnSync(command,args,{encoding:'
    const n=Number(v.n),zero=k=>Array(k).fill('0');
    Object.assign(all,{construct_primes:constructPrimes?'1':'0',basis_table:[],packet_primes:[],packet_generators:[],packet_inert:[],hnf_generator:zero(n),hnf_matrix:zero(n*n),hnf_work:zero(n*n),hnf_pivots:zero(n)});
    Object.assign(all,{power_ideal:zero(n*n),power_alpha:zero(n),power_metadata:zero(4),power_primitive:zero(n),power_temporary:zero(n),power_diagnostic:zero(3),power_multiplication:zero(n*n),power_work:zero(n*(3*n+1)),power_triangular:zero(n*(n+1)),power_moduli:zero(n),product_primitive:zero(n*n),product_matrix:zero(2*n*n)});
+   Object.assign(all,{outer_mode:'0',outer_ru:'0',outer_state:[],outer_minidx:[],outer_present:[],outer_live:[],outer_perm:[],outer_multiplier:[]});
    if(constructPrimes){
     const selected=(distinct?[2,3]:[2]).map(p=>primeFixtures.find(r=>r.field===Math.floor(index/4)&&r.p===String(p)));
     assert(selected.every(Boolean));assert.deepEqual(selected[0].output,v.admission_ideal.map(String));

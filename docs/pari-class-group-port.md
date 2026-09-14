@@ -20,6 +20,49 @@ forward its unused balance. New commands use a persistent JSON-lines meter
 ledger in `bench/pari-class-group-port/continuation-24h-cpu.jsonl` as well as
 tool output, so context recovery need not lose resource receipts.
 
+Reserve an additional 60 CPU seconds in this block for small unmetered
+read-only utility commands and copying reusable generated build artifacts.
+This is an accounting allowance, not a measured execution result. Heavy
+builds, tests and compilation remain metered, including unsuccessful attempts.
+
+### Connected outer collection
+
+The outer/inner integration described below is now implemented. One native
+call trims the live ideal list, makes PARI's outer scheduling choice, computes
+the distinguished exponent and ideal power when needed, collects actual
+relations, and finishes the iteration. The cache basis is the same resident
+owner throughout temporary `LIE` pivot changes and collection. Empty and gated
+iterations do not invoke the inner collector. A successful cache-target break
+is normalized as upstream `small_norm` does; numerical/dependency failures
+remain sticky and do not run the finish block.
+
+The new oracle combines the extracted upstream outer block with the real
+`small_norm` body and the existing instrumented Fincke–Pohst collector. All
+28 ordinary cases match PARI, CPython, JS and native GMP, including actual
+temporary-pivot/cache effects. Two induced numerical failures check unfinished
+state, and two actual cache-target successes per backend exercise return 1.
+Insufficient prepared LIE capacity rejects before mutation. Terminal retries
+preserve state; Python instrumentation confirms one-time power construction.
+All five previous 16-case collector configurations retain their traces.
+
+Trace: `b07738b3a6995e01efe07324abdf51a365a1400cf2eb78794311d6738cf60800`.
+Generated core grows from 24,948,519 to 26,510,924 bytes (6.26%); this is a
+resource observation, not a performance improvement. The factor base,
+minidx/permutation, adjusted need, preallocation and A/R/W summaries remain
+prepared inputs. This is **one connected outer iteration, not an nf-only
+class-group engine**. Relation embeddings, specialized HNF, unit/regulator
+processing, retries and termination still require further translation.
+
+```sh
+node bench/pari-class-group-port/check_connected_outer_small_norm.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz
+```
+
+This integration subtask used 428.671354 CPU seconds already in the persistent
+ledger. Its 847 active seconds are conservatively charged as 15 additional
+aggregate active-agent minutes. No new timing qualification is claimed.
+
 ### Distinguished exponent zero
 
 The connected collector now follows `base4.c:idealpow_aux`'s early identity
