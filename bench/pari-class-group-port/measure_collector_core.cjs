@@ -9,10 +9,11 @@ function run(command,args,options={}) {
 }
 (async()=>{
  const pari=path.resolve(process.argv[2]);
+ const profile=process.argv.includes('--profile'),repetitions=profile?100:1;
  const fixture=JSON.parse(run(process.execPath,[path.join(__dirname,'check_compiled_ideal_collector.cjs'),pari,'--export-fixtures']));
  const built=await compileKernel({sourcePath:path.join(__dirname,'ideal_collector.py')});
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'sagejs-collector-core-')),c=path.join(dir,'driver.c'),exe=path.join(dir,'driver');
- const declarations=[],cleanup=[],stream=[String(fixture.cases.length)];
+ const declarations=[],cleanup=[],snapshots=[],resets=[],stream=[String(fixture.cases.length)];
  for(const [name,kind] of fixture.names) {
   assert(/^[a-z_][a-z_0-9]*$/.test(name));
   if(kind==='IntegerBuffer') {declarations.push(`sagejs_integer_buffer ${name}=read_integer_buffer();`);cleanup.push(`free(${name}.sizes);free(${name}.limbs);`);}
@@ -20,6 +21,13 @@ function run(command,args,options={}) {
   else if(kind==='Float64Buffer') {declarations.push(`sagejs_float64_buffer ${name}=read_float64_buffer();`);cleanup.push(`free(${name}.data);`);}
   else if(kind==='int') {declarations.push(`mpz_t ${name};mpz_init(${name});check(mpz_inp_str(${name},stdin,10)>0);`);cleanup.push(`mpz_clear(${name});`);}
   else {assert.equal(kind,'float');declarations.push(`double ${name};check(scanf("%lf",&${name})==1);`);}
+  const parts=kind==='IntegerBuffer'?[['sizes',`${name}.length*sizeof(int32_t)`],['limbs',`${name}.length*${name}.word_capacity*sizeof(uint64_t)`]]:
+   kind==='Int64Buffer'?[['data',`${name}.length*sizeof(int64_t)`]]:
+   kind==='Float64Buffer'?[['data',`${name}.length*sizeof(double)`]]:[];
+  for(const [part,bytes] of parts){const saved=`initial_${name}_${part}`;
+   snapshots.push(`void *${saved}=copy_bytes(${name}.${part},${bytes});`);
+   resets.push(`memcpy(${name}.${part},${saved},${bytes});`);cleanup.push(`free(${saved});`);
+  }
  }
  for(const entry of fixture.cases)for(const [name,kind] of fixture.names) {
   const x=entry.input[name];
@@ -34,7 +42,9 @@ function run(command,args,options={}) {
 #include <stdlib.h>
 #include <inttypes.h>
 #include <time.h>
+#include <string.h>
 static void check(int ok){if(!ok){fputs("invalid core fixture or allocation\\n",stderr);exit(2);}}
+static void *copy_bytes(const void *p,size_t n){void *q=malloc(n?n:1);check(q!=NULL);memcpy(q,p,n);return q;}
 static sagejs_integer_buffer read_integer_buffer(void){
  sagejs_integer_buffer b;check(scanf("%zu%zu",&b.length,&b.word_capacity)==2);
  check(b.word_capacity>0 && b.word_capacity<10000 && b.length<1000000);
@@ -50,12 +60,18 @@ static long small(sagejs_integer_buffer b,size_t i){mpz_t x;mpz_init(x);get(x,b,
 static void array(sagejs_integer_buffer b,size_t count,int quoted){check(count<=b.length);mpz_t x;mpz_init(x);putchar('[');for(size_t i=0;i<count;i++){if(i)putchar(',');get(x,b,i);if(quoted)putchar('"');mpz_out_str(stdout,10,x);if(quoted)putchar('"');}putchar(']');mpz_clear(x);}
 int main(void){size_t cases;check(scanf("%zu",&cases)==1);for(size_t index=0;index<cases;index++){
  ${declarations.join('\n')}
+ ${snapshots.join('\n')}
  sagejs_native_status error={0};mpz_t output;mpz_init(output);struct timespec timing_begin,timing_end;
+ double elapsed=0;
+ for(long repetition=0;repetition<${repetitions};repetition++){
+ ${resets.join('\n')}
  clock_gettime(CLOCK_MONOTONIC,&timing_begin);
  int ok=sagejs_kernel_pari_collect_ideal_relations(&error,output,${fixture.names.map(([name])=>name).join(',')});
  clock_gettime(CLOCK_MONOTONIC,&timing_end);
  if(!ok||error.code){fprintf(stderr,"core error %d %s\\n",error.code,error.message?error.message:"");return 3;}
- long last=small(relation_state,0);double elapsed=(timing_end.tv_sec-timing_begin.tv_sec)+(timing_end.tv_nsec-timing_begin.tv_nsec)*1e-9;
+ elapsed+=(timing_end.tv_sec-timing_begin.tv_sec)+(timing_end.tv_nsec-timing_begin.tv_nsec)*1e-9;
+ }
+ long last=small(relation_state,0);
  printf("{\\\"index\\\":%zu,\\\"seconds\\\":%.17g,\\\"status\\\":%ld,\\\"trials\\\":%" PRId64 ",\\\"attempts\\\":%" PRId64 ",\\\"relid\\\":%" PRId64 ",\\\"nfact\\\":%" PRId64 ",\\\"fact_count\\\":%" PRId64 ",\\\"last\\\":%ld,\\\"missing\\\":%ld,\\\"sup\\\":%ld,\\\"basis\\\":",index,elapsed,mpz_get_si(output),state.data[1],counters.data[0],progress.data[0],progress.data[1],counters.data[2],last,small(relation_state,2),small(relation_state,3));
  array(relation_basis,relation_basis.length,0);printf(",\\\"hashes\\\":");array(relation_hashes,last,0);
  printf(",\\\"records\\\":");array(relation_records,last*relation.length,0);printf(",\\\"generators\\\":");array(generators,last*mpz_get_ui(n),1);puts("}");
@@ -64,10 +80,12 @@ int main(void){size_t cases;check(scanf("%zu",&cases)==1);for(size_t index=0;ind
 `);
  const prefix=process.env.SAGEJS_FLINT_PREFIX;assert(prefix,'set SAGEJS_FLINT_PREFIX');
  const start=performance.now();
- run('cc',['-O2','-I'+path.join(prefix,'include'),c,built.coreSourcePath,'-L'+path.join(prefix,'lib'),'-Wl,-rpath,'+path.join(prefix,'lib'),'-lgmp','-lm','-o',exe]);
+ run('cc',['-O2',...(profile?['-pg']:[]),'-I'+path.join(prefix,'include'),c,built.coreSourcePath,'-L'+path.join(prefix,'lib'),'-Wl,-rpath,'+path.join(prefix,'lib'),'-lgmp','-lm','-o',exe]);
  const compileSeconds=(performance.now()-start)/1000;
- const rows=run(exe,[],{input:stream.join('\n')+'\n'}).trim().split('\n').map(JSON.parse);
+ const rows=run(exe,[],{input:stream.join('\n')+'\n',cwd:dir}).trim().split('\n').map(JSON.parse);
  assert.equal(rows.length,fixture.cases.length);
  for(const {index,seconds,...actual} of rows){assert(Number.isFinite(seconds)&&seconds>=0);assert.deepEqual(actual,fixture.cases[index].expected,`core case ${index}`);}
- console.log(JSON.stringify({qualified:false,boundary:'Standalone generated core; input allocation, parsing, validation and serialization excluded; no warmup or paired samples',compileSeconds,totalSeconds:rows.reduce((s,r)=>s+r.seconds,0),measurements:rows.map(({index,seconds})=>({index,seconds})),exe,core:built.coreSourcePath}));
+ const report=profile?run('gprof',['-b',exe,path.join(dir,'gmon.out')]):null;
+ if(report)fs.writeFileSync(path.join(dir,'gprof.txt'),report);
+ console.log(JSON.stringify({qualified:false,profile,repetitions,boundary:'Standalone generated core; input allocation, parsing, reset, validation and serialization excluded; no warmup or paired samples',compileSeconds,totalSeconds:rows.reduce((s,r)=>s+r.seconds,0),measurements:rows.map(({index,seconds})=>({index,seconds})),exe,core:built.coreSourcePath,profilePath:report?path.join(dir,'gprof.txt'):null}));
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -175,6 +175,41 @@ SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
   /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
 ```
 
+### Generated-core profile
+
+Passing `--profile` to `measure_collector_core.cjs` compiles with `-pg`, runs
+100 calls per case, restores every buffer from an initial snapshot before
+each call, and saves a `gprof.txt` beside the temporary executable. Resetting,
+parsing and output validation are outside the entry timers, but **gprof samples
+the whole process**, including those driver operations. Instrumented times are
+not benchmark results. All 16 final complete states still match the oracle.
+
+The first profile covered 1,600 calls (3.603 seconds in the instrumented entry
+timers; 17.633 seconds standalone compilation). Instrumented helper counts:
+
+| Helper | Calls |
+| --- | ---: |
+| `mpz_to_int64` | 16,050,600 |
+| `sagejs_mpz_shift` | 10,758,500 |
+| `sagejs_integer_buffer_get_mpz` | 9,160,900 |
+| `sagejs_integer_buffer_set_mpz` | 2,509,400 |
+| `native_pari_short_product` | 286,800 |
+| `native_pari_prepared_embedding_row` | 261,600 |
+
+The flat samples are dominated by GMP size, copy, subtraction/addition,
+comparison, reallocation and arithmetic routines. Uninstrumented GMP entries
+have no reliable call counts or caller attribution in this profile. Avoid
+interpreting gprof's propagated inclusive times as an exact phase breakdown.
+
+Source inspection connects two concrete paths to these observations: generic
+shifts repeatedly validate/convert an arbitrary-precision count and inspect
+operand bit length; packed buffer reads use `mpz_import`, while writes compute
+bit length and export limbs. These are candidates for controlled diagnosis,
+not permission to weaken shift limits, signed Python semantics or buffer bounds.
+Next isolate a justified representation/compiler correction on identical
+operands, then recheck the collector. The profile does not establish that all
+remaining cost is avoidable or that the complete class-group engine is close.
+
 ## Normalization, insertion and exact generator ownership
 
 `relation_insertion.py` connects smooth-relation assembly/content normalization
