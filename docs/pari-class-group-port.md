@@ -358,6 +358,48 @@ Continuation total: **2,550.896158 CPU seconds**. The next profile should
 distinguish actual operand sizes and zero/short branches from aggregate call
 counts, and test the demonstrated machine-shift-count boxing independently.
 
+### Machine shift counts and observed real operands
+
+Compiler prerequisite `281edb0d8223a37252e0bcf9a077571fe5faf62c` preserves
+unsigned machine counts in exact shift IR. GMP no longer boxes such counts
+only to decode them; tagged execution keeps its small-count path. Focused
+tests retain signed-floor right shifts, huge-count saturation, augmented
+assignment and the existing allocation limit. All 228 leaf oracle cases pass.
+Short leaf timings (0.0998–0.1010 seconds) are essentially unchanged from the
+mask-only version; this is not a workload speedup claim.
+
+The prerequisite is merged by `5fc538933`, and the task baseline follows that
+compiler commit. The integrated 16-scenario regression passes with the same
+`9634c8078e5b442b0c6182f3028c77a57602829a5fcec53bf244fba3ef34e2eb` trace.
+
+`profile_real_operands.py MANIFEST [NEW_OUTPUT]` uses CPython's profiling hook
+to observe same-source calls while the existing driver checks every output.
+It counts 64 collector calls (16 scenarios, three warmups plus one each), not
+timings. `real-operand-profile.json` records 29,480 short products, 7,848 squares,
+15,332 positive sums and 24,340 signed sums. Scaling by 103/4 recovers the
+earlier 100-plus-three-warmup native profile call counts exactly.
+
+Among short products, only 208 have a zero operand. Equal 64-, 128-, and
+256-bit pairs contribute 9,464, 7,640 and 8,216 calls respectively; equal
+192-bit pairs contribute 1,096. Therefore zero shortcuts do not explain away
+the arithmetic cost, and the next diagnostic should sample this actual size
+mix. Do not equate the earlier prepared-product timing with the full live mix.
+
+| Additional execution | User CPU | System CPU | Outcome |
+| --- | ---: | ---: | --- |
+| Initial typed-shift tests | 2.682137 | 0.690309 | Pass |
+| Leaf with typed counts | 14.898362 | 0.952499 | 228 cases pass |
+| Compiler test receipt | 2.716959 | 0.672833 | Pass |
+| Architecture | 11.115048 | 2.402445 | Known stale manifest failure |
+| Initial operand profile | 0.983435 | 0.030013 | Pass |
+| Archived operand profile | 0.970988 | 0.040999 | Pass |
+| Integrated collector | 102.855973 | 3.185746 | Unchanged trace |
+| Formatter | 10.042712 | 0.488288 | One new diagnostic formatted |
+
+Continuation total: **2,705.624904 CPU seconds**. Broader build limitations
+remain as documented; no full class-group result or performance parity is
+established. The raw leaf result is `short-product-cost-word-count.json`.
+
 ## Bounded checkpoint assessment: the full objective is not achieved
 
 Audit of implementation commit `6bb89f177` against the original experiment:
