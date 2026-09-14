@@ -1,5 +1,67 @@
 # Faithful PARI class-group language experiment
 
+## DPE Babai and outer-loop checkpoint
+
+`lll_babai_dpe.py` translates the complete `Babai_dpe` loop: extended-exponent
+GSO, upstream exponent-history stagnation, the +/-1, word-size and shifted
+word-size reductions, exact Gram updates, and final squared-norm recurrence.
+The integer backend uses signed exact products rather than PARI's specialized
+add/submul entry points; that representation cost is not yet qualified.
+Multiplication normalization precedes the large-exponent shift, including
+zero metadata, and the Gram diagonal uses the old cross term before mutation.
+
+`check_lll_babai_dpe.cjs PARI_DIRECTORY PARI_ARCHIVE` checks 288 constructed
+calls across dimensions 3/4, signs, nine shifts through 2098, two reduction
+positions, and all four optional-B/U combinations. Its `--actual` mode captures
+80 calls from the normal `ZM_lll_norms(...,.99,LLL_IM,NULL)` path on 32 prepared
+ideals. All captured state agrees in CPython, generated JS and native execution.
+Of these 80 calls, 37 have nonzero incoming mu, none changes the already reduced
+basis, and none reaches stagnation. The constructed cases exercise reductions;
+the actual replay alone does not. Capture initializes otherwise unused DPE
+slots for defined diagnostic reads and checks final U against uninstrumented
+PARI. Actual trace SHA-256:
+`b84f0c8e293da0f2b5e374c1d5a6c0ff3e5f0a5bed39e87953ca3247bb664d88`.
+
+`lll_dpe_pass.py` connects this to the DPE outer loop, including supplied versus
+incremental Gram construction, Lovasz decisions, insertion, alpha updates,
+rotations, and zero-column handling. Its 168-case differential harness passes
+in PARI, CPython, JS and native execution with no reference censoring: 32
+prepared ideals and ten identity/zero/dependent/dense-column controls, each
+with keepfirst off/on and supplied/incremental Gram. It compares status, exact
+basis, U, Gram, and every bit/exponent of the r diagonal. Upstream also checks
+the exact transformation and Gram identities. Trace SHA-256:
+`76dbc2ce116cb8daf0b1d0a253f1e534f0b6e11a05e7d0886ca995b0737751b1`.
+Norm outputs are
+resident DPE pairs, not published PARI real objects. Neither this pass nor the
+fast pass replaces the full upstream selector and precision-fallback driver.
+There are still no whole class-group invariants or qualified engine timings.
+
+Generated-core spot check (IR 43): the DPE Babai core is 429,919 bytes and the
+outer-pass core 993,196 bytes. Both retain source/IR provenance and contain no
+`napi_`, `PyObject`, or `v8::` symbols. The outer entry and Babai call use native
+borrowed buffers, but dimensions/indices currently remain GMP integers. These
+are generated-source sizes, not machine-code size or resident-memory measures;
+no speed or allocation conclusion is inferred from the text size alone.
+The broad architecture rerun again reaches the stale optimizer-opportunity
+manifest failure after passing its earlier native/FFI/Wasm checks. Strict
+Python passes all 403 registered modules; the new bench modules additionally
+run under CPython in their differential harnesses.
+The changed-file gate passes merge invariants and the complete eight-stage
+build (7m41s), then stops at that same architecture-manifest failure. Its later
+unit/compiler/integration/docs/CLI stages therefore did not run. The build
+explicitly skips absent optional native adapters, production kernels and Wasm
+numerical reactors; a successful build does not qualify those capabilities.
+
+At this checkpoint goal accounting reports 43,734 root active seconds (12.15
+hours), plus the previously disclosed roughly 12 minutes of subagent work.
+The 16-hour aggregate timebox is unchanged. Recent short DPE diagnostics were
+not individually CPU-metered, so their wall-time receipts do not repair the
+historical CPU-accounting gaps. No qualified timing campaign has begun.
+The next integration boundary is `Fincke_Pohst_ideal`'s
+`ZM_lll(G0 * I, .99, LLL_IM)` call: retain its selector, FLATTER, fast and DPE
+work, explicitly expose missing heuristic/arbitrary-precision fallbacks, then
+connect the resulting `I * U` to the existing QR/enumeration preparation.
+
 ## Extended-exponent arithmetic for the mandatory DPE pass
 
 `lll_dpe.py` starts the pinned DPE dependency chain: integer conversion,
@@ -21,8 +83,8 @@ excluded from this arithmetic check: unlike binary64 division alone, its
 exponent arithmetic can exceed the pinned C-long domain. No overflow semantics
 are inferred from undefined upstream signed overflow.
 
-This is an arithmetic prerequisite, **not the DPE Babai/LLL pass**. Those loops,
-their exact Gram updates and the full driver fallback sequence remain required.
+This arithmetic check alone is **not the DPE Babai/LLL pass**. Separate loop
+work is recorded above; the full driver fallback sequence remains required.
 No DPE or whole-class-group timing result is claimed.
 
 ## Fast outer-loop work in progress
