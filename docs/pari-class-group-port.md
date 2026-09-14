@@ -2194,6 +2194,43 @@ wall seconds, using 13.351 user plus 1.872 system CPU seconds and peak child RSS
 conservatively, including any compilation in the run. These are validation
 resource figures, not arithmetic or class-group performance measurements.
 
+## Connected real-block rescaling and binary reduction
+
+`lll_rescale.py` translates the integer/real branch of
+`polarit2.c:RgM_rescale_to_int`: scan the least real mantissa bit (or the
+integer exponent), retain wholly exact input unchanged, rescale, and round
+mixed integer entries using PARI's ties-toward-positive-infinity convention.
+It connects directly to the translated two-dimensional shortcut in one
+`pari_lll_binary_block` native call. Rational entries and an entirely
+inexact-zero matrix remain explicitly outside this boundary.
+
+`check_lll_binary.cjs PARI_DIRECTORY PARI_ARCHIVE --real-blocks` verifies 76
+combined calls in PARI, CPython, generated JavaScript and GMP: twenty actual
+FLATTER QR blocks plus 56 signed, scaled, exact and mixed controls. Both the
+rescaled integer matrix and final transformation match. Invalid triples and
+the excluded all-inexact-zero case fail before output mutation. The original
+1,471 binary reduction comparisons still pass. The final focused run has a
+passing parallel receipt (6.00 seconds wall).
+
+A fresh native build without `SAGEJS_FLINT_PREFIX` failed the compiler's MPC
+dependency preflight. Inspecting `compiler.cjs` shows this is currently a
+blanket requirement outside matrix-only and float-only roots, even for this
+integer-only code. Removing an unnecessary QR storage-helper import does not
+remove that preflight. Validation uses the already available
+`/home/user/sagejs/packages/flint/.native/prefix`; no new dependencies were
+installed and no compiler-performance conclusion follows from this failure.
+
+FLATTER's block transformations and cross-block size reduction are still
+missing. PARI still supplies the full QR factor in these combined block tests;
+the adaptive QR implementation is tested separately. This is a reduction of
+the external dependency boundary, not a full connected FLATTER implementation.
+
+Formatting, strict Python (403 modules), documentation and contract checks pass.
+Architecture retains the stale optimizer-manifest failure. The changed-file
+unit gate passes four files before the missing FLINT adapter stops the
+algebraic-geometry test; 234 files are not started. These broad validation
+failures remain open.
+
 ## Two-dimensional recursive LLL branch
 
 `lll_binary.py` translates `ZM2_lll_norms`' positive-definite integer-basis
