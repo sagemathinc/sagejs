@@ -978,6 +978,26 @@
       "commit": "224b69df310fd73fbe6aa2ad2d9a04623c8bb0e6",
       "workspace_fingerprint": "5972873982e08ca6c4c0aaa4749750b92e7e70f9551e8ef9b145d1628138844e",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_small_norm.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --unreduced --distinct --construct-primes --distinguished --zero-exponent",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 29.802,
+      "started_at": "2026-09-14T20:03:01.743Z",
+      "commit": "15858def1aa9ba0612433657b4728901218b276d",
+      "workspace_fingerprint": "6d54e3034443b269db644e1fb3e7e976cfa6ca5c539fdfc73a8871ec472703c0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_small_norm_outer_schedule.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.071,
+      "started_at": "2026-09-14T20:04:07.111Z",
+      "commit": "15858def1aa9ba0612433657b4728901218b276d",
+      "workspace_fingerprint": "91b863da7a56cfbc87fb8d5851390840dc7ec49ebede4652c66b23856089502f",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

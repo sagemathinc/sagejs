@@ -1,5 +1,96 @@
 # Faithful PARI class-group language experiment
 
+## Newly approved 24-hour continuation
+
+The user approved up to 24 additional hours in response to the CPU-extension
+request. Treat this as **24 additional CPU-hours (86,400 seconds)** for the
+next execution block. The user then explicitly approved **24 additional
+aggregate active-agent hours too**. Do not multiply this allowance by the
+number of agents. The product goal counter still reports blocked and frozen
+at 63,903 seconds despite resumed work; the available status tool cannot set
+it active. Until that counter resumes, conservatively charge elapsed wall time
+from **2026-09-14 19:43:14 UTC** (including a ten-minute initial reserve before
+the first fresh clock reading), plus any concurrent subagent active time.
+Do not rely on the frozen counter as evidence of zero activity. Scope, frozen inputs,
+PARI 2.17.4, safety limits, and acceptance criteria are unchanged.
+
+The previous block closes at 3,332.079226 measured CPU seconds plus its
+explicit 240-second accounting allowance. Do not erase that gap or carry
+forward its unused balance. New commands use a persistent JSON-lines meter
+ledger in `bench/pari-class-group-port/continuation-24h-cpu.jsonl` as well as
+tool output, so context recovery need not lose resource receipts.
+
+### Distinguished exponent zero
+
+The connected collector now follows `base4.c:idealpow_aux`'s early identity
+return when the distinguished exponent is zero. It constructs the identity
+HNFs and norm one without entering the positive-power helper. This handles
+both supplied and internally selected zero through the same branch; no
+positive-power precondition was weakened.
+
+All 16 supplied-zero two-visit controls match PARI, CPython, generated JS and
+native GMP, including resident cache state and terminal idempotence. CPython
+instrumentation checks that the positive-power helper is never called, and
+all three port backends check the identity and norm. Trace SHA-256:
+`be07d77ec1bb54875caefdf5b73c27b9929fccd65b9f4138bcf8190460af9db9`.
+The 16 internally selected positive-exponent controls still pass with exponent
+26 and the previously recorded trace. These tests do not yet provide a real
+factor-base fixture selecting zero internally, nor a performance result.
+
+Reproduce using the standard FLINT prefix and CPU-ledger environment:
+
+```sh
+python3 bench/pari-class-group-port/meter_command.py \
+  node bench/pari-class-group-port/check_prepared_small_norm.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz \
+  --unreduced --distinct --construct-primes --distinguished --zero-exponent
+```
+
+Replace `--zero-exponent` with `--selected-exponent` for the positive
+selection regression. Neither control claims whole-field completion.
+
+### Outer small-norm scheduling boundary
+
+`small_norm_outer_schedule.py` translates `trim_list` and the complete
+`Buchall_param` small-norm scheduling if-block into split begin/finish calls.
+This includes the gating conditions, saved pair-suppression threshold,
+temporary class-generator pivots (upstream `LIE`), restoration to one rather
+than to an arbitrary snapshot, permutation restoration and failure counters.
+The oracle extracts the pinned upstream block verbatim, adding snapshots and
+supplying only the inner collector's cache effects. It is not a replacement
+C mathematical implementation.
+
+All 284 controls match CPython, JS and native GMP: 134 gated, 96 collector
+calls, 54 empty-list skips, and 47 temporary-pivot branches. Additional checks
+exercise reusable packed owners, ignored suffixes, canaries and invalid
+inputs. Extracted source hash:
+`b1c2df7c7021a12a245b17ffdeb4d91419feafddc3c0604acf98decd1bdcd23b`;
+trace hash:
+`896876917a4c8137dac890aa9f366f1a17567fac785afc2f9d6ba49543c6b8b6`.
+Generated core size is 1,092,190 bytes, not a qualified performance result.
+
+The current boundary still supplies pre-allocation, linear-algebra state,
+factor-base automorphism indexing and actual collection. Its live list length
+is explicit (`state[13]`); the existing inner scheduler currently uses storage
+length, so these pieces are **not yet connected**. Integration must not scan
+unused list capacity. The subagent reserved 15 aggregate active minutes and
+used 14.769695 CPU seconds, already included in the persistent CPU ledger.
+
+```sh
+node bench/pari-class-group-port/check_small_norm_outer_schedule.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz
+```
+
+The integration formatter and strict-library gate pass (403 strict modules).
+`architecture:check` again reaches the known stale optimizer opportunity
+manifest and fails there; it has not been refreshed to conceal the mismatch.
+The changed-file gate passes merge invariants, then again fails
+`test/module-cache.cjs` on the existing generated `RealNumberBuffer = list[Any]`
+unbound-`Any` error. It cancels siblings and leaves 233 unit files and the docs
+check unexecuted; this is not a broad-suite pass.
+
 ## Approved continuation block
 
 The user explicitly approved eight additional aggregate active-agent hours and

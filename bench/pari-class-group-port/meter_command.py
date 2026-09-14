@@ -6,6 +6,7 @@ The caller retains the emitted record in the experiment ledger.
 """
 
 import json
+import os
 import resource
 import subprocess
 import sys
@@ -17,20 +18,21 @@ def main():
     before = resource.getrusage(resource.RUSAGE_CHILDREN)
     result = subprocess.run(sys.argv[1:], check=False)
     after = resource.getrusage(resource.RUSAGE_CHILDREN)
-    print(
-        json.dumps(
-            {
-                "command": sys.argv[1:],
-                "exit_code": result.returncode,
-                "wall_seconds": time.monotonic() - start,
-                "child_user_seconds": after.ru_utime - before.ru_utime,
-                "child_system_seconds": after.ru_stime - before.ru_stime,
-                "peak_child_rss_platform_units": after.ru_maxrss,
-                "includes_compilation": True,
-            }
-        ),
-        flush=True,
-    )
+    record = {
+        "command": sys.argv[1:],
+        "exit_code": result.returncode,
+        "wall_seconds": time.monotonic() - start,
+        "child_user_seconds": after.ru_utime - before.ru_utime,
+        "child_system_seconds": after.ru_stime - before.ru_stime,
+        "peak_child_rss_platform_units": after.ru_maxrss,
+        "includes_compilation": True,
+    }
+    encoded = json.dumps(record)
+    ledger = os.environ.get("SAGEJS_DIAGNOSTIC_LEDGER")
+    if ledger:
+        with open(ledger, "a", encoding="utf8") as stream:
+            stream.write(encoded + "\n")
+    print(encoded, flush=True)
     return result.returncode
 
 

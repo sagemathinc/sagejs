@@ -199,7 +199,7 @@ def pari_collect_unreduced_ideals(
     else:
         if construct_primes == 1 and (jid0 != 0 or e0 != 0):
             raise ValueError("distinguished-ideal products remain unported")
-        if construct_primes == 2 and (jid0 < 1 or e0 < 1 or e0 >= 512):
+        if construct_primes == 2 and (jid0 < 1 or e0 < 0 or e0 >= 512):
             raise ValueError("invalid distinguished prime power")
         if construct_primes == 3 and (jid0 < 1 or e0 != 0):
             raise ValueError("selected distinguished exponent requires zero input")
@@ -236,31 +236,40 @@ def pari_collect_unreduced_ideals(
                     relation_primes[last], admission_group_f[last]
                 )
                 e0 = pari_integral_log(last_norm * last_norm, prime_norm, power_work)
-                if e0 < 1 or e0 >= 512:
+                if e0 < 0 or e0 >= 512:
                     raise ValueError(
                         "selected distinguished exponent outside supported power domain"
                     )
-            for i in range(n):
-                hnf_generator[i] = packet_generators[power_packet * n + i]
-            pari_positive_prime_power_hnf(
-                basis_table,
-                hnf_generator,
-                n,
-                packet_primes[power_packet],
-                ramification[jid0 - 1],
-                admission_group_f[jid0 - 1],
-                e0,
-                power_primitive,
-                power_temporary,
-                power_alpha,
-                power_metadata,
-                power_diagnostic,
-                power_multiplication,
-                power_work,
-                power_triangular,
-                power_moduli,
-                power_ideal,
-            )
+            if e0 == 0:
+                # base4.c:idealpow_aux returns matid(N) before ideal dispatch.
+                if len(power_ideal) < square:
+                    raise ValueError("insufficient identity ideal storage")
+                for i in range(square):
+                    power_ideal[i] = 0
+                for i in range(n):
+                    power_ideal[i * n + i] = 1
+            else:
+                for i in range(n):
+                    hnf_generator[i] = packet_generators[power_packet * n + i]
+                pari_positive_prime_power_hnf(
+                    basis_table,
+                    hnf_generator,
+                    n,
+                    packet_primes[power_packet],
+                    ramification[jid0 - 1],
+                    admission_group_f[jid0 - 1],
+                    e0,
+                    power_primitive,
+                    power_temporary,
+                    power_alpha,
+                    power_metadata,
+                    power_diagnostic,
+                    power_multiplication,
+                    power_work,
+                    power_triangular,
+                    power_moduli,
+                    power_ideal,
+                )
             power_metadata[3] = pari_nonnegative_integer_power(prime_norm, e0)
             if construct_primes == 3:
                 power_metadata[4] = e0
