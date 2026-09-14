@@ -1804,14 +1804,9 @@ function lowerCall(node, context, operations) {
     return value;
   });
   if (signature.returnType === "Float64") {
-    expect(
-      context,
-      node,
-      signature.params.every((param) =>
-        param.type === "Float64" || param.type === "uint64"
-      ),
-      `${name} must be a scalar-only pure Float64 helper`,
-    );
+    expect(context, node, signature.params.every(param =>
+      ["Float64", "uint64", "Integer", "bool"].includes(param.type)),
+    `${name} must be a scalar-only Float64-returning helper`);
   }
   const returnElements = tupleElementTypes(signature.returnType);
   let result;
@@ -3940,12 +3935,12 @@ function lowerStatements(statements, context) {
       expect(
         context,
         statement,
-        (exception === "ZeroDivisionError" || exception === "ValueError") &&
+        ["ZeroDivisionError", "ValueError", "OverflowError"].includes(exception) &&
           !context.variables.has(exception) && !context.signatures.has(exception) &&
           !context.integerConstants.has(exception) && !context.foreignFunctions.has(exception) &&
           (!called || (!value.args?.starargs && !value.args?.kwargs?.length && !value.args?.kwarg_items?.length)) &&
           args.length <= 1 && (args.length === 0 || nodeType(args[0]) === "AST_String"),
-        "native raise supports ZeroDivisionError or ValueError with a constant string",
+        "native raise supports ZeroDivisionError, ValueError or OverflowError with a constant string",
       );
       const operation = {
         kind: "raise",

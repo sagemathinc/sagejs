@@ -2477,10 +2477,12 @@ function emitExactWrapper(fn, options = {}) {
         : `    result = create_bigint(env, ${value});`);
     } else {
       declarations.push(
-        `    ${type === "uint64" ? "uint64_t" : "int"} ${value};`,
+        `    ${type === "Float64" ? "double" : type === "uint64" ? "uint64_t" : "int"} ${value};`,
       );
       resultArguments.push(`&${value}`);
-      const create = type === "bool"
+      const create = type === "Float64"
+        ? `napi_create_double(env, ${value}, ${tupleResult ? `&${wrapperItem}` : "&result"})`
+        : type === "bool"
         ? `napi_get_boolean(env, ${value} != 0, ` +
           `${tupleResult ? `&${wrapperItem}` : "&result"})`
         : `napi_create_bigint_uint64(env, ${value}, ` +

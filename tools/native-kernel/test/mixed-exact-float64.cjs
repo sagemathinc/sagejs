@@ -147,8 +147,7 @@ def implicit_exact_conversion(value: Integer) -> Integer:
     /score argument 1 expects Float64, got Integer/,
   );
 
-  await assert.rejects(
-    lowerSource(`
+  await assert.rejects(lowerSource(`
 from sagejs.native import Float64Buffer, native
 
 def mutating_score(sidecar: Float64Buffer) -> float:
@@ -160,9 +159,7 @@ def impure_float_helper(value: Integer, sidecar: Float64Buffer) -> Integer:
     if mutating_score(sidecar) > 0.0:
         return value + 1
     return value
-`, "impure_float_helper.py"),
-    /mutating_score must be a scalar-only pure Float64 helper/,
-  );
+`, "impure_float_helper.py"), /scalar-only Float64-returning helper/);
 });
 
 test("mixed exact and Float64 execution agrees across dynamic and native", async () => {

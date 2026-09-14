@@ -10,10 +10,13 @@ const {lowerSource} = require("../ir.cjs");
 test("explicit integer-kernel errors survive nested native calls", async () => {
   globalThis.ValueError = class ValueError extends Error {};
   globalThis.ZeroDivisionError = class ZeroDivisionError extends Error {};
+  globalThis.OverflowError = class OverflowError extends Error {};
   const dir = mkdtempSync(join(tmpdir(), "sagejs-errors-")), source = join(dir, "errors.py");
   writeFileSync(source, `from sagejs.native import native
 @native
 def checked(x: int) -> int:
+    if x > 100:
+        raise OverflowError("conversion overflow")
     if x < 0:
         raise ValueError("division is not the cause")
     if x == 0:
@@ -34,6 +37,7 @@ def collision(x: int) -> int:
   for (const name of ["checked", "caller"]) {
     for (const f of [mod[name], mod[name].javascript, mod[name].gmp, mod[name].tagged]) {
       assert.equal(f(7n), 7n);
+      assert.throws(() => f(101n), error => error instanceof globalThis.OverflowError && error.message === "conversion overflow");
       assert.throws(() => f(-1n), error => error instanceof globalThis.ValueError && error.message === "division is not the cause");
       assert.throws(() => f(0n), error => error instanceof globalThis.ZeroDivisionError && error.message === "custom zero");
     }
@@ -43,6 +47,8 @@ def collision(x: int) -> int:
     assert.throws(() => f(0n), error => error instanceof globalThis.ZeroDivisionError);
   }
   for (const source of [
+    'def f(OverflowError: int) -> int:\n    if OverflowError:\n        raise OverflowError("bad")\n    return 0\n',
+    'def f(x: int) -> int:\n    if x:\n        raise OverflowError(x)\n    return 0\n',
     'def f(ValueError: int) -> int:\n    if ValueError:\n        raise ValueError("bad")\n    return 0\n',
     'ValueError = 7\ndef f(x: int) -> int:\n    if x:\n        raise ValueError("bad")\n    return 0\n',
     'def f(x: int) -> int:\n    if x:\n        raise ValueError(x)\n    return 0\n',
