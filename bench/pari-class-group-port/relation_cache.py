@@ -9,6 +9,86 @@ from sagejs.native import IntegerBuffer, native
 
 
 @native
+def pari_prepared_set_fact(
+    indices: IntegerBuffer,
+    exponents: IntegerBuffer,
+    count: int,
+    subfactor: IntegerBuffer,
+    extra: IntegerBuffer,
+    extra_count: int,
+    relation: IntegerBuffer,
+) -> int:
+    """Translate set_fact, retaining its hint even after cancellation.
+
+    Repeated factor entries overwrite rather than accumulate. Extra powers
+    accumulate in subfactor order. -1 extra_count represents a NULL vector.
+    """
+    size = int(len(relation))
+    if count < 0 or count > len(indices) or count > len(exponents):
+        raise ValueError("invalid factor entry count")
+    if extra_count < -1 or extra_count > len(extra) or extra_count > len(subfactor):
+        raise ValueError("invalid extra exponent count")
+    for cell in range(size):
+        relation[cell] = 0
+    nz = size + 1
+    for entry in range(count):
+        ideal = indices[entry]
+        if ideal < 1 or ideal > size:
+            raise ValueError("factor ideal out of range")
+        if ideal < nz:
+            nz = ideal
+        relation[ideal - 1] = exponents[entry]
+    for entry in range(extra_count):
+        if extra[entry] != 0:
+            ideal = subfactor[entry]
+            if ideal < 1 or ideal > size:
+                raise ValueError("subfactor ideal out of range")
+            relation[ideal - 1] += extra[entry]
+            if ideal < nz:
+                nz = ideal
+    return nz
+
+
+@native
+def pari_prepared_insert_fact(
+    indices: IntegerBuffer,
+    exponents: IntegerBuffer,
+    count: int,
+    subfactor: IntegerBuffer,
+    extra: IntegerBuffer,
+    extra_count: int,
+    generator: int,
+    random_relation: int,
+    state: IntegerBuffer,
+    basis: IntegerBuffer,
+    records: IntegerBuffer,
+    hashes: IntegerBuffer,
+    metadata: IntegerBuffer,
+    relation: IntegerBuffer,
+    scratch: IntegerBuffer,
+) -> tuple[int, int, int]:
+    """Connect factor-vector assembly to insertion without automorphism images."""
+    nz = pari_prepared_set_fact(
+        indices, exponents, count, subfactor, extra, extra_count, relation
+    )
+    status, appended = pari_prepared_add_relation(
+        relation,
+        nz,
+        generator,
+        0,
+        0,
+        random_relation,
+        state,
+        basis,
+        records,
+        hashes,
+        metadata,
+        scratch,
+    )
+    return status, appended, nz
+
+
+@native
 def pari_prepared_initialize_relations(
     additional: int,
     primes: IntegerBuffer,

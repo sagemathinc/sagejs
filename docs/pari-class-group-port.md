@@ -1,5 +1,33 @@
 # Faithful PARI class-group language experiment
 
+## Factor assembly connected to cache insertion
+
+`pari_prepared_set_fact` preserves upstream overwrite semantics for repeated
+factor entries, adds optional subfactor-base powers in order, and retains the
+minimum touched index even when cancellation makes that coefficient zero.
+The hint is not silently recomputed. `pari_prepared_insert_fact` connects that
+construction to cache insertion in a single native call; factor entries and
+optional powers are inputs, not an assembled relation vector.
+
+The `--fact` oracle exercises 192 sequential synthetic transitions, including
+repeated indices, signed powers, NULL extras and cancellation. It compares
+the assembled vector and hint as well as all previously checked cache state.
+There are 174 normal returns and 18 matching upstream inverse failures:
+PARI's unsigned pivot conversion can violate Fl_inv's documented input range
+on these synthetic vectors. Exact failure identities are asserted and the
+post-failure cache state is compared. They are correspondence tests, not
+successful computations or proof these inputs occur in genuine collection.
+CPython, JS and GMP agree with the pinned upstream outcomes.
+
+General generator ownership, automorphism images and actual relation search
+remain incomplete; this does not establish full collector performance.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_relation_cache.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 --fact
+```
+
 ## Connected fresh relation-cache initialization
 
 `pari_prepared_initialize_relations` now connects fresh basis/cache setup to
