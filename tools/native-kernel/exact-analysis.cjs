@@ -33,6 +33,7 @@ function operationInputs(operation) {
     case "float64.log":
     case "float64.log2":
     case "float64.frexp":
+    case "float64.abs":
     case "integer.from_float64":
     case "bool.not":
     case "uint64.truth":

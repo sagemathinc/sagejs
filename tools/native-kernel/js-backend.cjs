@@ -543,6 +543,9 @@ function emitExactStatement(operation, indent, resourceStack = null) {
       `${indent}${operation.target} = Math.${operation.kind.slice(8)}(${operation.source});`;
   }
   if (operation.kind === "float64.pow") return emitFloat64Pow(operation, indent);
+  if (operation.kind === "float64.abs") {
+    return `${indent}${operation.target} = Math.abs(${operation.source});`;
+  }
   if (operation.kind === "float64.frexp") {
     return `${indent}[${operation.results.map(result => result.name).join(", ")}] = $sagejsNativeFrexp(${operation.source});`;
   }

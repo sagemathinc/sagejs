@@ -1697,8 +1697,14 @@ function lowerCall(node, context, operations) {
 
   if (name === "abs") {
     expect(context, node, args.length === 1, "abs() requires one argument");
+    const value = lowerExpression(args[0], context, operations);
+    if (value.type === "Float64") {
+      const target = temporary(context, node, "Float64");
+      operations.push({ kind: "float64.abs", target, source: value.name });
+      return { name: target, type: "Float64" };
+    }
     const source = coerceInteger(
-      lowerExpression(args[0], context, operations),
+      value,
       context,
       args[0],
       operations,
