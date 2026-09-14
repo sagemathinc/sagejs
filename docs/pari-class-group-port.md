@@ -1,5 +1,52 @@
 # Faithful PARI class-group language experiment
 
+## Bounded final regulator reconstruction (2026-09-14)
+
+`regulator_bestappr.py` translates PARI's real and rational continued-fraction
+best approximations, including the rounded-real recurrence rather than an
+exact rationalization of the input. All 5,568 controls agree in PARI, CPython,
+JavaScript and GMP; the source oracle passes UBSan. Trace
+`11ba1629f56ac1159d1cadae066b1aba11f0611031d445a6d3dcd4135680c941`,
+generated core 4,826,486 bytes. Reproduce with
+`check_regulator_bestappr.cjs PARI_SOURCE`.
+
+`regulator_hnf.py` translates `ZM_hnf`'s at-most-seven-column `hnf_i` branch.
+The 286 controls include ten collector matrices and 28 explicit wider-matrix
+frontiers. Complete work matrices, HNF results and branch counters agree in
+CPython, JavaScript, GMP and tagged execution against PARI, with atomic
+workspace guards and UBSan. Trace
+`9ad13950c550cd63ca5e55dc73cb6915cc4b01cc156f2819bef99f6add83975e`,
+core 1,624,799 bytes; reproduce with `check_regulator_hnf.cjs` and the pinned
+source/archive. The diagnostic allocates 1,024-limb integer owners: source
+intermediates reached 22,536 bits although the final stored matrix needed only
+1,029 bits. This is reported coefficient growth, not a production limit change.
+
+`regulator_reconstruction.py` connects best approximation, per-column and outer
+denominator LCMs, the approximation-accuracy check, integer lattice conversion,
+small HNF, determinant and the final `compute_R` acceptance tests in one native
+call. Its prepared domain has unit ranks 1–3 and positive real multiple/zeta
+factors; rank zero is rejected upfront. The 744-case oracle includes rational
+and rounded-real coordinates, perturbations and binary64 acceptance cutoffs.
+Of these, 135 stop explicitly at the unported wider-HNF dispatch. The remaining
+609 match PARI in CPython/JS/GMP: 110 accepted, 210 more-relations and 289
+precision-failure results. Five malformed-input/owner cases per backend reject
+without mutation. Trace
+`388bce5ba61e57c04902d05684360847af94499179d832e27d86a9415e795525`,
+core 7,863,753 bytes. Reproduce with `check_regulator_reconstruction.cjs` and
+the pinned source/archive. An initial guard-test harness failed because a late
+`copy` import selected the project's dynamic module; importing the CPython
+standard library before modifying `sys.path` fixes that harness issue.
+
+Independent review corrected empty-input scope and exact-value-preserving
+schedule differences: denominator folding follows the column nesting;
+`lcmii` divides its incoming operand; determinant starts at the first diagonal;
+bounded `powiu` uses the source shortcuts and squaring order. Its word products
+still use the exact integer backend, an explicit representation substitution.
+These tests do not qualify speed. Acceptance provisionally trusts PARI's
+upstream assumptions and is not independent certification. Connecting these
+stages to the full relation/restart driver and complete class/unit output is
+still unfinished; whole-engine language parity remains inconclusive.
+
 ## Regulator determinant, inverse and generic products (2026-09-14)
 
 `regulator_determinant.py` and `regulator_approx_zero.py` translate the
