@@ -9,6 +9,8 @@
   "objective": "Qualify prepared calls, reflected divmod and annotation metadata on current main without widening budgets",
   "base_commit": "4834ec0cb7e2fe84de418f0573f2a6d27f34c955",
   "claims": [
+    "src/output/modules.py",
+    "test/python-logical-modules.cjs",
     "test/python-traceback-chains.cjs",
     "test/python-logical-lambdas.cjs",
     "test/python-generator-binding.cjs",
@@ -183,6 +185,16 @@
       "started_at": "2026-09-14T03:27:22.080Z",
       "commit": "33eb14f67e54521f9ab3344031e4e69a761ed03e",
       "workspace_fingerprint": "6bf4560cc279518cc95a296faef0cbca5328822e4fe9b9e25f489f9389fdca2b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/python-logical-modules.cjs test/python-traceback-chains.cjs test/python-logical-lambdas.cjs test/python-generator-binding.cjs test/python-exception-state.cjs test/python-lazy-exception-stack.cjs test/python-unbound-exception-init.cjs test/python-prepared-keyword-traceback.cjs test/python-logical-tracebacks.cjs test/python-logical-reraise.cjs test/python-logical-generators.cjs test/python-handled-state.cjs test/python-diagnostics.cjs test/python-cli-diagnostic-renderer.cjs test/kernel-diagnostics.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 68.654,
+      "started_at": "2026-09-14T03:46:06.023Z",
+      "commit": "8b9ec804ae1872e4a778d3a8784657b0f3c98769",
+      "workspace_fingerprint": "1df4f09a124c322fe1b50de0472293d64d3e077cde12900fb67c23b75780371d",
       "platform": "linux-x64"
     }
   ],

@@ -971,7 +971,7 @@ def print_function(output):
         output.end_statement()
     else:
         if (
-            self.sequential_definition
+            (self.sequential_definition or output.options.python_traceback_records)
             and not self.is_expression
             and not self.is_anonymous
         ):

@@ -3,7 +3,7 @@
 # globals: writefile
 from __python__ import hash_literals
 
-from output.statements import declare_vars, display_body
+from output.statements import declare_vars, display_body, display_traceback_body
 from output.stream import OutputStream
 from output.utils import create_doctring
 from output.comments import print_comments, output_comments
@@ -957,7 +957,9 @@ def print_top_level(self, output):
                         write_numeric_literal_pool(numeric_literal_pool, output)
                         declare_vars(self.localvars, output)
                         bind_module_namespace(self, output, numeric_literal_pool)
-                        display_body(self.body, True, output)
+                        display_traceback_body(
+                            self, output, lambda: display_body(self.body, True, output)
+                        )
                         output.newline()
                         write_docstrings()
                         if self.comments_after and self.comments_after.length:
@@ -991,7 +993,9 @@ def print_top_level(self, output):
         write_numeric_literal_pool(numeric_literal_pool, output)
         declare_vars(self.localvars, output)
         bind_module_namespace(self, output, numeric_literal_pool)
-        display_body(self.body, True, output)
+        display_traceback_body(
+            self, output, lambda: display_body(self.body, True, output)
+        )
         if self.comments_after and self.comments_after.length:
             output_comments(self.comments_after, output)
     set_module_name()
@@ -1016,7 +1020,9 @@ def print_module(self, output):
         write_numeric_literal_pool(numeric_literal_pool, output)
         declare_vars(self.localvars, output)
         bind_module_namespace(self, output, numeric_literal_pool)
-        display_body(self.body, True, output)
+        display_traceback_body(
+            self, output, lambda: display_body(self.body, True, output)
+        )
         declare_exports(self, self.exports, output, self.docstrings)
 
     output.newline()

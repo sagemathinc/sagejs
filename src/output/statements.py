@@ -5,6 +5,7 @@ from __python__ import hash_literals
 from ast_types import (
     AST_Definitions,
     AST_Scope,
+    AST_Toplevel,
     AST_Method,
     AST_Except,
     AST_EmptyStatement,
@@ -207,6 +208,8 @@ def display_traceback_body(node, output, body):
         name = "<lambda>" if node.is_lambda else "<anonymous>"
         if not node.is_lambda and node.name:
             name = node.name.name
+        if is_node_type(node, AST_Toplevel):
+            name = "<module>"
         output.traceback_function = {
             "filename": node.start.file,
             "name": name,
@@ -215,7 +218,7 @@ def display_traceback_body(node, output, body):
         }
         output.indent()
         output.print(
-            "var ρσ_trace_captured, ρσ_trace_reraised, ρσ_trace_line = "
+            "var ρσ_trace_captured = undefined, ρσ_trace_reraised = undefined, ρσ_trace_line = "
             + str(node.body.start.line if node.is_lambda else node.start.line)
         )
         output.end_statement()
