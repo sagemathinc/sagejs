@@ -1,5 +1,37 @@
 # Faithful PARI class-group language experiment
 
+## Boundary diagnostic (not qualified performance evidence)
+
+`check_compiled_divide_prime.cjs --diagnostic` compares the same 574 checked
+cases, 20 fresh logical calls each, with prepared read-only inputs and reset
+factor counts. Packed scratch is reused; the batch helper performs those 20
+calls inside one native invocation. Three short samples on local CPU 0 gave:
+
+| Execution | Seconds for 11,480 logical calls |
+| --- | --- |
+| Direct PARI C helpers | 0.01873, 0.01857, 0.01829 |
+| JS, public call each | 0.7481, 0.6382, 0.6259 |
+| JS, batch of 20 | 0.5348, 0.5334, 0.5396 |
+| GMP, public call each | 0.4344, 0.4383, 0.4266 |
+| GMP, batch of 20 | 0.2040, 0.2045, 0.2044 |
+| Tagged, public call each | 0.3066, 0.3137, 0.3049 |
+| Tagged, batch of 20 | 0.1009, 0.1009, 0.1004 |
+
+These are diagnostic observations: short/nonalternating samples, diagnostic
+PARI build, no matched plain-C GMP control, and no expensive full-field path.
+They **do not** qualify the plan's performance threshold. They do demonstrate
+that removing most host crossings does not remove the entire observed gap.
+Generated core size for the batch version was 1,578,760 bytes. A temporary
+machine-sized-degree annotation control gave approximately 0.185s GMP/0.096s
+tagged batched and a larger core (1,630,782 bytes); it was not retained on this
+limited evidence.
+
+Next concrete checks: the new GCD currently forces word execution to promote
+even for tiny operands, and packed large-value reads/writes import/export GMP
+limbs. Tagged storage already has a direct small-integer path, so conversion
+cannot be assumed to explain the entire small-case gap. Profile or isolate
+these costs before attributing them to the language or changing mathematics.
+
 ## Prime-group admission loop checkpoint
 
 `pari_prepared_divide_prime` connects the element and HNF valuations through

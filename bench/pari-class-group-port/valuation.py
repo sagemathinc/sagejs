@@ -11,6 +11,71 @@ from math import gcd
 
 
 @native
+def pari_prepared_divide_prime_batch(
+    coordinates: IntegerBuffer,
+    ideal: IntegerBuffer,
+    group_tau: IntegerBuffer,
+    group_e: IntegerBuffer,
+    group_f: IntegerBuffer,
+    group_inert: IntegerBuffer,
+    tau: IntegerBuffer,
+    x: IntegerBuffer,
+    y: IntegerBuffer,
+    spare: IntegerBuffer,
+    stack: IntegerBuffer,
+    primitive: IntegerBuffer,
+    columns: IntegerBuffer,
+    values: IntegerBuffer,
+    temporary: IntegerBuffer,
+    indices: IntegerBuffer,
+    exponents: IntegerBuffer,
+    degree: int,
+    prime: int,
+    prime_count: int,
+    index_base: int,
+    norm_valuation: int,
+    mode: int,
+    count: int,
+    repeats: int,
+) -> int:
+    """Diagnostic fresh logical admission calls within one native boundary.
+
+    Each call starts with the same count and read-only inputs; all observed
+    scratch is overwritten by the callee. This is not relation collection.
+    """
+    checksum = 0
+    for repetition in range(repeats):
+        accepted, final_count = pari_prepared_divide_prime(
+            coordinates,
+            ideal,
+            group_tau,
+            group_e,
+            group_f,
+            group_inert,
+            tau,
+            x,
+            y,
+            spare,
+            stack,
+            primitive,
+            columns,
+            values,
+            temporary,
+            indices,
+            exponents,
+            degree,
+            prime,
+            prime_count,
+            index_base,
+            norm_valuation,
+            mode,
+            count,
+        )
+        checksum += accepted + final_count
+    return checksum
+
+
+@native
 def pari_prepared_divide_prime(
     coordinates: IntegerBuffer,
     ideal: IntegerBuffer,
