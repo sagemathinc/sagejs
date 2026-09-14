@@ -419,6 +419,7 @@ function emitTaggedOperation(operation, context, indent) {
     return `${indent}sagejs_tagged_gcd(${target}, ${taggedValue(operation.left, context)}, ${taggedValue(operation.right, context)});`;
   }
   if (operation.kind === "integer.shift") {
+    if (operation.countType === "uint64") return `${indent}if (!sagejs_tagged_shift_uint64(status, ${target}, ${taggedValue(operation.left, context)}, ${taggedValue(operation.right, context)}, ${operation.operation === "left" ? 1 : 0})) goto fail;`;
     return `${indent}if (!sagejs_tagged_shift(status, ${target}, ${taggedValue(operation.left, context)}, ${taggedValue(operation.right, context)}, ${operation.operation === "left" ? 1 : 0})) goto fail;`;
   }
   if (operation.kind === "integer.pow_uint") {

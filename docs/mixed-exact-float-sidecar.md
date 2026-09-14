@@ -1,5 +1,21 @@
 # Mixed exact/binary64 prerequisite checkpoint
 
+## Preserve machine-sized shift counts
+
+Exact-integer shift IR now retains a `uint64` count instead of converting it
+to an exact temporary that the GMP helper immediately decodes. GMP receives
+the count by value; tagged execution preserves its small-count path. Exact
+counts retain their original negative-count checks. Both paths preserve
+zero/count-zero behavior, signed floor right shifts, saturation for enormous
+right counts, the one-Mibit allocation cap, and Windows's narrower `ulong`.
+Augmented shifts use the same path.
+
+The focused tests exercise signed operands, unsigned counts through `2**64-1`,
+the allocation boundary, augmented shifts and generated direct-helper calls.
+The 228-case PARI short-product probe passes; its short timing is essentially
+unchanged from the mask-only version. This removes a demonstrated boxing
+round-trip, but is not claimed as a measured workload speedup.
+
 ## Exact integer bit masks
 
 The PARI short-product experiment exposed rejection of ordinary Python

@@ -219,6 +219,16 @@
       "commit": "b294bcc05de37d850596f4f8a23f83422751ab72",
       "workspace_fingerprint": "ccbff4caf493dc8ff001824e0543f569a041c2e7245b93691c9b5a1560e1e93b",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/meter_command.py node --test tools/native-kernel/test/integer-shifts.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.006,
+      "started_at": "2026-09-14T15:46:28.862Z",
+      "commit": "d1e398266f63237b6a2ce27d96b9e7556f0178cf",
+      "workspace_fingerprint": "bc1241cb8d2905b45b30ee399fbaee9052d843e79f891141fe1e7cdb04beadc3",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

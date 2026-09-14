@@ -1,7 +1,7 @@
 // sagejs-test-tier: specialized
 "use strict";
 const assert=require("node:assert/strict");
-const {mkdtempSync,writeFileSync}=require("node:fs");
+const {mkdtempSync,writeFileSync,readFileSync}=require("node:fs");
 const {tmpdir}=require("node:os");
 const {join}=require("node:path");
 const {spawnSync}=require("node:child_process");
@@ -51,7 +51,7 @@ def words(x: int, y: int) -> int:
 });
 test("exact integer shifts preserve Python signs and checked count semantics",async(t)=>{
   const dir=mkdtempSync(join(tmpdir(),"sagejs-shifts-")),source=join(dir,"shifts.py");
-  writeFileSync(source,`from sagejs.native import native
+  writeFileSync(source,`from sagejs.native import native, checked_uint64
 @native
 def left(x: int, n: int) -> int:
     return x << n
@@ -75,8 +75,31 @@ def count_target(x: int, n: int) -> int:
 def self_shift(x: int) -> int:
     x <<= x
     return x
+@native
+def word_left(x: int, n: int) -> int:
+    return x << checked_uint64(n)
+@native
+def word_right(x: int, n: int) -> int:
+    return x >> checked_uint64(n)
+@native
+def word_inplace(x: int, n: int) -> int:
+    k = checked_uint64(n)
+    x >>= k
+    return x
 `);
   const b=await compileKernel({sourcePath:source}),mod=require(b.modulePath),raw=require(b.addonPath);
+  assert.match(readFileSync(b.coreSourcePath,"utf8"),/if \(!sagejs_mpz_shift_uint64\(status,/);
+  for(const backend of ["javascript","gmp","tagged"]){
+    for(const x of [0n,1n,-1n,7n,-9n,-(1n<<63n),(1n<<192n)+3n]){
+      for(const n of [0n,1n,63n,64n,128n,511n])assert.equal(mod.word_left[backend](x,n),x<<n);
+      for(const n of [0n,1n,63n,64n,512n,(1n<<64n)-1n])for(const name of ["word_right","word_inplace"])assert.equal(mod[name][backend](x,n),n>=512n?(x<0n?-1n:0n):x>>n);
+    }
+    assert.equal(mod.word_left[backend](0n,(1n<<64n)-1n),0n);
+    assert.equal(mod.word_left[backend](1n,1048575n),1n<<1048575n);
+    assert.throws(()=>mod.word_left[backend](1n,1048576n),/allocation limit/);
+    assert.throws(()=>mod.word_left[backend](1n,(1n<<64n)-1n),/allocation limit/);
+    assert.throws(()=>mod.word_right[backend](1n,-1n));
+  }
   for(const f of [mod.word_base,mod.word_base.javascript,raw.word_base])assert.equal(f(),1n<<64n);
   for(const f of [mod.inplace,mod.inplace.javascript,raw.inplace])assert.equal(f(-7n,70n),-7n);
   const cases=[];
