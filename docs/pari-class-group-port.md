@@ -324,10 +324,34 @@ JS and GMP: two degrees, distinguished ideals/powers, ordinary and capped
 exhaustion, success, unresolved work and numerical failures. It checks order,
 the skip condition, preserved counters, active-call rejection and terminal
 idempotence. This is a source-derived control test, not an actual PARI
-multi-ideal trace or a complete `small_norm` translation. Connecting selected
-prepared ideals to the resident collector remains required.
+multi-ideal trace or a complete `small_norm` translation. The control is now
+connected to the packet collector below; distinct-ideal coverage and upstream
+packet preparation remain required.
 Formatting, strict Python (403 modules), documentation and parallel checks
 pass; architecture validation retains the known optimizer manifest failure.
+
+## Closed prepared-packet schedule
+
+`prepared_small_norm.py` connects the scheduler and collector in one native
+call. Packet tables provide externally prepared reduced ideals, original
+ideals, `G*ideal` matrices, norms and skip-first flags. The selected packet is
+copied into resident working buffers before each visit. The relation cache,
+owned generators, factor list and aggregate counters remain resident across
+visits. This is still explicitly short of upstream ideal construction, LLL,
+automorphism images and the full class-group stopping engine.
+
+`check_prepared_small_norm.cjs` compares sixteen two-visit controls against
+the pristine PARI prepared collector, CPython, JS and GMP. The same ideal is
+deliberately visited twice to force duplicate handling and continuation after
+a per-ideal quota. This is not a claim that PARI constructs duplicate `L_jid`
+entries. Complete resulting bases, relations, exact generators, factor-list
+lengths, diagnostic counts and final state match. The test requires a case
+where the second visit adds relations beyond the first quota, and checks
+terminal idempotence. Distinct-packet controls remain the next required test.
+
+Formatting and strict Python pass (403 modules); architecture checks again
+stop at the known stale optimizer manifest. These are correctness results,
+not multi-ideal timing qualification.
 
 ## Normalization, insertion and exact generator ownership
 
