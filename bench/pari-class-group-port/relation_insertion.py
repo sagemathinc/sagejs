@@ -7,8 +7,63 @@ automorphism branch or the surrounding ideal-search stopping logic.
 
 from sagejs.native import Int64Buffer, IntegerBuffer, native
 
-from .relation_cache import pari_prepared_add_relation
+from .relation_cache import (
+    pari_prepared_add_relation,
+    pari_prepared_initialize_relations,
+)
 from .smooth_relation import pari_prepared_smooth_relation
+
+
+@native
+def pari_initialize_owned_relations(
+    additional: int,
+    primes: IntegerBuffer,
+    offsets: IntegerBuffer,
+    counts: IntegerBuffer,
+    complete: IntegerBuffer,
+    ramification: IntegerBuffer,
+    state: IntegerBuffer,
+    basis: IntegerBuffer,
+    records: IntegerBuffer,
+    hashes: IntegerBuffer,
+    metadata: IntegerBuffer,
+    relation: IntegerBuffer,
+    scratch: IntegerBuffer,
+    degree: int,
+    generators: IntegerBuffer,
+) -> int:
+    """Initialize PARI's rational relations with owned coordinate generators.
+
+    The prepared integral basis must start with 1, as in the nf interchange.
+    Rational prime p then has coordinates (p, 0, ..., 0). Convert metadata to
+    the one-based row IDs used by `pari_insert_smooth_relation`, without
+    changing the initial relation lattice or cache decisions. Unused generator
+    slots are untouched; all buffers must be distinct and caller-owned.
+    """
+    capacity = 10 * (int(len(relation)) + additional) + 50
+    if additional < 0 or degree < 1 or len(generators) < capacity * degree:
+        raise ValueError("invalid initial generator allocation")
+    count = pari_prepared_initialize_relations(
+        additional,
+        primes,
+        offsets,
+        counts,
+        complete,
+        ramification,
+        state,
+        basis,
+        records,
+        hashes,
+        metadata,
+        relation,
+        scratch,
+    )
+    for row in range(count):
+        generators[row * degree] = metadata[3 * row]
+        for coordinate in range(1, degree):
+            generators[row * degree + coordinate] = 0
+        metadata[3 * row] = row + 1
+    return count
 
 
 @native

@@ -24,20 +24,40 @@ const py=spawnSync('python3',['-c',`
 import sys,json,importlib
 sys.path[:0]=[${JSON.stringify(path.resolve(__dirname,'../..'))},${JSON.stringify(path.resolve(__dirname,'../../src/lib'))}]
 f=importlib.import_module('bench.pari-class-group-port.relation_cache').pari_prepared_initialize_relations
-for r in json.load(sys.stdin):
+owned=importlib.import_module('bench.pari-class-group-port.relation_insertion').pari_initialize_owned_relations
+for case_index,r in enumerate(json.load(sys.stdin)):
     n,additional,primes,offsets,counts,complete,ramification,want,B,H,R,M=r
     capacity=10*(n+additional)+50;state=[99]*6;basis=[99]*(n*n);records=[0]*(capacity*n);hashes=[0]*capacity;metadata=[0]*(capacity*3)
     got=f(additional,primes,offsets,counts,complete,ramification,state,basis,records,hashes,metadata,[0]*n,[0]*n)
     assert got==want[0] and state==want
     assert basis==B and hashes[:got]==H and records[:got*n]==R
     assert metadata[:got*3:3]==M
+    degree=3 if case_index<12 else 4
+    bank=[99]*(capacity*degree)
+    got=owned(additional,primes,offsets,counts,complete,ramification,state,basis,records,hashes,metadata,[0]*n,[0]*n,degree,bank)
+    assert got==want[0] and state==want and basis==B
+    assert hashes[:got]==H and records[:got*n]==R
+    assert metadata[:got*3:3]==list(range(1,got+1))
+    assert bank[:got*degree]==[x for p in M for x in [p]+[0]*(degree-1)]
+    assert all(x==99 for x in bank[got*degree:])
 `],{input:JSON.stringify(rows),encoding:'utf8',timeout:30000});assert.equal(py.status,0,py.stderr);
 const built=await compileKernel({sourcePath:path.join(__dirname,'relation_cache.py')}),mod=require(built.modulePath);
-for(const r of rows)for(const backend of ['javascript','gmp']){
+const ownedBuilt=await compileKernel({sourcePath:path.join(__dirname,'relation_insertion.py')}),ownedMod=require(ownedBuilt.modulePath);
+for(const [caseIndex,r] of rows.entries())for(const backend of ['javascript','gmp']){
  const [n,additional,...rest]=r,[primes,offsets,counts,complete,ramification,want,B,H,R,M]=rest,capacity=10*(n+additional)+50;
  const state=Array(6).fill(99n),basis=Array(n*n).fill(99n),records=Array(capacity*n).fill(0n),hashes=Array(capacity).fill(0n),metadata=Array(capacity*3).fill(0n);
  const got=mod.pari_prepared_initialize_relations[backend](BigInt(additional),...rest.slice(0,5).map(a=>a.map(BigInt)),state,basis,records,hashes,metadata,Array(n).fill(0n),Array(n).fill(0n));
  assert.equal(got,BigInt(want[0]));assert.deepEqual(state,want.map(BigInt));assert.deepEqual(basis,B.map(BigInt));assert.deepEqual(hashes.slice(0,Number(got)),H.map(BigInt));assert.deepEqual(records.slice(0,Number(got)*n),R.map(BigInt));assert.deepEqual(Array.from({length:Number(got)},(_,i)=>metadata[3*i]),M.map(BigInt));
+ const degree=caseIndex<12?3:4,bank=Array(capacity*degree).fill(99n);
+ const args=[BigInt(additional),...rest.slice(0,5).map(a=>a.map(BigInt)),state,basis,records,hashes,metadata,Array(n).fill(0n),Array(n).fill(0n),BigInt(degree),bank];
+ assert.equal(ownedMod.pari_initialize_owned_relations[backend](...args),got);
+ assert.deepEqual(state,want.map(BigInt));assert.deepEqual(basis,B.map(BigInt));
+ assert.deepEqual(records.slice(0,Number(got)*n),R.map(BigInt));assert.deepEqual(hashes.slice(0,Number(got)),H.map(BigInt));
+ assert.deepEqual(Array.from({length:Number(got)},(_,i)=>metadata[3*i]),Array.from({length:Number(got)},(_,i)=>BigInt(i+1)));
+ assert.deepEqual(bank.slice(0,Number(got)*degree),M.flatMap(p=>[BigInt(p),...Array(degree-1).fill(0n)]));assert(bank.slice(Number(got)*degree).every(x=>x===99n));
+ const snapshot=JSON.stringify([state,basis,records,hashes,metadata],(_,v)=>typeof v==='bigint'?String(v):v);
+ assert.throws(()=>ownedMod.pari_initialize_owned_relations[backend](...args.slice(0,-1),[]),/invalid initial generator allocation/);
+ assert.equal(JSON.stringify([state,basis,records,hashes,metadata],(_,v)=>typeof v==='bigint'?String(v):v),snapshot);
 }
-console.log('24 fresh relation-cache initializations match PARI/CPython/JS/GMP, including constructed rational-prime relations and generators');
+console.log('24 relation-cache initializations and owned generator banks match PARI/CPython/JS/GMP; row IDs, unused slots and allocation guards checked');
 })().catch(e=>{console.error(e);process.exitCode=1;});

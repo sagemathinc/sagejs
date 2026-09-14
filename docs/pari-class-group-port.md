@@ -265,6 +265,31 @@ encouraging but remain **unqualified**, not the plan's performance gate.
 They support extending this bounded representation diagnosis; they do not
 establish parity with PARI or a complete class-group implementation.
 
+## Initial rational relations with owned generators
+
+`pari_initialize_owned_relations` connects the existing upstream initial-cache
+translation to the generator bank used by `pari_insert_smooth_relation`.
+Initialization still makes exactly PARI's rational-prime relations and cache
+decisions. Afterwards each rational generator `p` is stored as coordinates
+`(p,0,...,0)` and its metadata becomes the one-based owned row ID. This assumes
+the prepared integral basis starts with 1, as specified by the nf interchange;
+it is not a conversion for an arbitrary reordered basis.
+
+Twenty-four actual PARI factor-base/cache initializations (the existing four
+fields, three bounds and two dependent allowances) match in CPython, JS and GMP.
+Tests check complete bases, relations, hashes, cache state, row IDs and exact
+coordinate generators, untouched unused generator slots, and rejection of an
+undersized bank before cache mutation. Existing scalar-prime initialization
+remains available for its original correspondence tests.
+The 576 existing normalization/insertion controls also pass. Formatting and
+strict Python pass (403 modules); architecture validation still stops at the
+previously recorded optimizer manifest mismatch, not at a new native violation.
+
+This resolves a representation mismatch between initialization and collection.
+The collector has not yet been tested starting from these initialized caches;
+that connected test is the next integration step. No initialized-field timing
+or complete `bnfinit` result follows from the initializer tests alone.
+
 ## Normalization, insertion and exact generator ownership
 
 `relation_insertion.py` connects smooth-relation assembly/content normalization
