@@ -1,5 +1,33 @@
 # Faithful PARI class-group language experiment
 
+## Fast outer-loop work in progress
+
+`lll_fast.py` currently connects Babai to the upstream initialization, Lovasz
+decision, insertion-index search, alpha updates and triangular Gram rotation.
+Flat column rotations copy entries rather than rotating PARI pointers; this is
+a declared representation cost, not yet benchmarked. The prototype compiles.
+
+The new `check_lll_fast.cjs` declares 84 cases: 32 prepared ideals with keepfirst
+off/on (64), and 20 identity/zero/dependent/dense-column controls. Its current
+run is **failing, not qualified**. CPython matches the first 71 completed cases,
+including all 64 prepared-ideal cases, then reaches the explicit untranslated
+zero-GSO-divisor boundary on case 71: columns `(1,0,0)`, `(0,1,0)`, `(1,0,0)`
+with keepfirst enabled. The full harness stops at that Python disagreement.
+An explicit `--prepared-only` diagnostic mode separately checks all 64 prepared
+ideal runs in CPython, JS and GMP-native, and **all 64 match status, reduced
+basis and transformation with no reference censoring**. This focused success
+does not replace the failing 84-case gate or remove its controls.
+
+The initial aggregate reference run timed out after 60 seconds. Isolating
+cases in separate processes with a declared two-second diagnostic cap identifies
+case 81 (the analogous 4x4 dependent-column, keepfirst control) as reference
+censored. The other 83 reference cases complete. The corpus is not reduced:
+the censored case remains listed, and the harness reports its index/cap. This
+does not establish that PARI never terminates, nor authorize altering its LLL
+stopping rules. Next is the C floating zero-divisor policy, followed by a full
+rerun and native state comparison. These are fast-pass checks, not a replacement
+for the complete FLATTER/fast/DPE path.
+
 ## Connected Babai iteration prototype
 
 The `--actual` mode now captures **80 calls** made by PARI's normal
