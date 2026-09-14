@@ -14,7 +14,6 @@ from .regulator_preparation import (
 from .hnfspec_rank_prefix import pari_rectangular_initial_pivots
 from .log_matrix_transform import pari_log_scalar_product, pari_log_scalar_sum
 from .short_product import pari_short_product, pari_real_integer_division
-from .real_conversion import pari_integer_to_real
 from .real_division import pari_real_division
 
 
@@ -46,7 +45,7 @@ def pari_regulator_scalar_product(
 
 @native
 def pari_regulator_negative_reciprocal(m: int, p: int, e: int) -> tuple[int, int, int]:
-    """gdiv(-1, pivot): Qdivii for T, divir/divur below Newton crossover."""
+    """gdiv(-1, pivot): Qdivii for T, ginv(gneg(real)) below Newton."""
     if p == -1:
         if m == 1:
             return -1, -1, 0
@@ -57,10 +56,9 @@ def pari_regulator_negative_reciprocal(m: int, p: int, e: int) -> tuple[int, int
         raise ZeroDivisionError("zero regulator pivot")
     if p < 64 or p > 1856 or p % 64 != 0:
         raise ValueError("regulator reciprocal exceeds division window")
-    # divur(1,y): utor at p+64, divrr, affrr into p; divir then negates.
-    a, ap, ae = pari_integer_to_real(1, p + 64)
-    a, ap, ae = pari_real_division(a, ap, ae, m, p, e)
-    return -a, ap, ae
+    # gdiv's +/-1 shortcut precedes divir. invr_basecase constructs real_1
+    # at p+64, then divrr/affrr; the denominator is already negated.
+    return pari_real_division(1 << (p + 63), p + 64, 0, -m, p, e)
 
 
 @native

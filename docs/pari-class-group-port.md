@@ -1,5 +1,42 @@
 # Faithful PARI class-group language experiment
 
+## Incremental HNF and mixed regulator scalars (2026-09-14)
+
+`hnfadd.py` now translates the bounded word-relation / matrix-log branch of
+`hnfadd_i`: preserve old zero-unit columns, assemble added relations, perform
+the distinct word-matrix products, run the certified rank profile and
+`hnffinal`, then restore the prefix. Seventy-five initial reductions feed
+219 actual addition calls: 144 nonempty completions, 72 empty no-ops and
+three explicit verification/CUP/Strassen frontiers. This includes 24 collector
+sequences with 48 completed additions and matching generator logarithms.
+All H/dep/B/C/permutation/state outputs match in PARI, CPython, JavaScript
+and GMP. Four malformed-owner guards per backend reject atomically; the
+oracle runs under UBSan. The seven word-product leaf counters are all hit.
+Trace `ee80356f02611c90a41fd5a0e1731bb564315b57a784a8f58d06f0ebe3a70176`;
+generated core 9,644,866 bytes. Reproduce with
+`check_hnfadd.cjs PARI_SOURCE PARI_ARCHIVE`.
+
+`regulator_scalar.py` translates generic integer/fraction/real addition,
+multiplication and division, preserving fraction cancellation branches and
+real rounding order. Reduced fractions use a tagged triple rather than an
+approximate real. In particular, raw `divir` is separate from the generic
+`gdiv` +/-1 shortcut through `ginv`. The latter distinction also corrected
+the provenance of the earlier negative reciprocal: previous numeric controls
+already matched, but its source dispatch was not faithful. Rechecking all
+389 rank cases preserves the trace below, with a smaller generated core.
+
+Scalar differential checks pass 6,118 cases across unmodified PARI 2.17.4,
+CPython, JavaScript and GMP, with a UBSan oracle: integers through 131 bits,
+several related/coprime fraction denominators, real zeros and precisions up
+to 1,856 bits. Trace
+`0cb8bc91a610d0ecd9dbd722665d2133d721b7ab2d1100a0eed02b838d79ef66`;
+core 4,126,050 bytes. Reproduce with
+`check_regulator_scalar.cjs PARI_SOURCE PARI_ARCHIVE`. These tests do not
+establish full-engine timing parity. Distinct value operands are the explicit
+boundary; upstream pointer-identity square shortcuts are not inferred from
+numeric equality. Conversion/division beyond existing leaf windows fails
+explicitly rather than silently reducing precision.
+
 ## Regulator preparation and rank path (2026-09-14)
 
 `regulator_preparation.py` translates `clean_cols`, exact signature column T
@@ -8,8 +45,9 @@ on [T | real logarithms], including the separate integer-matrix dispatch and
 the complete generic Gaussian update order. Mixed-signature T can select 2
 as its first pivot: the local reciprocal remains the exact fraction -1/2,
 and its multiplication follows `mulrfrac` (divide first, then negate), not
-a floating approximation to the fraction. Real reciprocals follow the
-`divir`/`divur` guard-word path below Newton's crossover. Prepared inexact
+a floating approximation to the fraction. Real reciprocals follow `gdiv`'s
++/-1 shortcut, `ginv(gneg(y))`, then the `invr_basecase` guard-word path
+below Newton's crossover. Prepared inexact
 precision is explicitly capped at 1,856 bits to fit the existing division
 leaf's guard window; this is not a global precision limit change.
 
@@ -21,7 +59,7 @@ source-extracted and unmodified PARI. Of 53 integer-dispatch controls,
 52 complete and one intentionally stops before CUP without publishing
 pivots; all 336 generic cases complete. Trace
 `a8b04b0321712ab4d172269baf0269cffac47bfbf7ac389afae4c3d9b30ea3b1`,
-core 4,855,001 bytes. The extracted Gaussian oracle aborts if stack repacking
+core 4,842,997 bytes. The extracted Gaussian oracle aborts if stack repacking
 is needed; none of these bounded controls needs it. Four malformed workspace
 guards per backend reject before mutation. Independent source review found
 no numerical/order mismatch within the declared scope.
