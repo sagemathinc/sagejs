@@ -893,3 +893,103 @@ Sage: `36bc93b44204491e6f4b51dd71363b51d3b65965389e0b842db7bf3709a65dde`.
 These are targeted standalone checks, not full four-platform product coverage.
 The mechanism benchmark now includes a missing-argument exception workload for
 the next native-capture comparison. No speedup is inferred from this change.
+
+### Guarded synchronous traceback policy checkpoint
+
+PR284 is merged into main and integrated in this lane. The new
+`python_traceback_guarded` output option remains **opt-in** and requires
+`python_traceback_records`. Production defaults have not changed.
+
+The policy gives ordinary synchronous named functions an opaque public entry
+and a private compiled-call target. Simple positional compiled calls may use
+the private target; foreign callbacks use the public entry and retain native
+capture. Eligible owned exception constructors require an unchanged initializer
+chain, including compiler-marked forwarding initializers. Permission is
+consumed before argument conversion can invoke callbacks. Each synchronous
+root retains one native outer-stack backstop, including when an exception is
+saved after returning. Missing `Error.captureStackTrace` forces native fallback.
+This is an internal compiler protocol, not a JavaScript security sandbox.
+
+Methods, decorators, lambdas, generators/coroutines, keyword calls, uninstrumented
+code and custom initializers conservatively retain native capture. Tests cover
+async resumption while another guarded root is active. Function identity,
+self-referencing attributes and replacement defaults remain observable on the
+public function; the compiler's private self-reference is separate. Reentrant
+bare evaluations use lexical root tokens rather than overwriting a global
+token. Reinitialization discards a previous logical backstop on native fallback.
+
+The frozen root build passes (7m20s), strict checking passes all 404 modules,
+and pyparsing 3.3.2 passes. The broader initial run passed 196/198 checks and
+exposed two raw-native-stack CLI formatting regressions; ae3269e7c restores the
+existing concise CLI contract while preserving native evidence in transport,
+rich consumers and developer output. Its 33 focused checks pass. Core source
+usage is 902,966 / 903,000 bytes, without widening the budget. Allocation-free
+`Object.hasOwn` calls replace reflective temporary-array checks in deletion and
+object allocation, offsetting the small initializer hook.
+
+Ten policy-isolation checks and the same frozen compiled Python/Sage probes
+pass on Linux x64/ARM64, macOS ARM64 and native Windows x64. Compiled probes cover
+raises, reraises, chaining, finally, recursion, binding, saved defaults/identity,
+foreign callbacks/errors, mutation, generator/async fallback, missing capture
+capability and reentrant evaluation. These are targeted standalone probes, not
+full four-platform product qualification. Artifacts/exporters are retained in
+`/home/user/exception-guarded-campaign.tvkZpY`:
+
+- Python SHA-256: `052f5dfac92194c319760239f3a10fb0e2d40e054124a3e7865de1304b29d345`.
+- Sage SHA-256: `b6973988fe220cd3e8f50a4a32579dd13d1de6ab2839de138e9df9a325b01fd7`.
+
+Controlled, exclusive-lock bench-1 measurements use Node 26.7.0, CPython 3.14.4,
+100,000 iterations, three warmups, seven samples and opposite process order.
+The guarded entry includes one native backstop per batch. Medians in ms:
+
+| Workload | Previous native (acab9ce08) | Current native | Guarded | CPython |
+| --- | ---: | ---: | ---: | ---: |
+| Missing-argument binding | 1621–1660 | 1683–1692 | 994–1052 | 45–46 |
+| Exception construction | 982–988 | 973–1019 | 456–459 | 10.1 |
+| Construct, raise, catch | 1071–1089 | 1095–1106 | 597–600 | 12.5–12.6 |
+| Successful call | 9.08–9.37 | 8.99 | 9.68–9.86 | 3.88–3.90 |
+
+This improves guarded exception cost substantially but leaves roughly 22–23x
+binding, 45x construction and 48x raise/catch gaps against CPython. None is
+closed. Successful-call overhead is approximately 8–10%; native binding also
+shows a small regression. Both need investigation before selecting a default.
+The standalone artifact is 14,272,462 bytes native versus 14,777,282 guarded
+(about 3.5% larger, including the large shared runtime); that is not a claim
+about user-code-only size or packaged startup. Raw samples, hashes and commands
+are in `report.json`/`run.cjs` in the artifact directory, mirrored at
+`bench-1:/home/user/exception-binding.DPGjJs/guarded-policy`.
+
+The earlier isolated initializer probe is retained at
+`/home/user/exception-inline-pair.KLOIfb/isolated-report.json`: records
+raise/catch medians overlap (467–469ms before, 467–482ms after), unlike the small
+combined-process regression. This suggests feedback/order sensitivity but does
+not invalidate the combined-process observation. Neither set is discarded.
+
+Default enablement, actual guarded package-workflow performance, final consumer
+and product-wide platform qualification, and the existing architectural and
+prepared-call gates remain open. PR272 remains draft; no release is published.
+
+The subsequent scope-correctness checkpoint tracks the actual execution
+context during code generation, rather than choosing the nearest function AST.
+Default expressions execute in the enclosing context; a nested definition in
+an uninstrumented method must not bypass that method's native boundary.
+Suspended generator expressions likewise cannot inherit the surrounding
+guarded function's permission. Minimized regressions exercise both cases while
+another guarded root is active. All 12 policy/integration tests pass after
+two-pass compiler convergence. The preceding broader diagnostic suite passed
+199/199 after the CLI correction; it is not a new full-build receipt for these
+last compiler changes.
+
+Refreshed Python/Sage standalone probes pass on all four native hosts, including
+the two new boundary cases. Artifacts are retained in
+`/home/user/exception-guarded-scope.MrqVXP`:
+
+- Python SHA-256: `63347691c41a9a8434afd813e4aa9d6bdb388cb3d87b8b37256cca27346d67d0`.
+- Sage SHA-256: `36e97f3522c1e23fda85612b36ee4120cc548633fb9145908d08b72aedf4c327`.
+
+The performance table above describes the earlier frozen checkpoint, not a
+rebenchmark of these scope fixes. Separate million-call attribution probes
+found roughly 20% guarded successful-call overhead. Removing an identity
+function's unreachable body unwind handler in a generated-code-only prototype
+reduced that to roughly 10%; this is evidence for investigating a conservative
+nonthrowing-body proof, not a shipped optimization or a waived overhead gate.

@@ -14,12 +14,28 @@ var ρσ_traceback_policy = (function () {
     }
     function snapshot(ctor, base) {
         var chain = [], prototype = ctor.prototype, found = false;
+        var baseInit = Object.getOwnPropertyDescriptor(base.prototype, "__init__");
+        var canonicalInit = baseInit && (baseInit.value ||
+            (baseInit.get && baseInit.get.__sagejs_lazy_method_getter__ === true &&
+                baseInit.get.__sagejs_unbound_method__));
+        if (typeof canonicalInit !== "function") return null;
         for (var current = prototype; current; current = Object.getPrototypeOf(current)) {
             var init = Object.getOwnPropertyDescriptor(current, "__init__");
             var initializer = init && (init.value ||
                 (init.get && init.get.__sagejs_lazy_method_getter__ === true &&
                     init.get.__sagejs_unbound_method__));
             if (init && typeof initializer !== "function") return null;
+            // Only compiler-owned pass-through initializers may precede the
+            // canonical initializer. Custom Python initializers stay native.
+            var delegate = initializer, seen = new Set();
+            while (delegate && delegate !== canonicalInit) {
+                if (seen.has(delegate)) return null;
+                seen.add(delegate);
+                var marker = Object.getOwnPropertyDescriptor(delegate, "__sagejs_synthetic_init__");
+                var target = Object.getOwnPropertyDescriptor(delegate, "__sagejs_synthetic_init_target__");
+                if (!marker || marker.value !== true || !target || typeof target.value !== "function") return null;
+                delegate = target.value;
+            }
             if (initializer && Object.getOwnPropertyDescriptor(initializer, "apply")) return null;
             chain.push([current, Object.getPrototypeOf(current), init,
                 Object.getOwnPropertyDescriptor(current, "__new__"), initializer]);
@@ -54,7 +70,20 @@ var ρσ_traceback_policy = (function () {
             try { return Reflect.apply(implementation, this, arguments); }
             finally { active = previous; permit = previousPermit; }
         }
+        if (typeof implementation.__name__ === "string")
+            Object.defineProperty(implementation, "name", {value: implementation.__name__, configurable: true});
         Object.defineProperties(publicEntry, Object.getOwnPropertyDescriptors(implementation));
+        // The named implementation closes over itself, not the mutable global
+        // binding. Forward replacement defaults to the stable public object.
+        ["__defaults__", "__kwdefaults__"].forEach(function (name) {
+            var descriptor = Object.getOwnPropertyDescriptor(implementation, name);
+            if (descriptor && descriptor.configurable && descriptor.writable)
+                Object.defineProperty(implementation, name, {
+                    get: function () { return publicEntry[name]; },
+                    set: function (value) { publicEntry[name] = value; },
+                    configurable: true, enumerable: descriptor.enumerable
+                });
+        });
         entries.set(publicEntry, implementation);
         implementations.add(implementation);
         return publicEntry;
@@ -97,7 +126,11 @@ var ρσ_traceback_policy = (function () {
         if (bindingTarget) error.__sagejs_argument_error__ =
             active && active.implementation === bindingTarget ? active.boundary : bindingTarget;
         if (!active || active.opaque ||
-            (!bindingTarget && (!allowedConstructor || error.constructor !== allowedConstructor))) return false;
+            (!bindingTarget && (!allowedConstructor || error.constructor !== allowedConstructor))) {
+            if (error.__sagejs_logical_exception__ === true)
+                Reflect.deleteProperty(error, "__sagejs_native_tb__");
+            return false;
+        }
         Object.defineProperty(error, "__sagejs_native_tb__", {
             value: active.backstop, writable: true, configurable: true, enumerable: true
         });
@@ -113,5 +146,13 @@ var ρσ_traceback_policy = (function () {
 
 
 def print_traceback_policy(output):
+    if not output.options.python_traceback_records:
+        raise ValueError("Guarded capture requires compiler traceback records")
     output.print(TRACEBACK_POLICY_RUNTIME)
     output.end_statement()
+    output.print(
+        "[BaseException,Exception,ValueError,RuntimeError,ArithmeticError,"
+        "LookupError,IndexError,KeyError,AssertionError].forEach(function(ctor){"
+        "ρσ_traceback_policy.registerConstructor(ctor,BaseException);});"
+        "globalThis.__sagejs_traceback_records_enabled__=ρσ_traceback_policy.initialize;"
+    )

@@ -6267,17 +6267,9 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
         runtime.reflect.deleteProperty(value, name)
         return
     if _builtins_is_python_class(value):
-        class_has_own = runtime.reflect.apply(
-            runtime.object.prototype.hasOwnProperty,
-            value,
-            [name],
-        )
+        class_has_own = runtime.object.hasOwn(value, name)
         prototype = runtime.reflect.get(value, "prototype")
-        prototype_has_own = runtime.reflect.apply(
-            runtime.object.prototype.hasOwnProperty,
-            prototype,
-            [name],
-        )
+        prototype_has_own = runtime.object.hasOwn(prototype, name)
         if not class_has_own and not prototype_has_own:
             raise AttributeError("object has no attribute '" + name + "'")
         if class_has_own:
@@ -6304,11 +6296,7 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
             return _builtins_call_member(descriptor, "__delete__", [value])
     if _builtins_delete_instance_attribute(value, name):
         return
-    has_own = runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty,
-        value,
-        [name],
-    )
+    has_own = runtime.object.hasOwn(value, name)
     if not has_own:
         raise AttributeError("object has no attribute '" + name + "'")
     if not runtime.reflect.deleteProperty(value, name):
@@ -9329,9 +9317,7 @@ _builtins_prototype_owners.set(runtime.reflect.get(SageObject, "prototype"), Sag
 
 
 def _builtins_object_new(cls: Any) -> Any:
-    owns_python_bases = runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty, cls, ["__bases__"]
-    )
+    owns_python_bases = runtime.object.hasOwn(cls, "__bases__")
     if not _builtins_is_python_class(cls) or not owns_python_bases:
         raise TypeError("object.__new__() argument 1 must be a type")
     callable_allocation = runtime.reflect.get(

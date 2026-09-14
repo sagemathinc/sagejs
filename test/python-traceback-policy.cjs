@@ -142,3 +142,54 @@ test('engines without native boundary capture use an explicit native fallback',(
   assert.match(ctx.error.stack,/fallback/);
   assert.equal(ctx.error.__sagejs_native_tb__,undefined);
 });
+
+test('only compiler-marked forwarding initializers qualify, with cycle rejection',()=>{
+  const ctx=context();
+  vm.runInContext(`
+    function Custom(message){this.__init__(message);}
+    Custom.prototype=Object.create(OwnedError.prototype,{constructor:{value:Custom}});
+    Custom.prototype.__init__=function custom(message){OwnedError.prototype.__init__.call(this,message);};
+    policy.registerConstructor(Custom,OwnedError);
+    var custom=run(function(){return new (policy.constructorTarget(Custom))('custom');});
+    function Forward(message){this.__init__(message);}
+    Forward.prototype=Object.create(OwnedError.prototype,{constructor:{value:Forward}});
+    Forward.prototype.__init__=function forward(){OwnedError.prototype.__init__.apply(this,arguments);};
+    Forward.prototype.__init__.__sagejs_synthetic_init__=true;
+    Forward.prototype.__init__.__sagejs_synthetic_init_target__=OwnedError.prototype.__init__;
+    policy.registerConstructor(Forward,OwnedError);
+    var forward=run(function(){return new (policy.constructorTarget(Forward))('forward');});
+    Custom.prototype.__init__.__sagejs_synthetic_init__=true;
+    Custom.prototype.__init__.__sagejs_synthetic_init_target__=Custom.prototype.__init__;
+    policy.registerConstructor(Custom,OwnedError);
+    var cycle=run(function(){return new (policy.constructorTarget(Custom))('cycle');});
+  `,ctx);
+  assert.equal(ctx.custom.logical,false);
+  assert.equal(ctx.forward.logical,true);
+  assert.equal(ctx.cycle.logical,false);
+});
+
+test('saved wrappers retain replacement defaults independently of name rebinding',()=>{
+  const ctx=context();
+  vm.runInContext(`
+    var implementation=function original(){return original.__defaults__[0]+original.__kwdefaults__.extra;};
+    implementation.__defaults__=[2];implementation.__kwdefaults__={extra:3};
+    var wrapper=policy.wrap(implementation), saved=wrapper;
+    wrapper=function replacement(){return 100;};
+    saved.__defaults__=[5];saved.__kwdefaults__={extra:7};
+    var opaque=saved(), transparent=run(function(){return policy.target(saved)();});
+  `,ctx);
+  assert.equal(ctx.opaque,12);
+  assert.equal(ctx.transparent,12);
+});
+
+test('reinitialization on an opaque path discards a prior logical backstop',()=>{
+  const ctx=context();
+  vm.runInContext(`
+    var error=run(function(){return new (policy.constructorTarget(OwnedError))('logical');});
+    error.__sagejs_logical_exception__=true;
+    OwnedError.prototype.__init__.call(error,'native');
+  `,ctx);
+  assert.equal(ctx.error.logical,false);
+  assert.equal(ctx.error.__sagejs_native_tb__,undefined);
+  assert.match(ctx.error.stack,/native/);
+});

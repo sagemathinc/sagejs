@@ -9,6 +9,7 @@ from ast_types import (
     AST_ClassCall,
     AST_Conditional,
     AST_Dot,
+    AST_GeneratorComprehension,
     AST_ItemAccess,
     AST_Lambda,
     AST_Method,
@@ -30,6 +31,33 @@ from output.operators import is_python_attribute_read, print_getattr
 
 anonfunc = "ρσ_anonfunc"
 module_name = "null"
+
+
+def guarded_function(node):
+    return (
+        node.name
+        and not node.is_expression
+        and not node.is_anonymous
+        and not node.is_generator
+        and not is_node_type(node, AST_Method)
+        and not (node.decorators and node.decorators.length)
+    )
+
+
+def guarded_call_scope(output):
+    context = output.guarded_call_context
+    if not output.options.python_traceback_guarded or not context:
+        return False
+    stack = output.stack()
+    for index in range(stack.length - 1, -1, -1):
+        node = stack[index]
+        if node is context.node:
+            return True
+        if is_node_type(node, AST_Class) or is_node_type(
+            node, AST_GeneratorComprehension
+        ):
+            return False
+    return False
 
 
 def set_module_name(x):
@@ -817,6 +845,15 @@ def function_definition(
     javascript_name,
 ):
     as_expression = as_expression or self.is_expression or self.is_anonymous
+    guarded_body = (
+        output.options.python_traceback_guarded
+        and not as_expression
+        and guarded_function(self)
+    )
+    if guarded_body and not javascript_name:
+        # Keep the implementation's binding metadata self-reference separate
+        # from ordinary Python reads of the public (and rebindable) name.
+        javascript_name = "ρσ_guarded_body"
     if as_expression:
         orig_indent = output.indentation()
         output.set_indentation(output.next_indent())
@@ -824,6 +861,8 @@ def function_definition(
         output.indent(), output.spaced("var", anonfunc, "="), output.space()
     prepared_namespace = output.prepared_namespace
     output.prepared_namespace = None
+    previous_guarded_context = output.guarded_call_context
+    output.guarded_call_context = {"node": self} if guarded_body else None
     output.print("function"), output.space()
     if self.name:
         if javascript_name:
@@ -944,6 +983,8 @@ def function_definition(
         )
 
     output.prepared_namespace = prepared_namespace
+    # Defaults/annotations execute in the enclosing scope, not this body.
+    output.guarded_call_context = previous_guarded_context
     if as_expression:
         output.end_statement()
         function_annotation(self, output, strip_first, anonfunc)
@@ -986,6 +1027,13 @@ def print_function(output):
         if not self.is_expression and not self.is_anonymous:
             output.end_statement()
             function_annotation(self, output, False)
+            if output.options.python_traceback_guarded and guarded_function(self):
+                output.indent()
+                self.name.print(output)
+                output.print(" = ρσ_traceback_policy.wrap(")
+                self.name.print(output)
+                output.print(")")
+                output.end_statement()
 
 
 def find_this(expression):
@@ -1494,7 +1542,22 @@ def print_function_call(self, output):
         output.print(")")
         return
 
-    if is_new and not self.args.length and not has_kwargs and not self.args.starargs:
+    guarded_simple = (
+        guarded_call_scope(output)
+        and not has_kwargs
+        and not self.args.starargs
+        and not is_node_type(self, AST_ClassCall)
+        and not self.direct_call
+        and is_node_type(self.expression, AST_SymbolRef)
+    )
+
+    if (
+        is_new
+        and not self.args.length
+        and not has_kwargs
+        and not self.args.starargs
+        and not guarded_simple
+    ):
         output.print("new"), output.space()
         print_function_name()
         return  # new A is the same as new A() in javascript
@@ -1522,7 +1585,15 @@ def print_function_call(self, output):
 
         if is_new:
             output.print("new"), output.space()
+        if guarded_simple:
+            output.print(
+                "(ρσ_traceback_policy.constructorTarget("
+                if is_new
+                else "ρσ_traceback_policy.target("
+            )
         print_function_name()
+        if guarded_simple:
+            output.print("))" if is_new else ")")
         output.with_parens(print_args)
         return
 

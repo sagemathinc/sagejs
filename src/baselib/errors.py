@@ -112,6 +112,13 @@ def ρσ_positional_default(target_function: Any, from_end: int, name: str) -> A
 
 class BaseException(runtime.error):
     def __init__(self, *args: object) -> None:
+        # Consume guarded constructor authority before conversion can call Python.
+        policy = runtime.global_object.__sagejs_traceback_records_enabled__
+        logical = (
+            runtime.reflect.apply(policy, runtime.undefined, [self])
+            if runtime.strict_equal(runtime.jstype(policy), "function")
+            else policy is True
+        )
         # Transfer the fresh variadic array without another copy.
         count = runtime.native_get(args, "length")
         self.args = runtime.reflect.apply(runtime.math_tuple, runtime.undefined, [args])
@@ -128,7 +135,6 @@ class BaseException(runtime.error):
             if python_name is runtime.undefined
             else runtime.string(python_name)
         )
-        logical = runtime.global_object.__sagejs_traceback_records_enabled__ is True
         self.__sagejs_logical_exception__ = logical
         self.__traceback__ = None if logical else self
         if not logical:

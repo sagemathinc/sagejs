@@ -204,6 +204,19 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
 
 def display_traceback_body(node, output, body, block_scope=False, line=None):
     if output.options.python_traceback_records:
+        guarded_root = (
+            output.options.python_traceback_guarded
+            and is_node_type(node, AST_Toplevel)
+            and node.module_id is "__main__"
+        )
+        previous_guarded_context = output.guarded_call_context
+        if is_node_type(node, AST_Toplevel):
+            output.guarded_call_context = {"node": node} if guarded_root else None
+        if guarded_root:
+            # A reentrant bare evaluation shares JavaScript globals. Keep the
+            # root token and traceback temporaries lexical to this evaluation;
+            # Python var bindings still hoist into their original namespace.
+            output.print("{let ρσ_trace_root = ρσ_traceback_policy.enter();")
         previous = output.traceback_function
         name = "<lambda>" if node.is_lambda else "<anonymous>"
         if not node.is_lambda and node.name:
@@ -217,7 +230,7 @@ def display_traceback_body(node, output, body, block_scope=False, line=None):
             "first_lineno": node.start.line,
         }
         output.indent()
-        output.print("let " if block_scope else "var ")
+        output.print("let " if block_scope or guarded_root else "var ")
         output.print(
             "ρσ_trace_captured = undefined, ρσ_trace_reraised = undefined, ρσ_trace_line = "
             + str(line or (node.body.start.line if node.is_lambda else node.start.line))
@@ -232,7 +245,11 @@ def display_traceback_body(node, output, body, block_scope=False, line=None):
         )
         output.print(JSON.stringify(output.traceback_function))
         output.print(",ρσ_trace_line,true); }")
+        if guarded_root:
+            output.print(" finally { ρσ_traceback_policy.leave(ρσ_trace_root); }}")
         output.traceback_function = previous
+        if is_node_type(node, AST_Toplevel):
+            output.guarded_call_context = previous_guarded_context
     else:
         body()
 
