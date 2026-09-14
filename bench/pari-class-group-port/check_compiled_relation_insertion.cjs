@@ -23,9 +23,10 @@ f=importlib.import_module('bench.pari-class-group-port.relation_insertion').pari
 for row in json.load(sys.stdin):
     jid,jid0,c,use,count,nz,I,E,G,R,repeat,k,appended,last,missing,sup,B,stored,V,allowance=row
     if repeat==0:
-        state=[0,8,3,allowance];basis=[0]*9;records=[0]*24;hashes=[0]*8;metadata=[0]*24;scratch=[0]*3;generators=[99]*24
+        state=[0,8,3,allowance];basis=[0]*9;records=[0]*24;hashes=[0]*8;metadata=[0]*24;scratch=[0]*3;generators=[99]*24;progress=[0,0]
     indices=[2,0,0,0];exponents=[2,0,0,0];candidate=[2*c,3*c,5*c];relation=[0]*3
-    got=f(jid,jid0,2,indices,exponents,1,[1,3],[-1,2] if use==1 else [0,0],2 if use else -1,[2,3,5],[1,2,1],candidate,relation,state,basis,records,hashes,metadata,scratch,generators)
+    got=f(jid,jid0,2,indices,exponents,1,[1,3],[-1,2] if use==1 else [0,0],2 if use else -1,[2,3,5],[1,2,1],candidate,relation,state,basis,records,hashes,metadata,scratch,generators,progress,use)
+    assert progress[1]==(repeat+1 if use else 0)
     assert got==(k,appended,nz,count),(row,got)
     assert state==[last,8,missing,sup] and basis==B and records[:last*3]==V
     assert generators[:last*3]==stored and generators[last*3:]==[99]*(24-last*3)
@@ -35,12 +36,12 @@ for row in json.load(sys.stdin):
     assert metadata[:last*3]==[v for i in range(last) for v in (i+1,0,0)]
 `,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify(rows),encoding:'utf8',timeout:30000});assert.equal(py.status,0,py.stderr);
 const built=await compileKernel({sourcePath:path.join(__dirname,'relation_insertion.py')}),mod=require(built.modulePath);
-for(const backend of ['javascript','gmp']){let state,basis,records,hashes,metadata,scratch,generators;
+for(const backend of ['javascript','gmp']){let state,basis,records,hashes,metadata,scratch,generators,progress;
 for(const row of rows){
  const [jid,jid0,c,use,count,nz,I,E,G,R,repeat,k,appended,last,missing,sup,B,stored,V,allowance]=row;
- if(repeat===0){state=[0,8,3,allowance].map(BigInt);basis=Array(9).fill(0n);records=Array(24).fill(0n);hashes=Array(8).fill(0n);metadata=Array(24).fill(0n);scratch=Array(3).fill(0n);generators=Array(24).fill(99n);}
+ if(repeat===0){state=[0,8,3,allowance].map(BigInt);basis=Array(9).fill(0n);records=Array(24).fill(0n);hashes=Array(8).fill(0n);metadata=Array(24).fill(0n);scratch=Array(3).fill(0n);generators=Array(24).fill(99n);progress=[0n,0n];}
  const indices=[2n,0n,0n,0n],exponents=indices.slice(),candidate=[2*c,3*c,5*c].map(BigInt),relation=[0n,0n,0n];
- const got=mod.pari_insert_smooth_relation[backend](BigInt(jid),BigInt(jid0),2n,indices,exponents,1n,[1n,3n],use===1?[-1n,2n]:[0n,0n],use?2n:-1n,[2n,3n,5n],[1n,2n,1n],candidate,relation,state,basis,records,hashes,metadata,scratch,generators);
+ const got=mod.pari_insert_smooth_relation[backend](BigInt(jid),BigInt(jid0),2n,indices,exponents,1n,[1n,3n],use===1?[-1n,2n]:[0n,0n],use?2n:-1n,[2n,3n,5n],[1n,2n,1n],candidate,relation,state,basis,records,hashes,metadata,scratch,generators,progress,BigInt(use));assert.equal(progress[1],BigInt(use?repeat+1:0));
  assert.deepEqual(got,[k,appended,nz,count].map(BigInt));assert.deepEqual(state,[last,8,missing,sup].map(BigInt));assert.deepEqual(basis,B.map(BigInt));assert.deepEqual(records.slice(0,last*3),V.map(BigInt));
  assert.deepEqual(generators.slice(0,last*3),stored.map(BigInt));assert(generators.slice(last*3).every(v=>v===99n));
  assert.deepEqual(candidate,G.map(BigInt));assert.deepEqual(relation,R.map(BigInt));assert.deepEqual(indices.slice(0,count),I.map(BigInt));assert.deepEqual(exponents.slice(0,count),E.map(BigInt));
@@ -50,4 +51,3 @@ for(const row of rows){
 assert(rows.some(r=>r[11]===0&&r[12]===1));assert(rows.some(r=>r[11]===-1&&r[12]===0));assert(rows.some(r=>r[11]>0));
 console.log('576 connected normalization/cache transitions match PARI/CPython/JS/GMP; exact generators survive candidate reuse, including zero-return appends');
 })().catch(e=>{console.error(e);process.exitCode=1;});
-

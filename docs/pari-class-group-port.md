@@ -1,5 +1,53 @@
 # Faithful PARI class-group language experiment
 
+## Connected prepared-ideal collector
+
+`ideal_collector.py` now connects numerical preparation, enumeration, factor
+admission, normalization, owned generator storage and cache insertion in one
+source-transparent native call graph. The no-automorphism-image boundary is
+explicit. It retains the updated factor-list length, counts `Nfact` after
+normalization but before insertion, and preserves the difference between an
+appended record and a positive `add_rel_i` return.
+
+The collector implements the upstream first-smooth probe (`Nrelid == 0`),
+cache-target completion, per-ideal quota and exhaustion branches. Cache-target
+completion precedes the `relid` increment; quota termination returns zero,
+unlike cache-target completion. Negative numerical/search statuses and explicit
+unresolved-factorization status remain distinct. Terminal calls are idempotent.
+
+Sixteen oracle scenarios use the four existing tuning fields, prepared prime-2
+ideals, 192-bit preparation, scale 4 and prime decompositions through 101.
+Each starts from an explicitly empty cache, with dependent allowance 2, and
+tests `(Nrelid, target)` values `(0,100)`, `(1,100)`, `(8,2)` and `(8,100)`.
+The oracle uses the extracted PARI cursor, actual `factorgen`, normalization
+and `add_rel_i`. All scenarios agree in CPython, dynamic JS and GMP-native
+execution: return status, trial/factor counts, `relid`, `Nfact`, missing rank,
+allowance, complete modular basis, stored relations/hashes and exact generators.
+Repeated terminal calls preserve all buffers. The 576 insertion controls also
+pass after adding the diagnostic-counter connection.
+
+The metered collector rerun used 78.458 user + 2.366 system CPU seconds,
+72.378 seconds elapsed and 699,916 KiB peak child RSS, including oracle/native
+compilation and all dynamic/native comparisons. These are validation resources,
+not comparative collector timings. Strict Python (403 modules) and parallel
+checks pass; architecture validation still fails at the known optimizer
+manifest mismatch.
+The selected changed-file merge/docs gate is running separately; its completion
+is not yet a validation receipt for this collector checkpoint.
+
+This is a prepared-ideal segment, not `bnfinit`. External preparation still
+supplies ideal/LLL, embeddings, factor-base data and the trial scale. Testing
+an empty cache does not replace the initial rational relations in the full
+engine. Automorphism images, actual factor-base scheduling, `small_norm` and
+`rnd_rel`, unit/regulator recovery, relation linear algebra and final stopping
+remain outside this entry. No whole-engine or seconds-scale speed claim follows.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_ideal_collector.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Normalization, insertion and exact generator ownership
 
 `relation_insertion.py` connects smooth-relation assembly/content normalization
@@ -29,9 +77,11 @@ length, `Nfact`, `relid`, cache-target stopping and per-ideal quota stopping.
 Automorphism images, full relation loops and the class/unit engine remain
 unimplemented at this boundary.
 Architecture checking reaches the same stale optimizer-manifest failure.
-Changed-file merge checks passed; the selected documentation gate is still
-rebuilding the conservatively fingerprinted benchmark tree. No completed
-documentation-gate receipt is claimed for this checkpoint yet.
+Changed-file merge checks passed; at that commit the selected documentation
+gate was still rebuilding the conservatively fingerprinted benchmark tree.
+No completed documentation-gate receipt was claimed then. The gate subsequently
+passed after a 7m30s build, with the same absent optional native-pack and Wasm
+dependencies skipped.
 
 ```sh
 SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \

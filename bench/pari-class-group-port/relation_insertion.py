@@ -5,7 +5,7 @@ This entry excludes automorphism images; it does not implement add_rel's
 automorphism branch or the surrounding ideal-search stopping logic.
 """
 
-from sagejs.native import IntegerBuffer, native
+from sagejs.native import Int64Buffer, IntegerBuffer, native
 
 from .relation_cache import pari_prepared_add_relation
 from .smooth_relation import pari_prepared_smooth_relation
@@ -33,6 +33,8 @@ def pari_insert_smooth_relation(
     metadata: IntegerBuffer,
     scratch: IntegerBuffer,
     generators: IntegerBuffer,
+    progress: Int64Buffer,
+    track_fact: int,
 ) -> tuple[int, int, int, int]:
     """Return upstream k, appended flag, nz hint and updated factor count.
 
@@ -42,9 +44,11 @@ def pari_insert_smooth_relation(
     All buffers are distinct and caller-owned, with the full cache capacity
     preallocated. An appended record is retained even when upstream k is zero;
     the caller must not equate appending with a positive acceptance return.
+    When track_fact is nonzero, progress[1] is incremented after normalization
+    and before cache insertion, matching the upstream Nfact diagnostic point.
     """
     degree = int(len(candidate))
-    if len(state) < 4 or degree < 1:
+    if len(state) < 4 or degree < 1 or len(progress) < 2:
         raise ValueError("invalid smooth relation generator state")
     if state[1] < 0 or len(generators) < state[1] * degree:
         raise ValueError("insufficient exact generator storage")
@@ -64,6 +68,8 @@ def pari_insert_smooth_relation(
         relation,
     )
     row = state[0]
+    if track_fact != 0:
+        progress[1] += 1
     random_relation = 0
     if extra_count >= 0:
         random_relation = 1
