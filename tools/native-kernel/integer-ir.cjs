@@ -1378,6 +1378,10 @@ function lowerCall(node, context, operations) {
     "native calls require a simple function name",
   );
   const name = node.expression.name;
+  if (["float", "round", "abs"].includes(name)) {
+    expect(context, node, array(node.args?.kwarg_items).length === 0 && array(node.args?.kwargs).length === 0 && !node.args?.starargs,
+      `native ${name} requires positional arguments without expansion`);
+  }
   const args = array(node.args);
 
   if (["ldexp", "frexp"].includes(context.mathFunctions.get(name))) {
