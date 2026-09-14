@@ -61,6 +61,9 @@ class _Object:
     def isFrozen(value: object) -> bool: ...
 
     @staticmethod
+    def hasOwn(value: object, name: Any) -> bool: ...
+
+    @staticmethod
     def isExtensible(value: object) -> bool: ...
 
     @staticmethod

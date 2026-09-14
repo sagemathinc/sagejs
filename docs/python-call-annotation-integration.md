@@ -752,3 +752,29 @@ passes that gate but later stops at the stale optimizer-opportunity manifest
 found `5a861be64dd133755c35ef93f89fcc2f4a68846f62c6c1553b9a013e8cbef5dc`).
 That is not a passing architecture receipt and has not been waived.
 This checkpoint makes no new performance or production-capture-policy claim.
+
+### Keyword hook disambiguation
+
+Plain keyword packets now treat callable `keys`, `__getitem__`, and
+`hasOwnProperty` values as values, not mapping hooks. User mapping objects still
+use their protocol. Internal own-key checks use native `Object.hasOwn`, avoiding
+the explicit reflective-call argument array. Its missing static-method contract
+entry was caught by rebuilt runtime checks and corrected with an emitter
+regression; the first failed candidate is not qualified.
+
+The corrected clean build passes in 7m17s. Strict checking passes, all 113
+selected traceback regressions pass, and pyparsing 3.3.2 passes. Prepared-call
+checks are 64/66, retaining the two custom-`__getattribute__` failures. Core source
+usage is 902,933 / 903,000 bytes, without a budget change. Logs use the prefixes
+`/home/user/exception-keyword-hooks-build-retry`,
+`/home/user/exception-keyword-hooks-final-`, and
+`/home/user/exception-hasown-final-emitter`.
+
+Eight selected keyword/generator/receiver checks pass against CPython and in
+both language modes on Linux x64/ARM64, macOS ARM64, and native Windows x64.
+Frozen artifacts and exporter: `/home/user/keyword-merge-qualified.GKQooG`.
+Python SHA-256: `f00bb7a7f4e635f1820124a2151b93fdfe6f8f99e7f8ac06a514767150461f0f`;
+Sage: `36bc93b44204491e6f4b51dd71363b51d3b65965389e0b842db7bf3709a65dde`.
+These are targeted standalone checks, not full four-platform product coverage.
+The mechanism benchmark now includes a missing-argument exception workload for
+the next native-capture comparison. No speedup is inferred from this change.

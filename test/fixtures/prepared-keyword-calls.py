@@ -157,6 +157,23 @@ def test_keyword_segments_suspend_in_the_callers_generator():
     assert iterator.send(30) == {"first": 10, "middle": 2, "last": 30}
 
 
+def test_callable_keyword_values_are_not_mapping_hooks():
+    events = []
+
+    def callback(*args):
+        events.append(args)
+        return ["unexpected"]
+
+    def target(**keywords):
+        return keywords
+
+    result = target(keys=callback, __getitem__=callback, hasOwnProperty=callback)
+    assert result["keys"] is callback
+    assert result["__getitem__"] is callback
+    assert result["hasOwnProperty"] is callback
+    assert events == []
+
+
 def test_duplicate_mapping_before_item_and_callability():
     events = []
 

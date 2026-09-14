@@ -8,7 +8,7 @@ const assert = require("node:assert/strict");
 const createCompiler = require("../dist/tools/compiler.js").default;
 const { createPythonCompilerFrontend } = require("../dist/tools/python/compiler-frontend.js");
 const root = join(__dirname, "..");
-const cases = ["construct", "construct_raise_catch", "raise_existing", "normal_call"];
+const cases = ["construct", "construct_raise_catch", "raise_existing", "binding_failure", "normal_call"];
 const selectedCase = process.env.SAGEJS_EXCEPTION_CASE;
 const selectedVariant = process.env.SAGEJS_EXCEPTION_VARIANT;
 const privateScope = process.env.SAGEJS_EXCEPTION_PRIVATE_SCOPE === "1";
@@ -33,6 +33,14 @@ def construct(n):
         error = ValueError('probe')
         total += len(error.args)
     return total
+def binding_failure(n):
+    total = 0
+    for i in range(n):
+        try:
+            identity()
+        except TypeError:
+            total += 1
+    return total
 def construct_raise_catch(n):
     total = 0
     for i in range(n):
@@ -54,6 +62,7 @@ import sagejs.runtime as runtime
 runtime.reflect.set(runtime.global_object, '__exception_construct', construct)
 runtime.reflect.set(runtime.global_object, '__exception_construct_raise_catch', construct_raise_catch)
 runtime.reflect.set(runtime.global_object, '__exception_raise_existing', raise_existing)
+runtime.reflect.set(runtime.global_object, '__exception_binding_failure', binding_failure)
 runtime.reflect.set(runtime.global_object, '__exception_normal_call', normal_call)
 `;
 (async () => {

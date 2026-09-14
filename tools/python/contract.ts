@@ -27,7 +27,7 @@ NATIVE_CLASSES.Object = { static: staticNames(
   "getOwnPropertyDescriptors", "getOwnPropertySymbols", "keys", "entries",
   "values", "create", "defineProperty", "defineProperties",
   "getPrototypeOf", "setPrototypeOf", "assign", "seal", "isSealed", "is",
-  "preventExtensions", "isExtensible", "freeze", "isFrozen",
+  "preventExtensions", "isExtensible", "freeze", "isFrozen", "hasOwn",
 ) };
 NATIVE_CLASSES.String = { static: staticNames("fromCharCode", "fromCodePoint") };
 NATIVE_CLASSES.Array = { static: staticNames("isArray", "from", "of") };

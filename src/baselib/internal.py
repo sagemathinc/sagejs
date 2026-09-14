@@ -817,10 +817,11 @@ def ρσ_Iterable(iterable: Any) -> Any:
 def ρσ_desugar_kwargs(answer: Any, sources: Any) -> Any:
     answer[runtime.kwargs_symbol] = True
     for source in sources:
-        if _internal_member_is_function(source, "keys"):
-            keys = _internal_call_member(source, "keys", [])
-        elif _internal_is_plain_object(source):
+        plain = _internal_is_plain_object(source)
+        if plain:
             keys = runtime.object.keys(source)
+        elif _internal_member_is_function(source, "keys"):
+            keys = _internal_call_member(source, "keys", [])
         else:
             raise TypeError("argument after ** must be a mapping")
         for key in keys:
@@ -828,7 +829,7 @@ def ρσ_desugar_kwargs(answer: Any, sources: Any) -> Any:
                 raise TypeError("keywords must be strings")
             if _internal_has_own(answer, key):
                 raise TypeError("multiple values for keyword argument '" + key + "'")
-            if _internal_member_is_function(source, "__getitem__"):
+            if not plain and _internal_member_is_function(source, "__getitem__"):
                 answer[key] = _internal_call_member(source, "__getitem__", [key])
             else:
                 answer[key] = source[key]
@@ -878,11 +879,7 @@ def ρσ_forward_kwargs(
 
 
 def _internal_has_own(value: Any, name: Any) -> bool:
-    return runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty,
-        value,
-        [name],
-    )
+    return runtime.object.hasOwn(value, name)
 
 
 def _internal_owns_function_value(receiver: Any, target_function: Any) -> bool:
