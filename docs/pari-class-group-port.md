@@ -1,5 +1,33 @@
 # Faithful PARI class-group language experiment
 
+## Prepared relation logarithms (2026-09-14)
+
+`log_embedding.py` now translates prepared matrix/coordinates to
+`buch2.c:get_log_embed`'s weighted logarithm column, including both components
+of complex logarithms, exact scalar relations, real negative embeddings, and
+the factor of two at complex places. PARI supplies only the prepared `nf`
+matrix and the differential answer; no logarithm is supplied to the port.
+All 80 checks across the four declared tuning fields agree exactly in PARI,
+CPython, JavaScript and GMP-native execution. These include coordinate basis
+vectors, general coordinate vectors and positive/negative scalar relations.
+Trace: `db0187e07b12a48585dead257ac0e8cda03f3531fbe901d56053c57098909ab3`;
+isolated core: 5,052,635 bytes. Reproduce with
+`check_log_embedding.cjs PARI_SOURCE` under the recorded prefix environment.
+
+The matrix component ordering reuses the existing prepared embedding-row
+convention. General nonzero exact complex components remain an explicit
+rejection; automorphism reuse and attachment to the relation-cache prefix are
+not yet connected. Arithmetic/allocation failure may leave prior output rows
+written; this is not a transactional public-result API. IntegerBuffer fixed
+slice lowering was rejected (only NativeIntegerVector currently supports it),
+so the seven output fields use explicit stores. No storage semantics or safety
+limit was changed to accommodate the port.
+
+The independently reviewed runtime typing fix is isolated in draft PR #286.
+It is not a prerequisite for these direct native-compiler tests. Its full
+build and 242-file unit tier pass, but compiler/integration qualification has
+documented failures. No release-ready claim follows from focused passes.
+
 ## Connected HNF cleanup checkpoint (2026-09-14)
 
 `hnfspec_cleanup.py` extends the actual sparse prefix through END2's exact
