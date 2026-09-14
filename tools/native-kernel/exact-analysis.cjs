@@ -32,11 +32,13 @@ function operationInputs(operation) {
     case "integer.round_sqrt":
     case "uint64.from_integer_checked":
     case "float64.from_integer_checked":
+    case "float64.from_integer":
     case "float64.log":
     case "float64.log2":
     case "float64.frexp":
     case "float64.abs":
     case "integer.from_float64":
+    case "integer.round_float64":
     case "bool.not":
     case "uint64.truth":
     case "value.discard":
@@ -638,7 +640,8 @@ function localEffects(fn) {
         mayRaise.add("OverflowError");
       }
       if (operation.kind === "float64.ldexp") mayRaise.add("OverflowError");
-      if (operation.kind === "integer.from_float64") {
+      if (operation.kind === "float64.from_integer") mayRaise.add("OverflowError");
+      if (operation.kind === "integer.from_float64" || operation.kind === "integer.round_float64") {
         mayRaise.add("ValueError");
         mayRaise.add("OverflowError");
       }

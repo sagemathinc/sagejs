@@ -1390,8 +1390,18 @@ function emitExactOperation(operation, context, indent) {
     return `${indent}${target} = ` +
       `${exactValue(operation.source, context)} != 0;`;
   }
-  if (operation.kind === "integer.from_float64") {
+  if (operation.kind === "integer.from_float64" || operation.kind === "integer.round_float64") {
     const source = exactValue(operation.source, context);
+    const fraction = context.freshIdentifier("sagejs_round_fraction");
+    const rounding = operation.kind === "integer.round_float64" ? [
+      `${indent}{`,
+      `${indent}    double ${fraction} = ${source} - trunc(${source});`,
+      `${indent}    if (${fraction} > 0.5 || (${fraction} == 0.5 && mpz_odd_p(${target})))`,
+      `${indent}        mpz_add_ui(${target}, ${target}, 1);`,
+      `${indent}    else if (${fraction} < -0.5 || (${fraction} == -0.5 && mpz_odd_p(${target})))`,
+      `${indent}        mpz_sub_ui(${target}, ${target}, 1);`,
+      `${indent}}`,
+    ] : [];
     return [
       `${indent}if (!isfinite(${source}))`,
       `${indent}{`,
@@ -1403,6 +1413,41 @@ function emitExactOperation(operation, context, indent) {
       `${indent}    goto fail;`,
       `${indent}}`,
       `${indent}mpz_set_d(${target}, ${source});`,
+      ...rounding,
+    ].join("\n");
+  }
+  if (operation.kind === "float64.from_integer") {
+    const source = exactValue(operation.source, context);
+    const size = context.freshIdentifier("sagejs_float_bits");
+    const magnitude = context.freshIdentifier("sagejs_float_magnitude");
+    const rounded = context.freshIdentifier("sagejs_float_rounded");
+    const shift = context.freshIdentifier("sagejs_float_shift");
+    return [
+      `${indent}{`,
+      `${indent}    size_t ${size} = mpz_sizeinbase(${source}, 2);`,
+      `${indent}    if (${size} > 1024) {`,
+      statusFailure("range", "integer is outside binary64 range", `${indent}        `),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    if (${size} <= 53) ${target} = mpz_get_d(${source});`,
+      `${indent}    else {`,
+      `${indent}        mpz_t ${magnitude}, ${rounded};`,
+      `${indent}        mp_bitcnt_t ${shift} = ${size} - 53;`,
+      `${indent}        mpz_init(${magnitude}); mpz_init(${rounded});`,
+      `${indent}        mpz_abs(${magnitude}, ${source});`,
+      `${indent}        mpz_fdiv_q_2exp(${rounded}, ${magnitude}, ${shift});`,
+      `${indent}        if (mpz_tstbit(${magnitude}, ${shift}-1) &&`,
+      `${indent}            (mpz_scan1(${magnitude}, 0) < ${shift}-1 || mpz_odd_p(${rounded})))`,
+      `${indent}            mpz_add_ui(${rounded}, ${rounded}, 1);`,
+      `${indent}        ${target} = ldexp(mpz_get_d(${rounded}), (int)${shift});`,
+      `${indent}        if (mpz_sgn(${source}) < 0) ${target} = -${target};`,
+      `${indent}        mpz_clear(${rounded}); mpz_clear(${magnitude});`,
+      `${indent}        if (!isfinite(${target})) {`,
+      statusFailure("range", "integer is outside binary64 range", `${indent}            `),
+      `${indent}            goto fail;`,
+      `${indent}        }`,
+      `${indent}    }`,
+      `${indent}}`,
     ].join("\n");
   }
   if (operation.kind === "float64.from_integer_checked") {

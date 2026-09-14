@@ -1,5 +1,27 @@
 # Mixed exact/binary64 prerequisite checkpoint
 
+## Scalar rounding and float conversion (IR 42)
+
+The connected Babai source now lowers one-argument `round(Float64)` to an exact
+integer with ties to even. Truncation followed by an exact half/tie decision
+avoids dependence on the host rounding mode. NaN and infinity preserve Python's
+ValueError/OverflowError distinction. Integer `round` is an identity; the
+existing exact `round(sqrt(Integer))` path remains in place.
+
+`float(Integer)` now rounds the magnitude to 53 bits using guard, sticky and
+parity bits before binary scaling, rather than using GMP's truncating conversion
+directly. Overflow, including carry at the largest finite boundary, raises
+OverflowError. The C implementation uses two short-lived GMP temporaries for
+wide values; their allocation cost is not yet benchmarked. JS uses its correctly
+rounded Number conversion with the same finite-result check. Float-returning
+native helpers may now also borrow Float64Buffer parameters; the existing
+packed ABI supplies their lengths and lifetime.
+
+Seven focused control/error and binary64 tests pass, including CPython rounding
+oracles, integer conversion midpoint and overflow controls, and a borrowed-buffer
+helper called from a mixed exact function. These changes clear the Babai source's
+lowering obstructions, but do not themselves qualify whole-engine performance.
+
 ## Range control transfers (IR 41)
 
 The Babai prototype requires both `break` and `continue` in descending range

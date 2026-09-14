@@ -7,6 +7,72 @@ const {join} = require("node:path");
 const test = require("node:test");
 const {compileKernel} = require("../compiler.cjs");
 const {lowerSource} = require("../ir.cjs");
+test("one-argument round preserves binary64 ties to even and exact integer results", async () => {
+  const {spawnSync}=require("node:child_process");
+  const dir=mkdtempSync(join(tmpdir(),"sagejs-round-")),source=join(dir,"rounding.py");
+  writeFileSync(source,`from sagejs.native import native, Float64Buffer
+@native
+def rounding(x:float)->int:
+    return round(x)
+@native
+def exact(x:int)->int:
+    return round(x)
+@native
+def to_float(x:int)->float:
+    return float(x)
+@native
+def buffer_value(x:Float64Buffer)->float:
+    return x[0]
+@native
+def round_buffer(x:Float64Buffer)->int:
+    return round(buffer_value(x))
+`);
+  const values=[NaN,Infinity,-Infinity,-0,0,Number.MIN_VALUE,-Number.MIN_VALUE,Number.MAX_VALUE,-Number.MAX_VALUE];
+  for(let i=-100;i<=100;i++)for(const delta of [-Number.EPSILON*128,0,Number.EPSILON*128])values.push(i+0.5+delta);
+  for(let e=-1074;e<=1023;e++)values.push(2**e);
+  const oracle=spawnSync("python3",["-c",`import sys,json
+out=[]
+for x in json.load(sys.stdin):
+ try:out.append(['ok',str(round(float(x)))])
+ except Exception as e:out.append([type(e).__name__,''])
+print(json.dumps(out))`],{encoding:"utf8",input:JSON.stringify(values.map(String))});
+  assert.equal(oracle.status,0,oracle.stderr);const expected=JSON.parse(oracle.stdout);
+  const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  const previousValue=globalThis.ValueError,previousOverflow=globalThis.OverflowError;
+  globalThis.ValueError=class ValueError extends Error{};globalThis.OverflowError=class OverflowError extends Error{};
+  try {
+    for(let i=0;i<values.length;i++)for(const backend of ["javascript","gmp"]){
+      if(expected[i][0]==="ok"){
+        assert.equal(mod.rounding[backend](values[i]),BigInt(expected[i][1]),`${i} ${backend}`);
+        assert.equal(mod.round_buffer[backend]([values[i]]),BigInt(expected[i][1]),`${i} buffer ${backend}`);
+      }
+      else assert.throws(()=>mod.rounding[backend](values[i]),globalThis[expected[i][0]]);
+    }
+    for(const backend of ["javascript","gmp","tagged"])assert.equal(mod.exact[backend](1n<<100n),1n<<100n);
+    const integers=new Set([0n]);
+    for(const e of [0,1,52,53,54,64,100,511,1023,1024,1025]){
+      const base=1n<<BigInt(e),half=e>53?1n<<BigInt(e-54):1n;
+      for(const delta of [-1n,0n,1n,half-1n,half,half+1n,3n*half-1n,3n*half,3n*half+1n]){
+        integers.add(base+delta);integers.add(-base-delta);
+      }
+    }
+    const threshold=(1n<<1024n)-(1n<<970n);
+    for(const delta of [-1n,0n,1n]){integers.add(threshold+delta);integers.add(-threshold-delta);}
+    const inputs=[...integers];
+    const converted=spawnSync("python3",["-c",`import sys,json
+out=[]
+for x in json.load(sys.stdin):
+ try:out.append(['ok',repr(float(int(x)))])
+ except OverflowError:out.append(['overflow',''])
+print(json.dumps(out))`],{encoding:"utf8",input:JSON.stringify(inputs.map(String))});
+    assert.equal(converted.status,0,converted.stderr);
+    const wanted=JSON.parse(converted.stdout);
+    for(let i=0;i<inputs.length;i++)for(const backend of ["javascript","gmp"]){
+      if(wanted[i][0]==="overflow")assert.throws(()=>mod.to_float[backend](inputs[i]),globalThis.OverflowError);
+      else assert.equal(mod.to_float[backend](inputs[i]),Number(wanted[i][1]),`${inputs[i]} ${backend}`);
+    }
+  }finally{if(previousValue===undefined)delete globalThis.ValueError;else globalThis.ValueError=previousValue;if(previousOverflow===undefined)delete globalThis.OverflowError;else globalThis.OverflowError=previousOverflow;}
+});
 test("range control transfers advance exactly once and preserve nested targets", async () => {
   const dir=mkdtempSync(join(tmpdir(),"sagejs-range-transfer-")),source=join(dir,"loops.py");
   writeFileSync(source,`from sagejs.native import native, uint64
