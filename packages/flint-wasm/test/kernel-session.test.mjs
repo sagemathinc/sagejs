@@ -7,9 +7,12 @@ import {
 } from "../kernel.mjs";
 import { serializeBrowserError } from "../diagnostics.mjs";
 
-test("session retains worker traceback records on rejected evaluation", async () => {
+for (const nativeStack of [true, false]) {
+test(`session retains worker traceback records (native stack: ${nativeStack})`, async () => {
   const originalWorker = globalThis.Worker;
-  const serialized = serializeBrowserError(Object.assign(new Error("bad"), {
+  const originalError = new Error("bad");
+  if (!nativeStack) delete originalError.stack;
+  const serialized = serializeBrowserError(Object.assign(originalError, {
     __traceback__: { __sagejs_traceback_record__: true, tb_lineno: 3, tb_next: null,
       code: { filename: "cell.py", name: "f", first_lineno: 3, source: "raise ValueError('bad')" } },
   }), { phase: "execute", pythonExecution: true });
@@ -32,6 +35,7 @@ test("session retains worker traceback records on rejected evaluation", async ()
       assert.deepEqual(error.pythonDiagnostic, serialized.pythonDiagnostic);
       assert.deepEqual(error.traceback, serialized.traceback);
       assert.match(error.traceback.join("\n"), /line 3, in f/);
+      assert.equal(error.stack, nativeStack ? serialized.stack : serialized.traceback.join("\n"));
       return true;
     });
   } finally {
@@ -39,6 +43,7 @@ test("session retains worker traceback records on rejected evaluation", async ()
     globalThis.Worker = originalWorker;
   }
 });
+}
 
 test("interrupt acknowledges termination before replacement readiness", async () => {
   const originalWorker = globalThis.Worker;

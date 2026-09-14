@@ -1059,3 +1059,47 @@ and capture policies. The frozen full build passes in 7m34s, 54 focused checks
 pass, all 404 strict modules pass, and the actual Jupyter wire-protocol suite
 passes under both native and guarded capture. Browser and four-platform
 consumer qualification remain separate gates; the default is still native.
+
+### Node consumer qualification and browser receipt gate
+
+The frozen Node consumer bundle passes all 11 checks on Linux x64, Linux
+ARM64, macOS ARM64 and native Windows x64 (including the CPython oracle).
+The bundle SHA-256 is
+`343ea41c635b67e86430e54928c28019f90b1e0e867b1f31d41ce409aaf1d00c`;
+its unchanged architecture-policy supplement is
+`740e3817793bb281dc55ed765b9e3d692546f778e04b3c54da9e035e83f32712`.
+The first transport omitted that required policy and failed; only the
+subsequent complete-bundle runs count. Installed host dependencies were reused.
+This is targeted Node consumer qualification, not full release qualification.
+Local evidence is under `/home/user/exception-node-qualified.TmgQrY` and
+`/home/user/exception-consumer-*-v2.log`.
+
+A fresh controlled run on idle bench-1 uses 100,000 operations, three warmups,
+seven samples, opposite process orders and the existing exclusive campaign
+lock. Ranges below are the medians of the two process orders, in milliseconds:
+
+| Workload | Native | Guarded | CPython |
+| --- | ---: | ---: | ---: |
+| Argument-binding failure | 1657–1737 | 1006–1009 | 45.3–45.5 |
+| Exception construction | 1009–1012 | 445–481 | 9.97–10.00 |
+| Construct, raise and catch | 1092–1100 | 612–613 | 12.52–12.56 |
+| Successful call | 8.975–8.977 | 9.72–10.39 | 3.89–4.28 |
+
+Guarded capture still costs roughly 22x CPython for binding failures and
+45–49x for construction/raise workloads. Successful calls cost about 8–16%
+more than the native path in this mixed campaign. No cliff is closed.
+The report, exact input hashes and prior-guarded comparison are retained at
+`/home/user/exception-final-performance.Z5IKrd/report.json`; the VM copy is
+`/home/user/exception-final-performance.Aelbt2`. These are standalone
+exception probes, not package throughput or startup acceptance evidence.
+
+Browser shared-API changes are isolated in PR285, based on the committed
+session prerequisite from PR272. Its 23 boundary/evaluator/diagnostic tests
+pass. The fresh Wasm resource build fails closed because NLopt's source-bound
+public-semantics bundle includes `packages/flint-wasm/evaluator.mjs`.
+It reports `public semantics bundle file changed`; no receipt was waived,
+rewritten as qualified, or bypassed. The numerical qualification owner was
+asked in Discussion104 for the appropriate source-current update. A Chromium
+qualification driver exists, but the retained old bundle rejects the new
+compiler option and is not qualifying evidence. Actual browser qualification,
+default rollout and the remaining campaign acceptance gates are unfinished.
