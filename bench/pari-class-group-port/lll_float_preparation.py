@@ -4,12 +4,33 @@ Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 Corresponds to `lll.c:itodbl_exp` and `set_line`.
 """
 
-from math import ldexp
+from math import frexp, ldexp
 
 from sagejs.native import Float64Buffer, IntegerBuffer, checked_uint64, native
 
 from .float_conversion import pari_real_to_float
 from .real_conversion import pari_integer_to_real
+
+
+@native
+def pari_lll_scale(value: float, shift: int) -> float:
+    """Scale as C `ldexp` in `Babai_fast`, including permitted infinity.
+
+    Python's general `math.ldexp` correctly raises on finite overflow. Detect
+    precisely that case before calling it; do not weaken the language intrinsic.
+    PARI does not inspect errno or floating exception flags at these calls.
+    All finite nonoverflowing results still use the correctly rounded primitive.
+    """
+    largest = 1.7976931348623157e308
+    if value == 0.0 or value != value or value > largest or value < -largest:
+        return value
+    mantissa, exponent = frexp(value)
+    if exponent + shift > 1024:
+        overflow = largest * 2.0
+        if mantissa < 0.0:
+            return -overflow
+        return overflow
+    return ldexp(value, shift)
 
 
 @native

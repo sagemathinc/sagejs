@@ -1,5 +1,25 @@
 # Faithful PARI class-group language experiment
 
+## Babai's C scaling policy
+
+`pari_lll_scale` translates the overflow policy at `Babai_fast`'s C `ldexp`
+calls, where the pinned source explicitly allows infinity. It checks the exact
+combined exponent after `frexp`, returns signed infinity on finite overflow,
+and otherwise delegates to Python's correctly rounded `ldexp`. Signed zeros
+and nonfinite values pass through. This leaves the language intrinsic's
+`OverflowError` behavior unchanged. The upstream caller does not inspect errno
+or floating exception flags; these are not part of the translated interface.
+
+`node bench/pari-class-group-port/check_lll_scaling.cjs` compares **3,814** cases
+against the host C `ldexp` used by PARI, CPython execution of the translated
+helper, generated JS and GMP-native execution. Cases include both C-int
+exponent extremes, every positive power of two in binary64's range, randomized
+bit patterns, overflow, odd subnormal ties, NaN, infinities and signed zero.
+Finite results agree bit-for-bit; NaN payload identity is not required. The C
+control is a libc-policy oracle, not a run of `Babai_fast`. This removes one
+semantic dependency of that routine; the routine itself remains untranslated.
+Ordinary Sage.js `math.py` still needs the separate correction documented below.
+
 ## Connected binary64 column preparation
 
 Compiler prerequisite `493a74af6` adds native `math.frexp`/`math.ldexp`, exact
@@ -22,8 +42,8 @@ CPython, generated JS and GMP-native agree on the maximum exponent, every
 entry's pre-scaling exponent and every output double bit. This exercises the
 compiler primitive in actual LLL preparation, but is not a completed
 `fplll_fast` pass or a speed measurement. Babai's infinity-tolerant C scaling
-policy still needs an explicit source translation; the general Python
-`ldexp` primitive correctly continues to raise on finite overflow.
+policy is now represented by the helper above; the general Python `ldexp`
+primitive correctly continues to raise on finite overflow.
 
 The integrated focused check passes in 4.816 seconds (test/oracle wall time,
 not a benchmark). The changed-file gate now passes the production graph check
