@@ -26,6 +26,10 @@ function createNativeImportResolver({
 }) {
   const initialPhysicalPath = realpathSync(initialSourcePath);
   const resolving = new Set([initialPhysicalPath]);
+  // A diamond-shaped call graph must not parse/lower its shared tail once
+  // per path. Cache only within this compilation, by physical source and
+  // selected entry; dependencies are revalidated before reusing an IR.
+  const lowered = new Map();
   const physicalSources = new Map([
     [displayPath(initialPhysicalPath), initialPhysicalPath],
   ]);
@@ -83,6 +87,21 @@ function createNativeImportResolver({
         `native kernel: cyclic source-transparent import through ${physicalPath}`,
       );
     }
+    const sourceHash = sha256(importedSource);
+    const cacheKey = JSON.stringify([physicalPath, sourceHash, request.importedName]);
+    const cached = lowered.get(cacheKey);
+    if (cached && (cached.nativeSourceDependencies || []).every((dependency) => {
+      const filename = physicalSources.get(dependency.path);
+      return filename !== undefined && existsSync(filename) &&
+        sha256(readFileSync(filename, "utf8")) === dependency.sha256;
+    })) {
+      return {
+        ...request,
+        sourcePath: displayPath(physicalPath),
+        sourceHash,
+        ir: structuredClone(cached),
+      };
+    }
     resolving.add(physicalPath);
     try {
       const importedIr = await lowerSource(
@@ -93,10 +112,13 @@ function createNativeImportResolver({
           resolveNativeImport,
         },
       );
+      // Callers may annotate their copy while composing the final closure.
+      // Neither the stored value nor a previous caller's IR may be mutated.
+      lowered.set(cacheKey, structuredClone(importedIr));
       return {
         ...request,
         sourcePath: displayPath(physicalPath),
-        sourceHash: sha256(importedSource),
+        sourceHash,
         ir: importedIr,
       };
     } finally {

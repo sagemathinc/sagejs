@@ -1,5 +1,29 @@
 # Mixed exact/binary64 prerequisite checkpoint
 
+## Reuse shared source-transparent import lowering
+
+Connecting the PARI selector, FLATTER, fast and DPE passes exposed repeated
+lowering of diamond-shaped dependency tails. The unmodified resolver reached
+a diagnostic cap at 251 requests with only 23 distinct source/function pairs
+(48.27s), and the uncapped connected compile aborted in Tree-sitter. This is
+compiler work, not execution of the mathematical algorithm.
+
+The resolver now memoizes a lowered selected entry by physical path, source
+hash and function name within one compilation. Before reuse it verifies every
+recorded transitive source hash. Cycle checks precede cache lookup; different
+physical sources remain different identities. Cached IR and returned IR are
+separate copies, so caller annotation cannot change another caller's input.
+No on-disk stale cache or relaxed source-provenance rule is introduced.
+
+The same connected source now completes lowering in 47 requests for 47 unique
+pairs, producing 55 functions (6.69s diagnostic wall time). A five-layer
+two-entry diamond regression requires exactly ten dependency lowerings.
+Additional tests cover caller isolation, dependency/root content changes,
+portable paths, cycles, conflicts, cache identity and CPython/JS/GMP/tagged
+results; all five relative-import tests pass. Existing IR remains version 43.
+These measurements are not a qualified runtime-speed result or a claim that
+all frontend resource-lifetime issues have been eliminated.
+
 ## Copying binary64 signs (IR 43)
 
 Native `math.copysign` now lowers by imported binding identity, with two Float64
