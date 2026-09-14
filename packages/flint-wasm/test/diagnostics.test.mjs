@@ -31,7 +31,8 @@ test("browser errors retain foreign/native stacks without fabricated Python fram
   const result = serializeBrowserError(error, execution);
   assert.equal(result.message, "foreign");
   assert.deepEqual(result.pythonDiagnostic.frames, []);
-  assert.deepEqual(result.traceback, error.stack.split("\n"));
+  assert.equal(result.traceback.join("\n"),
+    "Error: foreign\nNative capture (may overlap Python frames):\n" + error.stack);
 });
 
 test("browser normalization handles frozen errors and rejects forged envelopes", () => {
@@ -42,7 +43,8 @@ test("browser normalization handles frozen errors and rejects forged envelopes",
   assert.equal(result.message, "real");
   assert.equal(result.pythonDiagnostic.message, "real");
   assert.equal(result.stack, error.stack);
-  assert.deepEqual(result.traceback, error.stack.split("\n"));
+  assert.equal(result.traceback.join("\n"),
+    "Error: real\nNative capture (may overlap Python frames):\n" + error.stack);
   const hostile = { get stack() { throw new Error("getter"); },
     get name() { throw new Error("getter"); }, message: "safe" };
   assert.equal(structuredClone(serializeBrowserError(hostile)).message, "safe");
@@ -54,6 +56,14 @@ test("native-only Python traceback carriers are labelled and retained", () => {
   const result = serializeBrowserError(error, execution);
   assert.match(result.traceback.join("\n"), /Native capture/);
   assert.ok(result.pythonDiagnostic.nativeTraceback.includes("native"));
+});
+
+test("Python type remapping does not disappear behind a native stack", () => {
+  const error = new ReferenceError("missing");
+  const result = serializeBrowserError(error, execution);
+  assert.equal(result.traceback[0], "NameError: missing");
+  assert.equal(result.pythonDiagnostic.exceptionType, "NameError");
+  assert.ok(result.traceback.join("\n").endsWith(error.stack));
 });
 
 for (const file of ["app.mjs", "embed/v1/sagejs-cell.mjs"]) {

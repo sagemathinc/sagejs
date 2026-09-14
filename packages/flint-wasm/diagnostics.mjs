@@ -21,8 +21,10 @@ export function serializeBrowserError(error, options = { phase: "host" }) {
   // When records exist, the shared renderer labels any preserved native carrier.
   const structured = diagnostic.frames.length || diagnostic.framesTruncated ||
     diagnostic.cause || diagnostic.context || diagnostic.nativeTraceback;
-  result.traceback = (structured || !result.stack
-    ? renderPythonDiagnostic(diagnostic).trimEnd()
-    : result.stack).split("\n");
+  let text = renderPythonDiagnostic(diagnostic).trimEnd();
+  if (!structured && result.stack) {
+    text += "\nNative capture (may overlap Python frames):\n" + result.stack;
+  }
+  result.traceback = text.split("\n");
   return result;
 }
