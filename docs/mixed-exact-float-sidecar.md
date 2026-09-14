@@ -169,3 +169,22 @@ chain against CPython/JS/GMP/tagged, cache invalidation after an imported edit,
 portable dependency provenance, relative-math identity, cycles, missing modules
 and crossing the package root. This removes the need to concatenate the PARI
 experiment's Python modules merely to compile a connected segment.
+
+## Imported binary64 logarithm
+
+PARI's bound check uses the C binary64 logarithm. Explicit `from math import
+log` (including aliases) now lowers to `float64.log` and libc `log` in the
+isolated core, with `Math.log` in the generated fallback. Both pure binary64
+and mixed exact/binary64 functions accept one Float64 argument; implicit
+large-integer conversion and the optional logarithm base remain unsupported.
+Import identity and shadowing are checked, including aliases colliding with
+builtin names. This does not introduce function-name-selected mathematics.
+
+The focused `float64-log.cjs` test compares 92 positive binary64 inputs with
+CPython, including subnormal and extreme values, and checks zero/negative
+domain rejection, infinity, NaN and rejected bindings. Its numerical tolerance
+does not assert bitwise agreement between platform logarithm libraries.
+Mixed tagged execution remains unavailable; this adds no performance claim
+or Windows/Wasm qualification. The focused logarithm, GCD and relative-import
+tests pass. The architecture gate still stops at the previously recorded stale
+optimizer-opportunity manifest; its preceding audits pass.

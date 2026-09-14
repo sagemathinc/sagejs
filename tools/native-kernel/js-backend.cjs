@@ -455,6 +455,11 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "float64.negate") {
     return `${indent}${operation.target} = -${operation.source};`;
   }
+  if (operation.kind === "float64.log") {
+    return `${indent}if (${operation.source} <= 0) ` +
+      `nativeRaise("ValueError", "math domain error");\n` +
+      `${indent}${operation.target} = Math.log(${operation.source});`;
+  }
   if (operation.kind === "float64.buffer.length") {
     return `${indent}${operation.target} = BigInt(${operation.buffer}.length);`;
   }
@@ -1435,10 +1440,11 @@ function generateJavaScript(ir, options = {}) {
     if (operation.kind === "float64.abs") {
       return `${indent}${operation.target} = Math.abs(${operation.source});`;
     }
-    if (operation.kind === "float64.sqrt") {
-      return `${indent}if (${operation.source} < 0) ` +
+    if (operation.kind === "float64.sqrt" || operation.kind === "float64.log") {
+      const logarithm = operation.kind === "float64.log";
+      return `${indent}if (${operation.source} ${logarithm ? "<=" : "<"} 0) ` +
         `throw new RangeError("math domain error");\n` +
-        `${indent}${operation.target} = Math.sqrt(${operation.source});`;
+        `${indent}${operation.target} = Math.${logarithm ? "log" : "sqrt"}(${operation.source});`;
     }
     if (operation.kind === "float64.negate") {
       return `${indent}${operation.target} = -${operation.source};`;

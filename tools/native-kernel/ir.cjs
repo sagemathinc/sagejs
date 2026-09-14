@@ -722,7 +722,7 @@ function supportedModulePreamble(statement) {
     const moduleName = item.module?.name;
     const names = array(item.argnames).map((arg) => arg.name);
     return (
-      moduleName === "math" && names.every((name) => name === "sqrt" || name === "gcd")
+      !item.level && moduleName === "math" && names.every((name) => ["sqrt", "gcd", "log"].includes(name))
     ) || (
       moduleName === "typing" && names.every((name) => name === "Tuple")
     ) || (
@@ -1006,12 +1006,12 @@ async function lowerSource(source, filename, options = {}) {
       }
       if (item.level || item.module?.name !== "math") continue;
       for (const imported of array(item.argnames)) {
-        if (imported.name === "gcd") mathFunctions.set(imported.alias?.name || imported.name, "gcd");
+        if (["gcd", "log"].includes(imported.name)) mathFunctions.set(imported.alias?.name || imported.name, imported.name);
       }
     }
   }
   for (const name of mathFunctions.keys()) {
-    expect(importCounts.get(name) === 1, `${filename}: ambiguous math.gcd import binding ${name}`);
+    expect(importCounts.get(name) === 1, `${filename}: ambiguous math.${mathFunctions.get(name)} import binding ${name}`);
   }
   const records = nativeRecordSchemas(topLevel, filename);
   const foreignImports = ffiImports(topLevel, filename);
@@ -1149,6 +1149,7 @@ async function lowerSource(source, filename, options = {}) {
             signature,
             filename,
             decoratedMode,
+            { mathFunctions, signatures, integerConstants, foreignFunctions },
           )
         : isPrimeFieldSignature(signature)
         ? isPrimeFieldIntrinsicFunction(fn)

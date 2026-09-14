@@ -1380,6 +1380,20 @@ function lowerCall(node, context, operations) {
   const name = node.expression.name;
   const args = array(node.args);
 
+  if (context.mathFunctions.get(name) === "log") {
+    expect(context, node, !context.variables.has(name) && !context.lexicalLocals.has(name) &&
+      !context.signatures.has(name) && !context.integerConstants.has(name) && !context.foreignFunctions.has(name),
+      "math.log binding is shadowed");
+    expect(context, node, args.length === 1 && array(node.args?.kwarg_items).length === 0 &&
+      !node.args?.starargs && array(node.args?.kwargs).length === 0,
+      "native math.log requires one positional Float64 argument");
+    const source = lowerExpression(args[0], context, operations);
+    expect(context, node, source.type === "Float64", "native math.log requires Float64");
+    const target = temporary(context, node, "Float64");
+    operations.push({kind: "float64.log", target, source: source.name});
+    return {name: target, type: "Float64"};
+  }
+
   if (context.mathFunctions.get(name) === "gcd") {
     expect(context,node,!context.variables.has(name) && !context.lexicalLocals.has(name) &&
       !context.signatures.has(name) && !context.integerConstants.has(name) && !context.foreignFunctions.has(name),

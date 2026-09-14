@@ -2805,15 +2805,16 @@ function emitFloat64Operation(operation, indent) {
   if (operation.kind === "float64.abs") {
     return `${indent}${target} = fabs(${cName(operation.source)});`;
   }
-  if (operation.kind === "float64.sqrt") {
+  if (operation.kind === "float64.sqrt" || operation.kind === "float64.log") {
     const source = cName(operation.source);
+    const logarithm = operation.kind === "float64.log";
     return [
-      `${indent}if (${source} < 0.0)`,
+      `${indent}if (${source} ${logarithm ? "<=" : "<"} 0.0)`,
       `${indent}{`,
       statusFailure("range", "math domain error", `${indent}    `),
       `${indent}    goto fail;`,
       `${indent}}`,
-      `${indent}${target} = sqrt(${source});`,
+      `${indent}${target} = ${logarithm ? "log" : "sqrt"}(${source});`,
     ].join("\n");
   }
   if (operation.kind === "float64.negate") {
