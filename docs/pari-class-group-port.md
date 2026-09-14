@@ -1,5 +1,32 @@
 # Faithful PARI class-group language experiment
 
+## Multiword transformation coefficients (2026-09-14)
+
+`integer_real_product.py` and `integer_real_sum.py` extend the required
+integer/real arithmetic beyond one-word coefficients. Products retain
+`mulir`'s exact-product versus rounded-itor/short-product dispatch; sums retain
+`addir_sign`'s selected conversion precision before `addrr_sign`. Replacing
+either by an exact rational operation rounded once at the end is not the
+same computation. The product checker pins the 64-bit GMP crossover at
+3520 bits, while the port explicitly stops at 2048-bit real operands.
+Required sum conversions above 2048 bits likewise reject.
+
+There are 1,440 product agreements (integers through 4096 bits) and 864 sum
+agreements across PARI, CPython, JS and GMP. Source hashes are respectively
+`5d7862d1a5464a07e7377fa6f00a9a12b7988d766c63409198fbcc13cbad3700`
+and `e4206141c6f03729849cf51502aa86056894267fcea65b44293cc780c1e7105b`.
+Trace hashes: product
+`945b4209c612e5387c1d0fbb29fa32262e8f9cb3540ced200e1c3029b7d42070`,
+sum `f93e0d7f8357b54c0bdbc8161a03a8c55c90a8f87852e2821cd7aa9243fc89f6`.
+Isolated cores are 1,008,106 and 998,932 bytes. Reproduce via
+`check_integer_real_product.cjs PARI_SOURCE PARI_ARCHIVE`, adding `--sum`
+for the sum path. These are prerequisites for propagating exact matrix
+transformations into logarithm columns, not a completed matrix operation.
+
+The architecture rerun passes the FFI/package/native/wasm checks and again
+stops at the existing stale optimizer-opportunity manifest. No manifest or
+safety budget was relaxed to make this experimental branch pass.
+
 ## Sparse cleanup through initial rank profile (2026-09-14)
 
 `hnfspec_rank_prefix.py` fuses the existing sparse cleanup with the initial
