@@ -2194,6 +2194,37 @@ wall seconds, using 13.351 user plus 1.872 system CPU seconds and peak child RSS
 conservatively, including any compilation in the run. These are validation
 resource figures, not arithmetic or class-group performance measurements.
 
+## Cross-block size reduction
+
+`lll_sizered.py` translates `lll.c:sizered` for the 1x1 and 2x2 left blocks
+needed by the selected cubic/quartic experiment. It retains the upstream
+sequence: upper-triangular inverse, multiply by `R2`, multiply by `T3`, multiply
+by the exact inverse of `T1`, round, then multiply by `-T1`. It does not replace
+that sequence by a numerically different direct solve. Real arithmetic reuses
+the translated reciprocal, division and product leaves. Generic multiplication
+preserves integer-zero products and the left-entry integer-zero dot-product
+skip, which differ from the lower-level `mpmul` convention used inside QR.
+
+`check_lll_sizered.cjs` compares 32 actual block inputs from the four tuning
+fields and eight primes, plus 32 variants with changed unimodular transforms.
+All 64 match pinned PARI, CPython, generated JS and GMP. It checks every stored
+triple in all three real matrix products, as well as the final exact integer
+size-reduction matrix. Negative-determinant and shear transforms are included;
+an invalid non-unimodular transform fails without changing output.
+
+Independent caller-owned scratch retains intermediates without interpreter
+callbacks. Blocks larger than two are explicitly unsupported here, and existing
+real-arithmetic capability limits still apply. This is not a general LLL API.
+Full FLATTER block assembly, repeated compression and the later outer LLL
+passes remain unconnected; whole-engine and performance qualification remain
+open.
+
+The final focused check has a passing parallel receipt. Formatting, strict
+Python (403 modules), documentation and contract checks pass. Architecture
+still fails at the stale optimizer manifest. The changed-file unit gate passes
+four files, then its hyperelliptic public-scalar check hits the missing FLINT
+adapter; 234 files are not started. No broad-gate pass is claimed.
+
 ## Connected real-block rescaling and binary reduction
 
 `lll_rescale.py` translates the integer/real branch of
