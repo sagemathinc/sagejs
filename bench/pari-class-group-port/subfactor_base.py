@@ -155,3 +155,82 @@ def pari_prepared_subfactor_base(
     for j in range(yes + no, size):
         permutation[j] = order[j]
     return yes, yes * 16, (yes * 16) // 10
+
+
+@native
+def pari_prepared_subfactor_change(
+    bad: IntegerBuffer,
+    permutation: IntegerBuffer,
+    preferred: IntegerBuffer,
+    preferred_count: int,
+    current: IntegerBuffer,
+    state: IntegerBuffer,
+    chosen: IntegerBuffer,
+    present: IntegerBuffer,
+) -> tuple[int, int]:
+    """Translate subFB_change; return success and whether assignment occurred.
+
+    state holds current size, sfb_chg, MAXDEPSIZESFB and MAXDEPSFB.
+    preferred_count=-1 represents NULL L_jid, zero a non-NULL empty vector.
+    Failure leaves current/state unchanged; scratch writes remain observable.
+    Caller must retain a snapshot before an assignment if history is needed.
+    """
+    size = len(bad)
+    if len(state) < 4 or len(permutation) != size or len(present) < size:
+        raise ValueError("invalid subfactor change workspace")
+    old_size = state[0]
+    minimum = old_size
+    if state[1] == 2:
+        minimum += 1
+    if old_size < 1 or len(current) < minimum or len(chosen) < minimum:
+        raise ValueError("invalid subfactor change capacity")
+    if (
+        preferred_count < -1
+        or preferred_count > len(preferred)
+        or preferred_count > size
+    ):
+        raise ValueError("invalid preferred ideal count")
+    for cleared in range(size):
+        present[cleared] = 0
+    count = 0
+    i = 0
+    while i < preferred_count:
+        ideal = preferred[i]
+        if ideal < 1 or ideal > size:
+            raise ValueError("preferred ideal out of range")
+        if bad[ideal - 1] == 0:
+            chosen[count] = ideal
+            count += 1
+            present[ideal - 1] = 1
+            if count >= minimum:
+                break
+        i += 1
+    if count < minimum:
+        # Preserve upstream's continuation at the same index, not at zero.
+        while i < size:
+            ideal = permutation[i]
+            if ideal < 1 or ideal > size:
+                raise ValueError("permuted ideal out of range")
+            if present[ideal - 1] == 0 and bad[ideal - 1] == 0:
+                chosen[count] = ideal
+                count += 1
+                if count >= minimum:
+                    break
+            i += 1
+        if i == size:
+            return 0, 0
+    changed = 0
+    if old_size != count:
+        changed = 1
+    else:
+        for index in range(count):
+            if current[index] != chosen[index]:
+                changed = 1
+    if changed != 0:
+        for index in range(count):
+            current[index] = chosen[index]
+        state[0] = count
+        state[2] = count * 16
+        state[3] = (count * 16) // 10
+    state[1] = 0
+    return 1, changed

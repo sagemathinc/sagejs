@@ -1,5 +1,29 @@
 # Faithful PARI class-group language experiment
 
+## Subfactor-base change transition
+
+`pari_prepared_subfactor_change` now implements `subFB_change`'s preferred
+ideal pass, continuation through the existing permutation, exclusion flags,
+unchanged-versus-assigned distinction and dependency limits. Importantly, the
+fallback pass continues at the preferred pass's index rather than restarting
+at the beginning. Failure preserves the current subfactor base and change
+flag; success clears that flag. A null preferred list and a present empty
+list have distinct explicit input representations.
+
+The 48-case oracle compares status, assignment occurrence, current ideals,
+change flag and both limits against actual PARI/CPython/JS/GMP. It includes
+four failed increases after exhausting eligible ideals, unchanged successes,
+and changed selections over four tuning fields and six preferred-list states.
+Historical list allocation is not represented: callers must retain previous
+snapshots if needed. This remains a prepared transition, not a completed
+resident relation-collection context or a performance result.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_subfactor_change.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Subfactor-base selection toward relation collection
 
 `subfactor_base.py` translates `subFBgen`'s norm ordering, exclusion/selection
