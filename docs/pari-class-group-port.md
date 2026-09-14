@@ -1,5 +1,53 @@
 # Faithful PARI class-group language experiment
 
+## Arctangent and complex-phase continuation (2026-09-14)
+
+The compiler prerequisite `b4849f469` adds imported binary64 `math.atan`
+without callbacks, preserving binding/shadow checks and existing Float64
+semantics. Focused controls pass (14 tests, one unavailable-WASI skip);
+the architecture gate still stops at the stale optimizer manifest. This is
+not cross-platform qualification or a claim of a timing improvement.
+
+`real_arctangent.py` now follows `trans2.c:mpatan` below its AGM crossover:
+inverse branch, binary64 term selection, repeated halving, increasing series
+precision, pi correction, and final `affrr_fixlg` behavior. The first CPython
+comparison exposed a destination-precision mistake: upstream shrinks the
+result header when the computed source is shorter; it does not pad the result
+back to the requested precision. Correcting that translation yields **2,112
+exact PARI/CPython/JavaScript/GMP agreements**, including both signs, 64–384-bit
+inputs and exponents from -1000 to 512. Zero preserves its error exponent;
+five unsupported input shapes reject before workspace mutation. The trace is
+`d91cf0e1f09144a3d81ebac6f86cf5387861bd586d04f6e2ae0874ddfa0686a9`;
+generated isolated source is 3,824,444 bytes before subsequent source changes.
+
+`complex_argument.py` retains `mparg`'s actual axis, exponent-comparison and
+quadrant branches rather than substituting a generic `atan2`. Its oracle
+extracts that upstream routine verbatim; the static `mpatan` dependency is
+reached through public `gatan(t_REAL)`. All **1,320** axis/quadrant and
+unequal-precision cases agree exactly across the same four execution paths.
+Trace: `cc18291fae1cd1aac06fe45979b4746320ea90553e18fb97c8403e47f3f64449`;
+isolated source: 3,886,419 bytes. Both checks pin `trans2.c` SHA-256
+`ba216185308293f3002b294558892d52e5b5d5f1d4ddbf5038684d32ab27fcf2`.
+
+Reproduce with `node bench/pari-class-group-port/check_real_arctangent.cjs
+PARI_SOURCE` and `node bench/pari-class-group-port/check_complex_argument.cjs
+PARI_SOURCE`, under the recorded native-prefix environment. `--cpython-only`
+is explicitly partial qualification. These leaves supply complex phase for
+relation logarithms; neither constitutes complete embeddings, unit reduction,
+class invariants, or an end-to-end timing result. Full-engine parity remains
+unestablished.
+
+`complex_logarithm.py` composes the two-real-component `glog` branches with
+the translated `precCOMPLEX`, retaining real-versus-complex result identity,
+axis handling, argument, norm squares, and `log(norm)/2` order. It does not
+claim exact integer/rational component support yet. Its 1,320 PARI/CPython/
+JavaScript/GMP cases agree exactly, trace
+`a459045c2e4794ac5ce14daaee2dc30b6ce45d6650b2f813e93f79f316e8976a`;
+isolated source before formatting is 4,722,773 bytes. Reproduce with
+`check_complex_logarithm.cjs PARI_SOURCE`. An initial native compile rejected
+integer truthiness inside an `or` condition; explicit comparisons retain
+the same Python meaning within the currently supported typed subset.
+
 ## Newly approved 24-hour continuation
 
 The user approved up to 24 additional hours in response to the CPU-extension
