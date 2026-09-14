@@ -1,5 +1,56 @@
 # Faithful PARI class-group language experiment
 
+## Prepared factorgen through prime-ideal admission
+
+`ideal_admission.py` connects the numerical front through rational norm
+factorization and the `divide_p_elt/id/quo` valuation logic. Supported prepared
+`factorgen` calls now run from embedding matrix and element coordinates to
+prime-ideal factor-base indices/exponents in one isolated native call. The
+caller still prepares the field and factor base. There is no relation search,
+relation-lattice update, unit recovery or class-group termination loop yet.
+
+Status zero is upstream rejection, one upstream admission success, and two
+an explicitly unported factorization path. **Status two is not rejection** and
+must not let a future collector skip a candidate as though PARI rejected it.
+Smooth multiword norms remain unfinished. The flat prime-group offset added to
+the valuation helper permits borrowing the complete prepared table without
+copying a separate group before every rational-prime dispatch.
+
+`check_compiled_can_factor.cjs` includes the pinned `buch2.c` in its test
+oracle and calls the actual static upstream functions, not a recreated control
+loop. Four existing fields, all rational primes through 101, three truncation
+patterns, three element/ideal/quotient modes, and six scaling exponents give:
+
+- 216 `can_factor` controls: 78 successes, 117 rejections, 21 explicit
+  unresolved factorizations;
+- 144 `factorgen` controls (element and quotient modes): 26 successes,
+  100 rejections, 18 explicit unresolved factorizations;
+- eight rejection controls in each set preserve nonempty partial factor lists.
+
+Six `factorgen` rejections occur at the numerical gate on valid large-coordinate
+inputs and retain the incoming factor count/list. These are distinguished from
+the eight partial-write rejections after entering `can_factor`. Scaling exponents
+are 0, 1, 2, 3, 20 and 60; the original one-prime and numerical-front tests
+remain unchanged and pass after this connection.
+
+All supported outcomes agree with PARI, CPython, JS, GMP and tagged execution,
+including counts, one-based indices, exponents and the numerical norm/error
+pair. The unresolved cases are reported separately rather than compared as
+successful completed outputs. Full and truncated prime-ideal tables exercise
+the same admission routine; these **control factor bases are not PARI's
+selected production factor bases**. This is correctness coverage across the
+two rank-two degrees, not a whole-field or expensive-workload timing result.
+The earlier 574 one-prime controls remain passing after the offset refactor.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_can_factor.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_can_factor.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 --factorgen
+```
+
 ## Connected admission-front checkpoint
 
 Compiler prerequisite `039a18502` supports explicit relative imports in regular

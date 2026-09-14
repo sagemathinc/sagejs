@@ -102,6 +102,64 @@ def pari_prepared_divide_prime(
     mode: int,
     count: int,
 ) -> tuple[int, int]:
+    """One prepared prime group, stored from offset zero."""
+    return pari_prepared_divide_prime_at(
+        coordinates,
+        ideal,
+        group_tau,
+        group_e,
+        group_f,
+        group_inert,
+        tau,
+        x,
+        y,
+        spare,
+        stack,
+        primitive,
+        columns,
+        values,
+        temporary,
+        indices,
+        exponents,
+        degree,
+        prime,
+        prime_count,
+        index_base,
+        norm_valuation,
+        mode,
+        count,
+        0,
+    )
+
+
+@native
+def pari_prepared_divide_prime_at(
+    coordinates: IntegerBuffer,
+    ideal: IntegerBuffer,
+    group_tau: IntegerBuffer,
+    group_e: IntegerBuffer,
+    group_f: IntegerBuffer,
+    group_inert: IntegerBuffer,
+    tau: IntegerBuffer,
+    x: IntegerBuffer,
+    y: IntegerBuffer,
+    spare: IntegerBuffer,
+    stack: IntegerBuffer,
+    primitive: IntegerBuffer,
+    columns: IntegerBuffer,
+    values: IntegerBuffer,
+    temporary: IntegerBuffer,
+    indices: IntegerBuffer,
+    exponents: IntegerBuffer,
+    degree: int,
+    prime: int,
+    prime_count: int,
+    index_base: int,
+    norm_valuation: int,
+    mode: int,
+    count: int,
+    group_start: int,
+) -> tuple[int, int]:
     """Translate buch2.c divide_p_elt/id/quo from one prepared LP group.
 
     mode=0 is element, 1 integral-HNF ideal, 2 element/ideal quotient. The
@@ -110,12 +168,13 @@ def pari_prepared_divide_prime(
     failure. The quotient branch skips a zero element valuation *before*
     computing idealval, exactly as upstream. Inputs obey upstream integrality.
     """
-    if mode < 0 or mode > 2 or count < 0 or prime_count < 0:
+    if mode < 0 or mode > 2 or count < 0 or prime_count < 0 or group_start < 0:
         raise ValueError("invalid prepared divide_p input")
     remaining = norm_valuation
     for j in range(prime_count):
+        position = group_start + j
         for i in range(degree * degree):
-            tau[i] = group_tau[j * degree * degree + i]
+            tau[i] = group_tau[position * degree * degree + i]
         value = 0
         if mode == 1:
             value = pari_prepared_hnf_valuation(
@@ -127,9 +186,9 @@ def pari_prepared_divide_prime(
                 temporary,
                 degree,
                 prime,
-                group_e[j],
-                group_f[j],
-                group_inert[j],
+                group_e[position],
+                group_f[position],
+                group_inert[position],
             )
         else:
             value = pari_prepared_ideal_valuation(
@@ -141,8 +200,8 @@ def pari_prepared_divide_prime(
                 stack,
                 degree,
                 prime,
-                group_e[j],
-                group_inert[j],
+                group_e[position],
+                group_inert[position],
             )
             if value != 0 and mode == 2:
                 value -= pari_prepared_hnf_valuation(
@@ -154,15 +213,15 @@ def pari_prepared_divide_prime(
                     temporary,
                     degree,
                     prime,
-                    group_e[j],
-                    group_f[j],
-                    group_inert[j],
+                    group_e[position],
+                    group_f[position],
+                    group_inert[position],
                 )
         if value != 0:
             indices[count] = index_base + j + 1
             exponents[count] = value
             count += 1
-            remaining -= value * group_f[j]
+            remaining -= value * group_f[position]
             if remaining == 0:
                 return 1, count
     return 0, count

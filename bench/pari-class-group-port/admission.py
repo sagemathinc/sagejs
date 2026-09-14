@@ -52,17 +52,45 @@ def pari_prepared_admission_front(
     )
     if proceed == 0:
         return 0, norm, error, previous_count, 1
+    stage, count, residual = pari_prepared_factor_norm(
+        norm,
+        factor_product,
+        primes,
+        products,
+        factorlimit,
+        prime_limit,
+        factor_primes,
+        factor_exponents,
+    )
+    return stage, norm, error, count, residual
+
+
+@native
+def pari_prepared_factor_norm(
+    norm: int,
+    factor_product: int,
+    primes: IntegerBuffer,
+    products: IntegerBuffer,
+    factorlimit: int,
+    prime_limit: int,
+    factor_primes: IntegerBuffer,
+    factor_exponents: IntegerBuffer,
+) -> tuple[int, int, int]:
+    """can_factor through absZ_factor: stage, rational factor count, residual.
+
+    Stages remain 1 nonsmooth, 2 unported factorization, 3 norm factored.
+    """
     absolute_norm = abs(norm)
     if absolute_norm == 1:
-        return 3, norm, error, 0, 1
+        return 3, 0, 1
     if absolute_norm == 0 or factor_product < 1:
         raise ValueError(
             "admission front requires nonzero norm and positive factor product"
         )
     if abs(pari_prime_to_part(norm, factor_product)) != 1:
-        return 1, norm, error, 0, absolute_norm
+        return 1, 0, absolute_norm
     if absolute_norm.bit_length() > 64:
-        return 2, norm, error, 0, absolute_norm
+        return 2, 0, absolute_norm
     count, residual = pari_word_factor_front(
         absolute_norm,
         primes,
@@ -75,5 +103,5 @@ def pari_prepared_admission_front(
         1,
     )
     if residual != 1:
-        return 2, norm, error, count, residual
-    return 3, norm, error, count, 1
+        return 2, count, residual
+    return 3, count, 1
