@@ -210,6 +210,26 @@ Next isolate a justified representation/compiler correction on identical
 operands, then recheck the collector. The profile does not establish that all
 remaining cost is avoidable or that the complete class-group engine is close.
 
+### One-word read probe: useful but not the main gap
+
+`probe_buffer_word_read.cjs` extracts the current generated packed-read helper
+and compares it with an isolated candidate using `mpz_set_ui` for one-word
+magnitudes when `ULONG_MAX == UINT64_MAX`. The compiler is **not changed**.
+Multiword values retain import; signed values retain negation; a forced-import
+build checks the fallback even on this 64-bit host. Controls include zero,
+positive/negative one- and two-word values, maximum limbs, stale unused limbs,
+and a previously large destination. All comparisons and checksums pass.
+
+Three short alternating samples of two million reads plus checksum additions
+took 26.17–26.30 ms for the existing helper and 20.46–20.51 ms for the candidate.
+These are diagnostic microbenchmarks, not a qualified collector improvement.
+The absolute saving is only a few nanoseconds per read on this workload; the
+observed read count does not make it a convincing explanation for most of
+the residual collector gap. Do not adopt a runtime change merely because it
+wins this small probe. Next examine fixed-precision bookkeeping and shift/count
+arithmetic currently represented as arbitrary-precision integers, separating
+unnecessary bookkeeping cost from necessary mantissa arithmetic.
+
 ## Normalization, insertion and exact generator ownership
 
 `relation_insertion.py` connects smooth-relation assembly/content normalization
