@@ -768,7 +768,11 @@ def _print_legacy_class(self, output):
         output.with_block(f_constructor)
 
     decorators = self.decorators or []
-    if decorators.length or self.sequential_definition:
+    if (
+        decorators.length
+        or self.sequential_definition
+        or output.options.python_traceback_records
+    ):
         output.print("var ")
         output.assign(self.name)
         write_constructor()

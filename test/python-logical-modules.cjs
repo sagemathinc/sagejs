@@ -53,6 +53,9 @@ for(const mode of ['python','sage']) test(`${mode}: module records and namespace
    const ctx=context();runInContext(compile('def exported():\n    return 42\nvalue = exported()\n',privateScope),ctx,{timeout:30000});
    assert.equal(Number(ctx.ρσ_modules.__main__.exported()),42);
    assert.equal(Number(ctx.ρσ_modules.__main__.value),42);
+   runInContext(compile('class Exported:\n    def answer(self):\n        return 42\ninstance = Exported()\n',privateScope),ctx,{timeout:30000});
+   assert.equal(typeof ctx.ρσ_modules.__main__.Exported, 'function');
+   assert.equal(Number(ctx.ρσ_modules.__main__.instance.answer()),42);
   }
   const ctx=context();
   runInContext(compile("saved = ValueError('saved')\n",false,true),ctx,{timeout:30000});
