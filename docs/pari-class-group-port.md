@@ -1,5 +1,66 @@
 # Faithful PARI class-group language experiment
 
+## Bounded checkpoint assessment: the full objective is not achieved
+
+Audit of implementation commit `6bb89f177` against the original experiment:
+
+| Requirement | Current authoritative evidence / gap |
+| --- | --- |
+| Pinned PARI 2.17.4, attribution, upstream-assumed mathematics | Archive and pristine `buch2.c` hashes reverified; translated modules carry source correspondence and PARI/GPL notices. Instrumented fixture builds remain separately identified. |
+| Prepared `nf` through computed class invariants | **Not implemented.** There is no translated `Buchall_param`/`bnfinit` driver or class-group result. Metadata in the panel is not a computed answer. |
+| Substantial connected source-transparent segment | Prime descriptors and the prepared field table through HNF construction, rank/LLL, embeddings/QR, enumeration, norm/valuation/admission and resident relation caches work in the declared `j0 = 0` subset. |
+| Internal discovery from the planned preparation boundary | Incomplete: catalogs, prime decomposition, schedule/factor-base state and analytic constants still enter at explicit prepared boundaries. New HNF/product/power segments are not all connected to the collector. |
+| Both target degrees and the full frozen panel | The connected collector has 16 scenarios over four tuning fields, not 16 distinct fields. The 24-field panel and 16/8 split are unchanged; complex/quintic transfer and reserve checks remain unperformed. Historical seconds-scale metadata is not a current expensive-workload baseline. |
+| Matched work and qualified performance | Exact traces and local branch/counter checks exist. No full-engine work trace, qualified three-pair/one-second timing panel, or demonstrated 2x target exists. The earlier short collector diagnostics show substantial cost gaps, not parity. |
+| Portable source and reviewed delivery | CPython/JS/Linux GMP focused tests pass for the reported subsets. Windows/Wasm performance is unqualified. Broader gates still fail; PRs 282 and 283 remain draft, not review-ready. |
+
+The longest connected collector was rerun during this audit and all 16
+distinct two-visit, prime-construction scenarios still pass with trace
+`517bae7177fcc6c56ee1a6c504e11669a7d189da3b73311dd9962e7eb1c13eeb`.
+The command is the constructed-prime check documented below. A Python
+`resource.getrusage(RUSAGE_CHILDREN)` wrapper records 27.066 wall seconds,
+29.897240 user plus 1.594625 system CPU seconds, and 559,992 KiB peak child RSS.
+Charge all 31.491865 child CPU seconds conservatively, including compilation;
+this is validation accounting, not a qualified timing sample.
+
+The current executable boundary explicitly rejects distinguished-ideal
+construction when `jid0 != 0` or `e0 != 0`. Completing that connection requires
+the outer element-power content/type handling and `idealpowprime` branches;
+the new binary arithmetic kernel alone does not do it. Other remaining gaps
+include general factorization tails, unresolved rank/LLL and precision paths,
+automorphism images, random relation generation, coupled relation linear
+algebra, regulator/precision/stopping logic, and final class-group output.
+These are substantial missing algorithms and integration, not merely packaging.
+
+The experiment answers **part** of the feasibility question: sizeable faithful
+segments can be expressed in ordinary Python and compiled to closed native
+computations, and concrete compiler/representation costs can be isolated.
+It does **not** establish that the current language/runtime matches PARI's
+cost. Conversion, copying and arithmetic representation are demonstrated
+diagnostic targets; tagged storage was not a general win in the measured
+probes. Backend substitutions such as Euclidean multiword Bézout must remain
+separate from any language-only conclusion. Completing the driver and doing
+work-matched measurements are both still necessary.
+
+At this audit, goal accounting reports 56,109 root active seconds, plus the
+previously disclosed approximately 12 subagent minutes: about 15.79 aggregate
+hours against the 16-hour limit. There is no automatic extension. The frozen
+panel SHA-256 remains
+`7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5`.
+The 152 tracked experiment/report files occupy 1,010,598 bytes before this
+audit text; that count excludes reproducible caches and is not a census of
+all temporary storage. Historical CPU-accounting gaps remain disclosed and
+cannot be treated as zero or as proof of cumulative budget compliance.
+
+Recommended next authorized block: eight additional aggregate active-agent
+hours, focused on finishing the distinguished-ideal small-relation path and
+obtaining one qualified work-matched connected-segment comparison before
+further micro-optimization. Keep the full class-group objective, frozen panel,
+source-fidelity rules and safety limits unchanged. This is a proposal, **not
+authorization or a claim that eight hours will finish the whole engine**.
+Any continuation needs an explicit resource decision; CPU work must be metered
+from the outset without erasing the earlier accounting gap.
+
 ## Integer-basis arithmetic and binary element powers
 
 `integral_field_arithmetic.py` translates `base3.c:_mulii, nfmuli_ZC,
