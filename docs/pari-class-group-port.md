@@ -234,6 +234,41 @@ more driver code. This does not establish that any one of them explains the
 30-times gap; retained arithmetic-backend substitutions still confound a pure
 compiler comparison. The complete class-group objective remains unimplemented.
 
+### Profile and rejected slot-clearing hypothesis
+
+The connected `--profile` run covers 100 repetitions plus three warmups for
+each of 16 cases (1,648 collector calls), with matching output states. It
+records 19,558,464 packed GMP reads, 8,002,894 writes and 32,007,971
+`mpz_to_int64` calls. Sampled self-time includes GMP set (12.06%), add (8.99%),
+limb copy (8.33%), size-in-base (6.58%) and export (4.82%). These samples are
+diagnostic, not a causal allocation of the PARI gap: profiling changes timing,
+dynamic-library calls lack complete call-graph attribution, and setup is also
+present in the process. Profile SHA-256:
+`59c389cd2ced38f846bdf1af09a7e1846794813e55a01605af0e489332ceb326`.
+
+`probe_buffer_clear.cjs MANIFEST CPU` copies the pinned generated core and
+removes only the full-slot `memset` from its GMP buffer writer. It does not
+change mathematical code or the production compiler. The existing int64
+writer already documents spare limbs as unspecified; signed sizes govern
+reads. This makes the change a representation control, but not a replacement
+for compiler-wide regression tests. The adapter checks exact collector outputs.
+
+Three alternating 64-repetition comparisons gave baseline/variant entry times:
+3.7369/3.6983, 3.6912/3.6954, and 3.7097/3.7118 seconds. All outputs match.
+**There is no consistent improvement.** Do not promote this into a claimed
+performance fix or use it to explain the 30-times gap. Raw small evidence is in
+`bench/pari-class-group-port/buffer-clear-evidence.json`.
+
+The higher-value next target is word-oriented real arithmetic and its generated
+representation: the profile includes 759,110 short products and 394,799 positive
+real sums, whose Python bodies perform word extraction and metadata arithmetic
+using exact integers. Measure an identical-operand leaf against upstream, then
+inspect its generated code before selecting a compiler or representation fix.
+
+The profile charged 70.857683 user + 2.869708 system CPU seconds; the slot-clear
+control (including compilation) charged 67.555866 + 3.160458. Continuation total
+is now **1,711.542116 CPU seconds**. The full objective and limits are unchanged.
+
 ## Bounded checkpoint assessment: the full objective is not achieved
 
 Audit of implementation commit `6bb89f177` against the original experiment:

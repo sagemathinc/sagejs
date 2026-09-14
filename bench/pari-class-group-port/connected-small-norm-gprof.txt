@@ -1,0 +1,1360 @@
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  us/call  us/call  name    
+ 12.06      0.55     0.55                             __gmpz_set
+  8.99      0.96     0.41                             __gmpz_add
+  8.33      1.34     0.38                             __gmpn_copyi_zen
+  6.58      1.64     0.30                             __gmpz_sizeinbase
+  4.82      1.86     0.22                             __gmpz_export
+  4.39      2.06     0.20                             __gmpz_cmp
+  4.39      2.26     0.20                             __gmpz_set_si
+  3.95      2.44     0.18                             __gmpz_realloc
+  3.29      2.59     0.15                             __gmpn_invert_limb
+  2.85      2.72     0.13                             __gmpz_mul
+  2.85      2.85     0.13                             __gmpz_sub
+  2.63      2.97     0.12                             __gmpn_divrem_1_x86_64
+  1.97      3.06     0.09                             __gmpz_tdiv_r
+  1.75      3.14     0.08   759110     0.11     0.14  native_pari_short_product
+  1.54      3.21     0.07 32007971     0.00     0.00  mpz_to_int64
+  1.54      3.28     0.07 19558464     0.00     0.00  sagejs_integer_buffer_get_mpz
+  1.54      3.35     0.07                             __gmpz_tdiv_qr
+  1.32      3.41     0.06                             __gmpn_mul_1_zen
+  1.32      3.47     0.06                             __gmpn_tdiv_qr
+  1.32      3.53     0.06                             __gmpz_clear
+  1.32      3.59     0.06                             __gmpz_import
+  1.10      3.64     0.05  8002894     0.01     0.01  sagejs_integer_buffer_set_mpz
+  1.10      3.69     0.05   394799     0.13     0.13  native_pari_positive_real_sum
+  1.10      3.74     0.05                             __gmp_default_allocate
+  0.88      3.78     0.04   855106     0.05     0.05  native_pari_word_integer_real_product
+  0.88      3.82     0.04   626755     0.06     0.14  native_pari_signed_real_sum
+  0.88      3.86     0.04                             __gmpz_fdiv_q
+  0.88      3.90     0.04                             __gmpz_fdiv_r
+  0.88      3.94     0.04                             __gmpz_init
+  0.66      3.97     0.03 18033652     0.00     0.00  sagejs_mpz_shift
+  0.66      4.00     0.03  1006104     0.03     0.06  native_pari_qr_store
+  0.66      4.03     0.03   259869     0.12     0.51  native_pari_prepared_embedding_row
+  0.66      4.06     0.03    69216     0.43     1.39  native_pari_next_factor_candidate
+  0.66      4.09     0.03                             __gmpz_set_ui
+  0.66      4.12     0.03                             _init
+  0.44      4.14     0.02  1442618     0.01     0.03  native_pari_qr_load
+  0.44      4.16     0.02    69216     0.29     0.68  native_pari_qr_enumeration_batch
+  0.44      4.18     0.02    68701     0.29     0.30  native_pari_real_word_division
+  0.44      4.20     0.02    12360     1.62     2.30  native_pari_flatter_product
+  0.44      4.22     0.02    12360     1.62    18.20  native_pari_prepared_qr
+  0.44      4.24     0.02     5356     3.73     3.94  native_pari_lll_binary_block
+  0.44      4.26     0.02                             __gmpn_add_n_x86_64
+  0.44      4.28     0.02                             __gmpn_rshift_zen
+  0.44      4.30     0.02                             __gmpz_mul_2exp
+  0.22      4.31     0.01   790010     0.01     0.05  native_pari_word_integer_real_sum
+  0.22      4.32     0.01   467002     0.02     0.02  sagejs_mpz_buffer_index
+  0.22      4.33     0.01   465766     0.02     0.15  native_pari_qr_multiply
+  0.22      4.34     0.01   202086     0.05     0.19  native_pari_short_square
+  0.22      4.35     0.01    72718     0.14     0.15  native_pari_fp_step
+  0.22      4.36     0.01    69216     0.14     0.35  native_pari_fp_next
+  0.22      4.37     0.01    68701     0.15     3.20  native_pari_prepared_factorgen_numerical
+  0.22      4.38     0.01    19364     0.52     0.52  native_pari_store_double
+  0.22      4.39     0.01    18746     0.53     0.53  native_pari_babai_dot
+  0.22      4.40     0.01     5768     1.73     1.95  native_pari_babai_fast
+  0.22      4.41     0.01     4532     2.21     2.42  native_pari_word_factor_front
+  0.22      4.42     0.01     4120     2.43     4.41  native_pari_prepared_add_relation
+  0.22      4.43     0.01     2060     4.85   364.99  native_pari_collect_unreduced_ideal
+  0.22      4.44     0.01     1648     6.07   473.30  native_pari_collect_unreduced_ideals
+  0.22      4.45     0.01                             __gmp_default_reallocate
+  0.22      4.46     0.01                             __gmpn_bc_set_str
+  0.22      4.47     0.01                             __gmpn_copyd_zen
+  0.22      4.48     0.01                             __gmpn_divrem_2
+  0.22      4.49     0.01                             __gmpn_gcd_1
+  0.22      4.50     0.01                             __gmpn_gcd_11_zen
+  0.22      4.51     0.01                             __gmpn_get_d
+  0.22      4.52     0.01                             __gmpn_lshift_zen
+  0.22      4.53     0.01                             __gmpn_mul_basecase_zen
+  0.22      4.54     0.01                             __gmpz_fdiv_q_2exp
+  0.22      4.55     0.01                             __gmpz_inp_str_nowhite
+  0.22      4.56     0.01                             __gmpz_set_str
+  0.00      4.56     0.00  3922240     0.00     0.00  mpz_to_uint64
+  0.00      4.56     0.00  2993489     0.00     0.00  sagejs_mpz_integer_buffer_index
+  0.00      4.56     0.00   500374     0.00     0.12  native_pari_qr_add
+  0.00      4.56     0.00   228351     0.00     0.00  set_mpz_int64
+  0.00      4.56     0.00   186636     0.00     0.00  native_pari_integer_to_real
+  0.00      4.56     0.00   119480     0.00     0.03  native_pari_lll_exponent
+  0.00      4.56     0.00   102382     0.00     0.00  native_pari_signed_remainder
+  0.00      4.56     0.00   101970     0.00     0.17  native_pari_qr_square
+  0.00      4.56     0.00    75293     0.00     0.00  native_pari_round_real
+  0.00      4.56     0.00    70040     0.00     0.00  native_pari_scalar_pval_control
+  0.00      4.56     0.00    68701     0.00     0.53  native_pari_prepared_can_factor
+  0.00      4.56     0.00    68701     0.00     0.16  native_pari_prepared_factor_norm
+  0.00      4.56     0.00    68701     0.00     3.73  native_pari_prepared_factorgen
+  0.00      4.56     0.00    68701     0.00     0.20  native_pari_prepared_real_norm
+  0.00      4.56     0.00    68701     0.00     0.00  native_pari_prime_to_part
+  0.00      4.56     0.00    68701     0.00     0.30  native_pari_real_integer_division
+  0.00      4.56     0.00    65920     0.00     0.01  native_pari_real_to_float
+  0.00      4.56     0.00    53766     0.00     0.88  native_pari_prepared_mixed_norm
+  0.00      4.56     0.00    46556     0.00     0.01  native_pari_lll_integer_to_double
+  0.00      4.56     0.00    45938     0.00     0.09  native_pari_hnf_column_step
+  0.00      4.56     0.00    42766     0.00     0.00  get
+  0.00      4.56     0.00    40788     0.00     0.01  native_pari_real_reciprocal
+  0.00      4.56     0.00    34196     0.00     0.01  native_pari_real_square_root_abs
+  0.00      4.56     0.00    34196     0.00     0.00  native_pari_sqrtrem_integer
+  0.00      4.56     0.00    26368     0.00     0.00  native_pari_word_bezout
+  0.00      4.56     0.00    23072     0.00     0.00  native_pari_hnf_bezout
+  0.00      4.56     0.00    21012     0.00     0.00  native_pari_dpe_multiply
+  0.00      4.56     0.00    20806     0.00     0.51  native_pari_prepared_ideal_valuation
+  0.00      4.56     0.00    18952     0.00     0.00  native_pari_lll_scale
+  0.00      4.56     0.00    18128     0.00     0.00  sagejs_tagged_sgn
+  0.00      4.56     0.00    17716     0.00     0.57  native_pari_prepared_hnf_valuation
+  0.00      4.56     0.00    17304     0.00     0.01  native_pari_dpe_integer
+  0.00      4.56     0.00    17304     0.00     1.46  native_pari_prepared_divide_prime_at
+  0.00      4.56     0.00    17098     0.00     0.01  native_pari_content_relation_update
+  0.00      4.56     0.00    15656     0.00     0.00  native_pari_dpe_subtract
+  0.00      4.56     0.00    15656     0.00     0.00  native_pari_dpe_subtract_product
+  0.00      4.56     0.00    15038     0.00     0.00  native_pari_dpe_normalize
+  0.00      4.56     0.00    12978     0.00     0.00  native_pari_word_mod_inverse
+  0.00      4.56     0.00     9888     0.00     0.00  native_pari_dpe_divide
+  0.00      4.56     0.00     8034     0.00     0.10  native_pari_lll_set_line
+  0.00      4.56     0.00     7004     0.00     0.02  native_pari_add_factor_entry
+  0.00      4.56     0.00     6180     0.00     1.35  native_pari_lll_multiply
+  0.00      4.56     0.00     5562     0.00     0.00  native_pari_trial_bound_word
+  0.00      4.56     0.00     5356     0.00     0.13  native_pari_babai_dpe
+  0.00      4.56     0.00     5356     0.00     0.03  native_pari_flatter_store4
+  0.00      4.56     0.00     5356     0.00     0.00  native_pari_lll_binary
+  0.00      4.56     0.00     5356     0.00     0.00  native_pari_nonnegative_integer_power
+  0.00      4.56     0.00     5047     0.00    70.24  native_pari_next_smooth_candidate
+  0.00      4.56     0.00     4120     0.00     0.08  native_pari_catalog_contains
+  0.00      4.56     0.00     4120     0.00     5.17  native_pari_insert_smooth_relation
+  0.00      4.56     0.00     4120     0.00     0.94  native_pari_lll_extra_precision
+  0.00      4.56     0.00     4120     0.00    39.13  native_pari_lll_gramschmidt
+  0.00      4.56     0.00     4064     0.00     0.00  copy_bytes
+  0.00      4.56     0.00     3708     0.00     0.48  native_pari_basis_multiplication_table
+  0.00      4.56     0.00     3708     0.00     3.27  native_pari_composite_modulus_hnf
+  0.00      4.56     0.00     3708     0.00     0.23  native_pari_next_small_norm_ideal
+  0.00      4.56     0.00     3502     0.00     0.00  native_pari_relation_mod_inverse
+  0.00      4.56     0.00     3296     0.00     0.00  native_pari_word_inverse_generator
+  0.00      4.56     0.00     2060     0.00   182.49  native_pari_collect_ideal_relations
+  0.00      4.56     0.00     2060     0.00     0.92  native_pari_fincke_pohst_bound
+  0.00      4.56     0.00     2060     0.00   103.08  native_pari_flatter
+  0.00      4.56     0.00     2060     0.00     0.76  native_pari_flm_pivots
+  0.00      4.56     0.00     2060     0.00     0.00  native_pari_float_to_real
+  0.00      4.56     0.00     2060     0.00     9.27  native_pari_ideal_embedding
+  0.00      4.56     0.00     2060     0.00     4.14  native_pari_ideal_hnf_mul_two
+  0.00      4.56     0.00     2060     0.00    34.59  native_pari_ideal_prepare_enumeration
+  0.00      4.56     0.00     2060     0.00   177.57  native_pari_ideal_ranked_preparation
+  0.00      4.56     0.00     2060     0.00     1.07  native_pari_initial_integer_rank
+  0.00      4.56     0.00     2060     0.00     4.41  native_pari_integral_ideal_mul_two
+  0.00      4.56     0.00     2060     0.00     1.34  native_pari_lll_dpe
+  0.00      4.56     0.00     2060     0.00    10.70  native_pari_lll_fast
+  0.00      4.56     0.00     2060     0.00   139.59  native_pari_lll_ranked_basis
+  0.00      4.56     0.00     2060     0.00    19.11  native_pari_lll_select_full_rank
+  0.00      4.56     0.00     2060     0.00     5.19  native_pari_lll_sizered
+  0.00      4.56     0.00     2060     0.00    25.31  native_pari_prepare_enumeration
+  0.00      4.56     0.00     2060     0.00     0.01  native_pari_real_root_abs
+  0.00      4.56     0.00     1872     0.00     0.00  read_integer_buffer
+  0.00      4.56     0.00     1648     0.00     0.22  native_pari_integral_field_square
+  0.00      4.56     0.00     1648     0.00     4.09  native_pari_positive_prime_power_hnf
+  0.00      4.56     0.00     1648     0.00     0.32  native_pari_positive_prime_power_two
+  0.00      4.56     0.00     1648     0.00     0.00  sagejs_kernel_m_76930c96dfa07c3f_pari_collect_unreduced_ideals
+  0.00      4.56     0.00     1236     0.00     0.01  native_pari_real_division
+  0.00      4.56     0.00     1236     0.00     0.00  native_pari_rotate_float
+  0.00      4.56     0.00     1236     0.00     0.13  native_pari_rotate_integer
+  0.00      4.56     0.00     1236     0.00     0.00  native_pari_small_word_power
+  0.00      4.56     0.00     1236     0.00     0.00  native_pari_word_power
+  0.00      4.56     0.00      412     0.00     0.00  native_pari_rotate_gram
+  0.00      4.56     0.00      192     0.00     0.00  read_float64_buffer
+  0.00      4.56     0.00      128     0.00     0.00  read_int64_buffer
+  0.00      4.56     0.00       64     0.00     0.00  array
+  0.00      4.56     0.00       48     0.00     0.00  small
+
+			Call graph
+
+
+granularity: each sample hit covers 4 byte(s) for 0.22% of 4.56 seconds
+
+index % time    self  children    called     name
+                0.01    0.77    1648/1648        main [2]
+[1]     17.1    0.01    0.77    1648         native_pari_collect_unreduced_ideals [1]
+                0.01    0.74    2060/2060        native_pari_collect_unreduced_ideal [3]
+                0.00    0.01    2060/2060        native_pari_integral_ideal_mul_two [97]
+                0.00    0.01    1648/1648        native_pari_positive_prime_power_hnf [100]
+                0.00    0.00    2060/3708        native_pari_basis_multiplication_table [108]
+                0.00    0.00    3708/3708        native_pari_next_small_norm_ideal [110]
+                0.00    0.00   40788/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   49440/32007971     mpz_to_int64 [31]
+                0.00    0.00   14832/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00    3296/467002      sagejs_mpz_buffer_index [76]
+                0.00    0.00   11948/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00    5356/5356        native_pari_nonnegative_integer_power [133]
+                0.00    0.00    3296/228351      set_mpz_int64 [138]
+-----------------------------------------------
+                                                 <spontaneous>
+[2]     17.1    0.00    0.78                 main [2]
+                0.01    0.77    1648/1648        native_pari_collect_unreduced_ideals [1]
+                0.00    0.00    4064/4064        copy_bytes [152]
+                0.00    0.00    1872/1872        read_integer_buffer [153]
+                0.00    0.00    1648/1648        sagejs_kernel_m_76930c96dfa07c3f_pari_collect_unreduced_ideals [154]
+                0.00    0.00     192/192         read_float64_buffer [159]
+                0.00    0.00     128/128         read_int64_buffer [160]
+                0.00    0.00      64/64          array [161]
+                0.00    0.00      48/48          small [162]
+-----------------------------------------------
+                0.01    0.74    2060/2060        native_pari_collect_unreduced_ideals [1]
+[3]     16.5    0.01    0.74    2060         native_pari_collect_unreduced_ideal [3]
+                0.00    0.38    2060/2060        native_pari_collect_ideal_relations [7]
+                0.00    0.37    2060/2060        native_pari_ideal_ranked_preparation [8]
+                0.00    0.00    4120/467002      sagejs_mpz_buffer_index [76]
+                0.00    0.00   14420/32007971     mpz_to_int64 [31]
+                0.00    0.00    4120/19558464     sagejs_integer_buffer_get_mpz [32]
+-----------------------------------------------
+                                                 <spontaneous>
+[4]     12.1    0.55    0.00                 __gmpz_set [4]
+-----------------------------------------------
+                                                 <spontaneous>
+[5]      9.0    0.41    0.00                 __gmpz_add [5]
+-----------------------------------------------
+                                                 <spontaneous>
+[6]      8.3    0.38    0.00                 __gmpn_copyi_zen [6]
+-----------------------------------------------
+                0.00    0.38    2060/2060        native_pari_collect_unreduced_ideal [3]
+[7]      8.2    0.00    0.38    2060         native_pari_collect_ideal_relations [7]
+                0.00    0.35    5047/5047        native_pari_next_smooth_candidate [9]
+                0.00    0.02    4120/4120        native_pari_insert_smooth_relation [63]
+                0.00    0.00   39758/32007971     mpz_to_int64 [31]
+                0.00    0.00    2266/467002      sagejs_mpz_buffer_index [76]
+                0.00    0.00    7004/19558464     sagejs_integer_buffer_get_mpz [32]
+-----------------------------------------------
+                0.00    0.37    2060/2060        native_pari_collect_unreduced_ideal [3]
+[8]      8.0    0.00    0.37    2060         native_pari_ideal_ranked_preparation [8]
+                0.00    0.29    2060/2060        native_pari_lll_ranked_basis [11]
+                0.00    0.07    2060/2060        native_pari_ideal_prepare_enumeration [30]
+                0.00    0.00    2060/12360       native_pari_flatter_product [59]
+                0.00    0.00    2060/2060        native_pari_initial_integer_rank [106]
+                0.00    0.00    6180/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00    4120/32007971     mpz_to_int64 [31]
+                0.00    0.00    2060/2993489     sagejs_mpz_integer_buffer_index [101]
+-----------------------------------------------
+                0.00    0.35    5047/5047        native_pari_collect_ideal_relations [7]
+[9]      7.8    0.00    0.35    5047         native_pari_next_smooth_candidate [9]
+                0.00    0.26   68701/68701       native_pari_prepared_factorgen [12]
+                0.03    0.07   69216/69216       native_pari_next_factor_candidate [27]
+                0.00    0.00  206103/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00  417253/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                                                 <spontaneous>
+[10]     6.6    0.30    0.00                 __gmpz_sizeinbase [10]
+-----------------------------------------------
+                0.00    0.29    2060/2060        native_pari_ideal_ranked_preparation [8]
+[11]     6.3    0.00    0.29    2060         native_pari_lll_ranked_basis [11]
+                0.00    0.21    2060/2060        native_pari_flatter [16]
+                0.00    0.04    2060/2060        native_pari_lll_select_full_rank [53]
+                0.00    0.02    2060/2060        native_pari_lll_fast [62]
+                0.01    0.00    4120/12360       native_pari_flatter_product [59]
+                0.00    0.00    2060/2060        native_pari_lll_dpe [105]
+                0.00    0.00  132664/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00  149556/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00   81576/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   64684/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                0.00    0.26   68701/68701       native_pari_next_smooth_candidate [9]
+[12]     5.6    0.00    0.26   68701         native_pari_prepared_factorgen [12]
+                0.01    0.21   68701/68701       native_pari_prepared_factorgen_numerical [15]
+                0.00    0.04   68701/68701       native_pari_prepared_can_factor [55]
+-----------------------------------------------
+                0.00    0.03    2060/12360       native_pari_lll_select_full_rank [53]
+                0.00    0.03    2060/12360       native_pari_prepare_enumeration [41]
+                0.01    0.14    8240/12360       native_pari_lll_gramschmidt [20]
+[13]     4.9    0.02    0.20   12360         native_pari_prepared_qr [13]
+                0.01    0.05  428274/465766      native_pari_qr_multiply [34]
+                0.00    0.05  412206/500374      native_pari_qr_add [39]
+                0.02    0.02  752724/1006104     native_pari_qr_store [40]
+                0.01    0.02 1049982/1442618     native_pari_qr_load [47]
+                0.00    0.02  101970/101970      native_pari_qr_square [72]
+                0.00    0.00   32136/34196       native_pari_real_square_root_abs [121]
+                0.00    0.00   32136/40788       native_pari_real_reciprocal [120]
+                0.00    0.00    2060/186636      native_pari_integer_to_real [119]
+-----------------------------------------------
+                                                 <spontaneous>
+[14]     4.8    0.22    0.00                 __gmpz_export [14]
+-----------------------------------------------
+                0.01    0.21   68701/68701       native_pari_prepared_factorgen [12]
+[15]     4.8    0.01    0.21   68701         native_pari_prepared_factorgen_numerical [15]
+                0.03    0.10  259869/259869      native_pari_prepared_embedding_row [22]
+                0.00    0.05   53766/53766       native_pari_prepared_mixed_norm [45]
+                0.00    0.02   68701/68701       native_pari_real_integer_division [65]
+                0.00    0.00  779607/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00   14935/68701       native_pari_prepared_real_norm [73]
+                0.00    0.00  779607/32007971     mpz_to_int64 [31]
+                0.00    0.00   68701/75293       native_pari_round_real [117]
+-----------------------------------------------
+                0.00    0.21    2060/2060        native_pari_lll_ranked_basis [11]
+[16]     4.7    0.00    0.21    2060         native_pari_flatter [16]
+                0.00    0.16    4120/4120        native_pari_lll_gramschmidt [20]
+                0.02    0.00    5356/5356        native_pari_lll_binary_block [64]
+                0.01    0.00    6180/12360       native_pari_flatter_product [59]
+                0.00    0.01    2060/2060        native_pari_lll_sizered [80]
+                0.00    0.00   28840/1006104     native_pari_qr_store [40]
+                0.00    0.00   39552/1442618     native_pari_qr_load [47]
+                0.00    0.00  167684/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00   11536/119480      native_pari_lll_exponent [104]
+                0.00    0.00  128544/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00   97232/32007971     mpz_to_int64 [31]
+                0.00    0.00   58092/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00    5356/5356        native_pari_flatter_store4 [123]
+                0.00    0.00     824/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                                                 <spontaneous>
+[17]     4.4    0.20    0.00                 __gmpz_cmp [17]
+-----------------------------------------------
+                                                 <spontaneous>
+[18]     4.4    0.20    0.00                 __gmpz_set_si [18]
+-----------------------------------------------
+                                                 <spontaneous>
+[19]     3.9    0.18    0.00                 __gmpz_realloc [19]
+-----------------------------------------------
+                0.00    0.16    4120/4120        native_pari_flatter [16]
+[20]     3.5    0.00    0.16    4120         native_pari_lll_gramschmidt [20]
+                0.01    0.14    8240/12360       native_pari_prepared_qr [13]
+                0.00    0.00  108768/1006104     native_pari_qr_store [40]
+                0.00    0.00    4120/4120        native_pari_lll_extra_precision [103]
+                0.00    0.00  166448/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00  178808/32007971     mpz_to_int64 [31]
+                0.00    0.00   28840/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00  108768/186636      native_pari_integer_to_real [119]
+                0.00    0.00   16480/2993489     sagejs_mpz_integer_buffer_index [101]
+-----------------------------------------------
+                                                 <spontaneous>
+[21]     3.3    0.15    0.00                 __gmpn_invert_limb [21]
+-----------------------------------------------
+                0.03    0.10  259869/259869      native_pari_prepared_factorgen_numerical [15]
+[22]     2.9    0.03    0.10  259869         native_pari_prepared_embedding_row [22]
+                0.01    0.03  734802/790010      native_pari_word_integer_real_sum [52]
+                0.03    0.00  734802/855106      native_pari_word_integer_real_product [48]
+                0.02    0.00 5188419/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.01    0.00 5188419/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                                                 <spontaneous>
+[23]     2.9    0.13    0.00                 __gmpz_mul [23]
+-----------------------------------------------
+                                                 <spontaneous>
+[24]     2.9    0.13    0.00                 __gmpz_sub [24]
+-----------------------------------------------
+                                                 <spontaneous>
+[25]     2.6    0.12    0.00                 __gmpn_divrem_1_x86_64 [25]
+-----------------------------------------------
+                0.01    0.00   53766/759110      native_pari_prepared_mixed_norm [45]
+                0.01    0.00   83636/759110      native_pari_prepared_real_norm [73]
+                0.02    0.01  202086/759110      native_pari_short_square [54]
+                0.04    0.01  419622/759110      native_pari_qr_multiply [34]
+[26]     2.3    0.08    0.02  759110         native_pari_short_product [26]
+                0.02    0.00 13854736/18033652     sagejs_mpz_shift [58]
+                0.00    0.00 3015016/3922240     mpz_to_uint64 [137]
+-----------------------------------------------
+                0.03    0.07   69216/69216       native_pari_next_smooth_candidate [9]
+[27]     2.1    0.03    0.07   69216         native_pari_next_factor_candidate [27]
+                0.02    0.03   69216/69216       native_pari_qr_enumeration_batch [46]
+                0.01    0.00  343505/467002      sagejs_mpz_buffer_index [76]
+                0.01    0.00 2715698/32007971     mpz_to_int64 [31]
+                0.00    0.00  994671/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00  259869/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00  206103/228351      set_mpz_int64 [138]
+-----------------------------------------------
+                                                 <spontaneous>
+[28]     2.0    0.09    0.00                 __gmpz_tdiv_r [28]
+-----------------------------------------------
+                0.01    0.02  212901/626755      native_pari_word_integer_real_sum [52]
+                0.03    0.03  413854/626755      native_pari_qr_add [39]
+[29]     1.9    0.04    0.05  626755         native_pari_signed_real_sum [29]
+                0.04    0.00  341033/394799      native_pari_positive_real_sum [42]
+                0.00    0.00  890538/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.07    2060/2060        native_pari_ideal_ranked_preparation [8]
+[30]     1.6    0.00    0.07    2060         native_pari_ideal_prepare_enumeration [30]
+                0.00    0.05    2060/2060        native_pari_prepare_enumeration [41]
+                0.00    0.02    2060/2060        native_pari_ideal_embedding [70]
+                0.00    0.00    2060/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00    2060/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                0.00    0.00    2060/32007971     native_pari_ideal_prepare_enumeration [30]
+                0.00    0.00    4120/32007971     native_pari_ideal_ranked_preparation [8]
+                0.00    0.00    5356/32007971     native_pari_positive_prime_power_hnf [100]
+                0.00    0.00    5768/32007971     native_pari_lll_sizered [80]
+                0.00    0.00   14420/32007971     native_pari_collect_unreduced_ideal [3]
+                0.00    0.00   16480/32007971     native_pari_positive_prime_power_two [113]
+                0.00    0.00   17716/32007971     native_pari_word_factor_front [78]
+                0.00    0.00   21424/32007971     native_pari_flatter_store4 [123]
+                0.00    0.00   22248/32007971     native_pari_rotate_integer [125]
+                0.00    0.00   25647/32007971     native_pari_add_factor_entry [124]
+                0.00    0.00   31312/32007971     native_pari_initial_integer_rank [106]
+                0.00    0.00   31930/32007971     native_pari_content_relation_update [122]
+                0.00    0.00   39758/32007971     native_pari_collect_ideal_relations [7]
+                0.00    0.00   49440/32007971     native_pari_collect_unreduced_ideals [1]
+                0.00    0.00   51088/32007971     native_pari_lll_select_full_rank [53]
+                0.00    0.00   55620/32007971     native_pari_integral_field_square [116]
+                0.00    0.00   56341/32007971     native_pari_catalog_contains [118]
+                0.00    0.00   57680/32007971     native_pari_babai_fast [75]
+                0.00    0.00   58504/32007971     native_pari_next_small_norm_ideal [110]
+                0.00    0.00   60976/32007971     native_pari_babai_dpe [112]
+                0.00    0.00   64272/32007971     native_pari_lll_extra_precision [103]
+                0.00    0.00   64684/32007971     native_pari_lll_ranked_basis [11]
+                0.00    0.00   83636/32007971     native_pari_integral_ideal_mul_two [97]
+                0.00    0.00   86520/32007971     native_pari_prepared_can_factor [55]
+                0.00    0.00   86520/32007971     native_pari_lll_fast [62]
+                0.00    0.00   87756/32007971     native_pari_lll_set_line [111]
+                0.00    0.00   97232/32007971     native_pari_flatter [16]
+                0.00    0.00  119480/32007971     native_pari_lll_dpe [105]
+                0.00    0.00  171392/32007971     native_pari_lll_binary_block [64]
+                0.00    0.00  178808/32007971     native_pari_lll_gramschmidt [20]
+                0.00    0.00  215064/32007971     native_pari_flm_pivots [109]
+                0.00    0.00  286340/32007971     native_pari_ideal_hnf_mul_two [98]
+                0.00    0.00  286752/32007971     native_pari_basis_multiplication_table [108]
+                0.00    0.00  306528/32007971     native_pari_composite_modulus_hnf [74]
+                0.00    0.00  309412/32007971     native_pari_ideal_embedding [70]
+                0.00    0.00  322596/32007971     native_pari_prepared_mixed_norm [45]
+                0.00    0.00  351642/32007971     native_pari_insert_smooth_relation [63]
+                0.00    0.00  417253/32007971     native_pari_next_smooth_candidate [9]
+                0.00    0.00  421476/32007971     native_pari_fp_step [79]
+                0.00    0.00  457011/32007971     native_pari_prepared_real_norm [73]
+                0.00    0.00  467002/32007971     sagejs_mpz_buffer_index [76]
+                0.00    0.00  469886/32007971     native_pari_prepared_add_relation [71]
+                0.00    0.00  619236/32007971     native_pari_hnf_column_step [102]
+                0.00    0.00  659612/32007971     native_pari_prepared_divide_prime_at [60]
+                0.00    0.00  711215/32007971     native_pari_fp_next [61]
+                0.00    0.00  779607/32007971     native_pari_prepared_factorgen_numerical [15]
+                0.00    0.00  902692/32007971     native_pari_prepared_hnf_valuation [82]
+                0.00    0.00 1054926/32007971     native_pari_qr_enumeration_batch [46]
+                0.00    0.00 1379376/32007971     native_pari_flatter_product [59]
+                0.00    0.00 1678385/32007971     native_pari_prepared_ideal_valuation [81]
+                0.01    0.00 2715698/32007971     native_pari_next_factor_candidate [27]
+                0.01    0.00 2993489/32007971     sagejs_mpz_integer_buffer_index [101]
+                0.01    0.00 3018312/32007971     native_pari_qr_store [40]
+                0.01    0.00 4327854/32007971     native_pari_qr_load [47]
+                0.01    0.00 5188419/32007971     native_pari_prepared_embedding_row [22]
+[31]     1.5    0.07    0.00 32007971         mpz_to_int64 [31]
+-----------------------------------------------
+                0.00    0.00    4120/19558464     native_pari_collect_unreduced_ideal [3]
+                0.00    0.00    5356/19558464     native_pari_next_small_norm_ideal [110]
+                0.00    0.00    5356/19558464     native_pari_positive_prime_power_hnf [100]
+                0.00    0.00    5768/19558464     native_pari_positive_prime_power_two [113]
+                0.00    0.00    7004/19558464     native_pari_collect_ideal_relations [7]
+                0.00    0.00   11124/19558464     native_pari_rotate_integer [125]
+                0.00    0.00   17613/19558464     native_pari_add_factor_entry [124]
+                0.00    0.00   26986/19558464     native_pari_content_relation_update [122]
+                0.00    0.00   40788/19558464     native_pari_collect_unreduced_ideals [1]
+                0.00    0.00   43260/19558464     native_pari_lll_sizered [80]
+                0.00    0.00   46144/19558464     native_pari_lll_fast [62]
+                0.00    0.00   46968/19558464     native_pari_lll_select_full_rank [53]
+                0.00    0.00   47277/19558464     native_pari_word_factor_front [78]
+                0.00    0.00   49852/19558464     native_pari_integral_field_square [116]
+                0.00    0.00   54384/19558464     native_pari_initial_integer_rank [106]
+                0.00    0.00   56341/19558464     native_pari_catalog_contains [118]
+                0.00    0.00   56444/19558464     native_pari_integral_ideal_mul_two [97]
+                0.00    0.00   57680/19558464     native_pari_babai_fast [75]
+                0.00    0.00   58092/19558464     native_pari_flatter [16]
+                0.00    0.00   58504/19558464     native_pari_lll_set_line [111]
+                0.00    0.00   59328/19558464     native_pari_lll_extra_precision [103]
+                0.00    0.00   60152/19558464     native_pari_babai_dpe [112]
+                0.00    0.00   81576/19558464     native_pari_lll_ranked_basis [11]
+                0.00    0.00   86520/19558464     native_pari_prepared_can_factor [55]
+                0.00    0.00  104442/19558464     native_pari_insert_smooth_relation [63]
+                0.00    0.00  129368/19558464     native_pari_flm_pivots [109]
+                0.00    0.00  149968/19558464     native_pari_lll_binary_block [64]
+                0.00    0.00  164800/19558464     native_pari_lll_dpe [105]
+                0.00    0.00  166448/19558464     native_pari_lll_gramschmidt [20]
+                0.00    0.00  231956/19558464     native_pari_ideal_hnf_mul_two [98]
+                0.00    0.00  238960/19558464     native_pari_basis_multiplication_table [108]
+                0.00    0.00  309412/19558464     native_pari_ideal_embedding [70]
+                0.00    0.00  322596/19558464     native_pari_prepared_mixed_norm [45]
+                0.00    0.00  341136/19558464     native_pari_hnf_column_step [102]
+                0.00    0.00  368534/19558464     native_pari_prepared_divide_prime_at [60]
+                0.00    0.00  457011/19558464     native_pari_prepared_real_norm [73]
+                0.00    0.00  496254/19558464     native_pari_composite_modulus_hnf [74]
+                0.00    0.00  852016/19558464     native_pari_prepared_add_relation [71]
+                0.00    0.00  994671/19558464     native_pari_next_factor_candidate [27]
+                0.00    0.00 1161840/19558464     native_pari_prepared_hnf_valuation [82]
+                0.00    0.00 1216224/19558464     native_pari_flatter_product [59]
+                0.00    0.00 1349918/19558464     native_pari_prepared_ideal_valuation [81]
+                0.02    0.00 4327854/19558464     native_pari_qr_load [47]
+                0.02    0.00 5188419/19558464     native_pari_prepared_embedding_row [22]
+[32]     1.5    0.07    0.00 19558464         sagejs_integer_buffer_get_mpz [32]
+-----------------------------------------------
+                                                 <spontaneous>
+[33]     1.5    0.07    0.00                 __gmpz_tdiv_qr [33]
+-----------------------------------------------
+                0.00    0.00    1236/465766      native_pari_lll_sizered [80]
+                0.00    0.00    4120/465766      native_pari_fincke_pohst_bound [107]
+                0.00    0.00    9888/465766      native_pari_prepare_enumeration [41]
+                0.00    0.00   22248/465766      native_pari_lll_multiply [99]
+                0.01    0.05  428274/465766      native_pari_prepared_qr [13]
+[34]     1.5    0.01    0.06  465766         native_pari_qr_multiply [34]
+                0.04    0.01  419622/759110      native_pari_short_product [26]
+                0.00    0.00   46144/855106      native_pari_word_integer_real_product [48]
+-----------------------------------------------
+                                                 <spontaneous>
+[35]     1.3    0.06    0.00                 __gmpn_mul_1_zen [35]
+-----------------------------------------------
+                                                 <spontaneous>
+[36]     1.3    0.06    0.00                 __gmpn_tdiv_qr [36]
+-----------------------------------------------
+                                                 <spontaneous>
+[37]     1.3    0.06    0.00                 __gmpz_clear [37]
+-----------------------------------------------
+                                                 <spontaneous>
+[38]     1.3    0.06    0.00                 __gmpz_import [38]
+-----------------------------------------------
+                0.00    0.00   14008/500374      native_pari_lll_multiply [99]
+                0.00    0.01   74160/500374      native_pari_ideal_embedding [70]
+                0.00    0.05  412206/500374      native_pari_prepared_qr [13]
+[39]     1.3    0.00    0.06  500374         native_pari_qr_add [39]
+                0.03    0.03  413854/626755      native_pari_signed_real_sum [29]
+                0.00    0.00   55208/790010      native_pari_word_integer_real_sum [52]
+-----------------------------------------------
+                0.00    0.00   17304/1006104     native_pari_prepare_enumeration [41]
+                0.00    0.00   19776/1006104     native_pari_lll_multiply [99]
+                0.00    0.00   24308/1006104     native_pari_lll_sizered [80]
+                0.00    0.00   27192/1006104     native_pari_ideal_embedding [70]
+                0.00    0.00   27192/1006104     native_pari_lll_select_full_rank [53]
+                0.00    0.00   28840/1006104     native_pari_flatter [16]
+                0.00    0.00  108768/1006104     native_pari_lll_gramschmidt [20]
+                0.02    0.02  752724/1006104     native_pari_prepared_qr [13]
+[40]     1.2    0.03    0.03 1006104         native_pari_qr_store [40]
+                0.02    0.00 3018312/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.01    0.00 3018312/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                0.00    0.05    2060/2060        native_pari_ideal_prepare_enumeration [30]
+[41]     1.1    0.00    0.05    2060         native_pari_prepare_enumeration [41]
+                0.00    0.03    2060/12360       native_pari_prepared_qr [13]
+                0.01    0.00   17304/19364       native_pari_store_double [83]
+                0.00    0.00    2060/2060        native_pari_fincke_pohst_bound [107]
+                0.00    0.00    9888/465766      native_pari_qr_multiply [34]
+                0.00    0.00   39964/1442618     native_pari_qr_load [47]
+                0.00    0.00   17304/1006104     native_pari_qr_store [40]
+                0.00    0.00    5356/40788       native_pari_real_reciprocal [120]
+                0.00    0.00    2060/3922240     mpz_to_uint64 [137]
+-----------------------------------------------
+                0.01    0.00   53766/394799      native_pari_prepared_mixed_norm [45]
+                0.04    0.00  341033/394799      native_pari_signed_real_sum [29]
+[42]     1.1    0.05    0.00  394799         native_pari_positive_real_sum [42]
+                0.00    0.00 1174097/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                                                 <spontaneous>
+[43]     1.1    0.05    0.00                 __gmp_default_allocate [43]
+-----------------------------------------------
+                0.00    0.00    2060/8002894     native_pari_ideal_prepare_enumeration [30]
+                0.00    0.00    4944/8002894     native_pari_content_relation_update [122]
+                0.00    0.00    5768/8002894     native_pari_integral_field_square [116]
+                0.00    0.00    6180/8002894     native_pari_lll_select_full_rank [53]
+                0.00    0.00    6180/8002894     native_pari_ideal_ranked_preparation [8]
+                0.00    0.00    6798/8002894     native_pari_babai_fast [75]
+                0.00    0.00    8034/8002894     native_pari_add_factor_entry [124]
+                0.00    0.00   11124/8002894     native_pari_rotate_integer [125]
+                0.00    0.00   13184/8002894     native_pari_lll_sizered [80]
+                0.00    0.00   14832/8002894     native_pari_lll_extra_precision [103]
+                0.00    0.00   14832/8002894     native_pari_collect_unreduced_ideals [1]
+                0.00    0.00   15656/8002894     native_pari_positive_prime_power_two [113]
+                0.00    0.00   21424/8002894     native_pari_flatter_store4 [123]
+                0.00    0.00   21424/8002894     native_pari_lll_binary_block [64]
+                0.00    0.00   27192/8002894     native_pari_ideal_embedding [70]
+                0.00    0.00   27192/8002894     native_pari_integral_ideal_mul_two [97]
+                0.00    0.00   28840/8002894     native_pari_lll_gramschmidt [20]
+                0.00    0.00   29252/8002894     native_pari_lll_set_line [111]
+                0.00    0.00   29664/8002894     native_pari_babai_dpe [112]
+                0.00    0.00   39552/8002894     native_pari_initial_integer_rank [106]
+                0.00    0.00   42230/8002894     native_pari_word_factor_front [78]
+                0.00    0.00   47792/8002894     native_pari_basis_multiplication_table [108]
+                0.00    0.00   48616/8002894     native_pari_lll_fast [62]
+                0.00    0.00   54384/8002894     native_pari_ideal_hnf_mul_two [98]
+                0.00    0.00   95584/8002894     native_pari_flm_pivots [109]
+                0.00    0.00  126484/8002894     native_pari_lll_dpe [105]
+                0.00    0.00  132664/8002894     native_pari_lll_ranked_basis [11]
+                0.00    0.00  163152/8002894     native_pari_flatter_product [59]
+                0.00    0.00  167684/8002894     native_pari_flatter [16]
+                0.00    0.00  206103/8002894     native_pari_next_smooth_candidate [9]
+                0.00    0.00  251938/8002894     native_pari_insert_smooth_relation [63]
+                0.00    0.00  259869/8002894     native_pari_next_factor_candidate [27]
+                0.00    0.00  278100/8002894     native_pari_hnf_column_step [102]
+                0.00    0.00  291078/8002894     native_pari_prepared_divide_prime_at [60]
+                0.00    0.00  328467/8002894     native_pari_prepared_ideal_valuation [81]
+                0.00    0.00  383572/8002894     native_pari_prepared_add_relation [71]
+                0.00    0.00  406232/8002894     native_pari_prepared_hnf_valuation [82]
+                0.00    0.00  586894/8002894     native_pari_composite_modulus_hnf [74]
+                0.00    0.00  779607/8002894     native_pari_prepared_factorgen_numerical [15]
+                0.02    0.00 3018312/8002894     native_pari_qr_store [40]
+[44]     1.1    0.05    0.00 8002894         sagejs_integer_buffer_set_mpz [44]
+-----------------------------------------------
+                0.00    0.05   53766/53766       native_pari_prepared_factorgen_numerical [15]
+[45]     1.0    0.00    0.05   53766         native_pari_prepared_mixed_norm [45]
+                0.01    0.01  107532/202086      native_pari_short_square [54]
+                0.00    0.01   53766/68701       native_pari_prepared_real_norm [73]
+                0.01    0.00   53766/759110      native_pari_short_product [26]
+                0.01    0.00   53766/394799      native_pari_positive_real_sum [42]
+                0.00    0.00  322596/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00  322596/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                0.02    0.03   69216/69216       native_pari_next_factor_candidate [27]
+[46]     1.0    0.02    0.03   69216         native_pari_qr_enumeration_batch [46]
+                0.01    0.01   69216/69216       native_pari_fp_next [61]
+                0.00    0.00 1054926/32007971     mpz_to_int64 [31]
+                0.00    0.00  138432/3922240     mpz_to_uint64 [137]
+-----------------------------------------------
+                0.00    0.00    6180/1442618     native_pari_fincke_pohst_bound [107]
+                0.00    0.00   13596/1442618     native_pari_lll_sizered [80]
+                0.00    0.00   39552/1442618     native_pari_flatter [16]
+                0.00    0.00   39964/1442618     native_pari_prepare_enumeration [41]
+                0.00    0.00   72512/1442618     native_pari_lll_multiply [99]
+                0.00    0.00  101352/1442618     native_pari_ideal_embedding [70]
+                0.00    0.00  119480/1442618     native_pari_lll_exponent [104]
+                0.01    0.02 1049982/1442618     native_pari_prepared_qr [13]
+[47]     1.0    0.02    0.02 1442618         native_pari_qr_load [47]
+                0.02    0.00 4327854/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.01    0.00 4327854/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                0.00    0.00   46144/855106      native_pari_qr_multiply [34]
+                0.00    0.00   74160/855106      native_pari_ideal_embedding [70]
+                0.03    0.00  734802/855106      native_pari_prepared_embedding_row [22]
+[48]     0.9    0.04    0.00  855106         native_pari_word_integer_real_product [48]
+                0.00    0.00  608730/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                                                 <spontaneous>
+[49]     0.9    0.04    0.00                 __gmpz_fdiv_q [49]
+-----------------------------------------------
+                                                 <spontaneous>
+[50]     0.9    0.04    0.00                 __gmpz_fdiv_r [50]
+-----------------------------------------------
+                                                 <spontaneous>
+[51]     0.9    0.04    0.00                 __gmpz_init [51]
+-----------------------------------------------
+                0.00    0.00   55208/790010      native_pari_qr_add [39]
+                0.01    0.03  734802/790010      native_pari_prepared_embedding_row [22]
+[52]     0.9    0.01    0.03  790010         native_pari_word_integer_real_sum [52]
+                0.01    0.02  212901/626755      native_pari_signed_real_sum [29]
+                0.00    0.00  212901/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.04    2060/2060        native_pari_lll_ranked_basis [11]
+[53]     0.9    0.00    0.04    2060         native_pari_lll_select_full_rank [53]
+                0.00    0.03    2060/12360       native_pari_prepared_qr [13]
+                0.00    0.00   27192/1006104     native_pari_qr_store [40]
+                0.00    0.00   46968/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   51088/32007971     mpz_to_int64 [31]
+                0.00    0.00   27192/186636      native_pari_integer_to_real [119]
+                0.00    0.00    6180/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00    2060/2993489     sagejs_mpz_integer_buffer_index [101]
+-----------------------------------------------
+                0.00    0.01   94554/202086      native_pari_qr_square [72]
+                0.01    0.01  107532/202086      native_pari_prepared_mixed_norm [45]
+[54]     0.8    0.01    0.03  202086         native_pari_short_square [54]
+                0.02    0.01  202086/759110      native_pari_short_product [26]
+-----------------------------------------------
+                0.00    0.04   68701/68701       native_pari_prepared_factorgen [12]
+[55]     0.8    0.00    0.04   68701         native_pari_prepared_can_factor [55]
+                0.00    0.03   17304/17304       native_pari_prepared_divide_prime_at [60]
+                0.00    0.01   68701/68701       native_pari_prepared_factor_norm [77]
+                0.00    0.00   86520/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   86520/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                                                 <spontaneous>
+[56]     0.7    0.03    0.00                 __gmpz_set_ui [56]
+-----------------------------------------------
+                                                 <spontaneous>
+[57]     0.7    0.03    0.00                 _init [57]
+-----------------------------------------------
+                0.00    0.00     824/18033652     native_pari_flatter [16]
+                0.00    0.00    2060/18033652     native_pari_float_to_real [135]
+                0.00    0.00    2060/18033652     native_pari_fincke_pohst_bound [107]
+                0.00    0.00    4120/18033652     native_pari_nonnegative_integer_power [133]
+                0.00    0.00    4738/18033652     native_pari_real_division [132]
+                0.00    0.00    5562/18033652     native_pari_trial_bound_word [131]
+                0.00    0.00    5768/18033652     native_pari_lll_binary [130]
+                0.00    0.00    8755/18033652     native_pari_prepared_add_relation [71]
+                0.00    0.00   12772/18033652     native_pari_integral_field_square [116]
+                0.00    0.00   12978/18033652     native_pari_word_mod_inverse [128]
+                0.00    0.00   19776/18033652     native_pari_lll_exponent [104]
+                0.00    0.00   29046/18033652     native_pari_lll_binary_block [64]
+                0.00    0.00   34196/18033652     native_pari_sqrtrem_integer [127]
+                0.00    0.00   94966/18033652     native_pari_real_square_root_abs [121]
+                0.00    0.00  148732/18033652     native_pari_real_reciprocal [120]
+                0.00    0.00  182310/18033652     native_pari_integer_to_real [119]
+                0.00    0.00  207957/18033652     native_pari_round_real [117]
+                0.00    0.00  212901/18033652     native_pari_word_integer_real_sum [52]
+                0.00    0.00  248024/18033652     native_pari_real_to_float [114]
+                0.00    0.00  268006/18033652     native_pari_real_word_division [66]
+                0.00    0.00  608730/18033652     native_pari_word_integer_real_product [48]
+                0.00    0.00  890538/18033652     native_pari_signed_real_sum [29]
+                0.00    0.00 1174097/18033652     native_pari_positive_real_sum [42]
+                0.02    0.00 13854736/18033652     native_pari_short_product [26]
+[58]     0.7    0.03    0.00 18033652         sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.00    2060/12360       native_pari_ideal_ranked_preparation [8]
+                0.01    0.00    4120/12360       native_pari_lll_ranked_basis [11]
+                0.01    0.00    6180/12360       native_pari_flatter [16]
+[59]     0.6    0.02    0.01   12360         native_pari_flatter_product [59]
+                0.00    0.00 1216224/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00 1379376/32007971     mpz_to_int64 [31]
+                0.00    0.00  163152/8002894     sagejs_integer_buffer_set_mpz [44]
+-----------------------------------------------
+                0.00    0.03   17304/17304       native_pari_prepared_can_factor [55]
+[60]     0.6    0.00    0.03   17304         native_pari_prepared_divide_prime_at [60]
+                0.00    0.01   20806/20806       native_pari_prepared_ideal_valuation [81]
+                0.00    0.01   17716/17716       native_pari_prepared_hnf_valuation [82]
+                0.00    0.00  291078/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00  659612/32007971     mpz_to_int64 [31]
+                0.00    0.00  368534/19558464     sagejs_integer_buffer_get_mpz [32]
+-----------------------------------------------
+                0.01    0.01   69216/69216       native_pari_qr_enumeration_batch [46]
+[61]     0.5    0.01    0.01   69216         native_pari_fp_next [61]
+                0.01    0.00   72718/72718       native_pari_fp_step [79]
+                0.00    0.00   84563/467002      sagejs_mpz_buffer_index [76]
+                0.00    0.00  711215/32007971     mpz_to_int64 [31]
+                0.00    0.00   89816/3922240     mpz_to_uint64 [137]
+                0.00    0.00    7416/228351      set_mpz_int64 [138]
+-----------------------------------------------
+                0.00    0.02    2060/2060        native_pari_lll_ranked_basis [11]
+[62]     0.5    0.00    0.02    2060         native_pari_lll_fast [62]
+                0.01    0.00    5768/5768        native_pari_babai_fast [75]
+                0.01    0.00   17304/18746       native_pari_babai_dot [84]
+                0.00    0.00    7416/8034        native_pari_lll_set_line [111]
+                0.00    0.00   48616/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00   86520/32007971     mpz_to_int64 [31]
+                0.00    0.00   46144/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00    1236/1236        native_pari_rotate_integer [125]
+                0.00    0.00    8240/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00  201468/3922240     mpz_to_uint64 [137]
+                0.00    0.00    6180/18952       native_pari_lll_scale [146]
+                0.00    0.00    1236/1236        native_pari_rotate_float [155]
+                0.00    0.00     412/412         native_pari_rotate_gram [158]
+-----------------------------------------------
+                0.00    0.02    4120/4120        native_pari_collect_ideal_relations [7]
+[63]     0.5    0.00    0.02    4120         native_pari_insert_smooth_relation [63]
+                0.01    0.01    4120/4120        native_pari_prepared_add_relation [71]
+                0.00    0.00  251938/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00  351642/32007971     mpz_to_int64 [31]
+                0.00    0.00  104442/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   17098/17098       native_pari_content_relation_update [122]
+                0.00    0.00    7004/7004        native_pari_add_factor_entry [124]
+                0.00    0.00   17098/2993489     sagejs_mpz_integer_buffer_index [101]
+-----------------------------------------------
+                0.02    0.00    5356/5356        native_pari_flatter [16]
+[64]     0.5    0.02    0.00    5356         native_pari_lll_binary_block [64]
+                0.00    0.00  149968/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00  171392/32007971     mpz_to_int64 [31]
+                0.00    0.00   21424/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00   29046/18033652     sagejs_mpz_shift [58]
+                0.00    0.00    5356/5356        native_pari_lll_binary [130]
+-----------------------------------------------
+                0.00    0.02   68701/68701       native_pari_prepared_factorgen_numerical [15]
+[65]     0.4    0.00    0.02   68701         native_pari_real_integer_division [65]
+                0.02    0.00   68701/68701       native_pari_real_word_division [66]
+-----------------------------------------------
+                0.02    0.00   68701/68701       native_pari_real_integer_division [65]
+[66]     0.4    0.02    0.00   68701         native_pari_real_word_division [66]
+                0.00    0.00  268006/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                                                 <spontaneous>
+[67]     0.4    0.02    0.00                 __gmpn_add_n_x86_64 [67]
+-----------------------------------------------
+                                                 <spontaneous>
+[68]     0.4    0.02    0.00                 __gmpn_rshift_zen [68]
+-----------------------------------------------
+                                                 <spontaneous>
+[69]     0.4    0.02    0.00                 __gmpz_mul_2exp [69]
+-----------------------------------------------
+                0.00    0.02    2060/2060        native_pari_ideal_prepare_enumeration [30]
+[70]     0.4    0.00    0.02    2060         native_pari_ideal_embedding [70]
+                0.00    0.01   74160/500374      native_pari_qr_add [39]
+                0.00    0.00   74160/855106      native_pari_word_integer_real_product [48]
+                0.00    0.00  101352/1442618     native_pari_qr_load [47]
+                0.00    0.00   27192/1006104     native_pari_qr_store [40]
+                0.00    0.00  309412/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00  309412/32007971     mpz_to_int64 [31]
+                0.00    0.00   27192/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00   27192/2993489     sagejs_mpz_integer_buffer_index [101]
+-----------------------------------------------
+                0.01    0.01    4120/4120        native_pari_insert_smooth_relation [63]
+[71]     0.4    0.01    0.01    4120         native_pari_prepared_add_relation [71]
+                0.00    0.00  852016/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00  383572/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00  765702/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00  469886/32007971     mpz_to_int64 [31]
+                0.00    0.00    8755/18033652     sagejs_mpz_shift [58]
+                0.00    0.00    3502/3502        native_pari_relation_mod_inverse [134]
+-----------------------------------------------
+                0.00    0.02  101970/101970      native_pari_prepared_qr [13]
+[72]     0.4    0.00    0.02  101970         native_pari_qr_square [72]
+                0.00    0.01   94554/202086      native_pari_short_square [54]
+-----------------------------------------------
+                0.00    0.00   14935/68701       native_pari_prepared_factorgen_numerical [15]
+                0.00    0.01   53766/68701       native_pari_prepared_mixed_norm [45]
+[73]     0.3    0.00    0.01   68701         native_pari_prepared_real_norm [73]
+                0.01    0.00   83636/759110      native_pari_short_product [26]
+                0.00    0.00  457011/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00  457011/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                0.00    0.01    1648/3708        native_pari_positive_prime_power_hnf [100]
+                0.00    0.01    2060/3708        native_pari_ideal_hnf_mul_two [98]
+[74]     0.3    0.00    0.01    3708         native_pari_composite_modulus_hnf [74]
+                0.00    0.00   45938/45938       native_pari_hnf_column_step [102]
+                0.00    0.00  586894/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00  496254/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00  776620/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00  306528/32007971     mpz_to_int64 [31]
+                0.00    0.00    3296/3296        native_pari_word_inverse_generator [136]
+                0.00    0.00  102382/102382      native_pari_signed_remainder [139]
+-----------------------------------------------
+                0.01    0.00    5768/5768        native_pari_lll_fast [62]
+[75]     0.2    0.01    0.00    5768         native_pari_babai_fast [75]
+                0.00    0.00    1442/18746       native_pari_babai_dot [84]
+                0.00    0.00   57680/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   57680/32007971     mpz_to_int64 [31]
+                0.00    0.00     618/8034        native_pari_lll_set_line [111]
+                0.00    0.00    6798/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00    6798/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00  110210/3922240     mpz_to_uint64 [137]
+                0.00    0.00   12772/18952       native_pari_lll_scale [146]
+-----------------------------------------------
+                0.00    0.00    2266/467002      native_pari_collect_ideal_relations [7]
+                0.00    0.00    3296/467002      native_pari_collect_unreduced_ideals [1]
+                0.00    0.00    4120/467002      native_pari_collect_unreduced_ideal [3]
+                0.00    0.00   29252/467002      native_pari_next_small_norm_ideal [110]
+                0.00    0.00   84563/467002      native_pari_fp_next [61]
+                0.01    0.00  343505/467002      native_pari_next_factor_candidate [27]
+[76]     0.2    0.01    0.00  467002         sagejs_mpz_buffer_index [76]
+                0.00    0.00  467002/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                0.00    0.01   68701/68701       native_pari_prepared_can_factor [55]
+[77]     0.2    0.00    0.01   68701         native_pari_prepared_factor_norm [77]
+                0.01    0.00    4532/4532        native_pari_word_factor_front [78]
+                0.00    0.00   68701/68701       native_pari_prime_to_part [141]
+-----------------------------------------------
+                                2060             native_pari_word_factor_front [78]
+                0.01    0.00    4532/4532        native_pari_prepared_factor_norm [77]
+[78]     0.2    0.01    0.00    4532+2060    native_pari_word_factor_front [78]
+                0.00    0.00    4120/4120        native_pari_catalog_contains [118]
+                0.00    0.00   42230/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00   47277/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   71791/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00   17716/32007971     mpz_to_int64 [31]
+                0.00    0.00    5562/5562        native_pari_trial_bound_word [131]
+                                2060             native_pari_word_factor_front [78]
+-----------------------------------------------
+                0.01    0.00   72718/72718       native_pari_fp_next [61]
+[79]     0.2    0.01    0.00   72718         native_pari_fp_step [79]
+                0.00    0.00  421476/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                0.00    0.01    2060/2060        native_pari_flatter [16]
+[80]     0.2    0.00    0.01    2060         native_pari_lll_sizered [80]
+                0.00    0.01    6180/6180        native_pari_lll_multiply [99]
+                0.00    0.00   24308/1006104     native_pari_qr_store [40]
+                0.00    0.00   13596/1442618     native_pari_qr_load [47]
+                0.00    0.00    1236/465766      native_pari_qr_multiply [34]
+                0.00    0.00   43260/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   50676/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00   13184/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00    6592/75293       native_pari_round_real [117]
+                0.00    0.00    3296/40788       native_pari_real_reciprocal [120]
+                0.00    0.00    5768/32007971     mpz_to_int64 [31]
+                0.00    0.00    1236/1236        native_pari_real_division [132]
+-----------------------------------------------
+                0.00    0.01   20806/20806       native_pari_prepared_divide_prime_at [60]
+[81]     0.2    0.00    0.01   20806         native_pari_prepared_ideal_valuation [81]
+                0.00    0.00 1349918/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00 1678385/32007971     mpz_to_int64 [31]
+                0.00    0.00  328467/8002894     sagejs_integer_buffer_set_mpz [44]
+-----------------------------------------------
+                0.00    0.01   17716/17716       native_pari_prepared_divide_prime_at [60]
+[82]     0.2    0.00    0.01   17716         native_pari_prepared_hnf_valuation [82]
+                0.00    0.00 1161840/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00  406232/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00  902692/32007971     mpz_to_int64 [31]
+                0.00    0.00  665380/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00   70040/70040       native_pari_scalar_pval_control [140]
+-----------------------------------------------
+                0.00    0.00    2060/19364       native_pari_fincke_pohst_bound [107]
+                0.01    0.00   17304/19364       native_pari_prepare_enumeration [41]
+[83]     0.2    0.01    0.00   19364         native_pari_store_double [83]
+                0.00    0.00   19364/65920       native_pari_real_to_float [114]
+                0.00    0.00    2060/186636      native_pari_integer_to_real [119]
+                0.00    0.00   19364/3922240     mpz_to_uint64 [137]
+-----------------------------------------------
+                0.00    0.00    1442/18746       native_pari_babai_fast [75]
+                0.01    0.00   17304/18746       native_pari_lll_fast [62]
+[84]     0.2    0.01    0.00   18746         native_pari_babai_dot [84]
+                0.00    0.00  138432/3922240     mpz_to_uint64 [137]
+-----------------------------------------------
+                                                 <spontaneous>
+[85]     0.2    0.01    0.00                 __gmp_default_reallocate [85]
+-----------------------------------------------
+                                                 <spontaneous>
+[86]     0.2    0.01    0.00                 __gmpn_bc_set_str [86]
+-----------------------------------------------
+                                                 <spontaneous>
+[87]     0.2    0.01    0.00                 __gmpn_copyd_zen [87]
+-----------------------------------------------
+                                                 <spontaneous>
+[88]     0.2    0.01    0.00                 __gmpn_divrem_2 [88]
+-----------------------------------------------
+                                                 <spontaneous>
+[89]     0.2    0.01    0.00                 __gmpn_gcd_1 [89]
+-----------------------------------------------
+                                                 <spontaneous>
+[90]     0.2    0.01    0.00                 __gmpn_gcd_11_zen [90]
+-----------------------------------------------
+                                                 <spontaneous>
+[91]     0.2    0.01    0.00                 __gmpn_get_d [91]
+-----------------------------------------------
+                                                 <spontaneous>
+[92]     0.2    0.01    0.00                 __gmpn_lshift_zen [92]
+-----------------------------------------------
+                                                 <spontaneous>
+[93]     0.2    0.01    0.00                 __gmpn_mul_basecase_zen [93]
+-----------------------------------------------
+                                                 <spontaneous>
+[94]     0.2    0.01    0.00                 __gmpz_fdiv_q_2exp [94]
+-----------------------------------------------
+                                                 <spontaneous>
+[95]     0.2    0.01    0.00                 __gmpz_inp_str_nowhite [95]
+-----------------------------------------------
+                                                 <spontaneous>
+[96]     0.2    0.01    0.00                 __gmpz_set_str [96]
+-----------------------------------------------
+                0.00    0.01    2060/2060        native_pari_collect_unreduced_ideals [1]
+[97]     0.2    0.00    0.01    2060         native_pari_integral_ideal_mul_two [97]
+                0.00    0.01    2060/2060        native_pari_ideal_hnf_mul_two [98]
+                0.00    0.00   56444/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   83636/32007971     mpz_to_int64 [31]
+                0.00    0.00   27192/8002894     sagejs_integer_buffer_set_mpz [44]
+-----------------------------------------------
+                0.00    0.01    2060/2060        native_pari_integral_ideal_mul_two [97]
+[98]     0.2    0.00    0.01    2060         native_pari_ideal_hnf_mul_two [98]
+                0.00    0.01    2060/3708        native_pari_composite_modulus_hnf [74]
+                0.00    0.00  231956/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00  286340/32007971     mpz_to_int64 [31]
+                0.00    0.00   54384/8002894     sagejs_integer_buffer_set_mpz [44]
+-----------------------------------------------
+                0.00    0.01    6180/6180        native_pari_lll_sizered [80]
+[99]     0.2    0.00    0.01    6180         native_pari_lll_multiply [99]
+                0.00    0.00   22248/465766      native_pari_qr_multiply [34]
+                0.00    0.00   72512/1442618     native_pari_qr_load [47]
+                0.00    0.00   14008/500374      native_pari_qr_add [39]
+                0.00    0.00   19776/1006104     native_pari_qr_store [40]
+-----------------------------------------------
+                0.00    0.01    1648/1648        native_pari_collect_unreduced_ideals [1]
+[100]    0.1    0.00    0.01    1648         native_pari_positive_prime_power_hnf [100]
+                0.00    0.01    1648/3708        native_pari_composite_modulus_hnf [74]
+                0.00    0.00    1648/3708        native_pari_basis_multiplication_table [108]
+                0.00    0.00    1648/1648        native_pari_positive_prime_power_two [113]
+                0.00    0.00    5356/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00    5356/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                0.00    0.00    2060/2993489     native_pari_lll_select_full_rank [53]
+                0.00    0.00    2060/2993489     native_pari_ideal_ranked_preparation [8]
+                0.00    0.00    4944/2993489     native_pari_positive_prime_power_two [113]
+                0.00    0.00    5356/2993489     native_pari_next_small_norm_ideal [110]
+                0.00    0.00    6798/2993489     native_pari_babai_fast [75]
+                0.00    0.00    8240/2993489     native_pari_lll_fast [62]
+                0.00    0.00    9888/2993489     native_pari_lll_extra_precision [103]
+                0.00    0.00    9888/2993489     native_pari_flm_pivots [109]
+                0.00    0.00   11948/2993489     native_pari_collect_unreduced_ideals [1]
+                0.00    0.00   16480/2993489     native_pari_lll_gramschmidt [20]
+                0.00    0.00   17098/2993489     native_pari_insert_smooth_relation [63]
+                0.00    0.00   27192/2993489     native_pari_ideal_embedding [70]
+                0.00    0.00   28840/2993489     native_pari_babai_dpe [112]
+                0.00    0.00   50676/2993489     native_pari_lll_sizered [80]
+                0.00    0.00   62624/2993489     native_pari_initial_integer_rank [106]
+                0.00    0.00   71791/2993489     native_pari_word_factor_front [78]
+                0.00    0.00  128544/2993489     native_pari_flatter [16]
+                0.00    0.00  149556/2993489     native_pari_lll_ranked_basis [11]
+                0.00    0.00  171804/2993489     native_pari_lll_dpe [105]
+                0.00    0.00  665380/2993489     native_pari_prepared_hnf_valuation [82]
+                0.00    0.00  765702/2993489     native_pari_prepared_add_relation [71]
+                0.00    0.00  776620/2993489     native_pari_composite_modulus_hnf [74]
+[101]    0.1    0.00    0.01 2993489         sagejs_mpz_integer_buffer_index [101]
+                0.01    0.00 2993489/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                0.00    0.00   45938/45938       native_pari_composite_modulus_hnf [74]
+[102]    0.1    0.00    0.00   45938         native_pari_hnf_column_step [102]
+                0.00    0.00  278100/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00  619236/32007971     mpz_to_int64 [31]
+                0.00    0.00  341136/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   23072/23072       native_pari_hnf_bezout [144]
+-----------------------------------------------
+                0.00    0.00    4120/4120        native_pari_lll_gramschmidt [20]
+[103]    0.1    0.00    0.00    4120         native_pari_lll_extra_precision [103]
+                0.00    0.00  107944/119480      native_pari_lll_exponent [104]
+                0.00    0.00   59328/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   64272/32007971     mpz_to_int64 [31]
+                0.00    0.00   14832/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00    9888/2993489     sagejs_mpz_integer_buffer_index [101]
+-----------------------------------------------
+                0.00    0.00   11536/119480      native_pari_flatter [16]
+                0.00    0.00  107944/119480      native_pari_lll_extra_precision [103]
+[104]    0.1    0.00    0.00  119480         native_pari_lll_exponent [104]
+                0.00    0.00  119480/1442618     native_pari_qr_load [47]
+                0.00    0.00   19776/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.00    2060/2060        native_pari_lll_ranked_basis [11]
+[105]    0.1    0.00    0.00    2060         native_pari_lll_dpe [105]
+                0.00    0.00  126484/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00    5356/5356        native_pari_babai_dpe [112]
+                0.00    0.00  164800/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00  171804/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00  119480/32007971     mpz_to_int64 [31]
+                0.00    0.00    2060/17304       native_pari_dpe_integer [126]
+                0.00    0.00   95996/3922240     mpz_to_uint64 [137]
+                0.00    0.00    5356/15656       native_pari_dpe_subtract_product [149]
+                0.00    0.00    5356/21012       native_pari_dpe_multiply [145]
+                0.00    0.00    5356/18128       sagejs_tagged_sgn [147]
+                0.00    0.00    4120/15038       native_pari_dpe_normalize [150]
+-----------------------------------------------
+                0.00    0.00    2060/2060        native_pari_ideal_ranked_preparation [8]
+[106]    0.0    0.00    0.00    2060         native_pari_initial_integer_rank [106]
+                0.00    0.00    2060/2060        native_pari_flm_pivots [109]
+                0.00    0.00   39552/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00   54384/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   62624/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00   31312/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                0.00    0.00    2060/2060        native_pari_prepare_enumeration [41]
+[107]    0.0    0.00    0.00    2060         native_pari_fincke_pohst_bound [107]
+                0.00    0.00    2060/19364       native_pari_store_double [83]
+                0.00    0.00    4120/465766      native_pari_qr_multiply [34]
+                0.00    0.00    6180/1442618     native_pari_qr_load [47]
+                0.00    0.00    2060/2060        native_pari_real_root_abs [129]
+                0.00    0.00    2060/2060        native_pari_float_to_real [135]
+                0.00    0.00    2060/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.00    1648/3708        native_pari_positive_prime_power_hnf [100]
+                0.00    0.00    2060/3708        native_pari_collect_unreduced_ideals [1]
+[108]    0.0    0.00    0.00    3708         native_pari_basis_multiplication_table [108]
+                0.00    0.00  238960/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00  286752/32007971     mpz_to_int64 [31]
+                0.00    0.00   47792/8002894     sagejs_integer_buffer_set_mpz [44]
+-----------------------------------------------
+                0.00    0.00    2060/2060        native_pari_initial_integer_rank [106]
+[109]    0.0    0.00    0.00    2060         native_pari_flm_pivots [109]
+                0.00    0.00   95584/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00  215064/32007971     mpz_to_int64 [31]
+                0.00    0.00  129368/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00    9888/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00    7416/12978       native_pari_word_mod_inverse [128]
+-----------------------------------------------
+                0.00    0.00    3708/3708        native_pari_collect_unreduced_ideals [1]
+[110]    0.0    0.00    0.00    3708         native_pari_next_small_norm_ideal [110]
+                0.00    0.00   29252/467002      sagejs_mpz_buffer_index [76]
+                0.00    0.00   58504/32007971     mpz_to_int64 [31]
+                0.00    0.00    5356/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00    5356/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00   11536/228351      set_mpz_int64 [138]
+-----------------------------------------------
+                0.00    0.00     618/8034        native_pari_babai_fast [75]
+                0.00    0.00    7416/8034        native_pari_lll_fast [62]
+[111]    0.0    0.00    0.00    8034         native_pari_lll_set_line [111]
+                0.00    0.00   29252/46556       native_pari_lll_integer_to_double [115]
+                0.00    0.00   58504/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   87756/32007971     mpz_to_int64 [31]
+                0.00    0.00   29252/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00    8034/3922240     mpz_to_uint64 [137]
+-----------------------------------------------
+                0.00    0.00    5356/5356        native_pari_lll_dpe [105]
+[112]    0.0    0.00    0.00    5356         native_pari_babai_dpe [112]
+                0.00    0.00   60152/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   29664/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00   60976/32007971     mpz_to_int64 [31]
+                0.00    0.00   15244/17304       native_pari_dpe_integer [126]
+                0.00    0.00   28840/2993489     sagejs_mpz_integer_buffer_index [101]
+                0.00    0.00   64684/3922240     mpz_to_uint64 [137]
+                0.00    0.00   10300/15656       native_pari_dpe_subtract_product [149]
+                0.00    0.00    9888/9888        native_pari_dpe_divide [151]
+-----------------------------------------------
+                0.00    0.00    1648/1648        native_pari_positive_prime_power_hnf [100]
+[113]    0.0    0.00    0.00    1648         native_pari_positive_prime_power_two [113]
+                0.00    0.00    1648/1648        native_pari_integral_field_square [116]
+                0.00    0.00   15656/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00   16480/32007971     mpz_to_int64 [31]
+                0.00    0.00    5768/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00    4944/2993489     sagejs_mpz_integer_buffer_index [101]
+-----------------------------------------------
+                0.00    0.00   19364/65920       native_pari_store_double [83]
+                0.00    0.00   46556/65920       native_pari_lll_integer_to_double [115]
+[114]    0.0    0.00    0.00   65920         native_pari_real_to_float [114]
+                0.00    0.00  248024/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.00   17304/46556       native_pari_dpe_integer [126]
+                0.00    0.00   29252/46556       native_pari_lll_set_line [111]
+[115]    0.0    0.00    0.00   46556         native_pari_lll_integer_to_double [115]
+                0.00    0.00   46556/65920       native_pari_real_to_float [114]
+                0.00    0.00   46556/186636      native_pari_integer_to_real [119]
+-----------------------------------------------
+                0.00    0.00    1648/1648        native_pari_positive_prime_power_two [113]
+[116]    0.0    0.00    0.00    1648         native_pari_integral_field_square [116]
+                0.00    0.00   49852/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   55620/32007971     mpz_to_int64 [31]
+                0.00    0.00    5768/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00   12772/18033652     sagejs_mpz_shift [58]
+                0.00    0.00   12772/18128       sagejs_tagged_sgn [147]
+-----------------------------------------------
+                0.00    0.00    6592/75293       native_pari_lll_sizered [80]
+                0.00    0.00   68701/75293       native_pari_prepared_factorgen_numerical [15]
+[117]    0.0    0.00    0.00   75293         native_pari_round_real [117]
+                0.00    0.00  207957/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.00    4120/4120        native_pari_word_factor_front [78]
+[118]    0.0    0.00    0.00    4120         native_pari_catalog_contains [118]
+                0.00    0.00   56341/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   56341/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                0.00    0.00    2060/186636      native_pari_prepared_qr [13]
+                0.00    0.00    2060/186636      native_pari_store_double [83]
+                0.00    0.00   27192/186636      native_pari_lll_select_full_rank [53]
+                0.00    0.00   46556/186636      native_pari_lll_integer_to_double [115]
+                0.00    0.00  108768/186636      native_pari_lll_gramschmidt [20]
+[119]    0.0    0.00    0.00  186636         native_pari_integer_to_real [119]
+                0.00    0.00  182310/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.00    3296/40788       native_pari_lll_sizered [80]
+                0.00    0.00    5356/40788       native_pari_prepare_enumeration [41]
+                0.00    0.00   32136/40788       native_pari_prepared_qr [13]
+[120]    0.0    0.00    0.00   40788         native_pari_real_reciprocal [120]
+                0.00    0.00  148732/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.00    2060/34196       native_pari_real_root_abs [129]
+                0.00    0.00   32136/34196       native_pari_prepared_qr [13]
+[121]    0.0    0.00    0.00   34196         native_pari_real_square_root_abs [121]
+                0.00    0.00   94966/18033652     sagejs_mpz_shift [58]
+                0.00    0.00   34196/34196       native_pari_sqrtrem_integer [127]
+-----------------------------------------------
+                0.00    0.00   17098/17098       native_pari_insert_smooth_relation [63]
+[122]    0.0    0.00    0.00   17098         native_pari_content_relation_update [122]
+                0.00    0.00   26986/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   31930/32007971     mpz_to_int64 [31]
+                0.00    0.00    4944/8002894     sagejs_integer_buffer_set_mpz [44]
+-----------------------------------------------
+                0.00    0.00    5356/5356        native_pari_flatter [16]
+[123]    0.0    0.00    0.00    5356         native_pari_flatter_store4 [123]
+                0.00    0.00   21424/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00   21424/32007971     mpz_to_int64 [31]
+-----------------------------------------------
+                0.00    0.00    7004/7004        native_pari_insert_smooth_relation [63]
+[124]    0.0    0.00    0.00    7004         native_pari_add_factor_entry [124]
+                0.00    0.00   17613/19558464     sagejs_integer_buffer_get_mpz [32]
+                0.00    0.00   25647/32007971     mpz_to_int64 [31]
+                0.00    0.00    8034/8002894     sagejs_integer_buffer_set_mpz [44]
+-----------------------------------------------
+                0.00    0.00    1236/1236        native_pari_lll_fast [62]
+[125]    0.0    0.00    0.00    1236         native_pari_rotate_integer [125]
+                0.00    0.00   11124/8002894     sagejs_integer_buffer_set_mpz [44]
+                0.00    0.00   22248/32007971     mpz_to_int64 [31]
+                0.00    0.00   11124/19558464     sagejs_integer_buffer_get_mpz [32]
+-----------------------------------------------
+                0.00    0.00    2060/17304       native_pari_lll_dpe [105]
+                0.00    0.00   15244/17304       native_pari_babai_dpe [112]
+[126]    0.0    0.00    0.00   17304         native_pari_dpe_integer [126]
+                0.00    0.00   17304/46556       native_pari_lll_integer_to_double [115]
+-----------------------------------------------
+                0.00    0.00   34196/34196       native_pari_real_square_root_abs [121]
+[127]    0.0    0.00    0.00   34196         native_pari_sqrtrem_integer [127]
+                0.00    0.00   34196/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.00    2060/12978       native_pari_word_inverse_generator [136]
+                0.00    0.00    3502/12978       native_pari_relation_mod_inverse [134]
+                0.00    0.00    7416/12978       native_pari_flm_pivots [109]
+[128]    0.0    0.00    0.00   12978         native_pari_word_mod_inverse [128]
+                0.00    0.00   12978/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.00    2060/2060        native_pari_fincke_pohst_bound [107]
+[129]    0.0    0.00    0.00    2060         native_pari_real_root_abs [129]
+                0.00    0.00    2060/34196       native_pari_real_square_root_abs [121]
+-----------------------------------------------
+                0.00    0.00    5356/5356        native_pari_lll_binary_block [64]
+[130]    0.0    0.00    0.00    5356         native_pari_lll_binary [130]
+                0.00    0.00    5768/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.00    5562/5562        native_pari_word_factor_front [78]
+[131]    0.0    0.00    0.00    5562         native_pari_trial_bound_word [131]
+                0.00    0.00    5562/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.00    1236/1236        native_pari_lll_sizered [80]
+[132]    0.0    0.00    0.00    1236         native_pari_real_division [132]
+                0.00    0.00    4738/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.00    5356/5356        native_pari_collect_unreduced_ideals [1]
+[133]    0.0    0.00    0.00    5356         native_pari_nonnegative_integer_power [133]
+                0.00    0.00    4120/18033652     sagejs_mpz_shift [58]
+                0.00    0.00    1236/1236        native_pari_word_power [157]
+-----------------------------------------------
+                0.00    0.00    3502/3502        native_pari_prepared_add_relation [71]
+[134]    0.0    0.00    0.00    3502         native_pari_relation_mod_inverse [134]
+                0.00    0.00    3502/12978       native_pari_word_mod_inverse [128]
+-----------------------------------------------
+                0.00    0.00    2060/2060        native_pari_fincke_pohst_bound [107]
+[135]    0.0    0.00    0.00    2060         native_pari_float_to_real [135]
+                0.00    0.00    2060/18033652     sagejs_mpz_shift [58]
+-----------------------------------------------
+                0.00    0.00    3296/3296        native_pari_composite_modulus_hnf [74]
+[136]    0.0    0.00    0.00    3296         native_pari_word_inverse_generator [136]
+                0.00    0.00    2060/12978       native_pari_word_mod_inverse [128]
+                0.00    0.00    3296/26368       native_pari_word_bezout [143]
+-----------------------------------------------
+                0.00    0.00    2060/3922240     native_pari_prepare_enumeration [41]
+                0.00    0.00    8034/3922240     native_pari_lll_set_line [111]
+                0.00    0.00    9064/3922240     native_pari_rotate_gram [158]
+                0.00    0.00   19364/3922240     native_pari_store_double [83]
+                0.00    0.00   29664/3922240     native_pari_rotate_float [155]
+                0.00    0.00   64684/3922240     native_pari_babai_dpe [112]
+                0.00    0.00   89816/3922240     native_pari_fp_next [61]
+                0.00    0.00   95996/3922240     native_pari_lll_dpe [105]
+                0.00    0.00  110210/3922240     native_pari_babai_fast [75]
+                0.00    0.00  138432/3922240     native_pari_babai_dot [84]
+                0.00    0.00  138432/3922240     native_pari_qr_enumeration_batch [46]
+                0.00    0.00  201468/3922240     native_pari_lll_fast [62]
+                0.00    0.00 3015016/3922240     native_pari_short_product [26]
+[137]    0.0    0.00    0.00 3922240         mpz_to_uint64 [137]
+-----------------------------------------------
+                0.00    0.00    3296/228351      native_pari_collect_unreduced_ideals [1]
+                0.00    0.00    7416/228351      native_pari_fp_next [61]
+                0.00    0.00   11536/228351      native_pari_next_small_norm_ideal [110]
+                0.00    0.00  206103/228351      native_pari_next_factor_candidate [27]
+[138]    0.0    0.00    0.00  228351         set_mpz_int64 [138]
+-----------------------------------------------
+                0.00    0.00  102382/102382      native_pari_composite_modulus_hnf [74]
+[139]    0.0    0.00    0.00  102382         native_pari_signed_remainder [139]
+-----------------------------------------------
+                0.00    0.00   70040/70040       native_pari_prepared_hnf_valuation [82]
+[140]    0.0    0.00    0.00   70040         native_pari_scalar_pval_control [140]
+-----------------------------------------------
+                0.00    0.00   68701/68701       native_pari_prepared_factor_norm [77]
+[141]    0.0    0.00    0.00   68701         native_pari_prime_to_part [141]
+-----------------------------------------------
+                0.00    0.00      48/42766       small [162]
+                0.00    0.00   42718/42766       array [161]
+[142]    0.0    0.00    0.00   42766         get [142]
+-----------------------------------------------
+                0.00    0.00    3296/26368       native_pari_word_inverse_generator [136]
+                0.00    0.00   23072/26368       native_pari_hnf_bezout [144]
+[143]    0.0    0.00    0.00   26368         native_pari_word_bezout [143]
+-----------------------------------------------
+                0.00    0.00   23072/23072       native_pari_hnf_column_step [102]
+[144]    0.0    0.00    0.00   23072         native_pari_hnf_bezout [144]
+                0.00    0.00   23072/26368       native_pari_word_bezout [143]
+-----------------------------------------------
+                0.00    0.00    5356/21012       native_pari_lll_dpe [105]
+                0.00    0.00   15656/21012       native_pari_dpe_subtract_product [149]
+[145]    0.0    0.00    0.00   21012         native_pari_dpe_multiply [145]
+-----------------------------------------------
+                0.00    0.00    6180/18952       native_pari_lll_fast [62]
+                0.00    0.00   12772/18952       native_pari_babai_fast [75]
+[146]    0.0    0.00    0.00   18952         native_pari_lll_scale [146]
+-----------------------------------------------
+                0.00    0.00    5356/18128       native_pari_lll_dpe [105]
+                0.00    0.00   12772/18128       native_pari_integral_field_square [116]
+[147]    0.0    0.00    0.00   18128         sagejs_tagged_sgn [147]
+-----------------------------------------------
+                0.00    0.00   15656/15656       native_pari_dpe_subtract_product [149]
+[148]    0.0    0.00    0.00   15656         native_pari_dpe_subtract [148]
+                0.00    0.00   10918/15038       native_pari_dpe_normalize [150]
+-----------------------------------------------
+                0.00    0.00    5356/15656       native_pari_lll_dpe [105]
+                0.00    0.00   10300/15656       native_pari_babai_dpe [112]
+[149]    0.0    0.00    0.00   15656         native_pari_dpe_subtract_product [149]
+                0.00    0.00   15656/21012       native_pari_dpe_multiply [145]
+                0.00    0.00   15656/15656       native_pari_dpe_subtract [148]
+-----------------------------------------------
+                0.00    0.00    4120/15038       native_pari_lll_dpe [105]
+                0.00    0.00   10918/15038       native_pari_dpe_subtract [148]
+[150]    0.0    0.00    0.00   15038         native_pari_dpe_normalize [150]
+-----------------------------------------------
+                0.00    0.00    9888/9888        native_pari_babai_dpe [112]
+[151]    0.0    0.00    0.00    9888         native_pari_dpe_divide [151]
+-----------------------------------------------
+                0.00    0.00    4064/4064        main [2]
+[152]    0.0    0.00    0.00    4064         copy_bytes [152]
+-----------------------------------------------
+                0.00    0.00    1872/1872        main [2]
+[153]    0.0    0.00    0.00    1872         read_integer_buffer [153]
+-----------------------------------------------
+                0.00    0.00    1648/1648        main [2]
+[154]    0.0    0.00    0.00    1648         sagejs_kernel_m_76930c96dfa07c3f_pari_collect_unreduced_ideals [154]
+-----------------------------------------------
+                0.00    0.00    1236/1236        native_pari_lll_fast [62]
+[155]    0.0    0.00    0.00    1236         native_pari_rotate_float [155]
+                0.00    0.00   29664/3922240     mpz_to_uint64 [137]
+-----------------------------------------------
+                0.00    0.00    1236/1236        native_pari_word_power [157]
+[156]    0.0    0.00    0.00    1236         native_pari_small_word_power [156]
+-----------------------------------------------
+                0.00    0.00    1236/1236        native_pari_nonnegative_integer_power [133]
+[157]    0.0    0.00    0.00    1236         native_pari_word_power [157]
+                0.00    0.00    1236/1236        native_pari_small_word_power [156]
+-----------------------------------------------
+                0.00    0.00     412/412         native_pari_lll_fast [62]
+[158]    0.0    0.00    0.00     412         native_pari_rotate_gram [158]
+                0.00    0.00    9064/3922240     mpz_to_uint64 [137]
+-----------------------------------------------
+                0.00    0.00     192/192         main [2]
+[159]    0.0    0.00    0.00     192         read_float64_buffer [159]
+-----------------------------------------------
+                0.00    0.00     128/128         main [2]
+[160]    0.0    0.00    0.00     128         read_int64_buffer [160]
+-----------------------------------------------
+                0.00    0.00      64/64          main [2]
+[161]    0.0    0.00    0.00      64         array [161]
+                0.00    0.00   42718/42766       get [142]
+-----------------------------------------------
+                0.00    0.00      48/48          main [2]
+[162]    0.0    0.00    0.00      48         small [162]
+                0.00    0.00      48/42766       get [142]
+-----------------------------------------------
+
+Index by function name
+
+  [43] __gmp_default_allocate [122] native_pari_content_relation_update [15] native_pari_prepared_factorgen_numerical
+  [85] __gmp_default_reallocate [151] native_pari_dpe_divide [82] native_pari_prepared_hnf_valuation
+  [67] __gmpn_add_n_x86_64   [126] native_pari_dpe_integer [81] native_pari_prepared_ideal_valuation
+  [86] __gmpn_bc_set_str     [145] native_pari_dpe_multiply [45] native_pari_prepared_mixed_norm
+  [87] __gmpn_copyd_zen      [150] native_pari_dpe_normalize [13] native_pari_prepared_qr
+   [6] __gmpn_copyi_zen      [148] native_pari_dpe_subtract [73] native_pari_prepared_real_norm
+  [25] __gmpn_divrem_1_x86_64 [149] native_pari_dpe_subtract_product [141] native_pari_prime_to_part
+  [88] __gmpn_divrem_2       [107] native_pari_fincke_pohst_bound [39] native_pari_qr_add
+  [89] __gmpn_gcd_1           [16] native_pari_flatter    [46] native_pari_qr_enumeration_batch
+  [90] __gmpn_gcd_11_zen      [59] native_pari_flatter_product [47] native_pari_qr_load
+  [91] __gmpn_get_d          [123] native_pari_flatter_store4 [34] native_pari_qr_multiply
+  [21] __gmpn_invert_limb    [109] native_pari_flm_pivots [72] native_pari_qr_square
+  [92] __gmpn_lshift_zen     [135] native_pari_float_to_real [40] native_pari_qr_store
+  [35] __gmpn_mul_1_zen       [61] native_pari_fp_next   [132] native_pari_real_division
+  [93] __gmpn_mul_basecase_zen [79] native_pari_fp_step   [65] native_pari_real_integer_division
+  [68] __gmpn_rshift_zen     [144] native_pari_hnf_bezout [120] native_pari_real_reciprocal
+  [36] __gmpn_tdiv_qr        [102] native_pari_hnf_column_step [129] native_pari_real_root_abs
+   [5] __gmpz_add             [70] native_pari_ideal_embedding [121] native_pari_real_square_root_abs
+  [37] __gmpz_clear           [98] native_pari_ideal_hnf_mul_two [114] native_pari_real_to_float
+  [17] __gmpz_cmp             [30] native_pari_ideal_prepare_enumeration [66] native_pari_real_word_division
+  [14] __gmpz_export           [8] native_pari_ideal_ranked_preparation [134] native_pari_relation_mod_inverse
+  [49] __gmpz_fdiv_q         [106] native_pari_initial_integer_rank [155] native_pari_rotate_float
+  [94] __gmpz_fdiv_q_2exp     [63] native_pari_insert_smooth_relation [158] native_pari_rotate_gram
+  [50] __gmpz_fdiv_r         [119] native_pari_integer_to_real [125] native_pari_rotate_integer
+  [38] __gmpz_import         [116] native_pari_integral_field_square [117] native_pari_round_real
+  [51] __gmpz_init            [97] native_pari_integral_ideal_mul_two [140] native_pari_scalar_pval_control
+  [95] __gmpz_inp_str_nowhite [130] native_pari_lll_binary [26] native_pari_short_product
+  [23] __gmpz_mul             [64] native_pari_lll_binary_block [54] native_pari_short_square
+  [69] __gmpz_mul_2exp       [105] native_pari_lll_dpe    [29] native_pari_signed_real_sum
+  [19] __gmpz_realloc        [104] native_pari_lll_exponent [139] native_pari_signed_remainder
+   [4] __gmpz_set            [103] native_pari_lll_extra_precision [156] native_pari_small_word_power
+  [18] __gmpz_set_si          [62] native_pari_lll_fast  [127] native_pari_sqrtrem_integer
+  [96] __gmpz_set_str         [20] native_pari_lll_gramschmidt [83] native_pari_store_double
+  [56] __gmpz_set_ui         [115] native_pari_lll_integer_to_double [131] native_pari_trial_bound_word
+  [10] __gmpz_sizeinbase      [99] native_pari_lll_multiply [143] native_pari_word_bezout
+  [24] __gmpz_sub             [11] native_pari_lll_ranked_basis [78] native_pari_word_factor_front
+  [33] __gmpz_tdiv_qr        [146] native_pari_lll_scale  [48] native_pari_word_integer_real_product
+  [28] __gmpz_tdiv_r          [53] native_pari_lll_select_full_rank [52] native_pari_word_integer_real_sum
+  [57] _init                 [111] native_pari_lll_set_line [136] native_pari_word_inverse_generator
+ [161] array                  [80] native_pari_lll_sizered [128] native_pari_word_mod_inverse
+ [152] copy_bytes             [27] native_pari_next_factor_candidate [157] native_pari_word_power
+ [142] get                   [110] native_pari_next_small_norm_ideal [159] read_float64_buffer
+  [31] mpz_to_int64            [9] native_pari_next_smooth_candidate [160] read_int64_buffer
+ [137] mpz_to_uint64         [133] native_pari_nonnegative_integer_power [153] read_integer_buffer
+ [124] native_pari_add_factor_entry [100] native_pari_positive_prime_power_hnf [32] sagejs_integer_buffer_get_mpz
+  [84] native_pari_babai_dot [113] native_pari_positive_prime_power_two [44] sagejs_integer_buffer_set_mpz
+ [112] native_pari_babai_dpe  [42] native_pari_positive_real_sum [154] sagejs_kernel_m_76930c96dfa07c3f_pari_collect_unreduced_ideals
+  [75] native_pari_babai_fast [41] native_pari_prepare_enumeration [76] sagejs_mpz_buffer_index
+ [108] native_pari_basis_multiplication_table [71] native_pari_prepared_add_relation [101] sagejs_mpz_integer_buffer_index
+ [118] native_pari_catalog_contains [55] native_pari_prepared_can_factor [58] sagejs_mpz_shift
+   [7] native_pari_collect_ideal_relations [60] native_pari_prepared_divide_prime_at [147] sagejs_tagged_sgn
+   [3] native_pari_collect_unreduced_ideal [22] native_pari_prepared_embedding_row [138] set_mpz_int64
+   [1] native_pari_collect_unreduced_ideals [77] native_pari_prepared_factor_norm [162] small
+  [74] native_pari_composite_modulus_hnf [12] native_pari_prepared_factorgen
