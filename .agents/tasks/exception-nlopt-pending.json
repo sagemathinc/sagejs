@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Refresh only the pending NLopt evaluator source binding without promoting qualification",
-  "base_commit": "f855d2b7447d7bb610fcce796f2b1dbb80fcb537",
+  "base_commit": "d32d92695e207210447497594e9787508de1debd",
   "claims": [
     "src/lib/sagejs/numerics/optimization/backends/nlopt/release/production-manifest.json"
   ],
