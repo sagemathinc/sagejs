@@ -32,8 +32,9 @@ compilation and all dynamic/native comparisons. These are validation resources,
 not comparative collector timings. Strict Python (403 modules) and parallel
 checks pass; architecture validation still fails at the known optimizer
 manifest mismatch.
-The selected changed-file merge/docs gate is running separately; its completion
-is not yet a validation receipt for this collector checkpoint.
+The selected changed-file merge/docs gate passed; its build completed in
+7m 19s. Optional native adapters, the production kernel pack and numerical
+Wasm reactors were absent/skipped, not validated by that build.
 
 This is a prepared-ideal segment, not `bnfinit`. External preparation still
 supplies ideal/LLL, embeddings, factor-base data and the trial scale. Testing
@@ -47,6 +48,37 @@ SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
   node bench/pari-class-group-port/check_compiled_ideal_collector.cjs \
   /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
 ```
+
+### Preparing a work-matched collector comparison
+
+The checker accepts `--export-fixtures` after the PARI source directory. This
+executes only the diagnostic C oracle and emits schema
+`pari-prepared-ideal-collector-v1`, with the actual `buch2.c` hash, 83 named
+parameter types and 16 cases. Each case separates fresh `input` buffers from
+`expected` output state. It does not compile or run the translated collector.
+The initial progress, generator bank and cache occupancy are zero; computed
+relations are never supplied as inputs. The export is approximately 4.33 MB
+and should be generated once, not archived per timing iteration.
+
+This is benchmark scaffolding, **not yet a timing comparator**. The existing
+oracle cannot be timed directly against the native entry:
+
+- Its QR and enumeration bound are prepared before `trace`, whereas the
+  translated collector computes both inside its entry. Include them in both
+  timed paths.
+- It prints candidate diagnostics and separately recomputes the rounded norm
+  before `factorgen`. Neither belongs in the timed C collector.
+- It creates the relation cache internally; the native entry receives empty
+  allocated buffers. Align the reset/allocation boundary and separately report
+  host marshalling and allocation rather than attributing these to the language.
+- Both segment paths omit ideal LLL/preparation and automorphism images. The
+  full upstream `Fincke_Pohst_ideal` is therefore a different workload.
+
+Use the pristine pinned source archive for the timing control; the diagnostic
+tree's tracing instrumentation is not a qualified baseline. Preserve the same
+quota/target cases, trial counts, factor attempts, cache transitions and exact
+generator outputs before collecting paired samples. No collector speed ratio
+has been established by this export or by the correctness harness.
 
 ## Normalization, insertion and exact generator ownership
 

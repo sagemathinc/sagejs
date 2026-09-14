@@ -1,5 +1,6 @@
 "use strict";
 const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),os=require("node:os");
+const {createHash}=require('node:crypto');
 const {spawnSync}=require("node:child_process"),{compileKernel}=require("../../tools/native-kernel/compiler.cjs");
 (async()=>{
 const pari=path.resolve(process.argv[2]),lib=path.join(pari,"Olinux-x86_64"),dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-ideal-collector-")),source=path.join(dir,"oracle.c"),exe=path.join(dir,"oracle");
@@ -31,7 +32,6 @@ printf("\\\"M\\\":[");GEN M=nf_get_M(nf);for(long i=0;i<n;i++)for(long j=1;j<=n;
 const cc=spawnSync("cc",["-O2","-I"+path.join(pari,"src/headers"),"-I"+lib,source,"-L"+lib,"-Wl,-rpath,"+lib,"-lpari","-lm","-o",exe],{encoding:"utf8",timeout:30000});assert.equal(cc.status,0,cc.stderr);
 const run=spawnSync(exe,[],{encoding:"utf8",timeout:30000,maxBuffer:8*1024*1024});assert.equal(run.status,0,run.stderr);
 const rows=run.stdout.trim().split("\n").map(JSON.parse);assert.equal(rows.length,16);
-const built=await compileKernel({sourcePath:path.join(__dirname,"ideal_collector.py")}),mod=require(built.modulePath);
 const names=fs.readFileSync(path.join(__dirname,"ideal_collector.py"),"utf8").match(/def pari_collect_ideal_relations\(([\s\S]*?)\n\)/)[1].trim().split("\n").map(s=>s.trim().replace(/,$/,"").split(": "));
 function inputs(r){const n=r.n,z=k=>Array(k).fill(0n),offsets=Array(102).fill(-1n),counts=z(102),tau=[],es=[],fs=[],inert=[];
  for(const group of r.groups){const [prime,offset,count]=group;offsets[prime]=BigInt(offset);counts[prime]=BigInt(count);let pos=3;for(let j=0;j<count;j++){es.push(BigInt(group[pos++]));fs.push(BigInt(group[pos++]));inert.push(BigInt(group[pos++]));tau.push(...group.slice(pos,pos+n*n).map(BigInt));pos+=n*n;}}
@@ -41,6 +41,22 @@ function inputs(r){const n=r.n,z=k=>Array(k).fill(0n),offsets=Array(102).fill(-1
  assert.deepEqual(Object.keys(values).sort(),names.map(x=>x[0]).sort());return values;
 }
 const stringify=x=>JSON.stringify(x,(_,v)=>typeof v==='bigint'?String(v):v);
+// Export the prepared boundary without compiling or executing the translation.
+// Expected collector outputs are separate: consumers must not feed them into
+// the timed computation. This oracle is diagnostic, not a timing comparator.
+if(process.argv.includes('--export-fixtures')){
+ process.stdout.write(stringify({schema:'pari-prepared-ideal-collector-v1',
+  provenance:{buch2Sha256:createHash('sha256').update(upstream).digest('hex'),
+   boundary:'Prepared reduced ideal, G*ideal, embeddings and factor-base data; empty cache; no automorphism images',
+   diagnosticOnly:true},names,
+  cases:rows.map((r,index)=>({index,input:inputs(r),expected:{
+   status:r.status,trials:r.trials,attempts:r.attempts,relid:r.relid,
+   nfact:r.nfact,fact_count:r.fact_count,last:r.last,missing:r.missing,
+   sup:r.sup,basis:r.basis,hashes:r.hashes,records:r.records,generators:r.generators
+  }}))})+'\n');
+ return;
+}
+const built=await compileKernel({sourcePath:path.join(__dirname,"ideal_collector.py")}),mod=require(built.modulePath);
 const py=spawnSync('python3',['-c',`
 import sys,json,decimal,importlib
 sys.set_int_max_str_digits(100000)
@@ -83,4 +99,3 @@ assert(rows.some(r=>r.target===2&&r.status===1&&r.last>=2&&r.relid<r.last));
 assert(rows.some(r=>r.target===100&&r.nrelid===8&&r.status===0&&r.relid<8));
 console.log('16 prepared ideal collectors match PARI/CPython/JS/GMP: probes, quotas, cache targets and exhaustion; relation bases, exact generators and terminal state agree');
 })().catch(e=>{console.error(e);process.exitCode=1;});
-
