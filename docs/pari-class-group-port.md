@@ -1,5 +1,34 @@
 # Faithful PARI class-group language experiment
 
+## Real division for the pending enumeration-bound connection
+
+`real_division.py` implements the real quotient value operation required by
+PARI's logarithm and higher-root iterations. It preserves the separate
+one-word divisor path, operand-word windows, normalization and leading-word
+remainder rounding. The pinned 64-bit GMP crossover is 256 bits; below it,
+the small loop retains at most one extra numerator word. Exact backend integer
+division replaces the upstream quotient loop explicitly. This is an arithmetic
+leaf substitution, not a claim that a different division cost is a compiler
+defect. Current tests establish correspondence on these controls, not a formal
+proof of all limb-boundary cases.
+
+The 6,272 controls compare seven numerator and denominator precisions in every
+pairing, signed/zero numerators, signed denominators, random mantissas and
+shared-leading-word/low-tail endpoint patterns against actual PARI `divrr`.
+Stored outputs match CPython, dynamic JS, GMP-native and tagged-native. The
+1920-bit input ceiling keeps intermediates within existing storage limits.
+
+The numerical dependency inspection found that `Fincke_Pohst_bound` needs
+`sqrtnr`, including its `logr_abs`/exponential initialization and higher-precision
+iteration. Those connections are still missing; using binary64 `pow` in their
+place would not preserve the requested experiment.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_real_division.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Householder QR connected to reduction-matrix output
 
 `householder.py` translates `QR_init`, `FindApplyQ`, `ApplyAllQ`/`ApplyQ`, and
@@ -1379,6 +1408,15 @@ are historical and do not govern this experiment. Mathematical choices remain
   or later. Translated files must retain that attribution and license notice.
 
 ## Resource ledger
+
+At the QR checkpoint, goal accounting reported 25,247 root active seconds
+(7.01 hours), plus the previously recorded 12 panel-agent minutes. The
+post-division combined square-root/QR/division validation used 6.515 wall
+seconds, 7.371 user plus 0.789 system child CPU seconds and peak child RSS
+361,116 KiB, recorded through `resource.getrusage(RUSAGE_CHILDREN)`. Charge
+all 8.160 CPU seconds, including the oracle builds. This is not a reconstructed
+cumulative CPU ledger: earlier unmetered diagnostic attempts remain explicitly
+unaccounted. No near-budget execution may assume those costs were zero.
 
 Execution began at approximately 2026-09-13 21:32 UTC. Limits remain 16 aggregate
 active-agent hours, six aggregate execution CPU-hours, 256 MiB archived evidence,
