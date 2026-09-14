@@ -72,10 +72,18 @@ function parseArguments(argv) {
   };
 }
 
+function expectedPublicVersion(targetName, version, releaseDate) {
+  if (!Object.hasOwn(SUPPORTED_TARGETS, targetName)) {
+    throw new Error("unsupported public version target: " + targetName);
+  }
+  // The public release spelling is macos/windows, not Node's darwin/win32 ABI
+  // spelling. Keep runtimeId for runtime/ABI checks, not the product banner.
+  return `Sage.js v${version} [${targetName}], Release Date: ${releaseDate}`;
+}
+
 function verifyPublicJavaScriptApi(context) {
   const expectedVersion = require(join(root, "package.json")).version;
   assert.equal(context.version, expectedVersion);
-  const target = SUPPORTED_TARGETS[context.target];
   const commonJs = assertSuccessful(runProcess(
     process.execPath,
     [
@@ -106,8 +114,8 @@ function verifyPublicJavaScriptApi(context) {
     commonJs.stdout.trim(),
     [
       "67 * 5527",
-      `'Sage.js v${expectedVersion} [${target.runtimeId}], Release Date: ` +
-        `${require(join(root, "sagejs-version.json")).release_date}'`,
+      "'" + expectedPublicVersion(context.target, expectedVersion,
+        require(join(root, "sagejs-version.json")).release_date) + "'",
       "'sagejs.version/v1'",
       "(1, True)",
     ].join("\n"),
@@ -185,6 +193,7 @@ function cleanupQualification({ install, relocated, keep, log = console.log }) {
 if (require.main === module) main();
 
 module.exports = {
+  expectedPublicVersion,
   cleanupQualification,
   parseArguments,
   verifyPublicJavaScriptApi,

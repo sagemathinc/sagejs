@@ -8,10 +8,18 @@ const { pnpmInvocation } = require("../scripts/pnpm-invocation.cjs");
 
 describe("pnpm invocation", () => {
   it("uses pnpm from PATH outside package-manager scripts", () => {
-    assert.deepEqual(pnpmInvocation(["test"], { npmExecPath: "" }), {
+    assert.deepEqual(pnpmInvocation(["test"], { npmExecPath: "", platform: "linux" }), {
       command: "pnpm",
       arguments: ["test"],
       shell: false,
+    });
+  });
+
+  it("resolves the Windows PATH shim outside package-manager scripts", () => {
+    assert.deepEqual(pnpmInvocation(["pack"], { npmExecPath: "", platform: "win32" }), {
+      command: "pnpm.cmd",
+      arguments: ["pack"],
+      shell: true,
     });
   });
 

@@ -10,7 +10,7 @@ investigation started at `d520ed4df`; the current integration baseline is
 | Milestone | Current status |
 | --- | --- |
 | N0 | Partial public-call corpus and profiles; complete scaling, startup, memory, route and platform matrix still required. |
-| N1 | Trace #224 and result-binding #225 are merged, with independent Linux x64 confirmation of their narrow gains; result statistics rows do not improve. Draft #251 specializes exact JSON leaves with independent source-body evidence; integration with current main now passes the real-browser module-identity corpus. Its local routine startup gate still fails. Memory and public targets remain open. |
+| N1 | Trace #224 and result-binding #225 are merged, with independent Linux x64 confirmation of their narrow gains; result statistics rows do not improve. Non-draft #251 specializes exact JSON leaves with independent source-body evidence; current-main integration passes the real-browser module-identity corpus and independent ARM full build/routine. The local startup miss remains recorded. Memory and public targets remain open. |
 | N2 | Merged #232 qualifies the isolated binary64 sum/compiler foundation on four persistent platforms, plus local browser and sanitizer evidence. Draft #240 adds owned prepared statistics: an independent Linux public query is 82 ms versus 5.0 s generic, with 1.1 s preparation. Public fallback packaging now passes; installed native/Wasm storage, paired qualification, startup and the 10 ms target remain open. |
 | N3 | Earlier typed LU, Eigen probes and packed validation are candidate evidence, not a qualified public backend or completed latency target. |
 | N4 | Earlier prepared scalar evaluators/root prototypes remain experimental; derivative/vector/external-solver integration and public targets remain open. |
@@ -90,7 +90,7 @@ statistics adds no further exact-library downloads, but that is not lightweight
 startup. Installed native packaging, prepared Wasm storage, setup, result
 construction and memory remain open, not excluded from a target pass.
 
-[Draft PR #251](https://github.com/sagemathinc/sagejs/pull/251), source
+[PR #251](https://github.com/sagemathinc/sagejs/pull/251), original source
 `c3c34f8c8`, addresses one result-construction cost in ordinary Python. On quiet
 Linux x64, actual baseline/candidate function bodies compiled into one runtime
 take 14.95–16.15 / 6.53–7.21 ms for 514 float leaves, and 7.49–7.52 /
@@ -114,10 +114,15 @@ The complete JSON corpus passes all three engines, alongside Chromium's
 passes 403 modules. The original timing receipts retain their old runtime
 identity; they are not new integration timings. Functional routine phases pass,
 but the unchanged local startup gate fails at 409.5ms versus 400ms. The PR
-remains draft; independent exact-source ARM64 qualification is underway.
+was initially held as draft. Independent exact-source ARM64 full build and
+routine validation subsequently pass, including startup; current-head GitHub
+routine and platform smoke checks pass too. Evidence head `316a6f1b7` is now
+non-draft for its narrow JSON scope. The independent merge-manager audit also
+retains a main/control local startup miss; neither observation changes a gate
+or establishes a public numerical target pass.
 
 Packaging is a separate N2 prerequisite, not a completed numerical target.
-[PR #259](https://github.com/sagemathinc/sagejs/pull/259) is the non-draft
+[PR #259](https://github.com/sagemathinc/sagejs/pull/259) is the merged
 prefix-free aggregate foundation; [draft #262](https://github.com/sagemathinc/sagejs/pull/262)
 separates pure binary64 and exact-dependency production packs. Its four-platform
 small executable loader fixtures pass, but are not whole-product receipts.
@@ -129,6 +134,16 @@ increase is used. Full installed npm/four-platform product qualification,
 prepared-statistics descriptors, source-current backend qualification and
 startup/payload/RSS measurements remain open. Small addon sizes alone do not
 prove a public startup or memory improvement.
+
+Current-main packaging integration `d3c436020` on `256419004` passes the full
+eight-stage build (14m12s), architecture, strict Python (403 modules), and
+12 production/catalog/closure/independent-pack tests. Ordinary root prepack
+passes the routine suite including startup in 2m12s. This new-source pass does
+not erase the earlier failures. Fresh Linux x64 npm installation, lazy
+numerical resources, relocated SEA execution and rebuilt product SEA smoke
+tests pass; other platforms' full packages remain open. See the
+[packaging checkpoint](numerical-multipack-routing-checkpoint.md). The pending
+NLopt public closure remains explicitly unqualified, not silently promoted.
 
 Earlier stacked drafts are preserved for source, experiments and review, but
 are not prerequisites to merge merely because a later draft depends on them.

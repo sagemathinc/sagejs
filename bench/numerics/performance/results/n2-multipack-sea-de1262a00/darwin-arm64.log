@@ -1,0 +1,13 @@
+Published 2 production kernel modules at ../../../tmp/sagejs-multipack-sea-1BhBsI/published in 2 native packs (0.21 MiB total)
+{"seaFixtures":[{"scenario":"valid","result":{"sea":true,"exactPackExtracted":false,"sum":1,"node":"v26.5.0","platform":"darwin","arch":"arm64"},"executableBytes":150396464,"executableSha256":"e1677660aba2f18764a827f03ef507665b01e9fb1f277569b7f90fe34af24c7f"},{"scenario":"invalid","result":{"sea":true,"invalidManifestRejected":true},"executableBytes":150396480,"executableSha256":"7ef325139044063c746b7a118034a5bb0fd68621df62d72026e0fad9f26b9681"}]}
+{"packs":2,"numericalPublicAutoloadWithoutExactPack":true,"seaResourceExtractionWithoutExactPack":true,"corruptManifestsRejected":6,"exactBits":202}
+
+✔ relocated executable SEA isolates numerical native packs and rejects corruption (68752.780791ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68903.948917
