@@ -1,5 +1,41 @@
 # Faithful PARI class-group language experiment
 
+## Factor-base selection loop
+
+`factor_base.py` translates the selection loop of `buch2.c:FBgen`, retaining
+the distinction between relation bound C1 and checking bound C2, inert-prime
+exclusion, residue-degree truncation, the complete-prime-group flag, zero-based
+offsets for one-based factor indices, KC/KCZ/KCZ2/KC2, and the active
+rational-prime product.
+It returns indices into prepared prime decompositions rather than constructing
+new ideals. The source preserves the upstream `KC == 0` sentinel behavior
+instead of replacing it with a generic crossed-bound flag.
+
+The actual `FBgen` oracle checks 64 combinations of the four existing fields,
+eight bounds and equal/split relation bounds. Selected prime-ideal identities
+are compared against the full prepared decompositions, not just their degrees.
+CPython, generated JS and GMP agree on all selection metadata, including
+partially included prime groups and different active/checking sizes.
+
+This is **not yet the initial bound search or complete factor-base setup**.
+The decomposition cache, `log(C2+0.5)` and cached prime logarithms are explicit
+PARI-prepared inputs; the division and integer conversion of that logarithmic
+ratio run in the port. Auxiliary setup such as the ball-volume scalar and
+sub-factor-base preparation is still outside this loop. These controls use
+declared bounds, not a claim to have reproduced `Buchall`'s chosen bounds.
+
+This reveals a compiler capability gap relevant to connecting the engine:
+mixed exact/Float64 functions currently have JS and GMP execution but no tagged
+native backend. The test explicitly asserts the capability rejection on valid
+inputs; it does not count tagged execution as passing or silently substitute
+another target. No timing conclusion is inferred from that missing capability.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_factor_base.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Prepared factorgen through prime-ideal admission
 
 `ideal_admission.py` connects the numerical front through rational norm
