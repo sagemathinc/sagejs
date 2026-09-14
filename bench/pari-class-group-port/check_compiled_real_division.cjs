@@ -9,6 +9,8 @@ for(long ai=0;ai<7;ai++)for(long bi=0;bi<7;bi++)for(long k=0;k<64;k++)for(long s
 GEN a=addii(int2n(p-1),randomi(int2n(p-1))),b=addii(int2n(q-1),randomi(int2n(q-1)));
 if(k==0)a=int2n(p-1);if(k==1)b=int2n(q-1);if(k==2){a=subis(int2n(p),1);b=subis(int2n(q),1);}if(k==3)a=gen_0;
 if(k>=24){long t=(k-24)%5,s=(k-24)/5;GEN top=addis(int2n(63),s);a=shifti(top,p-64);b=shifti(top,q-64);if(t==0)a=addis(a,1);if(t==1)b=addis(b,1);if(t==2)a=addii(a,subis(int2n(p-64),1));if(t==3)b=addii(b,subis(int2n(q-64),1));if(t==4){a=subis(int2n(p),1);b=addis(b,1);}}
+/* Regression: small divrr truncates intermediate products near a/b=1. */
+if(k>=20&&k<=23){a=addis(divis(int2n(p+1),3),k-20);b=addis(divis(int2n(q+1),3),1);}
 if(sign<0)a=negi(a);if(k%2)b=negi(b);GEN x=itor(a,p),y=itor(b,q);setexpo(x,ex);setexpo(y,ey);GEN z=divrr(x,y);
 pari_printf("%Ps %ld %ld %Ps %ld %ld %Ps %ld %ld\\n",a,p,ex,b,q,ey,signe(z)?mantissa_real(z,&de):gen_0,signe(z)?bit_prec(z):0,expo(z));avma=av;}pari_close();return 0;}`);
  const cc=spawnSync("cc",["-O2","-I"+path.join(pari,"src/headers"),"-I"+lib,source,"-L"+lib,"-Wl,-rpath,"+lib,"-lpari","-lm","-o",exe],{encoding:"utf8",timeout:30000});assert.equal(cc.status,0,cc.stderr);

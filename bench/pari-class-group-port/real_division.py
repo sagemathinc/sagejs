@@ -6,6 +6,7 @@ Operand windows and the leading-remainder rounding remain PARI-specific.
 """
 
 from sagejs.native import native
+from .small_real_division import pari_small_real_division
 
 
 @native
@@ -43,6 +44,9 @@ def pari_real_division(
             quotient = 1 << 63
             exponent += 1
         precision = 64
+    elif py < 256:
+        quotient, precision, change = pari_small_real_division(a, px, b, py)
+        exponent += change
     else:
         precision = px
         if py < precision:
@@ -52,8 +56,6 @@ def pari_real_division(
             divisor_precision = py
         numerator_precision = precision + divisor_precision
         retained_precision = numerator_precision
-        if py < 256:
-            retained_precision = precision + 64
         if px < retained_precision:
             retained_precision = px
         numerator = a >> (px - retained_precision)

@@ -1408,6 +1408,126 @@
       "commit": "cfedd3a9ce78e6df6c59578291dbc54f3a58d99d",
       "workspace_fingerprint": "df04916d4505c7d85561c772b6de17b0df725fe0010a8beaff11398189a276e4",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_regulator_inverse.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.824,
+      "started_at": "2026-09-14T23:02:08.968Z",
+      "commit": "bc742322a4937dab8a7f941ad3958dbf34f48eda",
+      "workspace_fingerprint": "9740992723e337e2d6b7448491323b44ebd73ef523103e069bebaa7cab9e617e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_regulator_inverse.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.565,
+      "started_at": "2026-09-14T23:02:56.720Z",
+      "commit": "bc742322a4937dab8a7f941ad3958dbf34f48eda",
+      "workspace_fingerprint": "8e1dbf6aa7589dae9e5b1f6f94dfad0f35f59d205fb036d2e6d0b3aa87d61b4e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_regulator_matrix_product.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.224,
+      "started_at": "2026-09-14T23:05:10.414Z",
+      "commit": "bc742322a4937dab8a7f941ad3958dbf34f48eda",
+      "workspace_fingerprint": "cd55abccd71422bbdec2a9b2615da93faa83061e5ebe111a7bdcecd0b8e55d6b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_regulator_determinant.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.051,
+      "started_at": "2026-09-14T23:08:00.092Z",
+      "commit": "bc742322a4937dab8a7f941ad3958dbf34f48eda",
+      "workspace_fingerprint": "a8327b1f02a57373b9bfb30f307ebd7fc13d4e1d37060cd7d073a6db46668ce6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_regulator_inverse.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.568,
+      "started_at": "2026-09-14T23:08:22.960Z",
+      "commit": "bc742322a4937dab8a7f941ad3958dbf34f48eda",
+      "workspace_fingerprint": "7ce7a307a1b042d3b660ff24e5e209d1635d84c4cd976954edaf01030287c4f9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_compiled_real_division.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.872,
+      "started_at": "2026-09-14T23:19:46.243Z",
+      "commit": "bc742322a4937dab8a7f941ad3958dbf34f48eda",
+      "workspace_fingerprint": "2f4f3a0e6c27bf3dffc88b2299f55249ef98877461c2efe1658411be277dd09e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_compiled_real_division.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.916,
+      "started_at": "2026-09-14T23:20:51.358Z",
+      "commit": "bc742322a4937dab8a7f941ad3958dbf34f48eda",
+      "workspace_fingerprint": "4be326f1046f263873c99d7597306d1f3c4f54803cb29c2b1fa03fda1d2ac371",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_compiled_real_division.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.778,
+      "started_at": "2026-09-14T23:21:39.865Z",
+      "commit": "bc742322a4937dab8a7f941ad3958dbf34f48eda",
+      "workspace_fingerprint": "0e1786b900cb90650cff39eb9c483db3583d1bc4bbe288fd932f022a97b9dd51",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_regulator_bestappr.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.158,
+      "started_at": "2026-09-14T23:22:54.602Z",
+      "commit": "bc742322a4937dab8a7f941ad3958dbf34f48eda",
+      "workspace_fingerprint": "bce1bc829a15e32819d3a9171fe621bae2d305c10ece39ef9494093f873ca387",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_compiled_real_division.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.311,
+      "started_at": "2026-09-14T23:25:05.165Z",
+      "commit": "bc742322a4937dab8a7f941ad3958dbf34f48eda",
+      "workspace_fingerprint": "f2a53b87cb8369743154061380732bc027cb92af6da3df8d0eeda7247199b299",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_regulator_multiple.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.904,
+      "started_at": "2026-09-14T23:25:41.016Z",
+      "commit": "bc742322a4937dab8a7f941ad3958dbf34f48eda",
+      "workspace_fingerprint": "6806c9c9937bb4159fde98993776fc8e36be5c66da7abb1f25399cbcdac3c82f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.567,
+      "started_at": "2026-09-14T23:26:58.858Z",
+      "commit": "bc742322a4937dab8a7f941ad3958dbf34f48eda",
+      "workspace_fingerprint": "f9beccf57feb8d2929ab09bed2884c9307d3d36e50d7e04648df7715c4856e4f",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

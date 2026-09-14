@@ -1,5 +1,72 @@
 # Faithful PARI class-group language experiment
 
+## Regulator determinant, inverse and generic products (2026-09-14)
+
+`regulator_determinant.py` and `regulator_approx_zero.py` translate the
+real-domain determinant and maximal-exponent pivot rules. The original
+reference column remains unchanged after row swaps; a zero real may win
+the exponent scan and be rejected without retrying another row. The
+determinant's early return is the current diagonal, not an invented exact
+zero. The 287 determinant controls include 24 actual logarithm/T matrices,
+210 source swaps and eight early exits; 102 separate pivot controls cover
+strict precision thresholds and original-column fallback. Two exact-only
+determinants retain explicit dispatch frontiers. All four backends agree;
+UBSan passes. Trace
+`01139d847cd69044693ef0e23023a666ecc1a520e841fe401394746add054254`,
+core 5,487,494 bytes. Reproduce with `check_regulator_determinant.cjs` and
+the pinned source/archive arguments used below.
+
+`regulator_inverse.py` preserves `RgM_inv`'s real-domain Gaussian solve and
+`get_col` order, plus the 2x2 adjugate path. Independent review corrected
+the latter to reciprocal-first multiplication and direct exact reciprocal
+construction without an extra gcd. Four-backend tests cover 288 matrices,
+24 from actual logarithms, and 34 singular reference results. Four cases
+at 1,856-bit input precision need intermediates beyond the current leaves'
+windows and explicitly raise without publishing output. Exact-only matrices
+stop before `QM_inv`; these are not counted as completed inversions.
+Trace `81705c122b946d3b8665423244796f41727762f52a01e3eb7081b9a387674554`,
+core 5,917,257 bytes. Reproduce with `check_regulator_inverse.cjs`.
+Tuple assignment into buffer subscripts is currently rejected by native
+lowering; explicit stores and a saved value implement swaps instead.
+
+`regulator_matrix_product.py` keeps the unconditional first product and
+subsequent exact-left-zero skip of `RgMrow_RgC_mul_i`. The 384 four-backend
+controls include 16 exact-only matrix dispatch frontiers. Trace
+`0c00226c140328851996ba99baf8b390449211d484e197cb084ddd9c9cecd39c`,
+core 3,857,490 bytes; reproduce with `check_regulator_matrix_product.cjs`.
+Subtraction is represented by addition of a sign-negated scalar: this
+preserves rounding and rational denominator/cancellation branches, but the
+extra sign representation operation is not an identical instruction-count
+claim. No timings from these diagnostic kernels qualify the experiment.
+
+The connected `compute_multiple_of_R` translation exposed a structured
+four-row cancellation mismatch: one inverse mantissa differed by one bit,
+despite matching the multiple and residual bit count. Scalar replay isolated
+it to the earlier small-precision division substitution. PARI's <256-bit
+divisor path discards intermediate product halves; an exact whole-mantissa
+quotient followed by approximate rounding is not equivalent. The new
+`small_real_division.py` translates that word-by-word branch literally, using
+a packed local integer for the short scratch array. The >=256-bit GMP
+quotient leaf substitution remains explicit. Packed scratch has not been
+qualified as performance-equivalent storage. Native lowering also rejected
+`min`, conditional expressions and arbitrary-integer OR here; branches and
+disjoint arithmetic updates express the same operations in supported syntax.
+
+With that correction, `regulator_multiple.py` connects preparation, rank,
+independent-column selection, both determinants, inverse residual checking
+and approximate coordinates in one native call. All 635 PARI/CPython/JS/GMP
+controls pass: 253 successes, 117 rank defects, 136 tiny determinants,
+116 inconsistent minors and 10 inverse/residual failures. Three nonzero
+exact-log inputs are separately rejected atomically outside the prepared
+domain; the oracle cuts before invalid `divru` use. The corpus includes
+32 actual logarithm matrices, full inverse snapshots and 196 scalar replays,
+including 50 near-neighbors of the division regression. Trace
+`c58ae6a545fae5447b72d3e2111b6f92b555429c793b1eb7e648def808daeb72`;
+core 12,162,984 bytes. Reproduce with `check_regulator_multiple.cjs` and the
+pinned source/archive. Earlier isolated core sizes above precede the shared
+division correction. This produces a regulator multiple, not `compute_R`'s
+final regulator/completeness decision and not a complete class-group engine.
+
 ## Incremental HNF and mixed regulator scalars (2026-09-14)
 
 `hnfadd.py` now translates the bounded word-relation / matrix-log branch of
@@ -67,7 +134,8 @@ no numerical/order mismatch within the declared scope.
 Reproduce with `check_regulator_preparation.cjs PARI_SOURCE PARI_ARCHIVE`
 and `check_regulator_pivots.cjs PARI_SOURCE PARI_ARCHIVE`. These are prepared
 matrix controls, not a complete regulator or class-group computation.
-Determinants, inversion, residual checking and `compute_R` remain unported.
+The subsequent connected work above adds determinants, inversion and residual
+checking; the final `compute_R` reconstruction/acceptance path remains open.
 
 Two syntax/storage limitations were made explicit rather than hidden:
 the native compiler rejects a `-> None` validator signature (an ignored
