@@ -1,5 +1,38 @@
 # Faithful PARI class-group language experiment
 
+## GRH checking and initial bound-search checkpoint
+
+`grh_bound.py` translates `buch2.c:GRHchk`, `GRHok`, and the initial
+`Buchall` doubling/bisection/final-clamp loop. Upstream mathematical assumptions
+remain provisional. Prepared inputs include the distinct residue degrees and
+multiplicities, cached prime logarithms, `init_GRHcheck`'s cD/cN, and the initial
+and maximum limits; they are not completed bounds or class-group answers.
+Prime-decomposition cache construction is still external scaffolding.
+
+The bound-one case preserves C's positive-infinity comparison without causing
+a Python zero-division exception. Catalog exhaustion and unsupported bounds
+raise explicit errors, not mathematical rejection. Exact norm multiplication
+replaces the small `upowuu` leaf, with admitted bounds limited to the exact
+binary64 integer range; no timing equivalence is asserted for that leaf.
+The two upstream `pow` expressions retain their order and are not replaced by
+an exponentiation recurrence. Compiler prerequisite `6ae5b81fe` adds imported
+binary64 `log`/`pow`; the existing source-transparent sqrt helper is called
+inside the isolated computation.
+
+Four existing tuning fields give 1,200 checks (bounds 1 through 300) and 24
+searches (six initial limits), matching actual PARI 2.17.4 `GRHchk`, CPython,
+JS and GMP. The C search oracle reproduces the short upstream control loop
+around the actual checker. These controls establish decision agreement on
+those inputs, not bitwise logarithm/power equality across platforms. The full
+initialization and discovery engine remain incomplete; this does not qualify
+whole-field performance or open the reserved fields.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_grh.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Factor-base selection loop
 
 `factor_base.py` translates the selection loop of `buch2.c:FBgen`, retaining
@@ -17,7 +50,8 @@ are compared against the full prepared decompositions, not just their degrees.
 CPython, generated JS and GMP agree on all selection metadata, including
 partially included prime groups and different active/checking sizes.
 
-This is **not yet the initial bound search or complete factor-base setup**.
+This selection-loop test is **not complete factor-base setup**; the initial
+bound search is tested separately above and has not yet been connected here.
 The decomposition cache, `log(C2+0.5)` and cached prime logarithms are explicit
 PARI-prepared inputs; the division and integer conversion of that logarithmic
 ratio run in the port. Auxiliary setup such as the ball-volume scalar and
