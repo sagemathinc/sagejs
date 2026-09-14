@@ -38,6 +38,15 @@ test("matrix standalone modules follow literal lazy imports", () => {
   }
 });
 
+test("implicit byte codecs are included without a user import", () => {
+  assert(CORE_STANDALONE_MODULES.includes("sagejs._punycode"));
+  assert(BASELIB_STANDALONE_MODULES.includes("sagejs._punycode"));
+  assert(BASELIB_STANDALONE_CACHE_MODULES.includes("sagejs._punycode"));
+  // Parent packages belong in the resolved cache closure, not explicit imports:
+  // task-runtime code may bind the sagejs intrinsic under a deliberate alias.
+  assert(!BASELIB_STANDALONE_MODULES.includes("sagejs"));
+});
+
 test("standalone ideal operations include the new lazy geometry helpers", () => {
   for (const name of ["ideal_operations", "hilbert", "zero_dimensional"]) {
     assert(GROEBNER_STANDALONE_MODULES.includes(

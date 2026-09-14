@@ -1,0 +1,108 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "browser-core-codec-closure",
+  "title": "Browser Core Codec Closure",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Include implicit byte codecs in standalone/browser core and reconcile the existing extension specialist receipt assertion",
+  "base_commit": "4834ec0cb7e2fe84de418f0573f2a6d27f34c955",
+  "claims": [
+    "tools/standalone-library.cjs",
+    "test/standalone-library.cjs",
+    "packages/flint-wasm/test/production-receipt.test.cjs",
+    "docs/browser-core-codec-closure.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/standalone-library.cjs packages/flint-wasm/test/production-receipt.test.cjs",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/standalone-library.cjs packages/flint-wasm/test/production-receipt.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.251,
+      "started_at": "2026-09-14T05:10:20.647Z",
+      "commit": "4834ec0cb7e2fe84de418f0573f2a6d27f34c955",
+      "workspace_fingerprint": "7b29469839a5325af5fd013250dfd4829b81f6838dbf1f96244cbf14ad85cb2c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 107.848,
+      "started_at": "2026-09-14T05:10:22.107Z",
+      "commit": "4834ec0cb7e2fe84de418f0573f2a6d27f34c955",
+      "workspace_fingerprint": "7b29469839a5325af5fd013250dfd4829b81f6838dbf1f96244cbf14ad85cb2c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/standalone-library.cjs packages/flint-wasm/test/production-receipt.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.256,
+      "started_at": "2026-09-14T05:19:40.835Z",
+      "commit": "e31f868c38d90092e34006c73c89c7a4aa449d54",
+      "workspace_fingerprint": "e3df30fc8ed82370cabc7dd92c5110f585f638dc6c9d2dadb6aed7f47c43cd40",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.633,
+      "started_at": "2026-09-14T05:19:41.735Z",
+      "commit": "e31f868c38d90092e34006c73c89c7a4aa449d54",
+      "workspace_fingerprint": "e3df30fc8ed82370cabc7dd92c5110f585f638dc6c9d2dadb6aed7f47c43cd40",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.591,
+      "started_at": "2026-09-14T05:19:54.012Z",
+      "commit": "e31f868c38d90092e34006c73c89c7a4aa449d54",
+      "workspace_fingerprint": "e3df30fc8ed82370cabc7dd92c5110f585f638dc6c9d2dadb6aed7f47c43cd40",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 106.638,
+      "started_at": "2026-09-14T05:20:49.252Z",
+      "commit": "e31f868c38d90092e34006c73c89c7a4aa449d54",
+      "workspace_fingerprint": "e3df30fc8ed82370cabc7dd92c5110f585f638dc6c9d2dadb6aed7f47c43cd40",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Clean build, 13 focused tests, architecture check, strict Python (404 modules), and all 223 portable files pass. Frozen four-string implicit punycode roundtrips match CPython and pass in Python/Sage modes on Linux x64/ARM64, macOS ARM64, and native Windows x64. Artifacts: /home/user/codec-closure-portable.KzH7Oq; Python SHA256 7e7e4f66bf6922e2c1ce3e71c48e9f95ff6493265911bf99e2e6cf55a2a52d72, Sage 920e422c9c3f148702157930d6c0b5247ed5c0987cf2ea6b2a1989b92c898164.",
+    "risks": [
+      "Four-platform checks are targeted standalone codec checks, not full-product qualification on each host. Full Wasm build passes with artifact sha256:8762b3586dc91001cff07ce1270e5a821d448c21cf6db4665ae8bb51a96767d2; full Chromium Web Worker mathematics/plotting smoke passes. Logs: /home/user/exception-codec-pr-wasm-build.log and /home/user/exception-codec-pr-browser-smoke.log."
+    ],
+    "next_steps": [
+      "Ready for merge-manager review in PR284; integrate this independent prerequisite into the experimental exception campaign. No release."
+    ]
+  }
+}
