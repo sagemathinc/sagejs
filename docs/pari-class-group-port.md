@@ -2,6 +2,14 @@
 
 ## Boundary diagnostic (not qualified performance evidence)
 
+Follow-up compiler `1c97354a8` removes unconditional promotion at small GCDs.
+With the same diagnostic inputs, tagged batched samples are now 0.05626,
+0.05666, 0.05576s (previously about 0.101s); GMP stays 0.20486, 0.20339,
+0.20385s. Direct PARI samples were 0.01843, 0.01831, 0.01829s. All 574 cases
+and partial writes still agree. The compiler's focused GCD/shift/bit-length/
+exception tests pass, including Linux ASan/UBSan signed-boundary and aliasing
+checks. These remain short diagnostic samples, not a qualified slowdown ratio.
+
 `check_compiled_divide_prime.cjs --diagnostic` compares the same 574 checked
 cases, 20 fresh logical calls each, with prepared read-only inputs and reset
 factor counts. Packed scratch is reused; the batch helper performs those 20
