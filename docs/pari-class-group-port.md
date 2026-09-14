@@ -1,5 +1,46 @@
 # Faithful PARI class-group language experiment
 
+## Higher-root iteration
+
+`real_root.py` connects the translated `logr_abs` initializer, division by the
+root degree and `mpexp` to PARI's `sqrtnr_abs` iteration. It preserves the
+64-bit early return, truncation-toward-zero exponent reduction, ternary
+precision mask, ordered binary powering, cubic Newton correction and final
+conditional precision reduction. Intermediate roots/logarithms are computed
+inside the native graph, not supplied as fixtures.
+
+The current boundary is a nonzero real, degree 1–10 and precision 64–384 bits;
+working precision remains within the existing 512-bit square leaf. Degree
+one and two follow their upstream dispatch. These are explicit prototype
+limits, not clamps or global safety-limit increases. The declared reciprocal,
+integer-division and integer-square-root substitutions still apply.
+
+The focused oracle has 1,600 signed-input controls at four precisions and
+degrees 1–10, including endpoint mantissas, exact one, random mantissas and
+both exponent signs. It compares actual PARI stored triples. The remaining
+next connection is `Fincke_Pohst_bound` itself, then the QR/bound output to
+the resident enumeration cursor. No completed collector or class-group result
+is claimed here.
+
+All 1,600 cases pass in CPython, dynamic JavaScript and GMP-native execution.
+Repository strict-Python checks pass; the full architecture gate still fails
+at the previously recorded stale optimizer-opportunity manifest.
+
+This connection exposed an unresolved native JavaScript emitter defect: a
+legal Python local named `new` was emitted literally in a JavaScript `let`
+declaration, causing `SyntaxError: Unexpected token 'new'`. The root routine
+now uses the more descriptive `next_accuracy`; this does not fix the general
+identifier-escaping defect. The failing generated module was
+`ee79cec3821098a6de1b4633c3552c5f89c5f1627bb13d887a314af7008e90d2/index.cjs`.
+This is a compiler obstruction, not a PARI algorithm discrepancy, and needs
+a focused compiler-lane regression and correction.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_real_root.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Real logarithm used by higher-root initialization
 
 `real_logarithm.py` translates the 64-bit entry of `logr_abs` used explicitly
@@ -1441,6 +1482,12 @@ are historical and do not govern this experiment. Mathematical choices remain
   or later. Translated files must retain that attribution and license notice.
 
 ## Resource ledger
+
+The successful higher-root validation/build used 30.841 wall seconds,
+33.733 user plus 1.557 system child CPU seconds, and peak child RSS
+504,832 KiB. Charge all 35.290 CPU seconds conservatively. Earlier failed
+compiler attempts in this checkpoint were not individually metered; they
+remain part of the previously disclosed cumulative-accounting gap.
 
 The cached-build logarithm validation used 10.189 wall seconds, 11.829 user
 plus 0.611 system child CPU seconds, and peak child RSS 403,656 KiB. Charge
