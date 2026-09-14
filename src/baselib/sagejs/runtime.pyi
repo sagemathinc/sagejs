@@ -46,7 +46,7 @@ class _Object:
     def assign(target: Any, *sources: Any) -> Any: ...
 
     @staticmethod
-    def create(prototype: Any) -> Any: ...
+    def create(prototype: Any, properties: Any = ...) -> Any: ...
 
     @staticmethod
     def defineProperties(value: object, properties: object) -> None: ...
@@ -59,6 +59,9 @@ class _Object:
 
     @staticmethod
     def isFrozen(value: object) -> bool: ...
+
+    @staticmethod
+    def hasOwn(value: object, name: Any) -> bool: ...
 
     @staticmethod
     def isExtensible(value: object) -> bool: ...
@@ -147,6 +150,8 @@ class _Element:
 
 
 class _Error:
+    prototype: Any
+    captureStackTrace: Any
     constructor: Any
     message: str
     name: str

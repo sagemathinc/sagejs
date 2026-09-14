@@ -29,7 +29,7 @@ test("resolved keyword lowering keeps native and legacy receiver conventions", (
     call.print(output);
     return output.get();
   };
-  assert.match(emit("obj", "method", true), /ρσ_interpolate_kwargs\(undefined, ρσ_getattr_internal\(/u);
+  assert.match(emit("obj", "method", true), /ρσ_invoke_prepared_keywords\(ρσ_prepare_method_call\(obj, "method"\),/u);
   assert.match(emit("obj", "method", false), /ρσ_interpolate_kwargs_legacy\(obj,/u);
   assert.match(emit("Object", "keys", true), /ρσ_interpolate_kwargs\(Object,/u);
   assert.match(emit("obj", "ρσ_internal", true), /ρσ_interpolate_kwargs\(obj,/u);

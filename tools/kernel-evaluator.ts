@@ -1,5 +1,6 @@
-import { attachPythonDiagnostic, DiagnosticPhase } from "./python/diagnostics";
+import { attachPythonDiagnostic, DiagnosticPhase, normalizePythonDiagnostic, renderPythonDiagnostic } from "./python/diagnostics";
 import { PythonSyntaxError } from "./python/frontend";
+import { resolveTracebackCapture, PythonTracebackCapture } from "./python/traceback-capture";
 import { dirname, join } from "path";
 import { randomBytes } from "crypto";
 import { compileFunction, runInThisContext } from "vm";
@@ -182,6 +183,7 @@ export interface KernelEvaluator {
 
 interface EvaluatorOptions {
   mode: SageLanguageMode;
+  tracebackCapture?: PythonTracebackCapture;
   onOutput(text: string): void;
   onEvent?(event: SageOutputEvent): void;
   onComm?(event: SageCommEvent): void;
@@ -420,6 +422,7 @@ function structuredJSONValue(value: unknown): unknown {
  */
 export function createKernelEvaluator({
   mode,
+  tracebackCapture,
   onOutput,
   onEvent = () => undefined,
   onComm = () => undefined,
@@ -427,6 +430,7 @@ export function createKernelEvaluator({
   compiler: suppliedCompiler,
   compilerFrontends,
 }: EvaluatorOptions): KernelEvaluator {
+  const guardedTracebacks = resolveTracebackCapture(tracebackCapture) === "guarded";
   const compiler = suppliedCompiler ?? createCompiler();
   if (!compilerFrontends?.has("python") || !compilerFrontends.has("sage")) {
     throw new TypeError(
@@ -497,6 +501,8 @@ export function createKernelEvaluator({
       python_tuples: true,
       python_truthiness: true,
       python_attributes: true,
+      python_traceback_records: guardedTracebacks,
+      python_traceback_guarded: guardedTracebacks,
       pool_numeric_literals: true,
       numeric_literal_pool_prefix:
         `ρσ_kernel_${numericLiteralPoolCounter++}_`,
@@ -581,13 +587,16 @@ export function createKernelEvaluator({
     const name = String(Reflect.get(Object(error), "name") ?? "Error");
     const message = String(Reflect.get(Object(error), "message") ?? error);
     const stack = Reflect.get(Object(error), "stack");
+    const diagnostic = normalizePythonDiagnostic(error, { phase: "execute", pythonExecution: true });
     emitEvent({
       schema: "sagejs.output-event/v1",
       type: "error",
       parentId: activeParentId,
       name,
       message,
-      traceback: typeof stack === "string" ? stack.split("\n") : [`${name}: ${message}`],
+      traceback: diagnostic.frames.length || diagnostic.framesTruncated
+        ? renderPythonDiagnostic(diagnostic).trimEnd().split("\n")
+        : typeof stack === "string" ? stack.split("\n") : [`${name}: ${message}`],
     });
   };
   global.__sagejs_comm_publish__ = (

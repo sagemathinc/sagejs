@@ -4,6 +4,7 @@
 const assert = require("node:assert/strict");
 const { Script } = require("node:vm");
 const test = require("node:test");
+const { types: { isNativeError } } = require("node:util");
 const { mappedPythonScript } = require("../dist/tools/python/stack-adapter.js");
 
 function mapped(generated, start, end, exclusions = [], cachedData) {
@@ -27,23 +28,71 @@ test("opaque URLs accept reusable bytecode and preserve rejected-bytecode signal
   assert.equal(rejected.runInThisContext(), 42);
 });
 
-test("only initial known current-stack invocation trampolines can disappear", () => {
+test("current-stack collection captures once without constructing a native Error", () => {
+  mapped("42", 0, 2);
+  const original = Error.captureStackTrace;
+  const captures = [];
+  Error.captureStackTrace = function(carrier, boundary) {
+    captures.push({ carrier, boundary });
+    return original(carrier, boundary);
+  };
+  function adapter_boundary() {
+    return globalThis.__sagejs_capture_python_frames__(null, adapter_boundary);
+  }
+  function adapter_caller() { return adapter_boundary(); }
+  try {
+    const frames = adapter_caller();
+    assert.equal(captures.length, 1);
+    assert.equal(isNativeError(captures[0].carrier), false);
+    assert.equal(captures[0].boundary, adapter_boundary);
+    assert.ok(frames.some(frame => frame.name === "adapter_caller"));
+    assert.ok(frames.every(frame => frame.name !== "adapter_boundary"));
+    assert.ok(Object.isFrozen(frames));
+    assert.ok(frames.every(Object.isFrozen));
+    const foreign = new TypeError("foreign body");
+    const stack = foreign.stack;
+    globalThis.__sagejs_capture_python_frames__(foreign);
+    assert.equal(captures.length, 1);
+    assert.equal(foreign.stack, stack);
+    assert.equal(isNativeError(foreign), true);
+  } finally { Error.captureStackTrace = original; }
+});
+
+for (const mode of ["python", "sage"]) {
+test(`${mode}: only initial known current-stack invocation trampolines can disappear`, () => {
+  const helpers = ["ρσ_interpolate_kwargs", "ρσ_invoke_prepared_method",
+    "_internal_bind_kwargs", "ρσ_invoke_prepared_keywords"];
   new Script("function extract_stack(){return globalThis.__sagejs_capture_python_frames__(null,extract_stack)};" +
-    "function ρσ_interpolate_kwargs(){return extract_stack()};" +
+    "function _internal_bind_kwargs(){return extract_stack()};" +
+    "function ρσ_interpolate_kwargs(){return _internal_bind_kwargs()};" +
+    "function ρσ_invoke_prepared_keywords(){return _internal_bind_kwargs()};" +
     "function ρσ_invoke_prepared_method(){return extract_stack()}",
-  { filename: "sagejs/runtime-bootstrap-python.js" }).runInThisContext();
-  for (const helper of ["ρσ_interpolate_kwargs", "ρσ_invoke_prepared_method"]) {
+  { filename: `sagejs/runtime-bootstrap-${mode}.js` }).runInThisContext();
+  for (const helper of helpers) {
     const generated = `globalThis.adapterFrames = ${helper}();`;
     mapped(generated, generated.indexOf(helper), generated.length - 1).runInThisContext();
     assert.equal(globalThis.adapterFrames.at(-1).provenance, "python-source");
   }
-  new Script("function ρσ_interpolate_kwargs(){throw new Error('helper failure')};" +
-    "try {ρσ_interpolate_kwargs()} catch(e){globalThis.adapterFailure=e}",
-  { filename: "sagejs/runtime-bootstrap-python.js" }).runInThisContext();
-  const failure = globalThis.__sagejs_capture_python_frames__(globalThis.adapterFailure, null).at(-1);
-  assert.equal(failure.name, "ρσ_interpolate_kwargs");
-  assert.equal(failure.provenance, "native-stack");
+  for (const helper of helpers) {
+    new Script(`function ${helper}(){throw new Error('helper failure')};` +
+      `try {${helper}()} catch(e){globalThis.adapterFailure=e}`,
+    { filename: `sagejs/runtime-bootstrap-${mode}.js` }).runInThisContext();
+    const failure = globalThis.__sagejs_capture_python_frames__(globalThis.adapterFailure, null).at(-1);
+    assert.equal(failure.name, helper);
+    assert.equal(failure.provenance, "native-stack");
+
+    new Script(`function ${helper}(){return extract_stack()};globalThis.adapterFrames=${helper}()`,
+      { filename: "user.js" }).runInThisContext();
+    assert.equal(globalThis.adapterFrames.at(-1).filename, "user.js");
+    assert.equal(globalThis.adapterFrames.at(-1).name, helper);
+
+    const generated = `function ${helper}(){return extract_stack()};globalThis.adapterFrames=${helper}()`;
+    mapped(generated, 0, generated.length).runInThisContext();
+    assert.equal(globalThis.adapterFrames.at(-1).provenance, "python-source");
+    assert.match(globalThis.adapterFrames.at(-1).raw, new RegExp(helper));
+  }
 });
+}
 
 test("unmapped and excluded exception body frames are both retained", () => {
   for (const excluded of [false, true]) {

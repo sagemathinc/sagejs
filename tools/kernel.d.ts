@@ -136,6 +136,7 @@ export interface SageEvaluationOptions {
 
 export interface SageSessionOptions {
   mode?: SageLanguageMode;
+  tracebackCapture?: "native" | "guarded";
 }
 
 export interface SageLanguageOptions {
@@ -211,6 +212,7 @@ export class SageSessionClosedError extends Error {}
 
 export class SageSession extends EventEmitter {
   readonly mode: SageLanguageMode;
+  readonly tracebackCapture: "native" | "guarded";
   constructor(options?: SageSessionOptions);
   ready(): Promise<this>;
   evaluate(

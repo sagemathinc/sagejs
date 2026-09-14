@@ -902,6 +902,17 @@ const serializationBuild = esbuild.buildSync({
   minify: true,
   metafile: true,
 });
+const diagnosticsBuild = esbuild.buildSync({
+  absWorkingDir: repositoryRoot,
+  entryPoints: [path.join(repositoryRoot, "tools", "python", "diagnostics.ts")],
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  target: ["es2022"],
+  outfile: path.join(outputDirectory, "diagnostics.mjs"),
+  minify: true,
+  metafile: true,
+});
 run(process.execPath, [
   compilerFrontendBuildHelper,
   path.join(packageRoot, "src", "compiler-frontend-entry.ts"),
@@ -1159,6 +1170,7 @@ const receipt = writeProductionReceipt({
       wasiRuntimeBuild,
       symbolicBackendBuild,
       serializationBuild,
+      diagnosticsBuild,
       compilerFrontendBuild,
       foreignFrontendBuild,
     ]),

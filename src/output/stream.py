@@ -64,6 +64,8 @@ output_stream_defaults = {
     "ie_proof": True,
     "beautify": False,
     "source_map": None,
+    "python_traceback_records": False,
+    "python_traceback_guarded": False,
     # A host-generated JavaScript lexical name, invalid as a Python binding,
     # which is supplied only to vm.compileFunction during authenticated
     # profiling.  Empty in every ordinary compilation path.

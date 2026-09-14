@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-divmod-slot-dispatch",
+  "title": "Python Divmod Slot Dispatch",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Correct divmod special-method selection while preserving numeric fallback and explicit independent gaps",
+  "base_commit": "3b4e8f24ba61d7822f421af52ad42a42b81f5ef2",
+  "claims": [
+    ".agents/lanes.json",
+    "src/baselib/builtins.py",
+    "src/lib/sagejs/_documentation_search.py",
+    "test/python-divmod-slot-dispatch.cjs",
+    "test/fixtures/python-divmod-slot-dispatch.py",
+    "docs/python-divmod-slot-dispatch.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython 3.14 special-method dispatch and qualified prepared source"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

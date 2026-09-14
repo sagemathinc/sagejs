@@ -16,29 +16,84 @@ NameError = runtime.reference_error
 def ρσ_exception_value(value: object) -> object:
     if runtime.strict_equal(runtime.jstype(value), "function"):
         value = runtime.reflect.construct(value, [])
+    if runtime.instance_of(value, runtime.error):
+        return value
     error_tag = runtime.reflect.apply(
         runtime.object.prototype.toString,
         value,
         [],
     )
-    if runtime.instance_of(value, runtime.error) or runtime.string(error_tag).endswith(
-        "Error]"
-    ):
+    if runtime.string(error_tag).endswith("Error]"):
         return value
     raise TypeError("exceptions must derive from BaseException")
+
+
+def ρσ_exception_with_cause(value: object, cause: object) -> object:
+    """Normalize an explicit raise cause without formatting either exception."""
+    error = ρσ_exception_value(value)
+    if cause is not None:
+        cause = ρσ_exception_value(cause)
+    runtime.reflect.set(error, "__cause__", cause)
+    runtime.reflect.set(error, "__suppress_context__", True)
+    return error
+
+
+def ρσ_prepare_raise(value: object) -> object:
+    """Attach dynamic context at a raise boundary without capturing a stack."""
+    error = ρσ_exception_value(value)
+    active = runtime.global_object.__sagejs_last_exception__
+    if active is runtime.undefined or active is None or active is error:
+        return error
+    # Sever reverse context edges; bound cycles introduced through host interop.
+    seen = runtime.reflect.construct(runtime.global_object.WeakSet, [])
+    cursor = active
+    while runtime.instance_of(cursor, runtime.error) and not seen.has(cursor):
+        seen.add(cursor)
+        parent = cursor.__context__
+        if parent is error:
+            runtime.reflect.set(cursor, "__context__", None)
+            break
+        cursor = parent
+    runtime.reflect.set(error, "__context__", active)
+    return error
+
+
+def ρσ_record_traceback(error: Any, code: Any, line: Any, native: Any) -> Any:
+    """Append a Python frame, retaining native evidence when requested."""
+    if error is None or not runtime.strict_equal(runtime.jstype(error), "object"):
+        return error
+    if error.__sagejs_logical_exception__ is not True:
+        if not native:
+            return error
+        if error.__sagejs_native_tb__ is runtime.undefined:
+            runtime.reflect.set(error, "__sagejs_native_tb__", error)
+    tb = error.__traceback__
+    runtime.reflect.set(
+        error,
+        "__traceback__",
+        {
+            "__sagejs_traceback_record__": True,
+            "code": runtime.object.freeze(code),
+            "tb_lineno": line,
+            "tb_next": None if tb is error else tb,
+        },
+    )
+    return error
 
 
 def ρσ_function_argument_error(
     message: str,
     target_function: object,
 ) -> object:
-    """Create an argument-binding error attributed to the Python call site."""
-    error = runtime.type_error(message)
-    capture = runtime.reflect.get(runtime.error, "captureStackTrace")
-    if runtime.strict_equal(runtime.jstype(capture), "function"):
-        runtime.reflect.apply(capture, runtime.error, [error, target_function])
+    """Create a call-site binding error with active exception context."""
+    error = runtime.object.create(
+        runtime.type_error.prototype,
+        {"message": {"value": message, "writable": True, "configurable": True}},
+    )
+    runtime.reflect.set(error, "__sagejs_argument_error__", target_function)
+    runtime.reflect.apply(_initialize_exception, error, [message])
     runtime.reflect.set(error, "__sagejs_argument_error__", True)
-    return error
+    return ρσ_prepare_raise(error)
 
 
 def ρσ_positional_default(target_function: Any, from_end: int, name: str) -> Any:
@@ -57,29 +112,43 @@ def ρσ_positional_default(target_function: Any, from_end: int, name: str) -> A
 
 class BaseException(runtime.error):
     def __init__(self, *args: object) -> None:
-        self.args = runtime.math_tuple(list(args))
-        if len(args) == 0:
+        # Consume guarded constructor authority before conversion can call Python.
+        policy = runtime.global_object.__sagejs_traceback_records_enabled__
+        logical = (
+            runtime.reflect.apply(policy, runtime.undefined, [self])
+            if runtime.strict_equal(runtime.jstype(policy), "function")
+            else policy is True
+        )
+        # Transfer the fresh variadic array without another copy.
+        count = runtime.native_get(args, "length")
+        self.args = runtime.reflect.apply(runtime.math_tuple, runtime.undefined, [args])
+        if runtime.strict_equal(count, 0):
             message = ""
-        elif len(args) == 1:
+        elif runtime.strict_equal(count, 1):
             message = runtime.string(args[0])
         else:
             message = runtime.repr(self.args)
         self.message = message
-        python_name = runtime.reflect.get(self.constructor, "__name__")
+        python_name = self.constructor.__name__
         self.name = (
             self.constructor.name
             if python_name is runtime.undefined
             else runtime.string(python_name)
         )
-        error = runtime.error(message)
-        error.name = self.name
-        self.stack = error.stack
-        # Until an embedding provides structured frame objects, the native
-        # Error itself is our traceback-like carrier.  ``traceback.extract_tb``
-        # understands its stack string.
-        self.__traceback__ = self
-        self.__cause__ = None
-        self.__context__ = None
+        self.__sagejs_logical_exception__ = logical
+        self.__traceback__ = None if logical else self
+        if not logical:
+            capture = runtime.error.captureStackTrace
+            if runtime.strict_equal(runtime.jstype(capture), "function"):
+                target = runtime.native_get(self, "__sagejs_argument_error__")
+                if not runtime.strict_equal(runtime.jstype(target), "function"):
+                    target = runtime.undefined
+                runtime.reflect.apply(capture, runtime.error, [self, target])
+            else:
+                native = runtime.error(message)
+                native.name = self.name
+                self.stack = native.stack
+        self.__cause__ = self.__context__ = None
         self.__suppress_context__ = False
 
     def __repr__(self) -> str:
@@ -91,6 +160,10 @@ class BaseException(runtime.error):
     def with_traceback(self, traceback: object) -> BaseException:
         self.__traceback__ = traceback
         return self
+
+
+# Binding errors use the original initializer, not a mutable public replacement.
+_initialize_exception = runtime.native_get(BaseException, "prototype").__init__
 
 
 class Exception(BaseException):
@@ -152,27 +225,19 @@ class ExceptionGroup(BaseExceptionGroup, Exception):
 # Native JavaScript failures participate in Python's Exception hierarchy.
 # Keeping their native constructors means errors raised by the runtime itself
 # are caught by the corresponding Python ``except`` clauses.
-runtime.object.setPrototypeOf(
-    runtime.reflect.get(runtime.type_error, "prototype"),
-    runtime.reflect.get(Exception, "prototype"),
-)
-runtime.object.setPrototypeOf(
-    runtime.reflect.get(runtime.reference_error, "prototype"),
-    runtime.reflect.get(Exception, "prototype"),
-)
-runtime.object.setPrototypeOf(
-    runtime.reflect.get(runtime.syntax_error, "prototype"),
-    runtime.reflect.get(Exception, "prototype"),
-)
 for _native_exception in (
     runtime.type_error,
     runtime.reference_error,
     runtime.syntax_error,
 ):
+    runtime.object.setPrototypeOf(
+        _native_exception.prototype,
+        Exception.prototype,
+    )
     runtime.reflect.set(
         _native_exception,
         "__name__",
-        runtime.reflect.get(_native_exception, "name"),
+        _native_exception.name,
     )
     runtime.object.defineProperty(
         _native_exception,

@@ -167,6 +167,9 @@ function normalizedTheme(value) {
 }
 
 function userErrorText(error) {
+  if (Array.isArray(error?.traceback) && error.traceback.every(line => typeof line === "string")) {
+    return error.traceback.join("\n");
+  }
   const name = error?.name === "ReferenceError" ? "NameError" : error?.name || "Error";
   return `${name}: ${error?.message || String(error)}`;
 }

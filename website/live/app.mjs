@@ -112,6 +112,9 @@ const {
 } = outputRenderer;
 
 function userErrorText(error) {
+  if (Array.isArray(error?.traceback) && error.traceback.every(line => typeof line === "string")) {
+    return error.traceback.join("\n");
+  }
   const name = typeof error?.sagejsErrorName === "string"
     ? error.sagejsErrorName
     : error?.name === "ReferenceError"

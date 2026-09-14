@@ -67,6 +67,29 @@ function checkedModuleRead(name, moduleId = "__main__") {
     `__builtins__ : (ρσ_modules.builtins || globalThis))), ${JSON.stringify(name)})`;
 }
 
+test("runtime Object.hasOwn remains a static native call", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    // Baselib compilation resolves runtime aliases to native intrinsics;
+    // ordinary modules deliberately retain their mutable Python bindings.
+    {
+      const ast = frontend.parse(
+        "import sagejs.runtime as runtime\ndef owns(value, name):\n    return runtime.object.hasOwn(value, name)\n",
+        {...parserOptions, for_linting:false, compiler_bootstrap:true},
+      );
+      for (const attributes of [false, true]) {
+        const output = new compiler.OutputStream({...outputOptions, python_attributes:attributes});
+        ast.print(output);
+        const javascript = output.get();
+        assert.match(javascript, /Object\.hasOwn\(/);
+        assert.doesNotMatch(javascript, /Object\.prototype\.hasOwn\b/);
+        new Script(javascript);
+      }
+    }
+  } finally { frontend.close(); }
+});
+
 // Assert the complete namespace/unbound-check protocol before normalizing only
 // these named reads for structural emitter assertions. This preserves call
 // counts and ordering, and cannot hide a wrong scope, binding, or missing check.
@@ -1142,7 +1165,7 @@ test("dotted callable instances resolve through __call__", async () => {
     const javascript = normalizeCheckedModuleReads(output.get(), ["package"]);
     assert.match(
       javascript,
-      /ρσ_interpolate_kwargs\(undefined, ρσ_getattr_internal\(package, "marker", ρσ_getattr_missing\)/,
+      /ρσ_invoke_prepared_keywords\(ρσ_prepare_method_call\(package, "marker"\),/,
     );
     assert.match(
       javascript,
@@ -1857,7 +1880,7 @@ test("keyword instance calls retain live descriptor lookup", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_interpolate_kwargs\(undefined, ρσ_getattr_internal\(\(new \$ρσ\$py\$Dynamic\), "compute", ρσ_getattr_missing\)/,
+      /ρσ_invoke_prepared_keywords\(ρσ_prepare_method_call\(new \$ρσ\$py\$Dynamic, "compute"\),/,
     );
     assert.doesNotMatch(javascript, /ρσ_expr_temp\.compute/);
     assert.equal((javascript.match(/new \$ρσ\$py\$Dynamic\b/g) || []).length, 1);

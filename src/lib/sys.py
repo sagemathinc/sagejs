@@ -147,15 +147,20 @@ def exc_info():
 
     Compiled exception handlers publish their normalized exception through a
     shared runtime slot because lazy modules execute in separate JavaScript
-    closures.  Sage.js exceptions carry a native JavaScript stack rather
-    than CPython frame objects.  The third tuple entry is therefore an empty
-    traceback sequence: consumers can format the value and native stack,
-    while frame-oriented tools see no invented Python frames instead of
-    accidentally iterating a host `Error` object.
+    closures. Compiler-assisted exceptions expose their current unwind record.
+    Native stack carriers retain an empty traceback sequence, so frame-oriented
+    tools do not accidentally iterate a host `Error` object. A cleared traceback
+    is reported as `None`.
     """
     error = runtime.reflect.get(runtime.global_object, "__sagejs_last_exception__")
     if error is runtime.undefined or error is None:
         return (None, None, None)
+    tb = runtime.reflect.get(error, "__traceback__")
+    if tb is None or (
+        tb is not runtime.undefined
+        and runtime.reflect.get(tb, "__sagejs_traceback_record__") is True
+    ):
+        return (type(error), error, tb)
     return (type(error), error, ())
 
 

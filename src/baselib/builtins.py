@@ -19,7 +19,7 @@ _Float = float
 _Int = int
 _Str = str
 
-_builtins_symbol_class = runtime.reflect.get(runtime.global_object, "Symbol")
+_builtins_symbol_class = runtime.global_object.Symbol
 _BUILTINS_CALLABLE_ALLOCATION_KEY = runtime.reflect.apply(
     runtime.reflect.get(_builtins_symbol_class, "for"),
     runtime.undefined,
@@ -46,12 +46,12 @@ def _sagejs_version(json: _Bool = False) -> Any:
     ```
     """
 
-    info = runtime.reflect.get(runtime.global_object, "__sagejs_version_info__")
+    info = runtime.global_object.__sagejs_version_info__
     if info is runtime.undefined:
         raise RuntimeError("the Sage.js host did not install version metadata")
     platform = runtime.reflect.get(info, "platform")
     if platform is runtime.undefined:
-        process = runtime.reflect.get(runtime.global_object, "process")
+        process = runtime.global_object.process
         host_platform = runtime.reflect.get(process, "platform")
         architecture = runtime.reflect.get(process, "arch")
         if host_platform == "darwin":
@@ -85,7 +85,7 @@ def _sagejs_version(json: _Bool = False) -> Any:
 
 
 runtime.reflect.set(_sagejs_version, "__name__", "version")
-if runtime.reflect.get(runtime.global_object, "__sagejs_sage_mode__") is True:
+if runtime.global_object.__sagejs_sage_mode__ is True:
     runtime.reflect.set(runtime.global_object, "version", _sagejs_version)
     runtime.register_doc(
         "version",
@@ -116,7 +116,7 @@ def sagejs_capabilities(family: Any = None, workflow: Any = None) -> Any:
     availability record. Results are detached, deeply immutable host data.
     """
 
-    api = runtime.reflect.get(runtime.global_object, "__sagejs_capability_api__")
+    api = runtime.global_object.__sagejs_capability_api__
     if api is runtime.undefined:
         raise RuntimeError("the Sage.js host did not install capability metadata")
     if workflow is not None:
@@ -188,19 +188,16 @@ def _builtins_default_import(
         raise TypeError("module name must be a string")
     if not _builtins_valid_lazy_module_name(name):
         raise ModuleNotFoundError("No module named '" + name + "'")
-    modules = runtime.reflect.get(runtime.global_object, "ρσ_modules")
+    modules = runtime.global_object.ρσ_modules
     if modules is runtime.undefined:
         modules = runtime.modules
     module = runtime.reflect.get(modules, name)
     if module is runtime.undefined:
-        baselib_modules = runtime.reflect.get(
-            runtime.global_object,
-            "__sagejs_baselib_modules__",
-        )
+        baselib_modules = runtime.global_object.__sagejs_baselib_modules__
         if baselib_modules is not runtime.undefined:
             module = runtime.reflect.get(baselib_modules, name)
     if module is runtime.undefined:
-        loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
+        loader = runtime.global_object.__sagejs_load_module__
         if loader is runtime.undefined:
             raise ModuleNotFoundError("No module named '" + name + "'")
         try:
@@ -213,7 +210,7 @@ def _builtins_default_import(
             raise
 
     if fromlist:
-        loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
+        loader = runtime.global_object.__sagejs_load_module__
         if loader is not runtime.undefined:
             for item in fromlist:
                 if item == "*" or hasattr(module, item):
@@ -267,9 +264,7 @@ _BUILTINS_DESCRIPTOR_NATIVE_GETTER = "native-getter"
 _BUILTINS_DESCRIPTOR_DATA = "data-descriptor"
 _BUILTINS_DESCRIPTOR_NONDATA = "nondata-descriptor"
 _BUILTINS_DESCRIPTOR_DIRECT = "direct"
-_builtins_cleared_exception = runtime.reflect.get(
-    runtime.global_object, "ρσ_cleared_exception"
-)
+_builtins_cleared_exception = runtime.global_object.ρσ_cleared_exception
 if _builtins_cleared_exception is runtime.undefined:
     # ``builtins`` can be initialized before ``internal`` in a freshly
     # compiled runtime.  Establish the shared identity here as well so the
@@ -282,9 +277,7 @@ if _builtins_cleared_exception is runtime.undefined:
         _builtins_cleared_exception,
     )
 _BUILTINS_CLEARED_EXCEPTION = _builtins_cleared_exception
-_builtins_deleted_builtin = runtime.reflect.get(
-    runtime.global_object, "ρσ_deleted_builtin"
-)
+_builtins_deleted_builtin = runtime.global_object.ρσ_deleted_builtin
 if _builtins_deleted_builtin is runtime.undefined:
     _builtins_deleted_builtin = runtime.object.create(None)
     runtime.reflect.set(_builtins_deleted_builtin, "__sagejs_deleted_builtin__", True)
@@ -297,38 +290,24 @@ _BUILTINS_DELETED_BUILTIN = _builtins_deleted_builtin
 # collision with an ordinary user binding named ``_BUILTINS_MISSING``.
 ρσ_getattr_missing = _BUILTINS_MISSING
 _builtins_float_prototype = runtime.undefined
-_builtins_descriptor_cache = runtime.reflect.construct(
-    runtime.reflect.get(runtime.global_object, "WeakMap"), []
-)
-_builtins_property_cache = runtime.reflect.construct(
-    runtime.reflect.get(runtime.global_object, "WeakMap"), []
-)
-_builtins_class_namespace_cache = runtime.reflect.construct(
-    runtime.reflect.get(runtime.global_object, "WeakMap"), []
-)
+
+
+def _builtins_weak_map() -> Any:
+    return runtime.reflect.construct(runtime.global_object.WeakMap, [])
+
+
+_builtins_descriptor_cache = _builtins_weak_map()
+_builtins_property_cache = _builtins_weak_map()
+_builtins_class_namespace_cache = _builtins_weak_map()
 _builtins_data_descriptor_names = runtime.reflect.construct(runtime.set_class, [])
 _builtins_descriptor_epoch = 0
-_builtins_heap_class_keys = runtime.reflect.construct(
-    runtime.reflect.get(runtime.global_object, "WeakMap"), []
-)
-_builtins_prototype_owners = runtime.reflect.construct(
-    runtime.reflect.get(runtime.global_object, "WeakMap"), []
-)
-_builtins_class_annotation_slots = runtime.reflect.construct(
-    runtime.reflect.get(runtime.global_object, "WeakMap"), []
-)
-_builtins_class_metaclasses = runtime.reflect.construct(
-    runtime.reflect.get(runtime.global_object, "WeakMap"), []
-)
-_builtins_instance_namespaces = runtime.reflect.construct(
-    runtime.reflect.get(runtime.global_object, "WeakMap"), []
-)
-_builtins_instance_dict_owners = runtime.reflect.construct(
-    runtime.reflect.get(runtime.global_object, "WeakMap"), []
-)
-_builtins_instance_fields = runtime.reflect.construct(
-    runtime.reflect.get(runtime.global_object, "WeakMap"), []
-)
+_builtins_heap_class_keys = _builtins_weak_map()
+_builtins_prototype_owners = _builtins_weak_map()
+_builtins_class_annotation_slots = _builtins_weak_map()
+_builtins_class_metaclasses = _builtins_weak_map()
+_builtins_instance_namespaces = _builtins_weak_map()
+_builtins_instance_dict_owners = _builtins_weak_map()
+_builtins_instance_fields = _builtins_weak_map()
 
 
 def ρσ_register_heap_class(value: Any) -> Any:
@@ -705,20 +684,25 @@ def _builtins_call_member(
     return runtime.reflect.apply(method, value, call_args)
 
 
+def _builtins_set_python_type(value: Any, python_type: Any) -> None:
+    runtime.object.defineProperty(
+        value,
+        "__python_type__",
+        {"value": python_type, "writable": True, "configurable": True},
+    )
+
+
 def _builtins_bind_python_function(
     target: Any,
     receiver: Any,
 ) -> Any:
-    bind_arguments = runtime.reflect.construct(runtime.array, [])
-    bind_arguments.push(runtime.undefined)
-    bind_arguments.push(receiver)
+    bind_arguments = runtime.array.of(receiver)
     if (
-        _builtins_get_member(target, "__sagejs_native_method__") is True
-        or _builtins_get_member(target, "__sagejs_method_signature_excludes_self__")
-        is True
+        _builtins_get_member(target, "__sagejs_native_method__") is not True
+        and _builtins_get_member(target, "__sagejs_method_signature_excludes_self__")
+        is not True
     ):
-        bind_arguments = runtime.reflect.construct(runtime.array, [])
-        bind_arguments.push(receiver)
+        bind_arguments.unshift(runtime.undefined)
     bound = runtime.reflect.apply(
         runtime.reflect.get(target, "bind"),
         target,
@@ -741,6 +725,11 @@ def _builtins_bind_python_function(
                 [1],
             ),
         )
+        positional_only = runtime.reflect.get(bound, "__positional_only__")
+        if positional_only is not True and positional_only is not runtime.undefined:
+            runtime.reflect.set(
+                bound, "__positional_only__", runtime.math.max(0, positional_only - 1)
+            )
     return bound
 
 
@@ -751,9 +740,7 @@ def ρσ_finish_bound_method(bound: Any, target: Any, receiver: Any) -> Any:
     return ρσ_brand_bound_method(bound)
 
 
-_BUILTINS_BOUND_METHODS = runtime.reflect.construct(
-    runtime.reflect.get(runtime.global_object, "WeakSet"), []
-)
+_BUILTINS_BOUND_METHODS = runtime.reflect.construct(runtime.global_object.WeakSet, [])
 
 
 def ρσ_brand_bound_method(value: Any) -> Any:
@@ -2085,7 +2072,7 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
                 False,
             ) and _builtins_member_is_function(left, "__pow__"):
                 return _builtins_call_member(left, "__pow__", [right])
-            symbolic_ring = runtime.reflect.get(runtime.global_object, "SR")
+            symbolic_ring = runtime.global_object.SR
             if symbolic_ring is not runtime.undefined:
                 return symbolic_ring(left).__pow__(right)
         right = runtime.normalize_integer(right._numerator)
@@ -2766,6 +2753,10 @@ def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
 
 
 def ρσ_bool(value: Any) -> _Bool:
+    if value is True:
+        return True
+    if value is False:
+        return False
     if value is None or value is runtime.undefined:
         return False
     value_type = runtime.jstype(value)
@@ -3502,9 +3493,7 @@ def ρσ_visible_introspection_name(name: Any) -> _Bool:
 
 def _builtins_is_module_namespace(value: Any) -> _Bool:
     """Return whether `value` is a registered Sage.js module namespace."""
-    module_namespaces = runtime.reflect.get(
-        runtime.global_object, "__sagejs_module_namespaces__"
-    )
+    module_namespaces = runtime.global_object.__sagejs_module_namespaces__
     if module_namespaces is runtime.undefined:
         return False
     has_module = runtime.reflect.get(module_namespaces, "has")
@@ -3688,10 +3677,7 @@ def ρσ_vars(item: Any = _BUILTINS_MISSING) -> Any:
     a useful fallback for dynamically compiled code.
     """
     if item is _BUILTINS_MISSING:
-        current_module = runtime.reflect.get(
-            runtime.global_object,
-            "__sagejs_current_module_namespace__",
-        )
+        current_module = runtime.global_object.__sagejs_current_module_namespace__
         if current_module is not runtime.undefined:
             return ρσ_live_scope_dict(  # type: ignore[name-defined]  # noqa: F821
                 current_module
@@ -3740,29 +3726,10 @@ def _builtins_is_python_class(value: Any) -> _Bool:
     if _builtins_get_member(value, "__sagejs_callable_instance__") is True:
         return False
     # Class statements and dynamic type calls mark the constructor itself.
-    if runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty,
-        value,
-        ["__bases__"],
-    ):
+    if runtime.object.hasOwn(value, "__bases__"):
         return True
     # Native builtin constructors instead carry the Python metaclass marker.
     return _builtins_get_member(value, "__python_type__") is ρσ_type
-
-
-def _builtins_prototype_member(
-    prototype: Any,
-    name: _Str,
-) -> Any:
-    current = prototype
-    while current is not None and current is not runtime.undefined:
-        descriptor = runtime.object.getOwnPropertyDescriptor(current, name)
-        if descriptor is not runtime.undefined:
-            # Do not invoke a property getter while merely inspecting docs.
-            # Ordinary Python methods are stored as descriptor values.
-            return runtime.reflect.get(descriptor, "value")
-        current = runtime.object.getPrototypeOf(current)
-    return runtime.undefined
 
 
 def ρσ_help(item: Any = runtime.undefined) -> None:
@@ -4521,9 +4488,8 @@ def ρσ_generator_close(iterator: Any) -> None:
         result = iterator.__native_throw__(GeneratorExit())
     except GeneratorExit:
         return None
-    if result.done:
-        return None
-    raise RuntimeError("generator ignored GeneratorExit")
+    if not result.done:
+        raise RuntimeError("generator ignored GeneratorExit")
 
 
 def ρσ_next(
@@ -5511,6 +5477,7 @@ def _builtins_getattr_impl(
             runtime.strict_equal(runtime.jstype(member), "function")
             and not _builtins_is_python_class(member)
             and not ρσ_is_bound_method(member)
+            and _builtins_get_member(value, "__sagejs_super__") is not True
             and not runtime.reflect.apply(
                 runtime.object.prototype.hasOwnProperty,
                 value,
@@ -5760,9 +5727,7 @@ def ρσ_resolve_module_name(
     hoisted, so a direct read would instead yield `undefined` and suppress
     idioms such as `try: set; except NameError: ...`.
     """
-    cleared_exception = runtime.reflect.get(
-        runtime.global_object, "ρσ_cleared_exception"
-    )
+    cleared_exception = runtime.global_object.ρσ_cleared_exception
     if value is _BUILTINS_DELETED_BUILTIN:
         raise NameError("name '" + name + "' is not defined")
     was_cleared_exception = (
@@ -5806,9 +5771,7 @@ def ρσ_resolve_module_name(
     # namespaces when deciding whether a cleared exception target may fall
     # through to a genuine Python builtin.
     python_builtin_namespaces = []
-    baselib_modules = runtime.reflect.get(
-        runtime.global_object, "__sagejs_baselib_modules__"
-    )
+    baselib_modules = runtime.global_object.__sagejs_baselib_modules__
     if baselib_modules is not runtime.undefined:
         for module_name in (
             "sagejs._baselib.builtins",
@@ -5984,15 +5947,7 @@ def _builtins_function_with_globals(
             return _builtins_function_with_globals(result, global_namespace)
         return result
 
-    runtime.object.defineProperty(
-        rebound,
-        "__python_type__",
-        {
-            "value": ρσ_function_type,
-            "writable": True,
-            "configurable": True,
-        },
-    )
+    _builtins_set_python_type(rebound, ρσ_function_type)
     runtime.reflect.set(rebound, "__python_descriptor__", True)
     runtime.object.defineProperty(
         rebound,
@@ -6109,10 +6064,7 @@ def _builtins_dynamic_namespaces(
     caller_locals: Any,
 ) -> Any:
     if caller_globals is runtime.undefined:
-        current_module = runtime.reflect.get(
-            runtime.global_object,
-            "__sagejs_current_module_namespace__",
-        )
+        current_module = runtime.global_object.__sagejs_current_module_namespace__
         if current_module is not runtime.undefined:
             caller_globals = ρσ_live_scope_dict(  # type: ignore[name-defined]  # noqa: F821
                 current_module
@@ -6316,17 +6268,9 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
         runtime.reflect.deleteProperty(value, name)
         return
     if _builtins_is_python_class(value):
-        class_has_own = runtime.reflect.apply(
-            runtime.object.prototype.hasOwnProperty,
-            value,
-            [name],
-        )
+        class_has_own = runtime.object.hasOwn(value, name)
         prototype = runtime.reflect.get(value, "prototype")
-        prototype_has_own = runtime.reflect.apply(
-            runtime.object.prototype.hasOwnProperty,
-            prototype,
-            [name],
-        )
+        prototype_has_own = runtime.object.hasOwn(prototype, name)
         if not class_has_own and not prototype_has_own:
             raise AttributeError("object has no attribute '" + name + "'")
         if class_has_own:
@@ -6353,11 +6297,7 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
             return _builtins_call_member(descriptor, "__delete__", [value])
     if _builtins_delete_instance_attribute(value, name):
         return
-    has_own = runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty,
-        value,
-        [name],
-    )
+    has_own = runtime.object.hasOwn(value, name)
     if not has_own:
         raise AttributeError("object has no attribute '" + name + "'")
     if not runtime.reflect.deleteProperty(value, name):
@@ -6509,12 +6449,7 @@ def ρσ_py_super(
             receiver = instance
             if _builtins_has_member(member, "__classmethod__"):
                 receiver = instance_class
-            bound = runtime.reflect.apply(
-                runtime.reflect.get(member, "bind"),
-                member,
-                [receiver],
-            )
-            return ρσ_finish_bound_method(bound, member, receiver)
+            return _builtins_bind_python_function(member, receiver)
         if _builtins_member_is_function(member, "__get__"):
             return _builtins_call_member(member, "__get__", [instance, instance_class])
         return member
@@ -6568,16 +6503,13 @@ def ρσ_len(value: Any) -> _Int:
 
 
 def ρσ_get_module(name: _Str) -> Any:
-    modules = runtime.reflect.get(runtime.global_object, "ρσ_modules")
+    modules = runtime.global_object.ρσ_modules
     if modules is runtime.undefined:
         modules = runtime.modules
     module = runtime.reflect.get(modules, name)
     if module is not runtime.undefined:
         return module
-    baselib_modules = runtime.reflect.get(
-        runtime.global_object,
-        "__sagejs_baselib_modules__",
-    )
+    baselib_modules = runtime.global_object.__sagejs_baselib_modules__
     if baselib_modules is runtime.undefined:
         return runtime.undefined
     return runtime.reflect.get(baselib_modules, name)
@@ -6708,7 +6640,7 @@ def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
 
 def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
     """Implement `type.__call__` after a custom metaclass delegates."""
-    interpolate = runtime.reflect.get(runtime.global_object, "ρσ_interpolate_kwargs")
+    interpolate = runtime.global_object.ρσ_interpolate_kwargs
     if not runtime.strict_equal(runtime.jstype(interpolate), "function"):
         internal = __import__(
             "sagejs._baselib.internal", fromlist=["ρσ_interpolate_kwargs"]
@@ -6879,7 +6811,7 @@ def ρσ_type(*values: Any) -> Any:
                     "__set_name__",
                     [dynamic_class, member_name],
                 )
-        compute_mro = runtime.reflect.get(runtime.global_object, "ρσ_compute_mro")
+        compute_mro = runtime.global_object.ρσ_compute_mro
         if runtime.strict_equal(runtime.jstype(compute_mro), "function"):
             runtime.reflect.set(
                 dynamic_class,
@@ -6890,11 +6822,7 @@ def ρσ_type(*values: Any) -> Any:
                     [dynamic_class, bases],
                 ),
             )
-        runtime.object.defineProperty(
-            dynamic_class,
-            "__python_type__",
-            {"value": ρσ_type, "writable": True, "configurable": True},
-        )
+        _builtins_set_python_type(dynamic_class, ρσ_type)
         runtime.set_class_repr(dynamic_class, "<class '" + class_name + "'>")
         ρσ_apply_custom_new_signature(
             dynamic_class,
@@ -6923,12 +6851,8 @@ def ρσ_type(*values: Any) -> Any:
             return owner
         if runtime.strict_equal(value_type, "object"):
             value_type = ρσ_python_jstype(value)
-    module_namespaces = runtime.reflect.get(
-        runtime.global_object, "__sagejs_module_namespaces__"
-    )
-    module_type = runtime.reflect.get(
-        runtime.global_object, "__sagejs_module_type_class__"
-    )
+    module_namespaces = runtime.global_object.__sagejs_module_namespaces__
+    module_type = runtime.global_object.__sagejs_module_type_class__
     if (
         module_namespaces is not runtime.undefined
         and module_type is not runtime.undefined
@@ -7049,11 +6973,7 @@ def _builtins_apply_metaclass_namespace(
     # metaclass while `metaclass.__init__` runs.  Publish that relationship
     # before invoking the initializer so `super()` inside a metaclass
     # `__init__` follows the metaclass MRO (traitlets relies on this).
-    runtime.object.defineProperty(
-        created,
-        "__python_type__",
-        {"value": metaclass, "writable": True, "configurable": True},
-    )
+    _builtins_set_python_type(created, metaclass)
     _builtins_class_metaclasses.set(created, metaclass)
     initializer = _builtins_get_member(
         _builtins_get_member(metaclass, "prototype"),
@@ -7223,6 +7143,13 @@ def ρσ_issubclass(cls: Any, candidates: Any) -> _Bool:
     )
 
 
+def _builtins_optional_attribute(value: Any, name: _Str) -> Any:
+    try:
+        return ρσ_getattr_internal(value, name, runtime.undefined)
+    except AttributeError:
+        return runtime.undefined
+
+
 def ρσ_divmod(left: Any, right: Any) -> Any:
     if (
         runtime.strict_equal(runtime.jstype(left), "number")
@@ -7235,54 +7162,39 @@ def ρσ_divmod(left: Any, right: Any) -> Any:
         quotient = runtime.math.floor(runtime.native_div(left, right))
         remainder = runtime.native_sub(left, runtime.native_mul(quotient, right))
         return runtime.math_tuple([quotient, remainder])
-    left_class = _builtins_get_member(left, "constructor")
-    right_class = _builtins_get_member(right, "constructor")
-    right_reflected_descriptor = runtime.object.getOwnPropertyDescriptor(
-        _builtins_get_member(right_class, "prototype"),
-        "__rdivmod__",
-    )
-    right_reflected = (
-        runtime.undefined
-        if right_reflected_descriptor is runtime.undefined
-        else runtime.reflect.get(right_reflected_descriptor, "value")
-    )
-    left_reflected = _builtins_prototype_member(
-        _builtins_get_member(left_class, "prototype"),
-        "__rdivmod__",
-    )
-    left_direct = _builtins_get_special_member(left, "__divmod__")
-    right_reflected_selected = _builtins_get_special_member(right, "__rdivmod__")
-    right_reflected_function = _builtins_get_member(right_reflected, "__func__")
-    if right_reflected_function is runtime.undefined:
-        right_reflected_function = right_reflected
-    left_reflected_function = _builtins_get_member(left_reflected, "__func__")
-    if left_reflected_function is runtime.undefined:
-        left_reflected_function = left_reflected
-    reflected_first = (
+    left_class = _builtins_attribute_owner(left)
+    right_class = _builtins_attribute_owner(right)
+    reflected_first = False
+    if (
         _builtins_is_python_class(left_class)
         and _builtins_is_python_class(right_class)
         and left_class is not right_class
         and ρσ_issubclass(right_class, left_class)
-        and right_reflected_descriptor is not runtime.undefined
-        and right_reflected_function is not left_reflected_function
-        and right_reflected_selected is not runtime.undefined
-    )
+    ):
+        right_reflected = _builtins_optional_attribute(right_class, "__rdivmod__")
+        if right_reflected is not runtime.undefined:
+            left_reflected = _builtins_optional_attribute(left_class, "__rdivmod__")
+            reflected_first = left_reflected is runtime.undefined or (
+                left_reflected is not right_reflected
+                and left_reflected != right_reflected
+            )
     if reflected_first:
-        result = _builtins_call_selected_special(
-            right, right_reflected_selected, [left]
-        )
+        method = _builtins_get_special_member(right, "__rdivmod__")
+        if method is not runtime.undefined:
+            result = _builtins_call_selected_special(right, method, [left])
+            if result is not NotImplemented:
+                return result
+    method = _builtins_get_special_member(left, "__divmod__")
+    if method is not runtime.undefined:
+        result = _builtins_call_selected_special(left, method, [right])
         if result is not NotImplemented:
             return result
-    if left_direct is not runtime.undefined:
-        result = _builtins_call_selected_special(left, left_direct, [right])
-        if result is not NotImplemented:
-            return result
-    if not reflected_first and right_reflected_selected is not runtime.undefined:
-        result = _builtins_call_selected_special(
-            right, right_reflected_selected, [left]
-        )
-        if result is not NotImplemented:
-            return result
+    if left_class is not right_class and not reflected_first:
+        method = _builtins_get_special_member(right, "__rdivmod__")
+        if method is not runtime.undefined:
+            result = _builtins_call_selected_special(right, method, [left])
+            if result is not NotImplemented:
+                return result
     if runtime.equals(right, 0):
         raise runtime.zero_division_error("integer division or modulo by zero")
     quotient = ρσ_operator_floordiv(left, right)
@@ -7752,9 +7664,7 @@ def _prime_pi_plot(
     **options: Any,
 ) -> Any:
     """Draw Sage's prime-counting step function without redispatching plot."""
-    plot_step_function = runtime.reflect.get(
-        runtime.global_object, "plot_step_function"
-    )
+    plot_step_function = runtime.global_object.plot_step_function
     lower = float(start)
     upper = float(stop)
     values = []
@@ -7833,10 +7743,7 @@ def factorial(value: Any) -> Any:
 
 def binomial(n: Any, k: Any) -> Any:
     if not runtime.is_exact_integer(n) or not runtime.is_exact_integer(k):
-        symbolic_function = runtime.reflect.get(
-            runtime.global_object,
-            "symbolic_binomial",
-        )
+        symbolic_function = runtime.global_object.symbolic_binomial
         if runtime.jstype(symbolic_function) != "function":
             raise TypeError("binomial() arguments must be integers")
         return symbolic_function(n, k)
@@ -8210,7 +8117,7 @@ def _record_moebius_range_acceleration(
 
 
 def _packed_moebius_modules() -> Any:
-    loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
+    loader = runtime.global_object.__sagejs_load_module__
     if loader is runtime.undefined:
         raise RuntimeError("the packed Möbius kernel loader is unavailable")
     return (
@@ -8368,7 +8275,7 @@ def kronecker_character(discriminant: Any, reduce: Any = False) -> Any:
         "sagejs.number_fields.quadratic_characters",
         fromlist=["quadratic_characters"],
     )
-    group_factory = runtime.reflect.get(runtime.global_object, "DirichletGroup")
+    group_factory = runtime.global_object.DirichletGroup
     if group_factory is runtime.undefined:
         raise RuntimeError("DirichletGroup is unavailable")
     return module.kronecker_character(
@@ -8384,7 +8291,7 @@ def _sage_random_word() -> _Int:
 
 
 def _sage_random_float() -> _Float:
-    state = runtime.reflect.get(runtime.global_object, "__sagejs_random_state__")
+    state = runtime.global_object.__sagejs_random_state__
     if state is runtime.undefined:
         state = runtime.math.floor(runtime.math.random() * 4294967296)
     state = runtime.native_mod(
@@ -8763,7 +8670,7 @@ def _builtins_raise_host_error(error: Any) -> None:
 
 
 def _builtins_host_call(operation: _Str, *args: Any) -> Any:
-    host = runtime.reflect.get(runtime.global_object, "__sagejs_host__")
+    host = runtime.global_object.__sagejs_host__
     if host is runtime.undefined:
         raise NotImplementedError(
             "open() is unavailable without a host filesystem capability"
@@ -9336,11 +9243,7 @@ _builtins_set_type_metadata(ρσ_bool, "bool")
 _builtins_set_type_metadata(ρσ_float, "float")
 _builtins_set_type_metadata(runtime.function_class, "function")
 for builtin_numeric_type in (ρσ_int, ρσ_bool, ρσ_float, ρσ_type):
-    runtime.object.defineProperty(
-        builtin_numeric_type,
-        "__python_type__",
-        {"value": ρσ_type, "writable": True, "configurable": True},
-    )
+    _builtins_set_python_type(builtin_numeric_type, ρσ_type)
 runtime.reflect.set(runtime.function_class, "__python_type__", ρσ_type)
 runtime.set_class_repr(ρσ_tuple, "<class 'tuple'>")
 runtime.set_class_repr(ρσ_property, "<class 'property'>")
@@ -9352,11 +9255,7 @@ for builtin_factory_type in (ρσ_tuple, ρσ_property):
     # baselib functions receive lazy function metadata, so replace that marker
     # explicitly instead of letting class inheritance mistake the factory for
     # a custom metaclass.
-    runtime.object.defineProperty(
-        builtin_factory_type,
-        "__python_type__",
-        {"value": ρσ_type, "writable": True, "configurable": True},
-    )
+    _builtins_set_python_type(builtin_factory_type, ρσ_type)
 runtime.reflect.set(
     runtime.reflect.get(SageProperty, "prototype"),
     "__python_type__",
@@ -9414,9 +9313,7 @@ _builtins_prototype_owners.set(runtime.reflect.get(SageObject, "prototype"), Sag
 
 
 def _builtins_object_new(cls: Any) -> Any:
-    owns_python_bases = runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty, cls, ["__bases__"]
-    )
+    owns_python_bases = runtime.object.hasOwn(cls, "__bases__")
     if not _builtins_is_python_class(cls) or not owns_python_bases:
         raise TypeError("object.__new__() argument 1 must be a type")
     callable_allocation = runtime.reflect.get(
@@ -9540,11 +9437,7 @@ runtime.reflect.set(ρσ_range, "prototype", runtime.reflect.get(_Range, "protot
 runtime.reflect.set(
     runtime.reflect.get(_Range, "prototype"), "__python_type__", ρσ_range
 )
-runtime.object.defineProperty(
-    ρσ_range,
-    "__python_type__",
-    {"value": ρσ_type, "writable": True, "configurable": True},
-)
+_builtins_set_python_type(ρσ_range, ρσ_type)
 runtime.set_class_repr(ρσ_range, "<class 'range'>")
 _builtins_set_type_metadata(ρσ_range, "range")
 

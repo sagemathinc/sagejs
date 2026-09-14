@@ -3,11 +3,12 @@
 # globals: writefile
 from __python__ import hash_literals
 
-from output.statements import declare_vars, display_body
+from output.statements import declare_vars, display_body, display_traceback_body
 from output.stream import OutputStream
 from output.utils import create_doctring
 from output.comments import print_comments, output_comments
 from output.functions import set_module_name
+from output.traceback_policy import print_traceback_policy
 from compiler_version import get_compiler_version
 from utils import cache_file_name
 from ast_types import (
@@ -821,6 +822,8 @@ def declare_exports(module, exports, output, docstrings):
 def prologue(module, output):
     # any code that should appear before the main body
     if output.options.omit_baselib:
+        if output.options.python_traceback_guarded:
+            print_traceback_policy(output)
         return
     output.indent()
     v = "var"
@@ -891,6 +894,8 @@ def prologue(module, output):
         )
     output.print(output.options.baselib_plain)
     output.end_statement()
+    if output.options.python_traceback_guarded:
+        print_traceback_policy(output)
 
 
 def print_top_level(self, output):
@@ -957,7 +962,9 @@ def print_top_level(self, output):
                         write_numeric_literal_pool(numeric_literal_pool, output)
                         declare_vars(self.localvars, output)
                         bind_module_namespace(self, output, numeric_literal_pool)
-                        display_body(self.body, True, output)
+                        display_traceback_body(
+                            self, output, lambda: display_body(self.body, True, output)
+                        )
                         output.newline()
                         write_docstrings()
                         if self.comments_after and self.comments_after.length:
@@ -991,7 +998,9 @@ def print_top_level(self, output):
         write_numeric_literal_pool(numeric_literal_pool, output)
         declare_vars(self.localvars, output)
         bind_module_namespace(self, output, numeric_literal_pool)
-        display_body(self.body, True, output)
+        display_traceback_body(
+            self, output, lambda: display_body(self.body, True, output)
+        )
         if self.comments_after and self.comments_after.length:
             output_comments(self.comments_after, output)
     set_module_name()
@@ -1016,7 +1025,9 @@ def print_module(self, output):
         write_numeric_literal_pool(numeric_literal_pool, output)
         declare_vars(self.localvars, output)
         bind_module_namespace(self, output, numeric_literal_pool)
-        display_body(self.body, True, output)
+        display_traceback_body(
+            self, output, lambda: display_body(self.body, True, output)
+        )
         declare_exports(self, self.exports, output, self.docstrings)
 
     output.newline()
