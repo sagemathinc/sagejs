@@ -1,5 +1,56 @@
 # Faithful PARI class-group language experiment
 
+## Integer-basis arithmetic and binary element powers
+
+`integral_field_arithmetic.py` translates `base3.c:_mulii, nfmuli_ZC,
+nfsqri_ZC` and connects them through the `bb_group.c:gen_powu_i` left-right
+binary branch for positive exponents below 512. It retains coefficient order,
+zero/plus-or-minus-one shortcuts, triangular squaring, and the distinction
+between an absent partial sum and a present sum whose value happens to be zero.
+The `bb_group.c` source/archive SHA-256 is
+`30ceda3cedce14d61e646021fe7c59e057beb8694002ee09b8532eaa32ea27c3`.
+
+```sh
+node bench/pari-class-group-port/check_integral_field_arithmetic.cjs PARI_DIRECTORY PARI_ARCHIVE
+```
+
+The check covers 96 vector pairs (24 on each of the same four tuning fields),
+192 products/squares and 288 powers at exponents 1, 2, 3, 7, 31 and 511.
+PARI, CPython, generated JS and native GMP agree on coordinates, untouched
+inputs and output canaries. The powering control calls PARI's actual
+`gen_powu_i` with counting wrappers around its field arithmetic, independently
+checks its answer against `nfpow`, and compares both operation counts and the
+base-four square/multiply trace with the translation. This is a connected
+arithmetic segment, not the outer `nfpow` content/scalar/denominator wrapper
+or prime-ideal powering. Negative exponents, zero and the sliding-window
+branch reject explicitly; invalid-domain guards are checked before mutation.
+
+Storage differences remain explicit: a bounded bit scan replaces C's leading
+zero/word-normalization operations, and packed scratch/output copies replace
+GEN aliases and freshly allocated columns. No equal-cost claim follows from
+matching arithmetic operations. The original eight-word array-adapter scratch
+failed on exponent-511 growth. That failure is retained as a test in both JS
+and GMP. Successful tests allocate a fixed 1,024 words per output/scratch
+entry through the existing packed-buffer API, without changing its checks or
+any global limit. This is at most 80 KiB of limb storage per power invocation.
+It is not sized from the oracle answer: the test asserts input height below
+2^8 and table height below 2^64, so for degree at most four,
+`H(x^e) <= H(x)^e * (n*n*H(table))^(e-1)` remains below 65,536 bits for
+`e <= 511`. Multiword product/square controls additionally shift inputs by
+96 and 192 bits, but those larger inputs are not included in the power panel.
+
+Current trace SHA-256:
+`8749c17f12dfed362a903b91a0433c4a3117e4b8e6d9760b7c10e70150f8a0e7`.
+The generated arithmetic/power core is 803,555 C bytes. No qualified timing,
+new field coverage or complete class-group output is claimed.
+
+Strict Python passes (403 modules; 973 formatted files). The change-set gate
+against `aae3870b9`, with the explicit FLINT prefix, passes merge invariants
+and then stops at the existing `test/module-cache.cjs` undefined-`Any`
+initialization failure; later units and docs are not qualified. Architecture
+validation again stops at the stale optimizer manifest. No safety limit,
+production dispatch or PR draft status is changed.
+
 ## Integral product content and scalar-generator update
 
 `pari_integral_ideal_mul_two` completes the integral matrix/prime product
