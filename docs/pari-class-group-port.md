@@ -1,5 +1,77 @@
 # Faithful PARI class-group language experiment
 
+## Approved continuation block
+
+The user explicitly approved eight additional aggregate active-agent hours and
+one additional CPU-hour of newly metered diagnostics after the checkpoint
+below. The root goal counter at resumption is 57,120 seconds; the incremental
+active-time ceiling is therefore 85,920 root seconds if no subagents are used.
+Any subagent time in this block must be deducted from that allowance. The
+historical accounting gaps are not erased by this new, separate allowance.
+Execution checks in this block will record child user and system CPU time;
+compilation included in such checks is conservatively charged too.
+
+The first priorities are connecting the distinguished-ideal relation path and
+obtaining a qualified work-matched comparison. The full prepared-field
+class-group objective, frozen inputs, PARI 2.17.4 pin, safety limits and
+acceptance criteria remain unchanged. The following checkpoint is historical,
+not a statement that continuation is still awaiting approval.
+
+### Integral element-power dependency
+
+`integral_power.py` connects the previously checked column binary powering to
+`base3.c:nfpow`'s nonnegative integral branch: scalar detection, reverse-order
+integer content extraction with early gcd-one exit, primitive-column powering,
+and content restoration. It preserves the scalar/column return tag even though
+the packed output always has basis coordinates. Scalar powers retain the
+64-bit `trans1.c:upowuu` cutoff/addition-chain shortcuts and the binary branch
+of `powiu_sign`; the bounded recursive word tail is flattened into a helper.
+The `trans1.c` SHA-256 is
+`287fbc089af72e8abcae073ea059880fdb138d7b4cd3c2bea39be547f3ca7835`.
+
+The differential check covers 3,304 word-power controls (including cutoff
+neighbors), 576 signed scalar powers including 65/130-bit inputs, and 768
+field powers over the same four tuning fields. It checks scalar/column tags,
+column square/multiply counts and order, input preservation, and output
+canaries in CPython, JavaScript and native GMP. Zero exponent and scalar paths
+are exercised with empty unused workspaces. Negative exponents and exponents
+at least 512 are rejected; rational/factored inputs remain outside this entry.
+The first native compile rejected fixed slices on `IntegerBuffer` (supported
+only on `NativeIntegerVector`); a three-entry reset loop uses the existing API.
+
+Trace SHA-256:
+`3bcac2204404543892f8d3db31729452816801eb4f3e5012d42468b0b2a3bd30`.
+Generated core size is 1,868,262 bytes. The existing fixed 1,024-word allocation
+per entry covers the declared field input bound; no capacity check was relaxed.
+These are correctness checks, not qualified timings or completed prime powers.
+
+Reproduce with `SAGEJS_FLINT_PREFIX` set to the prepared FLINT prefix:
+
+```sh
+python3 bench/pari-class-group-port/meter_command.py \
+  node bench/pari-class-group-port/check_integral_power.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz
+```
+
+Continuation CPU ledger, conservatively including compilation (seconds):
+
+| Execution | User | System | Outcome |
+| --- | ---: | ---: | --- |
+| Initial power check | 1.330843 | 0.330455 | Unsupported slice rejected |
+| Power check after reset loop | 6.192158 | 0.671522 | Pass |
+| Python formatter | 10.010311 | 0.475146 | Pass; zero files changed |
+| Expanded power check with receipt | 2.464804 | 0.548225 | Pass |
+| Strict Python | 76.378037 | 3.097788 | Pass: 403 modules, 975 formatted files |
+| Architecture | 11.136233 | 2.290708 | Existing stale optimizer manifest failure |
+| Changed-file gate against f329b3d7a | 142.826122 | 29.444484 | Merge gate passes; known module-cache `Any` failure; 233 unit files not started; docs not reached |
+| Separate generated-doc check | 2.282498 | 0.189955 | Pass |
+
+Subtotal: 289.669289 CPU seconds. Subsequent executions must be appended before
+claiming a complete block total. The meter reports aggregate reaped child
+usage, including descendants; it is not a machine-wide resource limiter or a
+qualified benchmark timer. Prior-block missing accounting remains missing.
+
 ## Bounded checkpoint assessment: the full objective is not achieved
 
 Audit of implementation commit `6bb89f177` against the original experiment:
