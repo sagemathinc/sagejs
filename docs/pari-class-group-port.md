@@ -1,6 +1,44 @@
 # Faithful PARI class-group language experiment
 
-## Real square root for the pending QR preparation
+## Householder QR connected to reduction-matrix output
+
+`householder.py` translates `QR_init`, `FindApplyQ`, `ApplyAllQ`/`ApplyQ`, and
+`gaussred_from_QR` from PARI 2.17.4 `src/basemath/bibli1.c`. It starts from an
+integer/real matrix and computes the reduction matrix in one native call,
+preserving the order of scalar operations, reflector applications, sign
+selection and `no_prec_pb` check. It does not accept a precomputed QR result.
+Integer entries remain exact until the corresponding upstream conversion.
+The `mpmul` integer-zero branch is distinct from generic `gmul`: its result
+is a real zero with PARI's precision-dependent exponent.
+
+All buffers are caller-owned and must be distinct; matrix slots are row-major
+triples with precision -1 denoting an integer. Requested precision is locally
+limited to 512 bits by the existing square leaf, and unsupported multiword
+integer/real operations still raise explicit errors. The reciprocal and integer
+square-root leaf substitutions remain declared, so this is not yet a pure
+language-cost comparison. Precision failure returns 0; incomplete scratch
+contents on failure are not a public result.
+
+The oracle covers 36 actual `G * (I * ZM_lll(roundG * I))` matrices from the
+four tuning fields, primes 2/3/7 and requested precisions 128/192/256. PARI
+still supplies these input matrices: ideal construction, LLL and embedding
+multiplication are **outside** this connected QR boundary. Another 30 controls
+cover dimensions 1–5, integer/real/mixed entries, zero matrices, negative
+diagonals and low-precision failure. All 57 successful output matrices and
+the same nine upstream failures agree across PARI, CPython, dynamic JS,
+GMP-native and tagged-native execution; input buffers remain unchanged.
+Formatting, repository strict-Python and parallel checks pass. The known
+optimizer manifest failure still prevents a green full architecture gate.
+The full collector and class-group path
+remain incomplete; no new timing claim is made.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_householder.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
+## Real square root (preceding QR checkpoint)
 
 `real_square_root.py` translates the two exponent-parity branches of PARI
 2.17.4 `src/kernel/gmp/mp.c:sqrtr_abs`, including the extra root-word rounding
@@ -20,8 +58,9 @@ and CPython, dynamic JavaScript, GMP-native and tagged-native execution of the
 same Python source. Controls cover both exponent parities, negative exponents,
 both input signs, seven precisions from 64 through 1920 bits, endpoint mantissas
 and seeded random mantissas. Integer-root identity/remainder controls and
-explicit unsupported-input checks supplement these comparisons. QR and the
-connected collector remain unfinished.
+explicit unsupported-input checks supplement these comparisons. QR was still
+unfinished at this checkpoint; its subsequent connection is described above.
+The connected collector remains unfinished.
 
 At this checkpoint Python formatting, repository strict-Python checks and the
 parallel contract check pass. `architecture:check` still stops at the previously
