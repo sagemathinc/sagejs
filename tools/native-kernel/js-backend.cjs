@@ -520,16 +520,24 @@ function emitExactStatement(operation, indent, resourceStack = null) {
       `nativeRaise("OverflowError", "integer is outside unsigned 64-bit");\n` +
       `${indent}${operation.target} = ${operation.source};`;
   }
-  if (operation.kind === "integer.from_float64") {
+  if (operation.kind === "integer.from_float64" || operation.kind === "integer.round_float64") {
+    const rounding = operation.kind === "integer.round_float64" ?
+      `\n${indent}{\n${indent}  const $fraction = ${operation.source} - Math.trunc(${operation.source});\n` +
+      `${indent}  if ($fraction > 0.5 || ($fraction === 0.5 && (${operation.target} & 1n))) ${operation.target} += 1n;\n` +
+      `${indent}  else if ($fraction < -0.5 || ($fraction === -0.5 && (${operation.target} & 1n))) ${operation.target} -= 1n;\n${indent}}` : "";
     return `${indent}if (Number.isNaN(${operation.source})) nativeRaise("ValueError", "cannot convert float NaN to integer");\n` +
       `${indent}if (!Number.isFinite(${operation.source})) nativeRaise("OverflowError", "cannot convert float infinity to integer");\n` +
-      `${indent}${operation.target} = BigInt(Math.trunc(${operation.source}));`;
+      `${indent}${operation.target} = BigInt(Math.trunc(${operation.source}));${rounding}`;
   }
   if (operation.kind === "float64.from_integer_checked") {
     return `${indent}if (${operation.source} < -9007199254740992n || ` +
       `${operation.source} > 9007199254740992n) ` +
       `nativeRaise("OverflowError", "integer is outside exact binary64 range");\n` +
       `${indent}${operation.target} = Number(${operation.source});`;
+  }
+  if (operation.kind === "float64.from_integer") {
+    return `${indent}${operation.target} = Number(${operation.source});\n` +
+      `${indent}if (!Number.isFinite(${operation.target})) nativeRaise("OverflowError", "integer is outside binary64 range");`;
   }
   if (operation.kind === "float64.constant") {
     return `${indent}${operation.target} = ${operation.value};`;
@@ -3097,7 +3105,7 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
     if (message.includes("negative shift count")) nativeRaise("ValueError", message);
     if (message.includes("integer shift allocation limit")) nativeRaise("MemoryError", message);
     if (message.includes("math domain")) nativeRaise("ValueError", message);
-    if (message === "math range error") nativeRaise("OverflowError", message);
+    if (message === "math range error" || message === "integer is outside binary64 range") nativeRaise("OverflowError", message);
     if (message.includes("too large to convert")) {
       nativeRaise("OverflowError", message);
     }

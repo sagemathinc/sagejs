@@ -1635,6 +1635,15 @@ function lowerCall(node, context, operations) {
     return { name: target, type: "Integer" };
   }
 
+  if (name === "float") {
+    expect(context, node, args.length === 1, "float() requires one argument");
+    const value = lowerExpression(args[0], context, operations);
+    if (value.type === "Float64") return value;
+    const source = coerceInteger(value, context, args[0], operations);
+    const target = temporary(context, node, "Float64");
+    operations.push({kind: "float64.from_integer", target, source: source.name});
+    return {name: target, type: "Float64"};
+  }
   if (name === "checked_float64") {
     expect(
       context,
@@ -1749,6 +1758,18 @@ function lowerCall(node, context, operations) {
   if (name === "round") {
     expect(context, node, args.length === 1, "round() requires one argument");
     const sqrtCall = args[0];
+    const isSqrt = nodeType(sqrtCall) === "AST_Call" &&
+      nodeType(sqrtCall.expression) === "AST_SymbolRef" &&
+      sqrtCall.expression.name === "sqrt" && array(sqrtCall.args).length === 1;
+    if (!isSqrt) {
+      const source = lowerExpression(args[0], context, operations);
+      if (source.type === "Float64") {
+        const target = temporary(context, node, "Integer");
+        operations.push({kind: "integer.round_float64", target, source: source.name});
+        return {name: target, type: "Integer"};
+      }
+      return coerceInteger(source, context, args[0], operations);
+    }
     expect(
       context,
       sqrtCall,
@@ -1832,8 +1853,8 @@ function lowerCall(node, context, operations) {
   });
   if (signature.returnType === "Float64") {
     expect(context, node, signature.params.every(param =>
-      ["Float64", "uint64", "Integer", "bool"].includes(param.type)),
-    `${name} must be a scalar-only Float64-returning helper`);
+      ["Float64", "Float64Buffer", "uint64", "Integer", "bool"].includes(param.type)),
+    `${name} requires scalar or Float64Buffer parameters for a Float64 return`);
   }
   const returnElements = tupleElementTypes(signature.returnType);
   let result;
