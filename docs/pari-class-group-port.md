@@ -1,5 +1,42 @@
 # Faithful PARI class-group language experiment
 
+## Connected initial factor-base selection
+
+`initial_base.py` connects initialization constants and logarithms, GRH bound
+search, the `nthideal` lower limit, the initial relation/checking-bound
+adjustment and `FBgen` selection in one isolated Python-source computation.
+The prepared boundary supplies LOGD and cached decompositions, not selected
+bounds or factor-base answers. The output includes both bounds, all selection
+counts, the active prime product and indices of the selected prepared ideals.
+
+`nthideal` retains upstream reverse residue-degree traversal and forward
+in-place norm insertion, including the unusual prefix writes. Its scratch
+array uses upstream one-based entries; index zero is scratch, not a GEN header.
+The `upowuu` leaf uses exact multiplication with the upstream unsigned-64-bit
+overflow-to-zero convention; this is a disclosed leaf substitution, not a
+language-only cost comparison. Missing prime coverage fails explicitly.
+
+The expanded GRH driver checks 32 `nthideal` controls against actual PARI,
+CPython, JS, GMP and tagged execution. The factor-base driver's `--initial`
+mode checks the combined path on four existing fields with cbach 0, 0.3 and
+13 (including upstream clamping to 12 and raising cbach2). The full prime
+selection metadata is compared, not just the class-number-independent counts.
+Large oracle prime products use a bounded 20,000-digit CPython serialization
+allowance; no native memory or arithmetic limit is raised.
+
+This is still **partial initialization**: prime decomposition/cache growth,
+inverse-residue computation, ball volume, sub-factor-base preparation,
+automorphism state and retries remain outside this connected segment. In
+particular, skipping the intervening inverse-residue work is explicit
+scaffolding, not equivalent whole-initialization timing. Mixed tagged execution
+is still unavailable and no whole-field speed conclusion follows.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_factor_base.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 --initial
+```
+
 ## GRH checking and initial bound-search checkpoint
 
 `grh_bound.py` translates `buch2.c:GRHchk`, `GRHok`, and the initial
@@ -50,8 +87,8 @@ are compared against the full prepared decompositions, not just their degrees.
 CPython, generated JS and GMP agree on all selection metadata, including
 partially included prime groups and different active/checking sizes.
 
-This selection-loop test is **not complete factor-base setup**; the initial
-bound search is tested separately above and has not yet been connected here.
+This declared-bound selection-loop test is **not complete factor-base setup**;
+the new connected initial-selection driver is described above.
 The decomposition cache, `log(C2+0.5)` and cached prime logarithms are explicit
 PARI-prepared inputs; the division and integer conversion of that logarithmic
 ratio run in the port. Auxiliary setup such as the ball-volume scalar and
