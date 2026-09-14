@@ -38,6 +38,8 @@ for x in json.load(sys.stdin):
 print(json.dumps(out))`],{encoding:"utf8",input:JSON.stringify(values.map(String))});
   assert.equal(oracle.status,0,oracle.stderr);const expected=JSON.parse(oracle.stdout);
   const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  for(const expression of ["round(x, ndigits=2)", "float(x, ignored=1)", "abs(x, ignored=1)"])
+    await assert.rejects(()=>lowerSource(`from sagejs.native import native\n@native\ndef bad(x:float)->int:\n    return ${expression}\n`,"bad-round.py"),/positional/);
   const previousValue=globalThis.ValueError,previousOverflow=globalThis.OverflowError;
   globalThis.ValueError=class ValueError extends Error{};globalThis.OverflowError=class OverflowError extends Error{};
   try {
