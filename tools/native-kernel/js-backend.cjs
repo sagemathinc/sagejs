@@ -551,6 +551,9 @@ function emitExactStatement(operation, indent, resourceStack = null) {
       `${indent}${operation.target} = Math.${operation.kind.slice(8)}(${operation.source});`;
   }
   if (operation.kind === "float64.pow") return emitFloat64Pow(operation, indent);
+  if (operation.kind === "float64.copysign") {
+    return `${indent}${operation.target} = $sagejsNativeCopySign(${operation.left}, ${operation.right});`;
+  }
   if (operation.kind === "float64.abs") {
     return `${indent}${operation.target} = Math.abs(${operation.source});`;
   }
@@ -3043,6 +3046,14 @@ function nativeRaise(name, message) {
 }
 
 const $sagejsBinary64Bits = new DataView(new ArrayBuffer(8));
+function $sagejsNativeCopySign(value, sign) {
+  $sagejsBinary64Bits.setFloat64(0, sign, false);
+  const signBit = $sagejsBinary64Bits.getUint32(0, false) & 0x80000000;
+  $sagejsBinary64Bits.setFloat64(0, value, false);
+  const high = $sagejsBinary64Bits.getUint32(0, false);
+  $sagejsBinary64Bits.setUint32(0, (high & 0x7fffffff) | signBit, false);
+  return $sagejsBinary64Bits.getFloat64(0, false);
+}
 function $sagejsNativeFrexp(value) {
   if (value === 0 || !Number.isFinite(value)) return [value, 0n];
   let adjustment = 0;

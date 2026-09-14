@@ -27,7 +27,7 @@ const {
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 const { isBundleClass, prepareWorkspaceBundles } = require("./workspace-bundles.cjs");
 
-const IR_VERSION = 42;
+const IR_VERSION = 43;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -722,7 +722,7 @@ function supportedModulePreamble(statement) {
     const moduleName = item.module?.name;
     const names = array(item.argnames).map((arg) => arg.name);
     return (
-      !item.level && moduleName === "math" && names.every((name) => ["sqrt", "gcd", "log", "log2", "pow", "ldexp", "frexp"].includes(name))
+      !item.level && moduleName === "math" && names.every((name) => ["sqrt", "gcd", "log", "log2", "pow", "ldexp", "frexp", "copysign"].includes(name))
     ) || (
       moduleName === "typing" && names.every((name) => name === "Tuple")
     ) || (
@@ -1006,7 +1006,7 @@ async function lowerSource(source, filename, options = {}) {
       }
       if (item.level || item.module?.name !== "math") continue;
       for (const imported of array(item.argnames)) {
-        if (["gcd", "log", "log2", "pow", "ldexp", "frexp"].includes(imported.name)) mathFunctions.set(imported.alias?.name || imported.name, imported.name);
+        if (["gcd", "log", "log2", "pow", "ldexp", "frexp", "copysign"].includes(imported.name)) mathFunctions.set(imported.alias?.name || imported.name, imported.name);
       }
     }
   }
@@ -1147,7 +1147,7 @@ async function lowerSource(source, filename, options = {}) {
     // synthetic structural nodes which deliberately have no parser walker.
     if (signature !== undefined && isFloat64Signature(signature)) fn.walk({_visit(node, descend) {
       if (nodeType(node) === "AST_Call" && nodeType(node.expression) === "AST_SymbolRef" &&
-          (["ldexp", "frexp"].includes(mathFunctions.get(node.expression.name)) ||
+          (["ldexp", "frexp", "copysign"].includes(mathFunctions.get(node.expression.name)) ||
             signatures.has(node.expression.name))) integerExponentMath = true;
       if (descend !== undefined) descend();
     }});
