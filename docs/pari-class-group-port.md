@@ -1,5 +1,32 @@
 # Faithful PARI class-group language experiment
 
+## PARI real-to-binary64 conversion
+
+`float_conversion.py` preserves the 64-bit `rtodbl` path: rounding from the
+leading mantissa word alone, carry into the exponent, positive-zero early
+underflow, the special exponent -1023 bit construction, and overflow at
+exponent 1023. It constructs the same binary64 value arithmetically rather
+than aliasing a C union. This is intentionally not a generic correctly-rounded
+real conversion with a full subnormal range.
+
+The oracle compares 528 conversions bit-for-bit in PARI/CPython/JS/GMP,
+covering both signs, four input precisions, guard-bit neighbors, exponent
+boundaries, signed zero and overflow. Low mantissa words are deliberately
+present in the multiword cases. Range reduction still needs to call this
+conversion and the computed logarithm constant; the full exponential remains
+unconnected.
+
+Compiler prerequisite `f31caa9f9` supports explicit OverflowError and fixes
+Float64 result publication from mixed exact kernels. Its regressions retain
+the rejection of buffer-bearing Float64-returning helpers pending effect
+qualification; this port uses scalar inputs only.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_float_conversion.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Computed logarithm-of-two constant and resident cache
 
 `logarithm_constant.py` connects PARI's three `atanhuu` calls, their exact
