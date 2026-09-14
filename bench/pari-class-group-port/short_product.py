@@ -213,3 +213,230 @@ def pari_prepared_mixed_norm(
             value, precision, exponent, m, p, e
         )
     return pari_short_product(real_m, real_p, real_e, value, precision, exponent)
+
+
+@native
+def pari_signed_real_sum(
+    mx: int, px: int, ex: int, my: int, py: int, ey: int
+) -> tuple[int, int, int]:
+    """Prepared `addrr_sign` prototype, including opposite-sign cancellation.
+
+    Align and truncate the operands to PARI's working word window before
+    subtracting. Remove canceled whole words, then apply the upstream optional
+    extension-word removal and rounding. Do not round an exact rational sum
+    at an independently chosen precision.
+    """
+    if mx == 0 or my == 0 or (mx > 0 and my > 0) or (mx < 0 and my < 0):
+        m, p, e = pari_positive_real_sum(abs(mx), px, ex, abs(my), py, ey)
+        if mx < 0 or my < 0:
+            m = -m
+        return m, p, e
+    if px < 64 or py < 64 or px > 2048 or py > 2048:
+        raise ValueError("signed real sum prototype precision out of range")
+    if px % 64 != 0 or py % 64 != 0:
+        raise ValueError("signed real sum requires 64-bit words")
+    if abs(mx).bit_length() != px or abs(my).bit_length() != py:
+        raise ValueError("signed real sum requires full mantissas")
+    if ex > ey:
+        mx, my = my, mx
+        px, py = py, px
+        ex, ey = ey, ex
+    gap = ey - ex
+    whole = gap // 64
+    remainder = gap % 64
+    if py // 64 - whole <= 0:
+        return my, py, ey
+    extended = 0
+    precision = py
+    if gap == 0:
+        if px < precision:
+            precision = px
+    elif py // 64 - whole > px // 64:
+        precision = px + 64 * (whole + 1)
+        extended = 1
+    shift = px + gap - precision
+    if shift >= 0:
+        a = abs(mx) >> shift
+    else:
+        a = abs(mx) << -shift
+    b = abs(my) >> (py - precision)
+    difference = b - a
+    negative = 0
+    if difference < 0:
+        difference = -difference
+        if mx < 0:
+            negative = 1
+    elif my < 0:
+        negative = 1
+    if difference == 0:
+        return 0, 0, ey + 1 - precision
+    canceled = precision - difference.bit_length()
+    fraction = canceled % 64
+    precision -= 64 * (canceled // 64)
+    exponent = ey - canceled
+    result = difference << fraction
+    if extended != 0 and remainder - fraction < 5 and precision > 64:
+        precision -= 64
+        result = (result + (1 << 63)) >> 64
+        if result.bit_length() > precision:
+            result >>= 1
+            exponent += 1
+    if negative:
+        result = -result
+    return result, precision, exponent
+
+
+@native
+def pari_word_integer_real_product(
+    integer: int, mantissa: int, precision: int, exponent: int
+) -> tuple[int, int, int]:
+    """Generic `gmul` integer/real branch with a single-word integer.
+
+    Precision -1 denotes an exact integer in the prepared scalar interchange.
+    In particular, generic multiplication by integer zero returns integer zero,
+    not the real zero returned by a direct call to `mulir(0, real)`.
+    """
+    if integer == 0:
+        return 0, -1, 0
+    bits = abs(integer).bit_length()
+    if bits > 64:
+        raise ValueError("multiword integer-real product is not ported")
+    if mantissa == 0:
+        return 0, 0, exponent + bits - 1
+    if integer == 1:
+        return mantissa, precision, exponent
+    if integer == -1:
+        return -mantissa, precision, exponent
+    product = abs(integer * mantissa)
+    shift = product.bit_length() - precision
+    result = (product + (1 << (shift - 1))) >> shift
+    exponent += shift
+    if result.bit_length() > precision:
+        result >>= 1
+        exponent += 1
+    if (integer < 0 and mantissa > 0) or (integer > 0 and mantissa < 0):
+        result = -result
+    return result, precision, exponent
+
+
+@native
+def pari_word_integer_real_sum(
+    integer: int, mantissa: int, precision: int, exponent: int
+) -> tuple[int, int, int]:
+    """Translate `addir_sign` for an exact single-word integer argument."""
+    if integer == 0:
+        return mantissa, precision, exponent
+    bits = abs(integer).bit_length()
+    if bits > 64:
+        raise ValueError("multiword integer-real sum is not ported")
+    gap = exponent - (bits - 1)
+    if mantissa == 0:
+        if gap >= 0:
+            return mantissa, precision, exponent
+        converted_precision = 64 * ((-gap + 63) // 64)
+        return integer << (converted_precision - bits), converted_precision, bits - 1
+    if gap > 0:
+        converted_precision = precision - 64 * (gap // 64)
+        if converted_precision < 64:
+            return mantissa, precision, exponent
+    else:
+        converted_precision = precision + 64 * ((-gap + 63) // 64)
+    converted = integer << (converted_precision - bits)
+    return pari_signed_real_sum(
+        converted, converted_precision, bits - 1, mantissa, precision, exponent
+    )
+
+
+@native
+def pari_prepared_embedding_row(
+    mantissas: IntegerBuffer,
+    precisions: IntegerBuffer,
+    exponents: IntegerBuffer,
+    coefficients: IntegerBuffer,
+    offset: int,
+    degree: int,
+) -> tuple[int, int, int]:
+    """Prepared real-component row of `RgMrow_RgC_mul_i` in source order.
+
+    Precision -1 marks an exact integer entry; all other entries are prepared
+    reals. Complex rows are split into real/imaginary component rows outside
+    the kernel. The supplied coordinate integers must fit one unsigned word
+    in magnitude for real multiplication; unsupported inputs fail explicitly.
+    """
+    if degree < 1:
+        raise ValueError("embedding row must be nonempty")
+    if precisions[offset] == -1:
+        value = mantissas[offset] * coefficients[0]
+        precision = -1
+        exponent = 0
+    else:
+        value, precision, exponent = pari_word_integer_real_product(
+            coefficients[0], mantissas[offset], precisions[offset], exponents[offset]
+        )
+    for j in range(1, degree):
+        k = offset + j
+        # Upstream skips exact integer-zero matrix entries, not real zeros.
+        if precisions[k] != -1 or mantissas[k] != 0:
+            if precisions[k] == -1:
+                term = mantissas[k] * coefficients[j]
+                term_precision = -1
+                term_exponent = 0
+            else:
+                term, term_precision, term_exponent = pari_word_integer_real_product(
+                    coefficients[j], mantissas[k], precisions[k], exponents[k]
+                )
+            if precision == -1:
+                if term_precision == -1:
+                    value += term
+                else:
+                    value, precision, exponent = pari_word_integer_real_sum(
+                        value, term, term_precision, term_exponent
+                    )
+            elif term_precision == -1:
+                value, precision, exponent = pari_word_integer_real_sum(
+                    term, value, precision, exponent
+                )
+            else:
+                value, precision, exponent = pari_signed_real_sum(
+                    value, precision, exponent, term, term_precision, term_exponent
+                )
+    return value, precision, exponent
+
+
+@native
+def pari_prepared_matrix_norm(
+    matrix_m: IntegerBuffer,
+    matrix_p: IntegerBuffer,
+    matrix_e: IntegerBuffer,
+    coefficients: IntegerBuffer,
+    values_m: IntegerBuffer,
+    values_p: IntegerBuffer,
+    values_e: IntegerBuffer,
+    degree: int,
+    real_count: int,
+) -> tuple[int, int, int]:
+    """Prepared `nf_M` and coordinates to embedding norm in one native call.
+
+    Matrix rows are flattened real/imaginary components, each of length
+    `degree`. The three output workspaces each have at least `degree` slots.
+    This bounded prototype requires real-valued resulting components; exact
+    integer-only norm branches fail explicitly rather than being coerced.
+    """
+    if degree < 1 or real_count < 1 or real_count > degree:
+        raise ValueError("unsupported prepared matrix signature")
+    if (degree - real_count) % 2 != 0:
+        raise ValueError("invalid prepared matrix signature")
+    for i in range(degree):
+        m, p, e = pari_prepared_embedding_row(
+            matrix_m, matrix_p, matrix_e, coefficients, i * degree, degree
+        )
+        if p == -1:
+            raise ValueError("exact integer norm component is not ported")
+        values_m[i] = m
+        values_p[i] = p
+        values_e[i] = e
+    if real_count == degree:
+        return pari_prepared_real_norm(values_m, values_p, values_e, degree)
+    return pari_prepared_mixed_norm(
+        values_m, values_p, values_e, real_count, (degree - real_count) // 2
+    )

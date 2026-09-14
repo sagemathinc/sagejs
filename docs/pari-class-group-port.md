@@ -1,5 +1,46 @@
 # Faithful PARI class-group language experiment
 
+## Current connected boundary: prepared matrix to norm
+
+The prototype now computes `RgM_RgC_mul` real/imaginary component rows and
+`embed_norm` inside one source-transparent native call. PARI supplies only the
+prepared `nf_M` matrix and the oracle outputs for these tests, not intermediate
+matrix products at execution time. The 32 previously used candidate vectors
+across two real cubics and two mixed quartics agree in CPython, generated JS,
+forced GMP and tagged execution, including every intermediate embedding's
+mantissa, precision/type and exponent as well as the final norm.
+
+This removes one scaffolding boundary, not the class-group engine dependency.
+The next missing `factorgen` stages are ideal-norm division, connecting the
+existing rounding block, smoothness testing/factorization, and ideal valuations.
+No timing or expensive-segment qualification is claimed for these small norm
+checks. Final-reserve fields remain unused.
+
+Additional differential checks cover 1,344 signed-addition/cancellation pairs,
+648 integer/real operations (including zero and unsigned-word boundary values),
+and 162 component rows including coordinate unit vectors. Exact integer entries
+use precision tag -1 in this narrow prepared interchange. Generic multiplication
+by exact zero returns integer zero, unlike direct `mulir(0, real)`; preserving
+that distinction is necessary to reproduce precision decisions. The row loop
+retains the upstream exact-integer-zero matrix-entry guard and operation order.
+
+Remaining prototype restrictions are explicit failures: multiword coordinate
+integers, larger arithmetic branches, and integer-only components at the norm
+entry. Unit-vector rows are tested, but the 32 matrix-to-norm controls retain
+the original eight nonscalar vectors per field. This is not a claim of complete
+coverage for arbitrary prepared matrices or all candidates.
+
+Reproduce with the existing diagnostic prefix in `SAGEJS_FLINT_PREFIX`:
+
+```text
+node bench/pari-class-group-port/check_compiled_matrix.cjs <pari-source>
+node bench/pari-class-group-port/check_compiled_matrix.cjs <pari-source> --matrix-norm
+node bench/pari-class-group-port/check_compiled_integer_real.cjs <pari-source>
+node bench/pari-class-group-port/check_short_product.cjs <pari-source> <prefix> --signed-addition
+```
+
+Earlier checkpoints below are historical where their scaffolding frontier differs.
+
 Status: ownership approved; mixed-buffer prerequisite integrated experimentally.
 The user subsequently approved additional reasonably justified compiler changes
 on this experimental branch. The original one-correction count is superseded;
@@ -237,6 +278,24 @@ This initial checkpoint used approximately 11 root active minutes plus 12 panel
 agent minutes, well below either audit/selection timebox. No benchmark CPU
 budget was spent; checks and the single PARI smoke were small diagnostic runs.
 Compilation is excluded from the execution CPU budget, not from active time.
+
+At the matrix-to-norm checkpoint, active goal accounting reports 8,598 root
+seconds (2.39 hours), in addition to the initially recorded 12 panel-agent
+minutes. This phase used no subagents and no timing VM. The two-hour coverage
+checkpoint is therefore: enumeration prefixes, bounded real arithmetic, and
+prepared-matrix-to-norm controls execute; the class-group path and performance
+comparison remain incomplete. Earlier diagnostic CPU usage was not collected
+as a precise cumulative receipt; subsequent validation records process CPU and
+peak RSS explicitly. No near-budget execution is authorized based on an
+unmeasured remainder.
+
+The post-format matrix checkpoint validation (rows, matrix-to-norm, integer/real
+arithmetic, signed addition, rounding, and enumeration checks) passed in 13.569
+wall seconds, using 13.351 user plus 1.872 system CPU seconds and peak child RSS
+217,664 KiB. Python `resource.getrusage(RUSAGE_CHILDREN)` recorded these totals;
+`/usr/bin/time` is absent on this host. Charge all 15.223 CPU seconds
+conservatively, including any compilation in the run. These are validation
+resource figures, not arithmetic or class-group performance measurements.
 
 ## Initial full-path dependency frontier
 

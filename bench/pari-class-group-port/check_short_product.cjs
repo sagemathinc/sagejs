@@ -6,8 +6,9 @@ const compilerRoot = process.argv[4] && !process.argv[4].startsWith("--") ? proc
 const {compileKernel} = require(path.resolve(compilerRoot, "tools/native-kernel/compiler.cjs"));
 (async () => {
   const addition = process.argv.includes("--addition");
-  const functionName = addition ? "pari_positive_real_sum" : "pari_short_product";
-  const oracle = spawnSync("python3", [path.join(__dirname, addition ? "check_add_precision.py" : "check_multiply_precision.py"),
+  const signed = process.argv.includes("--signed-addition");
+  const functionName = signed ? "pari_signed_real_sum" : addition ? "pari_positive_real_sum" : "pari_short_product";
+  const oracle = spawnSync("python3", [path.join(__dirname, signed ? "check_signed_add.py" : addition ? "check_add_precision.py" : "check_multiply_precision.py"),
     process.argv[2], process.argv[3], "--json"],
     {encoding: "utf8", timeout: 30000, maxBuffer: 1024 * 1024});
   assert.equal(oracle.status, 0, oracle.stderr);
