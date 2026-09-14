@@ -2194,6 +2194,67 @@ wall seconds, using 13.351 user plus 1.872 system CPU seconds and peak child RSS
 conservatively, including any compilation in the run. These are validation
 resource figures, not arithmetic or class-group performance measurements.
 
+## LLL preparation dependency probe
+
+`probe_lll_preparation.cjs PARI_DIRECTORY PARI_ARCHIVE` inspects the next
+untranslated dependency of `Fincke_Pohst_ideal`: the actual
+`ZM_lll_norms(G0 * I, .99, LLL_IM, NULL)` path. It extracts pristine 2.17.4
+`lll.c` (SHA-256
+`ba42f21e52b09873ba5bf2817edd8f0a8b69d4e0ff779419cc5390941aa7404b`),
+adds branch/return counters, and retains upstream notices. This is C diagnostic
+scaffolding, not a new mathematical backend or translated LLL implementation.
+Counters describe the outer dispatcher, not recursive LLL calls inside FLATTER.
+The instrumented entry has a separate name and hidden symbols; a dynamic-symbol
+check prevents it from interposing on shared-library `nfinit` preparation.
+Each resulting transformation is compared with the original library entry,
+checked unimodular, and accompanied by its exact integer input matrix.
+
+For the existing four tuning fields, using the first prime ideal over each of
+2, 3, 5, 7, 11, 13, 17 and 19, all 32 preparations execute:
+
+1. FLATTER preparation;
+2. `fplll_fast` (binary64), returning zero kernel dimension;
+3. `fplll_dpe` (extended exponent), also returning zero kernel dimension.
+
+None enter the heuristic or arbitrary-precision fallback. In every sample the
+low-precision QR used for choosing FLATTER returns failure, so the selector
+enters FLATTER without comparing the size threshold. This is upstream control
+flow, not a failure of the subsequent higher-precision collector QR.
+The selector uses rounded-up `3*n+30` bits (64 here); the relevant
+`bibli1.c:no_prec_pb` guard rejects sufficiently large exponents at
+`DEFAULTPREC`. These preliminary failure and retry decisions must survive a
+faithful port.
+
+A separate direct `fplll_fast` call on the original matrix happens to yield
+the same final transform in all 32 samples. That agreement is **not** permission
+to remove FLATTER or the extended-exponent pass: doing so would omit upstream
+work, and no general equivalence has been established. The probe also checks
+that this direct fast pass's basis equals the input times its transformation.
+
+This changes the next implementation boundary: translating only the binary64
+LLL loop is insufficient. The prepared-ideal boundary must retain the selector,
+FLATTER and verification passes, with heuristic/precision fallbacks explicitly
+unresolved until implemented. Existing QR/real arithmetic can be reused, but
+FLATTER's recursive compression and exact basis transformations remain new
+dependencies. These 32 controls use only four tuning fields; they neither
+exercise the reserved fields nor establish seconds-scale or whole-engine
+coverage. No timing qualification is claimed.
+
+The final metered diagnostic before adding the dynamic-symbol assertion used
+2.617 wall seconds, 2.458 user plus 0.160 system CPU seconds, with peak child RSS
+123,192 KiB, including C compilation. Earlier short probe iterations were not
+individually metered; that accounting gap remains disclosed. No production
+Python/compiler code changes in this checkpoint.
+
+The final probe (including the dynamic-symbol check) passes with a recorded
+parallel receipt, as do syntax, whitespace, documentation and contract checks.
+`pnpm test:changed -- --base HEAD` passes merge checks but fails the unit gate:
+`test/algebraic-geometry.cjs` cannot load
+`packages/flint/build/Release/sagejs_flint.node`. Direct rerun reproduces that
+missing-adapter failure; 238 remaining unit files were not started by the gate.
+This is not a passing full-runtime validation, and this diagnostic-only change
+does not repair or rebuild the unrelated optional adapter.
+
 ## Initial full-path dependency frontier
 
 All source locations below refer to the pinned `src/basemath/buch2.c`.

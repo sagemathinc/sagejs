@@ -14,7 +14,9 @@
     "bench/pari-class-group-port/",
     "docs/pari-class-group-port.md"
   ],
-  "dependencies": ["mixed-exact-float-sidecar"],
+  "dependencies": [
+    "mixed-exact-float-sidecar"
+  ],
   "references": [],
   "architecture": {
     "strategy": "source-transparent-native",
@@ -36,7 +38,18 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/probe_lll_preparation.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.744,
+      "started_at": "2026-09-14T07:39:05.655Z",
+      "commit": "25c33803577875d3807880247746033e41a35bf4",
+      "workspace_fingerprint": "4b8f0197659c9966346fc2b1d9786f444198e9a2b2022027b281b371cdf72eba",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],
