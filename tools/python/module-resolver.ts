@@ -270,7 +270,7 @@ export class PythonModuleResolver {
         const level = spelling.match(/^\.+/)?.[0].length ?? 0;
         const relativeName = spelling.slice(level);
         if (relativeName === "__python__" ||
-            relativeName === "typing" && !moduleOptions.runtime_imports) return;
+            relativeName === "typing" && moduleOptions.compiler_bootstrap) return;
         if (INTRINSIC_MODULES.has(relativeName)) {
           throw this.importError(
             `Compiler intrinsic modules must be imported as modules: import ${relativeName} as runtime`,

@@ -218,6 +218,29 @@ try {
   assert.equal(shadowResult.status, 0, shadowResult.stderr);
   assert.equal(shadowResult.stdout.trim(), "1729");
 
+  // Standalone compilation must retain typing imports used by runtime aliases,
+  // not only by annotations. The compiler bootstrap has its separate erasure
+  // policy; an ordinary Python module does not.
+  writeFileSync(
+    shadowMainPath,
+    "from typing import Any, get_args, get_origin\n" +
+      "Values = list[Any]\n" +
+      "print(get_origin(Values) is list)\n" +
+      "print(get_args(Values)[0] is Any)\n",
+  );
+  for (const mode of ["--python", "--sage"]) {
+    run(
+      ["compile", mode, "--output", shadowOutputPath, shadowMainPath],
+      { env: { SAGEJSPATH: "" } },
+    );
+    const typingResult = spawnSync(process.execPath, [shadowOutputPath], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    assert.equal(typingResult.status, 0, typingResult.stderr);
+    assert.equal(typingResult.stdout.trim(), "True\nTrue", mode);
+  }
+
   assert.equal(
     run([], { input: "import cached_value\nprint(cached_value.value)\n" }),
     expected,
