@@ -2,11 +2,25 @@
 
 ## Imported exact GCD
 
+Small-GCD follow-up: word execution now computes unsigned magnitudes and a
+word Euclidean GCD, promoting only when the nonnegative result does not fit
+signed int64 (notably gcd(INT64_MIN,0)). Tagged small operands have the same
+nonallocating path; large operands retain GMP. Signed-magnitude conversion
+uses unsigned subtraction, avoiding undefined negation of INT64_MIN. Linux
+ASan/UBSan controls cover signed boundaries, exact promotion and aliased output.
+
+On the port's short, unqualified boundary diagnostic, tagged batched execution
+fell from approximately 0.101s to 0.056s for 11,480 logical admissions; GMP
+remained approximately 0.204s. All 574 output/partial-write controls still agree
+with PARI. This supports removing unnecessary promotion, not a whole-engine
+performance claim. The diagnostic remains below the qualification sample
+duration and includes deliberate arithmetic substitutions in the port.
+
 The PARI port's next `Z_ppo` smoothness precheck needs repeated `gcdii` calls.
 Native exact lowering previously had no matching GCD operation. Two-positional-
 integer `from math import gcd` calls (including import aliases) now lower to
-`integer.gcd`, then `mpz_gcd` in the isolated core. Tagged execution promotes
-at that instruction; the JavaScript fallback uses exact BigInt Euclid. This
+`integer.gcd`, then `mpz_gcd` in the GMP core. Tagged execution now retains
+small-word execution when possible; the JavaScript fallback uses exact BigInt Euclid. This
 does not claim that GMP and PARI GCD have identical implementation costs.
 Unsupported arities/types, unimported names, ambiguous imports and shadowed
 bindings fail compilation. No bare function-name dispatch or host callback is

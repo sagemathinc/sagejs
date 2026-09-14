@@ -1218,6 +1218,14 @@ static void sagejs_tagged_bit_length(
 static void sagejs_tagged_gcd(sagejs_tagged_int *target,
     sagejs_tagged_int *left, sagejs_tagged_int *right)
 {
+    if (!left->is_big && !right->is_big)
+    {
+        uint64_t a = left->small < 0 ? UINT64_C(0) - (uint64_t)left->small : (uint64_t)left->small;
+        uint64_t b = right->small < 0 ? UINT64_C(0) - (uint64_t)right->small : (uint64_t)right->small;
+        while (b) { uint64_t r = a % b; a = b; b = r; }
+        sagejs_tagged_set_uint64(target, a);
+        return;
+    }
     sagejs_tagged_make_big(left);
     sagejs_tagged_make_big(right);
     sagejs_tagged_make_big(target);
