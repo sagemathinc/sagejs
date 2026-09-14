@@ -1,5 +1,34 @@
 # Faithful PARI class-group language experiment
 
+## Connected exponential series (not yet the exponential entry)
+
+`pari_exp1r_abs` translates `trans1.c:exp1r_abs`: binary64 term/scale selection,
+precision-changing Horner evaluation, repeated doubling, and final `affrr`.
+It retains the original full X mantissa while temporarily reducing precision.
+It uses the translated real arithmetic, not MPFR exp or a replacement series.
+The compiler prerequisites include direct imported `math.log2` and sharing
+identical helper definitions reached through multiple entries of one module.
+
+Across 540 predeclared synthetic controls (five precisions, 18 exponents,
+three mantissas, both signs), 534 outputs match actual PARI 2.17.4 exactly in
+CPython, JS and GMP, including stored precision and exponent. Six controls
+at 64-bit precision and exponent -63 fail explicitly in every port path:
+upstream selects initial `l1=128` with `L=64` and changes X's header beyond
+the retained value precision. The current representation cannot reproduce
+that operation; it does not silently pad or claim equivalence. The test
+freezes these six failures and rejects new failures or output disagreements.
+This observation is not yet an upstream memory-safety diagnosis.
+
+`modlog2`, the logarithm-of-two constant, inversion, and the full `mpexp`
+entry remain dependencies. These series checks are not a complete residue
+calculation, class-group computation, or performance qualification.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_expm1.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Exponential precision primitives
 
 `exponential.py` begins the direct base-case port with `rtor`/`affrr` and

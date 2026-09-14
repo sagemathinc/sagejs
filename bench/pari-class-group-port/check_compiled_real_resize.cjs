@@ -25,9 +25,10 @@ pari_close();return 0;}`);
     [1,0n,64n,0n,64n], [1,1n<<63n,64n,0n,63n],
   ];
   const py=spawnSync("python3",["-c",`
-import sys,json
-sys.path[:0]=[${JSON.stringify(__dirname)},${JSON.stringify(path.resolve(__dirname,"../../src/lib"))}]
-from exponential import pari_real_resize,pari_real_truncate
+import sys,json,importlib
+sys.path[:0]=[${JSON.stringify(path.resolve(__dirname,"../.."))},${JSON.stringify(path.resolve(__dirname,"../../src/lib"))}]
+module=importlib.import_module('bench.pari-class-group-port.exponential')
+pari_real_resize,pari_real_truncate=module.pari_real_resize,module.pari_real_truncate
 for row in json.load(sys.stdin):
     mode,m,p,e,t,om,op,oe=map(int,row)
     assert (pari_real_truncate if mode else pari_real_resize)(m,p,e,t)==(om,op,oe),row
