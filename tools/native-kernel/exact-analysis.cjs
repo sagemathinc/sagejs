@@ -44,6 +44,7 @@ function operationInputs(operation) {
     case "integer.gcd":
     case "integer.shift":
     case "float64.binary":
+    case "float64.pow":
     case "uint64.binary":
     case "integer.divmod":
     case "integer.compare":

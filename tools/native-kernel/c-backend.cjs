@@ -2790,6 +2790,24 @@ ${freeBuffers}
 
 function emitFloat64Operation(operation, indent) {
   const target = cName(operation.target);
+  if (operation.kind === "float64.pow") {
+    const left = cName(operation.left), right = cName(operation.right);
+    return [
+      `${indent}if (${left} == 0.0 && ${right} < 0.0 && isfinite(${right})) {`,
+      statusFailure("range", "math domain error", `${indent}  `),
+      `${indent}  goto fail;`,
+      `${indent}}`,
+      `${indent}${target} = pow(${left}, ${right});`,
+      `${indent}if (isnan(${target}) && !isnan(${left}) && !isnan(${right})) {`,
+      statusFailure("range", "math domain error", `${indent}  `),
+      `${indent}  goto fail;`,
+      `${indent}}`,
+      `${indent}if (isinf(${target}) && isfinite(${left}) && isfinite(${right})) {`,
+      statusFailure("range", "math range error", `${indent}  `),
+      `${indent}  goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "uint64.constant") {
     return `${indent}${target} = UINT64_C(${operation.value});`;
   }

@@ -188,3 +188,19 @@ Mixed tagged execution remains unavailable; this adds no performance claim
 or Windows/Wasm qualification. The focused logarithm, GCD and relative-import
 tests pass. The architecture gate still stops at the previously recorded stale
 optimizer-opportunity manifest; its preceding audits pass.
+
+The same imported-function lowering now supports two-Float64-argument
+`math.pow`, needed by PARI's GRH bound check. The native core uses libc `pow`,
+not an alternative exponentiation recurrence. The JavaScript fallback handles
+Python's `1**NaN` and `(-1)**infinity` math-library conventions explicitly.
+Domain and finite-input overflow raise the low-level adapter's RangeError;
+underflow remains a rounded result. This is the existing binary64 adapter
+error convention, not a claim that its JavaScript exception classes are
+CPython classes. Optional integer conversions are not introduced.
+
+The logarithm test file also checks 739 power pairs against CPython in pure
+binary64 and mixed JS/GMP execution: 169 special-value combinations and 570
+positive `q**M` cases shaped like the upstream bound check. Finite nonzero
+results use a small relative tolerance, not a bitwise cross-library guarantee;
+signed zero and infinity are checked exactly. These are correctness controls,
+not a performance qualification.
