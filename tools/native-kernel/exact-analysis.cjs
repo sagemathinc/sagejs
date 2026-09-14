@@ -31,6 +31,7 @@ function operationInputs(operation) {
     case "uint64.from_integer_checked":
     case "float64.from_integer_checked":
     case "float64.log":
+    case "float64.log2":
     case "integer.from_float64":
     case "bool.not":
     case "uint64.truth":

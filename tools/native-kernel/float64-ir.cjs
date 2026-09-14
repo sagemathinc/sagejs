@@ -152,7 +152,7 @@ function staticType(node, context) {
       nodeType(node.expression) === "AST_SymbolRef") {
     const name = node.expression.name;
     if (["float", "RealNumber", "abs", "sqrt"].includes(name) ||
-        ["log", "pow"].includes(context.imports.mathFunctions?.get(name))) {
+        ["log", "log2", "pow"].includes(context.imports.mathFunctions?.get(name))) {
       return "Float64";
     }
     if (name === "len") return "uint64";
@@ -200,7 +200,7 @@ function lowerCall(node, context, operations, expectedType) {
     });
     return { name: target, type: "Float64" };
   }
-  if (["log", "pow"].includes(context.imports.mathFunctions?.get(name))) {
+  if (["log", "log2", "pow"].includes(context.imports.mathFunctions?.get(name))) {
     const kind = context.imports.mathFunctions.get(name);
     expect(context, node, !context.variables.has(name) &&
       !array(context.fn.localvars).some(symbol => symbol.name === name) &&
@@ -216,7 +216,7 @@ function lowerCall(node, context, operations, expectedType) {
       const exponent = lowerExpression(args[1], context, operations, "Float64");
       expect(context, node, exponent.type === "Float64", "native math.pow requires Float64");
       operations.push({kind: "float64.pow", target, left: source.name, right: exponent.name});
-    } else operations.push({kind: "float64.log", target, source: source.name});
+    } else operations.push({kind: `float64.${kind}`, target, source: source.name});
     return {name: target, type: "Float64"};
   }
   if (name === "abs" || name === "sqrt") {
