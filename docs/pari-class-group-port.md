@@ -1,5 +1,42 @@
 # Faithful PARI class-group language experiment
 
+## Prime-ideal construction dependency
+
+`prime_ideal_hnf.py` translates `base4.c:pr_hnf`, the integral multiplication
+table path in `base3.c:zk_multable/zk_ei_mul`, and
+`hnf_snf.c:ZM_hnfmodprime/FpM_echelon/FpM_hnfend`. The basis multiplication
+table and prime descriptor come from prepared field/prime decomposition
+scaffolding, not a supplied ideal HNF. Row-major workspaces replace GEN column
+pointers. The backward pivot choice, normalization and final integer column
+reductions retain upstream order. Modular rank is an extra diagnostic output.
+This entry currently supports square degree-three/four matrices and primes
+below 2^64; it does not claim the arbitrary-prime general PARI interface.
+
+```sh
+node bench/pari-class-group-port/check_prime_ideal_hnf.cjs PARI_DIRECTORY PARI_ARCHIVE
+```
+
+The pinned-source oracle agrees with CPython, generated JS and GMP on 120
+synthetic matrices plus 58 prime ideals above 2 through 19 in the four tuning
+fields. Controls include zero/full/deficient rank, negative and multiword
+entries, characteristic two and the prime 2^64-59. Actual ideals also check
+the constructed multiplication matrix, inert handling and unchanged input
+buffers. Trace SHA-256:
+`c946fd7b6a4481133c65937ff9d8eee794524b7c6759d23e434b6e05a90a256d`.
+No timing qualification is claimed. The test pins all three upstream source
+files against the archive and local build source. This construction entry is
+not yet wired into the multi-ideal collector below; distinguished-ideal
+powers/products, prime decomposition and the full class/unit driver remain
+dependencies. Existing whole-engine limitations are unchanged.
+The generated core is 1,191,081 bytes and the Linux addon is 424,544 bytes;
+core callback rejection is checked. These sizes are not peak-memory estimates.
+Strict baselib validation passes (403 modules, 969 formatted Python files).
+The changed-file gate passes merge invariants, then fails in
+`test/module-cache.cjs` with `$ρσ$py$Any is not defined` while initializing
+`RealNumberBuffer`; remaining unit tests and docs checks are not qualified.
+Architecture validation stops at the same stale optimizer manifest recorded
+below. No unrelated manifest or generated module was changed to hide a failure.
+
 ## Multiple original ideals through one resident collector
 
 `unreduced_small_norm.py` connects the existing reverse ideal schedule to the
