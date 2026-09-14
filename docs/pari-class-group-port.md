@@ -1,5 +1,39 @@
 # Faithful PARI class-group language experiment
 
+## Subfactor-base selection toward relation collection
+
+`subfactor_base.py` translates `subFBgen`'s norm ordering, exclusion/selection
+loop, yes/no permutation assembly and 16/10 dependency-trial limits. The
+index sort preserves `bibli2.c:gen_sortspec`'s recursive split tree, two/three
+element comparison cases and left-first tie rule, using explicit DFS frames
+and resident scratch instead of recursive GEN allocation.
+
+This boundary takes active-ideal norms in LP order and `bad_subFB` flags as
+prepared inputs. It does not yet construct automorphism permutations, retain
+historical subfactor bases, or implement `subFB_change`; it is not the full
+factor-base context. Norm conversion is explicitly limited to positive
+integers at most 2^53, rather than silently substituting exact conversion for
+PARI's rounding signed-long cast outside that range.
+
+Across the four tuning fields, four bounds, three minimum sizes and two
+product targets, 96 selections, complete permutations and trial limits match
+actual PARI `subFBgen`, CPython, generated JS and native GMP. The oracle uses
+empty automorphism lists for this selection-only boundary. An additional 387
+reverse/tied/permuted index-sort controls exercise sizes 0 through 128 and
+match stable order in JS/GMP. No performance qualification is claimed.
+
+Two compiler representation constraints were encountered: fixed slices reject
+`IntegerBuffer` (they currently require native-vector storage), and a loop
+variable cannot be reused with machine and arbitrary-integer range types.
+A source-level three-store helper and distinct loop locals keep the code
+readable without changing those compiler interfaces in this checkpoint.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_subfactor_base.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Resolved tiny-exponential guard growth
 
 The former precision-growth failures are now resolved by an explicit, narrow
