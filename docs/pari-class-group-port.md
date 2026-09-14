@@ -80,6 +80,34 @@ quota/target cases, trial counts, factor attempts, cache transitions and exact
 generator outputs before collecting paired samples. No collector speed ratio
 has been established by this export or by the correctness harness.
 
+`collector_c_control.cjs` now constructs a separate control from the
+hash-checked pristine 2.17.4 `buch2.c` archive member. Exact, single-occurrence
+replacements move only ideal LLL/matrix preparation outside the extracted
+routine, rename its entry, and expose diagnostic counters without debug I/O.
+QR/bound preparation, candidate search, `factorgen`, normalization, `add_rel`
+and quota/target decisions remain in that routine. An empty automorphism list
+selects the same no-image boundary. The upstream copyright/license text is
+retained in the generated comparison source; this is not a Sage.js backend.
+
+`check_collector_c_control.cjs` checks all 16 complete output states against
+the fixture oracle with both one and two fresh calls per case, including
+relations, modular bases and exact generators. It rejects a modified source
+hash. These checks pass. The control measures its entry with a monotonic clock,
+excluding initial cache/workspace allocation, cleanup and output serialization;
+PARI stack temporaries and relation cloning during the call remain included.
+The port's marshalling/allocation boundary and paired sample runner still need
+implementation before these measurements support a comparison. Repetition
+counts 1 and 2 are correctness tests, not qualified performance samples.
+The metered control check (including C compilation and fixture generation)
+used 7.212 seconds elapsed, 6.822 user + 0.428 system CPU seconds and
+155,136 KiB peak child RSS. Documentation, syntax and parallel checks pass.
+
+```sh
+node bench/pari-class-group-port/check_collector_c_control.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz
+```
+
 ## Normalization, insertion and exact generator ownership
 
 `relation_insertion.py` connects smooth-relation assembly/content normalization
