@@ -399,6 +399,20 @@ checks all 2,098 representable powers of two, from subnormal `2**-1074` through
 `2**1023`, in pure and mixed native/fallback paths. No general bitwise
 agreement between different platform math libraries is claimed.
 
+`from math import atan` (including aliases) similarly lowers one explicit
+Float64 argument to `float64.atan`, direct libc `atan` in the isolated core,
+and `Math.atan` in the same-source fallback. Pure Float64 helpers and mixed
+exact graphs share the imported-binding/shadowing checks; implicit exact
+integer conversion is not admitted. Unlike logarithms, atan has no real
+domain exclusion: signed zero, subnormals, finite inputs, infinities and NaN
+are accepted. NaN payload/sign identity is not guaranteed by this ABI, and
+cross-platform libm bitwise agreement is not asserted. Focused CPython
+differentials and scalar/packed special-value checks cover both paths. A
+pure helper returning `log2(3.141592653589793 / atan(value))`, called from an
+exact graph, reproduces PARI's precision-selection expression without an
+alternative approximation or a callback. This is correctness support, not a
+timing or Windows/Wasm qualification.
+
 PARI's bound check uses the C binary64 logarithm. Explicit `from math import
 log` (including aliases) now lowers to `float64.log` and libc `log` in the
 isolated core, with `Math.log` in the generated fallback. Both pure binary64

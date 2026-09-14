@@ -211,7 +211,7 @@ print(json.dumps(out))`],{input:JSON.stringify(pairs.map(pair=>pair.map(token)))
     await assert.rejects(()=>lowerSource(`from math import pow as power\ndef f(x:float)->float:\n    return ${call}\n`,"bad.py"),/positional/);
   await assert.rejects(()=>lowerSource("from math import pow as power\ndef f(power:float)->float:\n    return power(2.0,3.0)\n","shadow.py"),/shadowed/);
 });
-for(const operation of ["log", "log2"])test(`imported math.${operation} preserves binding and binary64 domains`,async()=>{
+for(const operation of ["log", "log2", "atan"])test(`imported math.${operation} preserves binding and binary64 domains`,async()=>{
   const dir=mkdtempSync(join(tmpdir(),"sagejs-log-")),source=join(dir,"logarithm.py");
   writeFileSync(source,`from sagejs.native import native, Float64Buffer
 from math import ${operation} as logarithm
@@ -230,6 +230,7 @@ def mixed(x: Float64Buffer, out: Float64Buffer) -> int:
   assert.doesNotMatch(readFileSync(built.coreSourcePath,"utf8"),/napi_call_function|PyObject_Call/);
   const values=[Number.MIN_VALUE,2**-1022,0.125,0.5,1-Number.EPSILON/2,1,1+Number.EPSILON,2,3,101,Number.MAX_VALUE];
   for(let exponent=-1000;exponent<=1000;exponent+=25)values.push(1.125*2**exponent);
+  if(operation === "atan")values.push(...values.map(x=>-x));
   const oracle=spawnSync("python3",["-c",`import json,sys,math;print(json.dumps([math.${operation}(x) for x in json.load(sys.stdin)]))`],{input:JSON.stringify(values),encoding:"utf8",timeout:30000});assert.equal(oracle.status,0,oracle.stderr);
   const expected=JSON.parse(oracle.stdout);
   for(let i=0;i<values.length;i++){
@@ -239,14 +240,26 @@ def mixed(x: Float64Buffer, out: Float64Buffer) -> int:
     }
     for(const backend of ["javascript","gmp"]){const out=[0];assert.equal(mod.mixed[backend]([values[i]],out),7n);assert(Math.abs(out[0]-expected[i])<=4*Number.EPSILON*Math.max(1,Math.abs(expected[i])));}
   }
-  for(const x of [-Infinity,-1,-Number.MIN_VALUE,-0,0]){
+  for(const x of operation === "atan" ? [] : [-Infinity,-1,-Number.MIN_VALUE,-0,0]){
     for(const backend of scalarBackends)assert.throws(()=>backend(x),/math domain error/);
     for(const backend of ["javascript","gmp"])assert.throws(()=>mod.mixed[backend]([x],[0]),/math domain error/);
   }
-  for(const backend of scalarBackends){assert.equal(backend(Infinity),Infinity);assert(Number.isNaN(backend(NaN)));}
+  for(const backend of scalarBackends){assert.equal(backend(Infinity),operation === "atan" ? Math.PI/2 : Infinity);assert(Number.isNaN(backend(NaN)));}
   for(const backend of ["javascript","gmp"]){
-    const out=[0];mod.mixed[backend]([Infinity],out);assert.equal(out[0],Infinity);
+    const out=[0];mod.mixed[backend]([Infinity],out);assert.equal(out[0],operation === "atan" ? Math.PI/2 : Infinity);
     mod.mixed[backend]([NaN],out);assert(Number.isNaN(out[0]));
+  }
+  if(operation === "atan"){
+    // No NaN payload/sign guarantee is imposed by the existing Float64 ABI.
+    for(const x of [-Infinity,-0,0,-Number.MIN_VALUE,Number.MIN_VALUE]){
+      const expected=Math.atan(x);
+      for(const backend of scalarBackends)assert(Object.is(backend(x),expected));
+      for(const backend of ["javascript","gmp"]){
+        const out=new Float64Array(1);
+        mod.mixed[backend](new Float64Array([x]),out);
+        assert(Object.is(out[0],expected));
+      }
+    }
   }
   if(operation === "log2")for(let exponent=-1074;exponent<=1023;exponent++){
     const value=2**exponent;
@@ -269,4 +282,36 @@ def mixed(x: Float64Buffer, out: Float64Buffer) -> int:
   ])await assert.rejects(()=>lowerSource(
     "from sagejs.native import native\n" + body.replace(/\blog\b/g,operation).replace("def f(","@native\ndef f("),
     "log-binding.py"),/shadowed|argument|positional|ambiguous|unsupported/);
+});
+test("atan precision scheduling composes pure helpers with exact graphs",async()=>{
+  const dir=mkdtempSync(join(tmpdir(),"sagejs-atan-schedule-")),source=join(dir,"schedule.py");
+  writeFileSync(source,`from sagejs.native import native, Float64Buffer, checked_float64
+from math import atan, log2
+@native
+def alpha(value:float)->float:
+    return log2(3.141592653589793 / atan(value))
+@native
+def schedule(value:int,out:Float64Buffer)->int:
+    out[0] = alpha(checked_float64(value))
+    return value + 1
+`);
+  const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  assert.equal(mod.schedule.nativeAvailable,true);
+  const core=readFileSync(built.coreSourcePath,"utf8");
+  assert.match(core,/ = atan\(/);
+  assert.doesNotMatch(core,/napi_call_function|PyObject_Call/);
+  for(const value of [1,2,7,1024,2**52]){
+    const expected=Math.log2(Math.PI/Math.atan(value));
+    for(const backend of ["javascript","gmp"]){
+      const out=new Float64Array(1);
+      assert.equal(mod.schedule[backend](BigInt(value),out),BigInt(value)+1n);
+      assert(Math.abs(out[0]-expected)<=4*Number.EPSILON*Math.abs(expected));
+    }
+  }
+  for(const body of [
+    "def f(atan:float,out:Float64Buffer)->int:\n    out[0]=atan(1.0)\n    return 0\n",
+    "def f(out:Float64Buffer)->int:\n    out[0]=atan(1.0)\n    atan=2.0\n    return 0\n",
+    "def f(out:Float64Buffer)->int:\n    out[0]=atan(x=1.0)\n    return 0\n",
+    "def f(out:Float64Buffer)->int:\n    out[0]=atan(1)\n    return 0\n",
+  ])await assert.rejects(()=>lowerSource("from sagejs.native import Float64Buffer\nfrom math import atan\n"+body,"atan-exact-binding.py"),/shadowed|positional|Float64/);
 });
