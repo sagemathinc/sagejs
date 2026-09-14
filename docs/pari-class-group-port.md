@@ -112,6 +112,48 @@ owners, justified by at most 22 coefficient terms, each denominator below
 attempts remain in the CPU ledger. Arctangent/argument and the connected
 complex embedding path are still missing, so this is not a complete `glog`.
 
+### Specialized HNF sparse prefix
+
+`hnfspec_sparse.py` translates the actual `hnfspec_i` prefix through entry to
+`END2`, including count/count2, initial dense snapshots, all three sparse
+elimination phases, exact column transforms and upstream overflow-stop tests.
+It does **not** implement the multiprecision cleanup after END2, row-rank
+profile, `hnffinal`, incremental HNF or class-group invariants.
+
+All 467 complete snapshot comparisons pass against extracted PARI C under
+UBSan and against CPython/JS/GMP, including 24 collector relation matrices.
+Coverage includes 871 zero-row moves, 173 unit-row moves, 100 unit-coefficient
+eliminations, 276 general eliminations, ten overflow-stop exits, 92 absent-T
+cases, two deferred-column truncations and ten multiword transformations.
+There are 584 active `mat0*T` identity checks; the largest T entry is 299 bits.
+Three separately executed undefined signed-word cases are rejected by UBSan
+and the port, not counted as matching mathematical outputs. Eight malformed
+shape cases reject before mutation. Arithmetic failures may follow partial
+mutation and are not resumable successful prefixes.
+
+Upstream's initial `vmax` scan uses physical rows rather than permuted rows;
+that detail is retained and tested on a defined near-limit example where
+changing it changes the decision. The additional quadratic permutation
+validation is prototype boundary overhead, not upstream work. The main scalar
+dimensions and index products still lower to GMP-exact arithmetic despite word
+matrix storage. The generated main ABI takes `mpz_t` dimensions and contains
+`mpz_mul` index products. Word storage alone therefore does not resolve the
+representation-overhead question; blanket int64 annotation would require
+separate checked overflow reasoning.
+
+Source hash: `264aef9c86b4454b2761d8424571f74c8ecc5ed38f12aa806800c0bef5f6cdbf`.
+Extracted prefix hash: `8d363a0f21bcab0cb7c98dd4b4a649a0831b07d18438c5fe7b5a8cce95838c1b`.
+Trace hash: `55c3a0f874f9ab3c52b9a76e88e125adb20033e9450eede360cdc72bb63d4fd0`.
+Generated core: 762,096 bytes before final docstring-only edits. No timing
+qualification is claimed. The subtask used 84.539681 measured CPU seconds
+(already in the ledger) and 18m07s aggregate active time, charged as 19 minutes.
+
+```sh
+node bench/pari-class-group-port/check_hnfspec_sparse.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz
+```
+
 ### Distinguished exponent zero
 
 The connected collector now follows `base4.c:idealpow_aux`'s early identity
