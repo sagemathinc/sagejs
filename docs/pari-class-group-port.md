@@ -1,5 +1,39 @@
 # Faithful PARI class-group language experiment
 
+## Real square root for the pending QR preparation
+
+`real_square_root.py` translates the two exponent-parity branches of PARI
+2.17.4 `src/kernel/gmp/mp.c:sqrtr_abs`, including the extra root-word rounding
+in the even-exponent branch. The representation remains a signed mantissa,
+whole-word precision and exponent; this absolute-value routine requires a
+nonzero input. Generic `gsqrt` dispatch and its integer/zero cases are not yet
+implemented. The local precision ceiling is 1920 bits to keep intermediates
+within existing 64-word storage, not an increased global limit.
+
+The underlying `mpn_sqrtrem` is explicitly replaced by an exact integer Newton
+loop in ordinary Python. This is an arithmetic-leaf substitution: measurements
+must distinguish its cost from compiler overhead before interpreting any gap.
+It does not establish comparable square-root or collector performance.
+
+The focused oracle compares 1,120 results against the actual PARI GMP routine
+and CPython, dynamic JavaScript, GMP-native and tagged-native execution of the
+same Python source. Controls cover both exponent parities, negative exponents,
+both input signs, seven precisions from 64 through 1920 bits, endpoint mantissas
+and seeded random mantissas. Integer-root identity/remainder controls and
+explicit unsupported-input checks supplement these comparisons. QR and the
+connected collector remain unfinished.
+
+At this checkpoint Python formatting, repository strict-Python checks and the
+parallel contract check pass. `architecture:check` still stops at the previously
+recorded stale optimizer-opportunity manifest; preceding architecture audits
+pass. No Windows/Wasm or timing qualification is claimed.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_real_square_root.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Post-factorization candidate normalization
 
 `smooth_relation.py` connects the post-`factorgen` block of
