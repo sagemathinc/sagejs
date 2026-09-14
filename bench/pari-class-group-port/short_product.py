@@ -16,6 +16,55 @@ from sagejs.native import IntegerBuffer, native
 
 
 @native
+def pari_real_word_division(
+    integer: int, m: int, p: int, e: int
+) -> tuple[int, int, int]:
+    """Translate GMP `divri`'s word divisor path through `divru`.
+
+    The guard in the divisor-above-leading-word branch is the raw remainder,
+    not another quotient word. Preserve that upstream distinction. Full
+    integer division here replaces PARI's word loop; its cost is not a
+    language-only comparison. PARI's `is_bigint` routes even a single limb
+    with its high bit set to `divri_with_gmp`; that path remains unsupported.
+    """
+    if integer == 0:
+        raise ZeroDivisionError("zero ideal norm divisor")
+    divisor = abs(integer)
+    bits = divisor.bit_length()
+    if bits > 63:
+        raise ValueError("big ideal norm divisor is not translated")
+    if m == 0:
+        return 0, 0, e - bits + 1
+    if p < 64 or p > 2048 or p % 64 != 0 or abs(m).bit_length() != p:
+        raise ValueError("invalid prepared real")
+    signed = m
+    if integer < 0:
+        signed = -signed
+    if divisor == 1 << (bits - 1):
+        return signed, p, e - bits + 1
+    magnitude = abs(m)
+    if divisor <= magnitude >> (p - 64):
+        quotient = magnitude // divisor
+        guard = ((magnitude % divisor) << 64) // divisor
+    else:
+        numerator = magnitude << 64
+        quotient = numerator // divisor
+        guard = numerator % divisor
+        e -= 64
+    shift = p - quotient.bit_length()
+    result = (quotient << shift) + (guard >> (64 - shift))
+    e -= shift
+    if (guard >> (63 - shift)) % 2 != 0:
+        result += 1
+    if result.bit_length() > p:
+        result >>= 1
+        e += 1
+    if signed < 0:
+        result = -result
+    return result, p, e
+
+
+@native
 def pari_short_product(
     mx: int, px: int, ex: int, my: int, py: int, ey: int
 ) -> tuple[int, int, int]:

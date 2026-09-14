@@ -1,5 +1,32 @@
 # Faithful PARI class-group language experiment
 
+## Ideal-norm division checkpoint
+
+The prepared-real prototype now translates `divri`'s small-integer route
+through `src/kernel/none/mp_indep.c:divru`. It preserves stored zero exponents,
+power-of-two shifts, guard-bit rounding, and divisor sign. The entry explicitly
+rejects zero and divisors with magnitude at least `2**63`: GMP PARI's
+`is_bigint` includes a one-limb integer with its high bit set, not just
+multiword integers. A seeded differential case caught this dispatch distinction
+(a one-bit quotient discrepancy) before restricting the entry accordingly.
+The `divri_with_gmp` route is still missing, not silently approximated.
+
+The integer/real control now checks 2,328 operations, including 656 divisions,
+against PARI 2.17.4 in CPython, generated JS, forced GMP and tagged execution.
+The additional deterministic cases cover 64–512-bit mantissas and signed
+divisors. Explicit unsupported-divisor errors are checked separately.
+Full-integer division replaces PARI's word loop in this prototype; no
+language-only performance inference follows from these untimed checks.
+Division still needs joining to the matrix/norm and rounding entry, followed
+by smoothness and ideal valuation work. No class-group completion is claimed.
+
+Checkpoint validation: arithmetic controls and the 32 connected matrix/norm
+controls pass after compiler convergence; strict Python passes all 403 modules,
+formatting is current, and parallel ownership checks pass. Architecture checks
+stop at the already-recorded stale optimizer opportunity manifest, not a new
+native-boundary violation. A test launched during compiler regeneration failed
+on an incomplete generated AST interface; rerunning after convergence passes.
+
 ## Current connected boundary: prepared matrix to norm
 
 The prototype now computes `RgM_RgC_mul` real/imaginary component rows and
