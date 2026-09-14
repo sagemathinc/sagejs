@@ -204,3 +204,14 @@ positive `q**M` cases shaped like the upstream bound check. Finite nonzero
 results use a small relative tolerance, not a bitwise cross-library guarantee;
 signed zero and infinity are checked exactly. These are correctness controls,
 not a performance qualification.
+
+## Native calls used as statements
+
+Exact native functions may now call a known source-native helper and discard
+its scalar result. This supports ordinary scratch-initialization calls without
+a dummy assignment. The call, mutation and failure path still execute inside
+the isolated graph. Only Integer, Float64, uint64 and bool results are admitted
+by this new rule; tuple/resource return disposal is not inferred. Unknown
+calls remain rejected. `native-call-statement.cjs` covers repeated mutations,
+callee failure after mutation, mixed Float64 initialization, and rejected
+unknown/tuple calls across the emitted backends.
