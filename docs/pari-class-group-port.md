@@ -108,6 +108,43 @@ node bench/pari-class-group-port/check_collector_c_control.cjs \
   /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz
 ```
 
+### First call-boundary diagnostic (not a performance qualification)
+
+`measure_collector_calls.cjs` runs the C control, CPython, dynamic JavaScript,
+GMP with ordinary arrays, and GMP with prepacked integer/int64/float64 buffers.
+Every measured port call starts with fresh state, follows an unmeasured warmup,
+and checks the full expected collector output after timing. Buffer construction
+and explicit result decoding occur outside timing. The ordinary-array GMP
+adapter still converts/copies within the measured call; prepacking moves that
+work outside. The packed path still uses the host adapter, not a standalone
+core benchmark. C currently has no equivalent warmup and system order is fixed.
+
+A single-repetition diagnostic on Linux x64/AMD EPYC 7B13, Node 26.8.1 gave
+these **totals across the sixteen segment cases**, not whole-field timings:
+
+| Boundary | Total seconds |
+| --- | ---: |
+| PARI prepared entry | 0.001183 |
+| CPython call | 0.039749 |
+| Dynamic JS host call | 0.149835 |
+| GMP ordinary-array host call | 0.859747 |
+| GMP prepacked host call | 0.040509 |
+
+All output checks passed, including the packed path. This is strong motivation
+to retain resident packed state, but the short, unpaired, unpinned samples do
+not qualify a speed ratio. They do not isolate compiler overhead from arithmetic
+representation costs. The generated C core was 12,079,183 bytes; compiler/cache
+preparation took 30.846 seconds outside measurements. Next measure the standalone
+generated core, then use properly budgeted paired batches to locate the remaining
+cost. Do not infer full-engine performance from this small prepared-ideal segment.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/measure_collector_calls.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz
+```
+
 ## Normalization, insertion and exact generator ownership
 
 `relation_insertion.py` connects smooth-relation assembly/content normalization
