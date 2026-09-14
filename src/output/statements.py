@@ -202,7 +202,7 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
         display_body(node.body, is_toplevel, output)
 
 
-def display_traceback_body(node, output, body):
+def display_traceback_body(node, output, body, block_scope=False, line=None):
     if output.options.python_traceback_records:
         previous = output.traceback_function
         name = "<lambda>" if node.is_lambda else "<anonymous>"
@@ -217,9 +217,10 @@ def display_traceback_body(node, output, body):
             "first_lineno": node.start.line,
         }
         output.indent()
+        output.print("let " if block_scope else "var ")
         output.print(
-            "var ρσ_trace_captured = undefined, ρσ_trace_reraised = undefined, ρσ_trace_line = "
-            + str(node.body.start.line if node.is_lambda else node.start.line)
+            "ρσ_trace_captured = undefined, ρσ_trace_reraised = undefined, ρσ_trace_line = "
+            + str(line or (node.body.start.line if node.is_lambda else node.start.line))
         )
         output.end_statement()
         output.indent()
