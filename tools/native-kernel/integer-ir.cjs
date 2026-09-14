@@ -2304,10 +2304,10 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
           (integerLiteral(node.left) !== undefined &&
             (right.type === "Integer" || integerLiteral(node.right) !== undefined)))) {
       const a = coerceInteger(left, context, node.left, operations);
-      const b = coerceInteger(right, context, node.right, operations);
+      const b = right.type === "uint64" ? right : coerceInteger(right, context, node.right, operations);
       const target = temporary(context, node, "Integer");
       operations.push({kind:"integer.shift", operation:node.operator === "<<" ? "left" : "right",
-        target, left:a.name, right:b.name});
+        target, left:a.name, right:b.name, countType:b.type});
       return {name:target,type:"Integer"};
     }
     expect(
@@ -3403,15 +3403,16 @@ function lowerAssignment(statement, context) {
     type === "Integer" && context.initialized.has(target),
     `augmented target ${target} must be an initialized Integer`,
   );
-  const right = coerceInteger(
-    lowerExpression(assign.right, context, operations),
+  const rawRight = lowerExpression(assign.right, context, operations);
+  const right = (symbol === "<<" || symbol === ">>") && rawRight.type === "uint64" ? rawRight : coerceInteger(
+    rawRight,
     context,
     assign.right,
     operations,
   );
   if (symbol === "<<" || symbol === ">>") {
     operations.push({kind: "integer.shift", operation: symbol === "<<" ? "left" : "right",
-      target, left: target, right: right.name});
+      target, left: target, right: right.name, countType:right.type});
     return operations;
   }
   if (symbol === "&") {

@@ -1185,6 +1185,22 @@ static void sagejs_tagged_abs(
 /* A shift may request enormous storage with a tiny count operand. This new
  * operation has an explicit 1-Mibit result allocation cap; it never truncates.
  * Existing zero/count-zero values and saturating right shifts need no growth. */
+static int sagejs_mpz_shift_uint64(sagejs_native_status *status, mpz_t target,
+    const mpz_t left, uint64_t count, int shift_left)
+{
+    if (mpz_sgn(left) == 0 || count == 0) { mpz_set(target,left);return 1; }
+    if (!shift_left) {
+        if (count > ULONG_MAX || count >= mpz_sizeinbase(left,2)) {
+            mpz_set_si(target,mpz_sgn(left)<0?-1:0);return 1;
+        }
+        mpz_fdiv_q_2exp(target,left,(unsigned long)count);return 1;
+    }
+    if (count > 1048576UL || mpz_sizeinbase(left,2) > 1048576UL-count) {
+        sagejs_native_status_set(status,SAGEJS_NATIVE_RANGE_ERROR,"integer shift allocation limit exceeded");return 0;
+    }
+    mpz_mul_2exp(target,left,(unsigned long)count);return 1;
+}
+
 static int sagejs_mpz_shift(sagejs_native_status *status, mpz_t target,
     const mpz_t left, const mpz_t right, int shift_left)
 {
@@ -1260,6 +1276,20 @@ static int sagejs_tagged_shift(sagejs_native_status *status,
     }
     sagejs_tagged_make_big(left);sagejs_tagged_make_big(right);sagejs_tagged_make_big(target);
     return sagejs_mpz_shift(status,target->big,left->big,right->big,direction);
+}
+
+static int sagejs_tagged_shift_uint64(sagejs_native_status *status,
+    sagejs_tagged_int *target,sagejs_tagged_int *left,uint64_t count,int direction)
+{
+    if (count <= INT64_MAX) {
+        sagejs_tagged_int right;
+        sagejs_tagged_init(&right);
+        sagejs_tagged_set_small(&right,(int64_t)count);
+        int ok=sagejs_tagged_shift(status,target,left,&right,direction);
+        sagejs_tagged_clear(&right);return ok;
+    }
+    sagejs_tagged_make_big(left);sagejs_tagged_make_big(target);
+    return sagejs_mpz_shift_uint64(status,target->big,left->big,count,direction);
 }
 
 static void sagejs_tagged_bit_length(
