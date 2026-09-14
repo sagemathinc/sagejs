@@ -20,15 +20,19 @@ function result(v,status) {
 }
 (async()=>{
  const pari=path.resolve(process.argv[2]),archive=path.resolve(process.argv[3]);
+ const unreduced=process.argv.includes('--unreduced');
+ const moduleName=unreduced?'unreduced_ideal_collector':'ideal_collector';
+ const entryName=unreduced?'pari_collect_unreduced_ideal':'pari_collect_ideal_relations';
  const repetitions=Number(process.argv[4]||1);
  assert(Number.isInteger(repetitions)&&repetitions>=1&&repetitions<=100);
- const fixture=JSON.parse(run(process.execPath,[path.join(__dirname,'check_compiled_ideal_collector.cjs'),pari,'--export-fixtures']));
+ const fixture=JSON.parse(run(process.execPath,[path.join(__dirname,'check_compiled_ideal_collector.cjs'),pari,'--export-fixtures',...(unreduced?['--unreduced']:[])]));
+ assert.equal(fixture.schema,unreduced?'pari-unreduced-ideal-collector-v1':'pari-prepared-ideal-collector-v1');
  const pristine=run('tar',['-xOf',archive,'pari-2.17.4/src/basemath/buch2.c']);
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'sagejs-collector-measure-')),c=path.join(dir,'control.c'),exe=path.join(dir,'control'),lib=path.join(pari,'Olinux-x86_64');
- fs.writeFileSync(c,source(pristine));
- run('cc',['-O2','-I'+path.join(pari,'src/headers'),'-I'+lib,c,'-L'+lib,'-Wl,-rpath,'+lib,'-lpari','-lm','-o',exe]);
+ fs.writeFileSync(c,source(pristine,{unreduced}));
+ run('cc',['-O2','-ffp-contract=off','-I'+path.join(pari,'src/headers'),'-I'+lib,c,'-L'+lib,'-Wl,-rpath,'+lib,'-lpari','-lm','-o',exe]);
  const compileStart=performance.now();
- const built=await compileKernel({sourcePath:path.join(__dirname,'ideal_collector.py')});
+ const built=await compileKernel({sourcePath:path.join(__dirname,moduleName+'.py')});
  const compileOrCacheSeconds=(performance.now()-compileStart)/1000;
  const mod=require(built.modulePath);
  const measurements=[];
@@ -36,13 +40,13 @@ function result(v,status) {
  for(const row of run(exe,[String(repetitions)]).trim().split('\n').map(JSON.parse)) {
   const {index,repetitions:count,seconds,...actual}=row;
   assert.deepEqual(actual,fixture.cases[index].expected);
-  measurements.push({backend:'pari-prepared-entry',index,repetitions:count,seconds});
+  measurements.push({backend:unreduced?'pari-unreduced-entry':'pari-prepared-entry',index,repetitions:count,seconds});
  }
  const python=run('python3',['-c',`
 import sys,json,decimal,importlib,time
 sys.set_int_max_str_digits(100000)
 sys.path[:0]=sys.argv[1:3]
-f=importlib.import_module('bench.pari-class-group-port.ideal_collector').pari_collect_ideal_relations
+f=getattr(importlib.import_module('bench.pari-class-group-port.${moduleName}'),'${entryName}')
 payload=json.load(sys.stdin)
 for case in payload['fixture']['cases']:
  elapsed=0
@@ -70,14 +74,14 @@ for case in payload['fixture']['cases']:
     v[name]=Array.isArray(x)?x.map(convert):convert(x);
     if(backend==='gmp-packed'&&Array.isArray(x)) {
      if(kind==='IntegerBuffer') {
-      const words=v[name].reduce((m,x)=>Math.max(m,Math.ceil((x<0n?-x:x).toString(2).length/64)),8);
+      const words=v[name].reduce((m,x)=>Math.max(m,Math.ceil((x<0n?-x:x).toString(2).length/64)),unreduced?64:8);
       v[name]=mod.createIntegerBuffer(x.length,words,v[name]);
      } else if(kind==='Int64Buffer')v[name]=BigInt64Array.from(v[name]);
      else if(kind==='Float64Buffer')v[name]=Float64Array.from(v[name]);
     }
    }
    const args=fixture.names.map(([name])=>v[name]);
-   const start=performance.now(),status=mod.pari_collect_ideal_relations[backend==='gmp-packed'?'gmp':backend](...args);
+   const start=performance.now(),status=mod[entryName][backend==='gmp-packed'?'gmp':backend](...args);
    const duration=(performance.now()-start)/1000;if(rep)seconds+=duration;
    if(backend==='gmp-packed')for(const [name,kind] of fixture.names) {
     if(kind==='IntegerBuffer')v[name]=v[name].toArray();
@@ -89,7 +93,7 @@ for case in payload['fixture']['cases']:
  }
  const totals=Object.fromEntries([...new Set(measurements.map(r=>r.backend))].map(backend=>[
   backend,measurements.filter(r=>r.backend===backend).reduce((sum,r)=>sum+r.seconds,0)]));
- console.log(JSON.stringify({schema:'collector-call-diagnostic-v1',qualified:false,
+ console.log(JSON.stringify({schema:'collector-call-diagnostic-v1',qualified:false,unreduced,entry:entryName,
   boundary:'C entry excludes initial allocation; GMP host call includes marshalling, allocation and copyback. No equal-boundary speed ratio.',
   compileOrCacheSeconds,modulePath:built.modulePath,node:process.version,
   host:{platform:os.platform(),arch:os.arch(),cpu:os.cpus()[0]?.model},

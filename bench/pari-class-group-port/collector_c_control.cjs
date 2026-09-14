@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const { createHash } = require("node:crypto");
 const PIN = "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac";
 
-function source(pinnedSource) {
+function source(pinnedSource, { unreduced = false } = {}) {
   assert.equal(createHash("sha256").update(pinnedSource).digest("hex"), PIN,
     "C control requires pristine PARI 2.17.4 buch2.c");
   const first = pinnedSource.indexOf("static long\nFincke_Pohst_ideal(");
@@ -19,7 +19,7 @@ function source(pinnedSource) {
   replace("Fincke_Pohst_ideal(", "prepared_collector(");
   replace("long *Nsmall, long *Nfact)",
     "long *Nsmall, long *Nfact, GEN prepared_ideal, GEN prepared_matrix, long *stats)");
-  replace("  u = ZM_lll(ZM_mul(G0, I), 0.99, LLL_IM);\n  ideal = ZM_mul(I,u); /* approximate T2-LLL reduction */\n  r = gaussred_from_QR(RgM_mul(G, ideal), prec); /* Cholesky for T2 | ideal */",
+  if (!unreduced) replace("  u = ZM_lll(ZM_mul(G0, I), 0.99, LLL_IM);\n  ideal = ZM_mul(I,u); /* approximate T2-LLL reduction */\n  r = gaussred_from_QR(RgM_mul(G, ideal), prec); /* Cholesky for T2 | ideal */",
     "  ideal = prepared_ideal;\n  r = gaussred_from_QR(prepared_matrix, prec);");
   // Count the same work as the port without enabling PARI's debug printing.
   replace("if (DEBUGLEVEL && Nsmall)", "if (Nsmall)");
@@ -53,8 +53,8 @@ int main(int argc,char **argv) {
   long next=1;
   for(long p=2;p<=101;p++)for(long j=1;j<lg(gel(groups,p));j++)gel(F.LP,next++)=gel(gel(groups,p),j);
   GEN I=idealhnf(nf,gel(gel(groups,2),1)),NI=idealnorm(nf,I);
-  GEN u=ZM_lll(ZM_mul(nf_get_roundG(nf),I),.99,LLL_IM),ideal=ZM_mul(I,u);
-  GEN matrix=RgM_mul(nf_get_G(nf),ideal);
+  ${unreduced?'GEN ideal=NULL,matrix=NULL;':`GEN u=ZM_lll(ZM_mul(nf_get_roundG(nf),I),.99,LLL_IM),ideal=ZM_mul(I,u);
+  GEN matrix=RgM_mul(nf_get_G(nf),ideal);`}
   for(long scenario=0;scenario<4;scenario++) {
    double elapsed=0;
    for(long rep=0;rep<repetitions;rep++) {

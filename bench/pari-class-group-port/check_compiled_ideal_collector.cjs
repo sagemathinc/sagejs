@@ -4,6 +4,9 @@ const {createHash}=require('node:crypto');
 const {spawnSync}=require("node:child_process"),{compileKernel}=require("../../tools/native-kernel/compiler.cjs");
 (async()=>{
 const initialized=process.argv.includes('--initialized-cache');
+const unreduced=process.argv.includes('--unreduced');
+const moduleName=unreduced?'unreduced_ideal_collector':'ideal_collector';
+const entry=unreduced?'pari_collect_unreduced_ideal':'pari_collect_ideal_relations';
 const packetPrime=Number((process.argv.find(x=>x.startsWith('--packet-prime='))||'--packet-prime=2').split('=')[1]);
 assert([2,3].includes(packetPrime),'supported packet primes are 2 and 3');
 assert(packetPrime===2||process.argv.includes('--export-fixtures'),'nondefault packet prime is export-only');
@@ -34,6 +37,11 @@ long quotas[]={0,1,8,8},targets[]={100,100,2,100};for(long f=0;f<4;f++)for(long 
 FB_t F={0};F.LV=groups;F.iLP=offsets;F.prodZ=support;F.KC=total;F.LP=cgetg(total+1,t_VEC);long next=1;for(long pp=2;pp<=101;pp++)for(long ii=1;ii<lg(gel(groups,pp));ii++)gel(F.LP,next++)=gel(gel(groups,pp),ii);GEN I=idealhnf(nf,gel(gel(groups,2),1)),u=ZM_lll(ZM_mul(nf_get_roundG(nf),I),.99,LLL_IM),ideal=ZM_mul(I,u),G=RgM_mul(nf_get_G(nf),ideal),r=gaussred_from_QR(G,nbits2prec(192));long skip=ZV_isscalar(gel(ideal,1));double v1,v2,q12;gisdouble(gcoeff(r,1,1),&v1);gisdouble(gcoeff(r,2,2),&v2);gisdouble(gcoeff(r,1,2),&q12);double bound=maxdd(2*(v2+v1*q12*q12),Fincke_Pohst_bound(4.,r));
 printf("{\\\"n\\\":%ld,\\\"real\\\":%ld,\\\"skip\\\":%ld,\\\"normI\\\":",n,r1,skip);integer(idealnorm(nf,I));printf(",\\\"support\\\":");integer(support);printf(",\\\"factorlimit\\\":%lu,\\\"primeLimit\\\":%lu,",GP_DATA->factorlimit,maxprimelim());printf("%cnrelid%c:%ld,%ctarget%c:%ld,",34,34,quotas[scenario],34,34,targets[scenario]);matrix("matrix",G,1);matrix("ideal",ideal,0);matrix("I",I,0);
 printf("\\\"M\\\":[");GEN M=nf_get_M(nf);for(long i=0;i<n;i++)for(long j=1;j<=n;j++){if(i||j!=1)printf(",");triple(component(gel(M,j),i,r1));}printf("],\\\"groups\\\":[");long first=1;for(long p=2;p<=101;p++)if(offsets[p]>=0){if(!first)printf(",");first=0;GEN group=gel(groups,p);printf("[%ld,%ld,%ld",p,offsets[p],lg(group)-1);for(long j=1;j<lg(group);j++){GEN P=gel(group,j),tau=pr_get_tau(P);long inert=typ(tau)==t_INT;printf(",%ld,%ld,%ld",pr_get_e(P),pr_get_f(P),inert);for(long row=1;row<=n;row++)for(long col=1;col<=n;col++){printf(",");integer(inert?gen_0:gcoeff(tau,row,col));}}printf("]");}printf("],\\\"primes\\\":[");for(long i=1;i<=pari_PRIMES[0];i++){if(i>1)printf(",");printf("%lu",pari_PRIMES[i]);}printf("],\\\"products\\\":[");GEN products=prodprimes();for(long i=1;i<lg(products);i++){if(i>1)printf(",");integer(gel(products,i));}printf("],");trace(&F,nf,I,ideal,r,bound,skip,quotas[scenario],targets[scenario]);puts("");avma=av;}pari_close();return 0;}`);
+if(unreduced){
+ let code=fs.readFileSync(source,'utf8');const anchor='matrix("matrix",G,1);';assert.equal(code.split(anchor).length,2);
+ code=code.replace(anchor,'matrix("G0",nf_get_roundG(nf),0);matrix("embedding",nf_get_G(nf),1);'+anchor);
+ fs.writeFileSync(source,code);
+}
 if(packetPrime!==2){
  let code=fs.readFileSync(source,'utf8');
  for(const [a,b] of [['gel(gel(groups,2),1)',`gel(gel(groups,${packetPrime}),1)`],['F->iLP[2]+1',`F->iLP[${packetPrime}]+1`]]){assert.equal(code.split(a).length,2);code=code.replace(a,b);}
@@ -55,13 +63,29 @@ if(initialized){
 const cc=spawnSync("cc",["-O2","-I"+path.join(pari,"src/headers"),"-I"+lib,source,"-L"+lib,"-Wl,-rpath,"+lib,"-lpari","-lm","-o",exe],{encoding:"utf8",timeout:30000});assert.equal(cc.status,0,cc.stderr);
 const run=spawnSync(exe,[],{encoding:"utf8",timeout:30000,maxBuffer:8*1024*1024});assert.equal(run.status,0,run.stderr);
 const rows=run.stdout.trim().split("\n").map(JSON.parse);assert.equal(rows.length,16);
-const names=fs.readFileSync(path.join(__dirname,"ideal_collector.py"),"utf8").match(/def pari_collect_ideal_relations\(([\s\S]*?)\n\)/)[1].trim().split("\n").map(s=>s.trim().replace(/,$/,"").split(": "));
+const names=fs.readFileSync(path.join(__dirname,moduleName+'.py'),"utf8").match(new RegExp('def '+entry+'\\(([\\s\\S]*?)\\n\\)'))[1].trim().split("\n").map(s=>s.trim().replace(/,$/,"").split(": "));
 function inputs(r){const n=r.n,z=k=>Array(k).fill(0n),offsets=Array(102).fill(-1n),counts=z(102),tau=[],es=[],fs=[],inert=[];
  for(const group of r.groups){const [prime,offset,count]=group;offsets[prime]=BigInt(offset);counts[prime]=BigInt(count);let pos=3;for(let j=0;j<count;j++){es.push(BigInt(group[pos++]));fs.push(BigInt(group[pos++]));inert.push(BigInt(group[pos++]));tau.push(...group.slice(pos,pos+n*n).map(BigInt));pos+=n*n;}}
  const values={matrix:r.matrix.map(BigInt),ideal:r.ideal.map(BigInt),n:BigInt(n),precision:192n,scale:4,skipfirst:BigInt(r.skip),track_small:1n,reduction:z(3*n*n),vectors:z(3*n*n),betas:z(3*n),norms:z(3*n),column:z(3*n),float_q:Array((n+1)**2).fill(0),float_v:Array(n+1).fill(0),bound:[0],cache:z(3),a:z(64),b:z(64),p:z(64),q:z(64),stack:z(128),x:z(n+1),y:Array(n+1).fill(0),z:Array(n+1).fill(0),inc:z(n+1),state:z(5),cursor_output:z(n+1),element:z(n),counters:z(4),admission_matrix_m:r.M.filter((_,i)=>i%3===0).map(BigInt),admission_matrix_p:r.M.filter((_,i)=>i%3===1).map(BigInt),admission_matrix_e:r.M.filter((_,i)=>i%3===2).map(BigInt),admission_embedding_m:z(n),admission_embedding_p:z(n),admission_embedding_e:z(n),admission_real_count:BigInt(r.real),admission_ideal_norm:BigInt(r.normI),admission_ideal:r.I.map(BigInt),admission_mode:2n,admission_factor_product:BigInt(r.support),admission_primes:r.primes.map(BigInt),admission_products:r.products.map(BigInt),admission_factorlimit:BigInt(r.factorlimit),admission_prime_limit:BigInt(r.primeLimit),admission_rational_factors:z(16),admission_rational_exponents:z(16),admission_prime_offsets:offsets,admission_prime_counts:counts,admission_group_tau:tau,admission_group_e:es,admission_group_f:fs,admission_group_inert:inert,admission_tau:z(n*n),admission_x:z(n),admission_y:z(n),admission_spare:z(n),admission_stack:z(32),admission_primitive:z(n*n),admission_columns:z(n*n),admission_values:z(n),admission_temporary:z(n),admission_indices:z(128),admission_exponents:z(128),diagnostic:z(3)};
  const size=es.length,capacity=10*(size+2)+50;
  Object.assign(values,{nrelid:BigInt(r.nrelid),track_fact:1n,jid:offsets[2]+1n,jid0:0n,e0:0n,subfactor:[],extra:[],extra_count:-1n,relation_primes:r.groups.flatMap(g=>Array(g[2]).fill(BigInt(g[0]))),ramification:es.slice(),relation:z(size),relation_state:[0n,BigInt(capacity),BigInt(size),2n,0n,BigInt(r.target)],relation_basis:z(size*size),relation_records:z(capacity*size),relation_hashes:z(capacity),relation_metadata:z(capacity*3),relation_scratch:z(size),generators:z(capacity*n),progress:z(4)});
  values.jid=offsets[packetPrime]+1n;
+ if(unreduced){
+  delete values.skipfirst;values.matrix=z(3*n*n);values.ideal=z(n*n);
+  values.preparation_rounded_embedding=r.G0.map(BigInt);values.preparation_embedding=r.embedding.map(BigInt);
+  for(const [name,type]of names){if(name in values)continue;const short=name.replace(/^preparation_/,"");let length=n*n;
+   if(["y","s","exponents","s_exponents","alpha","column_exponents","float_scratch"].includes(short))length=n;
+   else if(short==="diagnostic")length=7;
+   else if(short==="rank_diagnostic")length=3;
+   else if(short==="flags")length=2;
+   else if(short==="selection")length=5;
+   else if(short==="stages")length=4;
+   else if(["temporary","state"].includes(short))length=1;
+   else if(["r1","r2","r3","inverse","first","second","final"].includes(short))length=12;
+   else if(["t1","t2","t3","integers","rounded"].includes(short))length=4;
+   values[name]=Array(length).fill(type==="Float64Buffer"?0:0n);
+  }
+ }
  assert.deepEqual(Object.keys(values).sort(),names.map(x=>x[0]).sort());return values;
 }
 const stringify=x=>JSON.stringify(x,(_,v)=>typeof v==='bigint'?String(v):v);
@@ -69,9 +93,9 @@ const stringify=x=>JSON.stringify(x,(_,v)=>typeof v==='bigint'?String(v):v);
 // Expected collector outputs are separate: consumers must not feed them into
 // the timed computation. This oracle is diagnostic, not a timing comparator.
 if(process.argv.includes('--export-fixtures')){
- process.stdout.write(stringify({schema:'pari-prepared-ideal-collector-v1',
+ process.stdout.write(stringify({schema:unreduced?'pari-unreduced-ideal-collector-v1':'pari-prepared-ideal-collector-v1',
   provenance:{packetPrime,buch2Sha256:createHash('sha256').update(upstream).digest('hex'),
-   boundary:'Prepared reduced ideal, G*ideal, embeddings and factor-base data; empty cache; no automorphism images',
+   boundary:unreduced?'Prepared nf embeddings, original ideal and factor-base data; empty cache; no supplied rank, LLL transform or QR; no automorphism images':'Prepared reduced ideal, G*ideal, embeddings and factor-base data; empty cache; no automorphism images',
    diagnosticOnly:true},names,
   cases:rows.map((r,index)=>({index,input:inputs(r),expected:{
    status:r.status,trials:r.trials,attempts:r.attempts,relid:r.relid,
@@ -80,16 +104,26 @@ if(process.argv.includes('--export-fixtures')){
   }}))})+'\n');
  return;
 }
-const built=await compileKernel({sourcePath:path.join(__dirname,"ideal_collector.py")}),mod=require(built.modulePath);
 const initializer=initialized?require((await compileKernel({sourcePath:path.join(__dirname,'relation_insertion.py')})).modulePath):null;
 const py=spawnSync('python3',['-c',`
 import sys,json,decimal,importlib
 sys.set_int_max_str_digits(100000)
 sys.path[:0]=sys.argv[1:3]
-f=importlib.import_module('bench.pari-class-group-port.ideal_collector').pari_collect_ideal_relations
+f=getattr(importlib.import_module('bench.pari-class-group-port.${moduleName}'),'${entry}')
 initialize=importlib.import_module('bench.pari-class-group-port.relation_insertion').pari_initialize_owned_relations
 payload=json.load(sys.stdin)
+qr_calls=[0]
+if payload['unreduced']:
+ enum=importlib.import_module('bench.pari-class-group-port.enumeration_batch')
+ prep=importlib.import_module('bench.pari-class-group-port.ideal_enumeration_preparation')
+ original_qr=prep.pari_prepare_enumeration
+ def counted_qr(*args):
+  qr_calls[0]+=1
+  return original_qr(*args)
+ enum.pari_prepare_enumeration=counted_qr
+ prep.pari_prepare_enumeration=counted_qr
 for r,v in zip(payload['rows'],payload['inputs']):
+ qr_calls[0]=0
  for name,kind in payload['names']:
   conv=float if kind in ('float','Float64Buffer') else int
   v[name]=list(map(conv,v[name])) if isinstance(v[name],list) else conv(v[name])
@@ -97,6 +131,11 @@ for r,v in zip(payload['rows'],payload['inputs']):
   initialize(2,[g[0] for g in r['groups']],[g[1] for g in r['groups']],[g[2] for g in r['groups']],[1]*len(r['groups']),v['ramification'],v['relation_state'],v['relation_basis'],v['relation_records'],v['relation_hashes'],v['relation_metadata'],v['relation'],v['relation_scratch'],r['n'],v['generators'])
   v['relation_state'][5]=r['target']
  status=f(*(v[name] for name,kind in payload['names']))
+ if payload['unreduced']:
+  assert qr_calls[0]==1,qr_calls
+  assert v['preparation_state']==[1] and v['preparation_rank_diagnostic']==[1,2147483659,0]
+  assert v['ideal']==list(map(int,r['ideal'])) and v['matrix']==list(map(int,r['matrix']))
+  assert v['preparation_flags'][0]==r['skip'] and v['state'][4]==v['preparation_flags'][1]
  last=r['last'];size=len(v['relation']);capacity=10*(size+2)+50;n=r['n']
  assert status==r['status'],(r['n'],r['nrelid'],r['target'],status,r['status'])
  assert v['counters']==[r['attempts'],r['attempts'],r['fact_count'],0],(r,v['counters'])
@@ -110,12 +149,31 @@ for r,v in zip(payload['rows'],payload['inputs']):
  assert v['relation_metadata'][:last*3]==[x for i in range(last) for x in (i+1,0,0)]
  before=json.dumps(v)
  assert f(*(v[name] for name,kind in payload['names']))==status and json.dumps(v)==before
+ if payload['unreduced']:assert qr_calls[0]==1,qr_calls
+if payload['unreduced']:
+ for dubious in (False,True):
+  # Earlier loop converted this row in place; construct fresh zeroed mutable
+  # state through the saved raw input supplied separately for failure checks.
+  v=json.loads(payload['failure_input'])
+  for name,kind in payload['names']:
+   conv=float if kind in ('float','Float64Buffer') else int
+   v[name]=list(map(conv,v[name])) if isinstance(v[name],list) else conv(v[name])
+  n=v['n'];v['admission_ideal']=[2147483659*2147483693 if dubious and i==j else 0 for i in range(n) for j in range(n)]
+  status=f(*(v[name] for name,kind in payload['names']))
+  assert status==(-17 if dubious else -11) and v['progress']==[0]*4
+  before=json.dumps(v)
+  assert f(*(v[name] for name,kind in payload['names']))==status and json.dumps(v)==before
 print('CPython collector state matches all 16 PARI scenarios')
-`,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:stringify({rows,names,initialized,inputs:rows.map(inputs)}),encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});assert.equal(py.status,0,py.stderr);
+`,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:stringify({rows,names,initialized,unreduced,inputs:rows.map(inputs),failure_input:stringify(inputs(rows[0]))}),encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});assert.equal(py.status,0,py.stderr);
+console.log(py.stdout.trim());
+const built=await compileKernel({sourcePath:path.join(__dirname,moduleName+'.py')}),mod=require(built.modulePath);
+assert.equal(mod[entry].nativeAvailable,true);
+assert.doesNotMatch(fs.readFileSync(built.coreSourcePath,'utf8'),/napi_call_function|PyObject_Call/);
 for(const r of rows)for(const backend of ['javascript','gmp']){
- const v=inputs(r),invoke=()=>mod.pari_collect_ideal_relations[backend](...names.map(([name])=>v[name]));
+ const v=inputs(r),invoke=()=>mod[entry][backend](...names.map(([name])=>v[name]));
  if(initialized){initializer.pari_initialize_owned_relations[backend](2n,...[0,1,2].map(i=>r.groups.map(g=>BigInt(g[i]))),r.groups.map(()=>1n),v.ramification,v.relation_state,v.relation_basis,v.relation_records,v.relation_hashes,v.relation_metadata,v.relation,v.relation_scratch,BigInt(r.n),v.generators);v.relation_state[5]=BigInt(r.target);}
  const status=invoke(),last=r.last,size=v.relation.length,capacity=10*(size+2)+50;
+ if(unreduced){assert.deepEqual(v.preparation_state.map(BigInt),[1n]);assert.deepEqual(v.preparation_rank_diagnostic,[1n,2147483659n,0n]);assert.deepEqual(v.ideal,r.ideal.map(BigInt));assert.deepEqual(v.matrix,r.matrix.map(BigInt));assert.equal(v.preparation_flags[0],BigInt(r.skip));assert.equal(BigInt(v.state[4]),v.preparation_flags[1]);}
  assert.equal(status,BigInt(r.status));assert.deepEqual(v.counters.map(BigInt),[r.attempts,r.attempts,r.fact_count,0].map(BigInt));assert.equal(v.state[1],BigInt(r.trials));
  assert.deepEqual(v.progress.map(BigInt),[r.relid,r.nfact,1,r.status].map(BigInt));
  assert.deepEqual(v.relation_state,[last,capacity,r.missing,r.sup,0,r.target].map(BigInt));
@@ -124,9 +182,16 @@ for(const r of rows)for(const backend of ['javascript','gmp']){
  assert.deepEqual(v.relation_metadata.slice(0,last*3),Array.from({length:last},(_,i)=>[BigInt(i+1),0n,0n]).flat());
  const before=stringify(v);assert.equal(invoke(),status);assert.equal(stringify(v),before);
 }
+if(unreduced)for(const backend of ['javascript','gmp'])for(const dubious of [false,true]){
+ const v=inputs(rows[0]),n=Number(v.n);v.admission_ideal=Array.from({length:n*n},(_,i)=>dubious&&i%n===Math.floor(i/n)?2147483659n*2147483693n:0n);
+ const invoke=()=>mod[entry][backend](...names.map(([name])=>v[name])),status=invoke();
+ assert.equal(status,dubious?-17n:-11n);assert.deepEqual(v.progress.map(BigInt),[0n,0n,0n,0n]);
+ const before=stringify(v);assert.equal(invoke(),status);assert.equal(stringify(v),before);
+}
 assert(rows.some(r=>r.nrelid===0&&r.status===1&&(initialized?r.last>0:r.last===0)&&r.nfact===0));
 assert(rows.some(r=>r.nrelid===1&&r.status===0&&r.relid===1));
 assert(rows.some(r=>r.target===2&&r.status===1&&r.last>=2&&r.relid<r.last));
 assert(rows.some(r=>r.target===100&&r.nrelid===8&&r.status===0&&r.relid<8));
-console.log('16 prepared ideal collectors match PARI/CPython/JS/GMP: probes, quotas, cache targets and exhaustion; relation bases, exact generators and terminal state agree; initial rational cache='+initialized);
+console.log('16 '+(unreduced?'unreduced':'prepared')+' ideal collectors match PARI/CPython/JS/GMP: probes, quotas, cache targets and exhaustion; relation bases, exact generators and terminal state agree; initial rational cache='+initialized);
+console.log(JSON.stringify({traceSha256:createHash('sha256').update(run.stdout).digest('hex'),modulePath:built.modulePath,qualifiedTiming:false}));
 })().catch(e=>{console.error(e);process.exitCode=1;});

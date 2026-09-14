@@ -50,7 +50,10 @@ def pari_qr_enumeration_batch(
     Each output record has the cumulative trial counter then n coordinates.
     Status 1 is cursor exhaustion, 0 a filled batch, -1 QR failure and -2
     coefficient conversion failure. State has the cursor's four slots plus
-    the last root degree; initialize it to zero. All buffers must be distinct.
+    the last root degree; initialize it to zero. A positive state[4] may also
+    be supplied by the connected ideal preparation, with all QR outputs already
+    resident; this does not initialize or advance the enumeration cursor.
+    All buffers must be distinct.
     A resumed call uses the resident preparation: callers must not change the
     matrix, dimensions, precision, trial scale or skipfirst between batches.
     """
@@ -60,7 +63,7 @@ def pari_qr_enumeration_batch(
         raise ValueError("enumeration batch output or state too small")
     if len(x) < n + 1 or len(y) < n + 1 or len(z) < n + 1 or len(inc) < n + 1:
         raise ValueError("enumeration batch cursor storage too small")
-    if state[2] == 0:
+    if state[4] == 0:
         status = pari_prepare_enumeration(
             matrix,
             n,

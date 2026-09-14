@@ -1,5 +1,122 @@
 # Faithful PARI class-group language experiment
 
+## Connected unreduced-ideal collector checkpoint
+
+`unreduced_ideal_collector.py` now connects ideal preparation and resident
+relation collection in one ordinary typed-Python entry. Its inputs include
+prepared nf embeddings, the original ideal and the factor base, but **not** a
+rank answer, LLL transformation, reduced ideal, QR answer or accepted relation.
+The 124-function generated closure computes the currently supported modular
+rank, FLATTER/fast/DPE LLL path, transformed ideal and embeddings, final QR and
+enumeration bound, and then resumes candidate collection and relation admission.
+This remains a segment, not `bnfinit`: the full dependency frontier below is
+still open, including class/unit linear algebra and whole-engine termination.
+
+The resident preparation state is separate from the enumeration cursor.
+`state[4]` records a prepared positive root degree while `state[2]` remains at
+the initial candidate; thus the first candidate is neither skipped nor preceded
+by duplicate final QR preparation. Preparation dependencies return sticky
+statuses -11 through -17, without entering collection. These are explicit
+unsupported branches, not mathematical rejection or permission to change bounds.
+The caller must retain disjoint workspaces and unchanged configuration across
+resumptions. The current prototype has a flat 128-parameter ABI.
+
+Reproduce with `SAGEJS_FLINT_PREFIX` set to the shared native prefix:
+
+```sh
+node bench/pari-class-group-port/check_compiled_ideal_collector.cjs PARI_DIRECTORY --unreduced
+node bench/pari-class-group-port/check_compiled_ideal_collector.cjs PARI_DIRECTORY --unreduced --initialized-cache
+node bench/pari-class-group-port/check_collector_c_control.cjs PARI_DIRECTORY PARI_ARCHIVE --unreduced
+node bench/pari-class-group-port/measure_collector_core.cjs PARI_DIRECTORY --unreduced
+node bench/pari-class-group-port/measure_collector_core.cjs PARI_DIRECTORY --unreduced --profile
+node bench/pari-class-group-port/measure_collector_calls.cjs PARI_DIRECTORY PARI_ARCHIVE 1 --unreduced
+```
+
+Sixteen scenarios from the same four tuning fields agree in CPython, generated
+JS and GMP-native execution, both with empty and initialized relation caches.
+Checks cover final ideal/embedding data, relations and exact generators,
+modular basis, hashes, counters, quotas, terminal state and inert resumption.
+Zero ideals and the product-of-two-rank-primes obstruction check sticky
+preparation failures in all three backends. CPython instrumentation checks
+exactly one final enumeration preparation, including across batch resumptions;
+this does not exclude the QR work required inside LLL. The old prepared entry
+and all 24 enumeration prefixes at three batch sizes also still agree.
+Empty-cache unreduced trace SHA-256:
+`f7164a5d4ec4e403a6bee7914b098950b2b2d1b4a1af6e72ef3f9d8ba3c72b41`.
+Initialized-cache trace SHA-256:
+`d7f63a2757ac16b2d9566c30549c28da03a00465b57c5ea01b5c74a349924463`.
+
+The separate C control retains the full pristine `Fincke_Pohst_ideal` LLL and
+embedding prefix and agrees on all 16 states with one and two fresh repetitions.
+It still uses the declared factor-base/scale scaffolding and omits automorphism
+images. Its extracted control source hash is
+`d969652bd95d67ccc9083d0dd2eb9f5e52939acce1c865fdb296a9d3830c104d`.
+Fixture generation uses the separately disclosed instrumented source hash
+`d8b09a54e51399c83f2faa92ccc3f1f70f41d660b1cb279738bc207ff553f87a`;
+these are not interchangeable comparator attestations.
+
+### Diagnostic cost and remaining representation question
+
+These are **unqualified diagnostics**, not the plan's three paired, pinned,
+one-second samples. A one-repetition run over the 16 scenarios reported:
+
+| Boundary | Total seconds |
+| --- | ---: |
+| Pristine-source PARI collector control | 0.001727 |
+| CPython translated entry | 0.059797 |
+| Generated JS entry | 0.210131 |
+| GMP ordinary-array host entry | 0.908044 |
+| GMP packed host entry | 0.054767 |
+| Standalone generated core, separate run | 0.046725 |
+
+The standalone control restores packed buffers outside its entry timer and
+checks every final output. It compiled in 22.56 seconds outside measurement.
+The core has 18,163,387 source bytes (including alternate integer backends),
+and its Linux addon has 3,132,096 bytes. Packed integer capacity is explicitly
+64 words for this diagnostic, matching the preparation tests; this is an ABI
+allocation choice, not a changed mathematical bound. Sizes are not peak RSS.
+The host was AMD EPYC 7B13 with Node 26.8.1; C controls use
+`-O2 -ffp-contract=off`. No Windows/Wasm performance qualification is implied.
+
+A subsequent instrumented run covered 1,600 fresh collector calls and 4.922
+seconds inside the generated entry timers. `gprof` recorded 13,758,500 packed
+integer reads, 5,130,600 writes, and 23,277,400 exact-to-int64 conversions.
+There were exactly 1,600 final enumeration preparations and 9,600 prepared-QR
+calls including the retained LLL work. GMP copying, sizing, small arithmetic,
+import/export and allocation dominate flat samples. Sampling covers the whole
+process, including fixture resets; uninstrumented GMP callees do not provide a
+reliable inclusive phase breakdown. Profile counts are evidence to isolate
+representation costs, not proof that every cost is avoidable.
+The reporting-enabled rerun reproduced all five published helper counts,
+with 4.955 seconds in entry timers and 8.984 seconds for the child process;
+its profile SHA-256 is
+`dbc2b07f4feef142c807fc5f119465c018ea8cf6ac73c1a09b689c66231fc79d`.
+
+The earlier one-word packed-read probe below already showed that optimizing
+that helper alone is insufficient. The next bounded investigation should
+distinguish small exact bookkeeping from genuine large mantissa arithmetic,
+and test mixed Float64/tagged-integer lowering or resident integer storage on
+identical operations before changing the collector. No language-parity claim
+or completed class-group result follows from this checkpoint.
+
+Strict Python passed 403 modules; Python formatting passed 967 files. The
+architecture rerun passed earlier native/FFI/resource checks and failed at the
+same stale optimizer-opportunity manifest recorded below. Broad gates are not
+green; neither draft PR is ready for automatic merging.
+The current changed-file rerun passes merge invariants, then fails in the
+hyperelliptic public-scalar unit tests because the worktree lacks the optional
+`sagejs_flint.node` addon (four files passed, 234 not started). Docs checks were
+not reached. An earlier attempt without the shared FLINT prefix failed on
+missing `flint/nmod_mat.h`; supplying the prefix fixed that setup issue but
+does not install the optional public addon. No broad gate is inferred from
+the successful isolated collector compilations.
+
+At resumption, goal accounting reported 48,310 root active seconds (13.42 hours),
+plus the previously disclosed approximately 12 subagent minutes. The 16-hour
+aggregate timebox remains in force. Recent diagnostic wall-time receipts do
+not repair historical CPU-accounting gaps, and no qualified timing campaign
+has begun.
+
 ## Connected ideal reduction to enumeration-bound preparation
 
 `ideal_ranked_preparation.py` connects `Fincke_Pohst_ideal`'s `G0*I`,
