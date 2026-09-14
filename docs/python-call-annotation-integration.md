@@ -639,3 +639,35 @@ open. Rechecking `test/extension-field-capabilities.py` on this build still fail
 to resolve `sagejs.kernels.polynomial.packed_prime_field` (12.7s, not a timeout);
 see `/home/user/exception-extension-gate-recheck.log`. The earlier broad failures
 are not waived by the focused passes. PR272 remains draft.
+
+### Module and class-body checkpoint
+
+At `7fb8f3fd849292c4762761d6681e8c6d2a1c61d0`, the shared unwind emitter
+covers main/module bodies and class-body execution, including method and
+property defaults. Records-mode declarations remain visible outside their
+instrumentation blocks; repeated cells reset location/propagation markers.
+Prepared metaclass namespaces and ordinary class construction have exact
+CPython frame oracles in both language modes, with private scope on and off.
+
+The clean build passes in 7m12s, all 175 focused tests pass again against rebuilt
+artifacts, strict checking passes for 404 modules, and the pinned pyparsing 3.3.2
+workflow passes. Evidence: `/home/user/exception-class-clean-build.log`,
+`/home/user/exception-class-rebuilt-tests.log`,
+`/home/user/exception-property-metadata-strict.log`, and
+`/home/user/exception-class-pyparsing.json`.
+
+Frozen standalone probes in `/home/user/exception-class-portable.GZwENS` cover
+12 module/class failure cases with private scope both on and off (24 per mode).
+All pass on Linux x64 (Node 26.7.0), Linux ARM64 (26.5.1), macOS ARM64 (26.5.0),
+and native Windows x64 (26.5.1), with matching artifact hashes:
+
+- Python: `9b6587b2ce54f049ad78b8388fb966a1127dedd5998ba0e631637200ed20064f`.
+- Sage: `a66d3c592b9c7528cb69188fb12e7227d7b381e33ea26a86a1ba0a4c8acacf56`.
+
+These are targeted correctness/portability checks, not timing or full-product
+qualification. Native capture remains the default. Eager import initialization,
+opaque cached modules and mixed ancestry still prevent blanket suppression;
+browser transport and the broader gates remain open. The prepared-namespace
+test installs its support module once in the same runtime and uses the current
+module cache. Earlier aborted cold/repeated-bootstrap fixture runs are not
+performance evidence and are not counted as passing qualification.
