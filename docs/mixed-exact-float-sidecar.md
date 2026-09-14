@@ -473,3 +473,50 @@ now runs on the original parser AST, before expansion, and only for floating
 signatures that need that lowering decision. The exponent test file and
 `test/wasm-graph-components.cjs` then pass seven checks, with actual Wasm
 execution skipped; production graph core inventory is included in that pass.
+## Tagged shift bookkeeping diagnostic
+
+The PARI port's direct generated-core probe found that existing tagged short
+products and signed real sums were slower than GMP-only execution on identical
+PARI-checked operands. Mixed Float64 entry points still use GMP; this finding
+does not justify changing their default or claiming tagged parity.
+
+One concrete representation issue was unconditional promotion of both operands
+inside `sagejs_tagged_shift`, including tiny shift counts. The runtime now keeps
+small counts machine-sized, implements representable small results directly,
+and uses GMP only when necessary. Negative right shifts implement Python floor
+division without signed C shifts; INT64_MIN is never negated. Counts are saved
+before stores to preserve output/count aliasing. Large-count behavior and the
+existing 1-Mibit allocation limit are unchanged. There is no IR change; the
+runtime source participates in generated-artifact cache identity.
+
+Expanded checks compare 70 signed/boundary operand-count pairs in CPython,
+generated JS, explicit GMP and explicit tagged execution, plus in-place/count
+aliasing, enormous counts and cap edges. A Linux-only generated-core UBSan control
+checks that a distinct small count stays small, representable results stay
+small, and an output aliasing its count remains correct. Five focused compiler
+tests pass; one standalone Wasm test is skipped for the unavailable toolchain.
+Architecture checks reach the already documented stale optimizer manifest.
+
+The port's `probe_arithmetic_backends.cjs` compares direct generated functions,
+preloading exact operands and excluding marshalling. Three short alternating
+diagnostic pairs cover 228 short-product and 1,344 signed-sum records, each
+repeated 200 times after a discarded warmup. Before/after runs are separate,
+unpinned and unqualified: tagged product totals changed from 209–212 ms to
+193–195 ms; tagged signed sums from 431–433 ms to 383 ms. Corresponding GMP
+totals were 135–139 ms and 258–266 ms. Every result still agrees with the PARI
+records. The gap remains; these measurements support this narrow correction,
+not a collector-wide speed claim or wholesale tagged-backend switch. These
+initial measurements reused argument representation. Review found that callees
+can promote borrowed tagged arguments, so the probe now restores argument
+representation outside every call timer. The corrected baseline still favors
+GMP: 199–201 ms tagged versus 139 ms GMP for products, and 386–393 ms versus
+259–262 ms for signed sums. With the corrected boundary the candidate gives
+187.6–187.9 ms tagged products and 364.6–370.1 ms tagged sums; GMP gives
+136.5–137.4 ms and 260.4–262.4 ms. Every oracle record agrees. The host was not
+quiet or pinned, so these are evidence for a narrow promising correction, not
+a qualified percentage improvement. Do not mix the two timing boundaries.
+Strict Python passes all 403 registered modules (904 formatted files in this
+compiler worktree). The changed-file gate passes merge checks, rebuilds the
+self-hosted compiler and Python modules, then fails at native adapter
+reconciliation because the FFLAS prefix lacks `libgivaro.a` (644.65 seconds
+total). Later broad suites are not reached; this is not a green release gate.
