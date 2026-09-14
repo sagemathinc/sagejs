@@ -954,8 +954,6 @@ def function_definition(
 
 def print_function(output):
     self = this
-    if output.options.python_traceback_records and self.is_lambda:
-        raise Error("logical tracebacks do not yet support lambdas")
 
     if self.decorators and self.decorators.length:
         output.print("var")

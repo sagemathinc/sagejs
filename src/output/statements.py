@@ -194,24 +194,35 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
             return
 
     if output.options.python_traceback_records and is_node_type(node, AST_Scope):
-        if node.is_lambda:
-            raise Error("logical tracebacks do not yet support lambdas")
+        display_traceback_body(
+            node, output, lambda: display_body(node.body, is_toplevel, output)
+        )
+    else:
+        display_body(node.body, is_toplevel, output)
+
+
+def display_traceback_body(node, output, body):
+    if output.options.python_traceback_records:
         previous = output.traceback_function
         output.traceback_function = {
             "filename": node.start.file,
-            "name": node.name.name if node.name else "<anonymous>",
+            "name": "<lambda>"
+            if node.is_lambda
+            else node.name.name
+            if node.name
+            else "<anonymous>",
             "source": node.start.raw,
             "first_lineno": node.start.line,
         }
         output.indent()
         output.print(
             "var ρσ_trace_captured, ρσ_trace_reraised, ρσ_trace_line = "
-            + str(node.start.line)
+            + str(node.body.start.line if node.is_lambda else node.start.line)
         )
         output.end_statement()
         output.indent()
         output.print("try ")
-        output.with_block(lambda: display_body(node.body, is_toplevel, output))
+        output.with_block(body)
         output.print(" catch (ρσ_trace_error) {")
         output.print(
             "throw ρσ_trace_error === ρσ_trace_reraised || ρσ_trace_error === ρσ_trace_captured ? ρσ_trace_error : ρσ_record_traceback(ρσ_trace_error,"
@@ -220,13 +231,17 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
         output.print(",ρσ_trace_line,true); }")
         output.traceback_function = previous
     else:
-        display_body(node.body, is_toplevel, output)
+        body()
 
 
 def display_lambda_body(node, output, function_preamble):
     if function_preamble is not None:
         function_preamble(node, output, 0)
     declare_truth_temp(output)
+    display_traceback_body(node, output, lambda: display_lambda_return(node, output))
+
+
+def display_lambda_return(node, output):
     output.indent()
     output.print("return ")
     if output.options.python_tuples and is_node_type(node.body, AST_Seq):
