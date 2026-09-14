@@ -22,7 +22,7 @@ for row in json.load(sys.stdin):
         actual=f(*r[:4]); expected=tuple(r[4+3*j:7+3*j])
         assert actual==expected,(r,j,actual)
 print("CPython integer/real arithmetic matches PARI")
-for divisor,error in ((0,ZeroDivisionError),(2**63,ValueError),(-2**63,ValueError),(2**100,ValueError)):
+for divisor,error in ((0,ZeroDivisionError),(2**64,ValueError),(-2**64,ValueError),(2**100,ValueError)):
     try: pari_real_word_division(divisor,2**63,64,0)
     except error: pass
     else: raise AssertionError((divisor,error))
@@ -38,6 +38,6 @@ for divisor,error in ((0,ZeroDivisionError),(2**63,ValueError),(-2**63,ValueErro
   console.log(`${operations} integer/real operations match PARI in generated JS, GMP and tagged`);
   for(const f of [mod.pari_real_word_division.javascript,mod.pari_real_word_division.gmp,mod.pari_real_word_division.tagged]) {
     assert.throws(()=>f(0n,1n<<63n,64n,0n),/zero ideal norm divisor/);
-    for(const divisor of [1n<<63n,-(1n<<63n),1n<<100n])assert.throws(()=>f(divisor,1n<<63n,64n,0n),/big ideal norm divisor/);
+    for(const divisor of [1n<<64n,-(1n<<64n),1n<<100n])assert.throws(()=>f(divisor,1n<<63n,64n,0n),/big ideal norm divisor/);
   }
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -137,7 +137,7 @@ def pari_real_word_division(
         raise ZeroDivisionError("zero ideal norm divisor")
     divisor = abs(integer)
     bits = divisor.bit_length()
-    if bits > 63:
+    if bits > 64:
         raise ValueError("big ideal norm divisor is not translated")
     if m == 0:
         return 0, 0, e - bits + 1

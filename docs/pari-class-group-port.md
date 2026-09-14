@@ -1,5 +1,27 @@
 # Faithful PARI class-group language experiment
 
+## Rational conversion for logarithm-of-two construction
+
+`real_conversion.py` follows `affir` and `rdiviiz`'s branch selection: a
+single-word denominator uses `divru`, oversized integers use `divri`, and
+the remaining case uses a scaled exact quotient before real conversion.
+Signs and guard-bit rounding are retained. The direct word-division helper
+now accepts the full unsigned 64-bit range; `divri` still routes its high-bit
+integer operands to its existing big-integer branch, as upstream does.
+
+The test compares 1,248 rational conversions against actual PARI and
+CPython/JS/GMP/tagged execution, spanning zero, signs, 63/64/65-bit boundaries,
+and numerator/denominator sizes on both sides of the branch thresholds.
+Integer arithmetic uses the existing backend; no new language-only timing
+claim follows. PARI's binary-split `atanhuu` sums and cached `constlog2`
+construction are the next dependencies, not yet replaced by a constant table.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_real_conversion.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Reciprocal dependency
 
 `pari_real_reciprocal` represents `invr_basecase`'s result, retaining the
