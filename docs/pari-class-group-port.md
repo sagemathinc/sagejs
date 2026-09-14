@@ -304,6 +304,31 @@ a complete `bnfinit` result.
 The original sixteen empty-cache cases also pass after the harness extension;
 documentation, syntax and parallel checks pass.
 
+## Prepared small-norm scheduling boundary
+
+`ideal_schedule.py` translates the reverse `L_jid` traversal and
+distinguished-prime trivial-relation skip from `small_norm`. It selects the
+next ideal ID; it does **not** construct/multiply ideals, perform LLL, or call
+the collector itself. Its persistent schedule stops on collector success,
+unresolved factorization or numerical failure; the explicit factor-attempt
+exhaustion code advances like PARI's ordinary zero return.
+
+At a new ideal, only per-ideal cursor, attempt/quota and terminal flags reset.
+The current factor-list length survives; aggregate `Nsmall`/`Nfact` counters
+are initialized once per schedule and retained between ideals. Relation and
+generator buffers are not passed to the scheduler and cannot be reset by it.
+Calling it while a collector is active fails instead of abandoning that search.
+
+`check_ideal_schedule.cjs` checks 192 synthetic control combinations in CPython,
+JS and GMP: two degrees, distinguished ideals/powers, ordinary and capped
+exhaustion, success, unresolved work and numerical failures. It checks order,
+the skip condition, preserved counters, active-call rejection and terminal
+idempotence. This is a source-derived control test, not an actual PARI
+multi-ideal trace or a complete `small_norm` translation. Connecting selected
+prepared ideals to the resident collector remains required.
+Formatting, strict Python (403 modules), documentation and parallel checks
+pass; architecture validation retains the known optimizer manifest failure.
+
 ## Normalization, insertion and exact generator ownership
 
 `relation_insertion.py` connects smooth-relation assembly/content normalization
