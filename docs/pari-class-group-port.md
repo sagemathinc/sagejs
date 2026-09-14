@@ -245,6 +245,8 @@ diagnostic, not a causal allocation of the PARI gap: profiling changes timing,
 dynamic-library calls lack complete call-graph attribution, and setup is also
 present in the process. Profile SHA-256:
 `59c389cd2ced38f846bdf1af09a7e1846794813e55a01605af0e489332ceb326`.
+The checked-in `connected-small-norm-gprof.txt` removes trailing spaces from
+two header lines; the hash above identifies the raw profiler output.
 
 `probe_buffer_clear.cjs MANIFEST CPU` copies the pinned generated core and
 removes only the full-slot `memset` from its GMP buffer writer. It does not

@@ -1,8 +1,8 @@
 Flat profile:
 
 Each sample counts as 0.01 seconds.
-  %   cumulative   self              self     total           
- time   seconds   seconds    calls  us/call  us/call  name    
+  %   cumulative   self              self     total
+ time   seconds   seconds    calls  us/call  us/call  name
  12.06      0.55     0.55                             __gmpz_set
   8.99      0.96     0.41                             __gmpz_add
   8.33      1.34     0.38                             __gmpn_copyi_zen
