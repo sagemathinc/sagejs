@@ -1896,6 +1896,20 @@ function analyzeExactModule(functions) {
       ),
     );
   };
+  const mixedFloat64 = new Set(functions.filter(fn =>
+    fn.kernelKind === "float64" || [...fn.params, ...fn.locals].some(value =>
+      value.type === "Float64" || value.type === "Float64Buffer"
+    )).map(fn => fn.name));
+  let mixedChanged = true;
+  while (mixedChanged) {
+    mixedChanged = false;
+    for (const fn of functions) {
+      if (!mixedFloat64.has(fn.name) && (fn.dependencies || []).some(name => mixedFloat64.has(name))) {
+        mixedFloat64.add(fn.name);
+        mixedChanged = true;
+      }
+    }
+  }
   for (const fn of functions) {
     if (fn.kernelKind !== "integer") continue;
     const profile = {
@@ -1903,9 +1917,7 @@ function analyzeExactModule(functions) {
       dependencyDepth: dependencyDepth(fn.name),
     };
     let backend = backendPolicy(fn, profile, recursive.has(fn.name), fmpzPolicies);
-    if ([...fn.params, ...fn.locals].some((value) =>
-      value.type === "Float64" || value.type === "Float64Buffer"
-    )) {
+    if (mixedFloat64.has(fn.name)) {
       backend = {
         kind: "gmp",
         reason: "mixed exact and Float64 scheduling requires the exact core",
@@ -1932,6 +1944,7 @@ function analyzeExactModule(functions) {
       )
     );
     fn.analysis = {
+      mixedFloat64: mixedFloat64.has(fn.name),
       storage: storageAnalysis(fn),
       execution: { ...profile, recursive: recursive.has(fn.name) },
       backend,

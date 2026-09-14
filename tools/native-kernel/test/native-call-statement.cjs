@@ -2,6 +2,29 @@
 "use strict";
 const assert=require("node:assert/strict"),fs=require("node:fs"),os=require("node:os"),path=require("node:path"),test=require("node:test");
 const {compileKernel,}=require("../compiler.cjs"),{lowerSource}=require("../ir.cjs");
+test("integer-only wrappers inherit transitive Float64 backend requirements",async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-transitive-float-")),source=path.join(dir,"calls.py");
+  fs.writeFileSync(source,`from sagejs.native import native, checked_float64
+from math import log2
+@native
+def inner(x:int)->int:
+    return int(log2(checked_float64(x)))
+@native
+def middle(x:int)->int:
+    return inner(x)+1
+@native
+def outer(x:int)->int:
+    return middle(x)+1
+`);
+  const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  for(const [name,offset] of [['inner',0n],['middle',1n],['outer',2n]]){
+    for(const backend of ['javascript','gmp'])assert.equal(mod[name][backend](8n),3n+offset);
+    assert.equal(mod[name](8n),3n+offset);
+    assert.throws(()=>mod[name].tagged(8n),/not available for mixed/);
+  }
+  const ir=await lowerSource(fs.readFileSync(source,'utf8'),source);
+  for(const fn of ir.functions){assert.equal(fn.analysis.backend.kind,'gmp');assert.equal(fn.analysis.mixedFloat64,true);}
+});
 test("discarded scalar native calls preserve mutation and errors",async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-call-statement-")),source=path.join(dir,"calls.py");
   fs.writeFileSync(source,`from sagejs.native import native, IntegerBuffer, Float64Buffer

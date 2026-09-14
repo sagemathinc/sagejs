@@ -141,6 +141,7 @@ function exactBufferCType(type) {
 }
 
 function usesMixedFloat64(fn) {
+  if (fn.analysis?.mixedFloat64) return true;
   return fn.kernelKind === "integer" &&
     [...fn.params, ...fn.locals].some((value) =>
       value.type === "Float64" || value.type === "Float64Buffer"

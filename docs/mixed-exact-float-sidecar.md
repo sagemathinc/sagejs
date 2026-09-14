@@ -172,6 +172,14 @@ experiment's Python modules merely to compile a connected segment.
 
 ## Imported binary64 logarithm
 
+Mixed Float64 requirements now propagate through native dependencies, not
+only parameters and locals of the immediate function. An integer-only wrapper
+around a mixed helper selects GMP and explicitly rejects tagged execution;
+it no longer attempts to emit a tagged call to a missing callee. A three-level
+wrapper regression checks the analysis, automatic/GMP/JS results and tagged
+capability rejection. This unblocks the complete logarithm constant call graph
+without inventing floating-point variables in wrappers to force a backend.
+
 The exponential integration also requires importing multiple entry points
 from the same module when their native call graphs overlap. Such entries now
 share an identical helper definition only when the resolved source path,
