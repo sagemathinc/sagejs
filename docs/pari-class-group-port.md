@@ -1,5 +1,33 @@
 # Faithful PARI class-group language experiment
 
+## Final exponential dependency: MPFR is not bit-identical
+
+`check_residue_exponential.py` observes the actual `mpexp` input/output from
+52 existing residue controls and 523 synthetic binary64 inputs. It compares
+against MPFR 4.2.2 via gmpy2 2.3.1 at the PARI output's stored precision.
+This is an arithmetic interchangeability diagnostic, not a port, benchmark,
+or proof that a discrepancy changes a class-group stopping decision.
+
+On this run, 29/52 residue outputs differ in exact stored value; seven still
+differ after rounding PARI's output to 64 bits and comparing with a 64-bit
+MPFR exponential. Overall 49/575 differ at stored precision and 11/575 after
+64-bit rounding. PARI sometimes returns increased storage precision (128 bits
+for several residue cases, higher for tiny synthetic inputs); this must not
+be confused with a guarantee of correctly rounded accuracy at that precision.
+Representative residue relative differences are around 1e-22 to 1e-21.
+
+Consequently, silently replacing this leaf by MPFR exp would not preserve the
+current exact-representation contract. The direct path to investigate is
+`mpexp_basecase` → `modlog2` and `exp1r_abs`, reusing translated real arithmetic
+and preserving precision changes. A later explicit primitive substitution
+would need its own divergence account; this diagnostic does not authorize one.
+The full class-group path remains incomplete.
+
+```sh
+python3 bench/pari-class-group-port/check_residue_exponential.py \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Connected residue-bound selection
 
 `residue_bound.py` translates `tailresback`, `tailres` and `primeneeded`.
