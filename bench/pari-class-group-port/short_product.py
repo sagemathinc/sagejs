@@ -5,15 +5,82 @@ Derived from `src/kernel/none/mp_indep.c:mulrrz_i`, `mulrrz_3`, and
 warranty. See repository LICENSE.
 
 This represents only the short-product branch with 64-bit words. It is not
-a general PARI real runtime. Word products and carries are expressed with
-exact Python integers, rather than PARI's machine carry intrinsics. That
-representation difference must be measured, not called compiler overhead
+a general PARI real runtime. The one-word branch uses portable half-word
+machine arithmetic; longer products still use exact Python integers rather
+than PARI's machine carry intrinsics. That representation difference must be
+measured, not called compiler overhead
 without a same-representation control. Squares have a separate upstream
 algorithm and must not be routed here merely because their values agree.
 """
 
-from sagejs.native import IntegerBuffer, checked_uint64, native
+from sagejs.native import IntegerBuffer, checked_uint64, native, uint64
 from math import gcd
+
+
+@native
+def pari_mulll_words(a: uint64, b: uint64) -> tuple[uint64, uint64]:
+    """Return low/high words of an unsigned product using portable half words.
+
+    This implements the representation primitive `mulll`, not PARI's
+    architecture-specific assembly. Four 32-bit products suffice. Every
+    intermediate is below `2**64`; explicit low-word masking also preserves
+    ordinary CPython semantics. No arbitrary-precision product is required.
+    """
+    a = checked_uint64(a)
+    b = checked_uint64(b)
+    bits = checked_uint64(32)
+    mask = checked_uint64(4294967295)
+    a0 = a & mask
+    a1 = a >> bits
+    b0 = b & mask
+    b1 = b >> bits
+    t = a0 * b0
+    low0 = t & mask
+    t = a1 * b0 + (t >> bits)
+    middle = t & mask
+    high0 = t >> bits
+    t = a0 * b1 + middle
+    high = a1 * b1 + high0 + (t >> bits)
+    low = ((t & mask) << bits) | low0
+    return low, high
+
+
+@native
+def pari_one_word_product(
+    mx: int, ex: int, my: int, py: int, ey: int
+) -> tuple[int, int, int]:
+    """Translate `mulrrz_3`/`mulrrz_3end` for positive normalized operands.
+
+    The caller checks mantissa normalization; `mx` has 64 bits and `my` has
+    at least 64. Retain the upper cross-product word for unequal precision,
+    then the same guard-bit rounding and normalization as PARI.
+    """
+    one = checked_uint64(1)
+    highbit = checked_uint64(9223372036854775808)
+    mask = checked_uint64(18446744073709551615)
+    a = checked_uint64(mx)
+    b = checked_uint64(my >> (py - 64))
+    low, high = pari_mulll_words(a, b)
+    if py > 64:
+        c = checked_uint64((my >> (py - 128)) & int(mask))
+        unused, cross = pari_mulll_words(a, c)
+        previous = low
+        low = (low + cross) & mask
+        if low < previous:
+            high += one
+    exponent = ex + ey
+    if high >= highbit:
+        if low & highbit:
+            high += one
+        exponent += 1
+    else:
+        high = (high << one) | (low >> checked_uint64(63))
+        if low & checked_uint64(4611686018427387904):
+            high = (high + one) & mask
+            if high == checked_uint64(0):
+                high = highbit
+                exponent += 1
+    return int(high), 64, exponent
 
 
 @native
@@ -199,6 +266,11 @@ def pari_short_product(
     if px > py:
         mx, my = my, mx
         px, py = py, px
+    if px == 64:
+        result, precision, exponent = pari_one_word_product(mx, ex, my, py, ey)
+        if negative:
+            result = -result
+        return result, precision, exponent
     # Validation above bounds these word counts by 32. Keep loop bookkeeping
     # machine-sized, as in PARI; mantissas/products remain exact integers.
     nx = checked_uint64(px // 64)

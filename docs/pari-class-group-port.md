@@ -400,6 +400,98 @@ Continuation total: **2,705.624904 CPU seconds**. Broader build limitations
 remain as documented; no full class-group result or performance parity is
 established. The raw leaf result is `short-product-cost-word-count.json`.
 
+### Portable one-word real multiplication and compiler identity conversion
+
+The one-word output branch now translates `mp_indep.c:mulrrz_3` and
+`mulrrz_3end`, retaining the unequal-precision cross-product word and guard-bit
+rounding. Its unsigned full-word product is ordinary Python using four 32-bit
+products: each intermediate fits uint64. This is a portable representation
+primitive, not a claim to reproduce PARI's assembly cost. Longer products keep
+the existing exact-integer implementation. Attribution remains in the source.
+
+Independent read-only review found no arithmetic defect, and identified two
+rare deterministic regressions now covered: rounding through the largest high
+word into a renormalized mantissa, and carry from an unequal-precision cross
+product. Reversed operands, negative signs, and nonzero exponent sums accompany
+both. The primitive has 17,665 boundary/deterministic pairs checked through
+CPython, generated JavaScript, GMP and tagged execution. The real-product
+oracle retains all 228 PARI cases. These tests are not full-engine coverage.
+
+Compiler prerequisite `e4a2d82b6c4e0d3224028f684ed44efba1fc7afd`, integrated
+by `c4f4681e8`, removes the demonstrated uint64-to-GMP-to-uint64 round trip
+inside `checked_uint64` when its argument is already typed uint64. Argument
+effects and checks on unknown exact values remain. A generated-body assertion
+ensures a typed identity has no GMP allocation/conversion. Five focused
+compiler tests pass; the architecture gate still fails at the existing stale
+optimizer manifest. No broad gate is relabeled green.
+
+`measure_short_product.cjs PARI PREFIX CPU [COMPILER_ROOT] --one-word`
+selects the 49 prepared records having a 64-bit operand, while still checking
+all 228 outputs. The archived `short-product-cost-one-word-before.json` and
+`short-product-cost-one-word-after.json` record identical input hashes and
+separate generated-core identities. Native totals change from 67.7–68.2 ms
+to 59.8–60.6 ms per 49,000 operations; PARI stays around 0.4 ms. These short
+three-round, no-warmup diagnostics are not qualified paired speedups and do
+not establish collector gains. The default 32-case diagnostic remained about
+100–102 ms before the identity correction; it does not isolate this branch.
+
+Review used approximately 330 active seconds (within a reserved 600-second
+subagent allowance), including a second static review of the compiler identity
+change that found no correctness issue. Its lightweight Python checks were not part of the
+parent's metered commands. Two completed leaf-measurement meter outputs were
+lost across context recovery; their result artifacts survive, and the old
+process handle is terminal. Do not pretend their exact CPU cost is recovered.
+Reserve an additional 240 CPU seconds for these accounting gaps; this is an
+explicit conservative allowance, not a measured receipt. Subsequent commands
+remain metered, including failures. The previous fully recorded subtotal was
+2,705.624904 seconds.
+
+| Additional metered execution | User CPU | System CPU | Outcome |
+| --- | ---: | ---: | --- |
+| One-word real oracle | 9.278075 | 0.639136 | 228 cases pass |
+| Initial primitive test | 0.905084 | 0.139041 | Test BigInt-count typo; corrected |
+| Corrected primitive test | 0.951860 | 0.143477 | 17,665 pairs pass |
+| Compiler test without dependency prefix | 0.693580 | 0.198958 | Setup failure; no dependency rebuild |
+| Compiler focused retry | 3.363355 | 0.937738 | Three tests pass |
+| Primitive and edge cases before compiler integration | 0.977319 | 0.141377 | Pass |
+| One-word identity diagnostic | 15.315537 | 0.986709 | Equal outputs, short samples |
+| Compiler focused receipt | 6.383028 | 1.740026 | Five tests pass |
+| Architecture | 10.871241 | 2.377026 | Existing stale manifest failure |
+| Formatter | 10.173002 | 0.464596 | Pass, no changes |
+| Integrated connected collector | 105.237049 | 3.250986 | Same 16-scenario trace |
+| Integrated primitive and edge cases | 9.020190 | 0.563522 | Pass |
+| Strict Python | 77.254598 | 3.211627 | 403 modules pass |
+
+Recorded subtotal is **2,970.843041 CPU seconds**, or **3,210.843041**
+including the explicit 240-second unmeasured allowance. The integrated
+collector trace remains
+`9634c8078e5b442b0c6182f3028c77a57602829a5fcec53bf244fba3ef34e2eb`.
+Remaining whole-engine dependencies and broad-gate failures are unchanged.
+
+The fresh standalone collector adapter uses core SHA-256
+`a187d10a7e40565242918bf7611e43a0da24909b01b3529cb971110d0eb5e578`;
+its fixture/input hashes match the previous mask-only adapter. Preparation
+consumed 61.399523 user plus 2.565351 system CPU seconds, including compilation.
+This raises the recorded subtotal to 3,034.807915 seconds (3,274.807915 with
+the stated allowance). The connected comparison measures the combined
+one-word branch, typed-count and identity-conversion changes against that
+mask-only baseline; it cannot isolate their individual contributions.
+
+The three alternating pairs in `small-norm-one-word-comparison.json` give
+baseline/candidate totals 3.7028/3.7274, 3.6973/3.7560, and 3.6805/3.7009
+seconds. Each includes 64 fresh calls for each of the 16 scenarios after
+three warmups; every output matches and every aggregate exceeds one second.
+The candidate is slightly slower in these local samples. There is **no
+connected-segment speedup** to claim. This remains a shared-host diagnostic,
+not independent host qualification or a full-field result. Its 40.033185 user
+plus 1.834006 system CPU seconds bring the recorded subtotal to
+**3,076.675106 seconds**, or **3,316.675106** including the explicit allowance.
+
+The next full-path dependency remains the upstream distinguished exponent
+selection and factor-base visit discovery, followed by the unported relation,
+unit and termination paths. Further arithmetic experiments must identify a
+dominant cost; this leaf improvement alone does not justify extrapolation.
+
 ## Bounded checkpoint assessment: the full objective is not achieved
 
 Audit of implementation commit `6bb89f177` against the original experiment:
