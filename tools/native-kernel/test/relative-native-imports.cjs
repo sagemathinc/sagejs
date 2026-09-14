@@ -7,6 +7,23 @@ const {spawnSync} = require("node:child_process");
 const test = require("node:test");
 const {compileKernel} = require("../compiler.cjs"), {lowerSource} = require("../ir.cjs");
 const {createNativeImportResolver} = require("../native-imports.cjs");
+test("multiple entries from one source share a helper but distinct sources still conflict",async()=>{
+  const dir=mkdtempSync(join(tmpdir(),"sagejs-shared-import-")),pkg=join(dir,"example");
+  mkdirSync(pkg);writeFileSync(join(pkg,"__init__.py"),"");
+  const leaf=join(pkg,"leaf.py"),source=join(pkg,"entry.py");
+  const leafBody="from sagejs.native import native\n@native\ndef square(x:int)->int:\n    return x*x\n@native\ndef shifted(x:int)->int:\n    return square(x)+1\n";
+  writeFileSync(leaf,leafBody);
+  for(const names of ["square, shifted","shifted, square"]){
+    writeFileSync(source,`from sagejs.native import native\nfrom .leaf import ${names}\n@native\ndef entry(x:int)->int:\n    return square(x)+shifted(x)\n`);
+    const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+    for(const backend of ["javascript","gmp","tagged"])assert.equal(mod.entry[backend](1n<<80n),(1n<<161n)+1n);
+    const py=spawnSync("python3",["-c",`import sys;sys.path[:0]=[${JSON.stringify(dir)},${JSON.stringify(join(__dirname,"../../../src/lib"))}];from example.entry import entry;print(entry(1<<80))`],{encoding:"utf8",timeout:30000});
+    assert.equal(py.status,0,py.stderr);assert.equal(BigInt(py.stdout.trim()),(1n<<161n)+1n);
+  }
+  writeFileSync(join(pkg,"other.py"),leafBody);
+  writeFileSync(source,"from sagejs.native import native\nfrom .leaf import square\nfrom .other import shifted\n@native\ndef entry(x:int)->int:\n    return square(x)+shifted(x)\n");
+  await assert.rejects(()=>compileKernel({sourcePath:source}),/conflicts with square/);
+});
 test("relative native calls preserve source closure, fallback and dependency identity", async () => {
   const dir=mkdtempSync(join(tmpdir(),"sagejs-relative-")),pkg=join(dir,"example"),sub=join(pkg,"nested");
   mkdirSync(sub,{recursive:true});

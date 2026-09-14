@@ -172,6 +172,15 @@ experiment's Python modules merely to compile a connected segment.
 
 ## Imported binary64 logarithm
 
+The exponential integration also requires importing multiple entry points
+from the same module when their native call graphs overlap. Such entries now
+share an identical helper definition only when the resolved source path,
+source hash and complete lowered definition agree. Conflicts with local
+functions or different source modules still fail closed. The focused relative
+import test checks both import orders, CPython/JS/GMP/tagged results, and an
+identical-looking helper in a different module that must still be rejected.
+General cross-module symbol namespacing remains outside this correction.
+
 `math.log2` uses the same source-resolved binding and domain rules, with its
 own `float64.log2` IR operation and direct libc/JavaScript `log2` calls. This
 is required by PARI's exponential series schedule: replacing it by `log(x)`
