@@ -1,5 +1,54 @@
 # Faithful PARI class-group language experiment
 
+## Integral product content and scalar-generator update
+
+`pari_integral_ideal_mul_two` completes the integral matrix/prime product
+wrapper around the previous matrix-generator HNF kernel. It follows
+`base4.c:idealmul_aux`'s `id_PRIME`/matrix branch: remove rational content
+(integral inputs here), apply `idealHNF_mul_two`, and restore content. An
+explicit scalar-generator tag selects the upstream gcd shortcut without
+constructing an HNF matrix. Prepared generator multiplication tables or scalar
+tags remain outer inputs; prime powering and descriptor-to-product integration
+are not supplied by this wrapper.
+
+The content recurrence follows `polarit2.c:Q_content_safe/Q_content_v`'s
+reverse-column, reverse-entry order. The pinned file SHA-256 is
+`fe797d71a778939e24989d174be23e37b4fad2d0e37a24ad472c84bb96473c2a`.
+The packed-storage implementation copies a content-one input to its explicit
+primitive workspace where PARI can reuse the original object; this is a
+representation difference, not an assertion of equal copying cost. Division
+by one and final multiplication by one are avoided.
+
+```sh
+node bench/pari-class-group-port/check_integral_ideal_product.cjs PARI_DIRECTORY PARI_ARCHIVE
+```
+
+All 192 cases match pinned PARI, CPython, JS and GMP: 48 matrix-generator
+products and 144 scalar-generator controls, using the same four tuning fields,
+powers 1..4 prepared by PARI and scales 1, 2 and 6. Scalar controls use 0, -3
+and 1 with first generator 3. They test the two-element shortcut, not 144
+additional prime descriptors. Tests check primitive matrices, removed content,
+unchanged inputs, product generator matrices and final HNF. Scalar cases pass
+empty matrix scratch buffers, checking that the shortcut actually bypasses
+the matrix machinery. Invalid tags and zero-ideal inputs reject before output
+or primitive workspace mutation in all three translated backends.
+Trace SHA-256:
+`785a999cfa19ce4272562c7dab935c15b41f2b7babd31385790a8d03093fc793`.
+The enlarged combined product/HNF closure has 2,772,708 generated C bytes.
+This is correctness/dependency evidence, not qualified timing or class-group
+output; the preceding multiword arithmetic substitution remains in force.
+
+Strict Python passes (403 modules). The change-set gate against `3dff64d2a`
+passes merge invariants but stops in units at the known undefined `Any` in
+`RealNumberBuffer` initialization (`test/module-cache.cjs`); 233 remaining
+files are not scheduled and docs are not reached. An initial invocation
+without `SAGEJS_FLINT_PREFIX` instead stopped at missing `flint/nmod_mat.h`.
+The GF(2) test passes all five checks with the declared prefix; the corrected
+change-set invocation exposes the separate `Any` failure above. Architecture
+validation still stops at the stale optimizer manifest. The previous full
+build remains valid evidence for its recorded revision, not a passing claim
+for these unrun suites. Both PRs remain draft.
+
 ## Multiword Bézout dependency update
 
 The 50 composite-HNF rejections described in the previous checkpoint below

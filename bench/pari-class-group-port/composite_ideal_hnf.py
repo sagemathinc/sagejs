@@ -56,6 +56,69 @@ def pari_hnf_column_step(
 
 
 @native
+def pari_integral_ideal_mul_two(
+    ideal: IntegerBuffer,
+    alpha: IntegerBuffer,
+    scalar: int,
+    n: int,
+    alpha_is_scalar: int,
+    alpha_scalar: int,
+    primitive: IntegerBuffer,
+    product: IntegerBuffer,
+    work: IntegerBuffer,
+    triangular: IntegerBuffer,
+    moduli: IntegerBuffer,
+    output: IntegerBuffer,
+) -> int:
+    """Integral matrix/prime branch of idealmul_aux, with explicit alpha tag.
+
+    The caller supplies the already classified two-element generator (a,alpha)
+    with a positive. Preserve Q_primitive_part, idealHNF_mul_two's scalar
+    shortcut and restoration of content. The alpha table or scalar tag is an
+    explicit outer preparation boundary, not a computed product or HNF answer.
+    All buffers are disjoint. Return the removed positive content for tracing.
+    """
+    if n < 3 or n > 4 or scalar < 1:
+        raise ValueError("unsupported integral two-element ideal product")
+    if alpha_is_scalar != 0 and alpha_is_scalar != 1:
+        raise ValueError("invalid ideal generator tag")
+    if len(ideal) < n * n or len(primitive) < n * n or len(output) < n * n:
+        raise ValueError("insufficient integral ideal storage")
+    # Q_content_v visits columns and their entries backwards, combining each
+    # complete column's content before visiting the previous column.
+    content = 0
+    for j in range(n - 1, -1, -1):
+        column_content = abs(ideal[(n - 1) * n + j])
+        for i in range(n - 2, -1, -1):
+            column_content = gcd(column_content, abs(ideal[i * n + j]))
+        if j == n - 1:
+            content = column_content
+        else:
+            content = gcd(content, column_content)
+    if content == 0:
+        raise ValueError("zero ideal is outside the integral HNF domain")
+    if ideal[0] <= 0:
+        raise ValueError("integral ideal HNF must have positive diagonal")
+    for i in range(n * n):
+        if content == 1:
+            primitive[i] = ideal[i]
+        else:
+            primitive[i] = ideal[i] // content
+    if alpha_is_scalar != 0:
+        multiplier = gcd(scalar, alpha_scalar)
+        for i in range(n * n):
+            output[i] = primitive[i] * multiplier
+    else:
+        pari_ideal_hnf_mul_two(
+            primitive, alpha, scalar, n, product, work, triangular, moduli, output
+        )
+    if content != 1:
+        for i in range(n * n):
+            output[i] *= content
+    return content
+
+
+@native
 def pari_ideal_hnf_mul_two(
     ideal: IntegerBuffer,
     alpha: IntegerBuffer,
