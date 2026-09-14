@@ -1,5 +1,45 @@
 # Faithful PARI class-group language experiment
 
+## Connected QR and enumeration-bound preparation
+
+`enumeration_preparation.py` connects the translated Householder QR to the
+`Fincke_Pohst_ideal` coefficient conversions and `Fincke_Pohst_bound`.
+It constructs `dbltor(T*T)`, accumulates diagonal products in source order,
+computes the required higher roots, preserves the comparison against the next
+diagonal, and selects the maximum with twice the second-vector norm. The
+result is the one-based binary64 `q`/`v` layout consumed by the existing cursor
+and its bound, computed from a prepared embedding matrix in one native call.
+
+The first QR diagonal can remain an exact integer (observed in the actual
+field cases); that integer is retained through generic multiplication. Later
+comparison diagonals must be positive reals at this prepared boundary.
+Coefficient-conversion rejection returns 0 and QR precision failure returns
+-1; success returns the final root degree as a diagnostic work counter.
+All buffers are distinct and caller-owned. No internal mathematical limit is
+silently clamped.
+
+The 180 oracle cases use four existing tuning fields, three input precisions,
+three rational primes and five trial scales. The original scales 0.125/4/256
+all stopped at degree two; additional diagnostic scales 1e6/1e12 exercise
+continuation through degrees three and four. These large scales are branch
+controls, not claimed production tuning parameters. PARI still prepares the
+LLL-reduced ideal-embedding input and the supplied trial scale stands for
+`4 * maxtry_FACT / ballvol`. Neither QR coefficients nor root/bound results
+are supplied to the port. The independent oracle calls the actual upstream
+bound routine and compares the binary64 coefficients, final bound and stopping
+degree. This is not yet a complete ideal search or a class-group computation.
+
+All 180 cases pass CPython, dynamic JS and GMP-native checks, with stop
+degrees two, three and four all represented. Strict-Python and parallel checks
+pass; the full architecture gate still reaches the same stale optimizer
+manifest failure. No performance qualification is inferred from these tests.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_enumeration_preparation.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Higher-root iteration
 
 `real_root.py` connects the translated `logr_abs` initializer, division by the
@@ -1482,6 +1522,12 @@ are historical and do not govern this experiment. Mathematical choices remain
   or later. Translated files must retain that attribution and license notice.
 
 ## Resource ledger
+
+The successful 180-case connected QR/bound validation used 32.748 wall
+seconds, 38.269 user plus 1.263 system child CPU seconds and peak child RSS
+582,264 KiB. Charge 39.532 CPU seconds including compilation. The preceding
+branch-coverage assertion run used another 3.316 CPU seconds; it revealed
+that the original 108 controls all stopped at degree two.
 
 The successful higher-root validation/build used 30.841 wall seconds,
 33.733 user plus 1.557 system child CPU seconds, and peak child RSS
