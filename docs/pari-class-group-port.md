@@ -1,5 +1,37 @@
 # Faithful PARI class-group language experiment
 
+## Inverse-residue accumulation and a numerical work divergence
+
+`residue.py` translates the binary64 accumulation in `compute_invres`, up to
+but not including `mpexp(dbltor(loginvres))`. The final exponential must retain
+PARI-real precision semantics; binary64 `exp` is not a substitute. The residue
+bound and cached decompositions/logarithms remain prepared inputs. `primeneeded`
+and the final exponential are still dependencies, not omitted work in a claimed
+whole-engine timing. The explicit experimental bound range keeps integer p*p
+exactly convertible to binary64; unsupported ranges fail rather than clamp.
+
+The oracle includes the actual pinned `buch2.c` and observes the input to
+`mpexp` with a wrapper that still calls the original exponential. On four
+existing tuning fields and 13 bounds (2 through 10,000), all 52 native GMP
+accumulations match PARI and CPython within the documented numeric tolerance,
+with exact agreement on the number of processed rational primes.
+
+**JavaScript does not perform identical work on four of these controls.** At
+bound 3, `Math.log(3)` rounds below the cached PARI `log(3)`. Truncating their
+ratio gives zero instead of one, so the fallback visits one rather than two
+primes. The test reports these divergences and compares fallback arithmetic
+against a separately labeled CPython replay using the JavaScript bound-log
+value. This replay is a diagnostic, not work-matched performance evidence.
+The mathematical source is unchanged and no comparison threshold is adjusted
+to hide the branch difference. It illustrates why matching final values alone
+does not establish matching upstream work.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_residue.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Connected initial factor-base selection
 
 `initial_base.py` connects initialization constants and logarithms, GRH bound
