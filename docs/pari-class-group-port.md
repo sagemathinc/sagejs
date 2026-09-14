@@ -1,5 +1,34 @@
 # Faithful PARI class-group language experiment
 
+## Post-factorization candidate normalization
+
+`smooth_relation.py` connects the post-`factorgen` block of
+`Fincke_Pohst_ideal`: add the search ideal and optional base-ideal powers,
+assemble the relation, compute candidate content, divide coordinates by it,
+and subtract ramification-weighted rational-prime valuations from the
+relation. Extra subfactor ideals already present in the factor list are
+skipped in the second adjustment pass. The original `nz` hint is retained.
+
+The 96-case oracle executes this block using PARI's actual `add_to_fact`,
+`set_fact`, `Z_content`, `Q_div_to_int`, and `fact_update`, comparing all
+mutated factors, coordinates and relation entries with CPython/JS/GMP.
+It varies the search/base ideal coincidence, content 1/2/6/30 and optional
+signed subfactor powers. The prime-ideal records here are synthetic prepared
+prime/ramification metadata; these are block-correspondence controls, not
+claims that the supplied candidate factorizations are genuine relations.
+
+The remaining collector boundary is substantial: preparation of each search
+ideal, the LLL transform, arbitrary-precision QR/Cholesky and search-bound
+selection, then connecting enumeration, actual factor admission, normalized
+generator storage and cache insertion. Returning prepared candidates or
+passing factorgen output across an outer boundary does not complete that path.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_smooth_relation.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Factor assembly connected to cache insertion
 
 `pari_prepared_set_fact` preserves upstream overwrite semantics for repeated
