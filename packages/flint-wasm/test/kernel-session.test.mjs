@@ -131,6 +131,7 @@ test("session configures a validated compiler-worker optimizer policy", async ()
     worker: "test-worker.mjs",
     compilerWorker: "compiler-worker.mjs",
     optimizationLevel: "O0",
+    tracebackCapture: "guarded",
   });
   try {
     await session.ready();
@@ -142,6 +143,11 @@ test("session configures a validated compiler-worker optimizer policy", async ()
       "O0",
     );
     assert.equal(initialized.mode, "python");
+    assert.equal(initialized.tracebackCapture, "guarded");
+    assert.throws(
+      () => new SageSession({ tracebackCapture: "fast" }),
+      /tracebackCapture must be 'native' or 'guarded'/,
+    );
     assert.throws(
       () => new SageSession({ optimizationLevel: "fast" }),
       /optimizationLevel must be O0, O1, O2, O3, or Os/,
