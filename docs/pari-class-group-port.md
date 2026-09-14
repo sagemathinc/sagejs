@@ -325,8 +325,8 @@ exhaustion, success, unresolved work and numerical failures. It checks order,
 the skip condition, preserved counters, active-call rejection and terminal
 idempotence. This is a source-derived control test, not an actual PARI
 multi-ideal trace or a complete `small_norm` translation. The control is now
-connected to the packet collector below; distinct-ideal coverage and upstream
-packet preparation remain required.
+connected to the packet collector below; upstream packet preparation remains
+an external dependency.
 Formatting, strict Python (403 modules), documentation and parallel checks
 pass; architecture validation retains the known optimizer manifest failure.
 
@@ -347,7 +347,21 @@ a per-ideal quota. This is not a claim that PARI constructs duplicate `L_jid`
 entries. Complete resulting bases, relations, exact generators, factor-list
 lengths, diagnostic counts and final state match. The test requires a case
 where the second visit adds relations beyond the first quota, and checks
-terminal idempotence. Distinct-packet controls remain the next required test.
+terminal idempotence.
+
+With `--distinct`, that checker now visits the prepared prime-2 ideal followed
+by the prime-3 ideal in each of the same four fields. Both packets are prepared
+independently by PARI; the test asserts equality of their shared field,
+embedding and factor-base data before combining them. The pristine C control
+constructs the same two ideals and retains its cache/factor list across calls.
+All sixteen distinct-packet scenarios match in CPython, JS and GMP, including
+complete final states and terminal idempotence. A case must gain relations on
+the second visit. This tests packet switching and cross-ideal state, not PARI's
+full `L_jid` selection or the distinguished-prime-power preparation branch.
+
+The fixture exporter supports `--packet-prime=3` for this diagnostic and records
+the chosen prime in provenance. Its default remains prime 2; nondefault primes
+are export-only, and the populated-cache export restriction remains in place.
 
 Formatting and strict Python pass (403 modules); architecture checks again
 stop at the known stale optimizer manifest. These are correctness results,

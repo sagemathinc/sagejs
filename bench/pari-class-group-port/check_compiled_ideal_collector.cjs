@@ -4,6 +4,9 @@ const {createHash}=require('node:crypto');
 const {spawnSync}=require("node:child_process"),{compileKernel}=require("../../tools/native-kernel/compiler.cjs");
 (async()=>{
 const initialized=process.argv.includes('--initialized-cache');
+const packetPrime=Number((process.argv.find(x=>x.startsWith('--packet-prime='))||'--packet-prime=2').split('=')[1]);
+assert([2,3].includes(packetPrime),'supported packet primes are 2 and 3');
+assert(packetPrime===2||process.argv.includes('--export-fixtures'),'nondefault packet prime is export-only');
 assert(!(initialized&&process.argv.includes('--export-fixtures')),'initialized cache export needs a separate schema');
 const pari=path.resolve(process.argv[2]),lib=path.join(pari,"Olinux-x86_64"),dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-ideal-collector-")),source=path.join(dir,"oracle.c"),exe=path.join(dir,"oracle");
 const upstream=fs.readFileSync(path.join(pari,"src/basemath/buch2.c"),"utf8"),start=upstream.indexOf("  k = N; fp->y[N] = fp->z[N] = 0; fp->x[N] = 0;"),end=upstream.indexOf("    /* element complete */",start);
@@ -31,6 +34,11 @@ long quotas[]={0,1,8,8},targets[]={100,100,2,100};for(long f=0;f<4;f++)for(long 
 FB_t F={0};F.LV=groups;F.iLP=offsets;F.prodZ=support;F.KC=total;F.LP=cgetg(total+1,t_VEC);long next=1;for(long pp=2;pp<=101;pp++)for(long ii=1;ii<lg(gel(groups,pp));ii++)gel(F.LP,next++)=gel(gel(groups,pp),ii);GEN I=idealhnf(nf,gel(gel(groups,2),1)),u=ZM_lll(ZM_mul(nf_get_roundG(nf),I),.99,LLL_IM),ideal=ZM_mul(I,u),G=RgM_mul(nf_get_G(nf),ideal),r=gaussred_from_QR(G,nbits2prec(192));long skip=ZV_isscalar(gel(ideal,1));double v1,v2,q12;gisdouble(gcoeff(r,1,1),&v1);gisdouble(gcoeff(r,2,2),&v2);gisdouble(gcoeff(r,1,2),&q12);double bound=maxdd(2*(v2+v1*q12*q12),Fincke_Pohst_bound(4.,r));
 printf("{\\\"n\\\":%ld,\\\"real\\\":%ld,\\\"skip\\\":%ld,\\\"normI\\\":",n,r1,skip);integer(idealnorm(nf,I));printf(",\\\"support\\\":");integer(support);printf(",\\\"factorlimit\\\":%lu,\\\"primeLimit\\\":%lu,",GP_DATA->factorlimit,maxprimelim());printf("%cnrelid%c:%ld,%ctarget%c:%ld,",34,34,quotas[scenario],34,34,targets[scenario]);matrix("matrix",G,1);matrix("ideal",ideal,0);matrix("I",I,0);
 printf("\\\"M\\\":[");GEN M=nf_get_M(nf);for(long i=0;i<n;i++)for(long j=1;j<=n;j++){if(i||j!=1)printf(",");triple(component(gel(M,j),i,r1));}printf("],\\\"groups\\\":[");long first=1;for(long p=2;p<=101;p++)if(offsets[p]>=0){if(!first)printf(",");first=0;GEN group=gel(groups,p);printf("[%ld,%ld,%ld",p,offsets[p],lg(group)-1);for(long j=1;j<lg(group);j++){GEN P=gel(group,j),tau=pr_get_tau(P);long inert=typ(tau)==t_INT;printf(",%ld,%ld,%ld",pr_get_e(P),pr_get_f(P),inert);for(long row=1;row<=n;row++)for(long col=1;col<=n;col++){printf(",");integer(inert?gen_0:gcoeff(tau,row,col));}}printf("]");}printf("],\\\"primes\\\":[");for(long i=1;i<=pari_PRIMES[0];i++){if(i>1)printf(",");printf("%lu",pari_PRIMES[i]);}printf("],\\\"products\\\":[");GEN products=prodprimes();for(long i=1;i<lg(products);i++){if(i>1)printf(",");integer(gel(products,i));}printf("],");trace(&F,nf,I,ideal,r,bound,skip,quotas[scenario],targets[scenario]);puts("");avma=av;}pari_close();return 0;}`);
+if(packetPrime!==2){
+ let code=fs.readFileSync(source,'utf8');
+ for(const [a,b] of [['gel(gel(groups,2),1)',`gel(gel(groups,${packetPrime}),1)`],['F->iLP[2]+1',`F->iLP[${packetPrime}]+1`]]){assert.equal(code.split(a).length,2);code=code.replace(a,b);}
+ fs.writeFileSync(source,code);
+}
 if(initialized){
  let code=fs.readFileSync(source,'utf8');
  const replace=(a,b)=>{assert.equal(code.split(a).length,2);code=code.replace(a,b);};
@@ -53,6 +61,7 @@ function inputs(r){const n=r.n,z=k=>Array(k).fill(0n),offsets=Array(102).fill(-1
  const values={matrix:r.matrix.map(BigInt),ideal:r.ideal.map(BigInt),n:BigInt(n),precision:192n,scale:4,skipfirst:BigInt(r.skip),track_small:1n,reduction:z(3*n*n),vectors:z(3*n*n),betas:z(3*n),norms:z(3*n),column:z(3*n),float_q:Array((n+1)**2).fill(0),float_v:Array(n+1).fill(0),bound:[0],cache:z(3),a:z(64),b:z(64),p:z(64),q:z(64),stack:z(128),x:z(n+1),y:Array(n+1).fill(0),z:Array(n+1).fill(0),inc:z(n+1),state:z(5),cursor_output:z(n+1),element:z(n),counters:z(4),admission_matrix_m:r.M.filter((_,i)=>i%3===0).map(BigInt),admission_matrix_p:r.M.filter((_,i)=>i%3===1).map(BigInt),admission_matrix_e:r.M.filter((_,i)=>i%3===2).map(BigInt),admission_embedding_m:z(n),admission_embedding_p:z(n),admission_embedding_e:z(n),admission_real_count:BigInt(r.real),admission_ideal_norm:BigInt(r.normI),admission_ideal:r.I.map(BigInt),admission_mode:2n,admission_factor_product:BigInt(r.support),admission_primes:r.primes.map(BigInt),admission_products:r.products.map(BigInt),admission_factorlimit:BigInt(r.factorlimit),admission_prime_limit:BigInt(r.primeLimit),admission_rational_factors:z(16),admission_rational_exponents:z(16),admission_prime_offsets:offsets,admission_prime_counts:counts,admission_group_tau:tau,admission_group_e:es,admission_group_f:fs,admission_group_inert:inert,admission_tau:z(n*n),admission_x:z(n),admission_y:z(n),admission_spare:z(n),admission_stack:z(32),admission_primitive:z(n*n),admission_columns:z(n*n),admission_values:z(n),admission_temporary:z(n),admission_indices:z(128),admission_exponents:z(128),diagnostic:z(3)};
  const size=es.length,capacity=10*(size+2)+50;
  Object.assign(values,{nrelid:BigInt(r.nrelid),track_fact:1n,jid:offsets[2]+1n,jid0:0n,e0:0n,subfactor:[],extra:[],extra_count:-1n,relation_primes:r.groups.flatMap(g=>Array(g[2]).fill(BigInt(g[0]))),ramification:es.slice(),relation:z(size),relation_state:[0n,BigInt(capacity),BigInt(size),2n,0n,BigInt(r.target)],relation_basis:z(size*size),relation_records:z(capacity*size),relation_hashes:z(capacity),relation_metadata:z(capacity*3),relation_scratch:z(size),generators:z(capacity*n),progress:z(4)});
+ values.jid=offsets[packetPrime]+1n;
  assert.deepEqual(Object.keys(values).sort(),names.map(x=>x[0]).sort());return values;
 }
 const stringify=x=>JSON.stringify(x,(_,v)=>typeof v==='bigint'?String(v):v);
@@ -61,7 +70,7 @@ const stringify=x=>JSON.stringify(x,(_,v)=>typeof v==='bigint'?String(v):v);
 // the timed computation. This oracle is diagnostic, not a timing comparator.
 if(process.argv.includes('--export-fixtures')){
  process.stdout.write(stringify({schema:'pari-prepared-ideal-collector-v1',
-  provenance:{buch2Sha256:createHash('sha256').update(upstream).digest('hex'),
+  provenance:{packetPrime,buch2Sha256:createHash('sha256').update(upstream).digest('hex'),
    boundary:'Prepared reduced ideal, G*ideal, embeddings and factor-base data; empty cache; no automorphism images',
    diagnosticOnly:true},names,
   cases:rows.map((r,index)=>({index,input:inputs(r),expected:{
