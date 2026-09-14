@@ -7,6 +7,41 @@ const {join}=require("node:path");
 const {spawnSync}=require("node:child_process");
 const test=require("node:test");
 const {compileKernel}=require("../compiler.cjs");
+test("checked word identities retain effects without exact-integer round trips",async()=>{
+ const dir=mkdtempSync(join(tmpdir(),"sagejs-word-identity-")),source=join(dir,"identity.py");
+ writeFileSync(source,`from sagejs.native import native, checked_uint64, uint64, UInt64Buffer
+@native
+def identity(x: uint64) -> uint64:
+    return checked_uint64(x)
+@native
+def effect(a: UInt64Buffer) -> uint64:
+    a[0] += checked_uint64(1)
+    return a[0]
+@native
+def once(a: UInt64Buffer) -> uint64:
+    return checked_uint64(effect(a))
+@native
+def nested(x: int) -> uint64:
+    return checked_uint64(checked_uint64(x))
+`);
+ const b=await compileKernel({sourcePath:source}),m=require(b.modulePath);
+ for(const backend of ["javascript","gmp","tagged"]){
+  for(const x of [0n,1n,1n<<63n,(1n<<64n)-1n]){
+   assert.equal(m.identity[backend](x),x);
+   assert.equal(m.nested[backend](x),x);
+  }
+  for(const x of [-1n,1n<<64n]){
+   assert.throws(()=>m.identity[backend](x));
+   assert.throws(()=>m.nested[backend](x));
+  }
+  const a=new BigUint64Array([5n]);
+  assert.equal(m.once[backend](a),6n);assert.equal(a[0],6n);
+ }
+ const c=readFileSync(b.coreSourcePath,"utf8");
+ const body=c.match(/static int native_identity\([^;]*?\n\{([\s\S]*?)\n\}/);
+ assert(body,"isolated identity body");
+ assert(!/mpz_|set_mpz/.test(body[1]),"word identity must not allocate or convert GMP values");
+});
 test("exact integer masks preserve unbounded signed and mixed-word semantics",async()=>{
  const dir=mkdtempSync(join(tmpdir(),"sagejs-integer-and-")),source=join(dir,"mask.py");
  writeFileSync(source,`from sagejs.native import native, checked_uint64
