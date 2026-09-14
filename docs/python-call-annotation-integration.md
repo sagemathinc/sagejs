@@ -671,3 +671,56 @@ browser transport and the broader gates remain open. The prepared-namespace
 test installs its support module once in the same runtime and uses the current
 module cache. Earlier aborted cold/repeated-bootstrap fixture runs are not
 performance evidence and are not counted as passing qualification.
+
+### Browser transport and renewed mechanism measurements
+
+Commits `d5469f1bd` and `0783bc873` bundle the shared diagnostic formatter into
+the browser package. Worker errors, session rejections, widget error events,
+the live app and embedded cells retain logical records, chains and labelled
+native evidence. Frozen/foreign errors keep their original stacks; a transport
+wrapper cannot replace them. Eleven focused browser adapter/client/render-helper
+checks pass. These tests do not enable compiler records in the browser compiler.
+
+The corrected full Wasm build at `0783bc873` passes, producing artifact identity
+`sha256:d101bfc3d9bab5328fc547aaf54909d8478a28132951c360ff7efb86a9574b4b`.
+The first attempt failed sorted-asset validation and is not a passing receipt.
+Rebuilt worker error recovery passes. The combined check is 17/18 because the
+receipt fixture omits the already-declared extension-multivariate specialist;
+the full Chromium smoke test separately fails its punycode workflow because
+`sagejs._punycode` is absent from the implicit browser core. Logs:
+`/home/user/exception-browser-full-build-retry.log`,
+`/home/user/exception-browser-rebuilt-tests.log`, and
+`/home/user/exception-browser-smoke.log`. Those prerequisites are being fixed
+independently on `agent/browser-core-codec-closure`, based on fresh main.
+The initial codec inclusion exposed a second required invariant: every implicit
+core module must also enter the standalone cache closure. The regression retains
+both assertions. No broad browser pass is claimed yet.
+
+Frozen compiler artifacts from the `7fb8f3fd8` correctness checkpoint were
+remeasured on idle bench-1 (Node 26.7.0, CPython 3.14.4), under an exclusive
+benchmark lock, with three warmups, seven samples and two opposite process
+orders. Medians for 100,000 operations:
+
+| Workload | Native capture | Experimental records | CPython |
+|---|---:|---:|---:|
+| Construct | 952–963 ms | 325–332 ms | 10.0–10.1 ms |
+| Construct/raise/catch | 1,072–1,073 ms | 486–490 ms | 13.0–13.3 ms |
+| Successful call | 9.05–9.16 ms | 9.16–9.18 ms | 3.88–3.93 ms |
+
+The raise/catch cliff remains open at approximately 37× CPython. Native and
+records artifacts contain 14,216,075 and 14,651,385 bytes respectively (+3.06%).
+Twenty fresh processes per policy, with alternating order and warmed filesystem
+cache, give median total process times of 488.2 ms and 490.3 ms; p95 is 512.6 ms
+and 517.2 ms. This is standalone bootstrap, not browser download/startup.
+Hash-bound inputs and reports are in `/home/user/exception-class-pair.sDWjlJ`
+and `/home/user/exception-class-pair.v1NDqj` on bench-1. The CPU profile there
+also shows tuple finalization, constructors and generic lookup costs; aggregated
+minified-source samples do not precisely isolate native throw cost.
+
+A fresh prepared-call gate is 41/45: duplicate mapping access order and custom
+`__getattribute__` lookup each fail in both modes. See
+`/home/user/exception-prepared-gate-recheck.log`. Merge inventory checks pass
+(`/home/user/exception-merge-gate.log`), but they do not waive these semantic
+failures. Native suppression stays experimental/off by default, PR272 stays
+draft, and opaque ancestry/default policy and final package/platform qualification
+remain required.
