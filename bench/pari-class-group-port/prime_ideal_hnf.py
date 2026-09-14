@@ -132,6 +132,24 @@ def pari_prime_ideal_hnf(
         return 0
     if len(basis_table) < n * n * n or len(generator) < n:
         raise ValueError("insufficient prepared field multiplication data")
+    pari_basis_multiplication_table(basis_table, generator, n, multiplication)
+    return pari_prime_modulus_hnf(multiplication, n, prime, work, pivots, output)
+
+
+@native
+def pari_basis_multiplication_table(
+    basis_table: IntegerBuffer,
+    generator: IntegerBuffer,
+    n: int,
+    multiplication: IntegerBuffer,
+) -> int:
+    """Shared zk_multable/zk_ei_mul column construction from prepared nf data."""
+    if n < 3 or n > 4:
+        raise ValueError("unsupported multiplication table degree")
+    if len(basis_table) < n * n * n or len(generator) < n:
+        raise ValueError("insufficient prepared field multiplication data")
+    if len(multiplication) < n * n:
+        raise ValueError("insufficient multiplication table output")
     for k in range(n):
         multiplication[k * n] = generator[k]
     for i in range(1, n):
@@ -147,4 +165,4 @@ def pari_prime_ideal_hnf(
                     else:
                         value += coefficient * generator[j]
             multiplication[k * n + i] = value
-    return pari_prime_modulus_hnf(multiplication, n, prime, work, pivots, output)
+    return 0

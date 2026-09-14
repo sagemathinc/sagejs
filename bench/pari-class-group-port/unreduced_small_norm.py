@@ -3,14 +3,19 @@
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 Original ideal HNFs/norms or prime descriptors are supplied. Prime mode builds
 the ideal HNF and norm; both modes compute rank, LLL, embeddings and QR in this
-closure. Ideal products, L_jid construction, automorphism images and the outer
-class/unit driver remain explicit dependencies.
+closure. Mode 2 also constructs a supplied distinguished prime power and its
+products. Exponent selection, L_jid construction, automorphism images and the
+outer class/unit driver remain explicit dependencies.
 """
 
 from sagejs.native import Float64Buffer, Int64Buffer, IntegerBuffer, native
 from .unreduced_ideal_collector import pari_collect_unreduced_ideal
 from .ideal_schedule import pari_next_small_norm_ideal
 from .prime_ideal_hnf import pari_prime_ideal_hnf
+from .prime_ideal_hnf import pari_basis_multiplication_table
+from .prime_ideal_power import pari_positive_prime_power_hnf
+from .integral_power import pari_nonnegative_integer_power
+from .composite_ideal_hnf import pari_integral_ideal_mul_two
 
 
 @native
@@ -155,19 +160,33 @@ def pari_collect_unreduced_ideals(
     hnf_matrix: IntegerBuffer,
     hnf_work: IntegerBuffer,
     hnf_pivots: IntegerBuffer,
+    power_ideal: IntegerBuffer,
+    power_alpha: IntegerBuffer,
+    power_metadata: IntegerBuffer,
+    power_primitive: IntegerBuffer,
+    power_temporary: IntegerBuffer,
+    power_diagnostic: IntegerBuffer,
+    power_multiplication: IntegerBuffer,
+    power_work: IntegerBuffer,
+    power_triangular: IntegerBuffer,
+    power_moduli: IntegerBuffer,
+    product_primitive: IntegerBuffer,
+    product_matrix: IntegerBuffer,
 ) -> int:
     """Visit original ideal packets, retaining relations across preparations.
 
     Packets supply either original HNF/norms or prime descriptors. In the
     latter mode compute HNF and norm inside this closure, using the prepared
-    field basis table; distinguished-ideal products are not yet supported.
+    field basis table. Mode 2 additionally constructs the distinguished prime
+    power once and multiplies it by each visited prime. Its exponent and prime
+    descriptor are explicit inputs; upstream exponent selection remains outside.
     All packet inputs are disjoint from mutable workspaces.
     Follow the existing upstream schedule/stop policy; unsupported preparation
     stops this schedule with a sticky dependency status rather than advancing.
     """
     packets = len(packet_ids)
     square = n * n
-    if n < 3 or n > 4 or construct_primes < 0 or construct_primes > 1:
+    if n < 3 or n > 4 or construct_primes < 0 or construct_primes > 2:
         raise ValueError("invalid unreduced ideal packets")
     if len(admission_ideal) < square:
         raise ValueError("insufficient original ideal packet storage")
@@ -175,14 +194,52 @@ def pari_collect_unreduced_ideals(
         if len(packet_norms) != packets or len(packet_ideals) < packets * square:
             raise ValueError("insufficient original ideal packet data")
     else:
-        if jid0 != 0 or e0 != 0:
+        if construct_primes == 1 and (jid0 != 0 or e0 != 0):
             raise ValueError("distinguished-ideal products remain unported")
+        if construct_primes == 2 and (jid0 < 1 or e0 < 1 or e0 >= 512):
+            raise ValueError("invalid distinguished prime power")
         if len(packet_primes) != packets or len(packet_inert) != packets:
             raise ValueError("invalid prime descriptor count")
         if len(packet_generators) < packets * n or len(hnf_generator) < n:
             raise ValueError("insufficient prime generator storage")
     if len(preparation_state) < 1:
         raise ValueError("insufficient resident preparation state")
+    if construct_primes == 2:
+        if len(schedule) < 4 or len(power_metadata) < 4:
+            raise ValueError("insufficient distinguished power state")
+        if len(ramification) != len(admission_group_f):
+            raise ValueError("inconsistent distinguished prime descriptors")
+        if schedule[2] == 0 and schedule[1] == 0:
+            power_packet = 0
+            while power_packet < packets and packet_ids[power_packet] != jid0:
+                power_packet += 1
+            if power_packet == packets or jid0 > len(ramification):
+                raise ValueError("distinguished prime has no descriptor")
+            for i in range(n):
+                hnf_generator[i] = packet_generators[power_packet * n + i]
+            pari_positive_prime_power_hnf(
+                basis_table,
+                hnf_generator,
+                n,
+                packet_primes[power_packet],
+                ramification[jid0 - 1],
+                admission_group_f[jid0 - 1],
+                e0,
+                power_primitive,
+                power_temporary,
+                power_alpha,
+                power_metadata,
+                power_diagnostic,
+                power_multiplication,
+                power_work,
+                power_triangular,
+                power_moduli,
+                power_ideal,
+            )
+            prime_norm = pari_nonnegative_integer_power(
+                packet_primes[power_packet], admission_group_f[jid0 - 1]
+            )
+            power_metadata[3] = pari_nonnegative_integer_power(prime_norm, e0)
     while True:
         selected = pari_next_small_norm_ideal(
             search_ideals,
@@ -210,32 +267,45 @@ def pari_collect_unreduced_ideals(
         else:
             for i in range(n):
                 hnf_generator[i] = packet_generators[packet * n + i]
-            pari_prime_ideal_hnf(
-                basis_table,
-                hnf_generator,
-                n,
-                packet_primes[packet],
-                packet_inert[packet],
-                hnf_matrix,
-                hnf_work,
-                hnf_pivots,
-                admission_ideal,
-            )
-            # pr_norm = powiu(p, f). Native variable-exponent integer powers
-            # are not yet supported. Dispatch this bounded residue degree to
-            # constant exact powers; PARI's word-power fast path is an explicit
-            # arithmetic-leaf substitution, not presumed equal backend cost.
+            if construct_primes == 2:
+                if packet_inert[packet] == 0:
+                    pari_basis_multiplication_table(
+                        basis_table, hnf_generator, n, hnf_matrix
+                    )
+                pari_integral_ideal_mul_two(
+                    power_ideal,
+                    hnf_matrix,
+                    packet_primes[packet],
+                    n,
+                    packet_inert[packet],
+                    packet_primes[packet],
+                    product_primitive,
+                    product_matrix,
+                    power_work,
+                    power_triangular,
+                    power_moduli,
+                    admission_ideal,
+                )
+            else:
+                pari_prime_ideal_hnf(
+                    basis_table,
+                    hnf_generator,
+                    n,
+                    packet_primes[packet],
+                    packet_inert[packet],
+                    hnf_matrix,
+                    hnf_work,
+                    hnf_pivots,
+                    admission_ideal,
+                )
             residue_degree = admission_group_f[selected - 1]
             if residue_degree < 1 or residue_degree > n:
                 raise ValueError("invalid prime residue degree")
-            if residue_degree == 1:
-                ideal_norm = packet_primes[packet]
-            elif residue_degree == 2:
-                ideal_norm = packet_primes[packet] ** 2
-            elif residue_degree == 3:
-                ideal_norm = packet_primes[packet] ** 3
-            else:
-                ideal_norm = packet_primes[packet] ** 4
+            ideal_norm = pari_nonnegative_integer_power(
+                packet_primes[packet], residue_degree
+            )
+            if construct_primes == 2:
+                ideal_norm *= power_metadata[3]
         preparation_state[0] = 0
         status = pari_collect_unreduced_ideal(
             matrix,

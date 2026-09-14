@@ -11,6 +11,12 @@ historical accounting gaps are not erased by this new, separate allowance.
 Execution checks in this block will record child user and system CPU time;
 compilation included in such checks is conservatively charged too.
 
+The user subsequently requested subagent help. One read-only reviewer reported
+approximately 360 active seconds, without an initial clock timestamp. Reserve
+its full 15-minute task allowance conservatively: the root ceiling is now
+85,020 seconds. No other subagent is allocated in this block. The review ran
+no builds or benchmarks and did not share the timing workload.
+
 The first priorities are connecting the distinguished-ideal relation path and
 obtaining a qualified work-matched comparison. The full prepared-field
 class-group objective, frozen inputs, PARI 2.17.4 pin, safety limits and
@@ -71,6 +77,74 @@ Subtotal: 289.669289 CPU seconds. Subsequent executions must be appended before
 claiming a complete block total. The meter reports aggregate reaped child
 usage, including descendants; it is not a machine-wide resource limiter or a
 qualified benchmark timer. Prior-block missing accounting remains missing.
+
+### Distinguished-prime power connected to the resident collector
+
+`prime_ideal_power.py` follows the positive `idealpowprime`, `idealsqrprime`
+and prime `idealpow_aux` branches: first-power and square shortcuts, ramified
+content, element powers, residue reduction, two-element HNF and content
+restoration. The existing multiplication-table construction is extracted into
+a shared source helper. `zk_scalar_or_multable`'s scalar-column recognition
+is preserved before HNF, without changing the retained two-element result tag.
+
+Mode 2 of `pari_collect_unreduced_ideals` constructs the distinguished ideal
+power once, multiplies it by each visited prime, and passes its HNF and norm
+through reduction, enumeration and relation admission in the same native
+closure. Its descriptor and exponent are still supplied: the new connected
+test uses `e0=2`, not upstream `logint0` selection. Factor-base preparation,
+`L_jid` discovery, unported numerical/factorization paths and the whole class
+group driver are still outside. This is not a completed `small_norm` port.
+
+The expanded prime-power oracle checks 580 cases over 58 prime ideals in the
+same four tuning fields, including 100 ramified and 30 inert cases. Exponents
+are 1, 2, 3, 4, 7, 12, 31, 255, 256 and 511. All two-element outputs match
+PARI/CPython/JS/GMP; 390 HNFs match and 190 explicitly reject the existing
+word-modulus limit. These rejects are not successes. Fixed 1,024-word buffers
+also hold metadata for large exponents; input-height assertions justify the
+declared capacity without loosening compiler or HNF safety limits. The oracle
+includes pinned upstream `base4.c` to expose its static routine, not a C
+reimplementation. Trace:
+`0b239079a72515d913cf9c97ee8b1c6ad1369c4c532cfcb68aeae7dd64521990`.
+
+All 16 connected distinguished scenarios match relation/generator records,
+counters and terminal state across PARI, CPython, JavaScript and GMP. CPython
+instrumentation checks one power construction and one preparation per actually
+visited ideal; upstream trivial-relation skips and terminal idempotence are
+retained. A short residue-degree descriptor buffer now fails before mutation.
+Trace: `9634c8078e5b442b0c6182f3028c77a57602829a5fcec53bf244fba3ef34e2eb`.
+Original constructed-prime and supplied-HNF modes retain their prior
+`517bae7177fcc6c56ee1a6c504e11669a7d189da3b73311dd9962e7eb1c13eeb` trace.
+
+An independent read-only source review found no in-domain arithmetic defect;
+its descriptor-validation and upper-exponent coverage recommendations were
+implemented and checked. These are local correctness results, not qualified
+timings or whole-engine parity. The earlier connected build before the final
+descriptor guard emitted 24,541,528 core-C bytes and a 3,898,048-byte addon;
+this size observation is not a fresh artifact pin for later source changes.
+
+Additional conservative CPU ledger (seconds, including compilation):
+
+| Execution | User | System | Outcome |
+| --- | ---: | ---: | --- |
+| Initial prime powers | 17.015336 | 1.192084 | 406 cases pass within stated limits |
+| Formatter | 9.916654 | 0.560554 | Pass |
+| Shared prime-HNF helper regression | 4.637964 | 0.611563 | 178 cases pass |
+| First connected distinguished run | 102.084661 | 3.283211 | Pass; precedes scalar-column review fix |
+| Formatter | 9.891866 | 0.543401 | Pass |
+| Prime powers after scalar recognition | 17.562151 | 1.348090 | Pass |
+| Connected with one-power instrumentation | 102.864648 | 3.341205 | Pass |
+| Constructed-prime old mode | 32.833193 | 2.038133 | Pass |
+| Prime-power invalid-exponent guards | 6.232166 | 0.941967 | Pass |
+| Supplied-HNF old mode | 32.465909 | 1.788212 | Pass |
+| Strict Python | 75.711609 | 3.176388 | Pass |
+| Expanded boundary exponents | 7.112425 | 0.855876 | 580 cases within stated limits |
+| Connected with descriptor guard | 101.282520 | 3.382847 | Pass |
+| Changed-file gate against de4164d04 | 140.311763 | 27.826874 | Merge gate passes; known module-cache `Any` failure; 233 unit files not started |
+| Architecture | 10.794052 | 2.316982 | Known stale optimizer manifest failure |
+| Separate generated-doc check | 2.204257 | 0.196330 | Pass |
+
+Combined continuation subtotal through these runs: 1,015.994180 CPU seconds.
+Later qualification/setup runs must be added to this subtotal.
 
 ## Bounded checkpoint assessment: the full objective is not achieved
 
