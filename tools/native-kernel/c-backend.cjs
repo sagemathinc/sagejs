@@ -1418,6 +1418,9 @@ function emitExactOperation(operation, context, indent) {
       `${indent}${target} = mpz_get_d(${source});`,
     ].join("\n");
   }
+  if (operation.kind === "float64.abs") {
+    return `${indent}${exactValue(operation.target, context)} = fabs(${exactValue(operation.source, context)});`;
+  }
   if (operation.kind === "float64.frexp") {
     const [mantissa, exponent] = operation.results.map(result => exactValue(result.name, context));
     const source = exactValue(operation.source, context);

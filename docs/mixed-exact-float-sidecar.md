@@ -1,5 +1,20 @@
 # Mixed exact/binary64 prerequisite checkpoint
 
+## Mixed scalar absolute value
+
+The connected `Babai_fast` prototype exposed rejection of `abs(Float64)` in
+an exact-buffer function. Pure-float lowering already supported this operation;
+the mixed frontend incorrectly coerced every operand to an integer. It now
+selects the existing `float64.abs` operation by operand type, with exact-path
+C `fabs` and JS `Math.abs` emission and liveness tracking. Integer behavior is
+unchanged. The binary64 differential suite exercises all 2,625 existing values
+through a mixed buffer/exponent function, including negative zero and NaNs;
+all four focused log/scaling tests pass. These are correctness checks, not a
+performance measurement. Broad build/architecture gaps below remain open.
+
+The prototype's next compile failure is `break` targeting a `range` loop;
+this change does not address or hide that separate control-flow limitation.
+
 ## Portable root names and relative imports
 
 The class-group branch's changed-file checks exposed a production inventory

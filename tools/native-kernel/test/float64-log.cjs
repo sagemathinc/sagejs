@@ -29,6 +29,9 @@ def mutable(values: Float64Buffer, exponent: int) -> int:
     values[0] = scale(values[0], exponent)
     return 1
 @native
+def mixed_absolute(values: Float64Buffer, exponent: int) -> float:
+    return abs(scale(values[0], exponent))
+@native
 def mixed_tuple(x: float, exponent: int) -> tuple[float, int, float]:
     return x, exponent, -x
 @native
@@ -83,6 +86,7 @@ print(json.dumps([parts,scales]))`],{encoding:"utf8",timeout:30000,input:JSON.st
       assert.equal(got[1],BigInt(parts[i][1]));
       equal(mod.roundtrip[backend](values[i]),values[i],`roundtrip ${i} ${backend}`);
       equal(mod.local[backend](values[i]),values[i],`local ${i} ${backend}`);
+      equal(mod.mixed_absolute[backend]([values[i]],0n),Math.abs(values[i]),`mixed abs ${i} ${backend}`);
       equal(mod.nativeFrexp[backend](values[i]),values[i],"compiler helper name hygiene");
       const tuple=mod.mixed_tuple[backend](values[i],1n<<100n);
       equal(tuple[0],values[i],"mixed tuple first float");
