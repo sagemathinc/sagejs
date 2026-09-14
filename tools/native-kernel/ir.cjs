@@ -27,7 +27,7 @@ const {
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 const { isBundleClass, prepareWorkspaceBundles } = require("./workspace-bundles.cjs");
 
-const IR_VERSION = 39;
+const IR_VERSION = 40;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -722,7 +722,7 @@ function supportedModulePreamble(statement) {
     const moduleName = item.module?.name;
     const names = array(item.argnames).map((arg) => arg.name);
     return (
-      !item.level && moduleName === "math" && names.every((name) => ["sqrt", "gcd", "log", "log2", "pow"].includes(name))
+      !item.level && moduleName === "math" && names.every((name) => ["sqrt", "gcd", "log", "log2", "pow", "ldexp", "frexp"].includes(name))
     ) || (
       moduleName === "typing" && names.every((name) => name === "Tuple")
     ) || (
@@ -1006,7 +1006,7 @@ async function lowerSource(source, filename, options = {}) {
       }
       if (item.level || item.module?.name !== "math") continue;
       for (const imported of array(item.argnames)) {
-        if (["gcd", "log", "log2", "pow"].includes(imported.name)) mathFunctions.set(imported.alias?.name || imported.name, imported.name);
+        if (["gcd", "log", "log2", "pow", "ldexp", "frexp"].includes(imported.name)) mathFunctions.set(imported.alias?.name || imported.name, imported.name);
       }
     }
   }
@@ -1141,9 +1141,19 @@ async function lowerSource(source, filename, options = {}) {
     const expanded = workspaces.lower(fn);
     fn = expanded.fn;
     const signature = signatures.get(fn.name.name);
+    // These binary64 operations and typed helper calls may carry exact integer
+    // locals even when the public signature contains only floats. The pure
+    // buffer lowering does not admit native calls; use the mixed typed body.
+    let integerExponentMath = false;
+    fn.walk({_visit(node, descend) {
+      if (nodeType(node) === "AST_Call" && nodeType(node.expression) === "AST_SymbolRef" &&
+          (["ldexp", "frexp"].includes(mathFunctions.get(node.expression.name)) ||
+            signatures.has(node.expression.name))) integerExponentMath = true;
+      if (descend !== undefined) descend();
+    }});
     const result = signature === undefined
       ? lowerLegacyFunction(fn, decoratedMode)
-      : isFloat64Signature(signature)
+      : isFloat64Signature(signature) && !integerExponentMath
         ? lowerFloat64Function(
             fn,
             signature,

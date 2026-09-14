@@ -364,6 +364,9 @@ function internalResults(fn, type) {
       if (elementType === "bool") {
         return `int *sagejs_native_output_${index}`;
       }
+      if (elementType === "Float64") {
+        return `double *sagejs_native_output_${index}`;
+      }
       throw new Error(`unsupported exact tuple element ${elementType}`);
     });
   }
@@ -1415,6 +1418,31 @@ function emitExactOperation(operation, context, indent) {
       `${indent}${target} = mpz_get_d(${source});`,
     ].join("\n");
   }
+  if (operation.kind === "float64.frexp") {
+    const [mantissa, exponent] = operation.results.map(result => exactValue(result.name, context));
+    const source = exactValue(operation.source, context);
+    const localExponent = context.freshIdentifier("sagejs_float_exponent");
+    return `${indent}{
+${indent}    int ${localExponent} = 0;
+${indent}    ${mantissa} = isfinite(${source}) ? frexp(${source}, &${localExponent}) : ${source};
+${indent}    mpz_set_si(${exponent}, ${localExponent});
+${indent}}`;
+  }
+  if (operation.kind === "float64.ldexp") {
+    const source = exactValue(operation.source, context), exponent = exactValue(operation.exponent, context);
+    const localExponent = context.freshIdentifier("sagejs_float_exponent");
+    // Any binary64 value scaled beyond these exponents already over/underflows.
+    // Clamp before converting arbitrary Python integers to the C int argument.
+    return `${indent}{
+${indent}    int ${localExponent} = mpz_cmp_si(${exponent}, 4096) > 0 ? 4096 :
+${indent}        mpz_cmp_si(${exponent}, -4096) < 0 ? -4096 : (int)mpz_get_si(${exponent});
+${indent}    ${target} = ldexp(${source}, ${localExponent});
+${indent}    if (isinf(${target}) && isfinite(${source})) {
+${statusFailure("range", "math range error", indent + "        ")}
+${indent}        goto fail;
+${indent}    }
+${indent}}`;
+  }
   if (operation.kind.startsWith("float64.")) {
     return emitFloat64Operation(operation, indent);
   }
@@ -1859,6 +1887,8 @@ function exactDeclarations(fn) {
   }
   const context = {
     storage,
+    freshIdentifier: createIdentifierAllocator([...fn.params, ...fn.locals].flatMap(value =>
+      [cName(value.name), `sagejs_arg_${value.name}`])),
     liveIntegerVectorParameters: new Set(
       fn.params
         .filter((param) => param.type === "NativeIntegerVector")

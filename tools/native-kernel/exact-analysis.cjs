@@ -32,11 +32,14 @@ function operationInputs(operation) {
     case "float64.from_integer_checked":
     case "float64.log":
     case "float64.log2":
+    case "float64.frexp":
     case "integer.from_float64":
     case "bool.not":
     case "uint64.truth":
     case "value.discard":
       return [operation.source];
+    case "float64.ldexp":
+      return [operation.source, operation.exponent];
     case "integer.pow_uint":
       return [operation.base];
     case "integer.mod_uint64":
@@ -631,6 +634,7 @@ function localEffects(fn) {
       if (operation.kind === "float64.from_integer_checked") {
         mayRaise.add("OverflowError");
       }
+      if (operation.kind === "float64.ldexp") mayRaise.add("OverflowError");
       if (operation.kind === "integer.from_float64") {
         mayRaise.add("ValueError");
         mayRaise.add("OverflowError");
