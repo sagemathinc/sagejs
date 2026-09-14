@@ -1,5 +1,31 @@
 # Faithful PARI class-group language experiment
 
+## Prime-group admission loop checkpoint
+
+`pari_prepared_divide_prime` connects the element and HNF valuations through
+`buch2.c:divide_p_elt`, `divide_p_id` and `divide_p_quo`. It retains prime order,
+one-based factor indices, early success when the remaining norm valuation is
+zero, and partially appended factor entries on failure. The quotient branch
+retains the upstream zero-element-valuation skip before calling idealval.
+
+574 controls match the **actual static upstream helpers**, compiled into an
+untimed driver by including the pinned local `buch2.c`; the oracle does not
+reimplement their admission loops. It exercises complete and truncated prime
+groups, three modes, and an existing factor entry before appending. CPython,
+generated JS, GMP and tagged outputs agree, including failure-side writes.
+The prepared group and norm's rational-prime valuation remain supplied inputs.
+
+Integer factorization is still a dependency: `absZ_factor` enters PARI's
+word/multiword factoring systems, including fast product-GCD trial division,
+primality tests and subsequent factor algorithms. Sage.js's existing FLINT
+integer-factorization entry is a host callback, not a declared isolated-core
+call. Neither opaque host factorization nor trial division is silently inserted
+into this path. This checkpoint does not complete `can_factor` or `factorgen`.
+
+```text
+SAGEJS_FLINT_PREFIX=<prefix> node bench/pari-class-group-port/check_compiled_divide_prime.cjs <pari-2.17.4-source>
+```
+
 ## Integral-HNF ideal valuation checkpoint
 
 `pari_prepared_hnf_valuation` now follows `idealval`'s integral matrix branch:

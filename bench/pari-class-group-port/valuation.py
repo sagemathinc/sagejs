@@ -11,6 +11,99 @@ from math import gcd
 
 
 @native
+def pari_prepared_divide_prime(
+    coordinates: IntegerBuffer,
+    ideal: IntegerBuffer,
+    group_tau: IntegerBuffer,
+    group_e: IntegerBuffer,
+    group_f: IntegerBuffer,
+    group_inert: IntegerBuffer,
+    tau: IntegerBuffer,
+    x: IntegerBuffer,
+    y: IntegerBuffer,
+    spare: IntegerBuffer,
+    stack: IntegerBuffer,
+    primitive: IntegerBuffer,
+    columns: IntegerBuffer,
+    values: IntegerBuffer,
+    temporary: IntegerBuffer,
+    indices: IntegerBuffer,
+    exponents: IntegerBuffer,
+    degree: int,
+    prime: int,
+    prime_count: int,
+    index_base: int,
+    norm_valuation: int,
+    mode: int,
+    count: int,
+) -> tuple[int, int]:
+    """Translate buch2.c divide_p_elt/id/quo from one prepared LP group.
+
+    mode=0 is element, 1 integral-HNF ideal, 2 element/ideal quotient. The
+    factorization of the norm supplies norm_valuation; it is not computed here.
+    Preserve one-based factor indices, order, early exit, and partial output on
+    failure. The quotient branch skips a zero element valuation *before*
+    computing idealval, exactly as upstream. Inputs obey upstream integrality.
+    """
+    if mode < 0 or mode > 2 or count < 0 or prime_count < 0:
+        raise ValueError("invalid prepared divide_p input")
+    remaining = norm_valuation
+    for j in range(prime_count):
+        for i in range(degree * degree):
+            tau[i] = group_tau[j * degree * degree + i]
+        value = 0
+        if mode == 1:
+            value = pari_prepared_hnf_valuation(
+                ideal,
+                tau,
+                primitive,
+                columns,
+                values,
+                temporary,
+                degree,
+                prime,
+                group_e[j],
+                group_f[j],
+                group_inert[j],
+            )
+        else:
+            value = pari_prepared_ideal_valuation(
+                coordinates,
+                tau,
+                x,
+                y,
+                spare,
+                stack,
+                degree,
+                prime,
+                group_e[j],
+                group_inert[j],
+            )
+            if value != 0 and mode == 2:
+                value -= pari_prepared_hnf_valuation(
+                    ideal,
+                    tau,
+                    primitive,
+                    columns,
+                    values,
+                    temporary,
+                    degree,
+                    prime,
+                    group_e[j],
+                    group_f[j],
+                    group_inert[j],
+                )
+        if value != 0:
+            indices[count] = index_base + j + 1
+            exponents[count] = value
+            count += 1
+            remaining -= value * group_f[j]
+            if remaining == 0:
+                return 1, count
+    return 0, count
+
+
+@native
 def pari_scalar_pval_control(x: int, prime: int) -> int:
     """Exact scalar valuation leaf; repeated division, not PARI's tuned kernel."""
     if x == 0 or prime < 2:
