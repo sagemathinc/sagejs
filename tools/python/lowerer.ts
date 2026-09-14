@@ -3131,7 +3131,7 @@ export class PythonCstLowerer {
       return this.make("AST_EmptyStatement", node, { stype: "scoped_flags" });
     }
     if (node.type === "import_from_statement" && sourceKey === "typing" &&
-        !this.options.runtime_imports) {
+        this.options.compiler_bootstrap) {
       return this.make("AST_EmptyStatement", node);
     }
     const imports: any[] = [];

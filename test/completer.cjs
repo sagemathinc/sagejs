@@ -32,6 +32,9 @@ function printAST(ast, keepBaselib = false) {
     beautify: true,
     keep_docstrings: true,
     exact_integers: true,
+    python_tuples: true,
+    python_truthiness: true,
+    python_attributes: true,
     baselib_plain: keepBaselib
       ? readFileSync(
           `${libraryPath}/baselib-plain-pretty.js`,
@@ -69,6 +72,14 @@ const ast = sageFrontend.parse(source, {
   basedir: process.cwd(),
   libdir: importPath,
   jsage: true,
+  exact_integer_literals: true,
+  strict_python_scopes: true,
+  scoped_flags: {
+    dict_literals: true,
+    overload_getitem: true,
+    bound_methods: true,
+    sequential_definitions: true,
+  },
 });
 runInThisContext(printAST(ast));
 
