@@ -1,5 +1,32 @@
 # Faithful PARI class-group language experiment
 
+## Connected Babai iteration prototype
+
+`lll_babai.py` translates `lll.c:Babai_fast`, including GSO updates, descending
+size reduction, exact basis/transformation updates, column renormalization,
+Gram refresh and the three-generation exponent stagnation test. Indices are
+zero-based in independent flat resident buffers. The `zeros` count and exclusive
+Gram bound are documented at the boundary. PARI's specialized signed small-word
+multiply/add operations currently use exact Python multiplication and shifting;
+this preserves values but is a storage/allocation substitution to measure.
+
+The compiler prerequisites through `098dfdf46` remove mixed absolute-value,
+range-transfer, rounding, conversion and borrowed-float-helper obstructions.
+`check_lll_babai.cjs PARI_DIRECTORY PARI_ARCHIVE` checks 28 synthetic complete
+Babai calls in dimensions 3 and 4 with both signs and shifts up to 2098 bits.
+The pinned source oracle, CPython, generated JS and GMP-native agree on basis,
+transformation, GSO/Gram/approximation buffers, exponents, scratch `s` and return
+status. Native test buffers predeclare 64 words per integer, since the default
+eight-word transformation capacity is insufficient for these large outputs.
+The first native run hit that capacity; this was not an upstream stopping rule.
+
+This is not full LLL or actual prepared-field coverage yet. In particular, a
+zero floating GSO divisor explicitly raises an untranslated-boundary error
+rather than pretending to reproduce C's infinity/NaN behavior. The synthetic
+inputs use orthogonal preceding columns and do not cover every reduction or
+stagnation branch. The fast LLL outer loop and mandatory DPE pass remain open.
+No speed or whole-engine correctness claim follows from this checkpoint.
+
 ## Babai's C scaling policy
 
 `pari_lll_scale` translates the overflow policy at `Babai_fast`'s C `ldexp`
