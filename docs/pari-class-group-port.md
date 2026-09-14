@@ -1,5 +1,58 @@
 # Faithful PARI class-group language experiment
 
+## Representation probe: tagged arithmetic is not automatically faster
+
+`probe_arithmetic_backends.cjs PARI_DIRECTORY FLINT_PREFIX` compares the exact
+same translated short-product body in generated GMP and tagged C. Add
+`--signed-addition` for signed real sums, `--precision-192` for records where
+both operand precisions are 192 bits, and `--compiler-root=PATH` to test a
+compiler prerequisite without merging it first. The generated-core adapter
+also accepts `--core=PATH` instead of a compiler selection to inspect an
+already generated core; every report includes its SHA-256. The adapter
+preloads operands and validates the last result of every repeated
+case against pinned PARI oracle records. It contains no arithmetic algorithm.
+One warmup is discarded; three alternating pairs use 200 repetitions per
+record. These short, unpinned diagnostics are **not qualified performance**.
+Tagged arguments can be promoted by a callee without changing their values.
+The current probe resets their representation outside every call timer and
+reuses output storage; each call has its own timer. The initial measurements
+in the next two paragraphs reused argument representation and are retained
+only as historical diagnostics, not fresh-state comparisons.
+
+With compiler 68fbe4029, all 228 products and 1,344 signed sums agree, but tagged
+execution is slower: products take 209–212 ms versus GMP's 139 ms, and signed
+sums 431–433 ms versus GMP's 264–266 ms. The three product records with both
+precisions 192 also show no tagged advantage (1.47–1.50 ms versus 0.80–0.94 ms);
+that small subset is not a representative collector workload. This changes the
+next action: do not assume adding mixed Float64/tagged support will close the
+collector gap.
+
+Inspection found the tagged shift helper promoted even small read-only counts
+to GMP. A compiler-lane candidate keeps those counts small and handles small
+results directly, with unchanged Python semantics and allocation caps. The
+same product/sum probe then passes with tagged totals 193–195 ms / 383 ms,
+still slower than GMP's 135–136 ms / 258–263 ms. Baseline core identity is
+`448a57cf09bd0c0affe395cbab3878dd575dec344eb5d7da9c0b6455bcddc17a`;
+candidate identity is
+`5f8423d30f31f5a49f43ed44dd05b7fa221c0b3c079beb75adce531748f75e86`.
+No collector speedup follows while its mixed entry still selects GMP. Ordinary
+word arithmetic versus multiprecision limb arithmetic remains a representation
+difference to diagnose rather than attribute entirely to the source language.
+With fresh argument representation, the baseline product totals are 199–201 ms
+tagged versus 139 ms GMP; signed sums are 386–393 ms versus 259–262 ms. The
+negative finding therefore survives the measurement correction. With the same
+corrected boundary, the candidate takes 187.6–187.9 ms for tagged products and
+364.6–370.1 ms for tagged sums (GMP: 136.5–137.4 ms and 260.4–262.4 ms).
+Candidate core SHA-256:
+`9a4d9cfcd1fbd8a44b22234bc45b9d7739065881e28a4dea38de4fc8707033d2`.
+These before/after runs were separate and the host was not quiet/pinned;
+the defensible finding is a narrow promising correction with a remaining gap,
+not a qualified percentage improvement. All records still match.
+The probe's changed-file gate passes merge invariants and then fails in
+`test/algebraic-geometry.cjs`; later unit work and docs checks are not qualified.
+The compiler correction separately passes focused differential/UBSan checks,
+but its full build stops at the known missing FFLAS `libgivaro.a` dependency.
+
 ## Connected unreduced-ideal collector checkpoint
 
 `unreduced_ideal_collector.py` now connects ideal preparation and resident

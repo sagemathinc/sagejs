@@ -518,6 +518,66 @@
       "commit": "1221b5432e207fabcb17d2d63ef7d8fc24c1eff2",
       "workspace_fingerprint": "5a4c5a4ff2078737230008e9fcddcbdb23d790abb72e2c5b70af979bc76a4e45",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/probe_arithmetic_backends.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /home/user/sagejs/packages/flint/.native/prefix",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.43,
+      "started_at": "2026-09-14T11:34:10.287Z",
+      "commit": "583ee83bad604973e131e080fcf0f1842191a561",
+      "workspace_fingerprint": "148f5b516d94cfaf179608e6521e7185675442d8fafe49ccaa6524ee6d12f85f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/probe_arithmetic_backends.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /home/user/sagejs/packages/flint/.native/prefix --signed-addition",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.387,
+      "started_at": "2026-09-14T11:34:40.763Z",
+      "commit": "583ee83bad604973e131e080fcf0f1842191a561",
+      "workspace_fingerprint": "d2ee5f297b98b5cb63d039f465dcc5d2af60774e6639abe2d4d2f393ec92ae2d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/probe_arithmetic_backends.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /home/user/sagejs/packages/flint/.native/prefix --signed-addition",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.305,
+      "started_at": "2026-09-14T11:39:16.990Z",
+      "commit": "583ee83bad604973e131e080fcf0f1842191a561",
+      "workspace_fingerprint": "bd6ceb0c8b443dda896eececcdc9e071f69376b6fd9f90c9cc0dc899cf016934",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base HEAD",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 46.269,
+      "started_at": "2026-09-14T11:40:00.120Z",
+      "commit": "583ee83bad604973e131e080fcf0f1842191a561",
+      "workspace_fingerprint": "bd6ceb0c8b443dda896eececcdc9e071f69376b6fd9f90c9cc0dc899cf016934",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/probe_arithmetic_backends.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /home/user/sagejs/packages/flint/.native/prefix --signed-addition --core=/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/5f8423d30f31f5a49f43ed44dd05b7fa221c0b3c079beb75adce531748f75e86/kernel_core.c",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.973,
+      "started_at": "2026-09-14T11:49:32.972Z",
+      "commit": "583ee83bad604973e131e080fcf0f1842191a561",
+      "workspace_fingerprint": "88f31f327e517c160096e811ff32305d793ea0bb812824fbc4fabad6f8cebc21",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/probe_arithmetic_backends.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /home/user/sagejs/packages/flint/.native/prefix --core=/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/5f8423d30f31f5a49f43ed44dd05b7fa221c0b3c079beb75adce531748f75e86/kernel_core.c",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.944,
+      "started_at": "2026-09-14T11:50:35.035Z",
+      "commit": "583ee83bad604973e131e080fcf0f1842191a561",
+      "workspace_fingerprint": "452bc90cca265facb44e087ade5d0878ffc043abfa8ee92aa51d168a2eb045a4",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
