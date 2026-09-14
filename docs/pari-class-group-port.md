@@ -104,14 +104,24 @@ All 1,600 cases pass in CPython, dynamic JavaScript and GMP-native execution.
 Repository strict-Python checks pass; the full architecture gate still fails
 at the previously recorded stale optimizer-opportunity manifest.
 
-This connection exposed an unresolved native JavaScript emitter defect: a
+This connection exposed a native JavaScript emitter defect: a
 legal Python local named `new` was emitted literally in a JavaScript `let`
 declaration, causing `SyntaxError: Unexpected token 'new'`. The root routine
 now uses the more descriptive `next_accuracy`; this does not fix the general
 identifier-escaping defect. The failing generated module was
 `ee79cec3821098a6de1b4633c3552c5f89c5f1627bb13d887a314af7008e90d2/index.cjs`.
-This is a compiler obstruction, not a PARI algorithm discrepancy, and needs
-a focused compiler-lane regression and correction.
+This was a compiler obstruction, not a PARI algorithm discrepancy. Compiler
+commit `ea2e85191`, now merged into this branch, fixes reserved parameter/local
+bindings in a backend-private IR copy and preserves buffer write-effect lookup
+under the source names. Its regression checks the `new` failure, tuple calls,
+loops, branching, replacement-name collisions and exact/Float64 copy-back.
+The descriptive root local remains; no source-level workaround is required
+for this reserved-binding case now. Public function-name collisions and general
+runtime-helper shadowing are outside the focused correction.
+After merging the correction, the connected 24-case candidate-batch oracle
+still passes CPython/JS/GMP with three batch sizes and three matching
+exhaustions. Compiler-focused call/import checks pass (one unavailable-Wasm
+skip), while the known architecture-manifest failure remains visible.
 
 ```sh
 SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
