@@ -753,6 +753,45 @@ found `5a861be64dd133755c35ef93f89fcc2f4a68846f62c6c1553b9a013e8cbef5dc`).
 That is not a passing architecture receipt and has not been waived.
 This checkpoint makes no new performance or production-capture-policy claim.
 
+### Shared exception initialization and binding capture
+
+Argument-binding failures now allocate an owned Python exception with the native
+`TypeError.prototype` and share message, context and stack initialization with
+`BaseException`. The old binding path constructed a native `TypeError` (capturing
+a stack) and then captured another stack to exclude the unentered target. The
+new path captures once in native mode and zero times under the explicit
+experimental records switch. A fresh native argument array is transferred to
+the tuple finalizer without decorating an intermediate Python list. Existing
+argument-tuple ownership and initialization order are retained.
+
+The JavaScript representation is intentional: these owned errors satisfy
+`instanceof TypeError` and `instanceof Error`, but do not have the engine's exotic
+native-error brand (`util.types.isNativeError`). This matches the ownership
+model already used by Python `ValueError`; foreign JavaScript errors are not
+converted and retain their identity and original stacks. Python `type`,
+`isinstance`, tuple `args`, context, message descriptors, lazy formatting, target
+frame exclusion and no-`captureStackTrace` diagnostics have regression checks.
+
+The frozen build passes in 7m09s, all 404 strict modules pass, and core source is
+902,857 / 903,000 bytes without changing the allowance. All 168 selected
+exception/diagnostic tests and the pinned pyparsing 3.3.2 workflow pass. Prepared
+namespace failures observed during an overlapping cache build do not recur on
+the final frozen artifacts; that provisional run is not qualification evidence.
+The prepared-keyword oracle file is 52/54: its two existing reentrant custom
+`__getattribute__` failures remain open in Python and Sage modes. They are not
+waived by this exception checkpoint.
+
+Frozen Python/Sage binding probes pass in native and records modes on Linux
+x64/ARM64, macOS ARM64 and native Windows. The probes cover ordinary and
+generator binding, nested exception context, exact logical caller records,
+capture counts and foreign error preservation. Their source hashes are
+`626040db00d2f27f29af4860dc46421319381ee72192aca7eb1d0e47be3173ac`
+and `f0a0d4be61dc421a18818293c54f6598cb077fc5e08682fa272b15ed9266b82b`.
+Evidence lives in `/home/user/exception-binding-pair.j4mN5E` and the matching
+`exception-binding.*` directories on the four hosts. These targeted probes do
+not replace full product/platform qualification. Blanket native suppression
+remains experimental; this change does not resolve opaque ancestry.
+
 ### Keyword hook disambiguation
 
 Plain keyword packets now treat callable `keys`, `__getitem__`, and

@@ -49,6 +49,13 @@ def replaced_in_finally():
         leaf()
     finally:
         raise KeyError('cleanup')
+def needs_argument(value):
+    return value
+def binding_caller():
+    try:
+        needs_argument()
+    except TypeError as error:
+        return error
 `;
 for (const mode of ["python", "sage"]) test(`${mode}: compiler unwind records avoid native capture`, async () => {
   const compiler = createCompiler(), frontend = await createPythonCompilerFrontend(compiler, mode);
@@ -112,6 +119,11 @@ for (const mode of ["python", "sage"]) test(`${mode}: compiler unwind records av
     assert.equal(caught.name,'KeyError');
     assert.deepEqual(frames(caught).map(frame=>frame[0]),['replaced_in_finally']);
     assert.deepEqual(frames(caught.__context__).map(frame=>frame[0]),['replaced_in_finally','leaf']);
+    const binding = functions.binding_caller();
+    assert.equal(binding.name, 'TypeError');
+    assert.deepEqual(frames(binding).map(frame=>frame[0]), ['binding_caller']);
+    assert.equal(binding.args.length, 1);
+    assert.match(binding.args[0], /value/);
     assert.equal(captures,0);
     context.__sagejs_traceback_records_enabled__ = false;
     const native = functions.constructed();

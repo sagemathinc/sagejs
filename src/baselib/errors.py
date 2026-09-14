@@ -86,12 +86,15 @@ def ρσ_function_argument_error(
     target_function: object,
 ) -> object:
     """Create a call-site binding error with active exception context."""
-    error = runtime.type_error(message)
-    capture = runtime.error.captureStackTrace
-    if runtime.strict_equal(runtime.jstype(capture), "function"):
-        runtime.reflect.apply(capture, runtime.error, [error, target_function])
+    error = runtime.object.create(
+        runtime.type_error.prototype,
+        {"message": {"value": message, "writable": True, "configurable": True}},
+    )
+    error.args = runtime.reflect.apply(
+        runtime.math_tuple, runtime.undefined, [runtime.array.of(message)]
+    )
     runtime.reflect.set(error, "__sagejs_argument_error__", True)
-    return ρσ_prepare_raise(error)
+    return ρσ_prepare_raise(_initialize_exception(error, target_function))
 
 
 def ρσ_positional_default(target_function: Any, from_end: int, name: str) -> Any:
@@ -108,41 +111,44 @@ def ρσ_positional_default(target_function: Any, from_end: int, name: str) -> A
     return defaults[defaults.length - from_end]
 
 
+def _initialize_exception(error: Any, target: Any) -> Any:
+    args = error.args
+    count = runtime.native_get(args, "length")
+    if runtime.strict_equal(count, 0):
+        message = ""
+    elif runtime.strict_equal(count, 1):
+        message = runtime.string(args[0])
+    else:
+        message = runtime.repr(args)
+    error.message = message
+    python_name = error.constructor.__name__
+    error.name = (
+        error.constructor.name
+        if python_name is runtime.undefined
+        else runtime.string(python_name)
+    )
+    logical = runtime.global_object.__sagejs_traceback_records_enabled__ is True
+    error.__sagejs_logical_exception__ = logical
+    error.__traceback__ = None if logical else error
+    if not logical:
+        capture = runtime.error.captureStackTrace
+        if runtime.strict_equal(runtime.jstype(capture), "function"):
+            # Capture once, format lazily; omit an unentered binding target.
+            runtime.reflect.apply(capture, runtime.error, [error, target])
+        else:
+            native = runtime.error(message)
+            native.name = error.name
+            error.stack = native.stack
+    error.__cause__ = error.__context__ = None
+    error.__suppress_context__ = False
+    return error
+
+
 class BaseException(runtime.error):
     def __init__(self, *args: object) -> None:
-        # The baselib variadic ABI already copies arguments into a fresh
-        # native array. Transfer that array to the tuple finalizer: copying
-        # it again adds allocation without protecting any caller-owned data.
-        count = runtime.native_get(args, "length")
+        # Transfer the fresh variadic array without another copy.
         self.args = runtime.reflect.apply(runtime.math_tuple, runtime.undefined, [args])
-        if runtime.strict_equal(count, 0):
-            message = ""
-        elif runtime.strict_equal(count, 1):
-            message = runtime.string(args[0])
-        else:
-            message = runtime.repr(self.args)
-        self.message = message
-        python_name = self.constructor.__name__
-        self.name = (
-            self.constructor.name
-            if python_name is runtime.undefined
-            else runtime.string(python_name)
-        )
-        logical = runtime.global_object.__sagejs_traceback_records_enabled__ is True
-        self.__sagejs_logical_exception__ = logical
-        self.__traceback__ = None if logical else self
-        if not logical:
-            capture = runtime.error.captureStackTrace
-            if runtime.strict_equal(runtime.jstype(capture), "function"):
-                # Capture now, format lazily. The native Error remains the
-                # legacy traceback carrier consumed by traceback.extract_tb.
-                runtime.reflect.apply(capture, runtime.error, [self])
-            else:
-                error = runtime.error(message)
-                error.name = self.name
-                self.stack = error.stack
-        self.__cause__ = self.__context__ = None
-        self.__suppress_context__ = False
+        _initialize_exception(self, _initialize_exception)
 
     def __repr__(self) -> str:
         return self.name + runtime.repr(self.args)
