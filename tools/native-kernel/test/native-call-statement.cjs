@@ -2,6 +2,23 @@
 "use strict";
 const assert=require("node:assert/strict"),fs=require("node:fs"),os=require("node:os"),path=require("node:path"),test=require("node:test");
 const {compileKernel,}=require("../compiler.cjs"),{lowerSource}=require("../ir.cjs");
+test("exact kernels publish Float64 results without integer reinterpretation",async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-exact-float-result-")),source=path.join(dir,"result.py");
+  fs.writeFileSync(source,`from sagejs.native import native, checked_float64
+@native
+def scalar(x:int)->float:
+    if x == 0:
+        return -0.0
+    return checked_float64(x)/2.0
+@native
+def caller(x:int)->float:
+    return scalar(x)
+`);
+  const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  for(const name of ['scalar','caller'])for(const fn of [mod[name],mod[name].gmp,mod[name].javascript]){
+    assert.equal(fn(3n),1.5);assert.equal(fn(-3n),-1.5);assert(Object.is(fn(0n),-0));
+  }
+});
 test("integer-only wrappers inherit transitive Float64 backend requirements",async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-transitive-float-")),source=path.join(dir,"calls.py");
   fs.writeFileSync(source,`from sagejs.native import native, checked_float64

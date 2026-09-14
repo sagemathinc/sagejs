@@ -172,6 +172,22 @@ experiment's Python modules merely to compile a connected segment.
 
 ## Imported binary64 logarithm
 
+Mixed exact kernels may return Float64 scalars through native calls and the
+host adapter. The adapter now uses a double result slot and creates a JS
+number, rather than incorrectly selecting an integer slot. The obsolete
+restriction to pure-float scalar callees now also admits checked exact scalar
+parameters; buffer/resource-bearing Float64-returning callees still fail closed
+pending effect qualification. The typed isolated call remains authoritative. Regression
+tests check fractional values and negative zero through direct, nested,
+automatic, GMP and dynamic paths.
+
+Explicit constant-message `OverflowError` is now admitted by exact native
+lowering alongside `ValueError` and `ZeroDivisionError`. It uses the existing
+exception transport, preserving the exception identity through nested calls.
+Focused tests cover automatic, JS, GMP and tagged paths and reject shadowed
+constructors and dynamic messages. PARI's real-to-binary64 conversion motivated
+this addition; the port need not relabel an overflow as a domain error.
+
 Mixed Float64 requirements now propagate through native dependencies, not
 only parameters and locals of the immediate function. An integer-only wrapper
 around a mixed helper selects GMP and explicitly rejects tagged execution;
