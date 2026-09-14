@@ -1,0 +1,57 @@
+{
+  "schema": "sagejs.numerical-statistics-host/v1",
+  "source": "dca0b087308e665f56adb706944e93314708f97e",
+  "started": "2026-09-12T08:00:01.190Z",
+  "platform": "linux",
+  "arch": "x64",
+  "node": "v26.5.1",
+  "nodePath": "/home/user/.local/lib/node-v26.5.1-linux-x64/bin/node",
+  "cpu": "AMD EPYC 7B13",
+  "release": "7.0.0-1011-gcp",
+  "stages": [
+    {
+      "name": "build",
+      "args": [
+        "scripts/build.cjs"
+      ],
+      "elapsedMs": 625471,
+      "status": 0,
+      "signal": null,
+      "error": null,
+      "logSha256": "1e465a74755b88f38eb3bc43548fe8c2c2e40838ef712a0692bb1a67c2f025f4"
+    },
+    {
+      "name": "focused",
+      "args": [
+        "--test",
+        "--test-concurrency=1",
+        "test/numerics/performance/packed-centered.cjs",
+        "test/numerics/performance/prepared-statistics.cjs",
+        "test/numerics/statistics/test.cjs"
+      ],
+      "elapsedMs": 87576,
+      "status": 0,
+      "signal": null,
+      "error": null,
+      "logSha256": "5d8612417e1782652d2d37ef118ac51bc931e25206ab0af022c1e8481e818ae0"
+    },
+    {
+      "name": "opportunity",
+      "args": [
+        "bench/numerics/performance/prepared-statistics.cjs",
+        "--output",
+        "/home/user/sagejs-numerical-statistics-main-20260912/build/numerical-statistics-qualification/opportunity.json"
+      ],
+      "elapsedMs": 224651,
+      "status": 0,
+      "signal": null,
+      "error": null,
+      "logSha256": "09954601a2e4bdd5703f5bca853315f496af8ff3d74ca03fb29dcc26de773de3"
+    }
+  ],
+  "nodeSha256": "fb48e77df2f8e92fedfec39afa60a5f41563441f6b61316ada5fb295a431c2c6",
+  "finalSource": "dca0b087308e665f56adb706944e93314708f97e",
+  "finalClean": true,
+  "completed": "2026-09-12T08:15:39.162Z",
+  "success": true
+}

@@ -398,6 +398,7 @@
     "bench:modular:higher-character-qexp": "node bench/modular/higher-character-qexp/benchmark.cjs",
     "bench:modular:qexp-algebra": "node bench/modular/qexp-algebra/benchmark.cjs",
     "bench:graphs": "node bench/compare-graphs.cjs",
+    "bench:numerics:prepared-statistics": "node bench/numerics/performance/prepared-statistics.cjs",
     "bench:wasm-graph-components": "node bench/wasm-graph-components.cjs --json",
     "bench:modular-symbols": "node bench/compare-modular-symbols.cjs",
     "bench:modular-symbols:checkpoints": "node bench/modsym-checkpoint-pipeline.cjs",

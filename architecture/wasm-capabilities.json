@@ -26,6 +26,15 @@
       "specialist-capability"
     ],
     "test_evidence": {
+      "prepared-statistics-differential": {
+        "differential": true,
+        "paths": [
+          "test/numerics/performance/prepared-statistics.cjs",
+          "test/numerics/performance/prepared-statistics.py",
+          "test/numerics/performance/prepared-statistics-browser.mjs",
+          "test/numerics/performance/packed-centered.cjs"
+        ]
+      },
       "finite-extension-multivariate-boundary": {
         "differential": true,
         "paths": [
@@ -756,6 +765,62 @@
     ]
   },
   "capabilities": [
+    {
+      "id": "kernel:numerical-statistics-sum-production",
+      "kind": "production-kernel",
+      "family": "numerical-statistics-sum",
+      "source": "src/lib/sagejs/numerics/statistics/_packed.py",
+      "disposition": "portable-fallback",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "portable-python",
+      "public_consumers": [
+        "explicit prepared descriptive statistics"
+      ],
+      "tests": [
+        "prepared-statistics-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The production pack compiles 0 of 1 functions. The remaining 1 functions use their tested same-source dynamic fallback (prepared-statistics-browser-storage-not-qualified).",
+      "public_explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 functions.",
+      "compiled_coverage": {
+        "compiled_functions": 0,
+        "fallback_functions": 1,
+        "total_functions": 1,
+        "production_pack": false,
+        "fallback_reasons": [
+          "prepared-statistics-browser-storage-not-qualified"
+        ]
+      }
+    },
+    {
+      "id": "kernel:numerical-statistics-centered-production",
+      "kind": "production-kernel",
+      "family": "numerical-statistics-centered",
+      "source": "src/lib/sagejs/numerics/statistics/_packed_centered.py",
+      "disposition": "portable-fallback",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "portable-python",
+      "public_consumers": [
+        "explicit prepared descriptive statistics"
+      ],
+      "tests": [
+        "prepared-statistics-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The production pack compiles 0 of 3 functions. The remaining 3 functions use their tested same-source dynamic fallback (prepared-statistics-browser-storage-not-qualified).",
+      "public_explanation": "This family uses compiled WebAssembly for 0 of 3 functions and the same-source fallback for 3 functions.",
+      "compiled_coverage": {
+        "compiled_functions": 0,
+        "fallback_functions": 3,
+        "total_functions": 3,
+        "production_pack": false,
+        "fallback_reasons": [
+          "prepared-statistics-browser-storage-not-qualified"
+        ]
+      }
+    },
     {
       "id": "ffi-resource:flint:fq_mpoly",
       "kind": "declared-ffi-resource",
@@ -14349,8 +14414,12 @@
       "disposition": "portable-fallback",
       "fallback": "ordinary-sagejs-public-operation",
       "wasm_module": "host-runtime",
-      "public_consumers": ["src/baselib/finite_fields.py"],
-      "tests": ["finite-extension-coordinate-differential"],
+      "public_consumers": [
+        "src/baselib/finite_fields.py"
+      ],
+      "tests": [
+        "finite-extension-coordinate-differential"
+      ],
       "status": "fallback",
       "reviewed": true,
       "review_note": "Native legacy handles export canonical coordinates with fq_default_get_fmpz_poly and reduction modulo p. Wasm public elements use the declared fq_element_coordinate_bytes generated-resource operation instead; the N-API callback is never loaded in a browser.",

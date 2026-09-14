@@ -46,9 +46,13 @@ class StatisticsResult(NumericalResult):
         resource_budget: ResourceBudget | None = None,
         reproducibility: Mapping[str, Any] | None = None,
         domain_payload: Mapping[str, Any] | None = None,
+        backend: str = "ordinary-python",
+        preparation: Mapping[str, Any] | None = None,
     ) -> None:
         if not isinstance(operation, str) or operation == "":
             raise ValueError("operation must be nonempty")
+        if backend not in ("ordinary-python", "source-native"):
+            raise ValueError("unsupported statistics backend")
         assumptions_record = tuple(str(item) for item in assumptions)
         replay_record = materialize_object(
             reproducibility, "$.statistics.reproducibility"
@@ -72,20 +76,33 @@ class StatisticsResult(NumericalResult):
         plan = NumericalPlan(
             problem,
             method=method,
-            backend="ordinary-python",
-            reason="The requested statistics method is implemented in ordinary Python.",
+            backend=backend,
+            reason=(
+                "The method uses source-verified compiled Python arithmetic on owned binary64 data."
+                if backend == "source-native"
+                else "The requested statistics method is implemented in ordinary Python."
+            ),
             capability={
                 "domain": "statistics",
                 "numeric_type": "binary64",
                 "source_transparent": True,
             },
             fallback={
-                "available": False,
-                "reason": "The implementation is already the portable dynamic path.",
+                "available": backend == "source-native",
+                "reason": (
+                    "Missing AOT kernels retain the ordinary Python implementation."
+                    if backend == "source-native"
+                    else "The implementation is already the portable dynamic path."
+                ),
             },
             expected_resources={
                 "bounded_by": problem.resource_budget.to_dict(),
             },
+            execution_target=(
+                {"implementation_kind": "compiled_python"}
+                if backend == "source-native"
+                else None
+            ),
         )
         validation_record = NumericalValidation(
             str(validation.get("truth_level", "indeterminate")),
@@ -120,10 +137,23 @@ class StatisticsResult(NumericalResult):
             evaluations=evaluations,
             elapsed_ms=elapsed_ms,
             trace=trace,
-            measurements={"statistics_operation": operation},
+            measurements={
+                "statistics_operation": operation,
+                **(
+                    {
+                        "data_preparation": materialize_object(
+                            preparation, "$.statistics.preparation"
+                        )
+                    }
+                    if preparation is not None
+                    else {}
+                ),
+            },
             provenance={
                 "implementation": "sagejs.numerics.statistics",
-                "implementation_kind": "ordinary_python",
+                "implementation_kind": "compiled_python"
+                if backend == "source-native"
+                else "ordinary_python",
                 "source_transparent": True,
             },
             domain_payload=payload,

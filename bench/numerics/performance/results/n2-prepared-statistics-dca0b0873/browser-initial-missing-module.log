@@ -1,0 +1,20 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.evaluate: ModuleNotFoundError: No module named 'sagejs.numerics.statistics._prepared_native'
+    at ModuleNotFoundError.ρσ_method___init__ [as __init__] (eval at instantiateSageEvaluator (http://127.0.0.1:36477/evaluator.mjs:1038:5), <anonymous>:28856:13)
+    at ModuleNotFoundError.__init__ (eval at instantiateSageEvaluator (http://127.0.0.1:36477/evaluator.mjs:1038:5), <anonymous>:28993:73)
+    at ModuleNotFoundError.__init__ (eval at instantiateSageEvaluator (http://127.0.0.1:36477/evaluator.mjs:1038:5), <anonymous>:29862:65)
+    at ModuleNotFoundError.__init__ (eval at instantiateSageEvaluator (http://127.0.0.1:36477/evaluator.mjs:1038:5), <anonymous>:29919:69)
+    at ModuleNotFoundError [as constructor] (eval at instantiateSageEvaluator (http://127.0.0.1:36477/evaluator.mjs:1038:5), <anonymous>:29909:65)
+    at ModuleNotFoundError (eval at instantiateSageEvaluator (http://127.0.0.1:36477/evaluator.mjs:1038:5), <anonymous>:29907:24)
+    at _builtins_default_import (eval at instantiateSageEvaluator (http://127.0.0.1:36477/evaluator.mjs:1038:5), <anonymous>:4945:90)
+    at $ρσ$py$StatisticsData.ρσ_method___init__ [as __init__] (eval at loadLazyModule (http://127.0.0.1:36477/lazy-modules.mjs:224:15), <anonymous>:117:38)
+    at ρσ_interpolate_kwargs (eval at instantiateSageEvaluator (http://127.0.0.1:36477/evaluator.mjs:1038:5), <anonymous>:33710:24)
+    at ρσ_call_keyword_initializer (eval at instantiateSageEvaluator (http://127.0.0.1:36477/evaluator.mjs:1038:5), <anonymous>:32130:54)
+    at /home/user/sagejs-worktrees/perf-numerical-statistics-main/test/numerics/performance/prepared-statistics-browser.mjs:35:33 {
+  log: []
+}
+
+Node.js v26.8.1
