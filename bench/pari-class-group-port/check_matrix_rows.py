@@ -26,27 +26,28 @@ static void scalar(GEN value) {
 }
 int main(void) {
   pari_init(32000000,500000);
+  long admission=getenv("SAGEJS_ADMISSION_RECORDS")!=NULL;
   const char *polys[]={"x^3-20018*x+20034","x^3-20010*x+20018",
     "x^4-20018*x-20034","x^4-2000022*x-2000042"};
   for(long f=0;f<4;f++) {
     GEN nf=nfinit(gp_read_str(polys[f]),nbits2prec(192));
     GEN M=nf_get_M(nf);long n=nf_get_degree(nf),r1=nf_get_r1(nf);
-    for(long k=1;k<=8+n;k++) {
+    for(long k=1;k<=(admission?3:8+n);k++) {
       pari_sp av=avma;GEN a=cgetg(n+1,t_COL);
-      for(long j=1;j<=n;j++)gel(a,j)=stoi(k<=8?(j%2?k*j:-k-j):(j==k-8));
+      for(long j=1;j<=n;j++)gel(a,j)=stoi(admission?(j==2?(k==1?1:k==2?2:1048576):0):k<=8?(j%2?k*j:-k-j):(j==k-8));
       GEN v=RgM_RgC_mul(M,a);
       if (getenv("SAGEJS_MATRIX_RECORDS")) {
         if (k<=8) {
           long gate=getenv("SAGEJS_GATE_RECORDS")!=NULL;
-          for(long d=0;d<(gate?5:1);d++) {
+          for(long d=0;d<(gate&&!admission?5:1);d++) {
           printf("%ld %ld",n,r1);
           for(long row=0;row<n;row++)for(long j=1;j<=n;j++)scalar(component(gel(M,j),row,r1));
           for(long j=1;j<=n;j++)printf(" %ld",itos(gel(a,j)));
           for(long row=0;row<n;row++)scalar(component(v,row,r1));
           GEN norm=embed_norm(v,r1);scalar(norm);
           if(gate) {
-            GEN ni=d==0?gen_0:d==1?gen_1:d==2?stoi(3):d==3?int2n(63):addiu(int2n(160),7);
-            long error;GEN rounded=grndtoi(d?divri(norm,ni):norm,&error);
+            GEN ni=admission?gen_1:d==0?gen_0:d==1?gen_1:d==2?stoi(3):d==3?int2n(63):addiu(int2n(160),7);
+            long error;GEN rounded=grndtoi((d||admission)?divri(norm,ni):norm,&error);
             char *s=GENtostr(ni),*t=GENtostr(rounded);
             printf(" %s %s %ld %ld",s,t,error,error<=-32?1L:0L);
             pari_free(s);pari_free(t);
@@ -91,12 +92,17 @@ with tempfile.TemporaryDirectory(prefix="sagejs-matrix-rows-") as tmp:
         timeout=30,
     )
     env = dict(os.environ)
-    gate = "--gate-json" in sys.argv[2:]
+    admission = "--admission-json" in sys.argv[2:]
+    gate = "--gate-json" in sys.argv[2:] or admission
     matrix = "--matrix-json" in sys.argv[2:] or gate
     if gate:
         env["SAGEJS_GATE_RECORDS"] = "1"
     else:
         env.pop("SAGEJS_GATE_RECORDS", None)
+    if admission:
+        env["SAGEJS_ADMISSION_RECORDS"] = "1"
+    else:
+        env.pop("SAGEJS_ADMISSION_RECORDS", None)
     if matrix:
         env["SAGEJS_MATRIX_RECORDS"] = "1"
     else:
@@ -106,5 +112,7 @@ with tempfile.TemporaryDirectory(prefix="sagejs-matrix-rows-") as tmp:
     )
     assert run.returncode == 0, run.stderr
     rows = [line.split() for line in run.stdout.splitlines()]
-    assert len(rows) == (160 if gate else 32 if matrix else 162), len(rows)
+    assert len(rows) == (12 if admission else 160 if gate else 32 if matrix else 162), (
+        len(rows)
+    )
     print(json.dumps(rows))

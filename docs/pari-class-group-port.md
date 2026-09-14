@@ -1,5 +1,53 @@
 # Faithful PARI class-group language experiment
 
+## Connected admission-front checkpoint
+
+Compiler prerequisite `039a18502` supports explicit relative imports in regular
+Python packages. `bench/pari-class-group-port/admission.py` now connects the
+prepared matrix/embedding norm, ideal-norm division, rounding gate, `Z_ppo`
+smoothness check and word-factorization stages inside **one native call**.
+Numerical and factorization source remains in separate ordinary Python files,
+with imported source provenance and hashes retained by the compiler. No helper
+calls back through Python or JavaScript inside that native invocation.
+
+The return includes an explicit stage, not a class-group or relation-success
+flag: numerical rejection, nonsmooth rejection, unresolved factorization, or
+completed *rational norm* factorization. Prime-ideal division and relation
+storage remain to connect. Multiword norms stop explicitly after smoothness;
+they do not enter a substituted trial-factor algorithm. Numerical rejection
+retains the incoming count, matching the fact that `factorgen` has not reached
+`can_factor`'s reset yet. Factor outputs here are rational primes, not indices
+of prime ideals in the factor base.
+
+The 344 connected controls use the original four prepared fields and two fixed
+support products: one, and twice the largest prepared odd-prime trial product.
+These supports test the stage boundary; they are **not** claimed to be PARI's
+selected field factor bases. An initial all-rejection test exposed the missing
+factor two in the fixture support, which was corrected before counting this as
+factorization coverage. Twelve additional controls use the second integral
+basis vector scaled by 1, 2 and `2^20`, with ideal norm one. The existing 160
+rounding controls are retained unchanged.
+
+Results against direct PARI numerical/smoothness/factorization stage oracles,
+CPython, generated JS, GMP and tagged execution:
+
+- 118 numerical rejections;
+- 151 nonsmooth rejections;
+- eight complete rational norm factorizations, spanning degrees three and four;
+- three explicitly unresolved smooth multiword norms;
+- 64 expected input errors: the old deliberately oversized ideal-norm controls
+  round to zero and are outside `can_factor`'s nonzero-norm precondition.
+
+The test asserts that every category occurs. It does not call a completed PARI
+class-group engine, claim matching candidate discovery or qualify performance.
+This is a connected dependency checkpoint, not completion of `factorgen`.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_admission.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Boundary diagnostic (not qualified performance evidence)
 
 Follow-up compiler `1c97354a8` removes unconditional promotion at small GCDs.
