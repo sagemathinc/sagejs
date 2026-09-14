@@ -60,6 +60,9 @@ printf(",\\"state\\":[");for(long i=0;i<10;i++){if(i)putchar(',');printf("\\"%ld
   }
  }
  assert(branches.every(n=>n>0));assert(changedT>0&&products>0&&maximumBits>64&&maximumBits<=4096);
+ if(process.argv.includes('--export-rank-fixtures')){
+  console.log(JSON.stringify({cases,expected,sourceHash:fixture.sourceHash,bodyHash}));return;
+ }
  for(const r of unsafe){const result=spawnSync(exe,[],{input:[1,r.rows,r.columns,r.k0,r.cRows,...r.perm,...r.mat].join(' '),encoding:'utf8',timeout:10000});assert.notEqual(result.status,0);assert.match(result.stderr,/runtime error:/);}
  run('python3',['-c',`import sys,json,importlib
 sys.path[:0]=sys.argv[1:3];m=importlib.import_module('bench.pari-class-group-port.hnfspec_cleanup')

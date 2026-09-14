@@ -1,5 +1,34 @@
 # Faithful PARI class-group language experiment
 
+## Sparse cleanup through initial rank profile (2026-09-14)
+
+`hnfspec_rank_prefix.py` fuses the existing sparse cleanup with the initial
+`ZM_pivots`/`ZM_rowrankprofile` path. It preserves zero-column counting,
+the first two deterministic modular primes, the latest pivots and best rank,
+and the source's sufficient-rank early exit. Gaussian elimination is used
+only at the dimensions where upstream uses it. Status -1 stops before the
+untranslated exact rank verification; -2 stops before CUP. Neither status
+publishes a certified profile or completed HNF.
+
+The 672 source-C/CPython/JS/GMP cases include 646 source-certified profiles,
+14 verification frontiers and 12 CUP frontiers. Of these, 467 run the fused
+sparse-input-to-rank entry, including 24 real relation matrices. Ten malformed
+rank inputs and six fused-capacity failures reject before mutation; the
+original 48 LLL controls still pass. Exact modular arithmetic and physical
+packed storage differ from upstream word/pointer operations; no timing claim
+is made. The fused core is 2,062,125 bytes. Reproduce with
+`check_hnfspec_rank_prefix.cjs PARI_SOURCE PARI_ARCHIVE`.
+Trace: `e0aa5eadda34d68ac0cebe68e3a07ad9a47a331e1d81c75c572f33cfc1a5cb2d`.
+
+Next dependencies are rank verification/CUP where reached, dependent-row
+and B/C assembly, `ZM_hnflll`, and `hnffinal`'s transformation propagation.
+The HNFLLL dependency is the self-contained exact-integer algorithm in
+`hnf_snf.c:1548-1825`, not the floating-point LLL pipeline.
+
+Additional subagent active charges for this checkpoint are 1m25 rank audit,
+11m40 implementation, and 1m04 HNFLLL audit. The implementation used
+131.493719 child CPU seconds, already included in the append-only ledger.
+
 ## Resident collection and logarithms (2026-09-14)
 
 `collected_log_embeddings.py` now composes the real small-norm collector with

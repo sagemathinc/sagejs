@@ -12,9 +12,10 @@ from .relation_cache import pari_word_mod_inverse
 
 
 @native
-def pari_flm_pivots(
+def pari_flm_rectangular_pivots(
     matrix: IntegerBuffer,
-    n: int,
+    rows: int,
+    columns: int,
     prime: int,
     occupied: IntegerBuffer,
     pivots: IntegerBuffer,
@@ -24,40 +25,58 @@ def pari_flm_pivots(
     The small residue products use exact integers before reduction instead
     of PARI's word primitives. This backend cost is not presumed identical.
     """
-    if n < 1 or n > 4 or len(matrix) < n * n or len(occupied) < n or len(pivots) < n:
+    if rows < 0 or columns < 0 or (rows >= 8 and columns >= 8):
         raise ValueError("unsupported modular pivot shape")
-    for i in range(n):
+    if len(matrix) < rows * columns or len(occupied) < rows or len(pivots) < columns:
+        raise ValueError("short modular pivot workspace")
+    for i in range(rows):
         occupied[i] = 0
+    for i in range(columns):
         pivots[i] = 0
     nullity = 0
-    for k in range(n):
+    for k in range(columns):
         j = 0
-        while j < n:
+        while j < rows:
             if occupied[j] == 0:
-                matrix[j * n + k] %= prime
-                if matrix[j * n + k] != 0:
+                matrix[j * columns + k] %= prime
+                if matrix[j * columns + k] != 0:
                     break
             j += 1
-        if j == n:
+        if j == rows:
             nullity += 1
         else:
-            pivot = prime - pari_word_mod_inverse(matrix[j * n + k], prime)
+            pivot = prime - pari_word_mod_inverse(matrix[j * columns + k], prime)
             occupied[j] = k + 1
             pivots[k] = j + 1
-            for i in range(k + 1, n):
-                matrix[j * n + i] = (pivot * matrix[j * n + i]) % prime
-            for t in range(n):
+            for i in range(k + 1, columns):
+                matrix[j * columns + i] = (pivot * matrix[j * columns + i]) % prime
+            for t in range(rows):
                 if occupied[t] == 0:
-                    pivot = matrix[t * n + k]
+                    pivot = matrix[t * columns + k]
                     if pivot != 0:
-                        matrix[t * n + k] = 0
-                        for i in range(k + 1, n):
-                            matrix[t * n + i] = (
-                                matrix[t * n + i] + pivot * matrix[j * n + i] % prime
+                        matrix[t * columns + k] = 0
+                        for i in range(k + 1, columns):
+                            matrix[t * columns + i] = (
+                                matrix[t * columns + i]
+                                + pivot * matrix[j * columns + i] % prime
                             ) % prime
-            for i in range(k, n):
-                matrix[j * n + i] = 0
+            for i in range(k, columns):
+                matrix[j * columns + i] = 0
     return nullity
+
+
+@native
+def pari_flm_pivots(
+    matrix: IntegerBuffer,
+    n: int,
+    prime: int,
+    occupied: IntegerBuffer,
+    pivots: IntegerBuffer,
+) -> int:
+    """Preserve the small-square LLL entry while sharing literal elimination."""
+    if n < 1 or n > 4:
+        raise ValueError("unsupported modular pivot shape")
+    return pari_flm_rectangular_pivots(matrix, n, n, prime, occupied, pivots)
 
 
 @native
