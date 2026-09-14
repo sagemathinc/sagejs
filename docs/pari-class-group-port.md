@@ -1,5 +1,39 @@
 # Faithful PARI class-group language experiment
 
+## Wider reconstruction and analytic normalization (2026-09-14)
+
+The follow-up `regulator_hnf_wide.py` translates `ZM_hnfall_i(A,NULL,1)`:
+PARI's delayed column elimination with its literal row-pivot and column-height
+bookkeeping. This is neither HNFLLL nor the narrow `hnf_i` algorithm applied
+outside its dispatch. All 144 synthetic controls agree across CPython,
+JavaScript, GMP and tagged native, including full work/bookkeeping snapshots,
+tall matrices and the source's unassigned-pivot corner. UBSan and malformed
+owner guards pass. Trace
+`79fe28ce01d07e3a9fefcfd086039afb0e1f9bad9d6876a9fa86adc9c78be426`,
+core 1,988,499 bytes, observed peak 3,589 bits. Reproduce with
+`check_regulator_hnf_wide.cjs PARI_SOURCE PARI_ARCHIVE`.
+
+Reconstruction now dispatches to both source HNF algorithms. The same 744-case
+trace below has **zero width frontiers**: 137 accepted, 249 more-relations and
+358 precision-failure results match. Generated core is now 9,219,219 bytes.
+The earlier narrower results below are historical, not current coverage.
+No class-group completeness or speed qualification follows from these tests.
+
+`regulator_normalization.py` translates the `buchall` inverse-hR expression:
+cached pi, left-right real powering, signature-dependent exponent shift,
+integer-to-real discriminant square root, roots-of-unity multiplication,
+division and prepared inverse-residue multiplication. The checker extracts
+the expression from the pinned archive. All 275 synthetic arithmetic controls
+match PARI/CPython/JS/GMP, including the 1,856-bit discriminant and 64-bit
+integer-factor boundaries, both fresh and reused pi caches. Eight invalid
+input/owner cases per backend reject atomically; UBSan passes. Trace
+`dc3786cfa2bed199fda135837fcd7390ff1fc513575f74f891dafb9c84d70508`,
+core 4,166,931 bytes; reproduce with `check_regulator_normalization.cjs` and
+the pinned source/archive. These are arithmetic controls, not 275 number
+fields. The inverse residue remains prepared and the existing integer
+square-root backend substitution remains explicit. Independent review found
+no expression/rounding-order mismatch; prompted boundary tests were added.
+
 ## Bounded final regulator reconstruction (2026-09-14)
 
 `regulator_bestappr.py` translates PARI's real and rational continued-fraction

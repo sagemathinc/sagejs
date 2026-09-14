@@ -19,6 +19,7 @@ from .regulator_bestappr import (
 )
 from .regulator_approx_zero import pari_regulator_exponent
 from .regulator_hnf import pari_regulator_hnf
+from .regulator_hnf_wide import pari_regulator_hnf_wide
 from .short_product import pari_short_product
 from .float_conversion import pari_real_to_float
 
@@ -92,8 +93,10 @@ def pari_regulator_reconstruction(
     relations: IntegerBuffer,
     denominator: IntegerBuffer,
     state: Int64Buffer,
+    hnf_row_pivots: Int64Buffer,
+    hnf_heights: Int64Buffer,
 ) -> int:
-    """Return source reason0/1/3 or -1 for an unported HNF width.
+    """Return source reason0/1/3 with both source HNF width dispatches.
 
     State: reason, last phase, approximation accuracy bits, HNF rank.
     Denominator is diagnostic; regulator/relations publish only on success.
@@ -116,6 +119,10 @@ def pari_regulator_reconstruction(
         or len(state) < 4
     ):
         raise ValueError("short regulator reconstruction workspace")
+    if columns > 7 and (
+        len(hnf_state) < 15 or len(hnf_row_pivots) < rows or len(hnf_heights) < columns
+    ):
+        raise ValueError("short wide regulator reconstruction workspace")
     pari_validate_regulator_values(coordinates, size)
     pari_validate_regulator_values(multiple, 1)
     pari_validate_regulator_values(zeta_factor, 1)
@@ -212,9 +219,22 @@ def pari_regulator_reconstruction(
     if lattice_exponent + den.bit_length() - 1 > bits - 32:
         return 3
     state[1] = 3
-    status = pari_regulator_hnf(
-        integer_work, rows, columns, hnf_work, hnf_column, hnf_output, hnf_state
-    )
+    if columns <= 7:
+        status = pari_regulator_hnf(
+            integer_work, rows, columns, hnf_work, hnf_column, hnf_output, hnf_state
+        )
+    else:
+        status = pari_regulator_hnf_wide(
+            integer_work,
+            rows,
+            columns,
+            hnf_work,
+            hnf_column,
+            hnf_row_pivots,
+            hnf_heights,
+            hnf_output,
+            hnf_state,
+        )
     if status != 0:
         state[0] = -1
         return -1

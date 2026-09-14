@@ -49,8 +49,15 @@ sys.path[:0]=sys.argv[1:3];f=importlib.import_module('bench.pari-class-group-por
 frontiers=[]
 for ix,(r,e) in enumerate(zip(*json.load(sys.stdin))):
  n=r['rows'];c=r['columns'];s=n*c
- args=[list(map(int,r['values'])),n,c,list(map(int,r['multiple'])),list(map(int,r['zeta'])),[77]*(3*s),[77]*s,[77]*s,[77]*n,[77]*s,[77]*12,[77]*3,[77]*s,[77],[77]*4]
+ args=[list(map(int,r['values'])),n,c,list(map(int,r['multiple'])),list(map(int,r['zeta'])),[77]*(3*s),[77]*s,[77]*s,[77]*n,[77]*s,[77]*15,[77]*3,[77]*s,[77],[77]*4,[77]*n,[77]*c]
  reason=f(*args)
+ if c>7:
+  for slot in [10,15,16]:
+   bad=copy.deepcopy(args);bad[slot]=[];before=copy.deepcopy(bad)
+   try:f(*bad)
+   except ValueError:pass
+   else:raise AssertionError(('missing wide workspace guard',ix,slot))
+   assert bad==before,(ix,slot)
  if reason==-1:
   assert c>7
   frontiers.append(ix)
@@ -59,7 +66,7 @@ for ix,(r,e) in enumerate(zip(*json.load(sys.stdin))):
   assert args[11]==(list(map(int,e['regulator'])) if reason==0 else [77]*3),(ix,args[11],e)
   assert args[12]==(list(map(int,e['relations'])) if reason==0 else [77]*s),(ix,args[12],e)
 # Invalid shapes and owners must reject before changing any workspace.
-base=[[1,-1,0],1,1,[1<<127,128,0],[1<<127,128,0],[77]*3,[77],[77],[77],[77],[77]*12,[77]*3,[77],[77],[77]*4]
+base=[[1,-1,0],1,1,[1<<127,128,0],[1<<127,128,0],[77]*3,[77],[77],[77],[77],[77]*15,[77]*3,[77],[77],[77]*4,[77],[77]]
 for slot,replacement in [(2,0),(5,[]),(10,[77]*11),(14,[77]*3),(3,[0,0,0])]:
  args=copy.deepcopy(base);args[slot]=replacement;before=copy.deepcopy(args)
  try:f(*args)
@@ -68,18 +75,20 @@ for slot,replacement in [(2,0),(5,[]),(10,[77]*11),(14,[77]*3),(3,[0,0,0])]:
  assert args==before,slot
 print(json.dumps(frontiers))
 `,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify([cases,expected])}));
- const summary={cases:cases.length,widthFrontiers:frontiers.length,sourceReasons:expected.reduce((a,e)=>(a[e.reason]=(a[e.reason]||0)+1,a),{}),translatedReasons:expected.reduce((a,e,i)=>(frontiers.includes(i)?a:(a[e.reason]=(a[e.reason]||0)+1,a)),{}),atomicRejectionsPerBackend:5,traceSha256:createHash('sha256').update(trace).digest('hex'),ubsan:true,qualifiedTiming:false};
+ assert.equal(frontiers.length,0,'both source HNF width dispatches are implemented');
+ const summary={cases:cases.length,widthFrontiers:frontiers.length,sourceReasons:expected.reduce((a,e)=>(a[e.reason]=(a[e.reason]||0)+1,a),{}),translatedReasons:expected.reduce((a,e,i)=>(frontiers.includes(i)?a:(a[e.reason]=(a[e.reason]||0)+1,a)),{}),atomicRejectionsPerBackend:5,wideWorkspaceRejectionsPerBackend:cases.filter(r=>r.columns>7).length*3,traceSha256:createHash('sha256').update(trace).digest('hex'),ubsan:true,qualifiedTiming:false};
  if(process.argv.includes('--source-only')){console.log(JSON.stringify(summary));return;}
  const built=await compileKernel({sourcePath:path.join(__dirname,'regulator_reconstruction.py')}),f=require(built.modulePath).pari_regulator_reconstruction;assert(f.nativeAvailable);
  for(const backend of ['javascript','gmp'])for(let i=0;i<cases.length;i++){
   const r=cases[i],e=expected[i],n=r.rows,c=r.columns,s=n*c,make=k=>backend==='gmp'?f.createIntegerBuffer(k,128,Array(k).fill(77n)):Array(k).fill(77n),view=x=>Array.isArray(x)?x:x.toArray();
-  const args=[r.values.map(BigInt),BigInt(n),BigInt(c),r.multiple.map(BigInt),r.zeta.map(BigInt),make(3*s),make(s),make(s),make(n),make(s),Array(12).fill(77n),make(3),make(s),make(1),Array(4).fill(77n)],reason=f[backend](...args);
+  const args=[r.values.map(BigInt),BigInt(n),BigInt(c),r.multiple.map(BigInt),r.zeta.map(BigInt),make(3*s),make(s),make(s),make(n),make(s),Array(15).fill(77n),make(3),make(s),make(1),Array(4).fill(77n),Array(n).fill(77n),Array(c).fill(77n)],reason=f[backend](...args);
   assert.equal(reason,frontiers.includes(i)?-1n:BigInt(e.reason),backend+' '+i);
   assert.deepEqual(view(args[11]),reason===0n?e.regulator.map(BigInt):Array(3).fill(77n));assert.deepEqual(view(args[12]),reason===0n?e.relations.map(BigInt):Array(s).fill(77n));
+  if(c>7)for(const slot of [10,15,16]){const bad=args.slice();bad[slot]=[];const snapshot=a=>a.map(x=>typeof x==='bigint'?x:view(x).slice()),before=snapshot(bad);assert.throws(()=>f[backend](...bad));assert.deepEqual(snapshot(bad),before);}
  }
  for(const backend of ['javascript','gmp'])for(const [slot,replacement] of [[2,0n],[5,[]],[10,Array(11).fill(77n)],[14,Array(3).fill(77n)],[3,[0n,0n,0n]]]){
   const make=k=>backend==='gmp'?f.createIntegerBuffer(k,128,Array(k).fill(77n)):Array(k).fill(77n),view=x=>typeof x==='bigint'?x:Array.isArray(x)?x.slice():x.toArray();
-  const args=[[1n,-1n,0n],1n,1n,[1n<<127n,128n,0n],[1n<<127n,128n,0n],make(3),make(1),make(1),make(1),make(1),Array(12).fill(77n),make(3),make(1),make(1),Array(4).fill(77n)];
+  const args=[[1n,-1n,0n],1n,1n,[1n<<127n,128n,0n],[1n<<127n,128n,0n],make(3),make(1),make(1),make(1),make(1),Array(15).fill(77n),make(3),make(1),make(1),Array(4).fill(77n),[77n],[77n]];
   args[slot]=replacement;const before=args.map(view);assert.throws(()=>f[backend](...args));assert.deepEqual(args.map(view),before,backend+' atomic '+slot);
  }
  console.log(JSON.stringify({...summary,coreBytes:fs.statSync(built.coreSourcePath).size}));
