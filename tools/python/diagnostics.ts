@@ -31,6 +31,8 @@ export interface PythonDiagnostic {
   suppressContext: boolean;
   chainTruncated: boolean;
   hostStack?: string;
+  /** Preserved native evidence when compiler frames cover only part of execution. */
+  nativeTraceback?: string;
 }
 
 export interface DiagnosticOptions {
@@ -195,6 +197,10 @@ export function normalizePythonDiagnostic(
       const stack = string(get(value, "stack"));
       if (stack !== undefined) result.hostStack = stack;
     }
+    if (options.pythonExecution) {
+      const native = string(get(get(value, "__sagejs_native_tb__"), "stack"));
+      if (native !== undefined) result.nativeTraceback = native;
+    }
     ancestors.add(value);
     for (const key of ["cause", "context"] as const) {
       const pythonValue = get(value, key === "cause" ? "__cause__" : "__context__");
@@ -265,7 +271,9 @@ export function renderPythonDiagnostic(diagnostic: PythonDiagnostic, hostBoundar
       }
       if (value.framesTruncated) traceback += "  [traceback records truncated or invalid]\n";
     }
-    return prefix + traceback + host + value.exceptionType + message;
+    const native = value.nativeTraceback === undefined ? "" :
+      "\nNative capture (may overlap Python frames):\n" + value.nativeTraceback;
+    return prefix + traceback + host + value.exceptionType + message + native;
   }
   return render(diagnostic) + "\n";
 }

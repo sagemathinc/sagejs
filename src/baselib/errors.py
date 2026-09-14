@@ -58,19 +58,26 @@ def ρσ_prepare_raise(value: object) -> object:
     return error
 
 
-def ρσ_record_traceback(error: Any, code: Any, line: Any) -> Any:
-    """Append an unwind record only for opted-in logical Python exceptions."""
+def ρσ_record_traceback(error: Any, code: Any, line: Any, native: Any) -> Any:
+    """Append a Python frame, retaining native evidence when requested."""
     if error is None or not runtime.strict_equal(runtime.jstype(error), "object"):
         return error
     if error.__sagejs_logical_exception__ is not True:
-        return error
-    previous = error.__traceback__
-    record = runtime.object.create(None)
-    record.__sagejs_traceback_record__ = True
-    record.code = runtime.object.freeze(code)
-    record.tb_lineno = line
-    record.tb_next = previous
-    runtime.reflect.set(error, "__traceback__", record)
+        if not native:
+            return error
+        if error.__sagejs_native_tb__ is runtime.undefined:
+            runtime.reflect.set(error, "__sagejs_native_tb__", error)
+    tb = error.__traceback__
+    runtime.reflect.set(
+        error,
+        "__traceback__",
+        {
+            "__sagejs_traceback_record__": True,
+            "code": runtime.object.freeze(code),
+            "tb_lineno": line,
+            "tb_next": None if tb is error else tb,
+        },
+    )
     return error
 
 
@@ -80,7 +87,7 @@ def ρσ_function_argument_error(
 ) -> object:
     """Create an argument-binding error attributed to the Python call site."""
     error = runtime.type_error(message)
-    capture = runtime.reflect.get(runtime.error, "captureStackTrace")
+    capture = runtime.error.captureStackTrace
     if runtime.strict_equal(runtime.jstype(capture), "function"):
         runtime.reflect.apply(capture, runtime.error, [error, target_function])
     runtime.reflect.set(error, "__sagejs_argument_error__", True)
@@ -106,7 +113,7 @@ class BaseException(runtime.error):
         # The baselib variadic ABI already copies arguments into a fresh
         # native array. Transfer that array to the tuple finalizer: copying
         # it again adds allocation without protecting any caller-owned data.
-        count = runtime.reflect.get(args, "length")
+        count = runtime.native_get(args, "length")
         self.args = runtime.reflect.apply(runtime.math_tuple, runtime.undefined, [args])
         if runtime.strict_equal(count, 0):
             message = ""
@@ -125,7 +132,7 @@ class BaseException(runtime.error):
         self.__sagejs_logical_exception__ = logical
         self.__traceback__ = None if logical else self
         if not logical:
-            capture = runtime.reflect.get(runtime.error, "captureStackTrace")
+            capture = runtime.error.captureStackTrace
             if runtime.strict_equal(runtime.jstype(capture), "function"):
                 # Capture now, format lazily. The native Error remains the
                 # legacy traceback carrier consumed by traceback.extract_tb.
@@ -134,8 +141,7 @@ class BaseException(runtime.error):
                 error = runtime.error(message)
                 error.name = self.name
                 self.stack = error.stack
-        self.__cause__ = None
-        self.__context__ = None
+        self.__cause__ = self.__context__ = None
         self.__suppress_context__ = False
 
     def __repr__(self) -> str:
@@ -214,13 +220,13 @@ for _native_exception in (
     runtime.syntax_error,
 ):
     runtime.object.setPrototypeOf(
-        runtime.reflect.get(_native_exception, "prototype"),
-        runtime.reflect.get(Exception, "prototype"),
+        _native_exception.prototype,
+        Exception.prototype,
     )
     runtime.reflect.set(
         _native_exception,
         "__name__",
-        runtime.reflect.get(_native_exception, "name"),
+        _native_exception.name,
     )
     runtime.object.defineProperty(
         _native_exception,

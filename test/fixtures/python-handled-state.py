@@ -4,6 +4,70 @@ import sys
 import types
 
 
+def test_exception_constructor_ignores_builtin_len_override():
+    import builtins
+
+    original = builtins.len
+    try:
+        builtins.len = lambda value: 0
+        zero = ValueError()
+        one = ValueError("x")
+        two = ValueError("x", "y")
+    finally:
+        builtins.len = original
+    assert str(zero) == ""
+    assert str(one) == "x"
+    assert str(two) == "('x', 'y')"
+    assert two.args == ("x", "y")
+
+
+def test_custom_await_slot():
+    class Awaitable:
+        def __await__(self):
+            yield "pause"
+            return 17
+
+    value = Awaitable()
+    value.__await__ = None
+
+    async def task():
+        return await value
+
+    coroutine = task()
+    assert coroutine.send(None) == "pause"
+    try:
+        coroutine.send(None)
+    except StopIteration as done:
+        assert done.value == 17
+    else:
+        assert False
+
+
+def test_invalid_await_slot():
+    class Missing:
+        pass
+
+    class Noncallable:
+        __await__ = None
+
+    class Noniterator:
+        def __await__(self):
+            return [1]
+
+    for value in (Missing(), Noncallable(), Noniterator(), [1]):
+
+        async def task():
+            await value
+
+        coroutine = task()
+        try:
+            coroutine.send(None)
+        except TypeError:
+            pass
+        else:
+            assert False
+
+
 def test_generator_injection_context():
     owned = ValueError("owned")
     caller = KeyError("caller")

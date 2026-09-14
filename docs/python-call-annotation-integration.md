@@ -521,3 +521,40 @@ The converged compiler and refreshed runtime pass the three new differential
 cases in both modes and all 75 focused exception/diagnostic tests with a recorded
 receipt; strict checking still passes for 404 modules. This is a
 native-path correctness fix, not qualification of generator logical records.
+
+### Suspension records and mixed native carriers (qualification in progress)
+
+Logical records now cover generator suspension, delegation, bare reraising,
+cleanup, injection, alternating owners and manually driven nested coroutines.
+An entry callback handles injection before the first resume: JavaScript never
+enters the generator body in that case, so its body catch cannot supply the
+definition-line frame. The callback is discarded on the first resume.
+
+Instrumented propagation can also add known Python frames to a native-backed
+exception such as `TypeError`. Its original native carrier is retained lazily
+in `__sagejs_native_tb__`; the host-neutral diagnostic and stdlib formatter
+preserve that evidence under a separately labeled native-capture section.
+Native capture can overlap the compiler frames and is not presented as a
+second set of independently inferred Python frames. Ordinary helper calls
+without explicit native participation still leave foreign carriers untouched.
+
+The suspension oracle exposed that `await` had been lowered as plain
+`yield from`. A distinct AST marker now invokes the existing type-slot resolver
+for `__await__`, ignoring instance overrides and rejecting noncallable slots
+or non-iterator results. Tests use the supported manual `send()` coroutine
+path. A CPython-style coroutine `__await__()` wrapper and general event-loop
+qualification are not claimed here. Lambdas still reject the experimental
+record option; global native-capture suppression is still not a safe production
+policy for opaque ancestry or uninstrumented module execution.
+
+The initial combined set passed 58 tests. A subsequent constructor probe found
+that replacing native argument-length access with public `len()` made exception
+messages depend on a monkeypatched builtin. Explicit native access is restored
+and a minimized CPython regression protects it. The final candidate remains
+under the unchanged core source allowance (902,984 / 903,000 bytes), with strict
+checking passing for 404 modules. All 98 focused exception/diagnostic tests pass
+with a recorded receipt on the corrected source. Full-build and portable results
+must be recorded separately, not borrowed from earlier runs. A direct probe
+confirms a remaining binding defect: a generator called without a required
+argument returns an iterator and only fails on resume. Moving binding to call
+time remains required; suspension frame qualification does not close it.

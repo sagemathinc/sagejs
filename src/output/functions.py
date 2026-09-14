@@ -881,8 +881,24 @@ def function_definition(
                 "result",
                 "=",
                 "ρσ_handled_state.wrap(js_generator.apply(this,",
-                "arguments))",
+                "arguments)",
             )
+            if output.options.python_traceback_records:
+                # Native generators do not enter their body when throw() is
+                # called before the first resume, so the body catch cannot run.
+                output.print(", error => ρσ_record_traceback(error,")
+                output.print(
+                    JSON.stringify(
+                        {
+                            "filename": self.start.file,
+                            "name": self.name.name if self.name else "<anonymous>",
+                            "source": self.start.raw,
+                            "first_lineno": self.start.line,
+                        }
+                    )
+                )
+                output.print("," + str(self.start.line) + ",true)")
+            output.print(")")
             output.end_statement()
             # Native generator .constructor is a non-callable host object, not
             # a Python type. Share one canonical type across all generator sites.
@@ -954,10 +970,8 @@ def function_definition(
 
 def print_function(output):
     self = this
-    if output.options.python_traceback_records and (
-        self.is_generator or self.is_lambda
-    ):
-        raise Error("logical tracebacks do not yet support generators or lambdas")
+    if output.options.python_traceback_records and self.is_lambda:
+        raise Error("logical tracebacks do not yet support lambdas")
 
     if self.decorators and self.decorators.length:
         output.print("var")

@@ -103,7 +103,15 @@ def format_exception(
             )
             if frame.line:
                 lines.append("    " + frame.line + "\n")
-        return lines + format_exception_only(exc)
+        lines += format_exception_only(exc)
+        native = runtime.reflect.get(exc, "__sagejs_native_tb__")
+        if native is not runtime.undefined and native is not None:
+            lines.append(
+                "Native capture (may overlap Python frames):\n"
+                + str(native.stack)
+                + "\n"
+            )
+        return lines
     text = _stack(exc)
     if not text:
         return []

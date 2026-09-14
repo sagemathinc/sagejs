@@ -25,6 +25,8 @@ builtins. This module has no mathematical implementation.
             state.running = true;
             let complete = true;
             try {
+                if (name === "throw" && state.first) state.first(args[0]);
+                state.first = null;
                 // Injection raises inside the resumed owner's handler chain,
                 // not inside the caller that invoked generator.throw/close.
                 if (name === "throw" && state.top !== state.root && args[0] instanceof Error)
@@ -57,10 +59,10 @@ builtins. This module has no mathematical implementation.
             if (error === null) throw new RuntimeError("No active exception to reraise");
             return error;
         },
-        wrap(iterator) {
+        wrap(iterator, first) {
             if (states.has(iterator)) return iterator;
             const root = {parent: null};
-            states.set(iterator, {root, top: root, running: false});
+            states.set(iterator, {root, top: root, running: false, first});
             const prototype = Object.getPrototypeOf(iterator);
             let adapter = prototypes.get(prototype);
             if (!adapter) {

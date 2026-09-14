@@ -4492,9 +4492,8 @@ def ρσ_generator_close(iterator: Any) -> None:
         result = iterator.__native_throw__(GeneratorExit())
     except GeneratorExit:
         return None
-    if result.done:
-        return None
-    raise RuntimeError("generator ignored GeneratorExit")
+    if not result.done:
+        raise RuntimeError("generator ignored GeneratorExit")
 
 
 def ρσ_next(

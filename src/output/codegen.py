@@ -113,6 +113,7 @@ from output.operators import (
 )
 from output.functions import print_function, print_function_call
 from output.statements import (
+    print_await_expression,
     print_bracketed,
     first_in_statement,
     force_statement,
@@ -635,7 +636,7 @@ def generate_code():
                 if logical:
                     output.print("," + JSON.stringify(output.traceback_function))
                     output.print("," + str(self.start.line))
-                    output.print("))")
+                    output.print(",true))")
             else:
                 self.value.print(output)
         elif kind is "return" and output.options.python_truthiness:
@@ -647,6 +648,11 @@ def generate_code():
     AST_Exit.prototype._do_print = f_do_print_exit
 
     def f_do_print_yield(self, output):
+        if self.is_await:
+            output.print("(")
+            print_await_expression(output, lambda: self.value.print(output))
+            output.print(" ?? null)")
+            return
         output.print("((")
         if self.is_yield_from:
             output.print(

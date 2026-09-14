@@ -194,8 +194,8 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
             return
 
     if output.options.python_traceback_records and is_node_type(node, AST_Scope):
-        if node.is_generator or node.is_lambda:
-            raise Error("logical tracebacks do not yet support generators or lambdas")
+        if node.is_lambda:
+            raise Error("logical tracebacks do not yet support lambdas")
         previous = output.traceback_function
         output.traceback_function = {
             "filename": node.start.file,
@@ -217,7 +217,7 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
             "throw ρσ_trace_error === ρσ_trace_reraised || ρσ_trace_error === ρσ_trace_captured ? ρσ_trace_error : ρσ_record_traceback(ρσ_trace_error,"
         )
         output.print(JSON.stringify(output.traceback_function))
-        output.print(",ρσ_trace_line); }")
+        output.print(",ρσ_trace_line,true); }")
         output.traceback_function = previous
     else:
         display_body(node.body, is_toplevel, output)
@@ -284,18 +284,24 @@ def print_traceback_record(output, name):
             "ρσ_trace_captured = " + name + " = ρσ_record_traceback(" + name + ","
         )
         output.print(JSON.stringify(output.traceback_function))
-        output.print(",ρσ_trace_line)")
+        output.print(",ρσ_trace_line,true)")
         output.end_statement()
 
 
 def print_await_expression(output, print_expression):
     """Emit generator-based `await` around an expression."""
-    output.print(
-        "(yield* (function* () {try { var ρσ_await_iterator = ρσ_yield_from_impl("
-    )
+    output.print("(yield* (function* () {try { var ρσ_await_value = ")
     print_expression()
     output.print(
-        ");"
+        "; var ρσ_await_method = ρσ_get_type_slot(ρσ_await_value, '__await__');"
+        "if (ρσ_await_method !== undefined) {"
+        "ρσ_await_value = ρσ_resolve_callable(ρσ_await_method)();"
+        "if (ρσ_await_value == null || (typeof ρσ_await_value.next !== 'function' && "
+        "ρσ_get_type_slot(ρσ_await_value, '__next__') === undefined)) "
+        "throw new TypeError('__await__() returned a non-iterator');}"
+        "else if (ρσ_await_value == null || typeof ρσ_await_value.next !== 'function') "
+        "throw new TypeError('object cannot be used in an await expression');"
+        "var ρσ_await_iterator = ρσ_yield_from_impl(ρσ_await_value);"
         "ρσ_await_iterator.throw = "
         "ρσ_await_iterator.__native_throw__;"
         "return yield* ρσ_await_iterator;"

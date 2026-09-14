@@ -1349,6 +1349,7 @@ export class PythonCstLowerer {
         }
         const child = significantChildren(node)[0];
         return this.make("AST_Yield", node, {
+          is_await: true,
           is_yield_from: true,
           value: this.lowerExpression(child),
         });

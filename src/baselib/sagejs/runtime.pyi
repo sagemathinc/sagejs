@@ -147,6 +147,8 @@ class _Element:
 
 
 class _Error:
+    prototype: Any
+    captureStackTrace: Any
     constructor: Any
     message: str
     name: str
