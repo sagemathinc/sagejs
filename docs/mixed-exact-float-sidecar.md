@@ -317,3 +317,58 @@ by this new rule; tuple/resource return disposal is not inferred. Unknown
 calls remain rejected. `native-call-statement.cjs` covers repeated mutations,
 callee failure after mutation, mixed Float64 initialization, and rejected
 unknown/tuple calls across the emitted backends.
+
+## Binary64 exponent decomposition and scaling
+
+The PARI class-group experiment's binary64 LLL pass needs `math.frexp` and
+`math.ldexp`. Its 121-case dynamic-runtime probe found 14 discrepancies in
+the ordinary `math` module, and native lowering rejected both imports. This
+increment adds native lowering and correct generated fallback operations; it
+**does not yet repair the separate non-native `src/lib/math.py` module**.
+
+Imported `frexp` produces a typed `(Float64, Integer)` pair. The isolated C
+core calls libc `frexp`, explicitly returning exponent zero for non-finite
+values where C leaves the exponent unspecified. Mixed scalar tuple outputs
+now use a double output pointer alongside the existing integer output slot;
+the Node adapter already supports their individual representations. The
+generated JS fallback reads exponent bits, first exactly normalizing
+subnormals. Signed zero and non-finite values are preserved.
+
+Imported `ldexp` accepts a Float64 and exact integer exponent. The isolated
+core bounds the exponent to +/-4096 before converting it to C `int`: beyond
+that range every nonzero finite binary64 value already overflows or rounds to
+zero. JS normalizes the input, adds exponents exactly, and arranges scaling so
+only the final multiplication can round into the subnormal range. Neither
+path forms an overflowing intermediate `2**e`. Finite-input overflow raises
+`OverflowError` through the typed host mapping; no infinity-on-overflow PARI
+policy is silently substituted for Python semantics.
+
+Functions with only floating public arguments/results can still have integer
+exponent locals. Calls to these imported operations, or to typed native
+helpers, select the mixed typed lowering from their actual source bodies.
+Aliases and shadowing remain checked. This does not select an unrelated
+implementation from an enclosing Python function name. Mixed execution still
+uses GMP rather than claiming tagged or machine-only qualification.
+
+`tools/native-kernel/test/float64-log.cjs` checks 2,625 decompositions and
+3,814 scaling pairs against CPython, plus local and helper-call roundtrips in
+generated JS and GMP-native execution. It includes every power-of-two
+exponent, deterministic random bit patterns, odd subnormal rounding ties,
+huge integer exponents, signed zero, infinities, NaNs, and overflow before
+buffer mutation. Numeric values use exact binary64 equality (NaNs are compared
+as NaNs), not a relative tolerance. Float/integer tuple Wasm bridge layout is
+generated, but actual Wasm and Windows execution are not yet qualified. This
+is capability/correctness evidence, not a performance measurement.
+
+IR version 40 records the new operations. The focused exponent/logarithm,
+mixed-sidecar, native-call, relative-import and explicit-error suite passes
+14 tests, with one actual Wasm execution skipped for the missing toolchain.
+Temporary-name regressions cover C locals and JS public function names; mixed
+tuple tests preserve floats on both sides of a large exact integer. Strict
+checking passes all 403 modules. The build reaches adapter reconciliation,
+then fails at the existing missing FFLAS `libgivaro.a`; architecture reaches
+the existing stale optimizer manifest. The compiler suite also fails, including
+`series.py` with the previously observed undefined `$ρσ$py$Any` runtime name.
+The integration tier stops at the Cantor test's missing default MPC prefix
+(410 files unstarted); a targeted rerun with the available shared prefix is
+tracked separately. None of these broad gates is claimed green.

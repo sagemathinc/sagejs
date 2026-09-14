@@ -89,6 +89,26 @@
       "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
       "workspace_fingerprint": "7797696222fd3366d39a137175becda798b35a4649022f25de0b35dec3c37136",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/float64-log.cjs tools/native-kernel/test/mixed-exact-float64.cjs tools/native-kernel/test/native-call-statement.cjs tools/native-kernel/test/relative-native-imports.cjs tools/native-kernel/test/explicit-errors.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.958,
+      "started_at": "2026-09-14T08:47:14.723Z",
+      "commit": "9903c3dce6f571c14161233505857a41fc1f2d0d",
+      "workspace_fingerprint": "73ba41a4a48a97972fa7133a7078cea78c3a98dc54d5f8409b1dbc5c743c56b7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/float64-log.cjs tools/native-kernel/test/mixed-exact-float64.cjs tools/native-kernel/test/native-call-statement.cjs tools/native-kernel/test/relative-native-imports.cjs tools/native-kernel/test/explicit-errors.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.787,
+      "started_at": "2026-09-14T08:52:48.150Z",
+      "commit": "9903c3dce6f571c14161233505857a41fc1f2d0d",
+      "workspace_fingerprint": "fd20d6e2dac13c65809c7e7f592489cc1006dca1e8a1a93acb40c4c9c86fa2d3",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

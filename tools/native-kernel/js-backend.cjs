@@ -543,6 +543,12 @@ function emitExactStatement(operation, indent, resourceStack = null) {
       `${indent}${operation.target} = Math.${operation.kind.slice(8)}(${operation.source});`;
   }
   if (operation.kind === "float64.pow") return emitFloat64Pow(operation, indent);
+  if (operation.kind === "float64.frexp") {
+    return `${indent}[${operation.results.map(result => result.name).join(", ")}] = $sagejsNativeFrexp(${operation.source});`;
+  }
+  if (operation.kind === "float64.ldexp") {
+    return `${indent}${operation.target} = $sagejsNativeLdexp(${operation.source}, ${operation.exponent});`;
+  }
   if (operation.kind === "float64.buffer.length") {
     return `${indent}${operation.target} = BigInt(${operation.buffer}.length);`;
   }
@@ -3020,6 +3026,40 @@ function nativeRaise(name, message) {
   throw new RangeError(message);
 }
 
+const $sagejsBinary64Bits = new DataView(new ArrayBuffer(8));
+function $sagejsNativeFrexp(value) {
+  if (value === 0 || !Number.isFinite(value)) return [value, 0n];
+  let adjustment = 0;
+  $sagejsBinary64Bits.setFloat64(0, value, false);
+  let high = $sagejsBinary64Bits.getUint32(0, false);
+  if ((high & 0x7ff00000) === 0) {
+    // Exact normalization of every subnormal before reading its exponent.
+    value *= 18446744073709551616;
+    adjustment = -64;
+    $sagejsBinary64Bits.setFloat64(0, value, false);
+    high = $sagejsBinary64Bits.getUint32(0, false);
+  }
+  const exponent = ((high >>> 20) & 0x7ff) - 1022 + adjustment;
+  $sagejsBinary64Bits.setUint32(0, (high & 0x800fffff) | 0x3fe00000, false);
+  return [$sagejsBinary64Bits.getFloat64(0, false), BigInt(exponent)];
+}
+
+function $sagejsNativeLdexp(value, exponent) {
+  if (value === 0 || !Number.isFinite(value)) return value;
+  const parts = $sagejsNativeFrexp(value);
+  const scaledExponent = parts[1] + exponent;
+  if (scaledExponent > 1024n) nativeRaise("OverflowError", "math range error");
+  if (scaledExponent < -1074n) return value < 0 ? -0 : 0;
+  const shift = Number(scaledExponent), mantissa = parts[0];
+  // Only the final multiplication may round into the subnormal range.
+  const result = shift <= -1022
+    ? (mantissa * (2 ** (shift + 1074))) * Number.MIN_VALUE
+    : shift === 1024 ? (mantissa * 2) * (2 ** 1023)
+    : mantissa * (2 ** shift);
+  if (!Number.isFinite(result)) nativeRaise("OverflowError", "math range error");
+  return result;
+}
+
 function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) {
   try {
     const taggedProperty = name + "$tagged";
@@ -3049,6 +3089,7 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
     if (message.includes("negative shift count")) nativeRaise("ValueError", message);
     if (message.includes("integer shift allocation limit")) nativeRaise("MemoryError", message);
     if (message.includes("math domain")) nativeRaise("ValueError", message);
+    if (message === "math range error") nativeRaise("OverflowError", message);
     if (message.includes("too large to convert")) {
       nativeRaise("OverflowError", message);
     }

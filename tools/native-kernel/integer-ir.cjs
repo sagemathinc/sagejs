@@ -1380,6 +1380,27 @@ function lowerCall(node, context, operations) {
   const name = node.expression.name;
   const args = array(node.args);
 
+  if (["ldexp", "frexp"].includes(context.mathFunctions.get(name))) {
+    const kind = context.mathFunctions.get(name);
+    expect(context, node, !context.variables.has(name) && !context.lexicalLocals.has(name) &&
+      !context.signatures.has(name) && !context.integerConstants.has(name) && !context.foreignFunctions.has(name),
+      `math.${kind} binding is shadowed`);
+    expect(context, node, args.length === (kind === "ldexp" ? 2 : 1) && array(node.args?.kwarg_items).length === 0 &&
+      !node.args?.starargs && array(node.args?.kwargs).length === 0,
+      `native math.${kind} requires ${kind === "ldexp" ? "two" : "one"} positional arguments`);
+    const source = lowerExpression(args[0], context, operations);
+    expect(context, node, source.type === "Float64", `native math.${kind} requires Float64`);
+    if (kind === "frexp") {
+      const elements = ["Float64", "Integer"].map(type => ({name: temporary(context, node, type), type}));
+      operations.push({kind: "float64.frexp", source: source.name, results: elements});
+      return {type: tupleType(elements.map(value => value.type)), elements};
+    }
+    const exponent = coerceInteger(lowerExpression(args[1], context, operations), context, node, operations);
+    const target = temporary(context, node, "Float64");
+    operations.push({kind: "float64.ldexp", target, source: source.name, exponent: exponent.name});
+    return {name: target, type: "Float64"};
+  }
+
   if (["log", "log2", "pow"].includes(context.mathFunctions.get(name))) {
     const kind = context.mathFunctions.get(name);
     expect(context, node, !context.variables.has(name) && !context.lexicalLocals.has(name) &&
