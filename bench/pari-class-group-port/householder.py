@@ -73,7 +73,7 @@ def pari_qr_square(m: int, p: int, e: int) -> tuple[int, int, int]:
 
 
 @native
-def pari_prepared_householder(
+def pari_prepared_qr(
     matrix: IntegerBuffer,
     n: int,
     precision: int,
@@ -83,7 +83,7 @@ def pari_prepared_householder(
     norms: IntegerBuffer,
     column: IntegerBuffer,
 ) -> int:
-    """QR_init followed by gaussred_from_QR, returning 0 on upstream failure.
+    """QR_init with transposed L output, returning 0 on upstream failure.
 
     Input is the prepared square integer/real matrix, not a QR factorization.
     Initial requested precision is at most 512 bits (current square leaf).
@@ -161,6 +161,25 @@ def pari_prepared_householder(
             pari_qr_store(result, i * n + j, m, p, e)
         if sp != -1 and sp <= 64 and se >= 32:
             return 0
+    return 1
+
+
+@native
+def pari_prepared_householder(
+    matrix: IntegerBuffer,
+    n: int,
+    precision: int,
+    result: IntegerBuffer,
+    vectors: IntegerBuffer,
+    betas: IntegerBuffer,
+    norms: IntegerBuffer,
+    column: IntegerBuffer,
+) -> int:
+    """gaussred_from_QR, preserving the collector's original output contract."""
+    if not pari_prepared_qr(
+        matrix, n, precision, result, vectors, betas, norms, column
+    ):
+        return 0
     # Store transposed L directly: normalize its upper-triangular rows.
     for j in range(n - 1):
         m, p, e = pari_qr_load(result, j * n + j)

@@ -2194,6 +2194,55 @@ wall seconds, using 13.351 user plus 1.872 system CPU seconds and peak child RSS
 conservatively, including any compilation in the run. These are validation
 resource figures, not arithmetic or class-group performance measurements.
 
+## Adaptive Gram-Schmidt preparation for FLATTER
+
+`lll_preparation.py` translates `condition_bound`, `spread`, `GS_extraprec`,
+`gramschmidt_upper` and `gramschmidt_dynprec` for square nonsingular integer
+bases of degree at most ten. It preserves the initial `n+31` requested bits,
+64-bit precision rounding, failed-QR doubling, and subsequent
+`max(4*requested//3, minimum+extra)` rule. The output is the unnormalized upper
+QR factor required by FLATTER, not the collector's normalized quadratic form.
+The existing Householder source now exposes that intermediate factor through
+`pari_prepared_qr`; the original collector entry still applies precisely its
+original normalization after the shared QR call.
+
+`check_lll_preparation.cjs` compares 32 actual rounded-embedding ideal bases
+from the preceding probe and ten upper-triangular controls with pinned PARI
+source. All 42 agree in CPython, generated JavaScript and GMP native execution,
+including every stored integer/real triple and the final attempt count,
+requested precision and rounded precision. At least one actual basis requires
+a retry. The original 66 Householder controls, including nine upstream failure
+cases, still match PARI in CPython, JS, GMP and tagged execution.
+
+The existing QR primitive supports at most 512 bits. A larger upstream request
+returns status 2 (unresolved) before attempting it, rather than increasing a
+safety cap or falsely succeeding. A 640-bit request is tested in all three
+execution modes and leaves the output untouched. This remains an experimental
+capability boundary; it is not a replacement for upstream precision escalation.
+Input and workspace buffers must not alias. The exponent sentinel follows
+the pinned 64-bit PARI representation, independently of the host's C `long`.
+
+The first oracle draft used PARI's unsigned-digit `strtoi` reader on signed
+matrix literals; exact comparison exposed the resulting wrong input. The
+oracle now uses `gp_read_str` on regex-checked integer literals. The compiler
+also rejected two-argument `max` calls in the exact kernel, so the translation
+uses explicit comparison branches without changing the arithmetic or policy.
+No compiler change or new handwritten mathematical backend was added.
+
+The focused adaptive test has a passing parallel receipt. Formatting and strict
+Python pass (403 strict library modules; the experimental benchmark modules
+also execute directly in CPython). Architecture validation retains the known
+stale optimizer-manifest failure. All sixteen connected collector controls
+also pass after extracting the shared raw-QR function. The changed-file gate
+passes merge checks, then fails in `test/module-cache.cjs` with
+`ReferenceError: $ρσ$py$Any is not defined` in its generated shadow module;
+214 portable files were not started. The broad gate is not qualified, and
+this checkpoint does not modify that module/import subsystem.
+FLATTER recursion, exact transformations,
+binary64 LLL and extended-exponent verification remain unimplemented; this
+preparation function is not yet wired into the collector's packet producer.
+No new performance or whole-engine completion claim is made.
+
 ## LLL preparation dependency probe
 
 `probe_lll_preparation.cjs PARI_DIRECTORY PARI_ARCHIVE` inspects the next
