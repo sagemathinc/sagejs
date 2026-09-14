@@ -1,5 +1,30 @@
 # Faithful PARI class-group language experiment
 
+## Extended-exponent arithmetic for the mandatory DPE pass
+
+`lll_dpe.py` starts the pinned DPE dependency chain: integer conversion,
+normalization, addition, subtraction, multiplication, division, comparison and
+the connected multiply-then-subtract operation. A significand/exponent tuple
+lowers to scalar native outputs, keeping ordinary Python as the same source.
+The zero sentinel is explicitly the pinned 64-bit PARI `-LONG_MAX`, not the
+host C `long` width. Integer conversion retains `affidpe`'s distinct zero
+metadata and its two rounding steps. Addition/subtraction preserve the strict
+greater-than-53 exponent-gap cutoff and upstream operation order.
+
+`check_lll_dpe.cjs PARI_DIRECTORY PARI_ARCHIVE` compares **1,100 operand pairs**
+formed from ten signed integer inputs (through 1025 bits) and eleven exponent
+gaps from -2000 to 2000, including 52/53/54 boundaries. PARI, CPython, JS and
+native agree on every significand bit and exact exponent, and on the actual
+comparison return value (which can be +/-2). Chained subtract-product checks
+exercise reuse of normalized zero metadata. DPE division by zero is explicitly
+excluded from this arithmetic check: unlike binary64 division alone, its
+exponent arithmetic can exceed the pinned C-long domain. No overflow semantics
+are inferred from undefined upstream signed overflow.
+
+This is an arithmetic prerequisite, **not the DPE Babai/LLL pass**. Those loops,
+their exact Gram updates and the full driver fallback sequence remain required.
+No DPE or whole-class-group timing result is claimed.
+
 ## Fast outer-loop work in progress
 
 Current checkpoint: the explicit `pari_lll_divide` helper now reproduces C's
