@@ -1,5 +1,37 @@
 # Faithful PARI class-group language experiment
 
+## Resident relation-cache insertion
+
+`relation_cache.py` translates `already_known` and `add_rel_i` over resident
+buffers: backward duplicate search, modular basis reduction/insertion/cleanup,
+missing-rank count, dependent-relation allowance, zero-relation bypass, and
+record append decisions. The upstream strict upper-cleanup bound excluding
+the last column is preserved. Generator objects remain caller-owned IDs;
+field-element cloning/evaluation and the outer automorphism expansion in
+`add_rel` are not implemented by this boundary. Cache storage is preallocated;
+an otherwise-overrunning zero append raises explicitly.
+
+The signed-vector oracle exposed why generic modular inversion was not a
+faithful substitute. A negative signed pivot is cast to an unsigned word and
+passed to `Fl_inv`; its documented `x < p` precondition is not met by those
+synthetic inputs. The port reproduces `xgcduu(f=1)`'s subtract/divide schedule,
+64-bit wrapping and output selection, rather than normalizing the pivot first.
+Unsigned wrap in the basis update expressions is also explicit. This records
+observed routine behavior, not a claim that arbitrary synthetic relations
+occur in the final production path or that the filter proves exact rank.
+
+Across 192 sequential insertions (dimensions 2/3/5/8 and two dependent-relation
+allowances), status, append occurrence, every basis entry, counts, hashes and
+stored vectors match actual PARI, CPython, generated JS and GMP. Tests assert
+coverage of duplicate rejection, rejection without append, zero-status append
+and positive status. No full collector or performance comparison is claimed.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_relation_cache.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Subfactor-base change transition
 
 `pari_prepared_subfactor_change` now implements `subFB_change`'s preferred
