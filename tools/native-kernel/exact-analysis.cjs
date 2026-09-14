@@ -30,6 +30,7 @@ function operationInputs(operation) {
     case "integer.round_sqrt":
     case "uint64.from_integer_checked":
     case "float64.from_integer_checked":
+    case "float64.log":
     case "integer.from_float64":
     case "bool.not":
     case "uint64.truth":
@@ -43,6 +44,7 @@ function operationInputs(operation) {
     case "integer.gcd":
     case "integer.shift":
     case "float64.binary":
+    case "float64.pow":
     case "uint64.binary":
     case "integer.divmod":
     case "integer.compare":

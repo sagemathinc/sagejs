@@ -17,6 +17,8 @@
     "tools/native-kernel/test/integer-shifts.cjs",
     "tools/native-kernel/test/explicit-errors.cjs",
     "tools/native-kernel/ir.cjs",
+    "tools/native-kernel/float64-ir.cjs",
+    "tools/native-kernel/test/float64-log.cjs",
     "tools/native-kernel/native-imports.cjs",
     "tools/native-kernel/compiler.cjs",
     "tools/native-kernel/test/relative-native-imports.cjs",

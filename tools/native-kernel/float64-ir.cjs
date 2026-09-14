@@ -86,8 +86,9 @@ function uint64Literal(node) {
   return value <= UINT64_MAX ? value.toString() : undefined;
 }
 
-function createContext(fn, signature, filename, decorated) {
+function createContext(fn, signature, filename, decorated, imports = {}) {
   return {
+    imports,
     decorated,
     filename,
     functionName: signature.name,
@@ -150,7 +151,8 @@ function staticType(node, context) {
   if (nodeType(node) === "AST_Call" &&
       nodeType(node.expression) === "AST_SymbolRef") {
     const name = node.expression.name;
-    if (["float", "RealNumber", "abs", "sqrt"].includes(name)) {
+    if (["float", "RealNumber", "abs", "sqrt"].includes(name) ||
+        ["log", "pow"].includes(context.imports.mathFunctions?.get(name))) {
       return "Float64";
     }
     if (name === "len") return "uint64";
@@ -175,7 +177,8 @@ function lowerCall(node, context, operations, expectedType) {
   );
   const name = node.expression.name;
   const args = array(node.args);
-  if (name === "float" || name === "RealNumber") {
+  if ((name === "float" || name === "RealNumber") &&
+      !context.imports.mathFunctions?.has(name)) {
     expect(context, node, args.length === 1, name + "() requires one argument");
     const literal = name === "RealNumber" ? numericString(args[0]) : undefined;
     if (literal !== undefined) {
@@ -196,6 +199,25 @@ function lowerCall(node, context, operations, expectedType) {
       source: source.name,
     });
     return { name: target, type: "Float64" };
+  }
+  if (["log", "pow"].includes(context.imports.mathFunctions?.get(name))) {
+    const kind = context.imports.mathFunctions.get(name);
+    expect(context, node, !context.variables.has(name) &&
+      !array(context.fn.localvars).some(symbol => symbol.name === name) &&
+      !context.imports.signatures?.has(name) && !context.imports.integerConstants?.has(name) &&
+      !context.imports.foreignFunctions?.has(name), `math.${kind} binding is shadowed`);
+    expect(context, node, args.length === (kind === "pow" ? 2 : 1) && array(node.args?.kwarg_items).length === 0 &&
+      !node.args?.starargs && array(node.args?.kwargs).length === 0,
+      `native math.${kind} requires ${kind === "pow" ? "two" : "one"} positional Float64 arguments`);
+    const source = lowerExpression(args[0], context, operations, "Float64");
+    expect(context, node, source.type === "Float64", `native math.${kind} requires Float64`);
+    const target = temporary(context, node, "Float64");
+    if (kind === "pow") {
+      const exponent = lowerExpression(args[1], context, operations, "Float64");
+      expect(context, node, exponent.type === "Float64", "native math.pow requires Float64");
+      operations.push({kind: "float64.pow", target, left: source.name, right: exponent.name});
+    } else operations.push({kind: "float64.log", target, source: source.name});
+    return {name: target, type: "Float64"};
   }
   if (name === "abs" || name === "sqrt") {
     expect(context, node, args.length === 1, name + "() requires one argument");
@@ -788,8 +810,8 @@ function mutationRoots(statements, aliases, result) {
   return changed;
 }
 
-function lowerFloat64Function(fn, signature, filename, decorated) {
-  const context = createContext(fn, signature, filename, decorated);
+function lowerFloat64Function(fn, signature, filename, decorated, imports = {}) {
+  const context = createContext(fn, signature, filename, decorated, imports);
   const body = lowerBlock(fn.body, context);
   expect(
     context,

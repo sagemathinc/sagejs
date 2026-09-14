@@ -169,3 +169,38 @@ chain against CPython/JS/GMP/tagged, cache invalidation after an imported edit,
 portable dependency provenance, relative-math identity, cycles, missing modules
 and crossing the package root. This removes the need to concatenate the PARI
 experiment's Python modules merely to compile a connected segment.
+
+## Imported binary64 logarithm
+
+PARI's bound check uses the C binary64 logarithm. Explicit `from math import
+log` (including aliases) now lowers to `float64.log` and libc `log` in the
+isolated core, with `Math.log` in the generated fallback. Both pure binary64
+and mixed exact/binary64 functions accept one Float64 argument; implicit
+large-integer conversion and the optional logarithm base remain unsupported.
+Import identity and shadowing are checked, including aliases colliding with
+builtin names. This does not introduce function-name-selected mathematics.
+
+The focused `float64-log.cjs` test compares 92 positive binary64 inputs with
+CPython, including subnormal and extreme values, and checks zero/negative
+domain rejection, infinity, NaN and rejected bindings. Its numerical tolerance
+does not assert bitwise agreement between platform logarithm libraries.
+Mixed tagged execution remains unavailable; this adds no performance claim
+or Windows/Wasm qualification. The focused logarithm, GCD and relative-import
+tests pass. The architecture gate still stops at the previously recorded stale
+optimizer-opportunity manifest; its preceding audits pass.
+
+The same imported-function lowering now supports two-Float64-argument
+`math.pow`, needed by PARI's GRH bound check. The native core uses libc `pow`,
+not an alternative exponentiation recurrence. The JavaScript fallback handles
+Python's `1**NaN` and `(-1)**infinity` math-library conventions explicitly.
+Domain and finite-input overflow raise the low-level adapter's RangeError;
+underflow remains a rounded result. This is the existing binary64 adapter
+error convention, not a claim that its JavaScript exception classes are
+CPython classes. Optional integer conversions are not introduced.
+
+The logarithm test file also checks 739 power pairs against CPython in pure
+binary64 and mixed JS/GMP execution: 169 special-value combinations and 570
+positive `q**M` cases shaped like the upstream bound check. Finite nonzero
+results use a small relative tolerance, not a bitwise cross-library guarantee;
+signed zero and infinity are checked exactly. These are correctness controls,
+not a performance qualification.

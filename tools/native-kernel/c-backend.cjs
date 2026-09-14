@@ -2790,6 +2790,24 @@ ${freeBuffers}
 
 function emitFloat64Operation(operation, indent) {
   const target = cName(operation.target);
+  if (operation.kind === "float64.pow") {
+    const left = cName(operation.left), right = cName(operation.right);
+    return [
+      `${indent}if (${left} == 0.0 && ${right} < 0.0 && isfinite(${right})) {`,
+      statusFailure("range", "math domain error", `${indent}  `),
+      `${indent}  goto fail;`,
+      `${indent}}`,
+      `${indent}${target} = pow(${left}, ${right});`,
+      `${indent}if (isnan(${target}) && !isnan(${left}) && !isnan(${right})) {`,
+      statusFailure("range", "math domain error", `${indent}  `),
+      `${indent}  goto fail;`,
+      `${indent}}`,
+      `${indent}if (isinf(${target}) && isfinite(${left}) && isfinite(${right})) {`,
+      statusFailure("range", "math range error", `${indent}  `),
+      `${indent}  goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "uint64.constant") {
     return `${indent}${target} = UINT64_C(${operation.value});`;
   }
@@ -2805,15 +2823,16 @@ function emitFloat64Operation(operation, indent) {
   if (operation.kind === "float64.abs") {
     return `${indent}${target} = fabs(${cName(operation.source)});`;
   }
-  if (operation.kind === "float64.sqrt") {
+  if (operation.kind === "float64.sqrt" || operation.kind === "float64.log") {
     const source = cName(operation.source);
+    const logarithm = operation.kind === "float64.log";
     return [
-      `${indent}if (${source} < 0.0)`,
+      `${indent}if (${source} ${logarithm ? "<=" : "<"} 0.0)`,
       `${indent}{`,
       statusFailure("range", "math domain error", `${indent}    `),
       `${indent}    goto fail;`,
       `${indent}}`,
-      `${indent}${target} = sqrt(${source});`,
+      `${indent}${target} = ${logarithm ? "log" : "sqrt"}(${source});`,
     ].join("\n");
   }
   if (operation.kind === "float64.negate") {

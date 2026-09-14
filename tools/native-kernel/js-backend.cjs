@@ -26,6 +26,16 @@ function jsString(value) {
   return JSON.stringify(String(value));
 }
 
+function emitFloat64Pow(operation, indent) {
+  const {left, right, target} = operation;
+  return [
+    `${indent}if (${left} === 0 && ${right} < 0 && Number.isFinite(${right})) throw new RangeError("math domain error");`,
+    `${indent}${target} = ${left} === 1 || (Math.abs(${left}) === 1 && !Number.isFinite(${right}) && !Number.isNaN(${right})) ? 1 : Math.pow(${left}, ${right});`,
+    `${indent}if (Number.isNaN(${target}) && !Number.isNaN(${left}) && !Number.isNaN(${right})) throw new RangeError("math domain error");`,
+    `${indent}if (!Number.isFinite(${target}) && !Number.isNaN(${target}) && Number.isFinite(${left}) && Number.isFinite(${right})) throw new RangeError("math range error");`,
+  ].join("\n");
+}
+
 function exactUsesFloat64(fn) {
   return fn.kernelKind === "integer" &&
     [...fn.params, ...fn.locals].some((value) =>
@@ -455,6 +465,12 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "float64.negate") {
     return `${indent}${operation.target} = -${operation.source};`;
   }
+  if (operation.kind === "float64.log") {
+    return `${indent}if (${operation.source} <= 0) ` +
+      `nativeRaise("ValueError", "math domain error");\n` +
+      `${indent}${operation.target} = Math.log(${operation.source});`;
+  }
+  if (operation.kind === "float64.pow") return emitFloat64Pow(operation, indent);
   if (operation.kind === "float64.buffer.length") {
     return `${indent}${operation.target} = BigInt(${operation.buffer}.length);`;
   }
@@ -1435,10 +1451,12 @@ function generateJavaScript(ir, options = {}) {
     if (operation.kind === "float64.abs") {
       return `${indent}${operation.target} = Math.abs(${operation.source});`;
     }
-    if (operation.kind === "float64.sqrt") {
-      return `${indent}if (${operation.source} < 0) ` +
+    if (operation.kind === "float64.pow") return emitFloat64Pow(operation, indent);
+    if (operation.kind === "float64.sqrt" || operation.kind === "float64.log") {
+      const logarithm = operation.kind === "float64.log";
+      return `${indent}if (${operation.source} ${logarithm ? "<=" : "<"} 0) ` +
         `throw new RangeError("math domain error");\n` +
-        `${indent}${operation.target} = Math.sqrt(${operation.source});`;
+        `${indent}${operation.target} = Math.${logarithm ? "log" : "sqrt"}(${operation.source});`;
     }
     if (operation.kind === "float64.negate") {
       return `${indent}${operation.target} = -${operation.source};`;
