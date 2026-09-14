@@ -92,6 +92,7 @@ def pari_collect_prepared_ideals(
     generators: IntegerBuffer,
     progress: Int64Buffer,
     search_ideals: IntegerBuffer,
+    search_count: int,
     packet_ids: IntegerBuffer,
     packet_matrices: IntegerBuffer,
     packet_reduced_ideals: IntegerBuffer,
@@ -107,7 +108,10 @@ def pari_collect_prepared_ideals(
     Input packet storage must be distinct from all mutable working buffers.
     Return the schedule terminal status; zero includes schedule exhaustion.
     This does not implement upstream ideal preparation or automorphism images.
+    `search_count` is the live search prefix length, not its buffer capacity.
     """
+    if search_count < 0 or search_count > len(search_ideals):
+        raise ValueError("invalid live ideal search length")
     packets = len(packet_ids)
     square = n * n
     if n < 2 or n > 10 or len(packet_norms) != packets or len(packet_skips) != packets:
@@ -124,6 +128,7 @@ def pari_collect_prepared_ideals(
     while True:
         selected = pari_next_small_norm_ideal(
             search_ideals,
+            search_count,
             ramification,
             admission_group_f,
             n,

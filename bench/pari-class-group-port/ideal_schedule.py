@@ -10,6 +10,7 @@ from sagejs.native import Int64Buffer, IntegerBuffer, native
 @native
 def pari_next_small_norm_ideal(
     ideals: IntegerBuffer,
+    count: int,
     ramification: IntegerBuffer,
     residue_degrees: IntegerBuffer,
     degree: int,
@@ -31,9 +32,13 @@ def pari_next_small_norm_ideal(
     Reset only per-ideal control state. Keep the factor-list length, aggregate
     Nsmall/Nfact counters and all relation/generator storage across ideals.
     Returning an ID does not prepare that ideal or execute its collection.
+    Only `ideals[:count]` is live; trailing capacity is neither read nor copied.
+    Keep the live prefix and count fixed until this schedule is terminal.
     """
     if (
         degree < 1
+        or count < 0
+        or count > len(ideals)
         or distinguished < 0
         or power < 0
         or len(schedule) < 4
@@ -46,7 +51,7 @@ def pari_next_small_norm_ideal(
     if schedule[2] != 0:
         return 0
     if schedule[1] == 0:
-        schedule[0] = len(ideals)
+        schedule[0] = count
         schedule[1] = 1
         counters[1] = 0
         progress[1] = 0

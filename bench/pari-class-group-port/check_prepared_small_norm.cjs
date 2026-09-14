@@ -63,7 +63,7 @@ function run(command,args,options={}){const r=spawnSync(command,args,{encoding:'
  const names=fs.readFileSync(sourcePath,'utf8').match(new RegExp('def '+entry+'\\(([\\s\\S]*?)\\n\\)'))[1].trim().split('\n').map(s=>s.trim().replace(/,$/,'').split(': '));
  const inputs=fixture.cases.map(({input:v},index)=>{const w=second.cases[index].input;
   for(const name of ['n','precision','admission_matrix_m','admission_matrix_p','admission_matrix_e','admission_group_e','admission_group_f','admission_group_tau'])assert.deepEqual(v[name],w[name],name);
-  const all={...v,search_ideals:[w.jid,v.jid],packet_ids:distinct?[v.jid,w.jid]:[v.jid],packet_matrices:distinct?v.matrix.concat(w.matrix):v.matrix.slice(),packet_reduced_ideals:distinct?v.ideal.concat(w.ideal):v.ideal.slice(),packet_ideals:distinct?v.admission_ideal.concat(w.admission_ideal):v.admission_ideal.slice(),packet_norms:distinct?[v.admission_ideal_norm,w.admission_ideal_norm]:[v.admission_ideal_norm],packet_skips:distinct?[v.skipfirst,w.skipfirst]:[v.skipfirst],schedule:['0','0','0','0']};
+  const all={...v,search_ideals:[w.jid,v.jid],search_count:'2',packet_ids:distinct?[v.jid,w.jid]:[v.jid],packet_matrices:distinct?v.matrix.concat(w.matrix):v.matrix.slice(),packet_reduced_ideals:distinct?v.ideal.concat(w.ideal):v.ideal.slice(),packet_ideals:distinct?v.admission_ideal.concat(w.admission_ideal):v.admission_ideal.slice(),packet_norms:distinct?[v.admission_ideal_norm,w.admission_ideal_norm]:[v.admission_ideal_norm],packet_skips:distinct?[v.skipfirst,w.skipfirst]:[v.skipfirst],schedule:['0','0','0','0']};
   if(unreduced){
    const n=Number(v.n),zero=k=>Array(k).fill('0');
    Object.assign(all,{construct_primes:constructPrimes?'1':'0',basis_table:[],packet_primes:[],packet_generators:[],packet_inert:[],hnf_generator:zero(n),hnf_matrix:zero(n*n),hnf_work:zero(n*n),hnf_pivots:zero(n)});
@@ -81,6 +81,9 @@ function run(command,args,options={}){const r=spawnSync(command,args,{encoding:'
  if(process.argv.includes('--export-fixtures')){
   console.log(JSON.stringify({schema:'pari-small-norm-collector-v1',entry,names,unreduced,distinct,constructPrimes,distinguished,selectedExponent,zeroExponent,controlSource:control,cases:inputs.map((input,index)=>({input,expected:expected[index]}))}));return;
  }
+ // The live prefix retains the upstream two visits; invalid spare capacity
+ // must not become a visit or trigger descriptor/packet lookup.
+ for(const v of inputs)v.search_ideals.push('0','999999');
  const py=run('python3',['-c',`
 import sys,json,decimal,importlib
 sys.set_int_max_str_digits(100000);sys.path[:0]=sys.argv[1:3]
@@ -118,7 +121,7 @@ for raw,w in zip(d['inputs'],d['expected']):
   assert v['power_ideal']==[int(i==j) for i in range(n) for j in range(n)]
   assert v['power_metadata'][3]==1
  if d['unreduced']:
-  consumed=list(reversed(v['search_ideals']))[:2-v['schedule'][0]]
+  consumed=list(reversed(v['search_ideals'][:v['search_count']]))[:v['search_count']-v['schedule'][0]]
   exponent=v['power_metadata'][4] if d['selectedExponent'] else v['e0']
   if d['selectedExponent']:
    base=v['relation_primes'][v['jid0']-1]**v['admission_group_f'][v['jid0']-1]
@@ -127,6 +130,22 @@ for raw,w in zip(d['inputs'],d['expected']):
   visits=sum(not(j==v['jid0'] and (exponent+1)%v['ramification'][j-1]==0 and v['ramification'][j-1]*v['admission_group_f'][j-1]==n) for j in consumed)
   assert qr_calls[0]==visits,(qr_calls,v['schedule'],consumed)
  before=str(v);assert f(*(v[name] for name,kind in d['names']))==status and str(v)==before
+for count in [-1,len(d['inputs'][0]['search_ideals'])+1,0]:
+ v={}
+ for name,kind in d['names']:
+  conv=float if kind in ('float','Float64Buffer') else int;x=d['inputs'][0][name];v[name]=list(map(conv,x)) if isinstance(x,list) else conv(x)
+ v['search_count']=count;before=str(v)
+ if count:
+  try:f(*(v[name] for name,kind in d['names']))
+  except ValueError as error:assert 'invalid live ideal search length' in str(error)
+  else:raise AssertionError('invalid live count accepted')
+  assert str(v)==before
+ else:
+  preserved={k:v[k][:] for k in ['search_ideals','relation_state','relation_basis','relation_records','generators','preparation_state'] if k in v}
+  assert f(*(v[name] for name,kind in d['names']))==0
+  assert v['schedule']==[0,1,1,0]
+  assert all(v[k]==x for k,x in preserved.items())
+  before=str(v);assert f(*(v[name] for name,kind in d['names']))==0 and str(v)==before
 if d['distinguished']:
  v={}
  for name,kind in d['names']:
@@ -196,6 +215,19 @@ if d['zeroExponent']:
    if(backend==='gmp')selectedExponents.push(String(exponent));
   }
   const dump=()=>JSON.stringify(v,(_,x)=>typeof x==='bigint'?String(x):x),before=dump();assert.equal(invoke(),status);assert.equal(dump(),before);
+ }
+ for(const backend of ['javascript','gmp'])for(const count of [-1,inputs[0].search_ideals.length+1,0]){
+  const v={};for(const [name,kind]of names){const conv=kind==='float'||kind==='Float64Buffer'?Number:BigInt,x=inputs[0][name];v[name]=Array.isArray(x)?x.map(conv):conv(x);}
+  v.search_count=BigInt(count);
+  const invoke=()=>mod[entry][backend](...names.map(([name])=>v[name]));
+  const dump=()=>JSON.stringify(v,(_,x)=>typeof x==='bigint'?String(x):x),before=dump();
+  if(count){assert.throws(invoke,/invalid live ideal search length/);assert.equal(dump(),before);}
+  else{
+   const preserved=Object.fromEntries(['search_ideals','relation_state','relation_basis','relation_records','generators','preparation_state'].filter(k=>k in v).map(k=>[k,v[k].slice()]));
+   assert.equal(invoke(),0n);assert.deepEqual(v.schedule,[0n,1n,1n,0n]);
+   for(const [k,x]of Object.entries(preserved))assert.deepEqual(v[k],x,k);
+   const after=dump();assert.equal(invoke(),0n);assert.equal(dump(),after);
+  }
  }
  if(zeroExponent)for(const backend of ['javascript','gmp']){
   const v={};for(const [name,kind]of names){const conv=kind==='float'||kind==='Float64Buffer'?Number:BigInt,x=inputs[0][name];v[name]=Array.isArray(x)?x.map(conv):conv(x);}

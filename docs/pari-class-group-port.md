@@ -91,6 +91,28 @@ The changed-file gate passes merge invariants, then again fails
 unbound-`Any` error. It cancels siblings and leaves 233 unit files and the docs
 check unexecuted; this is not a broad-suite pass.
 
+### Explicit live-length collector inputs
+
+Both collector entries and the inner scheduler now accept an explicit live
+search-list count, separately from buffer capacity. Negative or oversized
+counts reject before mutation. The scheduler retains the count on resumption
+and ignores unused suffix entries, including deliberately invalid IDs. This
+removes the live-length mismatch described above without copying packed
+owners or changing the order of visits. The outer/inner connection itself is
+still pending.
+
+All 768 scheduler controls and three sets of 16 collector controls (prepared
+distinct, unreduced zero exponent, unreduced selected exponent) pass against
+their existing oracles. Their traces are unchanged. Empty lists skip per-ideal
+preparation and collection; a directly invoked distinguished collector still
+performs its one-time power setup, as before. The outer driver must therefore
+retain PARI's empty-list call suppression rather than calling this entry and
+claiming identical work. Newly exported fixtures carry `search_count`; old
+saved artifacts retain their historical schemas and are not rewritten.
+
+This subtask used 217.498942 measured CPU seconds, already in the ledger, and
+reserves seven aggregate active-agent minutes including its initial wait.
+
 ## Approved continuation block
 
 The user explicitly approved eight additional aggregate active-agent hours and

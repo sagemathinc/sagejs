@@ -149,6 +149,7 @@ def pari_collect_unreduced_ideals(
     preparation_temporary: Float64Buffer,
     preparation_state: Int64Buffer,
     search_ideals: IntegerBuffer,
+    search_count: int,
     packet_ids: IntegerBuffer,
     packet_ideals: IntegerBuffer,
     packet_norms: IntegerBuffer,
@@ -186,7 +187,10 @@ def pari_collect_unreduced_ideals(
     All packet inputs are disjoint from mutable workspaces.
     Follow the existing upstream schedule/stop policy; unsupported preparation
     stops this schedule with a sticky dependency status rather than advancing.
+    `search_count` is the live search prefix length, not its buffer capacity.
     """
+    if search_count < 0 or search_count > len(search_ideals):
+        raise ValueError("invalid live ideal search length")
     packets = len(packet_ids)
     square = n * n
     if n < 3 or n > 4 or construct_primes < 0 or construct_primes > 3:
@@ -276,6 +280,7 @@ def pari_collect_unreduced_ideals(
     while True:
         selected = pari_next_small_norm_ideal(
             search_ideals,
+            search_count,
             ramification,
             admission_group_f,
             n,
