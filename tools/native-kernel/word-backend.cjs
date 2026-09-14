@@ -429,7 +429,17 @@ ${indent}    ${target} = bits;
 ${indent}}`;
   }
   if (operation.kind === "integer.shift") return promote();
-  if (operation.kind === "integer.gcd") return promote();
+  if (operation.kind === "integer.gcd") {
+    const left=value(operation.left),right=value(operation.right);
+    return `${indent}{
+${indent}    uint64_t a = ${left} < 0 ? UINT64_C(0) - (uint64_t)${left} : (uint64_t)${left};
+${indent}    uint64_t b = ${right} < 0 ? UINT64_C(0) - (uint64_t)${right} : (uint64_t)${right};
+${indent}    while (b) { uint64_t r = a % b; a = b; b = r; }
+${indent}    if (a > INT64_MAX)
+${promote()}
+${indent}    ${target} = (int64_t)a;
+${indent}}`;
+  }
   if (operation.kind === "integer.pow_uint") {
     return [
       `${indent}if (!sagejs_word_pow_int64(${value(operation.base)}, ` +
