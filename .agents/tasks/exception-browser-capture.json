@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Propagate explicit native/guarded traceback capture through browser compiler workers",
-  "base_commit": "901902a3827326e8c4b54c2ac98bbce8d2e79945",
+  "base_commit": "dd8e968a61b919f8bf67e58ab5fca20f63bd2b00",
   "claims": [
     "packages/flint-wasm/test/traceback-capture-browser.mjs",
     "packages/flint-wasm/test/traceback-capture-worker.test.mjs",
