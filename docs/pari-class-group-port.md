@@ -32,6 +32,15 @@ or an independent class-group implementation. The earlier small-divisor-only
 restriction below is superseded at the general entry; the private word helper
 still rejects that separate route. No production behavior changes.
 
+Validation after this connection: 75 original rounding controls, 3,496 arithmetic
+controls and 160 connected gates pass after formatting. The full build completed
+in 7m23s, explicitly skipping unavailable optional FLINT production kernels and
+Wasm numerical reactors. `test:changed` did not finish its later suites: its
+audit saw a concurrently removed tracked rounding file. Rerunning architecture
+checks after the deletion was committed passes native/FFI/Wasm ownership checks
+and stops at the same pre-existing stale optimizer manifest. This is not an
+all-suite green receipt or Windows/Wasm execution qualification.
+
 ## Ideal-norm division checkpoint
 
 The prepared-real prototype now translates `divri`'s small-integer route
