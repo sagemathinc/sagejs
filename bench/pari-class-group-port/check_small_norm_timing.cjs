@@ -15,6 +15,7 @@ const dynamic = path.join(__dirname, "run_small_norm_dynamic.cjs");
 for (const [name, exe, args, input] of [
   ["core", m.exe, ["1"], fs.readFileSync(m.inputPath)],
   ["pari", m.pariExe, ["1"], undefined],
+  ["cpython", "python3", [path.join(__dirname, "run_small_norm_cpython.py"), m.preparedManifest, "1"], undefined],
   ["javascript", process.execPath, [dynamic, m.preparedManifest, "javascript", "1"], undefined],
   ["gmp", process.execPath, [dynamic, m.preparedManifest, "gmp", "1"], undefined],
 ]) {

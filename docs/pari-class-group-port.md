@@ -174,6 +174,66 @@ hash is `e27012f7e9ef90b5d3ca0bb2f1ef6cf64bfaa6363bc7f625328ae723bdd3d174`;
 generated core hash is
 `f1411502c80a1ea29505fec7270555e9e3aa0f55ad93c82181a0fc419dd4266d`.
 
+The follow-up CPython driver uses the same fresh inputs, three warmups and
+entry-only clock, and checks every output outside timing. It preloads stdlib
+`decimal` before adding the Sage.js library path: otherwise CPython 3.14's
+large-integer conversion sees the Sage.js module of that name. This was a
+harness import failure, not an arithmetic mismatch. All five smoke paths now
+agree (including standalone and packed native as distinct boundaries).
+
+| Follow-up execution | User CPU | System CPU | Outcome |
+| --- | ---: | ---: | --- |
+| Initial CPython timing smoke | 0.664278 | 0.522807 | Stdlib module shadowing failure |
+| Five-path smoke after preload | 7.344026 | 0.971959 | Pass |
+| Ten-repetition pilot | 3.449787 | 0.537735 | Pass; pilot timings discarded |
+
+Subtotal before longer paired execution: **1,100.502736 CPU seconds**.
+The pilot selected a fixed 640 repetitions for three alternating rounds of
+PARI / standalone native core / CPython on CPU 15. A one-second preflight
+observed about 99% idle there; it is not an exclusive-host reservation.
+`pair_small_norm.cjs` records CPU counters and load before/after each process,
+enforces 4 GiB address space and 600 CPU seconds per process, and preserves
+short samples without changing repetition counts. This measures only the
+declared two-visit segment, not `bnfinit` or the complete frozen panel.
+
+The three rounds completed with exact output agreement. Each aggregate sample
+exceeded one second; no repetition count was changed after the pilot. CPU 15
+counters show no steal or I/O-wait ticks during any process. The shared host
+was not exclusively reserved, so these are reproducible local segment timings,
+not a cross-host qualification or pure-language causal claim.
+
+| Round | PARI entry seconds | Generated core | CPython | Core / PARI |
+| --- | ---: | ---: | ---: | ---: |
+| 0 | 1.209833 | 36.697930 | 47.468638 | 30.33 |
+| 1, reverse order | 1.189375 | 36.790655 | 47.257486 | 30.93 |
+| 2 | 1.194466 | 36.967642 | 47.363665 | 30.95 |
+
+Each entry total covers 640 fresh repetitions of all 16 scenarios. These are
+not seconds-scale number fields: repetition makes a tiny segment measurable.
+Full process wall times were 1.22–1.25 seconds for PARI, 59.64–61.00 for the
+core, and 89.92–90.68 for CPython. Input conversion, fresh buffer resets and
+output checks account for boundary work excluded from entry clocks. Generated
+JavaScript and packed-host execution have smoke checks, not paired timings.
+
+Raw counters, per-case times, host metadata and artifact hashes are retained in
+`bench/pari-class-group-port/paired-small-norm-640.json` (about 64 KiB). Its
+temporary paths identify this run; regenerate adapters for reproduction:
+
+```sh
+node bench/pari-class-group-port/pair_small_norm.cjs MANIFEST CPU 640 3 NEW_OUTPUT
+```
+
+The paired run charged 455.385842 user + 0.820177 system CPU seconds. Subsequent
+formatting charged 9.901293 + 0.488353 seconds and changed no files. Updated
+continuation total: **1,567.098401 CPU seconds**.
+
+The generated core is only about 1.29 times faster than CPython here. The next
+diagnostic should quantify packed-buffer import/export, whole-slot zeroing,
+temporary initialization and exact-to-machine index conversion before adding
+more driver code. This does not establish that any one of them explains the
+30-times gap; retained arithmetic-backend substitutions still confound a pure
+compiler comparison. The complete class-group objective remains unimplemented.
+
 ## Bounded checkpoint assessment: the full objective is not achieved
 
 Audit of implementation commit `6bb89f177` against the original experiment:
