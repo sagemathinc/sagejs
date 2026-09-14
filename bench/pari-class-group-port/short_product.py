@@ -205,15 +205,17 @@ def pari_short_product(
     ny = checked_uint64(py // 64)
     one = checked_uint64(1)
     word_bits = checked_uint64(64)
-    word = 1 << 64
+    # Select the same unsigned word as remainder modulo 2**64, without
+    # requesting general integer division from the native backend.
+    word_mask = (1 << 64) - 1
     high = 0
     for i in range(nx):
-        a = (mx >> (word_bits * (nx - one - i))) % word
+        a = (mx >> (word_bits * (nx - one - i))) & word_mask
         stop = nx - i + one
         if stop > ny:
             stop = ny
         for j in range(stop):
-            b = (my >> (word_bits * (ny - one - j))) % word
+            b = (my >> (word_bits * (ny - one - j))) & word_mask
             term = a * b
             if i + j < nx:
                 shift = word_bits * (nx - one - i - j)

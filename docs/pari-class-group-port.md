@@ -14,8 +14,12 @@ compilation included in such checks is conservatively charged too.
 The user subsequently requested subagent help. One read-only reviewer reported
 approximately 360 active seconds, without an initial clock timestamp. Reserve
 its full 15-minute task allowance conservatively: the root ceiling is now
-85,020 seconds. No other subagent is allocated in this block. The review ran
+85,020 seconds. The review ran
 no builds or benchmarks and did not share the timing workload.
+
+A second read-only reviewer examined word arithmetic for approximately five
+active minutes. Reserve its complete ten-minute allowance: the root ceiling
+is now 84,420 seconds. It ran no tests/builds and made no edits.
 
 The first priorities are connecting the distinguished-ideal relation path and
 obtaining a qualified work-matched comparison. The full prepared-field
@@ -270,6 +274,89 @@ inspect its generated code before selecting a compiler or representation fix.
 The profile charged 70.857683 user + 2.869708 system CPU seconds; the slot-clear
 control (including compilation) charged 67.555866 + 3.160458. Continuation total
 is now **1,711.542116 CPU seconds**. The full objective and limits are unchanged.
+
+### Short-product leaf and an exact-mask compiler obstruction
+
+`measure_short_product.cjs` reuses the existing 228 PARI multiplication
+fixtures. All cases are checked; only the first 32 prepared-embedding cases
+are timed, each repeated 1,000 times. PARI reconstructs the same signed
+mantissas, precisions and exponents before timing. The generated core accepts
+those exact integers directly. Conversion and output checking are excluded;
+PARI stack reset and native temporary ownership remain in their entry costs.
+These deliberately short leaf diagnostics have no warmups and do not meet the
+one-second qualification threshold.
+
+The baseline native totals are 0.1246–0.1260 seconds, versus PARI
+0.00082–0.00086 seconds. The gap is substantial even without buffer ingress,
+but this is still a representation comparison: Python expresses PARI limb
+products/carries using arbitrary-precision integers.
+
+Replacing word extraction modulo `2**64` with `& ((1 << 64) - 1)` preserves
+the exact selected bits and per-term truncation order. CPython passed all 228
+cases, but the compiler rejected exact-integer `&` as uint64-only. The compiler
+prerequisite now implements exact `&` and `&=` in GMP, JavaScript, tagged and
+machine-word execution, preserving existing uint64 operations. Focused tests
+cover negative/infinite-two's-complement behavior, large masks, mixed operand
+order and aliasing. Independent source review identified this narrow omission
+and separately flagged redundant boxing of machine shift counts.
+
+With the new compiler, all 228 multiplication cases match in CPython,
+JavaScript and native execution. Native diagnostic totals become
+0.0995–0.1100 seconds. This is encouraging but not a qualified before/after
+claim; the two runs have distinct compiler pins and short samples. Raw reports
+are `short-product-cost-baseline.json` and `short-product-cost-mask.json` in the
+benchmark directory. The complete collector needs regression and remeasurement
+after integrating this compiler prerequisite.
+
+| Additional execution | User CPU | System CPU | Outcome |
+| --- | ---: | ---: | --- |
+| Baseline leaf diagnostic | 7.059579 | 0.529213 | 228 cases pass |
+| Initial mask compile | 1.024671 | 0.196990 | Exact AND rejected; CPython passes |
+| Initial compiler mask/shift tests | 2.412100 | 0.641612 | Pass |
+| Client with new compiler | 8.950524 | 0.607276 | 228 cases pass |
+| Mask leaf diagnostic | 6.954267 | 0.506823 | Pass |
+| Expanded automatic-dispatch tests | 2.445807 | 0.664968 | Pass |
+| Compiler architecture gate | 10.819680 | 2.398425 | Known stale optimizer manifest failure |
+
+The compiler changed-file gate passed merge checks, compiler convergence and
+module precompilation, then failed at installed-adapter reconciliation because
+the compiler worktree lacks FFLAS `libgivaro.a`. Later gates were not reached.
+That run charged 472.673766 user + 9.260700 system CPU seconds.
+The post-build compiler test receipt passed (2.411303 user + 0.677185 system
+CPU seconds). Formatting changed no files (10.272381 + 0.502711 seconds).
+Subtotal: **2,252.552097 CPU seconds**; later gate runs remain to be added.
+
+Compiler prerequisite `d1e398266f63237b6a2ce27d96b9e7556f0178cf` is integrated
+by merge `8e05ea9c3`. The port task's dependency baseline is advanced to that
+compiler commit, not to the port merge: all mathematical experiment changes
+remain visible against their claims. The first claim check after merging
+reported the newly inherited compiler files until this baseline was updated.
+
+The integrated collector passes all 16 scenarios with the unchanged trace
+`9634c8078e5b442b0c6182f3028c77a57602829a5fcec53bf244fba3ef34e2eb`.
+Strict Python also passes (403 modules, 977 formatted files, zero errors).
+The new native core hash is
+`00f16cca79fd37f5323b5fd9eecaba3240a1f3d5b042e652c821ff85bff98be6`.
+
+`compare_small_norm_cores.cjs OLD_MANIFEST NEW_MANIFEST CPU NEW_OUTPUT`
+checks identical input/fixture hashes and compares 64 fresh repetitions per
+scenario in three alternating rounds. Baseline/mask entry seconds are
+3.7186/3.7395, 3.7556/3.6976, and 3.7086/3.6888. All outputs match and all
+aggregate samples exceed one second. **There is no material connected speedup
+established here**; the small changes are within about 1.6%. Retain the
+compiler feature for correct ordinary Python support, not as a claim to have
+closed the collector gap. Raw evidence is `small-norm-mask-comparison.json`.
+
+| Integrated execution | User CPU | System CPU | Outcome |
+| --- | ---: | ---: | --- |
+| Connected collector | 103.632430 | 3.137575 | Unchanged trace |
+| Strict Python | 80.554735 | 3.190818 | Pass |
+| New timing adapters | 62.221548 | 2.491336 | Pass |
+| Local native before/after | 40.408600 | 2.707019 | Equal outputs; no material speedup |
+
+Continuation total: **2,550.896158 CPU seconds**. The next profile should
+distinguish actual operand sizes and zero/short branches from aggregate call
+counts, and test the demonstrated machine-shift-count boxing independently.
 
 ## Bounded checkpoint assessment: the full objective is not achieved
 

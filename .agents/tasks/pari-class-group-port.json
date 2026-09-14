@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Measure faithful PARI 2.17.4 class-group translation feasibility",
-  "base_commit": "68fbe40290a88abb97152e15d8ee7819b4b3b93c",
+  "base_commit": "d1e398266f63237b6a2ce27d96b9e7556f0178cf",
   "claims": [
     "src/lib/sagejs/number_fields/pari_class_group/",
     "test/pari-class-group-port.cjs",
@@ -937,6 +937,16 @@
       "started_at": "2026-09-14T14:52:47.381Z",
       "commit": "de4164d04d1b3523cfdcee33bff89169d137d414",
       "workspace_fingerprint": "3008a0ac32e4b2e5561f29f0a5aaf170d051dd2922b80f01e82ebb4e92b0ef42",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/pari-class-group-port/meter_command.py node bench/pari-class-group-port/check_prepared_small_norm.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --unreduced --distinct --construct-primes --distinguished",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 100.492,
+      "started_at": "2026-09-14T15:38:04.549Z",
+      "commit": "8e05ea9c37d2998176f7813300d07bcf78cb8e6d",
+      "workspace_fingerprint": "4e60de09c4e33e07da8cf96c9b87d41c3f081a913cb4f723da99cbf76fccaf13",
       "platform": "linux-x64"
     }
   ],
