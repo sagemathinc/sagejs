@@ -250,6 +250,15 @@ not a performance qualification.
 
 ## Native calls used as statements
 
+Shared native helpers reached through diamond imports are now coalesced by
+their defining-source path, content hash, and complete lowered definition,
+not the immediate importing module. This permits the exponential path to
+share real-arithmetic helpers through multiple numerical modules. Missing or
+ambiguous provenance, distinct defining modules, and unequal definitions do
+not qualify. The relative-import regression exercises a diamond across JS,
+GMP and tagged execution and checks that editing its shared leaf invalidates
+the compiled cache. Distinct-source name collisions remain rejected.
+
 Exact native functions may now call a known source-native helper and discard
 its scalar result. This supports ordinary scratch-initialization calls without
 a dummy assignment. The call, mutation and failure path still execute inside

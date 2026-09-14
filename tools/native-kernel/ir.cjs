@@ -1237,10 +1237,16 @@ async function lowerSource(source, filename, options = {}) {
     const imported = importedNativeFunctions.get(name);
     for (const fn of imported.ir.functions || []) {
       const previous = importedDefinitions.get(fn.name);
-      // Multiple entry points from one pinned module may share a helper.
-      // Do not coalesce unrelated modules or merely equal function names.
-      if (previous && previous.path === imported.sourcePath &&
-          previous.hash === imported.sourceHash &&
+      const origins = [
+        {path: imported.sourcePath, sha256: imported.sourceHash},
+        ...(imported.ir.nativeSourceDependencies || []),
+      ].filter(origin => origin.path === fn.provenance?.file);
+      const origin = origins.length && origins.every(item => item.sha256 === origins[0].sha256)
+        ? origins[0] : undefined;
+      // Resolve the defining source, not the immediate import edge: a diamond
+      // may reach one pinned helper through different intermediate modules.
+      if (previous && origin && previous.path === origin.path &&
+          previous.hash === origin.sha256 &&
           previous.definition === JSON.stringify(fn)) continue;
       expect(
         !combinedNames.has(fn.name),
@@ -1248,8 +1254,8 @@ async function lowerSource(source, filename, options = {}) {
       );
       combinedNames.add(fn.name);
       importedDefinitions.set(fn.name, {
-        path: imported.sourcePath,
-        hash: imported.sourceHash,
+        path: origin?.path,
+        hash: origin?.sha256,
         definition: JSON.stringify(fn),
       });
       importedLowered.push(fn.kernelKind !== "integer" || fn.lexicallyNative ? fn : {
