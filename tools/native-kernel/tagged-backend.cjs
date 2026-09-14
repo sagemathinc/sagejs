@@ -491,7 +491,7 @@ function emitTaggedOperation(operation, context, indent) {
   if (operation.kind === "integer.binary") {
     const left = taggedValue(operation.left, context);
     const right = taggedValue(operation.right, context);
-    if (["add", "sub", "mul"].includes(operation.operation)) {
+    if (["add", "sub", "mul", "and"].includes(operation.operation)) {
       return `${indent}sagejs_tagged_${operation.operation}(` +
         `${target}, ${left}, ${right});`;
     }

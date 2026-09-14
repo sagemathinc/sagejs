@@ -1085,6 +1085,22 @@ static double sagejs_tagged_get_double(sagejs_tagged_int *value)
     return value->is_big ? mpz_get_d(value->big) : (double) value->small;
 }
 
+static void sagejs_tagged_and(
+    sagejs_tagged_int *target,
+    sagejs_tagged_int *left,
+    sagejs_tagged_int *right)
+{
+    if (!left->is_big && !right->is_big)
+    {
+        sagejs_tagged_set_small(target, left->small & right->small);
+        return;
+    }
+    sagejs_tagged_make_big(left);
+    sagejs_tagged_make_big(right);
+    sagejs_tagged_make_big(target);
+    mpz_and(target->big, left->big, right->big);
+}
+
 static void sagejs_tagged_add(
     sagejs_tagged_int *target,
     sagejs_tagged_int *left,
@@ -1196,6 +1212,52 @@ static int sagejs_mpz_shift(sagejs_native_status *status, mpz_t target,
 static int sagejs_tagged_shift(sagejs_native_status *status,
     sagejs_tagged_int *target,sagejs_tagged_int *left,sagejs_tagged_int *right,int direction)
 {
+    /* Keep ordinary counts small. Promoting a read-only count here makes
+     * subsequent loop/index arithmetic allocate even when only the shifted
+     * mantissa needs GMP. Save it before writes: target may alias right. */
+    if (!right->is_big) {
+        int64_t signed_count = right->small;
+        if (signed_count < 0) {
+            sagejs_native_status_set(status,SAGEJS_NATIVE_RANGE_ERROR,"negative shift count");return 0;
+        }
+        uint64_t count = (uint64_t)signed_count;
+        if (sagejs_tagged_sgn(left) == 0 || count == 0) {
+            sagejs_tagged_copy(target,left);return 1;
+        }
+        if (!left->is_big) {
+            int64_t value = left->small;
+            if (!direction) {
+                /* Python floor division, without implementation-defined
+                 * signed shifts or negating INT64_MIN. */
+                int64_t result = count >= 64 ? (value < 0 ? -1 : 0) :
+                    value < 0 ? -1 - (int64_t)((uint64_t)(-(value+1)) >> count) :
+                    (int64_t)((uint64_t)value >> count);
+                sagejs_tagged_set_small(target,result);return 1;
+            }
+            uint64_t magnitude = value < 0 ? UINT64_C(0)-(uint64_t)value : (uint64_t)value;
+            uint64_t limit = value < 0 ? (UINT64_C(1)<<63) : (uint64_t)INT64_MAX;
+            if (count < 64 && magnitude <= (limit >> count)) {
+                magnitude <<= count;
+                int64_t result = magnitude == (UINT64_C(1)<<63) ? INT64_MIN :
+                    value < 0 ? -(int64_t)magnitude : (int64_t)magnitude;
+                sagejs_tagged_set_small(target,result);return 1;
+            }
+        }
+        sagejs_tagged_make_big(left);
+        if (!direction) {
+            if (count > ULONG_MAX || count >= mpz_sizeinbase(left->big,2)) {
+                int64_t result = mpz_sgn(left->big) < 0 ? -1 : 0;
+                sagejs_tagged_set_small(target,result);return 1;
+            }
+            sagejs_tagged_make_big(target);
+            mpz_fdiv_q_2exp(target->big,left->big,(unsigned long)count);return 1;
+        }
+        if (count > 1048576UL || mpz_sizeinbase(left->big,2) > 1048576UL-count) {
+            sagejs_native_status_set(status,SAGEJS_NATIVE_RANGE_ERROR,"integer shift allocation limit exceeded");return 0;
+        }
+        sagejs_tagged_make_big(target);
+        mpz_mul_2exp(target->big,left->big,(unsigned long)count);return 1;
+    }
     sagejs_tagged_make_big(left);sagejs_tagged_make_big(right);sagejs_tagged_make_big(target);
     return sagejs_mpz_shift(status,target->big,left->big,right->big,direction);
 }

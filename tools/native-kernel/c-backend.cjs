@@ -1271,7 +1271,7 @@ function emitExactOperation(operation, context, indent) {
   if (operation.kind === "integer.binary") {
     const left = exactValue(operation.left, context);
     const right = exactValue(operation.right, context);
-    const simple = { add: "add", sub: "sub", mul: "mul" }[
+    const simple = { add: "add", sub: "sub", mul: "mul", and: "and" }[
       operation.operation
     ];
     if (simple !== undefined) {
