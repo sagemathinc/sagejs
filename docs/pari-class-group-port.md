@@ -1,5 +1,44 @@
 # Faithful PARI class-group language experiment
 
+## Resolved tiny-exponential guard growth
+
+The former precision-growth failures are now resolved by an explicit, narrow
+representation accommodation. An extracted upstream `exp1r_abs` diagnostic
+shows `L=64` but initial `l1=128`: `setprec(X,l1)` makes `divru` consume the
+adjacent `y` object's header as another mantissa word. This is not retained
+precision belonging to X. We do not reproduce adjacent-object reads.
+
+For the admitted case (`n=2`, `m=0`, X precision 64, temporary precision 128,
+X exponent at most -48), that extra word cannot affect the result:
+
+- Division is by two, an exact exponent shift preserving the leading word.
+- After the schedule clamps `l1` to 64, `addrr_sign` adds the quotient to a
+  64-bit one. Their exponent gap is at least 49. If the gap is at least 64,
+  the upstream `l <= 2` branch returns one; otherwise its `lx = l` branch
+  retains only the quotient's first mantissa word before the shift. Neither
+  branch observes the extra word.
+- There is only one Horner iteration. Final multiplication restores the
+  original 64-bit X, so the extra word is never used subsequently.
+
+The port therefore supplies an allocated zero guard for precisely that case,
+without changing the schedule or relaxing generic truncation checks. The
+diagnostic covers 160 inputs over exponents -63 through -48 and ten mantissa
+patterns: all 480 comparisons (original layout, zero guard, all-ones guard)
+agree. It is diagnostic C extracted from the pinned source, not a runtime
+mathematical implementation or replacement backend.
+
+After this change all 540 `exp1r_abs` and 646 connected exponential controls
+match PARI/CPython/JS/GMP, with no failures. Native GMP now matches all 52
+connected inverse-residue stored results exactly. JS matches 50 and retains
+the two documented logarithm-driven divergences. Earlier sections below
+record the prior checkpoint failures; this section supersedes their counts.
+This does not establish whole-class-group completion or performance.
+
+```sh
+node bench/pari-class-group-port/probe_exponential_precision.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Binary64 ingress and connected inverse residue
 
 `pari_float_to_real` constructs PARI `dbltor`'s exact stored triple, including

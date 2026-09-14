@@ -94,9 +94,9 @@ print(json.dumps(replays))
     assert(Math.abs(out[0]-want)<=1e-14+1e-12*Math.abs(want));
   }
   console.log("52 inverse-residue log accumulations and work counts match PARI/CPython/GMP; JavaScript matches a separately labeled CPython logarithm replay");
-  assert.deepEqual(failures.map(x=>[x.backend,x.field,x.bound]),[['javascript',0,5],['gmp',0,5],['gmp',2,3],['gmp',3,3]]);
+  assert.deepEqual(failures,[]);
   assert.deepEqual(realDivergences.map(x=>[x.backend,x.field,x.bound]),[['javascript',2,3],['javascript',3,3]]);
   console.log(JSON.stringify({javascriptWorkDivergences:divergences,connectedRealDivergences:realDivergences,connectedFailures:failures}));
-  console.log('Connected inverse-residue native GMP: 49/52 exact PARI stored results, 3 explicit failures; JS: 49 exact, 2 divergent, 1 failure');
+  console.log('Connected inverse-residue native GMP: 52/52 exact PARI stored results; JS: 50 exact, 2 logarithm-driven divergences');
   console.log("Four connected residue-bound selections and accumulations match PARI/CPython/JS/GMP");
 })().catch(error=>{console.error(error);process.exitCode=1;});

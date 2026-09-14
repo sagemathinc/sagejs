@@ -25,8 +25,7 @@ for row in json.load(sys.stdin):
     print('null')
 `],{input:JSON.stringify(rows),encoding:'utf8',timeout:30000});assert.equal(py.status,0,py.stderr);
   const failures=py.stdout.trim().split('\n').map(JSON.parse);
-  assert.equal(failures.filter(Boolean).length,4);
-  for(const [i,row] of rows.entries())assert.equal(failures[i],row[1]==='64' && ['-50','-60'].includes(row[2]) ? 'unsupported truncating real precision' : null);
+  assert.deepEqual(failures,Array(rows.length).fill(null));
   const built=await compileKernel({sourcePath:path.join(__dirname,'exponential_entry.py')}),mod=require(built.modulePath);
   for(const backend of ['javascript','gmp']){
     const cache=mod.createIntegerBuffer(3,64),scratch=[...Array.from({length:4},()=>mod.createIntegerBuffer(1024,64)),mod.createIntegerBuffer(91,64)];

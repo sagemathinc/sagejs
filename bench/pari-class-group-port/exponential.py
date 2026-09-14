@@ -185,7 +185,17 @@ def pari_exp1r_abs(
         length = ((int(d + checked_float64(n) + 16.0) + 63) // 64) * 64
         i = n
         while i >= 2:
-            tm, tp, te = pari_real_truncate(xm, xp, xe, length)
+            if length > xp and n == 2 and m == 0 and xp == 64 and length == 128:
+                # Upstream grows X's header into the adjacent y header here.
+                # X/2 is exact: its leading word is unchanged. The subsequent
+                # 64-bit addition of one uses no bits of this extra word
+                # (xe <= -48), and final multiplication restores 64-bit X.
+                # Allocate a zero guard explicitly rather than read neighbors.
+                if xe > -48:
+                    raise ValueError("unsupported exponential guard growth")
+                tm, tp, te = pari_real_resize(xm, xp, xe, length)
+            else:
+                tm, tp, te = pari_real_truncate(xm, xp, xe, length)
             qm, qp, qe = pari_real_word_division(i, tm, tp, te)
             delta = s - qe
             s = delta % 64

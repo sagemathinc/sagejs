@@ -29,9 +29,8 @@ for row in json.load(sys.stdin):
     print('null')
 `],{input:JSON.stringify(records),encoding:"utf8",timeout:30000});assert.equal(py.status,0,py.stderr);
   const failures=py.stdout.trim().split('\n').map(JSON.parse);
-  assert.equal(failures.filter(Boolean).length,6);
-  for(const [i,row] of records.entries())assert.equal(failures[i],row[1]==='64' && row[2]==='-63' ? 'unsupported truncating real precision' : null);
-  console.log('534 CPython outputs match PARI; six frozen precision-growth cases remain explicitly unsupported');
+  assert.deepEqual(failures,Array(records.length).fill(null));
+  console.log('540 CPython outputs match PARI, including the former precision-growth failures');
   const built=await compileKernel({sourcePath:path.join(__dirname,"exponential.py")}),mod=require(built.modulePath);
   for(const [index,row] of records.entries())for(const backend of ["javascript","gmp"]){
     const values=row.map(BigInt);
