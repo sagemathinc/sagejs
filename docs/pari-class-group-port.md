@@ -1,5 +1,37 @@
 # Faithful PARI class-group language experiment
 
+## Candidate filtering before factor admission
+
+`candidate_element.py` translates the block after the enumeration cursor:
+test coordinate content, multiply the reduced ideal basis by the primitive
+coordinate vector, reject a scalar element, and increment/check `try_factor`
+before `factorgen`. It preserves the 500-attempt limit and optional diagnostic
+`Nsmall` update. A nonprimitive input leaves the element buffer untouched;
+a scalar input leaves the computed element but not an incremented counter;
+the 501st nonscalar attempt increments the attempt counter and stops without
+incrementing `Nsmall` or invoking factorization.
+
+The 768 oracle controls use actual reduced ideal bases from the four tuning
+fields and primes 2/3/7, plus explicitly scaled bases to exercise element
+coordinates larger than machine integers. They vary primitive, nonprimitive,
+zero and scalar candidates, enabled/disabled diagnostics and counters at
+499/500. All returned statuses, element buffers and counters match PARI,
+CPython, dynamic JS, GMP-native and tagged-native execution. This helper is
+not yet wired into the resident enumeration batch; it does not call
+`factorgen` or establish complete collector termination.
+
+The repeated, metered check used 0.748 user + 0.170 system CPU seconds,
+0.707 seconds elapsed and 145,340 KiB peak child RSS, including the oracle
+build and cached native load. This is a validation cost, not a performance
+comparison. Strict Python (403 modules) and parallel checks pass; architecture
+validation still fails at the previously recorded stale optimizer manifest.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_candidate_element.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Prepared matrix to resumable candidate batches
 
 `enumeration_batch.py` connects QR/bound preparation to the existing translated
