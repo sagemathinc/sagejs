@@ -1,5 +1,44 @@
 # Faithful PARI class-group language experiment
 
+## Normalization, insertion and exact generator ownership
+
+`relation_insertion.py` connects smooth-relation assembly/content normalization
+to the resident `add_rel_i` translation, for the no-automorphism-image boundary.
+Each appended relation gets an owned copy of its normalized integral-basis
+coordinates in preallocated generator storage. Its metadata token is the
+one-based record index; preexisting rows must follow the same convention.
+Reusing the mutable candidate buffer cannot change a stored generator.
+The entry returns both PARI's `k` and the appended flag: a zero-return append
+is retained but must not advance the ideal-search acceptance counter.
+
+The 576 prepared transitions vary distinguished ideals, content, absent versus
+present extra-factor vectors, dependent-relation allowance and duplicate
+insertion. They match PARI, CPython, dynamic JS and GMP-native execution in
+normalized candidates, factor lists, relation vectors, modular cache basis,
+missing rank, allowance, stored records and exact generators. Tests explicitly
+exercise positive acceptance, duplicate rejection and zero-return appends,
+mutate candidate storage after insertion and check unused generator slots.
+These are synthetic transition controls, not additional field coverage.
+
+The metered rerun cost 4.367 user + 0.350 system CPU seconds, 4.289 seconds
+elapsed and 251,812 KiB peak child RSS, including oracle compilation and cached
+native loading. This is validation cost, not a comparative timing. Strict
+Python (403 modules) and parallel checks pass. The search/admission entry does
+not yet invoke this entry: that connection must preserve updated factor-list
+length, `Nfact`, `relid`, cache-target stopping and per-ideal quota stopping.
+Automorphism images, full relation loops and the class/unit engine remain
+unimplemented at this boundary.
+Architecture checking reaches the same stale optimizer-manifest failure.
+Changed-file merge checks passed; the selected documentation gate is still
+rebuilding the conservatively fingerprinted benchmark tree. No completed
+documentation-gate receipt is claimed for this checkpoint yet.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_relation_insertion.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Connected search and smooth factor admission
 
 `candidate_admission.py` now joins QR/bound preparation, resident enumeration,
