@@ -108,6 +108,46 @@
       "commit": "b47407db43cacf594814e050b3c39f785bc21c81",
       "workspace_fingerprint": "7a3ca742f13acc034d99bd4badc94e4b5930fc640498912f0b9ca4939270b5d6",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/probe_binary64_scaling.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.941,
+      "started_at": "2026-09-14T08:19:20.812Z",
+      "commit": "d377f3e0129c75077ec2ed8fe8a87c5d0e185370",
+      "workspace_fingerprint": "27a7eaadb09bb328dd4eec2e85847e344a050255e754cf2ebeb9091408620220",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_lll_float_preparation.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.751,
+      "started_at": "2026-09-14T08:28:30.138Z",
+      "commit": "d377f3e0129c75077ec2ed8fe8a87c5d0e185370",
+      "workspace_fingerprint": "fa8b65687582d5d58186b6cb49f6b1eee1111490b2c433e5b258e39cff502f80",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_lll_float_preparation.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.842,
+      "started_at": "2026-09-14T08:29:42.505Z",
+      "commit": "d377f3e0129c75077ec2ed8fe8a87c5d0e185370",
+      "workspace_fingerprint": "d57dbb8c0bf89bf8a0e24bf9fc2b258e7ab2ad1c50f6da8bd8ec7766485aa8a4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/probe_binary64_scaling.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.963,
+      "started_at": "2026-09-14T08:29:47.007Z",
+      "commit": "d377f3e0129c75077ec2ed8fe8a87c5d0e185370",
+      "workspace_fingerprint": "d57dbb8c0bf89bf8a0e24bf9fc2b258e7ab2ad1c50f6da8bd8ec7766485aa8a4",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

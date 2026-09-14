@@ -1,5 +1,71 @@
 # Faithful PARI class-group language experiment
 
+## Binary64 LLL scaling dependency audit
+
+The next untranslated `fplll_fast` pass uses `itodbl_exp`/`set_line`
+(`lll.c`, around lines 699–742) and `Babai_fast`'s `ldexp`/`frexp` calls.
+The pinned source normalizes integer columns before Gram products and uses
+scaled floating coefficients to choose exact size reductions. Substituting
+`x * pow(2, e)` is not generally equivalent, even with finite input/output.
+
+Run `node bench/pari-class-group-port/probe_binary64_scaling.cjs` to compare
+121 boundary cases in CPython and ordinary dynamic Sage.js and probe native
+lowering. On this revision, **14 dynamic disagreements** occur and both native
+imports are rejected with `unsupported call to ldexp/frexp`. This is a
+diagnostic finding, **not a passing differential qualification**. Examples:
+
+- `ldexp(5e-324, 1074)` should be `1.0`, but raises overflow dynamically.
+- `ldexp(1.7976931348623157e308, -1075)` should be
+  `4.4408920985006257e-16`, but returns zero dynamically.
+- Scaling signed zero by exponent 1074 returns NaN instead of signed zero.
+- `frexp(1.7976931348623157e308)` should give
+  `(0.9999999999999999, 1024)`, but gives `(0.0, 1025)` dynamically.
+
+The probe hashes `src/lib/math.py`, uses the actual CLI rather than a
+reimplementation of its formulas, and checks signed-zero equality. The first
+ad hoc native probe omitted `@native` and was rejected for its module shape;
+that was not evidence about the operation. The committed probe fixes this and
+requires the operation-specific rejection (or records accepted lowering without
+claiming execution). Its successful process exit means evidence collection
+worked, not that the operations agree. The initial full probe took about
+0.79 seconds wall time including CLI startup; this is not a kernel benchmark
+or CPU-resource measurement.
+
+Next investment: correct binary64 decomposition/scaling in the dynamic runtime
+and source-transparent native lowering, with CPython boundary oracles, before
+using them in `set_line` and `Babai_fast`. General `math.ldexp` must retain
+Python's overflow exception; PARI's C call can instead produce infinity in
+Babai, so that upstream policy needs an explicit source-level boundary, not a
+silent weakening of Python semantics. This audit does not establish that the
+14 edge cases arise in the four tuning fields, and does not establish an LLL
+performance regression. No production runtime was changed by this probe.
+
+`lll_float_preparation.py:pari_lll_integer_to_double` now translates the
+preceding `itodbl_exp` step using the already tested real-conversion leaves.
+`check_lll_float_preparation.cjs PARI_DIRECTORY PARI_ARCHIVE` extracts the
+pinned `lll.c` oracle and checks **319 signed integer inputs**, up to 2049 bits,
+against CPython, generated JS and GMP-native execution. Both the returned
+exponent and all 64 double bits agree. Cases include zero's exponent metadata
+(-64), mantissa carries, and values that demonstrably differ from a direct
+integer-to-double conversion. This is one dependency of `set_line`, not a
+completed column-scaling or LLL pass. Existing arithmetic construction of real
+values remains a documented representation substitution; no speed claim is
+made for this helper.
+
+Validation for this increment: format and strict checks pass (403 strict
+modules); the full build completes in 7m31s, with the optional native FLINT
+adapter and numerical Wasm reactors absent/skipped. The 121-case probe still
+finds the same 14 disagreements after that rebuild. An initial changed-file
+unit run overlapped the documentation-triggered rebuild and failed because
+`dist/` artifacts disappeared; this orchestration error is not a mathematical
+regression or a valid unit-suite result. The post-build rerun passes five unit
+files (including the previously interrupted public-super checks), then fails
+in `test/foreign-languages.cjs` because `sagejs_flint.node` is absent; 233 files
+remain unstarted. Architecture again stops at the existing optimizer manifest
+mismatch. Neither broad gate is green. The focused normalization receipt takes
+3.75 seconds wall time including oracle compilation and all three executions;
+it is not a performance qualification. Windows/Wasm execution remains untested.
+
 ## Connected prepared-ideal collector
 
 `ideal_collector.py` now connects numerical preparation, enumeration, factor
