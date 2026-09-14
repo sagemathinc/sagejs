@@ -3856,9 +3856,7 @@ function lowerStatements(statements, context) {
       const kind = nodeType(statement) === "AST_Break" ? "break" : "continue";
       const target = context.loopTargets.at(-1);
       expect(context, statement, target !== undefined,
-        `native ${kind} requires an enclosing while loop`);
-      expect(context, statement, target.kind === "while",
-        `native ${kind} currently supports while-loop targets, not range loops`);
+        `native ${kind} requires an enclosing loop`);
       // A C transfer would bypass lexical owner cleanup when a scope was
       // entered after the target loop. Loops entirely inside an existing owner
       // do not end its lifetime and require no cleanup at the transfer site.
@@ -3868,6 +3866,9 @@ function lowerStatements(statements, context) {
           "cross-scope loop cleanup is not yet supported");
       context.scalarCoercions = new Map();
       const operation = { kind: `loop.${kind}` };
+      if (kind === "continue" && target.kind === "range") {
+        operation.range = target.range;
+      }
       annotateOperations([operation], sourceSpan(statement, context.filename));
       result.push(operation);
       continue;
@@ -3922,6 +3923,7 @@ function lowerStatements(statements, context) {
       context.controlDepth += 1;
       context.loopDepth += 1;
       context.loopTargets.push({ kind: "range",
+        range: { kind: range.kind, iterator, step: range.step, stop: range.stop },
         resourceScopeDepth: context.resourceScopeDepth });
       const body = lowerBlock(statement.body, context);
       context.loopTargets.pop();

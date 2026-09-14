@@ -718,6 +718,11 @@ ${indent}}`;
     return lines.join("\n");
   }
   if (operation.kind === "loop.break" || operation.kind === "loop.continue") {
+    if (operation.range) {
+      const {kind, iterator, step, stop} = operation.range;
+      const guard = kind === "loop.range" ? `${indent}if (${step} >= ${stop} - ${iterator}) break;\n` : "";
+      return `${guard}${indent}${iterator} += ${step};\n${indent}continue;`;
+    }
     return `${indent}${operation.kind.slice(5)};`;
   }
   if (operation.kind === "while") {

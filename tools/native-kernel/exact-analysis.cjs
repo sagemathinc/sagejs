@@ -22,6 +22,8 @@ function integerNames(values, types) {
 
 function operationInputs(operation) {
   switch (operation.kind) {
+    case "loop.continue":
+      return operation.range ? [operation.range.iterator, operation.range.step, operation.range.stop] : [];
     case "integer.copy":
     case "integer.neg":
     case "integer.abs":
