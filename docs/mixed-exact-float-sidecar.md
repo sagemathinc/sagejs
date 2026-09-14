@@ -564,3 +564,25 @@ compiler worktree). The changed-file gate passes merge checks, rebuilds the
 self-hosted compiler and Python modules, then fails at native adapter
 reconciliation because the FFLAS prefix lacks `libgivaro.a` (644.65 seconds
 total). Later broad suites are not reached; this is not a green release gate.
+
+### Checked unsigned-word identity
+
+The PARI port's portable word-product primitive exposed a redundant exact
+round trip: `checked_uint64(x)` boxed an already typed `uint64` into GMP and
+immediately decoded it. Lowering now preserves that typed value directly,
+after lowering the argument expression so side effects still occur once.
+Unknown exact integers retain the checked conversion; public host entry
+validation is unchanged. No arithmetic reassociation or new primitive is used.
+
+Focused tests cover zero, the upper unsigned half, UINT64_MAX, invalid public
+and nested inputs, and a mutating helper argument. Generated GMP identity code
+must contain neither GMP allocation nor conversion. All five shift/mask/GCD/
+bit-length tests pass. Architecture checks still stop at the existing stale
+optimizer manifest. The previously recorded changed-file adapter failure has
+not been repaired or relabeled as a pass; no full rebuild was repeated here.
+
+The port's 49-case one-word diagnostic changes from 67.7–68.2 ms to
+59.8–60.6 ms per 49,000 products, with identical prepared inputs and outputs.
+These are separate short three-sample runs, not qualified paired speedups;
+PARI remains around 0.4 ms. The representation/entry overhead remains large,
+and neither whole-collector improvement nor class-group parity follows.
