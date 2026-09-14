@@ -146,6 +146,34 @@ Additional conservative CPU ledger (seconds, including compilation):
 Combined continuation subtotal through these runs: 1,015.994180 CPU seconds.
 Later qualification/setup runs must be added to this subtotal.
 
+### Connected timing harness smoke check
+
+`measure_collector_core.cjs --unreduced --small-norm --distinguished
+--prepare-only` builds a standalone generated-core adapter and a pinned-source
+PARI control. Both clocks include the distinguished power and two-visit
+collection, excluding input preparation and fresh-state reset. Three warmups
+are excluded. The emitted manifest hashes fixtures, core, module and binaries;
+`check_small_norm_timing.cjs MANIFEST` checks all 16 output states in PARI,
+standalone core, JavaScript and packed native execution. PARI's additional
+`repetitions` output is checked as timing metadata, not mathematical state.
+
+The smoke check passes. It is not a paired, quiet-host benchmark, and its short
+samples cannot qualify a performance ratio. CPython timing and longer paired
+samples remain to be implemented. The full class-group path remains absent.
+`compileSeconds` measures standalone-core compilation only, not all setup;
+the CPU meter charges the complete setup including compilation.
+
+| Additional execution | User CPU | System CPU | Outcome |
+| --- | ---: | ---: | --- |
+| Prepare connected timing adapters | 59.854111 | 2.367977 | Pass |
+| Initial ad hoc smoke | 0.604476 | 0.453344 | Harness rejected extra PARI timing metadata |
+| Reusable four-backend smoke | 6.771462 | 0.966594 | All 16 cases pass |
+
+Continuation subtotal: **1,087.012144 CPU seconds**. The prepared fixture cases
+hash is `e27012f7e9ef90b5d3ca0bb2f1ef6cf64bfaa6363bc7f625328ae723bdd3d174`;
+generated core hash is
+`f1411502c80a1ea29505fec7270555e9e3aa0f55ad93c82181a0fc419dd4266d`.
+
 ## Bounded checkpoint assessment: the full objective is not achieved
 
 Audit of implementation commit `6bb89f177` against the original experiment:
