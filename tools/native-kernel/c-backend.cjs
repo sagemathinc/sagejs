@@ -1466,6 +1466,9 @@ function emitExactOperation(operation, context, indent) {
   if (operation.kind === "float64.abs") {
     return `${indent}${exactValue(operation.target, context)} = fabs(${exactValue(operation.source, context)});`;
   }
+  if (operation.kind === "float64.copysign") {
+    return `${indent}${exactValue(operation.target, context)} = copysign(${exactValue(operation.left, context)}, ${exactValue(operation.right, context)});`;
+  }
   if (operation.kind === "float64.frexp") {
     const [mantissa, exponent] = operation.results.map(result => exactValue(result.name, context));
     const source = exactValue(operation.source, context);

@@ -3,6 +3,41 @@
 const assert=require("node:assert/strict"),{mkdtempSync,writeFileSync,readFileSync}=require("node:fs");
 const {tmpdir}=require("node:os"),{join}=require("node:path"),{spawnSync}=require("node:child_process"),test=require("node:test");
 const {compileKernel}=require("../compiler.cjs"),{lowerSource}=require("../ir.cjs");
+test("copysign preserves signed zero and nonfinite sign sources", async()=>{
+ const dir=mkdtempSync(join(tmpdir(),"sagejs-copysign-")),source=join(dir,"sign.py");
+ writeFileSync(source,`from sagejs.native import native, Float64Buffer
+from math import copysign as sign
+@native
+def scalar(x:float,y:float)->float:
+    return sign(x,y)
+@native
+def result_sign(x:float,y:float)->float:
+    return sign(1.0,sign(x,y))
+@native
+def mixed(x:Float64Buffer)->int:
+    x[0]=sign(x[0],x[1])
+    return 0
+`);
+ const raw=[0n,1n,0x0010000000000000n,0x3ff0000000000000n,0x7fefffffffffffffn,0x7ff0000000000000n,0x7ff8000000000042n];
+ const patterns=raw.flatMap(x=>[x,x|0x8000000000000000n]);
+ const oracle=spawnSync("python3",["-c",`import sys,json,struct,math
+v=[struct.unpack('>d',struct.pack('>Q',int(x)))[0] for x in json.load(sys.stdin)]
+print(json.dumps([[repr(math.copysign(x,y)),repr(math.copysign(1.0,math.copysign(x,y)))] for x in v for y in v]))`],{encoding:"utf8",input:JSON.stringify(patterns.map(String))});
+ assert.equal(oracle.status,0,oracle.stderr);const expected=JSON.parse(oracle.stdout),bits=new DataView(new ArrayBuffer(8));
+ const values=patterns.map(x=>{bits.setBigUint64(0,x,false);return bits.getFloat64(0,false);});
+ const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+ const number=x=>x==="inf"?Infinity:x==="-inf"?-Infinity:Number(x);
+ let i=0;for(const x of values)for(const y of values){
+  const want=number(expected[i][0]),wantedSign=number(expected[i++][1]);
+  for(const backend of ["javascript","gmp"]){
+   const got=mod.scalar[backend](x,y),buffer=[x,y];
+   assert(Number.isNaN(want)?Number.isNaN(got):Object.is(got,want));
+   assert.equal(mod.result_sign[backend](x,y),wantedSign);
+   assert.equal(mod.mixed[backend](buffer),0n);
+   assert(Number.isNaN(want)?Number.isNaN(buffer[0]):Object.is(buffer[0],want));
+  }
+ }
+});
 test("binary64 decomposition and scaling match CPython at exponent boundaries", async()=>{
   const dir=mkdtempSync(join(tmpdir(),"sagejs-scaling-")),source=join(dir,"scaling.py");
   writeFileSync(source,`from sagejs.native import native, Float64Buffer

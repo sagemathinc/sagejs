@@ -1,5 +1,16 @@
 # Mixed exact/binary64 prerequisite checkpoint
 
+## Copying binary64 signs (IR 43)
+
+Native `math.copysign` now lowers by imported binding identity, with two Float64
+operands. C uses the standard primitive; JS copies the IEEE sign bit rather
+than comparing with zero, preserving negative zero and signed NaN sign sources.
+The mixed frontend and scalar-only signatures use the same operation. A
+196-pair CPython differential test checks scalar, nested sign extraction and
+buffer mutation; all five binary64 focused tests pass. NaN payload identity is
+not claimed across the host ABI. This enables an explicit PARI C-division
+helper without weakening Python's division-by-zero exceptions.
+
 ## Scalar rounding and float conversion (IR 42)
 
 The connected Babai source now lowers one-argument `round(Float64)` to an exact
