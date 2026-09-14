@@ -1,5 +1,37 @@
 # Faithful PARI class-group language experiment
 
+## Logarithm matrix transformations (2026-09-14)
+
+`log_matrix_transform.py` implements the real/complex-by-integer matrix
+operations needed on both sides of `hnffinal`. The specialized `RgM_ZM_mul`
+skips zero integer coefficients after its first term; generic `gmul(C,U)`
+instead skips exact-zero entries of C. The port keeps those different rules,
+the source accumulation order, complex imaginary-first addition and collapse
+only on an exact integer-zero imaginary part. It rejects generic all-integer
+matrices, whose upstream fast dispatch is a different path.
+
+All 86 PARI/CPython/JS/GMP matrix cases pass, including eight cases using the
+80 actual prepared logarithm columns and six explicit cancellation/zero cases.
+Four malformed inputs reject before output mutation. Trace:
+`f4e83f8b50ae79175d096e7da0a65ad0ea0b90d370bece1b142537bc3e417652`;
+isolated core: 2,764,688 bytes. Reproduce with
+`check_log_matrix_transform.cjs PARI_SOURCE PARI_ARCHIVE`.
+The initial C oracle crashed because its decimal ingress used unsigned
+`strtoi` for signed values; `gp_read_str` corrects the harness. That failure
+was not a PARI arithmetic defect and remains in the CPU ledger.
+
+The specialized path serializes column tasks rather than using upstream
+`gen_parapply`; owners and scalar representations also differ. This remains
+correctness evidence, not a matched-thread timing result. Full `hnffinal`
+assembly and transformation propagation are still being connected.
+
+The changed-file validation rerun passes merge-owned inventories, then stops
+in the broad unit tier at `algebraic-geometry.cjs`: this worktree lacks
+`packages/flint/build/Release/sagejs_flint.node`. Two files passed and 236 were
+not started; the subsequent docs check was not reached. Focused port tests
+use the separately pinned native prefix and pass, but do not qualify the
+whole branch or remove its draft status.
+
 ## Complete exact HNFLLL dependency (2026-09-14)
 
 `hnflll.py` translates the complete `ZM_hnflll(A,&U,0)` path needed by
