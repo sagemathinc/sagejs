@@ -1,5 +1,26 @@
 # Faithful PARI class-group language experiment
 
+## Smoothness precheck checkpoint
+
+Compiler prerequisite `62cdc3d74` adds explicitly imported two-argument
+`math.gcd` lowering to the isolated GMP core, with exact JS fallback and guarded
+tagged resumption. This enables direct translation of `base4.c:Z_ppo` and
+`can_factor`'s initial smoothness gate. The port preserves the progressively
+shrinking GCD operand and exact-division sequence. GMP GCD is an arithmetic
+backend substitution; its cost must be separated from compiler overhead.
+
+168 signed inputs, including prime powers above 1000 bits and nonsmooth
+cofactors, agree with direct PARI `Z_ppo` in CPython, JS, GMP and tagged
+execution. Zero norm and nonpositive factor products are explicitly outside
+the prime-to-part entry's contract; upstream can_factor assumes nonzero norm.
+This smoothness precheck remains separate from the connected numerical entry
+at this checkpoint. Integer factorization and prime-ideal valuations are next;
+passing the precheck alone is not relation admission.
+
+```text
+SAGEJS_FLINT_PREFIX=<prefix> node bench/pari-class-group-port/check_compiled_smoothness.cjs <pari-2.17.4-source>
+```
+
 ## Connected numerical gate checkpoint
 
 `pari_prepared_factorgen_numerical` now connects the prepared embedding matrix,

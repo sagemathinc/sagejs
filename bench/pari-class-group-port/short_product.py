@@ -13,6 +13,35 @@ algorithm and must not be routed here merely because their values agree.
 """
 
 from sagejs.native import IntegerBuffer, native
+from math import gcd
+
+
+@native
+def pari_prime_to_part(x: int, factor_product: int) -> int:
+    """Translate `base4.c:Z_ppo` for nonzero x and positive factor product.
+
+    Preserve the shrinking GCD operand and exact-division sequence. GMP's GCD
+    is a declared arithmetic substitution for PARI's `gcdii`, not a claim that
+    the backends have the same cost. Zero x is outside can_factor's contract.
+    """
+    if x == 0 or factor_product <= 0:
+        raise ValueError("prime-to part requires nonzero x and positive product")
+    f = factor_product
+    while True:
+        f = gcd(x, f)
+        if f == 1:
+            return x
+        x //= f
+
+
+@native
+def pari_smoothness_precheck(norm: int, factor_product: int) -> int:
+    """Return can_factor's initial smoothness gate, not ideal factorization."""
+    if abs(norm) == 1:
+        return 1
+    if abs(pari_prime_to_part(norm, factor_product)) != 1:
+        return 0
+    return 1
 
 
 @native
