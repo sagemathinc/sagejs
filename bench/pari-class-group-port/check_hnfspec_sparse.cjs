@@ -121,6 +121,10 @@ printf("],\\"state\\":[");for(long i=0;i<13;i++){if(i)putchar(',');printf("\\"%l
   assert.notEqual(result.status,0,'undefined C arithmetic must not supply an oracle result');
   assert.match(result.stderr,/runtime error:/);
  }
+ if(process.argv.includes('--export-cleanup-fixtures')){
+  console.log(JSON.stringify({cases,expected,unsafe,sourceHash,prefixHash,realCases},(_,v)=>typeof v==='bigint'?String(v):v));
+  return;
+ }
  run('python3',['-c',`import sys,json,importlib
 sys.path[:0]=sys.argv[1:3];m=importlib.import_module('bench.pari-class-group-port.hnfspec_sparse')
 for r,e in json.load(sys.stdin):

@@ -1,5 +1,29 @@
 # Faithful PARI class-group language experiment
 
+## Connected HNF cleanup checkpoint (2026-09-14)
+
+`hnfspec_cleanup.py` extends the actual sparse prefix through END2's exact
+bottom-block elimination, transformation updates, dense top-block multiplication
+and `extramat` construction in one closed native computation. It stops before
+`ZM_rowrankprofile`; rank extraction, dep/B/C construction, `hnffinal`, and
+`hnfadd_i` remain dependencies. No generic HNF algorithm substitutes for them.
+
+All 467 source-extracted PARI/CPython/JavaScript/GMP comparisons pass, including
+24 real relation matrices, ten upstream HIGHBIT exits continuing into cleanup,
+69 changed transformations and 7,776 independently replayed `mat0*T` entries.
+Values reach 299 bits. Seven malformed-owner/shape cases reject before mutation;
+three undefined upstream signed-word executions are rejected, never counted
+as successful mathematical cases. Cleanup branch counts (zero/+1/-1/general)
+are 486/80/65/104. The original sparse-prefix control still passes unchanged.
+The new isolated core is 908,306 bytes (prefix alone 762,096); this is generated
+code evidence, not a timing result. Reproduce via
+`check_hnfspec_cleanup.cjs PARI_SOURCE PARI_ARCHIVE`.
+
+Continuation subagent reservations now total 15+7+15+19+10+5+7 minutes plus
+73 seconds, before the next rank-frontier audit. These are conservatively
+rounded active-time charges, additional to root elapsed wall time from the
+recorded continuation start. All executed commands retain separate CPU receipts.
+
 ## Arctangent and complex-phase continuation (2026-09-14)
 
 The compiler prerequisite `b4849f469` adds imported binary64 `math.atan`
