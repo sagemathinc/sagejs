@@ -1,5 +1,47 @@
 # Faithful PARI class-group language experiment
 
+## Connected initial sparse reduction (2026-09-14)
+
+`hnfspec_complete.py` connects original sparse relation words, row permutation
+and prepared logarithms through cleanup, certified rank, block assembly, C*T
+and `hnffinal`, in source order. It runs HNFLLL only inside `hnffinal`, once
+for nonempty live columns and never on the empty-column exit. The block-only
+assembly entry avoids duplicating the earlier diagnostic H/U computation.
+This is still a prepared-relation segment, not an nf-only class-group engine.
+
+The final 468-case PARI/CPython/JS/GMP run passes: 457 complete reductions,
+eight rank-verification frontiers, one CUP frontier and two deferred-hnfadd
+prefixes. It includes 24 collector matrices with 43 matching collected
+generator logarithms across twelve collector runs, each exercised with two
+dense-row choices. No rank, HNF or final transformation is supplied to the
+compiled call. The source control runs under UBSan and records 90 empty
+exits and 369 single-HNF calls. Five malformed-input guards per backend
+reject before mutation. Negative states are explicit and not counted as
+complete reductions. Oracle trace:
+`6c279b553c06c48f227e223e5965efe781b14fd62e0d09fc8db9494f973d7553`;
+matching-log trace:
+`1a7f9c253ea19e256e4a8e7406ec6403ddfac76679df2b31fc4ee6b23eee9089`;
+generated core: 9,835,930 bytes. Reproduce with
+`check_hnfspec_complete.cjs PARI_SOURCE PARI_ARCHIVE`.
+
+Review exposed two conservative exact-product frontiers at zero dep times
+identity. The literal `ZM_mul_fast` zero-return leaf now handles these before
+prime selection; one completes and the other reaches its true deferred-hnfadd
+frontier. It is not hoisted outside the original dispatch. The expanded
+95-case multiplication control passes, including zero-left, zero-right,
+both-zero and an unbalanced-size zero case that must still stop at Strassen.
+There are 86 completed products, eight Strassen and one modular frontier;
+trace `4d6adffdb3250b840fe908162b769cb249aa241b6090c58333f6ec2b8a3d18ab`,
+core 998,934 bytes. The older conservative counts below describe the prior
+checkpoint, not this revision.
+
+The original 467-case assembly control also passes after refactoring.
+Subagent integration charge: 15m13s active, 240.917929 child CPU seconds
+already included in the shared ledger; root reruns are recorded separately.
+No new compiler obstruction occurred in this integration, and no runtime
+speed claim is made. Relation addition and regulator/termination remain the
+next connected-path work.
+
 ## Nonempty hnffinal with synchronized logarithms (2026-09-14)
 
 `hnffinal.py` now composes HNFLLL, dep*U, generic C*U, descending B cleanup,
@@ -38,6 +80,14 @@ No new speed claim follows from these checkpoints. The next integration
 closes sparse input through C*T and hnffinal in source order with only one
 HNFLLL execution. Rank verification/CUP, deferred hnfadd and later
 regulator/termination work remain live dependencies.
+
+The fresh full eight-stage build and `pnpm docs:check` pass. Production
+native-kernel publication and numerical Wasm reactors were explicitly skipped
+for absent optional adapter/toolchain prerequisites, not tested successfully.
+The subsequent architecture check again passes FFI, package, numerical,
+native and Wasm audits, then fails on the already recorded stale optimizer
+opportunity manifest (`2abcd762...` expected, `ba010bb...` recorded). It is
+not refreshed as an incidental part of this mathematical port.
 
 The next dependency audit identifies two distinct continuations, not a new
 algorithm choice. `hnf_snf.c:612` (`hnfadd_i`) must preserve old zero/unit

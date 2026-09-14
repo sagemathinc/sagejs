@@ -89,6 +89,12 @@ def pari_integer_matrix_product(
         and sx <= 10 * sy
         and sy <= 10 * sx
     ):
+        # The first ZM_mul_fast leaf precedes prime selection and CRT.
+        # Keep it inside this dispatch: other zero products may select SW.
+        if sx == 2 or sy == 2:
+            for i in range(rows * columns):
+                output[i] = 0
+            return 0
         return -2
     size = sx
     if sy < size:

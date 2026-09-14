@@ -21,7 +21,7 @@ from .hnflll import pari_hnflll
 
 
 @native
-def pari_hnfspec_assembly(
+def pari_hnfspec_assemble_blocks(
     rows: int,
     k0: int,
     perm: Int64Buffer,
@@ -36,23 +36,17 @@ def pari_hnfspec_assembly(
     matbnew: IntegerBuffer,
     dep: IntegerBuffer,
     b: IntegerBuffer,
-    h: IntegerBuffer,
-    u: IntegerBuffer,
-    lam: IntegerBuffer,
-    d: IntegerBuffer,
-    hnf_state: Int64Buffer,
     state: Int64Buffer,
 ) -> int:
     """Return rank frontier -1/-2 unchanged, or 0 for this exact stage only.
 
     Negative frontiers leave ALL owners untouched, even output state. A
-    successful result supplies column-major matbnew/dep/B/H/U. H keeps initial
-    zero columns, as ZM_hnflll(remove=0), BEFORE hnffinal's H column slicing.
+    successful result supplies column-major matbnew/dep/B only. No HNF runs;
+    the connected source-order entry may now update C*T before hnffinal.
 
     State: matbnew rows, dep rows, live columns, B rows, B columns, HNF called.
     Empty-column matrices have absent row extent, reported as zero. Preserve
-    source nr=lnz in rank_state on that branch. It skips HNF and leaves U,
-    lambda, D and hnf_state untouched, as hnffinal's col==0 return does.
+    source nr=lnz in rank_state on that branch. State[5] remains zero.
     Shape/capacity/profile errors reject before any owner mutation.
     """
     if len(rank_state) < 10:
@@ -107,15 +101,8 @@ def pari_hnfspec_assembly(
         raise ValueError("short assembly extra matrix")
     if len(matbnew) < genuine * col or len(dep) < dependent * col:
         raise ValueError("short assembly block workspace")
-    if len(b) < lig * (retained - col) or len(h) < genuine * col:
+    if len(b) < lig * (retained - col):
         raise ValueError("short assembly result workspace")
-    if col != 0 and (
-        len(u) < col * col
-        or len(lam) < col * col
-        or len(d) < col + 1
-        or len(hnf_state) < 11
-    ):
-        raise ValueError("short assembly HNF workspace")
     for i in range(rows):
         if perm[i] < 1 or perm[i] > rows:
             raise ValueError("invalid assembly row permutation")
@@ -159,10 +146,6 @@ def pari_hnfspec_assembly(
                 b[(j - col) * lig + nlze + k] = updated_dense[j * k0 + i - 1]
             else:
                 b[(j - col) * lig + nlze + k] = bottom[j * stride + i + nlze - k0 - 1]
-    called = 0
-    if col != 0:
-        pari_hnflll(matbnew, genuine, col, h, u, lam, d, hnf_state)
-        called = 1
     state[0] = genuine
     state[1] = dependent
     state[2] = col
@@ -170,5 +153,75 @@ def pari_hnfspec_assembly(
     if retained != col:
         state[3] = lig
     state[4] = retained - col
-    state[5] = called
+    state[5] = 0
+    return 0
+
+
+@native
+def pari_hnfspec_assembly(
+    rows: int,
+    k0: int,
+    perm: Int64Buffer,
+    sparse_state: Int64Buffer,
+    cleanup_state: Int64Buffer,
+    rank_state: IntegerBuffer,
+    profile: IntegerBuffer,
+    bottom: IntegerBuffer,
+    updated_dense: IntegerBuffer,
+    extra: IntegerBuffer,
+    perm_work: Int64Buffer,
+    matbnew: IntegerBuffer,
+    dep: IntegerBuffer,
+    b: IntegerBuffer,
+    h: IntegerBuffer,
+    u: IntegerBuffer,
+    lam: IntegerBuffer,
+    d: IntegerBuffer,
+    hnf_state: Int64Buffer,
+    state: Int64Buffer,
+) -> int:
+    """Diagnostic block assembly followed by independent HNFLLL H/U.
+
+    Preserve the original diagnostic ABI and atomic malformed-workspace
+    rejection. This entry omits C*T; use block-only assembly for source-order
+    composition instead. H keeps initial zero columns (remove=0).
+    """
+    if len(rank_state) < 10:
+        raise ValueError("short assembly rank state")
+    if rank_state[9] == -1 or rank_state[9] == -2:
+        return rank_state[9]
+    if len(sparse_state) < 13 or len(cleanup_state) < 10:
+        raise ValueError("short assembly state")
+    col = sparse_state[2]
+    genuine = cleanup_state[2] - 1 - rank_state[7]
+    if col != 0 and (
+        len(h) < genuine * col
+        or len(u) < col * col
+        or len(lam) < col * col
+        or len(d) < col + 1
+        or len(hnf_state) < 11
+    ):
+        raise ValueError("short assembly HNF workspace")
+    status = pari_hnfspec_assemble_blocks(
+        rows,
+        k0,
+        perm,
+        sparse_state,
+        cleanup_state,
+        rank_state,
+        profile,
+        bottom,
+        updated_dense,
+        extra,
+        perm_work,
+        matbnew,
+        dep,
+        b,
+        state,
+    )
+    if status != 0:
+        return status
+    if col != 0:
+        pari_hnflll(matbnew, state[0], col, h, u, lam, d, hnf_state)
+        state[5] = 1
     return 0

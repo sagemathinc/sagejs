@@ -9,12 +9,14 @@ function part(s,a,b){const i=s.indexOf(a),j=s.indexOf(b,i);assert(i>=0&&j>i);ret
  assert.equal(createHash('sha256').update(fs.readFileSync(archive)).digest('hex'),'02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53');
  const source=run('tar',['-xOf',archive,'pari-2.17.4/src/basemath/ZV.c']);assert.equal(source,fs.readFileSync(path.join(pari,'src/basemath/ZV.c'),'utf8'));
  let body=part(source,'static GEN\nZM_mul_i(','GEN\nZM_mul(GEN x');
- body=body.replace('ZM_mul_i(','oracle_mul_i(').replace('ZM_max_lg_i(x, lx, l)','ZM_max_lg(x)').replace('ZM_max_lg_i(y, ly, lx)','ZM_max_lg(y)').replace('return ZM_mul_fast(x,y, lx,ly, sx,sy);','{ status=-2; return cgetg(1,t_MAT); }').replace('return ZM_mul_classical(x, y, l, lx, ly);','return ZM_mul(x,y);').replace('return ZM_mul_sw(x, y, l - 1, lx - 1, ly - 1);','{ status=-1; return cgetg(1,t_MAT); }');
+ assert(source.includes('if (sA == 2 || sB == 2) return zeromat(nbrows(A),lB-1);'));
+ body=body.replace('ZM_mul_i(','oracle_mul_i(').replace('ZM_max_lg_i(x, lx, l)','ZM_max_lg(x)').replace('ZM_max_lg_i(y, ly, lx)','ZM_max_lg(y)').replace('return ZM_mul_fast(x,y, lx,ly, sx,sy);','{ if(sx==2 || sy==2) return ZM_mul(x,y); status=-2; return cgetg(1,t_MAT); }').replace('return ZM_mul_classical(x, y, l, lx, ly);','return ZM_mul(x,y);').replace('return ZM_mul_sw(x, y, l - 1, lx - 1, ly - 1);','{ status=-1; return cgetg(1,t_MAT); }');
  const bound=part(source,'static long\nsw_bound(','/* assume lx > 1');
  let seed=12345;const rnd=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return BigInt(seed%17-8);};
  const cases=[];function add(rows,inner,cols,bits){const next=()=>{const r=rnd();return (r*(1n<<BigInt(bits))+r).toString();};cases.push({rows,inner,cols,a:Array.from({length:rows*inner},next),b:Array.from({length:inner*cols},next)});}
  for(const bits of [0,64,512,832,896,2048,4096])for(const shape of [[0,0,0],[1,0,2],[0,3,2],[2,3,0],[1,1,1],[2,2,2],[1,4,3],[4,1,3],[3,4,1],[3,3,3],[4,5,3],[8,8,8]])add(...shape,bits);
  for(const shape of [[31,31,31],[32,32,32],[70,70,70]])add(...shape,0);
+ for(const [left,right] of [[0n,1n],[1n,0n],[0n,0n],[0n,1n<<2048n]])cases.push({rows:70,inner:70,cols:70,a:Array(4900).fill(String(left)),b:Array(4900).fill(String(right))});
  for(const bits of [831,832,895,896])cases.push({rows:2,inner:2,cols:2,a:Array.from({length:4},(_,i)=>String((1n<<BigInt(bits))+BigInt(i+1))),b:Array.from({length:4},(_,i)=>String(-((1n<<BigInt(bits))+BigInt(i+5))))});
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'sagejs-exact-matmul-')),c=path.join(dir,'oracle.c'),exe=path.join(dir,'oracle');
  fs.writeFileSync(c,`/* Source-extracted PARI dispatch, GPL-2.0-or-later. */
