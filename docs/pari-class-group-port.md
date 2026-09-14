@@ -1,5 +1,50 @@
 # Faithful PARI class-group language experiment
 
+## Connected search through the factor-admission boundary
+
+`candidate_search.py` now connects prepared QR/bound computation, the resident
+enumeration cursor, primitive/scalar rejection, exact ideal multiplication and
+the factor-attempt limit in one compiled call graph. It yields the next input
+to `factorgen`, skipping rejected vectors inside the native call. Resuming
+keeps QR data and the cursor resident. Exhaustion and the 501st nonscalar
+attempt are distinct terminal statuses; repeated terminal calls leave all
+buffers unchanged. The latter is a resumable-interface convention for PARI's
+loop exit, not an additional mathematical stopping rule.
+
+The 72 connected controls use the same four tuning fields, three primes and
+two scales as the raw-cursor test, with initial factor counters 0/499/500.
+They match PARI in CPython, dynamic JS and GMP-native execution: 3 exhaustions,
+48 factor-limit exits and 21 prefixes capped at 32 factor candidates. Tests
+compare candidate coordinates/order, cumulative trials, factor counters and
+the final exact element. A scratch sentinel checks that QR is not rebuilt;
+terminal calls are checked for no further mutation. The oracle executes the
+extracted upstream cursor and uses PARI content/matrix operations. Its retained
+diagnostic element is explicitly cloned across PARI stack resets; an initial
+test-oracle dangling pointer was fixed before the passing run.
+
+The passing run used 56.546 user + 2.264 system CPU seconds, 50.982 seconds
+elapsed and 619,116 KiB peak child RSS, including oracle and native compilation.
+The failed oracle attempt used another 3.288 CPU seconds. These are validation
+costs, not paired performance measurements. Strict Python and parallel checks
+pass; the known optimizer manifest failure remains visible in the architecture
+gate. This still does not factor or insert a relation: `factorgen`, generator
+storage, relation insertion and the surrounding collector must be connected
+next. Ideal/LLL preparation and the trial scale remain external inputs.
+
+`pnpm test:changed -- --base HEAD` selected merge and portable checks for the
+new benchmark files. Merge checks passed. Portable execution failed in
+`test/wasm-graph-components.cjs` while inventorying production kernels:
+`native kernel: unknown relative import source` from `native-imports.cjs`,
+via `wasm-production-pack.cjs`. It cancelled siblings and did not start 218
+remaining files. This is an unresolved broader gate failure, not a passing
+portable qualification; its preexistence has not been established here.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_candidate_search.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Candidate filtering before factor admission
 
 `candidate_element.py` translates the block after the enumeration cursor:
@@ -17,7 +62,7 @@ coordinates larger than machine integers. They vary primitive, nonprimitive,
 zero and scalar candidates, enabled/disabled diagnostics and counters at
 499/500. All returned statuses, element buffers and counters match PARI,
 CPython, dynamic JS, GMP-native and tagged-native execution. This helper is
-not yet wired into the resident enumeration batch; it does not call
+now wired through `candidate_search.py`; it does not call
 `factorgen` or establish complete collector termination.
 
 The repeated, metered check used 0.748 user + 0.170 system CPU seconds,
