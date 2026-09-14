@@ -23,6 +23,13 @@ test("multiple entries from one source share a helper but distinct sources still
   writeFileSync(join(pkg,"other.py"),leafBody);
   writeFileSync(source,"from sagejs.native import native\nfrom .leaf import square\nfrom .other import shifted\n@native\ndef entry(x:int)->int:\n    return square(x)+shifted(x)\n");
   await assert.rejects(()=>compileKernel({sourcePath:source}),/conflicts with square/);
+  writeFileSync(join(pkg,"bridge.py"),"from sagejs.native import native\nfrom .leaf import square\n@native\ndef bridge(x:int)->int:\n    return square(x)+2\n");
+  writeFileSync(source,"from sagejs.native import native\nfrom .leaf import square\nfrom .bridge import bridge\n@native\ndef entry(x:int)->int:\n    return square(x)+bridge(x)\n");
+  const diamond=await compileKernel({sourcePath:source}),diamondModule=require(diamond.modulePath);
+  for(const backend of ['javascript','gmp','tagged'])assert.equal(diamondModule.entry[backend](5n),52n);
+  writeFileSync(leaf,leafBody.replace('x*x','x*x+10'));
+  const changedDiamond=await compileKernel({sourcePath:source});assert.notEqual(changedDiamond.modulePath,diamond.modulePath);
+  for(const backend of ['javascript','gmp','tagged'])assert.equal(require(changedDiamond.modulePath).entry[backend](5n),72n);
 });
 test("relative native calls preserve source closure, fallback and dependency identity", async () => {
   const dir=mkdtempSync(join(tmpdir(),"sagejs-relative-")),pkg=join(dir,"example"),sub=join(pkg,"nested");
