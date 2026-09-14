@@ -1,12 +1,14 @@
 """Untimed direct-PARI differential for the prepared real rounding contract."""
 
 import importlib.util
+import json
 import pathlib
 import subprocess
 import sys
 import tempfile
 
 source = pathlib.Path(sys.argv[1]).resolve()
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src/lib"))
 spec = importlib.util.spec_from_file_location(
     "pari_rounding", pathlib.Path(__file__).with_name("rounding.py")
 )
@@ -66,10 +68,15 @@ with tempfile.TemporaryDirectory(prefix="sagejs-rounding-oracle-") as tmp:
     result = subprocess.run([str(exe)], capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stderr
     count = 0
+    cases = []
     for line in result.stdout.splitlines():
         m, e, exponent, q, error = map(int, line.split())
         actual = module.pari_round_real(m, e, exponent)
         assert actual == (q, error), (m, e, exponent, actual, q, error)
+        cases.append([str(v) for v in (m, e, exponent, q, error)])
         count += 1
     assert count == 75, count
-    print(f"PARI prepared rounding: {count} integer/error-exponent pairs agree")
+    if "--json" in sys.argv:
+        print(json.dumps(cases))
+    else:
+        print(f"PARI prepared rounding: {count} integer/error-exponent pairs agree")

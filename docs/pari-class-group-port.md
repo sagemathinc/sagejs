@@ -7,7 +7,76 @@ the experiment's time/compute budgets and faithful-work criteria are unchanged.
 Prepared scalar/array ingress and independent loop counts are integrated at
 `a306e2974`; later historical
 references to awaiting permission or rejecting scalar inputs are resolved.
-Embedding containers and PARI's norm-rounding semantics remain unimplemented.
+The uniform MPFR ingress remains insufficient; a separate prepared-mantissa
+prototype now preserves heterogeneous precision for the all-real norm loop.
+
+### Short-product and real-norm checkpoint
+
+The extended multiplication control has 228 operand pairs. Two constructed
+64-by-192-bit near-midpoint products disagree with both MPFR nearest-even and
+nearest-away: PARI's shortened product omits low-word carries. Rounded integers
+agree, but `grndtoi` reports error exponent **-32 in PARI and -31 in MPFR**.
+Thus substituting correctly rounded MPFR arithmetic can change the `factorgen`
+error gate, not just insignificant printed digits. These are synthetic boundary
+cases, not observed failures in the frozen fields. They are not claims that
+PARI's documented arithmetic accuracy or class-group results are incorrect.
+
+`short_product.py` translates the short-product word sum and final rounding
+into ordinary Python integers, deliberately discarding each omitted low half
+before summation. It matches all 228 cases in CPython, generated JS and forced
+native execution, including full result mantissa, precision and exponent.
+The supported prototype has 64-bit words and at most 2,048 input bits. A
+separate square wrapper uses the common short word sum only through 512 bits,
+below the pinned square crossover; larger squares and the upstream
+large-product crossover remain unsupported.
+
+The same file's all-real `embed_norm` product loop now runs with resident
+integer buffers and source-transparent helper calls. Sixteen prepared vectors
+from the two already-used tuning real cubics match PARI in CPython, generated
+JS, forced GMP and tagged execution. PARI still supplies the embedding
+matrix-vector product. Sixteen mixed-quartic prepared vectors also match,
+using the translated positive-addition precision policy and bounded square
+wrapper. No matrix multiplication, factorization, ideal valuation, or
+class-group stopping path is claimed here.
+
+This is a representation prototype: Python/GMP integers express PARI's word
+products and carries. Their cost is not PARI's machine-word cost. Before a
+language-performance conclusion it needs a same-representation control and
+measurement; no speedup or parity is claimed. It is not a generic GEN runtime,
+a replacement arithmetic library, or a production default.
+
+The separate positive-addition MPFR control compares 16 squared-embedding pairs
+and 1,197 exponent/precision boundary pairs. With PARI supplying the output
+precision as scaffolding, MPFR truncation matches all; nearest-even matches
+only 9/16 and 475/1,197. The Python prototype now implements the nonnegative
+precision decision itself and matches all 1,213 pairs plus 16 stored-zero
+precision cases in CPython, generated JS and native execution. Signed
+subtraction/cancellation is not implemented.
+
+Reproduce with `SAGEJS_FLINT_PREFIX` set to the existing diagnostic prefix:
+`node bench/pari-class-group-port/check_short_product.cjs <pari-source> <prefix>`
+and `node bench/pari-class-group-port/check_short_norm.cjs <pari-source> <prefix>`.
+Both accept an optional compiler-worktree argument for prerequisite testing.
+Add `--addition` to the first command for positive sums and `--mixed` to the
+second for mixed norms. These remain untimed component checks.
+
+### Compiled rounding checkpoint
+
+The prerequisite through `84218a22d` adds exact `int.bit_length()` and checked
+integer shifts. The attributed `rounding.py` block is now `@native` compiled;
+75 prepared PARI real values agree in CPython, generated JS, public dispatch,
+and forced native execution, including the integer result and error exponent.
+Run `check_compiled_rounding.cjs <pari-2.17.4-source>` in this directory's
+benchmark folder (or supply its full relative path from the worktree root).
+The checker obtains oracle values by calling PARI `grndtoi`; it does not use
+the translated formula as its expected result. All runs are untimed.
+
+Left-shift allocation is explicitly limited to 1,048,576 result bits by the
+experimental native backend. Exceeding the cap fails, never truncates. These
+inputs fit comfortably. An expression-level conditional was written as an
+ordinary `if/else` because that exact-integer lowering does not support the
+conditional expression; the rounding branches and operations are unchanged.
+This is only a rounding block, not the norm computation or a class-group result.
 
 ### First actual embedding-norm ingress finding
 

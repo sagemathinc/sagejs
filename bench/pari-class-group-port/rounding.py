@@ -4,12 +4,15 @@ Translated from `gen3.c:round_i` and the real branch of `grndtoi`.
 Copyright (C) The PARI group. SPDX-License-Identifier: GPL-2.0-or-later.
 Distributed under GPL v2 or later, without warranty; see repository LICENSE.
 
-This is ordinary-Python scaffolding, not yet a compiled norm implementation.
+This is a compiled rounding block, not a compiled norm implementation.
 Input is the full signed PARI mantissa, its denominator exponent and the stored
 real exponent. Do not normalize trailing zero bits or discard zero precision.
 """
 
+from sagejs.native import native
 
+
+@native
 def pari_round_real(m: int, e: int, exponent: int) -> tuple[int, int]:
     """Return `(rounded_integer, error_exponent)` for a prepared PARI real.
 
@@ -35,5 +38,8 @@ def pari_round_real(m: int, e: int, exponent: int) -> tuple[int, int]:
         residual += half
     else:
         residual -= half
-    error = abs(residual).bit_length() - 1 - e if residual else -e
+    if residual:
+        error = abs(residual).bit_length() - 1 - e
+    else:
+        error = -e
     return q, error
