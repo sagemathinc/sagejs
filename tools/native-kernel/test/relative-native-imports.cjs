@@ -7,6 +7,43 @@ const {spawnSync} = require("node:child_process");
 const test = require("node:test");
 const {compileKernel} = require("../compiler.cjs"), {lowerSource} = require("../ir.cjs");
 const {createNativeImportResolver} = require("../native-imports.cjs");
+test("native import memoization isolates callers and revalidates dependency content",async()=>{
+  const {createHash}=require("node:crypto");
+  const hash=s=>createHash("sha256").update(s).digest("hex");
+  const dir=mkdtempSync(join(tmpdir(),"sagejs-import-memo-"));
+  writeFileSync(join(dir,"__init__.py"),"");
+  const root=join(dir,"entry.py"),helper=join(dir,"helper.py"),leaf=join(dir,"leaf.py");
+  writeFileSync(root,"");writeFileSync(helper,"@native\ndef helper(x:int)->int:\n    return x+1\n");writeFileSync(leaf,"first");
+  let calls=0;
+  const resolver=createNativeImportResolver({root:dir,initialSourcePath:root,lowerSource:async()=>{
+    calls++;return {functions:[{name:"helper",body:[{value:calls}]}],nativeSourceDependencies:[{path:leaf,sha256:hash(readFileSync(leaf,"utf8"))}]};
+  }});
+  // Register the dependency's physical identity without lowering it: its
+  // source intentionally has no native definition.
+  assert.equal(await resolver({moduleName:".leaf",importedName:"leaf",importer:root}),null);
+  const request={moduleName:".helper",importedName:"helper",localName:"helper",importer:root};
+  const first=await resolver(request);first.ir.functions[0].body[0].value=999;
+  const second=await resolver({...request,localName:"different"});
+  assert.equal(calls,1);assert.equal(second.localName,"different");assert.equal(second.ir.functions[0].body[0].value,1);
+  second.ir.functions[0].body[0].value=998;
+  assert.equal((await resolver(request)).ir.functions[0].body[0].value,1);
+  writeFileSync(leaf,"changed");await resolver(request);assert.equal(calls,2);
+  writeFileSync(helper,readFileSync(helper,"utf8").replace("x+1","x+2"));await resolver(request);assert.equal(calls,3);
+});
+test("shared native import layers lower once per entry, not once per graph path",async()=>{
+  const dir=mkdtempSync(join(tmpdir(),"sagejs-import-diamond-"));writeFileSync(join(dir,"__init__.py"),"");
+  const header="from sagejs.native import native\n";
+  for(let layer=0;layer<5;layer++){
+    const imports=layer?`from .layer${layer-1} import left${layer-1}, right${layer-1}\n`:"";
+    const value=layer?`left${layer-1}(x)+right${layer-1}(x)`:"x";
+    writeFileSync(join(dir,`layer${layer}.py`),header+imports+`@native\ndef left${layer}(x:int)->int:\n    return ${value}\n@native\ndef right${layer}(x:int)->int:\n    return ${value}+1\n`);
+  }
+  const source=join(dir,"entry.py"),body=header+"from .layer4 import left4, right4\n@native\ndef entry(x:int)->int:\n    return left4(x)+right4(x)\n";writeFileSync(source,body);
+  let calls=0;
+  const resolver=createNativeImportResolver({root:dir,initialSourcePath:source,lowerSource:async(...args)=>{calls++;return lowerSource(...args);}});
+  const ir=await lowerSource(body,source,{resolveNativeImport:resolver});
+  assert.equal(calls,10);assert.equal(ir.nativeSourceDependencies.length,5);
+});
 test("portable root provenance may differ from imported dependency display paths",async()=>{
   const dir=mkdtempSync(join(tmpdir(),"sagejs-portable-relative-")),pkg=join(dir,"src","lib","example");
   mkdirSync(pkg,{recursive:true});writeFileSync(join(pkg,"__init__.py"),"");

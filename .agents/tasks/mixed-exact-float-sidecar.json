@@ -169,6 +169,16 @@
       "commit": "a14c36b38b5d78e8f4fd4e0d9c5393361063eca4",
       "workspace_fingerprint": "acc8cabfb4a9bec5f8d2c7f2d4a61cbc563b211ee97b8cd1b53b9fe12d601366",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/relative-native-imports.cjs tools/native-kernel/test/mixed-exact-float64.cjs tools/native-kernel/test/float64-log.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.521,
+      "started_at": "2026-09-14T10:32:56.905Z",
+      "commit": "946b3507113afc5c10b7d214488729f3d8e51c60",
+      "workspace_fingerprint": "62c99269a95c72f75700627b656e8ce8ce274aa90b1839b53ed0d4cb6277838c",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

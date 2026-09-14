@@ -147,7 +147,9 @@ def implicit_exact_conversion(value: Integer) -> Integer:
     /score argument 1 expects Float64, got Integer/,
   );
 
-  await assert.rejects(lowerSource(`
+  // Borrowed Float64Buffer helpers became supported in IR 42. Their writes
+  // remain explicit effects; this must no longer assert the old rejection.
+  await assert.doesNotReject(lowerSource(`
 from sagejs.native import Float64Buffer, native
 
 def mutating_score(sidecar: Float64Buffer) -> float:
@@ -155,11 +157,11 @@ def mutating_score(sidecar: Float64Buffer) -> float:
     return sidecar[0]
 
 @native
-def impure_float_helper(value: Integer, sidecar: Float64Buffer) -> Integer:
+def borrowed_float_helper(value: Integer, sidecar: Float64Buffer) -> Integer:
     if mutating_score(sidecar) > 0.0:
         return value + 1
     return value
-`, "impure_float_helper.py"), /scalar-only Float64-returning helper/);
+`, "borrowed_float_helper.py"));
 });
 
 test("mixed exact and Float64 execution agrees across dynamic and native", async () => {
