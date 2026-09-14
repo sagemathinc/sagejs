@@ -9,11 +9,15 @@ const {compileKernel}=require("../../tools/native-kernel/compiler.cjs");
 import sys,json
 sys.path.insert(0,${JSON.stringify(path.resolve(__dirname,"../../src/lib"))})
 sys.path.insert(0,${JSON.stringify(__dirname)})
-from short_product import pari_word_integer_real_product,pari_word_integer_real_sum,pari_real_word_division
+from short_product import pari_word_integer_real_product,pari_word_integer_real_sum,pari_real_word_division,pari_real_integer_division
 for row in json.load(sys.stdin):
     r=list(map(int,row))
+    if len(r)==7:
+        actual=pari_real_integer_division(*r[:4]); expected=tuple(r[4:])
+        assert actual==expected,(r,actual)
+        continue
     functions=(pari_word_integer_real_product,pari_word_integer_real_sum)
-    if len(r)==13: functions+= (pari_real_word_division,)
+    if len(r)==13: functions+= (pari_real_integer_division,)
     for j,f in enumerate(functions):
         actual=f(*r[:4]); expected=tuple(r[4+3*j:7+3*j])
         assert actual==expected,(r,j,actual)
@@ -26,7 +30,7 @@ for divisor,error in ((0,ZeroDivisionError),(2**63,ValueError),(-2**63,ValueErro
   assert.equal(python.status,0,python.stderr);console.log(python.stdout.trim());
   const b=await compileKernel({sourcePath:path.join(__dirname,"short_product.py")}),mod=require(b.modulePath);
   let operations=0;
-  for(const row of rows)for(const [j,name] of ["pari_word_integer_real_product","pari_word_integer_real_sum",...(row.length===13?["pari_real_word_division"]:[])].entries()) {
+  for(const row of rows)for(const [j,name] of (row.length===7?["pari_real_integer_division"]:["pari_word_integer_real_product","pari_word_integer_real_sum",...(row.length===13?["pari_real_integer_division"]:[])]).entries()) {
     const r=row.map(BigInt);
     for(const f of [mod[name].javascript,mod[name].gmp,mod[name].tagged])assert.deepEqual(f(...r.slice(0,4)),r.slice(4+3*j,7+3*j));
     operations++;

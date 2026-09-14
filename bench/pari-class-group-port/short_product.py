@@ -16,6 +16,83 @@ from sagejs.native import IntegerBuffer, native
 
 
 @native
+def pari_round_real(m: int, e: int, exponent: int) -> tuple[int, int]:
+    """Translate `gen3.c:round_i` and the real branch of `grndtoi`.
+
+    Copyright (C) The PARI group, GPL-2.0-or-later, without warranty.
+    Input is `m / 2**e` with PARI's stored exponent, also for zero.
+    """
+    if m == 0 or exponent < -1:
+        return 0, exponent
+    if e <= 0:
+        return m << -e, -e
+    half = 1 << (e - 1)
+    shifted = m + half
+    # PARI shifti/remi2n truncate toward zero, unlike Python // and %.
+    q = abs(shifted) >> e
+    if shifted < 0:
+        q = -q
+    residual = shifted - (q << e)
+    if residual == 0:
+        return q, -1
+    if shifted < 0:
+        q -= 1
+        residual += half
+    else:
+        residual -= half
+    if residual:
+        error = abs(residual).bit_length() - 1 - e
+    else:
+        error = -e
+    return q, error
+
+
+@native
+def pari_real_integer_division(
+    integer: int, m: int, p: int, e: int
+) -> tuple[int, int, int]:
+    """Translate GMP PARI 2.17.4 `divri`, including `divri_with_gmp`.
+
+    Large divisors are truncated before normalization, as upstream. Rounding
+    compares only the leading remainder word with half the leading divisor
+    word, rather than testing `2*r > divisor`. These choices are intentional
+    upstream correspondence, not a correctly-rounded division specification.
+    """
+    if integer == 0:
+        raise ZeroDivisionError("zero ideal norm divisor")
+    divisor = abs(integer)
+    bits = divisor.bit_length()
+    if m == 0:
+        return 0, 0, e - bits + 1
+    if bits < 64:
+        return pari_real_word_division(integer, m, p, e)
+    if p < 64 or p > 2048 or p % 64 != 0 or abs(m).bit_length() != p:
+        raise ValueError("invalid prepared real")
+    limbs = (bits + 63) // 64
+    kept = limbs
+    if kept > p // 64 + 1:
+        kept = p // 64 + 1
+    normalized = (divisor >> (64 * (limbs - kept))) << (64 * limbs - bits)
+    numerator = abs(m) << (64 * kept)
+    quotient = numerator // normalized
+    remainder = numerator % normalized
+    if (remainder >> (64 * (kept - 1))) > (normalized >> (64 * (kept - 1) + 1)):
+        quotient += 1
+    e -= bits - 1
+    high = quotient >> p
+    if high == 0:
+        e -= 1
+    elif high == 1:
+        quotient >>= 1
+    else:
+        quotient = 1 << (p - 1)
+        e += 1
+    if (m < 0) != (integer < 0):
+        quotient = -quotient
+    return quotient, p, e
+
+
+@native
 def pari_real_word_division(
     integer: int, m: int, p: int, e: int
 ) -> tuple[int, int, int]:
@@ -25,7 +102,7 @@ def pari_real_word_division(
     not another quotient word. Preserve that upstream distinction. Full
     integer division here replaces PARI's word loop; its cost is not a
     language-only comparison. PARI's `is_bigint` routes even a single limb
-    with its high bit set to `divri_with_gmp`; that path remains unsupported.
+    with its high bit set to `divri_with_gmp`; the general entry above handles it.
     """
     if integer == 0:
         raise ZeroDivisionError("zero ideal norm divisor")
@@ -489,3 +566,44 @@ def pari_prepared_matrix_norm(
     return pari_prepared_mixed_norm(
         values_m, values_p, values_e, real_count, (degree - real_count) // 2
     )
+
+
+@native
+def pari_prepared_factorgen_numerical(
+    matrix_m: IntegerBuffer,
+    matrix_p: IntegerBuffer,
+    matrix_e: IntegerBuffer,
+    coefficients: IntegerBuffer,
+    values_m: IntegerBuffer,
+    values_p: IntegerBuffer,
+    values_e: IntegerBuffer,
+    degree: int,
+    real_count: int,
+    ideal_norm: int,
+) -> tuple[int, int, int]:
+    """Translate `buch2.c:factorgen` through its `e > -32` rejection.
+
+    Zero ideal_norm represents upstream's absent NI pointer; supplied ideal
+    norms must be positive. Output is integer norm, error exponent, and the
+    numerical gate (1 means proceed to can_factor, not accept a relation).
+    All matrix/norm prototype restrictions still apply.
+    """
+    if ideal_norm < 0:
+        raise ValueError("ideal norm must be positive or absent")
+    m, p, e = pari_prepared_matrix_norm(
+        matrix_m,
+        matrix_p,
+        matrix_e,
+        coefficients,
+        values_m,
+        values_p,
+        values_e,
+        degree,
+        real_count,
+    )
+    if ideal_norm != 0:
+        m, p, e = pari_real_integer_division(ideal_norm, m, p, e)
+    norm, error = pari_round_real(m, p - e - 1, e)
+    if error > -32:
+        return norm, error, 0
+    return norm, error, 1

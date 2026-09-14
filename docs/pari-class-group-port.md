@@ -1,5 +1,37 @@
 # Faithful PARI class-group language experiment
 
+## Connected numerical gate checkpoint
+
+`pari_prepared_factorgen_numerical` now connects the prepared embedding matrix,
+integer coordinates, embedding norm, optional ideal-norm division and `grndtoi`
+through `factorgen`'s `e > -32` rejection in one source-transparent native call.
+The rounding function moved into the same compilation unit rather than keeping
+duplicate bodies. Both small and large `divri` routes are translated; the large
+route preserves divisor truncation and PARI's leading-word remainder comparison,
+not a substitute correctly-rounded quotient.
+
+The 32 existing matrix/vector controls are each exercised with absent NI, NI=1,
+3, `2**63`, and `2**160+7`: 160 cases agree in CPython, generated JS, forced GMP
+and tagged execution, including intermediate embedding rows. There are 101
+numerical passes and 59 rejections. These NI values are synthetic arithmetic
+controls, not a claim that each is the norm of an ideal containing its candidate.
+A pass means proceed to `can_factor`, **not** accepted relation or certification.
+The arithmetic control additionally checks 3,496 operations, including 1,824
+divisions with seeded multiword divisors longer than the real mantissa.
+
+Reproduce the connected check:
+
+```text
+SAGEJS_FLINT_PREFIX=<prefix> node bench/pari-class-group-port/check_compiled_gate.cjs <pari-2.17.4-source>
+```
+
+Remaining boundaries: smoothness/factorization, prime-ideal valuations, relation
+state and collection, unit/regulator work, linear algebra, and stopping. This
+is still an untimed prototype, not an expensive connected-segment qualification
+or an independent class-group implementation. The earlier small-divisor-only
+restriction below is superseded at the general entry; the private word helper
+still rejects that separate route. No production behavior changes.
+
 ## Ideal-norm division checkpoint
 
 The prepared-real prototype now translates `divri`'s small-integer route

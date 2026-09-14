@@ -10,7 +10,7 @@ import tempfile
 source = pathlib.Path(sys.argv[1]).resolve()
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src/lib"))
 spec = importlib.util.spec_from_file_location(
-    "pari_rounding", pathlib.Path(__file__).with_name("rounding.py")
+    "pari_rounding", pathlib.Path(__file__).with_name("short_product.py")
 )
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)

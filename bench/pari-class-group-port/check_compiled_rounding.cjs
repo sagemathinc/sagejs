@@ -5,7 +5,7 @@ const {spawnSync}=require("node:child_process");
 (async()=>{
   const compilerRoot=path.resolve(process.argv[3]||path.join(__dirname,"../.."));
   const {compileKernel}=require(path.join(compilerRoot,"tools/native-kernel/compiler.cjs"));
-  const b=await compileKernel({sourcePath:path.join(__dirname,"rounding.py")});
+  const b=await compileKernel({sourcePath:path.join(__dirname,"short_product.py")});
   const mod=require(b.modulePath),raw=require(b.addonPath);
   const oracle=spawnSync("python3",[path.join(__dirname,"check_rounding.py"),process.argv[2],"--json"],{encoding:"utf8",timeout:30000,maxBuffer:1024*1024});
   assert.equal(oracle.status,0,oracle.stderr);

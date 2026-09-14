@@ -37,11 +37,22 @@ int main(void) {
       GEN v=RgM_RgC_mul(M,a);
       if (getenv("SAGEJS_MATRIX_RECORDS")) {
         if (k<=8) {
+          long gate=getenv("SAGEJS_GATE_RECORDS")!=NULL;
+          for(long d=0;d<(gate?5:1);d++) {
           printf("%ld %ld",n,r1);
           for(long row=0;row<n;row++)for(long j=1;j<=n;j++)scalar(component(gel(M,j),row,r1));
           for(long j=1;j<=n;j++)printf(" %ld",itos(gel(a,j)));
           for(long row=0;row<n;row++)scalar(component(v,row,r1));
-          scalar(embed_norm(v,r1));printf("\n");
+          GEN norm=embed_norm(v,r1);scalar(norm);
+          if(gate) {
+            GEN ni=d==0?gen_0:d==1?gen_1:d==2?stoi(3):d==3?int2n(63):addiu(int2n(160),7);
+            long error;GEN rounded=grndtoi(d?divri(norm,ni):norm,&error);
+            char *s=GENtostr(ni),*t=GENtostr(rounded);
+            printf(" %s %s %ld %ld",s,t,error,error<=-32?1L:0L);
+            pari_free(s);pari_free(t);
+          }
+          printf("\n");
+          }
         }
         avma=av;continue;
       }
@@ -80,7 +91,12 @@ with tempfile.TemporaryDirectory(prefix="sagejs-matrix-rows-") as tmp:
         timeout=30,
     )
     env = dict(os.environ)
-    matrix = "--matrix-json" in sys.argv[2:]
+    gate = "--gate-json" in sys.argv[2:]
+    matrix = "--matrix-json" in sys.argv[2:] or gate
+    if gate:
+        env["SAGEJS_GATE_RECORDS"] = "1"
+    else:
+        env.pop("SAGEJS_GATE_RECORDS", None)
     if matrix:
         env["SAGEJS_MATRIX_RECORDS"] = "1"
     else:
@@ -90,5 +106,5 @@ with tempfile.TemporaryDirectory(prefix="sagejs-matrix-rows-") as tmp:
     )
     assert run.returncode == 0, run.stderr
     rows = [line.split() for line in run.stdout.splitlines()]
-    assert len(rows) == (32 if matrix else 162), len(rows)
+    assert len(rows) == (160 if gate else 32 if matrix else 162), len(rows)
     print(json.dumps(rows))
