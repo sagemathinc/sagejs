@@ -94,6 +94,24 @@ node bench/pari-class-group-port/check_compiled_real_logarithm.cjs \
   /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
 ```
 
+`pi_constant.py` supplies the next complex-logarithm dependency by translating
+the pinned `pi_ramanujan` construction and resident `constpi`/`mppi` cache.
+It reuses the existing binary splitter, integer-to-real conversion, PARI-style
+real/integer division and square root, preserving their order and guard word.
+All 48 increasing/decreasing/repeated precision requests (64–1024 bits) match
+PARI/CPython/JS/GMP, including a cache-only request with empty scratch buffers.
+Trace: `f0cf51446336e580292b06d0714afcf7a3445583db66f457a6df89b360d49f73`.
+Reproduce with `check_pi_constant.cjs PARI_DIR` under the same meter environment.
+
+The initial native attempt rejected a `min` call in a workspace guard; this
+non-hot guard now states each capacity check directly. A second attempt
+exhausted the adapter's inferred integer capacity: binary-splitting products
+are larger than the final constant. The final test uses explicit 64-word
+owners, justified by at most 22 coefficient terms, each denominator below
+2^68. Neither attempt changed compiler/resource safety limits. These failed
+attempts remain in the CPU ledger. Arctangent/argument and the connected
+complex embedding path are still missing, so this is not a complete `glog`.
+
 ### Distinguished exponent zero
 
 The connected collector now follows `base4.c:idealpow_aux`'s early identity
