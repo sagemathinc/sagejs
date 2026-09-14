@@ -1186,6 +1186,9 @@ function emitExactOperation(operation, context, indent) {
     const source = exactValue(operation.source, context);
     return `${indent}set_mpz_uint64(${target}, mpz_sgn(${source}) == 0 ? 0 : (uint64_t)mpz_sizeinbase(${source}, 2));`;
   }
+  if (operation.kind === "integer.gcd") {
+    return `${indent}mpz_gcd(${target}, ${exactValue(operation.left, context)}, ${exactValue(operation.right, context)});`;
+  }
   if (operation.kind === "integer.shift") {
     return `${indent}if (!sagejs_mpz_shift(status, ${target}, ${exactValue(operation.left, context)}, ${exactValue(operation.right, context)}, ${operation.operation === "left" ? 1 : 0})) goto fail;`;
   }

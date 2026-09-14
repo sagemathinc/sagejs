@@ -391,6 +391,7 @@ function createContext(
   decorated,
   integerConstants = new Map(),
   canonicalForeignResources = new Map(),
+  mathFunctions = new Map(),
 ) {
   const variables = new Map(
     signature.params.map((param) => [param.name, param.type]),
@@ -408,6 +409,7 @@ function createContext(
     if (resource !== undefined) usedForeignResources.set(type, resource);
   }
   return {
+    mathFunctions,
     decorated,
     dependencies: new Set(),
     foreignDependencies: new Set(),
@@ -1377,6 +1379,20 @@ function lowerCall(node, context, operations) {
   );
   const name = node.expression.name;
   const args = array(node.args);
+
+  if (context.mathFunctions.get(name) === "gcd") {
+    expect(context,node,!context.variables.has(name) && !context.lexicalLocals.has(name) &&
+      !context.signatures.has(name) && !context.integerConstants.has(name) && !context.foreignFunctions.has(name),
+      "math.gcd binding is shadowed");
+    expect(context,node,args.length === 2 && array(node.args?.kwarg_items).length === 0 &&
+      !node.args?.starargs && array(node.args?.kwargs).length === 0, "native math.gcd currently requires two positional integers");
+    const left=lowerExpression(args[0],context,operations);
+    const right=lowerExpression(args[1],context,operations);
+    expect(context,node,left.type === "Integer" && right.type === "Integer", "math.gcd requires exact integers");
+    const target=temporary(context,node,"Integer");
+    operations.push({kind:"integer.gcd",target,left:left.name,right:right.name});
+    return {name:target,type:"Integer"};
+  }
 
   if (name === "RealNumber") {
     expect(context, node, args.length === 1, "RealNumber() requires one argument");
@@ -3954,6 +3970,7 @@ function lowerIntegerFunction(
   decorated,
   integerConstants = new Map(),
   canonicalForeignResources = new Map(),
+  mathFunctions = new Map(),
 ) {
   const context = createContext(
     fn,
@@ -3966,6 +3983,7 @@ function lowerIntegerFunction(
     decorated,
     integerConstants,
     canonicalForeignResources,
+    mathFunctions,
   );
   const body = lowerStatements(array(fn.body), context);
   expect(context, fn, containsReturn(body), "function has no return");

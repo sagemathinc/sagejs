@@ -722,7 +722,7 @@ function supportedModulePreamble(statement) {
     const moduleName = item.module?.name;
     const names = array(item.argnames).map((arg) => arg.name);
     return (
-      moduleName === "math" && names.every((name) => name === "sqrt")
+      moduleName === "math" && names.every((name) => name === "sqrt" || name === "gcd")
     ) || (
       moduleName === "typing" && names.every((name) => name === "Tuple")
     ) || (
@@ -994,6 +994,24 @@ async function lowerSource(source, filename, options = {}) {
     }
   }
   const integerConstants = moduleIntegerConstants(topLevel, filename);
+  const mathFunctions = new Map();
+  const importCounts = new Map();
+  for (const statement of topLevel) {
+    if (nodeType(statement) !== "AST_Imports") continue;
+    for (const item of array(statement.imports)) {
+      for (const imported of array(item.argnames)) {
+        const local = imported.alias?.name || imported.name;
+        importCounts.set(local, (importCounts.get(local) || 0) + 1);
+      }
+      if (item.module?.name !== "math") continue;
+      for (const imported of array(item.argnames)) {
+        if (imported.name === "gcd") mathFunctions.set(imported.alias?.name || imported.name, "gcd");
+      }
+    }
+  }
+  for (const name of mathFunctions.keys()) {
+    expect(importCounts.get(name) === 1, `${filename}: ambiguous math.gcd import binding ${name}`);
+  }
   const records = nativeRecordSchemas(topLevel, filename);
   const foreignImports = ffiImports(topLevel, filename);
   const foreignFunctions = foreignImports.functions;
@@ -1158,6 +1176,7 @@ async function lowerSource(source, filename, options = {}) {
             decoratedMode,
             integerConstants,
             foreignImports.canonicalResources,
+            mathFunctions,
           );
     if (expanded.metadata.length) {
       result.workspaceBundles = expanded.metadata;

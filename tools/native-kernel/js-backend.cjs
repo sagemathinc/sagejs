@@ -487,6 +487,14 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "integer.bit_length") {
     return `${indent}${operation.target} = ${operation.source} === 0n ? 0n : BigInt((${operation.source} < 0n ? -${operation.source} : ${operation.source}).toString(2).length);`;
   }
+  if (operation.kind === "integer.gcd") {
+    return `${indent}${operation.target} = ((a, b) => {
+${indent}  a = a < 0n ? -a : a;
+${indent}  b = b < 0n ? -b : b;
+${indent}  while (b !== 0n) { const r = a % b; a = b; b = r; }
+${indent}  return a;
+${indent}})(${operation.left}, ${operation.right});`;
+  }
   if (operation.kind === "integer.shift") {
     const a=operation.left,b=operation.right,t=operation.target;
     return `${indent}if (${b} < 0n) nativeRaise("ValueError", "negative shift count");

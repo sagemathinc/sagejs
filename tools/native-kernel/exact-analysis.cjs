@@ -40,6 +40,7 @@ function operationInputs(operation) {
     case "integer.mod_uint64":
       return [operation.left, operation.right];
     case "integer.binary":
+    case "integer.gcd":
     case "integer.shift":
     case "float64.binary":
     case "uint64.binary":
@@ -510,6 +511,7 @@ function executionProfile(fn) {
     operation(operation) {
       if (
         operation.kind === "integer.binary" ||
+        operation.kind === "integer.gcd" ||
         operation.kind === "integer.pow_uint" ||
         operation.kind === "integer.divmod" ||
         operation.kind === "integer.mod_uint64" ||
