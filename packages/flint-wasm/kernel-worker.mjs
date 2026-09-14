@@ -1,4 +1,5 @@
 import { instantiateSageEvaluator } from "./evaluator.mjs";
+import { serializeBrowserError } from "./diagnostics.mjs";
 const COMM_MAX_JSON_BYTES = 8 * 1024 * 1024;
 const COMM_MAX_DEPTH = 64;
 const COMM_MAX_BUFFERS = 64;
@@ -251,16 +252,17 @@ function extendSageEvaluator(
     if (typeof msgId === "string") activeParentId = msgId;
   }, restorers);
   globalOverride("__sagejs_showtraceback__", (error) => {
-    const name = String(Reflect.get(Object(error), "name") ?? "Error");
-    const message = String(Reflect.get(Object(error), "message") ?? error);
-    const stack = Reflect.get(Object(error), "stack");
+    const diagnostic = serializeBrowserError(error, {
+      phase: "execute", pythonExecution: true,
+    });
     onEvent({
       schema: "sagejs.output-event/v1",
       type: "error",
       parentId: activeParentId,
-      name,
-      message,
-      traceback: typeof stack === "string" ? stack.split("\n") : [name + ": " + message],
+      name: diagnostic.pythonDiagnostic.exceptionType,
+      message: diagnostic.message,
+      traceback: diagnostic.traceback,
+      pythonDiagnostic: diagnostic.pythonDiagnostic,
     });
   }, restorers);
   globalOverride("__sagejs_comm_publish__", (
@@ -347,17 +349,6 @@ function extendSageEvaluator(
   }
 
   return Object.freeze({ evaluate, comm, commInfo, terminate });
-}
-
-function serializeError(error) {
-  return {
-    name: error instanceof Error ? error.name : "Error",
-    message: error instanceof Error ? error.message : String(error),
-    stack: error instanceof Error ? error.stack : undefined,
-    sagejsErrorName: typeof error?.sagejsErrorName === "string"
-      ? error.sagejsErrorName
-      : undefined,
-  };
 }
 
 let evaluatorPromise;
@@ -533,7 +524,11 @@ self.onmessage = ({ data, ports }) => {
         type: "result",
         id: privateData.id,
         ok: false,
-        error: serializeError(error),
+        error: serializeBrowserError(error, {
+          phase: "execute",
+          pythonExecution: true,
+          filename: privateData.filename,
+        }),
       });
     });
   };
@@ -541,7 +536,7 @@ self.onmessage = ({ data, ports }) => {
   void initialize(data).catch((error) => {
     send({
       type: "initialization-error",
-      error: serializeError(error),
+      error: serializeBrowserError(error),
     });
   });
 };

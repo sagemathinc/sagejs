@@ -23,6 +23,8 @@ function deserializeError(serialized) {
   const error = new Error(serialized.message);
   error.name = serialized.name;
   if (serialized.stack) error.stack = serialized.stack;
+  if (serialized.pythonDiagnostic) error.pythonDiagnostic = serialized.pythonDiagnostic;
+  if (Array.isArray(serialized.traceback)) error.traceback = serialized.traceback;
   if (typeof serialized.sagejsErrorName === "string") {
     error.sagejsErrorName = serialized.sagejsErrorName;
   }

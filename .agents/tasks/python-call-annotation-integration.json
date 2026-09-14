@@ -9,6 +9,16 @@
   "objective": "Qualify prepared calls, reflected divmod and annotation metadata on current main without widening budgets",
   "base_commit": "4834ec0cb7e2fe84de418f0573f2a6d27f34c955",
   "claims": [
+    "website/live/app.mjs",
+    "website/live/embed/v1/sagejs-cell.mjs",
+    "packages/flint-wasm/kernel-worker.mjs",
+    "packages/flint-wasm/kernel.mjs",
+    "packages/flint-wasm/diagnostics.mjs",
+    "packages/flint-wasm/test/diagnostics.test.mjs",
+    "packages/flint-wasm/test/kernel-session.test.mjs",
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/package.json",
+    "packages/flint-wasm/release/production-layout.json",
     "src/output/classes.py",
     "src/output/modules.py",
     "test/python-logical-modules.cjs",
@@ -206,6 +216,16 @@
       "started_at": "2026-09-14T04:14:13.102Z",
       "commit": "81716aa1f4d5e3f437707163e6f7130e4a7df753",
       "workspace_fingerprint": "534c1e56d9d6d5770cfa54997ca510130b2f5d3b552aab70d3a8ff87911e125c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test packages/flint-wasm/test/diagnostics.test.mjs packages/flint-wasm/test/kernel-session.test.mjs test/python-diagnostics.cjs test/python-cli-diagnostic-renderer.cjs test/kernel-diagnostics.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.272,
+      "started_at": "2026-09-14T04:29:58.288Z",
+      "commit": "f1da666af1329f3b894223bd74a0eaab20e2c67d",
+      "workspace_fingerprint": "1ca40c9f918fc5fda98214487e6df2430121cb83a4287b886a1629a7fba97f90",
       "platform": "linux-x64"
     }
   ],
