@@ -223,6 +223,7 @@ test("compile attaches Python provenance only after generated-script constructio
       if (name === "./host") return { installNodeHost: () => () => {} };
       if (name === "./graphics-export") return { installNodeGraphicsSaveHook() {} };
       if (name === "./python/diagnostics") return helper.exports;
+      if (name === "./python/traceback-capture") return { resolveTracebackCapture: () => "native" };
       if (name === "./python/source-map") return { PythonSourceMapCollector: class { finish() { return {}; } } };
       if (name === "./python/stack-adapter") return { mappedPythonScript: () => new (fakeRequire("vm").Script)() };
       if (name === "./python/compiler-frontend") return { createPythonCompilerFrontend: async () => ({
@@ -286,6 +287,7 @@ test("compile preserves manual SystemExit and legacy parser exit handling", asyn
       if (name === "./host") return { installNodeHost: () => () => {} };
       if (name === "./graphics-export") return { installNodeGraphicsSaveHook() {} };
       if (name === "./python/diagnostics") return helper.exports;
+      if (name === "./python/traceback-capture") return { resolveTracebackCapture: () => "native" };
       if (name === "./python/source-map") return { PythonSourceMapCollector: class { finish() { return {}; } } };
       if (name === "./python/stack-adapter") return { mappedPythonScript: () => new (fakeRequire("vm").Script)() };
       if (name === "./python/compiler-frontend") return { createPythonCompilerFrontend: async () => ({

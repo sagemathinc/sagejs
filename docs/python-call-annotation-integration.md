@@ -1015,3 +1015,36 @@ retained in `/home/user/exception-nonthrowing-pair.e9XOpn` and
 `bench-1:/home/user/exception-binding.DPGjJs/nonthrowing`. Isolated and mixed
 results are both retained; the favorable isolated result does not supersede
 the mixed result or qualify a default-policy change.
+
+Node consumer qualification now has an explicit selection surface:
+`createSage({mode: "python", tracebackCapture: "guarded"})`, or the
+command-scoped environment setting `SAGEJS_TRACEBACK_CAPTURE=guarded` for the
+source CLI and Node/Jupyter sessions. Explicit session options override the
+environment; accepted values are exactly `native` and `guarded`. Invalid values
+fail before user execution. Native remains the default and preserves the old
+native-only capture behavior; it does not invent compiler frames for
+`traceback.extract_tb()`. Guarded mode enables records and guarded capture
+together, retaining native boundaries for unsupported execution paths.
+
+Six focused consumer checks cover CLI source diagnostics, invalid selection,
+Python/Sage sessions under both policies, `sys.exc_info()`/`traceback.extract_tb()`,
+transported uncaught failures and successful subsequent evaluation. Browser,
+actual Jupyter protocol, package timings and complete product qualification
+still need their own evidence; these Node tests do not stand in for them.
+
+The frozen Node-consumer build passes in 7m16s and the expanded focused suite
+passes 56/56. The Jupyter protocol run exposes the same traitlets
+`missing required argument: self` failure under **both** native and guarded
+capture. A minimal custom-metaclass subclass using
+`super(D, self).setup(*args, **kwargs)` reproduces it without widgets. The super
+proxy uses JavaScript-only receiver binding instead of the existing dual
+Python/native method binder. This is an integration prerequisite, not a
+guarded-capture regression or a waived Jupyter test.
+
+The pinned `packaging` 26.2 version-sorting/epoch workflow passes under both
+policies. Local seven-sample phase observations are retained at
+`/home/user/exception-package-capture.AKJOcy/report.json`: cold CLI is about
+4.0s versus CPython 49ms, and 1,000 warm workflows are about 2.4s versus 12ms.
+Guarded capture shows no material package speedup here; both warm ratios remain
+around 200x. These are provisional local observations, not controlled VM
+acceptance measurements. No threshold or budget was changed.

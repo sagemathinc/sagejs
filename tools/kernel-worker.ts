@@ -24,6 +24,7 @@ async function main(): Promise<void> {
   const port = parentPort!;
   const evaluator = await createKernelEvaluatorAsync({
     mode: workerData.mode as SageLanguageMode,
+    tracebackCapture: workerData.tracebackCapture,
     interruptState,
     onOutput(text) {
       port.postMessage({
