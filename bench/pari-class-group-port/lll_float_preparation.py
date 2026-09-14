@@ -1,10 +1,12 @@
 """PARI 2.17.4 binary64 LLL integer conversion.
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
-Corresponds to `lll.c:itodbl_exp`; column scaling remains a separate dependency.
+Corresponds to `lll.c:itodbl_exp` and `set_line`.
 """
 
-from sagejs.native import Float64Buffer, native
+from math import ldexp
+
+from sagejs.native import Float64Buffer, IntegerBuffer, checked_uint64, native
 
 from .float_conversion import pari_real_to_float
 from .real_conversion import pari_integer_to_real
@@ -22,3 +24,30 @@ def pari_lll_integer_to_double(value: int, normalized: Float64Buffer) -> int:
     mantissa, precision, exponent = pari_integer_to_real(value, 64)
     normalized[0] = pari_real_to_float(mantissa, precision, 0)
     return exponent
+
+
+@native
+def pari_lll_set_line(
+    values: IntegerBuffer,
+    count: int,
+    normalized: Float64Buffer,
+    exponents: IntegerBuffer,
+    temporary: Float64Buffer,
+) -> int:
+    """Normalize one integer column, preserving the upstream maximum floor.
+
+    `normalized`, `exponents`, and `temporary` are independent caller-owned
+    scratch buffers. The maximum exponent starts at zero, even for a zero
+    column. Scaling happens only after every input has been converted.
+    """
+    length = checked_uint64(count)
+    maximum = 0
+    for i in range(length):
+        exponent = pari_lll_integer_to_double(values[i], temporary)
+        exponents[i] = exponent
+        normalized[i] = temporary[0]
+        if exponent > maximum:
+            maximum = exponent
+    for i in range(length):
+        normalized[i] = ldexp(normalized[i], exponents[i] - maximum)
+    return maximum

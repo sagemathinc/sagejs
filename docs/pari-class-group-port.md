@@ -1,5 +1,38 @@
 # Faithful PARI class-group language experiment
 
+## Connected binary64 column preparation
+
+Compiler prerequisite `493a74af6` adds native `math.frexp`/`math.ldexp`, exact
+integer exponent handling and mixed float/integer tuple outputs (IR 40). It
+is integrated on this branch, together with follow-up `1927840fc` fixing
+the call scan's interaction with synthetic workspace AST nodes. The separate
+ordinary `math.py` correction is
+still open; the historical 14-disagreement runtime probe below is not claimed
+resolved by native lowering alone.
+
+`lll_float_preparation.py:pari_lll_set_line` now connects integer normalization
+to the upstream second-pass column scaling. It retains the maximum-exponent
+floor of zero, zero-entry exponent metadata, and the order of all conversions
+before scaling. Independent caller-owned buffers keep scratch resident.
+
+`check_lll_set_line.cjs PARI_DIRECTORY PARI_ARCHIVE` checks **141 columns**:
+112 actual `roundG * I` columns from the four tuning fields at primes
+2, 3, 5, 7, 11, 13, 17 and 19, plus 29 zero/wide-exponent controls. PARI,
+CPython, generated JS and GMP-native agree on the maximum exponent, every
+entry's pre-scaling exponent and every output double bit. This exercises the
+compiler primitive in actual LLL preparation, but is not a completed
+`fplll_fast` pass or a speed measurement. Babai's infinity-tolerant C scaling
+policy still needs an explicit source translation; the general Python
+`ldexp` primitive correctly continues to raise on finite overflow.
+
+The integrated focused check passes in 4.816 seconds (test/oracle wall time,
+not a benchmark). The changed-file gate now passes the production graph check
+that exposed the workspace AST regression, then stops in
+`test/foreign-languages.cjs` because the local FLINT addon is absent; 234 unit
+files remain unstarted. This is not a green broad gate. The preceding strict
+check passed all 403 modules. The compiler prerequisite's separate build and
+architecture failures remain documented in `mixed-exact-float-sidecar.md`.
+
 ## Binary64 LLL scaling dependency audit
 
 The next untranslated `fplll_fast` pass uses `itodbl_exp`/`set_line`
@@ -10,8 +43,11 @@ scaled floating coefficients to choose exact size reductions. Substituting
 
 Run `node bench/pari-class-group-port/probe_binary64_scaling.cjs` to compare
 121 boundary cases in CPython and ordinary dynamic Sage.js and probe native
-lowering. On this revision, **14 dynamic disagreements** occur and both native
-imports are rejected with `unsupported call to ldexp/frexp`. This is a
+lowering. At the original audit revision, **14 dynamic disagreements** occurred
+and both native imports were rejected with `unsupported call to ldexp/frexp`.
+After the compiler integration, the same 14 dynamic disagreements remain,
+but both imports lower successfully. This probe does not execute native code;
+the focused compiler and column checks above do. This is a
 diagnostic finding, **not a passing differential qualification**. Examples:
 
 - `ldexp(5e-324, 1074)` should be `1.0`, but raises overflow dynamically.
