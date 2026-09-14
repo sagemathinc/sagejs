@@ -2,6 +2,61 @@
 "use strict";
 const assert=require("node:assert/strict"),fs=require("node:fs"),os=require("node:os"),path=require("node:path"),test=require("node:test");
 const {compileKernel,}=require("../compiler.cjs"),{lowerSource}=require("../ir.cjs");
+test("JavaScript escapes reserved Python bindings without mutating source IR",async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-reserved-bindings-")),source=path.join(dir,"bindings.py");
+  fs.writeFileSync(source,`from sagejs.native import native, IntegerBuffer, Float64Buffer
+@native
+def pair(new:int)->tuple[int,int]:
+    return new,new+1
+@native
+def reserved(new:int,arguments:IntegerBuffer)->int:
+    __sagejs_js_binding_0=100
+    let=new+1
+    for var in range(2):
+        let+=var
+    if new<0:
+        raise ValueError("new")
+    package,delete=pair(let)
+    arguments[0]=package+delete
+    return arguments[0]+__sagejs_js_binding_0
+@native
+def floating(new:float)->float:
+    let=new+1.0
+    return let*2.0
+@native
+def float_buffer(arguments:Float64Buffer)->float:
+    arguments[0]+=1.0
+    return arguments[0]
+`);
+  const oracle=require("node:child_process").spawnSync("python3",["-c",`
+import sys
+sys.path[:0]=[${JSON.stringify(dir)},${JSON.stringify(path.resolve(__dirname,"../../../src/lib"))}]
+import bindings
+a=[0]
+assert bindings.reserved(3,a)==111 and a==[11]
+assert bindings.pair(4)==(4,5) and bindings.floating(3.5)==9
+b=[2.5]
+assert bindings.float_buffer(b)==3.5 and b==[3.5]
+`],{encoding:"utf8"});assert.equal(oracle.status,0,oracle.stderr);
+  const ir=await lowerSource(fs.readFileSync(source,"utf8"),source),before=JSON.stringify(ir);
+  const js=require("../js-backend.cjs").generateJavaScript(ir);
+  assert.equal(JSON.stringify(ir),before,"backend escaping must not rewrite authoritative IR");
+  assert(ir.functions.find(f=>f.name==="reserved").params.some(p=>p.name==="new"));
+  assert.match(js,/nativeRaise\("ValueError", "new"\)/);
+  assert.match(js,/__sagejs_js_binding_1/);
+  const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  assert(mod.reserved.effects.externalWrites.includes("arguments"));
+  for(const backend of ["javascript","gmp","tagged"]){
+    const a=[0n];assert.equal(mod.reserved[backend](3n,a),111n);assert.deepEqual(a,[11n]);
+    assert.throws(()=>mod.reserved[backend](-1n,[0n]),/new/);
+    assert.deepEqual(mod.pair[backend](4n),[4n,5n]);
+  }
+  assert.equal(mod.floating.javascript(3.5),9);
+  assert.equal(mod.floating(3.5),9);
+  for(const execute of [mod.float_buffer,mod.float_buffer.javascript]){
+    const a=[2.5];assert.equal(execute(a),3.5);assert.deepEqual(a,[3.5]);
+  }
+});
 test("exact kernels publish Float64 results without integer reinterpretation",async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-exact-float-result-")),source=path.join(dir,"result.py");
   fs.writeFileSync(source,`from sagejs.native import native, checked_float64

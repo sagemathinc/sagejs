@@ -1,5 +1,24 @@
 # Mixed exact/binary64 prerequisite checkpoint
 
+## JavaScript reserved local and parameter names
+
+The real-root translation exposed `new` emitted as a JavaScript local even
+though it is a legal Python identifier. JavaScript emission now escapes
+reserved parameter/local bindings in a private IR copy with collision-free
+names. It traverses operand references, loop/branch bodies, call arguments,
+tuple results and resource owners; it does not rewrite string literals,
+record field names, callee identities or authoritative source IR/provenance.
+Native buffer write-effect lookup maps back to the original source parameter
+name, keeping copy-back behavior and published effect metadata intact.
+
+The focused regression covers `new`, `let`, `var`, `arguments`, `package` and
+`delete`, generated-name collisions, tuple calls, branching, loops, exact
+buffer mutation, pure Float64 execution and Float64 buffer copy-back. It
+checks CPython, the generated JS fallback and available native backends,
+and asserts that emitting JavaScript does not mutate the original IR.
+This change handles parameter/local bindings, not arbitrary public function
+names or general shadowing of runtime helper identifiers.
+
 ## Imported exact GCD
 
 Small-GCD follow-up: word execution now computes unsigned magnitudes and a

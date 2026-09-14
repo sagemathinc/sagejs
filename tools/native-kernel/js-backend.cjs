@@ -26,6 +26,77 @@ function jsString(value) {
   return JSON.stringify(String(value));
 }
 
+// Python permits these local/parameter names, but strict JavaScript does not.
+// Rename only binding references in a backend-local copy, never literal data,
+// record field names, callee identities, source provenance, or the shared IR.
+const RESERVED_BINDINGS = new Set((
+  "await break case catch class const continue debugger default delete do else " +
+  "enum export extends false finally for function if implements import in " +
+  "instanceof interface let new null package private protected public return " +
+  "static super switch this throw true try typeof var void while with yield " +
+  "eval arguments"
+).split(" "));
+
+function escapeJavaScriptBindings(fn) {
+  const bindings = [...fn.params, ...fn.locals];
+  const occupied = new Set(bindings.map((binding) => binding.name));
+  const names = new Map();
+  let serial = 0;
+  for (const {name} of bindings) {
+    if (!RESERVED_BINDINGS.has(name) || names.has(name)) continue;
+    let replacement;
+    do { replacement = `__sagejs_js_binding_${serial++}`; }
+    while (occupied.has(replacement));
+    occupied.add(replacement);
+    names.set(name, replacement);
+  }
+  if (names.size === 0) return fn;
+  const rename = (value) => names.get(value) ?? value;
+  const operands = [
+    "target", "source", "left", "right", "parent", "buffer", "index",
+    "owner", "arena", "base", "capacity", "length", "count", "row",
+    "column", "rows", "columns", "matrix", "vector", "key", "exponent",
+    "iterator", "start", "stop", "step", "memoryLimit", "temporaryLimit",
+    "entryCapacity", "entryCharge", "maximumBits", "defaultValue",
+    "quotient", "remainder",
+  ];
+  function operation(item) {
+    const result = {...item};
+    for (const key of operands) {
+      if (typeof item[key] === "string") result[key] = rename(item[key]);
+    }
+    if (typeof item.value === "string" && !item.kind.endsWith(".constant")) {
+      result.value = rename(item.value);
+    }
+    if (item.kind === "return" && item.values) result.values = item.values.map(rename);
+    for (const key of ["arguments", "results"]) {
+      if (item[key]) result[key] = item[key].map((arg) => ({...arg, name: rename(arg.name)}));
+    }
+    if (item.kind === "record.construct") {
+      result.fields = item.fields.map((field) => ({...field, value: rename(field.value)}));
+    }
+    for (const key of ["body", "alternative", "setup"]) {
+      if (item[key]) result[key] = item[key].map(operation);
+    }
+    if (item.condition) {
+      result.condition = {...item.condition, value: rename(item.condition.value),
+        operations: item.condition.operations.map(operation)};
+    }
+    if (item.children) {
+      result.children = item.children.map((child) => ({...child, owner: rename(child.owner)}));
+    }
+    return result;
+  }
+  const declaration = (binding) => ({...binding, name: rename(binding.name),
+    ...(binding.parent === undefined ? {} : {parent: rename(binding.parent)})});
+  return {...fn, params: fn.params.map(declaration), locals: fn.locals.map(declaration),
+    body: fn.body.map(operation),
+    jsOriginalBindingNames: Object.fromEntries([...names].map(([name, replacement]) => [replacement, name])),
+    ...(fn.resourceAliases === undefined ? {} : {resourceAliases: Object.fromEntries(
+      Object.entries(fn.resourceAliases).map(([name, value]) => [rename(name), value])
+    )})};
+}
+
 function emitFloat64Pow(operation, indent) {
   const {left, right, target} = operation;
   return [
@@ -910,6 +981,7 @@ function normalizedArgument(param) {
 
 function uint64BufferMayBeWritten(fn, name) {
   const externalWrites = fn.analysis?.effects?.externalWrites;
+  name = fn.jsOriginalBindingNames?.[name] ?? name;
   return !Array.isArray(externalWrites) || externalWrites.includes(name);
 }
 
@@ -1432,6 +1504,7 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
 function generateJavaScript(ir, options = {}) {
+  ir = {...ir, functions: ir.functions.map(escapeJavaScriptBindings)};
   const publicFunctions = ir.functions.filter(
     (fn) => fn.hostCallable !== false,
   );
@@ -1578,7 +1651,7 @@ function generateJavaScript(ir, options = {}) {
     ).join(", ");
     const copyBack = fn.params
       .filter((param) => param.type === "Float64Buffer" &&
-        fn.analysis.effects.mutates.includes(param.name))
+        fn.analysis.effects.mutates.includes(fn.jsOriginalBindingNames?.[param.name] ?? param.name))
       .map((param) => `    sagejs_native_buffer_${param.name}.copyBack();`)
       .join("\n");
     const nativeCall = copyBack
