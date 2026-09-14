@@ -48,8 +48,8 @@ for ix,r in enumerate(json.load(sys.stdin)):
   assert product==a and out==list(map(int,r['output']))
 print(json.dumps(results))
 `,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify(rows)}));
- assert.equal(py.filter(x=>x==='pass').length,158,'do not silently censor new cases');
- assert.equal(py.filter(x=>x!=='pass').length,50);
+ assert.equal(py.filter(x=>x==='pass').length,208,'all original cases must now pass');
+ assert.equal(py.filter(x=>x!=='pass').length,0);
  const built=await compileKernel({sourcePath:path.join(__dirname,'composite_ideal_hnf.py')}),f=require(built.modulePath).pari_composite_modulus_hnf;assert.equal(f.nativeAvailable,true);
  assert.doesNotMatch(fs.readFileSync(built.coreSourcePath,'utf8'),/napi_call_function|PyObject_Call/);
  for(const [ix,r]of rows.entries())for(const backend of ['javascript','gmp']){

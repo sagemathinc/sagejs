@@ -8,7 +8,8 @@ Explicit fixed-capacity workspaces replace column-pointer allocations.
 
 from math import gcd
 from sagejs.native import IntegerBuffer, native
-from .hnf_word_arithmetic import pari_word_bezout, pari_word_inverse_generator
+from .hnf_word_arithmetic import pari_word_inverse_generator
+from .hnf_bezout import pari_hnf_bezout
 
 
 @native
@@ -23,14 +24,14 @@ def pari_signed_remainder(value: int, modulus: int) -> int:
 def pari_hnf_column_step(
     matrix: IntegerBuffer, n: int, stride: int, j: int, k: int, a: int, b: int
 ) -> int:
-    """ZC_elem without a transformation matrix; a and b are word-sized."""
+    """ZC_elem without a transformation matrix; use the declared Bézout adapter."""
     if b == 0:
         for i in range(n):
             temporary = matrix[i * stride + j]
             matrix[i * stride + j] = matrix[i * stride + k]
             matrix[i * stride + k] = temporary
         return 0
-    d, u, v = pari_word_bezout(a, b)
+    d, u, v = pari_hnf_bezout(a, b)
     if u == 0:
         quotient = -(a // b)
         for i in range(n):
@@ -102,8 +103,8 @@ def pari_composite_modulus_hnf(
     """HNF of original columns together with modulus*I; return zero.
 
     Support 3/4 rows and 1..2*n input columns with a positive modulus below
-    2**64. Exact entries may be multiword, but a multiword Bezout pivot is an
-    explicit unported dependency, not a guessed result. Work stride is 3*n+1,
+    2**64. Exact entries and Bezout pivots may be multiword; the arithmetic
+    adapter's backend substitution is explicit. Work stride is 3*n+1,
     triangular stride n+1.
     Buffers must be disjoint. No determinant-only or centered-HNF modes.
     """

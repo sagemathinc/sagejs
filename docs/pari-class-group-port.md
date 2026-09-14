@@ -1,6 +1,50 @@
 # Faithful PARI class-group language experiment
 
-## Composite-modulus HNF and two-element ideal products
+## Multiword Bézout dependency update
+
+The 50 composite-HNF rejections described in the previous checkpoint below
+are now removed: all **208** original cases agree with PARI in CPython,
+generated JavaScript and GMP native execution. The original oracle trace
+hash is unchanged. This still includes only 16 actual ideal products across
+the same four tuning fields; no additional fields or complete class groups
+are claimed.
+
+`hnf_bezout.py` retains the literal word-sized PARI path and adapts signed,
+ordered multiword arguments to ordinary extended Euclid. The recurrence is
+the one already used by Sage.js's `_cubic_extended_gcd`, written locally
+because importing the cubic module in CPython pulls in unavailable FFI runtime
+modules. The failed direct-import attempt is retained here as a dependency
+finding, not worked around by injecting a fake runtime.
+
+**This is an explicit arithmetic-backend substitution for GMP `mpn_gcdext`,
+not a translation of that optimized primitive or a language-only cost claim.**
+The HNF algorithm, column order and reductions are unchanged. Exact Bézout
+coefficient agreement is tested, not inferred from the gcd identity alone.
+The extended arithmetic check covers 2,363 cases, including signed 65-, 128-,
+256- and 1,024-bit operands, zeros, equal/divisible operands and Fibonacci
+neighbors. It preserves all 1,177 original word/inverse-generator controls.
+Its output SHA-256 is
+`c70f3ad40c73d7877fc39307f2e4895e80e49e8f398750c124a3a76f09533cf5`.
+
+```sh
+node bench/pari-class-group-port/check_hnf_word_arithmetic.cjs PARI_DIRECTORY PARI_ARCHIVE --multiword
+node bench/pari-class-group-port/check_composite_ideal_hnf.cjs PARI_DIRECTORY PARI_ARCHIVE
+```
+
+The generated HNF/product core is 2,498,153 C bytes, up from 2,381,810;
+no source/resource allowance is changed. No qualified timing has been run
+for this arithmetic substitution. Word-sized modulus and shape limits remain.
+Prime powering, content handling and the distinguished-ideal collector
+connection are still incomplete, as are the subsequent full-engine stages.
+
+Validation: strict Python passes (403 modules; 972 formatted files). The
+changed-file gate passes merge invariants and a full build in 7m31s, then stops
+at the known stale optimizer manifest in architecture validation. Unit,
+compiler, integration, docs and CLI stages are not reached by this invocation.
+Optional FLINT production kernels and Wasm numerical reactors are explicitly
+skipped by the build, not qualified. Both PRs remain draft.
+
+## Composite-modulus HNF and two-element ideal products: prior checkpoint
 
 `composite_ideal_hnf.py` translates the scalar-modulus `hnf_MODID` branch of
 `hnf_snf.c:ZM_hnfmodall_i`, including its moving pivot, inserted columns,

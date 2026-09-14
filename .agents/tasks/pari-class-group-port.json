@@ -758,6 +758,46 @@
       "commit": "25a14c2445c8f252095bc25b88f72c26e0bbc287",
       "workspace_fingerprint": "cccc6a4d73ba07ad4a019f4d33ed8d43fd35b16d74aef111a1f87f96b2c7c6c6",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_hnf_word_arithmetic.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --multiword",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.921,
+      "started_at": "2026-09-14T12:57:00.438Z",
+      "commit": "551d73419cc6035fe2c07c3f8370ccf3b57cf742",
+      "workspace_fingerprint": "f3eae66df782cc347c6eb8bb5b0321633af627eae61a03783ba8d5acdba83cb3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_composite_ideal_hnf.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.421,
+      "started_at": "2026-09-14T12:57:11.000Z",
+      "commit": "551d73419cc6035fe2c07c3f8370ccf3b57cf742",
+      "workspace_fingerprint": "f3eae66df782cc347c6eb8bb5b0321633af627eae61a03783ba8d5acdba83cb3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_hnf_word_arithmetic.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --multiword",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.675,
+      "started_at": "2026-09-14T13:05:31.459Z",
+      "commit": "551d73419cc6035fe2c07c3f8370ccf3b57cf742",
+      "workspace_fingerprint": "63decabd8942f7df4d31396aa6ac30718564fdacb229384b01c340edc4dd4104",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_composite_ideal_hnf.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.18,
+      "started_at": "2026-09-14T13:05:41.700Z",
+      "commit": "551d73419cc6035fe2c07c3f8370ccf3b57cf742",
+      "workspace_fingerprint": "63decabd8942f7df4d31396aa6ac30718564fdacb229384b01c340edc4dd4104",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
