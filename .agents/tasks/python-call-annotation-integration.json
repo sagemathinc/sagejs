@@ -9,6 +9,7 @@
   "objective": "Qualify prepared calls, reflected divmod and annotation metadata on current main without widening budgets",
   "base_commit": "4834ec0cb7e2fe84de418f0573f2a6d27f34c955",
   "claims": [
+    "test/python-logical-reraise.cjs",
     "src/baselib/bootstrap_shared.py",
     "test/python-handled-state.cjs",
     "test/fixtures/python-handled-state.py",
@@ -125,6 +126,16 @@
       "started_at": "2026-09-14T01:04:49.138Z",
       "commit": "bd9cb4d6c893d271b183d22c76167714f7651684",
       "workspace_fingerprint": "efe4b77bdca220ee6880f3b19aac88723f5f40cf85023eeb00834bac9400a7b2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/python-exception-state.cjs test/python-lazy-exception-stack.cjs test/python-unbound-exception-init.cjs test/python-prepared-keyword-traceback.cjs test/python-logical-tracebacks.cjs test/python-logical-reraise.cjs test/python-handled-state.cjs test/python-diagnostics.cjs test/python-cli-diagnostic-renderer.cjs test/kernel-diagnostics.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 47.832,
+      "started_at": "2026-09-14T01:59:30.826Z",
+      "commit": "8c6038242979d7caa0ac1c8d171e20848aeed473",
+      "workspace_fingerprint": "3aa0d53eeb165e97a4ca742945154a730144217423898e3974f33ff607c326e5",
       "platform": "linux-x64"
     }
   ],

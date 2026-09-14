@@ -69,15 +69,15 @@ for (const mode of ["python", "sage"]) test(`${mode}: compiler unwind records av
     assert.equal(functions.constructed().__traceback__,null);
     const foreign = new hostError('foreign');
     const foreignStack = foreign.stack;
-    assert.equal(context.ρσ_record_traceback(foreign, {}, 1, {}, false),foreign);
+    assert.equal(context.ρσ_record_traceback(foreign, {}, 1),foreign);
     assert.equal(foreign.stack,foreignStack);
     assert.equal(foreign.__traceback__,undefined);
     for (const value of [null, undefined, 1, 'foreign', false, Symbol('foreign')]) {
-      assert.equal(context.ρσ_record_traceback(value, {}, 1, {}, false), value);
+      assert.equal(context.ρσ_record_traceback(value, {}, 1), value);
     }
     // A caller-owned read-only traceback must not become a secondary error.
     const frozen = Object.freeze({__sagejs_logical_exception__: true, __traceback__: null});
-    assert.equal(context.ρσ_record_traceback(frozen, {}, 1, {}, false), frozen);
+    assert.equal(context.ρσ_record_traceback(frozen, {}, 1), frozen);
     assert.equal(frozen.__traceback__, null);
     function frames(error) {
       const answer=[];

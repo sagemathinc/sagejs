@@ -613,25 +613,29 @@ def generate_code():
                     output.options.python_traceback_records
                     and output.traceback_function
                 )
+                bare = (
+                    is_node_type(self.value, AST_Call)
+                    and is_node_type(self.value.expression, AST_Dot)
+                    and self.value.expression.property is "reraise"
+                    and self.value.expression.expression.name is "ρσ_handled_state"
+                )
+                if logical and bare:
+                    output.print("(ρσ_trace_reraised = ")
+                    self.value.print(output)
+                    output.print(")")
+                    output.semicolon()
+                    return
                 if logical:
-                    output.print("ρσ_record_traceback(")
+                    output.print(
+                        "(ρσ_trace_reraised = undefined, ρσ_trace_captured = ρσ_record_traceback("
+                    )
                 output.print("ρσ_prepare_raise(")
                 self.value.print(output)
                 output.print(")")
                 if logical:
                     output.print("," + JSON.stringify(output.traceback_function))
                     output.print("," + str(self.start.line))
-                    bare = (
-                        is_node_type(self.value, AST_Call)
-                        and is_node_type(self.value.expression, AST_Dot)
-                        and self.value.expression.property is "reraise"
-                        and self.value.expression.expression.name is "ρσ_handled_state"
-                    )
-                    output.print(
-                        ",ρσ_trace_activation || (ρσ_trace_activation = {}),"
-                        + ("false" if bare else "true")
-                        + ")"
-                    )
+                    output.print("))")
             else:
                 self.value.print(output)
         elif kind is "return" and output.options.python_truthiness:

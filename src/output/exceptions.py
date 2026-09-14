@@ -2,7 +2,7 @@
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 from __python__ import hash_literals
 
-from output.statements import print_bracketed
+from output.statements import print_bracketed, print_traceback_record
 
 
 def print_try(self, output, with_finally=True):
@@ -28,14 +28,32 @@ def print_try(self, output, with_finally=True):
 
             output.with_block(pending)
             output.print(" finally ")
-            output.with_block(
-                lambda: print_handled_body(
+
+            def cleanup():
+                logical = (
+                    output.options.python_traceback_records
+                    and output.traceback_function
+                )
+                if logical:
+                    output.indent()
+                    output.print(
+                        "const ρσ_finally_reraised = ρσ_trace_reraised, ρσ_finally_captured = ρσ_trace_captured; ρσ_trace_reraised = ρσ_trace_captured = undefined"
+                    )
+                    output.end_statement()
+                print_handled_body(
                     output,
                     "ρσ_pending_exception",
                     lambda: print_bracketed(self.bfinally, output),
                     True,
                 )
-            )
+                if logical:
+                    output.indent()
+                    output.print(
+                        "if (ρσ_pending_exception) { ρσ_trace_reraised = ρσ_finally_reraised; ρσ_trace_captured = ρσ_finally_captured; }"
+                    )
+                    output.end_statement()
+
+            output.with_block(cleanup)
 
         output.with_block(outer)
         return
@@ -69,17 +87,6 @@ def print_try(self, output, with_finally=True):
     if self.belse:
         output.newline()
         print_else(self.belse, else_var_name, output)
-
-
-def print_traceback_record(output, name):
-    if output.options.python_traceback_records and output.traceback_function:
-        output.indent()
-        output.print(name + " = ρσ_record_traceback(" + name + ",")
-        output.print(JSON.stringify(output.traceback_function))
-        output.print(
-            ",ρσ_trace_line,ρσ_trace_activation || (ρσ_trace_activation = {}),false)"
-        )
-        output.end_statement()
 
 
 def print_handled_body(output, name, body, conditional=False):
@@ -126,6 +133,12 @@ def print_catch(self, output):
         output.print("ρσ_normalize_exception(ρσ_Exception)")
         output.end_statement()
         print_traceback_record(output, "ρσ_Exception")
+        if output.options.python_traceback_records and output.traceback_function:
+            output.indent()
+            output.print(
+                "const ρσ_caught_reraised = ρσ_trace_reraised, ρσ_caught_captured = ρσ_trace_captured; ρσ_trace_reraised = ρσ_trace_captured = undefined"
+            )
+            output.end_statement()
         print_handled_body(output, "ρσ_Exception", f_dispatch)
 
     def f_dispatch():
@@ -150,9 +163,21 @@ def print_catch(self, output):
                         # Resolve the actual expression at runtime. A local
                         # binding named `Exception` must not retain the broad
                         # host-error behavior of Python's builtin Exception.
+                        if (
+                            output.options.python_traceback_records
+                            and output.traceback_function
+                        ):
+                            output.print(
+                                "(ρσ_trace_line = " + str(err.start.line) + ", "
+                            )
                         output.print("ρσ_exception_matches(ρσ_Exception,")
                         err.print(output)
                         output.print(")")
+                        if (
+                            output.options.python_traceback_records
+                            and output.traceback_function
+                        ):
+                            output.print(")")
 
                 output.with_parens(f_errors)
                 output.space()
@@ -165,6 +190,15 @@ def print_catch(self, output):
             output.space()
 
             def f_throw():
+                if (
+                    output.options.python_traceback_records
+                    and output.traceback_function
+                ):
+                    output.indent()
+                    output.print(
+                        "ρσ_trace_reraised = ρσ_caught_reraised; ρσ_trace_captured = ρσ_caught_captured"
+                    )
+                    output.end_statement()
                 output.indent()
                 output.print("throw")
                 output.space()

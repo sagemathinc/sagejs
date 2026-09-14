@@ -469,3 +469,42 @@ including callbacks and generator/coroutine resumes, and preserve those native
 diagnostics when logical callers add frames. An instrumented callee must not
 blindly re-enable stack suppression beneath an opaque ancestor. The switch
 remains experimental until that boundary is implemented and tested.
+
+### Bare-reraise propagation qualification
+
+Bare `raise` must not add the helper's frame, but its caller must still acquire
+a frame when propagation resumes there. Function-activation deduplication was
+too coarse: it also discarded legitimate repeated calls at the same source
+line. The compiler now tracks captured and bare-reraised exception identities
+locally, resets them when a handler or cleanup starts new execution, and
+restores them only for implicit propagation of the original exception. Records
+no longer allocate or retain activation objects.
+
+The new CPython differential oracle checks exact names, line numbers, filenames
+and source excerpts in Python and Sage modes, including recursive helpers,
+same-line repeated calls, unmatched handlers, selector failures, context exits,
+nested finally handlers and explicitly cleared tracebacks. The full build
+passes in 7m 06s; all 72 exception/diagnostic tests pass with a parallel receipt,
+and strict checking passes for 404 modules. The pinned pyparsing
+workflow passes on that full build. The source remains inside its unchanged
+allowance at 902,509 / 903,000 bytes.
+
+A fresh bench-1 comparison uses 100,000 operations, three warmups and seven
+samples in each of two opposite-order rounds (fresh processes). Median ranges
+in milliseconds:
+
+| Workload | Native capture | Records | CPython |
+| --- | ---: | ---: | ---: |
+| Construction | 970–976 | 323–329 | 10.05–10.23 |
+| Construction, raise and catch | 1071–1085 | 516–527 | 13.02–13.14 |
+| Successful call | 8.94–9.94 | 9.17–10.13 | 3.89–3.92 |
+
+Raise/catch improves about 2.1× against the same candidate's native policy,
+but remains about 40× CPython: the cliff is open. Successful-call samples vary
+enough between rounds that they do not establish a general overhead bound.
+Two bootstrap observations per policy are not startup qualification. Evidence
+is retained locally in `/home/user/exception-propagation-pair.nYJzH1` and on
+bench-1 in `/home/user/exception-propagation-pair.QRgeEH`; `report.json` records
+hashes, all samples and process order. This is an experimental synchronous
+record comparison, not mixed-execution, package-record or four-platform
+qualification. The pyparsing check above still uses the native default.

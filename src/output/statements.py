@@ -204,17 +204,20 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
             "first_lineno": node.start.line,
         }
         output.indent()
-        output.print("var ρσ_trace_activation, ρσ_trace_line = " + str(node.start.line))
+        output.print(
+            "var ρσ_trace_captured, ρσ_trace_reraised, ρσ_trace_line = "
+            + str(node.start.line)
+        )
         output.end_statement()
         output.indent()
         output.print("try ")
         output.with_block(lambda: display_body(node.body, is_toplevel, output))
         output.print(" catch (ρσ_trace_error) {")
-        output.print("throw ρσ_record_traceback(ρσ_trace_error,")
-        output.print(JSON.stringify(output.traceback_function))
         output.print(
-            ",ρσ_trace_line,ρσ_trace_activation || (ρσ_trace_activation = {}),false); }"
+            "throw ρσ_trace_error === ρσ_trace_reraised || ρσ_trace_error === ρσ_trace_captured ? ρσ_trace_error : ρσ_record_traceback(ρσ_trace_error,"
         )
+        output.print(JSON.stringify(output.traceback_function))
+        output.print(",ρσ_trace_line); }")
         output.traceback_function = previous
     else:
         display_body(node.body, is_toplevel, output)
@@ -265,6 +268,24 @@ def print_bracketed(node, output, complex, function_preamble, before, after):
             output.with_block(f)
         else:
             output.print("{}")
+
+
+def print_traceback_record(output, name):
+    if output.options.python_traceback_records and output.traceback_function:
+        output.indent()
+        output.print(
+            "if ("
+            + name
+            + " !== ρσ_trace_reraised && "
+            + name
+            + " !== ρσ_trace_captured) "
+        )
+        output.print(
+            "ρσ_trace_captured = " + name + " = ρσ_record_traceback(" + name + ","
+        )
+        output.print(JSON.stringify(output.traceback_function))
+        output.print(",ρσ_trace_line)")
+        output.end_statement()
 
 
 def print_await_expression(output, print_expression):
@@ -331,6 +352,7 @@ def print_with(self, output):
         output.assign("ρσ_with_exception")
         output.print("e")
         output.end_statement()
+        print_traceback_record(output, "ρσ_with_exception")
 
     output.with_block(f_with)
 
@@ -378,11 +400,19 @@ def print_with(self, output):
                 )
             output.print(")")
             output.end_statement()
-        (
-            output.indent(),
-            output.spaced("if", "(!ρσ_with_suppress)", "throw ρσ_with_exception"),
-            output.end_statement(),
-        )
+        output.indent(), output.print("if (!ρσ_with_suppress) ")
+
+        def rethrow():
+            if output.options.python_traceback_records and output.traceback_function:
+                output.indent()
+                output.print(
+                    "ρσ_trace_reraised = ρσ_with_reraised; ρσ_trace_captured = ρσ_with_captured"
+                )
+                output.end_statement()
+            output.indent(), output.print("throw ρσ_with_exception")
+            output.end_statement()
+
+        output.with_block(rethrow)
         # A suppressed inner exception must not remain visible to an enclosing
         # ``with`` statement, since compiler temporaries are function-scoped.
         # If suppression was false the preceding throw exits this block.
@@ -390,11 +420,21 @@ def print_with(self, output):
         output.print("undefined"), output.end_statement()
 
     def f_cleanup():
+        if output.options.python_traceback_records and output.traceback_function:
+            output.indent()
+            output.print("ρσ_trace_line = " + str(self.start.line))
+            output.end_statement()
         output.indent(), output.spaced("if", "(ρσ_with_exception", "===", "undefined)")
         output.with_block(f_exit)
         output.space(), output.print("else"), output.space()
 
         def f_handled_exit():
+            if output.options.python_traceback_records and output.traceback_function:
+                output.indent()
+                output.print(
+                    "const ρσ_with_reraised = ρσ_trace_reraised, ρσ_with_captured = ρσ_trace_captured; ρσ_trace_reraised = ρσ_trace_captured = undefined"
+                )
+                output.end_statement()
             output.indent()
             output.print(
                 "const ρσ_with_handled = ρσ_handled_state.enter("

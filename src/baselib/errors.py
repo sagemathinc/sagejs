@@ -58,28 +58,18 @@ def ρσ_prepare_raise(value: object) -> object:
     return error
 
 
-def ρσ_record_traceback(
-    error: Any, code: Any, line: Any, activation: Any, explicit: Any
-) -> Any:
+def ρσ_record_traceback(error: Any, code: Any, line: Any) -> Any:
     """Append an unwind record only for opted-in logical Python exceptions."""
     if error is None or not runtime.strict_equal(runtime.jstype(error), "object"):
         return error
     if error.__sagejs_logical_exception__ is not True:
         return error
     previous = error.__traceback__
-    if (
-        not explicit
-        and previous is not None
-        and previous is not runtime.undefined
-        and previous.activation is activation
-    ):
-        return error
     record = runtime.object.create(None)
     record.__sagejs_traceback_record__ = True
     record.code = runtime.object.freeze(code)
     record.tb_lineno = line
     record.tb_next = previous
-    record.activation = activation
     runtime.reflect.set(error, "__traceback__", record)
     return error
 
