@@ -546,6 +546,9 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "float64.negate") {
     return `${indent}${operation.target} = -${operation.source};`;
   }
+  if (operation.kind === "float64.atan") {
+    return `${indent}${operation.target} = Math.atan(${operation.source});`;
+  }
   if (operation.kind === "float64.log" || operation.kind === "float64.log2") {
     return `${indent}if (${operation.source} <= 0) ` +
       `nativeRaise("ValueError", "math domain error");\n` +
@@ -1552,6 +1555,9 @@ function generateJavaScript(ir, options = {}) {
       return `${indent}${operation.target} = Math.abs(${operation.source});`;
     }
     if (operation.kind === "float64.pow") return emitFloat64Pow(operation, indent);
+    if (operation.kind === "float64.atan") {
+      return `${indent}${operation.target} = Math.atan(${operation.source});`;
+    }
     if (["float64.sqrt", "float64.log", "float64.log2"].includes(operation.kind)) {
       const logarithm = operation.kind !== "float64.sqrt";
       return `${indent}if (${operation.source} ${logarithm ? "<=" : "<"} 0) ` +

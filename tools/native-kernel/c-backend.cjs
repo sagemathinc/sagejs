@@ -2917,6 +2917,9 @@ function emitFloat64Operation(operation, indent) {
   if (operation.kind === "float64.abs") {
     return `${indent}${target} = fabs(${cName(operation.source)});`;
   }
+  if (operation.kind === "float64.atan") {
+    return `${indent}${target} = atan(${cName(operation.source)});`;
+  }
   if (["float64.sqrt", "float64.log", "float64.log2"].includes(operation.kind)) {
     const source = cName(operation.source);
     const logarithm = operation.kind !== "float64.sqrt";
