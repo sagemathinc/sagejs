@@ -1,5 +1,31 @@
 # Faithful PARI class-group language experiment
 
+## Computed logarithm-of-two constant and resident cache
+
+`logarithm_constant.py` connects PARI's three `atanhuu` calls, their exact
+18/-2/8 combination order, one-word guard precision, `affrr` rounding and
+`mplog2` result copying. A caller-owned three-entry cache replaces PARI's
+global clone; it retains higher precision across smaller requests. No table
+or host logarithm substitutes for computing the constant.
+
+Twelve increasing/decreasing precision requests through 1984 bits match
+actual PARI in CPython, JS and GMP, including both result triples and full
+cache state. Warm calls also succeed with no series scratch, checking cache
+reuse. Caller-owned buffers use explicit limb capacity; global limits stay
+unchanged. Cache/input buffers are private resident state, not external proof
+objects. The final range reduction and exponential entry are still pending.
+
+Compiler prerequisite `a01b73d63` propagates mixed Float64 requirements through
+native dependencies: an integer-only wrapper now uses GMP when a callee needs
+Float64, instead of attempting an unsupported tagged call. Tagged mixed
+execution remains explicitly unavailable, not silently redirected.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_log2_constant.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Resident binary splitting and connected atanhuu
 
 `binary_splitting.py` translates `abpq_sum`, including the distinct one-,
@@ -22,8 +48,8 @@ arguments. Its input integers are explicitly restricted to exact binary64
 conversion and it rejects more than 4096 terms. Tests supply 64-word entries
 for large intermediate scratch values; the default per-entry capacity and
 global safety limits are unchanged. Mixed Float64 tagged execution remains
-unavailable. The final log(2) combination/cache and range reduction are still
-unconnected dependencies.
+unavailable. The log(2) combination/cache is connected in the checkpoint
+above; range reduction remains pending.
 
 ```sh
 SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
@@ -45,7 +71,7 @@ CPython/JS/GMP/tagged execution, spanning zero, signs, 63/64/65-bit boundaries,
 and numerator/denominator sizes on both sides of the branch thresholds.
 Integer arithmetic uses the existing backend; no new language-only timing
 claim follows. PARI's binary-split `atanhuu` sums are connected in the
-checkpoint above; cached `constlog2` construction remains incomplete. No
+checkpoint above, along with cached `constlog2` construction. No
 constant table substitutes for their computation.
 
 ```sh
@@ -95,8 +121,8 @@ that operation; it does not silently pad or claim equivalence. The test
 freezes these six failures and rejects new failures or output disagreements.
 This observation is not yet an upstream memory-safety diagnosis.
 
-`modlog2`, the logarithm-of-two constant, and the full `mpexp`
-entry remain dependencies. These series checks are not a complete residue
+`modlog2` and the full `mpexp` entry remain dependencies; the constant is now
+connected above. These series checks are not a complete residue
 calculation, class-group computation, or performance qualification.
 
 ```sh
