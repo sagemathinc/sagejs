@@ -1,5 +1,56 @@
 # Faithful PARI class-group language experiment
 
+## Connected ideal reduction to enumeration-bound preparation
+
+`ideal_ranked_preparation.py` connects `Fincke_Pohst_ideal`'s `G0*I`,
+the translated ranked LLL path, `I*U`, `G*ideal`, Householder/Gauss reduction,
+binary64 coefficient conversion and the initial enumeration bound in **one
+source-transparent native call**. QR workspaces are reused only after LLL has
+finished. The input contains prepared nf embeddings and a candidate ideal,
+not PARI's transformation matrix. Rank is still supplied externally, and
+untranslated rank/precision branches remain explicit dependency statuses.
+This is preparation for candidate collection, not a complete relation collector
+or class-group engine.
+
+`ideal_enumeration_preparation.py` retains the post-LLL boundary as a separate
+differential check. Generic embedding multiplication follows
+`RgMrow_RgC_mul_i`: evaluate the first product, then skip only exact integer-zero
+matrix entries. Real-zero precision metadata is preserved. Mixed integer/real
+arithmetic retains the explicitly limited single-word integer capability;
+larger operands are not silently approximated.
+
+Reproduction (with the existing shared FLINT prefix for native compilation):
+
+```sh
+node bench/pari-class-group-port/check_ideal_enumeration_preparation.cjs PARI_DIRECTORY PARI_ARCHIVE
+node bench/pari-class-group-port/check_ideal_enumeration_preparation.cjs PARI_DIRECTORY PARI_ARCHIVE --connected
+```
+
+Both modes check **96 cases: 32 ideals from the same four tuning fields, each
+at three declared bound scales**. nf preparation uses 192 bits, not 192 PARI
+words. The oracle extracts and hashes pristine 2.17.4 `buch2.c` from the pinned
+archive. CPython, generated JS and GMP-native execution match the exact ideal,
+every embedding and reduction mantissa/precision/exponent, final transformation,
+skipfirst, bound root degree, and binary64 q/v/bound. The connected mode also
+checks that unresolved rank stops before ideal publication. Trace SHA-256:
+`4531d8ab7d53ebe7a2fd0cffd2dbf4cd0b31c596efa4c3f1fec2af6c33a0fd85`.
+The standalone mode supplies U explicitly; the connected mode computes it.
+No reserved-field or seconds-scale coverage is inferred from these cases.
+
+Generated resource spot check: the connected core has 81 IR functions and
+11,246,182 C-source bytes; its Linux Node addon is 2,026,176 bytes. The core
+contains multiple integer-backend variants, so source size is not a direct
+measurement of executed instructions. Native execution passes, and the core
+has no interpreter callback sites. These sizes are not RSS, allocation counts,
+or qualified timing evidence. Strict Python passes all 403 registered modules;
+the bench sources also execute under CPython. The architecture rerun still
+fails on the previously recorded stale optimizer-opportunity manifest after
+its earlier checks pass. No source/resource safety allowance was raised.
+The changed-file gate for the three new bench sources passes merge checks,
+then the portable tier fails `test/module-cache.cjs` with the known generated
+`$ρσ$py$Any is not defined` error. Five files passed before fail-fast cancellation;
+213 files were not started. This is not a green broad gate.
+
 ## Connected rank-supplied LLL preparation
 
 `lll_ranked_basis.py` now executes the selector, FLATTER when selected,

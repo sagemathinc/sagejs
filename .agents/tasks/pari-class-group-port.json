@@ -348,6 +348,26 @@
       "commit": "be4ae1f73fbee148cfe8f1023bf2ccb0d9477e75",
       "workspace_fingerprint": "85860cff727344596abc5635b0797c28ad9a870e78feb4e66b805e528966a1ea",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_ideal_enumeration_preparation.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.817,
+      "started_at": "2026-09-14T10:53:07.570Z",
+      "commit": "501acd5307af79e73d08161dce852847201db5c2",
+      "workspace_fingerprint": "6d90035678b4b8fb460560f5eecb2dc2e6be41047d521421cea5fd9dd3e2036a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_ideal_enumeration_preparation.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --connected",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.799,
+      "started_at": "2026-09-14T10:53:28.648Z",
+      "commit": "501acd5307af79e73d08161dce852847201db5c2",
+      "workspace_fingerprint": "6d90035678b4b8fb460560f5eecb2dc2e6be41047d521421cea5fd9dd3e2036a",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
