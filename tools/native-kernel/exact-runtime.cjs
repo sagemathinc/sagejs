@@ -1215,6 +1215,15 @@ static void sagejs_tagged_bit_length(
     sagejs_tagged_set_uint64(target, bits);
 }
 
+static void sagejs_tagged_gcd(sagejs_tagged_int *target,
+    sagejs_tagged_int *left, sagejs_tagged_int *right)
+{
+    sagejs_tagged_make_big(left);
+    sagejs_tagged_make_big(right);
+    sagejs_tagged_make_big(target);
+    mpz_gcd(target->big, left->big, right->big);
+}
+
 static void sagejs_tagged_pow_ui(
     sagejs_tagged_int *target,
     sagejs_tagged_int *base,

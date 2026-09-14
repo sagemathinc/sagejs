@@ -1,5 +1,23 @@
 # Mixed exact/binary64 prerequisite checkpoint
 
+## Imported exact GCD
+
+The PARI port's next `Z_ppo` smoothness precheck needs repeated `gcdii` calls.
+Native exact lowering previously had no matching GCD operation. Two-positional-
+integer `from math import gcd` calls (including import aliases) now lower to
+`integer.gcd`, then `mpz_gcd` in the isolated core. Tagged execution promotes
+at that instruction; the JavaScript fallback uses exact BigInt Euclid. This
+does not claim that GMP and PARI GCD have identical implementation costs.
+Unsupported arities/types, unimported names, ambiguous imports and shadowed
+bindings fail compilation. No bare function-name dispatch or host callback is
+introduced. Ordinary CPython remains the same-source oracle.
+
+Focused tests cover 81 signed/zero/large operand pairs and chained calls in
+generated JS, GMP and tagged execution, including reassignment and 4096-bit
+inputs. Generated-core inspection checks the GMP call and absence of interpreter
+calls. GCD, bit-length, shift and explicit-error focused tests all pass. No
+Windows/Wasm execution or comparative performance qualification is claimed.
+
 Ownership takeover approved by the user on 2026-09-13 for the bounded PARI
 2.17.4 language experiment. Original unfinished edits are preserved in
 `32cb0ee51`; `49dfa22ed` integrates the experiment base `938ccd425`.
