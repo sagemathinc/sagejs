@@ -9,6 +9,8 @@
   "objective": "Qualify prepared calls, reflected divmod and annotation metadata on current main without widening budgets",
   "base_commit": "4834ec0cb7e2fe84de418f0573f2a6d27f34c955",
   "claims": [
+    "src/output/traceback_policy.py",
+    "test/python-traceback-policy.cjs",
     "tools/python/contract.ts",
     "src/lib/js.py",
     "website/live/app.mjs",
