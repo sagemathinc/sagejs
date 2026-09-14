@@ -584,3 +584,21 @@ not establish a package-level overhead bound. Emitted native/record source is
 a startup distribution. Evidence and input/binary hashes are retained in
 `/home/user/exception-suspension-pair.hZk01j` locally and
 `/home/user/exception-suspension-pair.wdessh` on bench-1.
+
+### Call-time generator binding
+
+The generator wrapper now performs the ordinary argument preamble at the call
+and closes over those bound values. Its suspended body no longer repeats
+binding. This repairs immediate argument errors and prevents later default or
+function-name mutations from changing an already-created iterator. Positional,
+variadic and keyword arguments, parameter assignment, instance/class/static
+methods and rebound function names agree with CPython in both modes.
+
+The shared binding-error helper now attaches the active exception context,
+including ordinary non-generator functions. Exact logical frame oracles also
+check binding errors with and without an active handler: the unentered callee
+does not contribute a body frame. All 109 focused tests pass with a receipt;
+strict checking passes for 404 modules and the unchanged source allowance holds
+at 902,999 / 903,000 bytes. This revision has converged-compiler/runtime-cache
+qualification, not a new full-build, timing or four-platform receipt. Earlier
+receipts remain bound to their original source/artifact identities.

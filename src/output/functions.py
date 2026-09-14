@@ -840,38 +840,22 @@ def function_definition(
         )
 
     if self.is_generator:
-        output.print("()"), output.space()
+        function_args(self.argnames, output, strip_first)
+        output.space()
 
         def output_generator():
-            # Dynamically resolved methods are invoked like unbound Python
-            # descriptors: ``self`` is supplied as the first argument and
-            # the host receiver is undefined.  Shift that receiver in the
-            # ordinary wrapper before creating the native generator.  Doing
-            # this only inside ``function* js_generator`` returns the nested
-            # generator as StopIteration.value instead of delegating to it.
-            if strip_first and output.options.python_attributes:
-                generator_wrapper_name = javascript_name or (
-                    output.make_python_name(self.name.name)
-                    if self.name and self.name.python_identifier
-                    else self.name.name
-                    if self.name
-                    else anonfunc
-                )
-                output.indent()
-                output.print("if ((this === globalThis || this == null) ")
-                output.print("&& arguments.length > 0) return ")
-                output.print_name(output.make_name(generator_wrapper_name))
-                output.print(".apply(")
-                output.print("arguments[0], Array.prototype.slice.call(arguments, 1))")
-                output.end_statement()
+            # Bind once at the Python call, not on first resume. The native
+            # generator closes over these bindings, including frozen defaults.
+            output_function_preamble(
+                self, output, 1 if strip_first and self.argnames.length else 0
+            )
             output.indent()
-            output.print("function* js_generator")
-            function_args(self.argnames, output, strip_first)
+            output.print("function* js_generator()")
             print_bracketed(
                 self,
                 output,
                 True,
-                output_function_preamble,
+                lambda node, output, offset: None,
             )
 
             output.newline()

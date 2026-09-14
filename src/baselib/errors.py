@@ -85,13 +85,13 @@ def ρσ_function_argument_error(
     message: str,
     target_function: object,
 ) -> object:
-    """Create an argument-binding error attributed to the Python call site."""
+    """Create a call-site binding error with active exception context."""
     error = runtime.type_error(message)
     capture = runtime.error.captureStackTrace
     if runtime.strict_equal(runtime.jstype(capture), "function"):
         runtime.reflect.apply(capture, runtime.error, [error, target_function])
     runtime.reflect.set(error, "__sagejs_argument_error__", True)
-    return error
+    return ρσ_prepare_raise(error)
 
 
 def ρσ_positional_default(target_function: Any, from_end: int, name: str) -> Any:

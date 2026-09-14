@@ -73,6 +73,15 @@ def run_close():
 def run_unstarted():
     g = generator()
     g.throw(ValueError('unstarted'))
+def required_generator(value):
+    yield value
+def run_binding_error():
+    required_generator()
+def run_binding_context():
+    try:
+        leaf()
+    except ValueError:
+        required_generator()
 class Awaitable:
     def __await__(self):
         yield 1
@@ -87,7 +96,8 @@ def run_async():
     iterator.send(None)
 `;
 const cases = ['run_generator','run_delegated','run_bare','run_finally',
-  'run_injected','run_alternating','run_close','run_unstarted','run_async'];
+  'run_injected','run_alternating','run_close','run_unstarted','run_binding_error',
+  'run_binding_context','run_async'];
 const oracle = spawnSync(pythonExecutable(), ['-c', source + `
 import json, traceback
 results = {}
