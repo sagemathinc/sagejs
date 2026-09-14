@@ -5,7 +5,40 @@ from __python__ import hash_literals
 from output.statements import print_bracketed
 
 
-def print_try(self, output):
+def print_try(self, output, with_finally=True):
+    if self.bfinally and with_finally:
+        # Cleanup handles an exception escaping try/except/else, not merely
+        # one escaping the original try suite. Keep each pending value local.
+        def outer():
+            output.indent(), output.print("let ρσ_pending_exception")
+            output.end_statement()
+            output.indent(), output.print("try ")
+            output.with_block(lambda: print_try(self, output, False))
+            output.print(" catch (ρσ_pending_error) ")
+
+            def pending():
+                output.indent()
+                output.print(
+                    "ρσ_pending_exception = ρσ_normalize_exception(ρσ_pending_error)"
+                )
+                output.end_statement()
+                print_traceback_record(output, "ρσ_pending_exception")
+                output.indent(), output.print("throw ρσ_pending_exception")
+                output.end_statement()
+
+            output.with_block(pending)
+            output.print(" finally ")
+            output.with_block(
+                lambda: print_handled_body(
+                    output,
+                    "ρσ_pending_exception",
+                    lambda: print_bracketed(self.bfinally, output),
+                    True,
+                )
+            )
+
+        output.with_block(outer)
+        return
     else_var_name = None
 
     def update_output_var(output):
@@ -24,30 +57,60 @@ def print_try(self, output):
             output.end_statement(),
             output.indent(),
         )
-    output.print("try")
-    output.space()
+    if self.bcatch:
+        output.print("try")
+        output.space()
     print_bracketed(
         self, output, False, None, None, update_output_var if else_var_name else None
     )
     if self.bcatch:
         output.space()
         print_catch(self.bcatch, output)
-    elif output.options.python_traceback_records and output.traceback_function:
-        # Preserve the throwing call's line before a finally suite changes it.
-        output.print(
-            " catch (ρσ_trace_error) { throw ρσ_record_traceback(ρσ_trace_error,"
-        )
-        output.print(JSON.stringify(output.traceback_function))
-        output.print(
-            ",ρσ_trace_line,ρσ_trace_activation || (ρσ_trace_activation = {}),false); }"
-        )
-
-    if self.bfinally:
-        output.space()
-        print_finally(self.bfinally, output, self.belse, else_var_name)
-    elif self.belse:
+    if self.belse:
         output.newline()
         print_else(self.belse, else_var_name, output)
+
+
+def print_traceback_record(output, name):
+    if output.options.python_traceback_records and output.traceback_function:
+        output.indent()
+        output.print(name + " = ρσ_record_traceback(" + name + ",")
+        output.print(JSON.stringify(output.traceback_function))
+        output.print(
+            ",ρσ_trace_line,ρσ_trace_activation || (ρσ_trace_activation = {}),false)"
+        )
+        output.end_statement()
+
+
+def print_handled_body(output, name, body, conditional=False):
+    output.indent()
+    output.print("let ρσ_previous_exception = ρσ_last_exception")
+    output.end_statement()
+    output.indent()
+    output.print(
+        "let ρσ_previous_global_exception = globalThis.__sagejs_last_exception__"
+    )
+    output.end_statement()
+    output.indent()
+    if conditional:
+        output.print("if (" + name + ") ")
+    output.print("ρσ_last_exception = globalThis.__sagejs_last_exception__ = " + name)
+    output.end_statement()
+    output.indent(), output.print("try ")
+    output.with_block(body)
+    output.print(" finally ")
+
+    def restore():
+        output.indent()
+        output.print("ρσ_last_exception = ρσ_previous_exception")
+        output.end_statement()
+        output.indent()
+        output.print(
+            "globalThis.__sagejs_last_exception__ = ρσ_previous_global_exception"
+        )
+        output.end_statement()
+
+    output.with_block(restore)
 
 
 def print_catch(self, output):
@@ -61,52 +124,8 @@ def print_catch(self, output):
         output.assign("ρσ_Exception")
         output.print("ρσ_normalize_exception(ρσ_Exception)")
         output.end_statement()
-        if output.options.python_traceback_records and output.traceback_function:
-            output.indent()
-            output.print("ρσ_Exception = ρσ_record_traceback(ρσ_Exception,")
-            output.print(JSON.stringify(output.traceback_function))
-            output.print(
-                ",ρσ_trace_line,ρσ_trace_activation || (ρσ_trace_activation = {}),false)"
-            )
-            output.end_statement()
-        output.indent()
-        output.print("let ρσ_previous_exception = ρσ_last_exception")
-        output.end_statement()
-        output.indent()
-        output.print(
-            "let ρσ_previous_global_exception = globalThis.__sagejs_last_exception__"
-        )
-        output.end_statement()
-        output.indent()
-        output.spaced("ρσ_last_exception", "=", "ρσ_Exception"), output.end_statement()
-        # Lazy modules execute in separate JavaScript closures, so their
-        # lexical ``ρσ_last_exception`` bindings are not visible to the
-        # stdlib ``sys`` module.  Mirror the normalized exception on the
-        # shared global object for ``sys.exc_info()`` and ``sys.exception()``.
-        output.indent()
-        (
-            output.spaced("globalThis.__sagejs_last_exception__", "=", "ρσ_Exception"),
-            output.end_statement(),
-        )
-        output.indent()
-        output.print("try")
-        output.space()
-        output.with_block(f_dispatch)
-        output.space()
-        output.print("finally")
-        output.space()
-
-        def restore_exception():
-            output.indent()
-            output.print("ρσ_last_exception = ρσ_previous_exception")
-            output.end_statement()
-            output.indent()
-            output.print(
-                "globalThis.__sagejs_last_exception__ = ρσ_previous_global_exception"
-            )
-            output.end_statement()
-
-        output.with_block(restore_exception)
+        print_traceback_record(output, "ρσ_Exception")
+        print_handled_body(output, "ρσ_Exception", f_dispatch)
 
     def f_dispatch():
         output.indent()
@@ -156,22 +175,6 @@ def print_catch(self, output):
         output.newline()
 
     output.with_block(f_exception)
-
-
-def print_finally(self, output, belse, else_var_name):
-    output.print("finally")
-    output.space()
-    if else_var_name:
-
-        def f_try():
-            output.indent(), output.print("try")
-            output.space()
-            output.with_block(lambda: print_else(belse, else_var_name, output))
-            print_finally(self, output)
-
-        output.with_block(f_try)
-    else:
-        print_bracketed(self, output)
 
 
 def print_else(self, else_var_name, output):

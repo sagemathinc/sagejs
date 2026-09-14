@@ -134,4 +134,77 @@ except ValueError:
     assert original.__context__ is replacement
     assert replacement.__context__ is None
 assert current() is None
+pending = ValueError("pending")
+try:
+    try:
+        raise pending
+    finally:
+        assert current() is pending
+        try:
+            reraiser()
+        except ValueError as error:
+            assert error is pending
+        assert current() is pending
+except ValueError as error:
+    assert error is pending
+assert current() is None
+
+# Both handler and else failures are pending while the enclosing cleanup runs.
+for branch in ("except", "else"):
+    try:
+        try:
+            if branch == "except":
+                raise KeyError("handled")
+        except KeyError:
+            raise pending
+        else:
+            raise pending
+        finally:
+            assert current() is pending
+    except ValueError as error:
+        assert error is pending
+    assert current() is None
+
+replacement = RuntimeError("cleanup")
+try:
+    try:
+        raise pending
+    finally:
+        raise replacement
+except RuntimeError as error:
+    assert error is replacement
+    assert error.__context__ is pending
+assert current() is None
+
+
+def finally_return():
+    try:
+        raise pending
+    finally:
+        assert current() is pending
+        return 42
+
+
+assert finally_return() == 42
+assert current() is None
+try:
+    raise outer
+except ValueError:
+    assert finally_return() == 42
+    assert current() is outer
+    try:
+        pass
+    finally:
+        assert current() is outer
+assert current() is None
+
+for i in range(2):
+    try:
+        raise pending
+    finally:
+        assert current() is pending
+        if i == 0:
+            continue
+        break
+assert current() is None
 print("exception-state-ok")

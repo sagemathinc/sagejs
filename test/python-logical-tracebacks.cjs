@@ -39,6 +39,16 @@ def recursive(n):
     if n:
         return recursive(n - 1)
     raise ValueError('depth')
+def reraised_in_finally():
+    try:
+        leaf()
+    finally:
+        raise
+def replaced_in_finally():
+    try:
+        leaf()
+    finally:
+        raise KeyError('cleanup')
 `;
 for (const mode of ["python", "sage"]) test(`${mode}: compiler unwind records avoid native capture`, async () => {
   const compiler = createCompiler(), frontend = await createPythonCompilerFrontend(compiler, mode);
@@ -96,6 +106,12 @@ for (const mode of ["python", "sage"]) test(`${mode}: compiler unwind records av
     assert.deepEqual(structuredClone(diagnostic),diagnostic);
     assert.match(renderPythonDiagnostic(diagnostic), /File "logical.py"/);
     assert.match(renderPythonDiagnostic(diagnostic), /ValueError: depth/);
+    try {functions.reraised_in_finally();} catch(e) {caught=e;}
+    assert.deepEqual(frames(caught).map(frame=>frame[0]),['reraised_in_finally','leaf']);
+    try {functions.replaced_in_finally();} catch(e) {caught=e;}
+    assert.equal(caught.name,'KeyError');
+    assert.deepEqual(frames(caught).map(frame=>frame[0]),['replaced_in_finally']);
+    assert.deepEqual(frames(caught.__context__).map(frame=>frame[0]),['replaced_in_finally','leaf']);
     assert.equal(captures,0);
     context.__sagejs_traceback_records_enabled__ = false;
     const native = functions.constructed();

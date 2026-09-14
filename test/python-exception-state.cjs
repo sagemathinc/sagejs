@@ -14,7 +14,17 @@ for (const mode of ["CPython", "python", "sage"]) {
         { encoding: "utf8", timeout: 30000 });
     assert.ifError(result.error);
     assert.equal(result.status, 0, result.stderr || result.stdout);
-    assert.equal(result.stderr, "");
+    if (mode === "CPython" && result.stderr) {
+      // CPython 3.14 warns about these legal cleanup exits. Check the exact
+      // expected diagnostics rather than hiding unrelated oracle stderr.
+      const lines = result.stderr.trim().split(/\r?\n/);
+      assert.equal(lines.length, 6);
+      for (const [index, keyword] of ["return", "continue", "break"].entries()) {
+        assert.ok(lines[index * 2].startsWith(fixture + ":"));
+        assert.ok(lines[index * 2].endsWith(`SyntaxWarning: '${keyword}' in a 'finally' block`));
+        assert.equal(lines[index * 2 + 1].trim(), keyword === "return" ? "return 42" : keyword);
+      }
+    } else assert.equal(result.stderr, "");
     assert.equal(result.stdout.replace(/\r\n/g, "\n"), "exception-state-ok\n");
   });
 }

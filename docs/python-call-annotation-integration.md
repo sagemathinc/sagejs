@@ -409,3 +409,26 @@ Retained evidence: `/home/user/exception-record-pair.qpudPG` on `bench-1`, local
 copy `/home/user/exception-record-pair.cN1MHz`. `report.json` records input and
 interpreter hashes, all samples, process order, and load observations. Native
 source SHA256 starts `4bcc33adc8ccd022`; record source starts `ee6d19bc714e6a25`.
+
+### Pending exceptions during cleanup
+
+The compiler now treats an exception escaping any part of a try/except/else
+statement as active handled state while its finally suite executes. A scoped
+pending slot surrounds the whole statement, and cleanup saves/restores the
+caller's state even when it returns, breaks, continues, or replaces the pending
+exception. Ordinary catches and cleanup share the state-emission helper.
+Logical traceback records are appended before cleanup changes the line marker,
+so bare reraises preserve the original call site and replacement exceptions
+retain the original exception's frames through their context.
+
+The focused CPython/Python/Sage regression and logical record tests pass,
+including nested handlers inside cleanup, failures from except/else, caller
+restoration and replacement chaining. CPython 3.14's three expected warnings
+for legal return/break/continue exits are checked explicitly; unexpected stderr
+still fails the oracle. This is synchronous state handling, not generator
+ownership or an asynchronous fallback qualification.
+
+The full build passes (7m 02s), and all 42 exception/diagnostic tests pass on
+the revised compiler with a recorded parallel receipt. The source budget is
+unchanged. Broader compiler-suite qualification is separate from those focused
+passes; neither result qualifies generator ownership.
