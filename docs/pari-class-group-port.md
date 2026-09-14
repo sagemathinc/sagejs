@@ -1,5 +1,62 @@
 # Faithful PARI class-group language experiment
 
+## Nonempty hnffinal with synchronized logarithms (2026-09-14)
+
+`hnffinal.py` now composes HNFLLL, dep*U, generic C*U, descending B cleanup,
+and removal/reordering of unit-diagonal rows and corresponding C columns.
+This entry covers the nonempty-column, t_MAT logarithm path. The caller owns
+empty-column handling; t_VEC and deferred hnfadd are not silently routed here.
+The full-row-rank HNF shape and vanishing initial dependency columns are
+checked before propagation. Every logarithm column, including untouched
+trailing columns, is validated before mutation. Independent source review
+found no indexing/schedule mismatch and prompted these contract clarifications.
+
+All 94 source-extracted PARI/CPython/JS/GMP cases pass, including four actual
+assembled collector matrices. Logarithms for these block tests are supplied
+prepared columns, not a claim that a complete relation-to-HNF path is already
+connected. Output H/dep/B/C, permutation and dimensions agree. Invalid tail
+logs reject atomically; a deliberately independent dep row rejects before
+result propagation. Trace:
+`fbbd9ba27949906acd3e96fbdf6a6181ec366f69609d18fe47650b3e09a279e3`;
+isolated core: 6,777,226 bytes. Reproduce with
+`check_hnffinal.cjs PARI_SOURCE PARI_ARCHIVE`.
+
+The exact multiplication dependency in `integer_matrix_product.py` preserves
+classical dispatch and both small 2x2 algorithms, including the 14-word
+crossover. General Strassen and modular dispatch remain explicit frontiers
+before mutation; this conservatively includes upstream modular dispatch's
+possible immediate zero-product exit. Its 91 checks comprise 83 completed
+products, seven Strassen frontiers and one modular frontier, plus four shape
+guards. Trace:
+`8094fcfc425428f05a23f200e1d565be233b0fa03cbd7b374c43b0b9bcbf1bbc`;
+core: 963,417 bytes. Reproduce with `check_integer_matrix_product.cjs
+PARI_SOURCE PARI_ARCHIVE`. Initial native failures exposed unsupported `min`
+(spelled as an ordinary conditional) and insufficient test-owner limb capacity
+(explicitly provisioned at 256 words for >4096-bit data, no global limit change).
+
+No new speed claim follows from these checkpoints. The next integration
+closes sparse input through C*T and hnffinal in source order with only one
+HNFLLL execution. Rank verification/CUP, deferred hnfadd and later
+regulator/termination work remain live dependencies.
+
+The next dependency audit identifies two distinct continuations, not a new
+algorithm choice. `hnf_snf.c:612` (`hnfadd_i`) must preserve old zero/unit
+columns while inserting further relations, eliminate the existing identity
+block, recompute the row-rank profile and call `hnffinal` again. Its
+`RgM_zm_mul` uses first-nonzero initialization and special +/-1 additions;
+it is not interchangeable as a schedule with the existing `RgM_ZM_mul`
+translation. Likewise `ZM_zm_mul` is a small-coefficient leaf, not the
+general Strassen/CRT-dispatching `ZM_mul` interface.
+
+After sufficient relations, `buch2.c:2990` (`compute_multiple_of_R`) needs
+the source `clean_cols`, custom-pivot `RgM_pivots`, determinant/inverse and
+residual-precision checks before approximate unit coordinates are available.
+`compute_R` then needs rational approximation and an integer-lattice HNF
+before the upstream regulator check can accept. The user-authorized assumption
+about PARI's stopping claims applies here; it does not permit skipping these
+operations or substituting known regulators. Neither continuation is claimed
+implemented by the current `hnffinal` checkpoint.
+
 ## Exact post-rank assembly (2026-09-14)
 
 `hnfspec_assembly.py` follows the certified rank checkpoint through its exact

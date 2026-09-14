@@ -84,6 +84,34 @@ def pari_log_entry_sum(
 
 
 @native
+def pari_validate_log_entries(entries: IntegerBuffer, count: int) -> int:
+    """Check prepared entries and return whether matrix dispatch is inexact."""
+    if count < 0 or len(entries) < count * 7:
+        raise ValueError("short prepared logarithm entries")
+    inexact = 0
+    for j in range(count):
+        base = 7 * j
+        kind = entries[base]
+        if kind != 1 and kind != 2:
+            raise ValueError("unsupported logarithm entry kind")
+        if kind == 2 or entries[base + 2] != -1:
+            inexact = 1
+        for k in range(kind):
+            m = entries[base + 1 + 3 * k]
+            p = entries[base + 2 + 3 * k]
+            e = entries[base + 3 + 3 * k]
+            if p == -1:
+                if e != 0:
+                    raise ValueError("invalid exact logarithm component")
+            elif m == 0:
+                if p != 0:
+                    raise ValueError("invalid zero logarithm precision")
+            elif p < 64 or p > 2048 or p % 64 != 0 or abs(m).bit_length() != p:
+                raise ValueError("invalid real logarithm component")
+    return inexact
+
+
+@native
 def pari_log_matrix_transform(
     entries: IntegerBuffer,
     coefficients: IntegerBuffer,
@@ -107,26 +135,7 @@ def pari_log_matrix_transform(
         raise ValueError("short logarithm transform input")
     if len(output) < rows * columns * 7:
         raise ValueError("short logarithm transform output")
-    inexact = 0
-    for j in range(rows * inner):
-        base = 7 * j
-        kind = entries[base]
-        if kind != 1 and kind != 2:
-            raise ValueError("unsupported logarithm entry kind")
-        if kind == 2 or entries[base + 2] != -1:
-            inexact = 1
-        for k in range(kind):
-            m = entries[base + 1 + 3 * k]
-            p = entries[base + 2 + 3 * k]
-            e = entries[base + 3 + 3 * k]
-            if p == -1:
-                if e != 0:
-                    raise ValueError("invalid exact logarithm component")
-            elif m == 0:
-                if p != 0:
-                    raise ValueError("invalid zero logarithm precision")
-            elif p < 64 or p > 2048 or p % 64 != 0 or abs(m).bit_length() != p:
-                raise ValueError("invalid real logarithm component")
+    inexact = pari_validate_log_entries(entries, rows * inner)
     if generic and inexact == 0 and rows != 0 and columns != 0:
         raise ValueError("generic integer-only matrix dispatch is not this path")
     for j in range(columns):
