@@ -792,6 +792,29 @@ Evidence lives in `/home/user/exception-binding-pair.j4mN5E` and the matching
 not replace full product/platform qualification. Blanket native suppression
 remains experimental; this change does not resolve opaque ancestry.
 
+Controlled same-host before/after qualification of `f84d17a24` uses preserved
+pre-change artifacts from `70ad1a13f`, Node 26.7.0 and CPython 3.14.4 on bench-1
+(AMD EPYC 7B13), with an exclusive benchmark lock. Each run has 100,000
+operations, three warmups and seven samples; the second pass reverses target
+order. Ranges below are the two run medians in milliseconds, not confidence
+intervals. Inputs are hashed in `exception-binding-pair.j4mN5E/report.json`.
+
+| Workload | Native before → after | Records before → after | CPython |
+| --- | --- | --- | --- |
+| Binding failure | 1693–1722 → 1647–1655 | 1758–1799 → 972–990 | 45–46 |
+| Construct `ValueError` | 964–969 → 990–991 | 329 → 330–337 | 10 |
+| Construct/raise/catch | 1050–1063 → 1100–1107 | 472–478 → 501–502 | 12.5–12.8 |
+| Successful call | 9.03–9.63 → 8.98 | 8.98–9.01 → 8.99–9.33 | 3.90–3.91 |
+
+Binding improves substantially only in explicit records mode (about 1.8×);
+its remaining 21–22× CPython gap is still an open cliff. The small native
+binding improvement accompanies correct owned tuple arguments, which the old
+factory did not initialize. Ordinary raise/catch regresses about 4–6% after
+initializer extraction. That regression requires follow-up rather than a claim
+of an unqualified performance win. Pyparsing above is a correctness workflow,
+not a timed package speedup. These warm mechanism runs do not replace startup,
+package, mixed-code, browser or full four-platform performance qualification.
+
 ### Keyword hook disambiguation
 
 Plain keyword packets now treat callable `keys`, `__getitem__`, and
