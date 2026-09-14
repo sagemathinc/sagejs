@@ -103,6 +103,16 @@
       "commit": "65efae50fb1362fb51c59d3f76bf0e46054e8b7c",
       "workspace_fingerprint": "0f09adce24bef6191d8f6eb86484bb41428b654760c3146602bdc697344ff60f",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/python-exception-state.cjs test/python-lazy-exception-stack.cjs test/python-unbound-exception-init.cjs test/python-prepared-keyword-traceback.cjs test/python-logical-tracebacks.cjs test/python-diagnostics.cjs test/python-cli-diagnostic-renderer.cjs test/kernel-diagnostics.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.706,
+      "started_at": "2026-09-14T00:53:48.805Z",
+      "commit": "6a06a21e4bcff53fe03ec66fa4c61b3f0748f451",
+      "workspace_fingerprint": "dadc6b3b2f9df670ede1e5ec50102ab44a8c05af51f795e37f231ac47f646fb1",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

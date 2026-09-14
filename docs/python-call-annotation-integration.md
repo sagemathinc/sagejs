@@ -336,8 +336,9 @@ were reachable, but no new remote qualification or timing is claimed here.
 
 Required follow-up gates on this combined candidate:
 
-- `node scripts/check-package-graph.cjs` fails: core-runtime is 904,070 source
-  bytes against 903,000. The allowance remains unchanged.
+- The initial merged candidate exceeded the core-runtime source budget at
+  904,070 / 903,000 bytes. The compact exception helpers below repair this
+  gate without changing its allowance.
 - Suspended generator ownership is still incorrect. This reducer prints `ok`
   on CPython and fails its final assertion on the current Python kernel:
 
@@ -361,3 +362,50 @@ Required follow-up gates on this combined candidate:
 
 These are required failures, not accepted incompatibilities. The 33 focused
 diagnostic passes do not supersede them. PR272 must remain draft.
+
+### Compact exception runtime boundaries
+
+Logical construction no longer reads the native stack-capture hook, and
+native exception prototype installation shares its existing metadata loop.
+Fresh, null-prototype traceback records use direct field initialization;
+updates to caller-owned traceback carriers still use `Reflect.set`, preserving
+the nonthrowing behavior for read-only carriers. Native stack capture and its
+no-`captureStackTrace` fallback remain available and unchanged in policy.
+
+An attempted direct tuple-finalizer call required a `typing.cast` that survived
+bootstrap lowering and failed compiler self-hosting. The proven reflective
+tuple-call boundary is retained instead. Focused qualification includes
+argument tuple ownership, reinitialization, native lazy stack formatting,
+logical frame consumers, primitive foreign throws, and frozen carriers. This
+repairs a size gate; it does not qualify mixed execution, generator ownership,
+or a production capture policy, and is not a performance-cliff closure claim.
+
+The revised source census is 902,742 / 903,000 bytes; the allowance is unchanged.
+The final full build passed in 6m 57s, all 42 focused tests passed with a
+parallel validation receipt, and strict checking passed for 404 modules.
+The pinned pyparsing 3.3.2 workflow also passes its unchanged source-qualified
+gate, parsing `2, 3, 5, 7` into integer values. That workflow uses the native
+capture default; it does not qualify experimental records inside packages.
+
+Controlled mechanism comparison on idle `bench-1` (AMD EPYC 7B13, Node 26.7.0,
+CPython 3.14.4, JIT disabled) uses 100,000 operations, three warmups, seven
+samples, and two reversed-order fresh-process rounds. Per-round median ranges:
+
+| Workload | Native capture | Experimental records | CPython |
+| --- | ---: | ---: | ---: |
+| Construct exception | 1,009–1,024 ms | 351–359 ms | 10.04–10.05 ms |
+| Construct, raise, catch | 1,111–1,122 ms | 543.8–543.9 ms | 12.84–13.15 ms |
+| Successful identity call | 8.916–8.918 ms | 9.127–9.423 ms | 3.878–3.884 ms |
+
+Records are about 2.1× faster for raise/catch, but remain roughly 41–42×
+CPython: the cliff is open. Successful-call medians are 2–6% higher on this
+small probe; this is not a package-wide overhead bound. Generated standalone
+source grows from 14,175,273 to 14,395,909 bytes (+1.56%). Two bootstrap samples
+per policy overlap (native 430–446 ms, records 440–442 ms); this is insufficient
+to qualify startup. This compares capture policies on the same candidate, not
+a historical optimization speedup, and the records policy remains experimental.
+
+Retained evidence: `/home/user/exception-record-pair.qpudPG` on `bench-1`, local
+copy `/home/user/exception-record-pair.cN1MHz`. `report.json` records input and
+interpreter hashes, all samples, process order, and load observations. Native
+source SHA256 starts `4bcc33adc8ccd022`; record source starts `ee6d19bc714e6a25`.
