@@ -69,11 +69,37 @@ def _stack(error):
 def format_exception(
     exc=runtime.undefined, value=None, tb=runtime.undefined, limit=None, chain=True
 ):
-    """Format an exception using its native JavaScript stack when present."""
+    """Format traceback evidence and the visible exception chain."""
     if exc is runtime.undefined:
         exc = runtime.last_exception
     elif value is not None:
         exc = value
+    parents = []
+    if chain:
+        current = exc
+        seen = {id(current)}
+        while current is not None and current is not runtime.undefined:
+            parent = getattr(current, "__cause__", None)
+            separator = "\nThe above exception was the direct cause of the following exception:\n\n"
+            if parent is None:
+                if getattr(current, "__suppress_context__", False):
+                    break
+                parent = getattr(current, "__context__", None)
+                separator = "\nDuring handling of the above exception, another exception occurred:\n\n"
+            if parent is None or id(parent) in seen:
+                break
+            seen.add(id(parent))
+            parents.append((parent, separator))
+            current = parent
+    lines = []
+    for parent, separator in reversed(parents):
+        lines += _format_single_exception(parent, runtime.undefined, limit)
+        lines.append(separator)
+    return lines + _format_single_exception(exc, tb, limit)
+
+
+def _format_single_exception(exc, tb=runtime.undefined, limit=None):
+    """Format one exception without following its cause or context."""
     if tb is None:
         return format_exception_only(exc)
     logical_tb = (

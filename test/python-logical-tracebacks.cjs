@@ -159,6 +159,14 @@ assert 'ValueError: boom' in text
 assert 'raise ValueError()' in text
 assert 'inner' not in ''.join(traceback.format_exception(error, limit=1))
 assert 'outer' not in ''.join(traceback.format_exception(error, limit=-1))
+cause = TypeError('cause')
+cause.__traceback__ = inner
+error.__cause__ = cause
+chained = ''.join(traceback.format_exception(error, limit=1))
+assert chained.index('in inner') < chained.index('direct cause') < chained.index('in outer')
+assert 'TypeError: cause' in chained
+assert 'TypeError: cause' not in ''.join(traceback.format_exception(error, chain=False))
+error.__cause__ = None
 try:
     raise error
 except ValueError:
