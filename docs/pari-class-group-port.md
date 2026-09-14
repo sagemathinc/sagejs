@@ -7,8 +7,9 @@ the translated ranked LLL path, `I*U`, `G*ideal`, Householder/Gauss reduction,
 binary64 coefficient conversion and the initial enumeration bound in **one
 source-transparent native call**. QR workspaces are reused only after LLL has
 finished. The input contains prepared nf embeddings and a candidate ideal,
-not PARI's transformation matrix. Rank is still supplied externally, and
-untranslated rank/precision branches remain explicit dependency statuses.
+not PARI's transformation matrix. Rank is now computed by the translated initial
+modular path; untranslated rank/precision branches remain explicit dependency
+statuses.
 This is preparation for candidate collection, not a complete relation collector
 or class-group engine.
 
@@ -32,13 +33,14 @@ words. The oracle extracts and hashes pristine 2.17.4 `buch2.c` from the pinned
 archive. CPython, generated JS and GMP-native execution match the exact ideal,
 every embedding and reduction mantissa/precision/exponent, final transformation,
 skipfirst, bound root degree, and binary64 q/v/bound. The connected mode also
-checks that unresolved rank stops before ideal publication. Trace SHA-256:
+checks that rank-deficient input stops before ideal publication. Trace SHA-256:
 `4531d8ab7d53ebe7a2fd0cffd2dbf4cd0b31c596efa4c3f1fec2af6c33a0fd85`.
 The standalone mode supplies U explicitly; the connected mode computes it.
 No reserved-field or seconds-scale coverage is inferred from these cases.
 
-Generated resource spot check: the connected core has 81 IR functions and
-11,246,182 C-source bytes; its Linux Node addon is 2,026,176 bytes. The core
+Generated resource spot check after rank integration: the connected core has
+84 IR functions and 11,972,866 C-source bytes; its Linux Node addon is
+2,116,288 bytes. The core
 contains multiple integer-backend variants, so source size is not a direct
 measurement of executed instructions. Native execution passes, and the core
 has no interpreter callback sites. These sizes are not RSS, allocation counts,
@@ -50,6 +52,41 @@ The changed-file gate for the three new bench sources passes merge checks,
 then the portable tier fails `test/module-cache.cjs` with the known generated
 `$ρσ$py$Any is not defined` error. Five files passed before fail-fast cancellation;
 213 files were not started. This is not a green broad gate.
+
+### Initial modular rank, without an external rank answer
+
+`lll_rank.py` follows `ZM_pivots`'s initial modular phase and
+`Flm_gauss_pivot` for square dimensions through four. It counts zero columns,
+uses the first two primes from pinned 64-bit `init_modular_small`, and stops
+at upstream's maximal-rank exit. All-zero matrices return zero directly.
+If neither prime establishes maximal rank, status -1 hands off to the still
+unported rational verification phase; the integrated preparation reports
+dependency status 7. It does not return the likely modular rank as exact.
+The fixed two primes are verified against PARI's actual iterator by the test,
+not selected from the inputs. Modular residue products use exact Python
+integers rather than PARI's word primitives, an unqualified backend cost.
+
+`check_lll_rank.cjs PARI_DIRECTORY PARI_ARCHIVE` matches **48** cases across
+CPython, JS and GMP: the 32 prepared matrices plus 16 controls covering zero
+columns, all-zero input, dependent columns, negative/large entries, row swaps,
+second-prime recovery, and unresolved dubious rank. It compares reduced modular
+storage, pivot choices, rank/dependency status and prime/trial counters; every
+resolved oracle rank is also compared with normal `ZM_rank`. Trace SHA-256:
+`c8b01df7c135424fbf6cd0c1ba74f9f1603d381933656561fa4edcbafba0dcdf`.
+All 32 prepared ideals resolve on the first prime. The 96-case connected
+preparation rerun verifies that work counter as well as the unchanged outputs.
+
+The existing source translation of `Fl_inv/xgcduu` is now parameterized by
+modulus; the relation-cache wrapper retains modulus 27449 and the same unsigned
+word wrapping. The 192-transition relation-cache and 192-transition fact-insert
+checks both pass in PARI, CPython, JS and GMP, including their existing expected
+noninvertible-pivot cases. No relation-cache acceptance policy changed.
+After rank integration, the changed-file gate again passes merge checks and
+fails `test/module-cache.cjs` in the unit tier with the same generated `Any`
+reference error. Five unit files pass; 233 are not started and the later docs
+stage does not run. The architecture failure remains the stale optimizer
+manifest; strict Python remains green. These are disclosed baseline failures,
+not permission to call the experiment review-ready.
 
 ## Connected rank-supplied LLL preparation
 

@@ -165,9 +165,17 @@ def pari_prepared_initialize_relations(
 
 @native
 def pari_relation_mod_inverse(value: int) -> int:
+    """The relation cache's fixed-modulus Fl_inv."""
+    return pari_word_mod_inverse(value, 27449)
+
+
+@native
+def pari_word_mod_inverse(value: int, modulus: int) -> int:
     """Preserve Fl_inv/xgcduu(f=1), including unsigned subtraction wrap."""
     word = 1 << 64
-    d = 27449
+    if modulus < 2 or modulus >= word:
+        raise ValueError("modulus is outside the pinned PARI word domain")
+    d = modulus
     d1 = value % word
     xv = 0
     xv1 = 1
@@ -194,12 +202,12 @@ def pari_relation_mod_inverse(value: int) -> int:
         gcd = d1
         if d == 1:
             gcd = 1
-        result = 27449 - xv % 27449
+        result = modulus - xv % modulus
     else:
         gcd = d
         if d1 == 1:
             gcd = 1
-        result = xv1 % 27449
+        result = xv1 % modulus
     if gcd != 1 or result == 0:
         raise ZeroDivisionError("noninvertible relation pivot")
     return result

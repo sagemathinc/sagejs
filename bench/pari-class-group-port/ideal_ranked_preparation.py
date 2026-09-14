@@ -2,7 +2,7 @@
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 Prepared nf G/G0 and the candidate ideal are inputs, not an upstream LLL
-answer. Rank remains supplied and missing precision fallbacks stay explicit.
+answer. Modular rank is computed; missing rank/precision fallbacks are explicit.
 """
 
 from sagejs.native import Float64Buffer, IntegerBuffer, native
@@ -10,6 +10,7 @@ from sagejs.native import Float64Buffer, IntegerBuffer, native
 from .flatter import pari_flatter_product
 from .ideal_enumeration_preparation import pari_ideal_prepare_enumeration
 from .lll_ranked_basis import pari_lll_ranked_basis
+from .lll_rank import pari_initial_integer_rank
 
 
 @native
@@ -18,7 +19,6 @@ def pari_ideal_ranked_preparation(
     rounded_embedding: IntegerBuffer,
     embedding: IntegerBuffer,
     n: int,
-    rank: int,
     precision: int,
     scale: float,
     original: IntegerBuffer,
@@ -26,6 +26,7 @@ def pari_ideal_ranked_preparation(
     transform: IntegerBuffer,
     ideal: IntegerBuffer,
     flags: IntegerBuffer,
+    rank_diagnostic: IntegerBuffer,
     selection: IntegerBuffer,
     stages: IntegerBuffer,
     flatter_input: IntegerBuffer,
@@ -85,7 +86,8 @@ def pari_ideal_ranked_preparation(
     All scratch buffers are disjoint. QR storage is reused after LLL has
     finished. On success qr_input is G*ideal and qr is its Gauss reduction.
     Return 0 on success, 1..4 for the ranked LLL dependency statuses, 5 for
-    subsequent QR failure, 6 for float conversion rejection. flags holds
+    subsequent QR failure, 6 for float conversion rejection, 7 for unresolved
+    rational rank verification. flags holds
     skipfirst and the final bound root degree; neither is a class invariant.
     """
     if (
@@ -100,6 +102,11 @@ def pari_ideal_ranked_preparation(
     flags[0] = -1
     flags[1] = -1
     pari_flatter_product(rounded_embedding, original_ideal, n, original)
+    rank = pari_initial_integer_rank(
+        original, n, current, alpha, column_exponents, rank_diagnostic
+    )
+    if rank < 0:
+        return 7
     status = pari_lll_ranked_basis(
         original,
         n,
