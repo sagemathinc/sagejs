@@ -9,6 +9,7 @@
   "objective": "Propagate explicit native/guarded traceback capture through browser compiler workers",
   "base_commit": "d9c3cb1fad0390051f3a550098d1a1f00f4e6af3",
   "claims": [
+    "packages/flint-wasm/test/traceback-capture-browser.mjs",
     "packages/flint-wasm/test/traceback-capture-worker.test.mjs",
     "packages/flint-wasm/evaluator.mjs",
     "packages/flint-wasm/compiler-worker.mjs",
