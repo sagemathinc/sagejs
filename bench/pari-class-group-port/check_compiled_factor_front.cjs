@@ -7,7 +7,7 @@ const {spawnSync}=require("node:child_process"),{compileKernel}=require("../../t
   fs.writeFileSync(source,`#include <pari.h>
 #include <paripriv.h>
 int main(void){pari_init(64000000,10000);char s[128];
-printf("%lu",GP_DATA->factorlimit);for(long i=1;i<=pari_PRIMES[0];i++)printf(" %lu",pari_PRIMES[i]);printf("\\n");
+printf("%lu %lu",GP_DATA->factorlimit,maxprimelim());for(long i=1;i<=pari_PRIMES[0];i++)printf(" %lu",pari_PRIMES[i]);printf("\\n");
 GEN products=prodprimes();for(long i=1;i<lg(products);i++){char *t=GENtostr(gel(products,i));printf("%s%s",i==1?"":" ",t);pari_free(t);}printf("\\n");
 while(scanf("%127s",s)==1){pari_sp av=avma;GEN n=gp_read_str(s),f=factoru(itou(n));
 printf("%s",s);for(long i=1;i<lg(gel(f,1));i++)printf(" %lu %ld",uel(gel(f,1),i),gel(f,2)[i]);printf("\\n");avma=av;}
@@ -20,8 +20,8 @@ pari_close();return 0;}
     inputs.push(p*p, p*p*p, 6n*p*p);
   }
   const run=spawnSync(exe,[],{input:inputs.join("\n")+"\n",encoding:"utf8",timeout:30000,maxBuffer:4*1024*1024});assert.equal(run.status,0,run.stderr);
-  const lines=run.stdout.trim().split("\n").map(l=>l.split(" "));const [factorlimit,...primes]=lines[0],products=lines[1],rows=lines.slice(2);
-  const data={factorlimit,primes,products,rows};
+  const lines=run.stdout.trim().split("\n").map(l=>l.split(" "));const [factorlimit,primeLimit,...primes]=lines[0],products=lines[1],rows=lines.slice(2);
+  const data={factorlimit,primeLimit,primes,products,rows};
   const python=spawnSync("python3",["-c",`
 import sys,json,decimal
 sys.set_int_max_str_digits(100000)
@@ -32,7 +32,7 @@ d=json.load(sys.stdin); results=[]
 for row in d['rows']:
   for fast in [0,1]:
     n=int(row[0]);p=[97]+[0]*16;e=[7]+[0]*16
-    count,residual=pari_word_factor_front(n,list(map(int,d['primes'])),list(map(int,d['products'])),int(d['factorlimit']),p,e,1,fast)
+    count,residual=pari_word_factor_front(n,list(map(int,d['primes'])),list(map(int,d['products'])),int(d['factorlimit']),int(d['primeLimit']),p,e,1,fast)
     assert p[0]==97 and e[0]==7
     oracle=dict(zip(map(int,row[1::2]),map(int,row[2::2])))
     product=residual
@@ -47,7 +47,7 @@ print(json.dumps(results))
   const expected=JSON.parse(python.stdout).map(r=>r.map(BigInt));
   const built=await compileKernel({sourcePath:path.join(__dirname,"factorization.py")}),mod=require(built.modulePath);
   for(let i=0;i<inputs.length;i++)for(const fast of [0n,1n])for(const backend of ["javascript","gmp","tagged"]){
-    const p=[97n,...Array(16).fill(0n)],e=[7n,...Array(16).fill(0n)],out=mod.pari_word_factor_front[backend](inputs[i],primes.map(BigInt),products.map(BigInt),BigInt(factorlimit),p,e,1n,fast);
+    const p=[97n,...Array(16).fill(0n)],e=[7n,...Array(16).fill(0n)],out=mod.pari_word_factor_front[backend](inputs[i],primes.map(BigInt),products.map(BigInt),BigInt(factorlimit),BigInt(primeLimit),p,e,1n,fast);
     assert.deepEqual([...out,...p.slice(0,Number(out[0])).flatMap((v,j)=>[v,e[j]])],expected[2*i+Number(fast)]);
   }
   const complete=expected.filter(r=>r[1]===1n).length;assert(complete>0&&complete<expected.length);

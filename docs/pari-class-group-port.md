@@ -54,14 +54,14 @@ this is not evidence of matching arithmetic-leaf performance.
 
 The checkpoint returns `(count, unresolved_cofactor)`. A residual other than
 one means **incomplete**, not a prime or an accepted relation. It stops before
-the unported primality decision at prime 673, the second prime-iterator pass,
-and later primality/factor-search paths. Multiword factorization also remains
+the second prime-iterator pass, generation beyond the prepared catalog,
+and later factor-search paths. Multiword factorization also remains
 unported. It is not yet connected to `can_factor`.
 
 `check_compiled_factor_front.cjs` checks 138 inputs with both fast settings,
 including prime powers around trial boundaries and an existing output prefix.
 All 276 cases agree across CPython, generated JS, GMP and tagged execution:
-261 complete factorizations agree with PARI `factoru`; 15 retain explicitly
+274 complete factorizations agree with PARI `factoru`; two retain explicitly
 unresolved cofactors. Every extracted prime/exponent is checked against PARI,
 and extracted powers times residual reconstruct the original input. The test
 does not claim upstream intermediate-trace equality or performance qualification.
@@ -70,9 +70,39 @@ Sage.js source path (which contains its own `decimal` module); a bounded 100,000
 decimal-digit conversion allowance applies only to this test's prepared prime
 products. No native arithmetic safety limit is raised.
 
+The connected word primality decisions retain `prime.c:_uisprime`'s three
+Miller–Rabin threshold/base sets and its larger-word base-two/Lucas branch.
+The port follows `get_disc`, `u_LucasMod_pre`, `uislucaspsp_pre`, and
+`arith1.c:krouu_s`, including the 65th discriminant attempt's square check,
+the `2^64-1` rejection, and the Lucas sequence's ordered updates. The caller
+passes actual `maxprimelim`, preserving its distinction from the final stored
+prime. The prime-673 shortcut and terminal `oldi != i` check are now connected
+to factorization. A complete factor result still does not mean the remaining
+factor-search algorithms are implemented.
+
+`check_compiled_word_prime.cjs` checks 616 ordinary/no-small-prime decisions
+against actual PARI `uisprime`/`uisprime_661`, CPython, JS, GMP and tagged
+execution. Inputs cover all threshold neighborhoods, strong pseudoprimes,
+large squares, unsigned-word boundaries and 128 deterministic extra odd words.
+Another 259 direct Lucas controls exercise this branch even when the preceding
+Miller–Rabin test would reject, including the discriminant square escape.
+The no-small-prime entry is tested only with its upstream precondition.
+The modular-power leaf currently uses exact binary powering, and modular
+products use exact multiply/remainder rather than PARI's precomputed word
+reduction. These declared leaf substitutions prevent a language-only timing
+claim; no such performance claim is made here.
+
+Two additional compiler restrictions were encountered without requiring a
+compiler change in this checkpoint: exact-integer bitwise AND is unsupported
+(the same bit predicates are expressed using small remainders), and `break`
+inside a range loop is unsupported (the prime iterator uses a while loop).
+
 ```sh
 SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
   node bench/pari-class-group-port/check_compiled_factor_front.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_word_prime.cjs \
   /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
 ```
 
