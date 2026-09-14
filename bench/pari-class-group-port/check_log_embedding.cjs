@@ -23,6 +23,7 @@ pari_close();return 0;}`);
  run('cc',['-O2','-I'+path.join(pari,'src/headers'),'-I'+lib,c,'-L'+lib,'-Wl,-rpath,'+lib,'-lpari','-lm','-o',exe]);
  const trace=run(exe,[]),rows=trace.trim().split('\n').map(s=>s.trim().split(' '));assert.equal(rows.length,80);
  const cases=rows.map(row=>{const n=Number(row[0]),r1=Number(row[1]),scalar=Number(row[2]),at=3+n,triples=row.slice(at,at+3*n*n);return {n,r1,scalar,coords:row.slice(3,at),matrix:[0,1,2].map(k=>triples.filter((_,i)=>i%3===k)),expected:row.slice(at+3*n*n)};});
+ if(process.argv.includes('--export-fixtures')){console.log(JSON.stringify(cases));return;}
  run('python3',['-c',`import sys,json,importlib
 sys.path[:0]=sys.argv[1:3]
 f=importlib.import_module('bench.pari-class-group-port.log_embedding').pari_prepared_log_embedding

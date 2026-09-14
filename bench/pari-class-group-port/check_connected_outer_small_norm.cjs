@@ -9,9 +9,11 @@ function run(cmd,args,options={}){const r=spawnSync(cmd,args,{encoding:'utf8',ti
 function slice(s,a,b){const i=s.indexOf(a),j=s.indexOf(b,i);assert(i>=0&&j>i);return s.slice(i,j);}
 (async()=>{
  const pari=path.resolve(process.argv[2]),archive=path.resolve(process.argv[3]),lib=path.join(pari,'Olinux-x86_64');
+ const withLogs=process.argv.includes('--with-logs');
  const fixture=JSON.parse(run(process.execPath,[path.join(__dirname,'check_prepared_small_norm.cjs'),pari,archive,'--export-fixtures','--unreduced','--distinct','--construct-primes','--distinguished','--selected-exponent']));
  const pristine=run('tar',['-xOf',archive,'pari-2.17.4/src/basemath/buch2.c']);
  let control=source(pristine,{unreduced:true});
+ if(withLogs)assert(control.includes(slice(pristine,'static GEN\nget_log_embed(','\nstatic GEN\nrel_embed(')));
  let small=slice(pristine,'static void\nsmall_norm(','\nstatic GEN\nget_random_ideal(');
  const smallHash=createHash('sha256').update(small).digest('hex');
  small=small.replace('small_norm(','recorded_small_norm(').replace('Fincke_Pohst_ideal(cache,','prepared_collector(cache,').replace('&Nsmall, &Nfact))','&Nsmall, &Nfact, NULL, NULL, outer_stats))');
@@ -24,6 +26,8 @@ function slice(s,a,b){const i=s.indexOf(a),j=s.indexOf(b,i);assert(i>=0&&j>i);re
  const replace=(a,b)=>{assert.equal(control.split(a).length,2,a);control=control.replace(a,b);};
  replace('int main(int argc,char **argv)',`static long *outer_stats;static long outer_ns,outer_nf,outer_exponent;
 ${small}
+${withLogs?`static void log_scalar(GEN x){long e;if(typ(x)==t_INT){pari_printf("\\"%Ps\\",\\"-1\\",\\"0\\"",x);return;}pari_printf("\\"%Ps\\",\\"%ld\\",\\"%ld\\"",signe(x)?mantissa_real(x,&e):gen_0,signe(x)?bit_prec(x):0,expo(x));}
+static void log_columns(RELCACHE_t *c,GEN nf){long ru=nf_get_r1(nf)+nf_get_r2(nf),first=1;putchar('[');for(REL_t *r=c->base+1;r<=c->last;r++){GEN v=get_log_embed(r,nf_get_M(nf),ru,nf_get_r1(nf),128);for(long i=1;i<=ru;i++){if(!first)putchar(',');first=0;GEN z=gel(v,i);if(typ(z)==t_COMPLEX){printf("\\"2\\",");log_scalar(gel(z,1));putchar(',');log_scalar(gel(z,2));}else{printf("\\"1\\",");log_scalar(z);putchar(',');log_scalar(gen_0);}}}putchar(']');}`:''}
 static void outer_vec(GEN v){putchar('[');for(long i=1;i<lg(v);i++){if(i>1)putchar(',');printf("%ld",v[i]);}putchar(']');}
 int main(int argc,char **argv)`);
  replace('for(long scenario=0;scenario<4;scenario++) {','for(long variant=0;variant<7;variant++) {long scenario=1;');
@@ -48,6 +52,7 @@ ${block}
 `);
  replace('4*f+scenario,repetitions,elapsed,status','7*f+variant,repetitions,elapsed,status');
  replace('puts("]}");',`printf("],\\"small\\":%ld,\\"outer\\":[%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld],\\"phase\\":%ld,\\"j\\":%ld,\\"exponent\\":%ld,\\"live\\":",ns,need,Nrelid,done_small,small_fail,fail_limit,(long)(C.last-C.base),(long)(C.end-C.base),(long)C.missing,(long)F.sfb_chg,entered?(called?1L:2L):3L,selected_j,outer_exponent);outer_vec(F.L_jid);printf(",\\"multiplier\\":");outer_vec(small_multiplier);puts("}");`);
+ if(withLogs)replace('outer_vec(small_multiplier);puts("}");','outer_vec(small_multiplier);printf(",\\"logs\\":");log_columns(&C,nf);puts("}");');
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'sagejs-connected-outer-')),c=path.join(dir,'oracle.c'),exe=path.join(dir,'oracle');fs.writeFileSync(c,control);
  run('cc',['-O2','-I'+path.join(pari,'src/headers'),'-I'+lib,c,'-L'+lib,'-Wl,-rpath,'+lib,'-lpari','-lm','-o',exe]);
  const trace=run(exe,[]),expected=trace.trim().split('\n').map(JSON.parse).map(({index,seconds,repetitions,...r})=>r);
@@ -63,13 +68,16 @@ ${block}
   v.search_ideals.push('0','999999');
   // j/e0/mode are selected inside the closure; these cannot be policy inputs.
   v.jid0='0';v.e0='0';v.construct_primes='0';
+  if(withLogs){const n=Number(v.n),ru=Number(v.outer_ru),capacity=Number(v.relation_state[1]);Object.assign(v,{log_precision:'128',log_completed:['0'],log_embeddings:Array(capacity*7*ru).fill('0'),log_coordinates:Array(n).fill('0'),log_column:Array(7*ru).fill('0'),log_cache:Array(3).fill('0'),log_pi_cache:Array(3).fill('0'),log_a:Array(64).fill('0'),log_b:Array(64).fill('0'),log_p:Array(64).fill('0'),log_q:Array(64).fill('0'),log_stack:Array(128).fill('0')});}
   return v;
  });
- const names=fixture.names,entry=fixture.entry;
+ const names=fixture.names.slice(),entry=withLogs?'pari_collect_and_log_relations':fixture.entry;
+ if(withLogs)for(const name of ['log_precision','log_completed','log_embeddings','log_coordinates','log_column','log_cache','log_pi_cache','log_a','log_b','log_p','log_q','log_stack'])names.push([name,name==='log_precision'?'int':'IntegerBuffer']);
  run('python3',['-c',`import sys,json,decimal,importlib
 sys.set_int_max_str_digits(100000);sys.path[:0]=sys.argv[1:3]
 m=importlib.import_module('bench.pari-class-group-port.unreduced_small_norm');f=m.pari_collect_unreduced_ideals
 d=json.load(sys.stdin)
+if d['withLogs']:f=importlib.import_module('bench.pari-class-group-port.collected_log_embeddings').pari_collect_and_log_relations
 power_calls=[0];original_power=m.pari_positive_prime_power_hnf
 def counted_power(*args):
  power_calls[0]+=1
@@ -87,6 +95,7 @@ for index,(raw,e) in enumerate(zip(d['inputs'],d['expected'])):
  result=f(*(v[name] for name,kind in d['names']));last=v['relation_state'][0];n=v['n'];kc=len(v['relation'])
  actual=dict(status=result,small=v['counters'][1],trials=v['state'][1],attempts=v['counters'][0],relid=v['progress'][0],nfact=v['progress'][1],fact_count=v['counters'][2],last=last,missing=v['relation_state'][2],sup=v['relation_state'][3],basis=v['relation_basis'],hashes=v['relation_hashes'][:last],records=v['relation_records'][:last*kc],generators=list(map(str,v['generators'][:last*n])),outer=v['outer_state'][:9],phase=v['outer_state'][17],j=v['outer_state'][12],exponent=v['power_metadata'][4] if v['outer_state'][17]==1 and v['outer_state'][12] else 0,live=v['outer_live'][:v['outer_state'][13]],multiplier=v['outer_multiplier'])
  if index%7==4:actual['live']=v['search_ideals'][:v['search_count']]
+ if d['withLogs']:actual['logs']=list(map(str,v['log_embeddings'][:last*7*v['outer_ru']]));assert v['log_completed'][0]==last
  assert actual==e,(index,actual,e)
  target_hits+=int(v['schedule'][3]==1 and v['outer_state'][17]==1)
  expected_powers=int(e['phase']==1 and e['j']!=0)
@@ -106,12 +115,13 @@ for index in [0,2]:
  v=values(d['inputs'][index]);v['preparation_rounded_embedding']=[0]*len(v['preparation_rounded_embedding'])
  result=f(*(v[name] for name,kind in d['names']))
  assert result==-11 and v['outer_state'][17:]==[4,-11] and v['outer_state'][9]==1,(result,v['outer_state'])
+ if d['withLogs']:assert v['log_completed']==[0] and not any(v['log_embeddings'])
  assert v['outer_state'][0]==100 and v['outer_state'][2]==(1 if index==2 else 0) and v['outer_state'][8]==9
  if index==2:
   for p in v['outer_perm'][:2]:assert v['relation_basis'][(p-1)*(len(v['relation'])+1)]==0
  before=str(v);assert f(*(v[name] for name,kind in d['names']))==result and str(v)==before
-`,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify({names,inputs,expected})});
- const built=await compileKernel({sourcePath:path.join(__dirname,'unreduced_small_norm.py')}),f=require(built.modulePath)[entry];assert(f.nativeAvailable);
+`,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify({names,inputs,expected,withLogs})});
+ const built=await compileKernel({sourcePath:path.join(__dirname,withLogs?'collected_log_embeddings.py':'unreduced_small_norm.py')}),f=require(built.modulePath)[entry];assert(f.nativeAvailable);
  assert.doesNotMatch(fs.readFileSync(built.coreSourcePath,'utf8'),/napi_call_function|PyObject_Call|v8::/);
  const values=raw=>Object.fromEntries(names.map(([name,kind])=>{const conv=kind==='float'||kind==='Float64Buffer'?Number:BigInt,x=raw[name];return [name,Array.isArray(x)?x.map(conv):conv(x)];}));
  const targetHits={javascript:0,gmp:0};
@@ -119,6 +129,7 @@ for index in [0,2]:
   const v=values(inputs[index]),e=expected[index],invoke=()=>f[backend](...names.map(([name])=>v[name])),result=invoke(),last=Number(v.relation_state[0]),n=Number(v.n),kc=v.relation.length;
   const actual={status:Number(result),small:Number(v.counters[1]),trials:Number(v.state[1]),attempts:Number(v.counters[0]),relid:Number(v.progress[0]),nfact:Number(v.progress[1]),fact_count:Number(v.counters[2]),last,missing:Number(v.relation_state[2]),sup:Number(v.relation_state[3]),basis:v.relation_basis.map(Number),hashes:v.relation_hashes.slice(0,last).map(Number),records:v.relation_records.slice(0,last*kc).map(Number),generators:v.generators.slice(0,last*n).map(String),outer:v.outer_state.slice(0,9).map(Number),phase:Number(v.outer_state[17]),j:Number(v.outer_state[12]),exponent:v.outer_state[17]===1n&&v.outer_state[12]!==0n?Number(v.power_metadata[4]):0,live:v.outer_live.slice(0,Number(v.outer_state[13])).map(Number),multiplier:v.outer_multiplier.map(Number)};
   if(index%7===4)actual.live=v.search_ideals.slice(0,Number(v.search_count)).map(Number);
+  if(withLogs){actual.logs=v.log_embeddings.slice(0,last*7*Number(v.outer_ru)).map(String);assert.equal(v.log_completed[0],BigInt(last));}
   assert.deepEqual(actual,e,'case '+index+' '+backend);
   if(v.schedule[3]===1n&&v.outer_state[17]===1n)targetHits[backend]++;
   assert.deepEqual(v.search_ideals,inputs[index].search_ideals.map(BigInt));
@@ -134,10 +145,11 @@ for index in [0,2]:
   const v=values(inputs[index]);v.preparation_rounded_embedding.fill(0n);
   const invoke=()=>f[backend](...names.map(([name])=>v[name]));assert.equal(invoke(),-11n);
   assert.deepEqual(v.outer_state.slice(17),[4n,-11n]);assert.equal(v.outer_state[9],1n);assert.equal(v.outer_state[0],100n);assert.equal(v.outer_state[2],index===2?1n:0n);assert.equal(v.outer_state[8],9n);
+  if(withLogs){assert.deepEqual(v.log_completed,[0n]);assert(v.log_embeddings.every(x=>x===0n));}
   if(index===2)for(const p of v.outer_perm.slice(0,2))assert.equal(v.relation_basis[Number(p-1n)*(v.relation.length+1)],0n);
   const dump=()=>JSON.stringify(v,(_,x)=>typeof x==='bigint'?String(x):x),before=dump();assert.equal(invoke(),-11n);assert.equal(dump(),before);
  }
  assert(expected.some(r=>r.phase===1&&r.j===0&&r.last>0));assert(expected.some(r=>r.phase===1&&r.j===1&&r.last>0));
  assert(expected.some(r=>r.phase===2));assert(expected.some(r=>r.phase===3));
- console.log(JSON.stringify({cases:expected.length,numericalFailureCases:2,targetHits,smallHash,blockHash,traceSha256:createHash('sha256').update(JSON.stringify(expected)).digest('hex'),coreBytes:fs.statSync(built.coreSourcePath).size,qualifiedTiming:false,boundary:'prepared factor base/minidx/perm/A/R/W/need/allocation; real resident relation collection'}));
+ console.log(JSON.stringify({cases:expected.length,withLogs,logColumns:withLogs?expected.reduce((n,r,i)=>n+r.logs.length/(7*Number(inputs[i].outer_ru)),0):0,numericalFailureCases:2,targetHits,smallHash,blockHash,traceSha256:createHash('sha256').update(JSON.stringify(expected)).digest('hex'),coreBytes:fs.statSync(built.coreSourcePath).size,qualifiedTiming:false,boundary:'prepared factor base/minidx/perm/A/R/W/need/allocation; real resident relation collection'+(withLogs?' and weighted logarithms':'')}));
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -1,5 +1,32 @@
 # Faithful PARI class-group language experiment
 
+## Resident collection and logarithms (2026-09-14)
+
+`collected_log_embeddings.py` now composes the real small-norm collector with
+`relation_log_embeddings.py` in one closed native call. The logarithms consume
+the actual discovered generator coordinates, not supplied relation answers.
+Completed columns remain resident; subsequent calls append only new columns.
+The caller must preserve the embedding matrix, precision and generator prefix,
+and discard this state when upstream reinitializes precision. Unsupported
+automorphism records reject before mutation. A later arithmetic failure may
+leave earlier completed columns committed: this is not public proof output.
+
+The 28 connected outer-loop scenarios agree with PARI in JS and GMP, including
+19 logarithm columns, two injected numerical failures, and terminal replay.
+Trace: `720db07cd307616354c08b31de85257775387d0b146f3c5a7fd3887a19c2d958`;
+generated isolated core: 27,329,365 bytes. Separately, 80 columns across four
+fields agree in PARI/CPython/JS/GMP at resident prefixes 10 and 20, with guard
+and unchanged-prefix checks; that core is 5,114,764 bytes. Reproduce with
+`check_connected_outer_small_norm.cjs PARI_SOURCE PARI_ARCHIVE --with-logs`
+and `check_relation_log_embeddings.cjs PARI_SOURCE` in the metered environment.
+The original collector-only checker remains available without `--with-logs`.
+
+Initial rational generators currently use coordinates `(p,0,...,0)` instead
+of upstream's scalar representation. The resulting column agrees but performs
+extra matrix work; this difference must be removed or separately measured
+before an equal-work performance claim. These checks establish connected
+correctness, not timing parity or complete class/unit reduction.
+
 ## Prepared relation logarithms (2026-09-14)
 
 `log_embedding.py` now translates prepared matrix/coordinates to
