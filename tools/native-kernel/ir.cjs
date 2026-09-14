@@ -1232,14 +1232,26 @@ async function lowerSource(source, filename, options = {}) {
   const importedLibraries = [];
   const nativeSourceDependencies = [];
   const combinedNames = new Set(lowered.map((fn) => fn.name));
+  const importedDefinitions = new Map();
   for (const name of requiredNativeImports) {
     const imported = importedNativeFunctions.get(name);
     for (const fn of imported.ir.functions || []) {
+      const previous = importedDefinitions.get(fn.name);
+      // Multiple entry points from one pinned module may share a helper.
+      // Do not coalesce unrelated modules or merely equal function names.
+      if (previous && previous.path === imported.sourcePath &&
+          previous.hash === imported.sourceHash &&
+          previous.definition === JSON.stringify(fn)) continue;
       expect(
         !combinedNames.has(fn.name),
         `${filename}: imported native function conflicts with ${fn.name}`,
       );
       combinedNames.add(fn.name);
+      importedDefinitions.set(fn.name, {
+        path: imported.sourcePath,
+        hash: imported.sourceHash,
+        definition: JSON.stringify(fn),
+      });
       importedLowered.push(fn.kernelKind !== "integer" || fn.lexicallyNative ? fn : {
         ...fn,
         hostCallable: false,
