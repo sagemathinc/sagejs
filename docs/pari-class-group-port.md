@@ -1,5 +1,54 @@
 # Faithful PARI class-group language experiment
 
+## Connected search and smooth factor admission
+
+`candidate_admission.py` now joins QR/bound preparation, resident enumeration,
+candidate filtering/multiplication, numerical norm rounding and prepared
+`factorgen` in one native call graph. Rejected admissions continue inside the
+same call until a smooth candidate or the upstream search limit is reached.
+The current factor-list length is resident, preserving partial-write behavior
+on rejection. An unported factorization returns explicit status 2 and retains
+the unresolved candidate; repeated calls cannot silently skip it. Successful
+output is still before relation normalization and cache insertion.
+
+The connected oracle uses actual prepared ideals and embeddings from the four
+existing rank-two tuning fields, prime 2, a diagnostic scale of 4, 192-bit
+preparation and prime decompositions through 101. It executes the extracted
+PARI cursor and actual `factorgen`, recording all factor attempts. The port
+receives prepared matrices and prime data, not candidates or factor answers.
+It reproduces 18 smooth candidates from 356 factor attempts across those four searches in CPython,
+dynamic JavaScript and GMP-native execution, comparing candidate order,
+coordinates, trial/attempt counters, rounded norms, error exponents and ideal
+factor lists. No unresolved factorization occurs in these four controls.
+These are connected correctness tests, not seconds-scale or paired timings.
+Terminal states are checked for no further mutation; a seeded unresolved flag
+tests the sticky-resume guard separately from natural factorization coverage.
+Strict Python (403 modules) and parallel checks pass. Architecture validation
+still fails at the recorded stale optimizer manifest.
+The changed-file gate selected merge and documentation checks; both passed.
+Its required build completed in 7m25s, skipping absent optional native-pack
+and Wasm dependencies. This does not establish portable/native-pack execution.
+An overlapping focused-test attempt observed a missing compiler AST constructor
+during the rebuild; subsequent validation is serialized after build completion.
+The serialized final-state rerun passes all 356 attempts and 18 successes,
+including the last partial factor list at exhaustion and idempotent terminal
+calls. It cost 39.406 user + 1.596 system CPU seconds, 33.826 seconds elapsed
+and 598,904 KiB peak child RSS. These figures include validation setup and are
+not paired kernel timings.
+
+One passing metered run cost 40.137 user + 1.196 system CPU seconds,
+33.749 seconds elapsed and 610,864 KiB peak child RSS, including oracle/build
+work. A preceding failed Python harness run cost another 41.919 CPU seconds;
+its import setup shadowed CPython's `decimal` while decoding large prime
+products, fixed by importing the standard module before changing `sys.path`.
+Earlier unmetered setup attempts remain part of the disclosed accounting gap.
+
+```sh
+SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
+  node bench/pari-class-group-port/check_compiled_candidate_admission.cjs \
+  /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4
+```
+
 ## Eight-active-hour coverage checkpoint
 
 Goal accounting now reports 28,475 root active seconds (7.91 hours), plus the
