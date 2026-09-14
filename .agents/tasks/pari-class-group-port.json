@@ -578,6 +578,56 @@
       "commit": "583ee83bad604973e131e080fcf0f1842191a561",
       "workspace_fingerprint": "452bc90cca265facb44e087ade5d0878ffc043abfa8ee92aa51d168a2eb045a4",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_small_norm.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --unreduced --distinct",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.133,
+      "started_at": "2026-09-14T11:55:52.959Z",
+      "commit": "a3b62c8619d6857e3e88d698a343f28ad0667fde",
+      "workspace_fingerprint": "60dbb3fdee595dae6302ceb86b6309090f741d95241d6ea8ec2e73a986adbe1b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_small_norm.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --unreduced",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 22.796,
+      "started_at": "2026-09-14T11:57:41.120Z",
+      "commit": "a3b62c8619d6857e3e88d698a343f28ad0667fde",
+      "workspace_fingerprint": "f239d38797ae33c2339f9ece415ef0c206bb0a2ae4e57c189b2effe27bc572a3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_small_norm.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --distinct",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.31,
+      "started_at": "2026-09-14T11:58:44.878Z",
+      "commit": "a3b62c8619d6857e3e88d698a343f28ad0667fde",
+      "workspace_fingerprint": "886322b76e08ad065746cb67361cf38b3d5bfd81591ac4249b2f12a440fe5cf3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_small_norm.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --unreduced --distinct",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.982,
+      "started_at": "2026-09-14T12:00:02.959Z",
+      "commit": "a3b62c8619d6857e3e88d698a343f28ad0667fde",
+      "workspace_fingerprint": "575c664ceb6f8844094417d1500dde749525d1aea26cacf8a0c2cc8d1241ea27",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_small_norm.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --unreduced --distinct",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.564,
+      "started_at": "2026-09-14T12:05:56.641Z",
+      "commit": "a3b62c8619d6857e3e88d698a343f28ad0667fde",
+      "workspace_fingerprint": "47eb64be070a9dbf8cc12c5d3a761ffc5f0a8187301494a05daff110fc78311b",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

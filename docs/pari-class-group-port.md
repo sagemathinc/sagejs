@@ -1,5 +1,59 @@
 # Faithful PARI class-group language experiment
 
+## Multiple original ideals through one resident collector
+
+`unreduced_small_norm.py` connects the existing reverse ideal schedule to the
+unreduced-ideal collector. Each packet now supplies only its original ideal
+HNF and norm: rank, LLL transformation, reduced embeddings, final QR and
+enumeration preparation are computed inside the same native closure for each
+visit. Relations, generators, factor-list state and aggregate small/factored
+counters survive between visits. Per-ideal preparation and cursor state reset
+only when the scheduler selects another ideal. An unsupported preparation
+stops the schedule with its sticky dependency status; it is not skipped.
+
+This is still a supplied-packet boundary, **not full `small_norm` or `bnfinit`**.
+Prime-ideal HNF construction, distinguished-ideal products/norms, construction
+of `L_jid`, automorphism images and the outer class/unit driver remain outside
+this entry. The two-visit control deliberately supplies its schedule rather
+than claiming it is PARI's complete factor-base traversal. No new timing or
+seconds-scale coverage is claimed.
+
+```sh
+node bench/pari-class-group-port/check_prepared_small_norm.cjs PARI_DIRECTORY PARI_ARCHIVE --unreduced
+node bench/pari-class-group-port/check_prepared_small_norm.cjs PARI_DIRECTORY PARI_ARCHIVE --unreduced --distinct
+```
+
+Both modes pass 16 scenarios across the same four tuning fields in CPython,
+generated JS and GMP native. One repeats the same ideal; the other visits the
+first prime ideals over 2 and 3. The C control retains pristine PARI 2.17.4
+`Fincke_Pohst_ideal` preparation for each visit. Comparisons cover published
+relation bases/records/hashes/exact generators, accumulated `Nsmall`/`Nfact`,
+factor-list length, quotas and final statuses. They require new relations after
+the first visit on at least one scenario. CPython instrumentation checks one
+final enumeration preparation per visited ideal. Zero and deliberately
+unresolved-rank packets test sticky -11/-17 stops in all three backends;
+terminal re-entry must leave every supplied buffer unchanged.
+The distinct-ideal control also lets the first ideal publish a relation before
+making the second original ideal zero. All three backends stop at -11 and
+preserve the first ideal's relation basis, records and exact generators against
+the single-ideal PARI reference; another call is inert.
+
+Repeated-ideal trace SHA-256:
+`c7584ba55c17364224aecd400d70bdb45e7e9d87c173efcd6196d91e95f6cd38`.
+Distinct-ideal trace SHA-256:
+`517bae7177fcc6c56ee1a6c504e11669a7d189da3b73311dd9962e7eb1c13eeb`.
+Only signature-selected fields enter the translated test call; prepared
+transformation/QR packets from older fixture formats are excluded.
+The closure has 126 IR functions, 18,560,239 generated C bytes and a
+3,185,344-byte Linux addon. No resource allowance or mathematical bound changed;
+these are artifact sizes, not RSS or performance measurements.
+
+The strict baselib gate passes (403 modules). Architecture checks reach the
+existing stale optimizer manifest failure; the manifest was not refreshed.
+The latest broad changed-file run's terminal output was lost with its process
+handle, so it is not counted as a passing gate. Focused differential receipts
+are retained separately. This prototype remains draft and is not release-ready.
+
 ## Representation probe: tagged arithmetic is not automatically faster
 
 `probe_arithmetic_backends.cjs PARI_DIRECTORY FLINT_PREFIX` compares the exact
