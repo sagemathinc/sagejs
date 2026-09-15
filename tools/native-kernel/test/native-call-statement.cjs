@@ -1,0 +1,240 @@
+// sagejs-test-tier: specialized
+"use strict";
+const assert=require("node:assert/strict"),fs=require("node:fs"),os=require("node:os"),path=require("node:path"),test=require("node:test");
+const {compileKernel,}=require("../compiler.cjs"),{lowerSource}=require("../ir.cjs");
+test("JavaScript escapes reserved Python bindings without mutating source IR",async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-reserved-bindings-")),source=path.join(dir,"bindings.py");
+  fs.writeFileSync(source,`from sagejs.native import native, IntegerBuffer, Float64Buffer
+@native
+def pair(new:int)->tuple[int,int]:
+    return new,new+1
+@native
+def reserved(new:int,arguments:IntegerBuffer)->int:
+    __sagejs_js_binding_0=100
+    let=new+1
+    for var in range(2):
+        let+=var
+    if new<0:
+        raise ValueError("new")
+    package,delete=pair(let)
+    arguments[0]=package+delete
+    return arguments[0]+__sagejs_js_binding_0
+@native
+def floating(new:float)->float:
+    let=new+1.0
+    return let*2.0
+@native
+def float_buffer(arguments:Float64Buffer)->float:
+    arguments[0]+=1.0
+    return arguments[0]
+`);
+  const oracle=require("node:child_process").spawnSync("python3",["-c",`
+import sys
+sys.path[:0]=[${JSON.stringify(dir)},${JSON.stringify(path.resolve(__dirname,"../../../src/lib"))}]
+import bindings
+a=[0]
+assert bindings.reserved(3,a)==111 and a==[11]
+assert bindings.pair(4)==(4,5) and bindings.floating(3.5)==9
+b=[2.5]
+assert bindings.float_buffer(b)==3.5 and b==[3.5]
+`],{encoding:"utf8"});assert.equal(oracle.status,0,oracle.stderr);
+  const ir=await lowerSource(fs.readFileSync(source,"utf8"),source),before=JSON.stringify(ir);
+  const js=require("../js-backend.cjs").generateJavaScript(ir);
+  assert.equal(JSON.stringify(ir),before,"backend escaping must not rewrite authoritative IR");
+  assert(ir.functions.find(f=>f.name==="reserved").params.some(p=>p.name==="new"));
+  assert.match(js,/nativeRaise\("ValueError", "new"\)/);
+  assert.match(js,/__sagejs_js_binding_1/);
+  const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  assert(mod.reserved.effects.externalWrites.includes("arguments"));
+  for(const backend of ["javascript","gmp","tagged"]){
+    const a=[0n];assert.equal(mod.reserved[backend](3n,a),111n);assert.deepEqual(a,[11n]);
+    assert.throws(()=>mod.reserved[backend](-1n,[0n]),/new/);
+    assert.deepEqual(mod.pair[backend](4n),[4n,5n]);
+  }
+  assert.equal(mod.floating.javascript(3.5),9);
+  assert.equal(mod.floating(3.5),9);
+  for(const execute of [mod.float_buffer,mod.float_buffer.javascript]){
+    const a=[2.5];assert.equal(execute(a),3.5);assert.deepEqual(a,[3.5]);
+  }
+});
+test("exact adapter temporaries cannot shadow Python argument names",async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-adapter-bindings-")),source=path.join(dir,"bindings.py");
+  fs.writeFileSync(source,`from sagejs.native import native, IntegerBuffer, Float64Buffer
+@native
+def collide(descriptor_state:IntegerBuffer,state:IntegerBuffer,backend:int,sagejs_native_state:int)->int:
+    state[0] += backend
+    descriptor_state[0] += state[0] + sagejs_native_state
+    return descriptor_state[0]
+@native
+def float_collide(state:Float64Buffer,sagejs_native_buffer_state:float,sagejs_native_result:float)->float:
+    state[0] += sagejs_native_buffer_state
+    return state[0] + sagejs_native_result
+`);
+  const oracle=require("node:child_process").spawnSync("python3",["-c",`
+import sys
+sys.path[:0]=[${JSON.stringify(dir)},${JSON.stringify(path.resolve(__dirname,"../../../src/lib"))}]
+from bindings import collide, float_collide
+a,b=[7],[2]
+assert collide(a,b,3,11)==23 and a==[23] and b==[5]
+c=[2.5]
+assert float_collide(c,3.0,11.0)==16.5 and c==[5.5]
+`],{encoding:"utf8"});assert.equal(oracle.status,0,oracle.stderr);
+  const ir=await lowerSource(fs.readFileSync(source,"utf8"),source),before=JSON.stringify(ir);
+  require("../js-backend.cjs").generateJavaScript(ir);
+  assert.equal(JSON.stringify(ir),before);
+  const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  for(const execute of [mod.collide,mod.collide.javascript,mod.collide.gmp,mod.collide.tagged]){
+    const a=[7n],b=[2n];assert.equal(execute(a,b,3n,11n),23n);
+    assert.deepEqual(a,[23n]);assert.deepEqual(b,[5n]);
+  }
+  assert.equal(mod.float_collide.nativeAvailable,true);
+  for(const execute of [mod.float_collide,mod.float_collide.javascript]){
+    const a=[2.5];assert.equal(execute(a,3.0,11.0),16.5);assert.deepEqual(a,[5.5]);
+  }
+});
+test("borrowed exact subviews retain aliasing through native helpers",async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-integer-view-")),source=path.join(dir,"views.py");
+  fs.writeFileSync(source,`from sagejs.native import native, IntegerBuffer, integer_buffer_view
+@native
+def update(a:IntegerBuffer,b:IntegerBuffer,x:int)->int:
+    a[-1] += x
+    b[0] += a[-1]
+    return len(a)+len(b)
+@native
+def run(owner:IntegerBuffer,start:int,length:int,x:int)->int:
+    first:IntegerBuffer=integer_buffer_view(owner,start,length)
+    alias=integer_buffer_view(first,length-1,1)
+    return update(first,alias,x)
+@native
+def empty(owner:IntegerBuffer,start:int,length:int)->int:
+    view=integer_buffer_view(owner,start,length)
+    return len(view)
+@native
+def read(owner:IntegerBuffer,start:int,length:int,index:int)->int:
+    view=integer_buffer_view(owner,start,length)
+    return view[index]
+`);
+  const oracle=require("node:child_process").spawnSync("python3",["-c",`
+import sys,gc
+sys.path[:0]=[${JSON.stringify(dir)},${JSON.stringify(path.resolve(__dirname,"../../../src/lib"))}]
+from views import run,empty,integer_buffer_view
+a=[1,2,3,4]
+assert run(a,1,2,2**200)==3 and a==[1,2,2*(3+2**200),4]
+v=integer_buffer_view([9],0,1)
+gc.collect()
+assert v[0]==9
+assert empty(a,4,0)==0
+for start,length in [(-1,1),(0,-1),(5,0),(3,2),(2**100,0),(0,2**100)]:
+    before=a[:]
+    try: empty(a,start,length)
+    except IndexError: pass
+    else: raise AssertionError('invalid span accepted')
+    assert a==before
+`],{encoding:"utf8"});assert.equal(oracle.status,0,oracle.stderr);
+  const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  for(const backend of ["javascript","gmp","tagged"]){
+    const a=[1n,2n,3n,4n];assert.equal(mod.run[backend](a,1n,2n,2n**200n),3n);
+    assert.deepEqual(a,[1n,2n,2n*(3n+2n**200n),4n]);
+    assert.equal(mod.empty[backend](a,4n,0n),0n);
+    assert.equal(mod.read[backend](a,1n,2n,-2n),2n);
+    assert.throws(()=>mod.read[backend](a,4n,0n,0n),/index out of range/);
+    assert.throws(()=>mod.read[backend](a,1n,2n,-3n),/index out of range/);
+    const packed=mod.run.packIntegerBuffer([1n,2n,3n,4n]);
+    assert.equal(mod.run[backend](packed,1n,2n,2n**200n),3n);
+    assert.equal(mod.read[backend](packed,0n,4n,2n),2n*(3n+2n**200n));
+    for(const [start,length] of [[-1n,1n],[0n,-1n],[5n,0n],[3n,2n],[2n**100n,0n],[0n,2n**100n]]){
+      const before=a.slice();assert.throws(()=>mod.empty[backend](a,start,length),/outside its buffer/);assert.deepEqual(a,before);
+    }
+  }
+  const ir=await lowerSource(fs.readFileSync(source,"utf8"),source);
+  assert(ir.functions.find(f=>f.name==="run").analysis.effects.externalWrites.includes("owner"));
+  const core=fs.readFileSync(built.coreSourcePath,"utf8");
+  assert.doesNotMatch(core,/\bnapi_|\bPyObject\b/);
+  assert.match(core,/\.sizes \+=/);assert.match(core,/\.limbs \+=/);
+  await assert.rejects(()=>lowerSource(`from sagejs.native import native,IntegerBuffer,integer_buffer_view\n@native\ndef escape(a:IntegerBuffer)->IntegerBuffer:\n    return integer_buffer_view(a,0,1)\n`,"escape.py"));
+  await assert.rejects(()=>lowerSource(`from sagejs.native import native,IntegerBuffer\n@native\ndef alias(a:IntegerBuffer)->int:\n    b:IntegerBuffer=a\n    return len(b)\n`,"alias.py"),/require integer_buffer_view/);
+});
+test("exact kernels publish Float64 results without integer reinterpretation",async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-exact-float-result-")),source=path.join(dir,"result.py");
+  fs.writeFileSync(source,`from sagejs.native import native, checked_float64
+@native
+def scalar(x:int)->float:
+    if x == 0:
+        return -0.0
+    return checked_float64(x)/2.0
+@native
+def caller(x:int)->float:
+    return scalar(x)
+`);
+  const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  for(const name of ['scalar','caller'])for(const fn of [mod[name],mod[name].gmp,mod[name].tagged,mod[name].javascript]){
+    assert.equal(fn(3n),1.5);assert.equal(fn(-3n),-1.5);assert(Object.is(fn(0n),-0));
+  }
+});
+test("integer-only wrappers inherit transitive Float64 backend requirements",async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-transitive-float-")),source=path.join(dir,"calls.py");
+  fs.writeFileSync(source,`from sagejs.native import native, checked_float64
+from math import log2
+@native
+def inner(x:int)->int:
+    return int(log2(checked_float64(x)))
+@native
+def middle(x:int)->int:
+    return inner(x)+1
+@native
+def outer(x:int)->int:
+    return middle(x)+1
+`);
+  const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  for(const [name,offset] of [['inner',0n],['middle',1n],['outer',2n]]){
+    for(const backend of ['javascript','gmp','tagged'])assert.equal(mod[name][backend](8n),3n+offset);
+    assert.equal(mod[name](8n),3n+offset);
+  }
+  const ir=await lowerSource(fs.readFileSync(source,'utf8'),source);
+  for(const fn of ir.functions){assert.equal(fn.analysis.backend.kind,'gmp');assert.equal(fn.analysis.mixedFloat64,true);}
+});
+test("discarded scalar native calls preserve mutation and errors",async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-call-statement-")),source=path.join(dir,"calls.py");
+  fs.writeFileSync(source,`from sagejs.native import native, IntegerBuffer, Float64Buffer
+@native
+def mutate(a:IntegerBuffer, fail:int)->int:
+    a[0]+=1
+    if fail != 0:
+        raise ValueError("callee failed")
+    return 99
+@native
+def run(a:IntegerBuffer,fail:int)->int:
+    mutate(a,0)
+    mutate(a,fail)
+    return a[0]
+@native
+def float_init(a:Float64Buffer)->int:
+    a[0]=7.5
+    return 1
+@native
+def mixed(a:Float64Buffer)->int:
+    float_init(a)
+    return 42
+`);
+  const b=await compileKernel({sourcePath:source}),mod=require(b.modulePath);
+  const oracle=require("node:child_process").spawnSync("python3",["-c",`
+import sys
+sys.path[:0]=[${JSON.stringify(dir)},${JSON.stringify(path.resolve(__dirname,"../../../src/lib"))}]
+from calls import run,mixed
+a=[0]
+assert run(a,0)==2 and a==[2]
+try:run(a,1)
+except ValueError as error:assert str(error)=="callee failed"
+else:raise AssertionError("expected callee failure")
+assert a==[4]
+b=[0.0]
+assert mixed(b)==42 and b==[7.5]
+`],{encoding:"utf8",timeout:30000});assert.equal(oracle.status,0,oracle.stderr);
+  for(const backend of ["javascript","gmp","tagged"]){
+    const a=[0n];assert.equal(mod.run[backend](a,0n),2n);assert.equal(a[0],2n);
+    assert.throws(()=>mod.run[backend](a,1n),/callee failed/);assert.equal(a[0],4n);
+  }
+  for(const backend of ["javascript","gmp"]){const a=[0];assert.equal(mod.mixed[backend](a),42n);assert.equal(a[0],7.5);}
+  await assert.rejects(()=>lowerSource("def f(a:int)->int:\n    missing(a)\n    return a\n","unknown.py"),/unsupported|unknown/);
+  await assert.rejects(()=>lowerSource("def pair(a:int)->tuple[int,int]:\n    return a,a\ndef f(a:int)->int:\n    pair(a)\n    return a\n","tuple.py"),/scalar native call/);
+});

@@ -1,6 +1,7 @@
 "use strict";
 
 const { tupleElementTypes } = require("./integer-ir.cjs");
+const { exactArenaRetryable } = require("./exact-analysis.cjs");
 const {
   emitFmpzForeignCall,
   resourceForFunctionType,
@@ -753,7 +754,8 @@ function emitFmpzStatements(statements, context, indent) {
         emitFmpzStatements(residentSetup, context, indent),
         `${indent}if (${owner}.temporary_limit > (uint64_t) SIZE_MAX ||`,
         `${indent}    !sagejs_native_gmp_checkpoint_begin(` +
-          `&${owner}.checkpoint, (size_t) ${owner}.temporary_limit))`,
+          `&${owner}.checkpoint, (size_t) ${owner}.temporary_limit, ` +
+          `${context.arenaRetryable ? 1 : 0}))`,
         `${indent}{`,
         statusFailure(
           "error",
@@ -950,6 +952,7 @@ function fmpzDeclarations(fn) {
       : ["flint_cleanup"];
   const context = {
     fn,
+    arenaRetryable: exactArenaRetryable(fn),
     storage,
     constants,
     checkpointCleanupSymbols,

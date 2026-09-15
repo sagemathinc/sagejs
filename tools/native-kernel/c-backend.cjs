@@ -1,6 +1,7 @@
 "use strict";
 
 const { createHash } = require("node:crypto");
+const { exactArenaRetryable } = require("./exact-analysis.cjs");
 
 const {
   isLiveExactOwnerType,
@@ -93,6 +94,10 @@ function isUInt64BufferType(type) {
   return type === "UInt64Buffer";
 }
 
+function isFloat64BufferType(type) {
+  return type === "Float64Buffer";
+}
+
 /**
  * Classify target properties that affect the generated isolated C core.
  *
@@ -132,7 +137,16 @@ function exactBufferCType(type) {
   if (isInt64BufferType(type)) return "sagejs_int64_buffer";
   if (isUInt64BufferType(type)) return "sagejs_uint64_buffer";
   if (isIntegerBufferType(type)) return "sagejs_integer_buffer";
+  if (isFloat64BufferType(type)) return "sagejs_float64_buffer";
   return undefined;
+}
+
+function usesMixedFloat64(fn) {
+  if (fn.analysis?.mixedFloat64) return true;
+  return fn.kernelKind === "integer" &&
+    [...fn.params, ...fn.locals].some((value) =>
+      value.type === "Float64" || value.type === "Float64Buffer"
+    );
 }
 
 function cString(value) {
@@ -305,6 +319,7 @@ function emitOperation(operation, locals, indent) {
 }
 
 function exactValue(name, context) {
+  if (context.value !== undefined) return context.value(name);
   const slot = context.storage.slots[name];
   if (slot !== undefined) return `sagejs_scratch_${slot}`;
   if ((context.storage.borrowedLocals || []).includes(name)) return cName(name);
@@ -323,9 +338,13 @@ function internalArgument(fn, param) {
   if (param.type === "Integer") return `const mpz_t ${name}`;
   if (param.type === "uint64") return `uint64_t ${name}`;
   if (param.type === "bool") return `int ${name}`;
+  if (param.type === "Float64") return `double ${name}`;
   if (isInt64BufferType(param.type)) return `sagejs_int64_buffer ${name}`;
   if (isUInt64BufferType(param.type)) return `sagejs_uint64_buffer ${name}`;
   if (isIntegerBufferType(param.type)) return `sagejs_integer_buffer ${name}`;
+  if (isFloat64BufferType(param.type)) {
+    return `sagejs_float64_buffer ${name}`;
+  }
   if (param.type === "NativeIntegerVector") {
     return `sagejs_native_integer_vector *${name}`;
   }
@@ -347,12 +366,16 @@ function internalResults(fn, type) {
       if (elementType === "bool") {
         return `int *sagejs_native_output_${index}`;
       }
+      if (elementType === "Float64") {
+        return `double *sagejs_native_output_${index}`;
+      }
       throw new Error(`unsupported exact tuple element ${elementType}`);
     });
   }
   if (type === "Integer") return ["mpz_t sagejs_native_output"];
   if (type === "uint64") return ["uint64_t *sagejs_native_output"];
   if (type === "bool") return ["int *sagejs_native_output"];
+  if (type === "Float64") return ["double *sagejs_native_output"];
   const resource = resourceForFunctionType(fn, type);
   if (resource !== undefined) {
     return [`${resource.abi_type} sagejs_native_output`];
@@ -763,7 +786,8 @@ function emitExactOperation(operation, context, indent) {
     return `${indent}${target} = (uint64_t) ` +
       `${exactValue(operation.buffer, context)}.length;`;
   }
-  if (operation.kind === "int64.record.view") {
+  if (operation.kind === "int64.record.view" || operation.kind === "integer.buffer.view") {
+    const exactView = operation.kind === "integer.buffer.view";
     const buffer = exactValue(operation.buffer, context);
     const start = exactValue(operation.start, context);
     const length = exactValue(operation.length, context);
@@ -781,11 +805,19 @@ function emitExactOperation(operation, context, indent) {
         `(uint64_t) ${buffer}.length - ` +
         `(uint64_t) sagejs_record_start)`,
       `${indent}    {`,
-      statusFailure("range", "Int64Record is outside its buffer", `${indent}        `),
+      statusFailure("range", exactView ? "IntegerBuffer view is outside its buffer" : "Int64Record is outside its buffer", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
+      ...(exactView ? [
+        `${indent}    ${target} = ${buffer};`,
+        `${indent}    if ((size_t) sagejs_record_start != 0) {`,
+        `${indent}        ${target}.sizes += (size_t) sagejs_record_start;`,
+        `${indent}        ${target}.limbs += (size_t) sagejs_record_start * ${buffer}.word_capacity;`,
+        `${indent}    }`,
+      ] : [
       `${indent}    ${target}.data = ${buffer}.data + ` +
         `(size_t) sagejs_record_start;`,
+      ]),
       `${indent}    ${target}.length = (size_t) sagejs_record_length;`,
       `${indent}}`,
     ].join("\n");
@@ -1165,6 +1197,27 @@ function emitExactOperation(operation, context, indent) {
     return `${indent}mpz_abs(${target}, ` +
       `${exactValue(operation.source, context)});`;
   }
+  if (operation.kind === "integer.bit_length") {
+    const source = exactValue(operation.source, context);
+    return `${indent}set_mpz_uint64(${target}, mpz_sgn(${source}) == 0 ? 0 : (uint64_t)mpz_sizeinbase(${source}, 2));`;
+  }
+  if (operation.kind === "integer.isqrt") {
+    const source = exactValue(operation.source, context);
+    return [
+      `${indent}if (mpz_sgn(${source}) < 0) {`,
+      statusFailure("range", "isqrt() argument must be nonnegative", `${indent}    `),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}mpz_sqrt(${target}, ${source});`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.gcd") {
+    return `${indent}mpz_gcd(${target}, ${exactValue(operation.left, context)}, ${exactValue(operation.right, context)});`;
+  }
+  if (operation.kind === "integer.shift") {
+    if (operation.countType === "uint64") return `${indent}if (!sagejs_mpz_shift_uint64(status, ${target}, ${exactValue(operation.left, context)}, ${exactValue(operation.right, context)}, ${operation.operation === "left" ? 1 : 0})) goto fail;`;
+    return `${indent}if (!sagejs_mpz_shift(status, ${target}, ${exactValue(operation.left, context)}, ${exactValue(operation.right, context)}, ${operation.operation === "left" ? 1 : 0})) goto fail;`;
+  }
   if (operation.kind === "integer.pow_uint") {
     return `${indent}mpz_pow_ui(${target}, ` +
       `${exactValue(operation.base, context)}, ` +
@@ -1240,7 +1293,7 @@ function emitExactOperation(operation, context, indent) {
   if (operation.kind === "integer.binary") {
     const left = exactValue(operation.left, context);
     const right = exactValue(operation.right, context);
-    const simple = { add: "add", sub: "sub", mul: "mul" }[
+    const simple = { add: "add", sub: "sub", mul: "mul", and: "and" }[
       operation.operation
     ];
     if (simple !== undefined) {
@@ -1359,6 +1412,113 @@ function emitExactOperation(operation, context, indent) {
     return `${indent}${target} = ` +
       `${exactValue(operation.source, context)} != 0;`;
   }
+  if (operation.kind === "integer.from_float64" || operation.kind === "integer.round_float64") {
+    const source = exactValue(operation.source, context);
+    const fraction = context.freshIdentifier("sagejs_round_fraction");
+    const rounding = operation.kind === "integer.round_float64" ? [
+      `${indent}{`,
+      `${indent}    double ${fraction} = ${source} - trunc(${source});`,
+      `${indent}    if (${fraction} > 0.5 || (${fraction} == 0.5 && mpz_odd_p(${target})))`,
+      `${indent}        mpz_add_ui(${target}, ${target}, 1);`,
+      `${indent}    else if (${fraction} < -0.5 || (${fraction} == -0.5 && mpz_odd_p(${target})))`,
+      `${indent}        mpz_sub_ui(${target}, ${target}, 1);`,
+      `${indent}}`,
+    ] : [];
+    return [
+      `${indent}if (!isfinite(${source}))`,
+      `${indent}{`,
+      `${indent}    if (isnan(${source})) {`,
+      statusFailure("range", "cannot convert float NaN to integer", `${indent}        `),
+      `${indent}    } else {`,
+      statusFailure("range", "cannot convert float infinity to integer", `${indent}        `),
+      `${indent}    }`,
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}mpz_set_d(${target}, ${source});`,
+      ...rounding,
+    ].join("\n");
+  }
+  if (operation.kind === "float64.from_integer") {
+    const source = exactValue(operation.source, context);
+    const size = context.freshIdentifier("sagejs_float_bits");
+    const magnitude = context.freshIdentifier("sagejs_float_magnitude");
+    const rounded = context.freshIdentifier("sagejs_float_rounded");
+    const shift = context.freshIdentifier("sagejs_float_shift");
+    return [
+      `${indent}{`,
+      `${indent}    size_t ${size} = mpz_sizeinbase(${source}, 2);`,
+      `${indent}    if (${size} > 1024) {`,
+      statusFailure("range", "integer is outside binary64 range", `${indent}        `),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    if (${size} <= 53) ${target} = mpz_get_d(${source});`,
+      `${indent}    else {`,
+      `${indent}        mpz_t ${magnitude}, ${rounded};`,
+      `${indent}        mp_bitcnt_t ${shift} = ${size} - 53;`,
+      `${indent}        mpz_init(${magnitude}); mpz_init(${rounded});`,
+      `${indent}        mpz_abs(${magnitude}, ${source});`,
+      `${indent}        mpz_fdiv_q_2exp(${rounded}, ${magnitude}, ${shift});`,
+      `${indent}        if (mpz_tstbit(${magnitude}, ${shift}-1) &&`,
+      `${indent}            (mpz_scan1(${magnitude}, 0) < ${shift}-1 || mpz_odd_p(${rounded})))`,
+      `${indent}            mpz_add_ui(${rounded}, ${rounded}, 1);`,
+      `${indent}        ${target} = ldexp(mpz_get_d(${rounded}), (int)${shift});`,
+      `${indent}        if (mpz_sgn(${source}) < 0) ${target} = -${target};`,
+      `${indent}        mpz_clear(${rounded}); mpz_clear(${magnitude});`,
+      `${indent}        if (!isfinite(${target})) {`,
+      statusFailure("range", "integer is outside binary64 range", `${indent}            `),
+      `${indent}            goto fail;`,
+      `${indent}        }`,
+      `${indent}    }`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "float64.from_integer_checked") {
+    const source = exactValue(operation.source, context);
+    return [
+      `${indent}if (mpz_cmpabs_d(${source}, 9007199254740992.0) > 0)`,
+      `${indent}{`,
+      statusFailure(
+        "range", "integer is outside exact binary64 range", `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}${target} = mpz_get_d(${source});`,
+    ].join("\n");
+  }
+  if (operation.kind === "float64.abs") {
+    return `${indent}${exactValue(operation.target, context)} = fabs(${exactValue(operation.source, context)});`;
+  }
+  if (operation.kind === "float64.copysign") {
+    return `${indent}${exactValue(operation.target, context)} = copysign(${exactValue(operation.left, context)}, ${exactValue(operation.right, context)});`;
+  }
+  if (operation.kind === "float64.frexp") {
+    const [mantissa, exponent] = operation.results.map(result => exactValue(result.name, context));
+    const source = exactValue(operation.source, context);
+    const localExponent = context.freshIdentifier("sagejs_float_exponent");
+    return `${indent}{
+${indent}    int ${localExponent} = 0;
+${indent}    ${mantissa} = isfinite(${source}) ? frexp(${source}, &${localExponent}) : ${source};
+${indent}    mpz_set_si(${exponent}, ${localExponent});
+${indent}}`;
+  }
+  if (operation.kind === "float64.ldexp") {
+    const source = exactValue(operation.source, context), exponent = exactValue(operation.exponent, context);
+    const localExponent = context.freshIdentifier("sagejs_float_exponent");
+    // Any binary64 value scaled beyond these exponents already over/underflows.
+    // Clamp before converting arbitrary Python integers to the C int argument.
+    return `${indent}{
+${indent}    int ${localExponent} = mpz_cmp_si(${exponent}, 4096) > 0 ? 4096 :
+${indent}        mpz_cmp_si(${exponent}, -4096) < 0 ? -4096 : (int)mpz_get_si(${exponent});
+${indent}    ${target} = ldexp(${source}, ${localExponent});
+${indent}    if (isinf(${target}) && isfinite(${source})) {
+${statusFailure("range", "math range error", indent + "        ")}
+${indent}        goto fail;
+${indent}    }
+${indent}}`;
+  }
+  if (operation.kind.startsWith("float64.")) {
+    return emitFloat64Operation(operation, indent, (name) => exactValue(name, context));
+  }
   if (operation.kind === "native.call") {
     const callee = context.functions.get(operation.function);
     if (callee === undefined) {
@@ -1378,8 +1538,11 @@ function emitExactOperation(operation, context, indent) {
           : `&${exactValue(argument.name, context)}`
         : exactValue(argument.name, context)
     );
+    const calleeName = callee.kernelKind === "float64"
+      ? `sagejs_kernel_${operation.function}`
+      : `native_${operation.function}`;
     return [
-      `${indent}if (!native_${operation.function}(status, ${outputs.join(", ")}` +
+      `${indent}if (!${calleeName}(status, ${outputs.join(", ")}` +
         `${args.length ? `, ${args.join(", ")}` : ""}))`,
       `${indent}    goto fail;`,
     ].join("\n");
@@ -1422,6 +1585,15 @@ function emitExactStatements(statements, context, indent) {
       continue;
     }
     if (statement.kind === "loop.break" || statement.kind === "loop.continue") {
+      if (statement.range) {
+        const {kind} = statement.range;
+        const iterator = exactValue(statement.range.iterator, context);
+        const step = exactValue(statement.range.step, context);
+        const stop = exactValue(statement.range.stop, context);
+        if (kind === "loop.range") {
+          lines.push(`${indent}if (${step} >= ${stop} - ${iterator}) break;`, `${indent}${iterator} += ${step};`);
+        } else lines.push(`${indent}mpz_add(${iterator}, ${iterator}, ${step});`);
+      }
       lines.push(`${indent}${statement.kind.slice(5)};`);
       continue;
     }
@@ -1575,7 +1747,8 @@ function emitExactStatements(statements, context, indent) {
         emitExactStatements(residentSetup, context, indent),
         `${indent}if (${owner}.temporary_limit > (uint64_t) SIZE_MAX ||`,
         `${indent}    !sagejs_native_gmp_checkpoint_begin(` +
-          `&${owner}.checkpoint, (size_t) ${owner}.temporary_limit))`,
+          `&${owner}.checkpoint, (size_t) ${owner}.temporary_limit, ` +
+          `${context.arenaRetryable ? 1 : 0}))`,
         `${indent}{`,
         statusFailure(
           "error",
@@ -1655,7 +1828,7 @@ function emitExactStatements(statements, context, indent) {
     }
     if (statement.kind === "raise") {
       lines.push(
-        statusFailure("range", statement.message, indent),
+        statusFailure("range", statement.exception === "ValueError" ? `ValueError: ${statement.message}` : statement.message, indent),
         `${indent}goto fail;`,
       );
       continue;
@@ -1685,6 +1858,8 @@ function exactDeclarations(fn) {
     if (resourceForFunctionType(fn, param.type) !== undefined) continue;
     const type = param.type === "uint64"
       ? "uint64_t"
+      : param.type === "Float64"
+        ? "double"
       : exactBufferCType(param.type) !== undefined
         ? exactBufferCType(param.type)
         : "int";
@@ -1785,6 +1960,8 @@ function exactDeclarations(fn) {
     }
     const type = local.type === "uint64"
       ? "uint64_t"
+      : local.type === "Float64"
+        ? "double"
       : exactBufferCType(local.type) !== undefined
         ? exactBufferCType(local.type)
         : "int";
@@ -1793,6 +1970,9 @@ function exactDeclarations(fn) {
   }
   const context = {
     storage,
+    arenaRetryable: exactArenaRetryable(fn),
+    freshIdentifier: createIdentifierAllocator([...fn.params, ...fn.locals].flatMap(value =>
+      [cName(value.name), `sagejs_arg_${value.name}`])),
     liveIntegerVectorParameters: new Set(
       fn.params
         .filter((param) => param.type === "NativeIntegerVector")
@@ -1893,13 +2073,6 @@ function wrapperIdentifierContext(fn) {
       return parameters.get(param.name);
     },
   };
-}
-
-function exactArenaRetryable(fn) {
-  return fn.analysis?.liveExactWorkspace?.scopes?.some((scope) =>
-    scope.storage === "shared-budget-lexical-exact-arena"
-  ) && fn.analysis?.effects?.replaySafe === true &&
-    (fn.analysis.effects.externalWrites || []).length === 0;
 }
 
 function exactWrapperExecution(
@@ -2096,6 +2269,16 @@ function emitTaggedWrapper(fn, options = {}) {
       parse = `if (!get_uint64(env, args[${index}], &${value}))\n` +
         "            goto fail;";
       defaultValue = `${value} = UINT64_C(${param.default});`;
+    } else if (param.type === "Float64") {
+      declarations.push(`    double ${value};`);
+      parse = `if (!sagejs_native_check_napi(env, ` +
+        `napi_get_value_double(env, args[${index}], &${value})))\n` +
+        "            goto fail;";
+    } else if (isFloat64BufferType(param.type)) {
+      declarations.push(`    sagejs_float64_buffer ${value};`);
+      parse = `if (!sagejs_native_get_float64_buffer(env, args[${index}], ` +
+        `&${value}, ${cString(param.name + " must be a Float64Array")}))\n` +
+        "            goto fail;";
     } else if (isInt64BufferType(param.type)) {
       declarations.push(`    sagejs_int64_buffer ${value};`);
       parse = `if (!sagejs_native_get_int64_buffer(env, args[${index}], ` +
@@ -2183,10 +2366,12 @@ function emitTaggedWrapper(fn, options = {}) {
         : `    result = create_tagged_bigint(env, &${value});`);
     } else {
       declarations.push(
-        `    ${type === "uint64" ? "uint64_t" : "int"} ${value};`,
+        `    ${type === "Float64" ? "double" : type === "uint64" ? "uint64_t" : "int"} ${value};`,
       );
       resultArguments.push(`&${value}`);
-      const create = type === "bool"
+      const create = type === "Float64"
+        ? `napi_create_double(env, ${value}, ${tupleResult ? `&${wrapperItem}` : "&result"})`
+        : type === "bool"
         ? `napi_get_boolean(env, ${value} != 0, ` +
           `${tupleResult ? `&${wrapperItem}` : "&result"})`
         : `napi_create_bigint_uint64(env, ${value}, ` +
@@ -2303,6 +2488,16 @@ function emitExactWrapper(fn, options = {}) {
       parse = `if (!get_uint64(env, args[${index}], &${value}))\n` +
         "            goto fail;";
       defaultValue = `${value} = UINT64_C(${param.default});`;
+    } else if (param.type === "Float64") {
+      declarations.push(`    double ${value};`);
+      parse = `if (!sagejs_native_check_napi(env, ` +
+        `napi_get_value_double(env, args[${index}], &${value})))\n` +
+        "            goto fail;";
+    } else if (isFloat64BufferType(param.type)) {
+      declarations.push(`    sagejs_float64_buffer ${value};`);
+      parse = `if (!sagejs_native_get_float64_buffer(env, args[${index}], ` +
+        `&${value}, ${cString(param.name + " must be a Float64Array")}))\n` +
+        "            goto fail;";
     } else if (isInt64BufferType(param.type)) {
       declarations.push(`    sagejs_int64_buffer ${value};`);
       parse = `if (!sagejs_native_get_int64_buffer(env, args[${index}], ` +
@@ -2391,10 +2586,12 @@ function emitExactWrapper(fn, options = {}) {
         : `    result = create_bigint(env, ${value});`);
     } else {
       declarations.push(
-        `    ${type === "uint64" ? "uint64_t" : "int"} ${value};`,
+        `    ${type === "Float64" ? "double" : type === "uint64" ? "uint64_t" : "int"} ${value};`,
       );
       resultArguments.push(`&${value}`);
-      const create = type === "bool"
+      const create = type === "Float64"
+        ? `napi_create_double(env, ${value}, ${tupleResult ? `&${wrapperItem}` : "&result"})`
+        : type === "bool"
         ? `napi_get_boolean(env, ${value} != 0, ` +
           `${tupleResult ? `&${wrapperItem}` : "&result"})`
         : `napi_create_bigint_uint64(env, ${value}, ` +
@@ -2494,6 +2691,10 @@ function fieldCoreSignature(fn, prototype = false) {
   const parameters = fn.params.map((param) =>
     param.type === "uint64"
       ? `uint64_t ${cName(param.name)}`
+      : param.type === "RealNumber" ? `mpfr_srcptr ${cName(param.name)}`
+      : param.type === "ComplexNumber" ? `mpc_srcptr ${cName(param.name)}`
+      : param.type === "RealNumberBuffer" ? `mpfr_srcptr const *${cName(param.name)}, uint64_t ${cName(param.name)}_length`
+      : param.type === "ComplexNumberBuffer" ? `mpc_srcptr const *${cName(param.name)}, uint64_t ${cName(param.name)}_length`
       : `mpfr_prec_t ${cName(param.name)}_precision`
   );
   return `int sagejs_kernel_${fn.name}(` + [
@@ -2510,6 +2711,11 @@ function emitFieldCoreFunction(fn) {
   const localType = real ? "mpfr_t" : "mpc_t";
   const parent = fn.params.find((param) => param.type === parentType);
   const locals = new Map(fn.locals.map((local) => [local.name, local]));
+  for (const param of fn.params) {
+    if (param.type === fn.returnType) locals.set(param.name, {
+      ...param, storage: "borrowed",
+    });
+  }
   const declarations = [];
   const initialization = [];
   const cleanup = [];
@@ -2537,6 +2743,17 @@ function emitFieldCoreFunction(fn) {
   }
 
   const statements = [];
+  function fieldOperation(operation, indent) {
+    if (operation.kind === `${prefix}.buffer.get`) {
+      const index = operation.constantIndex ? `UINT64_C(${operation.index})` : cName(operation.index);
+      return `${indent}if (${index} >= ${cName(operation.buffer)}_length) {
+${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, "field buffer index out of range");
+${indent}    goto fail;
+${indent}}
+${indent}${real ? "mpfr_set" : "mpc_set"}(${nativeValue(locals.get(operation.target))}, ${cName(operation.buffer)}[${index}], ${real ? "MPFR_RNDN" : "MPC_RNDNN"});`;
+    }
+    return emitOperation(operation, locals, indent);
+  }
   for (const operation of fn.body) {
     if (operation.kind === "loop.range") {
       statements.push(
@@ -2548,10 +2765,10 @@ function emitFieldCoreFunction(fn) {
         "    {",
       );
       for (const item of operation.body)
-        statements.push(emitOperation(item, locals, "        "));
+        statements.push(fieldOperation(item, "        "));
       statements.push("    }");
     } else if (operation.kind !== "return") {
-      statements.push(emitOperation(operation, locals, "    "));
+      statements.push(fieldOperation(operation, "    "));
     }
   }
 
@@ -2561,6 +2778,16 @@ function emitFieldCoreFunction(fn) {
 ${Array.from(loopIndexes, (name) => `    uint64_t ${cName(name)};`).join("\n")}
 ${declarations.join("\n")}
     sagejs_native_status_reset(status);
+${fn.params.filter((param) => param.type === fn.returnType).map((param) => `    if (${real ? "mpfr_get_prec" : "mpc_get_prec"}(${cName(param.name)}) != precision) {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_TYPE_ERROR, "prepared input precision must match field");
+        return 0;
+    }`).join("\n")}
+${fn.params.filter((param) => param.type === fn.returnType + "Buffer").map((param) => `    for (uint64_t i = 0; i < ${cName(param.name)}_length; i++) {
+        if (${real ? "mpfr_get_prec" : "mpc_get_prec"}(${cName(param.name)}[i]) != precision) {
+            sagejs_native_status_set(status, SAGEJS_NATIVE_TYPE_ERROR, "prepared input precision must match field");
+            return 0;
+        }
+    }`).join("\n")}
 ${initialization.join("\n")}
 ${statements.join("\n")}
     goto success;
@@ -2580,12 +2807,17 @@ function emitFieldNodeAdapter(fn) {
   const nativeType = prefix === "real" ? "sagejs_real" : "sagejs_complex";
   const parentType = prefix === "real" ? "RealField" : "ComplexField";
   const parent = fn.params.find((param) => param.type === parentType);
-  const iterations = fn.params.find((param) => param.type === "uint64");
+  const iterations = fn.params.filter((param) => param.type === "uint64");
   const coreArguments = fn.params.map((param) =>
     param.type === "uint64"
       ? cName(param.name)
+      : param.type === fn.returnType ? `${cName(param.name)}->value`
+      : param.type === fn.returnType + "Buffer" ? `${cName(param.name)}, ${cName(param.name)}_length`
       : `${cName(param.name)}_precision`
   );
+  const inputs = fn.params.filter((param) => param.type === fn.returnType);
+  const buffers = fn.params.filter((param) => param.type === fn.returnType + "Buffer");
+  const freeBuffers = buffers.map((param) => `    free(${cName(param.name)});`).join("\n");
   return `static napi_value compiled_${fn.name}(
     napi_env env, napi_callback_info info)
 {
@@ -2593,7 +2825,10 @@ function emitFieldNodeAdapter(fn) {
     size_t argc = ${fn.params.length};
     sagejs_native_status status = {0, NULL};
     mpfr_prec_t ${cName(parent.name)}_precision;
-    uint64_t ${cName(iterations.name)};
+${iterations.map((param) => `    uint64_t ${cName(param.name)};`).join("\n")}
+${inputs.map((param) => `    ${nativeType} *${cName(param.name)};`).join("\n")}
+${buffers.map((param) => `    ${prefix === "real" ? "mpfr_srcptr" : "mpc_srcptr"} *${cName(param.name)} = NULL;
+    uint32_t ${cName(param.name)}_length = 0;`).join("\n")}
     ${nativeType} *result = NULL;
     napi_value wrapped;
     if (!sagejs_native_check_napi(env,
@@ -2605,28 +2840,80 @@ function emitFieldNodeAdapter(fn) {
         return NULL;
     }
     if (!get_precision(env, args[${fn.params.indexOf(parent)}],
-            &${cName(parent.name)}_precision) ||
-        !get_uint64(env, args[${fn.params.indexOf(iterations)}],
-            &${cName(iterations.name)}))
+            &${cName(parent.name)}_precision))
         return NULL;
+${iterations.map((param) => `    if (!get_uint64(env, args[${fn.params.indexOf(param)}],
+            &${cName(param.name)})) return NULL;`).join("\n")}
+${inputs.map((param) => `    ${cName(param.name)} = sagejs_native_unwrap_${prefix}(
+        env, args[${fn.params.indexOf(param)}]);
+    if (${cName(param.name)} == NULL) return NULL;
+    if (${prefix === "real" ? "mpfr_get_prec" : "mpc_get_prec"}(${cName(param.name)}->value) != ${cName(parent.name)}_precision) {
+        napi_throw_type_error(env, NULL, "prepared input precision must match field");
+        return NULL;
+    }`).join("\n")}
     result = sagejs_native_new_${prefix}(
         env, ${cName(parent.name)}_precision);
     if (result == NULL)
         return NULL;
+${buffers.map((param) => `    {
+        bool is_array = false;
+        if (!sagejs_native_check_napi(env, napi_is_array(env, args[${fn.params.indexOf(param)}], &is_array))) goto fail;
+        if (!is_array) { napi_throw_type_error(env, NULL, "field buffer must be an array"); goto fail; }
+        if (!sagejs_native_check_napi(env, napi_get_array_length(env, args[${fn.params.indexOf(param)}], &${cName(param.name)}_length))) goto fail;
+        if (${cName(param.name)}_length > SIZE_MAX / sizeof(*${cName(param.name)})) {
+            napi_throw_range_error(env, NULL, "field buffer size overflow"); goto fail;
+        }
+        if (${cName(param.name)}_length) {
+            ${cName(param.name)} = malloc(${cName(param.name)}_length * sizeof(*${cName(param.name)}));
+            if (!${cName(param.name)}) { napi_throw_error(env, NULL, "field buffer allocation failed"); goto fail; }
+        }
+        for (uint32_t i = 0; i < ${cName(param.name)}_length; i++) {
+            napi_value entry;
+            if (!sagejs_native_check_napi(env, napi_get_element(env, args[${fn.params.indexOf(param)}], i, &entry))) goto fail;
+            ${nativeType} *value = sagejs_native_unwrap_${prefix}(env, entry);
+            if (!value) goto fail;
+            if (${prefix === "real" ? "mpfr_get_prec" : "mpc_get_prec"}(value->value) != ${cName(parent.name)}_precision) {
+                napi_throw_type_error(env, NULL, "prepared input precision must match field"); goto fail;
+            }
+            ${cName(param.name)}[i] = value->value;
+        }
+    }`).join("\n")}
     if (!sagejs_kernel_${fn.name}(&status, result->value,
             ${coreArguments.join(", ")}))
     {
         sagejs_native_throw_status(env, &status);
-        sagejs_native_finalize_${prefix}(env, result, NULL);
-        return NULL;
+        goto fail;
     }
+${freeBuffers}
     wrapped = sagejs_native_wrap_${prefix}(env, result);
     return wrapped;
+fail:
+${freeBuffers}
+    sagejs_native_finalize_${prefix}(env, result, NULL);
+    return NULL;
 }`;
 }
 
-function emitFloat64Operation(operation, indent) {
-  const target = cName(operation.target);
+function emitFloat64Operation(operation, indent, value = cName) {
+  const target = value(operation.target);
+  if (operation.kind === "float64.pow") {
+    const left = value(operation.left), right = value(operation.right);
+    return [
+      `${indent}if (${left} == 0.0 && ${right} < 0.0 && isfinite(${right})) {`,
+      statusFailure("range", "math domain error", `${indent}  `),
+      `${indent}  goto fail;`,
+      `${indent}}`,
+      `${indent}${target} = pow(${left}, ${right});`,
+      `${indent}if (isnan(${target}) && !isnan(${left}) && !isnan(${right})) {`,
+      statusFailure("range", "math domain error", `${indent}  `),
+      `${indent}  goto fail;`,
+      `${indent}}`,
+      `${indent}if (isinf(${target}) && isfinite(${left}) && isfinite(${right})) {`,
+      statusFailure("range", "math range error", `${indent}  `),
+      `${indent}  goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "uint64.constant") {
     return `${indent}${target} = UINT64_C(${operation.value});`;
   }
@@ -2634,39 +2921,53 @@ function emitFloat64Operation(operation, indent) {
     return `${indent}${target} = ${operation.value};`;
   }
   if (operation.kind === "float64.copy" || operation.kind === "uint64.copy") {
-    return `${indent}${target} = ${cName(operation.source)};`;
+    return `${indent}${target} = ${value(operation.source)};`;
   }
   if (operation.kind === "float64.from_uint64") {
-    return `${indent}${target} = (double)${cName(operation.source)};`;
+    return `${indent}${target} = (double)${value(operation.source)};`;
   }
   if (operation.kind === "float64.abs") {
-    return `${indent}${target} = fabs(${cName(operation.source)});`;
+    return `${indent}${target} = fabs(${value(operation.source)});`;
   }
-  if (operation.kind === "float64.sqrt") {
-    const source = cName(operation.source);
+  if (operation.kind === "float64.atan") {
+    return `${indent}${target} = atan(${value(operation.source)});`;
+  }
+  if (operation.kind === "float64.exp") {
+    const source = value(operation.source);
     return [
-      `${indent}if (${source} < 0.0)`,
+      `${indent}${target} = exp(${source});`,
+      `${indent}if (isinf(${target}) && isfinite(${source})) {`,
+      statusFailure("range", "math range error", `${indent}  `),
+      `${indent}  goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (["float64.sqrt", "float64.log", "float64.log2"].includes(operation.kind)) {
+    const source = value(operation.source);
+    const logarithm = operation.kind !== "float64.sqrt";
+    return [
+      `${indent}if (${source} ${logarithm ? "<=" : "<"} 0.0)`,
       `${indent}{`,
       statusFailure("range", "math domain error", `${indent}    `),
       `${indent}    goto fail;`,
       `${indent}}`,
-      `${indent}${target} = sqrt(${source});`,
+      `${indent}${target} = ${operation.kind.slice(8)}(${source});`,
     ].join("\n");
   }
   if (operation.kind === "float64.negate") {
-    return `${indent}${target} = -${cName(operation.source)};`;
+    return `${indent}${target} = -${value(operation.source)};`;
   }
   if (operation.kind === "float64.compare" ||
       operation.kind === "uint64.compare") {
     const operator = {
       eq: "==", ne: "!=", lt: "<", le: "<=", gt: ">", ge: ">=",
     }[operation.operation];
-    return `${indent}${target} = ${cName(operation.left)} ${operator} ` +
-      `${cName(operation.right)};`;
+    return `${indent}${target} = ${value(operation.left)} ${operator} ` +
+      `${value(operation.right)};`;
   }
   if (operation.kind === "uint64.binary") {
-    const left = cName(operation.left);
-    const right = cName(operation.right);
+    const left = value(operation.left);
+    const right = value(operation.right);
     const operator = uint64COperator(operation.operation);
     if (isUint64Shift(operation.operation)) {
       return [
@@ -2685,15 +2986,15 @@ function emitFloat64Operation(operation, indent) {
     return `${indent}${target} = ${left} ${operator} ${right};`;
   }
   if (operation.kind === "float64.buffer.copy") {
-    return `${indent}${target} = ${cName(operation.source)};`;
+    return `${indent}${target} = ${value(operation.source)};`;
   }
   if (operation.kind === "float64.buffer.length") {
-    return `${indent}${target} = (uint64_t) ${cName(operation.buffer)}.length;`;
+    return `${indent}${target} = (uint64_t) ${value(operation.buffer)}.length;`;
   }
   if (operation.kind === "float64.record.view") {
-    const buffer = cName(operation.buffer);
-    const start = cName(operation.start);
-    const length = cName(operation.length);
+    const buffer = value(operation.buffer);
+    const start = value(operation.start);
+    const length = value(operation.length);
     return [
       `${indent}if (${start} > (uint64_t) ${buffer}.length ||`,
       `${indent}    ${length} > (uint64_t) ${buffer}.length - ${start})`,
@@ -2706,8 +3007,8 @@ function emitFloat64Operation(operation, indent) {
     ].join("\n");
   }
   if (operation.kind === "float64.buffer.get") {
-    const buffer = cName(operation.buffer);
-    const index = cName(operation.index);
+    const buffer = value(operation.buffer);
+    const index = value(operation.index);
     return [
       `${indent}if (${index} >= (uint64_t) ${buffer}.length)`,
       `${indent}{`,
@@ -2718,23 +3019,23 @@ function emitFloat64Operation(operation, indent) {
     ].join("\n");
   }
   if (operation.kind === "float64.buffer.set") {
-    const buffer = cName(operation.buffer);
-    const index = cName(operation.index);
+    const buffer = value(operation.buffer);
+    const index = value(operation.index);
     return [
       `${indent}if (${index} >= (uint64_t) ${buffer}.length)`,
       `${indent}{`,
       statusFailure("range", "Float64 buffer index out of range", `${indent}    `),
       `${indent}    goto fail;`,
       `${indent}}`,
-      `${indent}${buffer}.data[(size_t) ${index}] = ${cName(operation.value)};`,
+      `${indent}${buffer}.data[(size_t) ${index}] = ${value(operation.value)};`,
     ].join("\n");
   }
   if (operation.kind === "float64.binary") {
     const operator = { add: "+", sub: "-", mul: "*", div: "/" }[
       operation.operation
     ];
-    const left = cName(operation.left);
-    const right = cName(operation.right);
+    const left = value(operation.left);
+    const right = value(operation.right);
     if (operation.operation === "div") {
       return [
         `${indent}if (${right} == 0.0)`,
@@ -4029,7 +4330,7 @@ typedef struct
     size_t length;
     size_t word_capacity;
 } sagejs_integer_buffer;
-` : ""}${floats.some((fn) =>
+` : ""}${functions.some((fn) =>
     fn.params.some((param) => param.type === "Float64Buffer") ||
     fn.locals.some((local) =>
       ["Float64Buffer", "Float64Record"].includes(local.type)
@@ -4117,7 +4418,7 @@ function generateHostCore(ir, options = {}) {
   const primeFields = functions.filter((fn) =>
     fn.kernelKind === "prime-field-matrix"
   );
-  const functionMap = new Map(exact.map((fn) => [fn.name, fn]));
+  const functionMap = new Map(functions.map((fn) => [fn.name, fn]));
   const fmpz = generateFmpzFunctions(exact);
   // Scalar dependency-only functions still need internal tagged/word bodies.
   // Host export selection is distinct from representation eligibility: live
@@ -4126,8 +4427,12 @@ function generateHostCore(ir, options = {}) {
     !fn.params.some((param) => isLiveExactOwnerType(param.type)) &&
     fn.analysis?.fmpzExact?.hostBoundary !== "none-internal-borrowed-aggregate-only"
   );
-  const tagged = generateTaggedFunctions(bridgeFunctions);
+  const tagged = generateTaggedFunctions(bridgeFunctions, {
+    functions: ir.functions,
+    emitMixedOperation: emitExactOperation,
+  });
   const wordFunctions = bridgeFunctions.filter((fn) =>
+    !usesMixedFloat64(fn) &&
     ![fn.returnType, ...fn.params.map((param) => param.type)].some((type) =>
       resourceForFunctionType(fn, type) !== undefined
     )
@@ -4336,7 +4641,7 @@ static int get_precision(
     usesUInt64Buffers ? generateUInt64BufferNodeAdapter() : "",
     usesIntegerBuffers ? generateIntegerBufferNodeAdapter() : "",
   ].filter(Boolean).join("\n\n");
-  const floatBuffers = floats.some((fn) =>
+  const floatBuffers = functions.some((fn) =>
     fn.params.some((param) => param.type === "Float64Buffer") ||
     fn.locals.some((local) =>
       ["Float64Buffer", "Float64Record"].includes(local.type)

@@ -22,25 +22,49 @@ function integerNames(values, types) {
 
 function operationInputs(operation) {
   switch (operation.kind) {
+    case "float64.copysign":
+      return [operation.left, operation.right];
+    case "loop.continue":
+      return operation.range ? [operation.range.iterator, operation.range.step, operation.range.stop] : [];
     case "integer.copy":
     case "integer.neg":
     case "integer.abs":
+    case "integer.bit_length":
+    case "integer.isqrt":
     case "integer.truth":
     case "integer.round_sqrt":
     case "uint64.from_integer_checked":
+    case "float64.from_integer_checked":
+    case "float64.from_integer":
+    case "float64.log":
+    case "float64.log2":
+    case "float64.atan":
+    case "float64.exp":
+    case "float64.sqrt":
+    case "float64.frexp":
+    case "float64.abs":
+    case "integer.from_float64":
+    case "integer.round_float64":
     case "bool.not":
     case "uint64.truth":
     case "value.discard":
       return [operation.source];
+    case "float64.ldexp":
+      return [operation.source, operation.exponent];
     case "integer.pow_uint":
       return [operation.base];
     case "integer.mod_uint64":
       return [operation.left, operation.right];
     case "integer.binary":
+    case "integer.gcd":
+    case "integer.shift":
+    case "float64.binary":
+    case "float64.pow":
     case "uint64.binary":
     case "integer.divmod":
     case "integer.compare":
     case "uint64.compare":
+    case "float64.compare":
     case "bool.compare":
     case "bool.binary":
       return [operation.left, operation.right];
@@ -51,6 +75,7 @@ function operationInputs(operation) {
     case "int64.buffer.length":
       return [operation.buffer];
     case "int64.record.view":
+    case "integer.buffer.view":
       return [operation.buffer, operation.start, operation.length];
     case "int64.buffer.get":
       return [operation.buffer, operation.index];
@@ -71,6 +96,17 @@ function operationInputs(operation) {
     case "uint64.buffer.get":
       return [operation.buffer, operation.index];
     case "uint64.buffer.set":
+      return [operation.buffer, operation.index, operation.value];
+    case "float64.copy":
+    case "float64.negate":
+      return [operation.source];
+    case "float64.buffer.copy":
+      return [operation.source];
+    case "float64.buffer.length":
+      return [operation.buffer];
+    case "float64.buffer.get":
+      return [operation.buffer, operation.index];
+    case "float64.buffer.set":
       return [operation.buffer, operation.index, operation.value];
     case "integer.vector.scope":
       return [operation.capacity, operation.memoryLimit];
@@ -493,10 +529,14 @@ function executionProfile(fn) {
     operation(operation) {
       if (
         operation.kind === "integer.binary" ||
+        operation.kind === "integer.gcd" ||
+        operation.kind === "integer.isqrt" ||
         operation.kind === "integer.pow_uint" ||
         operation.kind === "integer.divmod" ||
         operation.kind === "integer.mod_uint64" ||
-        operation.kind === "integer.round_sqrt"
+        operation.kind === "integer.round_sqrt" ||
+        operation.kind === "integer.bit_length" ||
+        operation.kind === "integer.shift"
       ) {
         profile.arithmeticOperations += 1;
       }
@@ -604,10 +644,26 @@ function localEffects(fn) {
       if (operation.kind === "uint64.from_integer_checked") {
         mayRaise.add("OverflowError");
       }
+      if (operation.kind === "float64.from_integer_checked") {
+        mayRaise.add("OverflowError");
+      }
+      if (operation.kind === "float64.ldexp") mayRaise.add("OverflowError");
+      if (operation.kind === "float64.exp") mayRaise.add("OverflowError");
+      if (operation.kind === "float64.sqrt") mayRaise.add("ValueError");
+      if (operation.kind === "float64.from_integer") mayRaise.add("OverflowError");
+      if (operation.kind === "integer.from_float64" || operation.kind === "integer.round_float64") {
+        mayRaise.add("ValueError");
+        mayRaise.add("OverflowError");
+      }
+      if (operation.kind === "float64.binary" &&
+          operation.operation === "div") {
+        mayRaise.add("ZeroDivisionError");
+      }
       if (operation.kind === "integer.round_sqrt") {
         mayRaise.add("ValueError");
         mayRaise.add("OverflowError");
       }
+      if (operation.kind === "integer.isqrt") mayRaise.add("ValueError");
       if (operation.kind === "range.validate_step") {
         mayRaise.add("ValueError");
       }
@@ -618,10 +674,13 @@ function localEffects(fn) {
         operation.kind === "int64.buffer.get" ||
         operation.kind === "int64.buffer.set" ||
         operation.kind === "int64.record.view" ||
+        operation.kind === "integer.buffer.view" ||
         operation.kind === "integer.buffer.get" ||
         operation.kind === "integer.buffer.set" ||
         operation.kind === "uint64.buffer.get" ||
-        operation.kind === "uint64.buffer.set"
+        operation.kind === "uint64.buffer.set" ||
+        operation.kind === "float64.buffer.get" ||
+        operation.kind === "float64.buffer.set"
       ) {
         mayRaise.add("IndexError");
       }
@@ -682,7 +741,7 @@ function localEffects(fn) {
           operation.kind === "integer.buffer.set") {
         mayRaise.add("OverflowError");
       }
-      if (operation.kind === "raise") mayRaise.add(operation.errorType);
+      if (operation.kind === "raise") mayRaise.add(operation.exception);
       if (operation.kind === "ffi.call" ||
           operation.kind === "ffi.arena.resource.allocate") {
         const effects = operation.foreign.function.effects;
@@ -723,7 +782,7 @@ function localEffects(fn) {
 function bufferWrites(fn, dependencyEffects) {
   const bufferTypes = new Set([
     "IntegerBuffer", "Int64Buffer", "Int64Record", "UInt64Buffer",
-    "NativeIntegerVector",
+    "Float64Buffer", "NativeIntegerVector",
   ]);
   const aliases = new Map(
     fn.params
@@ -746,13 +805,16 @@ function bufferWrites(fn, dependencyEffects) {
     for (const statement of statements) {
       if (statement.kind === "int64.buffer.copy" ||
           statement.kind === "integer.buffer.copy" ||
-          statement.kind === "uint64.buffer.copy") {
+          statement.kind === "uint64.buffer.copy" ||
+          statement.kind === "float64.buffer.copy") {
         changed = addAlias(statement.target, roots(statement.source)) || changed;
-      } else if (statement.kind === "int64.record.view") {
+      } else if (statement.kind === "int64.record.view" ||
+          statement.kind === "integer.buffer.view") {
         changed = addAlias(statement.target, roots(statement.buffer)) || changed;
       } else if (statement.kind === "int64.buffer.set" ||
           statement.kind === "integer.buffer.set" ||
-          statement.kind === "uint64.buffer.set") {
+          statement.kind === "uint64.buffer.set" ||
+          statement.kind === "float64.buffer.set") {
         for (const root of roots(statement.buffer)) writes.add(root);
       } else if (statement.kind === "integer.vector.set" ||
           statement.kind === "integer.vector.addmul" ||
@@ -1028,6 +1090,13 @@ function effectAnalyses(functions) {
     ]) delete effect[key];
   }
   return effects;
+}
+
+function exactArenaRetryable(fn) {
+  return fn.analysis?.liveExactWorkspace?.scopes?.some((scope) =>
+    scope.storage === "shared-budget-lexical-exact-arena"
+  ) && fn.analysis?.effects?.replaySafe === true &&
+    (fn.analysis.effects.externalWrites || []).length === 0;
 }
 
 function taggedIntegerProof(fn, effects) {
@@ -1857,18 +1926,34 @@ function analyzeExactModule(functions) {
       ),
     );
   };
+  const mixedFloat64 = new Set(functions.filter(fn =>
+    fn.kernelKind === "float64" || [...fn.params, ...fn.locals].some(value =>
+      value.type === "Float64" || value.type === "Float64Buffer"
+    )).map(fn => fn.name));
+  let mixedChanged = true;
+  while (mixedChanged) {
+    mixedChanged = false;
+    for (const fn of functions) {
+      if (!mixedFloat64.has(fn.name) && (fn.dependencies || []).some(name => mixedFloat64.has(name))) {
+        mixedFloat64.add(fn.name);
+        mixedChanged = true;
+      }
+    }
+  }
   for (const fn of functions) {
     if (fn.kernelKind !== "integer") continue;
     const profile = {
       ...executionProfile(fn),
       dependencyDepth: dependencyDepth(fn.name),
     };
-    let backend = backendPolicy(
-      fn,
-      profile,
-      recursive.has(fn.name),
-      fmpzPolicies,
-    );
+    let backend = backendPolicy(fn, profile, recursive.has(fn.name), fmpzPolicies);
+    if (mixedFloat64.has(fn.name)) {
+      backend = {
+        kind: "gmp",
+        reason: "mixed exact and Float64 scheduling requires the exact core",
+        ...(backend.requiresExactWorkspace ? { requiresExactWorkspace: true } : {}),
+      };
+    }
     if (
       profile.rangeLoops > 0 &&
       !["fmpz", "gmp", "integer-buffer-values"].includes(backend.kind)
@@ -1890,6 +1975,7 @@ function analyzeExactModule(functions) {
       )
     );
     fn.analysis = {
+      mixedFloat64: mixedFloat64.has(fn.name),
       storage: storageAnalysis(fn),
       execution: { ...profile, recursive: recursive.has(fn.name) },
       backend,
@@ -1945,6 +2031,7 @@ function analyzeExactModule(functions) {
 }
 
 module.exports = {
+  exactArenaRetryable,
   analyzeExactModule,
   backendPolicy,
   effectAnalyses,
