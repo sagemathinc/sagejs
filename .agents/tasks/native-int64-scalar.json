@@ -11,6 +11,7 @@
   "claims": [
     "src/lib/sagejs/native.py",
     "tools/runtime-bootstrap.ts",
+    "tools/resources.ts",
     "tools/native-kernel/integer-ir.cjs",
     "tools/native-kernel/ir.cjs",
     "tools/native-kernel/compiler.cjs",
@@ -26,7 +27,21 @@
     "tools/native-kernel/wasm-pack-loader.mjs",
     "tools/native-kernel/int64-operations.cjs",
     "tools/native-kernel/test/int64-scalar.cjs",
-    "tools/native-kernel/test/int64_scalar_witness.py"
+    "tools/native-kernel/test/int64_scalar_witness.py",
+    "test/ffi.cjs",
+    "test/native-bounded-relations.cjs",
+    "test/native-kernel.cjs",
+    "test/native-live-exact-arena.cjs",
+    "test/native-live-exact-matrix.cjs",
+    "test/native-live-exact-records.cjs",
+    "test/native-rank-four-lattice-workspace.cjs",
+    "test/native-resident-flint-resource.cjs",
+    "test/native-reusable-exact-workspace.cjs",
+    "test/native-sparse-exact-rows.cjs",
+    "test/native-uint64-bitwise.cjs",
+    "test/native-while-control-transfer.cjs",
+    "test/number-field-cubic-fmpz-closure.cjs",
+    "test/number-field-cubic-native-class-number.cjs"
   ],
   "dependencies": [
     "mixed-exact-float-sidecar"
