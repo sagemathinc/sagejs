@@ -8,6 +8,7 @@ const hash=x=>createHash('sha256').update(x).digest('hex');
 (async()=>{
  const pari=path.resolve(process.argv[2]),archive=path.resolve(process.argv[3]),lib=path.join(pari,'Olinux-x86_64');
  const fieldArg=process.argv.indexOf('--field'),field=fieldArg<0?1:Number(process.argv[fieldArg+1]);assert(Number.isInteger(field)&&field>=0&&field<4,'--field must be one of the four declared tuning field indices');
+ const policyOnly=process.argv.includes('--policy-only');
  const polynomial=['x^3-20018*x+20034','x^3-20010*x+20018','x^4-20018*x-20034','x^4-2000022*x-2000042'][field];
  assert.equal(hash(fs.readFileSync(archive)),'02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53');
  const pristine=run('tar',['-xOf',archive,'pari-2.17.4/src/basemath/buch2.c']);
@@ -53,7 +54,7 @@ int main(void){pari_init(256000000,10000);DEBUGLEVEL=0;
  for(const g of expected.groups){v.admission_prime_offsets[g.p]=String(g.offset);v.admission_prime_counts[g.p]=String(g.ideals.length);for(const P of g.ideals){v.admission_group_tau.push(...P.tau);v.admission_group_e.push(String(P.e));v.ramification.push(String(P.e));v.admission_group_f.push(String(P.f));v.admission_group_inert.push(String(P.inert));v.relation_primes.push(String(g.p));v.packet_ideals.push(...P.ideal);v.packet_norms.push(P.norm);}}
  assert.equal(v.relation_primes.length,kc);
  const hsig=fs.readFileSync(path.join(__dirname,'hnfspec_complete.py'),'utf8').match(/def pari_hnfspec_complete\(([\s\S]*?)\n\)/)[1].trim().split('\n').map(s=>s.trim().replace(/,$/,'').split(': '));
- const payload={expected,input:v,names:template.names,hsig};
+ const payload={expected,input:v,names:template.names,hsig,policyOnly};
  const result=JSON.parse(run('python3',['-c',`
 import sys,json,importlib,decimal
 sys.set_int_max_str_digits(100000) # Diagnostic serialization, not kernel capacity.
@@ -76,8 +77,14 @@ assert sp[:e['KCZ']]==[g['p'] for g in e['groups']]
 for g in e['groups']:assert (off[g['p']],cnt[g['p']],complete[g['p']])==(g['offset'],len(g['ideals']),g['complete'])
 sub=importlib.import_module('bench.pari-class-group-port.subfactor_base').pari_prepared_subfactor_base
 kc=e['KC'];perm=[0]*kc
-subresult=sub(list(map(int,v['packet_norms'])),e['bad'],[e['subfactorProduct']],3,[0]*kc,[0]*kc,[0]*(3*kc+3),[0]*kc,[0]*kc,perm);assert perm==e['perm'];assert subresult[0]==e['subfactorCount']
+bad=importlib.import_module('bench.pari-class-group-port.bad_subfactor').pari_bad_subfactor_flags
+active_primes=sp[:b[3]];bad_flags=[0]*kc
+assert bad([off[p] for p in active_primes],[cnt[p] for p in active_primes],[complete[p] for p in active_primes],len(active_primes),kc,bad_flags)==kc
+assert bad_flags==e['bad']
+subresult=sub(list(map(int,v['packet_norms'])),bad_flags,[e['subfactorProduct']],3,[0]*kc,[0]*kc,[0]*(3*kc+3),[0]*kc,[0]*kc,perm);assert perm==e['perm'];assert subresult[0]==e['subfactorCount']
 assert e['minidx']==list(range(1,kc+1));assert e['search']==perm
+if d['policyOnly']:
+ print(json.dumps({'initialBase':list(map(str,b)),'badFlags':bad_flags,'subfactorCount':subresult[0],'permutation':perm,'policyOnly':True}));sys.exit(0)
 initialize=importlib.import_module('bench.pari-class-group-port.relation_insertion').pari_initialize_owned_relations
 initial=initialize(e['additional'],[g['p'] for g in e['groups']],[g['offset'] for g in e['groups']],[len(g['ideals']) for g in e['groups']],[g['complete'] for g in e['groups']],v['ramification'],v['relation_state'],v['relation_basis'],v['relation_records'],v['relation_hashes'],v['relation_metadata'],v['relation'],v['relation_scratch'],v['n'],v['generators']);assert initial==e['initialCount'];assert v['relation_state'][5]==e['target']
 collect=importlib.import_module('bench.pari-class-group-port.unreduced_small_norm').pari_collect_unreduced_ideals
@@ -97,16 +104,20 @@ print(json.dumps({'initialBase':list(map(str,b)),'initialRelations':initial,'rel
  const nativeOutputs=[],native=[],nativeInputs=[];
  if(process.argv.includes('--native')){
   const load=async name=>{const built=await compileKernel({sourcePath:path.join(__dirname,name+'.py')});assert.doesNotMatch(fs.readFileSync(built.coreSourcePath,'utf8'),/napi_call_function|PyObject_Call|v8::/);return require(built.modulePath);};
-  const base=(await load('initial_base')).pari_prepared_initial_base,sub=(await load('subfactor_base')).pari_prepared_subfactor_base,chain=(await load('connected_relation_hnf')).pari_connected_relation_hnf;
-  assert(base.nativeAvailable&&sub.nativeAvailable&&chain?.nativeAvailable);
+  const base=(await load('initial_base')).pari_prepared_initial_base,sub=(await load('subfactor_base')).pari_prepared_subfactor_base,bad=(await load('bad_subfactor')).pari_bad_subfactor_flags,chain=policyOnly?null:(await load('connected_relation_hnf')).pari_connected_relation_hnf;
+  assert(base.nativeAvailable&&sub.nativeAvailable&&bad.nativeAvailable&&(policyOnly||chain?.nativeAvailable));
   const sig=fs.readFileSync(path.join(__dirname,'connected_relation_hnf.py'),'utf8').match(/def pari_connected_relation_hnf\(([\s\S]*?)\n\)/)[1].trim().split('\n').map(s=>s.trim().replace(/,$/,'').split(': '));
-  for(const backend of ['javascript','gmp']){
+  for(const backend of policyOnly?['javascript','gmp','tagged']:['javascript','gmp']){
    const primes=[],fo=[],fc=[],fd=[],po=[],pc=[],pd=[],mult=[];
    for(const [p,offset,...degrees]of expected.catalog){primes.push(BigInt(p));fo.push(BigInt(offset));fc.push(BigInt(degrees.length));fd.push(...degrees.map(BigInt));po.push(BigInt(pd.length));let last=null;for(const f of degrees){if(f!==last){pd.push(BigInt(f));mult.push(1n);last=f;}else mult[mult.length-1]++;}pc.push(BigInt(pd.length)-po.at(-1));}
    const selected=Array(primes.length).fill(0n),off=Array(expected.C2+1).fill(0n),counts=off.slice(),complete=off.slice(),indices=Array(fd.length).fill(0n);
    const br=base[backend](BigInt(n),BigInt(expected.real),[expected.logD,0,0],primes,po,pc,pd,mult,fo,fc,fd,Array(n+1).fill(0n),Array(primes.length+2).fill(0),[0,0],Array(primes.length+1).fill(0),selected,off,counts,complete,indices);
    assert.deepEqual(br,result.initialBase.map(BigInt));assert.deepEqual(indices.slice(0,kc),expected.groups.flatMap(g=>g.ideals.map(P=>BigInt(P.index))));
-   const permutation=Array(kc).fill(0n),sr=sub[backend](v.packet_norms.map(BigInt),expected.bad.map(BigInt),[expected.subfactorProduct],3n,Array(kc).fill(0n),Array(kc).fill(0n),Array(3*kc+3).fill(0n),Array(kc).fill(0n),Array(kc).fill(0n),permutation);assert.deepEqual(permutation,expected.perm.map(BigInt));assert.equal(sr[0],BigInt(expected.subfactorCount));
+   const activePrimes=selected.slice(0,Number(br[3])),badFlags=Array(kc).fill(0n);
+   assert.equal(bad[backend](activePrimes.map(p=>off[Number(p)]),activePrimes.map(p=>counts[Number(p)]),activePrimes.map(p=>complete[Number(p)]),BigInt(activePrimes.length),BigInt(kc),badFlags),BigInt(kc));
+   assert.deepEqual(badFlags,expected.bad.map(BigInt));
+   const permutation=Array(kc).fill(0n),sr=sub[backend](v.packet_norms.map(BigInt),badFlags,[expected.subfactorProduct],3n,Array(kc).fill(0n),Array(kc).fill(0n),Array(3*kc+3).fill(0n),Array(kc).fill(0n),Array(kc).fill(0n),permutation);assert.deepEqual(permutation,expected.perm.map(BigInt));assert.equal(sr[0],BigInt(expected.subfactorCount));
+   if(policyOnly){native.push({backend,field,badFlags:badFlags.map(Number),permutation:permutation.map(Number),subfactorCount:Number(sr[0]),policyOnly:true});continue;}
    const raw=Object.fromEntries(template.names.map(([name,kind])=>{const conv=kind==='float'||kind==='Float64Buffer'?Number:BigInt,x=v[name];return [name,Array.isArray(x)?x.map(conv):conv(x)];})),ru=(n+expected.real)/2,hcap=Math.max(64,(kc+expected.target)**2,7*ru*(kc+expected.target));
    Object.assign(raw,{log_precision:128n,log_completed:[0n],log_embeddings:Array(cap*7*ru).fill(0n),log_coordinates:Array(n).fill(0n),log_column:Array(7*ru).fill(0n),log_cache:Array(3).fill(0n),log_pi_cache:Array(3).fill(0n),log_a:Array(64).fill(0n),log_b:Array(64).fill(0n),log_p:Array(64).fill(0n),log_q:Array(64).fill(0n),log_stack:Array(128).fill(0n),initial_additional:BigInt(expected.additional),initial_target:BigInt(expected.target),initial_primes:expected.groups.map(g=>BigInt(g.p)),initial_offsets:expected.groups.map(g=>off[g.p]),initial_counts:expected.groups.map(g=>counts[g.p]),initial_complete:expected.groups.map(g=>complete[g.p]),hnf_k0:0n,hnf_original:Array(kc*cap).fill(0n),hnf_perm:permutation,chain_state:Array(4).fill(0n)});
    raw.log_precision=BigInt(expected.precision);raw.hnf_k0=sr[0];raw.search_ideals=permutation.slice();
@@ -120,7 +131,7 @@ print(json.dumps({'initialBase':list(map(str,b)),'initialRelations':initial,'rel
    native.push({backend,field,hnfStatus:Number(status),relations:expected.last});
   }
  }
- const summary={result:[{field,...result}],native,policy:'PARI 2.17.4 defaults cbach=cbach2=0,Nrelid=4,RELSUP=5,actual FBgen and subFBgen,initial j0=0 small_norm; prepared nf at192 bits, prime decompositions/ideal HNFs/embedding arithmetic; no retries or completeness claim',sourceHash:hash(control),traceSha256:hash(JSON.stringify(expected)),qualifiedTiming:false,artifactDirectory:dir};
+ const summary={result:[{field,...result}],native,policyOnly,policy:'PARI 2.17.4 defaults cbach=cbach2=0,Nrelid=4,RELSUP=5,actual FBgen, generated bad_subFB flags and subFBgen; policy-only stops there, otherwise initial j0=0 small_norm; prepared nf at192 bits, prime decompositions/ideal HNFs/embedding arithmetic; no retries or completeness claim',sourceHash:hash(control),traceSha256:hash(JSON.stringify(expected)),qualifiedTiming:false,artifactDirectory:dir};
  fs.writeFileSync(path.join(dir,'fixtures.json'),JSON.stringify({summary,inputs:[v],names:template.names,hsig,expected:[{...expected,initialPerm:expected.perm,perm:expected.hnfPerm}],nativeOutputs,nativeInputs}));
  console.log(JSON.stringify(summary));
 })().catch(e=>{console.error(e);process.exitCode=1;});
