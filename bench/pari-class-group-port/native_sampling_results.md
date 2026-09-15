@@ -67,3 +67,36 @@ The sampler and symbolizer received separate safety and attribution reviews.
 Focused symbolization tests pass. This diagnostic does not resolve the existing
 broader missing-addon and stale architecture-manifest validation gaps, nor the
 remaining prepared-input dependencies or frozen-panel coverage requirements.
+
+## Profile after small-block arena reuse
+
+`arena-reuse-native-samples-20260915.json` and its `native-symbolized` companion
+capture the new GMP arena core `5f27b6bda505603f999e5f492aff7a32b8f8bd50ec7817428fe6d3fd005f9d7a`.
+The controls pass, as do all prepared output and work assertions. Across 31
+calls, 2,782 PCs were captured with no drops or timer overruns; 54 remain
+unresolved. Exact sampled binary hashes match during symbolization.
+
+| Exclusive symbol | Samples | Percent of all PCs |
+| --- | ---: | ---: |
+| `__gmpz_set` | 282 | 10.14% |
+| `__gmpz_sizeinbase` | 231 | 8.30% |
+| `__gmpn_copyi_zen` | 155 | 5.57% |
+| `sagejs_native_gmp_free` | 142 | 5.10% |
+| `sagejs_native_gmp_checkpoint_allocate` | 133 | 4.78% |
+| `sagejs_native_gmp_realloc` | 108 | 3.88% |
+| `__tls_get_addr` | 107 | 3.85% |
+| `__gmpz_export` | 105 | 3.77% |
+| `sagejs_native_gmp_malloc` | 76 | 2.73% |
+
+These allocator names are our arena hooks, **not libc heap calls**. Allocation
+counting separately records only 30 malloc and zero realloc calls after warmup.
+The hooks still perform substantial bookkeeping despite reusing memory. GMP
+copying and size/export work are also visible; exclusive samples do not reveal
+their callers or establish which source operation is responsible.
+
+A concrete next diagnostic is caller attribution for size/export and copying.
+For example, `exact-runtime.cjs` converts exact buffer indices with
+`mpz_sizeinbase` and `mpz_export`; those are candidates, not an attribution of
+all samples to indexing. Preserve overflow, negative-index, and Windows
+integer-width semantics in any replacement. The old tagged and new GMP profiles
+are different backends/builds and are not a paired per-symbol speed comparison.
