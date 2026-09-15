@@ -57,6 +57,41 @@ assert bindings.float_buffer(b)==3.5 and b==[3.5]
     const a=[2.5];assert.equal(execute(a),3.5);assert.deepEqual(a,[3.5]);
   }
 });
+test("exact adapter temporaries cannot shadow Python argument names",async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-adapter-bindings-")),source=path.join(dir,"bindings.py");
+  fs.writeFileSync(source,`from sagejs.native import native, IntegerBuffer, Float64Buffer
+@native
+def collide(descriptor_state:IntegerBuffer,state:IntegerBuffer,backend:int,sagejs_native_state:int)->int:
+    state[0] += backend
+    descriptor_state[0] += state[0] + sagejs_native_state
+    return descriptor_state[0]
+@native
+def float_collide(state:Float64Buffer,sagejs_native_buffer_state:float,sagejs_native_result:float)->float:
+    state[0] += sagejs_native_buffer_state
+    return state[0] + sagejs_native_result
+`);
+  const oracle=require("node:child_process").spawnSync("python3",["-c",`
+import sys
+sys.path[:0]=[${JSON.stringify(dir)},${JSON.stringify(path.resolve(__dirname,"../../../src/lib"))}]
+from bindings import collide, float_collide
+a,b=[7],[2]
+assert collide(a,b,3,11)==23 and a==[23] and b==[5]
+c=[2.5]
+assert float_collide(c,3.0,11.0)==16.5 and c==[5.5]
+`],{encoding:"utf8"});assert.equal(oracle.status,0,oracle.stderr);
+  const ir=await lowerSource(fs.readFileSync(source,"utf8"),source),before=JSON.stringify(ir);
+  require("../js-backend.cjs").generateJavaScript(ir);
+  assert.equal(JSON.stringify(ir),before);
+  const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  for(const execute of [mod.collide,mod.collide.javascript,mod.collide.gmp,mod.collide.tagged]){
+    const a=[7n],b=[2n];assert.equal(execute(a,b,3n,11n),23n);
+    assert.deepEqual(a,[23n]);assert.deepEqual(b,[5n]);
+  }
+  assert.equal(mod.float_collide.nativeAvailable,true);
+  for(const execute of [mod.float_collide,mod.float_collide.javascript]){
+    const a=[2.5];assert.equal(execute(a,3.0,11.0),16.5);assert.deepEqual(a,[5.5]);
+  }
+});
 test("exact kernels publish Float64 results without integer reinterpretation",async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-exact-float-result-")),source=path.join(dir,"result.py");
   fs.writeFileSync(source,`from sagejs.native import native, checked_float64
