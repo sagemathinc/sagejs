@@ -599,6 +599,18 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "integer.bit_length") {
     return `${indent}${operation.target} = ${operation.source} === 0n ? 0n : BigInt((${operation.source} < 0n ? -${operation.source} : ${operation.source}).toString(2).length);`;
   }
+  if (operation.kind === "integer.isqrt") {
+    return `${indent}${operation.target} = ((value) => {
+${indent}  if (value < 0n) nativeRaise("ValueError", "isqrt() argument must be nonnegative");
+${indent}  if (value < 2n) return value;
+${indent}  let root = 1n << ((BigInt(value.toString(2).length) + 1n) >> 1n);
+${indent}  for (;;) {
+${indent}    const next = (root + value / root) >> 1n;
+${indent}    if (next >= root) return root;
+${indent}    root = next;
+${indent}  }
+${indent}})(${operation.source});`;
+  }
   if (operation.kind === "integer.gcd") {
     return `${indent}${operation.target} = ((a, b) => {
 ${indent}  a = a < 0n ? -a : a;
@@ -1026,6 +1038,9 @@ function declaredFfiErrors(fn, functions = []) {
   }
   const visit = (operations) => {
     for (const operation of operations || []) {
+      if (operation.kind === "integer.isqrt") {
+        record("isqrt() argument must be nonnegative", "ValueError");
+      }
       if (operation.kind === "raise") {
         if (operation.exception === "ValueError") {
           record(`ValueError: ${operation.message}`, {exception: "ValueError", message: operation.message});

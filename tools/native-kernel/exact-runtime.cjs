@@ -918,6 +918,25 @@ static int sagejs_word_mul_int64(int64_t left, int64_t right, int64_t *result)
 #endif
 }
 
+/* Restoring base-four square root: entirely integer, including the seed.
+   Each iteration removes the next root bit; no overflowing square is formed. */
+static uint64_t sagejs_word_isqrt_uint64(uint64_t value)
+{
+    uint64_t root = 0, bit = UINT64_C(1) << 62;
+    while (bit > value) bit >>= 2;
+    while (bit)
+    {
+        if (value >= root + bit)
+        {
+            value -= root + bit;
+            root = (root >> 1) + bit;
+        }
+        else root >>= 1;
+        bit >>= 2;
+    }
+    return root;
+}
+
 static int sagejs_word_pow_int64(
     int64_t base, uint64_t exponent, int64_t *result)
 {
@@ -1305,6 +1324,30 @@ static void sagejs_tagged_bit_length(
         while (magnitude) { bits++; magnitude >>= 1; }
     }
     sagejs_tagged_set_uint64(target, bits);
+}
+
+static int sagejs_tagged_isqrt(sagejs_native_status *status,
+    sagejs_tagged_int *target, sagejs_tagged_int *source)
+{
+    if (source->is_big ? mpz_sgn(source->big) < 0 : source->small < 0)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "isqrt() argument must be nonnegative");
+        return 0;
+    }
+    if (!source->is_big)
+    {
+        uint64_t result = sagejs_word_isqrt_uint64((uint64_t)source->small);
+        sagejs_tagged_set_small(target, (int64_t)result);
+    }
+    else
+    {
+        int64_t small;
+        sagejs_tagged_make_big(target);
+        mpz_sqrt(target->big, source->big);
+        if (mpz_to_int64(target->big, &small)) sagejs_tagged_set_small(target, small);
+    }
+    return 1;
 }
 
 static void sagejs_tagged_gcd(sagejs_tagged_int *target,

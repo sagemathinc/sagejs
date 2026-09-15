@@ -722,7 +722,7 @@ function supportedModulePreamble(statement) {
     const moduleName = item.module?.name;
     const names = array(item.argnames).map((arg) => arg.name);
     return (
-      !item.level && moduleName === "math" && names.every((name) => ["sqrt", "gcd", "log", "log2", "atan", "pow", "ldexp", "frexp", "copysign"].includes(name))
+      !item.level && moduleName === "math" && names.every((name) => ["sqrt", "isqrt", "gcd", "log", "log2", "atan", "pow", "ldexp", "frexp", "copysign"].includes(name))
     ) || (
       moduleName === "typing" && names.every((name) => name === "Tuple")
     ) || (
@@ -1006,7 +1006,7 @@ async function lowerSource(source, filename, options = {}) {
       }
       if (item.level || item.module?.name !== "math") continue;
       for (const imported of array(item.argnames)) {
-        if (["gcd", "log", "log2", "atan", "pow", "ldexp", "frexp", "copysign"].includes(imported.name)) mathFunctions.set(imported.alias?.name || imported.name, imported.name);
+        if (["isqrt", "gcd", "log", "log2", "atan", "pow", "ldexp", "frexp", "copysign"].includes(imported.name)) mathFunctions.set(imported.alias?.name || imported.name, imported.name);
       }
     }
   }

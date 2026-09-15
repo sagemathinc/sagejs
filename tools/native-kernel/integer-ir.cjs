@@ -1431,6 +1431,20 @@ function lowerCall(node, context, operations) {
     return {name: target, type: "Float64"};
   }
 
+  if (context.mathFunctions.get(name) === "isqrt") {
+    expect(context, node, !context.variables.has(name) && !context.lexicalLocals.has(name) &&
+      !context.signatures.has(name) && !context.integerConstants.has(name) && !context.foreignFunctions.has(name),
+      "math.isqrt binding is shadowed");
+    expect(context, node, args.length === 1 && array(node.args?.kwarg_items).length === 0 &&
+      !node.args?.starargs && array(node.args?.kwargs).length === 0,
+      "native math.isqrt requires one positional integer");
+    const source = lowerExpression(args[0], context, operations);
+    expect(context, node, source.type === "Integer", "math.isqrt requires an exact integer");
+    const target = temporary(context, node, "Integer");
+    operations.push({ kind: "integer.isqrt", target, source: source.name });
+    return { name: target, type: "Integer" };
+  }
+
   if (context.mathFunctions.get(name) === "gcd") {
     expect(context,node,!context.variables.has(name) && !context.lexicalLocals.has(name) &&
       !context.signatures.has(name) && !context.integerConstants.has(name) && !context.foreignFunctions.has(name),

@@ -456,6 +456,9 @@ function emitTaggedOperation(operation, context, indent) {
   if (operation.kind === "integer.bit_length") {
     return `${indent}sagejs_tagged_bit_length(${target}, ${taggedValue(operation.source, context)});`;
   }
+  if (operation.kind === "integer.isqrt") {
+    return `${indent}if (!sagejs_tagged_isqrt(status, ${target}, ${taggedValue(operation.source, context)})) goto fail;`;
+  }
   if (operation.kind === "integer.gcd") {
     return `${indent}sagejs_tagged_gcd(${target}, ${taggedValue(operation.left, context)}, ${taggedValue(operation.right, context)});`;
   }
