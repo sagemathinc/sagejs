@@ -12,13 +12,26 @@ const { spawnSync } = require("node:child_process");
 assert(!process.argv.some(arg => arg === "--word-capacity" || arg.startsWith("--word-capacity=")),
   "phase profiler uses the fixed 64-word policy; use the resident probe for capacity experiments");
 
-const phases = ["attempt", "relation_initialization", "collection", "logs",
-  "hnf", "acceptance", "smith", "host_adapter"];
-const mathematicalNames = ["prepared_class_group_attempt", "initialize_owned_relations",
-  "collect_unreduced_ideals", "append_relation_log_embeddings", "hnfspec_complete",
-  "post_hnf_acceptance", "class_invariant_output"].map(x => "pari_" + x);
-const functionNames = mathematicalNames.flatMap(name => ["native_" + name, "tagged_" + name])
-  .concat(["compiled_pari_prepared_class_group_attempt_gmp", "compiled_pari_prepared_class_group_attempt"]);
+function profileLayout(generatedResident) {
+  const entry = generatedResident ? "resident_generated_class_attempt" : "prepared_class_group_attempt";
+  const rows = [["attempt", entry]];
+  if (generatedResident) rows.push(
+    ["degree_catalog", "prime_degree_catalog"], ["initial_base", "prepared_initial_base"],
+    ["kummer_catalog", "initial_kummer_catalog"], ["packet_preparation", "selected_ideal_packets"],
+    ["metadata_preparation", "selected_ideal_metadata"], ["subfactor", "prepared_subfactor_base"],
+    ["analytic_inverse_hr", "analytic_inverse_hr"],
+  );
+  rows.push(["relation_initialization", "initialize_owned_relations"],
+    ["collection", "collect_unreduced_ideals"], ["logs", "append_relation_log_embeddings"],
+    ["hnf", "hnfspec_complete"], ["acceptance", "post_hnf_acceptance"],
+    ["smith", "class_invariant_output"]);
+  return {
+    entry,
+    phases: rows.map(([phase]) => phase).concat(["host_adapter"]),
+    functionNames: rows.flatMap(([, name]) => ["native_pari_" + name, "tagged_pari_" + name])
+      .concat(["compiled_pari_" + entry + "_gmp", "compiled_pari_" + entry]),
+  };
+}
 const sha = x => createHash("sha256").update(x).digest("hex");
 
 function maskC(code) {
@@ -67,15 +80,15 @@ function instrument(code, selected, returnType) {
   return { code: pieces.join(""), coverage };
 }
 
-const timerSource = String.raw`
+function timerSourceFor(phaseCount) { return String.raw`
 /* Diagnostic-only clocks; serialized Node execution, not thread-safe API. */
 #include <time.h>
 typedef struct { double wall, cpu; int outer; } sagejs_diag_clock;
-static unsigned long long sagejs_diag_calls[16];
-static double sagejs_diag_wall[16], sagejs_diag_cpu[16];
-static double sagejs_diag_phase_wall[8], sagejs_diag_phase_cpu[8];
-static unsigned long long sagejs_diag_phase_calls[8];
-static int sagejs_diag_depth[8], sagejs_diag_clock_error;
+static unsigned long long sagejs_diag_calls[${2 * phaseCount}];
+static double sagejs_diag_wall[${2 * phaseCount}], sagejs_diag_cpu[${2 * phaseCount}];
+static double sagejs_diag_phase_wall[${phaseCount}], sagejs_diag_phase_cpu[${phaseCount}];
+static unsigned long long sagejs_diag_phase_calls[${phaseCount}];
+static int sagejs_diag_depth[${phaseCount}], sagejs_diag_clock_error;
 static double sagejs_diag_now(clockid_t clock) {
     struct timespec value;
     if (clock_gettime(clock, &value)) { sagejs_diag_clock_error = 1; return 0; }
@@ -106,23 +119,23 @@ static int sagejs_diag_end_int(int id, sagejs_diag_clock stamp, int result) {
 static void *sagejs_diag_end_pointer(int id, sagejs_diag_clock stamp, void *result) {
     sagejs_diag_end(id, stamp); return result;
 }
-`;
+`; }
 
 // This additional getter exists only in the copied diagnostic host adapter.
 // No host call or output serialization is inserted in mathematical execution.
-const getterSource = String.raw`
+function getterSourceFor(phaseCount) { return String.raw`
 #include <stdio.h>
 static napi_value sagejs_diag_profile(napi_env env, napi_callback_info info) {
     char text[8192]; size_t used = 0; napi_value result; (void)info;
     int invalid = sagejs_diag_clock_error;
-    for (int i = 0; i < 8; i++) if (sagejs_diag_depth[i]) invalid = 1;
+    for (int i = 0; i < ${phaseCount}; i++) if (sagejs_diag_depth[i]) invalid = 1;
     used += (size_t)snprintf(text + used, sizeof(text) - used,
         "{\"invalid\":%d,\"functions\":[", invalid);
-    for (int i = 0; i < 16; i++)
+    for (int i = 0; i < ${2 * phaseCount}; i++)
         used += (size_t)snprintf(text + used, sizeof(text) - used,
             "%s[%llu,%.17g,%.17g]", i ? "," : "", sagejs_diag_calls[i], sagejs_diag_wall[i], sagejs_diag_cpu[i]);
     used += (size_t)snprintf(text + used, sizeof(text) - used, "],\"phases\":[");
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < ${phaseCount}; i++)
         used += (size_t)snprintf(text + used, sizeof(text) - used,
             "%s[%llu,%.17g,%.17g]", i ? "," : "", sagejs_diag_phase_calls[i], sagejs_diag_phase_wall[i], sagejs_diag_phase_cpu[i]);
     used += (size_t)snprintf(text + used, sizeof(text) - used, "]}");
@@ -130,7 +143,7 @@ static napi_value sagejs_diag_profile(napi_env env, napi_callback_info info) {
     if (napi_create_string_utf8(env, text, used, &result) != napi_ok) return NULL;
     return result;
 }
-`;
+`; }
 
 async function main(argv = process.argv.slice(2)) {
   assert.equal(process.platform, "linux", "Linux-only diagnostic instrumentation");
@@ -143,10 +156,14 @@ async function main(argv = process.argv.slice(2)) {
   };
   assert(argv[0] && !argv[0].startsWith("--"), "input fixture required");
   const inputPath = path.resolve(argv[0]);
+  const generatedResident = argv.includes("--generated-resident");
+  const { entry, phases, functionNames } = profileLayout(generatedResident);
+  const coreFunctionCount = functionNames.length - 2;
+  const timerSource = timerSourceFor(phases.length), getterSource = getterSourceFor(phases.length);
   const backend = get("--backend", "gmp");
   assert(["gmp", "tagged"].includes(backend));
   const cacheRoot = path.join(__dirname, ".sagejs-native-kernels");
-  const sourcePath = path.join(__dirname, "prepared_class_group_attempt.py");
+  const sourcePath = path.join(__dirname, entry + ".py");
   const discovery = JSON.parse(fs.readFileSync(path.join(cacheRoot, "index.json"), "utf8"));
   const cacheKey = get("--cache-key", discovery.sources[sourcePath]?.cacheKey);
   assert(/^[0-9a-f]{64}$/.test(cacheKey), "missing valid existing cache key");
@@ -164,8 +181,8 @@ async function main(argv = process.argv.slice(2)) {
   const binding = JSON.parse(originals["binding.gyp"]);
   assert.deepEqual(binding.targets[0].sources, ["kernel.c"], "unsupported copied build dependencies");
   assert(!originals["kernel_core.c"].includes("sagejs_diag_"), "already instrumented core");
-  const core = instrument(originals["kernel_core.c"], functionNames.slice(0, 14).map((n, i) => [i, n]), "int");
-  const adapter = instrument(originals["kernel.c"], functionNames.slice(14).map((n, i) => [i + 14, n]), "napi_value");
+  const core = instrument(originals["kernel_core.c"], functionNames.slice(0, coreFunctionCount).map((n, i) => [i, n]), "int");
+  const adapter = instrument(originals["kernel.c"], functionNames.slice(coreFunctionCount).map((n, i) => [i + coreFunctionCount, n]), "napi_value");
   fs.writeFileSync(path.join(directory, "kernel_core.c"), timerSource + core.code);
   const initialize = "SAGEJS_NATIVE_INITIALIZER_LINKAGE napi_value SAGEJS_NATIVE_INITIALIZER(";
   assert.equal(adapter.code.split(initialize).length, 2, "unexpected adapter initializer");
@@ -176,7 +193,8 @@ async function main(argv = process.argv.slice(2)) {
     '\n        {"__diagnosticPhaseProfile", NULL, sagejs_diag_profile, NULL, NULL, NULL, napi_default, NULL},');
   fs.writeFileSync(path.join(directory, "kernel.c"), copiedAdapter);
   const provenance = {
-    qualifiedTiming: false, diagnosticOnly: true, backend, cacheKey, canonical, directory,
+    qualifiedTiming: false, diagnosticOnly: true, generatedResident, phases, backend, cacheKey, canonical, directory,
+    instrumenterSha256: sha(fs.readFileSync(__filename)),
     inputSha256: sha(fs.readFileSync(inputPath)), sourceSha256: manifest.sourceHash,
     manifestSha256: sha(fs.readFileSync(path.join(canonical, "manifest.json"))),
     originalHashes: Object.fromEntries(Object.entries(originals).map(([n, s]) => [n, sha(s)])),
@@ -200,6 +218,9 @@ async function main(argv = process.argv.slice(2)) {
   };
   const probeArguments = [process.execPath, probePath, inputPath, "--backend", backend,
     "--samples", get("--samples", "3"), "--repetitions", get("--repetitions", "1")];
+  if (generatedResident) probeArguments.push("--generated-resident");
+  const warmups = get("--warmups", null);
+  if (warmups !== null) probeArguments.push("--warmups", warmups);
   const reference = get("--reference-fixtures", null);
   if (reference) probeArguments.push("--reference-fixtures", path.resolve(reference));
   const probeSource = fs.readFileSync(probePath, "utf8");
@@ -212,7 +233,7 @@ async function main(argv = process.argv.slice(2)) {
     name => name === "../../tools/native-kernel/compiler.cjs"
       ? { compileKernel: async options => { assert.equal(options.sourcePath, sourcePath); return copiedBuild; } }
       : ordinaryRequire(name),
-    __dirname, { argv: probeArguments, cpuUsage: process.cpuUsage.bind(process) },
+    __dirname, { argv: probeArguments, cpuUsage: process.cpuUsage.bind(process), resourceUsage: process.resourceUsage.bind(process) },
     { log: text => { probeReport = JSON.parse(text); }, error: error => { throw error; } },
   );
   assert(probeReport, "probe failed to publish checked results");
@@ -224,7 +245,7 @@ async function main(argv = process.argv.slice(2)) {
   const functions = summarize(functionNames, counters.functions), phaseTotals = summarize(phases, counters.phases);
   const calls = probeReport.timedCalls + probeReport.warmupCalls;
   for (const phase of phases) assert.equal(phaseTotals[phase].calls, calls, "unexpected call schedule: " + phase);
-  const sums = key => phases.slice(1, 7).reduce((sum, name) => sum + phaseTotals[name][key], 0);
+  const sums = key => phases.slice(1, -1).reduce((sum, name) => sum + phaseTotals[name][key], 0);
   const residual = {
     coreOtherWallSeconds: phaseTotals.attempt.wallSeconds - sums("wallSeconds"),
     coreOtherThreadCpuSeconds: phaseTotals.attempt.threadCpuSeconds - sums("threadCpuSeconds"),
@@ -233,10 +254,12 @@ async function main(argv = process.argv.slice(2)) {
   };
   for (const [file, original] of Object.entries(originals))
     assert.equal(sha(fs.readFileSync(path.join(canonical, file))), sha(original), "canonical artifact changed: " + file);
-  const report = { ...provenance, probeSha256: sha(probeSource), functions, phaseTotals, residual, probe: probeReport };
+  const report = { ...provenance, probeSha256: sha(probeSource),
+    instrumentedAddonSha256: sha(fs.readFileSync(path.join(directory, "build/Release/sagejs_native_kernel.node"))),
+    functions, phaseTotals, residual, probe: probeReport };
   fs.writeFileSync(path.join(directory, "profile.json"), JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report));
 }
 
-module.exports = { instrument, maskC, main };
+module.exports = { instrument, maskC, profileLayout, main };
 if (require.main === module) main().catch(error => { console.error(error); process.exitCode = 1; });
