@@ -26,6 +26,7 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
   };
   const repetitions = positiveCount("--repetitions", 1);
   const sampleCount = positiveCount("--samples", 3);
+  const wordCapacity = positiveCount("--word-capacity", 64);
   assert(Number.isSafeInteger(repetitions * sampleCount), "unsafe total call count");
   const outputPath = option("--output", null);
   const inputPath = path.resolve(process.argv[2]);
@@ -41,11 +42,12 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
   assert(Array.isArray(names) && Array.isArray(inputs));
   assert.equal(inputs.length, 1, "bounded single-field diagnostic only");
   const raw = inputs[0];
-  // Reserve at least 64 limbs, or enough for the supplied input integers.
+  // Reserve the selected fixed limb count (64 by default), or enough for input.
+  // CUP keeps its separate four-word floor. No computed result changes capacity.
   // Capacities are fixed before entry, never grown from computed results.
   const capacities = {};
   for (const [name, kind] of names) if (kind === "IntegerBuffer") {
-    let words = name.startsWith("hnf_cup_") ? 4 : 64;
+    let words = name.startsWith("hnf_cup_") ? 4 : wordCapacity;
     for (const entry of raw[name]) {
       const value = BigInt(entry), magnitude = value < 0n ? -value : value;
       words = Math.max(words, Math.ceil(magnitude.toString(2).length / 64));
@@ -156,7 +158,9 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
     sourceSha256: createHash("sha256").update(fs.readFileSync(sourcePath)).digest("hex"),
     coreSha256: createHash("sha256").update(fs.readFileSync(built.coreSourcePath)).digest("hex"),
     ownerBytes: bytes, resetSnapshotBytes: bytes, setupMilliseconds,
-    largeInputCapacities: Object.fromEntries(Object.entries(capacities).filter(([, words]) => words > 64)),
+    ordinaryWordCapacity: wordCapacity, cupWordCapacity: 4,
+    largeInputCapacities: Object.fromEntries(Object.entries(capacities)
+      .filter(([name, words]) => words > (name.startsWith("hnf_cup_") ? 4 : wordCapacity))),
     samples, answer,
   };
   const json = JSON.stringify(report);

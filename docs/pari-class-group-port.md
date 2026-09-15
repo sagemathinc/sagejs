@@ -2,6 +2,15 @@
 
 ## One native quartic retry computation (2026-09-15)
 
+The subsequent copied-artifact profile attributes approximately 38 ms to
+collection, 39 ms to logarithms and 33 ms to HNF; C/N-API entry adds less than
+1 ms. See `bench/pari-class-group-port/prepared_phase_profile.md` for exact
+provenance and qualification limits. An eight-word capacity diagnostic reduces
+owner storage 6.4-fold but still takes approximately 100–107 ms. Independent
+phase audits identify arithmetic-leaf and representation differences, including
+separate quotient/remainder calls and integer Newton square roots. These are
+specific next experiments, not evidence that any one change closes the gap.
+
 `pari_prepared_class_group_resumable` now completes the actual prepared-field
 path for `x^4-20018*x-20034` in one native entry. It independently collects
 150 relations, requests one more after regulator reconstruction rejects,
