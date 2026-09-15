@@ -109,9 +109,11 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
     for (const restore of reset) restore();
     const resetMilliseconds = performance.now() - resetStart;
     const resetUsage = process.cpuUsage(resetCpu);
+    const faultsBefore = process.resourceUsage();
     const cpu = process.cpuUsage(), start = performance.now();
     const action = f[backend](...args);
     const milliseconds = performance.now() - start, usage = process.cpuUsage(cpu);
+    const faultsAfter = process.resourceUsage();
     // Decode and assert every individual result/counter outside both clocks.
     const state = view("attempt_state"), count = Number(state[2]);
     const current = {
@@ -141,6 +143,8 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
     answer = current;
     return {
       milliseconds, cpuMilliseconds: (usage.user + usage.system) / 1000,
+      minorPageFaults: faultsAfter.minorPageFault - faultsBefore.minorPageFault,
+      majorPageFaults: faultsAfter.majorPageFault - faultsBefore.majorPageFault,
       resetMilliseconds,
       resetCpuMilliseconds: (resetUsage.user + resetUsage.system) / 1000,
     };
@@ -149,6 +153,7 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
   for (let sample = 0; sample < sampleCount; sample++) {
     const totals = {
       repetitions, milliseconds: 0, cpuMilliseconds: 0,
+      minorPageFaults: 0, majorPageFaults: 0,
       resetMilliseconds: 0, resetCpuMilliseconds: 0,
     };
     for (let repetition = 0; repetition < repetitions; repetition++) {

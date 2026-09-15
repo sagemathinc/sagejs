@@ -83,3 +83,18 @@ default. The negative result does not refute the allocation finding: this
 whole-call bump allocator neither reuses individual freed spans nor retains its
 slab between calls. Memory traffic and page faults are hypotheses for the next
 diagnostic, not yet established causes. Measure them before proposing reuse.
+
+## Page-fault diagnostic
+
+`arena-page-faults-20260915.json` records three post-warmup fresh calls per arm,
+using the same core, input and owner policy. The bump arena records 56,274 minor
+faults total (18,758 per call), versus zero for the baseline. Both record zero
+major faults and preserve all exact results and work counters. Owner resets are
+outside the fault window. The counters are process-wide `resourceUsage` deltas,
+not thread-local samples; timing bookkeeping is also within their window.
+
+This supports investigating fresh-page churn in the arena; it does not measure
+DRAM bandwidth or prove that page faults explain the entire slowdown. A bounded
+next experiment is checkpoint-local reuse of freed small blocks, preserving
+allocator ownership, realloc contents, cleanup and resource limits. The change
+must pass allocator controls before another full native comparison.
