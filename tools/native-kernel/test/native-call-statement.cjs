@@ -102,7 +102,7 @@ def update(a:IntegerBuffer,b:IntegerBuffer,x:int)->int:
     return len(a)+len(b)
 @native
 def run(owner:IntegerBuffer,start:int,length:int,x:int)->int:
-    first=integer_buffer_view(owner,start,length)
+    first:IntegerBuffer=integer_buffer_view(owner,start,length)
     alias=integer_buffer_view(first,length-1,1)
     return update(first,alias,x)
 @native
@@ -152,6 +152,7 @@ for start,length in [(-1,1),(0,-1),(5,0),(3,2),(2**100,0),(0,2**100)]:
   assert.doesNotMatch(core,/\bnapi_|\bPyObject\b/);
   assert.match(core,/\.sizes \+=/);assert.match(core,/\.limbs \+=/);
   await assert.rejects(()=>lowerSource(`from sagejs.native import native,IntegerBuffer,integer_buffer_view\n@native\ndef escape(a:IntegerBuffer)->IntegerBuffer:\n    return integer_buffer_view(a,0,1)\n`,"escape.py"));
+  await assert.rejects(()=>lowerSource(`from sagejs.native import native,IntegerBuffer\n@native\ndef alias(a:IntegerBuffer)->int:\n    b:IntegerBuffer=a\n    return len(b)\n`,"alias.py"),/require integer_buffer_view/);
 });
 test("exact kernels publish Float64 results without integer reinterpretation",async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-exact-float-result-")),source=path.join(dir,"result.py");

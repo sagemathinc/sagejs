@@ -3228,8 +3228,8 @@ function lowerAssignment(statement, context) {
     expect(
       context,
       assign.annotation,
-      ["Integer", "uint64", "bool", "Float64"].includes(declaredType),
-      "native exact local annotation must be Integer, int, uint64, bool, or Float64",
+      ["Integer", "uint64", "bool", "Float64", "IntegerBuffer"].includes(declaredType),
+      "native exact local annotation must be Integer, int, uint64, bool, Float64, or a borrowed IntegerBuffer view",
     );
     const operations = [];
     let value = lowerExpression(
@@ -3242,6 +3242,11 @@ function lowerAssignment(statement, context) {
     );
     if (declaredType === "Integer") {
       value = coerceInteger(value, context, assign.value, operations);
+    }
+    if (declaredType === "IntegerBuffer") {
+      expect(context, assign.value, operations.some((operation) =>
+        operation.kind === "integer.buffer.view" && operation.target === value.name),
+      "annotated IntegerBuffer locals require integer_buffer_view()");
     }
     expect(
       context,
