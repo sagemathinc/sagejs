@@ -249,6 +249,16 @@
       "commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
       "workspace_fingerprint": "56a72c62021771f1e79c68e0f2d2463a20227d30f77a68a0b985f1200e4971ba",
       "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/meter_command.py prlimit --as=4294967296 node --test tools/native-kernel/test/float64-log.cjs tools/native-kernel/test/mixed-exact-float64.cjs tools/native-kernel/test/native-call-statement.cjs tools/native-kernel/test/relative-native-imports.cjs tools/native-kernel/test/explicit-errors.cjs tools/native-kernel/test/integer-bit-length.cjs tools/native-kernel/test/integer-shifts.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.34,
+      "started_at": "2026-09-15T01:51:34.857Z",
+      "commit": "17ac1e5435b4c93ad1bd7b100f3249e3e434b1bc",
+      "workspace_fingerprint": "e1882562425aaae07f7a991ed4cd1866bd81bfb9e7b4eb4ec74482c7223ea691",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
