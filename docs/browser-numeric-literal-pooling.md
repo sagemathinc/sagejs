@@ -59,3 +59,21 @@ is removed; its huge ratio is not a whole-program speedup. The materialized
 list/sum probe gives approximately 15x (Python) and 3x (Sage), and includes
 assertions on both its length and numerical sum. Startup remains a separate
 cost; this change does not establish a startup improvement.
+
+## Handoff status
+
+The full local build passes, including the native-kernel pack after provisioning
+FLINT and its generated FFI adapter. Architecture checks, seven focused Node
+pool tests, the browser policy/session tests, and three literal-evaluation and
+float-coercion checks pass. Both browser modes pass the component qualification
+above with pooling on and off.
+
+The broader compiler fixture suite is not green: 24 pass, 34 are skipped by
+existing fixture policy, and 8 fail. Seven failures report missing polynomial
+module imports (`packed_prime_field`, `field_capabilities`, or
+`extension_mpoly_backend`); `algebra.py` times out. The polynomial failure also
+reproduces alone after the complete native build, so it is not merely the
+earlier missing-addon setup problem. This fixture harness does not enable
+numeric pooling, but that observation alone is not a baseline comparison.
+No assertions, classifications, or timeouts have been relaxed. PR #289 remains
+draft pending accounting for these broader failures and CI results.
