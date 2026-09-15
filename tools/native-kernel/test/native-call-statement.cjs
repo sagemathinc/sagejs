@@ -70,7 +70,7 @@ def caller(x:int)->float:
     return scalar(x)
 `);
   const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
-  for(const name of ['scalar','caller'])for(const fn of [mod[name],mod[name].gmp,mod[name].javascript]){
+  for(const name of ['scalar','caller'])for(const fn of [mod[name],mod[name].gmp,mod[name].tagged,mod[name].javascript]){
     assert.equal(fn(3n),1.5);assert.equal(fn(-3n),-1.5);assert(Object.is(fn(0n),-0));
   }
 });
@@ -90,9 +90,8 @@ def outer(x:int)->int:
 `);
   const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
   for(const [name,offset] of [['inner',0n],['middle',1n],['outer',2n]]){
-    for(const backend of ['javascript','gmp'])assert.equal(mod[name][backend](8n),3n+offset);
+    for(const backend of ['javascript','gmp','tagged'])assert.equal(mod[name][backend](8n),3n+offset);
     assert.equal(mod[name](8n),3n+offset);
-    assert.throws(()=>mod[name].tagged(8n),/not available for mixed/);
   }
   const ir=await lowerSource(fs.readFileSync(source,'utf8'),source);
   for(const fn of ir.functions){assert.equal(fn.analysis.backend.kind,'gmp');assert.equal(fn.analysis.mixedFloat64,true);}

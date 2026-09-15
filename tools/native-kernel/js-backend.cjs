@@ -1204,9 +1204,6 @@ function emitExactPublicFunction(fn, automaticSelection) {
     fn.analysis.liveExactWorkspace ?? null,
   );
   const selection = automaticSelectionCode(fn, automaticSelection);
-  const taggedGuard = exactUsesFloat64(fn)
-    ? '  throw new Error("tagged native backend is not available for mixed exact/Float64 programs");'
-    : "";
   return `${emitExactFallback(fn)}
 
 ${selection.declaration}
@@ -1229,13 +1226,8 @@ function backend_${fn.name}(${args}) {
   }
   if (nativeAddon === null) return "bigint";
 ${exactUsesFloat64(fn)
-    ? '  if (integerBackendOverride === "tagged") {\n' +
-      '    if (requestedNativeMode === "native" &&\n' +
-      '        process.env.SAGEJS_NATIVE_INTEGER_BACKEND === undefined) {\n' +
-      '      return "gmp";\n' +
-      '    }\n' +
-      '    throw new Error("tagged native backend is not available for mixed exact/Float64 programs");\n' +
-      "  }"
+    ? '  if (integerBackendOverride === "tagged" && requestedNativeMode === "native" &&\n' +
+      '      process.env.SAGEJS_NATIVE_INTEGER_BACKEND === undefined) return "gmp";'
     : ""}
   if (integerBackendOverride !== "auto") return integerBackendOverride;
 ${selection.decision}
@@ -1260,7 +1252,6 @@ ${fn.name}.bigint = ${fn.name}.javascript;
 ${fn.name}.tagged = function (${declaredParams}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
-${taggedGuard}
   if (nativeAddon === null) {
     throw new Error("tagged native backend is not available");
   }

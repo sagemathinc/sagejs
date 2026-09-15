@@ -45,6 +45,8 @@ function taggedName(name) {
 }
 
 function scalarType(type, fn) {
+  if (type === "Float64") return "double";
+  if (type === "Float64Buffer") return "sagejs_float64_buffer";
   if (type === "uint64") return "uint64_t";
   if (type === "bool") return "int";
   if (type === "Int64Buffer" || type === "Int64Record") {
@@ -130,6 +132,45 @@ function emitTaggedOperation(operation, context, indent) {
   const target = operation.target === undefined
     ? undefined
     : taggedValue(operation.target, context);
+  if (operation.kind.startsWith("float64.") ||
+      operation.kind === "integer.from_float64" ||
+      operation.kind === "integer.round_float64") {
+    // Reuse GMP's floating semantics, adapting only explicit integer edges.
+    // Function-owned temporaries are cleared by the ordinary failure path.
+    const outputs = operation.results?.map(result => result.name) ||
+      (operation.target === undefined ? [] : [operation.target]);
+    const integerOutputs = outputs.filter(name => context.types.get(name) === "Integer");
+    const integerInputs = [operation.source, operation.exponent]
+      .filter(name => name !== undefined && context.types.get(name) === "Integer");
+    if (integerInputs.length > 1 || integerOutputs.length > 1) {
+      throw new Error("unsupported mixed tagged conversion arity");
+    }
+    const aliases = new Map();
+    const lines = [];
+    for (const name of integerInputs) {
+      const source = taggedValue(name, context);
+      aliases.set(name, "sagejs_mixed_input");
+      lines.push(`${indent}if ((${source})->is_big)`,
+        `${indent}    mpz_set(sagejs_mixed_input, (${source})->big);`,
+        `${indent}else`,
+        `${indent}    set_mpz_int64(sagejs_mixed_input, (${source})->small);`);
+    }
+    for (const name of integerOutputs) aliases.set(name, "sagejs_mixed_output");
+    lines.push(context.emitMixedOperation(operation, {
+      ...context,
+      value: name => aliases.get(name) || taggedValue(name, context),
+    }, indent));
+    for (const name of integerOutputs) {
+      const output = taggedValue(name, context);
+      lines.push(`${indent}if (mpz_to_int64(sagejs_mixed_output, &sagejs_mixed_small))`,
+        `${indent}    sagejs_tagged_set_small(${output}, sagejs_mixed_small);`,
+        `${indent}else {`,
+        `${indent}    sagejs_tagged_make_big(${output});`,
+        `${indent}    mpz_set((${output})->big, sagejs_mixed_output);`,
+        `${indent}}`);
+    }
+    return lines.join("\n");
+  }
   if (operation.kind === "integer.constant") {
     return setInteger(target, operation.value, indent);
   }
@@ -563,7 +604,7 @@ function emitTaggedOperation(operation, context, indent) {
       taggedValue(argument.name, context)
     );
     return [
-      `${indent}if (!tagged_${operation.function}(status, ${outputs.join(", ")}` +
+      `${indent}if (!${callee.kernelKind === "float64" ? "sagejs_kernel" : "tagged"}_${operation.function}(status, ${outputs.join(", ")}` +
         `${args.length ? `, ${args.join(", ")}` : ""}))`,
       `${indent}    goto fail;`,
     ].join("\n");
@@ -726,12 +767,16 @@ function emitTaggedStatements(statements, context, indent) {
   return lines.filter(Boolean).join("\n");
 }
 
-function emitTaggedFunction(fn, functions) {
+function emitTaggedFunction(fn, functions, options) {
   const storage = fn.analysis.storage;
   const types = new Map(
     [...fn.params, ...fn.locals].map((value) => [value.name, value.type]),
   );
-  const sites = promotionSites(fn);
+  const mixed = fn.analysis?.mixedFloat64 || [...fn.params, ...fn.locals]
+    .some(value => value.type === "Float64" || value.type === "Float64Buffer");
+  // The all-word speculative loop is not yet qualified for Float64 edges.
+  // Tagged arithmetic itself still uses its small-value fast paths.
+  const sites = mixed ? new Map() : promotionSites(fn);
   const tagLocals = new Set([
     ...storage.mutableParameters,
     ...fn.locals
@@ -741,6 +786,12 @@ function emitTaggedFunction(fn, functions) {
   const declarations = [];
   const tagInitialization = [];
   const cleanup = [];
+  if (mixed) {
+    declarations.push("    mpz_t sagejs_mixed_input, sagejs_mixed_output;",
+      "    int64_t sagejs_mixed_small;");
+    tagInitialization.push("    mpz_init(sagejs_mixed_input); mpz_init(sagejs_mixed_output);");
+    cleanup.push("        mpz_clear(sagejs_mixed_output); mpz_clear(sagejs_mixed_input);");
+  }
   for (const name of tagLocals) {
     declarations.push(`    sagejs_tagged_int ${taggedName(name)};`);
     tagInitialization.push(`    sagejs_tagged_init(&${taggedName(name)});`);
@@ -777,7 +828,8 @@ function emitTaggedFunction(fn, functions) {
     }
     declarations.push(`    ${scalarType(local.type, fn)} ${taggedName(local.name)} = ` +
       `${local.type === "Int64Buffer" || local.type === "Int64Record" ||
-        local.type === "IntegerBuffer" || local.type === "UInt64Buffer"
+        local.type === "IntegerBuffer" || local.type === "UInt64Buffer" ||
+        local.type === "Float64Buffer"
         ? "{0}" : "0"};`);
   }
   const integerNames = [
@@ -787,7 +839,10 @@ function emitTaggedFunction(fn, functions) {
   for (const value of integerNames) {
     declarations.push(`    int64_t ${wordName(value.name)} = 0;`);
   }
+  let mixedSerial = 0;
   const context = {
+    emitMixedOperation: options.emitMixedOperation,
+    freshIdentifier: prefix => `${prefix}_${mixedSerial++}`,
     functions,
     sites,
     storage,
@@ -859,7 +914,7 @@ function emitTaggedFunction(fn, functions) {
   // Foreign resources have no machine-word ABI.  A dead `if (0)` word body
   // still has to type-check nonexistent word callees and resource locals in
   // C, so resource-bearing functions must enter directly through tagged IR.
-  const wordExecution = hasPublicResource
+  const wordExecution = hasPublicResource || mixed
     ? ""
     : `    if (${fastGuard})
     {
@@ -990,14 +1045,14 @@ ${cleanup.join("\n")}
 }`;
 }
 
-function generateTaggedFunctions(functions) {
-  const functionMap = new Map(functions.map((fn) => [fn.name, fn]));
+function generateTaggedFunctions(functions, options = {}) {
+  const functionMap = new Map((options.functions || functions).map((fn) => [fn.name, fn]));
   return {
     prototypes: functions.map((fn) => taggedSignature(fn, true)).join("\n"),
     functions: functions
       .map((fn) => fn.analysis?.backend?.requiresExactWorkspace
         ? emitGmpWorkspaceBridge(fn)
-        : emitTaggedFunction(fn, functionMap))
+        : emitTaggedFunction(fn, functionMap, options))
       .join("\n\n"),
   };
 }
