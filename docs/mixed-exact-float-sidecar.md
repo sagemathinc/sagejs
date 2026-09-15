@@ -600,3 +600,47 @@ The port's 49-case one-word diagnostic changes from 67.7–68.2 ms to
 These are separate short three-sample runs, not qualified paired speedups;
 PARI remains around 0.4 ms. The representation/entry overhead remains large,
 and neither whole-collector improvement nor class-group parity follows.
+
+## Explicit tagged execution for mixed exact/binary64 graphs
+
+The class-group port's resident full-attempt experiment exposed a capability
+gap: explicit tagged execution was rejected solely because the transitive
+graph contained Float64 operations. This follow-up supersedes the historical
+mixed-tagged restrictions recorded above; it makes no new speed claim.
+
+Mixed exact functions now have genuine tagged bodies and tagged public
+adapters, including Float64 scalar/tuple results and borrowed Float64 buffers.
+They reuse the GMP backend's floating-operation emitter and therefore its
+conversion rounding, nonfinite checks, domain/range failures, signed-zero
+behavior, and operation ordering. Explicit integer/floating edges use
+function-owned GMP temporaries, cleared on both success and failure; results
+that fit machine integers normalize back to tagged-small values. This change
+adds no whole-function GMP replacement or name-selected code; preexisting
+exact-workspace bridge eligibility remains unchanged.
+Pure Float64 callees are direct isolated native calls, and mixed exact callees
+use tagged calls. Transitive integer-only wrappers inherit this capability.
+
+Initially mixed functions enter tagged IR directly rather than using the
+separate speculative all-word loop. Each tagged exact operation still uses
+its established small-value path and promotes exactly as necessary. Pure
+exact callees retain their existing word-loop optimization. This distinction
+must remain visible when interpreting future timings. Automatic mixed
+selection and implicit native-mode selection remain GMP; explicit `.tagged`
+and explicit backend overrides now work. The dynamic fallback is unchanged.
+
+Focused differentials include 80 CPython conversion/rounding/exact-promotion
+cases across JS/GMP/tagged, nested calls and tuple results, scalar wrappers
+with only transitive floating dependencies, nonfinite/decomposition/scaling
+boundaries, borrowed-buffer mutation and evaluation order, range/domain/index
+failures, and explicit backend selection. Generated cores remain callback-free.
+Standalone Wasm is still skipped when the WASI toolchain is absent; these
+local native tests do not qualify new Windows or browser performance claims.
+
+The seven-file focused regression run passes 26 tests with one unavailable-WASI
+skip. The architecture gate reaches a preexisting stale optimizer-opportunity
+manifest and is not green; its manifest was not refreshed to hide the issue.
+A separate tiny tagged-GCD sanitizer regression passes under a 4 GiB resident
+memory watchdog (peak 391,741,440 bytes). That sanitizer alone needs an
+address-space-limit exception for ASan's reserved shadow mapping; ordinary
+diagnostics retain the 4 GiB address-space cap. These checks do not replace a
+full integration/release run or a matched resident class-group measurement.

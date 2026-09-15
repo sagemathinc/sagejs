@@ -64,6 +64,80 @@ function run(command, args, options = {}) {
   return result.stdout.trim();
 }
 
+test("mixed tagged graphs preserve conversions, tuples, nested calls and guards", async () => {
+  const dir=mkdtempSync(join(tmpdir(),"sagejs-mixed-tagged-"));
+  const filename=join(dir,"mixed.py");
+  const source=`from sagejs.native import native, Float64Buffer, checked_float64
+from math import frexp, ldexp, copysign, log, log2, atan, pow
+def floating(x:float)->float:
+    return atan(log(x)) + log2(x) + pow(x, 0.5)
+@native
+def conversion(x:int, values:Float64Buffer)->tuple[float,int,float]:
+    y = float(x)
+    m, e = frexp(y)
+    values[0] = copysign(ldexp(m,e),values[0])
+    return y, round(values[1]), values[0]
+@native
+def nested(x:int, values:Float64Buffer)->tuple[float,int,float]:
+    y, integer, signed = conversion(x, values)
+    return y, integer + x * x, signed
+@native
+def scheduling(x:int, values:Float64Buffer)->int:
+    values[0] = floating(checked_float64(x))
+    return x*x + int(values[0])
+@native
+def division(x:int, values:Float64Buffer)->int:
+    values[0] = checked_float64(x) / values[0]
+    return int(values[0])
+@native
+def hidden_float(x:int)->int:
+    return int(float(x))
+@native
+def integer_wrapper(x:int)->int:
+    return hidden_float(x) + 1
+@native
+def decomposition(x:float, exponent:int)->tuple[float,int,float]:
+    mantissa, power = frexp(x)
+    return mantissa, power, ldexp(x, exponent)
+`;
+  writeFileSync(filename,source);
+  const built=await compileKernel({sourcePath:filename}),mod=require(built.modulePath);
+  const core=readFileSync(built.coreSourcePath,"utf8");
+  assert.match(core,/tagged_nested/);assert.match(core,/tagged_conversion\(status/);
+  assert.match(core,/sagejs_kernel_floating\(status/);
+  assert.doesNotMatch(core,/napi_call_function|PyObject_Call/);
+  const integers=[0n,1n,-1n,(1n<<53n)+1n,(1n<<53n)+3n,(1n<<63n)-1n,1n<<63n,-(1n<<63n)-1n,1n<<200n,-(1n<<200n)];
+  const cases=integers.flatMap(x=>[-2.5,-1.5,-0.5,0,0.5,1.5,2.5,2**100].map(y=>[String(x),-1,y]));
+  const python=process.env.PYTHON||(process.platform==='win32'?'python':'python3');
+  const expected=JSON.parse(run(python,['-c',`import sys,json
+sys.path.insert(0,sys.argv[1]);namespace={};exec(compile(open(sys.argv[2]).read(),sys.argv[2],'exec'),namespace);f=namespace['nested']
+out=[]
+for x,s,y in json.load(sys.stdin):
+ v=[s,y];r=f(int(x),v);out.append([repr(r[0]),str(r[1]),repr(r[2])])
+print(json.dumps(out))`,join(root,'src/lib'),filename],{input:JSON.stringify(cases)}));
+  for(let i=0;i<cases.length;i++)for(const backend of ['javascript','gmp','tagged']){
+    const [x,s,y]=cases[i],v=[s,y],got=mod.nested[backend](BigInt(x),v),want=expected[i];
+    assert(Object.is(got[0],Number(want[0])));assert.equal(got[1],BigInt(want[1]));assert(Object.is(got[2],Number(want[2])));assert(Object.is(v[0],got[2]));
+  }
+  for(const backend of ['javascript','gmp','tagged']){
+    assert.equal(mod.integer_wrapper[backend]((1n<<53n)+1n),(1n<<53n)+1n);
+    const f=mod.conversion[backend];
+    assert.throws(()=>f(1n<<2000n,[1,0]),/binary64 range|too large/);
+    for(const x of [NaN,Infinity,-Infinity])assert.throws(()=>f(1n,[1,x]),/NaN|infinity/);
+    assert.throws(()=>mod.division[backend](2n,[0]),/division by zero/);
+    assert.throws(()=>mod.scheduling[backend](0n,[77]),/domain error/);
+    assert.throws(()=>mod.scheduling[backend]((1n<<53n)+1n,[77]),/exact binary64 range/);
+    assert.throws(()=>f(1n,[]),/out of range/);
+    const v=[0];assert.equal(mod.scheduling[backend](3n,v),mod.scheduling.gmp(3n,[0]));
+  }
+  for(const x of [0,-0,Number.MIN_VALUE,-Number.MIN_VALUE,1,-1,Number.MAX_VALUE,Infinity,-Infinity,NaN])
+    for(const exponent of [-(1n<<100n),-1n,0n,1n,1n<<100n]){
+      let want;try{want=mod.decomposition.gmp(x,exponent);}catch(error){assert.throws(()=>mod.decomposition.tagged(x,exponent),/math range error/);continue;}
+      const got=mod.decomposition.tagged(x,exponent);
+      for(let i=0;i<3;i++)assert(typeof want[i]==='bigint'?got[i]===want[i]:Number.isNaN(want[i])?Number.isNaN(got[i]):Object.is(got[i],want[i]));
+    }
+});
+
 test("exact IR explicitly isolates an approximate Float64 sidecar", async () => {
   const ir = await lowerSource(witnessSource, witnessPath);
   const exact = ir.functions.find((fn) =>
@@ -214,7 +288,7 @@ print("MIXED_EXACT_FLOAT64_OK")
     assert.ok(compiled.addonPath);
     const compiledModule = require(compiled.modulePath);
     const compiledFunction = compiledModule.exact_with_float64_sidecar;
-    for (const execute of [compiledModule.truncate_float, compiledModule.truncate_float.javascript]) {
+    for (const execute of [compiledModule.truncate_float, compiledModule.truncate_float.javascript, compiledModule.truncate_float.tagged]) {
       for (const value of [0, -0, 1.75, -1.75, Number.MIN_VALUE, 2 ** 100, -(2 ** 100), Number.MAX_VALUE]) {
         assert.equal(execute([value]), BigInt(Math.trunc(value)));
       }
@@ -222,8 +296,8 @@ print("MIXED_EXACT_FLOAT64_OK")
       assert.throws(() => execute([Infinity]), /cannot convert float infinity to integer/);
       assert.throws(() => execute([-Infinity]), /cannot convert float infinity to integer/);
     }
-    for (const mode of ["native", "javascript"]) {
-      const fn = name => mode === "native" ? compiledModule[name] : compiledModule[name].javascript;
+    for (const mode of ["native", "javascript", "tagged"]) {
+      const fn = name => mode === "native" ? compiledModule[name] : compiledModule[name][mode];
       for (const name of ["assignment_order", "augmented_order"]) {
         const value = [3.0];
         assert.equal(fn(name)(value), 3n);
@@ -240,12 +314,12 @@ print("MIXED_EXACT_FLOAT64_OK")
       compiledFunction.backendFor(7n, new Float64Array([3.0, 0.0, 0.0])),
       "gmp",
     );
-    assert.throws(
-      () => compiledFunction.tagged(
+    assert.equal(
+      compiledFunction.tagged(
         7n,
         new Float64Array([3.0, 0.0, 0.0]),
       ),
-      /tagged native backend is not available/,
+      8n,
     );
     const native = run(process.execPath, [sagejs, executableSource], {
       env: {
@@ -256,6 +330,13 @@ print("MIXED_EXACT_FLOAT64_OK")
     assert.match(native, /compiled=True/);
     assert.match(native, /backend=gmp/);
     assert.match(native, /MIXED_EXACT_FLOAT64_OK/);
+
+    const tagged = run(process.execPath, [sagejs, executableSource], {
+      env: { SAGEJS_NATIVE_CACHE_DIR: cacheRoot, SAGEJS_NATIVE_REQUIRED: "1",
+        SAGEJS_NATIVE_INTEGER_BACKEND: "tagged" },
+    });
+    assert.match(tagged, /backend=tagged/);
+    assert.match(tagged, /MIXED_EXACT_FLOAT64_OK/);
 
     const dynamic = run(process.execPath, [sagejs, executableSource], {
       env: {

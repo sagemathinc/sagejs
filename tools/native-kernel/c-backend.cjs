@@ -318,6 +318,7 @@ function emitOperation(operation, locals, indent) {
 }
 
 function exactValue(name, context) {
+  if (context.value !== undefined) return context.value(name);
   const slot = context.storage.slots[name];
   if (slot !== undefined) return `sagejs_scratch_${slot}`;
   if ((context.storage.borrowedLocals || []).includes(name)) return cName(name);
@@ -1496,7 +1497,7 @@ ${indent}    }
 ${indent}}`;
   }
   if (operation.kind.startsWith("float64.")) {
-    return emitFloat64Operation(operation, indent);
+    return emitFloat64Operation(operation, indent, (name) => exactValue(name, context));
   }
   if (operation.kind === "native.call") {
     const callee = context.functions.get(operation.function);
@@ -2350,10 +2351,12 @@ function emitTaggedWrapper(fn, options = {}) {
         : `    result = create_tagged_bigint(env, &${value});`);
     } else {
       declarations.push(
-        `    ${type === "uint64" ? "uint64_t" : "int"} ${value};`,
+        `    ${type === "Float64" ? "double" : type === "uint64" ? "uint64_t" : "int"} ${value};`,
       );
       resultArguments.push(`&${value}`);
-      const create = type === "bool"
+      const create = type === "Float64"
+        ? `napi_create_double(env, ${value}, ${tupleResult ? `&${wrapperItem}` : "&result"})`
+        : type === "bool"
         ? `napi_get_boolean(env, ${value} != 0, ` +
           `${tupleResult ? `&${wrapperItem}` : "&result"})`
         : `napi_create_bigint_uint64(env, ${value}, ` +
@@ -2649,12 +2652,6 @@ ${cleanup.join("\n")}
 }
 
 function emitExactWrappers(fn) {
-  if (usesMixedFloat64(fn)) {
-    return `${emitExactWrapper(fn)}\n\n` +
-      `static napi_value compiled_${fn.name}(` +
-      `napi_env env, napi_callback_info info)\n` +
-      `{\n    return compiled_${fn.name}_gmp(env, info);\n}`;
-  }
   if (fn.analysis?.backend?.kind === "fmpz") {
     return [
       emitExactWrapper(fn, {
@@ -2882,10 +2879,10 @@ ${freeBuffers}
 }`;
 }
 
-function emitFloat64Operation(operation, indent) {
-  const target = cName(operation.target);
+function emitFloat64Operation(operation, indent, value = cName) {
+  const target = value(operation.target);
   if (operation.kind === "float64.pow") {
-    const left = cName(operation.left), right = cName(operation.right);
+    const left = value(operation.left), right = value(operation.right);
     return [
       `${indent}if (${left} == 0.0 && ${right} < 0.0 && isfinite(${right})) {`,
       statusFailure("range", "math domain error", `${indent}  `),
@@ -2909,19 +2906,19 @@ function emitFloat64Operation(operation, indent) {
     return `${indent}${target} = ${operation.value};`;
   }
   if (operation.kind === "float64.copy" || operation.kind === "uint64.copy") {
-    return `${indent}${target} = ${cName(operation.source)};`;
+    return `${indent}${target} = ${value(operation.source)};`;
   }
   if (operation.kind === "float64.from_uint64") {
-    return `${indent}${target} = (double)${cName(operation.source)};`;
+    return `${indent}${target} = (double)${value(operation.source)};`;
   }
   if (operation.kind === "float64.abs") {
-    return `${indent}${target} = fabs(${cName(operation.source)});`;
+    return `${indent}${target} = fabs(${value(operation.source)});`;
   }
   if (operation.kind === "float64.atan") {
-    return `${indent}${target} = atan(${cName(operation.source)});`;
+    return `${indent}${target} = atan(${value(operation.source)});`;
   }
   if (["float64.sqrt", "float64.log", "float64.log2"].includes(operation.kind)) {
-    const source = cName(operation.source);
+    const source = value(operation.source);
     const logarithm = operation.kind !== "float64.sqrt";
     return [
       `${indent}if (${source} ${logarithm ? "<=" : "<"} 0.0)`,
@@ -2933,19 +2930,19 @@ function emitFloat64Operation(operation, indent) {
     ].join("\n");
   }
   if (operation.kind === "float64.negate") {
-    return `${indent}${target} = -${cName(operation.source)};`;
+    return `${indent}${target} = -${value(operation.source)};`;
   }
   if (operation.kind === "float64.compare" ||
       operation.kind === "uint64.compare") {
     const operator = {
       eq: "==", ne: "!=", lt: "<", le: "<=", gt: ">", ge: ">=",
     }[operation.operation];
-    return `${indent}${target} = ${cName(operation.left)} ${operator} ` +
-      `${cName(operation.right)};`;
+    return `${indent}${target} = ${value(operation.left)} ${operator} ` +
+      `${value(operation.right)};`;
   }
   if (operation.kind === "uint64.binary") {
-    const left = cName(operation.left);
-    const right = cName(operation.right);
+    const left = value(operation.left);
+    const right = value(operation.right);
     const operator = uint64COperator(operation.operation);
     if (isUint64Shift(operation.operation)) {
       return [
@@ -2964,15 +2961,15 @@ function emitFloat64Operation(operation, indent) {
     return `${indent}${target} = ${left} ${operator} ${right};`;
   }
   if (operation.kind === "float64.buffer.copy") {
-    return `${indent}${target} = ${cName(operation.source)};`;
+    return `${indent}${target} = ${value(operation.source)};`;
   }
   if (operation.kind === "float64.buffer.length") {
-    return `${indent}${target} = (uint64_t) ${cName(operation.buffer)}.length;`;
+    return `${indent}${target} = (uint64_t) ${value(operation.buffer)}.length;`;
   }
   if (operation.kind === "float64.record.view") {
-    const buffer = cName(operation.buffer);
-    const start = cName(operation.start);
-    const length = cName(operation.length);
+    const buffer = value(operation.buffer);
+    const start = value(operation.start);
+    const length = value(operation.length);
     return [
       `${indent}if (${start} > (uint64_t) ${buffer}.length ||`,
       `${indent}    ${length} > (uint64_t) ${buffer}.length - ${start})`,
@@ -2985,8 +2982,8 @@ function emitFloat64Operation(operation, indent) {
     ].join("\n");
   }
   if (operation.kind === "float64.buffer.get") {
-    const buffer = cName(operation.buffer);
-    const index = cName(operation.index);
+    const buffer = value(operation.buffer);
+    const index = value(operation.index);
     return [
       `${indent}if (${index} >= (uint64_t) ${buffer}.length)`,
       `${indent}{`,
@@ -2997,23 +2994,23 @@ function emitFloat64Operation(operation, indent) {
     ].join("\n");
   }
   if (operation.kind === "float64.buffer.set") {
-    const buffer = cName(operation.buffer);
-    const index = cName(operation.index);
+    const buffer = value(operation.buffer);
+    const index = value(operation.index);
     return [
       `${indent}if (${index} >= (uint64_t) ${buffer}.length)`,
       `${indent}{`,
       statusFailure("range", "Float64 buffer index out of range", `${indent}    `),
       `${indent}    goto fail;`,
       `${indent}}`,
-      `${indent}${buffer}.data[(size_t) ${index}] = ${cName(operation.value)};`,
+      `${indent}${buffer}.data[(size_t) ${index}] = ${value(operation.value)};`,
     ].join("\n");
   }
   if (operation.kind === "float64.binary") {
     const operator = { add: "+", sub: "-", mul: "*", div: "/" }[
       operation.operation
     ];
-    const left = cName(operation.left);
-    const right = cName(operation.right);
+    const left = value(operation.left);
+    const right = value(operation.right);
     if (operation.operation === "div") {
       return [
         `${indent}if (${right} == 0.0)`,
@@ -4402,12 +4399,15 @@ function generateHostCore(ir, options = {}) {
   // Host export selection is distinct from representation eligibility: live
   // owned and fmpz-only aggregate borrows continue to use their direct core.
   const bridgeFunctions = exact.filter((fn) =>
-    !usesMixedFloat64(fn) &&
     !fn.params.some((param) => isLiveExactOwnerType(param.type)) &&
     fn.analysis?.fmpzExact?.hostBoundary !== "none-internal-borrowed-aggregate-only"
   );
-  const tagged = generateTaggedFunctions(bridgeFunctions);
+  const tagged = generateTaggedFunctions(bridgeFunctions, {
+    functions: ir.functions,
+    emitMixedOperation: emitExactOperation,
+  });
   const wordFunctions = bridgeFunctions.filter((fn) =>
+    !usesMixedFloat64(fn) &&
     ![fn.returnType, ...fn.params.map((param) => param.type)].some((type) =>
       resourceForFunctionType(fn, type) !== undefined
     )
