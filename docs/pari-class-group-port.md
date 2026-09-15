@@ -1,5 +1,25 @@
 # Faithful PARI class-group language experiment
 
+## Measured arithmetic and provenance experiments (2026-09-15)
+
+Three isolated follow-ups retain the prepared cubic's exact class group,
+regulator and 491/54/12 work counters:
+
+- Paired quotient/remainder expressions: approximately 109 ms, no visible gain.
+- General exact `math.isqrt` compiler support and leaf substitution:
+  approximately 105–106 ms, an unpaired diagnostic difference only.
+- Source-derived scalar-generator provenance through collection and retries:
+  approximately 108 ms, no visible gain. Staged prefix tests pass all backends;
+  the new full quartic retry replay is CPython-only.
+
+See the corresponding `real_division_divmod_experiment.md`,
+`real_square_root_isqrt_experiment.md` and `scalar_relation_provenance_audit.md`
+under `bench/pari-class-group-port/`. The latter changes restore closer source
+behavior and add reusable compiler capability, but do not explain the original
+approximately 35-fold gap. None of these short unpaired measurements supersedes
+the recorded paired baseline or establishes a competitive result. Deeper
+process-scoped native profiling is the next performance investigation.
+
 ## One native quartic retry computation (2026-09-15)
 
 The subsequent copied-artifact profile attributes approximately 38 ms to
