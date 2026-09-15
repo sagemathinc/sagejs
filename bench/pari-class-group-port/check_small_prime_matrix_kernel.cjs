@@ -11,7 +11,7 @@ function run(c,a,o={}){const r=spawnSync(c,a,{encoding:'utf8',timeout:120000,max
   assert.equal(hash(run('tar',['-xOf',archive,'pari-2.17.4/src/basemath/'+file])),sha);assert.equal(hash(fs.readFileSync(path.join(pari,'src/basemath',file))),sha);
  }
  const cases=[];let seed=151;const rnd=n=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed%n;};
- for(const p of [2,3,5,7,101,65537,2147483659,3037000493])for(const [m,n]of [[1,1],[1,4],[4,1],[2,3],[3,2],[3,3],[4,4],[5,7],[7,5],[7,7]])for(let trial=0;trial<20;trial++){
+ for(const p of [2,3,5,7,101,65537,2147483659,3037000493])for(const [m,n]of [[1,1],[1,4],[4,1],[2,3],[3,2],[3,3],[4,4],[5,7],[7,5],[7,7],[3,8],[4,8],[7,8]])for(let trial=0;trial<20;trial++){
   const a=Array.from({length:m*n},(_,k)=>trial===0?0:trial===1?(k%m===Math.floor(k/m)?1:0):trial===2?p-1:rnd(p));
   if(trial===3&&n>1)for(let i=0;i<m;i++)a[m+i]=a[i];cases.push({m,n,p,a});
  }
@@ -50,7 +50,7 @@ for ix,(c,e) in enumerate(zip(*json.load(sys.stdin))):
 for m,n in [(0,0),(3,0),(0,3)]:
  w=[77]*100;r=f(w,0,m,n,5,10,30);assert r==n
  if n:assert w[10:19]==[1,0,0,0,1,0,0,0,1]
-for m,n,p,value in [(8,2,5,0),(2,8,5,0),(2,2,3037000494,0),(2,2,5,5),(2,2,5,-1)]:
+for m,n,p,value in [(8,2,5,0),(2,9,5,0),(2,2,3037000494,0),(2,2,5,5),(2,2,5,-1)]:
  w=[value]*4+[77]*96;before=w[:]
  try:f(w,0,m,n,p,10,30)
  except ValueError:pass
@@ -74,7 +74,7 @@ print('CPython passed',ix+1)
   }
   for(const backend of ['javascript','gmp','tagged']){
    for(const [m,n]of [[0,0],[3,0],[0,3]]){const w=f.createIntegerBuffer(100,2,Array(100).fill(77n));assert.equal(f[backend](w,0n,BigInt(m),BigInt(n),5n,10n,30n),BigInt(n));if(n)assert.deepEqual(w.toArray().slice(10,19),[1n,0n,0n,0n,1n,0n,0n,0n,1n]);}
-   for(const [m,n,p,value]of [[8,2,5,0],[2,8,5,0],[2,2,3037000494,0],[2,2,5,5],[2,2,5,-1]]){const initial=[...Array(4).fill(BigInt(value)),...Array(96).fill(77n)],w=f.createIntegerBuffer(100,2,initial);assert.throws(()=>f[backend](w,0n,BigInt(m),BigInt(n),BigInt(p),10n,30n));assert.deepEqual(w.toArray(),initial);}
+   for(const [m,n,p,value]of [[8,2,5,0],[2,9,5,0],[2,2,3037000494,0],[2,2,5,5],[2,2,5,-1]]){const initial=[...Array(4).fill(BigInt(value)),...Array(96).fill(77n)],w=f.createIntegerBuffer(100,2,initial);assert.throws(()=>f[backend](w,0n,BigInt(m),BigInt(n),BigInt(p),10n,30n));assert.deepEqual(w.toArray(),initial);}
   }
   summary.backends=['javascript','gmp','tagged'];summary.coreSha256=hash(fs.readFileSync(built.coreSourcePath));
  }

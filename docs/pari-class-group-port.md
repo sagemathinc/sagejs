@@ -69,6 +69,18 @@ The next source revision closes additional preparation and scheduling gaps:
   order and CPython visit order agree with PARI. Kummer removal and final
   prime descriptors remain outside this boundary; see the
   [split audit](../bench/pari-class-group-port/quotient_split_audit.md).
+- Complementary ideal spaces now follow PARI's prefix/suffix intersection
+  schedule, including its distinct word-prime dispatch at 2 and 3. Thirty
+  actual/synthetic cases match across all execution modes. The embedding
+  branch of the uniformizer norm check passes 119 cases, preserving exact
+  scalar values and the -5 precision threshold. These are descriptor
+  dependencies, not complete uniformizers; see the
+  [descriptor dependency audit](../bench/pari-class-group-port/prime_descriptor_dependencies_audit.md).
+- The inverse-image dependency passes 2,751 cases across the same execution
+  modes, including all 38 actual ideal systems and 686 no-solution cases.
+  Eight-column Gaussian coverage retains PARI's dispatcher, and the shared
+  kernel/dependence regression passes 2,177 cases. The uniformizer candidate
+  schedule itself remains to be connected.
 
 See [packet integration evidence](../bench/pari-class-group-port/selected_ideal_packets_audit.md)
 and [acceptance scheduling evidence](../bench/pari-class-group-port/post_hnf_schedule_audit.md),

@@ -7,10 +7,12 @@ rows*columns entries; output columns have length columns. Only the returned
 number of output columns is written. Scratch owns rows*columns+rows+columns
 entries (private matrix, row-used markers, one-based row pivots).
 All three spans must be disjoint; canonical residues and primality are caller
-preconditions. Dimensions <=7 and prime <=3037000493 bound the Gaussian
+preconditions. Rows <=7, columns <=8 and prime <=3037000493 bound the Gaussian
 corridor; no CUP or arbitrary-precision-prime branch is substituted.
 Binary/ternary column operations use dense residues instead of source packed
 word planes: exact pivot/basis order is preserved, not identical access costs.
+The eighth column remains Gaussian: Flm_ker_i uses CUP only when BOTH rows
+and columns are at least 8; F2m/F3m_ker_sp have no size dispatcher here.
 """
 
 from sagejs.native import IntegerBuffer, native
@@ -60,7 +62,7 @@ def _small_prime_matrix_kernel(
     scratch: int,
     dependence: int,
 ) -> int:
-    if rows < 0 or rows > 7 or columns < 0 or columns > 7 or p < 2 or p > 3037000493:
+    if rows < 0 or rows > 7 or columns < 0 or columns > 8 or p < 2 or p > 3037000493:
         raise ValueError("outside small-prime Gaussian kernel corridor")
     size = rows * columns
     output_size = columns * columns
