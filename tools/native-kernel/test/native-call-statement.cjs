@@ -92,6 +92,67 @@ assert float_collide(c,3.0,11.0)==16.5 and c==[5.5]
     const a=[2.5];assert.equal(execute(a,3.0,11.0),16.5);assert.deepEqual(a,[5.5]);
   }
 });
+test("borrowed exact subviews retain aliasing through native helpers",async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-integer-view-")),source=path.join(dir,"views.py");
+  fs.writeFileSync(source,`from sagejs.native import native, IntegerBuffer, integer_buffer_view
+@native
+def update(a:IntegerBuffer,b:IntegerBuffer,x:int)->int:
+    a[-1] += x
+    b[0] += a[-1]
+    return len(a)+len(b)
+@native
+def run(owner:IntegerBuffer,start:int,length:int,x:int)->int:
+    first=integer_buffer_view(owner,start,length)
+    alias=integer_buffer_view(first,length-1,1)
+    return update(first,alias,x)
+@native
+def empty(owner:IntegerBuffer,start:int,length:int)->int:
+    view=integer_buffer_view(owner,start,length)
+    return len(view)
+@native
+def read(owner:IntegerBuffer,start:int,length:int,index:int)->int:
+    view=integer_buffer_view(owner,start,length)
+    return view[index]
+`);
+  const oracle=require("node:child_process").spawnSync("python3",["-c",`
+import sys,gc
+sys.path[:0]=[${JSON.stringify(dir)},${JSON.stringify(path.resolve(__dirname,"../../../src/lib"))}]
+from views import run,empty,integer_buffer_view
+a=[1,2,3,4]
+assert run(a,1,2,2**200)==3 and a==[1,2,2*(3+2**200),4]
+v=integer_buffer_view([9],0,1)
+gc.collect()
+assert v[0]==9
+assert empty(a,4,0)==0
+for start,length in [(-1,1),(0,-1),(5,0),(3,2),(2**100,0),(0,2**100)]:
+    before=a[:]
+    try: empty(a,start,length)
+    except IndexError: pass
+    else: raise AssertionError('invalid span accepted')
+    assert a==before
+`],{encoding:"utf8"});assert.equal(oracle.status,0,oracle.stderr);
+  const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+  for(const backend of ["javascript","gmp","tagged"]){
+    const a=[1n,2n,3n,4n];assert.equal(mod.run[backend](a,1n,2n,2n**200n),3n);
+    assert.deepEqual(a,[1n,2n,2n*(3n+2n**200n),4n]);
+    assert.equal(mod.empty[backend](a,4n,0n),0n);
+    assert.equal(mod.read[backend](a,1n,2n,-2n),2n);
+    assert.throws(()=>mod.read[backend](a,4n,0n,0n),/index out of range/);
+    assert.throws(()=>mod.read[backend](a,1n,2n,-3n),/index out of range/);
+    const packed=mod.run.packIntegerBuffer([1n,2n,3n,4n]);
+    assert.equal(mod.run[backend](packed,1n,2n,2n**200n),3n);
+    assert.equal(mod.read[backend](packed,0n,4n,2n),2n*(3n+2n**200n));
+    for(const [start,length] of [[-1n,1n],[0n,-1n],[5n,0n],[3n,2n],[2n**100n,0n],[0n,2n**100n]]){
+      const before=a.slice();assert.throws(()=>mod.empty[backend](a,start,length),/outside its buffer/);assert.deepEqual(a,before);
+    }
+  }
+  const ir=await lowerSource(fs.readFileSync(source,"utf8"),source);
+  assert(ir.functions.find(f=>f.name==="run").analysis.effects.externalWrites.includes("owner"));
+  const core=fs.readFileSync(built.coreSourcePath,"utf8");
+  assert.doesNotMatch(core,/\bnapi_|\bPyObject\b/);
+  assert.match(core,/\.sizes \+=/);assert.match(core,/\.limbs \+=/);
+  await assert.rejects(()=>lowerSource(`from sagejs.native import native,IntegerBuffer,integer_buffer_view\n@native\ndef escape(a:IntegerBuffer)->IntegerBuffer:\n    return integer_buffer_view(a,0,1)\n`,"escape.py"));
+});
 test("exact kernels publish Float64 results without integer reinterpretation",async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-exact-float-result-")),source=path.join(dir,"result.py");
   fs.writeFileSync(source,`from sagejs.native import native, checked_float64

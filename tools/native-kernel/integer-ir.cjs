@@ -351,6 +351,8 @@ function signatureFromFunction(
     returnType !== undefined,
     `unsupported return annotation ${rawAnnotationName(fn.return_annotation) ?? nodeType(fn.return_annotation)}`,
   );
+  expect(context, fn.return_annotation ?? fn, returnType !== "IntegerBuffer",
+    "borrowed IntegerBuffer values cannot be returned from native kernels");
   return { name: fn.name.name, params, returnType };
 }
 
@@ -1697,19 +1699,21 @@ function lowerCall(node, context, operations) {
     return { name: target, type: "Float64" };
   }
 
-  if (name === "int64_record") {
+  if (name === "int64_record" || name === "integer_buffer_view") {
+    const exactView = name === "integer_buffer_view";
     expect(
       context,
       node,
-      args.length === 3,
-      "int64_record() requires a buffer, start, and length",
+      args.length === 3 && (!exactView ||
+        (array(node.args?.kwarg_items).length === 0 && !node.args?.starargs)),
+      `${name}() requires a buffer, start, and length`,
     );
     const buffer = lowerExpression(args[0], context, operations);
     expect(
       context,
       args[0],
-      buffer.type === "Int64Buffer",
-      "int64_record() requires an Int64Buffer",
+      buffer.type === (exactView ? "IntegerBuffer" : "Int64Buffer"),
+      `${name}() requires an ${exactView ? "IntegerBuffer" : "Int64Buffer"}`,
     );
     const start = coerceInteger(
       lowerExpression(args[1], context, operations),
@@ -1723,15 +1727,16 @@ function lowerCall(node, context, operations) {
       args[2],
       operations,
     );
-    const target = temporary(context, node, "Int64Record");
+    const resultType = exactView ? "IntegerBuffer" : "Int64Record";
+    const target = temporary(context, node, resultType);
     operations.push({
-      kind: "int64.record.view",
+      kind: exactView ? "integer.buffer.view" : "int64.record.view",
       target,
       buffer: buffer.name,
       start: start.name,
       length: length.name,
     });
-    return { name: target, type: "Int64Record" };
+    return { name: target, type: resultType };
   }
 
   if (name === "abs") {

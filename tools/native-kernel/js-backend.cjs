@@ -388,6 +388,10 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}${operation.target} = int64RecordView(` +
       `${operation.buffer}, ${operation.start}, ${operation.length});`;
   }
+  if (operation.kind === "integer.buffer.view") {
+    return `${indent}${operation.target} = integerBufferSubview(` +
+      `${operation.buffer}, ${operation.start}, ${operation.length});`;
+  }
   if (operation.kind === "int64.buffer.get") {
     return `${indent}${operation.target} = int64BufferGet(` +
       `${operation.buffer}, ${operation.index});`;
@@ -1909,6 +1913,16 @@ function integerBufferView(value, argument = "buffer") {
   return {
     [integerBufferViewTag]: true, data: value, offset: 0, length,
   };
+}
+
+function integerBufferSubview(buffer, start, length) {
+  const view = integerBufferView(buffer);
+  const first = BigInt(start), count = BigInt(length);
+  if (first < 0n || count < 0n || first > BigInt(view.length) ||
+      count > BigInt(view.length) - first) {
+    throw new RangeError("IntegerBuffer view is outside its buffer");
+  }
+  return { ...view, offset: view.offset + Number(first), length: Number(count) };
 }
 
 function integerBufferFitsSignedInt64(buffer) {

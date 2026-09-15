@@ -786,7 +786,8 @@ function emitExactOperation(operation, context, indent) {
     return `${indent}${target} = (uint64_t) ` +
       `${exactValue(operation.buffer, context)}.length;`;
   }
-  if (operation.kind === "int64.record.view") {
+  if (operation.kind === "int64.record.view" || operation.kind === "integer.buffer.view") {
+    const exactView = operation.kind === "integer.buffer.view";
     const buffer = exactValue(operation.buffer, context);
     const start = exactValue(operation.start, context);
     const length = exactValue(operation.length, context);
@@ -804,11 +805,19 @@ function emitExactOperation(operation, context, indent) {
         `(uint64_t) ${buffer}.length - ` +
         `(uint64_t) sagejs_record_start)`,
       `${indent}    {`,
-      statusFailure("range", "Int64Record is outside its buffer", `${indent}        `),
+      statusFailure("range", exactView ? "IntegerBuffer view is outside its buffer" : "Int64Record is outside its buffer", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
+      ...(exactView ? [
+        `${indent}    ${target} = ${buffer};`,
+        `${indent}    if ((size_t) sagejs_record_start != 0) {`,
+        `${indent}        ${target}.sizes += (size_t) sagejs_record_start;`,
+        `${indent}        ${target}.limbs += (size_t) sagejs_record_start * ${buffer}.word_capacity;`,
+        `${indent}    }`,
+      ] : [
       `${indent}    ${target}.data = ${buffer}.data + ` +
         `(size_t) sagejs_record_start;`,
+      ]),
       `${indent}    ${target}.length = (size_t) sagejs_record_length;`,
       `${indent}}`,
     ].join("\n");

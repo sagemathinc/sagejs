@@ -75,6 +75,7 @@ function operationInputs(operation) {
     case "int64.buffer.length":
       return [operation.buffer];
     case "int64.record.view":
+    case "integer.buffer.view":
       return [operation.buffer, operation.start, operation.length];
     case "int64.buffer.get":
       return [operation.buffer, operation.index];
@@ -673,6 +674,7 @@ function localEffects(fn) {
         operation.kind === "int64.buffer.get" ||
         operation.kind === "int64.buffer.set" ||
         operation.kind === "int64.record.view" ||
+        operation.kind === "integer.buffer.view" ||
         operation.kind === "integer.buffer.get" ||
         operation.kind === "integer.buffer.set" ||
         operation.kind === "uint64.buffer.get" ||
@@ -806,7 +808,8 @@ function bufferWrites(fn, dependencyEffects) {
           statement.kind === "uint64.buffer.copy" ||
           statement.kind === "float64.buffer.copy") {
         changed = addAlias(statement.target, roots(statement.source)) || changed;
-      } else if (statement.kind === "int64.record.view") {
+      } else if (statement.kind === "int64.record.view" ||
+          statement.kind === "integer.buffer.view") {
         changed = addAlias(statement.target, roots(statement.buffer)) || changed;
       } else if (statement.kind === "int64.buffer.set" ||
           statement.kind === "integer.buffer.set" ||
