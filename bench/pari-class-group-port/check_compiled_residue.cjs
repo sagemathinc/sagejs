@@ -36,6 +36,7 @@ puts("");free_GRHcheck(&S);
     return {primes,offsets,counts,degrees,multiplicities,logs,expected,exponentials,selected};
   });
   const bounds=[2,3,4,5,8,16,31,32,64,101,300,1000,10000];
+  if(process.argv.includes('--export-fixtures')){console.log(JSON.stringify({records,bounds,preparedBoundary:'Upstream prime decompositions and logarithm/discriminant inputs; no class-number oracle'}));return;}
   for(const r of records)r.replayLogs=bounds.map(Math.log);
   const py=spawnSync("python3",["-c",`
 import sys,json,math,importlib

@@ -1,5 +1,27 @@
 # Faithful PARI class-group language experiment
 
+## Connected analytic factor (2026-09-15)
+
+`analytic_inverse_hr.py` now computes the residue bound, prime logarithms,
+binary64 residue accumulation, PARI-real exponential and hR normalization in
+one native call. Only signature, discriminant, roots of unity, LOGD and prime
+decompositions remain prepared. All four tuning fields match the source's
+exact stored residue and inverse-hR triples in CPython, JS and GMP, both cold
+and with reused caches. No class-number or regulator answer enters the port.
+Trace `3af2c7f52a892d71cbe5576e2bcd4c35a5669fcf86b0845a9436282c953faa63`,
+generated core 6,083,046 bytes; reproduce with `check_analytic_inverse_hr.cjs
+PARI_SOURCE PARI_ARCHIVE`.
+
+These are correctness diagnostics, not a work-matched timing: the prepared
+catalog extends through 10001 and its logarithms are recomputed, while the
+complete source driver can reuse a prime cache. Later input/resource errors
+may leave scratch mutated. The first native compile also exposed the existing
+restriction that fixed slice stores require NativeIntegerVector, not this
+IntegerBuffer; three scalar stores express the same operation here without
+claiming a compiler fix. Independent review checked precision/order, fixture
+alignment and cache reuse. The acceptance checker can consume these actual
+native-produced analytic outputs separately from its comparison oracle.
+
 ## Actual collector outputs reach regulator acceptance (2026-09-15)
 
 The initialized translated collector, weighted relation logs and complete HNF
