@@ -5,11 +5,15 @@ This is an upstream-assumed experimental translation of `buch2.c:get_fs`,
 not an independent class-group certificate or a general prime decomposition.
 """
 
-from sagejs.native import IntegerBuffer, native
+from sagejs.native import IntegerBuffer, checked_uint64, native
 
 from .flx_small_factor import (
     pari_flx_small_degfact,
     pari_flx_small_factor_workspace_size,
+)
+from .f2x_small_factor import (
+    pari_f2x_small_degfact,
+    pari_f2x_small_factor_workspace_size,
 )
 
 
@@ -32,7 +36,7 @@ def pari_get_fs_small(
     rational prime; primality is not recomputed inside this source path.
     Every buffer owner is disjoint. State receives status, group count, and
     irreducible factor count. Success has status zero. Negative frontiers are
-    characteristic two (-2), an index divisor (-3), degree outside 2--4 (-4),
+    an index divisor (-3), degree outside 2--4 (-4),
     prime outside PARI's small-word corridor (-5), or short storage (-6).
     Frontier returns only change the three state entries, never the outputs.
     Invalid scalar inputs raise before mutation. Unexpected internal failure
@@ -47,9 +51,7 @@ def pari_get_fs_small(
     if prime < 2 or equation_index < 1:
         raise ValueError("invalid get_fs scalar input")
     status = 0
-    if prime == 2:
-        status = -2
-    elif equation_index % prime == 0:
+    if equation_index % prime == 0:
         status = -3
     elif degree < 2 or degree > 4:
         status = -4
@@ -58,6 +60,7 @@ def pari_get_fs_small(
     elif (
         len(coefficients) < degree + 1
         or len(workspace) < 9 + pari_flx_small_factor_workspace_size()
+        or len(workspace) < 9 + pari_f2x_small_factor_workspace_size()
         or len(factor_degrees) < degree
         or len(factor_exponents) < degree
         or len(degrees) < degree
@@ -77,9 +80,20 @@ def pari_get_fs_small(
     # ZX_to_Flx, with the monic normalization already an input invariant.
     for i in range(degree + 1):
         workspace[i] = coefficients[i] % prime
-    number = pari_flx_small_degfact(
-        workspace, 0, degree, prime, factor_degrees, factor_exponents, 9
-    )
+    if prime == 2:
+        # Flx_to_F2x before the characteristic-two source dispatcher.
+        binary = checked_uint64(0)
+        for i in range(degree + 1):
+            coefficient = checked_uint64(workspace[i])
+            shift = checked_uint64(i)
+            binary |= coefficient << shift
+        number = pari_f2x_small_degfact(
+            int(binary), factor_degrees, factor_exponents, workspace, 9
+        )
+    else:
+        number = pari_flx_small_degfact(
+            workspace, 0, degree, prime, factor_degrees, factor_exponents, 9
+        )
     # Literal grouping of the sorted degree vector, not exponent sums.
     f = factor_degrees[0]
     n = 1

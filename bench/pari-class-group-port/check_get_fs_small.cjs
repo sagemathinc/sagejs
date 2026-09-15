@@ -14,7 +14,7 @@ function run(c, a, options = {}) {
   const pari = path.resolve(process.argv[2]), archive = path.resolve(process.argv[3]);
   assert.equal(hash(fs.readFileSync(archive)), '02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53');
   const upstreamHashes = {};
-  for (const name of ['FpX_factor.c', 'Flx.c', 'bb_group.c']) {
+  for (const name of ['FpX_factor.c', 'Flx.c', 'bb_group.c', 'F2x.c', 'F2v.c']) {
     const pristine = run('tar', ['-xOf', archive, `pari-2.17.4/src/basemath/${name}`]);
     upstreamHashes[name] = hash(pristine);
     assert.equal(hash(fs.readFileSync(path.join(pari, 'src/basemath', name))), upstreamHashes[name]);
@@ -41,6 +41,8 @@ function run(c, a, options = {}) {
   ]) rows.push({prime, coefficients: coefficients.map(String)});
   // Arbitrarily large coefficients must be reduced exactly before word work.
   rows.push({prime: 521, coefficients: [String(-(1n << 200n)), '0', String(1n << 180n), '1']});
+  for (let degree=2;degree<=4;degree++)for(let bits=0;bits<2**degree;bits++)
+    rows.push({prime:2,coefficients:[...Array.from({length:degree},(_,i)=>String((bits>>i)&1)),'1']});
   const control = `#include <pari.h>
 #include <stdio.h>
 static void vec(GEN v) { putchar('['); for(long i=1;i<lg(v);i++){if(i>1)putchar(',');printf("%ld",v[i]);}putchar(']'); }
@@ -72,11 +74,11 @@ int main(void) {
     assert.equal(data.cases.length,4);catalog={hash:hash(bytes),metadata,fields:[]};
     for(let field=0;field<4;field++){
       const c=data.cases[field],[index,disc]=metadata[field];assert.equal(disc,c.discriminant);
-      const report={field,supported:0,characteristicTwo:0,indexDivisors:0};
+      const report={field,supported:0,binarySupported:0,indexDivisors:0};
       for(let i=0;i<c.primes.length;i++){
         const p=Number(c.primes[i]);
-        if(p===2){report.characteristicTwo++;continue;}
         if(BigInt(index)%BigInt(p)===0n){report.indexDivisors++;continue;}
+        if(p===2)report.binarySupported++;
         const start=Number(c.offsets[i]),length=Number(c.counts[i]);
         rows.push({prime:p,coefficients:polynomials[field],equationIndex:index,catalogExpected:[c.degrees.slice(start,start+length).map(Number),c.multiplicities.slice(start,start+length).map(Number)]});report.supported++;
       }
@@ -96,7 +98,7 @@ int main(void) {
   const cp = JSON.parse(run('python3', ['-c', `import decimal,sys,json,importlib,copy,itertools
 sys.path[:0]=sys.argv[1:3];d=json.load(sys.stdin)
 m=importlib.import_module('bench.pari-class-group-port.get_fs_small');f=m.pari_get_fs_small
-size=9+m.pari_flx_small_factor_workspace_size()
+size=9+max(m.pari_flx_small_factor_workspace_size(),m.pari_f2x_small_factor_workspace_size())
 for row,wanted in zip(d['rows'],d['expected']):
  n=len(row['coefficients'])-1
  a=[list(map(int,row['coefficients']))+[77],n,int(row.get('equationIndex',1)),row['prime'],[77]*(size+2)]+[[77]*(n+2) for _ in range(4)]+[[77]*5]
@@ -122,7 +124,7 @@ print(json.dumps({'cases':len(d['rows']),'workspace':size,'stable_sort_controls'
   };
   const unsupported = [];
   for (const [change, status] of [
-    [a => a[3] = 2, -2], [a => a[2] = a[3], -3], [a => a[1] = 5, -4],
+    [a => {a[3]=2;a[2]=2;}, -3], [a => a[2] = a[3], -3], [a => a[1] = 5, -4],
     [a => a[3] = 3037000507, -5], [a => a[4] = [], -6], [a => a[5] = [], -6],
     [a => a[6] = [], -6], [a => a[7] = [], -6], [a => a[8] = [], -6], [a => a[0] = [], -6],
   ]) { const a = args(rows[0]); change(a); unsupported.push({args: a, status}); }
@@ -165,7 +167,7 @@ for raw in d['invalid']:
     Object.assign(artifacts,{corePath:built.coreSourcePath,coreHash:hash(fs.readFileSync(built.coreSourcePath)),addonPath:built.addonPath,addonHash:hash(fs.readFileSync(built.addonPath))});
   }
   const libraryPath=fs.realpathSync(path.join(lib,'libpari.so'));
-  const sourceHashes=Object.fromEntries(['get_fs_small.py','flx_small.py','flx_small_power.py','flx_small_factor.py'].map(name=>[name,hash(fs.readFileSync(path.join(__dirname,name)))]));
+  const sourceHashes=Object.fromEntries(['get_fs_small.py','flx_small.py','flx_small_power.py','flx_small_factor.py','f2x_small.py','f2x_small_factor.py'].map(name=>[name,hash(fs.readFileSync(path.join(__dirname,name)))]));
   const result={...cp,catalog,unsupported:unsupported.length,invalid:invalid.length,backends,artifacts,sourceHashes,upstreamHashes,libraryPath,libraryHash:hash(fs.readFileSync(libraryPath)),controlHash:hash(control),directory,qualifiedTiming:false};
   fs.writeFileSync(path.join(directory,'fixtures.json'),JSON.stringify({...payload,result}));
   console.log(JSON.stringify(result));

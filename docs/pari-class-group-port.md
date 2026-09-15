@@ -41,12 +41,12 @@ The next source revision closes additional preparation and scheduling gaps:
   terminal replay controls. The tested cubic returns class group C3 and the
   exact PARI regulator. This is initial-attempt qualification, not a new timing
   comparison or a complete prepared-number-field entry.
-- A connected polynomial-to-degree-pattern producer now passes 5,146 exact
-  PARI comparisons in CPython/JavaScript/GMP/tagged, including all 4,914
+- A connected polynomial-to-degree-pattern producer now passes 5,178 exact
+  PARI comparisons in CPython/JavaScript/GMP/tagged, including all 4,918
   supported primes from the four analytic catalogs. It translates the
-  degree-2--4 odd-small-prime, non-index-divisor branch, including squarefree
-  and Shoup factoring. Characteristic two and index divisors remain explicit
-  frontiers. This is dependency removal, not a new class-group timing result.
+  degree-2--4 small-prime, non-index-divisor branch, including squarefree,
+  Shoup and characteristic-two Berlekamp factoring. Index divisors remain an
+  explicit frontier. This is dependency removal, not a new class-group timing result.
 
 See [packet integration evidence](../bench/pari-class-group-port/selected_ideal_packets_audit.md)
 and [acceptance scheduling evidence](../bench/pari-class-group-port/post_hnf_schedule_audit.md),

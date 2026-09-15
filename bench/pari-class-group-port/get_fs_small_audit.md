@@ -1,13 +1,14 @@
 # Polynomial-to-prime-pattern translation
 
 This step implements the non-index-divisor branch of PARI 2.17.4 `get_fs`
-for monic degree 2--4 polynomials and odd rational primes at most
+for monic degree 2--4 polynomials and rational primes at most
 3037000493. It accepts coefficients and the equation-order index, not modular
 factors or known splitting patterns. Primality is a caller precondition.
 The final counts count distinct irreducible factors, not their exponents.
 
 The connected source is `get_fs_small.py`, `flx_small_factor.py`,
-`flx_small_power.py`, and `flx_small.py`. The implementation retains:
+`flx_small_power.py`, `flx_small.py`, `f2x_small.py`, and
+`f2x_small_factor.py`. The implementation retains:
 
 - the quadratic discriminant/Kronecker dispatch;
 - squarefree decomposition, including inseparable and empty layers;
@@ -28,10 +29,10 @@ span layout. Clearing unused slot tails and copying between disjoint owners
 are representation overhead relative to PARI's variable-length stack objects;
 equal arithmetic schedules do not establish equal memory traffic or runtime.
 
-The entry returns explicit unsupported statuses for characteristic two,
-index divisors, larger degree/prime, and insufficient storage. These returns
+The entry returns explicit unsupported statuses for index divisors,
+larger degree/prime, and insufficient storage. These returns
 leave outputs and scratch unchanged and publish only a frontier status.
-The two missing mathematical branches are not silently replaced by ordinary
+The missing index-divisor branch is not silently replaced by ordinary
 polynomial factor degrees. No class-group proof status or production dispatch
 changes.
 
@@ -52,11 +53,73 @@ node bench/pari-class-group-port/check_get_fs_small.cjs \
   --catalog /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json --native
 ```
 
-The generated receipt records all four source hashes, upstream source hashes,
+The generated receipt records all six source hashes, upstream source hashes,
 linked library identity, generated native core/addon identities, and actual
 coverage. This diagnostic is not a paired performance comparison.
 
 ## Qualified checkpoint
+
+### Characteristic-two extension
+
+`/tmp/sagejs-get-fs-small-jhs9Oh/fixtures.json` supersedes the coverage below:
+5,178 exact matches in CPython, JavaScript, GMP and tagged execution, including
+all 28 monic binary polynomials of degrees 2--4 and 4,918 catalog primes.
+All four characteristic-two catalog entries now execute. Only the two index
+divisors (3 and 37) remain excluded. Workspace remains 393 words; the ten
+frontier and four invalid-input controls still pass on all backends.
+
+The binary translation retains squarefree layers, valuation-factor insertion,
+Berlekamp Frobenius construction, exact pivot/basis order, second-kernel-vector
+splitting, and stable degree-only sorting. After stripping x, a squarefree
+polynomial of degree at most four has at most two irreducible factors: three
+distinct non-x factors require degrees at least 1+2+3. This proves the upstream
+random-split branch unreachable in this domain, rather than substituting a
+factor table. Constant squarefree layers are skipped as in the binary source.
+
+Packed polynomial bits use checked uint64 XOR/OR because arbitrary-precision
+native XOR/OR is unsupported. The bitwise helper has the explicit native-bitwise
+source directive; a remaining unannotated indexed XOR initially lowered as
+exponentiation and failed compilation. It now calls that tested helper.
+Packed lookup tables have the source values but different access costs;
+bounded representation equivalence does not establish equal runtime costs.
+
+Independent leaf receipt `/tmp/sagejs-f2x-small-w0sbNd/fixtures.json` covers
+35,392 polynomial cases and 787 matrix cases against PARI and all execution
+modes, including exact mutated columns, basis order and untouched tails.
+The final connected replay used 40.843691 CPU seconds including compilation,
+37.743613 wall seconds, and 370652 KiB peak child RSS under the unchanged
+4 GiB address cap. Core SHA-256:
+`6be21103d44f4145cc165ce524896c8f624d492fc1d33aff7598132b57c6bc7d`.
+Addon SHA-256:
+`9bca41c3b5a3613de92dd028b1e4de89c8dd7f484064d7f767c15d691f2186c9`.
+This is correctness qualification, not a new performance comparison or a
+completed prepared-nf class-group path.
+
+### Next dependency: index primes
+
+The source `get_fs` calls full `idealprimedec`, not the degree-only shortcut.
+The source audit of `base2.c:primedec_aux` therefore requires actual factors,
+Dedekind correction, radical and quotient-algebra linear algebra, and complete
+prime descriptors before extracting degrees. Merely calling a degree-only
+routine would remove upstream work from the experiment.
+
+For the cubic index prime 3, the correction leaves no Kummer factor; the
+Frobenius radical has dimension two and the quotient is one-dimensional.
+The required descriptor has ramification/residue degrees (3,1). For the
+quartic index prime 37, a quadratic Kummer factor survives and the residual
+two-dimensional algebra splits into two linear primes, giving (1,1), (1,1),
+(1,2). These observations guide translation; they are not candidate tables.
+
+Reusable pieces include integral-basis multiplication, prime-ideal HNF,
+valuation, and embedding norm operations. Remaining source dependencies
+include modular kernel/image/supplement/inverse operations, modular power
+scheduling, the residual minimal-polynomial/root splitter, Kummer resultant
+valuation, and scalar/exact-integer embedding-norm cases. Preserve full
+`primedec_end` uniformizer/anti-uniformizer construction and sorting. The
+inferred candidate sequence still needs a full-driver trace; do not report
+these dependency probes as integrated execution.
+
+### Earlier odd-prime checkpoint
 
 `/tmp/sagejs-get-fs-small-tmDXL6/fixtures.json` records 5,146 exact matches
 in CPython, generated JavaScript, GMP and tagged native execution. This includes
