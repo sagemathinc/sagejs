@@ -162,6 +162,7 @@ def prepare_numeric_literal_pool(module, output):
     def collect(node, descend):
         if (
             is_node_type(node, AST_Call)
+            and node.numeric_literal
             and is_node_type(node.expression, AST_SymbolRef)
             and node.expression.name in ("Integer", "Number", "RealNumber", "ρσ_float")
             and node.args.length is 1
