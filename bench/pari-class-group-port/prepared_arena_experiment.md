@@ -43,3 +43,10 @@ one arena scope, and no owned children. Effects identify external writes and
 `replaySafe: false`; the tagged entry is explicitly a GMP workspace bridge.
 Lowering cost 34.095668 CPU seconds. This verifies admission and effects, not
 compiled execution or allocator performance.
+
+The full CPython wrapper replay also passes on the frozen prepared input:
+class number 3, invariant factors [3], exact regulator words, 58 relations,
+491 small elements, 54 factor attempts and 12 ideal visits. Reproduce with
+`check_prepared_arena.py INPUT_JSON`. This checks the actual mathematical
+callee, unlike the forwarding stub test; CPython does not use the native slab,
+so it still cannot qualify the allocator implementation or its speed.
