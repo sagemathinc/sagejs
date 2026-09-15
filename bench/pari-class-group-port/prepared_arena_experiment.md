@@ -98,3 +98,24 @@ DRAM bandwidth or prove that page faults explain the entire slowdown. A bounded
 next experiment is checkpoint-local reuse of freed small blocks, preserving
 allocator ownership, realloc contents, cleanup and resource limits. The change
 must pass allocator controls before another full native comparison.
+
+## Small-block reuse follow-up
+
+Compiler dependency `ec2a93ed9544d1c0e56106a1611bad61af0b4b53` adds
+checkpoint-local free lists for exact aligned spans up to 512 bytes. Realloc
+retains its physical span on shrink, grows in place when it fits, and recycles
+a moved block only after copying its contents. Recycling uses the original
+checkpoint owner, including when a nested checkpoint is active. Larger freed
+spans remain bump-only; slabs are still released at the end of each call.
+
+Focused allocator and generated-backend controls pass, including UBSan,
+boundary sizes, neighboring live blocks, nested ownership, moving fallback,
+and sticky exhaustion. Independent review corrected a C++ pointer conversion
+before the final allocator replay. These controls do not establish a speedup.
+The full prepared computation must be rebuilt and measured against its
+non-arena export from the same compiled module before drawing that conclusion.
+
+`check_prepared_arena_javascript.cjs INPUT_JSON MODULE_CJS [OUTPUT_JSON]`
+exercises both actual same-source JavaScript entries on fresh ordinary arrays,
+checking the class number, invariant factors, regulator, state, and work counts.
+Its reported single-call times are explicitly not qualified measurements.
