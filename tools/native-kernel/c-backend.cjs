@@ -1,6 +1,7 @@
 "use strict";
 
 const { createHash } = require("node:crypto");
+const { exactArenaRetryable } = require("./exact-analysis.cjs");
 
 const {
   isLiveExactOwnerType,
@@ -1737,7 +1738,8 @@ function emitExactStatements(statements, context, indent) {
         emitExactStatements(residentSetup, context, indent),
         `${indent}if (${owner}.temporary_limit > (uint64_t) SIZE_MAX ||`,
         `${indent}    !sagejs_native_gmp_checkpoint_begin(` +
-          `&${owner}.checkpoint, (size_t) ${owner}.temporary_limit))`,
+          `&${owner}.checkpoint, (size_t) ${owner}.temporary_limit, ` +
+          `${context.arenaRetryable ? 1 : 0}))`,
         `${indent}{`,
         statusFailure(
           "error",
@@ -1959,6 +1961,7 @@ function exactDeclarations(fn) {
   }
   const context = {
     storage,
+    arenaRetryable: exactArenaRetryable(fn),
     freshIdentifier: createIdentifierAllocator([...fn.params, ...fn.locals].flatMap(value =>
       [cName(value.name), `sagejs_arg_${value.name}`])),
     liveIntegerVectorParameters: new Set(
@@ -2061,13 +2064,6 @@ function wrapperIdentifierContext(fn) {
       return parameters.get(param.name);
     },
   };
-}
-
-function exactArenaRetryable(fn) {
-  return fn.analysis?.liveExactWorkspace?.scopes?.some((scope) =>
-    scope.storage === "shared-budget-lexical-exact-arena"
-  ) && fn.analysis?.effects?.replaySafe === true &&
-    (fn.analysis.effects.externalWrites || []).length === 0;
 }
 
 function exactWrapperExecution(

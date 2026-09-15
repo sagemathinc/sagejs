@@ -87,7 +87,8 @@ enum
 #ifdef SAGEJS_NATIVE_GMP_ALLOCATOR_EXTERNAL
 int sagejs_native_gmp_allocator_install(void);
 int sagejs_native_gmp_checkpoint_begin(
-    sagejs_native_gmp_checkpoint *checkpoint, size_t capacity);
+    sagejs_native_gmp_checkpoint *checkpoint, size_t capacity,
+    int reserve_envelope);
 int sagejs_native_gmp_checkpoint_end(
     sagejs_native_gmp_checkpoint *checkpoint);
 void sagejs_native_gmp_checkpoint_suspend(void);
@@ -413,19 +414,25 @@ SAGEJS_NATIVE_GMP_ALLOCATOR_API int sagejs_native_gmp_allocator_install(void)
 }
 
 SAGEJS_NATIVE_GMP_ALLOCATOR_API int sagejs_native_gmp_checkpoint_begin(
-    sagejs_native_gmp_checkpoint *checkpoint, size_t capacity)
+    sagejs_native_gmp_checkpoint *checkpoint, size_t capacity,
+    int reserve_envelope)
 {
     size_t effective_capacity = capacity;
     size_t reservation_size;
-    if (checkpoint == NULL || checkpoint->open ||
+    if ((reserve_envelope != 0 && reserve_envelope != 1) ||
+        checkpoint == NULL || checkpoint->open ||
         sagejs_native_gmp_checkpoint_suspended != 0)
         return 0;
     if (sagejs_native_gmp_retry_shift >= sizeof(size_t) * 8 ||
         capacity > (SIZE_MAX >> sagejs_native_gmp_retry_shift))
         return 0;
     effective_capacity <<= sagejs_native_gmp_retry_shift;
-    reservation_size = sagejs_native_gmp_reservation_size(
-        capacity, effective_capacity);
+    /* Only replay-capable callers benefit from a speculative envelope.
+       A zero retry shift is also the first replay attempt, so it cannot
+       encode this independent allocation policy. */
+    reservation_size = reserve_envelope
+        ? sagejs_native_gmp_reservation_size(capacity, effective_capacity)
+        : effective_capacity;
     memset(checkpoint, 0, sizeof(*checkpoint));
     checkpoint->retry_shift = sagejs_native_gmp_retry_shift;
     if (!sagejs_native_gmp_checkpoint_reserve(

@@ -61,7 +61,7 @@ static void *thread_witness(void *argument)
     sagejs_native_gmp_checkpoint checkpoint = {0};
     mpz_t value;
     const unsigned long seed = (unsigned long) (uintptr_t) argument;
-    assert(sagejs_native_gmp_checkpoint_begin(&checkpoint, 1U << 20));
+    assert(sagejs_native_gmp_checkpoint_begin(&checkpoint, 1U << 20, 1));
     mpz_init2(value, 8192);
     assert(sagejs_native_gmp_pointer_is_checkpoint_owned(mpz_limbs_read(value)));
     mpz_set_ui(value, seed + 1);
@@ -94,7 +94,7 @@ int main(void)
     assert(!sagejs_native_gmp_pointer_is_checkpoint_owned(
         mpz_limbs_read(persistent)));
 
-    assert(sagejs_native_gmp_checkpoint_begin(&outer, 1U << 20));
+    assert(sagejs_native_gmp_checkpoint_begin(&outer, 1U << 20, 1));
     mpz_init2(left, 65536);
     mpz_init2(right, 65536);
     assert(sagejs_native_gmp_pointer_is_checkpoint_owned(mpz_limbs_read(left)));
@@ -121,7 +121,7 @@ int main(void)
     assert(!sagejs_native_gmp_pointer_is_checkpoint_owned(mpz_limbs_read(output)));
     assert(sagejs_native_gmp_checkpoint_resume());
 
-    assert(sagejs_native_gmp_checkpoint_begin(&nested, 1U << 16));
+    assert(sagejs_native_gmp_checkpoint_begin(&nested, 1U << 16, 1));
     mpz_init2(nested_value, 4096);
     assert(sagejs_native_gmp_pointer_is_checkpoint_owned(
         mpz_limbs_read(nested_value)));
@@ -153,7 +153,7 @@ int main(void)
     assert(completed.upstream_allocations == 0);
     assert(mpz_sgn(output) != 0);
 
-    assert(sagejs_native_gmp_checkpoint_begin(&tiny, 64));
+    assert(sagejs_native_gmp_checkpoint_begin(&tiny, 64, 1));
     mpz_init2(spill, 4096);
     assert(tiny.soft_limit_exhaustions == 1);
     assert(tiny.upstream_allocations == 0);
@@ -168,21 +168,44 @@ int main(void)
     if (sizeof(size_t) >= 8)
     {
         const size_t large_reservation = (size_t) 64U << 30;
-        assert(sagejs_native_gmp_checkpoint_begin(
-            &virtual_only, large_reservation));
-        assert(virtual_only.reservation_size == large_reservation);
-#if !defined(__wasi__)
-        assert(virtual_only.activated == 0);
-#endif
-        assert(sagejs_native_gmp_checkpoint_end(&virtual_only));
+        /* Test envelope saturation without requiring 64 GiB of address space.
+           The earlier live checkpoint exercises real virtual reservation. */
+        assert(sagejs_native_gmp_reservation_size(
+            large_reservation, large_reservation) == large_reservation);
     }
 
     assert(sagejs_native_gmp_set_retry_shift(3));
-    assert(sagejs_native_gmp_checkpoint_begin(&virtual_only, 1024));
+    assert(sagejs_native_gmp_checkpoint_begin(&virtual_only, 1024, 1));
     assert(virtual_only.capacity == 8192);
     assert(virtual_only.retry_shift == 3);
     assert(sagejs_native_gmp_checkpoint_end(&virtual_only));
+    assert(sagejs_native_gmp_checkpoint_begin(&virtual_only, 1024, 0));
+    assert(virtual_only.capacity == 8192);
+    assert(virtual_only.reservation_size == 8192);
+    assert(virtual_only.retry_shift == 3);
+    assert(sagejs_native_gmp_checkpoint_end(&virtual_only));
     assert(sagejs_native_gmp_set_retry_shift(0));
+
+    /* Nonretryable scopes reserve declared capacity, not a 256x envelope. */
+    assert(sagejs_native_gmp_checkpoint_begin(
+        &virtual_only, (size_t) 128U << 20, 0));
+    assert(virtual_only.capacity == (size_t) 128U << 20);
+    assert(virtual_only.reservation_size == virtual_only.capacity);
+    assert(sagejs_native_gmp_checkpoint_end(&virtual_only));
+    assert(!sagejs_native_gmp_checkpoint_begin(&virtual_only, 1024, -1));
+    assert(!sagejs_native_gmp_checkpoint_begin(&virtual_only, 1024, 2));
+    assert(!virtual_only.open && virtual_only.storage == NULL);
+
+    /* Exact capacity still uses the established safe upstream fallback.
+       Callers must reject the failed region; external writes are not undone. */
+    assert(sagejs_native_gmp_checkpoint_begin(&tiny, 64, 0));
+    mpz_init2(spill, 4096);
+    assert(tiny.upstream_allocations == 1);
+    assert(!sagejs_native_gmp_pointer_is_checkpoint_owned(mpz_limbs_read(spill)));
+    mpz_clear(spill);
+    assert(sagejs_native_gmp_checkpoint_end(&tiny));
+    assert(sagejs_native_gmp_last_checkpoint_stats(&completed));
+    assert(completed.reservation_size == 64 && completed.upstream_allocations == 1);
 
     assert(pthread_create(&first_thread, NULL, thread_witness,
         (void *) (uintptr_t) 11) == 0);

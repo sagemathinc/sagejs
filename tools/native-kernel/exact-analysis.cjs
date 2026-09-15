@@ -1085,6 +1085,13 @@ function effectAnalyses(functions) {
   return effects;
 }
 
+function exactArenaRetryable(fn) {
+  return fn.analysis?.liveExactWorkspace?.scopes?.some((scope) =>
+    scope.storage === "shared-budget-lexical-exact-arena"
+  ) && fn.analysis?.effects?.replaySafe === true &&
+    (fn.analysis.effects.externalWrites || []).length === 0;
+}
+
 function taggedIntegerProof(fn, effects) {
   const operations = new Set();
   walkStatements(fn.body, {
@@ -1937,6 +1944,7 @@ function analyzeExactModule(functions) {
       backend = {
         kind: "gmp",
         reason: "mixed exact and Float64 scheduling requires the exact core",
+        ...(backend.requiresExactWorkspace ? { requiresExactWorkspace: true } : {}),
       };
     }
     if (
@@ -2016,6 +2024,7 @@ function analyzeExactModule(functions) {
 }
 
 module.exports = {
+  exactArenaRetryable,
   analyzeExactModule,
   backendPolicy,
   effectAnalyses,
