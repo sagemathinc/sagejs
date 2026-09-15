@@ -9,7 +9,10 @@ const createCompiler = require("../dist/tools/compiler.js").default;
 const { createSage } = require("../dist/tools/kernel.js");
 
 test("self-hosted compiler pools its constants without changing output defaults", () => {
-  const source = readFileSync(join(__dirname, "../dist/compiler/compiler.js"), "utf8");
+  const source = readFileSync(
+    join(__dirname, "../dist/compiler/compiler.js"),
+    "utf8",
+  );
   assert.match(source, /var compiler_ρσ_const_\d+\s*=/);
   const compiler = createCompiler();
   const stream = new compiler.OutputStream({});
@@ -20,6 +23,38 @@ test("self-hosted compiler pools its constants without changing output defaults"
 });
 
 for (const mode of ["python", "sage"]) {
+  test(`numeric pooling does not hoist explicit constructor calls (${mode})`, async (t) => {
+    const session = await createSage({ mode });
+    t.after(() => session.close());
+    const result = await session.evaluate(`
+seen = []
+def record(value):
+    seen.append(value)
+    return value
+def explicit(Integer, Number, RealNumber):
+    return Integer("2"), Number("3"), RealNumber("4")
+assert explicit(record, record, record) == ("2", "3", "4")
+assert explicit(record, record, record) == ("2", "3", "4")
+assert seen == ["2", "3", "4", "2", "3", "4"]
+print("explicit-calls-ok")
+`);
+    assert.equal(result.stdout.trim(), "explicit-calls-ok");
+  });
+
+  test(`pooled constants survive later cells and failed evaluations (${mode})`, async (t) => {
+    const session = await createSage({ mode });
+    t.after(() => session.close());
+    await session.evaluate("def saved():\n    return 1.25, 9007199254740993\n");
+    await session.evaluate("replacement = 8.5\n");
+    await assert.rejects(
+      session.evaluate("temporary = 7.75\nraise ValueError('intentional')\n"),
+    );
+    const result = await session.evaluate(
+      "assert saved() == (1.25, 9007199254740993)\nprint('persistent-pool-ok')\n",
+    );
+    assert.equal(result.stdout.trim(), "persistent-pool-ok");
+  });
+
   test(`pooled compiler retains integer and floating literal semantics (${mode})`, async (t) => {
     const session = await createSage({ mode });
     t.after(() => session.close());

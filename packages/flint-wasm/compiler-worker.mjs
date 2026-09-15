@@ -3,6 +3,10 @@ import {
   createBrowserDynamicCompiler,
 } from "./dynamic-compiler.mjs";
 
+// Do not reset on initialization: retained code must never reuse another
+// compilation's global literal slots within this compiler-worker lifetime.
+let numericLiteralPoolCounter = 0;
+
 function outputJavaScript(
   compiler,
   ast,
@@ -21,6 +25,11 @@ function outputJavaScript(
     python_tuples: true,
     python_truthiness: true,
     python_attributes: true,
+    // Bootstrap imports and user cells share the same module. Its initial
+    // bindings must already be replaceable by later interactive fragments.
+    reuse_main_module: true,
+    pool_numeric_literals: !includeBaselib,
+    numeric_literal_pool_prefix: `ρσ_browser_${numericLiteralPoolCounter++}_`,
     baselib_plain: includeBaselib ? baselib : undefined,
   });
   ast.print(output);
