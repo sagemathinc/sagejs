@@ -19,15 +19,29 @@ function run(c,a,o={}){const r=spawnSync(c,a,{encoding:'utf8',timeout:180000,max
  }
  const syntheticReady=cases.length;for(let i=0;i<Math.min(6,syntheticReady);i++)cases.push({...cases[i],kc:2,need:1});
  const fixtureOption=process.argv.indexOf('--collector-fixtures');let genuine=0,collectorRows=[],collectorProvenance='none';
+ const analyticOption=process.argv.indexOf('--analytic-fixtures');let analyticOutputs=null;
+ if(analyticOption>=0){
+  assert(fixtureOption>=0,'analytic fixtures require collector fixtures');
+  const payload=JSON.parse(fs.readFileSync(process.argv[analyticOption+1]));
+  assert(Array.isArray(payload.nativeOutputs)&&payload.nativeOutputs.length>0,'analytic fixtures require actual nativeOutputs');
+  analyticOutputs=payload.nativeOutputs;
+  const seen=new Set();for(const r of analyticOutputs){const key=r.field+':'+r.backend;assert(!seen.has(key),'duplicate analytic output '+key);seen.add(key);assert(Array.isArray(r.inverseHR)&&r.inverseHR.length===3);}
+ }
  if(fixtureOption>=0){
   const payload=JSON.parse(fs.readFileSync(process.argv[fixtureOption+1]));
   if(Array.isArray(payload)){collectorRows=payload;collectorProvenance='upstream-produced diagnostic matrices';}
   else{
    assert(Array.isArray(payload.nativeOutputs)&&payload.nativeOutputs.length>0,'native collector payload must contain actual produced outputs; no fallback to expected matrices');
-   collectorProvenance='same-source collector and HNF produced matrices; only inverseHR remains upstream-prepared';
+   collectorProvenance=analyticOutputs?'same-source collector, HNF and analytic inverseHR produced outputs':'same-source collector and HNF produced matrices; only inverseHR remains upstream-prepared';
    collectorRows=payload.nativeOutputs.map(r=>{
     assert(['javascript','gmp'].includes(r.backend));const reference=payload.expected.find(e=>e.field===r.field);assert(reference);
-    for(const key of ['H','D','B','C','hnfState'])assert.deepEqual(r[key],reference[key],'native '+r.backend+' field '+r.field+' '+key);
+    for(const key of ['H','C','hnfState'])assert.deepEqual(r[key],reference[key],'native '+r.backend+' field '+r.field+' '+key);
+    for(const key of ['D','B'])if(Object.hasOwn(r,key))assert.deepEqual(r[key],reference[key],'native '+r.backend+' field '+r.field+' '+key);
+    if(analyticOutputs){
+     const analytic=analyticOutputs.find(a=>a.field===r.field&&a.backend===r.backend);assert(analytic,'missing analytic output for field/backend '+r.field+'/'+r.backend);
+     assert.deepEqual(analytic.inverseHR,reference.inverseHR,'analytic oracle mismatch for field/backend '+r.field+'/'+r.backend);
+     return {...r,inverseHR:analytic.inverseHR,analyticProducerBackend:analytic.backend};
+    }
     return {...r,inverseHR:reference.inverseHR};
    });
   }
@@ -38,7 +52,8 @@ function run(c,a,o={}){const r=spawnSync(c,a,{encoding:'utf8',timeout:180000,max
   const need=Math.min(kc,missing+Math.max(0,rows-1-columns));assert(need>0||inverseHR,'ready genuine fixtures require computed inverseHR, never a true regulator or class-number answer');
   const values=[];for(let i=0;i<rows*columns;i++)values.push(...r.C.slice(7*i+1,7*i+4));
   let h=1n;for(let i=0;i<hRows;i++)h*=BigInt(r.H[i*hRows+i]);
-  cases.push({field:r.field,producerBackend:r.backend||'upstream',rows,columns,degree:r.degree||(r.field<2?3:4),h:String(h),hRows,bColumns,cColumns,kc,need,H:r.H,C:r.C,values,inv:inverseHR||[String(1n<<127n),'128','0'],changed:true,genuine:true});genuine++;
+  if(analyticOutputs)assert(r.analyticProducerBackend,'analytic fixtures require matching actual collector nativeOutputs, not source-only arrays');
+  cases.push({field:r.field,producerBackend:r.backend||'upstream',analyticProducerBackend:r.analyticProducerBackend||'upstream',rows,columns,degree:r.degree||(r.field<2?3:4),h:String(h),hRows,bColumns,cColumns,kc,need,H:r.H,C:r.C,values,inv:inverseHR||[String(1n<<127n),'128','0'],changed:true,genuine:true});genuine++;
  }
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'sagejs-post-hnf-acceptance-'));
  let oracleSource=fs.readFileSync(path.join(control.artifactDirectory,'oracle.c'),'utf8');
@@ -51,6 +66,18 @@ function run(c,a,o={}){const r=spawnSync(c,a,{encoding:'utf8',timeout:180000,max
  const readyCases=cases.filter(r=>r.need===0),ready=readyCases.length;
  const trace=run(exe,[],{input:[ready,...readyCases.flatMap(r=>[r.rows,r.columns,r.degree,r.changed?1:0,...r.values,r.hRows,...r.H,...r.inv])].join(' ')});
  const oracleExpected=trace.trim().split('\n').map(JSON.parse);let oi=0;const expected=cases.map(r=>r.need===0?oracleExpected[oi++]:null);
+ const driverOption=process.argv.indexOf('--driver-trace');let driverTraceComparedCases=0;
+ if(driverOption>=0){
+  const events=JSON.parse(fs.readFileSync(process.argv[driverOption+1]));assert(Array.isArray(events));
+  const accepted=events.filter(e=>e.event==='acceptance'&&e.code===0).at(-1),result=events.filter(e=>e.event==='result').at(-1);assert(accepted&&result,'full driver trace needs accepted and result events');
+  for(let i=0;i<cases.length;i++)if(cases[i].genuine&&cases[i].field===1){
+   const r=cases[i],e=expected[i];assert(e&&e.acceptance[1]===0,'field1 translated attempt did not accept');
+   assert.equal(r.h,accepted.h);assert.equal(r.h,result.classNumber);
+   assert.deepEqual(e.regulator,[String(accepted.R.mantissa),String(accepted.R.precision),String(accepted.R.exponent)]);
+   driverTraceComparedCases++;
+  }
+  assert(driverTraceComparedCases>0,'driver trace option is restricted to matching genuine field1 cases');
+ }
  fs.writeFileSync(path.join(dir,'fixtures.json'),JSON.stringify([cases,expected]));
  run('python3',['-c',`import sys,json,importlib
 sys.path[:0]=sys.argv[1:3];f=importlib.import_module('bench.pari-class-group-port.post_hnf_acceptance').pari_post_hnf_acceptance
@@ -70,8 +97,8 @@ for ix,(r,e) in enumerate(zip(*json.load(sys.stdin))):
  assert a[32]==e['multiple_state'] and a[43]==e['reconstruction_state'],(ix,a[32],a[43],e)
  for at,key,length in [(30,'multiple',3),(31,'coordinates',3*s),(40,'regulator',3),(41,'relations',s)]:assert a[at]==(list(map(int,e[key])) if e[key] else [77]*length),(ix,key)
 `,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify([cases,expected])});
- const genuineOutcomes=cases.flatMap((r,i)=>r.genuine?[{field:r.field,producerBackend:r.producerBackend,need:r.need,tentativeClassNumber:r.h,acceptance:expected[i]?.acceptance??null,multipleState:expected[i]?.multiple_state??null,reconstructionState:expected[i]?.reconstruction_state??null,regulator:expected[i]?.regulator??null}]:[]);
- const summary={cases:cases.length,readyCases:ready,rankGateCases:cases.length-ready,genuinePostHnfCases:genuine,genuineAcceptedCases:cases.filter((r,i)=>r.genuine&&expected[i]&&expected[i].acceptance[1]===0).length,collectorProvenance,genuineOutcomes,qualifiedTiming:false,traceSha256:createHash('sha256').update(trace).digest('hex'),artifactDirectory:dir};
+ const genuineOutcomes=cases.flatMap((r,i)=>r.genuine?[{field:r.field,producerBackend:r.producerBackend,analyticProducerBackend:r.analyticProducerBackend,need:r.need,tentativeClassNumber:r.h,acceptance:expected[i]?.acceptance??null,multipleState:expected[i]?.multiple_state??null,reconstructionState:expected[i]?.reconstruction_state??null,regulator:expected[i]?.regulator??null}]:[]);
+ const summary={cases:cases.length,readyCases:ready,rankGateCases:cases.length-ready,genuinePostHnfCases:genuine,genuineAcceptedCases:cases.filter((r,i)=>r.genuine&&expected[i]&&expected[i].acceptance[1]===0).length,collectorProvenance,genuineOutcomes,driverTraceComparedCases,qualifiedTiming:false,traceSha256:createHash('sha256').update(trace).digest('hex'),artifactDirectory:dir};
  if(process.argv.includes('--source-only')){console.log(JSON.stringify(summary));return;}
  const built=await compileKernel({sourcePath:path.join(__dirname,'post_hnf_acceptance.py')}),f=require(built.modulePath).pari_post_hnf_acceptance;assert(f.nativeAvailable);
  assert.doesNotMatch(fs.readFileSync(built.coreSourcePath,'utf8'),/napi_call_function|PyObject_Call|v8::/);

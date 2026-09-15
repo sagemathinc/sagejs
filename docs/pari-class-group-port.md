@@ -1,5 +1,63 @@
 # Faithful PARI class-group language experiment
 
+## First genuine-default prepared class-group attempt (2026-09-15)
+
+For `x^3-20010*x+20018`, the port now produces accepted candidate invariants
+`[3]` in a single native call: rational initialization, collection, weighted
+logs, HNF, regulator acceptance and Smith output. The separate native analytic
+entry supplies inverse hR. No oracle relation matrix, class number or regulator
+is fed into that attempt. CPython, generated JavaScript and GMP agree.
+
+This uses actual initial source policy: bounds 259/259, 51 factor-base ideals,
+36 rational-prime groups for both collection and checking, subfactor size 3,
+192-bit log precision, 11 initial relations and target 58. An independently
+instrumented **complete** `Buchall_param` run reaches the same first-batch
+acceptance, returns class number 3 and invariants `[3]`, and requires no extra
+honesty checks. Its exact stored regulator is
+`(3895441961913051012156655978319959870688113589397982850906, 192, 17)`;
+both actual port producers match that triple. The caller establishes the
+equal-bound gate; the reusable native attempt itself deliberately promises
+only an accepted candidate, not independent certification.
+
+`check_post_hnf_acceptance.cjs` passes 152 controls with actual native
+collector/analytic inputs and the independent driver trace, SHA-256
+`9730876679f0c994c105a5eb22298575a2b31e5f5807bec273c2fdd007f3da10`.
+`prepared_class_group_attempt.py` also passes the earlier four-field controls:
+only the accepted case publishes class outputs; rank/relation frontiers keep
+those owners unchanged. Six early guards and terminal-repeat checks pass.
+The combined generated core is **49,717,964 bytes**, SHA-256
+`9bb6c25e83a0e04da254ea6184d62ebb4d55d4f0fc01c5fb1779f3fec799f751`.
+This size is recorded experimental evidence, not a raised production allowance.
+
+Reproduction order (all fixture files are emitted by the corresponding checker):
+
+1. `check_actual_initial_collector.cjs PARI_SOURCE PARI_ARCHIVE --native --field 1`
+2. `check_analytic_inverse_hr.cjs PARI_SOURCE PARI_ARCHIVE`
+3. `check_default_driver_trace.cjs PARI_SOURCE PARI_ARCHIVE`
+4. `check_post_hnf_acceptance.cjs PARI_SOURCE PARI_ARCHIVE --collector-fixtures
+   COLLECTOR_JSON --analytic-fixtures ANALYTIC_JSON --driver-trace TRACE_JSON`
+5. `check_prepared_class_group_attempt.cjs COLLECTOR_JSON ACCEPTANCE_JSON
+   --analytic-fixtures ANALYTIC_JSON`
+
+The actual-policy checker supports all four declared tuning fields. Their
+collection and logarithms match PARI on CPython/JS/GMP:
+
+| Field | Default bound | Factor-base ideals | First-batch relations | Current HNF result |
+| --- | ---: | ---: | ---: | --- |
+| 0, real cubic | 333 | 66 | 73 | Explicit pre-CUP frontier |
+| 1, real cubic | 259 | 51 | 58 | H=[3], accepted downstream |
+| 2, mixed quartic | 812 | 143 | 150 | Explicit pre-CUP frontier |
+| 3, mixed quartic | 1698 | 288 | 293 | Explicit pre-CUP frontier |
+
+The shared next dependency is `Flm_CUP_pre` in modular rank-profile computation.
+No other field is counted as completed. Prepared nf/decompositions/ideal and
+embedding descriptors still come from PARI, and full units, reduced generators,
+maps, arbitrary retries and polynomial-input closure remain outside this entry.
+No runtime-parity verdict follows yet: there are no qualified paired timings.
+Review caught and corrected a hardcoded 128-bit log precision and HNF k0=0
+before making the actual-policy claim. Pinned 2.17.4 headers confirm precision
+arguments are bit counts; historical word-precision assumptions are inapplicable.
+
 ## Resident relation-to-HNF entry (2026-09-15)
 
 `connected_relation_hnf.py` joins rational-prime cache initialization,
