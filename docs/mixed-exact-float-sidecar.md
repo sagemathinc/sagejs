@@ -704,3 +704,34 @@ early-checkpoint suite has a stale 59-child expectation (current source has
 These are reported validation gaps, not relaxed assertions. This patch does
 not establish a prepared class-group performance improvement or a Windows
 runtime qualification.
+
+### Checkpoint-local small-block reuse experiment
+
+Each checkpoint now has exact aligned-span free lists for physical blocks up
+to 512 bytes, including the allocation header. The quantum is the platform's
+`max_align_t` alignment, not an assumed limb size. Freed blocks overlay the
+logical requested-size field with their next pointer; live header size is
+unchanged. Reuse remains inside the original owning checkpoint even if a
+nested checkpoint is currently active. There is no cross-checkpoint pool,
+coalescing, change of GMP allocation domain, or backend-default change.
+
+Realloc retains an existing physical span when the request fits, including
+shrink/regrow. It does not rewind the bump pointer: free-list entries can
+exist above the current block. Last-block growth remains supported. Moving
+realloc copies the old logical extent before recycling the old block, even
+when the new allocation falls back upstream. Header/payload size overflow
+is rejected before the addition. Teardown clears all free-list heads.
+
+`used`, high water, and activated bytes describe physical bump storage, not
+cumulative traffic or live payload. Allocation and requested-byte counters
+still count reuse. The existing moving-realloc double accounting of requested
+bytes is deliberately unchanged; internal recycling does not increment the
+public free-callback counter. Exhaustion/fallback evidence remains sticky,
+and reuse beyond the soft limit still records exhaustion.
+
+Allocator controls cover every payload size from zero through 520, live
+neighbor integrity, nested ownership, realloc copy/fallback, zero-size reuse,
+overflow, sticky exhaustion, and cleanup. The allocator harness also passes
+UBSan under the same 4 GiB cap. Generated GMP/FMPZ and exact fallback checks
+pass. Any performance improvement remains a separate prepared-workload
+experiment; allocator tests alone do not establish one.
