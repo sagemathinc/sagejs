@@ -50,17 +50,22 @@ int main(void){pari_init(256000000,10000);DEBUGLEVEL=0;
  const expected=JSON.parse(run(path.join(dir,'oracle'),[]));fs.writeFileSync(path.join(dir,'source-fixture.json'),JSON.stringify(expected));
  const v=structuredClone(template.cases[4*field+3].input),n=Number(v.n),kc=expected.KC,cap=10*(kc+expected.additional)+50,zero=k=>Array(k).fill('0');
  assert.equal(Number(v.precision),expected.precision,'prepared nf precision needs rebuilding');
- Object.assign(v,{nrelid:String(expected.nrelid),scale:expected.scale,admission_factor_product:expected.support,admission_prime_offsets:Array(expected.C2+1).fill('-1'),admission_prime_counts:zero(expected.C2+1),admission_group_tau:[],admission_group_e:[],admission_group_f:[],admission_group_inert:[],relation_primes:[],ramification:[],relation:zero(kc),relation_scratch:zero(kc),relation_basis:zero(kc*kc),relation_state:['0',String(cap),String(kc),String(expected.additional),'0',String(expected.target)],relation_records:zero(cap*kc),relation_hashes:zero(cap),relation_metadata:zero(cap*3),generators:zero(cap*n),packet_ids:Array.from({length:kc},(_,i)=>String(i+1)),packet_ideals:[],packet_norms:[],search_ideals:expected.search.map(String),search_count:String(expected.search.length),schedule:zero(4)});
+ Object.assign(v,{nrelid:String(expected.nrelid),admission_factor_product:expected.support,admission_prime_offsets:Array(expected.C2+1).fill('-1'),admission_prime_counts:zero(expected.C2+1),admission_group_tau:[],admission_group_e:[],admission_group_f:[],admission_group_inert:[],relation_primes:[],ramification:[],relation:zero(kc),relation_scratch:zero(kc),relation_basis:zero(kc*kc),relation_state:['0',String(cap),String(kc),String(expected.additional),'0',String(expected.target)],relation_records:zero(cap*kc),relation_hashes:zero(cap),relation_metadata:zero(cap*3),generators:zero(cap*n),packet_ids:Array.from({length:kc},(_,i)=>String(i+1)),packet_ideals:[],packet_norms:[],search_ideals:expected.search.map(String),search_count:String(expected.search.length),schedule:zero(4)});
  for(const g of expected.groups){v.admission_prime_offsets[g.p]=String(g.offset);v.admission_prime_counts[g.p]=String(g.ideals.length);for(const P of g.ideals){v.admission_group_tau.push(...P.tau);v.admission_group_e.push(String(P.e));v.ramification.push(String(P.e));v.admission_group_f.push(String(P.f));v.admission_group_inert.push(String(P.inert));v.relation_primes.push(String(g.p));v.packet_ideals.push(...P.ideal);v.packet_norms.push(P.norm);}}
  assert.equal(v.relation_primes.length,kc);
  const hsig=fs.readFileSync(path.join(__dirname,'hnfspec_complete.py'),'utf8').match(/def pari_hnfspec_complete\(([\s\S]*?)\n\)/)[1].trim().split('\n').map(s=>s.trim().replace(/,$/,'').split(': '));
+ delete v.scale; // Derived by the translated policy below, never consumed from the oracle.
  const payload={expected,input:v,names:template.names,hsig,policyOnly};
  const result=JSON.parse(run('python3',['-c',`
 import sys,json,importlib,decimal
 sys.set_int_max_str_digits(100000) # Diagnostic serialization, not kernel capacity.
 sys.path[:0]=sys.argv[1:3];d=json.load(sys.stdin);e=d['expected'];v={}
 for name,kind in d['names']:
+ if name=='scale':continue
  conv=float if kind in ('float','Float64Buffer') else int;x=d['input'][name];v[name]=list(map(conv,x)) if isinstance(x,list) else conv(x)
+volume=importlib.import_module('bench.pari-class-group-port.ball_volume')
+ball=volume.pari_ball_volume(e['degree']);v['scale']=volume.pari_small_norm_scale(e['degree'])
+assert ball==e['ballvol'];assert v['scale']==e['scale']
 base=importlib.import_module('bench.pari-class-group-port.initial_base').pari_prepared_initial_base
 primes=[];full_offsets=[];full_counts=[];full_degrees=[];po=[];pc=[];pd=[];mult=[]
 for p,offset,*degrees in e['catalog']:
@@ -84,7 +89,7 @@ assert bad_flags==e['bad']
 subresult=sub(list(map(int,v['packet_norms'])),bad_flags,[e['subfactorProduct']],3,[0]*kc,[0]*kc,[0]*(3*kc+3),[0]*kc,[0]*kc,perm);assert perm==e['perm'];assert subresult[0]==e['subfactorCount']
 assert e['minidx']==list(range(1,kc+1));assert e['search']==perm
 if d['policyOnly']:
- print(json.dumps({'initialBase':list(map(str,b)),'badFlags':bad_flags,'subfactorCount':subresult[0],'permutation':perm,'policyOnly':True}));sys.exit(0)
+ print(json.dumps({'ballvol':ball,'scale':v['scale'],'initialBase':list(map(str,b)),'badFlags':bad_flags,'subfactorCount':subresult[0],'permutation':perm,'policyOnly':True}));sys.exit(0)
 initialize=importlib.import_module('bench.pari-class-group-port.relation_insertion').pari_initialize_owned_relations
 initial=initialize(e['additional'],[g['p'] for g in e['groups']],[g['offset'] for g in e['groups']],[len(g['ideals']) for g in e['groups']],[g['complete'] for g in e['groups']],v['ramification'],v['relation_state'],v['relation_basis'],v['relation_records'],v['relation_hashes'],v['relation_metadata'],v['relation'],v['relation_scratch'],v['n'],v['generators']);assert initial==e['initialCount'];assert v['relation_state'][5]==e['target']
 collect=importlib.import_module('bench.pari-class-group-port.unreduced_small_norm').pari_collect_unreduced_ideals
@@ -99,15 +104,19 @@ hs=hnf(**w)
 if hs==0:
  for key,name in [('H','result_h'),('D','result_dep'),('B','result_b'),('C','result_c')]:assert list(map(str,w[name][:len(e[key])]))==e[key],key
  assert w['perm']==e['hnfPerm']
-print(json.dumps({'initialBase':list(map(str,b)),'initialRelations':initial,'relations':last,'collectorStatus':s,'hnfStatus':hs,'hnfState':w['state'][:9]}))
+print(json.dumps({'ballvol':ball,'scale':v['scale'],'initialBase':list(map(str,b)),'initialRelations':initial,'relations':last,'collectorStatus':s,'hnfStatus':hs,'hnfState':w['state'][:9]}))
 `,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify(payload)}));
+ v.scale=result.scale;
  const nativeOutputs=[],native=[],nativeInputs=[];
  if(process.argv.includes('--native')){
   const load=async name=>{const built=await compileKernel({sourcePath:path.join(__dirname,name+'.py')});assert.doesNotMatch(fs.readFileSync(built.coreSourcePath,'utf8'),/napi_call_function|PyObject_Call|v8::/);return require(built.modulePath);};
   const base=(await load('initial_base')).pari_prepared_initial_base,sub=(await load('subfactor_base')).pari_prepared_subfactor_base,bad=(await load('bad_subfactor')).pari_bad_subfactor_flags,chain=policyOnly?null:(await load('connected_relation_hnf')).pari_connected_relation_hnf;
   assert(base.nativeAvailable&&sub.nativeAvailable&&bad.nativeAvailable&&(policyOnly||chain?.nativeAvailable));
+  const volume=await load('ball_volume');
   const sig=fs.readFileSync(path.join(__dirname,'connected_relation_hnf.py'),'utf8').match(/def pari_connected_relation_hnf\(([\s\S]*?)\n\)/)[1].trim().split('\n').map(s=>s.trim().replace(/,$/,'').split(': '));
   for(const backend of policyOnly?['javascript','gmp','tagged']:['javascript','gmp']){
+   const ball=volume.pari_ball_volume[backend](BigInt(n)),scale=volume.pari_small_norm_scale[backend](BigInt(n));
+   assert.equal(ball,expected.ballvol);assert.equal(scale,expected.scale);v.scale=scale;
    const primes=[],fo=[],fc=[],fd=[],po=[],pc=[],pd=[],mult=[];
    for(const [p,offset,...degrees]of expected.catalog){primes.push(BigInt(p));fo.push(BigInt(offset));fc.push(BigInt(degrees.length));fd.push(...degrees.map(BigInt));po.push(BigInt(pd.length));let last=null;for(const f of degrees){if(f!==last){pd.push(BigInt(f));mult.push(1n);last=f;}else mult[mult.length-1]++;}pc.push(BigInt(pd.length)-po.at(-1));}
    const selected=Array(primes.length).fill(0n),off=Array(expected.C2+1).fill(0n),counts=off.slice(),complete=off.slice(),indices=Array(fd.length).fill(0n);
