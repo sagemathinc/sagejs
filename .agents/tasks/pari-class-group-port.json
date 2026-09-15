@@ -2008,6 +2008,16 @@
       "commit": "2d94d3cd10d019f72f21027508cfe2c250f8d2ec",
       "workspace_fingerprint": "4abaf4ab60f1d59c19c704c39f9f5142956701c6ecceca9286994fedcc62c8de",
       "platform": "linux-x64"
+    },
+    {
+      "command": "prlimit --as=4294967296 timeout 180s node bench/pari-class-group-port/check_prime_uniformizer.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.838,
+      "started_at": "2026-09-15T13:07:49.995Z",
+      "commit": "bf6cf0acaa7274780be1fcba518f1a8aa37ff943",
+      "workspace_fingerprint": "793146db33ea6d5d715e395a6f58d37b5365e881d91e998137f577895db2a1b8",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

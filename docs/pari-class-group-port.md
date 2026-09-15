@@ -79,8 +79,12 @@ The next source revision closes additional preparation and scheduling gaps:
 - The inverse-image dependency passes 2,751 cases across the same execution
   modes, including all 38 actual ideal systems and 686 no-solution cases.
   Eight-column Gaussian coverage retains PARI's dispatcher, and the shared
-  kernel/dependence regression passes 2,177 cases. The uniformizer candidate
-  schedule itself remains to be connected.
+  kernel/dependence regression passes 2,177 cases.
+- The connected uniformizer candidate schedule now matches 34 actual ideal
+  cases and all 57 source norm tests across four execution modes. It retains
+  signed centering, unramified short-circuiting and ordered ramified fallback.
+  Full descriptors still need antiuniformizers and valuations; see the
+  [uniformizer audit](../bench/pari-class-group-port/prime_uniformizer_audit.md).
 
 See [packet integration evidence](../bench/pari-class-group-port/selected_ideal_packets_audit.md)
 and [acceptance scheduling evidence](../bench/pari-class-group-port/post_hnf_schedule_audit.md),
