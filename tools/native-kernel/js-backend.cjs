@@ -1082,6 +1082,9 @@ function declaredFfiErrors(fn, functions = []) {
   return JSON.stringify(translations);
 }
 
+// Adapter temporaries use distinct JS-only namespaces: Python bindings cannot
+// contain `$`. In particular argument descriptor_state must not be shadowed by
+// the descriptor for state, nor may backend collide with the dispatch local.
 function exactNativeExpression(fn, backend) {
   const ffiErrors = fn.nativeDeclaredErrors || declaredFfiErrors(fn);
   const buffers = fn.params.filter((param) =>
@@ -1092,8 +1095,8 @@ function exactNativeExpression(fn, backend) {
   if (buffers.length === 0) {
     const args = fn.params.map((param) =>
       param.resourceIdentity === undefined
-        ? `sagejs_native_${param.name}`
-        : `sagejs_native_${param.name}.handle`
+        ? `$sagejs$argument${param.name}`
+        : `$sagejs$argument${param.name}.handle`
     ).join(", ");
     return exactResourceResult(
       fn,
@@ -1103,32 +1106,32 @@ function exactNativeExpression(fn, backend) {
     );
   }
   const declarations = buffers.map((param) =>
-    `    const sagejs_native_descriptor_${param.name} = ` +
+    `    const $sagejs$descriptor${param.name} = ` +
       `${param.type === "IntegerBuffer"
         ? "integerNativeBuffer" : param.type === "UInt64Buffer"
           ? "uint64NativeBuffer" : param.type === "Float64Buffer"
             ? "float64NativeBuffer" : "int64NativeBuffer"}(` +
-      `sagejs_native_${param.name}, ${jsString(param.name)}` +
+      `$sagejs$argument${param.name}, ${jsString(param.name)}` +
       `${param.type === "UInt64Buffer"
         ? `, ${uint64BufferMayBeWritten(fn, param.name)}`
         : ""});`
   );
   const args = fn.params.map((param) =>
     param.type === "Int64Buffer" || param.type === "Int64Record"
-      ? `sagejs_native_descriptor_${param.name}.typed`
+      ? `$sagejs$descriptor${param.name}.typed`
       : param.type === "UInt64Buffer"
-        ? `sagejs_native_descriptor_${param.name}.typed`
+        ? `$sagejs$descriptor${param.name}.typed`
       : param.type === "Float64Buffer"
-        ? `sagejs_native_descriptor_${param.name}.typed`
+        ? `$sagejs$descriptor${param.name}.typed`
       : param.type === "IntegerBuffer"
-        ? `sagejs_native_descriptor_${param.name}.packed`
+        ? `$sagejs$descriptor${param.name}.packed`
       : param.resourceIdentity === undefined
-        ? `sagejs_native_${param.name}`
-        : `sagejs_native_${param.name}.handle`
+        ? `$sagejs$argument${param.name}`
+        : `$sagejs$argument${param.name}.handle`
   ).join(", ");
   const copies = buffers
     .filter((param) => uint64BufferMayBeWritten(fn, param.name))
-    .map((param) => `      sagejs_native_descriptor_${param.name}.copyBack();`);
+    .map((param) => `      $sagejs$descriptor${param.name}.copyBack();`);
   const call = `nativeExactCall(${jsString(fn.name)}, [${args}], ${backend}, ` +
     `${ffiErrors})`;
   const expression = [
@@ -1154,7 +1157,7 @@ function backendDecision(fn) {
     return `  return ${jsString(policy.kind)};`;
   }
   if (policy.kind === "iterations") {
-    const value = `sagejs_native_${policy.parameter}`;
+    const value = `$sagejs$argument${policy.parameter}`;
     const minimum = BigInt(policy.minimumIterations);
     return `  return (typeof ${value} === "bigint" ` +
       `? ${value} >= ${minimum}n : ${value} >= ${minimum}) ` +
@@ -1163,7 +1166,7 @@ function backendDecision(fn) {
   if (policy.kind === "operand-bits") {
     const threshold = 1n << BigInt(policy.minimumBits - 1);
     const conditions = policy.parameters.map((name) => {
-      const value = `sagejs_native_${name}`;
+      const value = `$sagejs$argument${name}`;
       return `${value} >= ${threshold}n || ${value} <= -${threshold}n`;
     });
     return conditions.length === 0
@@ -1172,7 +1175,7 @@ function backendDecision(fn) {
   }
   if (policy.kind === "integer-buffer-values") {
     const conditions = policy.parameters.map((name) =>
-      `integerBufferFitsSignedInt64(sagejs_native_${name})`
+      `integerBufferFitsSignedInt64($sagejs$argument${name})`
     );
     return conditions.length === 0
       ? '  return "tagged";'
@@ -1191,14 +1194,14 @@ function automaticSelectionCode(fn, receipt) {
       if (!parameters.has(name)) {
         throw new Error(`${fn.name} selection names unknown argument ${name}`);
       }
-      const value = `sagejs_native_${name}`;
+      const value = `$sagejs$argument${name}`;
       return [
         `${value} >= ${BigInt(bounds.min)}n`,
         `${value} <= ${BigInt(bounds.max)}n`,
       ];
     },
   );
-  const args = fn.params.map((param) => `sagejs_native_${param.name}`).join(", ");
+  const args = fn.params.map((param) => `$sagejs$argument${param.name}`).join(", ");
   return {
     declaration: `function automatic_selection_${fn.name}(${args}) {\n` +
       `  return ${conditions.join(" && ")};\n}`,
@@ -1211,14 +1214,14 @@ function emitExactPublicFunction(fn, automaticSelection) {
   const params = fn.params.map((param) => param.name).join(", ");
   const declaredParams = exactParameters(fn);
   const normalized = fn.params.map((param) =>
-    `  const sagejs_native_${param.name} = ${normalizedArgument(param)};`
+    `  const $sagejs$argument${param.name} = ${normalizedArgument(param)};`
   );
-  const args = fn.params.map((param) => `sagejs_native_${param.name}`).join(", ");
+  const args = fn.params.map((param) => `$sagejs$argument${param.name}`).join(", ");
   const fallbackArgs = fn.params.map((param) =>
     param.type === "UInt64Buffer"
-      ? `uint64DynamicBufferView(sagejs_native_${param.name}, ` +
+      ? `uint64DynamicBufferView($sagejs$argument${param.name}, ` +
         `${jsString(param.name)})`
-      : `sagejs_native_${param.name}`
+      : `$sagejs$argument${param.name}`
   ).join(", ");
   const fallbackExpression = exactResourceResult(
     fn,
@@ -1265,9 +1268,9 @@ ${backendDecision(fn)}
 function ${fn.name}(${declaredParams}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
-  const sagejs_native_backend = backend_${fn.name}(${args});
-  if (sagejs_native_backend !== "bigint") {
-    return ${exactReturn(fn, exactNativeExpression(fn, "sagejs_native_backend"))};
+  const $sagejs$backend = backend_${fn.name}(${args});
+  if ($sagejs$backend !== "bigint") {
+    return ${exactReturn(fn, exactNativeExpression(fn, "$sagejs$backend"))};
   }
   return ${exactReturn(fn, fallbackExpression)};
 }
@@ -1690,11 +1693,11 @@ function generateJavaScript(ir, options = {}) {
       ? uint64Validation(param.name)
       : param.type === "Float64"
       ? `  ${param.name} = float64Scalar(${param.name}, ${jsString(param.name)});`
-      : `  const sagejs_native_buffer_${param.name} = ` +
+      : `  const $sagejs$buffer$${param.name} = ` +
         `float64NativeBuffer(${param.name}, ${jsString(param.name)});`
     ).join("\n");
     const nativeArgs = fn.params.map((param) => param.type === "Float64Buffer"
-      ? `sagejs_native_buffer_${param.name}.typed`
+      ? `$sagejs$buffer$${param.name}.typed`
       : param.name
     ).join(", ");
     const fallbackArgs = fn.params.map((param) => param.type === "uint64"
@@ -1704,15 +1707,15 @@ function generateJavaScript(ir, options = {}) {
     const copyBack = fn.params
       .filter((param) => param.type === "Float64Buffer" &&
         fn.analysis.effects.mutates.includes(fn.jsOriginalBindingNames?.[param.name] ?? param.name))
-      .map((param) => `    sagejs_native_buffer_${param.name}.copyBack();`)
+      .map((param) => `    $sagejs$buffer$${param.name}.copyBack();`)
       .join("\n");
     const nativeCall = copyBack
-      ? `  let sagejs_native_result;\n` +
+      ? `  let $sagejs$result;\n` +
         `  try {\n` +
-        `    sagejs_native_result = nativeFloat64Call(` +
+        `    $sagejs$result = nativeFloat64Call(` +
           `${jsString(fn.name)}, [${nativeArgs}]);\n` +
         `  } finally {\n${copyBack}\n  }\n` +
-        `  return sagejs_native_result;`
+        `  return $sagejs$result;`
       : `  return nativeFloat64Call(${jsString(fn.name)}, [${nativeArgs}]);`;
     return `${fallback}\n\nfunction ${fn.name}(${params}) {\n` +
       `  if (arguments.length !== ${fn.params.length}) {\n` +
