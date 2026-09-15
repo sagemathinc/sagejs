@@ -18,45 +18,74 @@ from .small_prime_matrix_kernel import pari_small_prime_matrix_kernel
 def pari_small_fp_matrix_product(
     workspace: IntegerBuffer, left: int, right: int, output: int, n: int, prime: int
 ) -> int:
-    """FpM_mul small square dispatch; all three spans must be disjoint.
+    """Square entry sharing the literal rectangular classical multiply."""
+    return pari_small_fp_rectangular_product(
+        workspace, left, right, output, n, n, n, prime
+    )
+
+
+@native
+def pari_small_fp_rectangular_product(
+    workspace: IntegerBuffer,
+    left: int,
+    right: int,
+    output: int,
+    rows: int,
+    inner: int,
+    columns: int,
+    prime: int,
+) -> int:
+    """FpM_mul small rectangular dispatch; all three spans are disjoint.
 
     Inputs are canonical residues. For odd primes, follow the classical
     SMALL_ULONG dot-product order, including HIGHBIT-triggered reductions.
     For p=2 retain selected-column copy/XOR order, using dense coefficients.
     """
-    if n < 1 or n > 4 or prime < 2 or prime > 3037000493:
+    if (
+        rows < 1
+        or rows > 4
+        or inner < 1
+        or inner > 4
+        or columns < 1
+        or columns > 4
+        or prime < 2
+        or prime > 3037000493
+    ):
         raise ValueError("small matrix product domain")
     if left < 0 or right < 0 or output < 0:
         raise ValueError("negative small matrix offset")
     if (
-        left + n * n > len(workspace)
-        or right + n * n > len(workspace)
-        or output + n * n > len(workspace)
+        left + rows * inner > len(workspace)
+        or right + inner * columns > len(workspace)
+        or output + rows * columns > len(workspace)
     ):
         raise ValueError("short small matrix product storage")
-    for j in range(n):
+    for j in range(columns):
         if prime == 2:
             initialized = False
-            for k in range(n):
-                if workspace[right + j * n + k] == 0:
+            for k in range(inner):
+                if workspace[right + j * inner + k] == 0:
                     continue
-                for i in range(n):
-                    value = workspace[left + k * n + i]
+                for i in range(rows):
+                    value = workspace[left + k * rows + i]
                     if initialized:
-                        value = _f2x_xor(workspace[output + j * n + i], value)
-                    workspace[output + j * n + i] = value
+                        value = _f2x_xor(workspace[output + j * rows + i], value)
+                    workspace[output + j * rows + i] = value
                 initialized = True
             if not initialized:
-                for i in range(n):
-                    workspace[output + j * n + i] = 0
+                for i in range(rows):
+                    workspace[output + j * rows + i] = 0
         else:
-            for i in range(n):
-                total = workspace[left + i] * workspace[right + j * n]
-                for k in range(1, n):
-                    total += workspace[left + k * n + i] * workspace[right + j * n + k]
+            for i in range(rows):
+                total = workspace[left + i] * workspace[right + j * inner]
+                for k in range(1, inner):
+                    total += (
+                        workspace[left + k * rows + i]
+                        * workspace[right + j * inner + k]
+                    )
                     if total >= 9223372036854775808:
                         total %= prime
-                workspace[output + j * n + i] = total % prime
+                workspace[output + j * rows + i] = total % prime
     return 0
 
 

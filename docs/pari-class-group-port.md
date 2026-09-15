@@ -53,6 +53,11 @@ The next source revision closes additional preparation and scheduling gaps:
   This is not yet full index-prime decomposition; descriptor construction and
   quotient-algebra splitting remain. See the
   [radical audit](../bench/pari-class-group-port/pradical_audit.md).
+- The same integral-table entry now continues through quotient basis
+  completion, inversion and projected Frobenius kernel in one native call.
+  All 24 radical-quotient cases match exact PARI matrices across execution
+  modes. Kummer-factor removal and actual quotient splitting are still outside
+  this boundary; see the [projection audit](../bench/pari-class-group-port/quotient_projection_audit.md).
 
 See [packet integration evidence](../bench/pari-class-group-port/selected_ideal_packets_audit.md)
 and [acceptance scheduling evidence](../bench/pari-class-group-port/post_hnf_schedule_audit.md),
