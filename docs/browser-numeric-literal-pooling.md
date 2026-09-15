@@ -5,8 +5,10 @@ by the Node evaluator for ordinary compiled Python and Sage cells. Bootstrap
 and the separate dynamic-compilation path retain their existing unpooled
 policy. Each compilation gets a distinct pool prefix; initialization does not
 reset the counter within a compiler worker's lifetime. A new worker has a new
-execution context. Ordinary cells also use the compiler's reusable main-module
-namespace, preserving earlier definitions across imports and later cells.
+execution context. Bootstrap and ordinary cells both use the compiler's reusable
+main-module namespace, preserving earlier definitions across imports and later
+cells. Bootstrap is unpooled, but its import bindings must already be configurable:
+otherwise a later dotted import can fail with `Cannot redefine property: sagejs`.
 
 Pooling requires `AST_Call.numeric_literal`, set by the numeric-token lowerer.
 A spelling such as `Integer("2")` is not sufficient: explicit calls must still
@@ -77,3 +79,33 @@ earlier missing-addon setup problem. This fixture harness does not enable
 numeric pooling, but that observation alone is not a baseline comparison.
 No assertions, classifications, or timeouts have been relaxed. PR #289 remains
 draft pending accounting for these broader failures and CI results.
+
+### Follow-up diagnosis
+
+Chromium CI exposed the bootstrap namespace issue above in
+`numerical-domains-browser.mjs`. The component browser regression now imports
+`sagejs.numerics` in successive cells and checks package identity in both modes
+and both pooling policies. Keeping bootstrap unpooled does not require keeping
+its module non-reusable.
+
+The new import regression fails with the previous bootstrap policy with exactly
+`Cannot redefine property: sagejs`. With the corrected policy it passes in actual
+Chromium in Python and Sage modes, with pooling disabled and enabled; all eight
+focused Node/policy tests also pass. These are candidate-overlay results, not a
+replacement for the source-current CI browser qualification.
+
+Exploratory standalone-harness imports allowed `polynomial.py` and
+`extension-sparse-polynomial.py` to pass. Other extension fixtures then reached
+additional missing lazy dependencies (`public_structural`, scheme enumeration,
+and exact-vector support), and `extension-multivariate.py` reached an exact-integer
+error in `GF`. These exploratory harness edits are not part of this PR; a
+complete dependency repair and baseline comparison remain separate work.
+
+The algebra timeout is localized to the large book-example discrete logarithm.
+Its order factorization takes approximately 20 ms in the installed FLINT adapter,
+so factorization does not explain the timeout. The BSGS table uses modular objects
+as dictionary keys; `_dict_resolve_key` scans stored keys after identity misses,
+making table construction quadratic. A 15-second V8 sample shows equality,
+property copying, and bound-method machinery prominently. A hash/index repair
+must preserve mathematical cross-type equality; increasing the timeout is not a
+fix. This diagnosis is not a baseline equivalence or completed optimization claim.

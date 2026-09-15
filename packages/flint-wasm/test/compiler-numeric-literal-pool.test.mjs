@@ -49,7 +49,7 @@ test("browser compiler uses distinct pools and leaves bootstrap unpooled", () =>
   );
   assert.deepEqual(
     options.map((item) => item.reuse_main_module),
-    [false, true, true, false, true],
+    [true, true, true, true, true],
   );
   assert.equal(
     new Set(options.map((item) => item.numeric_literal_pool_prefix)).size,

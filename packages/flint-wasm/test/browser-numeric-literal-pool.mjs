@@ -80,6 +80,14 @@ try {
         const session = new SageSession({ mode });
         try {
           await session.ready();
+          // Bootstrap preloads bind sagejs too. Reimporting it must replace
+          // that accessor without resetting the interactive module.
+          await session.evaluate(
+            "import sagejs.numerics\nbootstrap_package = sagejs\n",
+          );
+          await session.evaluate(
+            "import sagejs.numerics\nassert sagejs is bootstrap_package\n",
+          );
           await session.evaluate(`
 def saved():
     return 1.25, 9007199254740993

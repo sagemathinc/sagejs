@@ -25,7 +25,9 @@ function outputJavaScript(
     python_tuples: true,
     python_truthiness: true,
     python_attributes: true,
-    reuse_main_module: !includeBaselib,
+    // Bootstrap imports and user cells share the same module. Its initial
+    // bindings must already be replaceable by later interactive fragments.
+    reuse_main_module: true,
     pool_numeric_literals: !includeBaselib,
     numeric_literal_pool_prefix: `ρσ_browser_${numericLiteralPoolCounter++}_`,
     baselib_plain: includeBaselib ? baselib : undefined,
