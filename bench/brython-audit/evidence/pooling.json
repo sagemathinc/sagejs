@@ -1,0 +1,54 @@
+{
+  "scope": "Experimental HTTP-served compiler option only; no production source mutation; 100000 float assignments, first two samples warmup",
+  "source": "import time\nimport json\ndef probe():\n    for i in range(100000):\n        a = 1.0\n    assert a == 1.0\nresult = []\nfor iteration in range(7):\n    start = time.perf_counter()\n    probe()\n    result.append(time.perf_counter() - start)\nprint(json.dumps(result))\n",
+  "results": [
+    {
+      "pooled": false,
+      "samples": [
+        0.5848400592803955,
+        0.5206747055053711,
+        0.5281150341033936,
+        0.5331051349639893,
+        0.5237700939178467,
+        0.5206749439239502,
+        0.5316400527954102
+      ]
+    },
+    {
+      "pooled": true,
+      "samples": [
+        0.0005848407745361328,
+        0.00016999244689941406,
+        0.00017523765563964844,
+        0.0001850128173828125,
+        0.00010013580322265625,
+        0.000054836273193359375,
+        0.000054836273193359375
+      ]
+    },
+    {
+      "pooled": true,
+      "samples": [
+        0.0006349086761474609,
+        0.0001900196075439453,
+        0.00018525123596191406,
+        0.0001399517059326172,
+        0.00009512901306152344,
+        0.000080108642578125,
+        0.0000553131103515625
+      ]
+    },
+    {
+      "pooled": false,
+      "samples": [
+        0.5884900093078613,
+        0.538449764251709,
+        0.5540897846221924,
+        0.5348250865936279,
+        0.525050163269043,
+        0.5237400531768799,
+        0.5198202133178711
+      ]
+    }
+  ]
+}

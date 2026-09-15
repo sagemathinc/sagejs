@@ -1,0 +1,242 @@
+[
+  {
+    "name": "assignment",
+    "original": "for i in range(1000000):\n    a = 1\n\nJS_CODE = '''\nvar a;\nfor (var i = 0; i < 1000000; i++) {\n  a = 1;\n}\n'''\n",
+    "sha256": "0d0d91f32736362a88f4b45f4784e1413e2354897f72042948ed0da6978f440c",
+    "body": "for i in range(100000):\n    a = 1",
+    "check": "a == 1",
+    "index": 0
+  },
+  {
+    "name": "augm_assign",
+    "original": "a = 0\nfor i in range(1000000):\n    a += 1\n\nJS_CODE = '''\nvar a;\nfor (var i = 0; i < 1000000; i++) {\n  a += 1;\n}\n'''\n",
+    "sha256": "82876c0e7ff13ff41fa5f4fe31cbe81b36d4dbb70707cc01f5ef35b0835d0dec",
+    "body": "a = 0\nfor i in range(100000):\n    a += 1",
+    "check": "a == 100000",
+    "index": 1
+  },
+  {
+    "name": "augm_assign_and_append",
+    "original": "t = []\ni = 0\nwhile i < 100000:\n    t.append(i)\n    i += 1\n\nJS_CODE = '''\nvar list = [];\nfor (var i = 0; i <= 100000; i++) {\n    list.push(i);\n}\n'''\n",
+    "sha256": "576135d8c43a5d71ea02d97b3fb9c206b2af68cec5b8262978a4794a6e08025a",
+    "body": "t = []\ni = 0\nwhile i < 10000:\n    t.append(i)\n    i += 1",
+    "check": "len(t) == 10000",
+    "index": 2
+  },
+  {
+    "name": "assignment_float",
+    "original": "for i in range(1000000):\n    a = 1.0\n",
+    "sha256": "cf440a6ed18730f866ae89b118d06c88286936e33e84117ecf0eb85b00d409de",
+    "body": "for i in range(100000):\n    a = 1.0",
+    "check": "a == 1.0",
+    "index": 3
+  },
+  {
+    "name": "big_integers",
+    "original": "n = 60\nfor i in range(10000):\n    2 ** n\n\n",
+    "sha256": "15be1048ccdf7b87f19c1411adac60ba175fe36ce7fdc8b7ca7f0d8638c69fae",
+    "body": "n = 60\nfor i in range(1000):\n    2 ** n",
+    "check": null,
+    "index": 4
+  },
+  {
+    "name": "hash_string",
+    "original": "for i in range(1000000):\n    hash('abcdef')\n\n",
+    "sha256": "70d3bb49a847baf97b0504d718c14e9c04a9804aabb2aa5823e2f0a74c610ea6",
+    "body": "for i in range(100000):\n    hash('abcdef')",
+    "check": null,
+    "index": 5
+  },
+  {
+    "name": "hash_float",
+    "original": "for i in range(1000000):\n    hash(86.55)\n\n",
+    "sha256": "8830597ef0400169181c87d2b212588d78f55dc857e7489da20ab846dbf4415c",
+    "body": "for i in range(100000):\n    hash(86.55)",
+    "check": null,
+    "index": 6
+  },
+  {
+    "name": "build_dict",
+    "original": "for i in range(1000000):\n    a = {0: 0, 'a': 'a'}\n\n",
+    "sha256": "30bf3ebaa3528a2199163a6a78a0e987a0d0d1cc7cb47e4214964783bd5f68ab",
+    "body": "for i in range(100000):\n    a = {0: 0, 'a': 'a'}",
+    "check": "a == {0: 0, 'a': 'a'}",
+    "index": 7
+  },
+  {
+    "name": "add_dict",
+    "original": "d = {}\nfor i in range(100000):\n    d[i] = i\n\nJS_CODE = '''\nvar d = {};\nfor (var i = 0; i < 100000; i++) {\n  d[i] = i;\n}\n'''\n",
+    "sha256": "4aba82e9269b08f930a2d44891777898ff8dff8b6813b179557ac10bc05ae861",
+    "body": "d = {}\nfor i in range(10000):\n    d[i] = i",
+    "check": "len(d) == 10000",
+    "index": 8
+  },
+  {
+    "name": "set_dict_item",
+    "original": "a = {0: 0}\nfor i in range(1000000):\n    a[0] = i\n\nJS_CODE = '''\nvar a = {0: 0}\n\nfor (var i = 0; i < 1000000; i++) {\n    a[0] = i\n}\n'''\n",
+    "sha256": "d91e1777e1f6defbf82a82b972c582c75c8bebec52c581124f56b949094605a9",
+    "body": "a = {0: 0}\nfor i in range(100000):\n    a[0] = i",
+    "check": "a[0] == 99999",
+    "index": 9
+  },
+  {
+    "name": "build_set",
+    "original": "for i in range(1000000):\n    a = {0, 2.7, \"x\"}\n\n",
+    "sha256": "92c67ca63e091ebd6847eca82cbac246bc5fd2b19bc7c1ffc1b60c7f32fcc69c",
+    "body": "for i in range(100000):\n    a = {0, 2.7, \"x\"}",
+    "check": null,
+    "index": 10
+  },
+  {
+    "name": "build_list",
+    "original": "for i in range(1000000):\n    a = [1, 2, 3]\n\n",
+    "sha256": "611d3d24628376c7dbe589e32bd7549c89e49d23cd473715f62b764177923de1",
+    "body": "for i in range(100000):\n    a = [1, 2, 3]",
+    "check": "a == [1, 2, 3]",
+    "index": 11
+  },
+  {
+    "name": "set_list_item",
+    "original": "a = [0]\nfor i in range(1000000):\n    a[0] = i\n",
+    "sha256": "b8db0514527d341f49b4291bbd4c97110ebd65eb106df8bbba67cf63d0510d45",
+    "body": "a = [0]\nfor i in range(100000):\n    a[0] = i",
+    "check": "a[0] == 99999",
+    "index": 12
+  },
+  {
+    "name": "list_slice",
+    "original": "a = [1, 2, 3]\nfor i in range(100000):\n    a[:]",
+    "sha256": "8ff1d6dffb0c4fd253bf44d3e28545439a00d518af4d987c70cdbb2fc60eab04",
+    "body": "a = [1, 2, 3]\nfor i in range(10000):\n    a[:]",
+    "check": "a == [1, 2, 3]",
+    "index": 13
+  },
+  {
+    "name": "add_integers",
+    "original": "a, b, c = 1, 2, 3\nfor i in range(1000000):\n    a + b + c\n\n",
+    "sha256": "a25fe38839b858659ca248ea577b0fe20e3136c21b311c7e167a3ee384f4627f",
+    "body": "a, b, c = 1, 2, 3\nfor i in range(100000):\n    a + b + c",
+    "check": null,
+    "index": 14
+  },
+  {
+    "name": "add_int_float",
+    "original": "a, b = 1, 2.0\nfor i in range(1000000):\n    a + b\n\n",
+    "sha256": "6acbf652c69bcbeb6469459e7cbeba3307389770d6d8948996911719ce7f0962",
+    "body": "a, b = 1, 2.0\nfor i in range(100000):\n    a + b",
+    "check": null,
+    "index": 15
+  },
+  {
+    "name": "add_floats",
+    "original": "a, b = 1.0, 2.0\nfor i in range(1000000):\n    a + b\n\n",
+    "sha256": "72c60cb6410f34b8ecf90dbf561a7cffcbc9e950fc29776babbdd271160a6678",
+    "body": "a, b = 1.0, 2.0\nfor i in range(100000):\n    a + b",
+    "check": null,
+    "index": 16
+  },
+  {
+    "name": "add_strings",
+    "original": "a, b, c = 'a', 'b', 'c'\nfor i in range(1000000):\n    a + b + c\n",
+    "sha256": "f4bb83eec6d19ce9e233d6cb3681b4100fb0cb449d9a831d4f22a0aacc922dac",
+    "body": "a, b, c = 'a', 'b', 'c'\nfor i in range(100000):\n    a + b + c",
+    "check": null,
+    "index": 17
+  },
+  {
+    "name": "str_of_int",
+    "original": "for i in range(100000):\n    str(i)\n\nJS_CODE = '''\nfor (var i = 0; i < 100000; i++) {\n    new String(i);\n}\n'''\n",
+    "sha256": "2dd92343a6abb429b5968509f7cb80d29667006242310bbc131cff8ed0668918",
+    "body": "for i in range(10000):\n    str(i)",
+    "check": null,
+    "index": 18
+  },
+  {
+    "name": "create_function_no_arg",
+    "original": "for i in range(1000000):\n    def f():\n        pass\n\n",
+    "sha256": "837dfaef1258b523769ebf237b0396b9ee3c36e14a4d93949119b5a1c4b40fd7",
+    "body": "for i in range(100000):\n    def f():\n        pass",
+    "check": null,
+    "index": 19
+  },
+  {
+    "name": "create_function_single_pos_arg",
+    "original": "for i in range(1000000):\n    def f(x):\n        pass\n\n",
+    "sha256": "0ecf2fc085d727705df5378ba7055363b060d3b4aeef71c42f04d9aed1e4edd2",
+    "body": "for i in range(100000):\n    def f(x):\n        pass",
+    "check": null,
+    "index": 20
+  },
+  {
+    "name": "create_function_complex_args",
+    "original": "for i in range(1000000):\n    def f(x, y=1, *args, **kw):\n        pass\n\n",
+    "sha256": "eeeab1faebf792094ff6dbdbd5b713f45f45666dab0bf4f69a7e2b429e8b3a88",
+    "body": "for i in range(100000):\n    def f(x, y=1, *args, **kw):\n        pass",
+    "check": null,
+    "index": 21
+  },
+  {
+    "name": "function_call",
+    "original": "def f(x):\n    return x\nfor i in range(1000000):\n    f(i)\n\nJS_CODE = '''\nvar f = function(x) {\n\treturn x;\n}\nfor (var i = 0; i < 1000000; i++) {\n\tf(i)\n}\n'''\n",
+    "sha256": "54e615a1969bd18edbbd644db7e2357a026ba80d971217ffa58822551d2d2bf6",
+    "body": "def f(x):\n    return x\nfor i in range(100000):\n    f(i)",
+    "check": "f(123) == 123",
+    "index": 22
+  },
+  {
+    "name": "function_call_complex",
+    "original": "def f(x, y=0, *args, **kw):\n    return x\nfor i in range(100000):\n    f(i, 5, 6, a=8)\n\n",
+    "sha256": "328adf5329fcf176efd41bf08d5b48f9f69218debdf8d016b5e01c9b9106d0e2",
+    "body": "def f(x, y=0, *args, **kw):\n    return x\nfor i in range(10000):\n    f(i, 5, 6, a=8)",
+    "check": "f(123,5,6,a=8) == 123",
+    "index": 23
+  },
+  {
+    "name": "create_class_simple",
+    "original": "for i in range(10000):\n    class A:\n        pass\n\n",
+    "sha256": "07ba93b26307103a241bbbfa2f60cd426f56cbd0d028f17f30f8f21369791cb8",
+    "body": "for i in range(1000):\n    class A:\n        pass",
+    "check": null,
+    "index": 24
+  },
+  {
+    "name": "create_class_with_init",
+    "original": "for i in range(10000):\n    class A:\n        def __init__(self, x):\n            self.x = x\n\n",
+    "sha256": "da017da03862af64f495a792ecc3c5ca7b130507ec10f719aa3d665db1b00db6",
+    "body": "for i in range(1000):\n    class A:\n        def __init__(self, x):\n            self.x = x",
+    "check": null,
+    "index": 25
+  },
+  {
+    "name": "create_instance_simple_class",
+    "original": "class A:\n    pass\n\nfor i in range(1000000):\n    A()\n\nJS_CODE = '''\nclass A {}\n\nfor (var i = 0; i < 1000000; i++) {\n    new A()\n}\n'''\n",
+    "sha256": "09baf2d88a6961c8210a958c31ab8f3ce3baa5285ea24dbf12ff6bf918853bda",
+    "body": "class A:\n    pass\n\nfor i in range(100000):\n    A()",
+    "check": null,
+    "index": 26
+  },
+  {
+    "name": "create_instance_with_init",
+    "original": "class A:\n    def __init__(self):\n        pass\n\nfor i in range(100000):\n    A()\n",
+    "sha256": "a1ba2c9d5c04df791fe71c9137e5914ca627f6ba4aa521adf3c04f168145dfb2",
+    "body": "class A:\n    def __init__(self):\n        pass\n\nfor i in range(10000):\n    A()",
+    "check": null,
+    "index": 27
+  },
+  {
+    "name": "call_instance_method",
+    "original": "class A:\n    \n    def f(self):\n        pass\n\na = A()\nfor i in range(100000):\n    a.f()\n",
+    "sha256": "f05407fdfd895d4739cccc02152b59838425e9bf72b0c8b936c61fd4b85d354b",
+    "body": "class A:\n    \n    def f(self):\n        pass\n\na = A()\nfor i in range(10000):\n    a.f()",
+    "check": "a.f() is None",
+    "index": 28
+  },
+  {
+    "name": "set_instance_attribute",
+    "original": "class A:\n    pass\n\na = A()\nfor i in range(100000):\n    a.x = i\n",
+    "sha256": "91097d2311b6f95989a8bdc177efbd9bcf86f27070964417cb997e3de545506b",
+    "body": "class A:\n    pass\n\na = A()\nfor i in range(10000):\n    a.x = i",
+    "check": "a.x == 9999",
+    "index": 29
+  }
+]
