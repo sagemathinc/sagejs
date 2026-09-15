@@ -1,10 +1,12 @@
 """PARI 2.17.4 GMP real square-root preparation for Householder QR.
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
-The limb rounding follows src/kernel/gmp/mp.c:sqrtr_abs. Integer Newton
-iteration substitutes for mpn_sqrtrem explicitly; it is not a cost-equivalent
-translation of GMP's integer square-root implementation.
+The limb rounding follows src/kernel/gmp/mp.c:sqrtr_abs. Exact math.isqrt and
+an explicit remainder substitute for mpn_sqrtrem. The separate remainder square
+is still extra work compared with the upstream fused primitive.
 """
+
+from math import isqrt
 
 from sagejs.native import native
 
@@ -14,13 +16,7 @@ def pari_sqrtrem_integer(value: int) -> tuple[int, int]:
     """Exact arithmetic leaf substitution, returning floor-root and remainder."""
     if value < 0:
         raise ValueError("negative integer square root")
-    if value == 0:
-        return 0, 0
-    root = 1 << ((value.bit_length() + 1) // 2)
-    smaller = (root + value // root) // 2
-    while smaller < root:
-        root = smaller
-        smaller = (root + value // root) // 2
+    root = isqrt(value)
     return root, value - root * root
 
 
