@@ -1,4 +1,4 @@
-"""Formatting helpers for Sage.js JavaScript exception stacks."""
+"""Formatting helpers for native stacks and experimental Python unwind records."""
 
 import sagejs.runtime as runtime
 
@@ -38,6 +38,28 @@ StackSummary = list
 def _stack(error):
     if error is None or error is runtime.undefined:
         return ""
+    tb = runtime.reflect.get(error, "__traceback__")
+    if (
+        tb is not None
+        and tb is not runtime.undefined
+        and runtime.reflect.get(tb, "__sagejs_traceback_record__") is True
+    ):
+        frames = extract_tb(tb)
+        heading = "".join(format_exception_only(error)).rstrip()
+        return (
+            heading
+            + "\n"
+            + "\n".join(
+                "    at "
+                + frame.name
+                + " ("
+                + frame.filename
+                + ":"
+                + str(frame.lineno)
+                + ":1)"
+                for frame in reversed(frames)
+            )
+        )
     value = runtime.reflect.get(error, "stack")
     if value is runtime.undefined:
         return str(error)
@@ -45,13 +67,77 @@ def _stack(error):
 
 
 def format_exception(
-    exc=runtime.undefined, value=None, tb=None, limit=None, chain=True
+    exc=runtime.undefined, value=None, tb=runtime.undefined, limit=None, chain=True
 ):
-    """Format an exception using its native JavaScript stack when present."""
+    """Format traceback evidence and the visible exception chain."""
     if exc is runtime.undefined:
         exc = runtime.last_exception
     elif value is not None:
         exc = value
+    parents = []
+    if chain:
+        current = exc
+        seen = {id(current)}
+        while current is not None and current is not runtime.undefined:
+            parent = getattr(current, "__cause__", None)
+            separator = "\nThe above exception was the direct cause of the following exception:\n\n"
+            if parent is None:
+                if getattr(current, "__suppress_context__", False):
+                    break
+                parent = getattr(current, "__context__", None)
+                separator = "\nDuring handling of the above exception, another exception occurred:\n\n"
+            if parent is None or id(parent) in seen:
+                break
+            seen.add(id(parent))
+            parents.append((parent, separator))
+            current = parent
+    lines = []
+    for parent, separator in reversed(parents):
+        lines += _format_single_exception(parent, runtime.undefined, limit)
+        lines.append(separator)
+    return lines + _format_single_exception(exc, tb, limit)
+
+
+def _format_single_exception(exc, tb=runtime.undefined, limit=None):
+    """Format one exception without following its cause or context."""
+    if tb is None:
+        return format_exception_only(exc)
+    logical_tb = (
+        runtime.reflect.get(exc, "__traceback__")
+        if exc is not None and exc is not runtime.undefined
+        else None
+    )
+    if tb is not runtime.undefined:
+        logical_tb = tb
+    if logical_tb is None and exc is not None and exc is not runtime.undefined:
+        return format_exception_only(exc)
+    if (
+        logical_tb is not None
+        and logical_tb is not runtime.undefined
+        and runtime.reflect.get(logical_tb, "__sagejs_traceback_record__") is True
+    ):
+        lines = ["Traceback (most recent call last):\n"]
+        for frame in extract_tb(logical_tb, limit):
+            lines.append(
+                '  File "'
+                + frame.filename
+                + '", line '
+                + str(frame.lineno)
+                + ", in "
+                + frame.name
+                + "\n"
+            )
+            if frame.line:
+                lines.append("    " + frame.line + "\n")
+        lines += format_exception_only(exc)
+        native = runtime.reflect.get(exc, "__sagejs_native_tb__")
+        if native is not runtime.undefined and native is not None:
+            lines.append(
+                "Native capture (may overlap Python frames):\n"
+                + str(native.stack)
+                + "\n"
+            )
+        return lines
     text = _stack(exc)
     if not text:
         return []
@@ -166,9 +252,10 @@ def extract_stack(frame=None, limit=None):
 
 
 def extract_tb(tb, limit=None):
-    """Return frames from an exception's capture-time stack, not its unwind chain.
+    """Return compiler unwind records, or legacy capture-time native frames.
 
-    Known incompatibility: positive `limit` keeps the last N captured frames,
+    Compiler records use Python's first-N/last-N limit semantics. For native
+    carriers, positive `limit` keeps the last N captured frames,
     unlike CPython's first N traceback frames; negative limits keep the first N.
     Fixing this requires caught/reraised exception boundaries, not guessed
     truncation of native callers. The pinned pyparsing smoke currently depends
@@ -176,6 +263,21 @@ def extract_tb(tb, limit=None):
     """
     if tb is None:
         return []
+    if runtime.reflect.get(tb, "__sagejs_traceback_record__") is True:
+        frames = []
+        while tb is not None and tb is not runtime.undefined:
+            code = runtime.reflect.get(tb, "code")
+            lineno = runtime.reflect.get(tb, "tb_lineno")
+            lines = code.source.splitlines()
+            offset = lineno - code.first_lineno
+            text = lines[offset].strip() if 0 <= offset < len(lines) else None
+            frames.append(
+                FrameSummary(code.filename, lineno, code.name, text, "python-record")
+            )
+            tb = runtime.reflect.get(tb, "tb_next")
+        if limit is not None:
+            frames = frames[:limit] if limit >= 0 else frames[limit:]
+        return frames
     frames = _mapped_frames(tb, None)
     if limit == 0:
         return []

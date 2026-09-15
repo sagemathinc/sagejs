@@ -1,0 +1,80 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "python-annotation-flat-pairs",
+  "title": "Python Annotation Flat Pairs",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Lower public function annotation dictionaries through existing flat-pair primitive while preserving raw baselib metadata",
+  "base_commit": "3b4e8f24ba61d7822f421af52ad42a42b81f5ef2",
+  "claims": [
+    "src/output/functions.py",
+    "test/python-annotation-flat-pairs.cjs",
+    "test/fixtures/python-annotation-flat-pairs.py",
+    "docs/python-annotation-flat-pairs.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/sagemathinc/sagejs/pull/267",
+    "https://github.com/sagemathinc/sagejs/pull/266",
+    "https://github.com/sagemathinc/sagejs/discussions/104"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "CPython 3.14.4 future annotation fixture",
+      "Exact public flat-pair and private raw emitted metadata",
+      "Eager explicit-flag order, failures, and identity regressions"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "node --test test/python-annotation-flat-pairs.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/python-annotation-flat-pairs.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.417,
+      "started_at": "2026-09-12T11:29:41.551Z",
+      "commit": "3b4e8f24ba61d7822f421af52ad42a42b81f5ef2",
+      "workspace_fingerprint": "48cca339cb9ca98c804a9caba948752d669420a25002bb9e60423385e5f98d11",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/python-annotation-flat-pairs.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.394,
+      "started_at": "2026-09-12T11:30:44.607Z",
+      "commit": "3b4e8f24ba61d7822f421af52ad42a42b81f5ef2",
+      "workspace_fingerprint": "76ff7d993919c3ac3b49362365d9c1de5fac148734523733fa971c44b6a9ea55",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implementation checkpoint for root-batched qualification: compiler-only convergence126.529s/125.673s; strict403 modules zero; focused8 pass/2 strict inherited class-publication failures. Public preservation/order/freshness and exact raw ABI pass. No runtime/native edits or full-build qualification.",
+    "risks": [
+      "CPython 3.14 default deferred annotations remain outside this eager/future lowering change.",
+      "Raw baselib and annotations_text metadata intentionally retain their existing ABI.",
+      "Both eager class-publication cases remain registered and failing; NameError is incorrectly suppressed by early class construction. No waiver or classes.py scope expansion.",
+      "No performance improvement or full-build qualification claim from compiler-only regeneration."
+    ],
+    "next_steps": [
+      "Retain class-publication failure oracle; root coordinates independent class construction repair.",
+      "Root coordinates exact combined full build with divmod before adoption."
+    ]
+  }
+}

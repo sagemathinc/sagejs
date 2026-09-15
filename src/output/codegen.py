@@ -14,6 +14,7 @@ from ast_types import (
     AST_Binary,
     AST_BlockStatement,
     AST_Break,
+    AST_Call,
     AST_Class,
     AST_Conditional,
     AST_Constant,
@@ -112,6 +113,7 @@ from output.operators import (
 )
 from output.functions import print_function, print_function_call
 from output.statements import (
+    print_await_expression,
     print_bracketed,
     first_in_statement,
     force_statement,
@@ -608,9 +610,33 @@ def generate_code():
         if self.value:
             output.space()
             if kind is "throw":
-                output.print("ρσ_exception_value(")
+                logical = (
+                    output.options.python_traceback_records
+                    and output.traceback_function
+                )
+                bare = (
+                    is_node_type(self.value, AST_Call)
+                    and is_node_type(self.value.expression, AST_Dot)
+                    and self.value.expression.property is "reraise"
+                    and self.value.expression.expression.name is "ρσ_handled_state"
+                )
+                if logical and bare:
+                    output.print("(ρσ_trace_reraised = ")
+                    self.value.print(output)
+                    output.print(")")
+                    output.semicolon()
+                    return
+                if logical:
+                    output.print(
+                        "(ρσ_trace_reraised = undefined, ρσ_trace_captured = ρσ_record_traceback("
+                    )
+                output.print("ρσ_prepare_raise(")
                 self.value.print(output)
                 output.print(")")
+                if logical:
+                    output.print("," + JSON.stringify(output.traceback_function))
+                    output.print("," + str(self.start.line))
+                    output.print(",true))")
             else:
                 self.value.print(output)
         elif kind is "return" and output.options.python_truthiness:
@@ -622,6 +648,11 @@ def generate_code():
     AST_Exit.prototype._do_print = f_do_print_exit
 
     def f_do_print_yield(self, output):
+        if self.is_await:
+            output.print("(")
+            print_await_expression(output, lambda: self.value.print(output))
+            output.print(" ?? null)")
+            return
         output.print("((")
         if self.is_yield_from:
             output.print(

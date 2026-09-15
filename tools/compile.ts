@@ -11,6 +11,7 @@ import { readFile } from "fs/promises";
 import { Script } from "vm";
 import { PythonSourceMap, PythonSourceMapCollector } from "./python/source-map";
 import { mappedPythonScript } from "./python/stack-adapter";
+import { resolveTracebackCapture } from "./python/traceback-capture";
 import { getImportDirs, once } from "./utils";
 import createCompiler from "./compiler";
 import { expandSageLoads } from "./sage-source";
@@ -76,6 +77,8 @@ interface OutputOptions {
   python_tuples?: boolean;
   python_truthiness?: boolean;
   python_attributes?: boolean;
+  python_traceback_records?: boolean;
+  python_traceback_guarded?: boolean;
   pool_numeric_literals?: boolean;
   numeric_literal_pool_prefix?: string;
   module_registry?: string;
@@ -145,6 +148,7 @@ export default async function Compile({
   const module_cache_dir = argv.cache_dir
     ? process_cache_dir(argv.cache_dir)
     : "";
+  const guardedTracebacks = resolveTracebackCapture() === "guarded";
   const outputOptions = {
     beautify: true,
     private_scope: !argv.bare,
@@ -160,6 +164,8 @@ export default async function Compile({
     python_tuples: true,
     python_truthiness: true,
     python_attributes: true,
+    python_traceback_records: guardedTracebacks,
+    python_traceback_guarded: guardedTracebacks,
     pool_numeric_literals: true,
     module_registry: argv.execute ? "ρσ_modules" : undefined,
   } as OutputOptions;

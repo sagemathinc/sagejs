@@ -480,22 +480,32 @@ export class PythonCstLowerer {
         })];
       }
       case "raise_statement": {
-        const value = significantChildren(node)[0];
+        const parts = significantChildren(node);
+        const value = parts[0];
         let raised: any;
         if (value) {
           raised = this.lowerExpression(value);
-        } else if (this.catchDepth > 0) {
-          raised = this.make("AST_SymbolCatch", node, { name: "ρσ_Exception" });
+          if (parts.length > 1) {
+            const args: any[] = [raised, this.lowerExpression(parts[1])];
+            (args as any).kwargs = [];
+            (args as any).kwarg_items = [];
+            (args as any).starargs = false;
+            raised = this.make("AST_Call", node, {
+              expression: this.make("AST_SymbolRef", node, {
+                name: "ρσ_exception_with_cause",
+              }),
+              args,
+            });
+          }
         } else {
-          const args: any[] = [this.make("AST_String", node, {
-            value: "No active exception to reraise",
-          })];
+          const args: any[] = [];
           (args as any).kwargs = [];
           (args as any).kwarg_items = [];
           (args as any).starargs = false;
-          raised = this.make("AST_New", node, {
-            expression: this.make("AST_SymbolRef", node, {
-              name: "RuntimeError",
+          raised = this.make("AST_Call", node, {
+            expression: this.make("AST_Dot", node, {
+              expression: this.make("AST_SymbolRef", node, {name: "ρσ_handled_state"}),
+              property: "reraise",
             }),
             args,
             python_class: false,
@@ -1339,6 +1349,7 @@ export class PythonCstLowerer {
         }
         const child = significantChildren(node)[0];
         return this.make("AST_Yield", node, {
+          is_await: true,
           is_yield_from: true,
           value: this.lowerExpression(child),
         });
@@ -3359,6 +3370,7 @@ export class PythonCstLowerer {
           is_tuple: false,
         }),
       ]);
+      value.args.keyword_order?.push(["formal", value.args.kwargs.length - 1]);
     }
     const targets = [parent, ...additional].map((target) =>
       this.pythonSymbol("AST_SymbolRef", target, { name: target.text })
@@ -3575,6 +3587,7 @@ export class PythonCstLowerer {
     const args: any[] = [];
     (args as any).kwargs = [];
     (args as any).kwarg_items = [];
+    (args as any).keyword_order = [];
     (args as any).starargs = false;
     const argumentsNode = this.field(node, "arguments");
     const argumentNodes = argumentsNode.type === "argument_list"
@@ -3597,11 +3610,13 @@ export class PythonCstLowerer {
           }),
           this.lowerExpression(this.field(argument, "value")),
         ]);
+        (args as any).keyword_order.push(["formal", (args as any).kwargs.length - 1]);
       } else if (argument.type === "dictionary_splat") {
         sawDictionarySplat = true;
         (args as any).kwarg_items.push(
           this.lowerExpression(significantChildren(argument)[0]),
         );
+        (args as any).keyword_order.push(["mapping", (args as any).kwarg_items.length - 1]);
         (args as any).starargs = true;
       } else {
         const splatFunction = argument.type === "call" &&

@@ -5,7 +5,11 @@ from __python__ import hash_literals
 from ast_types import (
     AST_Definitions,
     AST_Scope,
+    AST_Toplevel,
     AST_Method,
+    AST_Return,
+    AST_Yield,
+    AST_SymbolRef,
     AST_Except,
     AST_EmptyStatement,
     AST_Statement,
@@ -111,6 +115,10 @@ def display_body(body, is_toplevel, output):
         if not (is_node_type(stmt, AST_EmptyStatement)) and not (
             is_node_type(stmt, AST_Definitions)
         ):
+            if output.options.python_traceback_records and output.traceback_function:
+                output.indent()
+                output.print("ρσ_trace_line = " + str(stmt.start.line))
+                output.end_statement()
             output.indent()
             stmt.print(output)
             if not (i is last and is_toplevel):
@@ -189,13 +197,104 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
             output.with_block(clear_exception_target)
             return
 
-    display_body(node.body, is_toplevel, output)
+    if output.options.python_traceback_records and is_node_type(node, AST_Scope):
+        display_traceback_body(
+            node, output, lambda: display_body(node.body, is_toplevel, output)
+        )
+    else:
+        display_body(node.body, is_toplevel, output)
+
+
+def guarded_body_cannot_throw(node, output):
+    # Binding has already completed outside the body unwind handler. Only a
+    # bare return or a read of an already-bound parameter is proved here: no
+    # global lookup, conversion, descriptor, or user callback can occur.
+    context = output.guarded_call_context
+    if (
+        not output.options.python_traceback_guarded
+        or not context
+        or context.node is not node
+        or node.body.length is not 1
+        or not is_node_type(node.body[0], AST_Return)
+        or is_node_type(node.body[0], AST_Yield)
+    ):
+        return False
+    value = node.body[0].value
+    if not value:
+        return True
+    if is_node_type(value, AST_SymbolRef):
+        for arg in node.argnames:
+            if arg.name is value.name:
+                return True
+    return False
+
+
+def display_traceback_body(node, output, body, block_scope=False, line=None):
+    if guarded_body_cannot_throw(node, output):
+        previous = output.traceback_function
+        output.traceback_function = None
+        body()
+        output.traceback_function = previous
+        return
+    if output.options.python_traceback_records:
+        guarded_root = (
+            output.options.python_traceback_guarded
+            and is_node_type(node, AST_Toplevel)
+            and node.module_id is "__main__"
+        )
+        previous_guarded_context = output.guarded_call_context
+        if is_node_type(node, AST_Toplevel):
+            output.guarded_call_context = {"node": node} if guarded_root else None
+        if guarded_root:
+            # A reentrant bare evaluation shares JavaScript globals. Keep the
+            # root token and traceback temporaries lexical to this evaluation;
+            # Python var bindings still hoist into their original namespace.
+            output.print("{let ρσ_trace_root = ρσ_traceback_policy.enter();")
+        previous = output.traceback_function
+        name = "<lambda>" if node.is_lambda else "<anonymous>"
+        if not node.is_lambda and node.name:
+            name = node.name.name
+        if is_node_type(node, AST_Toplevel):
+            name = "<module>"
+        output.traceback_function = {
+            "filename": node.start.file,
+            "name": name,
+            "source": node.start.raw,
+            "first_lineno": node.start.line,
+        }
+        output.indent()
+        output.print("let " if block_scope or guarded_root else "var ")
+        output.print(
+            "ρσ_trace_captured = undefined, ρσ_trace_reraised = undefined, ρσ_trace_line = "
+            + str(line or (node.body.start.line if node.is_lambda else node.start.line))
+        )
+        output.end_statement()
+        output.indent()
+        output.print("try ")
+        output.with_block(body)
+        output.print(" catch (ρσ_trace_error) {")
+        output.print(
+            "throw ρσ_trace_error === ρσ_trace_reraised || ρσ_trace_error === ρσ_trace_captured ? ρσ_trace_error : ρσ_record_traceback(ρσ_trace_error,"
+        )
+        output.print(JSON.stringify(output.traceback_function))
+        output.print(",ρσ_trace_line,true); }")
+        if guarded_root:
+            output.print(" finally { ρσ_traceback_policy.leave(ρσ_trace_root); }}")
+        output.traceback_function = previous
+        if is_node_type(node, AST_Toplevel):
+            output.guarded_call_context = previous_guarded_context
+    else:
+        body()
 
 
 def display_lambda_body(node, output, function_preamble):
     if function_preamble is not None:
         function_preamble(node, output, 0)
     declare_truth_temp(output)
+    display_traceback_body(node, output, lambda: display_lambda_return(node, output))
+
+
+def display_lambda_return(node, output):
     output.indent()
     output.print("return ")
     if output.options.python_tuples and is_node_type(node.body, AST_Seq):
@@ -239,14 +338,38 @@ def print_bracketed(node, output, complex, function_preamble, before, after):
             output.print("{}")
 
 
+def print_traceback_record(output, name):
+    if output.options.python_traceback_records and output.traceback_function:
+        output.indent()
+        output.print(
+            "if ("
+            + name
+            + " !== ρσ_trace_reraised && "
+            + name
+            + " !== ρσ_trace_captured) "
+        )
+        output.print(
+            "ρσ_trace_captured = " + name + " = ρσ_record_traceback(" + name + ","
+        )
+        output.print(JSON.stringify(output.traceback_function))
+        output.print(",ρσ_trace_line,true)")
+        output.end_statement()
+
+
 def print_await_expression(output, print_expression):
     """Emit generator-based `await` around an expression."""
-    output.print(
-        "(yield* (function* () {try { var ρσ_await_iterator = ρσ_yield_from_impl("
-    )
+    output.print("(yield* (function* () {try { var ρσ_await_value = ")
     print_expression()
     output.print(
-        ");"
+        "; var ρσ_await_method = ρσ_get_type_slot(ρσ_await_value, '__await__');"
+        "if (ρσ_await_method !== undefined) {"
+        "ρσ_await_value = ρσ_resolve_callable(ρσ_await_method)();"
+        "if (ρσ_await_value == null || (typeof ρσ_await_value.next !== 'function' && "
+        "ρσ_get_type_slot(ρσ_await_value, '__next__') === undefined)) "
+        "throw new TypeError('__await__() returned a non-iterator');}"
+        "else if (ρσ_await_value == null || typeof ρσ_await_value.next !== 'function') "
+        "throw new TypeError('object cannot be used in an await expression');"
+        "var ρσ_await_iterator = ρσ_yield_from_impl(ρσ_await_value);"
         "ρσ_await_iterator.throw = "
         "ρσ_await_iterator.__native_throw__;"
         "return yield* ρσ_await_iterator;"
@@ -303,6 +426,7 @@ def print_with(self, output):
         output.assign("ρσ_with_exception")
         output.print("e")
         output.end_statement()
+        print_traceback_record(output, "ρσ_with_exception")
 
     output.with_block(f_with)
 
@@ -350,11 +474,19 @@ def print_with(self, output):
                 )
             output.print(")")
             output.end_statement()
-        (
-            output.indent(),
-            output.spaced("if", "(!ρσ_with_suppress)", "throw ρσ_with_exception"),
-            output.end_statement(),
-        )
+        output.indent(), output.print("if (!ρσ_with_suppress) ")
+
+        def rethrow():
+            if output.options.python_traceback_records and output.traceback_function:
+                output.indent()
+                output.print(
+                    "ρσ_trace_reraised = ρσ_with_reraised; ρσ_trace_captured = ρσ_with_captured"
+                )
+                output.end_statement()
+            output.indent(), output.print("throw ρσ_with_exception")
+            output.end_statement()
+
+        output.with_block(rethrow)
         # A suppressed inner exception must not remain visible to an enclosing
         # ``with`` statement, since compiler temporaries are function-scoped.
         # If suppression was false the preceding throw exits this block.
@@ -362,10 +494,39 @@ def print_with(self, output):
         output.print("undefined"), output.end_statement()
 
     def f_cleanup():
+        if output.options.python_traceback_records and output.traceback_function:
+            output.indent()
+            output.print("ρσ_trace_line = " + str(self.start.line))
+            output.end_statement()
         output.indent(), output.spaced("if", "(ρσ_with_exception", "===", "undefined)")
         output.with_block(f_exit)
         output.space(), output.print("else"), output.space()
-        output.with_block(f_suppress)
+
+        def f_handled_exit():
+            if output.options.python_traceback_records and output.traceback_function:
+                output.indent()
+                output.print(
+                    "const ρσ_with_reraised = ρσ_trace_reraised, ρσ_with_captured = ρσ_trace_captured; ρσ_trace_reraised = ρσ_trace_captured = undefined"
+                )
+                output.end_statement()
+            output.indent()
+            output.print(
+                "const ρσ_with_handled = ρσ_handled_state.enter("
+                "ρσ_normalize_exception(ρσ_with_exception))"
+            )
+            output.end_statement()
+            output.indent(), output.print("try ")
+            output.with_block(f_suppress)
+            output.print(" finally ")
+
+            def restore():
+                output.indent()
+                output.print("ρσ_handled_state.leave(ρσ_with_handled)")
+                output.end_statement()
+
+            output.with_block(restore)
+
+        output.with_block(f_handled_exit)
 
     output.newline(), output.indent(), output.print("finally"), output.space()
     output.with_block(f_cleanup)

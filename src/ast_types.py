@@ -667,7 +667,8 @@ class AST_Yield(AST_Return):
     "A `yield` statement"
 
     properties = {
-        "is_yield_from": "[bool] True iff this is a yield from, False otherwise"
+        "is_yield_from": "[bool] True iff this is a yield from, False otherwise",
+        "is_await": "[bool] Resolve the await protocol before delegation",
     }
 
 

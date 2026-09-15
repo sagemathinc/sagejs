@@ -7,7 +7,7 @@ from __python__ import Object  # type: ignore
 # This gives us the new operator as a Python function call:
 def js_new(f, *args, **kwds):
     receiver = Object.create(f.prototype)
-    supplied_args = args.concat([ρσ_desugar_kwargs([kwds])])
+    supplied_args = args.concat([ρσ_desugar_kwargs(Object.create(None), [kwds])])
     return ρσ_interpolate_kwargs_constructor(receiver, False, f, supplied_args)
 
 

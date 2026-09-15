@@ -11,6 +11,7 @@ from ast_types import (
     is_node_type,
 )
 from output.functions import decorate, function_definition, function_annotation
+from output.statements import display_traceback_body
 from output.utils import create_doctring
 from utils import has_prop
 
@@ -103,6 +104,20 @@ def _print_shared_method_call(stmt, output, prepared=False):
 
 
 def _print_prepared_body(self, output, state):
+    if output.options.python_traceback_records:
+        output.with_block(
+            lambda: display_traceback_body(
+                self,
+                output,
+                lambda: _print_prepared_statements(self, output, state),
+                True,
+            )
+        )
+    else:
+        _print_prepared_statements(self, output, state)
+
+
+def _print_prepared_statements(self, output, state):
     previous = output.prepared_namespace
     definition = self.name.definition()
     output.prepared_namespace = {
@@ -144,6 +159,10 @@ def _print_prepared_body(self, output, state):
             output.print(JSON.stringify(create_doctring(self.docstrings)))
             output.end_statement()
         for stmt in self.python_namespace_body or self.body:
+            if output.options.python_traceback_records:
+                output.indent()
+                output.print("ρσ_trace_line = " + str(stmt.start.line))
+                output.end_statement()
             if is_node_type(stmt, AST_Method):
                 name = stmt.name.name
                 output.indent()
@@ -353,6 +372,34 @@ def _print_legacy_class(self, output):
                 output.assign(".prototype" + (("." + method) if method else ""))
 
     def define_method(stmt, is_property):
+        if output.options.python_traceback_records and is_property:
+
+            def property_value():
+                output.print("return ")
+                define_method_body(stmt, is_property)
+                output.end_statement()
+
+            output.print("(function()")
+            output.with_block(
+                lambda: display_traceback_body(
+                    self, output, property_value, False, stmt.start.line
+                )
+            )
+            output.print(")()")
+        elif output.options.python_traceback_records:
+            output.with_block(
+                lambda: display_traceback_body(
+                    self,
+                    output,
+                    lambda: define_method_body(stmt, is_property),
+                    True,
+                    stmt.start.line,
+                )
+            )
+        else:
+            define_method_body(stmt, is_property)
+
+    def define_method_body(stmt, is_property):
         name = stmt.name.name
         javascript_name = "ρσ_method_" + name
         if not is_property:
@@ -515,6 +562,12 @@ def _print_legacy_class(self, output):
         class_def(name)
         output.spaced("function", name, "()", "")
         output.with_block(lambda: [output.indent(), body()])
+        output.end_statement()
+        output.indent()
+        self.name.print(output)
+        output.print(
+            ".prototype." + name + ".__sagejs_method_signature_excludes_self__ = true"
+        )
         output.end_statement()
 
     def add_hidden_property(name, proceed, writable=False):
@@ -768,7 +821,11 @@ def _print_legacy_class(self, output):
         output.with_block(f_constructor)
 
     decorators = self.decorators or []
-    if decorators.length or self.sequential_definition:
+    if (
+        decorators.length
+        or self.sequential_definition
+        or output.options.python_traceback_records
+    ):
         output.print("var ")
         output.assign(self.name)
         write_constructor()
@@ -978,7 +1035,20 @@ def _print_legacy_class(self, output):
                     ],
                 ]:
                     if accessor:
-                        function_annotation(accessor, output, True, member)
+                        if output.options.python_traceback_records:
+                            output.with_block(
+                                lambda: display_traceback_body(
+                                    self,
+                                    output,
+                                    lambda: function_annotation(
+                                        accessor, output, True, member
+                                    ),
+                                    True,
+                                    accessor.start.line,
+                                )
+                            )
+                        else:
+                            function_annotation(accessor, output, True, member)
                 output.indent()
                 output.print(
                     "ρσ_register_property("
@@ -1011,7 +1081,14 @@ def _print_legacy_class(self, output):
         previous_class_body = output.in_class_body
         output.in_class_body = True
         try:
-            stmt.print(output)
+            if output.options.python_traceback_records:
+                output.with_block(
+                    lambda: display_traceback_body(
+                        self, output, lambda: stmt.print(output), True, stmt.start.line
+                    )
+                )
+            else:
+                stmt.print(output)
         finally:
             output.in_class_body = previous_class_body
         output.newline()

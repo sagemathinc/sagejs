@@ -8,6 +8,14 @@ export interface DiagnosticPosition {
   offset: number | null;
 }
 
+export interface PythonDiagnosticFrame {
+  filename: string;
+  name: string;
+  lineno: number;
+  line: string | null;
+  provenance: "python-record";
+}
+
 export interface PythonDiagnostic {
   schemaVersion: 1;
   category: "python.syntax" | "python.import" | "python.interrupt" | "python.runtime" | "host.error";
@@ -16,12 +24,15 @@ export interface PythonDiagnostic {
   phase: DiagnosticPhase;
   filename: string | null;
   span: { start: DiagnosticPosition; end: DiagnosticPosition | null } | null;
-  frames: never[];
+  frames: PythonDiagnosticFrame[];
+  framesTruncated: boolean;
   cause: PythonDiagnostic | null;
   context: PythonDiagnostic | null;
   suppressContext: boolean;
   chainTruncated: boolean;
   hostStack?: string;
+  /** Preserved native evidence when compiler frames cover only part of execution. */
+  nativeTraceback?: string;
 }
 
 export interface DiagnosticOptions {
@@ -45,6 +56,7 @@ function freezeDiagnostic(value: PythonDiagnostic): PythonDiagnostic {
     if (value.span.end) Object.freeze(value.span.end);
     Object.freeze(value.span);
   }
+  for (const frame of value.frames) Object.freeze(frame);
   Object.freeze(value.frames);
   if (value.cause) freezeDiagnostic(value.cause);
   if (value.context) freezeDiagnostic(value.context);
@@ -74,6 +86,32 @@ function position(value: unknown): DiagnosticPosition | null {
   return line === null || column === null ? null : {
     line, column, offset: integer(get(value, "offset"), 0),
   };
+}
+
+/** Copy only serializable source coordinates; never transport live activations. */
+function tracebackFrames(error: unknown): { frames: PythonDiagnosticFrame[]; framesTruncated: boolean } {
+  const frames: PythonDiagnosticFrame[] = [];
+  let record = get(error, "__traceback__");
+  if (get(record, "__sagejs_traceback_record__") !== true) return { frames, framesTruncated: false };
+  const seen = new Set<unknown>();
+  while (record != null) {
+    if (seen.has(record) || frames.length >= 256 || get(record, "__sagejs_traceback_record__") !== true) {
+      return { frames, framesTruncated: true };
+    }
+    seen.add(record);
+    const code = get(record, "code");
+    const filename = string(get(code, "filename"));
+    const name = string(get(code, "name"));
+    const lineno = integer(get(record, "tb_lineno"), 1);
+    if (filename === undefined || name === undefined || lineno === null) return { frames, framesTruncated: true };
+    const source = string(get(code, "source"));
+    const first = integer(get(code, "first_lineno"), 1);
+    const line = source !== undefined && first !== null && lineno >= first
+      ? source.split(/\r\n|\r|\n/)[lineno - first]?.trim() ?? null : null;
+    frames.push({ filename, name, lineno, line, provenance: "python-record" });
+    record = get(record, "tb_next");
+  }
+  return { frames, framesTruncated: false };
 }
 
 function errorMessage(value: unknown): string {
@@ -150,12 +188,23 @@ export function normalizePythonDiagnostic(
     const result: PythonDiagnostic = {
       schemaVersion: 1, category, exceptionType,
       message,
-      phase: options.phase, filename, span, frames: [], cause: null, context: null,
+      phase: options.phase, filename, span,
+      ...(options.pythonExecution ? tracebackFrames(value) : { frames: [], framesTruncated: false }),
+      cause: null, context: null,
       suppressContext: get(value, "__suppress_context__") === true, chainTruncated: false,
     };
     if (options.includeHostStack) {
       const stack = string(get(value, "stack"));
       if (stack !== undefined) result.hostStack = stack;
+    }
+    if (options.pythonExecution) {
+      // The native-only runtime uses the exception itself as its traceback
+      // carrier. Instrumentation moves that carrier to __sagejs_native_tb__.
+      // Preserve both formats without interpreting a JS stack as Python frames.
+      const carrier = get(value, "__sagejs_native_tb__") ??
+        (get(value, "__traceback__") === value ? value : undefined);
+      const native = string(get(carrier, "stack"));
+      if (native !== undefined) result.nativeTraceback = native;
     }
     ancestors.add(value);
     for (const key of ["cause", "context"] as const) {
@@ -205,16 +254,12 @@ export function serializeDiagnosticError(error: unknown) {
   };
 }
 
-/** Concise CLI output from trusted boundary metadata, with no inferred frames. */
-export function renderCliDiagnostic(
-  error: unknown,
-  options: { includeHostStack?: boolean } = {},
+/** Render an envelope obtained from a trusted evaluation/worker boundary. */
+export function renderPythonDiagnostic(
+  diagnostic: PythonDiagnostic,
+  hostBoundary = false,
+  includeNativeCapture = true,
 ): string {
-  const attached = (typeof error === "object" && error !== null) || typeof error === "function"
-    ? attachedDiagnostics.get(error) : undefined;
-  // An error merely named ValueError (or carrying a public pythonDiagnostic)
-  // is not evidence that Python execution began.
-  const diagnostic = attached ?? normalizePythonDiagnostic(error, { phase: "host" });
   function render(value: PythonDiagnostic): string {
     let prefix = "";
     if (value.cause) {
@@ -224,11 +269,36 @@ export function renderCliDiagnostic(
       prefix = render(value.context) +
         "\n\nDuring handling of the above exception, another exception occurred:\n\n";
     }
-    const host = !attached || value.category === "host.error" ? "Sage.js host error: " : "";
+    const host = hostBoundary || value.category === "host.error" ? "Sage.js host error: " : "";
     const message = value.message === "" ? "" : `: ${value.message}`;
-    return prefix + host + value.exceptionType + message;
+    let traceback = "";
+    if (value.frames.length || value.framesTruncated) {
+      traceback = "Traceback (most recent call last):\n";
+      for (const frame of value.frames) {
+        traceback += `  File ${JSON.stringify(frame.filename)}, line ${frame.lineno}, in ${frame.name}\n`;
+        if (frame.line !== null) traceback += `    ${frame.line}\n`;
+      }
+      if (value.framesTruncated) traceback += "  [traceback records truncated or invalid]\n";
+    }
+    const native = !includeNativeCapture || value.nativeTraceback === undefined ? "" :
+      "\nNative capture (may overlap Python frames):\n" + value.nativeTraceback;
+    return prefix + traceback + host + value.exceptionType + message + native;
   }
-  let output = render(diagnostic) + "\n";
+  return render(diagnostic) + "\n";
+}
+
+/** Concise CLI output from trusted boundary metadata, with no inferred frames. */
+export function renderCliDiagnostic(
+  error: unknown,
+  options: { includeHostStack?: boolean } = {},
+): string {
+  const attached = (typeof error === "object" && error !== null) || typeof error === "function"
+    ? attachedDiagnostics.get(error) : undefined;
+  // A public user-assigned pythonDiagnostic is not a trusted envelope.
+  const diagnostic = attached ?? normalizePythonDiagnostic(error, { phase: "host" });
+  // The envelope retains native evidence for rich consumers. The concise CLI
+  // exposes raw implementation stacks only under the developer opt-in.
+  let output = renderPythonDiagnostic(diagnostic, !attached, options.includeHostStack === true);
   if (options.includeHostStack) {
     const stack = string(get(error, "stack"));
     if (stack !== undefined) output += `\nHost stack (developer diagnostics):\n${stack}\n`;

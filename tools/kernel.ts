@@ -1,5 +1,6 @@
 import type { PythonDiagnostic } from "./python/diagnostics";
 export type { PythonDiagnostic } from "./python/diagnostics";
+import { resolveTracebackCapture, PythonTracebackCapture } from "./python/traceback-capture";
 
 /** Worker evaluation errors expose a JSON-safe diagnostic without parsing host stacks. */
 export interface SageDiagnosticError extends Error {
@@ -88,6 +89,7 @@ export interface SageRequestHandlers {
 
 export interface SageSessionOptions {
   mode?: SageLanguageMode;
+  tracebackCapture?: PythonTracebackCapture;
 }
 
 export interface SageLanguageOptions {
@@ -162,6 +164,7 @@ function userErrorText(error: Error): string {
  */
 export class SageSession extends EventEmitter {
   readonly mode: SageLanguageMode;
+  readonly tracebackCapture: PythonTracebackCapture;
 
   private worker?: Worker;
   private readyPromise: Promise<void>;
@@ -178,12 +181,13 @@ export class SageSession extends EventEmitter {
   private closed = false;
   private closePromise?: Promise<void>;
 
-  constructor({ mode = "sage" }: SageSessionOptions = {}) {
+  constructor({ mode = "sage", tracebackCapture }: SageSessionOptions = {}) {
     super();
     if (mode !== "sage" && mode !== "python") {
       throw new TypeError(`unknown Sage.js language mode ${JSON.stringify(mode)}`);
     }
     this.mode = mode;
+    this.tracebackCapture = resolveTracebackCapture(tracebackCapture);
     this.readyPromise = Promise.resolve();
     this.spawnWorker();
   }
@@ -211,6 +215,7 @@ export class SageSession extends EventEmitter {
       {
         workerData: {
           mode: this.mode,
+          tracebackCapture: this.tracebackCapture,
           interruptBuffer: interruptState.buffer,
           nativeResourceDirectory,
         },

@@ -17,6 +17,7 @@ import {
   SageSessionInterruptedError,
 } from "./kernel";
 import { SageLanguageMode } from "./kernel-evaluator";
+import { PythonDiagnostic, renderPythonDiagnostic } from "./python/diagnostics";
 import {
   parsePolyglotCell,
   prepareSubmittedPolyglotCell,
@@ -285,6 +286,7 @@ function traceback(error: unknown): {
     name?: string;
     message?: string;
     stack?: string;
+    pythonDiagnostic?: PythonDiagnostic;
   };
   const interrupted = error instanceof SageSessionInterruptedError;
   const ename = interrupted ? "KeyboardInterrupt" : value?.name ?? "Error";
@@ -295,7 +297,9 @@ function traceback(error: unknown): {
   return {
     ename: publicName,
     evalue,
-    traceback: [`${publicName}: ${evalue}`],
+    traceback: value?.pythonDiagnostic
+      ? renderPythonDiagnostic(value.pythonDiagnostic).trimEnd().split("\n")
+      : [`${publicName}: ${evalue}`],
   };
 }
 

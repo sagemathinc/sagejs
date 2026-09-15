@@ -16,6 +16,17 @@ _Str = str
 _Bool = bool
 
 
+def _builtins_prototype_member(prototype: Any, name: _Str) -> Any:
+    current = prototype
+    while current is not None and current is not runtime.undefined:
+        descriptor = runtime.object.getOwnPropertyDescriptor(current, name)
+        if descriptor is not runtime.undefined:
+            # Inspect documentation without invoking property getters.
+            return runtime.reflect.get(descriptor, "value")
+        current = runtime.object.getPrototypeOf(current)
+    return runtime.undefined
+
+
 def _builtins_doc_summary(doc: _Str) -> _Str:
     for line in doc.split("\n"):
         summary = line.strip()
@@ -110,7 +121,7 @@ def _search_doc(query: Any) -> None:
         for method_name in _core.ρσ_dir(value):
             if runtime.string_find(method_name, "_") == 0:
                 continue
-            method = _core._builtins_prototype_member(prototype, method_name)
+            method = _builtins_prototype_member(prototype, method_name)
             if not runtime.strict_equal(runtime.jstype(method), "function"):
                 continue
             qualified_name = name + "." + method_name
@@ -182,7 +193,7 @@ def _builtins_class_help(value: Any, instance: _Bool) -> _Str:
     prototype = _core._builtins_get_member(cls, "prototype")
     methods = []
     for method_name in _core.ρσ_dir(cls):
-        method = _core._builtins_prototype_member(prototype, method_name)
+        method = _builtins_prototype_member(prototype, method_name)
         if runtime.string_find(method_name, "_") != 0 and runtime.strict_equal(
             runtime.jstype(method), "function"
         ):
@@ -190,7 +201,7 @@ def _builtins_class_help(value: Any, instance: _Bool) -> _Str:
     if len(methods) > 0:
         lines.extend(["", "Methods:"])
         for method_name in methods:
-            method = _core._builtins_prototype_member(prototype, method_name)
+            method = _builtins_prototype_member(prototype, method_name)
             lines.append("    " + _builtins_signature(method, method_name))
             method_doc = _builtins_doc(method)
             if method_doc:

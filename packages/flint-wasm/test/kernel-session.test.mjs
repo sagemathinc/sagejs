@@ -5,6 +5,45 @@ import {
   SageSession,
   SageSessionInterruptedError,
 } from "../kernel.mjs";
+import { serializeBrowserError } from "../diagnostics.mjs";
+
+for (const nativeStack of [true, false]) {
+test(`session retains worker traceback records (native stack: ${nativeStack})`, async () => {
+  const originalWorker = globalThis.Worker;
+  const originalError = new Error("bad");
+  if (!nativeStack) delete originalError.stack;
+  const serialized = serializeBrowserError(Object.assign(originalError, {
+    __traceback__: { __sagejs_traceback_record__: true, tb_lineno: 3, tb_next: null,
+      code: { filename: "cell.py", name: "f", first_lineno: 3, source: "raise ValueError('bad')" } },
+  }), { phase: "execute", pythonExecution: true });
+  class TestWorker {
+    postMessage(_message, ports) {
+      this.port = ports[0];
+      this.port.onmessage = ({data}) => this.port.postMessage({
+        type: "result", id: data.id, ok: false, error: serialized,
+      });
+      this.port.start();
+      this.port.postMessage({type: "ready", protocol: 3});
+    }
+    terminate() { this.port?.close(); }
+  }
+  globalThis.Worker = TestWorker;
+  const session = new SageSession({worker: "test-worker.mjs"});
+  try {
+    await session.ready();
+    await assert.rejects(session.evaluate("fail"), error => {
+      assert.deepEqual(error.pythonDiagnostic, serialized.pythonDiagnostic);
+      assert.deepEqual(error.traceback, serialized.traceback);
+      assert.match(error.traceback.join("\n"), /line 3, in f/);
+      assert.equal(error.stack, nativeStack ? serialized.stack : serialized.traceback.join("\n"));
+      return true;
+    });
+  } finally {
+    await session.close();
+    globalThis.Worker = originalWorker;
+  }
+});
+}
 
 test("interrupt acknowledges termination before replacement readiness", async () => {
   const originalWorker = globalThis.Worker;
@@ -97,6 +136,7 @@ test("session configures a validated compiler-worker optimizer policy", async ()
     worker: "test-worker.mjs",
     compilerWorker: "compiler-worker.mjs",
     optimizationLevel: "O0",
+    tracebackCapture: "guarded",
   });
   try {
     await session.ready();
@@ -108,6 +148,11 @@ test("session configures a validated compiler-worker optimizer policy", async ()
       "O0",
     );
     assert.equal(initialized.mode, "python");
+    assert.equal(initialized.tracebackCapture, "guarded");
+    assert.throws(
+      () => new SageSession({ tracebackCapture: "fast" }),
+      /tracebackCapture must be 'native' or 'guarded'/,
+    );
     assert.throws(
       () => new SageSession({ optimizationLevel: "fast" }),
       /optimizationLevel must be O0, O1, O2, O3, or Os/,

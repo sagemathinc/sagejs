@@ -9,6 +9,7 @@ from ast_types import (
     AST_ClassCall,
     AST_Conditional,
     AST_Dot,
+    AST_GeneratorComprehension,
     AST_ItemAccess,
     AST_Lambda,
     AST_Method,
@@ -30,6 +31,33 @@ from output.operators import is_python_attribute_read, print_getattr
 
 anonfunc = "ρσ_anonfunc"
 module_name = "null"
+
+
+def guarded_function(node):
+    return (
+        node.name
+        and not node.is_expression
+        and not node.is_anonymous
+        and not node.is_generator
+        and not is_node_type(node, AST_Method)
+        and not (node.decorators and node.decorators.length)
+    )
+
+
+def guarded_call_scope(output):
+    context = output.guarded_call_context
+    if not output.options.python_traceback_guarded or not context:
+        return False
+    stack = output.stack()
+    for index in range(stack.length - 1, -1, -1):
+        node = stack[index]
+        if node is context.node:
+            return True
+        if is_node_type(node, AST_Class) or is_node_type(
+            node, AST_GeneratorComprehension
+        ):
+            return False
+    return False
 
 
 def set_module_name(x):
@@ -443,8 +471,8 @@ def has_annotations(self):
     return False
 
 
-def print_annotation_text(self, output, strip_first):
-    output.print("{")
+def print_annotation_text(self, output, strip_first, flat_pairs=False):
+    output.print("[" if flat_pairs else "{")
     wrote = False
 
     def write_argument(arg):
@@ -453,7 +481,7 @@ def print_annotation_text(self, output, strip_first):
             if wrote:
                 output.comma()
             output.print(JSON.stringify(arg.name))
-            output.print(":")
+            output.print("," if flat_pairs else ":")
             output.space()
             output.print(JSON.stringify(arg.annotation_text or arg.name))
             wrote = True
@@ -470,10 +498,10 @@ def print_annotation_text(self, output, strip_first):
     if self.return_annotation:
         if wrote:
             output.comma()
-        output.print('"return":')
+        output.print('"return",' if flat_pairs else '"return":')
         output.space()
         output.print(JSON.stringify(self.return_annotation_text or "Any"))
-    output.print("}")
+    output.print("]" if flat_pairs else "}")
 
 
 def function_annotation(self, output, strip_first, name):
@@ -531,13 +559,18 @@ def function_annotation(self, output, strip_first, name):
 
         def annotations():
             if not compiling_baselib:
-                output.print("ρσ_dict(")
+                output.print("ρσ_dict_literal(")
             if self.annotations is "future":
-                print_annotation_text(self, output, strip_first)
+                print_annotation_text(
+                    self,
+                    output,
+                    strip_first and compiling_baselib,
+                    not compiling_baselib,
+                )
                 if not compiling_baselib:
                     output.print(")")
                 return
-            output.print("{")
+            output.print("{" if compiling_baselib else "[")
             wrote = False
 
             def write_evaluated(arg):
@@ -546,12 +579,12 @@ def function_annotation(self, output, strip_first, name):
                     if wrote:
                         output.comma()
                     output.print(JSON.stringify(arg.name))
-                    output.print(":"), output.space()
+                    output.print(":" if compiling_baselib else ","), output.space()
                     arg.annotation.print(output)
                     wrote = True
 
             for index, arg in enumerate(self.argnames):
-                if not (strip_first and index is 0):
+                if not (compiling_baselib and strip_first and index is 0):
                     write_evaluated(arg)
             if self.argnames.starargs is not undefined:
                 write_evaluated(self.argnames.starargs)
@@ -562,9 +595,12 @@ def function_annotation(self, output, strip_first, name):
             if self.return_annotation:
                 if wrote:
                     output.comma()
-                output.print("return:"), output.space()
+                (
+                    output.print("return:" if compiling_baselib else '"return",'),
+                    output.space(),
+                )
                 self.return_annotation.print(output)
-            output.print("}")
+            output.print("}" if compiling_baselib else "]")
             if not compiling_baselib:
                 output.print(")")
 
@@ -574,7 +610,7 @@ def function_annotation(self, output, strip_first, name):
         # even when it is empty.  functools.wraps and many package-level
         # decorators copy it unconditionally.
         props.__annotations__ = lambda: output.print(
-            "{}" if compiling_baselib else "ρσ_dict()"
+            "{}" if compiling_baselib else "ρσ_dict_literal([])"
         )
 
     # Create __defaults__
@@ -809,6 +845,15 @@ def function_definition(
     javascript_name,
 ):
     as_expression = as_expression or self.is_expression or self.is_anonymous
+    guarded_body = (
+        output.options.python_traceback_guarded
+        and not as_expression
+        and guarded_function(self)
+    )
+    if guarded_body and not javascript_name:
+        # Keep the implementation's binding metadata self-reference separate
+        # from ordinary Python reads of the public (and rebindable) name.
+        javascript_name = "ρσ_guarded_body"
     if as_expression:
         orig_indent = output.indentation()
         output.set_indentation(output.next_indent())
@@ -816,6 +861,8 @@ def function_definition(
         output.indent(), output.spaced("var", anonfunc, "="), output.space()
     prepared_namespace = output.prepared_namespace
     output.prepared_namespace = None
+    previous_guarded_context = output.guarded_call_context
+    output.guarded_call_context = {"node": self} if guarded_body else None
     output.print("function"), output.space()
     if self.name:
         if javascript_name:
@@ -832,45 +879,49 @@ def function_definition(
         )
 
     if self.is_generator:
-        output.print("()"), output.space()
+        function_args(self.argnames, output, strip_first)
+        output.space()
 
         def output_generator():
-            # Dynamically resolved methods are invoked like unbound Python
-            # descriptors: ``self`` is supplied as the first argument and
-            # the host receiver is undefined.  Shift that receiver in the
-            # ordinary wrapper before creating the native generator.  Doing
-            # this only inside ``function* js_generator`` returns the nested
-            # generator as StopIteration.value instead of delegating to it.
-            if strip_first and output.options.python_attributes:
-                generator_wrapper_name = javascript_name or (
-                    output.make_python_name(self.name.name)
-                    if self.name and self.name.python_identifier
-                    else self.name.name
-                    if self.name
-                    else anonfunc
-                )
-                output.indent()
-                output.print("if ((this === globalThis || this == null) ")
-                output.print("&& arguments.length > 0) return ")
-                output.print_name(output.make_name(generator_wrapper_name))
-                output.print(".apply(")
-                output.print("arguments[0], Array.prototype.slice.call(arguments, 1))")
-                output.end_statement()
+            # Bind once at the Python call, not on first resume. The native
+            # generator closes over these bindings, including frozen defaults.
+            output_function_preamble(
+                self, output, 1 if strip_first and self.argnames.length else 0
+            )
             output.indent()
-            output.print("function* js_generator")
-            function_args(self.argnames, output, strip_first)
+            output.print("function* js_generator()")
             print_bracketed(
                 self,
                 output,
                 True,
-                output_function_preamble,
+                lambda node, output, offset: None,
             )
 
             output.newline()
             output.indent()
             output.spaced(
-                "var", "result", "=", "js_generator.apply(this,", "arguments)"
+                "var",
+                "result",
+                "=",
+                "ρσ_handled_state.wrap(js_generator.apply(this,",
+                "arguments)",
             )
+            if output.options.python_traceback_records:
+                # Native generators do not enter their body when throw() is
+                # called before the first resume, so the body catch cannot run.
+                output.print(", error => ρσ_record_traceback(error,")
+                output.print(
+                    JSON.stringify(
+                        {
+                            "filename": self.start.file,
+                            "name": self.name.name if self.name else "<anonymous>",
+                            "source": self.start.raw,
+                            "first_lineno": self.start.line,
+                        }
+                    )
+                )
+                output.print("," + str(self.start.line) + ",true)")
+            output.print(")")
             output.end_statement()
             # Native generator .constructor is a non-callable host object, not
             # a Python type. Share one canonical type across all generator sites.
@@ -932,6 +983,8 @@ def function_definition(
         )
 
     output.prepared_namespace = prepared_namespace
+    # Defaults/annotations execute in the enclosing scope, not this body.
+    output.guarded_call_context = previous_guarded_context
     if as_expression:
         output.end_statement()
         function_annotation(self, output, strip_first, anonfunc)
@@ -959,7 +1012,7 @@ def print_function(output):
         output.end_statement()
     else:
         if (
-            self.sequential_definition
+            (self.sequential_definition or output.options.python_traceback_records)
             and not self.is_expression
             and not self.is_anonymous
         ):
@@ -974,6 +1027,13 @@ def print_function(output):
         if not self.is_expression and not self.is_anonymous:
             output.end_statement()
             function_annotation(self, output, False)
+            if output.options.python_traceback_guarded and guarded_function(self):
+                output.indent()
+                self.name.print(output)
+                output.print(" = ρσ_traceback_policy.wrap(")
+                self.name.print(output)
+                output.print(")")
+                output.end_statement()
 
 
 def find_this(expression):
@@ -1319,8 +1379,42 @@ def print_function_call(self, output):
                     output.print(")")
 
     def print_kwargs():
+        if output.options.python_attributes and self.args.keyword_order:
+            # Merge each mapping before evaluating the next keyword segment.
+            # One compiler-owned accumulator avoids quadratic copying while
+            # preserving duplicate-key and __getitem__ exception precedence.
+            groups = []
+            for kind, index in self.args.keyword_order:
+                if kind is "mapping":
+                    groups.push([kind, self.args.kwarg_items[index]])
+                else:
+                    if (
+                        not groups.length
+                        or groups[groups.length - 1][0] is not "formal"
+                    ):
+                        groups.push(["formal", []])
+                    groups[groups.length - 1][1].push(self.args.kwargs[index])
+            for group in groups:
+                output.print("ρσ_desugar_kwargs(")
+            output.print("Object.create(null)")
+            for kind, value in groups:
+                output.print(",[")
+                if kind is "mapping":
+                    value.print(output)
+                else:
+                    output.print("{")
+                    for index, pair in enumerate(value):
+                        if index:
+                            output.comma()
+                        output.print("[")
+                        output.print_string(pair[0].name)
+                        output.print("]:")
+                        pair[1].print(output)
+                    output.print("}")
+                output.print("])")
+            return
         output.print(
-            "ρσ_desugar_kwargs(["
+            "ρσ_desugar_kwargs(Object.create(null),["
             if output.options.python_attributes
             else "ρσ_desugar_kwargs_legacy(["
         )
@@ -1448,7 +1542,22 @@ def print_function_call(self, output):
         output.print(")")
         return
 
-    if is_new and not self.args.length and not has_kwargs and not self.args.starargs:
+    guarded_simple = (
+        guarded_call_scope(output)
+        and not has_kwargs
+        and not self.args.starargs
+        and not is_node_type(self, AST_ClassCall)
+        and not self.direct_call
+        and is_node_type(self.expression, AST_SymbolRef)
+    )
+
+    if (
+        is_new
+        and not self.args.length
+        and not has_kwargs
+        and not self.args.starargs
+        and not guarded_simple
+    ):
         output.print("new"), output.space()
         print_function_name()
         return  # new A is the same as new A() in javascript
@@ -1476,7 +1585,15 @@ def print_function_call(self, output):
 
         if is_new:
             output.print("new"), output.space()
+        if guarded_simple:
+            output.print(
+                "(ρσ_traceback_policy.constructorTarget("
+                if is_new
+                else "ρσ_traceback_policy.target("
+            )
         print_function_name()
+        if guarded_simple:
+            output.print("))" if is_new else ")")
         output.with_parens(print_args)
         return
 
@@ -1493,8 +1610,21 @@ def print_function_call(self, output):
             output.comma(),
         )
 
+    prepared_keywords = has_kwargs and resolved_python_attribute
+    if prepared_keywords:
+        for argument in self.args:
+            if argument.is_array:
+                prepared_keywords = False
+                break
+
     if has_kwargs:
-        if is_new:
+        if prepared_keywords:
+            output.print("ρσ_invoke_prepared_keywords(ρσ_prepare_method_call(")
+            self.expression.expression.print(output)
+            output.comma()
+            output.print(JSON.stringify(self.expression.property))
+            output.print(")")
+        elif is_new:
             print_new(False)
         else:
             output.print(
@@ -1503,7 +1633,8 @@ def print_function_call(self, output):
                 else "ρσ_interpolate_kwargs_legacy("
             )
             do_print_this()
-        print_function_name(True)
+        if not prepared_keywords:
+            print_function_name(True)
         output.comma()
     else:
         if is_new:
@@ -1522,16 +1653,34 @@ def print_function_call(self, output):
     if is_prototype_call and self.args.length > 1:
         self.args.shift()
 
-    print_positional_args()
-
-    if has_kwargs:
-        if self.args.length:
-            output.print(".concat(")
-        output.print("[")
+    if (
+        output.options.python_attributes
+        and has_kwargs
+        and self.args.length == 1
+        and self.args[0].is_array
+    ):
+        # A sole starred expression is evaluated before keywords, but its
+        # iterable is consumed afterwards. Keep user expressions at the call
+        # site (including yield/await), and give each invocation private state.
+        output.print(
+            "(function(ρσ_star,ρσ_keywords){return "
+            "Array.from(ρσ_Iterable(ρσ_star)).concat([ρσ_keywords]);})("
+        )
+        self.args[0].print(output)
+        output.comma()
         print_kwargs()
-        output.print("]")
-        if self.args.length:
-            output.print(")")
+        output.print(")")
+    else:
+        print_positional_args()
+
+        if has_kwargs:
+            if self.args.length:
+                output.print(".concat(")
+            output.print("[")
+            print_kwargs()
+            output.print("]")
+            if self.args.length:
+                output.print(")")
 
     output.print(")")
     if not is_repeatable:
