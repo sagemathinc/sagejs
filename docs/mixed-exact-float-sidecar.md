@@ -735,3 +735,27 @@ overflow, sticky exhaustion, and cleanup. The allocator harness also passes
 UBSan under the same 4 GiB cap. Generated GMP/FMPZ and exact fallback checks
 pass. Any performance improvement remains a separate prepared-workload
 experiment; allocator tests alone do not establish one.
+
+### Checked machine-word extraction
+
+For `GMP_NUMB_BITS == 64`, checked signed/unsigned conversion rejects
+multi-limb magnitudes using `mpz_size` and reads the sole magnitude limb with
+the public `mpz_getlimbn(value, 0)` API. The zero case is handled first.
+There is no assumption that `unsigned long` is 64-bit, so the implementation
+does not introduce an LLP64 truncation. Other limb configurations retain
+checked `mpz_export`. Signed limits, exact `INT64_MIN`, unsigned rejection of
+negative values, and unchanged output on failure remain the same contract.
+
+A plain-C test checks 158,671 values against the prior export implementations,
+forced export fallback, and independent GMP bounds plus reconstruction. It
+includes exhaustive small signed values, power-of-two boundary neighbors,
+and random magnitudes through 4096 bits. Optimized and UBSan builds pass under
+4 GiB. Forcing the export branch on this 64-bit host does not qualify an
+actual 32-bit-limb or Windows ABI.
+
+On the local host, four alternating one-million-call samples over 256 small
+nonnegative index-like values measured signed export at 14.01–14.34 ms versus
+2.208–2.215 ms for limb extraction, and unsigned export at 13.69–13.75 ms
+versus 2.211–2.222 ms. These are isolated conversion measurements, not
+inclusive attribution or a class-group speed claim. No default backend or
+mathematical algorithm changes.
