@@ -70,6 +70,87 @@ def pari_post_hnf_regulator_inputs(
     state[2] = 0
     if need != 0:
         return need
+    pari_post_hnf_class_factor(h_rows, h, inverse_hr, class_number, zeta_factor)
+    for i in range(places * zero_columns):
+        real_logs[3 * i] = c[7 * i + 1]
+        real_logs[3 * i + 1] = c[7 * i + 2]
+        real_logs[3 * i + 2] = c[7 * i + 3]
+    state[2] = 1
+    return 0
+
+
+@native
+def pari_post_hnf_log_inputs(
+    factor_count: int,
+    h_rows: int,
+    b_columns: int,
+    c_columns: int,
+    places: int,
+    c: IntegerBuffer,
+    real_logs: IntegerBuffer,
+    state: Int64Buffer,
+) -> int:
+    """Publish real unit columns only after the source dimension gate.
+
+    state=[need,zero_columns,logs_ready]. No determinant or inverse-hR
+    validation/evaluation occurs; those belong after the multiple/cache gates.
+    On dimension need, logs are untouched. Invalid shapes reject before state.
+    """
+    if (
+        factor_count < 0
+        or h_rows < 0
+        or b_columns < 0
+        or h_rows + b_columns > factor_count
+        or c_columns < h_rows + b_columns
+        or places < 2
+        or places > 4
+    ):
+        raise ValueError("invalid post-HNF dimensions")
+    zero_columns = c_columns - b_columns - h_rows
+    if len(real_logs) < 3 * places * zero_columns or len(state) < 3:
+        raise ValueError("short post-HNF log workspace")
+    pari_validate_log_entries(c, places * c_columns)
+    need = factor_count - h_rows - b_columns
+    if places - 1 - zero_columns > 0:
+        need += places - 1 - zero_columns
+        if need > factor_count:
+            need = factor_count
+    state[0] = need
+    state[1] = zero_columns
+    state[2] = 0
+    if need != 0:
+        return need
+    for i in range(places * zero_columns):
+        real_logs[3 * i] = c[7 * i + 1]
+        real_logs[3 * i + 1] = c[7 * i + 2]
+        real_logs[3 * i + 2] = c[7 * i + 3]
+    state[2] = 1
+    return 0
+
+
+@native
+def pari_post_hnf_class_factor(
+    h_rows: int,
+    h: IntegerBuffer,
+    inverse_hr: IntegerBuffer,
+    class_number: IntegerBuffer,
+    zeta_factor: IntegerBuffer,
+) -> int:
+    """Compute tentative det(H), then h*invhr after source acceptance gates.
+
+    Output owners publish after scalar arithmetic succeeds. They are not
+    certified class-group outputs. No cache mutation is owned by this helper.
+    """
+    if (
+        h_rows < 0
+        or len(h) < h_rows * h_rows
+        or len(class_number) < 1
+        or len(zeta_factor) < 3
+    ):
+        raise ValueError("short post-HNF class-factor workspace")
+    pari_validate_regulator_values(inverse_hr, 1)
+    if inverse_hr[0] <= 0 or inverse_hr[1] < 64:
+        raise ValueError("inverse hR must be positive real")
     # ZM_det_triangular copies the first diagonal, not 1 times that entry.
     determinant = 1
     if h_rows > 0:
@@ -81,13 +162,8 @@ def pari_post_hnf_regulator_inputs(
     m, p, e = pari_integer_real_product(
         determinant, inverse_hr[0], inverse_hr[1], inverse_hr[2]
     )
-    for i in range(places * zero_columns):
-        real_logs[3 * i] = c[7 * i + 1]
-        real_logs[3 * i + 1] = c[7 * i + 2]
-        real_logs[3 * i + 2] = c[7 * i + 3]
     class_number[0] = determinant
     zeta_factor[0] = m
     zeta_factor[1] = p
     zeta_factor[2] = e
-    state[2] = 1
     return 0

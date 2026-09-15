@@ -60,7 +60,9 @@ function run(c,a,o={}){const r=spawnSync(c,a,{encoding:'utf8',timeout:180000,max
  // A ready post-HNF dimension gate has need=0 on entry to compute_multiple_of_R.
  assert(oracleSource.includes('need=71,bits=73'));oracleSource=oracleSource.replace('need=71,bits=73','need=0,bits=73');
  const old='GEN z=scalar(),lambda=NULL,L=NULL;';assert(oracleSource.includes(old));
- oracleSource=oracleSource.replace(old,'long hs=itos(rd());GEN H=cgetg(hs+1,t_MAT);for(long j=1;j<=hs;j++){gel(H,j)=cgetg(hs+1,t_COL);for(long i=1;i<=hs;i++)gcoeff(H,i,j)=rd();}GEN z=mulir(ZM_det_triangular(H),scalar()),lambda=NULL,L=NULL;');
+ oracleSource=oracleSource.replace(old,'long hs=itos(rd());GEN H=cgetg(hs+1,t_MAT);for(long j=1;j<=hs;j++){gel(H,j)=cgetg(hs+1,t_COL);for(long i=1;i<=hs;i++)gcoeff(H,i,j)=rd();}GEN invhr=scalar(),z=NULL,lambda=NULL,L=NULL;');
+ assert(oracleSource.includes('raw=compute_R(lambda,z,&L,&R);'));
+ oracleSource=oracleSource.replace('raw=compute_R(lambda,z,&L,&R);','z=mulir(ZM_det_triangular(H),invhr);raw=compute_R(lambda,z,&L,&R);');
  const source=path.join(dir,'oracle.c'),exe=path.join(dir,'oracle'),lib=path.join(pari,'Olinux-x86_64');fs.writeFileSync(source,oracleSource);
  run('cc',['-O1','-fsanitize=undefined','-fno-sanitize-recover=undefined','-I'+path.join(pari,'src/headers'),'-I'+lib,source,'-L'+lib,'-Wl,-rpath,'+lib,'-lpari','-lm','-o',exe]);
  const readyCases=cases.filter(r=>r.need===0),ready=readyCases.length;
@@ -93,8 +95,10 @@ for ix,(r,e) in enumerate(zip(*json.load(sys.stdin))):
   assert result==-100 and post==[r['need'],c,0] and h==[77]
   assert a[47]==[77]*3 and a[0]==[77]*(3*n*c)
   continue
- assert post==[0,c,1] and h==[int(r['h'])] and a[0]==list(map(int,r['values']))
- if 'zeta' in r:assert a[33]==list(map(int,r['zeta']))
+ assert post==[0,c,1] and a[0]==list(map(int,r['values']))
+ assert h==([int(r['h'])] if e['acceptance'][0]==2 else [77])
+ if e['acceptance'][0]!=2:assert a[33]==[77]*3
+ elif 'zeta' in r:assert a[33]==list(map(int,r['zeta']))
  assert result==e['acceptance'][1] and a[47]==e['acceptance'],(ix,a[47],e)
  assert a[32]==e['multiple_state'] and a[43]==e['reconstruction_state'],(ix,a[32],a[43],e)
  for at,key,length in [(30,'multiple',3),(31,'coordinates',3*s),(40,'regulator',3),(41,'relations',s)]:assert a[at]==(list(map(int,e[key])) if e[key] else [77]*length),(ix,key)
@@ -111,7 +115,7 @@ for ix,(r,e) in enumerate(zip(*json.load(sys.stdin))):
   const a=[make(3*n*c,0),BigInt(n),BigInt(c),BigInt(r.degree),...lengths.map((k,i)=>make(k,i+4)),[77n,0n,73n,77n],make(3,33),...[3*s,s,s,n-1,s,15,3,s,1,4,n-1,c].map((k,i)=>make(k,i+34)),r.changed,[77n,77n,77n]],h=make(1,0),post=[77n,77n,77n];
   const result=f[backend](...[r.kc,r.hRows,r.bColumns,r.cColumns,n,r.degree].map(BigInt),r.H.map(BigInt),r.C.map(BigInt),r.inv.map(BigInt),a[0],h,a[33],post,...a.slice(4,33),...a.slice(34));
   if(!e){assert.equal(result,-100n);assert.deepEqual(post,[BigInt(r.need),BigInt(c),0n]);assert.deepEqual(view(h),[77n]);assert.deepEqual(a[47],[77n,77n,77n]);continue;}
-  assert.deepEqual(post,[0n,BigInt(c),1n]);assert.deepEqual(view(h),[BigInt(r.h)]);assert.deepEqual(view(a[0]),r.values.map(BigInt));if(r.zeta)assert.deepEqual(view(a[33]),r.zeta.map(BigInt));
+  assert.deepEqual(post,[0n,BigInt(c),1n]);assert.deepEqual(view(h),e.acceptance[0]===2?[BigInt(r.h)]:[77n]);assert.deepEqual(view(a[0]),r.values.map(BigInt));if(e.acceptance[0]!==2)assert.deepEqual(view(a[33]),[77n,77n,77n]);else if(r.zeta)assert.deepEqual(view(a[33]),r.zeta.map(BigInt));
   assert.equal(result,BigInt(e.acceptance[1]));assert.deepEqual(a[47],e.acceptance.map(BigInt));assert.deepEqual(a[32],e.multiple_state.map(BigInt));assert.deepEqual(a[43],e.reconstruction_state.map(BigInt));
   for(const [at,key,length]of [[30,'multiple',3],[31,'coordinates',3*s],[40,'regulator',3],[41,'relations',s]])assert.deepEqual(view(a[at]),e[key].length?e[key].map(BigInt):Array(length).fill(77n),backend+' '+ix+' '+key);
  }

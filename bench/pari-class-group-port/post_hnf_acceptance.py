@@ -5,8 +5,14 @@ Experimental diagnostic boundary, not a complete class-group computation.
 """
 
 from sagejs.native import IntegerBuffer, Int64Buffer, native
-from .post_hnf_regulator_inputs import pari_post_hnf_regulator_inputs
-from .regulator_acceptance import pari_regulator_acceptance
+from .post_hnf_regulator_inputs import (
+    pari_post_hnf_log_inputs,
+    pari_post_hnf_class_factor,
+)
+from .regulator_acceptance import (
+    pari_regulator_acceptance_multiple,
+    pari_regulator_acceptance_finish,
+)
 
 
 @native
@@ -72,27 +78,25 @@ def pari_post_hnf_acceptance(
 
     The source need is in post_hnf_state[0]; -100 is only a stage marker.
     class_number is a tentative determinant, never a certified output.
-    Eager h*invhr preparation preserves the diagnostic input bridge's
-    documented placement difference: this is not equal-work timing.
+    Source order is logs, regulator multiple, cache gate, determinant/factor,
+    then reconstruction. Early multiple/cache exits leave class_number and
+    zeta_factor untouched; post_hnf_state[2] means logs ready, not h ready.
+    Updating old_cache before reconstruction remains the caller's duty.
     Owners must be disjoint; acceptance owners are untouched on rank exits.
     """
-    need = pari_post_hnf_regulator_inputs(
+    need = pari_post_hnf_log_inputs(
         factor_count,
         h_rows,
         b_columns,
         c_columns,
         places,
-        h,
         c,
-        inverse_hr,
         logs,
-        class_number,
-        zeta_factor,
         post_hnf_state,
     )
     if need != 0:
         return -100
-    return pari_regulator_acceptance(
+    status = pari_regulator_acceptance_multiple(
         logs,
         places,
         c_columns - b_columns - h_rows,
@@ -126,6 +130,18 @@ def pari_post_hnf_acceptance(
         multiple,
         coordinates,
         multiple_state,
+        cache_changed,
+        acceptance_state,
+    )
+    if status != 0:
+        return status
+    pari_post_hnf_class_factor(h_rows, h, inverse_hr, class_number, zeta_factor)
+    return pari_regulator_acceptance_finish(
+        places,
+        c_columns - b_columns - h_rows,
+        multiple_state,
+        multiple,
+        coordinates,
         zeta_factor,
         rational_work,
         lattice,
@@ -139,6 +155,5 @@ def pari_post_hnf_acceptance(
         reconstruction_state,
         hnf_row_pivots,
         hnf_heights,
-        cache_changed,
         acceptance_state,
     )

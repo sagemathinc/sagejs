@@ -85,6 +85,113 @@ def pari_regulator_acceptance(
     pari_validate_regulator_values(zeta_factor, 1)
     if zeta_factor[0] <= 0 or zeta_factor[1] < 64:
         raise ValueError("acceptance requires positive prepared real zeta factor")
+    status = pari_regulator_acceptance_multiple(
+        logs,
+        rows,
+        columns,
+        degree,
+        prepared,
+        selected,
+        prep_state,
+        rank_work,
+        rank_occupied,
+        rank_pivots,
+        rank_state,
+        integer_input,
+        integer_work,
+        integer_occupied,
+        integer_pivots,
+        integer_best,
+        integer_state,
+        basis,
+        minor,
+        det_work,
+        det_result,
+        det_pivots,
+        det_state,
+        inverse_work,
+        inverse_rhs,
+        inverse,
+        inverse_pivots,
+        inverse_state,
+        product,
+        inverse_slice,
+        multiple,
+        coordinates,
+        multiple_state,
+        cache_changed,
+        acceptance_state,
+    )
+    if status != 0:
+        return status
+    return pari_regulator_acceptance_finish(
+        rows,
+        columns,
+        multiple_state,
+        multiple,
+        coordinates,
+        zeta_factor,
+        rational_work,
+        lattice,
+        hnf_work,
+        hnf_column,
+        hnf_output,
+        hnf_state,
+        regulator,
+        relations,
+        denominator,
+        reconstruction_state,
+        hnf_row_pivots,
+        hnf_heights,
+        acceptance_state,
+    )
+
+
+@native
+def pari_regulator_acceptance_multiple(
+    logs: IntegerBuffer,
+    rows: int,
+    columns: int,
+    degree: int,
+    prepared: IntegerBuffer,
+    selected: Int64Buffer,
+    prep_state: Int64Buffer,
+    rank_work: IntegerBuffer,
+    rank_occupied: Int64Buffer,
+    rank_pivots: Int64Buffer,
+    rank_state: Int64Buffer,
+    integer_input: IntegerBuffer,
+    integer_work: IntegerBuffer,
+    integer_occupied: IntegerBuffer,
+    integer_pivots: IntegerBuffer,
+    integer_best: IntegerBuffer,
+    integer_state: IntegerBuffer,
+    basis: IntegerBuffer,
+    minor: IntegerBuffer,
+    det_work: IntegerBuffer,
+    det_result: IntegerBuffer,
+    det_pivots: Int64Buffer,
+    det_state: Int64Buffer,
+    inverse_work: IntegerBuffer,
+    inverse_rhs: IntegerBuffer,
+    inverse: IntegerBuffer,
+    inverse_pivots: Int64Buffer,
+    inverse_state: Int64Buffer,
+    product: IntegerBuffer,
+    inverse_slice: IntegerBuffer,
+    multiple: IntegerBuffer,
+    coordinates: IntegerBuffer,
+    multiple_state: Int64Buffer,
+    cache_changed: bool,
+    acceptance_state: Int64Buffer,
+) -> int:
+    """Compute the multiple and source gates; zero means reconstruction-ready.
+
+    No class determinant or analytic factor is evaluated here. The caller owns
+    the source old_cache update after success and before reconstruction.
+    """
+    if len(acceptance_state) < 3:
+        raise ValueError("short regulator acceptance state")
     acceptance_state[0] = 1
     acceptance_state[1] = -1
     acceptance_state[2] = -1
@@ -141,6 +248,41 @@ def pari_regulator_acceptance(
         multiple_state[1] = 1
         acceptance_state[1] = 4
         return 4
+    return 0
+
+
+@native
+def pari_regulator_acceptance_finish(
+    rows: int,
+    columns: int,
+    multiple_state: Int64Buffer,
+    multiple: IntegerBuffer,
+    coordinates: IntegerBuffer,
+    zeta_factor: IntegerBuffer,
+    rational_work: IntegerBuffer,
+    lattice: IntegerBuffer,
+    hnf_work: IntegerBuffer,
+    hnf_column: IntegerBuffer,
+    hnf_output: IntegerBuffer,
+    hnf_state: Int64Buffer,
+    regulator: IntegerBuffer,
+    relations: IntegerBuffer,
+    denominator: IntegerBuffer,
+    reconstruction_state: Int64Buffer,
+    hnf_row_pivots: Int64Buffer,
+    hnf_heights: Int64Buffer,
+    acceptance_state: Int64Buffer,
+) -> int:
+    """Reconstruct after the multiple/cache gates and late analytic factor.
+
+    Final regulator/relations publish only on acceptance; late validation or
+    arithmetic errors can leave scratch and the caller's tentative h visible.
+    """
+    if len(acceptance_state) < 3:
+        raise ValueError("short regulator acceptance state")
+    pari_validate_regulator_values(zeta_factor, 1)
+    if zeta_factor[0] <= 0 or zeta_factor[1] < 64:
+        raise ValueError("acceptance requires positive prepared real zeta factor")
     acceptance_state[0] = 2
     acceptance_state[2] = -1
     status = pari_regulator_reconstruction(

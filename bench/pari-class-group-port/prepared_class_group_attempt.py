@@ -309,8 +309,9 @@ def pari_prepared_class_group_attempt(
     an independent certificate. The caller must check the actual KCZ/KCZ2
     honesty gate. Honest factor-base verification, full units/maps, precision
     restart and further collection remain outside this bounded attempt.
-    The existing eager h*invhr placement difference remains; no equal-work
-    timing claim is made. All owners are disjoint, with source-compatible
+    The post-HNF path now defers h*invhr until the multiple/cache gates pass.
+    This source change does not revise historical timing artifacts. All owners
+    are disjoint, with source-compatible
     precision and sufficient capacities. Public invariant buffers are copied
     only after rank/acceptance/Smith success; state[3] commits publication.
     """
