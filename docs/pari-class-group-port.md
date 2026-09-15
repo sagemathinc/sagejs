@@ -1,5 +1,36 @@
 # Faithful PARI class-group language experiment
 
+## Resident retry components and mixed compiler integration (2026-09-15)
+
+Commit `44163867d` joins append/HNF to regulator acceptance and validates all
+six actual quartic append stages. A separate retained-owner collector check
+produces field 2's additional relations at 151 and 152, matching the exact
+source generators and original logarithms. These component tests do not by
+themselves establish a one-call retry computation; that driver is undergoing
+native validation. See `bench/pari-class-group-port/retry_hnf_integration_audit.md`.
+
+The prepared PARI reference now verifies exact results, work counts and shared
+input immutability on repeated calls. The resident GMP cubic probe independently
+matches its 491 small elements, 54 normalized insertion candidates, 12 ideals
+and 58 relations. Allocation, primitive algorithms and representation still
+differ, so this is matching outer work, not instruction-for-instruction parity.
+See `bench/pari-class-group-port/prepared_reference_work_audit.md`.
+
+Compiler dependency `17ac1e543` adds explicit mixed exact/Float64 tagged
+execution, reusing the existing floating emitter and conversion semantics.
+Focused compiler regressions pass (26 tests; one unavailable-WASI skip),
+strict baselib passes, and independent review found no blocking issue.
+Automatic selection remains GMP. Large class-group validation and timing are
+separate gates; compiler unit tests alone do not establish a speedup.
+
+All new field diagnostics enforce the 4 GiB address-space cap. One earlier
+append-checker attempt confused bits with the packed API's **word capacity**
+and exceeded the resource budget; it was stopped and is not a passing receipt.
+Corrected capacities pass with about 0.9 GiB peak RSS. The compiler's tiny ASan
+test separately needed a virtual-address exception for its shadow mapping;
+its RSS watchdog measured about 374 MiB. Neither event raises a production
+allowance or relaxes the field-computation memory cap.
+
 ## CUP opens all four initial HNF stages (2026-09-15)
 
 The five-agent continuation adds literal recursive `Flm_CUP_pre`, its upper
