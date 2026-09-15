@@ -97,6 +97,11 @@ function escapeJavaScriptBindings(fn) {
     )})};
 }
 
+function emitFloat64Sqrt(operation, indent) {
+  return `${indent}if (${operation.source} < 0) nativeRaise("ValueError", "math domain error");\n` +
+    `${indent}${operation.target} = Math.sqrt(${operation.source});`;
+}
+
 function emitFloat64Exp(operation, indent) {
   return `${indent}${operation.target} = Math.exp(${operation.source});\n` +
     `${indent}if (!Number.isFinite(${operation.target}) && !Number.isNaN(${operation.target}) && Number.isFinite(${operation.source})) ` +
@@ -556,6 +561,7 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}${operation.target} = Math.atan(${operation.source});`;
   }
   if (operation.kind === "float64.exp") return emitFloat64Exp(operation, indent);
+  if (operation.kind === "float64.sqrt") return emitFloat64Sqrt(operation, indent);
   if (operation.kind === "float64.log" || operation.kind === "float64.log2") {
     return `${indent}if (${operation.source} <= 0) ` +
       `nativeRaise("ValueError", "math domain error");\n` +
@@ -1572,9 +1578,9 @@ function generateJavaScript(ir, options = {}) {
       return `${indent}${operation.target} = Math.atan(${operation.source});`;
     }
     if (operation.kind === "float64.exp") return emitFloat64Exp(operation, indent);
-    if (["float64.sqrt", "float64.log", "float64.log2"].includes(operation.kind)) {
-      const logarithm = operation.kind !== "float64.sqrt";
-      return `${indent}if (${operation.source} ${logarithm ? "<=" : "<"} 0) ` +
+    if (operation.kind === "float64.sqrt") return emitFloat64Sqrt(operation, indent);
+    if (["float64.log", "float64.log2"].includes(operation.kind)) {
+      return `${indent}if (${operation.source} <= 0) ` +
         `throw new RangeError("math domain error");\n` +
         `${indent}${operation.target} = Math.${operation.kind.slice(8)}(${operation.source});`;
     }

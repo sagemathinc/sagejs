@@ -778,3 +778,11 @@ They include signed zeros, subnormals, infinities, NaN, overflow/underflow
 neighbors, failure before output publication, aliases, and invalid bindings
 or call shapes. This is a reusable compiler primitive, not a substitution
 for the source class-group scheduling formula or a performance claim.
+
+Imported `math.sqrt` now uses the same binding-aware lowering in mixed exact
+graphs, including aliases, as in pure Float64 graphs. Negative inputs raise
+Python `ValueError` in native and dynamic execution; signed zero, positive
+infinity, NaN, and subnormals retain binary64 square-root semantics. Focused
+CPython comparisons cover every binary64 power-of-two exponent and special
+values, with output preserved when the expression fails. A small mixed
+`exp(x) * sqrt(2*pi*float(n))` consumer compiles without a helper workaround.

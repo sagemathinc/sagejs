@@ -152,7 +152,7 @@ function staticType(node, context) {
       nodeType(node.expression) === "AST_SymbolRef") {
     const name = node.expression.name;
     if (["float", "RealNumber", "abs", "sqrt"].includes(name) ||
-        ["log", "log2", "atan", "exp", "pow"].includes(context.imports.mathFunctions?.get(name))) {
+        ["sqrt", "log", "log2", "atan", "exp", "pow"].includes(context.imports.mathFunctions?.get(name))) {
       return "Float64";
     }
     if (name === "len") return "uint64";
@@ -200,7 +200,7 @@ function lowerCall(node, context, operations, expectedType) {
     });
     return { name: target, type: "Float64" };
   }
-  if (["log", "log2", "atan", "exp", "pow"].includes(context.imports.mathFunctions?.get(name))) {
+  if (["sqrt", "log", "log2", "atan", "exp", "pow"].includes(context.imports.mathFunctions?.get(name))) {
     const kind = context.imports.mathFunctions.get(name);
     expect(context, node, !context.variables.has(name) &&
       !array(context.fn.localvars).some(symbol => symbol.name === name) &&
