@@ -1191,6 +1191,16 @@ function emitExactOperation(operation, context, indent) {
     const source = exactValue(operation.source, context);
     return `${indent}set_mpz_uint64(${target}, mpz_sgn(${source}) == 0 ? 0 : (uint64_t)mpz_sizeinbase(${source}, 2));`;
   }
+  if (operation.kind === "integer.isqrt") {
+    const source = exactValue(operation.source, context);
+    return [
+      `${indent}if (mpz_sgn(${source}) < 0) {`,
+      statusFailure("range", "isqrt() argument must be nonnegative", `${indent}    `),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}mpz_sqrt(${target}, ${source});`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.gcd") {
     return `${indent}mpz_gcd(${target}, ${exactValue(operation.left, context)}, ${exactValue(operation.right, context)});`;
   }

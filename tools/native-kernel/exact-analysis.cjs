@@ -30,6 +30,7 @@ function operationInputs(operation) {
     case "integer.neg":
     case "integer.abs":
     case "integer.bit_length":
+    case "integer.isqrt":
     case "integer.truth":
     case "integer.round_sqrt":
     case "uint64.from_integer_checked":
@@ -526,6 +527,7 @@ function executionProfile(fn) {
       if (
         operation.kind === "integer.binary" ||
         operation.kind === "integer.gcd" ||
+        operation.kind === "integer.isqrt" ||
         operation.kind === "integer.pow_uint" ||
         operation.kind === "integer.divmod" ||
         operation.kind === "integer.mod_uint64" ||
@@ -656,6 +658,7 @@ function localEffects(fn) {
         mayRaise.add("ValueError");
         mayRaise.add("OverflowError");
       }
+      if (operation.kind === "integer.isqrt") mayRaise.add("ValueError");
       if (operation.kind === "range.validate_step") {
         mayRaise.add("ValueError");
       }

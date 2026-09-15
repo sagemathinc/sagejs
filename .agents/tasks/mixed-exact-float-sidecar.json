@@ -14,6 +14,7 @@
     "tools/native-kernel/word-backend.cjs",
     "tools/native-kernel/test/integer-bit-length.cjs",
     "tools/native-kernel/test/integer-gcd.cjs",
+    "tools/native-kernel/test/integer-isqrt.cjs",
     "tools/native-kernel/test/integer-shifts.cjs",
     "tools/native-kernel/test/explicit-errors.cjs",
     "tools/native-kernel/ir.cjs",
@@ -258,6 +259,16 @@
       "started_at": "2026-09-15T01:51:34.857Z",
       "commit": "17ac1e5435b4c93ad1bd7b100f3249e3e434b1bc",
       "workspace_fingerprint": "e1882562425aaae07f7a991ed4cd1866bd81bfb9e7b4eb4ec74482c7223ea691",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/meter_command.py prlimit --as=4294967296 node --test tools/native-kernel/test/integer-isqrt.cjs tools/native-kernel/test/integer-bit-length.cjs tools/native-kernel/test/integer-shifts.cjs tools/native-kernel/test/explicit-errors.cjs tools/native-kernel/test/mixed-exact-float64.cjs tools/native-kernel/test/native-call-statement.cjs tools/native-kernel/test/relative-native-imports.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.569,
+      "started_at": "2026-09-15T02:43:47.589Z",
+      "commit": "511c05d94d15e485ca719fd895fa5a967a1e448c",
+      "workspace_fingerprint": "8a42bf2387d8a43ff8d4b4a035e0a6490b91dfa349fd37dc7419f94d58a8157b",
       "platform": "linux-x64"
     }
   ],

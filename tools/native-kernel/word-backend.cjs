@@ -429,6 +429,16 @@ ${indent}    ${target} = bits;
 ${indent}}`;
   }
   if (operation.kind === "integer.shift") return promote();
+  if (operation.kind === "integer.isqrt") {
+    const source = value(operation.source);
+    return [
+      `${indent}if (${source} < 0) {`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, "isqrt() argument must be nonnegative");`,
+      `${indent}    ${context.failure}`,
+      `${indent}}`,
+      `${indent}${target} = (int64_t)sagejs_word_isqrt_uint64((uint64_t)${source});`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.gcd") {
     const left=value(operation.left),right=value(operation.right);
     return `${indent}{

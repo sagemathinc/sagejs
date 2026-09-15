@@ -644,3 +644,34 @@ memory watchdog (peak 391,741,440 bytes). That sanitizer alone needs an
 address-space-limit exception for ASan's reserved shadow mapping; ordinary
 diagnostics retain the 4 GiB address-space cap. These checks do not replace a
 full integration/release run or a matched resident class-group measurement.
+
+## Exact imported `math.isqrt`
+
+Native exact graphs now recognize `from math import isqrt`, including aliases,
+as an exact integer primitive. The admitted form has one positional `Integer`
+argument; unsupported argument types/forms and ambiguous or shadowed bindings
+fail compilation. This is separate from the preexisting approximate
+`round(sqrt(n))` operation and never converts its input to floating point.
+
+The GMP emitter uses a negative-input guard followed by `mpz_sqrt`. Tagged big
+values use the same primitive and normalize small results; small tagged and
+word execution use a bounded restoring base-four integer square root. The
+generated JavaScript fallback uses exact BigInt Newton iteration. Negative
+inputs raise Python `ValueError` through the generated runtime's exception
+factory, including through native callers. They do not reach GMP's invalid
+negative-input path. Direct low-level modules without Python exception
+factories retain their established JavaScript `RangeError` fallback.
+
+Focused checks cover small integers, word boundaries, huge squares and their
+neighbors through 16,385 input bits, exact remainders, reassignment, mixed
+Float64 graphs, transitive failure effects, and import provenance. A bounded
+UBSan harness checks direct source/output aliasing, negative failure atomicity,
+all integers below 65,536, and unsigned-word boundaries against GMP.
+
+This capability allows the port to express `root = isqrt(n)` followed by
+`n - root * root`. That is not a fused `mpn_sqrtrem` implementation: the extra
+square/remainder arithmetic remains visible source work. No class-group speed
+claim, backend-default change, new dependency, or full platform qualification
+follows from adding the primitive. Full prepared-field replay remains the next
+integration check, and the stale architecture-manifest blocker noted above
+has not been hidden by regeneration.
