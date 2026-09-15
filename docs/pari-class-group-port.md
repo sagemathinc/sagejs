@@ -58,6 +58,11 @@ The next source revision closes additional preparation and scheduling gaps:
   All 24 radical-quotient cases match exact PARI matrices across execution
   modes. Kummer-factor removal and actual quotient splitting are still outside
   this boundary; see the [projection audit](../bench/pari-class-group-port/quotient_projection_audit.md).
+- First-dependence elimination and quotient power/minimal-polynomial
+  construction now match PARI on 288 scalar/companion/relative-e1 matrix
+  cases. The direct quadratic-root dependency passes 6,277 component cases.
+  They are not yet connected into the quotient splitter; see the
+  [minimal-polynomial audit](../bench/pari-class-group-port/quotient_minpoly_audit.md).
 
 See [packet integration evidence](../bench/pari-class-group-port/selected_ideal_packets_audit.md)
 and [acceptance scheduling evidence](../bench/pari-class-group-port/post_hnf_schedule_audit.md),

@@ -1,4 +1,4 @@
-"""PARI 2.17.4 FpM_ker small-prime dispatch, kernel basis (deplin=0).
+"""PARI 2.17.4 FpM_ker/FpM_deplin small-prime dispatch.
 
 Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 Sources: alglin1.c FpM_ker_i, F2v.c/F3v.c F2m/F3m_ker_sp,
@@ -28,15 +28,50 @@ def pari_small_prime_matrix_kernel(
     out: int,
     scratch: int,
 ) -> int:
+    return _small_prime_matrix_kernel(w, a, rows, columns, p, out, scratch, 0)
+
+
+@native
+def pari_small_prime_matrix_dependence(
+    w: IntegerBuffer,
+    a: int,
+    rows: int,
+    columns: int,
+    p: int,
+    out: int,
+    scratch: int,
+) -> int:
+    """Return first dependent column (one-based), or zero without output writes.
+
+    On dependence write exactly `columns` entries, including trailing zeros.
+    Elimination stops immediately, retaining the source partial matrix state.
+    """
+    return _small_prime_matrix_kernel(w, a, rows, columns, p, out, scratch, 1)
+
+
+@native
+def _small_prime_matrix_kernel(
+    w: IntegerBuffer,
+    a: int,
+    rows: int,
+    columns: int,
+    p: int,
+    out: int,
+    scratch: int,
+    dependence: int,
+) -> int:
     if rows < 0 or rows > 7 or columns < 0 or columns > 7 or p < 2 or p > 3037000493:
         raise ValueError("outside small-prime Gaussian kernel corridor")
     size = rows * columns
+    output_size = columns * columns
+    if dependence != 0:
+        output_size = columns
     if (
         a < 0
         or out < 0
         or scratch < 0
         or len(w) < a + size
-        or len(w) < out + columns * columns
+        or len(w) < out + output_size
         or len(w) < scratch + size + rows + columns
     ):
         raise ValueError("invalid kernel workspace")
@@ -63,6 +98,16 @@ def pari_small_prime_matrix_kernel(
                     break
             j += 1
         if j == rows:
+            if dependence != 0:
+                for i in range(k):
+                    if p <= 3:
+                        w[out + i] = w[x + k * rows + w[pivots + i] - 1]
+                    else:
+                        w[out + i] = w[x + k * rows + w[pivots + i] - 1] % p
+                w[out + k] = 1
+                for i in range(k + 1, columns):
+                    w[out + i] = 0
+                return k + 1
             count += 1
             w[pivots + k] = 0
         else:
@@ -116,6 +161,8 @@ def pari_small_prime_matrix_kernel(
                         if z & 18446744069414584320:
                             z %= p
                         w[x + i * rows + t] = z
+    if dependence != 0:
+        return 0
     at = 0
     for k in range(columns):
         if w[pivots + k] == 0:

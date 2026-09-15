@@ -24,6 +24,22 @@ int main(void){pari_init(8000000,1000);long count;scanf("%ld",&count);for(long c
 `);
  run('cc',['-O1','-fsanitize=undefined','-fno-sanitize-recover=undefined','-I'+path.join(pari,'src/headers'),'-I'+lib,file,'-L'+lib,'-Wl,-rpath,'+lib,'-lpari','-lm','-o',exe]);
  const expected=run(exe,[],{input:[cases.length,...cases.flatMap(c=>[c.m,c.n,c.p,...c.a])].join(' ')}).trim().split('\n').map(s=>s.split(' ').map(Number));
+ const depfile=path.join(dir,'dependence.c'),depexe=path.join(dir,'dependence');
+ fs.writeFileSync(depfile,String.raw`#include "pari.h"
+#include "paripriv.h"
+int main(void){pari_init(8000000,1000);long count;scanf("%ld",&count);for(long c=0;c<count;c++){pari_sp av=avma;long m,n;ulong p;scanf("%ld%ld%lu",&m,&n,&p);GEN a=zeromatcopy(m,n);for(long j=1;j<=n;j++)for(long i=1;i<=m;i++){ulong v;scanf("%lu",&v);gcoeff(a,i,j)=utoi(v);}GEN answer=FpM_deplin(a,utoi(p)),x,z;if(p==2){x=ZM_to_F2m(a);z=F2m_ker_sp(x,1);x=F2m_to_ZM(x);if(z)z=F2c_to_ZC(z);}else if(p==3){x=ZM_to_F3m(a);z=F3m_ker_sp(x,1);x=F3m_to_ZM(x);if(z)z=F3c_to_ZC(z);}else{x=ZM_to_Flm(a,p);z=Flm_ker_sp(x,p,1);x=Flm_to_ZM(x);if(z)z=Flc_to_ZC(z);}if((!z)!=(!answer)||(z&&!gequal(z,answer)))return 5;long k=0;if(answer)for(long i=1;i<=n;i++)if(signe(gel(answer,i)))k=i;printf("%ld",k);for(long i=1;i<=n;i++)printf(" %lu",answer?itou(gel(answer,i)):77UL);for(long j=1;j<=n;j++)for(long i=1;i<=m;i++)printf(" %lu",itou(gcoeff(x,i,j)));puts("");avma=av;}pari_close();}
+`);
+ run('cc',['-O1','-fsanitize=undefined','-fno-sanitize-recover=undefined','-I'+path.join(pari,'src/headers'),'-I'+lib,depfile,'-L'+lib,'-Wl,-rpath,'+lib,'-lpari','-lm','-o',depexe]);
+ const dependenceExpected=run(depexe,[],{input:[cases.length,...cases.flatMap(c=>[c.m,c.n,c.p,...c.a])].join(' ')}).trim().split('\n').map(s=>s.split(' ').map(Number));
+ const depcp=run('python3',['-c',`import sys,json,importlib
+sys.path[:0]=sys.argv[1:3];f=importlib.import_module('bench.pari-class-group-port.small_prime_matrix_kernel').pari_small_prime_matrix_dependence
+for ix,(c,e) in enumerate(zip(*json.load(sys.stdin))):
+ m,n,p=c['m'],c['n'],c['p'];s=m*n;out=s;scratch=s+n;w=c['a']+[77]*(n+s+m+n+1)
+ k=f(w,0,m,n,p,out,scratch)
+ assert [k]+w[out:out+n]+w[scratch:scratch+s]==e,(ix,c,e,w)
+ assert w[:s]==c['a'] and w[-1]==77
+print('CPython dependence passed',ix+1)
+`,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify([cases,dependenceExpected])});
  const cp=run('python3',['-c',`import sys,json,importlib
 sys.path[:0]=sys.argv[1:3];f=importlib.import_module('bench.pari-class-group-port.small_prime_matrix_kernel').pari_small_prime_matrix_kernel
 for ix,(c,e) in enumerate(zip(*json.load(sys.stdin))):
@@ -42,9 +58,15 @@ for m,n,p,value in [(8,2,5,0),(2,8,5,0),(2,2,3037000494,0),(2,2,5,5),(2,2,5,-1)]
  assert w==before
 print('CPython passed',ix+1)
 `,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify([cases,expected])});
- const summary={cases:cases.length,cp:cp.trim(),artifactDirectory:dir,qualifiedTiming:false};
+ const summary={cases:cases.length,cp:cp.trim(),dependenceCp:depcp.trim(),artifactDirectory:dir,qualifiedTiming:false};
  if(!process.argv.includes('--source-only')){
-  const built=await compileKernel({sourcePath:path.join(__dirname,'small_prime_matrix_kernel.py')}),f=require(built.modulePath).pari_small_prime_matrix_kernel;
+  const built=await compileKernel({sourcePath:path.join(__dirname,'small_prime_matrix_kernel.py')}),mod=require(built.modulePath),f=mod.pari_small_prime_matrix_kernel;
+  const df=mod.pari_small_prime_matrix_dependence;
+  for(const backend of ['javascript','gmp','tagged'])for(let ix=0;ix<cases.length;ix++){
+   const c=cases[ix],s=c.m*c.n,out=s,scratch=s+c.n,initial=[...c.a.map(BigInt),...Array(c.n+s+c.m+c.n+1).fill(77n)],w=df.createIntegerBuffer(initial.length,2,initial);
+   const k=Number(df[backend](w,0n,BigInt(c.m),BigInt(c.n),BigInt(c.p),BigInt(out),BigInt(scratch))),a=w.toArray().map(Number);
+   assert.deepEqual([k,...a.slice(out,out+c.n),...a.slice(scratch,scratch+s)],dependenceExpected[ix],backend+' dependence '+ix);assert.deepEqual(a.slice(0,s),c.a);assert.equal(a.at(-1),77);
+  }
   for(const backend of ['javascript','gmp','tagged'])for(let ix=0;ix<cases.length;ix++){
    const c=cases[ix],s=c.m*c.n,out=s,scratch=s+c.n*c.n,initial=[...c.a.map(BigInt),...Array(c.n*c.n+s+c.m+c.n+1).fill(77n)],w=f.createIntegerBuffer(initial.length,2,initial);
    const r=Number(f[backend](w,0n,BigInt(c.m),BigInt(c.n),BigInt(c.p),BigInt(out),BigInt(scratch))),a=w.toArray().map(Number);
@@ -56,5 +78,5 @@ print('CPython passed',ix+1)
   }
   summary.backends=['javascript','gmp','tagged'];summary.coreSha256=hash(fs.readFileSync(built.coreSourcePath));
  }
- fs.writeFileSync(path.join(dir,'fixtures.json'),JSON.stringify({cases,expected,summary}));console.log(JSON.stringify(summary));
+ fs.writeFileSync(path.join(dir,'fixtures.json'),JSON.stringify({cases,expected,dependenceExpected,summary}));console.log(JSON.stringify(summary));
 })().catch(e=>{console.error(e);process.exitCode=1;});
