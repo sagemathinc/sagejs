@@ -28,6 +28,8 @@ async function main() {
   }
   const repetitions = Number(process.argv[3] || 8);
   assert(Number.isSafeInteger(repetitions) && repetitions > 0);
+  const backend = process.argv[4] || "gmp";
+  assert(["gmp", "tagged"].includes(backend), "backend must be gmp or tagged");
   const evidenceBytes = fs.readFileSync(path.resolve(evidencePath));
   const packet = JSON.parse(evidenceBytes).packets[0];
   const boundedBuild = await compileKernel({
@@ -57,7 +59,7 @@ async function main() {
   function run(fn, args) {
     const start = process.hrtime.bigint();
     for (let iteration = 0; iteration < repetitions; iteration += 1) {
-      assert.equal(Number(fn.gmp(...args)), 0);
+      assert.equal(Number(fn[backend](...args)), 0);
     }
     return milliseconds(start) / repetitions;
   }
@@ -88,7 +90,7 @@ async function main() {
       expectedState: ["0", "1230", "1833", "2270"],
     },
     protocol: {
-      backend: "gmp",
+      backend,
       warmupBatches: 3,
       alternatingPairs: 7,
       repetitionsPerBatch: repetitions,

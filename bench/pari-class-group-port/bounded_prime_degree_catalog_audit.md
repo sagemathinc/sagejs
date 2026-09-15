@@ -65,3 +65,18 @@ PARI, or a whole-class-group speedup. Explicit bounded residue storage helps
 materially, but by itself does not close the splitting-degree gap. The next
 language-level experiment should test a checked signed machine scalar for
 degrees and offsets before changing the factorization algorithm.
+
+The benchmark also accepts `tagged` as its final argument. A CPU-15 run with
+16 calls per retained batch (so both arms exceeded one second) measured bounded
+times of 82.52--83.50 ms and exact times of 140.20--142.08 ms. Its seven-pair
+geometric-mean ratio was **0.58764**, or a 41.2% improvement. Tagged speculative
+small integers reduce the remaining scalar penalty, but do not remove its
+generated control machinery.
+
+For scale, `measure_pari_catalog_stages.cjs` measured the pinned PARI 2.17.4
+output-contract-matched `get_fs` loop at 2.025--2.030 ms per complete catalog
+over seven alternating 500-call batches. Natural `cache_prime_dec` took
+2.215--2.219 ms, plus 0.0526--0.0530 ms teardown. This reference uses PARI's
+GEN/stack representation internally and is therefore not a same-storage C
+ceiling. It does establish that neither the GMP nor tagged bounded candidate
+closes the observed stage gap.
