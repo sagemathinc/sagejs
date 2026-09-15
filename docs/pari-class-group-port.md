@@ -1,10 +1,39 @@
 # Faithful PARI class-group language experiment
 
-## Latest checkpoint: runtime costs and preparation boundaries (2026-09-15)
+## Latest checkpoint: generated factor base reaches a class candidate (2026-09-15)
 
 The experiment is still incomplete: there is no qualified `nfinit`-only
 class-group entry or broad matched-panel competitiveness result. Earlier
 sections below describe historical checkpoints, not necessarily current source.
+
+The prepared-field diagnostic now connects computed degree patterns, factor-base
+bounds, Kummer descriptors, ideal packets, metadata and subfactor selection to
+analytic normalization and the initial class attempt. CPython, generated
+JavaScript and native GMP reproduce the same totally real cubic candidate:
+class number 1, 73 relations and the exact PARI 192-bit regulator. The bound is
+333, with 66 descriptors from 48 requested decompositions. No prepared factors,
+relations, regulator or class answer enter the computation. Prepared nf
+embeddings/basis and runtime tables remain inputs.
+
+This is **multiple host-orchestrated compiled phases**, not one closed native
+entry or a speed comparison. It qualifies one fixed nongalois cubic; retries,
+honesty verification, general-field dispatch and complete unit maps remain
+outside this checkpoint. The frozen checker and backend artifacts are recorded
+in the [generated-catalog class audit](../bench/pari-class-group-port/generated_catalog_class_attempt_audit.md).
+Peak measured child RSS, including compilation, was 1,778,168 KiB under the
+unchanged 4 GiB address-space cap. Full strict-Python validation passed;
+architecture validation still stops at the recorded stale optimizer manifest,
+and the monolithic native suite at its existing IR-version expectation.
+
+At this checkpoint, the continuation's aggregate active-time accounting needs
+renewed authorization before another implementation campaign. The root counter
+has resumed (93,615 cumulative seconds observed), but cannot retrospectively
+replace the conservative elapsed-time accounting below or recover all subagent
+active intervals. The records do not establish a defensible remaining balance
+within the approved 24 aggregate active hours. This is not a claim that exactly
+24 hours of productive work were measured. All four subagents have handed off;
+no new compiler/closed-entry campaign has started. The CPU ledger remains below
+its separate ceiling. The experiment is incomplete, with PRs still draft.
 
 Recent frozen prepared-cubic experiments found two reproducible runtime gains:
 small-block reuse within the arithmetic arena reduced time by 18.4%, and
@@ -39,13 +68,17 @@ The next source revision closes additional preparation and scheduling gaps:
   four backends, including full final RNG state. See the
   [connected Kummer audit](../bench/pari-class-group-port/kummer_prime_decomposition_audit.md).
   This is a prepared-nf one-prime entry, not yet the full class-group driver.
+  Follow-up dependency `b57cf916a` removes a test's hardcoded temporary name
+  in favor of a structural dispatch assertion. Its targeted check passes;
+  the monolithic native suite stops earlier at the existing IR-version
+  expectation (`43 !== 39`). This is not a full-suite pass.
 - The requested factor-base catalog now preserves FBgen's prime/degree
   filters and one resident random stream. Seven field-0 bounds match PARI
   across all four backends; the default bound 333 makes 48 decomposition
   calls and produces 66 descriptors. Skipped slots and final RNG state also
   agree. See the [catalog audit](../bench/pari-class-group-port/initial_kummer_catalog_audit.md).
-  Connecting these computed outputs to class-group acceptance remains the
-  next gate; neither eager analytic-cache work nor adapter allocations are
+  These computed outputs now connect to the fixed-cubic initial candidate
+  described above; neither eager analytic-cache work nor adapter allocations are
   excluded from any claimed timing, because no new timing is claimed.
 - Generic native `math.exp` and imported `math.sqrt` support permits the
   unchanged inline upstream subfactor-product formula. Its 286 cases match
