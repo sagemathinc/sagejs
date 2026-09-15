@@ -12,6 +12,9 @@ const {
   isUint64Shift,
   uint64COperator,
 } = require("./uint64-operations.cjs");
+const {
+  int64CComparison,
+} = require("./int64-operations.cjs");
 
 const INT64_MIN = -(1n << 63n);
 const INT64_MAX = (1n << 63n) - 1n;
@@ -39,6 +42,7 @@ function wordName(name) {
 function wordType(type) {
   if (type === "Integer") return "int64_t";
   if (type === "uint64") return "uint64_t";
+  if (type === "int64") return "int64_t";
   if (type === "bool") return "int";
   if (type === "Int64Buffer" || type === "Int64Record") {
     return "sagejs_int64_buffer";
@@ -80,6 +84,7 @@ function walks(statements, visit) {
       walks(statement.body, visit);
     } else if (
       statement.kind === "loop.range" ||
+      statement.kind === "loop.range_int64" ||
       statement.kind === "loop.range_exact"
     ) {
       walks(statement.body, visit);
@@ -184,6 +189,9 @@ function emitWordOperation(operation, context, indent) {
   if (operation.kind === "uint64.constant") {
     return `${indent}${target} = UINT64_C(${operation.value});`;
   }
+  if (operation.kind === "int64.constant") {
+    return `${indent}${target} = ${int64Constant(operation.value)};`;
+  }
   if (operation.kind === "bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
@@ -198,7 +206,7 @@ function emitWordOperation(operation, context, indent) {
       `${indent}}`,
     ].join("\n");
   }
-  if (["integer.copy", "bool.copy", "uint64.copy"].includes(operation.kind)) {
+  if (["integer.copy", "bool.copy", "uint64.copy", "int64.copy"].includes(operation.kind)) {
     return `${indent}${target} = ${value(operation.source)};`;
   }
   if (operation.kind === "uint64.binary") {
@@ -234,6 +242,40 @@ function emitWordOperation(operation, context, indent) {
     }[operation.operation];
     return `${indent}${target} = ${value(operation.left)} ${operator} ` +
       `${value(operation.right)};`;
+  }
+  if (operation.kind === "int64.binary") {
+    const left = value(operation.left);
+    const right = value(operation.right);
+    if (["add", "sub", "mul"].includes(operation.operation)) {
+      return [
+        `${indent}if (!sagejs_word_${operation.operation}_int64(` +
+          `${left}, ${right}, &${target}))`,
+        `${indent}{`,
+        `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+          `"int64 arithmetic overflow");`,
+        `${indent}    ${context.failure}`,
+        `${indent}}`,
+      ].join("\n");
+    }
+    const result = operation.operation === "floordiv" ? "quotient" : "remainder";
+    return [
+      `${indent}if (${right} == 0)`,
+      `${indent}{`,
+      emitDivisionError(`${indent}    `, context.failure),
+      `${indent}}`,
+      `${indent}if (${left} == INT64_MIN && ${right} == -1)`,
+      `${indent}{`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"int64 arithmetic overflow");`,
+      `${indent}    ${context.failure}`,
+      `${indent}}`,
+      `${indent}sagejs_word_fdiv_int64(${left}, ${right}, ` +
+        `${result === "quotient" ? `&${target}, NULL` : `NULL, &${target}`});`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.compare") {
+    return `${indent}${target} = ${value(operation.left)} ` +
+      `${int64CComparison(operation.operation)} ${value(operation.right)};`;
   }
   if (operation.kind === "integer.mod_uint64") {
     const divisor = value(operation.right);
@@ -324,9 +366,12 @@ function emitWordOperation(operation, context, indent) {
     const index = value(operation.index);
     return [
       `${indent}{`,
-      `${indent}    size_t sagejs_buffer_position;`,
-      `${indent}    if (!sagejs_int64_buffer_index(` +
-        `&${buffer}, ${index}, &sagejs_buffer_position))`,
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
+      `${indent}    if (` + (operation.indexType === "uint64"
+        ? `${index} >= (uint64_t) ${buffer}.length`
+        : `!sagejs_int64_buffer_index(&${buffer}, ${index}, ` +
+          `&sagejs_buffer_position)`) + `)`,
       `${indent}    {`,
       `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"Int64 buffer index out of range");`,
@@ -341,9 +386,12 @@ function emitWordOperation(operation, context, indent) {
     const index = value(operation.index);
     return [
       `${indent}{`,
-      `${indent}    size_t sagejs_buffer_position;`,
-      `${indent}    if (!sagejs_int64_buffer_index(` +
-        `&${buffer}, ${index}, &sagejs_buffer_position))`,
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
+      `${indent}    if (` + (operation.indexType === "uint64"
+        ? `${index} >= (uint64_t) ${buffer}.length`
+        : `!sagejs_int64_buffer_index(&${buffer}, ${index}, ` +
+          `&sagejs_buffer_position)`) + `)`,
       `${indent}    {`,
       `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"Int64 buffer index out of range");`,
@@ -405,6 +453,10 @@ function emitWordOperation(operation, context, indent) {
       `${indent}${target} = (int64_t) ${source};`,
     ].join("\n");
   }
+  if (operation.kind === "integer.from_int64" ||
+      operation.kind === "int64.from_integer_checked") {
+    return `${indent}${target} = ${value(operation.source)};`;
+  }
   if (operation.kind === "uint64.from_integer_checked") {
     const source = value(operation.source);
     return [
@@ -425,6 +477,20 @@ function emitWordOperation(operation, context, indent) {
     return [
       `${indent}if (${source} == INT64_MIN)`,
       promote(),
+      `${indent}${target} = ${expression};`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.neg" || operation.kind === "int64.abs") {
+    const source = value(operation.source);
+    const expression = operation.kind === "int64.neg"
+      ? `-${source}` : `${source} < 0 ? -${source} : ${source}`;
+    return [
+      `${indent}if (${source} == INT64_MIN)`,
+      `${indent}{`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"int64 arithmetic overflow");`,
+      `${indent}    ${context.failure}`,
+      `${indent}}`,
       `${indent}${target} = ${expression};`,
     ].join("\n");
   }
@@ -573,7 +639,7 @@ ${indent}}`;
   if (operation.kind === "bool.not") {
     return `${indent}${target} = !${value(operation.source)};`;
   }
-  if (operation.kind === "integer.truth" || operation.kind === "uint64.truth") {
+  if (["integer.truth", "uint64.truth", "int64.truth"].includes(operation.kind)) {
     return `${indent}${target} = ${value(operation.source)} != 0;`;
   }
   if (operation.kind === "native.call") {
@@ -683,6 +749,26 @@ function emitWordStatements(statements, context, indent) {
         `${indent}    if (${step} >= ${stop} - ${iterator})`,
         `${indent}        break;`,
         `${indent}    ${iterator} += ${step};`,
+        `${indent}}`,
+      );
+      continue;
+    }
+    if (statement.kind === "loop.range_int64") {
+      const index = context.value(statement.index);
+      const iterator = context.value(statement.iterator);
+      const start = context.value(statement.start);
+      const stop = context.value(statement.stop);
+      const step = context.value(statement.step);
+      lines.push(
+        `${indent}${iterator} = ${start};`,
+        `${indent}for (;;)`, `${indent}{`,
+        `${indent}    if (${step} > 0 ? ${iterator} >= ${stop} : ${iterator} <= ${stop})`,
+        `${indent}        break;`,
+        `${indent}    ${index} = ${iterator};`,
+        `${indent}    (void) ${index};`,
+        emitWordStatements(statement.body, context, `${indent}    `),
+        `${indent}    if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator}))`,
+        `${indent}        break;`,
         `${indent}}`,
       );
       continue;

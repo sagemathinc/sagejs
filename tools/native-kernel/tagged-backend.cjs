@@ -20,6 +20,8 @@ const {
   isUint64Shift,
   uint64COperator,
 } = require("./uint64-operations.cjs");
+const { int64CComparison, int64Constant: checkedInt64Constant } =
+  require("./int64-operations.cjs");
 
 const INT64_MIN = -(1n << 63n);
 const INT64_MAX = (1n << 63n) - 1n;
@@ -48,6 +50,7 @@ function scalarType(type, fn) {
   if (type === "Float64") return "double";
   if (type === "Float64Buffer") return "sagejs_float64_buffer";
   if (type === "uint64") return "uint64_t";
+  if (type === "int64") return "int64_t";
   if (type === "bool") return "int";
   if (type === "Int64Buffer" || type === "Int64Record") {
     return "sagejs_int64_buffer";
@@ -177,6 +180,9 @@ function emitTaggedOperation(operation, context, indent) {
   if (operation.kind === "uint64.constant") {
     return `${indent}${target} = UINT64_C(${operation.value});`;
   }
+  if (operation.kind === "int64.constant") {
+    return `${indent}${target} = ${checkedInt64Constant(operation.value)};`;
+  }
   if (operation.kind === "bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
@@ -198,7 +204,7 @@ function emitTaggedOperation(operation, context, indent) {
     return `${indent}sagejs_tagged_copy(${target}, ` +
       `${taggedValue(operation.source, context)});`;
   }
-  if (operation.kind === "bool.copy" || operation.kind === "uint64.copy") {
+  if (["bool.copy", "uint64.copy", "int64.copy"].includes(operation.kind)) {
     return `${indent}${target} = ${taggedValue(operation.source, context)};`;
   }
   if (operation.kind === "uint64.binary") {
@@ -236,6 +242,38 @@ function emitTaggedOperation(operation, context, indent) {
     }[operation.operation];
     return `${indent}${target} = ${taggedValue(operation.left, context)} ` +
       `${operator} ${taggedValue(operation.right, context)};`;
+  }
+  if (operation.kind === "int64.binary") {
+    const left = taggedValue(operation.left, context);
+    const right = taggedValue(operation.right, context);
+    if (["add", "sub", "mul"].includes(operation.operation)) {
+      return [
+        `${indent}if (!sagejs_word_${operation.operation}_int64(` +
+          `${left}, ${right}, &${target}))`,
+        `${indent}{`,
+        `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+          `"int64 arithmetic overflow");`,
+        `${indent}    goto fail;`, `${indent}}`,
+      ].join("\n");
+    }
+    const quotient = operation.operation === "floordiv";
+    return [
+      `${indent}if (${right} == 0)`, `${indent}{`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"integer division or modulo by zero");`,
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}if (${left} == INT64_MIN && ${right} == -1)`, `${indent}{`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"int64 arithmetic overflow");`,
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}sagejs_word_fdiv_int64(${left}, ${right}, ` +
+        `${quotient ? `&${target}, NULL` : `NULL, &${target}`});`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.compare") {
+    return `${indent}${target} = ${taggedValue(operation.left, context)} ` +
+      `${int64CComparison(operation.operation)} ` +
+      `${taggedValue(operation.right, context)};`;
   }
   if (operation.kind === "integer.mod_uint64") {
     const divisor = taggedValue(operation.right, context);
@@ -344,21 +382,31 @@ function emitTaggedOperation(operation, context, indent) {
   if (operation.kind === "int64.buffer.get") {
     const buffer = taggedValue(operation.buffer, context);
     const index = taggedValue(operation.index, context);
+    const directIndex = operation.indexType === "int64";
+    const unsignedIndex = operation.indexType === "uint64";
     return [
       `${indent}{`,
-      `${indent}    int64_t sagejs_buffer_index;`,
-      `${indent}    size_t sagejs_buffer_position;`,
-      `${indent}    if (!sagejs_tagged_to_int64(${index}, ` +
-        `&sagejs_buffer_index) ||`,
-      `${indent}        !sagejs_int64_buffer_index(&${buffer}, ` +
-        `sagejs_buffer_index, &sagejs_buffer_position))`,
+      ...(!directIndex && !unsignedIndex
+        ? [`${indent}    int64_t sagejs_buffer_index;`]
+        : []),
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${unsignedIndex ? `(size_t) ${index}` : "0"};`,
+      `${indent}    if (` + (unsignedIndex
+        ? `${index} >= (uint64_t) ${buffer}.length`
+        : (!directIndex
+        ? `!sagejs_tagged_to_int64(${index}, &sagejs_buffer_index) || `
+        : "") + `!sagejs_int64_buffer_index(&${buffer}, ` +
+        `${directIndex ? index : "sagejs_buffer_index"}, ` +
+        `&sagejs_buffer_position)`) + `)`,
       `${indent}    {`,
       `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"Int64 buffer index out of range");`,
       `${indent}        goto fail;`,
       `${indent}    }`,
-      `${indent}    sagejs_tagged_set_small(${target}, ` +
-        `${buffer}.data[sagejs_buffer_position]);`,
+      operation.valueType === "int64"
+        ? `${indent}    ${target} = ${buffer}.data[sagejs_buffer_position];`
+        : `${indent}    sagejs_tagged_set_small(${target}, ` +
+          `${buffer}.data[sagejs_buffer_position]);`,
       `${indent}}`,
     ].join("\n");
   }
@@ -366,29 +414,39 @@ function emitTaggedOperation(operation, context, indent) {
     const buffer = taggedValue(operation.buffer, context);
     const index = taggedValue(operation.index, context);
     const source = taggedValue(operation.value, context);
+    const directIndex = operation.indexType === "int64";
+    const unsignedIndex = operation.indexType === "uint64";
+    const directValue = operation.valueType === "int64";
     return [
       `${indent}{`,
-      `${indent}    int64_t sagejs_buffer_index;`,
-      `${indent}    int64_t sagejs_buffer_value;`,
-      `${indent}    size_t sagejs_buffer_position;`,
-      `${indent}    if (!sagejs_tagged_to_int64(${index}, ` +
-        `&sagejs_buffer_index) ||`,
-      `${indent}        !sagejs_int64_buffer_index(&${buffer}, ` +
-        `sagejs_buffer_index, &sagejs_buffer_position))`,
+      ...(!directIndex && !unsignedIndex
+        ? [`${indent}    int64_t sagejs_buffer_index;`]
+        : []),
+      ...(!directValue ? [`${indent}    int64_t sagejs_buffer_value;`] : []),
+      `${indent}    size_t sagejs_buffer_position = ` +
+        `${unsignedIndex ? `(size_t) ${index}` : "0"};`,
+      `${indent}    if (` + (unsignedIndex
+        ? `${index} >= (uint64_t) ${buffer}.length`
+        : (!directIndex
+        ? `!sagejs_tagged_to_int64(${index}, &sagejs_buffer_index) || `
+        : "") + `!sagejs_int64_buffer_index(&${buffer}, ` +
+        `${directIndex ? index : "sagejs_buffer_index"}, ` +
+        `&sagejs_buffer_position)`) + `)`,
       `${indent}    {`,
       `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"Int64 buffer index out of range");`,
       `${indent}        goto fail;`,
       `${indent}    }`,
-      `${indent}    if (!sagejs_tagged_to_int64(${source}, ` +
-        `&sagejs_buffer_value))`,
-      `${indent}    {`,
-      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
-        `"Int64Buffer value is outside signed 64-bit");`,
-      `${indent}        goto fail;`,
-      `${indent}    }`,
+      ...(!directValue ? [
+        `${indent}    if (!sagejs_tagged_to_int64(${source}, ` +
+          `&sagejs_buffer_value))`,
+        `${indent}    {`,
+        `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+          `"Int64Buffer value is outside signed 64-bit");`,
+        `${indent}        goto fail;`, `${indent}    }`,
+      ] : []),
       `${indent}    ${buffer}.data[sagejs_buffer_position] = ` +
-        `sagejs_buffer_value;`,
+        `${directValue ? source : "sagejs_buffer_value"};`,
       `${indent}}`,
     ].join("\n");
   }
@@ -447,6 +505,20 @@ function emitTaggedOperation(operation, context, indent) {
     return `${indent}sagejs_tagged_set_uint64(${target}, ` +
       `${taggedValue(operation.source, context)});`;
   }
+  if (operation.kind === "integer.from_int64") {
+    return `${indent}sagejs_tagged_set_small(${target}, ` +
+      `${taggedValue(operation.source, context)});`;
+  }
+  if (operation.kind === "int64.from_integer_checked") {
+    return [
+      `${indent}if (!sagejs_tagged_to_int64(` +
+        `${taggedValue(operation.source, context)}, &${target}))`,
+      `${indent}{`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"integer is outside signed 64-bit");`,
+      `${indent}    goto fail;`, `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "uint64.from_integer_checked") {
     return [
       `${indent}if (!sagejs_tagged_to_uint64(` +
@@ -461,6 +533,18 @@ function emitTaggedOperation(operation, context, indent) {
   if (operation.kind === "integer.neg" || operation.kind === "integer.abs") {
     return `${indent}sagejs_tagged_${operation.kind.slice(8)}(${target}, ` +
       `${taggedValue(operation.source, context)});`;
+  }
+  if (operation.kind === "int64.neg" || operation.kind === "int64.abs") {
+    const source = taggedValue(operation.source, context);
+    const expression = operation.kind === "int64.neg"
+      ? `-${source}` : `${source} < 0 ? -${source} : ${source}`;
+    return [
+      `${indent}if (${source} == INT64_MIN)`, `${indent}{`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"int64 arithmetic overflow");`,
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}${target} = ${expression};`,
+    ].join("\n");
   }
   if (operation.kind === "integer.bit_length") {
     return `${indent}sagejs_tagged_bit_length(${target}, ${taggedValue(operation.source, context)});`;
@@ -597,7 +681,7 @@ function emitTaggedOperation(operation, context, indent) {
     return `${indent}${target} = sagejs_tagged_sgn(` +
       `${taggedValue(operation.source, context)}) != 0;`;
   }
-  if (operation.kind === "uint64.truth") {
+  if (operation.kind === "uint64.truth" || operation.kind === "int64.truth") {
     return `${indent}${target} = ${taggedValue(operation.source, context)} != 0;`;
   }
   if (operation.kind === "native.call") {
@@ -667,6 +751,8 @@ function emitTaggedStatements(statements, context, indent) {
         const stop = taggedValue(statement.range.stop, context);
         if (kind === "loop.range") {
           lines.push(`${indent}if (${step} >= ${stop} - ${iterator}) break;`, `${indent}${iterator} += ${step};`);
+        } else if (kind === "loop.range_int64") {
+          lines.push(`${indent}if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator})) break;`);
         } else lines.push(`${indent}sagejs_tagged_add(${iterator}, ${iterator}, ${step});`);
       }
       lines.push(`${indent}${statement.kind.slice(5)};`);
@@ -705,6 +791,23 @@ function emitTaggedStatements(statements, context, indent) {
         `${indent}        break;`,
         `${indent}    ${iterator} += ${step};`,
         `${indent}}`,
+      );
+      continue;
+    }
+    if (statement.kind === "loop.range_int64") {
+      const index = taggedValue(statement.index, context);
+      const iterator = taggedValue(statement.iterator, context);
+      const start = taggedValue(statement.start, context);
+      const stop = taggedValue(statement.stop, context);
+      const step = taggedValue(statement.step, context);
+      lines.push(
+        `${indent}${iterator} = ${start};`, `${indent}for (;;)`, `${indent}{`,
+        `${indent}    if (${step} > 0 ? ${iterator} >= ${stop} : ${iterator} <= ${stop})`,
+        `${indent}        break;`, `${indent}    ${index} = ${iterator};`,
+        `${indent}    (void) ${index};`,
+        emitTaggedStatements(statement.body, context, `${indent}    `),
+        `${indent}    if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator}))`,
+        `${indent}        break;`, `${indent}}`,
       );
       continue;
     }

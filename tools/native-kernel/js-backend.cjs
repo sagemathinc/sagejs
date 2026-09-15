@@ -313,6 +313,9 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "uint64.constant") {
     return `${indent}${operation.target} = ${operation.value}n;`;
   }
+  if (operation.kind === "int64.constant") {
+    return `${indent}${operation.target} = ${operation.value}n;`;
+  }
   if (operation.kind === "integer.constant") {
     return `${indent}${operation.target} = BigInt(${jsString(operation.value)});`;
   }
@@ -327,6 +330,7 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     operation.kind === "integer.copy" ||
     operation.kind === "bool.copy" ||
     operation.kind === "uint64.copy" ||
+    operation.kind === "int64.copy" ||
     operation.kind === "float64.copy" ||
     operation.kind === "float64.buffer.copy"
   ) {
@@ -530,6 +534,12 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
   }
+  if (operation.kind === "integer.from_int64") {
+    return `${indent}${operation.target} = ${operation.source};`;
+  }
+  if (operation.kind === "int64.from_integer_checked") {
+    return `${indent}${operation.target} = checkedInt64(${operation.source});`;
+  }
   if (operation.kind === "uint64.from_integer_checked") {
     return `${indent}if (${operation.source} < 0n || ` +
       `${operation.source} > 18446744073709551615n) ` +
@@ -686,7 +696,11 @@ ${indent}}`;
       `${jsString(operation.operation)}, ${operation.left}, ` +
       `${operation.right});`;
   }
-  if (["integer.compare", "uint64.compare", "bool.compare", "float64.compare"].includes(
+  if (operation.kind === "int64.binary") {
+    return `${indent}${operation.target} = int64Binary(` +
+      `${jsString(operation.operation)}, ${operation.left}, ${operation.right});`;
+  }
+  if (["integer.compare", "uint64.compare", "int64.compare", "bool.compare", "float64.compare"].includes(
     operation.kind
   )) {
     const operator = {
@@ -727,6 +741,14 @@ ${indent}}`;
   }
   if (operation.kind === "uint64.truth") {
     return `${indent}${operation.target} = ${operation.source} !== 0n;`;
+  }
+  if (operation.kind === "int64.truth") {
+    return `${indent}${operation.target} = ${operation.source} !== 0n;`;
+  }
+  if (operation.kind === "int64.neg" || operation.kind === "int64.abs") {
+    const expression = operation.kind === "int64.neg"
+      ? `-${operation.source}` : `(${operation.source} < 0n ? -${operation.source} : ${operation.source})`;
+    return `${indent}${operation.target} = checkedInt64(${expression});`;
   }
   if (operation.kind === "native.call") {
     const targets = operation.results === undefined
@@ -794,6 +816,22 @@ ${indent}}`;
         `${operation.stop} - ${operation.iterator}) break;`,
       `${indent}  ${operation.iterator} += ${operation.step};`,
       `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "loop.range_int64") {
+    return [
+      `${indent}${operation.iterator} = ${operation.start};`,
+      `${indent}while (${operation.step} > 0n ? ` +
+        `${operation.iterator} < ${operation.stop} : ` +
+        `${operation.iterator} > ${operation.stop}) {`,
+      `${indent}  ${operation.index} = ${operation.iterator};`,
+      ...operation.body.map((item) =>
+        emitExactStatement(item, `${indent}  `, resourceStack)
+      ),
+      `${indent}  const $next = ${operation.iterator} + ${operation.step};`,
+      `${indent}  if ($next < -9223372036854775808n || ` +
+        `$next > 9223372036854775807n) break;`,
+      `${indent}  ${operation.iterator} = $next;`, `${indent}}`,
     ].join("\n");
   }
   if (operation.kind === "loop.range_exact") {
@@ -984,6 +1022,7 @@ function exactValidation(param) {
   if (param.type === "uint64") {
     return uint64Validation(param.name);
   }
+  if (param.type === "int64") return int64Validation(param.name);
   if (param.type === "Float64") {
     return `  if (typeof ${param.name} !== "number") {\n` +
       `    throw new TypeError("${param.name} must be a binary64 float");\n` +
@@ -1015,6 +1054,15 @@ function uint64Validation(name) {
     "  }";
 }
 
+function int64Validation(name) {
+  return `  if (!(typeof ${name} === "bigint" || Number.isSafeInteger(${name}))) {\n` +
+    `    nativeRaise("TypeError", "${name} must be an exact integer");\n` +
+    `  }\n` +
+    `  if (${name} < -9223372036854775808n || ${name} > 9223372036854775807n) {\n` +
+    `    nativeRaise("OverflowError", "${name} is outside int64");\n` +
+    "  }";
+}
+
 function normalizedArgument(param) {
   if (param.resourceIdentity !== undefined) {
     return `sagejsFfiPublicResource(${param.name}, ` +
@@ -1022,6 +1070,7 @@ function normalizedArgument(param) {
   }
   if (param.type === "Integer") return `BigInt(${param.name})`;
   if (param.type === "uint64") return `BigInt(${param.name})`;
+  if (param.type === "int64") return `BigInt(${param.name})`;
   if (param.type === "Int64Buffer" || param.type === "Int64Record") {
     return `int64BufferView(${param.name}, ${jsString(param.name)})`;
   }
@@ -1874,6 +1923,34 @@ function uint64NumberBinary(operation, left, right) {
       "JavaScript fallback cannot represent uint64 beyond Number.MAX_SAFE_INTEGER");
   }
   return Number(result);
+}
+
+function checkedInt64(value) {
+  const exact = BigInt(value);
+  if (exact < -9223372036854775808n || exact > 9223372036854775807n) {
+    nativeRaise("OverflowError", "int64 arithmetic overflow");
+  }
+  return exact;
+}
+
+function int64Binary(operation, left, right) {
+  const a = BigInt(left);
+  const b = BigInt(right);
+  if (["add", "sub", "mul"].includes(operation)) {
+    const result = operation === "add" ? a + b
+      : operation === "sub" ? a - b : a * b;
+    return checkedInt64(result);
+  }
+  if (b === 0n) {
+    nativeRaise("ZeroDivisionError", "integer division or modulo by zero");
+  }
+  let quotient = a / b;
+  let remainder = a % b;
+  if (remainder !== 0n && ((remainder < 0n) !== (b < 0n))) {
+    quotient -= 1n;
+    remainder += b;
+  }
+  return checkedInt64(operation === "floordiv" ? quotient : remainder);
 }
 
 function isTypedArrayKind(value, name) {
