@@ -370,13 +370,6 @@ def pari_flx_small_degfact(
     if len(factor_degrees) < degree or len(factor_exponents) < degree:
         raise ValueError("short Flx small factor outputs")
     f = scratch
-    derivative = scratch + 9
-    r = scratch + 18
-    t = scratch + 27
-    v = scratch + 36
-    tv = scratch + 45
-    quotient = scratch + 54
-    remainder = scratch + 63
     layers = scratch + 72
     layer_degrees = scratch + 108
     work = scratch + 112
@@ -411,11 +404,50 @@ def pari_flx_small_degfact(
         factor_degrees[1] = 1
         factor_exponents[1] = 1
         return 2
+    last = pari_flx_small_squarefree(w, f, df, p, layers, layer_degrees, work)
+    count = 0
+    for i in range(last):
+        degrees = pari_flx_small_ddf(w, layers + i * 9, w[layer_degrees + i], p, work)
+        for j in range(1, w[layer_degrees + i] + 1):
+            for k in range(w[degrees + j - 1] // j):
+                factor_degrees[count] = j
+                factor_exponents[count] = i + 1
+                count += 1
+    pari_flx_small_sort_factor(w, scratch, count, factor_degrees, factor_exponents)
+    return count
+
+
+@native
+def pari_flx_small_squarefree(
+    w: IntegerBuffer,
+    f: int,
+    degree: int,
+    p: int,
+    layers: int,
+    layer_degrees: int,
+    scratch: int,
+) -> int:
+    """Shared source squarefree layers for flag-zero and degree-only paths.
+
+    The caller owns a mutable, monic canonical f slot, degree 1..4. Four
+    nine-slot layers and four degree entries are disjoint from it and the
+    ninety-entry scratch. Arithmetic and constant-one holes retain the old
+    degree-factor implementation; only workspace offsets have changed.
+    """
+    derivative = scratch
+    r = scratch + 9
+    t = scratch + 18
+    v = scratch + 27
+    tv = scratch + 36
+    quotient = scratch + 45
+    remainder = scratch + 54
+    work = scratch + 63
     for i in range(4):
         w[layer_degrees + i] = 0
         for j in range(9):
             w[layers + i * 9 + j] = 0
         w[layers + i * 9] = 1
+    df = degree
     multiplicity = 1
     while True:
         dd = pari_flx_deriv(w, f, df, p, derivative)
@@ -450,13 +482,4 @@ def pari_flx_small_degfact(
     last = degree
     while last > 0 and w[layer_degrees + last - 1] == 0:
         last -= 1
-    count = 0
-    for i in range(last):
-        degrees = pari_flx_small_ddf(w, layers + i * 9, w[layer_degrees + i], p, work)
-        for j in range(1, w[layer_degrees + i] + 1):
-            for k in range(w[degrees + j - 1] // j):
-                factor_degrees[count] = j
-                factor_exponents[count] = i + 1
-                count += 1
-    pari_flx_small_sort_factor(w, scratch, count, factor_degrees, factor_exponents)
-    return count
+    return last

@@ -15,6 +15,24 @@ and [word conversion evidence](../bench/pari-class-group-port/word_conversion_ex
 
 The next source revision closes additional preparation and scheduling gaps:
 
+- Full odd-prime degree-0–4 polynomial factor output now connects squarefree
+  layers, Shoup DDF, both source EDF branches, randomized minimal polynomials
+  and sorting. 294 cases match factors, exponents, order and final RNG state
+  on CPython/JS/GMP/tagged, with 83 atomic guard controls per backend. The
+  original parent Frobenius polynomial is retained across DDF/EDF boundaries.
+  See [factor preparation evidence](../bench/pari-class-group-port/factor_preparation_audit.md).
+- Kummer descriptor assembly from actual factors passes 30 cases, including
+  resultant corrections, repeated factors, inert primes and fractional
+  content. Descriptor sorting separately passes 459 cases with source
+  comparison counts. An eager polynomial-to-degree cache passes 1,420 prime
+  cases without prepared factor inputs. These close components, not the
+  full factor-base/driver boundary; eager cache construction is not a
+  source-demand-order timing claim.
+- Connecting full one-prime decomposition exposed a native-adapter name
+  collision between arguments `state` and `descriptor_state`. CPython/JS
+  matched 144 source decompositions before native invocation failed in the
+  adapter. A focused compiler fix is being qualified; this is not an
+  arithmetic mismatch or a completed native decomposition receipt.
 - Generic native `math.exp` and imported `math.sqrt` support permits the
   unchanged inline upstream subfactor-product formula. Its 286 cases match
   CPython/PARI exactly in GMP and tagged native execution; JavaScript has a

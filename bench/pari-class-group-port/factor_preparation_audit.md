@@ -35,7 +35,8 @@ correspondence, not PARI-equivalent allocation or word-operation costs.
 
 [The DDF audit](flx_small_ddf_polynomials_audit.md) records actual component
 polynomials with the existing degree-only arithmetic schedule unchanged.
-It does not yet complete odd-prime equal-degree factorization.
+Equal-degree factorization and its randomized minimal-polynomial dependency
+are now qualified separately; see the connected factor-output checkpoint below.
 
 `flx_small_halfgcd.py` translates `Flx_halfres_basecase` without resultant
 accumulation, for the strict descending-degree calls needed by randomized
@@ -62,11 +63,66 @@ Core SHA-256:
 Initial qualification used 8.71 CPU seconds; the final cached guard replay
 used 2.96 CPU seconds, with peak child RSS 246620 KiB under the 4 GiB cap.
 
+## Connected odd-prime factor output
+
+`flx_small_polynomial_factor.py` now connects the actual flag-zero
+`Flx_factor_i` / Cantor / Shoup path for canonical monic polynomials of
+degrees 0–4 at odd primes. Degree-two roots and multiplicities retain the
+source special case. Higher degrees use squarefree layers, Shoup DDF,
+source-selected EDF, and stable polynomial sorting. The shared squarefree
+helper in `flx_small_factor.py` is extracted from the existing degree-pattern
+implementation without changing its arithmetic schedule. Constant layers
+are skipped in flag-zero factorization, but retain the existing behavior in
+the degree-only path.
+
+Importantly, EDF receives the original squarefree layer's Frobenius
+polynomial, even when its degree exceeds the degree of the current DDF
+component. The source reduces it inside EDF. A first overly narrow EDF guard
+was corrected, with a mixed-quartic regression; no early reduction was added
+to hide that interface error. See [EDF evidence](flx_small_edf_audit.md),
+[minimal-polynomial evidence](flx_small_minpoly_audit.md), and
+[shared block evaluation](flx_small_block_eval_audit.md).
+
+The connected pipeline passes 294 cases on CPython, generated JavaScript,
+GMP and tagged backends. These include every monic degree-0–4 polynomial over
+F3 and selected defining polynomials and repeated-factor controls at 5, 7
+and 37, under two seeds. Factor coefficients, exponents, order and the entire
+final PARI RNG state agree. All same-source workspace entries and diagnostic
+owners agree across backends, including untouched sentinels. This is an
+initial connected receipt. The final checker also passes 83 invalid-input
+controls per backend (83 CPython and 249 JS/GMP/tagged invocations), checking
+atomic failure for invalid degrees/primes/offsets, short owners, and
+nonmonic/noncanonical input. Disjoint spans remain a caller precondition;
+these tests do not claim overlap detection.
+
+Artifact: `/tmp/sagejs-flx-polynomial-factor-5uWL57/fixtures.json`.
+Python SHA-256:
+`bf2d98ddfec61e4199e7c4f20ed527c035ea9db7828d734497cda19267611991`.
+Generated core SHA-256:
+`47e653e2f9149f6a3b82751b90573ad8734ac082ead2851bf5114beca060918d`.
+The metered compilation/execution used 54.181189 CPU seconds and peak child
+RSS 391588 KiB under the unchanged 4 GiB address-space cap. Fixed workspace
+padding, exact-owner indexing and arithmetic remain explicit representation
+costs; this is not a qualified speed measurement.
+
+Final guard-qualified artifact:
+`/tmp/sagejs-flx-polynomial-factor-bC0XJu/fixtures.json`, with the same Python
+and core hashes. Checker SHA-256:
+`6f9a381485e52410e9f87efc4261f9c7d6e88821cf0b1bef432b92b4b5859aac`.
+The cached final run used 33.603564 CPU seconds, peak child RSS 360476 KiB.
+
+After squarefree extraction, the legacy `get_fs_small` check still passes
+260 cases and 340 sorting controls, plus ten unsupported and four invalid
+controls: `/tmp/sagejs-get-fs-small-0Z3raV/fixtures.json`. Its current shared
+factor source hash is
+`57e2eabe44efab09f59e84fa5b23fa9f2f9e9f67758c2462f171b8718f601e7d`.
+
 ## Boundaries
 
 The [modular resultant audit](kummer_resultant_audit.md) covers the generator
-correction dependency separately. Complete odd-prime factorization, Kummer
-descriptor assembly, and full driver integration are still separate gates.
+correction dependency separately. [Kummer descriptor assembly](kummer_prime_descriptor_audit.md)
+is also qualified separately; connection to factorization and full driver
+integration remain separate gates.
 No whole-engine timing, source-language parity, broad-degree support or
 nfinit-input completion is asserted by these component checks. All sources
 retain upstream GPL attribution, and native compilation lowers those actual
