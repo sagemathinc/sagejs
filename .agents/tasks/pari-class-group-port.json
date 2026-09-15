@@ -5,8 +5,8 @@
   "title": "Pari Class Group Port",
   "lane": "arithmetic-algebra",
   "status": "active",
-  "owner": "user",
-  "objective": "Measure faithful PARI 2.17.4 class-group translation feasibility",
+  "owner": "codex",
+  "objective": "Test bounded storage on the faithful PARI 2.17.4 splitting-degree catalog, then test explicit storage reuse on its real HNF stage",
   "base_commit": "0c600a514a4aa63e76a9065bab508ce6837a0212",
   "claims": [
     "src/lib/sagejs/number_fields/pari_class_group/",
