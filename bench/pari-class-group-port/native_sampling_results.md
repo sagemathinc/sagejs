@@ -36,6 +36,19 @@ stack allocation is an important representation property to preserve, not a
 reason to change its arithmetic or stopping rules. Tagged scalar initialization
 alone does not establish a heap allocation: small values use lazy big storage.
 
+## Generated-code lifetime observation
+
+Inspection of this exact core shows that `tagged_pari_signed_real_sum` declares
+130 tagged local slots and copies all six scalar arguments into local owners.
+In particular, copying a big mantissa invokes `sagejs_tagged_make_big` followed
+by `mpz_set`; cleanup calls `mpz_clear` for initialized big storage. Small
+arguments do not allocate through this copy path. This is a concrete candidate
+for borrowed read-only inputs and reusable temporary capacity, not evidence that
+all 130 slots allocate on every execution. Initialization/cleanup code also has
+resumption paths, so counting emitted call sites is not a dynamic allocation
+count. Any reuse must preserve recursion, aliasing, all-exit cleanup and the
+existing isolated-core ownership contract.
+
 Reproduce symbolization with:
 
 ```sh
