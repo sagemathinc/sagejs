@@ -1,5 +1,57 @@
 # Faithful PARI class-group language experiment
 
+## One native quartic retry computation (2026-09-15)
+
+`pari_prepared_class_group_resumable` now completes the actual prepared-field
+path for `x^4-20018*x-20034` in one native entry. It independently collects
+150 relations, requests one more after regulator reconstruction rejects,
+repeats at 151, and accepts at 152. Need, A/R state, HNF, the next collector
+pass and stopping decisions are computed inside the port; reference relations
+and retry decisions are not inputs. The class number is 1 and the accepted
+192-bit regulator triple is
+`[5535521411280883888340490680131024664251778663230538321703,192,27]`.
+
+CPython, generated JavaScript and GMP native agree on the complete trace,
+relation records, generators, original logarithms, transformed HNF C and final
+regulator reconstruction lattice. Independent review poisoned incoming
+scratch/control values and confirmed the same result. Source freshness and
+terminal-repeat guards are exercised. The native generated core has
+61,048,992 bytes, SHA256
+`97ae2196191bdfac4ac6a25b60c3c1195d98263a1c662d84e55abf661f587c62`.
+Native validation peaked at 2,189,884 KiB RSS, below the 4 GiB cap; JavaScript
+replay peaked at 1,031,568 KiB. These include preparation/cache loading and
+are not kernel timing measurements.
+
+Native pass caps of one and two return the explicit `-200` resource stop at
+150 and 151 relations. Public outputs remain unpublished, and a fresh digest
+of every owner confirms that repeating a terminal call mutates nothing.
+Composed compilation caught and corrected a next-pass log-count buffer ABI
+mismatch; all 107 helper cases were rerun after that correction.
+
+The supported retry corridor has dynamically computed empty W and full B,
+and follows the source RELAT reconstruction action. Nonempty-W retries,
+dimension-deficient retries, random relations, precision changes, owner growth
+and honesty extensions remain explicit frontiers. The harder fourth field is
+therefore still a reference result, not a completed port. Field preparation,
+factor-base policy, prime descriptors and analytic inverse hR remain an explicit
+outer boundary; fundamental units, maps and polynomial-input closure are not
+claimed. See `bench/pari-class-group-port/resumable_driver_audit.md`.
+
+The mixed tagged cubic call also agrees exactly with the reference, but its
+initial diagnostic time remains about 108 ms, essentially the GMP result.
+Inspection confirms **zero whole-helper GMP bridges** across all 242 reachable
+functions. Thus the new option really exercises tagged code; it does not show
+a speedup, and it does not prove that scalar/storage costs are negligible.
+The next bounded diagnostic is an alternating prepared-boundary comparison,
+then copied-artifact phase profiling. No automatic backend default changed.
+
+That comparison is now recorded in
+`bench/pari-class-group-port/prepared_paired_measurement.md`: median 3.076 ms
+for the prepared PARI section, 108.844 ms for GMP and 109.208 ms for tagged.
+The paired geometric-mean slowdowns are 35.36x and 35.21x. All result/work
+checks and minimum sample durations passed. These are limited prepared-path
+measurements on a shared host, not full experiment or production qualification.
+
 ## Resident retry components and mixed compiler integration (2026-09-15)
 
 Commit `44163867d` joins append/HNF to regulator acceptance and validates all

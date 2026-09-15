@@ -20,7 +20,7 @@ def pari_prepare_next_small_norm_pass(
     outer: Int64Buffer,
     cache: IntegerBuffer,
     schedule: Int64Buffer,
-    log_completed: Int64Buffer,
+    log_completed: IntegerBuffer,
 ) -> int:
     """Return 0 prepared, -1 requiring source cache reallocation.
 

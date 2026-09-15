@@ -9,10 +9,28 @@ const { createHash } = require("node:crypto");
 const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
 
 (async () => {
+  const option = (name, fallback) => {
+    const at = process.argv.indexOf(name);
+    if (at < 0) return fallback;
+    assert.equal(process.argv.lastIndexOf(name), at, "duplicate option: " + name);
+    assert(process.argv[at + 1] && !process.argv[at + 1].startsWith("--"),
+      "missing option value: " + name);
+    return process.argv[at + 1];
+  };
+  const positiveCount = (name, fallback) => {
+    const text = option(name, String(fallback));
+    assert(/^[1-9][0-9]*$/.test(text), "positive integer required: " + name);
+    const value = Number(text);
+    assert(Number.isSafeInteger(value), "unsafe count: " + name);
+    return value;
+  };
+  const repetitions = positiveCount("--repetitions", 1);
+  const sampleCount = positiveCount("--samples", 3);
+  assert(Number.isSafeInteger(repetitions * sampleCount), "unsafe total call count");
+  const outputPath = option("--output", null);
   const inputPath = path.resolve(process.argv[2]);
   const fixture = JSON.parse(fs.readFileSync(inputPath, "utf8"));
-  const backendAt = process.argv.indexOf("--backend");
-  const backend = backendAt < 0 ? "gmp" : process.argv[backendAt + 1];
+  const backend = option("--backend", "gmp");
   assert(["gmp", "tagged"].includes(backend), "unsupported diagnostic backend");
   const referenceAt = process.argv.indexOf("--reference-fixtures");
   const reference = referenceAt < 0 ? null : JSON.parse(
@@ -73,12 +91,17 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
   const view = name => values[name].toArray ? values[name].toArray() : Array.from(values[name]);
   const samples = [];
   let answer;
-  // First invocation warms the call; all four start from identical owner data.
-  for (let sample = -1; sample < 3; sample++) {
+  // Restore every owner before EVERY computation, including the single warmup.
+  // No accepted state or cached answer is supplied to a later native call.
+  const invoke = () => {
+    const resetCpu = process.cpuUsage(), resetStart = performance.now();
     for (const restore of reset) restore();
+    const resetMilliseconds = performance.now() - resetStart;
+    const resetUsage = process.cpuUsage(resetCpu);
     const cpu = process.cpuUsage(), start = performance.now();
     const action = f[backend](...args);
     const milliseconds = performance.now() - start, usage = process.cpuUsage(cpu);
+    // Decode and assert every individual result/counter outside both clocks.
     const state = view("attempt_state"), count = Number(state[2]);
     const current = {
       action: Number(action), state: state.map(Number),
@@ -105,11 +128,29 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
     }
     if (answer) assert.deepEqual(current, answer);
     answer = current;
-    if (sample >= 0) samples.push({ milliseconds, cpuMilliseconds: (usage.user + usage.system) / 1000 });
+    return {
+      milliseconds, cpuMilliseconds: (usage.user + usage.system) / 1000,
+      resetMilliseconds,
+      resetCpuMilliseconds: (resetUsage.user + resetUsage.system) / 1000,
+    };
+  };
+  invoke(); // One complete fresh-state warmup, excluded from all samples.
+  for (let sample = 0; sample < sampleCount; sample++) {
+    const totals = {
+      repetitions, milliseconds: 0, cpuMilliseconds: 0,
+      resetMilliseconds: 0, resetCpuMilliseconds: 0,
+    };
+    for (let repetition = 0; repetition < repetitions; repetition++) {
+      const timing = invoke();
+      for (const key of Object.keys(timing)) totals[key] += timing[key];
+    }
+    samples.push(totals);
   }
-  console.log(JSON.stringify({
+  const report = {
     qualifiedTiming: false, comparisonToPari: false, backend,
-    boundary: "Prepared attempt with resident owners; excludes preparation, packing, reset, compilation and output decoding. Concurrent host diagnostic only.",
+    boundary: "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+    repetitions, sampleCount, warmupCalls: 1,
+    timedCalls: repetitions * sampleCount,
     inputSha256: createHash("sha256").update(fs.readFileSync(inputPath)).digest("hex"),
     coreBytes: fs.statSync(built.coreSourcePath).size,
     sourceSha256: createHash("sha256").update(fs.readFileSync(sourcePath)).digest("hex"),
@@ -117,5 +158,9 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
     ownerBytes: bytes, resetSnapshotBytes: bytes, setupMilliseconds,
     largeInputCapacities: Object.fromEntries(Object.entries(capacities).filter(([, words]) => words > 64)),
     samples, answer,
-  }));
+  };
+  const json = JSON.stringify(report);
+  // Refuse to overwrite existing evidence; stdout remains available either way.
+  if (outputPath !== null) fs.writeFileSync(path.resolve(outputPath), json + "\n", { flag: "wx" });
+  console.log(json);
 })().catch(error => { console.error(error); process.exitCode = 1; });

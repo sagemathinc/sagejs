@@ -67,6 +67,8 @@ print('CPython passed')
   for(const owner of [5,6,7,8]){const a=args(cases[0]);a[owner]=[];const before=structuredClone(a);assert.throws(()=>f[backend](...a));assert.deepEqual(a,before);}
   for(const [index,value] of [[9,1],[17,4],[18,-11],[0,2],[2,0]]){const a=args(cases[0]);a[5][index]=BigInt(value);const before=structuredClone(a);assert.throws(()=>f[backend](...a));assert.deepEqual(a,before);}
   const a=args(cases[0]);a[8][0]--;const before=structuredClone(a);assert.throws(()=>f[backend](...a));assert.deepEqual(a,before);
+  const packed=args(cases[0]),log=f.createIntegerBuffer(2,2,packed[8]);packed[8]=log;
+  assert.equal(f[backend](...packed),0n);assert.deepEqual(log.toArray(),[BigInt(cases[0].last),77n]);
  }
  const summary={cases:cases.length,cp:cp.trim(),backends:['javascript','gmp','tagged'],ubsan:true,sourceBlockSha256:hash(block),artifactDirectory:dir,qualifiedTiming:false,realCollectorReplay:false,coreBytes:fs.statSync(built.coreSourcePath).size};
  fs.writeFileSync(path.join(dir,'fixtures.json'),JSON.stringify({cases,expected,summary}));console.log(JSON.stringify(summary));

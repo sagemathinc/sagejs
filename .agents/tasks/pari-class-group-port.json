@@ -1928,6 +1928,26 @@
       "commit": "d757076551e9a98a384813b0497397c0d72b01c9",
       "workspace_fingerprint": "15a7fb2dfbf7e5d30bf567696186c0af25c9500296e79d155f7e597a1290d388",
       "platform": "linux-x64"
+    },
+    {
+      "command": "prlimit --as=4294967296 node bench/pari-class-group-port/probe_resident_class_attempt.cjs /tmp/sagejs-prepared-class-inputs-JXLwHg/inputs.json --backend tagged --reference-fixtures /tmp/sagejs-prepared-attempt-reference-glncqA/fixtures.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 230.654,
+      "started_at": "2026-09-15T01:52:53.423Z",
+      "commit": "d643c02d34c28a370a5ee117ccbd672f2c565339",
+      "workspace_fingerprint": "aa095a93114f83db921e970c79d7db7a17b49ce86313e8da8c46c9d5b840657d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/paired_prepared_diagnostic.cjs /tmp/sagejs-prepared-class-inputs-JXLwHg/inputs.json /tmp/sagejs-prepared-attempt-reference-r6W2XO/fixtures.json 15 20 500",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 222.612,
+      "started_at": "2026-09-15T02:12:04.643Z",
+      "commit": "d643c02d34c28a370a5ee117ccbd672f2c565339",
+      "workspace_fingerprint": "2e8186851aeba72b3992cf7287dd69a1a37816b3b3f1d4e8dc9dc81be913f1a4",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
