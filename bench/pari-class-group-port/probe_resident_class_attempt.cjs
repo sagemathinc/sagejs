@@ -26,17 +26,30 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
   };
   const repetitions = positiveCount("--repetitions", 1);
   const sampleCount = positiveCount("--samples", 3);
+  const generatedResident = process.argv.includes("--generated-resident");
+  const warmupCalls = positiveCount("--warmups", generatedResident ? 3 : 1);
   const wordCapacity = positiveCount("--word-capacity", 64);
   const arenaBytes = process.argv.includes("--arena-bytes")
     ? positiveCount("--arena-bytes", 0) : 0;
   const arenaBaseline = process.argv.includes("--arena-baseline");
   assert(!arenaBaseline || arenaBytes, "arena baseline requires the arena build");
+  assert(!generatedResident || !arenaBytes, "generated resident arena is not yet qualified");
   assert(arenaBytes <= 128 * 1024 * 1024, "diagnostic arena exceeds 128 MiB ceiling");
   assert(Number.isSafeInteger(repetitions * sampleCount), "unsafe total call count");
   const outputPath = option("--output", null);
   const profileSymbols = process.argv.includes("--profile-symbols");
   const inputPath = path.resolve(process.argv[2]);
-  const fixture = JSON.parse(fs.readFileSync(inputPath, "utf8"));
+  let fixture = JSON.parse(fs.readFileSync(inputPath, "utf8"));
+  if (generatedResident) {
+    const directory = path.dirname(inputPath);
+    const result = JSON.parse(fs.readFileSync(path.join(directory, "result.json")));
+    const output = JSON.parse(fs.readFileSync(path.join(directory, "output.json")));
+    assert.equal(result.classNumber, String(output.class_number[0]));
+    fixture = { names: fixture.names, inputs: [fixture.input], expected: [{ field: 0 }],
+      summary: { cp: [{ action: Number(result.action), state: output.attempt_state.map(Number),
+        classNumber: result.classNumber, regulator: result.regulator,
+        invariants: output.class_invariants.slice(0, Number(output.attempt_state[2])).map(String) }] } };
+  }
   const backend = option("--backend", "gmp");
   assert(!arenaBytes || backend === "gmp", "arena comparison requires explicit GMP backend");
   assert(["gmp", "tagged"].includes(backend), "unsupported diagnostic backend");
@@ -66,16 +79,21 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
     (kind === "IntegerBuffer" ? raw[name].length * (4 + 8 * capacity(name)) :
       kind.endsWith("Buffer") ? raw[name].length * 8 : 0), 0);
   assert(bytes * 2 < 2 ** 30, "resident owners plus reset snapshots exceed 1 GiB diagnostic cap");
-  const originalPath = path.join(__dirname, "prepared_class_group_attempt.py");
+  const entryName = generatedResident ? "pari_resident_generated_class_attempt" : "pari_prepared_class_group_attempt";
+  const originalPath = path.join(__dirname, generatedResident ? "resident_generated_class_attempt.py" : "prepared_class_group_attempt.py");
   const sourcePath = arenaBytes ? path.join(__dirname, "prepared_class_group_arena.py") : originalPath;
   const signature = fs.readFileSync(originalPath, "utf8")
-    .match(/def pari_prepared_class_group_attempt\(([\s\S]*?)\n\)/)[1]
+    .match(new RegExp("def " + entryName + "\\(([\\s\\S]*?)\\n\\)"))[1]
     .trim().split("\n").map(line => line.trim().replace(/,$/, "").split(": "));
   assert.deepEqual(names, signature, "stale exported signature");
   const expected = fixture.summary.cp[0];
-  assert.equal(expected.action, 0, "fixture must have independently replayed acceptance");
+  assert.equal(expected.action, 0, "fixture must have checked acceptance");
+  if (generatedResident) {
+    const qualified = JSON.parse(fs.readFileSync(path.join(path.dirname(inputPath), "result.json")));
+    assert.equal(qualified.sourceHash, createHash("sha256").update(fs.readFileSync(sourcePath)).digest("hex"), "stale resident source fixture");
+  }
   const built = await compileKernel({ sourcePath, profileSymbols });
-  const f = require(built.modulePath)[arenaBytes && !arenaBaseline ? "pari_prepared_class_group_arena" : "pari_prepared_class_group_attempt"];
+  const f = require(built.modulePath)[arenaBytes && !arenaBaseline ? "pari_prepared_class_group_arena" : entryName];
   assert(f.nativeAvailable);
   const values = {}, snapshots = {}, reset = [];
   const setupStart = performance.now();
@@ -125,13 +143,13 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
       work: {
         smallElements: Number(view("counters")[1]),
         factorAttempts: Number(view("progress")[1]),
-        ideals: Number(values.search_count) - Number(view("schedule")[0]),
+        ideals: Number(generatedResident ? view("prep_state")[2] : values.search_count) - Number(view("schedule")[0]),
       },
     };
     assert.equal(action, 0n, "this diagnostic requires a completed accepted attempt");
     assert.equal(state[3], 1n);
     for (const key of ["action", "state", "invariants", "classNumber", "regulator"])
-      assert.deepEqual(current[key], expected[key], "CPython replay mismatch: " + key);
+      assert.deepEqual(current[key], expected[key], "checker replay mismatch: " + key);
     if (reference) {
       for (const key of ["classNumber", "invariants", "regulator"])
         assert.deepEqual(current[key], reference[key], "PARI result mismatch: " + key);
@@ -149,7 +167,7 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
       resetCpuMilliseconds: (resetUsage.user + resetUsage.system) / 1000,
     };
   };
-  invoke(); // One complete fresh-state warmup, excluded from all samples.
+  for (let i = 0; i < warmupCalls; i++) invoke();
   for (let sample = 0; sample < sampleCount; sample++) {
     const totals = {
       repetitions, milliseconds: 0, cpuMilliseconds: 0,
@@ -163,9 +181,11 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
     samples.push(totals);
   }
   const report = {
-    qualifiedTiming: false, comparisonToPari: false, backend,
-    boundary: "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
-    repetitions, sampleCount, warmupCalls: 1,
+    qualifiedTiming: false, comparisonToPari: false, backend, generatedResident,
+    boundary: generatedResident
+      ? "Prepared nf to initial candidate in one native call, including generated catalogs, policies, packets and analytic normalization. Kernel totals exclude nfinit, packing, zero/reset, compilation and result decoding/checks; reset and setup reported separately. Diagnostic, not full bnfinit timing."
+      : "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+    repetitions, sampleCount, warmupCalls,
     timedCalls: repetitions * sampleCount,
     inputSha256: createHash("sha256").update(fs.readFileSync(inputPath)).digest("hex"),
     coreBytes: fs.statSync(built.coreSourcePath).size,
@@ -180,6 +200,14 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
       .filter(([name, words]) => words > (name.startsWith("hnf_cup_") ? 4 : wordCapacity))),
     samples, answer,
   };
+  if (generatedResident) {
+    report.preparation = { state: view("prep_state").map(String), base: view("prep_base_state").map(String),
+      degreeState: view("prep_degree_state").map(String), catalogState: view("prep_kummer_state").map(String),
+      rng: view("prep_kummer_random_state").map(String), inverseHR: view("accept_inverse_hr").map(String) };
+    // Final occupancy is not a peak-limb bound and never changes a running owner.
+    report.finalLargestStoredWords = Object.fromEntries(names.filter(([, kind]) => kind === "IntegerBuffer")
+      .map(([name]) => [name, values[name].sizes.reduce((m, size) => Math.max(m, Math.abs(size)), 0)]));
+  }
   const json = JSON.stringify(report);
   // Refuse to overwrite existing evidence; stdout remains available either way.
   if (outputPath !== null) fs.writeFileSync(path.resolve(outputPath), json + "\n", { flag: "wx" });

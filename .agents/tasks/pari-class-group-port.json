@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Measure faithful PARI 2.17.4 class-group translation feasibility",
-  "base_commit": "b57cf916a9a5a0116e4ca27a56f27fba9e31b2f2",
+  "base_commit": "0c600a514a4aa63e76a9065bab508ce6837a0212",
   "claims": [
     "src/lib/sagejs/number_fields/pari_class_group/",
     "test/pari-class-group-port.cjs",
@@ -2037,6 +2037,76 @@
       "started_at": "2026-09-15T14:15:00.794Z",
       "commit": "adf1deffd0d97238417888df49231ceba6586ed9",
       "workspace_fingerprint": "6f22d21f12aa1919d835b76c94cfb2f2ff34fb7a55c7366296384b93562be9e4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_resident_generated_class_attempt.cjs /tmp/sagejs-prepared-class-inputs-MRFSOe/inputs.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json /tmp/sagejs-initial-kummer-catalog-Kc48PL/fixtures.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.812,
+      "started_at": "2026-09-15T17:37:59.575Z",
+      "commit": "b22a932caabf30bcd68b99d01cbc2357ac6dbd0e",
+      "workspace_fingerprint": "a0cce7fb208e2c2a1762ee2758d112022120b3a930b10a47dbdf99ff0cd27942",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 64.804,
+      "started_at": "2026-09-15T17:47:06.476Z",
+      "commit": "b22a932caabf30bcd68b99d01cbc2357ac6dbd0e",
+      "workspace_fingerprint": "4b17346da0cf3a9637788e52b5d6de79280897bdfbcc130bf11a03bf51427230",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 478.508,
+      "started_at": "2026-09-15T17:49:19.758Z",
+      "commit": "b22a932caabf30bcd68b99d01cbc2357ac6dbd0e",
+      "workspace_fingerprint": "320025dafdb85e30a62ab152363bdff3f0f4d1cb7f801ff6f80a91560b48758e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_resident_generated_class_attempt.cjs /tmp/sagejs-prepared-class-inputs-MRFSOe/inputs.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json /tmp/sagejs-initial-kummer-catalog-Kc48PL/fixtures.json --backend tagged --padded",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 52.907,
+      "started_at": "2026-09-15T18:03:34.048Z",
+      "commit": "b22a932caabf30bcd68b99d01cbc2357ac6dbd0e",
+      "workspace_fingerprint": "f4b0aa6578e9ceaac4f1efd9ec1e49c9844bb6d171cb9189ba1bbb8c88d2e22f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_resident_generated_class_attempt.cjs /tmp/sagejs-prepared-class-inputs-MRFSOe/inputs.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json /tmp/sagejs-initial-kummer-catalog-Kc48PL/fixtures.json --backend cpython --padded",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.541,
+      "started_at": "2026-09-15T18:06:22.993Z",
+      "commit": "b22a932caabf30bcd68b99d01cbc2357ac6dbd0e",
+      "workspace_fingerprint": "c60c8bf2e43ab3cb1eed7c1ca63519d19b99c8584111cc1e0ae415708a0f8e93",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_resident_generated_class_attempt.cjs /tmp/sagejs-prepared-class-inputs-MRFSOe/inputs.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json /tmp/sagejs-initial-kummer-catalog-Kc48PL/fixtures.json --backend gmp --padded",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 346.211,
+      "started_at": "2026-09-15T18:06:45.516Z",
+      "commit": "b22a932caabf30bcd68b99d01cbc2357ac6dbd0e",
+      "workspace_fingerprint": "b753f1b2b1ff717c146595586420d62d51e242e817ae3925b4adc6f991292c18",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_resident_generated_class_attempt.cjs /tmp/sagejs-prepared-class-inputs-MRFSOe/inputs.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json /tmp/sagejs-initial-kummer-catalog-Kc48PL/fixtures.json --backend tagged --padded",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.038,
+      "started_at": "2026-09-15T18:15:35.995Z",
+      "commit": "b22a932caabf30bcd68b99d01cbc2357ac6dbd0e",
+      "workspace_fingerprint": "df0be6b46dda7dcc280730f6d088a466cf053b894f3255f178f9b5b6ec3d817b",
       "platform": "linux-x64"
     }
   ],

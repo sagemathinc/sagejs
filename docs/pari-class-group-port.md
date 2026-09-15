@@ -1,12 +1,61 @@
 # Faithful PARI class-group language experiment
 
-## Latest checkpoint: generated factor base reaches a class candidate (2026-09-15)
+## Latest checkpoint: one native entry reaches a class candidate (2026-09-15)
+
+The generated factor-base preparation and initial class attempt now execute
+inside **one source-transparent native call**. Eleven borrowed exact-buffer
+views pass computed logical lengths without host slicing or copying. The
+fixed totally real cubic `x^3 - 20018*x + 20034` produces class number 1,
+73 relations and the exact 192-bit PARI regulator in CPython, generated
+JavaScript and native GMP. CPython and GMP agree on every output owner;
+JavaScript differs only in 28 cached floating logarithm cells by one ULP.
+Padded-capacity, early-failure, partial-reentry and terminal-repeat controls
+also pass. See the [resident-entry audit](../bench/pari-class-group-port/resident_generated_class_attempt_audit.md).
+
+This is an **initial candidate**, not a complete `bnfinit` replacement. Prepared
+number-field embeddings, basis and runtime tables remain inputs. General
+dispatch, retries, honesty extension, fundamental units and public maps remain
+unfinished. The eager degree cache also differs from stock PARI's demand order.
+An adapted PARI control follows the same preparation boundary. Seven alternating
+pinned-CPU pairs measure about 325 ms versus 7.7 ms: **42.19x kernel slowdown**,
+or 48.78x including native owner reset. This shared-host, single-field result is
+not whole-engine qualification. Phase profiling is next; the ratio alone does
+not identify compiler overhead. See the [paired baseline](../bench/pari-class-group-port/resident_paired_measurement.md).
+
+The corrected GMP generated core is 80,333,582 bytes. Compilation plus replay used
+367.86 CPU seconds and peaked at 2,007,696 KiB child RSS under the unchanged
+4 GiB address-space cap. Full strict-Python validation and the full build pass.
+`pnpm test:changed` passes its architecture stages through the CoWasm audit,
+then stops at the stale optimizer-opportunity manifest (expected
+`f4de7d64e135fa9c187c5c77ac509cf898105751f01b080ec801a7f9f144f303`,
+found `ba010bb412b1a3024c4c62aa0b1086bea2507388dd103943be53b07cb267cc55`).
+Later suites therefore did not run. No resource allowance was raised and
+neither experimental PR is ready to leave draft.
+
+### Approved resident-entry continuation
+
+The user approved **8 additional aggregate active-agent hours**. This new block
+starts at 2026-09-15 17:20:00 UTC with a five-minute root setup reserve. The
+existing continuation CPU ceiling and 4 GiB per-process address-space limit
+remain unchanged; this is not eight hours per agent. Root owns the resident
+mathematical connector and timing. Initial delegated caps are 45 active minutes
+for the compiler's borrowed exact-buffer view and 30 for read-only connector
+and input-boundary review. Agents report their active intervals explicitly;
+completed/idle agents consume no implementation allocation. The old accounting
+uncertainty below is historical, not a blocker to this newly authorized block.
+
+First target: join the qualified generated-factor-base stages and initial class
+attempt in one source-transparent native call, with KC-dependent borrowed
+prefixes rather than host slicing. Then qualify correspondence and measure the
+matched work. No generality, retry, honesty or public-unit-map gaps are waived.
 
 The experiment is still incomplete: there is no qualified `nfinit`-only
 class-group entry or broad matched-panel competitiveness result. Earlier
 sections below describe historical checkpoints, not necessarily current source.
 
-The prepared-field diagnostic now connects computed degree patterns, factor-base
+### Historical multi-call checkpoint
+
+The earlier prepared-field diagnostic connects computed degree patterns, factor-base
 bounds, Kummer descriptors, ideal packets, metadata and subfactor selection to
 analytic normalization and the initial class attempt. CPython, generated
 JavaScript and native GMP reproduce the same totally real cubic candidate:
