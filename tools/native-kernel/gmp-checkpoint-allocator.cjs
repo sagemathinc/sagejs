@@ -29,13 +29,20 @@ const GMP_CHECKPOINT_ALLOCATOR_C_SOURCE = String.raw`
 #define SAGEJS_NATIVE_GMP_VIRTUAL_ENVELOPE_SHIFT 8U
 #define SAGEJS_NATIVE_GMP_VIRTUAL_ENVELOPE_CEILING \
     (UINT64_C(64) << 30)
+#define SAGEJS_NATIVE_GMP_SMALL_SPAN_LIMIT 512U
+#define SAGEJS_NATIVE_GMP_SMALL_BIN_COUNT \
+    (SAGEJS_NATIVE_GMP_SMALL_SPAN_LIMIT / SAGEJS_NATIVE_ALIGNOF(max_align_t) + 1U)
 
 typedef union
 {
     max_align_t alignment;
     struct
     {
-        size_t requested;
+        union
+        {
+            size_t requested;
+            void *next;
+        } payload;
         size_t span;
     } value;
 } sagejs_native_gmp_arena_header;
@@ -59,6 +66,7 @@ typedef struct sagejs_native_gmp_checkpoint
     unsigned retry_shift;
     int open;
     struct sagejs_native_gmp_checkpoint *previous;
+    sagejs_native_gmp_arena_header *small_bins[SAGEJS_NATIVE_GMP_SMALL_BIN_COUNT];
 } sagejs_native_gmp_checkpoint;
 
 typedef struct
@@ -283,9 +291,27 @@ static void *sagejs_native_gmp_checkpoint_allocate(
     sagejs_native_gmp_checkpoint *checkpoint, size_t requested)
 {
     const size_t payload = requested == 0 ? 1 : requested;
-    const size_t raw = sizeof(sagejs_native_gmp_arena_header) + payload;
+    const size_t raw = payload > SIZE_MAX - sizeof(sagejs_native_gmp_arena_header)
+        ? SIZE_MAX : sizeof(sagejs_native_gmp_arena_header) + payload;
     const size_t span = sagejs_native_gmp_align(raw);
     sagejs_native_gmp_arena_header *header;
+    if (span <= SAGEJS_NATIVE_GMP_SMALL_SPAN_LIMIT)
+    {
+        const size_t index = span / SAGEJS_NATIVE_ALIGNOF(max_align_t);
+        header = checkpoint->small_bins[index];
+        if (header != NULL)
+        {
+            const size_t offset = (size_t) ((unsigned char *) header - checkpoint->storage);
+            checkpoint->small_bins[index] = (sagejs_native_gmp_arena_header *)
+                header->value.payload.next;
+            header->value.payload.requested = requested;
+            if (offset > checkpoint->capacity || span > checkpoint->capacity - offset)
+                checkpoint->soft_limit_exhaustions += 1;
+            checkpoint->allocation_calls += 1;
+            checkpoint->requested_bytes += (uint64_t) requested;
+            return (void *) (header + 1);
+        }
+    }
     if (span == SIZE_MAX ||
         checkpoint->used > checkpoint->reservation_size ||
         span > checkpoint->reservation_size - checkpoint->used ||
@@ -297,7 +323,7 @@ static void *sagejs_native_gmp_checkpoint_allocate(
         checkpoint->soft_limit_exhaustions += 1;
     header = (sagejs_native_gmp_arena_header *)
         (checkpoint->storage + checkpoint->used);
-    header->value.requested = requested;
+    header->value.payload.requested = requested;
     header->value.span = span;
     checkpoint->used += span;
     if (checkpoint->used > checkpoint->high_water)
@@ -305,6 +331,18 @@ static void *sagejs_native_gmp_checkpoint_allocate(
     checkpoint->allocation_calls += 1;
     checkpoint->requested_bytes += (uint64_t) requested;
     return (void *) (header + 1);
+}
+
+static void sagejs_native_gmp_checkpoint_recycle(
+    sagejs_native_gmp_checkpoint *checkpoint,
+    sagejs_native_gmp_arena_header *header)
+{
+    if (header->value.span <= SAGEJS_NATIVE_GMP_SMALL_SPAN_LIMIT)
+    {
+        const size_t index = header->value.span / SAGEJS_NATIVE_ALIGNOF(max_align_t);
+        header->value.payload.next = checkpoint->small_bins[index];
+        checkpoint->small_bins[index] = header;
+    }
 }
 
 static void *sagejs_native_gmp_malloc(size_t requested)
@@ -347,11 +385,19 @@ static void *sagejs_native_gmp_realloc(
     }
     header = ((sagejs_native_gmp_arena_header *) pointer) - 1;
     payload = requested == 0 ? 1 : requested;
-    raw = sizeof(*header) + payload;
+    raw = payload > SIZE_MAX - sizeof(*header)
+        ? SIZE_MAX : sizeof(*header) + payload;
     span = sagejs_native_gmp_align(raw);
     offset = (size_t) ((unsigned char *) header - checkpoint->storage);
     checkpoint->reallocation_calls += 1;
     checkpoint->requested_bytes += (uint64_t) requested;
+    /* Retain physical span on shrink: bin entries may exist above this block.
+       Regrowth within that span neither bumps nor invalidates free blocks. */
+    if (span != SIZE_MAX && span <= header->value.span)
+    {
+        header->value.payload.requested = requested;
+        return pointer;
+    }
     if (span != SIZE_MAX && offset + header->value.span == checkpoint->used &&
         span <= checkpoint->reservation_size - offset &&
         sagejs_native_gmp_checkpoint_activate(checkpoint, offset + span))
@@ -362,7 +408,7 @@ static void *sagejs_native_gmp_realloc(
         checkpoint->used = offset + span;
         if (checkpoint->used > checkpoint->high_water)
             checkpoint->high_water = checkpoint->used;
-        header->value.requested = requested;
+        header->value.payload.requested = requested;
         header->value.span = span;
         return pointer;
     }
@@ -375,8 +421,9 @@ static void *sagejs_native_gmp_realloc(
             abort();
     }
     memcpy(result, pointer,
-        header->value.requested < requested
-            ? header->value.requested : requested);
+        header->value.payload.requested < requested
+            ? header->value.payload.requested : requested);
+    sagejs_native_gmp_checkpoint_recycle(checkpoint, header);
     return result;
 }
 
@@ -391,6 +438,8 @@ static void sagejs_native_gmp_free(void *pointer, size_t old_size)
         return;
     }
     checkpoint->free_calls += 1;
+    sagejs_native_gmp_checkpoint_recycle(checkpoint,
+        ((sagejs_native_gmp_arena_header *) pointer) - 1);
 }
 
 SAGEJS_NATIVE_GMP_ALLOCATOR_API int sagejs_native_gmp_allocator_install(void)
@@ -479,6 +528,7 @@ SAGEJS_NATIVE_GMP_ALLOCATOR_API int sagejs_native_gmp_checkpoint_end(
     checkpoint->used = 0;
     checkpoint->open = 0;
     checkpoint->previous = NULL;
+    memset(checkpoint->small_bins, 0, sizeof(checkpoint->small_bins));
     return 1;
 }
 
