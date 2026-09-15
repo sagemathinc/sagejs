@@ -56,13 +56,19 @@ The next source revision closes additional preparation and scheduling gaps:
 - The same integral-table entry now continues through quotient basis
   completion, inversion and projected Frobenius kernel in one native call.
   All 24 radical-quotient cases match exact PARI matrices across execution
-  modes. Kummer-factor removal and actual quotient splitting are still outside
-  this boundary; see the [projection audit](../bench/pari-class-group-port/quotient_projection_audit.md).
+  modes. See the [projection audit](../bench/pari-class-group-port/quotient_projection_audit.md).
 - First-dependence elimination and quotient power/minimal-polynomial
   construction now match PARI on 288 scalar/companion/relative-e1 matrix
   cases. The direct quadratic-root dependency passes 6,277 component cases.
-  They are not yet connected into the quotient splitter; see the
+  See the
   [minimal-polynomial audit](../bench/pari-class-group-port/quotient_minpoly_audit.md).
+- The quotient splitter now connects lift, multiplication matrix, minimal
+  polynomial, roots and child images. Its recursive worklist matches all 24
+  radical-start field/prime cases, including 26 visits and genuine signed
+  child inputs, in CPython/JavaScript/GMP/tagged execution. Exact final ideal
+  order and CPython visit order agree with PARI. Kummer removal and final
+  prime descriptors remain outside this boundary; see the
+  [split audit](../bench/pari-class-group-port/quotient_split_audit.md).
 
 See [packet integration evidence](../bench/pari-class-group-port/selected_ideal_packets_audit.md)
 and [acceptance scheduling evidence](../bench/pari-class-group-port/post_hnf_schedule_audit.md),

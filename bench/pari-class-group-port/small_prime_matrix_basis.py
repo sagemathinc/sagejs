@@ -6,8 +6,10 @@ F2v.c F2m_gauss_pivot, Flv.c Flm_gauss_pivot. Unlike FpM_ker,
 the p=3 branch uses Flm, not F3m. No CUP branch occurs for rows<=4.
 Column-major input is copied into scratch before elimination. Scratch size
 is rows*columns+rows+columns, holding matrix, used rows, one-based pivots.
-Input/output/scratch spans must be disjoint. Canonical prime residues are
-caller preconditions; primality is not checked. Binary operations use dense
+Input/output/scratch spans must be disjoint. Arbitrary signed integer input
+is reduced only in the private pivot matrix, as in FpM_init. Image/supplement
+columns retain the exact original integer entries. Primality is not checked.
+Binary operations use dense
 residues, preserving source column operation order but not packed-word cost.
 """
 
@@ -33,14 +35,11 @@ def _small_prime_matrix_pivots(
         or len(w) < scratch + size + rows + columns
     ):
         raise ValueError("invalid matrix basis workspace")
-    for i in range(size):
-        if w[a + i] < 0 or w[a + i] >= p:
-            raise ValueError("matrix basis input must be reduced")
     x = scratch
     used = x + size
     pivots = used + rows
     for i in range(size):
-        w[x + i] = w[a + i]
+        w[x + i] = w[a + i] % p
     for j in range(rows):
         w[used + j] = 0
     nullity = 0

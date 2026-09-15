@@ -86,6 +86,10 @@ they do not instrument every word operation in the square-root algorithm.
 
 ## Remaining integration
 
+The subsequent [quotient splitting checkpoint](quotient_split_audit.md)
+connects this block and the recursive image worklist. The following paragraph
+records the frontier at this earlier minimal-polynomial checkpoint.
+
 The next connected block must compute the source second kernel vector's lift
 `a=M2*v`, form its exact integral multiplication matrix, reduce it, project
 it to the quotient, and use this minimal polynomial and roots to form image

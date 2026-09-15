@@ -15,11 +15,13 @@ function run(c,a,o={}){const r=spawnSync(c,a,{encoding:'utf8',timeout:120000,max
   const a=Array.from({length:m*n},(_,k)=>trial===0?0:trial===1?(k%m===Math.floor(k/m)?1:0):trial===2?p-1:rnd(p));
   if(trial===3&&n>1)for(let i=0;i<m;i++)a[m+i]=a[i];cases.push({m,n,p,a});
  }
+ const reducedCases=cases.length;
+ for(const c of cases.slice())cases.push({...c,a:c.a.map((v,i)=>v+(i%2===0?-3:4)*c.p)});
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'sagejs-small-prime-basis-')),file=path.join(dir,'oracle.c'),exe=path.join(dir,'oracle');
  fs.writeFileSync(file,String.raw`#include "pari.h"
 #include "paripriv.h"
-static void emit(GEN a,long m,long n){for(long j=1;j<=n;j++)for(long i=1;i<=m;i++)printf(" %lu",itou(gcoeff(a,i,j)));}
-int main(void){pari_init(8000000,1000);long count;scanf("%ld",&count);for(long c=0;c<count;c++){pari_sp av=avma;long m,n;ulong p;scanf("%ld%ld%lu",&m,&n,&p);GEN a=zeromatcopy(m,n);for(long j=1;j<=n;j++)for(long i=1;i<=m;i++){ulong v;scanf("%lu",&v);gcoeff(a,i,j)=utoi(v);}GEN image=FpM_image(a,utoi(p)),supp=FpM_suppl(a,utoi(p));long r=lg(image)-1;printf("%ld",r);emit(image,m,r);emit(supp,m,m);GEN d;long nullity;if(p==2)d=F2m_gauss_pivot(ZM_to_F2m(a),&nullity);else d=Flm_pivots(ZM_to_Flm(a,p),p,&nullity,1);for(long i=1;i<=n;i++)printf(" %ld",d[i]);puts("");avma=av;}pari_close();}
+static void emit(GEN a,long m,long n){for(long j=1;j<=n;j++)for(long i=1;i<=m;i++)pari_printf(" %Ps",gcoeff(a,i,j));}
+int main(void){pari_init(8000000,1000);long count;scanf("%ld",&count);for(long c=0;c<count;c++){pari_sp av=avma;long m,n;ulong p;scanf("%ld%ld%lu",&m,&n,&p);GEN a=zeromatcopy(m,n);for(long j=1;j<=n;j++)for(long i=1;i<=m;i++){long v;scanf("%ld",&v);gcoeff(a,i,j)=stoi(v);}GEN image=FpM_image(a,utoi(p)),supp=FpM_suppl(a,utoi(p));long r=lg(image)-1;printf("%ld",r);emit(image,m,r);emit(supp,m,m);GEN d;long nullity;if(p==2)d=F2m_gauss_pivot(ZM_to_F2m(a),&nullity);else d=Flm_pivots(ZM_to_Flm(a,p),p,&nullity,1);for(long i=1;i<=n;i++)printf(" %ld",d[i]);puts("");avma=av;}pari_close();}
 `);
  run('cc',['-O1','-fsanitize=undefined','-fno-sanitize-recover=undefined','-I'+path.join(pari,'src/headers'),'-I'+lib,file,'-L'+lib,'-Wl,-rpath,'+lib,'-lpari','-lm','-o',exe]);
  const expected=run(exe,[],{input:[cases.length,...cases.flatMap(c=>[c.m,c.n,c.p,...c.a])].join(' ')}).trim().split('\n').map(s=>s.split(' ').map(Number));
@@ -39,7 +41,7 @@ except ValueError:pass
 else:raise AssertionError('empty supplement')
 print('CPython passed',ix+1)
 `,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify([cases,expected])});
- const summary={cases:cases.length,cp:cp.trim(),artifactDirectory:dir,qualifiedTiming:false};
+ const summary={cases:cases.length,reducedCases,signedUnreducedCases:cases.length-reducedCases,cp:cp.trim(),artifactDirectory:dir,qualifiedTiming:false};
  if(!process.argv.includes('--source-only')){
   const built=await compileKernel({sourcePath:path.join(__dirname,'small_prime_matrix_basis.py')}),mod=require(built.modulePath);
   for(const backend of ['javascript','gmp','tagged'])for(let ix=0;ix<cases.length;ix++)for(const name of ['image','supplement']){

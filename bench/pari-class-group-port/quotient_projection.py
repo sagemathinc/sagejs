@@ -92,7 +92,8 @@ def pari_small_quotient_projection(
     state[1] = 0
     state[2] = 0
     for i in range(n * rank):
-        workspace[i] = ideal[i] % prime
+        # FpM_suppl selects original columns, reducing only its pivot copy.
+        workspace[i] = ideal[i]
     for i in range(n):
         workspace[n * rank + i] = 0
     workspace[n * rank] = 1

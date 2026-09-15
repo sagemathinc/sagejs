@@ -1978,6 +1978,16 @@
       "commit": "f0c9a9a45337592066507bafc9a3bfc51b0dc8e5",
       "workspace_fingerprint": "51116176e89191b6042962d57e8ee51719d08488deba0ef8cfca53cb0b3b65c7",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_quotient_split.cjs /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4 /scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4.tar.gz --recursive-visits",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 45.962,
+      "started_at": "2026-09-15T06:51:05.195Z",
+      "commit": "1e70c276f43e25c4d33bd8cbda2d03dd903e333b",
+      "workspace_fingerprint": "08a41f48063a6f054d08c96b444f11b812d14591337ed81339fc51cb8199aa02",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
