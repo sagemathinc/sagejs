@@ -11,6 +11,12 @@ argument is forwarded unchanged. Its only new operation is a lexical
 `NativeExactArena(0, temporary_limit)`. The resident-child budget is zero because
 no children are created. External packed owners retain the original policy.
 
+`--arena-baseline` together with `--arena-bytes` invokes the original exported
+entry from the same compiled module instead of the wrapper. This permits a
+same-build comparison: identical generated helpers and compiler flags, fresh
+owners, with the lexical arena as the intended difference. The report records
+both options; an arena capacity in a baseline report is not an active arena.
+
 The diagnostic probe opts in with `--arena-bytes`; default execution is
 unchanged and only explicit GMP is accepted for this comparison. The diagnostic
 ceiling is 128 MiB, under the unchanged 4 GiB process limit. As a provisional

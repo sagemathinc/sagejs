@@ -29,6 +29,8 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
   const wordCapacity = positiveCount("--word-capacity", 64);
   const arenaBytes = process.argv.includes("--arena-bytes")
     ? positiveCount("--arena-bytes", 0) : 0;
+  const arenaBaseline = process.argv.includes("--arena-baseline");
+  assert(!arenaBaseline || arenaBytes, "arena baseline requires the arena build");
   assert(arenaBytes <= 128 * 1024 * 1024, "diagnostic arena exceeds 128 MiB ceiling");
   assert(Number.isSafeInteger(repetitions * sampleCount), "unsafe total call count");
   const outputPath = option("--output", null);
@@ -73,7 +75,7 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
   const expected = fixture.summary.cp[0];
   assert.equal(expected.action, 0, "fixture must have independently replayed acceptance");
   const built = await compileKernel({ sourcePath, profileSymbols });
-  const f = require(built.modulePath)[arenaBytes ? "pari_prepared_class_group_arena" : "pari_prepared_class_group_attempt"];
+  const f = require(built.modulePath)[arenaBytes && !arenaBaseline ? "pari_prepared_class_group_arena" : "pari_prepared_class_group_attempt"];
   assert(f.nativeAvailable);
   const values = {}, snapshots = {}, reset = [];
   const setupStart = performance.now();
@@ -96,7 +98,7 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
   }
   const setupMilliseconds = performance.now() - setupStart;
   const args = names.map(([name]) => values[name]);
-  if (arenaBytes) args.push(BigInt(arenaBytes));
+  if (arenaBytes && !arenaBaseline) args.push(BigInt(arenaBytes));
   const view = name => values[name].toArray ? values[name].toArray() : Array.from(values[name]);
   const samples = [];
   let answer;
@@ -168,7 +170,7 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
     generatedCorePath: built.coreSourcePath,
     ownerBytes: bytes, resetSnapshotBytes: bytes, setupMilliseconds,
     ordinaryWordCapacity: wordCapacity, cupWordCapacity: 4,
-    profileSymbols, arenaBytes,
+    profileSymbols, arenaBytes, arenaBaseline,
     largeInputCapacities: Object.fromEntries(Object.entries(capacities)
       .filter(([name, words]) => words > (name.startsWith("hnf_cup_") ? 4 : wordCapacity))),
     samples, answer,
