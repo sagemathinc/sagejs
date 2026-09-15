@@ -30,13 +30,19 @@ static void set_mpz_int64(mpz_t target, int64_t value)
 static int mpz_to_int64(const mpz_t value, int64_t *result)
 {
     const int sign = mpz_sgn(value);
-    size_t count = 0;
     uint64_t magnitude = 0;
     if (sign == 0)
     {
         *result = 0;
         return 1;
     }
+#if GMP_NUMB_BITS == 64
+    /* Public limb access preserves LLP64: mp_limb_t need not be ulong. */
+    if (mpz_size(value) > 1)
+        return 0;
+    magnitude = (uint64_t) mpz_getlimbn(value, 0);
+#else
+    size_t count = 0;
     /* mpz_export writes every requested word to its destination.  Reject a
        multiword magnitude before exporting into this single-word scalar. */
     if (mpz_sizeinbase(value, 2) > 64)
@@ -44,6 +50,7 @@ static int mpz_to_int64(const mpz_t value, int64_t *result)
     mpz_export(&magnitude, &count, -1, sizeof(magnitude), 0, 0, value);
     if (count > 1)
         return 0;
+#endif
     if (sign > 0)
     {
         if (magnitude > (uint64_t) INT64_MAX)
@@ -62,18 +69,27 @@ static int mpz_to_int64(const mpz_t value, int64_t *result)
 
 static int mpz_to_uint64(const mpz_t value, uint64_t *result)
 {
-    size_t count = 0;
+    const int sign = mpz_sgn(value);
     uint64_t magnitude = 0;
-    if (mpz_sgn(value) < 0 || mpz_sizeinbase(value, 2) > 64)
+    if (sign < 0)
         return 0;
-    if (mpz_sgn(value) == 0)
+    if (sign == 0)
     {
         *result = UINT64_C(0);
         return 1;
     }
+#if GMP_NUMB_BITS == 64
+    if (mpz_size(value) > 1)
+        return 0;
+    magnitude = (uint64_t) mpz_getlimbn(value, 0);
+#else
+    size_t count = 0;
+    if (mpz_sizeinbase(value, 2) > 64)
+        return 0;
     mpz_export(&magnitude, &count, -1, sizeof(magnitude), 0, 0, value);
     if (count > 1)
         return 0;
+#endif
     *result = magnitude;
     return 1;
 }
