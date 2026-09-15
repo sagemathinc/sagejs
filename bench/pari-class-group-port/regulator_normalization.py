@@ -48,8 +48,8 @@ def pari_regulator_normalization(
     ):
         raise ValueError("unsupported inverse-hR normalization inputs")
     pari_validate_regulator_values(inverse_residue, 1)
-    if inverse_residue[0] <= 0 or inverse_residue[1] != 64:
-        raise ValueError("inverse residue must be positive DEFAULTPREC real")
+    if inverse_residue[0] <= 0 or inverse_residue[1] < 64:
+        raise ValueError("inverse residue must be positive real")
     pm, pp, pe = pari_pi_constant(64, pi_cache, a, b, p, q, stack)
     nm, np, ne = pm, pp, pe
     if complex_places == 0:

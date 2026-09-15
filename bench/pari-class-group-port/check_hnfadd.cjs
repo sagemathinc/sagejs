@@ -105,6 +105,20 @@ print(json.dumps(out))
  const addResults=cp.flatMap(st=>st.slice(1));
  const frontiers=cp.flatMap((st,i)=>st.slice(1).filter(e=>e.status<0).map(e=>({kind:cases[i].kind,status:e.status,phase:e.state[8]})));
  const summary={cases:cases.length,collectorCases:cases.filter(r=>r.kind==='collector').length,collectorCompletedAdds:cp.reduce((n,st,i)=>n+(cases[i].kind==='collector'?st.slice(1).filter(e=>e.status===0).length:0),0),calls:cp.flat().length,addCalls:addResults.length,completedAdds:addResults.filter(e=>e.status===0).length,frontiers,statuses:cp.flat().reduce((a,e)=>(a[e.status]=(a[e.status]||0)+1,a),{}),leafCounts,leafHash,bodyHash,traceSha256:createHash('sha256').update(trace).digest('hex'),ubsan:true,qualifiedTiming:false};
+ if(process.argv.includes('--export-unit-prefixes')){
+  const prefixes=[];
+  cases.forEach((r,i)=>{
+   if(r.kind!=='collector'||r.k0!==0)return;
+   cp[i].forEach((result,stage)=>{
+    if(result.status!==0)return;
+    const e=r.expected[stage],columns=e.state[4];if(columns<=0)return;
+    const values=[];for(let j=0;j<columns*r.logRows;j++)values.push(...e.C.slice(7*j+1,7*j+4));
+    assert.equal(values.length,3*r.logRows*columns);
+    prefixes.push({rows:r.logRows,columns,degree:r.n,values,collectorCase:i,stage,hnfState:e.state,hnf:e.H});
+   });
+  });
+  console.log(JSON.stringify({summary,prefixes,preparedBoundary:'PARI post-HNF unit-log prefixes cross-checked with same-source CPython; not a closed native collector-to-regulator run'}));return;
+ }
  if(process.argv.includes('--source-only')){console.log(JSON.stringify(summary));return;}
  const built=await compileKernel({sourcePath:path.join(__dirname,'hnfadd.py')}),add=require(built.modulePath).pari_hnfadd,ib=await compileKernel({sourcePath:path.join(__dirname,'hnfspec_complete.py')}),init=require(ib.modulePath).pari_hnfspec_complete;assert(add.nativeAvailable&&init.nativeAvailable);
  assert.doesNotMatch(fs.readFileSync(built.coreSourcePath,'utf8'),/napi_call_function|PyObject_Call|v8::/);

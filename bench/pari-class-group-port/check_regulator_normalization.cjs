@@ -16,6 +16,7 @@ function run(c,a,o={}) { const r=spawnSync(c,a,{encoding:'utf8',timeout:180000,m
   cases.push([String(d),r1,r2,r1?2:2*(r2+1),String((1n<<63n)+BigInt(degree*73+r2)),64,r2-2]);
  }
  for(const w of [(1n<<32n)-1n,1n<<63n,(1n<<64n)-1n])cases.push(['23',1,1,String(w),String(1n<<63n),64,0]);
+ for(const p of [128,192,1856])for(const r2 of [0,1,3])cases.push(['1234567891',2,r2,'2',String((1n<<BigInt(p-1))+133n),p,-1]);
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'sagejs-regulator-normalize-')),c=path.join(dir,'oracle.c'),exe=path.join(dir,'oracle');
  fs.writeFileSync(c,`/* buchall expression from PARI 2.17.4, GPL-2.0-or-later. */
 #include "pari.h"
@@ -34,7 +35,7 @@ for i,(r,e) in enumerate(zip(*json.load(sys.stdin))):
  # Reuse the pi cache with no coefficient workspace, as in the source cache.
  assert f(*v[:4],v[4:],work[0],[],[],[],[],[])==tuple(map(int,e)),i
 base=[23,1,1,2,[1<<63,64,0]]+[[0]*3]+[[0]*8 for _ in range(4)]+[[0]*128]
-for slot,value in [(0,0),(0,1<<1856),(1,-1),(2,6),(3,0),(3,1<<64),(4,[1<<127,128,0]),(5,[])]:
+for slot,value in [(0,0),(0,1<<1856),(1,-1),(2,6),(3,0),(3,1<<64),(4,[1,-1,0]),(5,[])]:
  args=copy.deepcopy(base);args[slot]=value;before=copy.deepcopy(args)
  try:f(*args)
  except ValueError:pass
@@ -49,7 +50,7 @@ for slot,value in [(0,0),(0,1<<1856),(1,-1),(2,6),(3,0),(3,1<<64),(4,[1<<127,128
   assert.deepEqual(f[backend](...v.slice(0,4),v.slice(4),...work),expected[i].map(BigInt),backend+' '+i);
   assert.deepEqual(f[backend](...v.slice(0,4),v.slice(4),work[0],[],[],[],[],[]),expected[i].map(BigInt),backend+' cached '+i);
  }
- for(const backend of ['javascript','gmp'])for(const [slot,value] of [[0,0n],[0,1n<<1856n],[1,-1n],[2,6n],[3,0n],[3,1n<<64n],[4,[1n<<127n,128n,0n]],[5,[]]]) {
+ for(const backend of ['javascript','gmp'])for(const [slot,value] of [[0,0n],[0,1n<<1856n],[1,-1n],[2,6n],[3,0n],[3,1n<<64n],[4,[1n,-1n,0n]],[5,[]]]) {
   const make=n=>backend==='gmp'?f.createIntegerBuffer(n,128):Array(n).fill(0n),view=x=>typeof x==='bigint'?x:Array.isArray(x)?x.slice():x.toArray();
   const args=[23n,1n,1n,2n,[1n<<63n,64n,0n],make(3),make(8),make(8),make(8),make(8),make(128)];args[slot]=value;
   const before=args.map(view);assert.throws(()=>f[backend](...args));assert.deepEqual(args.map(view),before);

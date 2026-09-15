@@ -1,5 +1,83 @@
 # Faithful PARI class-group language experiment
 
+## Actual collector outputs reach regulator acceptance (2026-09-15)
+
+The initialized translated collector, weighted relation logs and complete HNF
+now agree with PARI on all four tuning fields. The diagnostic initializes the
+rational-prime relations and runs literal `small_norm` across the prepared
+prime ideals above primes at most 101, with quota 8 and `ballvol=500`.
+These are explicitly prepared diagnostic policies, not a reproduction of the
+whole `buchall` parameter-selection and restart driver.
+
+Actual JavaScript/GMP-produced H/C outputs, not reference substitutions, then
+feed the translated post-HNF rank gate and regulator acceptance:
+
+| Tuning polynomial | Relations | Tentative invariant output | Acceptance action |
+| --- | ---: | --- | --- |
+| `x^3-20018*x+20034` | 62 | `[4]` | Request one more unit relation |
+| `x^3-20010*x+20018` | 114 | `[3]` | Accept candidate class number 3 |
+| `x^4-20018*x-20034` | 38 | Not full rank | Request 17 more dimensions/relations |
+| `x^4-2000022*x-2000042` | 30 | Not full rank | Request 23 more dimensions/relations |
+
+The second field has 64 unit-log columns. Both actual producer backends give
+the accepted candidate, agreeing with PARI's class number. This establishes a
+connected numerical path across native stage calls, **not** a single-call
+polynomial-to-class-group engine, independent certification, or a speed result.
+The analytic inverse hR still comes from source-prepared `primeneeded` and
+`compute_invres`; no class-number or regulator answer is supplied. Honesty,
+full source scheduling/retries, field preparation and final generators/maps
+are not silently counted as implemented by this experiment.
+
+Reproduce the producer with `check_collector_unit_dependencies.cjs
+PARI_SOURCE PARI_ARCHIVE --native`, then pass its emitted `fixtures.json` to
+`check_post_hnf_acceptance.cjs PARI_SOURCE PARI_ARCHIVE --collector-fixtures
+FIXTURE`. The acceptance checker uses `nativeOutputs` and compares those to
+the oracle separately; incoming ready-state need is zero. All 158 controls
+pass CPython/JavaScript/GMP, including eight actual producer cases. Collector
+trace `8efcad3e60063cb98fd1d942bcb91eed8c90846082d87b83195e2e3bae0711be`;
+acceptance trace `56856b856f73f5affddd2a3512eca5cf03ce48409c0dd088f1ecb244eac91a0c`.
+Acceptance generated core is 16,809,778 bytes; compilation is metered but these
+concurrent diagnostics are not qualified latency measurements.
+
+Additional reusable boundaries are now tested:
+
+- `post_hnf_regulator_inputs.py`: 486 arithmetic/dimension controls and 17
+  malformed-input guards per backend; core 1,759,871 bytes. It eagerly forms
+  h*invhr before the source's later multiple/cache gates, an explicit diagnostic
+  placement difference that precludes equal-work timing claims.
+- `class_invariant_output.py`: literal square-HNF Smith diagonal reduction,
+  trivial-factor stripping and class-number product. The 415 baseline controls
+  cover multiword inputs and distinguish C4 from C2 x C2; CPython, JS, GMP and
+  tagged execution agree. This does not supply generator transformation maps.
+- `unit_lattice_selection.py`: literal `extract_full_lattice` dichotomy,
+  including the source's no-selection result below 199 columns. All 80 controls
+  and 14 owner guards per backend agree, with trace
+  `47f82705f2485482296eb8e8e4007cc3fe00acc8d3449cb9eb8282b44789cb9a`
+  and core 3,525,079 bytes.
+
+The connection also exposed an overly restrictive normalization input guard:
+actual `compute_invres` can return 128-bit precision although normalization
+starts at DEFAULTPREC. The translated arithmetic already supports this; the
+guard now accepts validated positive real inputs of at least 64-bit precision.
+All 284 normalization controls pass, including 128/192/1856-bit inverse residues,
+and `check_selected_inverse_hr.cjs` matches the four actual tuning-field values.
+The latter still labels residue computation as a PARI-prepared boundary.
+
+The exact `ZM_hnfdivrem` primitive is also translated, preserving the source
+body's negated quotient convention `R = X + H Q` (its nearby comment uses the
+opposite convention). All 550 PARI/CPython/JS/GMP/tagged controls and 12 atomic
+guards agree, including actual collected H matrices. Core 598,515 bytes;
+trace `2f46a492183c77334823843b053aea37414438d8bea06d36f614a5102fd63a64`.
+This is a reusable dependency for generator reduction, not complete maps.
+
+Current broad checks: the full build and strict Python suite pass (403 strict
+modules, zero errors). `architecture:check` and the architecture phase of
+`test:changed` stop at the pre-existing optimizer-opportunity artifact mismatch
+(`2abcd762...` expected, `ba010bb4...` recorded); subsequent changed-file suites
+have not run in that invocation. No unrelated manifest was refreshed. A native
+invariant rerun collided with the shared build's temporary compiler state; it
+passed after the build finished, with 417 controls including actual native H.
+
 ## Five-agent integration block (2026-09-15)
 
 The user explicitly expanded concurrency to five agents total. This overrides
