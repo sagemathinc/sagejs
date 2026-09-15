@@ -44,14 +44,14 @@ not a general HNF intermediate bound.
 
 ## Allocation-inclusive timing
 
-Under a 4 GiB address-space limit and 600-second timeout, seven alternating
-pairs of 50 calls gave:
+Under a 4 GiB address-space limit and 600-second timeout, a CPU-15 run of seven
+alternating pairs of 320 calls gave (each arm exceeded one second):
 
-- resident: 3.297365 ms geometric mean;
-- packed baseline: 3.415338 ms geometric mean;
-- resident / packed: 0.965458.
+- resident: 3.287361 ms geometric mean;
+- packed baseline: 3.400783 ms geometric mean;
+- resident / packed: 0.966648.
 
-The resident path is 3.45% faster. The clock includes arena allocation,
+The resident path is 3.34% faster. The clock includes arena allocation,
 initialization, copy-in, arithmetic, and copy-out. It excludes construction and
 materialization of the checker's already-existing boundary owners.
 
@@ -67,8 +67,8 @@ Reproduce with the already-built Sage.js FLINT prefix:
 ```sh
 ulimit -v 4194304
 SAGEJS_FLINT_PREFIX=/home/user/sagejs/packages/flint/.native/prefix \
-  HNF_RESIDENT_REPETITIONS=50 \
-  timeout 600s node \
+  HNF_RESIDENT_REPETITIONS=320 \
+  timeout 600s taskset -c 15 node \
   bench/pari-class-group-port/check_hnflll_resident_experiment.cjs
 ```
 
