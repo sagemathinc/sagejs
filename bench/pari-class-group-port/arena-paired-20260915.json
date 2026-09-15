@@ -1,0 +1,505 @@
+{
+  "qualifiedTiming": false,
+  "boundary": "Same compiled GMP module, alternating baseline/arena fresh-state calls; shared host diagnostic, not PARI qualification.",
+  "cpu": "15",
+  "node": "v26.8.1",
+  "openblasThreads": 1,
+  "repetitions": 20,
+  "records": [
+    {
+      "baseline": true,
+      "args": [
+        "-c",
+        "15",
+        "/opt/cocalc/bin/node",
+        "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/probe_resident_class_attempt.cjs",
+        "/tmp/sagejs-prepared-class-inputs-JXLwHg/inputs.json",
+        "--backend",
+        "gmp",
+        "--arena-bytes",
+        "134217728",
+        "--profile-symbols",
+        "--samples",
+        "1",
+        "--repetitions",
+        "20",
+        "--reference-fixtures",
+        "/tmp/sagejs-prepared-attempt-reference-r6W2XO/fixtures.json",
+        "--arena-baseline"
+      ],
+      "report": {
+        "qualifiedTiming": false,
+        "comparisonToPari": false,
+        "backend": "gmp",
+        "boundary": "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+        "repetitions": 20,
+        "sampleCount": 1,
+        "warmupCalls": 1,
+        "timedCalls": 20,
+        "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+        "coreBytes": 58293116,
+        "sourceSha256": "7edf8e9ab8608e9d871fc4c8f29ddffff6cc765036e4571fa75572ab15857c2a",
+        "coreSha256": "5286a0ffe9630de1f8d8caca0b315315ccb98232845a243349279f201cc7ab9e",
+        "generatedModulePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/92ce5dae70070a698821a99782c6e445181f3964d45bbd1c14922d186bbde505/index.cjs",
+        "generatedCorePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/92ce5dae70070a698821a99782c6e445181f3964d45bbd1c14922d186bbde505/kernel_core.c",
+        "ownerBytes": 271240904,
+        "resetSnapshotBytes": 271240904,
+        "setupMilliseconds": 1226.2172030000002,
+        "ordinaryWordCapacity": 64,
+        "cupWordCapacity": 4,
+        "profileSymbols": true,
+        "arenaBytes": 134217728,
+        "arenaBaseline": true,
+        "largeInputCapacities": {
+          "admission_products": 1470
+        },
+        "samples": [
+          {
+            "repetitions": 20,
+            "milliseconds": 2295.3651250000185,
+            "cpuMilliseconds": 2295.337,
+            "resetMilliseconds": 550.9323119999972,
+            "resetCpuMilliseconds": 551.1999999999999
+          }
+        ],
+        "answer": {
+          "action": 0,
+          "state": [
+            4,
+            0,
+            1,
+            1
+          ],
+          "invariants": [
+            "3"
+          ],
+          "classNumber": "3",
+          "regulator": [
+            "3895441961913051012156655978319959870688113589397982850906",
+            "192",
+            "17"
+          ],
+          "relations": "58",
+          "work": {
+            "smallElements": 491,
+            "factorAttempts": 54,
+            "ideals": 12
+          }
+        }
+      }
+    },
+    {
+      "baseline": false,
+      "args": [
+        "-c",
+        "15",
+        "/opt/cocalc/bin/node",
+        "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/probe_resident_class_attempt.cjs",
+        "/tmp/sagejs-prepared-class-inputs-JXLwHg/inputs.json",
+        "--backend",
+        "gmp",
+        "--arena-bytes",
+        "134217728",
+        "--profile-symbols",
+        "--samples",
+        "1",
+        "--repetitions",
+        "20",
+        "--reference-fixtures",
+        "/tmp/sagejs-prepared-attempt-reference-r6W2XO/fixtures.json"
+      ],
+      "report": {
+        "qualifiedTiming": false,
+        "comparisonToPari": false,
+        "backend": "gmp",
+        "boundary": "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+        "repetitions": 20,
+        "sampleCount": 1,
+        "warmupCalls": 1,
+        "timedCalls": 20,
+        "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+        "coreBytes": 58293116,
+        "sourceSha256": "7edf8e9ab8608e9d871fc4c8f29ddffff6cc765036e4571fa75572ab15857c2a",
+        "coreSha256": "5286a0ffe9630de1f8d8caca0b315315ccb98232845a243349279f201cc7ab9e",
+        "generatedModulePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/92ce5dae70070a698821a99782c6e445181f3964d45bbd1c14922d186bbde505/index.cjs",
+        "generatedCorePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/92ce5dae70070a698821a99782c6e445181f3964d45bbd1c14922d186bbde505/kernel_core.c",
+        "ownerBytes": 271240904,
+        "resetSnapshotBytes": 271240904,
+        "setupMilliseconds": 1174.480414000005,
+        "ordinaryWordCapacity": 64,
+        "cupWordCapacity": 4,
+        "profileSymbols": true,
+        "arenaBytes": 134217728,
+        "arenaBaseline": false,
+        "largeInputCapacities": {
+          "admission_products": 1470
+        },
+        "samples": [
+          {
+            "repetitions": 20,
+            "milliseconds": 2875.7154970000047,
+            "cpuMilliseconds": 2875.4700000000003,
+            "resetMilliseconds": 568.3716850000055,
+            "resetCpuMilliseconds": 568.6830000000001
+          }
+        ],
+        "answer": {
+          "action": 0,
+          "state": [
+            4,
+            0,
+            1,
+            1
+          ],
+          "invariants": [
+            "3"
+          ],
+          "classNumber": "3",
+          "regulator": [
+            "3895441961913051012156655978319959870688113589397982850906",
+            "192",
+            "17"
+          ],
+          "relations": "58",
+          "work": {
+            "smallElements": 491,
+            "factorAttempts": 54,
+            "ideals": 12
+          }
+        }
+      }
+    },
+    {
+      "baseline": false,
+      "args": [
+        "-c",
+        "15",
+        "/opt/cocalc/bin/node",
+        "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/probe_resident_class_attempt.cjs",
+        "/tmp/sagejs-prepared-class-inputs-JXLwHg/inputs.json",
+        "--backend",
+        "gmp",
+        "--arena-bytes",
+        "134217728",
+        "--profile-symbols",
+        "--samples",
+        "1",
+        "--repetitions",
+        "20",
+        "--reference-fixtures",
+        "/tmp/sagejs-prepared-attempt-reference-r6W2XO/fixtures.json"
+      ],
+      "report": {
+        "qualifiedTiming": false,
+        "comparisonToPari": false,
+        "backend": "gmp",
+        "boundary": "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+        "repetitions": 20,
+        "sampleCount": 1,
+        "warmupCalls": 1,
+        "timedCalls": 20,
+        "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+        "coreBytes": 58293116,
+        "sourceSha256": "7edf8e9ab8608e9d871fc4c8f29ddffff6cc765036e4571fa75572ab15857c2a",
+        "coreSha256": "5286a0ffe9630de1f8d8caca0b315315ccb98232845a243349279f201cc7ab9e",
+        "generatedModulePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/92ce5dae70070a698821a99782c6e445181f3964d45bbd1c14922d186bbde505/index.cjs",
+        "generatedCorePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/92ce5dae70070a698821a99782c6e445181f3964d45bbd1c14922d186bbde505/kernel_core.c",
+        "ownerBytes": 271240904,
+        "resetSnapshotBytes": 271240904,
+        "setupMilliseconds": 1161.0956059999953,
+        "ordinaryWordCapacity": 64,
+        "cupWordCapacity": 4,
+        "profileSymbols": true,
+        "arenaBytes": 134217728,
+        "arenaBaseline": false,
+        "largeInputCapacities": {
+          "admission_products": 1470
+        },
+        "samples": [
+          {
+            "repetitions": 20,
+            "milliseconds": 2878.3762240000215,
+            "cpuMilliseconds": 2878.2920000000004,
+            "resetMilliseconds": 576.6041469999982,
+            "resetCpuMilliseconds": 578.376
+          }
+        ],
+        "answer": {
+          "action": 0,
+          "state": [
+            4,
+            0,
+            1,
+            1
+          ],
+          "invariants": [
+            "3"
+          ],
+          "classNumber": "3",
+          "regulator": [
+            "3895441961913051012156655978319959870688113589397982850906",
+            "192",
+            "17"
+          ],
+          "relations": "58",
+          "work": {
+            "smallElements": 491,
+            "factorAttempts": 54,
+            "ideals": 12
+          }
+        }
+      }
+    },
+    {
+      "baseline": true,
+      "args": [
+        "-c",
+        "15",
+        "/opt/cocalc/bin/node",
+        "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/probe_resident_class_attempt.cjs",
+        "/tmp/sagejs-prepared-class-inputs-JXLwHg/inputs.json",
+        "--backend",
+        "gmp",
+        "--arena-bytes",
+        "134217728",
+        "--profile-symbols",
+        "--samples",
+        "1",
+        "--repetitions",
+        "20",
+        "--reference-fixtures",
+        "/tmp/sagejs-prepared-attempt-reference-r6W2XO/fixtures.json",
+        "--arena-baseline"
+      ],
+      "report": {
+        "qualifiedTiming": false,
+        "comparisonToPari": false,
+        "backend": "gmp",
+        "boundary": "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+        "repetitions": 20,
+        "sampleCount": 1,
+        "warmupCalls": 1,
+        "timedCalls": 20,
+        "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+        "coreBytes": 58293116,
+        "sourceSha256": "7edf8e9ab8608e9d871fc4c8f29ddffff6cc765036e4571fa75572ab15857c2a",
+        "coreSha256": "5286a0ffe9630de1f8d8caca0b315315ccb98232845a243349279f201cc7ab9e",
+        "generatedModulePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/92ce5dae70070a698821a99782c6e445181f3964d45bbd1c14922d186bbde505/index.cjs",
+        "generatedCorePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/92ce5dae70070a698821a99782c6e445181f3964d45bbd1c14922d186bbde505/kernel_core.c",
+        "ownerBytes": 271240904,
+        "resetSnapshotBytes": 271240904,
+        "setupMilliseconds": 1220.1241340000015,
+        "ordinaryWordCapacity": 64,
+        "cupWordCapacity": 4,
+        "profileSymbols": true,
+        "arenaBytes": 134217728,
+        "arenaBaseline": true,
+        "largeInputCapacities": {
+          "admission_products": 1470
+        },
+        "samples": [
+          {
+            "repetitions": 20,
+            "milliseconds": 2180.9930490000042,
+            "cpuMilliseconds": 2180.96,
+            "resetMilliseconds": 549.7845759999836,
+            "resetCpuMilliseconds": 550.0759999999999
+          }
+        ],
+        "answer": {
+          "action": 0,
+          "state": [
+            4,
+            0,
+            1,
+            1
+          ],
+          "invariants": [
+            "3"
+          ],
+          "classNumber": "3",
+          "regulator": [
+            "3895441961913051012156655978319959870688113589397982850906",
+            "192",
+            "17"
+          ],
+          "relations": "58",
+          "work": {
+            "smallElements": 491,
+            "factorAttempts": 54,
+            "ideals": 12
+          }
+        }
+      }
+    },
+    {
+      "baseline": true,
+      "args": [
+        "-c",
+        "15",
+        "/opt/cocalc/bin/node",
+        "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/probe_resident_class_attempt.cjs",
+        "/tmp/sagejs-prepared-class-inputs-JXLwHg/inputs.json",
+        "--backend",
+        "gmp",
+        "--arena-bytes",
+        "134217728",
+        "--profile-symbols",
+        "--samples",
+        "1",
+        "--repetitions",
+        "20",
+        "--reference-fixtures",
+        "/tmp/sagejs-prepared-attempt-reference-r6W2XO/fixtures.json",
+        "--arena-baseline"
+      ],
+      "report": {
+        "qualifiedTiming": false,
+        "comparisonToPari": false,
+        "backend": "gmp",
+        "boundary": "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+        "repetitions": 20,
+        "sampleCount": 1,
+        "warmupCalls": 1,
+        "timedCalls": 20,
+        "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+        "coreBytes": 58293116,
+        "sourceSha256": "7edf8e9ab8608e9d871fc4c8f29ddffff6cc765036e4571fa75572ab15857c2a",
+        "coreSha256": "5286a0ffe9630de1f8d8caca0b315315ccb98232845a243349279f201cc7ab9e",
+        "generatedModulePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/92ce5dae70070a698821a99782c6e445181f3964d45bbd1c14922d186bbde505/index.cjs",
+        "generatedCorePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/92ce5dae70070a698821a99782c6e445181f3964d45bbd1c14922d186bbde505/kernel_core.c",
+        "ownerBytes": 271240904,
+        "resetSnapshotBytes": 271240904,
+        "setupMilliseconds": 1188.8375110000015,
+        "ordinaryWordCapacity": 64,
+        "cupWordCapacity": 4,
+        "profileSymbols": true,
+        "arenaBytes": 134217728,
+        "arenaBaseline": true,
+        "largeInputCapacities": {
+          "admission_products": 1470
+        },
+        "samples": [
+          {
+            "repetitions": 20,
+            "milliseconds": 2259.205507000006,
+            "cpuMilliseconds": 2259.149,
+            "resetMilliseconds": 562.8139200000005,
+            "resetCpuMilliseconds": 563.097
+          }
+        ],
+        "answer": {
+          "action": 0,
+          "state": [
+            4,
+            0,
+            1,
+            1
+          ],
+          "invariants": [
+            "3"
+          ],
+          "classNumber": "3",
+          "regulator": [
+            "3895441961913051012156655978319959870688113589397982850906",
+            "192",
+            "17"
+          ],
+          "relations": "58",
+          "work": {
+            "smallElements": 491,
+            "factorAttempts": 54,
+            "ideals": 12
+          }
+        }
+      }
+    },
+    {
+      "baseline": false,
+      "args": [
+        "-c",
+        "15",
+        "/opt/cocalc/bin/node",
+        "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/probe_resident_class_attempt.cjs",
+        "/tmp/sagejs-prepared-class-inputs-JXLwHg/inputs.json",
+        "--backend",
+        "gmp",
+        "--arena-bytes",
+        "134217728",
+        "--profile-symbols",
+        "--samples",
+        "1",
+        "--repetitions",
+        "20",
+        "--reference-fixtures",
+        "/tmp/sagejs-prepared-attempt-reference-r6W2XO/fixtures.json"
+      ],
+      "report": {
+        "qualifiedTiming": false,
+        "comparisonToPari": false,
+        "backend": "gmp",
+        "boundary": "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+        "repetitions": 20,
+        "sampleCount": 1,
+        "warmupCalls": 1,
+        "timedCalls": 20,
+        "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+        "coreBytes": 58293116,
+        "sourceSha256": "7edf8e9ab8608e9d871fc4c8f29ddffff6cc765036e4571fa75572ab15857c2a",
+        "coreSha256": "5286a0ffe9630de1f8d8caca0b315315ccb98232845a243349279f201cc7ab9e",
+        "generatedModulePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/92ce5dae70070a698821a99782c6e445181f3964d45bbd1c14922d186bbde505/index.cjs",
+        "generatedCorePath": "/home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/92ce5dae70070a698821a99782c6e445181f3964d45bbd1c14922d186bbde505/kernel_core.c",
+        "ownerBytes": 271240904,
+        "resetSnapshotBytes": 271240904,
+        "setupMilliseconds": 1180.613062000004,
+        "ordinaryWordCapacity": 64,
+        "cupWordCapacity": 4,
+        "profileSymbols": true,
+        "arenaBytes": 134217728,
+        "arenaBaseline": false,
+        "largeInputCapacities": {
+          "admission_products": 1470
+        },
+        "samples": [
+          {
+            "repetitions": 20,
+            "milliseconds": 2853.1406379999826,
+            "cpuMilliseconds": 2853.0489999999995,
+            "resetMilliseconds": 554.2453950000199,
+            "resetCpuMilliseconds": 554.499
+          }
+        ],
+        "answer": {
+          "action": 0,
+          "state": [
+            4,
+            0,
+            1,
+            1
+          ],
+          "invariants": [
+            "3"
+          ],
+          "classNumber": "3",
+          "regulator": [
+            "3895441961913051012156655978319959870688113589397982850906",
+            "192",
+            "17"
+          ],
+          "relations": "58",
+          "work": {
+            "smallElements": 491,
+            "factorAttempts": 54,
+            "ideals": 12
+          }
+        }
+      }
+    }
+  ],
+  "arenaToBaselineRatios": [
+    1.2528357539631005,
+    1.3197548819881708,
+    1.2628955750858901
+  ],
+  "geometricMeanRatio": 1.2781592065444787
+}

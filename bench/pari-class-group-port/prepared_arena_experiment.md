@@ -56,3 +56,30 @@ class number 3, invariant factors [3], exact regulator words, 58 relations,
 `check_prepared_arena.py INPUT_JSON`. This checks the actual mathematical
 callee, unlike the forwarding stub test; CPython does not use the native slab,
 so it still cannot qualify the allocator implementation or its speed.
+
+## Native result: correct, but slower
+
+With compiler dependency `283df6d65`, the complete native arena call succeeds
+under the unchanged process limit. `arena-first-native-20260915.json` records
+the first replay and build cost: 313.84 CPU seconds, 3,200,928 KiB peak child
+RSS, and exact output/work agreement. Core SHA-256 is
+`5286a0ffe9630de1f8d8caca0b315315ccb98232845a243349279f201cc7ab9e`.
+
+The same-build alternating comparison in `arena-paired-20260915.json` uses CPU
+15, one BLAS thread, three pairs and 20 fresh computations per sample. Every
+sample exceeds one second. Input/source/core hashes and all owner policies
+match. Reset and setup remain outside the kernel totals; arena creation and
+destruction remain inside. This shared-host diagnostic is not PARI qualification.
+
+| Pair | Baseline ms/call | Arena ms/call | Arena / baseline |
+| --- | ---: | ---: | ---: |
+| 1 | 114.77 | 143.79 | 1.253 |
+| 2 | 109.05 | 143.92 | 1.320 |
+| 3 | 112.96 | 142.66 | 1.263 |
+
+The geometric-mean ratio is 1.278: this arena is about 28% slower on the measured
+prepared field. It is not a successful optimization and is not selected by
+default. The negative result does not refute the allocation finding: this
+whole-call bump allocator neither reuses individual freed spans nor retains its
+slab between calls. Memory traffic and page faults are hypotheses for the next
+diagnostic, not yet established causes. Measure them before proposing reuse.
