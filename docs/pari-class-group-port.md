@@ -41,6 +41,12 @@ The next source revision closes additional preparation and scheduling gaps:
   terminal replay controls. The tested cubic returns class group C3 and the
   exact PARI regulator. This is initial-attempt qualification, not a new timing
   comparison or a complete prepared-number-field entry.
+- A connected polynomial-to-degree-pattern producer now passes 5,146 exact
+  PARI comparisons in CPython/JavaScript/GMP/tagged, including all 4,914
+  supported primes from the four analytic catalogs. It translates the
+  degree-2--4 odd-small-prime, non-index-divisor branch, including squarefree
+  and Shoup factoring. Characteristic two and index divisors remain explicit
+  frontiers. This is dependency removal, not a new class-group timing result.
 
 See [packet integration evidence](../bench/pari-class-group-port/selected_ideal_packets_audit.md)
 and [acceptance scheduling evidence](../bench/pari-class-group-port/post_hnf_schedule_audit.md),
@@ -48,6 +54,8 @@ plus the [remaining preparation boundary](../bench/pari-class-group-port/prepara
 See also [selected metadata](../bench/pari-class-group-port/selected_metadata_integration.md)
 and [discriminant conversion](../bench/pari-class-group-port/discriminant_log_audit.md),
 plus [native analytic composition](../bench/pari-class-group-port/analytic_class_group_attempt_audit.md).
+The [prime-pattern producer audit](../bench/pari-class-group-port/get_fs_small_audit.md)
+records exact coverage, source schedules, representations and remaining branches.
 Raw prime decomposition, embedding preparation, composition of all preparation
 with the driver, and general driver branches still need work.
 The existing resumable caller's cache update occurs after the acceptance call

@@ -113,6 +113,19 @@ The slice is `F2x_Berlekamp_i` (1666), squarefree decomposition,
 packed GF(2) arithmetic can support leaves but source pivot/split policy must
 still be translated.
 
+Follow-up audit narrows the degree-at-most-four characteristic-two branch:
+after stripping the valuation at X, each squarefree layer has at most two
+irreducible factors. Three distinct factors with nonzero constant term need
+at least degrees 1+2+3=6 over F2. Exhaustive checks of all 28 monic degree-2--4
+binary polynomials confirm this. Thus the source random-combination branch
+for kernel dimension greater than two is unreachable in this domain; the
+Berlekamp matrix and its exact second kernel vector are still required.
+`F2m_ker_sp` processes columns left-to-right, chooses the lowest unused pivot
+row, performs forward column XORs retaining dependency bits, and constructs
+the basis in ascending free-column order. A generic equivalent nullspace basis
+does not necessarily preserve the chosen splitting polynomial. Unlike the odd
+prime path, this source skips constant squarefree layers.
+
 For index divisors, `get_fs` calls full `idealprimedec`, not just polynomial
 factor degrees. `base2.c:primedec_aux` (2248) includes Dedekind obstruction,
 `pradical`, Frobenius on the maximal-order algebra, and splitting its etale
