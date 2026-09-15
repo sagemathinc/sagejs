@@ -10,8 +10,8 @@ It does not consume PARI ideal HNFs, ideal norms, or selected group answers.
 The focused harness computes initial-base selection in CPython from the actual
 prepared catalog and then exercises the connector on CPython, generated JS,
 native GMP, and tagged. This is not a claim of one native call combining all
-preparation. Integration into the existing collector remains separate; that
-checker is owned by another lane and was not modified here.
+preparation. The subsequent collector integration described below invokes
+these translated stages separately; it is not a single preparation closure.
 
 Four declared tuning fields produce 66, 51, 143, and 288 active ideals. Empty,
 one-ideal, and full-active prefixes match source `pr_hnf` and `pr_norm` exactly,
@@ -49,3 +49,45 @@ four fields and all listed backends passed. Metered CPU 8.187804 seconds,
 wall 7.614152 seconds, peak child RSS 235036 KiB, under a 4 GiB address-space
 limit. These include oracle preparation/compilation and are not performance
 measurements. No full collector native build was performed.
+
+## Actual initial collector integration
+
+`check_actual_initial_collector.cjs` now exports the raw multiplication table
+and descriptor catalog, computes selection with translated `initial_base`,
+and constructs the selected HNF/norm packets on each backend. Those actual
+outputs feed subfactor selection and, outside policy-only mode, the collector.
+PARI-selected ideal HNFs/norms are assertions only, never constructor inputs.
+CP-only fixture exports retain the actual CPython-produced packets rather
+than the host's initially empty buffers. The inspector still prepares selected
+tau/e/f admission metadata and embedding arithmetic; these boundaries have
+not been removed.
+
+The same integration incorporates the translated subfactor-product policy
+(`LOGD < 20`, exponential/square-root formula, clamp to 3, then cap by actual
+initial-base C2). CPython/GMP/tagged compare exactly to the pinned source;
+generated JavaScript allows four epsilon relative error for libm differences,
+then requires the exact source permutation. On the two actual policy fields,
+the product is exact on every backend (259 and 812 respectively).
+
+Current policy qualification covers CPython, generated JS, GMP, and tagged:
+
+- Field 1: 51 constructed packets, product 259, subfactor count 3;
+  `/tmp/sagejs-actual-initial-collector-vRwzBH/fixtures.json`.
+- Field 2: 143 constructed packets, product 812, subfactor count 4;
+  `/tmp/sagejs-actual-initial-collector-W6mJxJ/fixtures.json`.
+
+All packet entries, bad flags, and resulting permutations match PARI exactly.
+These two runs cost 30.245576 and 17.454310 CPU seconds including small-graph
+compilation; peak RSS was 298272 KiB. No full collector native rebuild or
+timing comparison is included. Independent review by the integration agent
+and subfactor-policy author found no blocker.
+
+Full field-1 CPython collector/log/HNF replay on the final checker passed:
+11 initialized relations, 58 collected relations, exact source generators,
+weighted logs, H/D/B/C, and permutation. Receipt:
+`/tmp/sagejs-actual-initial-collector-0nyMWA/fixtures.json`, 14.865147 CPU
+seconds, peak RSS 173468 KiB. A separate assertion verified that this CP-only
+fixture exports all 51 actual generated HNF/norm packets intact. An earlier
+full CP replay also passed (14.923669 CPU seconds) before that fixture-export
+fix; it is not used as the final export qualification. All runs used the 4 GiB
+address-space cap and a 60-second process limit.
