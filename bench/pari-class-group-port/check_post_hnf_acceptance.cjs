@@ -68,15 +68,17 @@ function run(c,a,o={}){const r=spawnSync(c,a,{encoding:'utf8',timeout:180000,max
  const oracleExpected=trace.trim().split('\n').map(JSON.parse);let oi=0;const expected=cases.map(r=>r.need===0?oracleExpected[oi++]:null);
  const driverOption=process.argv.indexOf('--driver-trace');let driverTraceComparedCases=0;
  if(driverOption>=0){
+  const fieldOption=process.argv.indexOf('--driver-field'),driverField=fieldOption<0?1:Number(process.argv[fieldOption+1]);
+  assert([0,1].includes(driverField),'driver comparison currently covers first-pass cubic acceptance only');
   const events=JSON.parse(fs.readFileSync(process.argv[driverOption+1]));assert(Array.isArray(events));
   const accepted=events.filter(e=>e.event==='acceptance'&&e.code===0).at(-1),result=events.filter(e=>e.event==='result').at(-1);assert(accepted&&result,'full driver trace needs accepted and result events');
-  for(let i=0;i<cases.length;i++)if(cases[i].genuine&&cases[i].field===1){
-   const r=cases[i],e=expected[i];assert(e&&e.acceptance[1]===0,'field1 translated attempt did not accept');
+  for(let i=0;i<cases.length;i++)if(cases[i].genuine&&cases[i].field===driverField){
+   const r=cases[i],e=expected[i];assert(e&&e.acceptance[1]===0,'translated first-pass attempt did not accept');
    assert.equal(r.h,accepted.h);assert.equal(r.h,result.classNumber);
    assert.deepEqual(e.regulator,[String(accepted.R.mantissa),String(accepted.R.precision),String(accepted.R.exponent)]);
    driverTraceComparedCases++;
   }
-  assert(driverTraceComparedCases>0,'driver trace option is restricted to matching genuine field1 cases');
+  assert(driverTraceComparedCases>0,'driver trace requires matching genuine first-pass cases');
  }
  fs.writeFileSync(path.join(dir,'fixtures.json'),JSON.stringify([cases,expected]));
  run('python3',['-c',`import sys,json,importlib

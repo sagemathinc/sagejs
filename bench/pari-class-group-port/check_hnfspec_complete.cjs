@@ -11,8 +11,8 @@ function run(c,a,o={}){const r=spawnSync(c,a,{encoding:'utf8',timeout:180000,max
  const fixture=JSON.parse(run(process.execPath,[path.join(__dirname,'check_hnfspec_rank_prefix.cjs'),pari,archive,'--export-assembly-fixtures']));
  const embeddings=JSON.parse(run(process.execPath,[path.join(__dirname,'check_log_embedding.cjs'),pari,'--export-fixtures']));
  const cases=fixture.cases.flatMap((r,i)=>r.input?[{...r.input,rankStatus:Number(fixture.expected[i].state[9])}]:[]);
- // Dense 8x8 dispatch is genuinely before CUP, not a supplied rank answer.
- cases.push({rows:8,columns:8,k0:8,cRows:3,perm:[1,2,3,4,5,6,7,8],mat:Array.from({length:64},(_,i)=>i%9===0?'2':'0'),kind:'CUP-frontier',rankStatus:-2});
+ // Exercise the newly connected CUP dispatch and compare full output to PARI.
+ cases.push({rows:8,columns:8,k0:8,cRows:3,perm:[1,2,3,4,5,6,7,8],mat:Array.from({length:64},(_,i)=>i%9===0?'2':'0'),kind:'CUP-complete',rankStatus:0});
  for(let i=0;i<cases.length;i++){const r=cases[i];r.logRows=3;r.logs=Array.from({length:r.columns},(_,j)=>embeddings[(i%4)*20+j%20].expected).flat();assert.equal(r.logs.length,7*r.logRows*r.columns);}
  // Match real relation columns to their own collected generators and M.
  // This is a prepared-log boundary, not a native collector/log computation.
@@ -52,7 +52,7 @@ static void ps(GEN x){long e;if(typ(x)==t_INT){pari_printf("\\"%Ps\\",\\"-1\\",\
 int main(void){pari_init(256000000,1000);long count=itos(rd());for(long t=0;t<count;t++){pari_sp av=avma;long rows=itos(rd()),cols=itos(rd()),k0=itos(rd()),lr=itos(rd());GEN A=cgetg(cols+1,t_MAT),perm=cgetg(rows+1,t_VECSMALL),dep=NULL,B=NULL,C=cgetg(cols+1,t_MAT);for(long i=1;i<=rows;i++)perm[i]=itos(rd());for(long j=1;j<=cols;j++){gel(A,j)=cgetg(rows+1,t_VECSMALL);for(long i=1;i<=rows;i++)mael(A,j,i)=itos(rd());}for(long j=1;j<=cols;j++){gel(C,j)=cgetg(lr+1,t_COL);for(long i=1;i<=lr;i++){long kind=itos(rd());GEN re=scalar(),im=scalar();gcoeff(C,i,j)=kind==1?re:mkcomplex(re,im);}}trace_calls=0;GEN H=connected_oracle(A,perm,&dep,&B,&C,k0);printf("{\\"H\\":");matrix(H);printf(",\\"D\\":");matrix(dep);printf(",\\"B\\":");matrix(B);printf(",\\"C\\":[");long first=1;for(long j=1;j<lg(C);j++)for(long i=1;i<lg(gel(C,j));i++){if(!first)putchar(',');first=0;GEN x=gcoeff(C,i,j);if(typ(x)==t_COMPLEX){printf("\\"2\\",");ps(gel(x,1));putchar(',');ps(gel(x,2));}else{printf("\\"1\\",");ps(x);printf(",\\"0\\",\\"-1\\",\\"0\\"");}}printf("],\\"perm\\":[");for(long i=1;i<=rows;i++){if(i>1)putchar(',');printf("%ld",perm[i]);}printf("],\\"state\\":[");for(long i=0;i<9;i++){if(i)putchar(',');printf("%ld",trace_state[i]);}printf("],\\"calls\\":%ld}\\n",trace_calls);avma=av;}pari_close();return 0;}
 `);
  run('cc',['-O1','-fsanitize=undefined','-fno-sanitize-recover=undefined','-I'+path.join(pari,'src/headers'),'-I'+lib,c,'-L'+lib,'-Wl,-rpath,'+lib,'-lpari','-lm','-o',exe]);
- const certified=cases.filter(r=>r.rankStatus===0),trace=run(exe,[],{input:[certified.length,...certified.flatMap(r=>[r.rows,r.columns,r.k0,r.logRows,...r.perm,...r.mat,...r.logs])].join(' ')}),expected=trace.trim().split('\n').map(JSON.parse);assert.equal(expected.length,certified.length);
+ const certified=cases.filter(r=>r.rankStatus!==-1),trace=run(exe,[],{input:[certified.length,...certified.flatMap(r=>[r.rows,r.columns,r.k0,r.logRows,...r.perm,...r.mat,...r.logs])].join(' ')}),expected=trace.trim().split('\n').map(JSON.parse);assert.equal(expected.length,certified.length);
  for(let i=0;i<certified.length;i++)certified[i].expected=expected[i];
  // Component initial-rank oracle labels only unresolved branches; complete
  // outputs are compared to the actual connected source block above.
@@ -63,6 +63,7 @@ for r in json.load(sys.stdin):
  R=r['rows'];C=r['columns'];k=r['k0'];lr=r['logRows'];sz=R*C;ls=7*lr*C
  def buf(n):return [77]*n
  args=[list(map(int,r['mat'])),R,C,r['perm'][:],k,list(map(int,r['logs'])),lr,buf(sz),buf(k*C),buf(C*C),buf(C),buf(1),buf(13),buf((R-k)*C),buf(k*C),buf(sz),buf(10),buf(sz),buf(C),buf(R),buf(R),buf(R+1),buf(10),buf(R),buf(sz),buf(sz),buf(sz),buf(6),buf(ls),buf(sz),buf(C*C),buf(C*C),buf(C+1),buf(11),buf(sz),buf(sz),buf(ls),buf(R),buf(sz),buf(sz),buf(R*(C+R)),buf(ls),buf(7),buf(9)]
+ args.extend([buf(min(160000,8*max(1,R*C,R,C)*(C//4+1))),buf(32),buf(8),buf(8)])
  result=f(*args);statuses.append(result);state=args[43]
  states.append(state[:])
  max_bits=max(max_bits,max((abs(x).bit_length() for a in args if isinstance(a,list) for x in a),default=0))
@@ -70,7 +71,7 @@ for r in json.load(sys.stdin):
  if result in (-1,-2):
   assert state[:6]==[-1]*6 and state[6]==result and state[8] in (1,2)
   assert all(a==[77]*len(a) for a in args[38:42])
-  if state[8]==1:assert result==r['rankStatus'] and args[27]==[77]*6
+  if state[8]==1:assert (result==r['rankStatus'] or (r['rankStatus']==-2 and result==-1)) and args[27]==[77]*6
   else:frontier_shapes.append({'rows':args[27][1],'inner':args[27][2],'columns':args[27][2],'retained':state[7],'originalRows':R,'originalColumns':C})
   continue
  e=r['expected'];assert state==e['state'] and args[3]==e['perm'],(r['kind'],state,e['state'])
@@ -98,6 +99,8 @@ print(json.dumps({'statuses':statuses,'states':states,'maxOwnerBits':max_bits,'e
   const r=cases[ix],R=r.rows,C=r.columns,k=r.k0,lr=r.logRows,sz=R*C,ls=7*lr*C;
   const words=n=>Array(n).fill(77n),buf=n=>backend==='gmp'?f.createIntegerBuffer(n,C>32?32:256,words(n)):words(n),view=x=>Array.isArray(x)?x.slice():x.toArray();
   const args=[r.mat.map(BigInt),BigInt(R),BigInt(C),r.perm.map(BigInt),BigInt(k),r.logs.map(BigInt),BigInt(lr),words(sz),buf(k*C),buf(C*C),words(C),words(1),words(13),buf((R-k)*C),buf(k*C),buf(sz),words(10),buf(sz),buf(C),buf(R),buf(R),buf(R+1),buf(10),words(R),buf(sz),buf(sz),buf(sz),words(6),buf(ls),buf(sz),buf(C*C),buf(C*C),buf(C+1),words(11),buf(sz),buf(sz),buf(ls),words(R),buf(sz),buf(sz),buf(R*(C+R)),buf(ls),words(7),words(9)];
+  const cupSize=Math.min(160000,8*Math.max(1,R*C,R,C)*(Math.floor(C/4)+1));
+  args.push(buf(cupSize),buf(32),words(8),words(8));
   const result=f[backend](...args),state=args[43];assert.equal(result,BigInt(cp.statuses[ix]),backend+' '+ix);
   assert.deepEqual(state,cp.states[ix].map(BigInt));
   assert.deepEqual(args[0],r.mat.map(BigInt));assert.deepEqual(args[5],r.logs.map(BigInt));

@@ -21,6 +21,7 @@ function run(c,a,o={}){const r=spawnSync(c,a,{encoding:'utf8',timeout:180000,max
   if(analyticPayload){v.accept_inverse_hr=analyticValue(e.field,'gmp');assert.deepEqual(v.accept_inverse_hr,e.inverseHR,'native analytic/source mismatch');}
   assert(Array.isArray(v.accept_inverse_hr),'analytic inverse hR must be supplied explicitly');
   for(const [name,kind]of names)if(!(name in v)){assert(kind.endsWith('Buffer'),name);v[name]=Array(name.startsWith('hnf_')?cap:4096).fill('77');}
+  Object.assign(v,{hnf_cup_arena:Array(160000).fill('77'),hnf_cup_frames:Array(32).fill('77'),hnf_cup_solve_state:Array(8).fill('77'),hnf_cup_state:Array(8).fill('77')});
   v.accept_multiple_state=['77','0','73','77'];v.accept_post_hnf_state=['77','77','77'];v.accept_acceptance_state=['77','77','77'];v.accept_reconstruction_state=Array(4).fill('77');v.smith_state=Array(6).fill('77');
   return Object.fromEntries(names.map(([name])=>[name,v[name]]));
  });
@@ -43,6 +44,7 @@ for ix,raw in enumerate(d['inputs']):
 print(json.dumps(out))
 `,path.resolve(__dirname,'../..'),path.resolve(__dirname,'../../src/lib')],{input:JSON.stringify({inputs,names,expected})}));
  const summary={cases:inputs.length,cp,oneNativeCall:true,qualifiedTiming:false,inputFixtureHash:createHash('sha256').update(fs.readFileSync(path.resolve(process.argv[2]))).digest('hex'),acceptanceFixtureHash:createHash('sha256').update(fs.readFileSync(path.resolve(process.argv[3]))).digest('hex'),sourcePolicy:fixture.summary.policy??fixture.summary.preparedBoundary,boundary:'Prepared nf/factor-base/ideal packets, initial search policy and analytic inverse hR; one initial attempt, no retries, honesty proof or full unit maps. Only accepted-candidate invariants publish; completeness requires the caller honesty gate.'};
+ if(process.argv.includes('--export-inputs')){const inputDir=fs.mkdtempSync(path.join(os.tmpdir(),'sagejs-prepared-class-inputs-'));summary.inputArtifact=path.join(inputDir,'inputs.json');fs.writeFileSync(summary.inputArtifact,JSON.stringify({names,inputs,expected,summary}));}
  if(process.argv.includes('--source-only')){console.log(JSON.stringify(summary));return;}
  const built=await compileKernel({sourcePath}),f=require(built.modulePath).pari_prepared_class_group_attempt;assert(f.nativeAvailable);assert.doesNotMatch(fs.readFileSync(built.coreSourcePath,'utf8'),/napi_call_function|PyObject_Call|v8::/);
  const nativeOutputs=[];

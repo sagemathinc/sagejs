@@ -87,6 +87,7 @@ append=importlib.import_module('bench.pari-class-group-port.relation_log_embeddi
 append(v['admission_matrix_m'],v['admission_matrix_p'],v['admission_matrix_e'],v['generators'],v['relation_metadata'],last,v['n'],v['admission_real_count'],e['precision'],done,logs,[0]*v['n'],[0]*(7*ru),[0]*3,[0]*3,[0]*64,[0]*64,[0]*64,[0]*64,[0]*128);assert list(map(str,logs))==e['logs']
 hnf=importlib.import_module('bench.pari-class-group-port.hnfspec_complete').pari_hnfspec_complete
 cap=max(64,(kc+last)**2,7*ru*(kc+last));w={name:[77]*cap for name,kind in d['hsig'] if kind!='int'};w.update(original=v['relation_records'][:last*kc],rows=kc,columns=last,perm=perm,k0=e['subfactorCount'],logs=logs,log_rows=ru)
+w.update(cup_arena=[77]*160000,cup_frames=[77]*32,cup_solve_state=[77]*8,cup_state=[77]*8)
 hs=hnf(**w)
 if hs==0:
  for key,name in [('H','result_h'),('D','result_dep'),('B','result_b'),('C','result_c')]:assert list(map(str,w[name][:len(e[key])]))==e[key],key
@@ -110,6 +111,7 @@ print(json.dumps({'initialBase':list(map(str,b)),'initialRelations':initial,'rel
    Object.assign(raw,{log_precision:128n,log_completed:[0n],log_embeddings:Array(cap*7*ru).fill(0n),log_coordinates:Array(n).fill(0n),log_column:Array(7*ru).fill(0n),log_cache:Array(3).fill(0n),log_pi_cache:Array(3).fill(0n),log_a:Array(64).fill(0n),log_b:Array(64).fill(0n),log_p:Array(64).fill(0n),log_q:Array(64).fill(0n),log_stack:Array(128).fill(0n),initial_additional:BigInt(expected.additional),initial_target:BigInt(expected.target),initial_primes:expected.groups.map(g=>BigInt(g.p)),initial_offsets:expected.groups.map(g=>off[g.p]),initial_counts:expected.groups.map(g=>counts[g.p]),initial_complete:expected.groups.map(g=>complete[g.p]),hnf_k0:0n,hnf_original:Array(kc*cap).fill(0n),hnf_perm:permutation,chain_state:Array(4).fill(0n)});
    raw.log_precision=BigInt(expected.precision);raw.hnf_k0=sr[0];raw.search_ideals=permutation.slice();
    for(const [name,kind]of sig)if(!(name in raw)){assert(name.startsWith('hnf_')&&kind.endsWith('Buffer'),name);raw[name]=Array(hcap).fill(77n);}
+   Object.assign(raw,{hnf_cup_arena:Array(160000).fill(77n),hnf_cup_frames:Array(32).fill(77n),hnf_cup_solve_state:Array(8).fill(77n),hnf_cup_state:Array(8).fill(77n)});
    if(backend==='gmp')nativeInputs.push({backend,field,names:sig,input:JSON.parse(JSON.stringify(raw,(_,x)=>typeof x==='bigint'?String(x):x))});
    const status=chain[backend](...sig.map(([name])=>raw[name]));assert.equal(status,BigInt(result.hnfStatus));assert.equal(raw.relation_state[0],BigInt(expected.last));assert.deepEqual(raw.relation_records.slice(0,expected.last*kc).map(Number),expected.records);assert.deepEqual(raw.generators.slice(0,expected.last*n).map(String),expected.generators);assert.deepEqual(raw.log_embeddings.slice(0,7*ru*expected.last).map(String),expected.logs);
    if(status===0n){for(const [key,name]of [['H','hnf_result_h'],['D','hnf_result_dep'],['B','hnf_result_b'],['C','hnf_result_c']])assert.deepEqual(raw[name].slice(0,expected[key].length).map(String),expected[key]);assert.deepEqual(raw.hnf_perm.map(Number),expected.hnfPerm);

@@ -4,13 +4,14 @@ Copyright (C) The PARI group. GPL-2.0-or-later, without warranty.
 Original sparse relation words and prepared t_MAT logarithms flow through
 resident cleanup, certified rank, block assembly, C*T and hnffinal. HNFLLL
 executes once, inside hnffinal. This is not a complete class-group engine:
-rational rank verification, CUP, general exact Strassen/CRT and hnfadd_i
+rational rank verification, general exact Strassen/CRT and hnfadd_i
 remain explicit frontiers. No fixture supplies ranks or transformations.
 """
 
 from sagejs.native import Int64Buffer, IntegerBuffer, native
 
-from .hnfspec_rank_prefix import pari_hnfspec_cleanup_rank_prefix
+from .hnfspec_cleanup import pari_hnfspec_cleanup
+from .hnfspec_cup_rank import pari_hnfspec_cup_rank_prefix
 from .hnfspec_assembly import pari_hnfspec_assemble_blocks
 from .log_matrix_transform import pari_log_matrix_transform, pari_validate_log_entries
 from .hnffinal import pari_hnffinal_nonempty
@@ -62,6 +63,10 @@ def pari_hnfspec_complete(
     result_c: IntegerBuffer,
     final_state: Int64Buffer,
     state: Int64Buffer,
+    cup_arena: IntegerBuffer,
+    cup_frames: IntegerBuffer,
+    cup_solve_state: Int64Buffer,
+    cup_state: Int64Buffer,
 ) -> int:
     """Return 0 complete for nondeferred columns; negatives are NOT success.
 
@@ -81,6 +86,9 @@ def pari_hnfspec_complete(
     Logs are t_MAT with positive row count, prepared 7-field entries. Scalar
     arithmetic and extra validation are prototype overhead, not word timing.
     Exceptions after validation can leave partial work; no retry-as-fresh.
+    CUP capacity is checked against the actual reduced matrix after cleanup;
+    insufficient CUP scratch therefore leaves a partial cleanup checkpoint.
+    The caller chooses a bounded arena, not an original-size recursive arena.
     """
     if rows < 0 or columns < 0 or k0 < 0 or k0 > rows or log_rows < 1:
         raise ValueError("invalid connected hnfspec dimensions")
@@ -143,7 +151,7 @@ def pari_hnfspec_complete(
                 raise ValueError("invalid connected permutation")
     for i in range(9):
         state[i] = -1
-    status = pari_hnfspec_cleanup_rank_prefix(
+    cleanup_status = pari_hnfspec_cleanup(
         original,
         rows,
         columns,
@@ -160,12 +168,22 @@ def pari_hnfspec_complete(
         updated_dense,
         extra,
         cleanup_state,
+    )
+    if cleanup_status != 0 and cleanup_status != 1:
+        raise ValueError("incomplete cleanup checkpoint")
+    status = pari_hnfspec_cup_rank_prefix(
+        extra,
+        cleanup_state,
         rank_matrix,
         occupied,
         pivots,
         best,
         profile,
         rank_state,
+        cup_arena,
+        cup_frames,
+        cup_solve_state,
+        cup_state,
     )
     retained = sparse_state[0] - 1
     state[7] = retained

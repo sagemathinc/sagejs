@@ -1,5 +1,72 @@
 # Faithful PARI class-group language experiment
 
+## CUP opens all four initial HNF stages (2026-09-15)
+
+The five-agent continuation adds literal recursive `Flm_CUP_pre`, its upper
+triangular solve, and the initial `ZM_pivots` dispatch. All four genuine-default
+collector/HNF stages now agree with PARI on CPython, JavaScript and GMP.
+This closes the pre-CUP frontiers in the historical table below, not the
+complete quartic retry loop.
+Both cubic accepted results now also pass the combined single native call;
+field 0 returns the trivial group and exactly the independently traced
+192-bit regulator, output SHA-256
+`9ea5b036c61c3e95123ffc585ff65069dcff9041738be1d0e33ac5571e6df8c0`.
+
+- `check_flm_upper_solve.cjs`: 211 solves, actual packed CUP matrices,
+  same-owner disjoint views, exact RHS/output aliasing, 21 invalid-input
+  guards, and explicit unsupported multiplication dispatch.
+- `check_flm_cup.cjs`: 295 source comparisons including the three actual
+  reduced matrices, 61-bit primes, empty shapes, canaries, and tall leading
+  zero-row chains. Generated core: 3,026,815 bytes.
+- `check_hnfspec_cup_rank.cjs`: 54 source comparisons, 20 atomic owner guards,
+  and the genuine 2/3/4-prime initial schedule. General deficient-rank rational
+  verification remains an explicit frontier, never a guessed rank.
+- The complete HNF diagnostic has 458 successful cases, eight exact-rank
+  frontiers and two deferred-update frontiers; all six affected checker
+  builders were migrated to the explicit CUP scratch owners.
+
+The largest actual CUP input is 41 by 35, with rank 34 and **one exact zero
+column**. Thus the rigorous maximal-rank criterion succeeds on this input;
+it does not require the deferred rational-verification branch. Review found
+that logarithmic recursion-depth sizing was unsafe for tall zero-prefix
+matrices. The conservative depth is now `rows//4+1`; each non-base recursive
+edge removes at least four rows. Actual diagnostics reserve 160,000 entries,
+above the required 126,280. Capacity checks use the reduced dimensions after
+cleanup; insufficient scratch can leave a partial cleanup checkpoint, as
+explicitly documented. No production resource allowance was raised.
+
+| Field | Initial relations | Native initial HNF | Native post-HNF outcome |
+| --- | ---: | --- | --- |
+| 0 | 73 | Empty H, full relation rank | Accepted h=1, exact source regulator |
+| 1 | 58 | H=[3], full relation rank | Accepted h=3, exact source regulator |
+| 2 | 150 | Empty H, full relation rank | Action 5: regulator reconstruction requests one more relation |
+| 3 | 293 | H is 4 by 4, two dependent rows | Dimension gate -100, need=2; no regulator computation |
+
+Independent complete PARI driver traces now cover all four tuning fields.
+The quartics genuinely need further small-norm passes: field 2 accepts at
+152 relations after raw `compute_R` codes 1,1,0; field 3 accepts at 303 with
+class group `[2,2]` after tentative h=96,8,8,4. There are no precision restarts
+or random-relation calls in these traces. These final quartic results are
+**reference results**, not yet completed native port computations.
+The source driver checker accepts `--field0` through `--field3`.
+
+The successful field-1 combined call now generates 52,982,025 bytes of C.
+An explicitly unqualified local resident-owner probe takes roughly 106 ms
+with the all-GMP backend. It excludes compilation, preparation, owner packing,
+reset and output decoding, and is not paired with PARI. Diagnostic owners use
+271,240,904 bytes plus equally sized reset snapshots; 64-limb per-slot capacity
+is deliberately conservative, with the supplied prime products requiring
+1,470 limbs. This is evidence to investigate representations, not a parity
+verdict. The probe checks independently replayed results and restored state.
+Attempting the same call with the tagged backend exposes its explicit
+`mixed exact/Float64 programs` rejection. That is a compiler capability
+frontier, not evidence that tagged execution would have the GMP timing.
+
+`pnpm architecture:check` again passes the FFI, package, numerical, native and
+Wasm stages, then stops at the already recorded unrelated stale optimizer
+manifest (expected `2abcd762...`, found `ba010bb4...`). It is not reported as
+a passing overall architecture gate; no unrelated manifest was refreshed.
+
 ## First genuine-default prepared class-group attempt (2026-09-15)
 
 For `x^3-20010*x+20018`, the port now produces accepted candidate invariants

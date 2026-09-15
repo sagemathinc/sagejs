@@ -16,6 +16,10 @@ function run(cmd, args) {
 }
 const pari = path.resolve(process.argv[2]);
 const archive = path.resolve(process.argv[3]);
+const options = process.argv.slice(4);
+assert(options.length <= 1 && options.every(x => /^--field[0-3]$/.test(x)), 'Expected at most one --field0|--field1|--field2|--field3');
+const field = options.length ? Number(options[0].slice(-1)) : 1;
+const polynomial = ['x^3-20018*x+20034', 'x^3-20010*x+20018', 'x^4-20018*x-20034', 'x^4-2000022*x-2000042'][field];
 const lib = path.join(pari, 'Olinux-x86_64');
 assert.equal(hash(fs.readFileSync(archive)), '02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53');
 let source = run('tar', ['-xOf', archive, 'pari-2.17.4/src/basemath/buch2.c']);
@@ -57,23 +61,46 @@ replace('    i = compute_R(lambda, mulir(h,invhr), &L, &R);', `    i = compute_R
     printf("{\\\"event\\\":\\\"acceptance\\\",\\\"code\\\":%ld,\\\"h\\\":",i);trace_integer(h);printf(",\\\"R\\\":");trace_scalar(R);printf("}\\n");`);
 replace('    F.KCZ2 = 0; /* be honest only once */', `    printf("{\\\"event\\\":\\\"honesty_complete\\\",\\\"extraRequired\\\":%s}\\n",F.KCZ2>F.KCZ?"true":"false");
     F.KCZ2 = 0; /* be honest only once */`);
+// Observe repeated driver and collection passes without changing their policy.
+replace('START:\n  if (DEBUGLEVEL) timer_start(&T);', `START:
+  printf("{\\\"event\\\":\\\"factor_base_start\\\",\\\"attempt\\\":%ld}\\n",TRIES);
+  if (DEBUGLEVEL) timer_start(&T);`);
+replace('    GEN Ar, C0;\n    do', `    GEN Ar, C0;
+    printf("{\\\"event\\\":\\\"driver_pass\\\",\\\"need\\\":%ld,\\\"precision\\\":%ld}\\n",need,PREC);
+    do`);
+replace('      pari_sp av4 = avma;\n      if (need > 0)', `      pari_sp av4 = avma;
+      printf("{\\\"event\\\":\\\"collection_pass\\\",\\\"need\\\":%ld,\\\"relations\\\":%ld}\\n",need,cache.last-cache.base);
+      if (need > 0)`);
 source += `
 int main(void) {
+  setvbuf(stdout,NULL,_IOLBF,0);
   pari_init(256000000,10000); DEBUGLEVEL=0;
-  GEN nf=nfinit(gp_read_str("x^3-20010*x+20018"),nbits2prec(192));
+  GEN nf=nfinit(gp_read_str(${JSON.stringify(polynomial)}),nbits2prec(192));
   GEN bnf=Buchall_param(nf,0.,0.,BNF_RELPID,0,192),cyc=bnf_get_cyc(bnf);
   printf("{\\\"event\\\":\\\"result\\\",\\\"classNumber\\\":");trace_integer(bnf_get_no(bnf));
   printf(",\\\"invariants\\\":[");for(long j=1;j<lg(cyc);j++){if(j>1)putchar(',');trace_integer(gel(cyc,j));}
-  printf("]}\\n");pari_close();return 0;
+  printf("],\\\"regulator\\\":");trace_scalar(bnf_get_reg(bnf));printf("}\\n");pari_close();return 0;
 }
 `;
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sagejs-default-driver-'));
 fs.writeFileSync(path.join(dir, 'oracle.c'), source);
 run('cc', ['-O1', '-fsanitize=undefined', '-fno-sanitize-recover=undefined', '-I'+path.join(pari,'src/headers'), '-I'+lib, path.join(dir,'oracle.c'), '-L'+lib, '-Wl,-rpath,'+lib, '-lpari', '-lm', '-o', path.join(dir,'oracle')]);
-const text = run(path.join(dir, 'oracle'), []);
+const execution = spawnSync(path.join(dir, 'oracle'), [], { encoding: 'utf8', timeout: 60000, maxBuffer: 4 * 1024 * 1024 });
+fs.writeFileSync(path.join(dir, 'stdout.txt'), execution.stdout || '');
+fs.writeFileSync(path.join(dir, 'stderr.txt'), execution.stderr || '');
+if (execution.status !== 0) {
+  console.error(JSON.stringify({ field, polynomial, directory: dir, status: execution.status, error: String(execution.error || ''), partialTraceRetained: true }));
+}
+assert.equal(execution.status, 0, execution.stderr || String(execution.error));
+const text = execution.stdout;
 const events = text.trim().split('\n').map(line => JSON.parse(line));
 assert.equal(events.at(-1).event, 'result');
-assert.equal(events.at(-1).classNumber, '3');
-assert.deepEqual(events.at(-1).invariants, ['3']);
+if (field === 1) {
+  assert.equal(events.at(-1).classNumber, '3');
+  assert.deepEqual(events.at(-1).invariants, ['3']);
+  const acceptance = events.findLast(e => e.event === 'acceptance');
+  assert.equal(acceptance.code, 0);
+  assert.deepEqual(acceptance.R, { mantissa: '3895441961913051012156655978319959870688113589397982850906', precision: 192, exponent: 17 });
+}
 fs.writeFileSync(path.join(dir, 'trace.json'), JSON.stringify(events, null, 2)+'\n');
-console.log(JSON.stringify({ diagnosticOnly: true, preparedPolynomial: 'x^3-20010*x+20018', preparedPrecision: 192, sourceHash: hash(source), directory: dir, events }, null, 2));
+console.log(JSON.stringify({ diagnosticOnly: true, field, preparedPolynomial: polynomial, preparedPrecision: 192, sourceHash: hash(source), directory: dir, events }, null, 2));

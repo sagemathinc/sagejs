@@ -16,6 +16,7 @@ function run(c,a,o={}){const r=spawnSync(c,a,{encoding:'utf8',timeout:180000,max
   const primes=v.admission_prime_counts.flatMap((count,p)=>Number(count)?[String(p)]:[]);
   Object.assign(v,{initial_additional:'2',initial_target:'400',initial_primes:primes,initial_offsets:primes.map(p=>v.admission_prime_offsets[Number(p)]),initial_counts:primes.map(p=>v.admission_prime_counts[Number(p)]),initial_complete:primes.map(()=>'1'),hnf_k0:'0',hnf_original:Array(kc*cacheCapacity).fill('77'),chain_state:['0','77','77','77'],log_precision:'128',log_completed:['0'],log_embeddings:Array(cacheCapacity*7*ru).fill('0'),log_coordinates:Array(n).fill('0'),log_column:Array(7*ru).fill('0'),log_cache:Array(3).fill('0'),log_pi_cache:Array(3).fill('0'),log_a:Array(64).fill('0'),log_b:Array(64).fill('0'),log_p:Array(64).fill('0'),log_q:Array(64).fill('0'),log_stack:Array(128).fill('0')});
   for(const [name,kind]of names)if(!(name in v)){assert(name.startsWith('hnf_')&&kind!=='int',name);v[name]=Array(cap).fill('77');}
+  Object.assign(v,{hnf_cup_arena:Array(160000).fill('77'),hnf_cup_frames:Array(32).fill('77'),hnf_cup_solve_state:Array(8).fill('77'),hnf_cup_state:Array(8).fill('77')});
   v.hnf_perm=Array.from({length:kc},(_,i)=>String(i+1));
   return Object.fromEntries(names.map(([name])=>[name,v[name]]));
  });

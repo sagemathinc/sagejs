@@ -58,6 +58,7 @@ for raw,e in zip(d['inputs'],d['expected']):
  logs=[0]*(7*ru*last);completed=[0];append(v['admission_matrix_m'],v['admission_matrix_p'],v['admission_matrix_e'],v['generators'],v['relation_metadata'],last,n,v['admission_real_count'],128,completed,logs,[0]*n,[0]*(7*ru),[0]*3,[0]*3,[0]*64,[0]*64,[0]*64,[0]*64,[0]*128);assert logs==list(map(int,e['logs'])),('logs',e['field']);assert completed==[last]
  cap=max(64,(kc+last)**2,7*ru*(kc+last));w={name:[77]*cap for name,kind in d['hsig'] if kind!='int'}
  w.update(original=v['relation_records'][:last*kc],rows=kc,columns=last,perm=list(range(1,kc+1)),k0=0,logs=logs,log_rows=ru)
+ w.update(cup_arena=[77]*160000,cup_frames=[77]*32,cup_solve_state=[77]*8,cup_state=[77]*8)
  hs=hnf(**w)
  if hs==0:
   for key,name in [('H','result_h'),('D','result_dep'),('B','result_b'),('C','result_c')]:want=list(map(int,e[key]));assert w[name][:len(want)]==want,key
@@ -76,6 +77,7 @@ print(json.dumps(out))
    const completed=[0n],logs=Array(Number(v.relation_state[1])*7*ru).fill(0n);const status=collect[backend](...fixture.names.map(([name])=>v[name]),128n,completed,logs,Array(n).fill(0n),Array(7*ru).fill(0n),Array(3).fill(0n),Array(3).fill(0n),Array(64).fill(0n),Array(64).fill(0n),Array(64).fill(0n),Array(64).fill(0n),Array(128).fill(0n));assert.equal(status,0n);
    const last=Number(v.relation_state[0]);assert.equal(last,e.last);assert.deepEqual(v.relation_records.slice(0,last*kc).map(Number),e.records);assert.deepEqual(v.generators.slice(0,last*n).map(String),e.generators);assert.deepEqual(logs.slice(0,last*7*ru).map(String),e.logs);assert.equal(completed[0],BigInt(last));
    const cap=Math.max(64,(kc+last)**2,7*ru*(kc+last)),w=Object.fromEntries(hsig.filter(([,kind])=>kind!=='int').map(([name])=>[name,Array(cap).fill(77n)]));Object.assign(w,{original:v.relation_records.slice(0,last*kc),rows:BigInt(kc),columns:BigInt(last),perm:Array.from({length:kc},(_,j)=>BigInt(j+1)),k0:0n,logs:logs.slice(0,last*7*ru),log_rows:BigInt(ru)});
+   Object.assign(w,{cup_arena:Array(160000).fill(77n),cup_frames:Array(32).fill(77n),cup_solve_state:Array(8).fill(77n),cup_state:Array(8).fill(77n)});
    const hs=hnf[backend](...hsig.map(([name])=>w[name]));assert.equal(hs,BigInt(result[i].hnfStatus));if(hs===0n){for(const [key,name]of [['H','result_h'],['D','result_dep'],['B','result_b'],['C','result_c']])assert.deepEqual(w[name].slice(0,e[key].length).map(String),e[key]);assert.deepEqual(w.perm.map(Number),e.perm);}
    native.push({backend,field:i,relations:last,hnfStatus:Number(hs)});
    if(hs===0n){const nh=Number(w.state[0]),nb=Number(w.state[2]),nc=last;nativeOutputs.push({backend,field:i,degree:n,logRows:ru,factorCount:kc,H:w.result_h.slice(0,nh*nh).map(String),D:w.result_dep.slice(0,(kc-nb-nh)*nh).map(String),B:w.result_b.slice(0,(kc-nb)*nb).map(String),C:w.result_c.slice(0,7*ru*nc).map(String),perm:w.perm.map(Number),hnfState:[nh,nc-nb,nb,kc-nb-nh,nc-nb-nh],rawHnfState:w.state.slice(0,9).map(Number),records:v.relation_records.slice(0,last*kc).map(String),generators:v.generators.slice(0,last*n).map(String),metadata:v.relation_metadata.slice(0,last*3).map(String),relationState:v.relation_state.map(String)});}

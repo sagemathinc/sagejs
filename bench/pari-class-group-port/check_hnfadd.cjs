@@ -77,6 +77,7 @@ for r in cases:
  cap=r['capacity'];R=r['rows'];lr=r['logRows'];n=r['initial'];st=[]
  v={name:[77]*cap for name,typ in initial_sig if typ!='int'}
  v.update(original=list(map(int,r['mat'][:R*n])),rows=R,columns=n,perm=r['perm'][:],k0=r['k0'],logs=list(map(int,r['logs'][:7*lr*n])),log_rows=lr)
+ v.update(cup_arena=[77]*min(160000,8*max(1,R*n,R,n)*(n//4+1)),cup_frames=[77]*32,cup_solve_state=[77]*8,cup_state=[77]*8)
  status=init(**v);st.append({'status':status,'state':v['state'][:9]})
  if status:out.append(st);continue
  check(v,r['expected'][0]);old={'h':v['result_h'],'h_rows':v['state'][0],'dep':v['result_dep'],'b':v['result_b'],'b_columns':v['state'][2],'logs':v['result_c'],'total_columns':n,'perm':v['perm']};at=n
@@ -127,6 +128,8 @@ print(json.dumps(out))
   const r=cases[ix],cap=r.capacity,R=r.rows,lr=r.logRows,view=x=>Array.isArray(x)?x.slice():x.toArray(),blank=typ=>backend==='gmp'&&typ==='IntegerBuffer'?add.createIntegerBuffer(cap,64,Array(cap).fill(77n)):Array(cap).fill(77n),alloc=sig=>Object.fromEntries(sig.filter(x=>x[1]!=='int').map(([k,t])=>[k,blank(t)]));
   function check(v,e){assert.deepEqual(v.perm,e.perm.map(BigInt));for(const [key,name]of [['H','result_h'],['D','result_dep'],['B','result_b'],['C','result_c']]){const want=e[key].map(BigInt);assert.deepEqual(view(v[name]),[...want,...Array(cap-want.length).fill(77n)],backend+' '+ix+' '+key);}}
   let n=r.initial,v=alloc(initialSig);Object.assign(v,{original:r.mat.slice(0,R*n).map(BigInt),rows:BigInt(R),columns:BigInt(n),perm:r.perm.map(BigInt),k0:BigInt(r.k0),logs:r.logs.slice(0,7*lr*n).map(BigInt),log_rows:BigInt(lr)});
+  const cupSize=Math.min(160000,8*Math.max(1,R*n,R,n)*(Math.floor(n/4)+1));
+  Object.assign(v,{cup_arena:Array(cupSize).fill(77n),cup_frames:Array(32).fill(77n),cup_solve_state:Array(8).fill(77n),cup_state:Array(8).fill(77n)});
   let status=init[backend](...initialSig.map(([name])=>v[name]));assert.equal(status,BigInt(cp[ix][0].status));assert.deepEqual(v.state.slice(0,9),cp[ix][0].state.map(BigInt));if(status)continue;
   check(v,r.expected[0]);let old={h:v.result_h,h_rows:v.state[0],dep:v.result_dep,b:v.result_b,b_columns:v.state[2],logs:v.result_c,total_columns:BigInt(n),perm:v.perm},at=n;
   for(let step=0;step<r.batches.length;step++){

@@ -234,6 +234,10 @@ def pari_connected_relation_hnf(
     hnf_final_state: Int64Buffer,
     hnf_state: Int64Buffer,
     chain_state: Int64Buffer,
+    hnf_cup_arena: IntegerBuffer,
+    hnf_cup_frames: IntegerBuffer,
+    hnf_cup_solve_state: Int64Buffer,
+    hnf_cup_state: Int64Buffer,
 ) -> int:
     """Run one fresh prepared collection stage and its initial HNF.
 
@@ -525,6 +529,10 @@ def pari_connected_relation_hnf(
         hnf_result_c,
         hnf_final_state,
         hnf_state,
+        hnf_cup_arena,
+        hnf_cup_frames,
+        hnf_cup_solve_state,
+        hnf_cup_state,
     )
     chain_state[1] = status
     chain_state[0] = 3

@@ -290,6 +290,10 @@ def pari_prepared_class_group_attempt(
     class_invariants: IntegerBuffer,
     class_number: IntegerBuffer,
     attempt_state: Int64Buffer,
+    hnf_cup_arena: IntegerBuffer,
+    hnf_cup_frames: IntegerBuffer,
+    hnf_cup_solve_state: Int64Buffer,
+    hnf_cup_state: Int64Buffer,
 ) -> int:
     """Return an explicit action, publishing only accepted-candidate invariants.
 
@@ -544,6 +548,10 @@ def pari_prepared_class_group_attempt(
         hnf_final_state,
         hnf_state,
         chain_state,
+        hnf_cup_arena,
+        hnf_cup_frames,
+        hnf_cup_solve_state,
+        hnf_cup_state,
     )
     if action != 0:
         attempt_state[1] = action
