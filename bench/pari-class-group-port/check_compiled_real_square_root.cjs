@@ -20,29 +20,52 @@ pari_printf("%Ps %ld %ld %Ps %ld %ld\\n",m,p,e,out,bit_prec(y),expo(y));avma=av;
   assert.equal(run.status, 0, run.stderr);
   const records = run.stdout.trim().split("\n").map(line => line.split(" "));
   assert.equal(records.length, 1120);
+  // One declared leaf corpus shared by CPython and every compiled backend.
+  // 3967 bits covers the largest real-wrapper radicand (2*1920+127).
+  const leafValues = new Set(Array.from({length:257},(_,i)=>String(i)));
+  for (const k of [31,32,63,64,127,128,256,1024,3967])
+    for (const d of [-1n,0n,1n]) leafValues.add(String((1n<<BigInt(k))+d));
+  for (const k of [31,32,63,64,127,1983]) {
+    const root=(1n<<BigInt(k))+1n;
+    for (const d of [-1n,0n,1n]) leafValues.add(String(root*root+d));
+  }
+  const leafInputs=[...leafValues];
+  const negativeInputs=["-1","-2",String(-(1n<<63n)),String(-(1n<<3967n))];
   const py = spawnSync("python3", ["-c", `
 import sys,json,importlib,math
 sys.path[:0]=[${JSON.stringify(path.resolve(__dirname,"../.."))},${JSON.stringify(path.resolve(__dirname,"../../src/lib"))}]
 m=importlib.import_module('bench.pari-class-group-port.real_square_root')
-for row in json.load(sys.stdin):
+data=json.load(sys.stdin)
+for row in data['records']:
     values=list(map(int,row));got=m.pari_real_square_root_abs(*values[:3]);assert got==tuple(values[3:]),(values,got)
-for value in list(range(257))+[2**k+d for k in (63,64,127,256,1024,3967) for d in (-1,0,1)]:
+expected=[]
+for value in map(int,data['leafInputs']):
     root=math.isqrt(value);assert m.pari_sqrtrem_integer(value)==(root,value-root*root)
-`], {input:JSON.stringify(records),encoding:"utf8",timeout:30000});
+    expected.append([str(root),str(value-root*root)])
+for value in map(int,data['negativeInputs']):
+    try: m.pari_sqrtrem_integer(value)
+    except ValueError as error: assert 'negative integer square root' in str(error)
+    else: raise AssertionError(('accepted negative',value))
+print(json.dumps(expected))
+`], {input:JSON.stringify({records,leafInputs,negativeInputs}),encoding:"utf8",timeout:30000});
   assert.equal(py.status, 0, py.stderr);
+  const leafExpected=JSON.parse(py.stdout).map(row=>row.map(BigInt));
   const built = await compileKernel({sourcePath:path.join(__dirname,"real_square_root.py")}), mod = require(built.modulePath);
   for (const row of records) for (const backend of ["javascript", "gmp", "tagged"]) {
     const values = row.map(BigInt);
     assert.deepEqual(mod.pari_real_square_root_abs[backend](...values.slice(0,3)), values.slice(3), `${backend}: ${row}`);
   }
   for (const backend of ["javascript", "gmp", "tagged"]) {
-    for (const value of [0n,1n,2n,3n,4n,15n,16n,17n,(1n<<3967n)-1n]) {
+    for (let i=0;i<leafInputs.length;i++) {
+      const value=BigInt(leafInputs[i]);
       const [r,s] = mod.pari_sqrtrem_integer[backend](value);
+      assert.deepEqual([r,s],leafExpected[i], `${backend}: exact sqrtrem ${value}`);
       assert.equal(r*r+s,value);assert(s>=0n && s<2n*r+1n);
     }
-    assert.throws(()=>mod.pari_sqrtrem_integer[backend](-1n), /negative integer square root/);
+    for (const value of negativeInputs)
+      assert.throws(()=>mod.pari_sqrtrem_integer[backend](BigInt(value)), /negative integer square root/);
     assert.throws(()=>mod.pari_real_square_root_abs[backend](0n,64n,0n), /nonzero full mantissa/);
     assert.throws(()=>mod.pari_real_square_root_abs[backend](1n,2048n,0n), /unsupported square root precision/);
   }
-  console.log(`${records.length} square roots match PARI/CPython/JS/GMP/tagged; integer-root substitution remains explicit`);
+  console.log(`${records.length} square roots match PARI/CPython/JS/GMP/tagged; ${leafInputs.length} exact sqrtrem controls and ${negativeInputs.length} negative controls match CPython/JS/GMP/tagged; integer-root substitution remains explicit`);
 })().catch(error => {console.error(error);process.exitCode=1;});
