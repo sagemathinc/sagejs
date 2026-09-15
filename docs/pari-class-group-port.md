@@ -31,8 +31,22 @@ The next source revision closes additional preparation and scheduling gaps:
 - Connecting full one-prime decomposition exposed a native-adapter name
   collision between arguments `state` and `descriptor_state`. CPython/JS
   matched 144 source decompositions before native invocation failed in the
-  adapter. A focused compiler fix is being qualified; this is not an
-  arithmetic mismatch or a completed native decomposition receipt.
+  adapter. The focused compiler fix is committed on the compiler dependency
+  as `266c57251`, integrated here as `0335233fb`; the lane's dependency base
+  now tracks that source commit rather than expanding the port's file claims.
+  Exact and Float64 adapter regressions pass. Replaying the original argument
+  names now passes all 144 decompositions and 41 atomic controls across all
+  four backends, including full final RNG state. See the
+  [connected Kummer audit](../bench/pari-class-group-port/kummer_prime_decomposition_audit.md).
+  This is a prepared-nf one-prime entry, not yet the full class-group driver.
+- The requested factor-base catalog now preserves FBgen's prime/degree
+  filters and one resident random stream. Seven field-0 bounds match PARI
+  across all four backends; the default bound 333 makes 48 decomposition
+  calls and produces 66 descriptors. Skipped slots and final RNG state also
+  agree. See the [catalog audit](../bench/pari-class-group-port/initial_kummer_catalog_audit.md).
+  Connecting these computed outputs to class-group acceptance remains the
+  next gate; neither eager analytic-cache work nor adapter allocations are
+  excluded from any claimed timing, because no new timing is claimed.
 - Generic native `math.exp` and imported `math.sqrt` support permits the
   unchanged inline upstream subfactor-product formula. Its 286 cases match
   CPython/PARI exactly in GMP and tagged native execution; JavaScript has a
