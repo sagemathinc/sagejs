@@ -47,6 +47,12 @@ The next source revision closes additional preparation and scheduling gaps:
   degree-2--4 small-prime, non-index-divisor branch, including squarefree,
   Shoup and characteristic-two Berlekamp factoring. Index divisors remain an
   explicit frontier. This is dependency removal, not a new class-group timing result.
+- The connected integral-basis Frobenius/p-radical dependency now matches
+  PARI on 24 combinations of six fields and four primes in all four execution
+  modes, including exact radical basis order at the index-3/index-37 cases.
+  This is not yet full index-prime decomposition; descriptor construction and
+  quotient-algebra splitting remain. See the
+  [radical audit](../bench/pari-class-group-port/pradical_audit.md).
 
 See [packet integration evidence](../bench/pari-class-group-port/selected_ideal_packets_audit.md)
 and [acceptance scheduling evidence](../bench/pari-class-group-port/post_hnf_schedule_audit.md),
