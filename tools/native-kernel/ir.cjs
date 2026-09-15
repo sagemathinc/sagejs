@@ -27,7 +27,7 @@ const {
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 const { isBundleClass, prepareWorkspaceBundles } = require("./workspace-bundles.cjs");
 
-const IR_VERSION = 43;
+const IR_VERSION = 44;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([

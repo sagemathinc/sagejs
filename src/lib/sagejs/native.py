@@ -1371,6 +1371,44 @@ def int64_record(
     return Int64Record(buffer, start, length)
 
 
+class _IntegerBufferView:
+    """A non-resizing borrowed exact span retaining its backing owner."""
+
+    def __init__(self, buffer: Any, start: int, length: int) -> None:
+        if start < 0 or length < 0 or start > len(buffer) - length:
+            raise IndexError("IntegerBuffer view is outside its buffer")
+        self._buffer = buffer
+        self._start = start
+        self._length = length
+
+    def __len__(self) -> int:
+        return self._length
+
+    def __getitem__(self, index: int) -> int:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError("IntegerBuffer index out of range")
+        return self._buffer[self._start + index]
+
+    def __setitem__(self, index: int, value: int) -> None:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError("IntegerBuffer index out of range")
+        self._buffer[self._start + index] = int(value)
+
+
+def integer_buffer_view(buffer: IntegerBuffer, start: int, length: int) -> Any:
+    """Borrow a bounded, mutable exact span without copying or resizing.
+
+    Nonnegative bounds must fit the owner. Nested views alias storage and may
+    pass to `IntegerBuffer` helpers, but cannot escape native kernel results.
+    Do not resize the owner while borrowed.
+    """
+    return _IntegerBufferView(buffer, start, length)
+
+
 def integer_buffer(source: Any) -> IntegerBuffer:
     """Copy an iterable into an arbitrary-precision exact buffer fallback."""
     return [int(value) for value in source]
@@ -1737,6 +1775,7 @@ __all__ = [
     "float64_zeros",
     "int64_buffer",
     "int64_record",
+    "integer_buffer_view",
     "int64_zeros",
     "integer_buffer",
     "integer_buffer_values",

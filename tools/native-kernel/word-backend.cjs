@@ -292,7 +292,8 @@ function emitWordOperation(operation, context, indent) {
   if (operation.kind === "int64.buffer.length") {
     return `${indent}${target} = (uint64_t) ${value(operation.buffer)}.length;`;
   }
-  if (operation.kind === "int64.record.view") {
+  if (operation.kind === "int64.record.view" || operation.kind === "integer.buffer.view") {
+    const exactView = operation.kind === "integer.buffer.view";
     const buffer = value(operation.buffer);
     const start = value(operation.start);
     const length = value(operation.length);
@@ -303,10 +304,18 @@ function emitWordOperation(operation, context, indent) {
         `(uint64_t) ${buffer}.length - (uint64_t) ${start})`,
       `${indent}{`,
       `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
-        `"Int64Record is outside its buffer");`,
+        `${JSON.stringify(exactView ? "IntegerBuffer view is outside its buffer" : "Int64Record is outside its buffer")});`,
       `${indent}    ${context.failure}`,
       `${indent}}`,
+      ...(exactView ? [
+        `${indent}${target} = ${buffer};`,
+        `${indent}if ((size_t) ${start} != 0) {`,
+        `${indent}    ${target}.sizes += (size_t) ${start};`,
+        `${indent}    ${target}.limbs += (size_t) ${start} * ${buffer}.word_capacity;`,
+        `${indent}}`,
+      ] : [
       `${indent}${target}.data = ${buffer}.data + (size_t) ${start};`,
+      ]),
       `${indent}${target}.length = (size_t) ${length};`,
     ].join("\n");
   }

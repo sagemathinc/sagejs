@@ -296,6 +296,26 @@
       "commit": "888b5fd2f6173ee4ca193c0f3720284bda3a44f9",
       "workspace_fingerprint": "6820da9c742e1b9bb157aa160c50e01bef71144b607512cb2dce6a1751914ba9",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/native-call-statement.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.907,
+      "started_at": "2026-09-15T17:26:53.075Z",
+      "commit": "b57cf916a9a5a0116e4ca27a56f27fba9e31b2f2",
+      "workspace_fingerprint": "8fcc9ffdefcd60ec0f83b5dc2fb97afddc4f6ccfe27eee9f59659f41aeeb83cd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/native-call-statement.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.735,
+      "started_at": "2026-09-15T17:27:14.997Z",
+      "commit": "b57cf916a9a5a0116e4ca27a56f27fba9e31b2f2",
+      "workspace_fingerprint": "da2287dacc895beaeaf55d6c2ad9cffe7cbafbd1ea6f7ae7d5e9809e5bc0705b",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

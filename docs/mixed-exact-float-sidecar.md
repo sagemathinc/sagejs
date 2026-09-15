@@ -1,5 +1,23 @@
 # Mixed exact/binary64 prerequisite checkpoint
 
+## Borrowed exact buffer spans
+
+`integer_buffer_view(buffer, start, length)` creates a non-resizing borrowed
+`IntegerBuffer` span, not Python list slicing. It validates the complete
+nonnegative range before creating the view. Empty spans at the end are valid;
+negative element indexes retain normal buffer behavior. Nested spans and
+overlapping spans passed through native helpers preserve aliasing. The owner
+must not be resized while borrowed; the ordinary Python fallback retains it.
+
+The isolated GMP/tagged implementation copies only the descriptor, adjusts the
+existing signed-size and limb pointers, and shares the original word capacity.
+It allocates no storage and introduces no host callback or new public ABI.
+Borrowed buffer returns are explicitly rejected. The JavaScript fallback uses
+the existing offset-aware packed/list representation. The new operation is not
+qualified for the optional FMPZ-only specialization; normal exact backends
+remain available. This capability enables internally computed factor-base
+prefix lengths without a host slicing boundary; no timing claim is implied.
+
 ## Preserve machine-sized shift counts
 
 Exact-integer shift IR now retains a `uint64` count instead of converting it
