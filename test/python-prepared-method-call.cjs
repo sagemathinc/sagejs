@@ -233,6 +233,19 @@ Callable.__call__ = replacement
 assert c(20) == ('new', 20)
 print('callable-slot-replacement-ok')
 `],
+  ["super binds metaclass-produced methods before keyword interpolation", `
+class Meta(type):
+    def __new__(mcls, name, bases, namespace):
+        return super().__new__(mcls, name, bases, namespace)
+class Base(metaclass=Meta):
+    def method(self, /, *args, **kwargs):
+        return (self.__class__.__name__, args, kwargs)
+class Child(Base, metaclass=Meta):
+    def method(self, /, *args, **kwargs):
+        return super(Child, self).method(*args, **kwargs)
+assert Child().method(20, key=21) == ('Child', (20,), {'key': 21})
+print('super-metaclass-binding-ok')
+`],
 ]) {
   test(name, async (context) => {
     const python = spawnSync(pythonExecutable(), ["-c", regression], { encoding: "utf8" });
