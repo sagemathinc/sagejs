@@ -1,5 +1,38 @@
 # Faithful PARI class-group language experiment
 
+## Five-agent integration block (2026-09-15)
+
+The user explicitly expanded concurrency to five agents total. This overrides
+the plan's earlier two-agent cap, not the aggregate 24-active-agent-hour or
+24-CPU-hour continuation ceilings. The current bounded tasks are connected
+acceptance, genuine collector dependencies, class invariant output, static
+runtime audit, and root integration. Edits are disjoint within this experiment
+contract; root serializes validation receipts and performance measurements.
+No concurrent diagnostic run is qualified as a latency benchmark.
+
+`regulator_acceptance.py` now joins multiple computation and reconstruction
+in one native entry, preserving buchall's NULL-lambda-before-NULL-R order,
+unchanged-cache check and the source request-more-relations actions. All
+318 PARI/CPython/JS/GMP controls pass, including five atomic early guards.
+Actions: 4 accepted, 72 NULL-lambda, 180 regulator precision, 12 rank defects,
+27 unchanged cache, 4 more-relations and 19 reconstruction precision failures.
+Of these, 192 variants use actual element embeddings, **not post-HNF unit
+logarithms**. The entry takes prepared h*invhr; precision/restart, honesty,
+and full unit/class output remain outside it. Trace
+`f704d353ab6d62a4bb7084b31e63d4671a8361215e57943d4305c6db67a462cc`,
+core 16,208,147 bytes. Reproduce with `check_regulator_acceptance.cjs` and
+the pinned source/archive. The first check incorrectly requested the tagged
+backend; mixed exact/Float64 compilation does not supply it. The final check
+reports that capability boundary explicitly, rather than claiming it passed.
+
+The static [connected runtime audit](../bench/pari-class-group-port/runtime-connected-audit.md)
+identifies avoidable-looking GMP index arithmetic and packed division scratch
+updates. It records exact generated artifact identities and static operation
+counts, not measured slowdowns. The audit predates the final formatting of
+the acceptance entry and does not silently relabel its generated artifact as
+the later one. These are targets for controlled compiler/runtime experiments
+after a work-matched connected workload is available.
+
 ## Wider reconstruction and analytic normalization (2026-09-14)
 
 The follow-up `regulator_hnf_wide.py` translates `ZM_hnfall_i(A,NULL,1)`:
