@@ -3,6 +3,74 @@
 const assert=require("node:assert/strict"),{mkdtempSync,writeFileSync,readFileSync}=require("node:fs");
 const {tmpdir}=require("node:os"),{join}=require("node:path"),{spawnSync}=require("node:child_process"),test=require("node:test");
 const {compileKernel}=require("../compiler.cjs"),{lowerSource}=require("../ir.cjs");
+test("math exp preserves overflow, underflow and nonfinite semantics", async()=>{
+ const dir=mkdtempSync(join(tmpdir(),"sagejs-exp-")),source=join(dir,"exp.py");
+ const text=`from sagejs.native import native, Float64Buffer
+from math import exp as exponential
+@native
+def scalar(x: float) -> float:
+    return exponential(x)
+@native
+def nested(x: float) -> float:
+    return scalar(x)
+@native
+def mixed(values: Float64Buffer, count: int) -> int:
+    values[0] = exponential(values[0])
+    return count + 1
+@native
+def mutated(x: float) -> float:
+    x = exponential(x)
+    return x
+`;
+ writeFileSync(source,text);
+ const ir=await lowerSource(text,source);
+ assert(ir.functions.find(f=>f.name==="mixed").analysis.effects.mayRaise.includes("OverflowError"));
+ assert(JSON.stringify(ir).includes("float64.exp"));
+ const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+ const core=readFileSync(built.coreSourcePath,"utf8");
+ assert.match(core,/ = exp\(/); assert.doesNotMatch(core,/ = pow\(/);
+ const values=[NaN,Infinity,-Infinity,-0,0,Number.MIN_VALUE,-Number.MIN_VALUE,
+   -Number.MAX_VALUE,Number.MAX_VALUE,-1000,-746,-745.2,-745.1332191019412,
+   -745,-744,-708.3964185322641,-1,1,709,709.7827128933839,709.782712893384,709.7827128933841,710,1000];
+ for(let i=-800;i<=750;i++)values.push(i/1.0);
+ for(const center of [-745.1332191019412,-708.3964185322641,709.782712893384])
+   for(let i=-16;i<=16;i++)values.push(center+i*Math.abs(center)*Number.EPSILON);
+ const token=x=>Object.is(x,-0)?"-0.0":String(x);
+ const oracle=spawnSync("python3",["-c",`import math,json,sys
+out=[]
+for s in json.load(sys.stdin):
+    try: out.append(["ok",repr(math.exp(float(s)))])
+    except OverflowError: out.append(["overflow"])
+print(json.dumps(out))`],{encoding:"utf8",input:JSON.stringify(values.map(token))});
+ assert.equal(oracle.status,0,oracle.stderr);const expected=JSON.parse(oracle.stdout);
+ const previous=globalThis.OverflowError;
+ globalThis.OverflowError=class OverflowError extends Error {};
+ try {
+  for(let i=0;i<values.length;i++)for(const backend of ["javascript","gmp","tagged"]){
+   const x=values[i],buffer=[x];
+   const scalarCall=fn=>(backend==="javascript"?fn.javascript:fn)(x);
+   const calls=[...(backend==="tagged"?[]:[()=>scalarCall(mod.scalar),()=>scalarCall(mod.nested),()=>scalarCall(mod.mutated)]),()=>{
+    assert.equal(mod.mixed[backend](buffer,7n),8n);return buffer[0];
+   }];
+   if(expected[i][0]==="overflow"){
+    for(const call of calls)assert.throws(call,globalThis.OverflowError);
+    assert(Object.is(buffer[0],x));
+   } else {
+    const want=expected[i][1]==="inf"?Infinity:Number(expected[i][1]);
+    for(const call of calls){const got=call();
+     if(Number.isNaN(want))assert(Number.isNaN(got));
+     else if(!Number.isFinite(want)||want===0)assert(Object.is(got,want));
+     else assert(Math.abs(got-want)<=Math.max(Number.MIN_VALUE,2*Number.EPSILON*Math.abs(want)),`${backend}: exp(${x}) ${got} vs ${want}`);
+    }
+   }
+  }
+ } finally {if(previous===undefined)delete globalThis.OverflowError;else globalThis.OverflowError=previous;}
+ for(const bad of [
+  `from sagejs.native import native\nfrom math import exp\n@native\ndef f(exp: float) -> float:\n    return exp(exp)\n`,
+  `from sagejs.native import native\nfrom math import exp\n@native\ndef f(x: float) -> float:\n    return exp(x,x)\n`,
+  `from sagejs.native import native\nfrom math import exp\n@native\ndef f(x: float) -> float:\n    return exp(x=x)\n`,
+ ])await assert.rejects(()=>lowerSource(bad,source));
+});
 test("copysign preserves signed zero and nonfinite sign sources", async()=>{
  const dir=mkdtempSync(join(tmpdir(),"sagejs-copysign-")),source=join(dir,"sign.py");
  writeFileSync(source,`from sagejs.native import native, Float64Buffer

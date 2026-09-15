@@ -2923,6 +2923,16 @@ function emitFloat64Operation(operation, indent, value = cName) {
   if (operation.kind === "float64.atan") {
     return `${indent}${target} = atan(${value(operation.source)});`;
   }
+  if (operation.kind === "float64.exp") {
+    const source = value(operation.source);
+    return [
+      `${indent}${target} = exp(${source});`,
+      `${indent}if (isinf(${target}) && isfinite(${source})) {`,
+      statusFailure("range", "math range error", `${indent}  `),
+      `${indent}  goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (["float64.sqrt", "float64.log", "float64.log2"].includes(operation.kind)) {
     const source = value(operation.source);
     const logarithm = operation.kind !== "float64.sqrt";
