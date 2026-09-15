@@ -1010,14 +1010,17 @@ async function lowerSource(source, filename, options = {}) {
       }
     }
   }
-  for (const name of mathFunctions.keys()) {
-    expect(importCounts.get(name) === 1, `${filename}: ambiguous math.${mathFunctions.get(name)} import binding ${name}`);
-  }
   const records = nativeRecordSchemas(topLevel, filename);
   const foreignImports = ffiImports(topLevel, filename);
   const foreignFunctions = foreignImports.functions;
   const foreignResources = foreignImports.resources;
   const workspaces = prepareWorkspaceBundles(topLevel, compiler, foreignResources, filename);
+  // Workspace schemas reserve their base and member-helper names. Diagnose an
+  // import that shadows one of those names as a workspace contract violation
+  // before applying generic imported-math ambiguity checks to the module.
+  for (const name of mathFunctions.keys()) {
+    expect(importCounts.get(name) === 1, `${filename}: ambiguous math.${mathFunctions.get(name)} import binding ${name}`);
+  }
   const definitions = topLevel.filter(
     (statement) => nodeType(statement) === "AST_Function",
   );
