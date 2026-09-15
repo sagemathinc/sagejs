@@ -89,6 +89,12 @@ The next source revision closes additional preparation and scheduling gaps:
   12 source valuation calls passing all four execution modes. The ordinary
   Kummer branch remains the main prepared-descriptor dependency; see the
   [descriptor audit](../bench/pari-class-group-port/prime_descriptor_audit.md).
+- Factor preparation now includes a resident source RNG (576 mixed-call
+  comparisons), actual binary factor polynomials (84 seeded cases), raw
+  odd-prime DDF components (948 cases), and the small half-GCD dependency
+  (528 cases). The modular-resultant correction passes 481 cases. These are
+  source-correspondence checkpoints, not whole-engine parity; see the
+  [factor preparation audit](../bench/pari-class-group-port/factor_preparation_audit.md).
 
 See [packet integration evidence](../bench/pari-class-group-port/selected_ideal_packets_audit.md)
 and [acceptance scheduling evidence](../bench/pari-class-group-port/post_hnf_schedule_audit.md),

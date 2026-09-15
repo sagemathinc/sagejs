@@ -182,6 +182,58 @@ def pari_flx_small_quotient(
 
 @native
 def pari_flx_small_ddf(w: IntegerBuffer, t: int, dt: int, p: int, scratch: int) -> int:
+    return _pari_flx_small_ddf(w, t, dt, p, scratch, -1, -1)
+
+
+@native
+def pari_flx_small_ddf_polynomials(
+    w: IntegerBuffer,
+    t: int,
+    dt: int,
+    p: int,
+    components: int,
+    component_degrees: int,
+    scratch: int,
+) -> int:
+    """Expose Shoup's raw components, with four constant-one hole slots.
+
+    Canonical nonzero polynomial of degree 0..4; p is an odd prime at most
+    3037000493. Caller provides disjoint input (9), component (36), degree
+    (4), and scratch (272) spans. No extra normalization is performed.
+    The source's logical result length is dt; padding holes are representation.
+    """
+    if dt < 0 or dt > 4 or p < 3 or p > 3037000493 or p % 2 == 0:
+        raise ValueError("small DDF polynomial frontier")
+    if (
+        t < 0
+        or components < 0
+        or component_degrees < 0
+        or scratch < 0
+        or len(w) < t + 9
+        or len(w) < components + 36
+        or len(w) < component_degrees + 4
+        or len(w) < scratch + 272
+    ):
+        raise ValueError("short DDF polynomial storage")
+    for i in range(dt + 1):
+        if w[t + i] < 0 or w[t + i] >= p:
+            raise ValueError("noncanonical DDF polynomial")
+    if w[t + dt] == 0:
+        raise ValueError("zero DDF leading coefficient")
+    _pari_flx_small_ddf(w, t, dt, p, scratch, components, component_degrees)
+    return dt
+
+
+@native
+def _pari_flx_small_ddf(
+    w: IntegerBuffer,
+    t: int,
+    dt: int,
+    p: int,
+    scratch: int,
+    components: int,
+    component_degrees: int,
+) -> int:
     """Shoup for dt<=4; return offset of four component-degree slots.
 
     Scratch has nineteen polynomial spans, baby/giant degree tables (2+3),
@@ -214,10 +266,19 @@ def pari_flx_small_ddf(w: IntegerBuffer, t: int, dt: int, p: int, scratch: int) 
     dxp = pari_flxq_powu(w, x, 1, p, t, dt, p, xp, work)
     for i in range(4):
         w[output_degrees + i] = 0
+    if components >= 0:
+        for i in range(36):
+            w[components + i] = 0
+        for i in range(4):
+            w[components + i * 9] = 1
+            w[component_degrees + i] = 0
     if dt == 0:
         return output_degrees
     if dt == 1:
         w[output_degrees] = 1
+        if components >= 0:
+            pari_flx_copy(w, t, dt, components)
+            w[component_degrees] = dt
         return output_degrees
     # B=dt//2, l=isqrt(B)=1 throughout this declared degree corridor.
     # ro=0 and expu(p)>0 for odd primes: source takes baby-table else branch.
@@ -270,10 +331,16 @@ def pari_flx_small_ddf(w: IntegerBuffer, t: int, dt: int, p: int, scratch: int) 
         du = pari_flx_gcd(w, e, de, difference, dd, p, u, work)
         if du != 0:
             w[output_degrees + j] = du
+            if components >= 0:
+                pari_flx_copy(w, u, du, components + j * 9)
+                w[component_degrees + j] = du
             # Source performs the division even though l=1 ends this loop.
             pari_flx_small_quotient(w, e, de, u, du, p, quotient, remainder)
     if dtr != 0:
         w[output_degrees + dtr - 1] = dtr
+        if components >= 0:
+            pari_flx_copy(w, tr, dtr, components + (dtr - 1) * 9)
+            w[component_degrees + dtr - 1] = dtr
     return output_degrees
 
 
