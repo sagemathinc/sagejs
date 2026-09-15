@@ -29,6 +29,7 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
   const wordCapacity = positiveCount("--word-capacity", 64);
   assert(Number.isSafeInteger(repetitions * sampleCount), "unsafe total call count");
   const outputPath = option("--output", null);
+  const profileSymbols = process.argv.includes("--profile-symbols");
   const inputPath = path.resolve(process.argv[2]);
   const fixture = JSON.parse(fs.readFileSync(inputPath, "utf8"));
   const backend = option("--backend", "gmp");
@@ -66,7 +67,7 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
   assert.deepEqual(names, signature, "stale exported signature");
   const expected = fixture.summary.cp[0];
   assert.equal(expected.action, 0, "fixture must have independently replayed acceptance");
-  const built = await compileKernel({ sourcePath });
+  const built = await compileKernel({ sourcePath, profileSymbols });
   const f = require(built.modulePath).pari_prepared_class_group_attempt;
   assert(f.nativeAvailable);
   const values = {}, snapshots = {}, reset = [];
@@ -157,8 +158,11 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
     coreBytes: fs.statSync(built.coreSourcePath).size,
     sourceSha256: createHash("sha256").update(fs.readFileSync(sourcePath)).digest("hex"),
     coreSha256: createHash("sha256").update(fs.readFileSync(built.coreSourcePath)).digest("hex"),
+    generatedModulePath: built.modulePath,
+    generatedCorePath: built.coreSourcePath,
     ownerBytes: bytes, resetSnapshotBytes: bytes, setupMilliseconds,
     ordinaryWordCapacity: wordCapacity, cupWordCapacity: 4,
+    profileSymbols,
     largeInputCapacities: Object.fromEntries(Object.entries(capacities)
       .filter(([name, words]) => words > (name.startsWith("hnf_cup_") ? 4 : wordCapacity))),
     samples, answer,
