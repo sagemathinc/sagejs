@@ -15,6 +15,7 @@ const TYPE_ALIASES = new Map([
   ["Integer", "Integer"],
   ["int", "Integer"],
   ["uint64", "uint64"],
+  ["int64", "int64"],
   ["bool", "bool"],
   ["float", "Float64"],
   ["Float64", "Float64"],
@@ -309,7 +310,7 @@ function signatureFromFunction(
     const defaultNode = defaults[arg.name];
     let defaultValue;
     if (defaultNode !== undefined) {
-      if (type === "Integer" || type === "uint64") {
+      if (["Integer", "uint64", "int64"].includes(type)) {
         const value = integerLiteral(defaultNode);
         expect(
           context,
@@ -323,6 +324,14 @@ function signatureFromFunction(
             defaultNode,
             value >= 0n && value <= 18446744073709551615n,
             `default for ${arg.name} is outside uint64`,
+          );
+        }
+        if (type === "int64") {
+          expect(
+            context,
+            defaultNode,
+            value >= -(1n << 63n) && value < (1n << 63n),
+            `default for ${arg.name} is outside int64`,
           );
         }
         defaultValue = value.toString();
@@ -360,11 +369,12 @@ function isIntegerSignature(signature) {
   return (
     signature.returnType === "Integer" ||
     signature.returnType === "uint64" ||
+    signature.returnType === "int64" ||
     signature.returnType === "bool" ||
     isTupleType(signature.returnType) ||
     signature.params.some(
       (param) => param.type === "Integer" || param.type === "bool" ||
-        param.type === "uint64" ||
+        param.type === "uint64" || param.type === "int64" ||
         param.type === LIVE_INTEGER_VECTOR_TYPE ||
         param.type === "UInt64Buffer" || EXACT_BUFFER_TYPES.has(param.type),
     )
@@ -825,6 +835,18 @@ function emitUint64Constant(context, node, operations, value) {
   return { name: target, type: "uint64" };
 }
 
+function emitInt64Constant(context, node, operations, value) {
+  expect(
+    context,
+    node,
+    value >= -(1n << 63n) && value < (1n << 63n),
+    "int64 literal is outside signed 64-bit",
+  );
+  const target = temporary(context, node, "int64");
+  operations.push({ kind: "int64.constant", target, value: value.toString() });
+  return { name: target, type: "int64" };
+}
+
 function emitFloat64Constant(context, node, operations, value) {
   if (typeof value === "bigint") {
     expect(context, node, value >= -9007199254740992n && value <= 9007199254740992n,
@@ -862,6 +884,14 @@ function lowerUInt64BufferIndex(node, context, operations) {
     : lowerUint64Operand(node, context, operations);
 }
 
+function lowerInt64BufferIndex(node, context, operations) {
+  const literal = integerLiteral(node);
+  return literal !== undefined &&
+      (literal < -(1n << 63n) || literal >= (1n << 63n))
+    ? lowerExpression(node, context, operations)
+    : lowerExpression(node, context, operations, "int64");
+}
+
 /*
  * Python integer literals have no fixed-width type of their own.  Keep them
  * exact unless their enclosing native operation supplies a uint64 context.
@@ -883,10 +913,10 @@ function lowerContextualBinaryOperands(
   expectedType = undefined,
   inferLiteralType = false,
 ) {
-  if (expectedType === "uint64") {
+  if (expectedType === "uint64" || expectedType === "int64") {
     return [
-      lowerExpression(node.left, context, operations, "uint64"),
-      lowerExpression(node.right, context, operations, "uint64"),
+      lowerExpression(node.left, context, operations, expectedType),
+      lowerExpression(node.right, context, operations, expectedType),
     ];
   }
   if (!inferLiteralType) {
@@ -902,6 +932,8 @@ function lowerContextualBinaryOperands(
     const right = lowerExpression(node.right, context, rightOperations);
     const left = right.type === "uint64"
       ? emitUint64Constant(context, node.left, operations, leftLiteral)
+      : right.type === "int64"
+        ? emitInt64Constant(context, node.left, operations, leftLiteral)
       : right.type === "Float64"
         ? emitFloat64Constant(context, node.left, operations, leftLiteral)
         : emitConstant(context, node.left, operations, leftLiteral);
@@ -911,6 +943,8 @@ function lowerContextualBinaryOperands(
   const left = lowerExpression(node.left, context, operations);
   const right = rightLiteral !== undefined && left.type === "uint64"
     ? emitUint64Constant(context, node.right, operations, rightLiteral)
+    : rightLiteral !== undefined && left.type === "int64"
+      ? emitInt64Constant(context, node.right, operations, rightLiteral)
     : rightLiteral !== undefined && left.type === "Float64"
       ? emitFloat64Constant(context, node.right, operations, rightLiteral)
       : lowerExpression(node.right, context, operations);
@@ -932,7 +966,7 @@ function coerceInteger(value, context, node, operations) {
   expect(
     context,
     node,
-    value.type === "uint64",
+    value.type === "uint64" || value.type === "int64",
     `expected an integer value, got ${value.type}`,
   );
   const cached = context.scalarCoercions.get(value.name);
@@ -940,7 +974,7 @@ function coerceInteger(value, context, node, operations) {
   const target = temporary(context, node, "Integer");
   context.scalarCoercions.set(value.name, target);
   operations.push({
-    kind: "integer.from_uint64",
+    kind: value.type === "uint64" ? "integer.from_uint64" : "integer.from_int64",
     target,
     source: value.name,
   });
@@ -1658,6 +1692,26 @@ function lowerCall(node, context, operations) {
     return { name: target, type: "uint64" };
   }
 
+  if (name === "checked_int64") {
+    expect(
+      context,
+      node,
+      args.length === 1 && array(node.args?.kwarg_items).length === 0 &&
+        !node.args?.starargs,
+      "checked_int64() requires one positional argument",
+    );
+    const value = lowerExpression(args[0], context, operations);
+    if (value.type === "int64") return value;
+    const source = coerceInteger(value, context, args[0], operations);
+    const target = temporary(context, node, "int64");
+    operations.push({
+      kind: "int64.from_integer_checked",
+      target,
+      source: source.name,
+    });
+    return { name: target, type: "int64" };
+  }
+
   if (name === "int") {
     expect(context, node, args.length === 1, "int() requires one argument");
     const value = lowerExpression(args[0], context, operations);
@@ -1746,6 +1800,11 @@ function lowerCall(node, context, operations) {
       const target = temporary(context, node, "Float64");
       operations.push({ kind: "float64.abs", target, source: value.name });
       return { name: target, type: "Float64" };
+    }
+    if (value.type === "int64") {
+      const target = temporary(context, node, "int64");
+      operations.push({ kind: "int64.abs", target, source: value.name });
+      return { name: target, type: "int64" };
     }
     const source = coerceInteger(
       value,
@@ -1855,6 +1914,8 @@ function lowerCall(node, context, operations) {
           operations,
           BigInt(param.default),
         );
+      } else if (param.type === "int64") {
+        value = emitInt64Constant(context, node, operations, BigInt(param.default));
       } else {
         value = emitConstant(
           context,
@@ -1868,7 +1929,8 @@ function lowerCall(node, context, operations) {
         arg,
         context,
         operations,
-        param.type === "uint64" || param.type === "Float64" ||
+        param.type === "uint64" || param.type === "int64" ||
+            param.type === "Float64" ||
             param.type === LIVE_INTEGER_VECTOR_TYPE
           ? param.type
           : undefined,
@@ -1888,7 +1950,7 @@ function lowerCall(node, context, operations) {
   });
   if (signature.returnType === "Float64") {
     expect(context, node, signature.params.every(param =>
-      ["Float64", "Float64Buffer", "uint64", "Integer", "bool"].includes(param.type)),
+      ["Float64", "Float64Buffer", "uint64", "int64", "Integer", "bool"].includes(param.type)),
     `${name} requires scalar or Float64Buffer parameters for a Float64 return`);
   }
   const returnElements = tupleElementTypes(signature.returnType);
@@ -1936,6 +1998,8 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
   if (integer !== undefined) {
     return expectedType === "uint64"
       ? emitUint64Constant(context, node, operations, integer)
+      : expectedType === "int64"
+        ? emitInt64Constant(context, node, operations, integer)
       : emitConstant(context, node, operations, integer);
   }
   const boolean = booleanLiteral(node);
@@ -1950,6 +2014,8 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
       const value = context.integerConstants.get(name);
       return expectedType === "uint64"
         ? emitUint64Constant(context, node, operations, value)
+        : expectedType === "int64"
+          ? emitInt64Constant(context, node, operations, value)
         : emitConstant(context, node, operations, value);
     }
     expect(context, node, type !== undefined, `unknown native value ${node.name}`);
@@ -2104,10 +2170,13 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
       const buffer = lowerExpression(node.expression, context, operations);
       const loweredIndex = buffer.type === "UInt64Buffer"
         ? lowerUInt64BufferIndex(node.property, context, operations)
+        : INT64_BUFFER_TYPES.has(buffer.type)
+        ? lowerInt64BufferIndex(node.property, context, operations)
         : buffer.type === "Float64Buffer"
         ? lowerFloat64BufferIndex(node.property, context, operations)
         : lowerExpression(node.property, context, operations);
       const index = buffer.type === "UInt64Buffer" ||
+          INT64_BUFFER_TYPES.has(buffer.type) ||
           buffer.type === "Float64Buffer"
         ? loweredIndex
         : coerceInteger(
@@ -2116,13 +2185,18 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
       expect(
         context,
         node.property,
-        !["UInt64Buffer", "Float64Buffer"].includes(buffer.type) ||
-          index.type === "uint64" || index.type === "Integer",
+        !["UInt64Buffer", "Float64Buffer"].includes(buffer.type) &&
+            !INT64_BUFFER_TYPES.has(buffer.type) ||
+          index.type === "uint64" || index.type === "int64" ||
+            index.type === "Integer",
         `${buffer.type} indexing requires an exact integer index`,
       );
       const targetType = buffer.type === "UInt64Buffer"
         ? "uint64"
-        : buffer.type === "Float64Buffer" ? "Float64" : "Integer";
+        : buffer.type === "Float64Buffer"
+        ? "Float64"
+        : INT64_BUFFER_TYPES.has(buffer.type) && expectedType === "int64"
+        ? "int64" : "Integer";
       const target = temporary(context, node, targetType);
       operations.push({
         kind: buffer.type === "Float64Buffer"
@@ -2137,6 +2211,7 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
         bufferType: buffer.type,
         index: index.name,
         indexType: index.type,
+        valueType: targetType,
       });
       return { name: target, type: targetType };
     }
@@ -2174,6 +2249,11 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
           source: source.name,
         });
         return { name: target, type: "Float64" };
+      }
+      if (source.type === "int64") {
+        const target = temporary(context, node, "int64");
+        operations.push({ kind: "int64.neg", target, source: source.name });
+        return { name: target, type: "int64" };
       }
       const exact = coerceInteger(source, context, node.expression, operations);
       const target = temporary(context, node, "Integer");
@@ -2267,6 +2347,17 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
         right: right.name,
       });
       return { name: target, type: "uint64" };
+    }
+    if (left.type === "int64" && right.type === "int64") {
+      const target = temporary(context, node, "int64");
+      operations.push({
+        kind: "int64.binary",
+        operation: arithmetic,
+        target,
+        left: left.name,
+        right: right.name,
+      });
+      return { name: target, type: "int64" };
     }
     left = coerceInteger(
       left,
@@ -2371,6 +2462,17 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
       });
       return { name: target, type: "bool" };
     }
+    if (left.type === "int64" && right.type === "int64") {
+      const target = temporary(context, node, "bool");
+      operations.push({
+        kind: "int64.compare",
+        operation: comparison,
+        target,
+        left: left.name,
+        right: right.name,
+      });
+      return { name: target, type: "bool" };
+    }
     if (left.type === "Float64" || right.type === "Float64") {
       expect(
         context,
@@ -2388,7 +2490,7 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
       });
       return { name: target, type: "bool" };
     }
-    if (left.type === "Integer" || left.type === "uint64") {
+    if (["Integer", "uint64", "int64"].includes(left.type)) {
       left = coerceInteger(left, context, node.left, operations);
       right = coerceInteger(right, context, node.right, operations);
     }
@@ -2450,6 +2552,11 @@ function lowerCondition(node, context, operations) {
   if (value.type === "uint64") {
     const target = temporary(context, node, "bool");
     operations.push({ kind: "uint64.truth", target, source: value.name });
+    return { name: target, type: "bool" };
+  }
+  if (value.type === "int64") {
+    const target = temporary(context, node, "bool");
+    operations.push({ kind: "int64.truth", target, source: value.name });
     return { name: target, type: "bool" };
   }
   fail(context, node, `cannot use ${value.type} as a condition`);
@@ -2738,8 +2845,11 @@ function lowerBufferAssignment(item, right, operator, context) {
   );
   const loweredIndex = buffer.type === "UInt64Buffer"
     ? lowerUInt64BufferIndex(item.property, context, operations)
+    : INT64_BUFFER_TYPES.has(buffer.type)
+    ? lowerInt64BufferIndex(item.property, context, operations)
     : lowerExpression(item.property, context, operations);
-  const index = buffer.type === "UInt64Buffer"
+  const index = buffer.type === "UInt64Buffer" ||
+      INT64_BUFFER_TYPES.has(buffer.type)
     ? loweredIndex
     : coerceInteger(
         loweredIndex, context, item.property, operations,
@@ -2747,21 +2857,24 @@ function lowerBufferAssignment(item, right, operator, context) {
   expect(
     context,
     item.property,
-    buffer.type !== "UInt64Buffer" ||
-      index.type === "uint64" || index.type === "Integer",
-    "UInt64Buffer assignment requires an exact integer index",
+    buffer.type !== "UInt64Buffer" && !INT64_BUFFER_TYPES.has(buffer.type) ||
+      index.type === "uint64" || index.type === "int64" ||
+        index.type === "Integer",
+    `${buffer.type} assignment requires an integer index`,
   );
   let value = buffer.type === "UInt64Buffer"
     ? lowerUint64Operand(right, context, operations)
+    : INT64_BUFFER_TYPES.has(buffer.type)
+    ? lowerExpression(right, context, operations, "int64")
     : lowerExpression(right, context, operations);
-  if (buffer.type !== "UInt64Buffer") {
+  if (buffer.type !== "UInt64Buffer" && value.type !== "int64") {
     value = coerceInteger(value, context, right, operations);
   }
   expect(
     context,
     right,
     buffer.type !== "UInt64Buffer" || value.type === "uint64",
-    "UInt64Buffer assignment requires a uint64 value",
+    `${buffer.type} assignment requires its compact scalar value type`,
   );
   if (operator !== "=") {
     const arithmetic = INTEGER_BINARY.get(
@@ -2773,8 +2886,14 @@ function lowerBufferAssignment(item, right, operator, context) {
       arithmetic !== undefined,
       `unsupported indexed augmented operator ${operator}`,
     );
-    const valueType = buffer.type === "UInt64Buffer" ? "uint64" : "Integer";
-    const current = temporary(context, item, valueType);
+    const compact = INT64_BUFFER_TYPES.has(buffer.type) && value.type === "int64";
+    const valueType = buffer.type === "UInt64Buffer"
+      ? "uint64" : compact ? "int64" : "Integer";
+    let current = temporary(
+      context,
+      item,
+      INT64_BUFFER_TYPES.has(buffer.type) ? "int64" : valueType,
+    );
     operations.push({
       kind: buffer.type === "IntegerBuffer"
         ? "integer.buffer.get"
@@ -2786,11 +2905,23 @@ function lowerBufferAssignment(item, right, operator, context) {
       bufferType: buffer.type,
       index: index.name,
       indexType: index.type,
+      valueType,
     });
+    if (INT64_BUFFER_TYPES.has(buffer.type) && !compact) {
+      const exactCurrent = temporary(context, item, "Integer");
+      operations.push({
+        kind: "integer.from_int64",
+        target: exactCurrent,
+        source: current,
+      });
+      current = exactCurrent;
+    }
     const target = temporary(context, item, valueType);
     operations.push({
       kind: buffer.type === "UInt64Buffer"
         ? "uint64.binary"
+        : compact
+        ? "int64.binary"
         : "integer.binary",
       operation: arithmetic,
       target,
@@ -2810,6 +2941,7 @@ function lowerBufferAssignment(item, right, operator, context) {
     index: index.name,
     indexType: index.type,
     value: value.name,
+    valueType: value.type,
   });
   return operations;
 }
@@ -3228,15 +3360,15 @@ function lowerAssignment(statement, context) {
     expect(
       context,
       assign.annotation,
-      ["Integer", "uint64", "bool", "Float64", "IntegerBuffer"].includes(declaredType),
-      "native exact local annotation must be Integer, int, uint64, bool, Float64, or a borrowed IntegerBuffer view",
+      ["Integer", "uint64", "int64", "bool", "Float64", "IntegerBuffer"].includes(declaredType),
+      "native exact local annotation must be Integer, int, uint64, int64, bool, Float64, or a borrowed IntegerBuffer view",
     );
     const operations = [];
     let value = lowerExpression(
       assign.value,
       context,
       operations,
-      declaredType === "uint64" || declaredType === "Float64"
+      declaredType === "uint64" || declaredType === "int64" || declaredType === "Float64"
         ? declaredType
         : undefined,
     );
@@ -3311,7 +3443,7 @@ function lowerAssignment(statement, context) {
       assign.right,
       context,
       operations,
-      existingType === "uint64" || existingType === "Float64"
+      existingType === "uint64" || existingType === "int64" || existingType === "Float64"
         ? existingType
         : undefined,
     );
@@ -3403,22 +3535,22 @@ function lowerAssignment(statement, context) {
     });
     return operations;
   }
-  if (type === "uint64") {
+  if (type === "uint64" || type === "int64") {
     expect(
       context,
       assign.left,
       context.initialized.has(target),
-      `augmented target ${target} must be an initialized uint64`,
+      `augmented target ${target} must be an initialized ${type}`,
     );
-    const right = lowerUint64Operand(assign.right, context, operations);
+    const right = lowerExpression(assign.right, context, operations, type);
     expect(
       context,
       assign.right,
-      right.type === "uint64",
-      `uint64 augmented operator ${assign.operator} requires a uint64 operand`,
+      right.type === type,
+      `${type} augmented operator ${assign.operator} requires a ${type} operand`,
     );
     operations.push({
-      kind: "uint64.binary",
+      kind: `${type}.binary`,
       operation: bitwise ?? operation,
       target,
       left: target,
@@ -3487,6 +3619,24 @@ function directUint64RangeVariable(node, context) {
     context.variables.get(resolvedSymbol(context, node.name)) === "uint64";
 }
 
+function directInt64RangeArgument(node, context) {
+  const literal = integerLiteral(node);
+  if (literal !== undefined) {
+    return literal >= -(1n << 63n) && literal < (1n << 63n);
+  }
+  if (nodeType(node) !== "AST_SymbolRef") return false;
+  const name = resolvedSymbol(context, node.name);
+  if (context.variables.get(name) === "int64") return true;
+  const constant = context.integerConstants.get(name);
+  return constant !== undefined && constant >= -(1n << 63n) &&
+    constant < (1n << 63n);
+}
+
+function directInt64RangeVariable(node, context) {
+  return nodeType(node) === "AST_SymbolRef" &&
+    context.variables.get(resolvedSymbol(context, node.name)) === "int64";
+}
+
 function freezeRangeValue(value, node, context, operations, type) {
   if (type === "Integer") {
     value = coerceInteger(value, context, node, operations);
@@ -3494,13 +3644,13 @@ function freezeRangeValue(value, node, context, operations, type) {
     expect(
       context,
       node,
-      value.type === "uint64",
-      `native uint64 range argument has type ${value.type}`,
+      value.type === type,
+      `native ${type} range argument has type ${value.type}`,
     );
   }
   const target = temporary(context, node, type);
   operations.push({
-    kind: type === "Integer" ? "integer.copy" : "uint64.copy",
+    kind: type === "Integer" ? "integer.copy" : `${type}.copy`,
     target,
     source: value.name,
   });
@@ -3512,7 +3662,7 @@ function freezeRangeArgument(node, context, operations, type) {
     node,
     context,
     operations,
-    type === "uint64" ? "uint64" : undefined,
+    ["uint64", "int64"].includes(type) ? type : undefined,
   );
   return freezeRangeValue(value, node, context, operations, type);
 }
@@ -3558,7 +3708,11 @@ function lowerRange(node, context, targetName = undefined) {
     (existingTargetType === "uint64" ||
       supplied.some((argument) => directUint64RangeVariable(argument, context))) &&
     supplied.every((argument) => directUint64RangeArgument(argument, context));
-  const type = useUint64 ? "uint64" : "Integer";
+  const useInt64 = !useUint64 && existingTargetType !== "Integer" &&
+    (existingTargetType === "int64" ||
+      supplied.some((argument) => directInt64RangeVariable(argument, context))) &&
+    supplied.every((argument) => directInt64RangeArgument(argument, context));
+  const type = useUint64 ? "uint64" : useInt64 ? "int64" : "Integer";
 
   let start;
   let stop;
@@ -3566,7 +3720,9 @@ function lowerRange(node, context, targetName = undefined) {
   if (args.length === 1) {
     const zero = type === "uint64"
       ? emitUint64Constant(context, node, operations, 0n)
-      : emitConstant(context, node, operations, 0n);
+      : type === "int64"
+        ? emitInt64Constant(context, node, operations, 0n)
+        : emitConstant(context, node, operations, 0n);
     start = freezeRangeValue(zero, node, context, operations, type);
     stop = freezeRangeArgument(stopNode, context, operations, type);
   } else {
@@ -3576,10 +3732,12 @@ function lowerRange(node, context, targetName = undefined) {
   if (stepNode === null) {
     const one = type === "uint64"
       ? emitUint64Constant(context, node, operations, 1n)
-      : emitConstant(context, node, operations, 1n);
+      : type === "int64"
+        ? emitInt64Constant(context, node, operations, 1n)
+        : emitConstant(context, node, operations, 1n);
     step = temporary(context, node, type);
     operations.push({
-      kind: type === "Integer" ? "integer.copy" : "uint64.copy",
+      kind: type === "Integer" ? "integer.copy" : `${type}.copy`,
       target: step,
       source: one.name,
     });
@@ -3595,7 +3753,8 @@ function lowerRange(node, context, targetName = undefined) {
     });
   }
   return {
-    kind: useUint64 ? "loop.range" : "loop.range_exact",
+    kind: useUint64 ? "loop.range" : useInt64
+      ? "loop.range_int64" : "loop.range_exact",
     start,
     stop,
     step,
@@ -3639,7 +3798,7 @@ function lowerStatements(statements, context) {
             statement,
             (last?.kind === "ffi.call" ||
               (last?.kind === "native.call" &&
-                ["Integer", "Float64", "uint64", "bool"].includes(value.type))) &&
+                ["Integer", "Float64", "uint64", "int64", "bool"].includes(value.type))) &&
               last.target === value.name,
             "native expression statements require a declared FFI call or scalar native call; " +
               "host callbacks are prohibited",
@@ -3853,7 +4012,8 @@ function lowerStatements(statements, context) {
         statement.value,
         context,
         operations,
-        context.returnType === "uint64" ? "uint64" : undefined,
+        ["uint64", "int64"].includes(context.returnType)
+          ? context.returnType : undefined,
       );
       if (context.returnType === "Integer") {
         value = coerceInteger(value, context, statement.value, operations);

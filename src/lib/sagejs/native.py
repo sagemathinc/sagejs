@@ -57,6 +57,7 @@ from typing import Any, TypeAlias
 # Annotation-only marker understood by the source-transparent prime-field
 # compiler experiment.  At runtime its values are ordinary Python lists.
 uint64: TypeAlias = int
+int64: TypeAlias = int
 UInt64Buffer = list[int]
 IntegerBuffer = list[int]
 Int64Buffer = list[int]
@@ -75,18 +76,21 @@ PrimeFieldModulus: TypeAlias = int
 _warned_fallback_sources: set[str] = set()
 
 
-def checked_uint64(value: int) -> uint64:
-    """Return `value` as an unsigned 64-bit integer.
-
-    This explicit conversion is useful in source-transparent native programs
-    when an exact computation determines a resident shape or loop bound.  The
-    dynamic fallback and compiled program both raise `OverflowError` unless
-    `value` is in `0 <= value < 2^64`.
-    """
+def _checked_word(value: int, lower: int, upper: int) -> int:
     exact = int(value)
-    if exact < 0 or exact >= (1 << 64):
-        raise OverflowError("integer is outside unsigned 64-bit")
+    if exact < lower or exact >= upper:
+        raise OverflowError("integer is outside requested 64-bit range")
     return exact
+
+
+def checked_uint64(value: int) -> uint64:
+    """Checked unsigned 64-bit conversion."""
+    return _checked_word(value, 0, 1 << 64)
+
+
+def checked_int64(value: int) -> int64:
+    """Checked signed 64-bit conversion."""
+    return _checked_word(value, -(1 << 63), 1 << 63)
 
 
 def checked_float64(value: int) -> float:
@@ -1767,7 +1771,9 @@ __all__ = [
     "PrimeFieldModulus",
     "RationalBuffer",
     "UInt64Buffer",
+    "int64",
     "uint64",
+    "checked_int64",
     "checked_float64",
     "checked_uint64",
     "float64_buffer",
