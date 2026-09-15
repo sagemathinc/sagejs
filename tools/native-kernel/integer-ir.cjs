@@ -1412,7 +1412,7 @@ function lowerCall(node, context, operations) {
     return {name: target, type: "Float64"};
   }
 
-  if (["log", "log2", "atan", "pow"].includes(context.mathFunctions.get(name))) {
+  if (["log", "log2", "atan", "exp", "pow"].includes(context.mathFunctions.get(name))) {
     const kind = context.mathFunctions.get(name);
     expect(context, node, !context.variables.has(name) && !context.lexicalLocals.has(name) &&
       !context.signatures.has(name) && !context.integerConstants.has(name) && !context.foreignFunctions.has(name),

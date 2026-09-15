@@ -759,3 +759,22 @@ nonnegative index-like values measured signed export at 14.01–14.34 ms versus
 versus 2.211–2.222 ms. These are isolated conversion measurements, not
 inclusive attribution or a class-group speed claim. No default backend or
 mathematical algorithm changes.
+
+### Source-transparent binary64 exponential
+
+Imported `math.exp`, including aliases, now lowers to `float64.exp` in pure
+binary64 and mixed exact/float graphs. Native code calls `exp` directly;
+dynamic code uses `Math.exp`, never an equivalent-looking power expression.
+Finite input producing infinity raises Python `OverflowError`. Positive
+infinity remains infinity, negative infinity becomes positive zero, NaN
+propagates, and ordinary underflow is not an exception. Pure native Float64
+error translation now recognizes `math range error`, matching the mixed
+native adapter. Libm and JavaScript results can differ by rounding; tests
+allow a narrow binary64 tolerance rather than promising identical bits.
+
+Focused CPython comparisons cover 1,674 inputs across pure native/dynamic,
+nested and reassigned expressions, and mixed GMP/tagged/dynamic execution.
+They include signed zeros, subnormals, infinities, NaN, overflow/underflow
+neighbors, failure before output publication, aliases, and invalid bindings
+or call shapes. This is a reusable compiler primitive, not a substitution
+for the source class-group scheduling formula or a performance claim.

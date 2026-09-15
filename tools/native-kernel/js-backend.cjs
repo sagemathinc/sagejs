@@ -97,6 +97,12 @@ function escapeJavaScriptBindings(fn) {
     )})};
 }
 
+function emitFloat64Exp(operation, indent) {
+  return `${indent}${operation.target} = Math.exp(${operation.source});\n` +
+    `${indent}if (!Number.isFinite(${operation.target}) && !Number.isNaN(${operation.target}) && Number.isFinite(${operation.source})) ` +
+    `nativeRaise("OverflowError", "math range error");`;
+}
+
 function emitFloat64Pow(operation, indent) {
   const {left, right, target} = operation;
   return [
@@ -549,6 +555,7 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "float64.atan") {
     return `${indent}${operation.target} = Math.atan(${operation.source});`;
   }
+  if (operation.kind === "float64.exp") return emitFloat64Exp(operation, indent);
   if (operation.kind === "float64.log" || operation.kind === "float64.log2") {
     return `${indent}if (${operation.source} <= 0) ` +
       `nativeRaise("ValueError", "math domain error");\n` +
@@ -1564,6 +1571,7 @@ function generateJavaScript(ir, options = {}) {
     if (operation.kind === "float64.atan") {
       return `${indent}${operation.target} = Math.atan(${operation.source});`;
     }
+    if (operation.kind === "float64.exp") return emitFloat64Exp(operation, indent);
     if (["float64.sqrt", "float64.log", "float64.log2"].includes(operation.kind)) {
       const logarithm = operation.kind !== "float64.sqrt";
       return `${indent}if (${operation.source} ${logarithm ? "<=" : "<"} 0) ` +
@@ -3191,6 +3199,7 @@ function nativeFloat64Call(name, args) {
     return nativeAddon[name](...args);
   } catch (error) {
     const message = String(error && error.message || error);
+    if (message === "math range error") nativeRaise("OverflowError", message);
     if (message.includes("Float64Record") ||
         message.includes("Float64 buffer index")) {
       nativeRaise("IndexError", message);
