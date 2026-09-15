@@ -452,8 +452,18 @@ def pari_prepared_ideal_valuation(
     ramification: int,
     inert: int,
 ) -> int:
-    """ZC_nfval's no-remainder path from prepared pr_get_tau data."""
-    if degree <= 0 or prime < 2 or prime.bit_length() > 64 or ramification < 1:
+    """ZC_nfval's no-remainder path from prepared pr_get_tau data.
+
+    Noninert ramification zero is the provisional descriptor used by
+    `base2.c:get_pr` while computing the actual ramification index.
+    """
+    if (
+        degree <= 0
+        or prime < 2
+        or prime.bit_length() > 64
+        or ramification < 0
+        or (inert != 0 and ramification == 0)
+    ):
         raise ValueError("invalid prepared prime-ideal valuation input")
     nonzero = 0
     for i in range(degree):
@@ -482,9 +492,12 @@ def pari_prepared_ideal_valuation(
                 term = tau[i * degree + j] * x[j]
                 if term != 0:
                     total += term
-            if total % prime != 0:
+            quotient, remainder = divmod(abs(total), prime)
+            if total < 0:
+                quotient = -quotient
+            y[i] = quotient
+            if remainder != 0:
                 return value
-            y[i] = total // prime
         for i in range(degree):
             x[i] = y[i]
         if value % 16 == 15:

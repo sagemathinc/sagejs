@@ -83,8 +83,12 @@ The next source revision closes additional preparation and scheduling gaps:
 - The connected uniformizer candidate schedule now matches 34 actual ideal
   cases and all 57 source norm tests across four execution modes. It retains
   signed centering, unramified short-circuiting and ordered ramified fallback.
-  Full descriptors still need antiuniformizers and valuations; see the
-  [uniformizer audit](../bench/pari-class-group-port/prime_uniformizer_audit.md).
+  See the [uniformizer audit](../bench/pari-class-group-port/prime_uniformizer_audit.md).
+- One connected native call now builds the noninert matrix-branch prime
+  descriptor, including antiuniformizer and ramification, with 34 cases and
+  12 source valuation calls passing all four execution modes. The ordinary
+  Kummer branch remains the main prepared-descriptor dependency; see the
+  [descriptor audit](../bench/pari-class-group-port/prime_descriptor_audit.md).
 
 See [packet integration evidence](../bench/pari-class-group-port/selected_ideal_packets_audit.md)
 and [acceptance scheduling evidence](../bench/pari-class-group-port/post_hnf_schedule_audit.md),
