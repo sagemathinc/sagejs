@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Measure faithful PARI 2.17.4 class-group translation feasibility",
-  "base_commit": "aa6d04a93ed81c4ab320fde0c744da252d25b5ec",
+  "base_commit": "888b5fd2f6173ee4ca193c0f3720284bda3a44f9",
   "claims": [
     "src/lib/sagejs/number_fields/pari_class_group/",
     "test/pari-class-group-port.cjs",
