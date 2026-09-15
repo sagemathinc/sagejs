@@ -1,5 +1,46 @@
 # Faithful PARI class-group language experiment
 
+## Latest checkpoint: runtime costs and preparation boundaries (2026-09-15)
+
+The experiment is still incomplete: there is no qualified `nfinit`-only
+class-group entry or broad matched-panel competitiveness result. Earlier
+sections below describe historical checkpoints, not necessarily current source.
+
+Recent frozen prepared-cubic experiments found two reproducible runtime gains:
+small-block reuse within the arithmetic arena reduced time by 18.4%, and
+checked word-conversion fast paths reduced that arena build's time by another
+6.95%. These are separately paired comparisons, not a new matched PARI ratio.
+See [arena evidence](../bench/pari-class-group-port/prepared_arena_experiment.md)
+and [word conversion evidence](../bench/pari-class-group-port/word_conversion_experiment.md).
+
+The next source revision closes additional preparation and scheduling gaps:
+
+- Generic native `math.exp` and imported `math.sqrt` support permits the
+  unchanged inline upstream subfactor-product formula. Its 286 cases match
+  CPython/PARI exactly in GMP and tagged native execution; JavaScript has a
+  recorded one-ULP difference.
+- Translated factor-base indices feed HNF/norm construction from raw prime
+  descriptors. Four-field constructor checks pass; the combined cubic and
+  quartic policies pass CPython/JavaScript/GMP/tagged. Full cubic CPython
+  collection still gives the exact 58 relations, logs and HNF. The checker
+  exports generated packets, not the oracle's selected HNF/norm answers.
+- Post-HNF determinant and analytic-factor calculation now follows the
+  regulator-multiple and unchanged-cache gates. Focused replay covers 152
+  cases in CPython and each of JavaScript/GMP/tagged, with deliberately invalid
+  deferred inputs on early exits. This does not retroactively qualify the
+  older frozen performance artifacts or rerun the full resident driver.
+
+See [packet integration evidence](../bench/pari-class-group-port/selected_ideal_packets_audit.md)
+and [acceptance scheduling evidence](../bench/pari-class-group-port/post_hnf_schedule_audit.md),
+plus the [remaining preparation boundary](../bench/pari-class-group-port/preparation_boundary_audit.md).
+Raw prime decomposition, selected admission metadata, embedding preparation,
+analytic-pipeline composition, and general driver branches still need work.
+The existing resumable caller's cache update occurs after the acceptance call
+returns; source-exact pre-reconstruction error-state placement is not claimed.
+No production defaults or experimental proof status changed. The architecture
+gate retains the documented stale optimizer-manifest failure; focused passes
+do not turn it into a green full gate.
+
 ## Measured arithmetic and provenance experiments (2026-09-15)
 
 Three isolated follow-ups retain the prepared cubic's exact class group,
