@@ -119,3 +119,52 @@ non-arena export from the same compiled module before drawing that conclusion.
 exercises both actual same-source JavaScript entries on fresh ordinary arrays,
 checking the class number, invariant factors, regulator, state, and work counts.
 Its reported single-call times are explicitly not qualified measurements.
+
+### Reuse result
+
+`arena-reuse-first-20260915.json` records successful full native execution on
+the same frozen field and work. Rebuilding cost 316.42 CPU seconds and peaked
+at 3,201,048 KiB child RSS under the unchanged 4 GiB address-space limit.
+The generated core is 58,295,392 bytes, SHA-256
+`5f27b6bda505603f999e5f492aff7a32b8f8bd50ec7817428fe6d3fd005f9d7a`.
+The three-call diagnostic has 24 minor faults total, versus 56,274 for the
+earlier bump-only arena. Both same-source JavaScript entries also pass, with
+fresh inputs and identical state, exact regulator and collection counters.
+
+`arena-reuse-paired-20260915.json` repeats the same-build comparison on CPU 15,
+one BLAS thread, AB/BA/AB, 20 fresh calls per sample and one excluded warmup. Input,
+source, core, owner policies and exact results agree across all six samples.
+Every timed sample exceeds one second.
+
+| Pair | Baseline ms/call | Reuse arena ms/call | Arena / baseline |
+| --- | ---: | ---: | ---: |
+| 1 | 110.052 | 90.414 | 0.822 |
+| 2 | 114.186 | 89.809 | 0.787 |
+| 3 | 107.168 | 90.045 | 0.840 |
+
+Geometric-mean ratio is 0.815793: **18.4% less kernel time** on this field.
+The three arena samples have 160, 196 and 161 minor faults across 20 calls
+each; baseline samples have 21, 16 and zero. All major-fault counts are zero.
+Reset costs remain separately reported and excluded from these kernel totals.
+
+This is a successful local allocation-discipline experiment, not whole-engine
+or cross-platform qualification. No new matched PARI timing was taken in this
+comparison; the large earlier PARI gap is not closed. The reduced page churn
+and improved timing support the reuse change, but do not identify the entire
+remaining cost. Public dispatch remains unchanged. Architecture checks retain
+the separately documented stale optimizer-manifest failure.
+
+The allocation interposer controls and complete replay also pass with reuse;
+`arena-reuse-allocation-counts-20260915.json` retains both warmup and measured
+counts. The post-warmup call records **30 malloc, zero calloc, zero realloc,
+and 29 free calls**, with 73,776 malloc-requested bytes. This includes the
+unchanged callback/bridge boundary, without subtracting its empty-call control.
+It does not count each internal arena allocation as a libc allocation or count
+direct mmap as malloc. The earlier baseline recorded 1,006,129 malloc and
+471,932 realloc calls. Exact output/work and input/core hashes still match.
+
+Thus the remaining approximately 90 ms cannot be attributed primarily to those
+removed libc calls. Arena bookkeeping, exact-value initialization and copying,
+arithmetic, and other generated-code work remain candidates. Profile the new
+core before choosing the next compiler change; these counts alone do not
+distinguish them. The instrumented call's time is not used in the paired result.

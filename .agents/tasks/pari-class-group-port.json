@@ -1968,6 +1968,16 @@
       "commit": "bf19f99b96aa9d54cb095e065ed8d031028e9410",
       "workspace_fingerprint": "e9a12f0f1918a87180085528ad9885b97aa41447807168ad7e395b52633d18aa",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_prepared_arena_javascript.cjs /tmp/sagejs-prepared-class-inputs-JXLwHg/inputs.json /home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/.sagejs-native-kernels/14daec3462ab7248d9cb5e3d181b67455f5f42abeec5a3b5194a7a4db6a39bed/index.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.353,
+      "started_at": "2026-09-15T04:26:01.620Z",
+      "commit": "f0c9a9a45337592066507bafc9a3bfc51b0dc8e5",
+      "workspace_fingerprint": "51116176e89191b6042962d57e8ee51719d08488deba0ef8cfca53cb0b3b65c7",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
