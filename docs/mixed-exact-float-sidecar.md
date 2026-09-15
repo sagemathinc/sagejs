@@ -675,3 +675,32 @@ claim, backend-default change, new dependency, or full platform qualification
 follows from adding the primitive. Full prepared-field replay remains the next
 integration check, and the stale architecture-manifest blocker noted above
 has not been hidden by regeneration.
+
+## Bounded reservations for externally mutating exact arenas
+
+Checkpoint allocation now receives an explicit reservation-policy flag. A
+replay-safe arena retains the existing speculative reservation envelope; an
+arena which writes caller-owned buffers reserves only its effective declared
+temporary capacity. The effective capacity still includes any retry shift,
+which is independent of whether an envelope is useful. A zero shift is not
+used as a proxy for non-retryability. Upstream allocation fallback, exhaustion
+reporting, cleanup, and the prohibition on replay after external writes are
+unchanged. Failed calls can still have modified external owners; their outputs
+must be discarded, not treated as a completed result.
+
+GMP and FMPZ emission use the same effect predicate as the adapter retry loop.
+Mixed Float64 scheduling now preserves the exact-workspace requirement, so
+arena roots use the existing tagged-to-GMP workspace bridge. Compiler cache
+identity explicitly includes the allocator source; production pack identities
+already incorporate the resulting kernel cache keys and core hashes.
+
+Focused checks pass under a 4 GiB address-space limit: nonzero retry shift,
+bounded 128 MiB reservation, invalid policy rejection, upstream fallback,
+external mutation without replay, generated GMP/FMPZ policy flags, and exact
+CPython/JavaScript/GMP/tagged/FMPZ results through 4096-bit inputs. OpenBLAS
+threads are limited to one for this constrained process. The broader existing
+early-checkpoint suite has a stale 59-child expectation (current source has
+89), and its ASan shadow mapping cannot run under this address-space cap.
+These are reported validation gaps, not relaxed assertions. This patch does
+not establish a prepared class-group performance improvement or a Windows
+runtime qualification.
