@@ -1,5 +1,27 @@
 # Faithful PARI class-group language experiment
 
+## Resident relation-to-HNF entry (2026-09-15)
+
+`connected_relation_hnf.py` joins rational-prime cache initialization,
+small-norm collection, weighted logarithms and initial HNF in one native
+entry. Both ordinary collection outcomes (schedule exhausted and cache target
+reached) proceed to logarithms/HNF, matching the upstream void `small_norm`.
+An explicit stage state prevents reuse after partial exceptions and makes a
+terminal repeat a no-op. Exact relation-to-word conversion remains inside the
+native core; no intermediate arrays are marshalled through the host.
+
+All four earlier diagnostic fields match the staged producer on CPython,
+JavaScript and GMP, including six initial guards and partial-failure/reuse
+checks. Reproduce with `check_connected_relation_hnf.cjs COLLECTOR_FIXTURE`;
+the input is the full producer fixture described below, not a PARI source path.
+Output hash `7be0c54fa2f960e254cf47051dded5cca1de3845e4859ce80aa5ea480e5def82`;
+generated C is 36,691,778 bytes, SHA-256
+`c5c245f83f7993b219e4d4edf21e87bfddace74ff29fa03e9ef24d9dcd97d208`.
+The diagnostic HNF allocation ceiling is 128 columns; it is not an algorithmic
+claim or a raised production safety limit. The prepared policy is still the
+earlier p<=101/quota-8 experiment. Actual default policy is a separate pending
+integration, and none of these concurrent checks qualifies runtime parity.
+
 ## Connected analytic factor (2026-09-15)
 
 `analytic_inverse_hr.py` now computes the residue bound, prime logarithms,
