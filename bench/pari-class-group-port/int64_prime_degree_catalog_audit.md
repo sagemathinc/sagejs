@@ -81,12 +81,15 @@ baseline repetitions per retained batch.  It measured 13.72--13.90 ms versus
 **6.10x speedup**).  Every arm again exceeded one second; both runs remain
 shared-host diagnostics rather than qualified release measurements.
 
-The earlier matched PARI observation was about 7.7 ms.  Comparing that older
-observation to this shared-host run only as orientation, not a qualified ratio,
-puts the candidate near 1.8x PARI on tagged and 2.5x on GMP.  Explicit signed
-storage therefore closes most of the previously observed approximately 42x
-kernel gap.  The remaining exact islands and compiler surface costs are now
-small enough to investigate individually.
+The earlier 7.7 ms PARI observation is for the larger accepted-class-candidate
+boundary, so comparing the 14 ms catalog alone with it is useful orientation
+but not a matched ratio.  The separately measured PARI output-contract catalog
+is about 2.03 ms, placing this tagged candidate about 6.8x behind that control
+and about 10x behind the 1.39 ms same-algorithm fixed-storage C ceiling.
+Explicit signed storage therefore removes most of the catalog's *measured
+excess over that C ceiling*, but it does not close the splitting-degree gap.
+The remaining exact islands and compiler surface costs are now small enough to
+investigate individually.
 
 ## Compiler findings
 

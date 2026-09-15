@@ -55,9 +55,7 @@ def ctype(annotation: str) -> str:
     }.get(annotation, "int64_t")
 
 
-FUNCTIONS = {
-    node.name: node for nodes in SELECTED.values() for node in nodes
-}
+FUNCTIONS = {node.name: node for nodes in SELECTED.values() for node in nodes}
 BUFFER_ARGUMENTS: dict[str, dict[str, str]] = {}
 for name, node in FUNCTIONS.items():
     BUFFER_ARGUMENTS[name] = {
@@ -83,7 +81,9 @@ def constant_type(value: object) -> str:
     return "i64"
 
 
-def infer_expression(node: ast.expr, types: dict[str, str], buffers: dict[str, str]) -> str:
+def infer_expression(
+    node: ast.expr, types: dict[str, str], buffers: dict[str, str]
+) -> str:
     if isinstance(node, ast.Constant):
         return constant_type(node.value)
     if isinstance(node, ast.Name):
@@ -191,7 +191,11 @@ class Emitter:
             return f"({operator}{self.expression(node.operand)})"
         if isinstance(node, ast.BoolOp):
             operator = " && " if isinstance(node.op, ast.And) else " || "
-            return "(" + operator.join(self.expression(value) for value in node.values) + ")"
+            return (
+                "("
+                + operator.join(self.expression(value) for value in node.values)
+                + ")"
+            )
         if isinstance(node, ast.Compare):
             operators = {
                 ast.Eq: "==",
@@ -254,13 +258,17 @@ class Emitter:
             if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
                 continue
             if isinstance(node, ast.Assign):
-                if len(node.targets) == 1 and isinstance(node.targets[0], (ast.Tuple, ast.List)):
+                if len(node.targets) == 1 and isinstance(
+                    node.targets[0], (ast.Tuple, ast.List)
+                ):
                     assert isinstance(node.value, (ast.Tuple, ast.List))
                     temporaries = []
                     for value in node.value.elts:
                         name = f"swap_{self.temporary}"
                         self.temporary += 1
-                        output.append(prefix + f"int64_t {name} = {self.expression(value)};")
+                        output.append(
+                            prefix + f"int64_t {name} = {self.expression(value)};"
+                        )
                         temporaries.append(name)
                     for target, value in zip(node.targets[0].elts, temporaries):
                         output.append(prefix + f"{self.target(target)} = {value};")
@@ -270,7 +278,10 @@ class Emitter:
                         output.append(prefix + f"{self.target(target)} = {value};")
             elif isinstance(node, ast.AnnAssign):
                 if node.value is not None:
-                    output.append(prefix + f"{self.target(node.target)} = {self.expression(node.value)};")
+                    output.append(
+                        prefix
+                        + f"{self.target(node.target)} = {self.expression(node.value)};"
+                    )
             elif isinstance(node, ast.AugAssign):
                 operator = {
                     ast.Add: "+=",
@@ -280,7 +291,10 @@ class Emitter:
                     ast.Mod: "%=",
                     ast.RShift: ">>=",
                 }[type(node.op)]
-                output.append(prefix + f"{self.target(node.target)} {operator} {self.expression(node.value)};")
+                output.append(
+                    prefix
+                    + f"{self.target(node.target)} {operator} {self.expression(node.value)};"
+                )
             elif isinstance(node, ast.If):
                 output.append(prefix + f"if ({self.expression(node.test)}) {{")
                 output.extend(self.statements(node.body, indent + 1))
@@ -294,13 +308,19 @@ class Emitter:
                 output.append(prefix + "}")
             elif isinstance(node, ast.For):
                 assert isinstance(node.target, ast.Name)
-                assert isinstance(node.iter, ast.Call) and isinstance(node.iter.func, ast.Name)
+                assert isinstance(node.iter, ast.Call) and isinstance(
+                    node.iter.func, ast.Name
+                )
                 assert node.iter.func.id == "range"
                 arguments = node.iter.args
                 if len(arguments) == 1:
                     start, stop, step = "0", self.expression(arguments[0]), "1"
                 elif len(arguments) == 2:
-                    start, stop, step = self.expression(arguments[0]), self.expression(arguments[1]), "1"
+                    start, stop, step = (
+                        self.expression(arguments[0]),
+                        self.expression(arguments[1]),
+                        "1",
+                    )
                 else:
                     start, stop, step = map(self.expression, arguments)
                 negative_step = (
@@ -319,7 +339,11 @@ class Emitter:
                 output.append(prefix + f"return {self.expression(node.value)};")
             elif isinstance(node, ast.Raise):
                 message = "translated Python exception"
-                if isinstance(node.exc, ast.Call) and node.exc.args and isinstance(node.exc.args[0], ast.Constant):
+                if (
+                    isinstance(node.exc, ast.Call)
+                    and node.exc.args
+                    and isinstance(node.exc.args[0], ast.Constant)
+                ):
                     message = str(node.exc.args[0].value)
                 output.append(prefix + f'word_control_fail("{message}");')
             elif isinstance(node, ast.Break):
@@ -336,7 +360,9 @@ class Emitter:
 def prototype(node: ast.FunctionDef) -> str:
     arguments = []
     for argument in node.args.args:
-        arguments.append(f"{ctype(annotation_name(argument.annotation))} {argument.arg}")
+        arguments.append(
+            f"{ctype(annotation_name(argument.annotation))} {argument.arg}"
+        )
     return f"static int64_t {node.name}({', '.join(arguments)})"
 
 

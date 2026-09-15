@@ -25,7 +25,7 @@ not identify compiler overhead. See the [paired baseline](../bench/pari-class-gr
 The corrected GMP generated core is 80,333,582 bytes. Compilation plus replay used
 367.86 CPU seconds and peaked at 2,007,696 KiB child RSS under the unchanged
 4 GiB address-space cap. Full strict-Python validation and the full build pass.
-`pnpm test:changed` passes its architecture stages through the CoWasm audit,
+`pnpm test:changed` passes its architecture stages through the forbidden-dependency audit,
 then stops at the stale optimizer-opportunity manifest (expected
 `f4de7d64e135fa9c187c5c77ac509cf898105751f01b080ec801a7f9f144f303`,
 found `ba010bb412b1a3024c4c62aa0b1086bea2507388dd103943be53b07cb267cc55`).

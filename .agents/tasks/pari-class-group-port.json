@@ -4,10 +4,10 @@
   "id": "pari-class-group-port",
   "title": "Pari Class Group Port",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "codex",
   "objective": "Test bounded storage on the faithful PARI 2.17.4 splitting-degree catalog, then test explicit storage reuse on its real HNF stage",
-  "base_commit": "0c600a514a4aa63e76a9065bab508ce6837a0212",
+  "base_commit": "eeb45268151f7afc4a953f662b146513f2f9ac88",
   "claims": [
     "src/lib/sagejs/number_fields/pari_class_group/",
     "test/pari-class-group-port.cjs",
@@ -2109,11 +2109,90 @@
       "commit": "b22a932caabf30bcd68b99d01cbc2357ac6dbd0e",
       "workspace_fingerprint": "df0be6b46dda7dcc280730f6d088a466cf053b894f3255f178f9b5b6ec3d817b",
       "platform": "linux-x64"
+    },
+    {
+      "command": "env OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 prlimit --as=4294967296 timeout 600s node bench/pari-class-group-port/check_int64_prime_degree_catalog.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.021,
+      "started_at": "2026-09-15T21:30:54.212Z",
+      "commit": "51da0951d0a38c0d1a335af5621242c3a0834048",
+      "workspace_fingerprint": "1365b38531ebbb0c795679d7da82540e96619102e7e8735318b0b831039fe082",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 prlimit --as=4294967296 timeout 600s node bench/pari-class-group-port/check_hnflll_resident_experiment.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.221,
+      "started_at": "2026-09-15T21:31:08.136Z",
+      "commit": "51da0951d0a38c0d1a335af5621242c3a0834048",
+      "workspace_fingerprint": "1365b38531ebbb0c795679d7da82540e96619102e7e8735318b0b831039fe082",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.042,
+      "started_at": "2026-09-15T21:31:38.253Z",
+      "commit": "51da0951d0a38c0d1a335af5621242c3a0834048",
+      "workspace_fingerprint": "1365b38531ebbb0c795679d7da82540e96619102e7e8735318b0b831039fe082",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1385.923,
+      "started_at": "2026-09-15T21:32:40.741Z",
+      "commit": "51da0951d0a38c0d1a335af5621242c3a0834048",
+      "workspace_fingerprint": "1365b38531ebbb0c795679d7da82540e96619102e7e8735318b0b831039fe082",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 902.143,
+      "started_at": "2026-09-15T21:58:40.767Z",
+      "commit": "e499b1eb200ea99cbe8d513bd4508e29cf759426",
+      "workspace_fingerprint": "5c8d244ff8d3590fcf61b20fa8980ebc4bbae0e7e05485dd2efcfd99897929c5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 949.913,
+      "started_at": "2026-09-15T22:27:28.885Z",
+      "commit": "e6f8e7f74595d41fe71e72d2708d192ea4b77f7b",
+      "workspace_fingerprint": "f027ba000994984823642da97695c99ee8e68885f5da3a185c3182eb9c5e69ab",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.883,
+      "started_at": "2026-09-15T22:43:30.314Z",
+      "commit": "e6f8e7f74595d41fe71e72d2708d192ea4b77f7b",
+      "workspace_fingerprint": "f027ba000994984823642da97695c99ee8e68885f5da3a185c3182eb9c5e69ab",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "The frozen bounded-storage campaign is complete. Residue-only UInt64 storage improves the catalog by 30--41% but does not close the gap. Checked int64 scalars plus Int64Buffer metadata improve it by 5.5--6.1x with exact agreement across CPython, JavaScript, GMP, tagged, the same-algorithm C control, and PARI's output contract. The production tagged catalog remains about 6.8x behind PARI and 10x behind its 1.39 ms fixed-storage C ceiling. Resident exact storage also transfers correctly to the actual 8x15 HNFLLL operand, but improves that roughly 3.4 ms kernel by only about 3%.",
+    "risks": [
+      "All retained timings are shared-host diagnostics with qualifiedTiming false; they are not release qualification.",
+      "The int64 catalog is an experiment and retains exact convolution, modular-inverse, length-preflight, input-reduction, and characteristic-two islands.",
+      "The same-storage C emitter assumes the frozen admitted bounds and is a diagnostic ceiling, not a production backend.",
+      "The full architecture gate reaches the optimizer-opportunity dashboard and then fails because its generated manifest is stale after compiler integration."
+    ],
+    "next_steps": [
+      "Eliminate and measure the remaining catalog exact islands one at a time against the 1.39 ms same-algorithm C ceiling.",
+      "Profile sparse cleanup, rank and matrix assembly, logarithmic transforms, and final propagation surrounding HNFLLL instead of optimizing the already-small HNFLLL kernel.",
+      "Regenerate and review optimizer-opportunity dashboard artifacts in the integration lane before making the compiler PR non-draft."
+    ]
   }
 }
