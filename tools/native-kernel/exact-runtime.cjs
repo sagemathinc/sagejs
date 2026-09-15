@@ -1587,6 +1587,43 @@ static int get_uint64(
     return 1;
 }
 
+static int get_int64(
+    napi_env env, napi_value value, int64_t *result)
+{
+    napi_valuetype type;
+    bool lossless;
+    double number;
+    if (!sagejs_native_check_napi(env, napi_typeof(env, value, &type)))
+        return 0;
+    if (type == napi_bigint)
+    {
+        if (!sagejs_native_check_napi(env,
+            napi_get_value_bigint_int64(env, value, result, &lossless)))
+            return 0;
+        if (!lossless)
+        {
+            napi_throw_range_error(env, NULL, "int64 argument is too large");
+            return 0;
+        }
+        return 1;
+    }
+    if (type != napi_number ||
+        !sagejs_native_check_napi(
+            env, napi_get_value_double(env, value, &number)))
+    {
+        napi_throw_type_error(env, NULL, "expected an int64 argument");
+        return 0;
+    }
+    if (!isfinite(number) || number < -9007199254740991.0 ||
+        number > 9007199254740991.0 || floor(number) != number)
+    {
+        napi_throw_range_error(env, NULL, "invalid int64 argument");
+        return 0;
+    }
+    *result = (int64_t) number;
+    return 1;
+}
+
 static int get_bool(napi_env env, napi_value value, int *result)
 {
     napi_valuetype type;

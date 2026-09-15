@@ -378,6 +378,7 @@ function backendFingerprint() {
       readFileSync(join(__dirname, "prime-source-optimize.cjs")),
       readFileSync(join(__dirname, "prime-source-backend.cjs")),
       readFileSync(join(__dirname, "uint64-operations.cjs")),
+      readFileSync(join(__dirname, "int64-operations.cjs")),
       readFileSync(join(__dirname, "provenance.cjs")),
       readFileSync(join(__dirname, "word-backend.cjs")),
       readFileSync(join(__dirname, "tagged-backend.cjs")),
