@@ -1,0 +1,57 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "brython-performance-audit",
+  "title": "Brython Performance Audit",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Audit upstream Brython benchmarks and report matched runtime measurements with attribution",
+  "base_commit": "dd8e968a61b919f8bf67e58ab5fca20f63bd2b00",
+  "claims": [
+    "bench/brython-audit/",
+    "docs/brython-performance-audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "node --test bench/brython-audit/audit.test.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node --test bench/brython-audit/audit.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.125,
+      "started_at": "2026-09-15T00:38:43.556Z",
+      "commit": "dd8e968a61b919f8bf67e58ab5fca20f63bd2b00",
+      "workspace_fingerprint": "a80c22deb6b70dba1f161c97f02cf33d4a637b37b2ec91502d584b7a500f5b02",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Research-only source audit with attributed upstream fixtures, four-engine local measurements, native/guarded exception probes and browser literal-pooling diagnosis. No production runtime changes.",
+    "risks": [
+      "Local shared Linux host reconnaissance, not four-platform acceptance or reproduction of the published website.",
+      "Trivial discarded results are JIT-sensitive; timings exclude startup and compilation."
+    ],
+    "next_steps": [
+      "Qualify browser literal pooling and profile construction/binding on observable package workloads."
+    ]
+  }
+}
