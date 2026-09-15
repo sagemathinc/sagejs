@@ -2545,7 +2545,7 @@ const { WASI } = require("node:wasi");
   });
   assert.match(
     readFileSync(integerAlgorithms.modulePath, "utf8"),
-    /sagejs_native_backend !== "bigint"/,
+    /const ([$\w]+) = backend_\w+\([^;]*\);\s*if \(\1 !== "bigint"\)/,
   );
   const integerAlgorithmsModule = require(integerAlgorithms.modulePath);
   const integerAlgorithmsAddon = require(integerAlgorithms.addonPath);
