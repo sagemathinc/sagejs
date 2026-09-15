@@ -1948,6 +1948,26 @@
       "commit": "d643c02d34c28a370a5ee117ccbd672f2c565339",
       "workspace_fingerprint": "2e8186851aeba72b3992cf7287dd69a1a37816b3b3f1d4e8dc9dc81be913f1a4",
       "platform": "linux-x64"
+    },
+    {
+      "command": "prlimit --as=4294967296 pnpm test:changed -- --base 17ac1e5435b4c93ad1bd7b100f3249e3e434b1bc",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 48.005,
+      "started_at": "2026-09-15T02:23:07.690Z",
+      "commit": "bf19f99b96aa9d54cb095e065ed8d031028e9410",
+      "workspace_fingerprint": "0c1af453dcbc6d8ae9d35024ef189f8e9115af5fa3b555541d4a00d66d38313d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "prlimit --as=4294967296 pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 11.706,
+      "started_at": "2026-09-15T02:25:35.074Z",
+      "commit": "bf19f99b96aa9d54cb095e065ed8d031028e9410",
+      "workspace_fingerprint": "e9a12f0f1918a87180085528ad9885b97aa41447807168ad7e395b52633d18aa",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

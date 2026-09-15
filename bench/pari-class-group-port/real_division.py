@@ -37,8 +37,8 @@ def pari_real_division(
             exponent -= 1
         else:
             numerator >>= 1
-        quotient = numerator // b
-        if numerator % b > b >> 1:
+        quotient, remainder = divmod(numerator, b)
+        if remainder > b >> 1:
             quotient += 1
         if quotient.bit_length() > 64:
             quotient = 1 << 63
@@ -62,8 +62,7 @@ def pari_real_division(
         if retained_precision < numerator_precision:
             numerator <<= numerator_precision - retained_precision
         divisor = b >> (py - divisor_precision)
-        quotient = numerator // divisor
-        remainder = numerator % divisor
+        quotient, remainder = divmod(numerator, divisor)
         if remainder >> (divisor_precision - 64) > divisor >> (divisor_precision - 63):
             quotient += 1
         if quotient.bit_length() <= precision:

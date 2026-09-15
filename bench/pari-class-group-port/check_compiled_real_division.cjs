@@ -1,6 +1,12 @@
 "use strict";
 const assert=require("node:assert/strict"),path=require("node:path"),fs=require("node:fs"),os=require("node:os");
 const {spawnSync}=require("node:child_process"),{compileKernel}=require("../../tools/native-kernel/compiler.cjs");
+function functionBody(core,name){
+ const match=new RegExp("static int "+name+"\\([^\\n]*\\)\\n\\{").exec(core);assert(match,`missing definition ${name}`);
+ const first=match.index+match[0].length-1;let end=first+1,depth=1;
+ for(;depth&&end<core.length;end++){if(core[end]==="{")depth++;else if(core[end]==="}")depth--;}
+ assert.equal(depth,0);return core.slice(first,end);
+}
 (async()=>{
  const pari=path.resolve(process.argv[2]),lib=path.join(pari,"Olinux-x86_64"),dir=fs.mkdtempSync(path.join(os.tmpdir(),"sagejs-real-division-")),source=path.join(dir,"oracle.c"),exe=path.join(dir,"oracle");
  fs.writeFileSync(source,`#include "pari.h"
@@ -24,7 +30,14 @@ for ix,row in enumerate(json.load(sys.stdin)):
     v=list(map(int,row));got=f(*v[:6]);assert got==tuple(v[6:]),(ix,v,got)
 `],{input:JSON.stringify(rows),encoding:"utf8",timeout:30000});assert.equal(py.status,0,py.stderr);
  const built=await compileKernel({sourcePath:path.join(__dirname,"real_division.py")}),mod=require(built.modulePath);
+ const core=fs.readFileSync(built.coreSourcePath,"utf8"),nativeBody=functionBody(core,"native_pari_real_division"),taggedBody=functionBody(core,"tagged_pari_real_division");
+ const count=(body,operation)=>body.split(operation).length-1;
+ const operations={nativeDivmod:count(nativeBody,"mpz_fdiv_qr("),nativeQuotientOnly:count(nativeBody,"mpz_fdiv_q("),taggedDivmod:count(taggedBody,"sagejs_tagged_divmod("),taggedQuotientOnly:count(taggedBody,"sagejs_tagged_floordiv(")};
+ assert.deepEqual(operations,{nativeDivmod:2,nativeQuotientOnly:0,taggedDivmod:2,taggedQuotientOnly:0});
+ // The remaining remainder-only operations validate precision modulo 64;
+ // they are not duplicate divisions of the real mantissa operands.
  for(const row of rows)for(const backend of ["javascript","gmp","tagged"]){const v=row.map(BigInt);assert.deepEqual(mod.pari_real_division[backend](...v.slice(0,6)),v.slice(6),`${backend}: ${row}`);}
  for(const backend of ["javascript","gmp","tagged"])assert.throws(()=>mod.pari_real_division[backend](1n<<63n,64n,0n,0n,0n,0n),/zero real divisor/);
  console.log("6272 unequal-precision real divisions match PARI/CPython/JS/GMP/tagged; quotient-leaf substitution remains explicit");
+ console.log(JSON.stringify({operations,coreSourcePath:built.coreSourcePath,coreBytes:Buffer.byteLength(core),coreSha256:require('node:crypto').createHash('sha256').update(core).digest('hex'),artifactDirectory:dir,qualifiedTiming:false}));
 })().catch(e=>{console.error(e);process.exitCode=1;});
