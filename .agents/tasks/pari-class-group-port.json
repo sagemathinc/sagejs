@@ -1908,6 +1908,26 @@
       "commit": "a398671c20c5cabff222075ebc1aecde29e46fe0",
       "workspace_fingerprint": "bcdbb5cfd4c30ff2f433344f0c11d80e6ea6ba18fddbc53825c17682f503622c",
       "platform": "linux-x64"
+    },
+    {
+      "command": "prlimit --as=4294967296 node bench/pari-class-group-port/check_connected_hnfadd_acceptance.cjs /tmp/sagejs-default-driver-eot7pJ/trace.json /tmp/sagejs-default-driver-5In4kt/trace.json /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.056,
+      "started_at": "2026-09-15T01:45:40.477Z",
+      "commit": "d757076551e9a98a384813b0497397c0d72b01c9",
+      "workspace_fingerprint": "dd9d9bec3660ceac67de6e312a68493ead560784eb84b8e54f8d0e146758edbc",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "prlimit --as=4294967296 node bench/pari-class-group-port/probe_resident_class_attempt.cjs /tmp/sagejs-prepared-class-inputs-JXLwHg/inputs.json --backend gmp --reference-fixtures /tmp/sagejs-prepared-attempt-reference-Zia34T/fixtures.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.36,
+      "started_at": "2026-09-15T01:47:21.956Z",
+      "commit": "d757076551e9a98a384813b0497397c0d72b01c9",
+      "workspace_fingerprint": "15a7fb2dfbf7e5d30bf567696186c0af25c9500296e79d155f7e597a1290d388",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {

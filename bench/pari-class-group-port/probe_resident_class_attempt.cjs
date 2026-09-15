@@ -14,6 +14,11 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
   const backendAt = process.argv.indexOf("--backend");
   const backend = backendAt < 0 ? "gmp" : process.argv[backendAt + 1];
   assert(["gmp", "tagged"].includes(backend), "unsupported diagnostic backend");
+  const referenceAt = process.argv.indexOf("--reference-fixtures");
+  const reference = referenceAt < 0 ? null : JSON.parse(
+    fs.readFileSync(process.argv[referenceAt + 1], "utf8"),
+  ).outputs.find(row => row.field === fixture.expected[0].field);
+  if (referenceAt >= 0) assert(reference, "missing matching reference field");
   const { names, inputs } = fixture;
   assert(Array.isArray(names) && Array.isArray(inputs));
   assert.equal(inputs.length, 1, "bounded single-field diagnostic only");
@@ -81,11 +86,23 @@ const { compileKernel } = require("../../tools/native-kernel/compiler.cjs");
       classNumber: String(view("class_number")[0]),
       regulator: view("accept_regulator").slice(0, 3).map(String),
       relations: String(view("relation_state")[0]),
+      work: {
+        smallElements: Number(view("counters")[1]),
+        factorAttempts: Number(view("progress")[1]),
+        ideals: Number(values.search_count) - Number(view("schedule")[0]),
+      },
     };
     assert.equal(action, 0n, "this diagnostic requires a completed accepted attempt");
     assert.equal(state[3], 1n);
     for (const key of ["action", "state", "invariants", "classNumber", "regulator"])
       assert.deepEqual(current[key], expected[key], "CPython replay mismatch: " + key);
+    if (reference) {
+      for (const key of ["classNumber", "invariants", "regulator"])
+        assert.deepEqual(current[key], reference[key], "PARI result mismatch: " + key);
+      assert.equal(Number(current.relations), reference.relations);
+      for (const key of ["smallElements", "factorAttempts", "ideals"])
+        assert.equal(current.work[key], reference[key], "PARI work-count mismatch: " + key);
+    }
     if (answer) assert.deepEqual(current, answer);
     answer = current;
     if (sample >= 0) samples.push({ milliseconds, cpuMilliseconds: (usage.user + usage.system) / 1000 });
