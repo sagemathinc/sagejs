@@ -29,12 +29,27 @@ The next source revision closes additional preparation and scheduling gaps:
   cases in CPython and each of JavaScript/GMP/tagged, with deliberately invalid
   deferred inputs on early exits. This does not retroactively qualify the
   older frozen performance artifacts or rerun the full resident driver.
+- Selected ramification, residue degrees, inert flags and valuation tau now
+  come from the translated selection into a raw descriptor catalog. The oracle
+  selected groups are assertion-only. This passes cubic/quartic policy checks
+  across all backends and the full cubic CPython collector; it does not yet
+  translate raw prime decomposition.
+- Exact discriminant-to-LOGD conversion matches PARI on 661 signed and
+  multiword cases across CPython/JavaScript/GMP/tagged. A new initial-attempt
+  wrapper computes LOGD and inverse hR internally before collection and
+  acceptance. CPython/JavaScript/GMP native pass, including failure-state and
+  terminal replay controls. The tested cubic returns class group C3 and the
+  exact PARI regulator. This is initial-attempt qualification, not a new timing
+  comparison or a complete prepared-number-field entry.
 
 See [packet integration evidence](../bench/pari-class-group-port/selected_ideal_packets_audit.md)
 and [acceptance scheduling evidence](../bench/pari-class-group-port/post_hnf_schedule_audit.md),
 plus the [remaining preparation boundary](../bench/pari-class-group-port/preparation_boundary_audit.md).
-Raw prime decomposition, selected admission metadata, embedding preparation,
-analytic-pipeline composition, and general driver branches still need work.
+See also [selected metadata](../bench/pari-class-group-port/selected_metadata_integration.md)
+and [discriminant conversion](../bench/pari-class-group-port/discriminant_log_audit.md),
+plus [native analytic composition](../bench/pari-class-group-port/analytic_class_group_attempt_audit.md).
+Raw prime decomposition, embedding preparation, composition of all preparation
+with the driver, and general driver branches still need work.
 The existing resumable caller's cache update occurs after the acceptance call
 returns; source-exact pre-reconstruction error-state placement is not claimed.
 No production defaults or experimental proof status changed. The architecture

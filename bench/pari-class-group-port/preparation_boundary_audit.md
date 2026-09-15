@@ -30,25 +30,37 @@ distinct-degree factorization. Replacing these with another backend's
 factorization may be useful later, but would not isolate a language-only
 comparison without separately accounting for that algorithm change.
 
-## Current execution boundary, before the next connections
+## Execution boundary and subsequent connections
 
 The resident prepared attempt already collects relations, performs HNF and
 regulator acceptance, and extracts class invariants for its tested corridor.
 Its caller still supplies class-group-specific preparation beyond `nfinit`.
-`check_actual_initial_collector.cjs` executes the translated initial-base
-selector, but builds arithmetic packets from upstream `expected.groups`;
-asserting that selected indices agree does not itself remove that input.
+`check_actual_initial_collector.cjs` now executes the translated initial-base
+selector and builds arithmetic packets from its selected indices into a full
+raw descriptor catalog. `expected.groups` supplies assertions only, not selected
+HNF, norm, valuation metadata, or grouping inputs.
 
-The next packet connector must consume the **full raw descriptor catalog**
-and the translated selector's active indices. It can call the existing
-`pari_prime_ideal_hnf` and derive each norm from its prime and residue degree.
-Expected selected HNFs and norms belong only in comparison assertions.
-This removes selected-packet answers, not prime decomposition itself.
+The packet connector calls `pari_prime_ideal_hnf` and derives each norm from
+its prime and residue degree. The metadata connector gathers ramification,
+residue degree, inert flag and tau using the same active indices; grouping and
+support data come from the translated initial-base output. This removes
+selected-packet answers, not prime decomposition itself. The raw catalog still
+comes from PARI and may overprepare descriptors relative to the upstream path.
 
-Likewise, `pari_analytic_inverse_hr` already computes bound selection, inverse
-residue, and normalization from raw pattern data, but is separately invoked.
-Joining it to the resident driver is still required. The existence of each
-component does not establish the composed boundary or its timing.
+`pari_analytic_class_group_attempt` now connects exact discriminant-to-LOGD,
+bound selection, inverse residue and normalization to the resident initial
+attempt. CPython, generated JavaScript and GMP native pass on the prepared
+cubic fixture. Incoming LOGD and inverse
+hR scratch are poisoned in the test. Analytic exceptions leave an unpublished
+partial state and prohibit re-entry. Raw prime patterns, roots of unity and
+the existing prepared attempt inputs remain caller-supplied: this is not yet
+an `nfinit`-only entry. Factor-base preparation and this analytic wrapper are
+also not yet combined into one driver. The existence of each component does
+not establish that final composed boundary or its timing.
+
+See `analytic_class_group_attempt_audit.md` for native artifact identities and
+failure controls, and `get_fs_dependency_frontier.md` for the next translated
+prime-pattern producer. Neither qualification changes production proof status.
 
 ## Source ordering to retain when composing
 
