@@ -68,11 +68,11 @@ ${block}
   v.search_ideals.push('0','999999');
   // j/e0/mode are selected inside the closure; these cannot be policy inputs.
   v.jid0='0';v.e0='0';v.construct_primes='0';
-  if(withLogs){const n=Number(v.n),ru=Number(v.outer_ru),capacity=Number(v.relation_state[1]);Object.assign(v,{log_precision:'128',log_completed:['0'],log_embeddings:Array(capacity*7*ru).fill('0'),log_coordinates:Array(n).fill('0'),log_column:Array(7*ru).fill('0'),log_cache:Array(3).fill('0'),log_pi_cache:Array(3).fill('0'),log_a:Array(64).fill('0'),log_b:Array(64).fill('0'),log_p:Array(64).fill('0'),log_q:Array(64).fill('0'),log_stack:Array(128).fill('0')});}
+  if(withLogs){assert.equal(Number(v.relation_state[0]),0,'this diagnostic starts without rational relations');v.scalar_prefix_count='0';const n=Number(v.n),ru=Number(v.outer_ru),capacity=Number(v.relation_state[1]);Object.assign(v,{log_precision:'128',log_completed:['0'],log_embeddings:Array(capacity*7*ru).fill('0'),log_coordinates:Array(n).fill('0'),log_column:Array(7*ru).fill('0'),log_cache:Array(3).fill('0'),log_pi_cache:Array(3).fill('0'),log_a:Array(64).fill('0'),log_b:Array(64).fill('0'),log_p:Array(64).fill('0'),log_q:Array(64).fill('0'),log_stack:Array(128).fill('0')});}
   return v;
  });
  const names=fixture.names.slice(),entry=withLogs?'pari_collect_and_log_relations':fixture.entry;
- if(withLogs)for(const name of ['log_precision','log_completed','log_embeddings','log_coordinates','log_column','log_cache','log_pi_cache','log_a','log_b','log_p','log_q','log_stack'])names.push([name,name==='log_precision'?'int':'IntegerBuffer']);
+ if(withLogs)for(const name of ['log_precision','log_completed','log_embeddings','log_coordinates','log_column','log_cache','log_pi_cache','log_a','log_b','log_p','log_q','log_stack','scalar_prefix_count'])names.push([name,name==='log_precision'||name==='scalar_prefix_count'?'int':'IntegerBuffer']);
  run('python3',['-c',`import sys,json,decimal,importlib
 sys.set_int_max_str_digits(100000);sys.path[:0]=sys.argv[1:3]
 m=importlib.import_module('bench.pari-class-group-port.unreduced_small_norm');f=m.pari_collect_unreduced_ideals

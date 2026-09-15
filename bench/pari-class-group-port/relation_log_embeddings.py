@@ -31,14 +31,18 @@ def pari_append_relation_log_embeddings(
     p: IntegerBuffer,
     q: IntegerBuffer,
     stack: IntegerBuffer,
+    scalar_prefix_count: int,
 ) -> int:
     """Append new weighted logarithms without recomputing the saved prefix.
 
     Metadata uses the collector's one-based generator tokens, relative original
     index and automorphism id. Automorphism records explicitly reject here.
-    Rational initial generators have the owned coordinates (p,0,...,0); their
-    matrix product equals the upstream scalar column, but this adapter does
-    not claim equal operation counts for that representation substitution.
+    `scalar_prefix_count` preserves the initializer's actual return value:
+    these generators were scalar GENs, even though owned storage contains
+    coordinates (p,0,...,0). Later generators were columns. Never infer this
+    provenance from coordinates or the current cache length. The prefix count
+    stays fixed across calls; future non-prefix scalar insertions need an
+    explicit generator-kind representation instead.
 
     completed[0] commits one finished column at a time; a later failure leaves
     the old prefix intact and may update constant scratch. This is diagnostic
@@ -55,6 +59,8 @@ def pari_append_relation_log_embeddings(
         raise ValueError("invalid relation embedding dimensions")
     if len(completed) < 1 or count < 0 or completed[0] < 0 or completed[0] > count:
         raise ValueError("invalid completed embedding prefix")
+    if scalar_prefix_count < 0 or scalar_prefix_count > count:
+        raise ValueError("invalid scalar generator prefix")
     width = 7 * ((degree + real_places) // 2)
     if (
         len(embeddings) < count * width
@@ -82,7 +88,7 @@ def pari_append_relation_log_embeddings(
             coordinates,
             degree,
             real_places,
-            False,
+            row < scalar_prefix_count,
             precision,
             column,
             log_cache,

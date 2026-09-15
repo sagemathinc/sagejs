@@ -589,6 +589,7 @@ def pari_prepared_class_group_resumable(
         log_p,
         log_q,
         log_stack,
+        initial_count,
     )
     if action != 0:
         return _pari_resumable_stop(driver_state, action)
@@ -938,6 +939,7 @@ def pari_prepared_class_group_resumable(
             log_p,
             log_q,
             log_stack,
+            initial_count,
         )
         if action != 0:
             return _pari_resumable_stop(driver_state, action)

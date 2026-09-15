@@ -1,5 +1,25 @@
 # Smallest remaining end-to-end class-group boundary
 
+## Status after the prepared-driver connections
+
+The audit below is a historical dependency map, not the current execution
+boundary. Subsequent work connected source-selected prepared factor bases,
+native analytic inverse hR, class invariant output, and a resident quartic
+retry corridor. Two prepared real cubics accept in one call; the prepared
+quartic `x^4-20018*x-20034` accepts after 150/151/152 relation stages. See
+`resumable_driver_audit.md` and `../../docs/pari-class-group-port.md` for the
+tested current paths and their precise outer inputs.
+
+This still does not close the plan's `nfinit`-only preparation boundary:
+prime/ideal/embedding packets and factor-base policy remain externally prepared,
+and the analytic pipeline is separately called. General retries, honesty,
+precision escalation, full frozen-panel coverage and matched seconds-scale
+performance remain unfinished. The measured prepared cubic is approximately
+35 times slower than its PARI comparator before the latest narrow arithmetic
+experiments; those experiments have not established a competitive result.
+
+## Original source audit
+
 2026-09-15, read-only source audit. Source references below use pristine
 PARI 2.17.4 `src/basemath/buch2.c`, SHA-256
 `904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac`.

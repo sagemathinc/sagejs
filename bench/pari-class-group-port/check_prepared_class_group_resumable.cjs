@@ -20,12 +20,24 @@ const hash=x=>createHash('sha256').update(x).digest('hex');
  const python=String.raw`
 import sys,json,importlib,copy,decimal
 sys.set_int_max_str_digits(100000);sys.path[:0]=sys.argv[1:3]
-f=importlib.import_module('bench.pari-class-group-port.prepared_class_group_resumable').pari_prepared_class_group_resumable
+driver=importlib.import_module('bench.pari-class-group-port.prepared_class_group_resumable')
+logs=importlib.import_module('bench.pari-class-group-port.collected_log_embeddings')
+f=driver.pari_prepared_class_group_resumable
+initialize=driver.pari_initialize_owned_relations;append=logs.pari_append_relation_log_embeddings
+initial_counts=[];scalar_prefixes=[]
+def recorded_initialize(*args):
+ count=initialize(*args);initial_counts.append(count);return count
+def recorded_append(*args):
+ scalar_prefixes.append(args[-1]);return append(*args)
+driver.pari_initialize_owned_relations=recorded_initialize
+logs.pari_append_relation_log_embeddings=recorded_append
 d=json.load(sys.stdin);out=[]
 def fresh():
  return {k:([float(y) if t=='Float64Buffer' else int(y) for y in d['raw'][k]] if t.endswith('Buffer') else float(d['raw'][k]) if t=='float' else bool(d['raw'][k]) if t=='bool' else int(d['raw'][k])) for k,t in d['names']}
 for passes in [1,2,3]:
+ initial_counts.clear();scalar_prefixes.clear()
  v=fresh();v['pass_limit']=passes;status=f(**v);last=v['relation_state'][0];w=d['wanted'];kc=len(v['relation']);n=v['n'];places=(n+v['admission_real_count'])//2
+ assert len(initial_counts)==1 and scalar_prefixes==initial_counts*passes,(initial_counts,scalar_prefixes)
  assert status==(0 if passes==3 else -200),(passes,status,v['driver_state'],v['accept_acceptance_state'][:3],v['accept_multiple_state'][:4])
  assert last==149+passes and v['relation_state'][4]==last and v['driver_state'][3]==last
  assert v['driver_state'][2]==passes and v['outer_state'][2]==passes and v['outer_state'][3]==passes-1 and v['outer_state'][4]==10
@@ -40,6 +52,7 @@ for passes in [1,2,3]:
   assert list(map(str,v['hnf_result_c'][:len(w['C'])]))==w['C']
  else:assert v['class_number']==[77] and v['class_invariants']==[77]*kc and v['driver_state'][4]==0
  before=copy.deepcopy(v);assert f(**v)==status and v==before
+ assert len(initial_counts)==1 and scalar_prefixes==initial_counts*passes
  out.append(dict(passes=passes,status=status,driverState=v['driver_state'],trace=v['driver_trace'],outer=v['outer_state'],relationState=list(map(str,v['relation_state'])),classNumber=str(v['class_number'][0]),regulator=list(map(str,v['accept_regulator'][:3])),L=list(map(str,v['accept_relations'][:len(w['L'])]))))
 for key,value in [('automorphism_count',2),('checking_prime_count',d['raw']['relation_prime_count']+1)]:
  v=fresh();v[key]=value;assert f(**v) in [-203,-206];assert v['driver_state'][4:6]==[0,0] and v['class_number']==[77]

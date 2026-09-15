@@ -184,13 +184,22 @@ def pari_collect_and_log_relations(
     log_p: IntegerBuffer,
     log_q: IntegerBuffer,
     log_stack: IntegerBuffer,
+    scalar_prefix_count: int,
 ) -> int:
     """Retain the collector state and append logs only after normal return.
 
     The explicit signature forwards the existing collector ABI unchanged.
     No callback, relation fixture or logarithm answer enters this closure.
     Negative/unresolved statuses return without claiming new embeddings.
+    The scalar prefix is the immutable count returned by initialization,
+    retained by the caller across collection and retries.
     """
+    if (
+        len(relation_state) < 1
+        or scalar_prefix_count < 0
+        or scalar_prefix_count > relation_state[0]
+    ):
+        raise ValueError("invalid scalar generator prefix")
     status = pari_collect_unreduced_ideals(
         matrix,
         ideal,
@@ -377,5 +386,6 @@ def pari_collect_and_log_relations(
         log_p,
         log_q,
         log_stack,
+        scalar_prefix_count,
     )
     return status

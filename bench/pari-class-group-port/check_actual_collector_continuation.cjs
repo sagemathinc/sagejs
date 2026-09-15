@@ -33,6 +33,7 @@ v={}
 for name,kind in d['firstNames']:
  conv=float if kind in ('float','Float64Buffer') else int;x=d['raw'][name];v[name]=list(map(conv,x)) if isinstance(x,list) else conv(x)
 assert first(**{k:v[k] for k,t in d['firstNames']})==0
+v['scalar_prefix_count']=v['chain_state'][2]
 e=d['expected'];kc=len(v['relation']);n=v['n'];ru=(n+v['admission_real_count'])//2;last=v['relation_state'][0]
 assert last==e['last'];assert v['relation_records'][:last*kc]==e['records'];assert list(map(str,v['generators'][:last*n]))==e['generators'];assert list(map(str,v['log_embeddings'][:last*7*ru]))==e['logs'];assert v['hnf_perm']==e['hnfPerm']
 # Literal first !A transition before compute_multiple_of_R.
@@ -64,7 +65,7 @@ print(json.dumps(outputs))
  const outputs=[];
  for(const backend of ['gmp']){
   const v=Object.fromEntries(firstNames.map(([name,kind])=>{const conv=kind==='float'||kind==='Float64Buffer'?Number:BigInt,x=raw[name];return [name,Array.isArray(x)?x.map(conv):conv(x)];}));
-  assert.equal(first[backend](...firstNames.map(([k])=>v[k])),0n);let last=Number(v.relation_state[0]);assert.equal(last,expected.last);assert.deepEqual(v.relation_records.slice(0,last*kc).map(Number),expected.records);assert.deepEqual(v.generators.slice(0,last*n).map(String),expected.generators);assert.deepEqual(v.log_embeddings.slice(0,last*7*ru).map(String),expected.logs);assert.deepEqual(v.hnf_perm.map(Number),expected.hnfPerm);
+  assert.equal(first[backend](...firstNames.map(([k])=>v[k])),0n);v.scalar_prefix_count=v.chain_state[2];let last=Number(v.relation_state[0]);assert.equal(last,expected.last);assert.deepEqual(v.relation_records.slice(0,last*kc).map(Number),expected.records);assert.deepEqual(v.generators.slice(0,last*n).map(String),expected.generators);assert.deepEqual(v.log_embeddings.slice(0,last*7*ru).map(String),expected.logs);assert.deepEqual(v.hnf_perm.map(Number),expected.hnfPerm);
   v.outer_state[3]=0n;v.outer_state[4]=BigInt(Math.max(Math.floor(kc/32),10));
   for(let ix=0;ix<appends.length;ix++){
    const a=appends[ix],old=last,records=v.relation_records.slice(0,old*kc),gens=v.generators.slice(0,old*n),logs=v.log_embeddings.slice(0,old*7*ru);

@@ -480,6 +480,7 @@ def pari_connected_relation_hnf(
         log_p,
         log_q,
         log_stack,
+        int(chain_state[2]),
     )
     chain_state[0] = 2
     for i in range(rows * columns):

@@ -84,7 +84,7 @@ collect=importlib.import_module('bench.pari-class-group-port.unreduced_small_nor
 s=collect(**v);last=v['relation_state'][0];assert s==int(last>=e['target']),('collector',s);assert last==e['last'],(last,e['last']);assert v['relation_records'][:last*kc]==e['records'];assert list(map(str,v['generators'][:last*v['n']]))==e['generators']
 ru=(v['n']+v['admission_real_count'])//2;logs=[0]*(7*ru*last);done=[0]
 append=importlib.import_module('bench.pari-class-group-port.relation_log_embeddings').pari_append_relation_log_embeddings
-append(v['admission_matrix_m'],v['admission_matrix_p'],v['admission_matrix_e'],v['generators'],v['relation_metadata'],last,v['n'],v['admission_real_count'],e['precision'],done,logs,[0]*v['n'],[0]*(7*ru),[0]*3,[0]*3,[0]*64,[0]*64,[0]*64,[0]*64,[0]*128);assert list(map(str,logs))==e['logs']
+append(v['admission_matrix_m'],v['admission_matrix_p'],v['admission_matrix_e'],v['generators'],v['relation_metadata'],last,v['n'],v['admission_real_count'],e['precision'],done,logs,[0]*v['n'],[0]*(7*ru),[0]*3,[0]*3,[0]*64,[0]*64,[0]*64,[0]*64,[0]*128,initial);assert list(map(str,logs))==e['logs']
 hnf=importlib.import_module('bench.pari-class-group-port.hnfspec_complete').pari_hnfspec_complete
 cap=max(64,(kc+last)**2,7*ru*(kc+last));w={name:[77]*cap for name,kind in d['hsig'] if kind!='int'};w.update(original=v['relation_records'][:last*kc],rows=kc,columns=last,perm=perm,k0=e['subfactorCount'],logs=logs,log_rows=ru)
 w.update(cup_arena=[77]*160000,cup_frames=[77]*32,cup_solve_state=[77]*8,cup_state=[77]*8)
