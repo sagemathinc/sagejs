@@ -15,7 +15,8 @@
     "docs/pari-class-group-port.md"
   ],
   "dependencies": [
-    "mixed-exact-float-sidecar"
+    "mixed-exact-float-sidecar",
+    "native-int64-scalar"
   ],
   "references": [],
   "architecture": {
