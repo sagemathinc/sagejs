@@ -40,6 +40,7 @@ function operationInputs(operation) {
     case "float64.log2":
     case "float64.atan":
     case "float64.exp":
+    case "float64.sqrt":
     case "float64.frexp":
     case "float64.abs":
     case "integer.from_float64":
@@ -647,6 +648,7 @@ function localEffects(fn) {
       }
       if (operation.kind === "float64.ldexp") mayRaise.add("OverflowError");
       if (operation.kind === "float64.exp") mayRaise.add("OverflowError");
+      if (operation.kind === "float64.sqrt") mayRaise.add("ValueError");
       if (operation.kind === "float64.from_integer") mayRaise.add("OverflowError");
       if (operation.kind === "integer.from_float64" || operation.kind === "integer.round_float64") {
         mayRaise.add("ValueError");

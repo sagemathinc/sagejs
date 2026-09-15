@@ -3,6 +3,53 @@
 const assert=require("node:assert/strict"),{mkdtempSync,writeFileSync,readFileSync}=require("node:fs");
 const {tmpdir}=require("node:os"),{join}=require("node:path"),{spawnSync}=require("node:child_process"),test=require("node:test");
 const {compileKernel}=require("../compiler.cjs"),{lowerSource}=require("../ir.cjs");
+test("imported sqrt composes with mixed exp and preserves domains", async()=>{
+ const dir=mkdtempSync(join(tmpdir(),"sagejs-sqrt-")),source=join(dir,"sqrt.py");
+ const text=`from sagejs.native import native, Float64Buffer
+from math import sqrt as root, exp
+@native
+def scalar(x: float) -> float:
+    return root(x)
+@native
+def mixed(values: Float64Buffer, n: int) -> int:
+    values[0] = root(values[0])
+    return n + 1
+@native
+def product(n: int, x: float) -> float:
+    return exp(x) * root(2.0 * 3.141592653589793 * float(n))
+`;
+ writeFileSync(source,text);
+ const ir=await lowerSource(text,source);
+ assert(ir.functions.find(f=>f.name==="mixed").analysis.effects.mayRaise.includes("ValueError"));
+ const built=await compileKernel({sourcePath:source}),mod=require(built.modulePath);
+ assert.match(readFileSync(built.coreSourcePath,"utf8"),/ = sqrt\(/);
+ const values=[-Infinity,-Number.MAX_VALUE,-1,-Number.MIN_VALUE,-0,0,Number.MIN_VALUE,1,2,Number.MAX_VALUE,Infinity,NaN];
+ for(let i=-1074;i<=1023;i++)values.push(2**i);
+ const token=x=>Object.is(x,-0)?"-0.0":String(x);
+ const oracle=spawnSync("python3",["-c",`import math,json,sys
+out=[]
+for x in map(float,json.load(sys.stdin)):
+    try: out.append(["ok",repr(math.sqrt(x))])
+    except ValueError: out.append(["domain"])
+print(json.dumps(out))`],{encoding:"utf8",input:JSON.stringify(values.map(token))});
+ assert.equal(oracle.status,0,oracle.stderr);const expected=JSON.parse(oracle.stdout);
+ const previous=globalThis.ValueError;globalThis.ValueError=class ValueError extends Error {};
+ try{
+  for(let i=0;i<values.length;i++)for(const backend of ["javascript","gmp","tagged"]){
+   const x=values[i],out=[x];
+   const calls=[...(backend==="tagged"?[]:[()=> (backend==="javascript"?mod.scalar.javascript:mod.scalar)(x)]),()=>{
+    assert.equal(mod.mixed[backend](out,5n),6n);return out[0];
+   }];
+   for(const call of calls)if(expected[i][0]==="domain")assert.throws(call,globalThis.ValueError);
+   else {const got=call(),want=expected[i][1]==="inf"?Infinity:Number(expected[i][1]);
+    assert(Number.isNaN(want)?Number.isNaN(got):Object.is(got,want));}
+   if(expected[i][0]==="domain")assert(Object.is(out[0],x));
+  }
+  for(const backend of ["javascript","gmp","tagged"])
+   for(let n=1;n<=10;n++)assert(Math.abs(mod.product[backend](BigInt(n),-2.0)-Math.exp(-2)*Math.sqrt(2*Math.PI*n))<1e-14);
+ }finally{if(previous===undefined)delete globalThis.ValueError;else globalThis.ValueError=previous;}
+ await assert.rejects(()=>lowerSource(`from sagejs.native import native\nfrom math import sqrt as root\n@native\ndef f(root: float)->float:\n    return root(root)\n`,source));
+});
 test("math exp preserves overflow, underflow and nonfinite semantics", async()=>{
  const dir=mkdtempSync(join(tmpdir(),"sagejs-exp-")),source=join(dir,"exp.py");
  const text=`from sagejs.native import native, Float64Buffer

@@ -1006,7 +1006,7 @@ async function lowerSource(source, filename, options = {}) {
       }
       if (item.level || item.module?.name !== "math") continue;
       for (const imported of array(item.argnames)) {
-        if (["isqrt", "gcd", "log", "log2", "atan", "exp", "pow", "ldexp", "frexp", "copysign"].includes(imported.name)) mathFunctions.set(imported.alias?.name || imported.name, imported.name);
+        if (["sqrt", "isqrt", "gcd", "log", "log2", "atan", "exp", "pow", "ldexp", "frexp", "copysign"].includes(imported.name)) mathFunctions.set(imported.alias?.name || imported.name, imported.name);
       }
     }
   }
