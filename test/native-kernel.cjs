@@ -288,10 +288,10 @@ const renamedPrimeFieldSourceIr = await lowerSource(
   "renamed-prime-field-source.py",
 );
 
-assert.equal(ir.version, 45);
-assert.equal(scalarExactIr.version, 45);
-assert.equal(scalarFloatIr.version, 45);
-assert.equal(reductionsIr.version, 45);
+assert.equal(ir.version, 46);
+assert.equal(scalarExactIr.version, 46);
+assert.equal(scalarFloatIr.version, 46);
+assert.equal(reductionsIr.version, 46);
 assert.deepEqual(
   scalarFloatIr.functions.map((fn) => [fn.name, fn.kernelKind]),
   [["int_to_float", "float64"], ["float_abs", "float64"]],
