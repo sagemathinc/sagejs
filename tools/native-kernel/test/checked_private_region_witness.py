@@ -190,6 +190,40 @@ def checked_region_validated_integer_view_entry(
 
 
 @native
+def checked_region_graph_span_helper(
+    storage: UInt64Buffer, start: int64
+) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(storage, start, 2)
+    return view[0]
+
+
+@native
+def checked_region_graph_span_entry(storage: UInt64Buffer) -> uint64:
+    return checked_region_graph_span_helper(storage, 2)
+
+
+@native
+def checked_region_graph_span_mutable_helper(
+    storage: UInt64Buffer, start: int64
+) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(storage, start, 2)
+    return view[0]
+
+
+@native
+def checked_region_graph_span_mutable_entry(
+    storage: UInt64Buffer, count: int64
+) -> uint64:
+    start: int64 = 2
+    result: uint64 = 0
+    while count > 0:
+        result = checked_region_graph_span_mutable_helper(storage, start)
+        start += 1
+        count -= 1
+    return result
+
+
+@native
 def checked_region_two_validated_views_entry(
     storage: UInt64Buffer,
     first_start: int64,

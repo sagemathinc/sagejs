@@ -4,9 +4,9 @@
   "id": "virtual-u64-fixed-views",
   "title": "Virtual fixed UInt64 views",
   "lane": "native-compiler",
-  "status": "review",
+  "status": "active",
   "owner": "user",
-  "objective": "Recover authenticated straight-line success facts inside otherwise unsupported loops, without asserting loop invariants or post-loop facts, and eliminate the four hot long-powu copy boundaries without weakening fallbacks",
+  "objective": "Prove constant UInt64 arena spans across an authenticated private call graph, eliminate every validation justified by those facts, and retain checked construction for unproved views",
   "base_commit": "07741b130c8fb55f9c73504441670e8e75a83e33",
   "claims": [
     "tools/native-kernel/checked-regions.cjs",

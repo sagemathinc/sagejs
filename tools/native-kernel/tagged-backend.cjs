@@ -1390,7 +1390,7 @@ function emitTaggedFunction(fn, functions, options) {
   // The all-word speculative loop is not yet qualified for Float64 edges.
   // Tagged arithmetic itself still uses its small-value fast paths.
   const sites = mixed ? new Map() : promotionSites(fn);
-  const virtualUInt64Views = checkedRegionVirtualUInt64Emission(fn);
+  const virtualUInt64Views = checkedRegionVirtualUInt64Emission(fn, functions);
   const virtualUInt64Snapshots = new Map(
     virtualUInt64Views.validatedViews().map((claim, index) => [
       claim.viewTarget,
@@ -1617,7 +1617,7 @@ function emitDirectResultFunction(fn, functions, metadata) {
     [...fn.params, ...fn.locals].map((value) => [value.name, value.type]),
   );
   const deadExactNames = new Set(metadata.deadExactNames);
-  const virtualUInt64Views = checkedRegionVirtualUInt64Emission(fn);
+  const virtualUInt64Views = checkedRegionVirtualUInt64Emission(fn, functions);
   const declarations = [];
   for (const param of fn.params) {
     declarations.push(

@@ -47,6 +47,18 @@ const virtualUInt64ViewAuthority = createFunctionProofAuthority({
     "provenance",
   ],
 });
+const graphVirtualUInt64ViewAuthority = createFunctionGraphProofAuthority({
+  name: "checked-region graph virtual UInt64 view",
+  ignoredKeys: [
+    "boundsProof",
+    "checkedRegionDirectCallProof",
+    "checkedRegionGuardedDirectCallProof",
+    "checkedRegionDirectResultProof",
+    "checkedRegionProof",
+    "incrementProof",
+    "provenance",
+  ],
+});
 const directCallAuthority = createFunctionProofAuthority({
   name: "checked-region direct result call",
   ignoredKeys: [
@@ -1052,13 +1064,24 @@ function attachVirtualFixedUInt64Views(
   entryState,
   enabled,
   intervalViewAccesses = new Map(),
+  graphFunctions,
+  pendingGraphAuthorizations = [],
 ) {
   if (!enabled.has("virtual-fixed-uint64-views")) return;
   const authorizations = [];
-  for (const { aliases, fact, view } of virtualFixedUInt64ViewGroups(
+  for (const { aliases, fact: localFact, view } of virtualFixedUInt64ViewGroups(
     fn,
     entryState,
   )) {
+    const graphFixed = localFact.mode === "fixed" &&
+      Array.isArray(graphFunctions);
+    const fact = graphFixed
+      ? Object.freeze({
+        ...localFact,
+        authority: "checked-region-graph-virtual-fixed-uint64-view-v1",
+        graphMembers: Object.freeze(graphFunctions.map(member => member.name)),
+      })
+      : localFact;
     const viewClaim = Object.freeze({ ...fact, role: "view", target: view.target });
     view[VIRTUAL_UINT64_VIEW_PROOF] = viewClaim;
     authorizations.push([view, viewClaim]);
@@ -1096,8 +1119,32 @@ function attachVirtualFixedUInt64Views(
   // after attaching every claim, so deleting or changing any one claim
   // invalidates descriptor elimination and every rewritten access together.
   for (const [operation, claim] of authorizations) {
-    virtualUInt64ViewAuthority.authorize(fn, operation, claim);
+    if (claim.authority ===
+        "checked-region-graph-virtual-fixed-uint64-view-v1") {
+      pendingGraphAuthorizations.push({
+        functions: graphFunctions,
+        owner: fn,
+        operation,
+        claim,
+      });
+    } else {
+      virtualUInt64ViewAuthority.authorize(fn, operation, claim);
+    }
   }
+}
+
+function checkedRegionGraphFunctions(owner, variants) {
+  const region = owner.checkedRegionVariant?.region;
+  if (region === undefined) return undefined;
+  const members = variants.filter(candidate =>
+    candidate.checkedRegionVariant?.region === region
+  );
+  if (!members.includes(owner)) return undefined;
+  return Object.freeze([
+    owner,
+    ...members.filter(candidate => candidate !== owner)
+      .sort((left, right) => left.name.localeCompare(right.name)),
+  ]);
 }
 
 function rangeIteratorInterval(operation, state) {
@@ -1312,6 +1359,66 @@ function refineConditionState(operation, state, truth, fn, structured = true) {
   return result;
 }
 
+function scalarComparisonPossibility(comparison, state, fn) {
+  const left = state.intervals.get(comparison.left) ||
+    declaredScalarDomain(fn, comparison.left);
+  const right = state.intervals.get(comparison.right) ||
+    declaredScalarDomain(fn, comparison.right);
+  if (left === undefined || right === undefined) {
+    return { truth: true, falsity: true };
+  }
+  let alwaysTrue = false;
+  let alwaysFalse = false;
+  if (comparison.operation === "lt") {
+    alwaysTrue = left.maximum < right.minimum;
+    alwaysFalse = left.minimum >= right.maximum;
+  } else if (comparison.operation === "le") {
+    alwaysTrue = left.maximum <= right.minimum;
+    alwaysFalse = left.minimum > right.maximum;
+  } else if (comparison.operation === "gt") {
+    alwaysTrue = left.minimum > right.maximum;
+    alwaysFalse = left.maximum <= right.minimum;
+  } else if (comparison.operation === "ge") {
+    alwaysTrue = left.minimum >= right.maximum;
+    alwaysFalse = left.maximum < right.minimum;
+  } else if (comparison.operation === "eq") {
+    alwaysTrue = left.minimum === left.maximum &&
+      right.minimum === right.maximum && left.minimum === right.minimum;
+    alwaysFalse = left.maximum < right.minimum || right.maximum < left.minimum;
+  } else if (comparison.operation === "ne") {
+    alwaysTrue = left.maximum < right.minimum || right.maximum < left.minimum;
+    alwaysFalse = left.minimum === left.maximum &&
+      right.minimum === right.maximum && left.minimum === right.minimum;
+  }
+  return { truth: !alwaysFalse, falsity: !alwaysTrue };
+}
+
+function comparisonPossibility(operation, state, fn) {
+  const comparison = comparisonCondition(operation, fn);
+  if (comparison !== undefined) {
+    return scalarComparisonPossibility(comparison, state, fn);
+  }
+  let truth = true;
+  for (const required of requiredTrueComparisons(operation.condition)) {
+    const seeded = cloneState(state);
+    seedRequiredComparisonConstants(operation.condition, required, seeded);
+    if (!scalarComparisonPossibility(required, seeded, fn).truth) {
+      truth = false;
+      break;
+    }
+  }
+  let falsity = true;
+  for (const required of requiredFalseComparisons(operation.condition)) {
+    const seeded = cloneState(state);
+    seedRequiredComparisonConstants(operation.condition, required, seeded);
+    if (!scalarComparisonPossibility(required, seeded, fn).falsity) {
+      falsity = false;
+      break;
+    }
+  }
+  return { truth, falsity };
+}
+
 function statementOutcomes(statements) {
   let outcomes = new Set(["fallthrough"]);
   for (const operation of statements || []) {
@@ -1344,7 +1451,7 @@ function invalidateNestedCalls(operation, context) {
   visitOperations(operation, (nested) => {
     if (nested.kind !== "native.call" ||
         !context.byName.has(nested.function)) return;
-    mergeFacts(context.facts.get(nested.function), {
+    const unknown = {
       intervals: new Map(),
       buffers: new Map(),
       expressions: new Map(),
@@ -1354,7 +1461,10 @@ function invalidateNestedCalls(operation, context) {
       summaryDependencies: new Set(),
       scalarBounds: new Map(),
       pathConditions: [],
-    });
+    };
+    if (context.facts !== undefined) {
+      mergeFacts(context.facts.get(nested.function), unknown);
+    }
   });
 }
 
@@ -1633,6 +1743,41 @@ function unsupportedWhileLocalSeed(operation, entryState) {
   };
 }
 
+function analyzeUnsupportedWhileInvariantCalls(operation, entryState, context) {
+  if (context.facts === undefined &&
+      context.invariantCallFacts === undefined) return;
+  // Model one arbitrary iteration solely to propagate facts into nested
+  // callees.  Every name assigned anywhere in the loop is unknown at the
+  // iteration head; consequently only immutable outer facts and values
+  // reconstructed from them inside this iteration can reach a call.  The
+  // resulting state is discarded and cannot cross the backedge or loop exit.
+  const seed = unsupportedWhileLocalSeed(operation, entryState);
+  const conditioned = analyzeStatements(
+    operation.condition?.operations,
+    cloneState(seed),
+    {
+      ...context,
+      activeRange: undefined,
+      callFacts: context.invariantCallFacts,
+      directResultCallees: undefined,
+      enabled: new Set(),
+      scalarSummaries: new Map(),
+    },
+  );
+  analyzeStatements(
+    operation.body,
+    conditioned,
+    {
+      ...context,
+      activeRange: undefined,
+      callFacts: context.invariantCallFacts,
+      directResultCallees: undefined,
+      enabled: new Set(),
+      scalarSummaries: new Map(),
+    },
+  );
+}
+
 function analyzeUnsupportedWhileSuccessChains(operation, entryState, context) {
   // This is deliberately not a loop analysis. It admits only a contiguous
   // successful scalar call, its pure forwarding copies, and a direct-result
@@ -1716,16 +1861,35 @@ function analyzeStatements(statements, state, context) {
         cloneState(state),
         context,
       );
-      const body = analyzeStatements(
-        operation.body,
-        refineConditionState(operation, conditioned, true, context.currentFunction),
-        context,
-      );
-      const alternative = analyzeStatements(
-        operation.alternative,
-        refineConditionState(operation, conditioned, false, context.currentFunction),
-        context,
-      );
+      const possibility = context.pruneImpossibleBranches === true
+        ? comparisonPossibility(operation, conditioned, context.currentFunction)
+        : { truth: true, falsity: true };
+      const body = possibility.truth
+        ? analyzeStatements(
+          operation.body,
+          refineConditionState(
+            operation, conditioned, true, context.currentFunction,
+          ),
+          context,
+        )
+        : undefined;
+      const alternative = possibility.falsity
+        ? analyzeStatements(
+          operation.alternative,
+          refineConditionState(
+            operation, conditioned, false, context.currentFunction,
+          ),
+          context,
+        )
+        : undefined;
+      if (body === undefined) {
+        state = alternative;
+        continue;
+      }
+      if (alternative === undefined) {
+        state = body;
+        continue;
+      }
       const bodyContinues = statementsCanFallThrough(operation.body);
       const alternativeContinues = statementsCanFallThrough(
         operation.alternative,
@@ -1835,10 +1999,15 @@ function analyzeStatements(statements, state, context) {
       }
     }
     if (operation.kind === "while") {
-      // Whole-loop facts remain unavailable. Nested callees first receive an
-      // explicit unknown context; a separate proof may then recover only a
-      // contiguous successful-call chain inside one arbitrary iteration.
-      invalidateNestedCalls(operation, context);
+      // Whole-loop facts remain unavailable.  A separate pass may propagate
+      // only immutable outer facts and values reconstructed within one
+      // arbitrary iteration into nested callees; no resulting state crosses
+      // the backedge, join, or loop exit.
+      if (context.propagateUnsupportedLoopInvariants === true) {
+        analyzeUnsupportedWhileInvariantCalls(operation, state, context);
+      } else {
+        invalidateNestedCalls(operation, context);
+      }
       analyzeUnsupportedWhileSuccessChains(operation, state, context);
       const assigned = assignedNames([operation]);
       forgetScalarAndBufferFacts(state, assigned);
@@ -2060,14 +2229,18 @@ function analyzeStatements(statements, state, context) {
         }
       });
       if (context.callFacts !== undefined) {
+        const prior = context.callFacts.get(operation);
         context.callFacts.set(operation, {
           callee: callee.name,
-          state: cloneState(incoming),
+          state: prior === undefined
+            ? cloneState(incoming)
+            : joinStates(prior.state, incoming),
           caller: context.currentFunction,
         });
       }
       if (context.facts?.has(callee.name)) {
-        mergeFacts(context.facts.get(callee.name), incoming);
+        const changed = mergeFacts(context.facts.get(callee.name), incoming);
+        if (changed) context.changedFacts?.add(callee.name);
       }
       const summary = context.scalarSummaries?.get(callee.name);
       if (summary !== undefined && scalarSummaryCallShape(
@@ -2568,6 +2741,8 @@ function attachDirectResultVariants(context) {
     });
     attachVirtualFixedUInt64Views(
       spec.fast, directState, functionEnabled, intervalViewAccesses,
+      checkedRegionGraphFunctions(spec.fast, context.variants),
+      context.pendingGraphViewAuthorizations,
     );
     if (!directResultFailureFree(spec.fast)) continue;
     const returnOperation = spec.fast.body.findLast((operation) =>
@@ -2684,6 +2859,7 @@ function attachCapabilities(
   }
   const callFacts = new Map();
   const analysisResults = new Map();
+  const pendingGraphViewAuthorizations = [];
   const directResultCallees = new Set(directSpecs.map(spec => spec.slow.name));
 
   for (const name of order) {
@@ -2755,37 +2931,75 @@ function attachCapabilities(
       independent.pathConditions = [];
       independentFacts.set(name, { ...independent, initialized: true });
     }
-    for (const name of order) {
+    // Unlike the primary direct-edge analysis, this summary-free pass exists
+    // only to establish graph-wide span facts.  Its call graph may contain
+    // cycles, so never analyze an uninitialized callee as an unknown caller.
+    // Instead, propagate monotonically with a bounded worklist, then perform
+    // one final proof-emitting traversal from the converged states.  Failure
+    // to converge simply disables graph-derived views.
+    const queue = order.filter(name => independentFacts.get(name)?.initialized);
+    const queued = new Set(queue);
+    const maximumEvaluations = Math.max(64, order.length * 32);
+    let evaluations = 0;
+    while (queue.length > 0 && evaluations < maximumEvaluations) {
+      const name = queue.shift();
+      queued.delete(name);
       const fn = byName.get(name);
       const state = independentFacts.get(name);
-      const functionEnabled = new Set(
-        fn.checkedRegionLocalCapabilities || enabled,
-      );
-      const virtualViewState = summaryIndependentValidatedViewState(state);
-      const groups = functionEnabled.has("virtual-fixed-uint64-views")
-        ? virtualFixedUInt64ViewGroups(fn, virtualViewState, {
-          allowFixed: false,
-        })
-        : [];
-      const virtualViewAliases = new Map(groups.flatMap((group) =>
-        Array.from(group.aliases, (alias) => [alias, group])
-      ));
-      const intervalViewAccesses = new Map();
-      const finalState = analyzeStatements(fn.body, cloneState(state), {
+      if (fn === undefined || state?.initialized !== true) continue;
+      const changedFacts = new Set();
+      analyzeStatements(fn.body, cloneState(state), {
         byName,
-        enabled: functionEnabled,
+        changedFacts,
+        enabled: new Set(),
         facts: independentFacts,
-        virtualViewAliases,
-        intervalViewAccesses,
         currentFunction: fn,
+        pruneImpossibleBranches: true,
+        propagateUnsupportedLoopInvariants: true,
         scalarSummaries: new Map(),
       });
-      independentAnalysisResults.set(fn, {
-        state,
-        finalState,
-        functionEnabled,
-        intervalViewAccesses,
-      });
+      evaluations += 1;
+      for (const changed of changedFacts) {
+        if (!queued.has(changed)) {
+          queue.push(changed);
+          queued.add(changed);
+        }
+      }
+    }
+    if (queue.length === 0) {
+      for (const name of order) {
+        const fn = byName.get(name);
+        const state = independentFacts.get(name);
+        if (fn === undefined || state?.initialized !== true) continue;
+        const functionEnabled = new Set(
+          fn.checkedRegionLocalCapabilities || enabled,
+        );
+        const virtualViewState = summaryIndependentValidatedViewState(state);
+        const groups = functionEnabled.has("virtual-fixed-uint64-views")
+          ? virtualFixedUInt64ViewGroups(fn, virtualViewState, {
+            allowFixed: false,
+          })
+          : [];
+        const virtualViewAliases = new Map(groups.flatMap((group) =>
+          Array.from(group.aliases, (alias) => [alias, group])
+        ));
+        const intervalViewAccesses = new Map();
+        const finalState = analyzeStatements(fn.body, cloneState(state), {
+          byName,
+          enabled: functionEnabled,
+          facts: undefined,
+          virtualViewAliases,
+          intervalViewAccesses,
+          currentFunction: fn,
+          scalarSummaries: new Map(),
+        });
+        independentAnalysisResults.set(fn, {
+          state,
+          finalState,
+          functionEnabled,
+          intervalViewAccesses,
+        });
+      }
     }
   }
   // Direct leaves attach and authorize their joined edge proofs here.  Every
@@ -2798,7 +3012,9 @@ function attachCapabilities(
     directSpecs,
     enabled,
     facts,
+    pendingGraphViewAuthorizations,
     scalarSummaries,
+    variants,
   });
   const directFunctions = new Set(directSpecs.map((spec) => spec.fast));
   for (const [fn, result] of analysisResults) {
@@ -2813,11 +3029,39 @@ function attachCapabilities(
         ...result.intervalViewAccesses,
         ...independentIntervalViewAccesses,
       ]);
+    const graphDerived = fn.name !== region.variantEntry;
+    const independentViewState = independentAnalysisResults.get(fn)?.state;
+    const primaryViewState = result.state;
+    const fixedViewCount = state => state === undefined
+      ? -1
+      : virtualFixedUInt64ViewGroups(fn, state)
+        .filter(group => group.fact.mode === "fixed").length;
+    const viewState = graphDerived
+      ? [independentViewState, primaryViewState]
+        .filter(state => state !== undefined)
+        .reduce((best, candidate) =>
+          fixedViewCount(candidate) > fixedViewCount(best) ? candidate : best
+        )
+      : result.virtualViewState;
     attachVirtualFixedUInt64Views(
       fn,
-      result.virtualViewState,
+      viewState,
       result.functionEnabled,
       intervalViewAccesses,
+      graphDerived ? checkedRegionGraphFunctions(fn, variants) : undefined,
+      pendingGraphViewAuthorizations,
+    );
+  }
+  // Graph-derived span facts are authorized only after every view claim in
+  // every member has been attached.  The snapshot therefore binds the entire
+  // closed private region and revokes all descriptor elision if any caller,
+  // callee, edge, or sibling proof is subsequently changed.
+  for (const pending of pendingGraphViewAuthorizations) {
+    graphVirtualUInt64ViewAuthority.authorize(
+      pending.functions,
+      pending.owner,
+      pending.operation,
+      pending.claim,
     );
   }
   // Caller snapshots now contain both their final fallback targets and all
@@ -3062,16 +3306,35 @@ function prepareCheckedRegions(ir) {
   return Object.freeze(prepared);
 }
 
-function checkedRegionVirtualUInt64Emission(fn) {
+function checkedRegionVirtualUInt64Emission(fn, functions) {
   const verifier = virtualUInt64ViewAuthority.emissionVerifier(fn);
+  const graphFunctions = functions instanceof Map
+    ? checkedRegionGraphFunctions(fn, [...functions.values()])
+    : undefined;
+  let graphVerifier;
+  if (graphFunctions !== undefined) {
+    try {
+      graphVerifier = graphVirtualUInt64ViewAuthority.emissionVerifier(
+        graphFunctions,
+        fn,
+      );
+    } catch (_error) {
+      graphVerifier = undefined;
+    }
+  }
   const localClaims = new Map();
   const operationClaims = new WeakMap();
   const viewClaims = [];
   visitOperations(fn.body, (operation) => {
     const claim = operation[VIRTUAL_UINT64_VIEW_PROOF];
-    if (claim === undefined ||
-        claim.authority !== "checked-region-virtual-fixed-uint64-view-v1" ||
-        !verifier.isAuthorized(operation, claim)) return;
+    if (claim === undefined) return;
+    const authorized = claim.authority ===
+        "checked-region-virtual-fixed-uint64-view-v1"
+      ? verifier.isAuthorized(operation, claim)
+      : claim.authority ===
+          "checked-region-graph-virtual-fixed-uint64-view-v1" &&
+        graphVerifier?.isAuthorized(operation, claim);
+    if (!authorized) return;
     operationClaims.set(operation, claim);
     if (claim.role === "view") {
       localClaims.set(claim.target, claim);

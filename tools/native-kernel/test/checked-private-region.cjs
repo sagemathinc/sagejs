@@ -95,6 +95,31 @@ const validatedIntegerViewDeclaration = {
   ],
 };
 
+const graphSpanViewDeclaration = {
+  entry: "checked_region_graph_span_entry",
+  functions: [
+    "checked_region_graph_span_entry",
+    "checked_region_graph_span_helper",
+  ],
+  capabilities: ["virtual-fixed-uint64-views"],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+  ],
+};
+
+const mutableGraphSpanViewDeclaration = {
+  entry: "checked_region_graph_span_mutable_entry",
+  functions: [
+    "checked_region_graph_span_mutable_entry",
+    "checked_region_graph_span_mutable_helper",
+  ],
+  capabilities: ["virtual-fixed-uint64-views"],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+    { kind: "int64-range", parameter: "count", minimum: 0, maximum: 2 },
+  ],
+};
+
 const localCopyDeclaration = {
   entry: "checked_region_local_copy_entry",
   functions: [
@@ -1177,6 +1202,129 @@ int main(void)
     "sagejs_checked_r0_checked_region_fixed_view_entry",
   );
   assert.match(forgedBody, /UInt64Buffer view is outside its buffer/);
+});
+
+test("callee fixed views require the authenticated private graph", async () => {
+  const optimized = await witness();
+  installCheckedRegionDeclarations(optimized, [graphSpanViewDeclaration]);
+  const [region] = prepareCheckedRegions(optimized);
+  const entry = region.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_graph_span_entry"
+  );
+  const helper = region.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_graph_span_helper"
+  );
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  const view = helper.body.find(operation =>
+    operation.kind === "uint64.buffer.view"
+  );
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(helper).claim(view, "view"),
+    undefined,
+  );
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(helper, functions)
+      .claim(view, "view")?.mode,
+    "fixed",
+  );
+
+  const core = generateHostCore(optimized, {
+    moduleIdentity: "0123456789abcdef",
+  });
+  const privateBody = functionText(core.source, helper.name);
+  assert.doesNotMatch(privateBody, /UInt64Buffer view is outside its buffer/);
+  assert.match(core.source, /UInt64Buffer view is outside its buffer/);
+
+  const call = entry.body.find(operation => operation.kind === "native.call");
+  const originalFunction = call.function;
+  call.function = entry.name;
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(helper, functions)
+      .claim(view, "view"),
+    undefined,
+  );
+  call.function = originalFunction;
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(helper, functions)
+      .claim(view, "view")?.mode,
+    "fixed",
+  );
+
+  const withoutOwner = new Map(functions);
+  withoutOwner.delete(helper.name);
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(helper, withoutOwner)
+      .claim(view, "view"),
+    undefined,
+  );
+
+  if (process.platform !== "win32") {
+    const temporary = mkdtempSync(join(tmpdir(), "sagejs-graph-view-"));
+    try {
+      writeFileSync(join(temporary, "kernel_core.h"), core.header);
+      writeFileSync(join(temporary, "runtime.c"), `${core.source}
+#include <string.h>
+int main(void)
+{
+    sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
+    uint64_t words[4] = {UINT64_C(2), UINT64_C(3), UINT64_C(5), UINT64_C(7)};
+    sagejs_uint64_buffer storage = {words, 4};
+    uint64_t output = UINT64_C(99);
+    if (!tagged_checked_region_graph_span_entry(&status, &output, storage) ||
+        status.code != SAGEJS_NATIVE_OK || output != UINT64_C(5))
+        return 1;
+    sagejs_native_status_reset(&status);
+    storage.length = 3;
+    if (tagged_checked_region_graph_span_entry(&status, &output, storage))
+        return 2;
+    if (status.code != SAGEJS_NATIVE_RANGE_ERROR || status.message == NULL ||
+        strcmp(status.message, "UInt64Buffer view is outside its buffer") != 0 ||
+        output != UINT64_C(5))
+        return 3;
+    return 0;
+}
+`);
+      const linked = spawnSync(process.env.CC || "cc", [
+        "-std=c11",
+        "-Werror",
+        "-I",
+        temporary,
+        join(temporary, "runtime.c"),
+        "-lgmp",
+        "-lm",
+        "-o",
+        join(temporary, "runtime"),
+      ], { encoding: "utf8" });
+      assert.equal(linked.status, 0, linked.stderr || linked.stdout);
+      const executed = spawnSync(join(temporary, "runtime"), [], {
+        encoding: "utf8",
+      });
+      assert.equal(executed.status, 0, executed.stderr || executed.stdout);
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  }
+});
+
+test("unsupported-loop span facts discard every mutable name", async () => {
+  const optimized = await witness();
+  installCheckedRegionDeclarations(optimized, [mutableGraphSpanViewDeclaration]);
+  const [region] = prepareCheckedRegions(optimized);
+  const helper = region.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_graph_span_mutable_helper"
+  );
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  const view = helper.body.find(operation =>
+    operation.kind === "uint64.buffer.view"
+  );
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(helper, functions)
+      .claim(view, "view")?.mode,
+    "validated",
+  );
+  const body = functionText(generateHostCore(optimized).source, helper.name);
+  assert.match(body, /UInt64Buffer view is outside its buffer/);
 });
 
 test("validated local UInt64 views snapshot checked construction", async () => {
@@ -2349,9 +2497,9 @@ test("successful scalar summaries propagate with transitive authority", async ()
   assert.doesNotThrow(() => generateHostCore(identity));
 
   // A summarized start flows through a second private call before constructing
-  // this fixed-length view. Descriptor scalar replacement may use only the
-  // view's local nonescape structure: construction validation and element
-  // bounds checks remain, and no summarized interval becomes proof authority.
+  // this fixed-length view.  The complete private graph authenticates the
+  // transitive root/start facts, while element bounds remain independently
+  // checked because no logical-index proof was established.
   const transitiveView = await witness();
   installCheckedRegionDeclarations(
     transitiveView, [transitiveSummaryViewDeclaration],
@@ -2359,6 +2507,9 @@ test("successful scalar summaries propagate with transitive authority", async ()
   const [transitiveRegion] = prepareCheckedRegions(transitiveView);
   const transitiveHelper = transitiveRegion.variants.find(fn =>
     fn.checkedRegionVariant.original === "checked_region_summary_view_helper"
+  );
+  const transitiveFunctions = new Map(
+    transitiveRegion.variants.map(fn => [fn.name, fn]),
   );
   const transitiveViewOperation = transitiveHelper.body.find(operation =>
     operation.kind === "uint64.buffer.view"
@@ -2368,27 +2519,31 @@ test("successful scalar summaries propagate with transitive authority", async ()
   );
   const transitiveEmission = checkedRegionVirtualUInt64Emission(
     transitiveHelper,
+    transitiveFunctions,
   );
   assert.equal(
     transitiveEmission.claim(transitiveViewOperation, "view")?.mode,
-    "validated",
+    "fixed",
   );
   const transitiveAccessClaim = transitiveEmission.claim(
     transitiveAccess, "access",
   );
-  assert.equal(transitiveAccessClaim?.mode, "validated");
+  assert.equal(transitiveAccessClaim?.mode, "fixed");
   assert.equal(transitiveAccessClaim?.logicalIndexProof, undefined);
   const transitiveSource = generateHostCore(transitiveView).source;
   const transitiveBody = functionText(transitiveSource, transitiveHelper.name);
-  assert.match(transitiveBody, /UInt64Buffer view is outside its buffer/);
+  assert.doesNotMatch(transitiveBody, /UInt64Buffer view is outside its buffer/);
   assert.match(transitiveBody, /UInt64Buffer index out of range/);
   const transitiveIdentity = transitiveRegion.variants.find(fn =>
     fn.checkedRegionVariant.original === "checked_region_summary_identity"
   );
   transitiveIdentity.body.at(-1).value = "fail";
   assert.equal(
-    transitiveEmission.claim(transitiveViewOperation, "view")?.mode,
-    "validated",
+    checkedRegionVirtualUInt64Emission(
+      transitiveHelper,
+      transitiveFunctions,
+    ).claim(transitiveViewOperation, "view"),
+    undefined,
   );
   assert.equal(
     transitiveEmission.claim(transitiveAccess, "access")?.logicalIndexProof,
