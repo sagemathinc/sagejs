@@ -2126,6 +2126,79 @@ function analyzeUnsupportedWhileSuccessChains(operation, entryState, context) {
   scan(operation.body);
 }
 
+function attachBoundedWhileSuccessors(operation, entryState, context) {
+  // On every entered iteration, `cursor <= upper` and an immutable bounded
+  // `upper` prove that a unique final `cursor += 1` cannot overflow. This is
+  // intentionally narrower than general while-loop induction: it exports no
+  // fact across the backedge or loop exit.
+  if (
+    !context.enabled.has("int64-arithmetic") ||
+    entryState.summaryDependencies.size !== 0 ||
+    !Array.isArray(operation.body)
+  ) return;
+  const assigned = assignedNames(operation.body);
+  const conditionAssigned = assignedNames(operation.condition?.operations);
+  const comparisons = requiredTrueComparisons(operation.condition);
+  for (const [index, update] of operation.body.entries()) {
+    if (
+      update.kind !== "int64.binary" || update.operation !== "add" ||
+      update.left !== update.target ||
+      functionValueType(context.currentFunction, update.target) !== "int64"
+    ) {
+      continue;
+    }
+    const literal = operation.body[index - 1];
+    let literalValue;
+    try {
+      literalValue = BigInt(literal?.value);
+    } catch (_error) {
+      continue;
+    }
+    if (
+      literal?.kind !== "int64.constant" ||
+      update.right !== literal.target || literalValue !== 1n
+    ) continue;
+    let targetAssignments = 0;
+    visitOperations(operation.body, candidate => {
+      if (operationTargets(candidate).includes(update.target)) {
+        targetAssignments += 1;
+      }
+    });
+    if (targetAssignments !== 1) continue;
+    const comparison = comparisons.find(candidate =>
+      candidate.kind === "int64.compare" &&
+      ((candidate.operation === "le" && candidate.left === update.target) ||
+       (candidate.operation === "ge" && candidate.right === update.target))
+    );
+    if (comparison === undefined) continue;
+    const upperName = comparison.operation === "le"
+      ? comparison.right : comparison.left;
+    if (
+      assigned.has(upperName) || conditionAssigned.has(update.target) ||
+      conditionAssigned.has(upperName) ||
+      functionValueType(context.currentFunction, upperName) !== "int64"
+    ) {
+      continue;
+    }
+    const upper = entryState.intervals.get(upperName) ||
+      declaredScalarDomain(context.currentFunction, upperName);
+    if (upper === undefined || upper.maximum >= INT64_MAXIMUM) continue;
+    const claim = Object.freeze({
+      authority: "checked-region-int64-interval-v1",
+      operation: update.id,
+      minimum: (INT64_MINIMUM + 1n).toString(),
+      maximum: (upper.maximum + 1n).toString(),
+      loop: operation.id,
+      relationOperation: comparison.id,
+      relation: `${update.target} <= ${upperName}`,
+    });
+    update.checkedRegionProof = claim;
+    Object.defineProperty(update, CHECKED_REGION_INT64_ARITHMETIC, {
+      value: true,
+    });
+  }
+}
+
 function analyzeStatements(statements, state, context) {
   for (const operation of statements || []) {
     if (operation.kind === "if") {
@@ -2295,6 +2368,7 @@ function analyzeStatements(statements, state, context) {
         invalidateNestedCalls(operation, context);
       }
       analyzeUnsupportedWhileSuccessChains(operation, state, context);
+      attachBoundedWhileSuccessors(operation, state, context);
       const assigned = assignedNames([operation]);
       forgetScalarAndBufferFacts(state, assigned);
       continue;
@@ -2487,6 +2561,36 @@ function analyzeStatements(statements, state, context) {
         Object.defineProperty(operation, CHECKED_REGION_BUFFER_ACCESS, {
           value: true,
         });
+      }
+      // A successful signed Python buffer access is also a control-flow fact:
+      // its index lies in `[-length, length - 1]`. Preserve that fact even
+      // when this particular access remains checked, so later fixed-width
+      // arithmetic can use it. A virtual view supplies an exact logical
+      // length; a guarded root supplies only an upper bound, which is still
+      // sufficient for this conservative interval.
+      if (operation.indexType === "int64") {
+        const maximumLength = logicalLength === undefined
+          ? previous.bufferMaximums?.get(operation.buffer)
+          : BigInt(logicalLength);
+        if (maximumLength !== undefined && maximumLength > 0n &&
+            maximumLength <= INT64_MAXIMUM) {
+          const successful = {
+            minimum: -maximumLength,
+            maximum: maximumLength - 1n,
+          };
+          const current = state.intervals.get(operation.index);
+          const refined = current === undefined
+            ? successful
+            : {
+              minimum: current.minimum > successful.minimum
+                ? current.minimum : successful.minimum,
+              maximum: current.maximum < successful.maximum
+                ? current.maximum : successful.maximum,
+            };
+          if (refined.minimum <= refined.maximum) {
+            state.intervals.set(operation.index, refined);
+          }
+        }
       }
     }
 

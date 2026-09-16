@@ -3363,6 +3363,198 @@ test("buffer maximum guards validate fail closed", async () => {
   }
 });
 
+test("successful signed access narrows later int64 arithmetic", async () => {
+  const source = [
+    "from sagejs.native import native, UInt64Buffer, int64",
+    "",
+    "@native",
+    "def checked_region_access_success_entry(",
+    "    storage: UInt64Buffer, index: int64",
+    ") -> int64:",
+    "    value = storage[index]",
+    "    return index + 1",
+    "",
+  ].join("\n");
+  const declaration = {
+    entry: "checked_region_access_success_entry",
+    functions: ["checked_region_access_success_entry"],
+    capabilities: ["int64-arithmetic"],
+    guard: [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 0 },
+      { kind: "buffer-max-length", parameter: "storage", maximum: "8" },
+    ],
+  };
+  const ir = await witness("/tmp/checked_region_access_success.py", source);
+  installCheckedRegionDeclarations(ir, [declaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const fn = region.variants[0];
+  const functions = new Map([[fn.name, fn]]);
+  const allOperations = value => {
+    const found = [];
+    const visit = current => {
+      if (current === null || typeof current !== "object") return;
+      if (typeof current.kind === "string") found.push(current);
+      for (const [key, child] of Object.entries(current)) {
+        if (key !== "provenance") visit(child);
+      }
+    };
+    visit(value);
+    return found;
+  };
+  const operations = allOperations(fn.body);
+  const access = operations.find(operation =>
+    operation.kind === "uint64.buffer.get"
+  );
+  const add = operations.find(operation =>
+    operation.kind === "int64.binary" && operation.operation === "add"
+  );
+  const emission = checkedRegionInt64ArithmeticEmission(fn, functions);
+  assert.ok(access);
+  assert.ok(add);
+  assert.equal(isCheckedRegionBufferAccess(access), false);
+  assert.equal(add.checkedRegionProof.minimum, "-7");
+  assert.equal(add.checkedRegionProof.maximum, "8");
+  assert.equal(emission.isAuthorized(add), true);
+
+  const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
+  const text = executableText(functionText(core.source, fn.name));
+  assert.match(text, /sagejs_signed_buffer_index\(/);
+  assert.doesNotMatch(text, /sagejs_word_add_int64\(/);
+
+  const unbounded = await witness(
+    "/tmp/checked_region_access_success.py", source,
+  );
+  installCheckedRegionDeclarations(unbounded, [{
+    ...declaration,
+    guard: declaration.guard.filter(predicate =>
+      predicate.kind !== "buffer-max-length"
+    ),
+  }]);
+  const [unboundedRegion] = prepareCheckedRegions(unbounded);
+  const unboundedFunction = unboundedRegion.variants[0];
+  const unboundedAdd = allOperations(unboundedFunction.body).find(operation =>
+    operation.kind === "int64.binary" && operation.operation === "add"
+  );
+  assert.equal(unboundedAdd.checkedRegionProof, undefined);
+
+  const overwrittenSource = source
+    .replace("storage: UInt64Buffer, index: int64",
+      "storage: UInt64Buffer, index: int64, other: int64")
+    .replace("    return index + 1", "    index = other\n    return index + 1");
+  const overwritten = await witness(
+    "/tmp/checked_region_access_success.py", overwrittenSource,
+  );
+  installCheckedRegionDeclarations(overwritten, [declaration]);
+  const [overwrittenRegion] = prepareCheckedRegions(overwritten);
+  const overwrittenAdd = allOperations(overwrittenRegion.variants[0].body)
+    .find(operation =>
+      operation.kind === "int64.binary" && operation.operation === "add"
+    );
+  assert.equal(overwrittenAdd.checkedRegionProof, undefined);
+
+  access.index = "hostile_index";
+  assert.equal(
+    checkedRegionInt64ArithmeticEmission(fn, functions).isAuthorized(add),
+    false,
+  );
+});
+
+test("bounded while conditions prove a final unit successor", async () => {
+  const source = [
+    "from sagejs.native import native, int64, checked_int64",
+    "",
+    "@native",
+    "def checked_region_bounded_successor_entry(",
+    "    cursor: int64, upper: int64, other: int64",
+    ") -> int64:",
+    "    while cursor <= upper and cursor <= other:",
+    "        cursor += 1",
+    "    return checked_int64(cursor)",
+    "",
+  ].join("\n");
+  const declaration = {
+    entry: "checked_region_bounded_successor_entry",
+    functions: ["checked_region_bounded_successor_entry"],
+    capabilities: ["int64-arithmetic"],
+    guard: [{
+      kind: "int64-range", parameter: "upper", minimum: -8, maximum: 8,
+    }],
+  };
+  async function prepared(
+    candidateSource = source,
+    candidate = declaration,
+    mutate = () => {},
+  ) {
+    const ir = await witness(
+      "/tmp/checked_region_bounded_successor.py", candidateSource,
+    );
+    mutate(ir);
+    installCheckedRegionDeclarations(ir, [candidate]);
+    const [region] = prepareCheckedRegions(ir);
+    const fn = region.variants[0];
+    const functions = new Map([[fn.name, fn]]);
+    const loop = fn.body.find(operation => operation.kind === "while");
+    const add = loop.body.find(operation =>
+      operation.kind === "int64.binary" && operation.operation === "add"
+    );
+    return { ir, fn, functions, loop, add };
+  }
+
+  const { ir, fn, functions, loop, add } = await prepared();
+  const emission = checkedRegionInt64ArithmeticEmission(fn, functions);
+  assert.equal(add.checkedRegionProof.relation, "cursor <= upper");
+  assert.equal(add.checkedRegionProof.maximum, "9");
+  assert.equal(emission.isAuthorized(add), true);
+  const text = executableText(functionText(
+    generateHostCore(ir, { moduleIdentity: "0123456789abcdef" }).source,
+    fn.name,
+  ));
+  assert.doesNotMatch(text, /sagejs_word_add_int64\(/);
+
+  for (const [candidateSource, candidate] of [
+    [source, {
+      ...declaration,
+      guard: [{
+        kind: "int64-range", parameter: "upper",
+        minimum: -8, maximum: "9223372036854775807",
+      }],
+    }],
+    [source.replace("        cursor += 1", "        upper -= 1\n        cursor += 1"), declaration],
+    [source.replace("        cursor += 1", "        cursor -= 1\n        cursor += 1"), declaration],
+    [source.replace(" and cursor <= other", " or cursor <= other"), declaration],
+  ]) {
+    const hostile = await prepared(candidateSource, candidate);
+    const hostileEmission = checkedRegionInt64ArithmeticEmission(
+      hostile.fn, hostile.functions,
+    );
+    assert.equal(hostileEmission.isAuthorized(hostile.add), false);
+  }
+
+  const conditionOverwrite = await prepared(source, declaration, candidate => {
+    const candidateLoop = candidate.functions[0].body.find(operation =>
+      operation.kind === "while"
+    );
+    candidateLoop.condition.operations.find(operation =>
+      operation.kind === "int64.compare"
+    ).target = "upper";
+  });
+  assert.equal(
+    checkedRegionInt64ArithmeticEmission(
+      conditionOverwrite.fn,
+      conditionOverwrite.functions,
+    ).isAuthorized(conditionOverwrite.add),
+    false,
+  );
+
+  loop.condition.operations.find(operation =>
+    operation.kind === "int64.compare" && operation.left === "cursor"
+  ).operation = "ge";
+  assert.equal(
+    checkedRegionInt64ArithmeticEmission(fn, functions).isAuthorized(add),
+    false,
+  );
+});
+
 test("unsupported while loops admit only immediate successful call chains", async () => {
   const collectCalls = fn => {
     const calls = [];
