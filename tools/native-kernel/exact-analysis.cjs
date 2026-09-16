@@ -1405,6 +1405,85 @@ const FMPZ_RESOURCE_IDS = new Set([
   "number_field_analysis_resource",
 ]);
 
+const INT64_MINIMUM = -(1n << 63n);
+const INT64_MAXIMUM = (1n << 63n) - 1n;
+
+function constantInt64RangeProof(start, stop, step) {
+  if (step === 0n) return undefined;
+  let count = 0n;
+  if (step > 0n && start < stop) {
+    count = (stop - start + step - 1n) / step;
+  } else if (step < 0n && start > stop) {
+    const magnitude = -step;
+    count = (start - stop + magnitude - 1n) / magnitude;
+  }
+  if (count === 0n) {
+    return {
+      authority: "constant-int64-range-v1",
+      start: start.toString(),
+      stop: stop.toString(),
+      step: step.toString(),
+      iterations: "0",
+    };
+  }
+  const last = start + (count - 1n) * step;
+  const next = last + step;
+  if (next < INT64_MINIMUM || next > INT64_MAXIMUM) return undefined;
+  return {
+    authority: "constant-int64-range-v1",
+    start: start.toString(),
+    stop: stop.toString(),
+    step: step.toString(),
+    iterations: count.toString(),
+    last: last.toString(),
+    next: next.toString(),
+  };
+}
+
+function annotateConstantInt64Ranges(fn) {
+  function visit(statements, inherited = new Map(), activeRangeProof) {
+    const constants = new Map(inherited);
+    for (const statement of statements || []) {
+      if (statement.kind === "int64.constant") {
+        constants.set(statement.target, BigInt(statement.value));
+        continue;
+      }
+      if (statement.kind === "int64.copy" && constants.has(statement.source)) {
+        constants.set(statement.target, constants.get(statement.source));
+        continue;
+      }
+      if (statement.kind === "loop.continue" &&
+          statement.range?.kind === "loop.range_int64" &&
+          activeRangeProof !== undefined) {
+        statement.range.incrementProof = activeRangeProof;
+      }
+      if (statement.kind === "loop.range_int64") {
+        const start = constants.get(statement.start);
+        const stop = constants.get(statement.stop);
+        const step = constants.get(statement.step);
+        const proof = start === undefined || stop === undefined || step === undefined
+          ? undefined : constantInt64RangeProof(start, stop, step);
+        if (proof !== undefined) statement.incrementProof = proof;
+        visit(statement.body, constants, proof);
+      } else if (statement.kind === "if") {
+        visit(statement.condition.operations, constants, activeRangeProof);
+        visit(statement.body, constants, activeRangeProof);
+        visit(statement.alternative, constants, activeRangeProof);
+      } else if (statement.kind === "while") {
+        visit(statement.condition.operations, constants, activeRangeProof);
+        visit(statement.body, constants, activeRangeProof);
+      } else if (statement.kind === "loop.range" ||
+          statement.kind === "loop.range_exact") {
+        visit(statement.body, constants, undefined);
+      } else if (statement.kind === "bool.short_circuit") {
+        visit(statement.right.operations, constants, activeRangeProof);
+      }
+      if (statement.target !== undefined) constants.delete(statement.target);
+    }
+  }
+  visit(fn.body);
+}
+
 /**
  * Preserve the ownership proof needed to move the fmpz allocation checkpoint.
  *
@@ -1939,6 +2018,7 @@ function backendPolicy(fn, profile, recursive, fmpzPolicies = new Map()) {
 function analyzeExactModule(functions) {
   for (const fn of functions) {
     if (fn.kernelKind === "integer") introduceResidentBorrows(fn);
+    annotateConstantInt64Ranges(fn);
   }
   const recursive = recursiveFunctions(functions);
   const fmpzPolicies = fmpzClosedCallGraphPolicies(functions, recursive);

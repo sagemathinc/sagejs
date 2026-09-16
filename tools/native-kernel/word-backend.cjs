@@ -748,7 +748,11 @@ function emitWordStatements(statements, context, indent) {
         const stop = context.value(statement.range.stop);
         if (kind === "loop.range") {
           lines.push(`${indent}if (${step} >= ${stop} - ${iterator}) break;`, `${indent}${iterator} += ${step};`);
-        } else lines.push(`${indent}if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator})) break;`);
+        } else {
+          lines.push(statement.range.incrementProof !== undefined
+            ? `${indent}${iterator} += ${step};`
+            : `${indent}if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator})) break;`);
+        }
       }
       lines.push(`${indent}${statement.kind.slice(5)};`);
       continue;
@@ -798,8 +802,12 @@ function emitWordStatements(statements, context, indent) {
         `${indent}    ${index} = ${iterator};`,
         `${indent}    (void) ${index};`,
         emitWordStatements(statement.body, context, `${indent}    `),
-        `${indent}    if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator}))`,
-        `${indent}        break;`,
+        ...(statement.incrementProof !== undefined
+          ? [`${indent}    ${iterator} += ${step};`]
+          : [
+            `${indent}    if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator}))`,
+            `${indent}        break;`,
+          ]),
         `${indent}}`,
       );
       continue;

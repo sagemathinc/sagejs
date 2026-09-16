@@ -1727,7 +1727,9 @@ function emitExactStatements(statements, context, indent) {
         if (kind === "loop.range") {
           lines.push(`${indent}if (${step} >= ${stop} - ${iterator}) break;`, `${indent}${iterator} += ${step};`);
         } else if (kind === "loop.range_int64") {
-          lines.push(`${indent}if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator})) break;`);
+          lines.push(statement.range.incrementProof !== undefined
+            ? `${indent}${iterator} += ${step};`
+            : `${indent}if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator})) break;`);
         } else lines.push(`${indent}mpz_add(${iterator}, ${iterator}, ${step});`);
       }
       lines.push(`${indent}${statement.kind.slice(5)};`);
@@ -1780,8 +1782,13 @@ function emitExactStatements(statements, context, indent) {
         `${indent}        break;`, `${indent}    ${index} = ${iterator};`,
         `${indent}    (void) ${index};`,
         emitExactStatements(statement.body, context, `${indent}    `),
-        `${indent}    if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator}))`,
-        `${indent}        break;`, `${indent}}`,
+        ...(statement.incrementProof !== undefined
+          ? [`${indent}    ${iterator} += ${step};`]
+          : [
+            `${indent}    if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator}))`,
+            `${indent}        break;`,
+          ]),
+        `${indent}}`,
       );
       continue;
     }
