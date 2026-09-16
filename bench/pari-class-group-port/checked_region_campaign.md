@@ -158,3 +158,23 @@ This establishes the central language/runtime answer for the experiment: the
 readable translated Python graph can execute in the PARI performance regime.
 The remaining engineering task is to make the checked-region proof a normal,
 inspectable compiler artifact rather than a generated-C diagnostic.
+
+## Checked unsigned-word views
+
+The first source-facing compiler primitive is a checked mutable
+`UInt64Buffer` subview. Refactoring only the four dominant polynomial routines
+to name their source and destination spans reduced the safe tagged catalog from
+about 3.29 ms to **3.01 ms**, while all four frozen packets and all JavaScript,
+GMP, and tagged post-call buffer snapshots remained exact. This shallow change
+removes repeated base-plus-index overflow checks but still constructs and
+checks the spans at every helper call.
+
+The direct public refactor is intentionally not a production endpoint.
+Adversarial helper calls show that eager span construction can move an error
+before the original partial writes, validate a quotient-only remainder that is
+never used, and change malformed negative-index behavior. Production lowering
+must therefore retain the original checked public functions and put the
+view-based bodies in private variants selected only after the outer nonmutating
+contract succeeds. This is consistent with the 1.63 ms diagnostic and makes
+fallback preservation an architectural property rather than a test-corpus
+assumption.
