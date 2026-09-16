@@ -257,6 +257,33 @@ eliminate proved views, or prove affine accesses directly against an enclosing
 checked view; repeatedly constructing source-visible inner-loop views is not a
 viable optimization.
 
+### Reversed-span proof follow-up
+
+Compiler commit `63c95798d` additionally recognizes the reversed access
+`span[count - 1 - k]` under the same checked-view and `range(count)` contract.
+Recompiling the unchanged dynamic-span source attached ten forward dynamic,
+two reversed dynamic, and three constant fixed-span proofs. Static
+`sagejs_signed_buffer_index` sites fell from 285 to 277 relative to the first
+dynamic-span build (333 in the fixed-view baseline), while generated C shrank
+slightly from 5,170,671 to 5,167,491 bytes. All four frozen packets and their
+post-call buffers again matched under JavaScript, GMP, and tagged execution,
+including all 7,081 active outputs.
+
+Seven alternating tagged pairs against the fixed-view baseline measured:
+
+| implementation | geometric mean (ms/catalog) |
+| --- | ---: |
+| existing fixed-view proof build | 3.10391 |
+| dynamic spans with reversed proof | 3.69669 |
+
+The ratio is 1.19098, so materialized dynamic views still regress performance
+by 19.1%. A separate seven-pair direct comparison isolated the additional
+proof: the forward-only dynamic build measured 3.80572 ms/catalog and the
+reversed-proof build measured 3.70190 ms/catalog, a 0.97272 ratio or 2.73%
+improvement. The extra proof therefore recovers a real but small part of the
+earlier regression. View construction and associated code size remain the
+dominant costs; virtualization or direct affine proof remains necessary.
+
 ## Private-graph inlining budget
 
 The outer-region diagnostic also permits a controlled test of the final GCC
