@@ -992,11 +992,7 @@ def _builtins_get_special_member(value: Any, name: Any) -> Any:
     constructor = _builtins_get_member(value, "constructor")
     if not _builtins_is_python_class(constructor):
         return runtime.reflect.get(value, name)
-    if not runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty,
-        value,
-        [name],
-    ):
+    if not runtime.reflect.get(runtime.object, "hasOwn")(value, name):
         return runtime.reflect.get(value, name)
     prototype = runtime.object.getPrototypeOf(value)
     if prototype is None:
@@ -3037,11 +3033,7 @@ def _builtins_pop_keyword(
         if name in keywords:
             return keywords.pop(name)
         return default_value
-    if runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty,
-        keywords,
-        [name],
-    ):
+    if runtime.reflect.get(runtime.object, "hasOwn")(keywords, name):
         value = runtime.reflect.get(keywords, name)
         runtime.reflect.deleteProperty(keywords, name)
         return value
@@ -3740,11 +3732,7 @@ def _builtins_is_python_class(value: Any) -> _Bool:
     if _builtins_get_member(value, "__sagejs_callable_instance__") is True:
         return False
     # Class statements and dynamic type calls mark the constructor itself.
-    if runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty,
-        value,
-        ["__bases__"],
-    ):
+    if runtime.reflect.get(runtime.object, "hasOwn")(value, "__bases__"):
         return True
     # Native builtin constructors instead carry the Python metaclass marker.
     return _builtins_get_member(value, "__python_type__") is ρσ_type
@@ -3994,16 +3982,8 @@ def ρσ_hash(value: Any) -> Any:
     prototype = _builtins_get_member(constructor, "prototype")
     if (
         prototype is not runtime.undefined
-        and runtime.reflect.apply(
-            runtime.object.prototype.hasOwnProperty,
-            prototype,
-            ["__eq__"],
-        )
-        and not runtime.reflect.apply(
-            runtime.object.prototype.hasOwnProperty,
-            prototype,
-            ["__hash__"],
-        )
+        and runtime.reflect.get(runtime.object, "hasOwn")(prototype, "__eq__")
+        and not runtime.reflect.get(runtime.object, "hasOwn")(prototype, "__hash__")
     ):
         raise TypeError("unhashable type")
     if _builtins_member_is_function(value, "__hash__"):
@@ -5017,7 +4997,14 @@ def ρσ_getattr_internal(
 
 @runtime.native_method
 def _builtins_object_getattribute(self: Any, name: _Str) -> Any:
-    return _builtins_getattr_impl(self, name, runtime.undefined)
+    if not runtime.strict_equal(runtime.jstype(name), "string"):
+        raise TypeError("attribute name must be string")
+    return _builtins_getattr_impl(
+        self,
+        name,
+        runtime.undefined,
+        _builtins_attribute_owner(self),
+    )
 
 
 def _builtins_public_getattr(
@@ -5038,13 +5025,28 @@ def _builtins_public_getattr(
     try:
         if hook is not runtime.undefined and hook is not _builtins_object_getattribute:
             return _builtins_call_selected_special(value, hook, [name])
-        return _builtins_getattr_impl(value, name, call_context)
+        return _builtins_getattr_impl(value, name, call_context, owner)
     except AttributeError:
         return _builtins_missing_attribute(value, name, default_value)
 
 
 def ρσ_prepare_method_call(value: Any, name: _Str) -> Any:
     """Capture lookup before arguments without materializing ordinary methods."""
+    owner = _builtins_attribute_owner(value)
+    owner_cache = _builtins_descriptor_cache.get(owner)
+    cached = (
+        runtime.undefined if owner_cache is runtime.undefined else owner_cache.get(name)
+    )
+    if (
+        cached is not runtime.undefined
+        and cached[0] == _builtins_descriptor_epoch
+        and cached[4] is True
+    ):
+        namespace = _builtins_instance_namespaces.get(value)
+        if (
+            namespace is runtime.undefined or not namespace.jsmap.has(name)
+        ) and not runtime.reflect.get(runtime.object, "hasOwn")(value, name):
+            return runtime.array.of(cached[3], value, cached[5])
     context = runtime.array.of(runtime.undefined, runtime.undefined, False)
     member = _builtins_public_getattr(value, name, _BUILTINS_MISSING, context)
     if context[0] is runtime.undefined:
@@ -5070,9 +5072,8 @@ def _builtins_getattr_impl(
     value: Any,
     name: _Str,
     call_context: Any,
+    owner: Any,
 ) -> Any:
-    if not runtime.strict_equal(runtime.jstype(name), "string"):
-        raise TypeError("attribute name must be string")
     if runtime.strict_equal(name, "__annotations__"):
         annotation_key = _builtins_class_annotation_key(value)
         if (
@@ -5209,7 +5210,6 @@ def _builtins_getattr_impl(
     descriptor = runtime.undefined
     descriptor_resolution = runtime.undefined
     descriptor_kind = _BUILTINS_DESCRIPTOR_GENERIC
-    owner = runtime.undefined
     if (
         (not runtime.strict_equal(value_type, "function") or value_is_callable_instance)
         and value is not None
@@ -5219,11 +5219,7 @@ def _builtins_getattr_impl(
         namespace_has_member = (
             namespace is not runtime.undefined and namespace.jsmap.has(name)
         )
-        has_own_member = runtime.reflect.apply(
-            runtime.object.prototype.hasOwnProperty,
-            value,
-            [name],
-        )
+        has_own_member = runtime.reflect.get(runtime.object, "hasOwn")(value, name)
         if (has_own_member or namespace_has_member) and not (
             _builtins_data_descriptor_names.has(name)
         ):
@@ -5235,7 +5231,6 @@ def _builtins_getattr_impl(
             if _builtins_is_missing_binding(own_member):
                 raise AttributeError("The attribute " + name + " is not present")
             return own_member
-        owner = _builtins_attribute_owner(value)
         descriptor_resolution = _builtins_class_attribute_resolution(owner, name)
         if descriptor_resolution is not runtime.undefined:
             descriptor_kind = descriptor_resolution[2]
@@ -5284,9 +5279,7 @@ def _builtins_getattr_impl(
                 is not True
             ):
                 if call_context is not runtime.undefined:
-                    call_context[0] = descriptor
-                    call_context[1] = value
-                    call_context[2] = (
+                    prepend_receiver = (
                         _builtins_get_member(descriptor, "__sagejs_native_method__")
                         is not True
                         and _builtins_get_member(
@@ -5294,6 +5287,12 @@ def _builtins_getattr_impl(
                         )
                         is not True
                     )
+                    call_context[0] = descriptor
+                    call_context[1] = value
+                    call_context[2] = prepend_receiver
+                    if _builtins_heap_class_keys.has(owner):
+                        descriptor_resolution[4] = True
+                        descriptor_resolution[5] = prepend_receiver
                     return runtime.undefined
                 return _builtins_bind_python_function(descriptor, value)
             return _builtins_descriptor_read(descriptor, value, owner)
@@ -5430,11 +5429,7 @@ def _builtins_getattr_impl(
         # must treat them as absent and honor the caller's default.
         if _builtins_is_missing_binding(member):
             raise AttributeError("The attribute " + name + " is not present")
-        member_is_own = runtime.reflect.apply(
-            runtime.object.prototype.hasOwnProperty,
-            value,
-            [name],
-        )
+        member_is_own = runtime.reflect.get(runtime.object, "hasOwn")(value, name)
         class_prototype_member = runtime.undefined
         if (
             runtime.strict_equal(value_type, "function")
@@ -5508,11 +5503,7 @@ def _builtins_getattr_impl(
             runtime.strict_equal(runtime.jstype(member), "function")
             and not _builtins_is_python_class(member)
             and not ρσ_is_bound_method(member)
-            and not runtime.reflect.apply(
-                runtime.object.prototype.hasOwnProperty,
-                value,
-                [name],
-            )
+            and not runtime.reflect.get(runtime.object, "hasOwn")(value, name)
         ):
             if _builtins_has_member(member, "__python_descriptor__"):
                 return _builtins_bind_python_function(member, value)
@@ -6161,11 +6152,9 @@ def _builtins_run_dynamic(
         for key in runtime.object.keys(live_scope):
             if runtime.reflect.get(
                 live_scope, key
-            ) is runtime.undefined and not runtime.reflect.apply(
-                runtime.object.prototype.hasOwnProperty,
-                native_namespace,
-                [key],
-            ):
+            ) is runtime.undefined and not runtime.reflect.get(
+                runtime.object, "hasOwn"
+            )(native_namespace, key):
                 # A JavaScript declaration may exist before the corresponding
                 # Python global has ever been bound.  Keep it absent from the
                 # globals dict, but tell the dynamic compiler to emit an
@@ -6311,16 +6300,10 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
         runtime.reflect.deleteProperty(value, name)
         return
     if _builtins_is_python_class(value):
-        class_has_own = runtime.reflect.apply(
-            runtime.object.prototype.hasOwnProperty,
-            value,
-            [name],
-        )
+        class_has_own = runtime.reflect.get(runtime.object, "hasOwn")(value, name)
         prototype = runtime.reflect.get(value, "prototype")
-        prototype_has_own = runtime.reflect.apply(
-            runtime.object.prototype.hasOwnProperty,
-            prototype,
-            [name],
+        prototype_has_own = runtime.reflect.get(runtime.object, "hasOwn")(
+            prototype, name
         )
         if not class_has_own and not prototype_has_own:
             raise AttributeError("object has no attribute '" + name + "'")
@@ -6348,11 +6331,7 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
             return _builtins_call_member(descriptor, "__delete__", [value])
     if _builtins_delete_instance_attribute(value, name):
         return
-    has_own = runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty,
-        value,
-        [name],
-    )
+    has_own = runtime.reflect.get(runtime.object, "hasOwn")(value, name)
     if not has_own:
         raise AttributeError("object has no attribute '" + name + "'")
     if not runtime.reflect.deleteProperty(value, name):
@@ -9411,9 +9390,7 @@ _builtins_prototype_owners.set(runtime.reflect.get(SageObject, "prototype"), Sag
 
 
 def _builtins_object_new(cls: Any) -> Any:
-    owns_python_bases = runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty, cls, ["__bases__"]
-    )
+    owns_python_bases = runtime.reflect.get(runtime.object, "hasOwn")(cls, "__bases__")
     if not _builtins_is_python_class(cls) or not owns_python_bases:
         raise TypeError("object.__new__() argument 1 must be a type")
     callable_allocation = runtime.reflect.get(
@@ -9481,11 +9458,7 @@ def _builtins_object_delattr(self: Any, name: _Str) -> None:
             return
     if _builtins_delete_instance_attribute(self, name):
         return
-    has_own = runtime.reflect.apply(
-        runtime.object.prototype.hasOwnProperty,
-        self,
-        [name],
-    )
+    has_own = runtime.reflect.get(runtime.object, "hasOwn")(self, name)
     if not has_own or not runtime.reflect.deleteProperty(self, name):
         raise AttributeError("object has no attribute '" + name + "'")
 
