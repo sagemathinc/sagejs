@@ -1603,6 +1603,111 @@ function analyzeScalarWhile(operation, entryState, context) {
   return head;
 }
 
+function forgetScalarAndBufferFacts(state, names) {
+  for (const name of names) {
+    state.intervals.delete(name);
+    state.buffers.delete(name);
+    state.expressions.delete(name);
+    state.rangeUpper.delete(name);
+    state.bufferRelations.delete(name);
+    state.scalarBounds.delete(name);
+  }
+}
+
+function unsupportedWhileLocalSeed(operation, entryState) {
+  const assigned = assignedNames([operation]);
+  return {
+    intervals: new Map(Array.from(entryState.intervals).filter(([name]) =>
+      !assigned.has(name)
+    ).map(([name, interval]) => [name, { ...interval }])),
+    buffers: new Map(Array.from(entryState.buffers).filter(([name]) =>
+      !assigned.has(name)
+    )),
+    expressions: new Map(),
+    rangeUpper: new Map(),
+    bufferRelations: new Map(),
+    safeInt64Expressions: new Set(),
+    summaryDependencies: new Set(entryState.summaryDependencies || []),
+    scalarBounds: new Map(),
+    pathConditions: [],
+  };
+}
+
+function analyzeUnsupportedWhileSuccessChains(operation, entryState, context) {
+  // This is deliberately not a loop analysis. It admits only a contiguous
+  // successful scalar call, its pure forwarding copies, and a direct-result
+  // consumer in the same statement list. The local state never crosses a
+  // branch, backedge, break, loop exit, or unrelated operation.
+  if (context.callFacts === undefined ||
+      context.directResultCallees === undefined) return;
+  const seed = unsupportedWhileLocalSeed(operation, entryState);
+  function scan(statements) {
+    for (let index = 0; index < (statements || []).length; index += 1) {
+      const producer = statements[index];
+      if (producer.kind === "native.call" &&
+          context.scalarSummaries?.has(producer.function) &&
+          typeof producer.target === "string" &&
+          ["int64", "uint64"].includes(producer.returnType)) {
+        let forwarded = producer.target;
+        const forwarders = [];
+        let cursor = index + 1;
+        while (cursor < statements.length) {
+          const candidate = statements[cursor];
+          if (candidate.kind !== `${producer.returnType}.copy` ||
+              candidate.source !== forwarded ||
+              typeof candidate.target !== "string" ||
+              functionValueType(context.currentFunction, candidate.target) !==
+                producer.returnType) break;
+          forwarders.push(candidate);
+          forwarded = candidate.target;
+          cursor += 1;
+        }
+        const consumer = statements[cursor];
+        const matchingArguments = consumer?.kind === "native.call"
+          ? consumer.arguments.filter(argument =>
+            argument.name === forwarded && argument.type === producer.returnType
+          )
+          : [];
+        if (forwarders.length > 0 && consumer?.kind === "native.call" &&
+            context.directResultCallees.has(consumer.function) &&
+            matchingArguments.length === 1) {
+          const localCallFacts = new Map();
+          analyzeStatements(
+            statements.slice(index, cursor + 1), cloneState(seed), {
+              ...context,
+              activeRange: undefined,
+              enabled: new Set(),
+              facts: undefined,
+              callFacts: localCallFacts,
+            },
+          );
+          const fact = localCallFacts.get(consumer);
+          if (fact !== undefined) {
+            context.callFacts.set(consumer, {
+              ...fact,
+              localSuccessProof: Object.freeze({
+                authority: "checked-region-unsupported-loop-local-success-v1",
+                loop: operation.id,
+                producer: producer.id,
+                forwarders: Object.freeze(forwarders.map(value => value.id)),
+                consumer: consumer.id,
+              }),
+            });
+          }
+        }
+      }
+      if (producer.kind === "while") {
+        analyzeUnsupportedWhileSuccessChains(producer, seed, context);
+      } else if (["if", "loop.range_int64"].includes(producer.kind)) {
+        for (const nested of [producer.body, producer.alternative]) {
+          if (Array.isArray(nested)) scan(nested);
+        }
+      }
+    }
+  }
+  scan(operation.body);
+}
+
 function analyzeStatements(statements, state, context) {
   for (const operation of statements || []) {
     if (operation.kind === "if") {
@@ -1729,23 +1834,24 @@ function analyzeStatements(statements, state, context) {
         continue;
       }
     }
+    if (operation.kind === "while") {
+      // Whole-loop facts remain unavailable. Nested callees first receive an
+      // explicit unknown context; a separate proof may then recover only a
+      // contiguous successful-call chain inside one arbitrary iteration.
+      invalidateNestedCalls(operation, context);
+      analyzeUnsupportedWhileSuccessChains(operation, state, context);
+      const assigned = assignedNames([operation]);
+      forgetScalarAndBufferFacts(state, assigned);
+      continue;
+    }
     if ([
-      "while", "loop.range", "loop.range_exact", "integer.vector.scope",
+      "loop.range", "loop.range_exact", "integer.vector.scope",
       "integer.matrix.scope", "integer.arena.scope",
     ].includes(operation.kind)) {
-      // Facts inside unsupported loops and resource scopes are intentionally
-      // unavailable.  Nested callees receive an explicit unknown context so a
-      // separate proved call site cannot accidentally authorize their bodies.
+      // Resource scopes and non-fixed-width iterators retain the older fully
+      // opaque treatment.  They are not part of the local-success theorem.
       invalidateNestedCalls(operation, context);
-      const assigned = assignedNames([operation]);
-      for (const name of assigned) {
-        state.intervals.delete(name);
-        state.buffers.delete(name);
-        state.expressions.delete(name);
-        state.rangeUpper.delete(name);
-        state.bufferRelations.delete(name);
-        state.scalarBounds.delete(name);
-      }
+      forgetScalarAndBufferFacts(state, assignedNames([operation]));
       continue;
     }
 
@@ -2490,6 +2596,9 @@ function attachDirectResultVariants(context) {
         directFunction: spec.fast.name,
         fallbackFunction: spec.slow.name,
         summaryDependencies: dependencies,
+        ...(call.localSuccessProof === undefined
+          ? {}
+          : { localSuccessProof: call.localSuccessProof }),
       });
       operation[CHECKED_REGION_DIRECT_CALL] = claim;
       pendingCalls.push({ caller: call.caller, operation, claim, dependencies });
@@ -2515,6 +2624,9 @@ function attachDirectResultVariants(context) {
         summaryDependencies: Object.freeze([
           ...(call.state.summaryDependencies || []),
         ].sort()),
+        ...(call.localSuccessProof === undefined
+          ? {}
+          : { localSuccessProof: call.localSuccessProof }),
       });
       operation[CHECKED_REGION_GUARDED_DIRECT_CALL] = claim;
       pendingCalls.push({
@@ -2572,6 +2684,7 @@ function attachCapabilities(
   }
   const callFacts = new Map();
   const analysisResults = new Map();
+  const directResultCallees = new Set(directSpecs.map(spec => spec.slow.name));
 
   for (const name of order) {
     const fn = byName.get(name);
@@ -2600,6 +2713,7 @@ function attachCapabilities(
       intervalViewAccesses,
       callFacts,
       currentFunction: fn,
+      directResultCallees,
       scalarSummaries,
     });
     analysisResults.set(fn, {

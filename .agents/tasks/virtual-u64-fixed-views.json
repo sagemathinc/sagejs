@@ -6,7 +6,7 @@
   "lane": "native-compiler",
   "status": "review",
   "owner": "user",
-  "objective": "Propagate authenticated case-wise scalar bounds through bounded loops and raising preflights, preserve independently proved checks in a summary-free pass, and eliminate the short-powu residual result guards without weakening fallbacks",
+  "objective": "Recover authenticated straight-line success facts inside otherwise unsupported loops, without asserting loop invariants or post-loop facts, and eliminate the four hot long-powu copy boundaries without weakening fallbacks",
   "base_commit": "07741b130c8fb55f9c73504441670e8e75a83e33",
   "claims": [
     "tools/native-kernel/checked-regions.cjs",
@@ -211,20 +211,61 @@
       "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
       "workspace_fingerprint": "174c470e398b6b8d6f4ff3f4c0ecefae7f3e89507061a12b82ec01d10fe256c3",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 28.185,
+      "started_at": "2026-09-16T13:43:47.631Z",
+      "commit": "0c5fca0551f0f614cde5efbd652c6d78965f097e",
+      "workspace_fingerprint": "4d2daf88908bf911358d804791e6268b0ec17a856f6d973bc9d0c0e00bad7fb4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.362,
+      "started_at": "2026-09-16T13:44:19.808Z",
+      "commit": "0c5fca0551f0f614cde5efbd652c6d78965f097e",
+      "workspace_fingerprint": "4d2daf88908bf911358d804791e6268b0ec17a856f6d973bc9d0c0e00bad7fb4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.763,
+      "started_at": "2026-09-16T13:44:42.569Z",
+      "commit": "0c5fca0551f0f614cde5efbd652c6d78965f097e",
+      "workspace_fingerprint": "4d2daf88908bf911358d804791e6268b0ec17a856f6d973bc9d0c0e00bad7fb4",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 337.721,
+      "started_at": "2026-09-16T13:45:45.835Z",
+      "commit": "0c5fca0551f0f614cde5efbd652c6d78965f097e",
+      "workspace_fingerprint": "4d2daf88908bf911358d804791e6268b0ec17a856f6d973bc9d0c0e00bad7fb4",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added fail-closed case-wise affine successful-result summaries and a structural fixed point for monotone scalar countdown loops. Raising preflights now decompose true conjunctions and false disjunctions, starting missing fixed-width operands from their declared domains while accepting condition-local literals only from unique same-list dominating producers. Summary cases retain path comparisons, specialize them at caller arguments, and bind every transitive dependency through graph authority. A separate analysis with no summaries recovers only independently derivable arithmetic, buffer, and validated-view proofs; it has no call-fact channel and cannot authorize direct edges. Summary-tainted direct-parameter views remain validated at runtime without materialized descriptors. The frozen catalog integration proves the six requested short-powu copy edges plus one independently exposed evaluation edge unconditional, preserves all 7,081 outputs and nine malformed cases, keeps zero view descriptors, reduces ELF text by 128 bytes, and improves pooled paired time from 2.341237838 ms to 2.210680477 ms (5.58%, all 14 pairs favorable). Focused authority tests, architecture checks, strict baselib checks, and the complete native suite pass.",
+    "summary": "Added a fail-closed local-success theorem for otherwise unsupported while loops. The theorem retains only concrete scalar intervals and buffer minima for names never assigned anywhere in the loop, clears symbolic and relational facts, and analyzes only a contiguous summarized scalar producer, one or more same-typed forwarding copies, and an immediate declared direct-result consumer. No recovered fact crosses a branch, backedge, break, unrelated statement, or loop exit. Structural graph authority binds the caller, chain, producer summary, and transitive summary dependencies. On the frozen splitting-degree catalog this proves exactly four additional long-powu copy edges (eleven total), removes four checked relocations and 16,980 packet-zero checked calls, preserves all 7,081 outputs and nine malformed cases, and improves geometric paired time from 2.197845875 ms to 2.114490837 ms (3.79%, all seven pairs favorable). Combined with the preceding seven-edge slice, the catalog improved about 9.7% from 2.341 ms. An independent soundness audit approved the implementation and focused authority tests, architecture checks, and strict baselib checks pass.",
     "risks": [
-      "The scalar loop theorem is intentionally narrow: conjunctions must expose a signed comparison against a singleton threshold, the induction variable has exactly one direct positive-constant decrement, and loops with control transfer or competing writes remain checked.",
-      "Case specialization currently refines direct parameter comparisons only. More complex affine predicates remain conservative and cannot authorize a direct edge.",
-      "The independent pass intentionally sacrifices summary-derived precision. It may attach only claims re-derived from guards, local operations, and ordinary checked calls; direct-edge selection remains exclusively summary-aware.",
-      "pnpm test:changed stopped at an initially absent FLINT addon. The subsequent required pnpm test:native preparation built that addon and the complete native correctness and performance suite passed."
+      "The local-success theorem is intentionally narrower than a loop invariant: it requires an immediate producer/copy/consumer chain in one statement array and exports only the consumer call fact.",
+      "Any assignment anywhere in the loop recursively removes that name from the invariant seed, including assignments in alternatives and nested loops; this is conservative and may leave valid edges checked.",
+      "The three data-dependent post-trim UInt64 views still need a separately authenticated nonnegative-length or canonical-polynomial invariant. Affine base-plus-degree conservation alone is insufficient on hostile zero-filled storage.",
+      "A first full-native attempt was interrupted by the native-cache input-change guard after building FLINT. The clean rerun from the prepared cache completed successfully, so this was infrastructure churn rather than a semantic failure."
     ],
     "next_steps": [
-      "Treat int64_shift_right as a separate follow-up: its constant-two floordiv can compose cleanly only after a narrow Python-floor singleton-divisor proof excludes zero and INT64_MIN/-1; do not broaden directResultFailureFree generically.",
-      "Keep unsupported scalar loops and non-parameter case predicates on the checked fallback until separately proved and mutation-tested.",
-      "Use the same isolated-proof pattern for the remaining convolution, reduction, modular-inverse, length-preflight, and characteristic-two fixed-width islands."
+      "Add an atomic closed-private-graph span contract and use the authenticated 393-word entry arena to remove the eight constant-nine view validations while preserving every public and unproved fallback.",
+      "Measure the coherent copy-view pair first: it accounts for 73,138 packet-zero validations and has a disposable optimized-code ceiling near 5.8 KB and 273 jumps.",
+      "Retain the three dynamic post-trim view checks until paired affine updates, swaps, and nonnegative lengths are independently proved and mutation-tested.",
+      "After view validation, reprofile the remaining divrem, square, multiply, bounded tagged-add, and private-call boundaries against the 1.39 ms mechanical-C ceiling."
     ]
   }
 }

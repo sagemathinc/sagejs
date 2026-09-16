@@ -299,6 +299,16 @@ const whileSummaryDeclaration = {
   }],
 };
 
+const breakWhileSummaryDeclaration = {
+  ...whileSummaryDeclaration,
+  entry: "checked_region_summary_break_while_entry",
+  functions: [
+    "checked_region_summary_break_while_entry",
+    "checked_region_summary_local_bounded",
+    ...whileSummaryDeclaration.functions.slice(1),
+  ],
+};
+
 const degradingWhileSummaryDeclaration = {
   ...whileSummaryDeclaration,
   entry: "checked_region_summary_while_degrading_entry",
@@ -2651,6 +2661,134 @@ test("case-wise affine summaries stabilize a bounded scalar while", async () => 
   assert.equal(checkedRegionDirectCallEmission(
     degradingEntry, degradingCopy, degradingFunctions,
   ), undefined);
+});
+
+test("unsupported while loops admit only immediate successful call chains", async () => {
+  const collectCalls = fn => {
+    const calls = [];
+    const visit = value => {
+      if (value === null || typeof value !== "object") return;
+      if (value.kind === "native.call") calls.push(value);
+      for (const [key, child] of Object.entries(value)) {
+        if (key !== "provenance") visit(child);
+      }
+    };
+    visit(fn.body);
+    return calls;
+  };
+  const prepare = async (mutate = () => {}) => {
+    const ir = await witness();
+    mutate(ir);
+    installCheckedRegionDeclarations(ir, [breakWhileSummaryDeclaration]);
+    const [region] = prepareCheckedRegions(ir);
+    const entry = region.variants.find(fn =>
+      fn.checkedRegionVariant.original ===
+        "checked_region_summary_break_while_entry"
+    );
+    const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+    const copies = collectCalls(entry).filter(operation =>
+      functions.get(operation.function)?.checkedRegionVariant?.original ===
+        "checked_region_local_copy_helper"
+    );
+    return { ir, region, entry, functions, copies };
+  };
+
+  const prepared = await prepare();
+  assert.equal(prepared.copies.length, 3);
+  const emissions = prepared.copies.map(operation =>
+    checkedRegionDirectCallEmission(
+      prepared.entry, operation, prepared.functions,
+    )
+  );
+  assert.equal(emissions[0] !== undefined, true);
+  assert.equal(emissions[1] !== undefined, true);
+  assert.equal(emissions[2], undefined);
+  for (const operation of prepared.copies.slice(0, 2)) {
+    const proof = operation.checkedRegionDirectCallProof.localSuccessProof;
+    assert.equal(
+      proof.authority,
+      "checked-region-unsupported-loop-local-success-v1",
+    );
+    assert.equal(typeof proof.loop, "string");
+    assert.equal(typeof proof.producer, "string");
+    assert.equal(proof.forwarders.length, 1);
+    assert.equal(proof.consumer, operation.id);
+    assert.ok(
+      operation.checkedRegionDirectCallProof.summaryDependencies.length > 0,
+    );
+  }
+  assert.doesNotThrow(() => generateHostCore(prepared.ir));
+
+  // The caller snapshot authenticates the forwarding chain. Rewriting its
+  // source after authorization must revoke the direct edge.
+  const forwarded = prepared.entry.body.find(operation =>
+    operation.kind === "while"
+  ).body.find(operation => operation.kind === "int64.copy");
+  forwarded.source = "degree";
+  assert.equal(prepared.copies.some(operation =>
+    checkedRegionDirectCallEmission(
+      prepared.entry, operation, prepared.functions,
+    ) !== undefined
+  ), false);
+
+  // A broken forwarding chain is never authorized when first analyzed.
+  const hostile = await prepare(ir => {
+    const entry = ir.functions.find(fn =>
+      fn.name === "checked_region_summary_break_while_entry"
+    );
+    const loop = entry.body.find(operation => operation.kind === "while");
+    loop.body.find(operation => operation.kind === "int64.copy").source =
+      "degree";
+  });
+  assert.equal(checkedRegionDirectCallEmission(
+    hostile.entry, hostile.copies[0], hostile.functions,
+  ), undefined);
+  assert.notEqual(checkedRegionDirectCallEmission(
+    hostile.entry, hostile.copies[1], hostile.functions,
+  ), undefined);
+  assert.equal(checkedRegionDirectCallEmission(
+    hostile.entry, hostile.copies[2], hostile.functions,
+  ), undefined);
+
+  // Even a later owner rebinding makes that owner non-invariant for an
+  // arbitrary iteration, so no chain in the loop may inherit its entry fact.
+  const rebound = await prepare(ir => {
+    const entry = ir.functions.find(fn =>
+      fn.name === "checked_region_summary_break_while_entry"
+    );
+    const loop = entry.body.find(operation => operation.kind === "while");
+    loop.body.push({
+      kind: "uint64.buffer.copy",
+      target: "storage",
+      source: "storage",
+      id: "checked_region_summary_break_while_entry:hostile-storage-rebind",
+      origins: [
+        "checked_region_summary_break_while_entry:hostile-storage-rebind",
+      ],
+    });
+  });
+  assert.equal(rebound.copies.some(operation =>
+    checkedRegionDirectCallEmission(
+      rebound.entry, operation, rebound.functions,
+    ) !== undefined
+  ), false);
+
+  // Successful-return dependencies are part of the edge authority. Mutating
+  // the summarized producer after preparation revokes both local edges.
+  const dependencyMutation = await prepare();
+  const bounded = dependencyMutation.region.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_summary_local_bounded"
+  );
+  const arithmetic = bounded.body.find(operation =>
+    operation.kind === "int64.binary"
+  );
+  arithmetic.operation = "add";
+  assert.equal(dependencyMutation.copies.some(operation =>
+    checkedRegionDirectCallEmission(
+      dependencyMutation.entry, operation, dependencyMutation.functions,
+    ) !== undefined
+  ), false);
 });
 
 test("scalar summaries reject under-approximated cases and mutable loops", async () => {

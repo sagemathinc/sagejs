@@ -361,6 +361,14 @@ def checked_region_summary_affine_multiply(
     return checked_region_summary_affine_remainder(degree, divisor_degree, stop, True)
 
 
+def checked_region_summary_local_bounded(
+    degree: int64, divisor_degree: int64, stop: int64
+) -> int64:
+    if divisor_degree <= 0:
+        raise ValueError("invalid synthetic divisor degree")
+    return divisor_degree - 1
+
+
 @native
 def checked_region_summary_while_entry(
     storage: UInt64Buffer,
@@ -380,6 +388,28 @@ def checked_region_summary_while_entry(
             checked_region_local_copy_helper(storage, 0, degree, 4)
         bit -= 1
     return checked_region_local_copy_helper(storage, 4, degree, 0)
+
+
+@native
+def checked_region_summary_break_while_entry(
+    storage: UInt64Buffer,
+    degree: int64,
+    divisor_degree: int64,
+    exponent: int64,
+    stop: int64,
+) -> int64:
+    bit: int64 = exponent
+    source: int64 = 0
+    destination: int64 = 4
+    while bit > 0:
+        degree = checked_region_summary_local_bounded(degree, divisor_degree, stop)
+        checked_region_local_copy_helper(storage, source, degree, destination)
+        if bit == 1:
+            break
+        degree = checked_region_summary_local_bounded(degree, divisor_degree, stop)
+        checked_region_local_copy_helper(storage, source, degree, destination)
+        bit -= 1
+    return checked_region_local_copy_helper(storage, destination, degree, source)
 
 
 @native
