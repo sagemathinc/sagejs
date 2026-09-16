@@ -4,7 +4,7 @@
   "id": "range-increment-reproof",
   "title": "Range Increment Reproof",
   "lane": "native-compiler",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Reconstruct and authenticate constant int64 range increment proofs in checked private variants, preserving checked fallback and improving the frozen PARI splitting-degree kernel",
   "base_commit": "ea21370a1f41290e10c07186f099b33d0d751d00",
@@ -33,14 +33,155 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "env NODE_PATH=/home/user/sagejs/node_modules/.pnpm/node-gyp@13.0.1/node_modules node --test tools/native-kernel/test/int64-range-proof.cjs tools/native-kernel/test/checked-private-region.cjs",
     "pnpm architecture:check",
     "pnpm test:baselib:strict",
+    "pnpm build:check",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "env NODE_PATH=/home/user/sagejs/node_modules/.pnpm/node-gyp@13.0.1/node_modules node --test tools/native-kernel/test/int64-range-proof.cjs tools/native-kernel/test/checked-private-region.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.42,
+      "started_at": "2026-09-16T20:27:33.849Z",
+      "commit": "ef93aa4200c65907adbc4c1653ee3408a44b3d23",
+      "workspace_fingerprint": "3bfec4acac72e422f7c755862644f7a960be461a9f936ab9e52931468dd98c95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-native-architecture.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.029,
+      "started_at": "2026-09-16T20:28:18.369Z",
+      "commit": "ef93aa4200c65907adbc4c1653ee3408a44b3d23",
+      "workspace_fingerprint": "3bfec4acac72e422f7c755862644f7a960be461a9f936ab9e52931468dd98c95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/check-strict-baselib.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 46.709,
+      "started_at": "2026-09-16T20:28:25.141Z",
+      "commit": "ef93aa4200c65907adbc4c1653ee3408a44b3d23",
+      "workspace_fingerprint": "3bfec4acac72e422f7c755862644f7a960be461a9f936ab9e52931468dd98c95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bash -lc pnpm test:native:run > /tmp/range-increment-native-local.log 2>&1",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 18.572,
+      "started_at": "2026-09-16T20:33:18.427Z",
+      "commit": "ef93aa4200c65907adbc4c1653ee3408a44b3d23",
+      "workspace_fingerprint": "3bfec4acac72e422f7c755862644f7a960be461a9f936ab9e52931468dd98c95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bash -lc SAGEJS_FFLAS_PREFIX=/tmp/range-increment-fflas-prefix pnpm test:native:run > /tmp/range-increment-native-local2.log 2>&1",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 20.99,
+      "started_at": "2026-09-16T20:34:26.025Z",
+      "commit": "ef93aa4200c65907adbc4c1653ee3408a44b3d23",
+      "workspace_fingerprint": "3bfec4acac72e422f7c755862644f7a960be461a9f936ab9e52931468dd98c95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bash -lc SAGEJS_FFLAS_PREFIX=/tmp/range-increment-fflas-prefix pnpm test:native:run > /tmp/range-increment-native-local3.log 2>&1",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 22.851,
+      "started_at": "2026-09-16T20:35:12.092Z",
+      "commit": "ef93aa4200c65907adbc4c1653ee3408a44b3d23",
+      "workspace_fingerprint": "3bfec4acac72e422f7c755862644f7a960be461a9f936ab9e52931468dd98c95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bash -lc SAGEJS_FFLAS_PREFIX=/tmp/range-increment-fflas-prefix pnpm test:native:run > /tmp/range-increment-native-local4.log 2>&1",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 59.492,
+      "started_at": "2026-09-16T20:35:59.564Z",
+      "commit": "ef93aa4200c65907adbc4c1653ee3408a44b3d23",
+      "workspace_fingerprint": "3bfec4acac72e422f7c755862644f7a960be461a9f936ab9e52931468dd98c95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bash -lc pnpm test:native:run > /tmp/range-increment-native-final.log 2>&1",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 326.351,
+      "started_at": "2026-09-16T20:55:16.854Z",
+      "commit": "ef93aa4200c65907adbc4c1653ee3408a44b3d23",
+      "workspace_fingerprint": "3bfec4acac72e422f7c755862644f7a960be461a9f936ab9e52931468dd98c95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.715,
+      "started_at": "2026-09-16T21:00:55.385Z",
+      "commit": "ef93aa4200c65907adbc4c1653ee3408a44b3d23",
+      "workspace_fingerprint": "3bfec4acac72e422f7c755862644f7a960be461a9f936ab9e52931468dd98c95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.467,
+      "started_at": "2026-09-16T21:01:31.279Z",
+      "commit": "ef93aa4200c65907adbc4c1653ee3408a44b3d23",
+      "workspace_fingerprint": "3bfec4acac72e422f7c755862644f7a960be461a9f936ab9e52931468dd98c95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.913,
+      "started_at": "2026-09-16T21:01:47.317Z",
+      "commit": "ef93aa4200c65907adbc4c1653ee3408a44b3d23",
+      "workspace_fingerprint": "3bfec4acac72e422f7c755862644f7a960be461a9f936ab9e52931468dd98c95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.755,
+      "started_at": "2026-09-16T21:02:48.070Z",
+      "commit": "ef93aa4200c65907adbc4c1653ee3408a44b3d23",
+      "workspace_fingerprint": "3bfec4acac72e422f7c755862644f7a960be461a9f936ab9e52931468dd98c95",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 877.537,
+      "started_at": "2026-09-16T21:07:09.921Z",
+      "commit": "ef93aa4200c65907adbc4c1653ee3408a44b3d23",
+      "workspace_fingerprint": "3bfec4acac72e422f7c755862644f7a960be461a9f936ab9e52931468dd98c95",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Reconstructed constant-int64 range increment proofs after checked-private graph cloning, then bound every raw range update to a complete graph/root snapshot. Ordinary non-private functions retain the existing local proof path; private variants require graph authority, and capability-disabled, malformed, or subsequently mutated graphs retain checked arithmetic. Hostile tests alter the range stop, continue step, and root guard and verify that raw emission is revoked. On the frozen Stage-G splitting-degree catalog, all 7,081 active outputs and 9 malformed controls remain exact, static checks fall from 222 to 206, and the generated C shrinks by 1,433 bytes. A pinned 15-pair x1000 measurement improves the catalog mean from 2.085840 ms to 2.080849 ms (0.239%). The focused 38-test proof suite, strict baselib, architecture classification, a complete self-hosted build, the 326-second native correctness/performance runner, and the exact 878-second native preparation/build/test gate pass on ef93aa420. Initial native attempts are retained as receipts: they progressively exposed stale cross-worktree FLINT, FFLAS, M4RI, dist, and production-cache artifacts; after rebuilding/restoring lane-local artifacts, the unchanged gate passed.",
+    "risks": [
+      "The performance gain is small and measured on one pinned Linux x64 host; required non-Linux targets still rely on integration CI.",
+      "The generated ELF text grows by 1,344 bytes despite fewer checks, consistent with additional specialization or inlining; keep code-size and whole-catalog timing gates when integrating.",
+      "This closes a compiler proof-loss defect in the splitting-degree kernel, but does not complete the later class-group unit-reconstruction and final-result stages."
+    ],
+    "next_steps": [
+      "Integrate this proof reconstruction with the preceding fixed-width private-graph compiler series and rerun the frozen catalog on the consolidated branch.",
+      "Stop spending campaigns on sub-percent splitting-degree cleanup unless a fresh profile identifies a material regression; shift the compiler machinery into the unfinished end-to-end class-group/unit stages.",
+      "Preserve the 1.39 ms mechanical C translation as a ceiling experiment and the approximately 2.08 ms integrated kernel as the compiler regression gate."
+    ]
   }
 }
