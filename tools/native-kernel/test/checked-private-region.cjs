@@ -134,6 +134,33 @@ const directCopyDeclaration = {
   }],
 };
 
+const refinedDirectCopyDeclaration = {
+  entry: "checked_region_refined_copy_entry",
+  functions: [
+    "checked_region_refined_copy_entry",
+    "checked_region_local_copy_helper",
+  ],
+  capabilities: ["direct-buffer-access", "virtual-fixed-uint64-views"],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 12 },
+    {
+      kind: "int64-range",
+      parameter: "degree",
+      minimum: Number.MIN_SAFE_INTEGER,
+      maximum: Number.MAX_SAFE_INTEGER,
+    },
+    { kind: "int64-range", parameter: "count", minimum: -2, maximum: 2 },
+  ],
+  localVariants: [{
+    function: "checked_region_local_copy_helper",
+    mode: "direct-result",
+    guard: [
+      { kind: "int64-range", parameter: "degree", minimum: -1, maximum: 3 },
+    ],
+    capabilities: ["int64-arithmetic", "interval-view-access"],
+  }],
+};
+
 function fixedViewIndexDeclaration(entry) {
   return {
     entry,
@@ -1345,6 +1372,259 @@ int main(void)
       rmSync(temporary, { recursive: true, force: true });
     }
   }
+});
+
+test("raising comparisons refine direct-call facts across immutable ranges", async () => {
+  const prepared = await witness();
+  installCheckedRegionDeclarations(prepared, [refinedDirectCopyDeclaration]);
+  const [region] = prepareCheckedRegions(prepared);
+  const entry = region.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_refined_copy_entry"
+  );
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  const call = entry.body.find(operation => operation.kind === "native.call");
+  assert.ok(call);
+  assert.ok(checkedRegionDirectCallEmission(entry, call, functions));
+  const loop = entry.body.find(operation => operation.kind === "loop.range_int64");
+  assert.ok(loop);
+  assert.equal(loop.body.filter(operation =>
+    ["uint64.buffer.get", "uint64.buffer.set"].includes(operation.kind) &&
+    isCheckedRegionBufferAccess(operation)
+  ).length, 2);
+
+  const core = generateHostCore(prepared, { moduleIdentity: "0123456789abcdef" });
+  assert.equal((core.source.match(/= sagejs_direct_.*local_copy_helper/g) || []).length, 1);
+
+  const reversed = await witness();
+  const reversedEntry = reversed.functions.find(fn =>
+    fn.name === "checked_region_refined_copy_entry"
+  );
+  const reversedGuards = reversedEntry.body.filter(operation =>
+    operation.kind === "if"
+  ).slice(0, 2);
+  for (const guard of reversedGuards) {
+    const comparison = guard.condition.operations.find(operation =>
+      operation.kind === "int64.compare"
+    );
+    [comparison.left, comparison.right] = [comparison.right, comparison.left];
+    comparison.operation = comparison.operation === "lt" ? "gt" : "lt";
+  }
+  installCheckedRegionDeclarations(reversed, [refinedDirectCopyDeclaration]);
+  const [reversedRegion] = prepareCheckedRegions(reversed);
+  const reversedPreparedEntry = reversedRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_refined_copy_entry"
+  );
+  const reversedFunctions = new Map(reversedRegion.variants.map(fn => [fn.name, fn]));
+  const reversedCall = reversedPreparedEntry.body.find(operation =>
+    operation.kind === "native.call"
+  );
+  assert.ok(checkedRegionDirectCallEmission(
+    reversedPreparedEntry, reversedCall, reversedFunctions,
+  ));
+
+  for (const [relation, raiseInAlternative] of [["ne", false], ["eq", true]]) {
+    const equality = await witness();
+    const equalityEntry = equality.functions.find(fn =>
+      fn.name === "checked_region_refined_copy_entry"
+    );
+    const guards = equalityEntry.body.filter(operation => operation.kind === "if");
+    const comparison = guards[1].condition.operations.find(operation =>
+      operation.kind === "int64.compare"
+    );
+    comparison.operation = relation;
+    if (raiseInAlternative) {
+      guards[1].alternative = guards[1].body;
+      guards[1].body = [];
+    }
+    equalityEntry.body.splice(equalityEntry.body.indexOf(guards[0]), 1);
+    equalityEntry.locals.push({ name: "equality_value", type: "uint64" });
+    const equalityCallIndex = equalityEntry.body.findIndex(operation =>
+      operation.kind === "native.call"
+    );
+    equalityEntry.body.splice(equalityCallIndex, 0, {
+      kind: "uint64.buffer.get",
+      buffer: "storage",
+      bufferType: "UInt64Buffer",
+      index: "degree",
+      indexType: "int64",
+      target: "equality_value",
+      id: `checked_region_refined_copy_entry:equality-${relation}`,
+    });
+    installCheckedRegionDeclarations(equality, [refinedDirectCopyDeclaration]);
+    const [equalityRegion] = prepareCheckedRegions(equality);
+    const equalityPreparedEntry = equalityRegion.variants.find(fn =>
+      fn.checkedRegionVariant.original === "checked_region_refined_copy_entry"
+    );
+    const equalityAccess = equalityPreparedEntry.body.find(operation =>
+      operation.id.endsWith(`:equality-${relation}`)
+    );
+    assert.ok(isCheckedRegionBufferAccess(equalityAccess), relation);
+  }
+
+  const nonRaising = await witness();
+  const nonRaisingEntry = nonRaising.functions.find(fn =>
+    fn.name === "checked_region_refined_copy_entry"
+  );
+  nonRaisingEntry.body.find(operation => operation.kind === "if").body = [];
+  installCheckedRegionDeclarations(nonRaising, [refinedDirectCopyDeclaration]);
+  const [nonRaisingRegion] = prepareCheckedRegions(nonRaising);
+  assert.equal(nonRaisingRegion.variants.some(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), false);
+
+  const returnBeforeRaise = await witness();
+  const returningEntry = returnBeforeRaise.functions.find(fn =>
+    fn.name === "checked_region_refined_copy_entry"
+  );
+  returningEntry.body.find(operation => operation.kind === "if").body.unshift({
+    kind: "return",
+    value: "degree",
+    type: "int64",
+    id: "checked_region_refined_copy_entry:hostile-early-return",
+  });
+  installCheckedRegionDeclarations(
+    returnBeforeRaise, [refinedDirectCopyDeclaration],
+  );
+  const [returningRegion] = prepareCheckedRegions(returnBeforeRaise);
+  assert.equal(returningRegion.variants.some(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), false);
+
+  const unknownOperand = await witness();
+  const unknownEntry = unknownOperand.functions.find(fn =>
+    fn.name === "checked_region_refined_copy_entry"
+  );
+  const unknownCondition = unknownEntry.body.find(operation =>
+    operation.kind === "if"
+  ).condition;
+  unknownCondition.operations = unknownCondition.operations.filter(operation =>
+    operation.kind !== "int64.constant"
+  );
+  installCheckedRegionDeclarations(unknownOperand, [refinedDirectCopyDeclaration]);
+  let unknownRegion;
+  assert.doesNotThrow(() => {
+    [unknownRegion] = prepareCheckedRegions(unknownOperand);
+  });
+  assert.equal(unknownRegion.variants.some(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), false);
+
+  const overwrittenCondition = await witness();
+  const overwrittenEntry = overwrittenCondition.functions.find(fn =>
+    fn.name === "checked_region_refined_copy_entry"
+  );
+  const overwrittenGuard = overwrittenEntry.body.find(operation =>
+    operation.kind === "if"
+  );
+  overwrittenGuard.condition.operations.push({
+    kind: "int64.constant",
+    target: overwrittenGuard.condition.value,
+    value: "0",
+    id: "checked_region_refined_copy_entry:hostile-condition-overwrite",
+  });
+  installCheckedRegionDeclarations(
+    overwrittenCondition, [refinedDirectCopyDeclaration],
+  );
+  const [overwrittenRegion] = prepareCheckedRegions(overwrittenCondition);
+  assert.equal(overwrittenRegion.variants.some(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), false);
+
+  const mixedComparison = await witness();
+  const mixedEntry = mixedComparison.functions.find(fn =>
+    fn.name === "checked_region_refined_copy_entry"
+  );
+  const mixedGuard = mixedEntry.body.filter(operation =>
+    operation.kind === "if"
+  )[1];
+  const mixedConstant = mixedGuard.condition.operations.find(operation =>
+    operation.kind === "int64.constant"
+  );
+  const mixedCompare = mixedGuard.condition.operations.find(operation =>
+    operation.kind === "int64.compare"
+  );
+  mixedConstant.kind = "uint64.constant";
+  mixedCompare.kind = "uint64.compare";
+  mixedEntry.locals.find(local => local.name === mixedConstant.target).type = "uint64";
+  installCheckedRegionDeclarations(
+    mixedComparison, [refinedDirectCopyDeclaration],
+  );
+  const [mixedRegion] = prepareCheckedRegions(mixedComparison);
+  assert.equal(mixedRegion.variants.some(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), false);
+
+  const nonBooleanCondition = await witness();
+  const nonBooleanEntry = nonBooleanCondition.functions.find(fn =>
+    fn.name === "checked_region_refined_copy_entry"
+  );
+  const nonBooleanGuard = nonBooleanEntry.body.find(operation =>
+    operation.kind === "if"
+  );
+  nonBooleanEntry.locals.find(local =>
+    local.name === nonBooleanGuard.condition.value
+  ).type = "int64";
+  installCheckedRegionDeclarations(
+    nonBooleanCondition, [refinedDirectCopyDeclaration],
+  );
+  const [nonBooleanRegion] = prepareCheckedRegions(nonBooleanCondition);
+  assert.equal(nonBooleanRegion.variants.some(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), false);
+
+  for (const [guardIndex, boundary] of [
+    [0, "-9223372036854775808"],
+    [1, "9223372036854775807"],
+  ]) {
+    const endpoint = await witness();
+    const endpointEntry = endpoint.functions.find(fn =>
+      fn.name === "checked_region_refined_copy_entry"
+    );
+    const endpointGuard = endpointEntry.body.filter(operation =>
+      operation.kind === "if"
+    )[guardIndex];
+    endpointGuard.condition.operations.find(operation =>
+      operation.kind === "int64.constant"
+    ).value = boundary;
+    const endpointDeclaration = structuredClone(refinedDirectCopyDeclaration);
+    endpointDeclaration.guard[1].minimum = "-9223372036854775808";
+    endpointDeclaration.guard[1].maximum = "9223372036854775807";
+    installCheckedRegionDeclarations(endpoint, [endpointDeclaration]);
+    const [endpointRegion] = prepareCheckedRegions(endpoint);
+    assert.equal(endpointRegion.variants.some(fn =>
+      checkedRegionDirectResultEmission(fn) !== undefined
+    ), false, boundary);
+  }
+
+  const mutatedRange = await witness();
+  const mutatedEntry = mutatedRange.functions.find(fn =>
+    fn.name === "checked_region_refined_copy_entry"
+  );
+  const mutatedLoop = mutatedEntry.body.find(operation =>
+    operation.kind === "loop.range_int64"
+  );
+  mutatedLoop.body.unshift({
+    kind: "int64.constant",
+    target: "degree",
+    value: "9",
+    id: `${mutatedLoop.id}:hostile-degree-write`,
+  });
+  installCheckedRegionDeclarations(mutatedRange, [refinedDirectCopyDeclaration]);
+  const [mutatedRegion] = prepareCheckedRegions(mutatedRange);
+  assert.equal(mutatedRegion.variants.some(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), false);
+
+  // The caller/callee authority binds the final condition graph. A mutation
+  // after preparation cannot retain the direct edge.
+  const preparedGuard = entry.body.find(operation => operation.kind === "if");
+  preparedGuard.condition.operations.find(operation =>
+    operation.kind === "int64.compare"
+  ).operation = "ge";
+  assert.equal(
+    checkedRegionDirectCallEmission(entry, call, functions),
+    undefined,
+  );
 });
 
 test("direct-result authority revokes mutations and rejects unsafe shapes", async () => {

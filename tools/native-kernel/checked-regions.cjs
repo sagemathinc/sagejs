@@ -963,6 +963,121 @@ function rangeIteratorInterval(operation, state) {
   return interval;
 }
 
+function functionValueType(fn, name) {
+  return [...fn.params, ...fn.locals].find(value => value.name === name)?.type;
+}
+
+function comparisonCondition(operation, fn) {
+  const value = operation.condition?.value;
+  if (typeof value !== "string") return undefined;
+  const operations = operation.condition?.operations || [];
+  const comparison = operations.at(-1);
+  if (!["int64.compare", "uint64.compare"].includes(comparison?.kind) ||
+      comparison.target !== value || functionValueType(fn, value) !== "bool") {
+    return undefined;
+  }
+  const operandType = comparison.kind === "int64.compare" ? "int64" : "uint64";
+  return functionValueType(fn, comparison.left) === operandType &&
+      functionValueType(fn, comparison.right) === operandType
+    ? comparison
+    : undefined;
+}
+
+function reversedComparison(operation) {
+  return ({ lt: "gt", le: "ge", gt: "lt", ge: "le", eq: "eq", ne: "ne" })[
+    operation
+  ];
+}
+
+function negatedComparison(operation) {
+  return ({ lt: "ge", le: "gt", gt: "le", ge: "lt", eq: "ne", ne: "eq" })[
+    operation
+  ];
+}
+
+function refinedInterval(interval, operation, constant) {
+  let minimum = interval.minimum;
+  let maximum = interval.maximum;
+  if (operation === "lt") maximum = maximum < constant - 1n
+    ? maximum : constant - 1n;
+  else if (operation === "le") maximum = maximum < constant
+    ? maximum : constant;
+  else if (operation === "gt") minimum = minimum > constant + 1n
+    ? minimum : constant + 1n;
+  else if (operation === "ge") minimum = minimum > constant
+    ? minimum : constant;
+  else if (operation === "eq") {
+    minimum = minimum > constant ? minimum : constant;
+    maximum = maximum < constant ? maximum : constant;
+  } else if (operation === "ne") {
+    // A convex interval can represent exclusion only at an endpoint.
+    if (minimum === constant) minimum += 1n;
+    else if (maximum === constant) maximum -= 1n;
+  } else {
+    return undefined;
+  }
+  return minimum <= maximum ? { minimum, maximum } : undefined;
+}
+
+function refineConditionState(operation, state, truth, fn) {
+  const comparison = comparisonCondition(operation, fn);
+  if (comparison === undefined) return cloneState(state);
+  const left = state.intervals.get(comparison.left);
+  const right = state.intervals.get(comparison.right);
+  let name;
+  let constant;
+  let relation = comparison.operation;
+  if (left !== undefined && right !== undefined &&
+      right.minimum === right.maximum) {
+    name = comparison.left;
+    constant = right.minimum;
+  } else if (right !== undefined && left !== undefined &&
+      left.minimum === left.maximum) {
+    name = comparison.right;
+    constant = left.minimum;
+    relation = reversedComparison(relation);
+  } else {
+    return cloneState(state);
+  }
+  if (relation === undefined) return cloneState(state);
+  if (!truth) relation = negatedComparison(relation);
+  if (relation === undefined) return cloneState(state);
+  const refined = refinedInterval(state.intervals.get(name), relation, constant);
+  const result = cloneState(state);
+  // An impossible arm contributes no useful fact without an explicit bottom
+  // state. Keeping its incoming facts is conservative.
+  if (refined !== undefined) result.intervals.set(name, refined);
+  return result;
+}
+
+function statementOutcomes(statements) {
+  let outcomes = new Set(["fallthrough"]);
+  for (const operation of statements || []) {
+    if (!outcomes.has("fallthrough")) break;
+    outcomes.delete("fallthrough");
+    if (operation.kind === "raise") {
+      outcomes.add("raise");
+    } else if (operation.kind === "return") {
+      outcomes.add("other-termination");
+    } else if (operation.kind === "if") {
+      for (const outcome of statementOutcomes(operation.body)) {
+        outcomes.add(outcome);
+      }
+      for (const outcome of statementOutcomes(operation.alternative)) {
+        outcomes.add(outcome);
+      }
+    } else {
+      outcomes.add("fallthrough");
+    }
+  }
+  return outcomes;
+}
+
+function statementsAlwaysRaise(statements) {
+  const outcomes = statementOutcomes(statements);
+  return outcomes.size === 1 && outcomes.has("raise");
+}
+
 function invalidateNestedCalls(operation, context) {
   visitOperations(operation, (nested) => {
     if (nested.kind !== "native.call" ||
@@ -988,15 +1103,19 @@ function analyzeStatements(statements, state, context) {
       );
       const body = analyzeStatements(
         operation.body,
-        cloneState(conditioned),
+        refineConditionState(operation, conditioned, true, context.currentFunction),
         context,
       );
       const alternative = analyzeStatements(
         operation.alternative,
-        cloneState(conditioned),
+        refineConditionState(operation, conditioned, false, context.currentFunction),
         context,
       );
-      state = joinStates(body, alternative);
+      const bodyRaises = statementsAlwaysRaise(operation.body);
+      const alternativeRaises = statementsAlwaysRaise(operation.alternative);
+      if (bodyRaises && !alternativeRaises) state = alternative;
+      else if (alternativeRaises && !bodyRaises) state = body;
+      else state = joinStates(body, alternative);
       continue;
     }
     if (operation.kind === "bool.short_circuit") {

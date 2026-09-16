@@ -257,6 +257,21 @@ def checked_region_direct_copy_entry(
 
 
 @native
+def checked_region_refined_copy_entry(
+    storage: UInt64Buffer, degree: int64, count: int64
+) -> int64:
+    if degree < -1:
+        raise ValueError("degree is below the local copy range")
+    if degree > 3:
+        raise ValueError("degree is above the local copy range")
+    index: int64 = 0
+    for index in range(count):
+        sentinel: uint64 = storage[11]
+        storage[11] = sentinel
+    return checked_region_local_copy_helper(storage, 0, degree, 4)
+
+
+@native
 def checked_region_direct_zero_helper() -> int64:
     return 17
 
