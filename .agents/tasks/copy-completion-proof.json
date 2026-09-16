@@ -4,7 +4,7 @@
   "id": "copy-completion-proof",
   "title": "Copy Completion Proof",
   "lane": "native-compiler",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Prove and authenticate normal-completion repeated-expression bounds for flx_copy da + 1, preserving checked fallbacks and measuring the frozen splitting-degree corpus",
   "base_commit": "ba523edecbd5630eb597fc23347049f1332b70f7",
@@ -112,6 +112,56 @@
       "started_at": "2026-09-16T19:20:14.242Z",
       "commit": "d5414248972ae98b102eac96b97e69dbf0c31ca7",
       "workspace_fingerprint": "a417a872a16d1fbccbb0a612a09fec85f4e4f9d317e6414521648e9b18a56376",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1108.088,
+      "started_at": "2026-09-16T19:25:51.121Z",
+      "commit": "6eb2e9539e48ed5835b69827888aaee1648c5012",
+      "workspace_fingerprint": "4d062d25e6f93d904c368a0a9feb0a556ca41afa9062e107c45f1bd8d4ee44be",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.453,
+      "started_at": "2026-09-16T19:44:24.875Z",
+      "commit": "6eb2e9539e48ed5835b69827888aaee1648c5012",
+      "workspace_fingerprint": "4d062d25e6f93d904c368a0a9feb0a556ca41afa9062e107c45f1bd8d4ee44be",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.417,
+      "started_at": "2026-09-16T19:45:06.910Z",
+      "commit": "6eb2e9539e48ed5835b69827888aaee1648c5012",
+      "workspace_fingerprint": "4d062d25e6f93d904c368a0a9feb0a556ca41afa9062e107c45f1bd8d4ee44be",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.161,
+      "started_at": "2026-09-16T19:45:22.690Z",
+      "commit": "6eb2e9539e48ed5835b69827888aaee1648c5012",
+      "workspace_fingerprint": "4d062d25e6f93d904c368a0a9feb0a556ca41afa9062e107c45f1bd8d4ee44be",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.626,
+      "started_at": "2026-09-16T19:46:22.023Z",
+      "commit": "6eb2e9539e48ed5835b69827888aaee1648c5012",
+      "workspace_fingerprint": "4d062d25e6f93d904c368a0a9feb0a556ca41afa9062e107c45f1bd8d4ee44be",
       "platform": "linux-x64"
     }
   ],
