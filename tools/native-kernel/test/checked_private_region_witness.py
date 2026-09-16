@@ -131,6 +131,64 @@ def checked_region_span_entry(
 
 
 @native
+def checked_region_fixed_view_entry(
+    storage: UInt64Buffer, start: int64, value: uint64
+) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(storage, start, 2)
+    index: int64 = 0
+    for index in range(2):
+        view[index] = value
+    return value + value
+
+
+@native
+def checked_region_fixed_view_index_entry(
+    storage: UInt64Buffer, index: int64
+) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(storage, 0, 2)
+    return view[index]
+
+
+@native
+def checked_region_fixed_view_uint_index_entry(
+    storage: UInt64Buffer, index: uint64
+) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(storage, 0, 2)
+    return view[index]
+
+
+@native
+def checked_region_fixed_view_integer_index_entry(
+    storage: UInt64Buffer, index: Integer
+) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(storage, 0, 2)
+    return view[index]
+
+
+@native
+def checked_region_mutated_view_entry(
+    storage: UInt64Buffer, other: UInt64Buffer, value: uint64
+) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(storage, 1, 2)
+    view = other
+    view[0] = value
+    return view[0]
+
+
+@native
+def checked_region_rebound_root_entry(
+    storage: UInt64Buffer,
+    other: UInt64Buffer,
+    start: int64,
+    value: uint64,
+) -> uint64:
+    storage = other
+    view: UInt64Buffer = uint64_buffer_view(storage, start, 2)
+    view[0] = value
+    return view[0]
+
+
+@native
 def checked_region_relational_scalar_entry(
     storage: UInt64Buffer, count: int64, value: uint64
 ) -> int64:

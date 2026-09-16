@@ -3,6 +3,9 @@
 const {
   attachAndVerifyCheckedBoundsProofs,
 } = require("./checked-bounds-proofs.cjs");
+const {
+  createFunctionProofAuthority,
+} = require("./structural-proof-authority.cjs");
 
 /*
  * Checked regions are private copies of a closed integer call graph selected
@@ -24,6 +27,16 @@ const CHECKED_REGION_INT64_ARITHMETIC = Symbol(
   "checked region int64 arithmetic",
 );
 const CHECKED_REGION_BUFFER_ACCESS = Symbol("checked region buffer access");
+const VIRTUAL_UINT64_VIEW_PROOF = "checkedRegionVirtualUInt64ViewProof";
+const virtualUInt64ViewAuthority = createFunctionProofAuthority({
+  name: "checked-region virtual UInt64 view",
+  ignoredKeys: [
+    "boundsProof",
+    "checkedRegionProof",
+    "incrementProof",
+    "provenance",
+  ],
+});
 const SCHEMA = "sagejs-checked-private-region-v1";
 const INT64_MINIMUM = -(1n << 63n);
 const INT64_MAXIMUM = (1n << 63n) - 1n;
@@ -32,6 +45,7 @@ const CAPABILITIES = new Set([
   "int64-arithmetic",
   "direct-buffer-access",
   "verified-span-access",
+  "virtual-fixed-uint64-views",
 ]);
 
 const BUFFER_TYPES = new Set([
@@ -630,6 +644,190 @@ function assignedNames(statements) {
   return assigned;
 }
 
+function operationReferencesName(operation, name) {
+  const ignored = new Set([
+    "alternative", "body", "condition", "id", "kind", "origins",
+    "provenance", "right", "target",
+  ]);
+  function contains(value) {
+    if (value === name) return true;
+    if (value === null || typeof value !== "object") return false;
+    if (Array.isArray(value)) return value.some(contains);
+    return Object.entries(value).some(([key, child]) =>
+      !ignored.has(key) && contains(child)
+    );
+  }
+  return Object.entries(operation).some(([key, value]) =>
+    !ignored.has(key) && contains(value)
+  );
+}
+
+function fixedIntegerInputsAt(fn, entryState, stopIndex) {
+  const values = new Map();
+  for (const [definitionIndex, operation] of (fn.body || []).entries()) {
+    if (definitionIndex >= stopIndex) break;
+    for (const target of assignedNames([operation])) values.delete(target);
+    if ([
+      "if", "while", "loop.range", "loop.range_exact", "loop.range_int64",
+      "bool.short_circuit", "integer.vector.scope", "integer.matrix.scope",
+      "integer.arena.scope",
+    ].includes(operation.kind)) continue;
+    if (["integer.constant", "int64.constant"].includes(operation.kind)) {
+      let value;
+      try {
+        value = BigInt(operation.value);
+      } catch (_error) {
+        continue;
+      }
+      values.set(operation.target, {
+        kind: "constant",
+        minimum: value,
+        maximum: value,
+        expression: value.toString(),
+        definitionIndex,
+      });
+    } else if (operation.kind === "integer.from_int64") {
+      const interval = entryState.intervals.get(operation.source);
+      if (interval !== undefined) {
+        values.set(operation.target, {
+          kind: "int64",
+          minimum: interval.minimum,
+          maximum: interval.maximum,
+          expression: operation.source,
+          definitionIndex,
+        });
+      }
+    } else if (operation.kind === "integer.copy") {
+      const value = values.get(operation.source);
+      if (value !== undefined) {
+        values.set(operation.target, { ...value, definitionIndex });
+      }
+    }
+  }
+  return values;
+}
+
+function virtualFixedUInt64ViewGroups(fn, entryState) {
+  const operations = [];
+  visitOperations(fn.body, (operation) => operations.push(operation));
+  const assignments = new Map();
+  for (const operation of operations) {
+    const targets = operationTargets(operation);
+    if (operation.kind?.startsWith("loop.") &&
+        typeof operation.iterator === "string") targets.push(operation.iterator);
+    for (const target of targets) {
+      assignments.set(target, (assignments.get(target) || 0) + 1);
+    }
+  }
+  const groups = [];
+  for (const [viewIndex, view] of fn.body.entries()) {
+    if (view.kind !== "uint64.buffer.view") continue;
+    const inputs = fixedIntegerInputsAt(fn, entryState, viewIndex);
+    const start = inputs.get(view.start);
+    const length = inputs.get(view.length);
+    const rootMinimum = entryState.buffers.get(view.buffer);
+    if (start === undefined || length === undefined || rootMinimum === undefined ||
+        assignments.has(view.buffer) ||
+        (start.kind === "int64" && assignments.has(start.expression)) ||
+        assignments.get(view.start) !== 1 || assignments.get(view.length) !== 1 ||
+        start.definitionIndex >= viewIndex || length.definitionIndex >= viewIndex ||
+        length.minimum !== length.maximum || start.minimum < 0n ||
+        length.minimum < 0n || start.maximum > INT64_MAXIMUM ||
+        length.maximum > INT64_MAXIMUM || start.maximum > rootMinimum ||
+        length.maximum > rootMinimum - start.maximum) continue;
+    const aliases = new Set([view.target]);
+    const aliasDefinition = new Map([[view.target, viewIndex]]);
+    for (let index = viewIndex + 1; index < fn.body.length; index += 1) {
+      const operation = fn.body[index];
+      if (operation.kind !== "uint64.buffer.copy" ||
+          !aliases.has(operation.source) || aliases.has(operation.target)) continue;
+      aliases.add(operation.target);
+      aliasDefinition.set(operation.target, index);
+    }
+    if (Array.from(aliases).some((name) => assignments.get(name) !== 1)) continue;
+    let valid = true;
+    for (const [topLevelIndex, topLevel] of fn.body.entries()) {
+      visitOperations([topLevel], (operation) => {
+        for (const name of aliases) {
+          if (!operationReferencesName(operation, name)) continue;
+          const dominated = topLevelIndex >= aliasDefinition.get(name);
+          const allowed = dominated && ((
+            operation === topLevel &&
+            operation.kind === "uint64.buffer.copy" &&
+            aliases.has(operation.source) && aliases.has(operation.target)
+          ) || (
+            [
+              "uint64.buffer.get", "uint64.buffer.set", "uint64.buffer.length",
+            ].includes(operation.kind) && operation.buffer === name
+          ));
+          if (!allowed) valid = false;
+        }
+      });
+    }
+    if (!valid) continue;
+    groups.push({
+      aliases,
+      fact: Object.freeze({
+        authority: "checked-region-virtual-fixed-uint64-view-v1",
+        root: view.buffer,
+        startKind: start.kind,
+        startExpression: start.expression,
+        startMinimum: start.minimum.toString(),
+        startMaximum: start.maximum.toString(),
+        length: length.minimum.toString(),
+        rootMinimumLength: rootMinimum.toString(),
+        viewOperation: view.id,
+      }),
+      view,
+    });
+  }
+  return groups;
+}
+
+function attachVirtualFixedUInt64Views(fn, entryState, enabled) {
+  if (!enabled.has("virtual-fixed-uint64-views")) return;
+  const authorizations = [];
+  for (const { aliases, fact, view } of virtualFixedUInt64ViewGroups(
+    fn,
+    entryState,
+  )) {
+    const viewClaim = Object.freeze({ ...fact, role: "view", target: view.target });
+    view[VIRTUAL_UINT64_VIEW_PROOF] = viewClaim;
+    authorizations.push([view, viewClaim]);
+    visitOperations(fn.body, (operation) => {
+      if (operation.kind === "uint64.buffer.copy" &&
+          aliases.has(operation.source) && aliases.has(operation.target)) {
+        const claim = Object.freeze({
+          ...fact,
+          role: "alias",
+          source: operation.source,
+          target: operation.target,
+        });
+        operation[VIRTUAL_UINT64_VIEW_PROOF] = claim;
+        authorizations.push([operation, claim]);
+      } else if ([
+        "uint64.buffer.get", "uint64.buffer.set", "uint64.buffer.length",
+      ].includes(operation.kind) && aliases.has(operation.buffer)) {
+        const claim = Object.freeze({
+          ...fact,
+          role: "access",
+          accessKind: operation.kind,
+          buffer: operation.buffer,
+          operation: operation.id,
+        });
+        operation[VIRTUAL_UINT64_VIEW_PROOF] = claim;
+        authorizations.push([operation, claim]);
+      }
+    });
+  }
+  // All claims in this function are one structural proof unit. Authorize only
+  // after attaching every claim, so deleting or changing any one claim
+  // invalidates descriptor elimination and every rewritten access together.
+  for (const [operation, claim] of authorizations) {
+    virtualUInt64ViewAuthority.authorize(fn, operation, claim);
+  }
+}
+
 function rangeIteratorInterval(operation, state) {
   const start = state.intervals.get(operation.start);
   const stop = state.intervals.get(operation.stop);
@@ -940,6 +1138,7 @@ function attachCapabilities(region, entry, variants) {
   for (const name of order) {
     const fn = byName.get(name);
     const state = facts.get(name);
+    attachVirtualFixedUInt64Views(fn, state, enabled);
     analyzeStatements(fn.body, cloneState(state), {
       byName,
       enabled,
@@ -1025,6 +1224,7 @@ function prepareCheckedRegions(ir) {
         // Stage A intentionally retains all checked operations.
         delete operation.boundsProof;
         delete operation.checkedRegionProof;
+        delete operation[VIRTUAL_UINT64_VIEW_PROOF];
         delete operation.incrementProof;
         if (operation.range !== null && typeof operation.range === "object") {
           delete operation.range.incrementProof;
@@ -1054,7 +1254,32 @@ function prepareCheckedRegions(ir) {
   return Object.freeze(prepared);
 }
 
+function checkedRegionVirtualUInt64Emission(fn) {
+  const verifier = virtualUInt64ViewAuthority.emissionVerifier(fn);
+  const localClaims = new Map();
+  const operationClaims = new WeakMap();
+  visitOperations(fn.body, (operation) => {
+    const claim = operation[VIRTUAL_UINT64_VIEW_PROOF];
+    if (claim === undefined ||
+        claim.authority !== "checked-region-virtual-fixed-uint64-view-v1" ||
+        !verifier.isAuthorized(operation, claim)) return;
+    operationClaims.set(operation, claim);
+    if (claim.role === "view") localClaims.set(claim.target, claim);
+    if (claim.role === "alias") localClaims.set(claim.target, claim);
+  });
+  return Object.freeze({
+    claim(operation, role) {
+      const claim = operationClaims.get(operation);
+      return claim?.role === role ? claim : undefined;
+    },
+    isVirtualLocal(name) {
+      return localClaims.has(name);
+    },
+  });
+}
+
 module.exports = {
+  checkedRegionVirtualUInt64Emission,
   isCheckedRegionBufferAccess(operation) {
     return operation?.[CHECKED_REGION_BUFFER_ACCESS] === true &&
       operation.checkedRegionProof?.authority ===

@@ -4,7 +4,7 @@
   "id": "virtual-u64-fixed-views",
   "title": "Virtual fixed UInt64 views",
   "lane": "native-compiler",
-  "status": "active",
+  "status": "review",
   "owner": "user",
   "objective": "Implement fail-closed scalar replacement for local nonescaping fixed UInt64Buffer views in checked private graph variants, with portable emitted C and hostile mutation tests",
   "base_commit": "07741b130c8fb55f9c73504441670e8e75a83e33",
@@ -17,7 +17,9 @@
     "tools/native-kernel/test/structural-proof-authority.cjs"
   ],
   "dependencies": [],
-  "references": ["compiler proof-authority prototype c33561ab1"],
+  "references": [
+    "compiler proof-authority prototype c33561ab1"
+  ],
   "architecture": {
     "strategy": "compiler-infrastructure",
     "fallback": "same-source",
@@ -38,10 +40,68 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.587,
+      "started_at": "2026-09-16T05:25:35.909Z",
+      "commit": "38e223c7021a92c3def92b797712dbc5ac843d31",
+      "workspace_fingerprint": "e4bf0b0ef5a4746afaadfa643bb9b1850892bcb55241c8b7ccc406cfb7aa6e47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.06,
+      "started_at": "2026-09-16T05:31:24.824Z",
+      "commit": "38e223c7021a92c3def92b797712dbc5ac843d31",
+      "workspace_fingerprint": "e4bf0b0ef5a4746afaadfa643bb9b1850892bcb55241c8b7ccc406cfb7aa6e47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.807,
+      "started_at": "2026-09-16T05:31:43.255Z",
+      "commit": "38e223c7021a92c3def92b797712dbc5ac843d31",
+      "workspace_fingerprint": "e4bf0b0ef5a4746afaadfa643bb9b1850892bcb55241c8b7ccc406cfb7aa6e47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 779.846,
+      "started_at": "2026-09-16T05:34:37.165Z",
+      "commit": "38e223c7021a92c3def92b797712dbc5ac843d31",
+      "workspace_fingerprint": "e4bf0b0ef5a4746afaadfa643bb9b1850892bcb55241c8b7ccc406cfb7aa6e47",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 564.673,
+      "started_at": "2026-09-16T05:49:04.781Z",
+      "commit": "38e223c7021a92c3def92b797712dbc5ac843d31",
+      "workspace_fingerprint": "11cefbe34f15e0b2e6893959b5f7fb9b499d681db6f26be0fa597f88c2d709ac",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Implemented an opt-in, compiler-authorized scalar replacement for local nonescaping fixed UInt64Buffer views in checked private variants. The proof is program-point aware, group-atomic, mutation-sensitive, and retains the ordinary checked public path. Focused hostile tests compile and execute portable C11 for int64, uint64, and Integer indices. Full build, architecture checks, strict baselib, and focused tests passed. The readable frozen catalog currently qualifies zero views, so this commit makes no catalog performance claim.",
+    "risks": [
+      "The theorem deliberately handles only direct top-level views whose root minimum and fixed start/length interval prove containment; it does not yet consume workspace layout relations across helper calls.",
+      "pnpm test:changed stopped on unrelated native-cache lifecycle environment-key instability. pnpm test:compiler had pre-existing missing-FLINT-addon and generated Any ReferenceError failures; 17 compiler fixtures passed.",
+      "pnpm test:native reaches the IR-version ratchets but fails because the new capability advances generated IR from version 45 to 46; shared ratchet updates are deliberately excluded from this lane. With temporary local 46 expectations, all affected compiler-shape tests passed before the remaining native-kernel.cjs ratchet stopped the run."
+    ],
+    "next_steps": [
+      "Extend checked-region facts with authenticated workspace-layout relations for the readable Flx helper graph, then qualify the eleven surviving view constructions without weakening fallback behavior.",
+      "Re-run the independent frozen readable-view catalog harness only after at least one real view qualifies, comparing same-tip capability-off and capability-on artifacts."
+    ]
   }
 }

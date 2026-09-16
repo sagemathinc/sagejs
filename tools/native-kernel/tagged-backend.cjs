@@ -4,6 +4,7 @@ const {
   isVerifiedFixedSpanAccess,
 } = require("./checked-bounds-proofs.cjs");
 const {
+  checkedRegionVirtualUInt64Emission,
   isCheckedRegionBufferAccess,
   isCheckedRegionInt64Arithmetic,
 } = require("./checked-regions.cjs");
@@ -413,9 +414,16 @@ function emitTaggedOperation(operation, context, indent) {
     ].join("\n");
   }
   if (operation.kind === "uint64.buffer.copy") {
+    if (context.virtualUInt64Views.claim(operation, "alias") !== undefined) {
+      return "";
+    }
     return `${indent}${target} = ${taggedValue(operation.source, context)};`;
   }
   if (operation.kind === "uint64.buffer.length") {
+    const virtual = context.virtualUInt64Views.claim(operation, "access");
+    if (virtual !== undefined) {
+      return `${indent}${target} = UINT64_C(${virtual.length});`;
+    }
     return `${indent}${target} = (uint64_t) ` +
       `${taggedValue(operation.buffer, context)}.length;`;
   }
@@ -423,6 +431,71 @@ function emitTaggedOperation(operation, context, indent) {
       operation.kind === "uint64.buffer.set") {
     const buffer = taggedValue(operation.buffer, context);
     const index = taggedValue(operation.index, context);
+    const virtual = context.virtualUInt64Views.claim(operation, "access");
+    if (virtual !== undefined) {
+      const root = taggedValue(virtual.root, context);
+      const start = virtual.startKind === "constant"
+        ? int64Constant(virtual.startExpression)
+        : taggedValue(virtual.startExpression, context);
+      const position = `(size_t) (${start}) + (size_t) (${index})`;
+      const direct = operation.kind === "uint64.buffer.get"
+        ? `${target} = ${root}.data[${position}];`
+        : `${root}.data[${position}] = ` +
+          `${taggedValue(operation.value, context)};`;
+      // Only the fixed-span verifier binds the iterator to this exact view's
+      // logical length. A generic checked-region buffer fact may concern the
+      // containing root and cannot authorize a logical subview access.
+      if (isVerifiedFixedSpanAccess(operation)) return `${indent}${direct}`;
+      const checkedAccess = operation.kind === "uint64.buffer.get"
+        ? `${target} = ${root}.data[` +
+          `(size_t) (${start}) + sagejs_buffer_position];`
+        : `${root}.data[(size_t) (${start}) + sagejs_buffer_position] = ` +
+          `${taggedValue(operation.value, context)};`;
+      if (operation.indexType === "Integer") {
+        return [
+          `${indent}{`,
+          `${indent}    int64_t sagejs_buffer_index;`,
+          `${indent}    size_t sagejs_buffer_position;`,
+          `${indent}    if (!sagejs_tagged_to_int64(${index}, ` +
+            `&sagejs_buffer_index) ||`,
+          `${indent}        !sagejs_signed_buffer_index(` +
+            `(size_t) UINT64_C(${virtual.length}), sagejs_buffer_index, ` +
+            `&sagejs_buffer_position))`,
+          `${indent}    {`,
+          `${indent}        sagejs_native_status_set(status, ` +
+            `SAGEJS_NATIVE_RANGE_ERROR, "UInt64Buffer index out of range");`,
+          `${indent}        goto fail;`,
+          `${indent}    }`,
+          `${indent}    ${checkedAccess}`,
+          `${indent}}`,
+        ].join("\n");
+      }
+      if (operation.indexType === "int64") {
+        return [
+          `${indent}{`,
+          `${indent}    size_t sagejs_buffer_position;`,
+          `${indent}    if (!sagejs_signed_buffer_index(` +
+            `(size_t) UINT64_C(${virtual.length}), ${index}, ` +
+            `&sagejs_buffer_position))`,
+          `${indent}    {`,
+          `${indent}        sagejs_native_status_set(status, ` +
+            `SAGEJS_NATIVE_RANGE_ERROR, "UInt64Buffer index out of range");`,
+          `${indent}        goto fail;`,
+          `${indent}    }`,
+          `${indent}    ${checkedAccess}`,
+          `${indent}}`,
+        ].join("\n");
+      }
+      return [
+        `${indent}if (${index} >= UINT64_C(${virtual.length}))`,
+        `${indent}{`,
+        `${indent}    sagejs_native_status_set(status, ` +
+          `SAGEJS_NATIVE_RANGE_ERROR, "UInt64Buffer index out of range");`,
+        `${indent}    goto fail;`,
+        `${indent}}`,
+        `${indent}${direct}`,
+      ].join("\n");
+    }
     const signedIndex = operation.indexType === "Integer" ||
       operation.indexType === "int64";
     const position = signedIndex
@@ -492,6 +565,10 @@ function emitTaggedOperation(operation, context, indent) {
   if (operation.kind === "int64.record.view" ||
       operation.kind === "integer.buffer.view" ||
       operation.kind === "uint64.buffer.view") {
+    if (operation.kind === "uint64.buffer.view" &&
+        context.virtualUInt64Views.claim(operation, "view") !== undefined) {
+      return "";
+    }
     const exactView = operation.kind === "integer.buffer.view";
     const uint64View = operation.kind === "uint64.buffer.view";
     const buffer = taggedValue(operation.buffer, context);
@@ -1098,6 +1175,7 @@ function emitTaggedFunction(fn, functions, options) {
   // The all-word speculative loop is not yet qualified for Float64 edges.
   // Tagged arithmetic itself still uses its small-value fast paths.
   const sites = mixed ? new Map() : promotionSites(fn);
+  const virtualUInt64Views = checkedRegionVirtualUInt64Emission(fn);
   const tagLocals = new Set([
     ...storage.mutableParameters,
     ...fn.locals
@@ -1131,6 +1209,7 @@ function emitTaggedFunction(fn, functions, options) {
     );
   }
   for (const local of fn.locals) {
+    if (virtualUInt64Views.isVirtualLocal(local.name)) continue;
     if ((fn.resourceAliases || {})[local.name] !== undefined) continue;
     const resource = resourceForFunctionType(fn, local.type);
     if (resource !== undefined) {
@@ -1169,6 +1248,7 @@ function emitTaggedFunction(fn, functions, options) {
     storage,
     tagLocals,
     types,
+    virtualUInt64Views,
     resourceParameters: new Set(
       fn.params
         .filter((param) => resourceForFunctionType(fn, param.type) !== undefined)
