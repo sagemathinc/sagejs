@@ -187,6 +187,26 @@ const refinedDirectCopyDeclaration = {
   }],
 };
 
+const orRefinedDirectCopyDeclaration = {
+  entry: "checked_region_or_refined_copy_entry",
+  functions: [
+    "checked_region_or_refined_copy_entry",
+    "checked_region_local_copy_helper",
+  ],
+  capabilities: ["virtual-fixed-uint64-views"],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 8 },
+  ],
+  localVariants: [{
+    function: "checked_region_local_copy_helper",
+    mode: "direct-result",
+    guard: [
+      { kind: "int64-range", parameter: "degree", minimum: -1, maximum: 3 },
+    ],
+    capabilities: ["int64-arithmetic", "interval-view-access"],
+  }],
+};
+
 function summaryDirectDeclaration(entry, functions, guard) {
   return {
     entry,
@@ -242,6 +262,109 @@ const intervalSummaryDeclaration = summaryDirectDeclaration(
   "checked_region_summary_interval_entry",
   ["checked_region_summary_interval"],
   [{ kind: "int64-range", parameter: "selector", minimum: -10, maximum: 10 }],
+);
+
+const whileSummaryDeclaration = {
+  entry: "checked_region_summary_while_entry",
+  functions: [
+    "checked_region_summary_while_entry",
+    "checked_region_summary_affine_square",
+    "checked_region_summary_affine_multiply",
+    "checked_region_summary_affine_remainder",
+    "checked_region_local_copy_helper",
+  ],
+  capabilities: [
+    "scalar-return-summaries",
+    "virtual-fixed-uint64-views",
+  ],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 8 },
+    { kind: "int64-range", parameter: "degree", minimum: -1, maximum: 3 },
+    {
+      kind: "int64-range",
+      parameter: "divisor_degree",
+      minimum: 2,
+      maximum: 4,
+    },
+    { kind: "int64-range", parameter: "exponent", minimum: 1, maximum: 8 },
+    { kind: "int64-range", parameter: "stop", minimum: -10, maximum: 10 },
+  ],
+  localVariants: [{
+    function: "checked_region_local_copy_helper",
+    mode: "direct-result",
+    guard: [
+      { kind: "int64-range", parameter: "degree", minimum: -1, maximum: 3 },
+    ],
+    capabilities: ["int64-arithmetic", "interval-view-access"],
+  }],
+};
+
+const degradingWhileSummaryDeclaration = {
+  ...whileSummaryDeclaration,
+  entry: "checked_region_summary_while_degrading_entry",
+  functions: [
+    "checked_region_summary_while_degrading_entry",
+    ...whileSummaryDeclaration.functions.slice(1),
+  ],
+  guard: [
+    whileSummaryDeclaration.guard[0],
+    { kind: "buffer-min-length", parameter: "second", minimum: 8 },
+    { kind: "buffer-min-length", parameter: "third", minimum: 8 },
+    { kind: "buffer-min-length", parameter: "other", minimum: 0 },
+    ...whileSummaryDeclaration.guard.slice(1),
+  ],
+};
+
+function hostileSummaryDeclaration(entry, helper, guards) {
+  return {
+    entry,
+    functions: [entry, helper, "checked_region_local_copy_helper"],
+    capabilities: [
+      "scalar-return-summaries",
+      "virtual-fixed-uint64-views",
+    ],
+    guard: [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 8 },
+      ...guards,
+    ],
+    localVariants: [{
+      function: "checked_region_local_copy_helper",
+      mode: "direct-result",
+      guard: [
+        { kind: "int64-range", parameter: "degree", minimum: -1, maximum: 3 },
+      ],
+      capabilities: ["int64-arithmetic", "interval-view-access"],
+    }],
+  };
+}
+
+const partialOverflowSummaryDeclaration = hostileSummaryDeclaration(
+  "checked_region_summary_partial_overflow_entry",
+  "checked_region_summary_partial_overflow",
+  [{
+    kind: "int64-range",
+    parameter: "value",
+    minimum: 0,
+    maximum: "9223372036854775807",
+  }],
+);
+
+const recomputedThresholdSummaryDeclaration = hostileSummaryDeclaration(
+  "checked_region_summary_recomputed_threshold_entry",
+  "checked_region_summary_recomputed_threshold",
+  [
+    { kind: "int64-range", parameter: "value", minimum: 3, maximum: 3 },
+    { kind: "int64-range", parameter: "rounds", minimum: 5, maximum: 5 },
+  ],
+);
+
+const nestedStepSummaryDeclaration = hostileSummaryDeclaration(
+  "checked_region_summary_nested_step_entry",
+  "checked_region_summary_nested_step",
+  [
+    { kind: "int64-range", parameter: "value", minimum: 3, maximum: 3 },
+    { kind: "int64-range", parameter: "rounds", minimum: 1, maximum: 1 },
+  ],
 );
 
 function fixedViewIndexDeclaration(entry) {
@@ -2045,6 +2168,99 @@ test("raising comparisons refine direct-call facts across immutable ranges", asy
   );
 });
 
+test("false OR preflights refine typed domains with dominating literals", async () => {
+  const directEmission = (ir) => {
+    installCheckedRegionDeclarations(ir, [orRefinedDirectCopyDeclaration]);
+    const [region] = prepareCheckedRegions(ir);
+    const entry = region.variants.find(fn =>
+      fn.checkedRegionVariant.original === "checked_region_or_refined_copy_entry"
+    );
+    const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+    const call = entry.body.find(operation => operation.kind === "native.call");
+    assert.ok(call);
+    return checkedRegionDirectCallEmission(entry, call, functions);
+  };
+
+  // `degree` has no scalar guard fact. Its declared int64 domain plus the
+  // false successor of both OR comparisons establishes -1 <= degree <= 3.
+  assert.ok(directEmission(await witness()));
+
+  const reorderRightLiteral = async () => {
+    const ir = await witness();
+    const entry = ir.functions.find(fn =>
+      fn.name === "checked_region_or_refined_copy_entry"
+    );
+    const condition = entry.body.find(operation => operation.kind === "if")
+      .condition;
+    const short = condition.operations.find(operation =>
+      operation.kind === "bool.short_circuit"
+    );
+    const operations = short.right.operations;
+    const literal = operations.find(operation =>
+      operation.kind === "int64.constant"
+    );
+    const comparison = operations.find(operation =>
+      operation.kind === "int64.compare"
+    );
+    assert.ok(literal);
+    assert.ok(comparison);
+    operations.splice(operations.indexOf(literal), 1);
+    operations.splice(operations.indexOf(comparison) + 1, 0, literal);
+    return ir;
+  };
+
+  // A value produced after its comparison cannot authenticate that path.
+  assert.equal(directEmission(await reorderRightLiteral()), undefined);
+
+  const reorderedLeft = await witness();
+  const reorderedLeftEntry = reorderedLeft.functions.find(fn =>
+    fn.name === "checked_region_or_refined_copy_entry"
+  );
+  const reorderedLeftOperations = reorderedLeftEntry.body.find(operation =>
+    operation.kind === "if"
+  ).condition.operations;
+  const reorderedLeftLiteral = reorderedLeftOperations.find(operation =>
+    operation.kind === "int64.constant"
+  );
+  const reorderedLeftComparison = reorderedLeftOperations.find(operation =>
+    operation.kind === "int64.compare"
+  );
+  reorderedLeftOperations.splice(
+    reorderedLeftOperations.indexOf(reorderedLeftLiteral), 1,
+  );
+  reorderedLeftOperations.splice(
+    reorderedLeftOperations.indexOf(reorderedLeftComparison) + 1,
+    0,
+    reorderedLeftLiteral,
+  );
+  assert.equal(directEmission(reorderedLeft), undefined);
+
+  const colliding = await witness();
+  const collidingEntry = colliding.functions.find(fn =>
+    fn.name === "checked_region_or_refined_copy_entry"
+  );
+  const collidingCondition = collidingEntry.body.find(operation =>
+    operation.kind === "if"
+  ).condition;
+  const collidingShort = collidingCondition.operations.find(operation =>
+    operation.kind === "bool.short_circuit"
+  );
+  const collidingOperations = collidingShort.right.operations;
+  const collidingLiteral = collidingOperations.find(operation =>
+    operation.kind === "int64.constant"
+  );
+  const collidingComparison = collidingOperations.find(operation =>
+    operation.kind === "int64.compare"
+  );
+  collidingOperations.splice(collidingOperations.indexOf(collidingComparison), 0, {
+    ...collidingLiteral,
+    id: `${collidingLiteral.id}:hostile-collision`,
+  });
+  // Even two individually dominating constants are ambiguous producers and
+  // must not seed a summary-derived fact.
+  assert.equal(directEmission(colliding), undefined);
+});
+
 test("successful scalar summaries propagate with transitive authority", async () => {
   const identity = await witness();
   installCheckedRegionDeclarations(identity, [identitySummaryDeclaration]);
@@ -2123,9 +2339,9 @@ test("successful scalar summaries propagate with transitive authority", async ()
   assert.doesNotThrow(() => generateHostCore(identity));
 
   // A summarized start flows through a second private call before constructing
-  // this fixed-length view.  The ordinary virtual-view pass must not authorize
-  // the helper from that transitive fact: only direct-edge eligibility is
-  // allowed to consume successful scalar summaries in this milestone.
+  // this fixed-length view. Descriptor scalar replacement may use only the
+  // view's local nonescape structure: construction validation and element
+  // bounds checks remain, and no summarized interval becomes proof authority.
   const transitiveView = await witness();
   installCheckedRegionDeclarations(
     transitiveView, [transitiveSummaryViewDeclaration],
@@ -2144,23 +2360,28 @@ test("successful scalar summaries propagate with transitive authority", async ()
     transitiveHelper,
   );
   assert.equal(
-    transitiveEmission.claim(transitiveViewOperation, "view"),
-    undefined,
+    transitiveEmission.claim(transitiveViewOperation, "view")?.mode,
+    "validated",
   );
-  assert.equal(
-    transitiveEmission.claim(transitiveAccess, "access"),
-    undefined,
+  const transitiveAccessClaim = transitiveEmission.claim(
+    transitiveAccess, "access",
   );
+  assert.equal(transitiveAccessClaim?.mode, "validated");
+  assert.equal(transitiveAccessClaim?.logicalIndexProof, undefined);
+  const transitiveSource = generateHostCore(transitiveView).source;
+  const transitiveBody = functionText(transitiveSource, transitiveHelper.name);
+  assert.match(transitiveBody, /UInt64Buffer view is outside its buffer/);
+  assert.match(transitiveBody, /UInt64Buffer index out of range/);
   const transitiveIdentity = transitiveRegion.variants.find(fn =>
     fn.checkedRegionVariant.original === "checked_region_summary_identity"
   );
   transitiveIdentity.body.at(-1).value = "fail";
   assert.equal(
-    transitiveEmission.claim(transitiveViewOperation, "view"),
-    undefined,
+    transitiveEmission.claim(transitiveViewOperation, "view")?.mode,
+    "validated",
   );
   assert.equal(
-    transitiveEmission.claim(transitiveAccess, "access"),
+    transitiveEmission.claim(transitiveAccess, "access")?.logicalIndexProof,
     undefined,
   );
   assert.doesNotThrow(() => generateHostCore(transitiveView));
@@ -2288,6 +2509,184 @@ test("successful scalar summaries propagate with transitive authority", async ()
     () => prepareCheckedRegions(recursive),
     /does not admit recursion/,
   );
+});
+
+test("case-wise affine summaries stabilize a bounded scalar while", async () => {
+  const collectCalls = fn => {
+    const calls = [];
+    const visit = value => {
+      if (value === null || typeof value !== "object") return;
+      if (value.kind === "native.call") calls.push(value);
+      for (const [key, child] of Object.entries(value)) {
+        if (key !== "provenance") visit(child);
+      }
+    };
+    visit(fn.body);
+    return calls;
+  };
+
+  const ir = await witness();
+  installCheckedRegionDeclarations(ir, [whileSummaryDeclaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const entry = region.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_summary_while_entry"
+  );
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  const copyCalls = collectCalls(entry).filter(operation =>
+    functions.get(operation.function)?.checkedRegionVariant?.original ===
+      "checked_region_local_copy_helper"
+  );
+  assert.equal(copyCalls.length, 3);
+  assert.equal(copyCalls.every(operation =>
+    checkedRegionDirectCallEmission(entry, operation, functions) !== undefined
+  ), true);
+  assert.equal(copyCalls.every(operation =>
+    operation.checkedRegionDirectCallProof.summaryDependencies.length > 0
+  ), true);
+  assert.deepEqual(new Set(copyCalls.flatMap(operation =>
+    operation.checkedRegionDirectCallProof.summaryDependencies.map(name =>
+      functions.get(name).checkedRegionVariant.original
+    )
+  )), new Set([
+    "checked_region_local_copy_helper",
+    "checked_region_summary_affine_multiply",
+    "checked_region_summary_affine_remainder",
+    "checked_region_summary_affine_square",
+  ]));
+  assert.doesNotThrow(() => generateHostCore(ir));
+
+  // The graph authority covers both the case-wise successful-return theorem
+  // and the scalar loop transfer. Mutating either after preparation revokes
+  // every edge that consumed those facts.
+  const remainder = region.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_summary_affine_remainder"
+  );
+  const countdown = [];
+  const collectCountdown = value => {
+    if (value === null || typeof value !== "object") return;
+    if (value.kind === "int64.binary" && value.target === "degree") {
+      countdown.push(value);
+    }
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "provenance") collectCountdown(child);
+    }
+  };
+  collectCountdown(remainder.body);
+  countdown.at(-1).operation = "add";
+  assert.equal(copyCalls.some(operation =>
+    checkedRegionDirectCallEmission(entry, operation, functions) !== undefined
+  ), false);
+  assert.doesNotThrow(() => generateHostCore(ir));
+
+  const hostile = await witness();
+  const hostileEntry = hostile.functions.find(fn =>
+    fn.name === "checked_region_summary_while_entry"
+  );
+  const hostileWhile = hostileEntry.body.find(operation =>
+    operation.kind === "while"
+  );
+  hostileWhile.body.find(operation =>
+    operation.kind === "int64.binary" && operation.target === "bit"
+  ).operation = "add";
+  installCheckedRegionDeclarations(hostile, [whileSummaryDeclaration]);
+  const [hostileRegion] = prepareCheckedRegions(hostile);
+  const hostilePreparedEntry = hostileRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_summary_while_entry"
+  );
+  const hostileFunctions = new Map(
+    hostileRegion.variants.map(fn => [fn.name, fn]),
+  );
+  assert.equal(collectCalls(hostilePreparedEntry).some(operation =>
+    checkedRegionDirectCallEmission(
+      hostilePreparedEntry, operation, hostileFunctions,
+    ) !== undefined
+  ), false);
+
+  // A literal threshold must dominate its comparison. Hostile IR that reads
+  // the temporary before its producer cannot inherit the loop theorem.
+  const reordered = await witness();
+  const reorderedEntry = reordered.functions.find(fn =>
+    fn.name === "checked_region_summary_while_entry"
+  );
+  const reorderedCondition = reorderedEntry.body.find(operation =>
+    operation.kind === "while"
+  ).condition.operations;
+  reorderedCondition.reverse();
+  installCheckedRegionDeclarations(reordered, [whileSummaryDeclaration]);
+  const [reorderedRegion] = prepareCheckedRegions(reordered);
+  const reorderedPreparedEntry = reorderedRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_summary_while_entry"
+  );
+  const reorderedFunctions = new Map(
+    reorderedRegion.variants.map(fn => [fn.name, fn]),
+  );
+  assert.equal(collectCalls(reorderedPreparedEntry).some(operation =>
+    checkedRegionDirectCallEmission(
+      reorderedPreparedEntry, operation, reorderedFunctions,
+    ) !== undefined
+  ), false);
+
+  // Buffer facts degrade only after three loop transfers through this alias
+  // chain, later than the scalar interval stabilizes. Convergence must compare
+  // every proof-relevant component, or the first-buffer copy would inherit a
+  // stale eight-slot fact and become direct.
+  const degrading = await witness();
+  installCheckedRegionDeclarations(
+    degrading, [degradingWhileSummaryDeclaration],
+  );
+  const [degradingRegion] = prepareCheckedRegions(degrading);
+  const degradingEntry = degradingRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_summary_while_degrading_entry"
+  );
+  const degradingFunctions = new Map(
+    degradingRegion.variants.map(fn => [fn.name, fn]),
+  );
+  const degradingCopy = collectCalls(degradingEntry).find(operation =>
+    degradingFunctions.get(operation.function)?.checkedRegionVariant?.original ===
+      "checked_region_local_copy_helper"
+  );
+  assert.ok(degradingCopy);
+  assert.equal(checkedRegionDirectCallEmission(
+    degradingEntry, degradingCopy, degradingFunctions,
+  ), undefined);
+});
+
+test("scalar summaries reject under-approximated cases and mutable loops", async () => {
+  const declarations = [
+    partialOverflowSummaryDeclaration,
+    recomputedThresholdSummaryDeclaration,
+    nestedStepSummaryDeclaration,
+  ];
+  for (const declaration of declarations) {
+    const ir = await witness();
+    installCheckedRegionDeclarations(ir, [declaration]);
+    const [region] = prepareCheckedRegions(ir);
+    const entry = region.variants.find(fn =>
+      fn.checkedRegionVariant.original === declaration.entry
+    );
+    const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+    const calls = [];
+    const visit = value => {
+      if (value === null || typeof value !== "object") return;
+      if (value.kind === "native.call") calls.push(value);
+      for (const [key, child] of Object.entries(value)) {
+        if (key !== "provenance") visit(child);
+      }
+    };
+    visit(entry.body);
+    const copy = calls.find(operation =>
+      functions.get(operation.function)?.checkedRegionVariant?.original ===
+        "checked_region_local_copy_helper"
+    );
+    assert.ok(copy, declaration.entry);
+    assert.equal(
+      checkedRegionDirectCallEmission(entry, copy, functions),
+      undefined,
+      declaration.entry,
+    );
+  }
 });
 
 test("direct-result authority revokes mutations and rejects unsafe shapes", async () => {

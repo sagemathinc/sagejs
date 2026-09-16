@@ -6,7 +6,7 @@
   "lane": "native-compiler",
   "status": "review",
   "owner": "user",
-  "objective": "Implement fail-closed scalar replacement for local nonescaping fixed UInt64Buffer views in checked private graph variants, with portable emitted C and hostile mutation tests",
+  "objective": "Propagate authenticated case-wise scalar bounds through bounded loops and raising preflights, preserve independently proved checks in a summary-free pass, and eliminate the short-powu residual result guards without weakening fallbacks",
   "base_commit": "07741b130c8fb55f9c73504441670e8e75a83e33",
   "claims": [
     "tools/native-kernel/checked-regions.cjs",
@@ -36,6 +36,7 @@
     "macos-arm64": "required"
   },
   "validation": [
+    "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
     "pnpm architecture:check",
     "pnpm test:baselib:strict",
     "pnpm test:native"
@@ -120,21 +121,110 @@
       "commit": "670dda5539173ab937a47dffb5c150466b39aa38",
       "workspace_fingerprint": "1d6154a2c501624fa7dcaa73d67c34f7941981b5893fa986675e16911bee1865",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 25.306,
+      "started_at": "2026-09-16T11:10:39.286Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "c1ef9d7b9e876ac8f40c5c0b569b7445d935164389398ee19a9e379ee6bca395",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.716,
+      "started_at": "2026-09-16T11:11:09.703Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "c1ef9d7b9e876ac8f40c5c0b569b7445d935164389398ee19a9e379ee6bca395",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.771,
+      "started_at": "2026-09-16T11:11:30.156Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "c1ef9d7b9e876ac8f40c5c0b569b7445d935164389398ee19a9e379ee6bca395",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.04,
+      "started_at": "2026-09-16T11:16:31.476Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "68a3019282f446a834c0289dde93ae16553ab4998765924c6896facb8f96e58c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.932,
+      "started_at": "2026-09-16T11:17:45.848Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "68a3019282f446a834c0289dde93ae16553ab4998765924c6896facb8f96e58c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.066,
+      "started_at": "2026-09-16T12:27:11.335Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "174c470e398b6b8d6f4ff3f4c0ecefae7f3e89507061a12b82ec01d10fe256c3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.34,
+      "started_at": "2026-09-16T12:27:42.235Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "174c470e398b6b8d6f4ff3f4c0ecefae7f3e89507061a12b82ec01d10fe256c3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 59.14,
+      "started_at": "2026-09-16T12:28:03.242Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "174c470e398b6b8d6f4ff3f4c0ecefae7f3e89507061a12b82ec01d10fe256c3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 687.294,
+      "started_at": "2026-09-16T12:29:08.803Z",
+      "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+      "workspace_fingerprint": "174c470e398b6b8d6f4ff3f4c0ecefae7f3e89507061a12b82ec01d10fe256c3",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Implemented opt-in, compiler-authorized scalar replacement for local nonescaping UInt64Buffer views and authenticated private direct-result leaf variants. The direct-result mode proves an individual caller edge's guard and fixed spans, validates the cloned leaf against a closed no-failure operation whitelist, jointly authenticates the caller and callee snapshots, and emits a fixed-width scalar-return ABI without status or output pointers. Unproved or structurally mutated edges call the unchanged checked source. Focused hostile/runtime tests pass, and a read-only census of the exact frozen f61f catalog authorizes precisely the three audited powu-to-copy edges and one direct leaf.",
+    "summary": "Added fail-closed case-wise affine successful-result summaries and a structural fixed point for monotone scalar countdown loops. Raising preflights now decompose true conjunctions and false disjunctions, starting missing fixed-width operands from their declared domains while accepting condition-local literals only from unique same-list dominating producers. Summary cases retain path comparisons, specialize them at caller arguments, and bind every transitive dependency through graph authority. A separate analysis with no summaries recovers only independently derivable arithmetic, buffer, and validated-view proofs; it has no call-fact channel and cannot authorize direct edges. Summary-tainted direct-parameter views remain validated at runtime without materialized descriptors. The frozen catalog integration proves the six requested short-powu copy edges plus one independently exposed evaluation edge unconditional, preserves all 7,081 outputs and nine malformed cases, keeps zero view descriptors, reduces ELF text by 128 bytes, and improves pooled paired time from 2.341237838 ms to 2.210680477 ms (5.58%, all 14 pairs favorable). Focused authority tests, architecture checks, strict baselib checks, and the complete native suite pass.",
     "risks": [
-      "Validated virtualization deliberately handles only top-level local views rooted directly in UInt64Buffer parameters; nested roots, escaping views, and structured construction retain ordinary checked descriptors.",
-      "pnpm test:changed stopped on unrelated native-cache lifecycle environment-key instability. pnpm test:compiler had pre-existing missing-FLINT-addon and generated Any ReferenceError failures; 17 compiler fixtures passed.",
-      "pnpm test:native reaches the IR-version ratchets but fails because the new capability advances generated IR from version 45 to 46; shared ratchet updates are deliberately excluded from this lane. With temporary local 46 expectations, all affected compiler-shape tests passed before the remaining native-kernel.cjs ratchet stopped the run.",
-      "The frozen catalog eliminated 22 UInt64 descriptor locals and all 11 descriptor data/length/offset assignments, reducing generated core by 2013 bytes, but did not reduce 67 signed index checks, 68 UInt64 bounds failures, or 275 checked int64 arithmetic sites. Addon size and ELF text were unchanged, explaining the neutral timing result.",
-      "Direct-result qualification is deliberately leaf-only: callees are rejected, and the existing topological fact pass is not represented as a general SCC/MayFail fixed point. Range latches retain checked helpers in the direct core."
+      "The scalar loop theorem is intentionally narrow: conjunctions must expose a signed comparison against a singleton threshold, the induction variable has exactly one direct positive-constant decrement, and loops with control transfer or competing writes remain checked.",
+      "Case specialization currently refines direct parameter comparisons only. More complex affine predicates remain conservative and cannot authorize a direct edge.",
+      "The independent pass intentionally sacrifices summary-derived precision. It may attach only claims re-derived from guards, local operations, and ordinary checked calls; direct-edge selection remains exclusively summary-aware.",
+      "pnpm test:changed stopped at an initially absent FLINT addon. The subsequent required pnpm test:native preparation built that addon and the complete native correctness and performance suite passed."
     ],
     "next_steps": [
-      "Do not pursue descriptor virtualization as the next performance campaign: it is semantically sound but the frozen result rejects it as the dominant remaining cost.",
-      "Independently build and benchmark the exact three-edge direct-result catalog candidate against its same-tip checked control; retain it only if the frozen correctness corpus and timing gate pass.",
-      "Extend direct-result qualification beyond leaves only after adding an explicit SCC-aware MayFail analysis and authenticated transitive callee contracts."
+      "Treat int64_shift_right as a separate follow-up: its constant-two floordiv can compose cleanly only after a narrow Python-floor singleton-divisor proof excludes zero and INT64_MIN/-1; do not broaden directResultFailureFree generically.",
+      "Keep unsupported scalar loops and non-parameter case predicates on the checked fallback until separately proved and mutation-tested.",
+      "Use the same isolated-proof pattern for the remaining convolution, reduction, modular-inverse, length-preflight, and characteristic-two fixed-width islands."
     ]
   }
 }

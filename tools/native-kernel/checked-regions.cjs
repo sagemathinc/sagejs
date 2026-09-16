@@ -334,6 +334,71 @@ function binaryExpression(operation, left, right) {
   return `${operation}(${left},${right})`;
 }
 
+function parseScalarExpression(expression) {
+  if (typeof expression !== "string") return undefined;
+  if (expression.startsWith("parameter:")) {
+    const name = expression.slice("parameter:".length);
+    return name.length > 0 ? { kind: "parameter", name } : undefined;
+  }
+  if (expression.startsWith("constant:")) {
+    try {
+      return { kind: "constant", value: BigInt(
+        expression.slice("constant:".length),
+      ) };
+    } catch (_error) {
+      return undefined;
+    }
+  }
+  const open = expression.indexOf("(");
+  if (open <= 0 || !expression.endsWith(")")) return undefined;
+  const operation = expression.slice(0, open);
+  if (!["add", "sub", "mul"].includes(operation)) return undefined;
+  const contents = expression.slice(open + 1, -1);
+  let depth = 0;
+  let comma = -1;
+  for (let index = 0; index < contents.length; index += 1) {
+    if (contents[index] === "(") depth += 1;
+    else if (contents[index] === ")") depth -= 1;
+    else if (contents[index] === "," && depth === 0) {
+      if (comma !== -1) return undefined;
+      comma = index;
+    }
+    if (depth < 0) return undefined;
+  }
+  if (depth !== 0 || comma <= 0 || comma === contents.length - 1) {
+    return undefined;
+  }
+  const left = parseScalarExpression(contents.slice(0, comma));
+  const right = parseScalarExpression(contents.slice(comma + 1));
+  return left === undefined || right === undefined
+    ? undefined
+    : { kind: "binary", operation, left, right };
+}
+
+function transformScalarExpression(expression, parameters) {
+  const parsed = parseScalarExpression(expression);
+  function transform(node) {
+    if (node.kind === "parameter") return parameters.get(node.name);
+    if (node.kind === "constant") return constantExpression(node.value);
+    const left = transform(node.left);
+    const right = transform(node.right);
+    return binaryExpression(node.operation, left, right);
+  }
+  return parsed === undefined ? undefined : transform(parsed);
+}
+
+function scalarExpressionInterval(expression, parameters) {
+  const parsed = parseScalarExpression(expression);
+  function evaluate(node) {
+    if (node.kind === "parameter") return parameters.get(node.name);
+    if (node.kind === "constant") {
+      return { minimum: node.value, maximum: node.value };
+    }
+    return intervalResult(node.operation, evaluate(node.left), evaluate(node.right));
+  }
+  return parsed === undefined ? undefined : evaluate(parsed);
+}
+
 function intersectSets(left, right) {
   return new Set(Array.from(left || []).filter((value) => right?.has(value)));
 }
@@ -547,6 +612,8 @@ function initialFacts(entry, guard) {
     bufferRelations,
     safeInt64Expressions,
     summaryDependencies: new Set(),
+    scalarBounds: new Map(),
+    pathConditions: [],
     entry: entry.name,
   };
 }
@@ -563,6 +630,8 @@ function mergeFacts(target, incoming) {
     ));
     target.safeInt64Expressions = new Set(incoming.safeInt64Expressions);
     target.summaryDependencies = new Set(incoming.summaryDependencies || []);
+    target.scalarBounds = new Map(incoming.scalarBounds || []);
+    target.pathConditions = [...(incoming.pathConditions || [])];
     target.initialized = true;
     return true;
   }
@@ -637,6 +706,22 @@ function mergeFacts(target, incoming) {
       changed = true;
     }
   }
+  for (const name of Array.from(target.scalarBounds?.keys() || [])) {
+    if (JSON.stringify(target.scalarBounds.get(name)) !==
+        JSON.stringify(incoming.scalarBounds?.get(name))) {
+      target.scalarBounds.delete(name);
+      changed = true;
+    }
+  }
+  const sharedConditions = (target.pathConditions || []).filter(condition =>
+    (incoming.pathConditions || []).some(candidate =>
+      JSON.stringify(candidate) === JSON.stringify(condition)
+    )
+  );
+  if (sharedConditions.length !== (target.pathConditions || []).length) {
+    target.pathConditions = sharedConditions;
+    changed = true;
+  }
   return changed;
 }
 
@@ -655,6 +740,12 @@ function cloneState(state) {
     )),
     safeInt64Expressions: new Set(state.safeInt64Expressions),
     summaryDependencies: new Set(state.summaryDependencies || []),
+    scalarBounds: new Map(Array.from(state.scalarBounds || [], ([name, bounds]) =>
+      [name, bounds.map((bound) => ({ ...bound }))]
+    )),
+    pathConditions: [...(state.pathConditions || [])].map(condition => ({
+      ...condition,
+    })),
   };
 }
 
@@ -671,6 +762,26 @@ function joinStates(left, right) {
     ...(left.summaryDependencies || []),
     ...(right.summaryDependencies || []),
   ]);
+  joined.scalarBounds = new Map();
+  joined.pathConditions = (left.pathConditions || []).filter(condition =>
+    (right.pathConditions || []).some(candidate =>
+      JSON.stringify(candidate) === JSON.stringify(condition)
+    )
+  );
+  for (const [name, bounds] of left.scalarBounds || []) {
+    const other = right.scalarBounds?.get(name);
+    if (other !== undefined) {
+      const combined = [
+        ...bounds.map((bound) => ({ ...bound })),
+        ...other.map((bound) => ({ ...bound })),
+      ];
+      joined.scalarBounds.set(name, combined.filter((bound, index) =>
+        combined.findIndex(candidate =>
+          JSON.stringify(candidate) === JSON.stringify(bound)
+        ) === index
+      ));
+    }
+  }
   for (const [name, interval] of left.intervals) {
     const other = right.intervals.get(name);
     if (other !== undefined) {
@@ -773,7 +884,11 @@ function fixedIntegerInputsAt(fn, entryState, stopIndex) {
   return values;
 }
 
-function virtualFixedUInt64ViewGroups(fn, entryState) {
+function virtualFixedUInt64ViewGroups(
+  fn,
+  entryState,
+  { allowFixed = true } = {},
+) {
   const operations = [];
   visitOperations(fn.body, (operation) => operations.push(operation));
   const assignments = new Map();
@@ -788,6 +903,7 @@ function virtualFixedUInt64ViewGroups(fn, entryState) {
   const groups = [];
   const groupedViews = new Set();
   for (const [viewIndex, view] of fn.body.entries()) {
+    if (!allowFixed) break;
     if (view.kind !== "uint64.buffer.view") continue;
     const inputs = fixedIntegerInputsAt(fn, entryState, viewIndex);
     const start = inputs.get(view.start);
@@ -916,6 +1032,21 @@ function virtualFixedUInt64ViewGroups(fn, entryState) {
   return groups;
 }
 
+function summaryIndependentValidatedViewState(state) {
+  return {
+    ...state,
+    intervals: new Map(),
+    buffers: new Map(),
+    expressions: new Map(),
+    rangeUpper: new Map(),
+    bufferRelations: new Map(),
+    safeInt64Expressions: new Set(),
+    summaryDependencies: new Set(),
+    scalarBounds: new Map(),
+    pathConditions: [],
+  };
+}
+
 function attachVirtualFixedUInt64Views(
   fn,
   entryState,
@@ -1028,6 +1159,50 @@ function negatedComparison(operation) {
   ];
 }
 
+function declaredScalarDomain(fn, name) {
+  const type = functionValueType(fn, name);
+  if (type === "int64") {
+    return { minimum: INT64_MINIMUM, maximum: INT64_MAXIMUM };
+  }
+  if (type === "uint64") {
+    return { minimum: 0n, maximum: UINT64_MAXIMUM };
+  }
+  return undefined;
+}
+
+function seedRequiredComparisonConstants(condition, comparison, state) {
+  const operands = new Set([comparison.left, comparison.right]);
+  const producers = new Map(Array.from(operands, name => [name, []]));
+  visitOperations(condition?.operations || [], (operation) => {
+    if (operands.has(operation.target)) {
+      producers.get(operation.target).push(operation);
+    }
+  });
+  const comparisonLocation = operationListLocation(
+    condition?.operations, comparison,
+  );
+  for (const [name, definitions] of producers) {
+    if (definitions.length !== 1 || comparisonLocation === undefined) continue;
+    const [operation] = definitions;
+    const producerLocation = operationListLocation(
+      condition?.operations, operation,
+    );
+    if (producerLocation === undefined ||
+        producerLocation.statements !== comparisonLocation.statements ||
+        producerLocation.index >= comparisonLocation.index ||
+        !["int64.constant", "uint64.constant"].includes(operation.kind)) {
+      continue;
+    }
+    try {
+      const value = BigInt(operation.value);
+      state.intervals.set(name, { minimum: value, maximum: value });
+      state.expressions.set(name, constantExpression(value));
+    } catch (_error) {
+      // Malformed constants remain unknown and cannot refine a path.
+    }
+  }
+}
+
 function refinedInterval(interval, operation, constant) {
   let minimum = interval.minimum;
   let maximum = interval.maximum;
@@ -1052,11 +1227,40 @@ function refinedInterval(interval, operation, constant) {
   return minimum <= maximum ? { minimum, maximum } : undefined;
 }
 
-function refineConditionState(operation, state, truth, fn) {
+function refineConditionState(operation, state, truth, fn, structured = true) {
   const comparison = comparisonCondition(operation, fn);
-  if (comparison === undefined) return cloneState(state);
-  const left = state.intervals.get(comparison.left);
-  const right = state.intervals.get(comparison.right);
+  if (comparison === undefined) {
+    const result = cloneState(state);
+    if (structured) {
+      const conditionAssignments = assignedNames(
+        operation.condition?.operations || [],
+      );
+      const requiredComparisons = truth
+        ? requiredTrueComparisons(operation.condition)
+        : requiredFalseComparisons(operation.condition);
+      for (const required of requiredComparisons) {
+        for (const name of [required.left, required.right]) {
+          if (!conditionAssignments.has(name)) continue;
+          result.intervals.delete(name);
+          result.expressions.delete(name);
+          result.rangeUpper.delete(name);
+          result.scalarBounds.delete(name);
+        }
+        seedRequiredComparisonConstants(operation.condition, required, result);
+        const refined = refineConditionState({
+          condition: { operations: [required], value: required.target },
+        }, result, truth, fn, false);
+        Object.assign(result, refined);
+      }
+    }
+    return result;
+  }
+  const left = state.intervals.get(comparison.left) ||
+    declaredScalarDomain(fn, comparison.left);
+  const right = state.intervals.get(comparison.right) ||
+    declaredScalarDomain(fn, comparison.right);
+  let pathRelation = comparison.operation;
+  if (!truth) pathRelation = negatedComparison(pathRelation);
   let name;
   let constant;
   let relation = comparison.operation;
@@ -1070,13 +1274,38 @@ function refineConditionState(operation, state, truth, fn) {
     constant = left.minimum;
     relation = reversedComparison(relation);
   } else {
-    return cloneState(state);
+    const result = cloneState(state);
+    let pathRelation = comparison.operation;
+    if (!truth) pathRelation = negatedComparison(pathRelation);
+    const leftExpression = state.expressions.get(comparison.left);
+    const rightExpression = state.expressions.get(comparison.right);
+    if (pathRelation !== undefined && leftExpression !== undefined &&
+        rightExpression !== undefined) {
+      result.pathConditions.push({
+        left: leftExpression,
+        operation: pathRelation,
+        right: rightExpression,
+      });
+    }
+    return result;
   }
   if (relation === undefined) return cloneState(state);
   if (!truth) relation = negatedComparison(relation);
   if (relation === undefined) return cloneState(state);
-  const refined = refinedInterval(state.intervals.get(name), relation, constant);
+  const interval = state.intervals.get(name) || declaredScalarDomain(fn, name);
+  if (interval === undefined) return cloneState(state);
+  const refined = refinedInterval(interval, relation, constant);
   const result = cloneState(state);
+  const leftExpression = state.expressions.get(comparison.left);
+  const rightExpression = state.expressions.get(comparison.right);
+  if (pathRelation !== undefined && leftExpression !== undefined &&
+      rightExpression !== undefined) {
+    result.pathConditions.push({
+      left: leftExpression,
+      operation: pathRelation,
+      right: rightExpression,
+    });
+  }
   // An impossible arm contributes no useful fact without an explicit bottom
   // state. Keeping its incoming facts is conservative.
   if (refined !== undefined) result.intervals.set(name, refined);
@@ -1123,8 +1352,255 @@ function invalidateNestedCalls(operation, context) {
       bufferRelations: new Map(),
       safeInt64Expressions: new Set(),
       summaryDependencies: new Set(),
+      scalarBounds: new Map(),
+      pathConditions: [],
     });
   });
+}
+
+function requiredTrueComparisons(condition) {
+  const producers = new Map();
+  visitOperations(condition?.operations || [], (operation) => {
+    if (typeof operation.target === "string") {
+      producers.set(operation.target, operation);
+    }
+  });
+  function collect(name) {
+    const producer = producers.get(name);
+    if (["int64.compare", "uint64.compare"].includes(producer?.kind)) {
+      return [producer];
+    }
+    if (producer?.kind === "bool.short_circuit" &&
+        producer.operation === "and") {
+      return [
+        ...collect(producer.left),
+        ...collect(producer.right?.value),
+      ];
+    }
+    return [];
+  }
+  return collect(condition?.value);
+}
+
+function requiredFalseComparisons(condition) {
+  const producers = new Map();
+  visitOperations(condition?.operations || [], (operation) => {
+    if (typeof operation.target === "string") {
+      producers.set(operation.target, operation);
+    }
+  });
+  function collect(name) {
+    const producer = producers.get(name);
+    if (["int64.compare", "uint64.compare"].includes(producer?.kind)) {
+      return [producer];
+    }
+    if (producer?.kind === "bool.short_circuit" &&
+        producer.operation === "or") {
+      return [
+        ...collect(producer.left),
+        ...collect(producer.right?.value),
+      ];
+    }
+    return [];
+  }
+  return collect(condition?.value);
+}
+
+function operationListLocation(statements, target) {
+  for (const [index, operation] of (statements || []).entries()) {
+    if (operation === target) return { statements, index };
+    const nestedLists = [
+      operation.body,
+      operation.alternative,
+      operation.condition?.operations,
+      operation.right?.operations,
+    ];
+    for (const nested of nestedLists) {
+      const location = operationListLocation(nested, target);
+      if (location !== undefined) return location;
+    }
+  }
+  return undefined;
+}
+
+function scalarWhileShape(operation, state, fn) {
+  if (operation.kind !== "while") return undefined;
+  let hasControlTransfer = false;
+  visitOperations(operation.body, (nested) => {
+    if (["loop.break", "loop.continue", "return", "raise"].includes(
+      nested.kind,
+    )) hasControlTransfer = true;
+  });
+  if (hasControlTransfer) return undefined;
+  const bodyAssignments = assignedNames(operation.body);
+  const conditionAssignments = assignedNames(
+    operation.condition?.operations || [],
+  );
+  for (const comparison of requiredTrueComparisons(operation.condition)) {
+    if (comparison.kind !== "int64.compare" ||
+        !["ge", "gt"].includes(comparison.operation)) continue;
+    const threshold = state.intervals.get(comparison.right);
+    if (threshold === undefined || threshold.minimum !== threshold.maximum ||
+        functionValueType(fn, comparison.left) !== "int64") continue;
+    const thresholdProducers = [];
+    visitOperations(operation.condition?.operations || [], (nested) => {
+      if (operationTargets(nested).includes(comparison.right)) {
+        thresholdProducers.push(nested);
+      }
+    });
+    const thresholdLocation = operationListLocation(
+      operation.condition?.operations, comparison,
+    );
+    const producerLocation = thresholdProducers.length === 1
+      ? operationListLocation(
+        operation.condition?.operations, thresholdProducers[0],
+      )
+      : undefined;
+    const literalThreshold = thresholdProducers.length === 1 &&
+      thresholdProducers[0].kind === "int64.constant" &&
+      producerLocation !== undefined && thresholdLocation !== undefined &&
+      producerLocation.statements === thresholdLocation.statements &&
+      producerLocation.index < thresholdLocation.index;
+    if (bodyAssignments.has(comparison.right) ||
+        (conditionAssignments.has(comparison.right) && !literalThreshold) ||
+        (!conditionAssignments.has(comparison.right) &&
+          thresholdProducers.length !== 0)) continue;
+    const writes = [];
+    visitOperations(operation.body, (nested) => {
+      if (operationTargets(nested).includes(comparison.left)) writes.push(nested);
+    });
+    const updates = operation.body.filter(nested =>
+      nested.kind === "int64.binary" && nested.operation === "sub" &&
+      nested.target === comparison.left && nested.left === comparison.left
+    );
+    if (assignedNames(operation.condition?.operations || [])
+      .has(comparison.left)) continue;
+    if (writes.length !== 1 || writes[0] !== updates[0]) continue;
+    if (updates.length !== 1) continue;
+    let step = state.intervals.get(updates[0].right);
+    const stepWrites = [];
+    visitOperations(operation.body, (nested) => {
+      if (operationTargets(nested).includes(updates[0].right)) {
+        stepWrites.push(nested);
+      }
+    });
+    if (step !== undefined && (stepWrites.length > 0 ||
+        conditionAssignments.has(updates[0].right))) continue;
+    if (step === undefined) {
+      const constants = operation.body.filter(nested =>
+        nested.kind === "int64.constant" &&
+        nested.target === updates[0].right
+      );
+      if (constants.length === 1 && stepWrites.length === 1 &&
+          stepWrites[0] === constants[0] &&
+          operation.body.indexOf(constants[0]) < operation.body.indexOf(updates[0])) {
+        try {
+          const value = BigInt(constants[0].value);
+          step = { minimum: value, maximum: value };
+        } catch (_error) {
+          step = undefined;
+        }
+      }
+    }
+    if (step === undefined || step.minimum !== step.maximum ||
+        step.minimum <= 0n) continue;
+    return {
+      variable: comparison.left,
+      threshold: threshold.minimum,
+      step: step.minimum,
+      entryExpression: state.expressions.get(comparison.left),
+    };
+  }
+  return undefined;
+}
+
+function abstractStatesEqual(left, right) {
+  function mapsEqual(a, b, equal) {
+    return a.size === b.size && Array.from(a).every(([name, value]) =>
+      b.has(name) && equal(value, b.get(name))
+    );
+  }
+  const intervalsEqual = (a, b) =>
+    a.minimum === b.minimum && a.maximum === b.maximum;
+  const setsEqual = (a, b) => a.size === b.size &&
+    Array.from(a).every(value => b.has(value));
+  return mapsEqual(left.intervals, right.intervals, intervalsEqual) &&
+    mapsEqual(left.buffers, right.buffers, (a, b) => a === b) &&
+    mapsEqual(left.expressions, right.expressions, (a, b) => a === b) &&
+    mapsEqual(left.rangeUpper, right.rangeUpper, (a, b) => a === b) &&
+    mapsEqual(left.bufferRelations, right.bufferRelations, setsEqual) &&
+    mapsEqual(left.scalarBounds, right.scalarBounds, (a, b) =>
+      JSON.stringify(a) === JSON.stringify(b)
+    ) && setsEqual(left.safeInt64Expressions, right.safeInt64Expressions) &&
+    setsEqual(left.summaryDependencies, right.summaryDependencies) &&
+    JSON.stringify(left.pathConditions) === JSON.stringify(right.pathConditions);
+}
+
+function analyzeScalarWhile(operation, entryState, context) {
+  const conditionedEntry = analyzeStatements(
+    operation.condition?.operations,
+    cloneState(entryState),
+    { ...context, enabled: new Set(), facts: undefined, callFacts: undefined },
+  );
+  const shape = scalarWhileShape(
+    operation, conditionedEntry, context.currentFunction,
+  );
+  if (shape === undefined) return undefined;
+  let head = cloneState(entryState);
+  let converged = false;
+  for (let iteration = 0; iteration < 16; iteration += 1) {
+    const conditioned = analyzeStatements(
+      operation.condition?.operations,
+      cloneState(head),
+      { ...context, enabled: new Set(), facts: undefined, callFacts: undefined },
+    );
+    let truth = cloneState(conditioned);
+    for (const comparison of requiredTrueComparisons(operation.condition)) {
+      truth = refineConditionState({
+        condition: { operations: [comparison], value: comparison.target },
+      }, truth, true, context.currentFunction, false);
+    }
+    const body = analyzeStatements(operation.body, truth, {
+      ...context,
+      enabled: new Set(),
+      facts: undefined,
+      callFacts: undefined,
+    });
+    const next = joinStates(entryState, body);
+    if (abstractStatesEqual(head, next)) {
+      head = next;
+      converged = true;
+      break;
+    }
+    head = next;
+  }
+  if (!converged) return undefined;
+
+  // Record callees and proof inputs once from the converged invariant. The
+  // speculative fixed-point iterations above deliberately had no authority
+  // side effects.
+  const conditioned = analyzeStatements(
+    operation.condition?.operations, cloneState(head), context,
+  );
+  let truth = cloneState(conditioned);
+  for (const comparison of requiredTrueComparisons(operation.condition)) {
+    truth = refineConditionState({
+      condition: { operations: [comparison], value: comparison.target },
+    }, truth, true, context.currentFunction, false);
+  }
+  analyzeStatements(operation.body, truth, context);
+
+  const entryInterval = entryState.intervals.get(shape.variable);
+  if (entryInterval !== undefined && shape.entryExpression !== undefined) {
+    const lower = shape.threshold - shape.step;
+    head.scalarBounds.set(shape.variable, [{
+      minimum: constantExpression(
+        entryInterval.minimum < lower ? entryInterval.minimum : lower,
+      ),
+      maximum: shape.entryExpression,
+    }]);
+  }
+  return head;
 }
 
 function analyzeStatements(statements, state, context) {
@@ -1167,6 +1643,7 @@ function analyzeStatements(statements, state, context) {
         state.expressions.delete(target);
         state.rangeUpper.delete(target);
         state.bufferRelations.delete(target);
+        state.scalarBounds.delete(target);
       }
       continue;
     }
@@ -1179,18 +1656,21 @@ function analyzeStatements(statements, state, context) {
         bodyState.expressions.delete(name);
         bodyState.rangeUpper.delete(name);
         bodyState.bufferRelations.delete(name);
+        bodyState.scalarBounds.delete(name);
       }
       bodyState.intervals.delete(operation.index);
       bodyState.buffers.delete(operation.index);
       bodyState.expressions.delete(operation.index);
       bodyState.rangeUpper.delete(operation.index);
       bodyState.bufferRelations.delete(operation.index);
+      bodyState.scalarBounds.delete(operation.index);
       if (operation.iterator !== undefined) {
         bodyState.intervals.delete(operation.iterator);
         bodyState.buffers.delete(operation.iterator);
         bodyState.expressions.delete(operation.iterator);
         bodyState.rangeUpper.delete(operation.iterator);
         bodyState.bufferRelations.delete(operation.iterator);
+        bodyState.scalarBounds.delete(operation.iterator);
       }
       const mutatesBound = [operation.start, operation.stop, operation.step]
         .some((name) => assigned.has(name));
@@ -1236,8 +1716,18 @@ function analyzeStatements(statements, state, context) {
         state.expressions.delete(name);
         state.rangeUpper.delete(name);
         state.bufferRelations.delete(name);
+        state.scalarBounds.delete(name);
       }
       continue;
+    }
+    if (operation.kind === "while" &&
+        (context.scalarSummaryAnalysis === true ||
+          context.enabled.has("scalar-return-summaries"))) {
+      const loopState = analyzeScalarWhile(operation, state, context);
+      if (loopState !== undefined) {
+        state = loopState;
+        continue;
+      }
     }
     if ([
       "while", "loop.range", "loop.range_exact", "integer.vector.scope",
@@ -1254,6 +1744,7 @@ function analyzeStatements(statements, state, context) {
         state.expressions.delete(name);
         state.rangeUpper.delete(name);
         state.bufferRelations.delete(name);
+        state.scalarBounds.delete(name);
       }
       continue;
     }
@@ -1262,6 +1753,18 @@ function analyzeStatements(statements, state, context) {
       context.returnFacts.push(Object.freeze({
         interval: state.intervals.get(operation.value),
         expression: state.expressions.get(operation.value),
+        bounds: state.scalarBounds.get(operation.value)?.map(bound =>
+          Object.freeze({
+            ...bound,
+            conditions: Object.freeze([
+              ...(bound.conditions || []),
+              ...(state.pathConditions || []),
+            ].map(condition => Object.freeze({ ...condition }))),
+          })
+        ),
+        conditions: new Set((state.pathConditions || []).map(condition =>
+          JSON.stringify(condition)
+        )),
         dependencies: new Set(state.summaryDependencies || []),
       }));
     }
@@ -1273,6 +1776,7 @@ function analyzeStatements(statements, state, context) {
       state.expressions.delete(target);
       state.rangeUpper.delete(target);
       state.bufferRelations.delete(target);
+      state.scalarBounds.delete(target);
     }
     if (["int64.constant", "uint64.constant"].includes(operation.kind)) {
       const value = BigInt(operation.value);
@@ -1285,6 +1789,10 @@ function analyzeStatements(statements, state, context) {
       if (expression !== undefined) state.expressions.set(operation.target, expression);
       const upper = previous.rangeUpper.get(operation.source);
       if (upper !== undefined) state.rangeUpper.set(operation.target, upper);
+      const bounds = previous.scalarBounds.get(operation.source);
+      if (bounds !== undefined) {
+        state.scalarBounds.set(operation.target, bounds.map(bound => ({ ...bound })));
+      }
     } else if (["uint64.buffer.copy", "int64.buffer.copy"].includes(
       operation.kind,
     )) {
@@ -1427,6 +1935,8 @@ function analyzeStatements(statements, state, context) {
         bufferRelations: new Map(),
         safeInt64Expressions: new Set(previous.safeInt64Expressions),
         summaryDependencies: new Set(previous.summaryDependencies || []),
+        scalarBounds: new Map(),
+        pathConditions: [],
       };
       operation.arguments.forEach((argument, index) => {
         const parameter = callee.params[index];
@@ -1457,18 +1967,120 @@ function analyzeStatements(statements, state, context) {
       if (summary !== undefined && scalarSummaryCallShape(
         context.currentFunction, operation, callee,
       )) {
-        let interval = summary.interval;
+        const intervalParameters = new Map();
+        const expressionParameters = new Map();
+        operation.arguments.forEach((argument, index) => {
+          const parameter = callee.params[index].name;
+          intervalParameters.set(parameter, previous.intervals.get(argument.name));
+          expressionParameters.set(
+            parameter, previous.expressions.get(argument.name),
+          );
+        });
+        const instantiated = [];
+        let interval;
+        let summaryUsable = true;
+        for (const resultCase of summary.cases || []) {
+          const caseIntervals = new Map(Array.from(
+            intervalParameters,
+            ([name, value]) => [name, value === undefined ? undefined : { ...value }],
+          ));
+          let casePossible = true;
+          for (const condition of resultCase.conditions || []) {
+            const left = parseScalarExpression(condition.left);
+            const right = scalarExpressionInterval(condition.right, caseIntervals);
+            if (left?.kind !== "parameter" || right === undefined ||
+                caseIntervals.get(left.name) === undefined) continue;
+            const current = caseIntervals.get(left.name);
+            let maximum = current.maximum;
+            let minimum = current.minimum;
+            if (condition.operation === "lt") {
+              maximum = maximum < right.maximum - 1n
+                ? maximum : right.maximum - 1n;
+            } else if (condition.operation === "le") {
+              maximum = maximum < right.maximum ? maximum : right.maximum;
+            } else if (condition.operation === "gt") {
+              minimum = minimum > right.minimum + 1n
+                ? minimum : right.minimum + 1n;
+            } else if (condition.operation === "ge") {
+              minimum = minimum > right.minimum ? minimum : right.minimum;
+            } else if (condition.operation === "eq") {
+              minimum = minimum > right.minimum ? minimum : right.minimum;
+              maximum = maximum < right.maximum ? maximum : right.maximum;
+            }
+            if (minimum > maximum) {
+              casePossible = false;
+              break;
+            }
+            caseIntervals.set(left.name, { minimum, maximum });
+          }
+          if (!casePossible) continue;
+          const minimum = scalarExpressionInterval(
+            resultCase.minimum, caseIntervals,
+          );
+          const maximum = scalarExpressionInterval(
+            resultCase.maximum, caseIntervals,
+          );
+          if (minimum === undefined || maximum === undefined) {
+            summaryUsable = false;
+            break;
+          }
+          const domainMinimum = ["bool", "uint64"].includes(summary.returnType)
+            ? 0n : INT64_MINIMUM;
+          const domainMaximum = summary.returnType === "bool"
+            ? 1n
+            : summary.returnType === "uint64" ? UINT64_MAXIMUM : INT64_MAXIMUM;
+          // Scalar arithmetic is checked. A successful return is necessarily
+          // inside its declared fixed-width domain, even when the coarse
+          // expression interval also includes inputs that would have failed.
+          const numeric = {
+            minimum: minimum.minimum < domainMinimum
+              ? domainMinimum : minimum.minimum,
+            maximum: maximum.maximum > domainMaximum
+              ? domainMaximum : maximum.maximum,
+          };
+          if (numeric.minimum > numeric.maximum) continue;
+          interval = joinInterval(interval, numeric);
+          const symbolicMinimum = transformScalarExpression(
+            resultCase.minimum, expressionParameters,
+          );
+          const symbolicMaximum = transformScalarExpression(
+            resultCase.maximum, expressionParameters,
+          );
+          if (symbolicMinimum !== undefined && symbolicMaximum !== undefined) {
+            instantiated.push({
+              minimum: symbolicMinimum,
+              maximum: symbolicMaximum,
+              conditions: (resultCase.conditions || []).map(condition => ({
+                left: transformScalarExpression(
+                  condition.left, expressionParameters,
+                ),
+                operation: condition.operation,
+                right: transformScalarExpression(
+                  condition.right, expressionParameters,
+                ),
+              })).filter(condition =>
+                condition.left !== undefined && condition.right !== undefined
+              ),
+            });
+          }
+        }
+        if (!summaryUsable) {
+          interval = undefined;
+          instantiated.length = 0;
+        }
         let expression;
-        if (summary.identityParameter !== undefined) {
-          const argument = operation.arguments[summary.identityParameter].name;
-          interval = previous.intervals.get(argument);
-          expression = previous.expressions.get(argument);
+        if (instantiated.length === 1 &&
+            instantiated[0].minimum === instantiated[0].maximum) {
+          expression = instantiated[0].minimum;
         }
         if (interval !== undefined) {
           state.intervals.set(operation.target, { ...interval });
         }
         if (expression !== undefined) {
           state.expressions.set(operation.target, expression);
+        }
+        if (instantiated.length > 0) {
+          state.scalarBounds.set(operation.target, instantiated);
         }
         state.summaryDependencies.add(callee.name);
         for (const dependency of summary.dependencies) {
@@ -1665,6 +2277,8 @@ function scalarSummaryInitialState(fn) {
     intervals: new Map(), buffers: new Map(), expressions: new Map(),
     rangeUpper: new Map(), bufferRelations: new Map(),
     safeInt64Expressions: new Set(), summaryDependencies: new Set(),
+    scalarBounds: new Map(),
+    pathConditions: [],
   };
   for (const parameter of fn.params) {
     let interval;
@@ -1706,12 +2320,54 @@ function inferScalarSummaries(order, byName, enabled) {
       currentFunction: fn,
       scalarSummaries: summaries,
       returnFacts,
+      scalarSummaryAnalysis: true,
     });
-    if (returnFacts.length !== returns ||
-        returnFacts.some(fact => fact.interval === undefined)) continue;
-    const interval = returnFacts.reduce((joined, fact) =>
-      joinInterval(joined, fact.interval), undefined
-    );
+    if (returnFacts.length !== returns) continue;
+    const cases = [];
+    let completeCases = true;
+    for (const fact of returnFacts) {
+      let factCases;
+      if (fact.bounds !== undefined) {
+        factCases = fact.bounds;
+      } else if (fact.expression !== undefined) {
+        factCases = [{
+          minimum: fact.expression,
+          maximum: fact.expression,
+          conditions: [...fact.conditions].map(value => JSON.parse(value)),
+        }];
+      } else if (fact.interval !== undefined) {
+        factCases = [{
+          minimum: constantExpression(fact.interval.minimum),
+          maximum: constantExpression(fact.interval.maximum),
+          conditions: [...fact.conditions].map(value => JSON.parse(value)),
+        }];
+      }
+      if (!Array.isArray(factCases) || factCases.length === 0) {
+        completeCases = false;
+        break;
+      }
+      cases.push(...factCases);
+    }
+    if (!completeCases) continue;
+    let interval;
+    const parameterIntervals = new Map(scalarSummaryInitialState(fn).intervals);
+    for (const resultCase of cases) {
+      const minimum = scalarExpressionInterval(
+        resultCase.minimum, parameterIntervals,
+      );
+      const maximum = scalarExpressionInterval(
+        resultCase.maximum, parameterIntervals,
+      );
+      if (minimum === undefined || maximum === undefined) {
+        interval = undefined;
+        break;
+      }
+      interval = joinInterval(interval, {
+        minimum: minimum.minimum,
+        maximum: maximum.maximum,
+      });
+    }
+    if (interval === undefined) continue;
     const expression = returnFacts[0].expression;
     const identity = expression !== undefined && returnFacts.every(fact =>
       fact.expression === expression
@@ -1728,6 +2384,13 @@ function inferScalarSummaries(order, byName, enabled) {
       function: name,
       returnType: fn.returnType,
       interval: Object.freeze({ ...interval }),
+      cases: Object.freeze(cases.map(resultCase => Object.freeze({
+        minimum: resultCase.minimum,
+        maximum: resultCase.maximum,
+        conditions: Object.freeze([...(resultCase.conditions || [])].map(
+          condition => Object.freeze({ ...condition }),
+        )),
+      }))),
       ...(identity >= 0 ? { identityParameter: identity } : {}),
       dependencies: Object.freeze([...dependencies].sort()),
     }));
@@ -1744,6 +2407,8 @@ function attachDirectResultVariants(context) {
       rangeUpper: new Map(), bufferRelations: new Map(),
       safeInt64Expressions: new Set(), initialized: false,
       summaryDependencies: new Set(),
+      scalarBounds: new Map(),
+      pathConditions: [],
     };
     for (const [operation, call] of context.callFacts) {
       if (call.callee !== spec.slow.name) continue;
@@ -1894,6 +2559,8 @@ function attachCapabilities(
     bufferRelations: new Map(),
     safeInt64Expressions: new Set(),
     summaryDependencies: new Set(),
+    scalarBounds: new Map(),
+    pathConditions: [],
     initialized: false,
   }]));
   facts.set(region.variantEntry, {
@@ -1912,9 +2579,14 @@ function attachCapabilities(
     const functionEnabled = new Set(
       fn.checkedRegionLocalCapabilities || enabled,
     );
-    const groups = functionEnabled.has("virtual-fixed-uint64-views") &&
-        state.summaryDependencies.size === 0
-      ? virtualFixedUInt64ViewGroups(fn, state)
+    const summaryTaintedEntry = state.summaryDependencies.size > 0;
+    const virtualViewState = summaryTaintedEntry
+      ? summaryIndependentValidatedViewState(state)
+      : state;
+    const groups = functionEnabled.has("virtual-fixed-uint64-views")
+      ? virtualFixedUInt64ViewGroups(fn, virtualViewState, {
+        allowFixed: !summaryTaintedEntry,
+      })
       : [];
     const virtualViewAliases = new Map(groups.flatMap((group) =>
       Array.from(group.aliases, (alias) => [alias, group])
@@ -1931,8 +2603,76 @@ function attachCapabilities(
       scalarSummaries,
     });
     analysisResults.set(fn, {
-      state, finalState, functionEnabled, intervalViewAccesses,
+      state,
+      finalState,
+      functionEnabled,
+      intervalViewAccesses,
+      virtualViewState,
     });
+  }
+  // Scalar summaries deliberately taint every downstream fact in the primary
+  // analysis.  A second, disjoint pass with no summaries recovers only proofs
+  // derivable from guards, local operations, and ordinary checked calls.  Its
+  // facts never flow back into direct-edge selection, so summary-derived
+  // bounds retain their closed-graph authority while unrelated arithmetic and
+  // buffer checks do not become needlessly pessimistic.
+  const independentAnalysisResults = new Map();
+  if (scalarSummaries.size > 0) {
+    const independentFacts = new Map(order.map((name) => [name, {
+      intervals: new Map(),
+      buffers: new Map(),
+      expressions: new Map(),
+      rangeUpper: new Map(),
+      bufferRelations: new Map(),
+      safeInt64Expressions: new Set(),
+      summaryDependencies: new Set(),
+      scalarBounds: new Map(),
+      pathConditions: [],
+      initialized: false,
+    }]));
+    independentFacts.set(region.variantEntry, {
+      ...initialFacts(entry, region.guard),
+      initialized: true,
+    });
+    for (const [name, value] of localFacts) {
+      const independent = cloneState(value);
+      independent.summaryDependencies = new Set();
+      independent.scalarBounds = new Map();
+      independent.pathConditions = [];
+      independentFacts.set(name, { ...independent, initialized: true });
+    }
+    for (const name of order) {
+      const fn = byName.get(name);
+      const state = independentFacts.get(name);
+      const functionEnabled = new Set(
+        fn.checkedRegionLocalCapabilities || enabled,
+      );
+      const virtualViewState = summaryIndependentValidatedViewState(state);
+      const groups = functionEnabled.has("virtual-fixed-uint64-views")
+        ? virtualFixedUInt64ViewGroups(fn, virtualViewState, {
+          allowFixed: false,
+        })
+        : [];
+      const virtualViewAliases = new Map(groups.flatMap((group) =>
+        Array.from(group.aliases, (alias) => [alias, group])
+      ));
+      const intervalViewAccesses = new Map();
+      const finalState = analyzeStatements(fn.body, cloneState(state), {
+        byName,
+        enabled: functionEnabled,
+        facts: independentFacts,
+        virtualViewAliases,
+        intervalViewAccesses,
+        currentFunction: fn,
+        scalarSummaries: new Map(),
+      });
+      independentAnalysisResults.set(fn, {
+        state,
+        finalState,
+        functionEnabled,
+        intervalViewAccesses,
+      });
+    }
   }
   // Direct leaves attach and authorize their joined edge proofs here.  Every
   // caller edge retains its checked private target as the fallback; direct
@@ -1949,10 +2689,21 @@ function attachCapabilities(
   const directFunctions = new Set(directSpecs.map((spec) => spec.fast));
   for (const [fn, result] of analysisResults) {
     if (directFunctions.has(fn)) continue;
-    if (result.state.summaryDependencies.size > 0 ||
-        result.finalState.summaryDependencies.size > 0) continue;
+    const summaryTainted = result.state.summaryDependencies.size > 0 ||
+      result.finalState.summaryDependencies.size > 0;
+    const independentIntervalViewAccesses =
+      independentAnalysisResults.get(fn)?.intervalViewAccesses || new Map();
+    const intervalViewAccesses = summaryTainted
+      ? independentIntervalViewAccesses
+      : new Map([
+        ...result.intervalViewAccesses,
+        ...independentIntervalViewAccesses,
+      ]);
     attachVirtualFixedUInt64Views(
-      fn, result.state, result.functionEnabled, result.intervalViewAccesses,
+      fn,
+      result.virtualViewState,
+      result.functionEnabled,
+      intervalViewAccesses,
     );
   }
   // Caller snapshots now contain both their final fallback targets and all

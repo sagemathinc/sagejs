@@ -20,9 +20,7 @@ def checked_region_int64_entry(
     return total
 
 
-def checked_region_helper(
-    storage: UInt64Buffer, index: int64, value: uint64
-) -> int64:
+def checked_region_helper(storage: UInt64Buffer, index: int64, value: uint64) -> int64:
     storage[index] = value
     saved: uint64 = storage[index]
     shifted: int64 = index + 1
@@ -32,9 +30,7 @@ def checked_region_helper(
 
 
 @native
-def checked_region_entry(
-    storage: UInt64Buffer, index: int64, value: uint64
-) -> int64:
+def checked_region_entry(storage: UInt64Buffer, index: int64, value: uint64) -> int64:
     return checked_region_helper(storage, index, value)
 
 
@@ -182,11 +178,7 @@ def checked_region_validated_view_entry(
     start = 0
     length = 0
     alias[index] = value
-    return (
-        view[index]
-        + sagejs_virtual_uint64_data_0
-        + sagejs_virtual_uint64_length_0
-    )
+    return view[index] + sagejs_virtual_uint64_data_0 + sagejs_virtual_uint64_length_0
 
 
 @native
@@ -272,6 +264,13 @@ def checked_region_refined_copy_entry(
 
 
 @native
+def checked_region_or_refined_copy_entry(storage: UInt64Buffer, degree: int64) -> int64:
+    if degree < -1 or degree > 3:
+        raise ValueError("degree is outside the local copy range")
+    return checked_region_local_copy_helper(storage, 0, degree, 4)
+
+
+@native
 def checked_region_summary_identity(value: int64, fail: bool) -> int64:
     if fail:
         raise ValueError("summary identity failure")
@@ -298,9 +297,7 @@ def checked_region_summary_entry(
 
 
 @native
-def checked_region_summary_view_helper(
-    storage: UInt64Buffer, start: int64
-) -> uint64:
+def checked_region_summary_view_helper(storage: UInt64Buffer, start: int64) -> uint64:
     view: UInt64Buffer = uint64_buffer_view(storage, start, 2)
     return view[0]
 
@@ -328,6 +325,130 @@ def checked_region_summary_interval_entry(
 ) -> int64:
     summarized: int64 = checked_region_summary_interval(selector)
     return checked_region_local_copy_helper(storage, 0, summarized, 4)
+
+
+def checked_region_summary_affine_remainder(
+    dividend_degree: int64,
+    divisor_degree: int64,
+    stop: int64,
+    want_remainder: bool,
+) -> int64:
+    if dividend_degree < -1:
+        raise ValueError("invalid synthetic dividend degree")
+    if divisor_degree < 0:
+        raise ValueError("invalid synthetic divisor degree")
+    if dividend_degree < divisor_degree and divisor_degree != 0:
+        if not want_remainder:
+            return -1
+        return dividend_degree
+    if divisor_degree == 0 or not want_remainder:
+        return -1
+    degree: int64 = divisor_degree - 1
+    while degree >= 0 and degree > stop:
+        degree -= 1
+    return degree
+
+
+def checked_region_summary_affine_square(
+    degree: int64, divisor_degree: int64, stop: int64
+) -> int64:
+    return checked_region_summary_affine_remainder(degree, divisor_degree, stop, True)
+
+
+def checked_region_summary_affine_multiply(
+    degree: int64, divisor_degree: int64, stop: int64
+) -> int64:
+    return checked_region_summary_affine_remainder(degree, divisor_degree, stop, True)
+
+
+@native
+def checked_region_summary_while_entry(
+    storage: UInt64Buffer,
+    degree: int64,
+    divisor_degree: int64,
+    exponent: int64,
+    stop: int64,
+) -> int64:
+    bit: int64 = exponent
+    while bit > 0:
+        degree = checked_region_summary_affine_square(degree, divisor_degree, stop)
+        checked_region_local_copy_helper(storage, 0, degree, 4)
+        if bit % 2:
+            degree = checked_region_summary_affine_multiply(
+                degree, divisor_degree, stop
+            )
+            checked_region_local_copy_helper(storage, 0, degree, 4)
+        bit -= 1
+    return checked_region_local_copy_helper(storage, 4, degree, 0)
+
+
+@native
+def checked_region_summary_while_degrading_entry(
+    storage: UInt64Buffer,
+    second: UInt64Buffer,
+    third: UInt64Buffer,
+    other: UInt64Buffer,
+    degree: int64,
+    divisor_degree: int64,
+    exponent: int64,
+    stop: int64,
+) -> int64:
+    bit: int64 = exponent
+    while bit > 0:
+        degree = checked_region_summary_affine_square(degree, divisor_degree, stop)
+        checked_region_local_copy_helper(storage, 0, degree, 4)
+        storage = second
+        second = third
+        third = other
+        bit -= 1
+    return degree
+
+
+def checked_region_summary_partial_overflow(value: int64) -> int64:
+    if value == 0:
+        return 0
+    return value + 1
+
+
+@native
+def checked_region_summary_partial_overflow_entry(
+    storage: UInt64Buffer, value: int64
+) -> int64:
+    degree: int64 = checked_region_summary_partial_overflow(value)
+    return checked_region_local_copy_helper(storage, 0, degree, 4)
+
+
+def checked_region_summary_recomputed_threshold(value: int64, rounds: int64) -> int64:
+    while value > value - 1 and rounds > 0:
+        value -= 1
+        rounds -= 1
+    return value
+
+
+@native
+def checked_region_summary_recomputed_threshold_entry(
+    storage: UInt64Buffer, value: int64, rounds: int64
+) -> int64:
+    degree: int64 = checked_region_summary_recomputed_threshold(value, rounds)
+    return checked_region_local_copy_helper(storage, 0, degree, 4)
+
+
+def checked_region_summary_nested_step(value: int64, rounds: int64) -> int64:
+    step: int64 = 1
+    while value > 0:
+        if rounds > 0:
+            step = 100
+        value -= step
+        rounds -= 1
+    return value
+
+
+@native
+def checked_region_summary_nested_step_entry(
+    storage: UInt64Buffer, value: int64, rounds: int64
+) -> int64:
+    degree: int64 = checked_region_summary_nested_step(value, rounds)
+    return checked_region_local_copy_helper(storage, 0, degree, 4)
 
 
 @native
