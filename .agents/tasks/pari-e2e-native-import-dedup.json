@@ -1,0 +1,121 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-native-import-dedup",
+  "title": "Deduplicate imported private native helpers",
+  "lane": "native-compiler",
+  "status": "review",
+  "owner": "user",
+  "objective": "Eliminate false native import conflicts when a private checked graph and its imported helper share one authenticated declaration",
+  "base_commit": "4234d463df3c1e7bcaa8f72828ae1dd16ee9192e",
+  "claims": [
+    "tools/native-kernel/ir.cjs",
+    "tools/native-kernel/test/relative-native-imports.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "the frozen PARI splitting graph compiles without duplicate helper declarations",
+      "conflicting native imports still fail closed"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 728.538,
+      "started_at": "2026-09-16T23:32:11.645Z",
+      "commit": "94fd5b9c08f33dce9cfe5b73cb3111e458051a94",
+      "workspace_fingerprint": "e2e9b13228cc8bd816cdd74cb950b4efc8eea3fc4baea33fd08a0088454e6933",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/exact-polynomial-resource-ffi.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.39,
+      "started_at": "2026-09-16T23:44:29.476Z",
+      "commit": "94fd5b9c08f33dce9cfe5b73cb3111e458051a94",
+      "workspace_fingerprint": "e2e9b13228cc8bd816cdd74cb950b4efc8eea3fc4baea33fd08a0088454e6933",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.073,
+      "started_at": "2026-09-16T23:44:39.378Z",
+      "commit": "94fd5b9c08f33dce9cfe5b73cb3111e458051a94",
+      "workspace_fingerprint": "e2e9b13228cc8bd816cdd74cb950b4efc8eea3fc4baea33fd08a0088454e6933",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 76.349,
+      "started_at": "2026-09-16T23:45:11.009Z",
+      "commit": "94fd5b9c08f33dce9cfe5b73cb3111e458051a94",
+      "workspace_fingerprint": "e2e9b13228cc8bd816cdd74cb950b4efc8eea3fc4baea33fd08a0088454e6933",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/relative-native-imports.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.6,
+      "started_at": "2026-09-16T23:46:33.031Z",
+      "commit": "94fd5b9c08f33dce9cfe5b73cb3111e458051a94",
+      "workspace_fingerprint": "e2e9b13228cc8bd816cdd74cb950b4efc8eea3fc4baea33fd08a0088454e6933",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_int64_prime_degree_catalog.cjs /tmp/sagejs-analytic-invhr-d88QqB/fixtures.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.744,
+      "started_at": "2026-09-16T23:46:49.251Z",
+      "commit": "94fd5b9c08f33dce9cfe5b73cb3111e458051a94",
+      "workspace_fingerprint": "e2e9b13228cc8bd816cdd74cb950b4efc8eea3fc4baea33fd08a0088454e6933",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 364.135,
+      "started_at": "2026-09-16T23:47:21.843Z",
+      "commit": "94fd5b9c08f33dce9cfe5b73cb3111e458051a94",
+      "workspace_fingerprint": "e2e9b13228cc8bd816cdd74cb950b4efc8eea3fc4baea33fd08a0088454e6933",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Canonicalize imported native IR definition fingerprints so independently analyzed copies from one authenticated source are insensitive to JavaScript object-property insertion order. A natural proof-bearing direct/transitive import regression compiles and executes on all integer backends, and the 4-case PARI splitting catalog now compiles and agrees across CPython, JavaScript, GMP, and tagged backends.",
+    "risks": [
+      "An initial full native run reached and passed the compiler/native-kernel coverage but failed one unrelated timing assertion under heavy parallel compilation: doubled QQ construction measured 3.677x. The isolated test immediately passed, and a complete cached rerun then passed in 364.13 seconds.",
+      "The historical Stage G/H checked-region driver assumes call facts from its original frozen monolithic baseline. The current modular baseline yields no direct-result variant even with the historical successful compiler commit; integration replay should use its passing Stage A mode rather than weakening the historical checker."
+    ],
+    "next_steps": [
+      "Cherry-pick 94fd5b9c0 into the integration lane.",
+      "Run the Phase0 splitting replay in Stage A mode for the current modular baseline; preserve Stage G/H as historical artifact-specific experiments.",
+      "Treat recovery of direct-result proofs for the modular imported IR as a separate optimization campaign with newly frozen evidence."
+    ]
+  }
+}
