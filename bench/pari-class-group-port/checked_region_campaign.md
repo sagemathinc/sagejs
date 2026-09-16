@@ -223,3 +223,36 @@ The ratio is 0.995792, or about 0.42% faster. These predictable clearing checks
 are numerous but cheap. The result narrows the next compiler target to affine
 and dynamically bounded hot accesses (`j`, `i-j`, and `v+i`) and to the closed
 private graph that enabled the 1.6307 ms diagnostic.
+
+## Dynamic exact-span source refactor
+
+A benchmark-only follow-up expressed the dynamic copy, normalization,
+multiplication, squaring, and division spans as checked subviews followed by
+`range(count)`. The source is
+`/tmp/sagejs-view-proof-catalog-aGpIpX/int64_flx_small_dynamic_spans.py`
+(SHA256
+`713e41e2fc59cc6bc477aef26350fde67b4c57ef8b55b92c95d4bbf657194746`);
+the exact transformation and malformed-input risks are recorded beside it in
+`dynamic-span-refactor.md`. No production source was changed.
+
+The compiler attached ten dynamic exact-span proofs and retained three
+constant fixed-span proofs. Static `sagejs_signed_buffer_index` sites fell from
+333 to 285. All four frozen packets and their complete post-call buffers
+matched under JavaScript, GMP, and tagged execution, including the 7,081 active
+outputs in packet zero.
+
+The source-level construction was nevertheless slower in seven alternating
+tagged pairs:
+
+| implementation | geometric mean (ms/catalog) |
+| --- | ---: |
+| existing fixed-view proof build | 3.12252 |
+| dynamic exact-span source | 3.77265 |
+
+The ratio is 1.20821, or a 20.8% regression. Generated C also grew from
+4,924,176 to 5,170,671 bytes. Materializing checked subviews inside each
+convolution row costs more than the eliminated element checks and increases
+code-size pressure. The production compiler must therefore virtualize and
+eliminate proved views, or prove affine accesses directly against an enclosing
+checked view; repeatedly constructing source-visible inner-loop views is not a
+viable optimization.
