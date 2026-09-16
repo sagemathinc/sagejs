@@ -194,15 +194,27 @@ function createFunctionGraphProofAuthority(options = {}) {
   const records = new WeakMap();
   const snapshot = value => canonicalStructuralEncoding(value, { ignoredKeys });
 
-  function validate(functions, owner, subject) {
+  function validateGraph(functions, owner) {
     if (!Array.isArray(functions) || functions.length === 0 ||
         new Set(functions).size !== functions.length) {
       fail(`${name} requires distinct functions`);
     }
     functions.forEach(validateFunction);
-    if (functions[0] !== owner || !containsIdentity(owner, subject)) {
+    if (functions[0] !== owner) {
       fail(`${name} subject is outside its owner`);
     }
+  }
+
+  function validate(functions, owner, subject) {
+    validateGraph(functions, owner);
+    if (!containsIdentity(owner, subject)) {
+      fail(`${name} subject is outside its owner`);
+    }
+  }
+
+  function sameFunctions(left, right) {
+    return left.length === right.length &&
+      left.every((fn, index) => fn === right[index]);
   }
 
   return Object.freeze({
@@ -220,8 +232,8 @@ function createFunctionGraphProofAuthority(options = {}) {
       if (!Array.isArray(functions) || subject === null ||
           typeof subject !== "object") return false;
       const record = records.get(subject);
-      if (record === undefined || functions.length !== record.functions.length ||
-          functions.some((fn, index) => fn !== record.functions[index])) return false;
+      if (record === undefined ||
+          !sameFunctions(functions, record.functions)) return false;
       try {
         validate(functions, owner, subject);
         return functions.every((fn, index) =>
@@ -230,6 +242,37 @@ function createFunctionGraphProofAuthority(options = {}) {
       } catch (_error) {
         return false;
       }
+    },
+
+    emissionVerifier(functions, owner) {
+      validateGraph(functions, owner);
+      const graphFunctions = Object.freeze([...functions]);
+      let graphSnapshots;
+      try {
+        graphSnapshots = Object.freeze(graphFunctions.map(snapshot));
+      } catch (_error) {
+        return Object.freeze({ isAuthorized() { return false; } });
+      }
+      // Generated-code emission is a synchronous, read-only traversal.  Take
+      // the complete ordered graph snapshot once rather than re-encoding all
+      // transitive functions for every proved operation in that traversal.
+      return Object.freeze({
+        isAuthorized(subject, claim) {
+          if (subject === null || typeof subject !== "object") return false;
+          const record = records.get(subject);
+          if (record === undefined ||
+              !sameFunctions(graphFunctions, record.functions) ||
+              !graphSnapshots.every((value, index) =>
+                value === record.snapshots[index]
+              )) return false;
+          try {
+            return containsIdentity(owner, subject) &&
+              snapshot(claim) === record.claimSnapshot;
+          } catch (_error) {
+            return false;
+          }
+        },
+      });
     },
   });
 }
