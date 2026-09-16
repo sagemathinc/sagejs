@@ -292,7 +292,113 @@ stage("cubic-candidate", {
     assert.equal(summary.oneNativeCall, true);
     assert.equal(fixture.summary.outputHash, summary.outputHash);
   },
+  additionalOutputs: (summary) => ({ "prepared-inputs": summary.inputArtifact }),
 });
+
+stage("resident-cubic-collector", {
+  dependencies: [],
+  requiresPari: true,
+  command: (context) => commandNode("check_actual_initial_collector.cjs",
+    context.pariRoot, context.pariArchive, "--native", "--field", "0"),
+  validate: (summary, fixture) => {
+    assert.equal(summary.result[0].field, 0);
+    assert(Array.isArray(fixture.nativeOutputs) && fixture.nativeOutputs.length > 0);
+  },
+});
+
+stage("resident-cubic-driver", {
+  dependencies: [],
+  requiresPari: true,
+  command: (context) => commandNode("check_default_driver_trace.cjs",
+    context.pariRoot, context.pariArchive, "--field0"),
+  validate: (summary, fixture) => {
+    assert.equal(summary.field, 0);
+    assert(Array.isArray(fixture) && fixture.length > 0);
+  },
+  fixtureName: "trace.json",
+  fixtureKey: "trace",
+});
+
+stage("resident-cubic-acceptance", {
+  dependencies: ["analytic", "resident-cubic-collector", "resident-cubic-driver"],
+  requiresPari: true,
+  command: (context) => commandNode("check_post_hnf_acceptance.cjs",
+    context.pariRoot, context.pariArchive,
+    "--collector-fixtures", outputPath(context, "resident-cubic-collector"),
+    "--analytic-fixtures", outputPath(context, "analytic"),
+    "--driver-trace", tracePath(context, "resident-cubic-driver"),
+    "--driver-field", "0"),
+  validate: (summary, fixture) => {
+    assert(summary.genuineAcceptedCases >= 1);
+    assert(Array.isArray(fixture) && fixture.length === 2);
+  },
+});
+
+stage("resident-cubic-input", {
+  dependencies: ["analytic", "resident-cubic-collector", "resident-cubic-acceptance"],
+  command: (context) => commandNode("check_prepared_class_group_attempt.cjs",
+    outputPath(context, "resident-cubic-collector"),
+    outputPath(context, "resident-cubic-acceptance"),
+    "--analytic-fixtures", outputPath(context, "analytic"), "--export-inputs"),
+  validate: (summary, fixture) => {
+    const accepted = summary.cp.find((entry) => entry.action === 0);
+    assert(accepted, "resident cubic input did not accept");
+    assert.equal(accepted.classNumber, "1");
+    assert.deepEqual(accepted.invariants, []);
+    assert.equal(summary.oneNativeCall, true);
+    assert.equal(fixture.summary.outputHash, summary.outputHash);
+  },
+  additionalOutputs: (summary) => ({ "prepared-inputs": summary.inputArtifact }),
+});
+
+stage("kummer-prepared-nf", {
+  dependencies: [],
+  requiresPari: true,
+  command: (context) => commandNode("check_kummer_prime_descriptor.cjs",
+    context.pariRoot, context.pariArchive),
+  validate: (summary, fixture) => {
+    assert(summary.cases > 0);
+    assert.deepEqual(summary.backends, ["cpython", "javascript", "gmp", "tagged"]);
+    assert(fixture.rows.some((entry) => entry.field === 0 && entry.index === "1"));
+  },
+});
+
+stage("initial-kummer", {
+  dependencies: ["kummer-prepared-nf"],
+  requiresPari: true,
+  command: (context) => commandNode("check_initial_kummer_catalog.cjs",
+    context.pariRoot, context.pariArchive, outputPath(context, "kummer-prepared-nf")),
+  validate: (summary, fixture) => {
+    assert.equal(summary.cases, 7);
+    assert.equal(summary.invalidControls, 8);
+    assert.deepEqual(summary.backends, ["cpython", "javascript", "gmp", "tagged"]);
+    assert.equal(fixture.prepared.field, 0);
+  },
+});
+
+function residentCubicReplay(backend) {
+  return {
+    dependencies: ["resident-cubic-input", "analytic", "initial-kummer"],
+    command: (context) => commandNode("check_resident_generated_class_attempt.cjs",
+      outputPath(context, "resident-cubic-input", "prepared-inputs"),
+      outputPath(context, "analytic"), outputPath(context, "initial-kummer"),
+      "--backend", backend),
+    validate: (summary) => {
+      assert.equal(summary.backend, backend);
+      assert.equal(summary.action, "0");
+      assert.equal(summary.classNumber, "1");
+      assert.equal(summary.relations, "73");
+      assert.deepEqual(summary.regulator,
+        ["4510874135066530692003455889568986616389323011914280231659", "192", "20"]);
+      assert.equal(summary.lateFailureAndPartialReentry, true);
+    },
+    fixtureName: "result.json",
+    additionalOutputs: (summary) => ({ output: path.join(summary.directory, "output.json") }),
+  };
+}
+for (const backend of ["cpython", "javascript", "gmp", "tagged"]) {
+  stage(`resident-cubic-${backend}`, residentCubicReplay(backend));
+}
 
 stage("quartic-collector", {
   dependencies: [],
@@ -382,8 +488,27 @@ function quarticReplay(backend) {
     },
   };
 }
+stage("quartic-retry-cpython", {
+  dependencies: ["analytic", "quartic-collector", "quartic-driver",
+    "quartic-continuation"],
+  command: (context) => ({
+    command: process.execPath,
+    arguments: [checker("check_prepared_class_group_resumable.cjs"),
+      outputPath(context, "quartic-continuation"), outputPath(context, "analytic"),
+      tracePath(context, "quartic-driver"), outputPath(context, "quartic-collector"),
+      "--source-only"],
+  }),
+  validate: (summary, fixture) => {
+    assert.equal(summary.expected.length, 3);
+    assert.equal(summary.expected[2].status, 0);
+    assert.equal(summary.expected[2].classNumber, "1");
+    assert.equal(fixture.expected.length, 3);
+  },
+  fixtureName: "inputs.json",
+});
 stage("quartic-retry-javascript", quarticReplay("javascript"));
 stage("quartic-retry-gmp", quarticReplay("gmp"));
+stage("quartic-retry-tagged", quarticReplay("tagged"));
 
 const defaultThrough = "cubic-candidate";
 
