@@ -108,26 +108,39 @@ def int64_pari_flxq_powu(
     disjoint. Output publication uses copies, never changes input owners.
     No special-case source dispatcher or alternative powering algorithm.
     """
+    two: int64 = 2
+    one: int64 = 1
+    two_unsigned: uint64 = 2
     if exponent < 0 or exponent > 3037000493:
         raise ValueError("Flxq exponent outside admitted catalog corridor")
-    if p <= 2 or p > 3037000493 or p % 2 == 0:
+    if p <= two_unsigned or p > 3037000493 or p % two_unsigned == 0:
         raise ValueError("Flxq requires an odd word prime")
     if dt < 0 or dt > 4 or da < -1 or da > 4:
         raise ValueError("Flxq small quotient degree frontier")
     if a < 0 or t < 0 or out < 0 or scratch < 0:
         raise ValueError("negative Flxq owner")
-    if a + 9 > len(w) or t + 9 > len(w) or out + 9 > len(w) or scratch + 90 > len(w):
+    w_length: int64 = checked_int64(len(w))
+    a_end: int64 = a + 9
+    t_end: int64 = t + 9
+    out_end: int64 = out + 9
+    scratch_end: int64 = scratch + 90
+    if (
+        a_end > w_length
+        or t_end > w_length
+        or out_end > w_length
+        or scratch_end > w_length
+    ):
         raise ValueError("short Flxq owner")
     if (
-        (a < t + 9 and t < a + 9)
-        or (a < out + 9 and out < a + 9)
-        or (t < out + 9 and out < t + 9)
+        (a < t_end and t < a_end)
+        or (a < out_end and out < a_end)
+        or (t < out_end and out < t_end)
     ):
         raise ValueError("overlapping Flxq polynomial owners")
     if (
-        (a < scratch + 90 and scratch < a + 9)
-        or (t < scratch + 90 and scratch < t + 9)
-        or (out < scratch + 90 and scratch < out + 9)
+        (a < scratch_end and scratch < a_end)
+        or (t < scratch_end and scratch < t_end)
+        or (out < scratch_end and scratch < out_end)
     ):
         raise ValueError("overlapping Flxq scratch owner")
     _range_0_0: int64 = da + 1
@@ -165,7 +178,7 @@ def int64_pari_flxq_powu(
                 w, running, degree, t, dt, p, temporary, scratch
             )
             int64_pari_flx_copy(w, temporary, degree, running)
-            if int64_shift_right(exponent, bit) % 2:
+            if int64_shift_right(exponent, bit) % two:
                 degree = int64_pari_flxq_mul(
                     w, running, degree, a, da, t, dt, p, temporary, scratch
                 )
@@ -179,7 +192,9 @@ def int64_pari_flxq_powu(
     square: int64 = scratch + 27
     table: int64 = scratch + 36
     degrees: int64 = degree_work_start
-    if degree_work_start < 0 or degree_work_start + 4 > len(degree_work):
+    degree_work_length: int64 = checked_int64(len(degree_work))
+    degree_work_end: int64 = degree_work_start + 4
+    if degree_work_start < 0 or degree_work_end > degree_work_length:
         raise ValueError("short bounded Flxq degree workspace")
     square_degree: int64 = int64_pari_flxq_sqr(w, a, da, t, dt, p, square, scratch)
     degree_work[degrees] = int64_pari_flx_copy(w, a, da, table)
@@ -202,14 +217,14 @@ def int64_pari_flxq_powu(
     bit = int64_positive_bit_length(exponent) - 1
     started = False
     while bit >= 0:
-        if window > bit + 1:
-            window = bit + 1
+        if window > bit + one:
+            window = bit + one
         block: int64 = int64_shift_right(
             exponent, bit + 1 - window
         ) % int64_power_of_two(window)
         trailing: int64 = 0
         odd: int64 = block
-        while odd % 2 == 0:
+        while odd % two == 0:
             trailing += 1
             odd //= 2
         bit -= window
@@ -248,7 +263,7 @@ def int64_pari_flxq_powu(
             )
             int64_pari_flx_copy(w, temporary, degree, running)
         while bit >= 0:
-            if int64_shift_right(exponent, bit) % 2:
+            if int64_shift_right(exponent, bit) % two:
                 break
             degree = int64_pari_flxq_sqr(
                 w, running, degree, t, dt, p, temporary, scratch
@@ -279,13 +294,19 @@ def int64_pari_flxq_powers(
     """
     if length < 0 or length > 2:
         raise ValueError("small Flxq powers length frontier")
+    w_length: int64 = checked_int64(len(w))
+    degree_values_length: int64 = checked_int64(len(degree_values))
+    output_slots: int64 = 9 * (length + 1)
+    output_end: int64 = out + output_slots
+    degree_values_end: int64 = degree_slots + length + 1
+    scratch_end: int64 = scratch + 18
     if (
         out < 0
         or degree_slots < 0
         or scratch < 0
-        or out + 9 * (length + 1) > len(w)
-        or degree_slots + length + 1 > len(degree_values)
-        or scratch + 18 > len(w)
+        or output_end > w_length
+        or degree_values_end > degree_values_length
+        or scratch_end > w_length
     ):
         raise ValueError("short Flxq powers workspace")
     _range_6_0: int64 = 9
@@ -329,19 +350,31 @@ def int64_pari_flx_flxqv_eval(
     """
     if length != 2 or dq < -1 or dq > 3 or dt < 1 or dt > 4:
         raise ValueError("small Flxq evaluation frontier")
+    w_length: int64 = checked_int64(len(w))
+    degree_values_length: int64 = checked_int64(len(degree_values))
+    q_end: int64 = q + 9
+    table_end: int64 = table + 27
+    table_degrees_end: int64 = table_degrees + 3
+    out_end: int64 = out + 9
+    scratch_end: int64 = scratch + 54
     if (
         q < 0
         or table < 0
         or table_degrees < 0
         or out < 0
         or scratch < 0
-        or q + 9 > len(w)
-        or table + 27 > len(w)
-        or table_degrees + 3 > len(degree_values)
-        or out + 9 > len(w)
-        or scratch + 54 > len(w)
+        or q_end > w_length
+        or table_end > w_length
+        or table_degrees_end > degree_values_length
+        or out_end > w_length
+        or scratch_end > w_length
     ):
         raise ValueError("short Flxq evaluation workspace")
+    one: int64 = 1
+    two: int64 = 2
+    three: int64 = 3
+    nine: int64 = 9
+    eighteen: int64 = 18
     if dq == -1:
         _range_7_0: int64 = 9
         i: int64 = 0
@@ -350,9 +383,9 @@ def int64_pari_flx_flxqv_eval(
         return checked_int64(-1)
     n: int64 = 3
     columns: int64 = 1
-    if dq + 1 > 3:
-        n = 2
-        columns = 2
+    if dq + one > three:
+        n = two
+        columns = two
     # Flm_mul(A,B): A consists of the first n table polynomials truncated
     # to dt coefficients; B consists of consecutive n-coefficient Q blocks.
     _range_8_0: int64 = columns
@@ -361,26 +394,29 @@ def int64_pari_flx_flxqv_eval(
         _range_9_0: int64 = 9
         row: int64 = 0
         for row in range(_range_9_0):
-            w[scratch + 9 * column + row] = 0
+            w[scratch + nine * column + row] = 0
         _range_10_0: int64 = dt
         row: int64 = 0
         for row in range(_range_10_0):
-            value = 0
+            value: uint64 = 0
             _range_11_0: int64 = n
             k: int64 = 0
             for k in range(_range_11_0):
                 position: int64 = column * n + k
-                if position <= dq and row <= degree_values[table_degrees + k]:
-                    value += w[table + 9 * k + row] * w[q + position]
-            w[scratch + 9 * column + row] = value % p
-    last: int64 = scratch + 9 * (columns - 1)
-    degree: int64 = dt - 1
+                table_degree: int64 = degree_values[table_degrees + k]
+                if position <= dq and row <= table_degree:
+                    left: uint64 = w[table + nine * k + row]
+                    right: uint64 = w[q + position]
+                    value += left * right
+            w[scratch + nine * column + row] = value % p
+    last: int64 = scratch + nine * (columns - one)
+    degree: int64 = dt - one
     while degree >= 0 and w[last + degree] == 0:
         degree -= 1
     running: int64 = scratch + 36
     temporary: int64 = scratch + 45
     int64_pari_flx_copy(w, last, degree, running)
-    _range_12_0: int64 = columns - 2
+    _range_12_0: int64 = columns - two
     _range_12_1: int64 = -1
     _range_12_2: int64 = -1
     column: int64 = 0
@@ -389,8 +425,8 @@ def int64_pari_flx_flxqv_eval(
             w,
             running,
             degree,
-            table + 18,
-            degree_values[table_degrees + 2],
+            table + eighteen,
+            degree_values[table_degrees + two],
             t,
             dt,
             p,
@@ -401,13 +437,15 @@ def int64_pari_flx_flxqv_eval(
         _range_13_0: int64 = dt
         row: int64 = 0
         for row in range(_range_13_0):
-            w[running + row] = (w[temporary + row] + w[scratch + 9 * column + row]) % p
+            left: uint64 = w[temporary + row]
+            right: uint64 = w[scratch + nine * column + row]
+            w[running + row] = (left + right) % p
         _range_14_0: int64 = dt
         _range_14_1: int64 = 9
         row: int64 = 0
         for row in range(_range_14_0, _range_14_1):
             w[running + row] = 0
-        degree = dt - 1
+        degree = dt - one
         while degree >= 0 and w[running + degree] == 0:
             degree -= 1
     return checked_int64(int64_pari_flx_copy(w, running, degree, out))

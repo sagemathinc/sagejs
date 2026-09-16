@@ -14,12 +14,11 @@ from sagejs.native import (
 )
 from .int64_get_fs_small import int64_pari_get_fs_small
 from .int64_flx_small_factor import int64_pari_flx_small_factor_workspace_size
-from .f2x_small_factor import pari_f2x_small_factor_workspace_size
 
 
 @native
 def int64_pari_prime_degree_catalog(
-    coefficients: IntegerBuffer,
+    coefficients: Int64Buffer,
     degree: int64,
     equation_index: int64,
     primes: Int64Buffer,
@@ -45,51 +44,79 @@ def int64_pari_prime_degree_catalog(
 ) -> int64:
     """Fill compact grouped and full degree lists from polynomial and primes.
 
-    All owners disjoint. Source factor exponents are deliberately discarded.
+    All owners disjoint. Coefficients use an explicit signed-64 storage
+    corridor. Source factor exponents are deliberately discarded.
     Primehood is a caller precondition; primes need not be sorted. Worst-case
     output capacity is prime_count*degree. Preflight frontiers change only
     state[status,0,0,0]. Arithmetic exceptions leave status -1: partial data
     are not a published catalog. Success state is [0,primes,groups,factors].
     This eager fill order is not the source get_fs cache's demand order.
     """
-    if len(state) < 4:
+    state_length: int64 = checked_int64(len(state))
+    if state_length < 4:
         raise ValueError("short degree catalog state")
     if prime_count < 0 or equation_index < 1:
         raise ValueError("invalid degree catalog scalar")
     status: int64 = 0
+    degree_entries: int64 = degree + 1
+    primes_length: int64 = checked_int64(len(primes))
+    coefficients_length: int64 = checked_int64(len(coefficients))
     if degree < 2 or degree > 4:
         status = -4
-    elif len(primes) < prime_count or len(coefficients) < degree + 1:
+    elif primes_length < prime_count or coefficients_length < degree_entries:
         status = -6
     else:
-        if coefficients[degree] != 1:
+        leading_coefficient: int64 = coefficients[degree]
+        if leading_coefficient != 1:
             raise ValueError("degree catalog requires monic polynomial")
         _range_0_0: int64 = prime_count
         i: int64 = 0
         for i in range(_range_0_0):
-            if primes[i] < 2:
+            prime: int64 = primes[i]
+            if prime < 2:
                 raise ValueError("invalid degree catalog prime")
-            if equation_index % primes[i] == 0:
+            if equation_index % prime == 0:
                 status = -3
-            elif primes[i] > 3037000493 and status == 0:
+            elif prime > 3037000493 and status == 0:
                 status = -5
         capacity: int64 = prime_count * degree
+        exact_workspace_length: int64 = checked_int64(len(exact_workspace))
+        word_workspace_length: int64 = checked_int64(len(word_workspace))
+        word_metadata_length: int64 = checked_int64(len(word_metadata))
+        factor_degrees_length: int64 = checked_int64(len(factor_degrees))
+        factor_exponents_length: int64 = checked_int64(len(factor_exponents))
+        group_degrees_length: int64 = checked_int64(len(group_degrees))
+        group_counts_length: int64 = checked_int64(len(group_counts))
+        local_state_length: int64 = checked_int64(len(local_state))
+        pattern_offsets_length: int64 = checked_int64(len(pattern_offsets))
+        pattern_counts_length: int64 = checked_int64(len(pattern_counts))
+        full_offsets_length: int64 = checked_int64(len(full_offsets))
+        full_counts_length: int64 = checked_int64(len(full_counts))
+        pattern_degrees_length: int64 = checked_int64(len(pattern_degrees))
+        pattern_multiplicities_length: int64 = checked_int64(
+            len(pattern_multiplicities)
+        )
+        full_degrees_length: int64 = checked_int64(len(full_degrees))
+        exact_workspace_required: int64 = 29
+        word_workspace_required: int64 = (
+            9 + int64_pari_flx_small_factor_workspace_size()
+        )
         if status == 0 and (
-            len(exact_workspace) < 9 + pari_f2x_small_factor_workspace_size()
-            or len(word_workspace) < 9 + int64_pari_flx_small_factor_workspace_size()
-            or len(word_metadata) < 9 + int64_pari_flx_small_factor_workspace_size()
-            or len(factor_degrees) < degree
-            or len(factor_exponents) < degree
-            or len(group_degrees) < degree
-            or len(group_counts) < degree
-            or len(local_state) < 3
-            or len(pattern_offsets) < prime_count
-            or len(pattern_counts) < prime_count
-            or len(full_offsets) < prime_count
-            or len(full_counts) < prime_count
-            or len(pattern_degrees) < capacity
-            or len(pattern_multiplicities) < capacity
-            or len(full_degrees) < capacity
+            exact_workspace_length < exact_workspace_required
+            or word_workspace_length < word_workspace_required
+            or word_metadata_length < word_workspace_required
+            or factor_degrees_length < degree
+            or factor_exponents_length < degree
+            or group_degrees_length < degree
+            or group_counts_length < degree
+            or local_state_length < 3
+            or pattern_offsets_length < prime_count
+            or pattern_counts_length < prime_count
+            or full_offsets_length < prime_count
+            or full_counts_length < prime_count
+            or pattern_degrees_length < capacity
+            or pattern_multiplicities_length < capacity
+            or full_degrees_length < capacity
         ):
             status = -6
     state[0] = status

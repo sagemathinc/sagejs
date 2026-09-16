@@ -13,21 +13,19 @@ from sagejs.native import (
     Int64Buffer,
     int64,
     checked_int64,
+    uint64,
 )
 
 from .int64_flx_small_factor import (
     int64_pari_flx_small_degfact,
     int64_pari_flx_small_factor_workspace_size,
 )
-from .f2x_small_factor import (
-    pari_f2x_small_degfact,
-    pari_f2x_small_factor_workspace_size,
-)
+from .int64_f2x_small_factor import int64_pari_f2x_small_degfact
 
 
 @native
 def int64_pari_get_fs_small(
-    coefficients: IntegerBuffer,
+    coefficients: Int64Buffer,
     degree: int64,
     equation_index: int64,
     prime: int64,
@@ -44,7 +42,7 @@ def int64_pari_get_fs_small(
 ) -> int64:
     """Derive splitting-degree counts without supplied modular factors.
 
-    Coefficients are low-to-high, monic, and exact. The caller supplies a
+    Coefficients are low-to-high, monic, and signed 64-bit. The caller supplies a
     rational prime; primality is not recomputed inside this source path.
     Every buffer owner is disjoint. State receives status, group count, and
     irreducible factor count. Success has status zero. Negative frontiers are
@@ -58,7 +56,8 @@ def int64_pari_get_fs_small(
     Repeated factors must still be found by the squarefree factorization path.
     This routine alone cannot supply all primes needed by analytic preparation.
     """
-    if len(state) < 3:
+    state_length: int64 = checked_int64(len(state))
+    if state_length < 3:
         raise ValueError("short get_fs state")
     if prime < 2 or equation_index < 1:
         raise ValueError("invalid get_fs scalar input")
@@ -69,15 +68,26 @@ def int64_pari_get_fs_small(
         status = -4
     elif prime > 3037000493:
         status = -5
-    elif (
-        len(coefficients) < degree + 1
-        or len(exact_workspace) < 9 + pari_f2x_small_factor_workspace_size()
-        or len(word_workspace) < 9 + int64_pari_flx_small_factor_workspace_size()
-        or len(word_metadata) < 9 + int64_pari_flx_small_factor_workspace_size()
-        or len(factor_degrees) < degree
-        or len(factor_exponents) < degree
-        or len(degrees) < degree
-        or len(counts) < degree
+    degree_entries: int64 = degree + 1
+    coefficients_length: int64 = checked_int64(len(coefficients))
+    exact_workspace_length: int64 = checked_int64(len(exact_workspace))
+    word_workspace_length: int64 = checked_int64(len(word_workspace))
+    word_metadata_length: int64 = checked_int64(len(word_metadata))
+    factor_degrees_length: int64 = checked_int64(len(factor_degrees))
+    factor_exponents_length: int64 = checked_int64(len(factor_exponents))
+    degrees_length: int64 = checked_int64(len(degrees))
+    counts_length: int64 = checked_int64(len(counts))
+    exact_workspace_required: int64 = 29
+    word_workspace_required: int64 = 9 + int64_pari_flx_small_factor_workspace_size()
+    if status == 0 and (
+        coefficients_length < degree_entries
+        or exact_workspace_length < exact_workspace_required
+        or word_workspace_length < word_workspace_required
+        or word_metadata_length < word_workspace_required
+        or factor_degrees_length < degree
+        or factor_exponents_length < degree
+        or degrees_length < degree
+        or counts_length < degree
     ):
         status = -6
     if status != 0:
@@ -85,47 +95,39 @@ def int64_pari_get_fs_small(
         state[1] = 0
         state[2] = 0
         return checked_int64(status)
-    if coefficients[degree] != 1:
+    leading_coefficient: int64 = coefficients[degree]
+    if leading_coefficient != 1:
         raise ValueError("get_fs requires a monic defining polynomial")
     state[0] = -1
     state[1] = 0
     state[2] = 0
-    # ZX_to_Flx, with the monic normalization already an input invariant.
-    _range_0_0: int64 = degree + 1
-    i: int64 = 0
-    for i in range(_range_0_0):
-        exact_workspace[i] = coefficients[i] % prime
     if prime == 2:
-        # Flx_to_F2x before the characteristic-two source dispatcher.
-        binary = checked_uint64(0)
-        _range_1_0: int64 = degree + 1
+        # The positive signed divisor gives Python's canonical nonnegative
+        # remainder even for a negative signed coefficient.
+        two_signed: int64 = 2
+        bit: uint64 = 1
+        binary: uint64 = 0
+        _range_0_0: int64 = degree + 1
         i: int64 = 0
-        for i in range(_range_1_0):
-            coefficient = checked_uint64(exact_workspace[i])
-            shift = checked_uint64(i)
-            binary |= coefficient << shift
-        # The packed F2x implementation remains exact. Stage its at-most-four
-        # outputs, then return immediately to bounded signed storage.
-        number: int64 = checked_int64(
-            pari_f2x_small_degfact(
-                int(binary),
-                binary_factor_degrees,
-                binary_factor_exponents,
-                exact_workspace,
-                9,
-            )
+        for i in range(_range_0_0):
+            source_coefficient: int64 = coefficients[i]
+            reduced_coefficient: int64 = source_coefficient % two_signed
+            coefficient: uint64 = checked_uint64(reduced_coefficient)
+            binary |= coefficient * bit
+            bit <<= 1
+        number: int64 = int64_pari_f2x_small_degfact(
+            binary,
+            factor_degrees,
+            factor_exponents,
         )
-        _range_binary: int64 = number
-        i: int64 = 0
-        for i in range(_range_binary):
-            factor_degrees[i] = checked_int64(binary_factor_degrees[i])
-            factor_exponents[i] = checked_int64(binary_factor_exponents[i])
     else:
-        word_prime = checked_uint64(prime)
+        word_prime: uint64 = checked_uint64(prime)
         _range_2_0: int64 = degree + 1
         i: int64 = 0
         for i in range(_range_2_0):
-            word_workspace[i] = checked_uint64(coefficients[i] % prime)
+            source_coefficient: int64 = coefficients[i]
+            reduced_coefficient: int64 = source_coefficient % prime
+            word_workspace[i] = checked_uint64(reduced_coefficient)
         number: int64 = int64_pari_flx_small_degfact(
             word_workspace,
             word_metadata,
@@ -144,13 +146,14 @@ def int64_pari_get_fs_small(
     _range_3_1: int64 = number
     j: int64 = 0
     for j in range(_range_3_0, _range_3_1):
-        if factor_degrees[j] == f:
+        next_degree: int64 = factor_degrees[j]
+        if next_degree == f:
             n += 1
         else:
             counts[k] = n
             degrees[k] = f
             k += 1
-            f = factor_degrees[j]
+            f = next_degree
             n = 1
     counts[k] = n
     degrees[k] = f

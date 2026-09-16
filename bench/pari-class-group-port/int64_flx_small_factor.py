@@ -37,23 +37,29 @@ from .int64_flx_small_power import (
 @native
 def int64_pari_flx_small_factor_workspace_size() -> int64:
     """Eight work polynomials, four layers/degrees, and exact DDF spans."""
-    return checked_int64(12 * 9 + 4 + 19 * 9 + 2 + 3 + 2 + 4 + 90)
+    size: int64 = 384
+    return size
 
 
 @native
 def int64_pari_flx_small_krouu_odd(x: int64, y: int64) -> int64:
     """Literal krouu_s with initial sign one and odd positive denominator."""
+    two: int64 = 2
+    three: int64 = 3
+    four: int64 = 4
+    five: int64 = 5
+    eight: int64 = 8
     sign: int64 = 1
     while x != 0:
         valuation: int64 = 0
-        while x % 2 == 0:
+        while x % two == 0:
             valuation += 1
-            x //= 2
+            x //= two
         if valuation != 0:
-            residue: int64 = y % 8
-            if valuation % 2 != 0 and (residue == 3 or residue == 5):
+            residue: int64 = y % eight
+            if valuation % two != 0 and (residue == three or residue == five):
                 sign = -sign
-        if x % 4 >= 2 and y % 4 >= 2:
+        if x % four >= two and y % four >= two:
             sign = -sign
         temporary: int64 = y % x
         y: int64 = x
@@ -94,28 +100,39 @@ def int64_pari_flx_small_sort_factor(
     scratch entries hold original degrees, exponents, and the permutation.
     Return the active count for the buffered native ABI, not a new vector.
     """
+    zero: int64 = 0
+    one: int64 = 1
+    two: int64 = 2
+    three: int64 = 3
+    four: int64 = 4
+    eight: int64 = 8
     _range_1_0: int64 = count
     i: int64 = 0
     for i in range(_range_1_0):
         metadata[scratch + i] = degrees[i]
-        metadata[scratch + 4 + i] = exponents[i]
-    order: int64 = scratch + 8
+        metadata[scratch + four + i] = exponents[i]
+    order: int64 = scratch + eight
     if count == 1:
         metadata[order] = 0
     elif count == 2:
-        if degrees[0] <= degrees[1]:
+        d0: int64 = degrees[zero]
+        d1: int64 = degrees[one]
+        if d0 <= d1:
             metadata[order] = 0
             metadata[order + 1] = 1
         else:
             metadata[order] = 1
             metadata[order + 1] = 0
     elif count == 3:
+        d0: int64 = degrees[zero]
+        d1: int64 = degrees[one]
+        d2: int64 = degrees[two]
         p0: int64 = 0
         p1: int64 = 1
         p2: int64 = 2
-        if degrees[0] <= degrees[1]:
-            if degrees[1] > degrees[2]:
-                if degrees[0] <= degrees[2]:
+        if d0 <= d1:
+            if d1 > d2:
+                if d0 <= d2:
                     p1 = 2
                     p2 = 1
                 else:
@@ -123,10 +140,10 @@ def int64_pari_flx_small_sort_factor(
                     p1 = 0
                     p2 = 1
         else:
-            if degrees[0] <= degrees[2]:
+            if d0 <= d2:
                 p0 = 1
                 p1 = 0
-            elif degrees[1] <= degrees[2]:
+            elif d1 <= d2:
                 p0 = 1
                 p1 = 2
                 p2 = 0
@@ -138,41 +155,47 @@ def int64_pari_flx_small_sort_factor(
         metadata[order + 1] = p1
         metadata[order + 2] = p2
     elif count == 4:
+        d0: int64 = degrees[zero]
+        d1: int64 = degrees[one]
+        d2: int64 = degrees[two]
+        d3: int64 = degrees[three]
         a0: int64 = 0
         a1: int64 = 1
         b0: int64 = 2
         b1: int64 = 3
-        if degrees[0] > degrees[1]:
+        if d0 > d1:
             a0 = 1
             a1 = 0
-        if degrees[2] > degrees[3]:
+        if d2 > d3:
             b0 = 3
             b1 = 2
         ix: int64 = 0
         iy: int64 = 0
         output: int64 = 0
-        while ix < 2 and iy < 2:
+        while ix < two and iy < two:
             a: int64 = a0
             b = b0
             if ix == 1:
                 a = a1
             if iy == 1:
                 b = b1
-            if degrees[a] <= degrees[b]:
+            da: int64 = degrees[a]
+            db: int64 = degrees[b]
+            if da <= db:
                 metadata[order + output] = a
                 ix += 1
             else:
                 metadata[order + output] = b
                 iy += 1
             output += 1
-        while ix < 2:
+        while ix < two:
             a = a0
             if ix == 1:
                 a = a1
             metadata[order + output] = a
             output += 1
             ix += 1
-        while iy < 2:
+        while iy < two:
             b = b0
             if iy == 1:
                 b = b1
@@ -241,15 +264,21 @@ def int64_pari_flx_small_ddf_polynomials(
     """
     if dt < 0 or dt > 4 or p < 3 or p > 3037000493 or p % 2 == 0:
         raise ValueError("small DDF polynomial frontier")
+    w_length: int64 = checked_int64(len(w))
+    metadata_length: int64 = checked_int64(len(metadata))
+    t_end: int64 = t + 9
+    components_end: int64 = components + 36
+    component_degrees_end: int64 = component_degrees + 4
+    scratch_end: int64 = scratch + 272
     if (
         t < 0
         or components < 0
         or component_degrees < 0
         or scratch < 0
-        or len(w) < t + 9
-        or len(w) < components + 36
-        or len(metadata) < component_degrees + 4
-        or len(w) < scratch + 272
+        or w_length < t_end
+        or w_length < components_end
+        or metadata_length < component_degrees_end
+        or w_length < scratch_end
     ):
         raise ValueError("short DDF polynomial storage")
     _range_3_0: int64 = dt + 1
@@ -283,6 +312,8 @@ def _int64_pari_flx_small_ddf(
     Polynomial T remains disjoint and unchanged. Degree-zero holes still
     compute Frobenius before the source DDF early return.
     """
+    one: int64 = 1
+    nine: int64 = 9
     x: int64 = scratch
     xp: int64 = scratch + 9
     baby: int64 = scratch + 18
@@ -306,7 +337,7 @@ def _int64_pari_flx_small_ddf(
     i: int64 = 0
     for i in range(_range_4_0):
         w[x + i] = 0
-    w[x + 1] = 1
+    w[x + one] = 1
     signed_prime: int64 = checked_int64(p)
     dxp: int64 = int64_pari_flxq_powu(
         w, x, 1, signed_prime, t, dt, p, xp, work, metadata, work + 72
@@ -323,7 +354,7 @@ def _int64_pari_flx_small_ddf(
         _range_7_0: int64 = 4
         i: int64 = 0
         for i in range(_range_7_0):
-            w[components + i * 9] = 1
+            w[components + i * nine] = 1
             metadata[component_degrees + i] = 0
     if dt == 0:
         return checked_int64(output_degrees)
@@ -431,20 +462,28 @@ def int64_pari_flx_small_degfact(
     scratch spans, and output buffers, are disjoint. The caller supplies an
     actual prime. Primality is not retested. Output tails are untouched.
     """
+    one: int64 = 1
+    two_unsigned: uint64 = 2
     size: int64 = int64_pari_flx_small_factor_workspace_size()
-    if degree < 0 or degree > 4 or p < 3 or p % 2 == 0 or p > 3037000493:
+    if degree < 0 or degree > 4 or p < 3 or p % two_unsigned == 0 or p > 3037000493:
         raise ValueError("unsupported Flx small factor domain")
+    w_length: int64 = checked_int64(len(w))
+    metadata_length: int64 = checked_int64(len(metadata))
+    factor_degrees_length: int64 = checked_int64(len(factor_degrees))
+    factor_exponents_length: int64 = checked_int64(len(factor_exponents))
+    a_end: int64 = a + 9
+    scratch_end: int64 = scratch + size
     if (
         a < 0
         or scratch < 0
-        or a + 9 > len(w)
-        or scratch + size > len(w)
-        or scratch + size > len(metadata)
+        or a_end > w_length
+        or scratch_end > w_length
+        or scratch_end > metadata_length
     ):
         raise ValueError("short Flx small factor workspace")
-    if a < scratch + size and scratch < a + 9:
+    if a < scratch_end and scratch < a_end:
         raise ValueError("overlapping Flx small factor workspace")
-    if len(factor_degrees) < degree or len(factor_exponents) < degree:
+    if factor_degrees_length < degree or factor_exponents_length < degree:
         raise ValueError("short Flx small factor outputs")
     f: int64 = scratch
     layers: int64 = scratch + 72
@@ -458,15 +497,15 @@ def int64_pari_flx_small_degfact(
         factor_exponents[0] = 1
         return checked_int64(1)
     if degree == 2:
-        b = w[f + 1]
-        c = w[f]
-        doubled = c + c
+        b: uint64 = w[f + one]
+        c: uint64 = w[f]
+        doubled: uint64 = c + c
         if doubled >= p:
             doubled -= p
-        four_c = doubled + doubled
+        four_c: uint64 = doubled + doubled
         if four_c >= p:
             four_c -= p
-        discriminant = b * b % p
+        discriminant: uint64 = b * b % p
         if discriminant < four_c:
             discriminant += p
         discriminant -= four_c
@@ -528,6 +567,8 @@ def int64_pari_flx_small_squarefree(
     ninety-entry scratch. Arithmetic and constant-one holes retain the old
     degree-factor implementation; only workspace offsets have changed.
     """
+    one: int64 = 1
+    nine: int64 = 9
     derivative: int64 = scratch
     r: int64 = scratch + 9
     t: int64 = scratch + 18
@@ -544,16 +585,16 @@ def int64_pari_flx_small_squarefree(
         _range_15_0: int64 = 9
         j: int64 = 0
         for j in range(_range_15_0):
-            w[layers + i * 9 + j] = 0
-        w[layers + i * 9] = 1
+            w[layers + i * nine + j] = 0
+        w[layers + i * nine] = 1
     df: int64 = degree
     multiplicity: int64 = 1
     while True:
         dd: int64 = int64_pari_flx_deriv(w, f, df, p, derivative)
         dr: int64 = int64_pari_flx_gcd(w, f, df, derivative, dd, p, r, work)
         if dr == 0:
-            metadata[layer_degrees + multiplicity - 1] = int64_pari_flx_copy(
-                w, f, df, layers + (multiplicity - 1) * 9
+            metadata[layer_degrees + multiplicity - one] = int64_pari_flx_copy(
+                w, f, df, layers + (multiplicity - one) * nine
             )
             break
         dt: int64 = int64_pari_flx_small_quotient(w, f, df, r, dr, p, t, remainder)
@@ -565,9 +606,9 @@ def int64_pari_flx_small_squarefree(
                     w, t, dt, v, dv, p, tv, remainder
                 )
                 if dtv > 0:
-                    index: int64 = j * multiplicity - 1
+                    index: int64 = j * multiplicity - one
                     metadata[layer_degrees + index] = int64_pari_flx_normalize(
-                        w, tv, dtv, p, layers + index * 9
+                        w, tv, dtv, p, layers + index * nine
                     )
                 if dv <= 0:
                     break
@@ -583,6 +624,9 @@ def int64_pari_flx_small_squarefree(
         df = int64_pari_flx_normalize(w, quotient, df, p, f)
         multiplicity *= signed_prime
     last: int64 = degree
-    while last > 0 and metadata[layer_degrees + last - 1] == 0:
+    while last > 0:
+        active_degree: int64 = metadata[layer_degrees + last - one]
+        if active_degree != 0:
+            break
         last -= 1
     return checked_int64(last)

@@ -17,6 +17,7 @@ basecase corridor, not general Flx dispatch.
 
 from sagejs.native import (
     UInt64Buffer,
+    checked_uint64,
     native,
     uint64,
     Int64Buffer,
@@ -227,8 +228,10 @@ def int64_pari_flx_sqr(
                 if total & 9223372036854775808:
                     total %= p
         total = 2 * (total % p)
-        if i % 2 == 0:
-            total += w[a + i // 2] * w[a + i // 2]
+        parity: int64 = i % 2
+        half: int64 = i // 2
+        if parity == 0:
+            total += w[a + half] * w[a + half]
         w[out + v + i] = total % p
     return checked_int64(d)
 
@@ -398,6 +401,7 @@ def int64_pari_flx_gcd(
 def int64_pari_flx_deriv(
     w: UInt64Buffer, a: int64, da: int64, p: uint64, out: int64
 ) -> int64:
+    one: int64 = 1
     _range_17_0: int64 = 9
     i: int64 = 0
     for i in range(_range_17_0):
@@ -406,7 +410,9 @@ def int64_pari_flx_deriv(
     _range_18_1: int64 = da + 1
     i: int64 = 0
     for i in range(_range_18_0, _range_18_1):
-        w[out + i - 1] = i * w[a + i] % p
+        multiplier: uint64 = checked_uint64(i)
+        coefficient: uint64 = w[a + i]
+        w[out + i - one] = multiplier * coefficient % p
     d: int64 = da - 1
     if d < -1:
         d = -1

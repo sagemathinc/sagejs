@@ -17,6 +17,21 @@ function snapshot(argument) {
   });
 }
 
+function translatedFunctionEvidence(core) {
+  const functions = [];
+  const pattern = /static int ((?:native|word|tagged)_int64_[^(]+)\([^;]*\)\n\{[\s\S]*?\n\}\n/g;
+  for (const match of core.matchAll(pattern)) {
+    const body = match[0];
+    functions.push({
+      name: match[1],
+      mpzLocals: (body.match(/^    mpz_t /gm) || []).length,
+      mpzOperations: (body.match(/\bmpz_[a-z0-9_]+\(/g) || []).length,
+      heapCalls: (body.match(/\b(?:malloc|calloc|realloc|free)\(/g) || []).length,
+    });
+  }
+  return functions;
+}
+
 (async () => {
   const catalogPath = path.resolve(
     process.argv[2] || "/tmp/sagejs-analytic-invhr-d88QqB/fixtures.json",
@@ -179,7 +194,7 @@ print(json.dumps(out))
       const args = packets[index].map((entry, argument) => {
         if (!Array.isArray(entry)) return BigInt(entry);
         if (argument === 8) return kernel.createUInt64Buffer(entry.map(BigInt));
-        if (argument === 0 || argument === 5 || argument === 6 || argument === 7) {
+        if (argument === 5 || argument === 6 || argument === 7) {
           return kernel.createIntegerBuffer(entry.length, 16, entry.map(BigInt));
         }
         return kernel.createInt64Buffer(entry.map(BigInt));
@@ -193,6 +208,11 @@ print(json.dumps(out))
   }
 
   const core = fs.readFileSync(built.coreSourcePath, "utf8");
+  const translatedFunctions = translatedFunctionEvidence(core);
+  const translatedFunctionsWithMpz = translatedFunctions.filter(
+    (entry) => entry.mpzLocals !== 0 || entry.mpzOperations !== 0,
+  );
+  assert.deepEqual(translatedFunctionsWithMpz, []);
   const wordMul = core.match(
     /static int native_int64_pari_flx_mul\([^;]*\)\n\{[\s\S]*?\n}\n/,
   );
@@ -234,6 +254,20 @@ print(json.dumps(out))
     wholeCoreHeapCalls: (
       core.match(/\b(?:malloc|calloc|realloc|free)\(/g) || []
     ).length,
+    translatedFunctionCount: translatedFunctions.length,
+    translatedFunctionMpzLocals: translatedFunctions.reduce(
+      (sum, entry) => sum + entry.mpzLocals,
+      0,
+    ),
+    translatedFunctionMpzOperations: translatedFunctions.reduce(
+      (sum, entry) => sum + entry.mpzOperations,
+      0,
+    ),
+    translatedFunctionHeapCalls: translatedFunctions.reduce(
+      (sum, entry) => sum + entry.heapCalls,
+      0,
+    ),
+    translatedFunctionsWithMpz,
     qualifiedTiming: false,
   };
   fs.writeFileSync(

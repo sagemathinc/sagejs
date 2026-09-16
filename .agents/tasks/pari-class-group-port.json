@@ -4,7 +4,7 @@
   "id": "pari-class-group-port",
   "title": "Pari Class Group Port",
   "lane": "arithmetic-algebra",
-  "status": "active",
+  "status": "review",
   "owner": "codex",
   "objective": "Eliminate the five remaining exact islands in the faithful PARI 2.17.4 splitting-degree catalog, preserving the frozen outputs and measuring every isolated change against the 1.39 ms same-algorithm C ceiling",
   "base_commit": "eeb45268151f7afc4a953f662b146513f2f9ac88",
@@ -2202,17 +2202,18 @@
     }
   ],
   "handoff": {
-    "summary": "The frozen bounded-storage campaign is complete. Residue-only UInt64 storage improves the catalog by 30--41% but does not close the gap. Checked int64 scalars plus Int64Buffer metadata improve it by 5.5--6.1x with exact agreement across CPython, JavaScript, GMP, tagged, the same-algorithm C control, and PARI's output contract. The production tagged catalog remains about 6.8x behind PARI and 10x behind its 1.39 ms fixed-storage C ceiling. Resident exact storage also transfers correctly to the actual 8x15 HNFLLL operand, but improves that roughly 3.4 ms kernel by only about 3%.",
+    "summary": "The exact-islands campaign is complete. The faithful 60-function translated splitting-degree graph now has zero GMP locals, zero GMP operations, and zero heap calls while preserving all 7,081 active outputs and the frozen catalog hash across CPython, JavaScript, GMP, and tagged execution. Tagged time fell from 13.7--14.0 ms to 3.321--3.339 ms per catalog, about 4.1x faster; the remaining gap is about 2.4x versus the 1.39 ms same-algorithm C ceiling and 1.6x versus the 2.03 ms PARI output-contract control. Unsafe generated-C diagnostics show arithmetic and buffer safety checks explain only about 6%, so they remain enabled. Resident exact storage also transfers correctly to the real 8x15 HNFLLL operand and improves its kernel by about 4%.",
     "risks": [
       "All retained timings are shared-host diagnostics with qualifiedTiming false; they are not release qualification.",
-      "The int64 catalog is an experiment and retains exact convolution, modular-inverse, length-preflight, input-reduction, and characteristic-two islands.",
+      "The int64 catalog is an experiment with a signed-64 coefficient admission corridor; the existing arbitrary-exact graph remains the oracle and fallback.",
       "The same-storage C emitter assumes the frozen admitted bounds and is a diagnostic ceiling, not a production backend.",
-      "The full architecture gate reaches the optimizer-opportunity dashboard and then fails because its generated manifest is stale after compiler integration."
+      "The broad test:changed run builds successfully and passes architecture checks, but an unrelated module-cache test fails while compiling RealNumberBuffer = list[Any] with an undefined $rho$sigma$py$Any in its generated shadow module.",
+      "The experiment branch contains dependency commits from the dedicated native-int64-scalar compiler lane, so this task's narrow claim checker reports those compiler and generated-dashboard paths as unclaimed here."
     ],
     "next_steps": [
-      "Eliminate and measure the remaining catalog exact islands one at a time against the 1.39 ms same-algorithm C ceiling.",
+      "Profile and simplify the generated fixed-width function/status ABI, code size, and inlining behavior against the remaining 2.4x same-algorithm C gap.",
       "Profile sparse cleanup, rank and matrix assembly, logarithmic transforms, and final propagation surrounding HNFLLL instead of optimizing the already-small HNFLLL kernel.",
-      "Regenerate and review optimizer-opportunity dashboard artifacts in the integration lane before making the compiler PR non-draft."
+      "Land the native-int64-scalar compiler dependency after platform CI, then integrate this bounded-storage experiment without weakening overflow or bounds checks."
     ]
   }
 }

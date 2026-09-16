@@ -18,9 +18,15 @@ async function main() {
   const backend = process.argv[3] || "gmp";
   assert(["gmp", "tagged"].includes(backend));
   const packet = JSON.parse(fs.readFileSync(evidencePath)).packets[0];
-  const int64Build = await compileKernel({
-    sourcePath: path.join(__dirname, "int64_prime_degree_catalog.py"),
-  });
+  const prebuiltDirectory = process.env.INT64_PREBUILT_DIRECTORY;
+  const int64Build = prebuiltDirectory
+    ? {
+        modulePath: path.join(prebuiltDirectory, "index.cjs"),
+        coreSourcePath: path.join(prebuiltDirectory, "kernel_core.c"),
+      }
+    : await compileKernel({
+        sourcePath: path.join(__dirname, "int64_prime_degree_catalog.py"),
+      });
   const boundedBuild = await compileKernel({
     sourcePath: path.join(__dirname, "bounded_prime_degree_catalog.py"),
   });
@@ -30,7 +36,7 @@ async function main() {
   function int64Arguments() {
     return packet.map((entry, index) => {
       if (!Array.isArray(entry)) return BigInt(entry);
-      if ([0, 5, 6, 7].includes(index))
+      if ([5, 6, 7].includes(index))
         return int64.createIntegerBuffer(entry.length, 16, entry.map(BigInt));
       if (index === 8) return int64.createUInt64Buffer(entry.map(BigInt));
       return int64.createInt64Buffer(entry.map(BigInt));
