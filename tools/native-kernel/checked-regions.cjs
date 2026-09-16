@@ -27,6 +27,12 @@ const CHECKED_REGION_AUTHORITY = Symbol("checked region authority");
 const CHECKED_REGION_INT64_ARITHMETIC = Symbol(
   "checked region int64 arithmetic",
 );
+const CHECKED_REGION_INT64_RANGE_INCREMENT = Symbol(
+  "checked region int64 range increment",
+);
+const CHECKED_REGION_INT64_RANGE_CONTINUE = Symbol(
+  "checked region int64 range continue",
+);
 const CHECKED_REGION_BUFFER_ACCESS = Symbol("checked region buffer access");
 const CHECKED_REGION_LOCAL_VARIANT = Symbol("checked region local variant");
 const CHECKED_REGION_DIRECT_RESULT = Symbol("checked region direct result");
@@ -71,6 +77,18 @@ const graphInt64ArithmeticAuthority = createFunctionGraphProofAuthority({
     "provenance",
   ],
 });
+const graphInt64RangeIncrementAuthority = createFunctionGraphProofAuthority({
+  name: "checked-region graph int64 range increment",
+  ignoredKeys: [
+    "boundsProof",
+    "checkedRegionDirectCallProof",
+    "checkedRegionGuardedDirectCallProof",
+    "checkedRegionDirectResultProof",
+    "checkedRegionProof",
+    "incrementProof",
+    "provenance",
+  ],
+});
 const directCallAuthority = createFunctionProofAuthority({
   name: "checked-region direct result call",
   ignoredKeys: [
@@ -105,6 +123,7 @@ const INT64_MAXIMUM = (1n << 63n) - 1n;
 const UINT64_MAXIMUM = (1n << 64n) - 1n;
 const CAPABILITIES = new Set([
   "int64-arithmetic",
+  "int64-range-induction",
   "direct-buffer-access",
   "verified-span-access",
   "virtual-fixed-uint64-views",
@@ -843,6 +862,48 @@ function assignedNames(statements) {
         typeof operation.iterator === "string") assigned.add(operation.iterator);
   });
   return assigned;
+}
+
+function executableStatementsAssignName(statements, name) {
+  for (const operation of statements || []) {
+    if (operationTargets(operation).includes(name)) return true;
+    for (const nested of [
+      operation.condition?.operations,
+      operation.body,
+      operation.alternative,
+      operation.right?.operations,
+    ]) {
+      if (executableStatementsAssignName(nested, name)) return true;
+    }
+  }
+  return false;
+}
+
+function attachUnitRangeContinueIdentity(statements, range) {
+  for (const operation of statements || []) {
+    if (operation.kind === "loop.continue") {
+      if (operation.range?.kind === "loop.range_int64" &&
+          operation.range.iterator === range.iterator &&
+          operation.range.stop === range.stop &&
+          operation.range.step === range.step) {
+        Object.defineProperty(
+          operation,
+          CHECKED_REGION_INT64_RANGE_CONTINUE,
+          { value: range.id },
+        );
+      }
+      continue;
+    }
+    if (operation.kind === "while" || operation.kind?.startsWith("loop.")) {
+      continue;
+    }
+    for (const nested of [
+      operation.condition?.operations,
+      operation.body,
+      operation.alternative,
+      operation.right?.operations,
+    ]) attachUnitRangeContinueIdentity(nested, range);
+  }
 }
 
 function operationReferencesName(operation, name) {
@@ -1972,24 +2033,56 @@ function analyzeStatements(statements, state, context) {
         bodyState.scalarBounds.delete(operation.iterator);
       }
       const mutatesBound = [operation.start, operation.stop, operation.step]
-        .some((name) => assigned.has(name));
+        .some((name) => executableStatementsAssignName(operation.body, name));
       const mutatesIterator = operation.iterator !== undefined &&
-        assigned.has(operation.iterator);
+        executableStatementsAssignName(operation.body, operation.iterator);
+      const stepInterval = state.intervals.get(operation.step);
+      const unitStep = stepInterval !== undefined &&
+          stepInterval.minimum === stepInterval.maximum &&
+          (stepInterval.minimum === 1n || stepInterval.minimum === -1n)
+        ? stepInterval.minimum
+        : undefined;
+      // An entered positive unit range has iterator <= stop - 1, so its latch
+      // result is at most stop <= INT64_MAX.  The negative case is symmetric:
+      // iterator >= stop + 1 and the latch result is at least INT64_MIN.  The
+      // source-visible index is a separate copy made before the body; writes
+      // to it cannot change the compiler-owned iterator.  The bounds and the
+      // hidden iterator themselves must remain immutable throughout the body.
+      if (context.enabled.has("int64-range-induction") &&
+          unitStep !== undefined && !mutatesBound && !mutatesIterator &&
+          state.summaryDependencies.size === 0) {
+        operation.checkedRegionRangeIncrementProof = Object.freeze({
+          authority: "checked-region-int64-unit-range-increment-v1",
+          operation: operation.id,
+          index: operation.index,
+          iterator: operation.iterator,
+          start: operation.start,
+          stop: operation.stop,
+          step: operation.step,
+          direction: unitStep > 0n ? "positive" : "negative",
+          unitStep: unitStep.toString(),
+        });
+        Object.defineProperty(
+          operation,
+          CHECKED_REGION_INT64_RANGE_INCREMENT,
+          { value: true },
+        );
+        attachUnitRangeContinueIdentity(operation.body, operation);
+      }
       const iterator = mutatesBound || mutatesIterator
         ? undefined
         : rangeIteratorInterval(operation, state);
       if (iterator !== undefined && !assigned.has(operation.index)) {
         bodyState.intervals.set(operation.index, iterator);
       }
-      const unitStep = state.intervals.get(operation.step);
       const activeRange = iterator !== undefined &&
           !assigned.has(operation.index) &&
-          unitStep?.minimum === unitStep?.maximum &&
-          (unitStep.minimum === 1n || unitStep.minimum === -1n)
+          stepInterval?.minimum === stepInterval?.maximum &&
+          (stepInterval.minimum === 1n || stepInterval.minimum === -1n)
         ? {
           operation: operation.id,
           index: operation.index,
-          step: unitStep.minimum,
+          step: stepInterval.minimum,
           start: { ...state.intervals.get(operation.start) },
           stop: { ...state.intervals.get(operation.stop) },
           interval: { ...iterator },
@@ -3116,12 +3209,13 @@ function attachCapabilities(
     // source proof or nonportable marker is copied into the private graph.
     attachAndVerifyCheckedBoundsProofs(variants);
   }
-  // Arithmetic authorization is deliberately last. Every record snapshots
+  // Fixed-width authorization is deliberately last. Every record snapshots
   // the complete private graph after all executable IR and sibling proof
   // metadata have reached their final shape. Emission can therefore revoke a
   // raw signed operation when any caller, callee, edge, root guard, or operand
   // is changed after interval analysis.
   authorizeGraphInt64Arithmetic(variants);
+  authorizeGraphInt64RangeIncrements(variants);
 }
 
 function authorizeGraphInt64Arithmetic(variants) {
@@ -3133,6 +3227,22 @@ function authorizeGraphInt64Arithmetic(variants) {
       if (operation[CHECKED_REGION_INT64_ARITHMETIC] !== true ||
           claim?.authority !== "checked-region-int64-interval-v1") return;
       graphInt64ArithmeticAuthority.authorize(
+        functions, fn, operation, claim,
+      );
+    });
+  }
+}
+
+function authorizeGraphInt64RangeIncrements(variants) {
+  for (const fn of variants) {
+    const functions = checkedRegionGraphFunctions(fn, variants);
+    if (checkedRegionGraphRoot(functions) === undefined) continue;
+    visitOperations(fn.body, (operation) => {
+      const claim = operation.checkedRegionRangeIncrementProof;
+      if (operation[CHECKED_REGION_INT64_RANGE_INCREMENT] !== true ||
+          claim?.authority !==
+            "checked-region-int64-unit-range-increment-v1") return;
+      graphInt64RangeIncrementAuthority.authorize(
         functions, fn, operation, claim,
       );
     });
@@ -3272,6 +3382,7 @@ function prepareCheckedRegions(ir) {
         // Stage A intentionally retains all checked operations.
         delete operation.boundsProof;
         delete operation.checkedRegionProof;
+        delete operation.checkedRegionRangeIncrementProof;
         delete operation[VIRTUAL_UINT64_VIEW_PROOF];
         delete operation.incrementProof;
         if (operation.range !== null && typeof operation.range === "object") {
@@ -3463,6 +3574,49 @@ function checkedRegionInt64ArithmeticEmission(fn, functions) {
   });
 }
 
+function checkedRegionInt64RangeIncrementEmission(fn, functions) {
+  const graphFunctions = functions instanceof Map
+    ? checkedRegionGraphFunctions(fn, [...functions.values()])
+    : undefined;
+  const graphRoot = checkedRegionGraphRoot(graphFunctions);
+  let verifier;
+  if (graphRoot !== undefined && fn?.hostCallable === false) {
+    try {
+      verifier = graphInt64RangeIncrementAuthority.emissionVerifier(
+        graphFunctions, fn,
+      );
+    } catch (_error) {
+      verifier = undefined;
+    }
+  }
+  const authorized = new WeakSet();
+  if (verifier !== undefined) {
+    visitOperations(fn.body, (operation) => {
+      const claim = operation.checkedRegionRangeIncrementProof;
+      if (operation[CHECKED_REGION_INT64_RANGE_INCREMENT] !== true ||
+          claim?.authority !==
+            "checked-region-int64-unit-range-increment-v1" ||
+          claim.operation !== operation.id ||
+          operation.kind !== "loop.range_int64" ||
+          claim.index !== operation.index ||
+          claim.iterator !== operation.iterator ||
+          claim.start !== operation.start || claim.stop !== operation.stop ||
+          claim.step !== operation.step ||
+          ![["positive", "1"], ["negative", "-1"]].some(
+            ([direction, step]) =>
+              claim.direction === direction && claim.unitStep === step,
+          ) || !verifier.isAuthorized(operation, claim)) return;
+      authorized.add(operation);
+    });
+  }
+  return Object.freeze({
+    isAuthorized(operation) {
+      return operation !== null && typeof operation === "object" &&
+        authorized.has(operation);
+    },
+  });
+}
+
 function isCheckedRegionNonzeroStep(operation) {
   const proof = operation?.checkedRegionProof;
   if (proof?.authority !== "checked-region-nonzero-int64-step-v1" ||
@@ -3571,6 +3725,7 @@ module.exports = {
   checkedRegionDirectCallEmission,
   checkedRegionDirectResultEmission,
   checkedRegionInt64ArithmeticEmission,
+  checkedRegionInt64RangeIncrementEmission,
   checkedRegionLocalVariant(fn) {
     return fn?.[CHECKED_REGION_LOCAL_VARIANT];
   },
@@ -3587,6 +3742,9 @@ module.exports = {
       operation.checkedRegionProof.indexType === operation.indexType;
   },
   isCheckedRegionNonzeroStep,
+  isCheckedRegionUnitRangeContinue(operation, rangeOperation) {
+    return operation?.[CHECKED_REGION_INT64_RANGE_CONTINUE] === rangeOperation;
+  },
   installCheckedRegionDeclarations,
   prepareCheckedRegions,
 };
