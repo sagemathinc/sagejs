@@ -1073,13 +1073,18 @@ function attachVirtualFixedUInt64Views(
     fn,
     entryState,
   )) {
-    const graphFixed = localFact.mode === "fixed" &&
-      Array.isArray(graphFunctions);
+    const root = graphFunctions === undefined
+      ? undefined
+      : checkedRegionGraphRoot(graphFunctions);
+    const graphFixed = localFact.mode === "fixed" && root !== undefined;
     const fact = graphFixed
       ? Object.freeze({
         ...localFact,
         authority: "checked-region-graph-virtual-fixed-uint64-view-v1",
         graphMembers: Object.freeze(graphFunctions.map(member => member.name)),
+        rootEntry: root.entry,
+        rootVariantEntry: root.variantEntry,
+        rootGuard: root.guard,
       })
       : localFact;
     const viewClaim = Object.freeze({ ...fact, role: "view", target: view.target });
@@ -1145,6 +1150,23 @@ function checkedRegionGraphFunctions(owner, variants) {
     ...members.filter(candidate => candidate !== owner)
       .sort((left, right) => left.name.localeCompare(right.name)),
   ]);
+}
+
+function checkedRegionGraphRoot(functions) {
+  if (!Array.isArray(functions) || functions.length === 0) return undefined;
+  const roots = functions.filter(fn =>
+    fn?.checkedRegionGraphRoot?.authority ===
+      "checked-region-graph-root-v1"
+  );
+  if (roots.length !== 1) return undefined;
+  const owner = roots[0];
+  const root = owner.checkedRegionGraphRoot;
+  if (owner.checkedRegionVariant?.original !== root.entry ||
+      owner.name !== root.variantEntry || !Array.isArray(root.guard) ||
+      root.guard.length === 0 || functions.some(fn =>
+        fn?.checkedRegionVariant?.region !== owner.checkedRegionVariant?.region
+      )) return undefined;
+  return root;
 }
 
 function rangeIteratorInterval(operation, state) {
@@ -3048,8 +3070,9 @@ function attachCapabilities(
   }
   // Graph-derived span facts are authorized only after every view claim in
   // every member has been attached.  The snapshot therefore binds the entire
-  // closed private region and revokes all descriptor elision if any caller,
-  // callee, edge, or sibling proof is subsequently changed.
+  // closed private region and its authenticated public-entry guard. It
+  // revokes all descriptor elision if any caller, callee, edge, sibling proof,
+  // or root predicate is subsequently changed.
   for (const pending of pendingGraphViewAuthorizations) {
     graphVirtualUInt64ViewAuthority.authorize(
       pending.functions,
@@ -3285,6 +3308,23 @@ function prepareCheckedRegions(ir) {
       capabilities: region.capabilities,
       variants: Object.freeze(variants),
     };
+    const variantEntry = variants.find(candidate =>
+      candidate.name === preparedRegion.variantEntry
+    );
+    if (variantEntry === undefined) fail("missing private region entry");
+    // The private graph is justified by these exact normalized predicates at
+    // its sole public dispatch boundary.  Keep the root on the entry function
+    // itself so graph structural authority includes it in every snapshot.
+    // The prepared region and this record intentionally share the same frozen
+    // guard object; graph-derived emission additionally validates all semantic
+    // root fields before accepting a claim.
+    variantEntry.checkedRegionGraphRoot = Object.freeze({
+      authority: "checked-region-graph-root-v1",
+      schema: SCHEMA,
+      entry: preparedRegion.entry,
+      variantEntry: preparedRegion.variantEntry,
+      guard: preparedRegion.guard,
+    });
     validateCapabilityInputs(variants, new Map(variants.map((fn) => [fn.name, fn])));
     attachCapabilities(
       preparedRegion,
@@ -3302,32 +3342,39 @@ function prepareCheckedRegions(ir) {
 
 function checkedRegionVirtualUInt64Emission(fn, functions) {
   const verifier = virtualUInt64ViewAuthority.emissionVerifier(fn);
-  const graphFunctions = functions instanceof Map
-    ? checkedRegionGraphFunctions(fn, [...functions.values()])
-    : undefined;
-  let graphVerifier;
-  if (graphFunctions !== undefined) {
-    try {
-      graphVerifier = graphVirtualUInt64ViewAuthority.emissionVerifier(
-        graphFunctions,
-        fn,
-      );
-    } catch (_error) {
-      graphVerifier = undefined;
-    }
-  }
+  const graphVerifiers = new Map();
   const localClaims = new Map();
   const operationClaims = new WeakMap();
   const viewClaims = [];
   visitOperations(fn.body, (operation) => {
     const claim = operation[VIRTUAL_UINT64_VIEW_PROOF];
     if (claim === undefined) return;
-    const authorized = claim.authority ===
-        "checked-region-virtual-fixed-uint64-view-v1"
-      ? verifier.isAuthorized(operation, claim)
-      : claim.authority ===
-          "checked-region-graph-virtual-fixed-uint64-view-v1" &&
-        graphVerifier?.isAuthorized(operation, claim);
+    let authorized = claim.authority ===
+      "checked-region-virtual-fixed-uint64-view-v1" &&
+      verifier.isAuthorized(operation, claim);
+    if (!authorized && claim.authority ===
+        "checked-region-graph-virtual-fixed-uint64-view-v1" &&
+        functions instanceof Map && Array.isArray(claim.graphMembers)) {
+      const graphFunctions = claim.graphMembers.map(name => functions.get(name));
+      const root = checkedRegionGraphRoot(graphFunctions);
+      if (root !== undefined && root.entry === claim.rootEntry &&
+          root.variantEntry === claim.rootVariantEntry &&
+          root.guard === claim.rootGuard) {
+        let graphVerifier = graphVerifiers.get(claim.graphMembers);
+        if (graphVerifier === undefined) {
+          try {
+            graphVerifier = graphVirtualUInt64ViewAuthority.emissionVerifier(
+              graphFunctions,
+              fn,
+            );
+          } catch (_error) {
+            graphVerifier = Object.freeze({ isAuthorized() { return false; } });
+          }
+          graphVerifiers.set(claim.graphMembers, graphVerifier);
+        }
+        authorized = graphVerifier.isAuthorized(operation, claim);
+      }
+    }
     if (!authorized) return;
     operationClaims.set(operation, claim);
     if (claim.role === "view") {
