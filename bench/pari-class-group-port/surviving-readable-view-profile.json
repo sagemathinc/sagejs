@@ -1,0 +1,33 @@
+{
+  "schema": "sagejs.checked-region/surviving-readable-view-profile-v1",
+  "diagnosticOnly": true,
+  "frozenOutputsIdentical": true,
+  "frozenValidationPackets": 4,
+  "rankingBoundary": "one fresh tagged execution of frozen packet zero",
+  "packetZero": [
+    { "view": "copy.output", "operation": "int64_pari_flx_copy:7", "constructions": 55903, "accesses": 503127 },
+    { "view": "divrem.quotient", "operation": "_int64_pari_flx_divrem:15", "constructions": 26997, "accesses": 374892 },
+    { "view": "divrem.remainder", "operation": "_int64_pari_flx_divrem:19", "constructions": 26997, "accesses": 312692 },
+    { "view": "sqr.output", "operation": "int64_pari_flx_sqr:7", "constructions": 14373, "accesses": 188248 },
+    { "view": "sqr.source", "operation": "int64_pari_flx_sqr:45", "constructions": 14373, "accesses": 171746 },
+    { "view": "divrem.divisor", "operation": "_int64_pari_flx_divrem:11", "constructions": 26997, "accesses": 163861 },
+    { "view": "copy.source", "operation": "int64_pari_flx_copy:3", "constructions": 55903, "accesses": 147507 },
+    { "view": "divrem.dividend", "operation": "_int64_pari_flx_divrem:7", "constructions": 26997, "accesses": 102809 },
+    { "view": "mul.output", "operation": "int64_pari_flx_mul:17", "constructions": 5900, "accesses": 69971 },
+    { "view": "mul.right", "operation": "int64_pari_flx_mul:63", "constructions": 5900, "accesses": 41712 },
+    { "view": "mul.left", "operation": "int64_pari_flx_mul:57", "constructions": 5900, "accesses": 20856 }
+  ],
+  "fourPacketTotals": [
+    { "view": "copy.output", "constructions": 65366, "accesses": 588294 },
+    { "view": "divrem.quotient", "constructions": 30513, "accesses": 426040 },
+    { "view": "divrem.remainder", "constructions": 30513, "accesses": 352608 },
+    { "view": "sqr.output", "constructions": 15658, "accesses": 205374 },
+    { "view": "sqr.source", "constructions": 15658, "accesses": 190053 },
+    { "view": "divrem.divisor", "constructions": 30513, "accesses": 187831 },
+    { "view": "copy.source", "constructions": 65366, "accesses": 174557 },
+    { "view": "divrem.dividend", "constructions": 30513, "accesses": 117285 },
+    { "view": "mul.output", "constructions": 6646, "accesses": 79358 },
+    { "view": "mul.right", "constructions": 6646, "accesses": 49034 },
+    { "view": "mul.left", "constructions": 6646, "accesses": 24515 }
+  ]
+}
