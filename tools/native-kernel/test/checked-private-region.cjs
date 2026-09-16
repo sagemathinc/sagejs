@@ -55,6 +55,60 @@ const optimizedDeclaration = {
   capabilities: ["int64-arithmetic", "direct-buffer-access"],
 };
 
+const positiveRangeSuccessorDeclaration = {
+  entry: "checked_region_positive_range_successor_entry",
+  functions: ["checked_region_positive_range_successor_entry"],
+  capabilities: ["int64-arithmetic"],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 0 },
+    {
+      kind: "int64-range",
+      parameter: "start",
+      minimum: 0,
+      maximum: "9223372036854775807",
+    },
+  ],
+};
+
+const positiveRangeSuccessorDirectDeclaration = {
+  entry: "checked_region_positive_range_successor_direct_entry",
+  functions: [
+    "checked_region_positive_range_successor_direct_entry",
+    "checked_region_positive_range_successor_helper",
+  ],
+  capabilities: ["int64-arithmetic"],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 0 },
+    {
+      kind: "int64-range",
+      parameter: "start",
+      minimum: 0,
+      maximum: "9223372036854775807",
+    },
+  ],
+  localVariants: [{
+    function: "checked_region_positive_range_successor_helper",
+    mode: "direct-result",
+    guard: [{
+      kind: "int64-range",
+      parameter: "start",
+      minimum: 0,
+      maximum: "9223372036854775807",
+    }],
+    capabilities: ["int64-arithmetic"],
+  }],
+};
+
+const positiveRangeSuccessorCallDeclaration = {
+  entry: "checked_region_positive_range_successor_call_entry",
+  functions: [
+    "checked_region_positive_range_successor_call_entry",
+    "checked_region_positive_range_successor_call_helper",
+  ],
+  capabilities: ["int64-arithmetic"],
+  guard: positiveRangeSuccessorDeclaration.guard,
+};
+
 const virtualFixedViewDeclaration = {
   entry: "checked_region_fixed_view_entry",
   functions: ["checked_region_fixed_view_entry"],
@@ -951,6 +1005,269 @@ test("int64 interval proofs require unchanged complete private graphs", async ()
       forged.helper, forged.functions,
     ).isAuthorized(forged.operation),
     false,
+  );
+});
+
+test("positive int64 range successors use authenticated relational bounds", async () => {
+  function rangeSuccessorOperations(fn) {
+    const operations = [];
+    const visit = (value) => {
+      if (value === null || typeof value !== "object") return;
+      if (value.kind === "int64.binary" && value.operation === "add" &&
+          value.checkedRegionProof?.authority ===
+            "checked-region-int64-positive-range-successor-v1") {
+        operations.push(value);
+      }
+      for (const [key, child] of Object.entries(value)) {
+        if (key !== "provenance") visit(child);
+      }
+    };
+    visit(fn.body);
+    return operations;
+  }
+
+  function findRangeSuccessor(fn) {
+    let loop;
+    const visit = (value) => {
+      if (value === null || typeof value !== "object") return;
+      if (value.kind === "loop.range_int64") loop = value;
+      for (const [key, child] of Object.entries(value)) {
+        if (key !== "provenance") visit(child);
+      }
+    };
+    visit(fn.body);
+    const operations = rangeSuccessorOperations(fn);
+    assert.ok(loop);
+    assert.equal(operations.length, 3);
+    return { loop, operations };
+  }
+
+  async function prepared() {
+    const ir = installCheckedRegionDeclarations(await witness(), [
+      positiveRangeSuccessorDeclaration,
+    ]);
+    const [region] = prepareCheckedRegions(ir);
+    const fn = region.variants[0];
+    const functions = new Map(region.variants.map(value => [value.name, value]));
+    const { loop, operations } = findRangeSuccessor(fn);
+    return {
+      fn,
+      functions,
+      ir,
+      loop,
+      operation: operations[0],
+      operations,
+      region,
+    };
+  }
+
+  const intact = await prepared();
+  assert.equal(intact.operation.checkedRegionProof.rangeOperand,
+    intact.loop.index);
+  assert.equal(intact.operation.checkedRegionProof.incrementOperand,
+    intact.operation.right);
+  assert.equal(intact.operation.checkedRegionProof.upperBound,
+    "parameter:stop");
+  assert.equal(intact.operation.checkedRegionProof.minimum, "1");
+  const commuted = intact.operations[1];
+  assert.equal(commuted.checkedRegionProof.rangeOperand, intact.loop.index);
+  assert.equal(commuted.checkedRegionProof.incrementOperand, commuted.left);
+  const propagated = intact.operations[2];
+  assert.notEqual(propagated.checkedRegionProof.rangeOperand,
+    intact.loop.index);
+  assert.equal(propagated.checkedRegionProof.upperBound, "parameter:stop");
+  for (const operation of intact.operations) {
+    assert.equal(
+      checkedRegionInt64ArithmeticEmission(
+        intact.fn, intact.functions,
+      ).isAuthorized(operation),
+      true,
+    );
+  }
+  const source = generateHostCore(intact.ir, {
+    moduleIdentity: "0123456789abcdef",
+  }).source;
+  const body = functionText(
+    source,
+    "sagejs_checked_r0_checked_region_positive_range_successor_entry",
+  );
+  assert.doesNotMatch(
+    body,
+    new RegExp(`sagejs_word_add_int64\\([^;]+${intact.operation.target}`),
+  );
+  // The distinct range-latch check remains until its own theorem authorizes
+  // that compiler-generated update.
+  assert.equal((body.match(/sagejs_word_add_int64/g) || []).length, 1);
+  const fallback = functionText(
+    source,
+    "sagejs_checked_fallback_checked_region_positive_range_successor_entry",
+  );
+  assert.ok((fallback.match(/sagejs_word_add_int64/g) || []).length >= 2);
+
+  if (process.platform !== "win32") {
+    const temporary = mkdtempSync(join(
+      tmpdir(), "sagejs-positive-range-successor-",
+    ));
+    try {
+      writeFileSync(join(temporary, "kernel_core.h"),
+        generateHostCore(intact.ir, {
+          moduleIdentity: "0123456789abcdef",
+        }).header);
+      writeFileSync(join(temporary, "runtime.c"), `${source}
+int main(void)
+{
+    sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
+    sagejs_uint64_buffer storage = {NULL, 0};
+    int64_t output = -INT64_C(1);
+    if (!tagged_checked_region_positive_range_successor_entry(
+            &status, &output, storage, INT64_MAX - INT64_C(1), INT64_MAX))
+        return 1;
+    if (status.code != SAGEJS_NATIVE_OK || output != INT64_MAX)
+        return 2;
+    sagejs_native_status_reset(&status);
+    if (!tagged_checked_region_positive_range_successor_entry(
+            &status, &output, storage, INT64_MAX, INT64_MAX))
+        return 3;
+    if (status.code != SAGEJS_NATIVE_OK || output != INT64_C(0))
+        return 4;
+    sagejs_native_status_reset(&status);
+    if (!tagged_checked_region_positive_range_successor_entry(
+            &status, &output, storage, -INT64_C(1), INT64_C(0)))
+        return 5;
+    if (status.code != SAGEJS_NATIVE_OK || output != INT64_C(0))
+        return 6;
+    return 0;
+}
+`);
+      const linked = spawnSync(process.env.CC || "cc", [
+        "-std=c11", "-Werror", "-fsanitize=undefined",
+        "-fno-sanitize-recover=undefined", "-I", temporary,
+        join(temporary, "runtime.c"), "-lgmp", "-lm",
+        "-o", join(temporary, "runtime"),
+      ], { encoding: "utf8" });
+      assert.equal(linked.status, 0, linked.stderr || linked.stdout);
+      const executed = spawnSync(join(temporary, "runtime"), [], {
+        encoding: "utf8",
+      });
+      assert.equal(executed.status, 0, executed.stderr || executed.stdout);
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  }
+
+  for (const mutate of [
+    (value) => { value.operation.left = value.loop.stop; },
+    (value) => { value.loop.index = value.loop.stop; },
+    (value) => { value.loop.step = value.loop.stop; },
+    (value) => { value.loop.stop = value.loop.start; },
+    (value) => {
+      value.operation.checkedRegionProof = Object.freeze({
+        ...value.operation.checkedRegionProof,
+        upperBound: "parameter:start",
+      });
+    },
+    (value) => {
+      value.fn.checkedRegionGraphRoot = Object.freeze({
+        ...value.fn.checkedRegionGraphRoot,
+        guard: Object.freeze(value.fn.checkedRegionGraphRoot.guard.slice(1)),
+      });
+    },
+    (value) => { value.functions.delete(value.fn.name); },
+  ]) {
+    const hostile = await prepared();
+    mutate(hostile);
+    assert.equal(
+      checkedRegionInt64ArithmeticEmission(
+        hostile.fn, hostile.functions,
+      ).isAuthorized(hostile.operation),
+      false,
+    );
+  }
+
+  const callIr = installCheckedRegionDeclarations(await witness(), [
+    positiveRangeSuccessorCallDeclaration,
+  ]);
+  const [callRegion] = prepareCheckedRegions(callIr);
+  const callFunctions = new Map(
+    callRegion.variants.map(fn => [fn.name, fn]),
+  );
+  const callEntry = callRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_positive_range_successor_call_entry"
+  );
+  const callHelper = callRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_positive_range_successor_call_helper"
+  );
+  assert.ok(callEntry);
+  assert.ok(callHelper);
+  const [callOperation] = rangeSuccessorOperations(callHelper);
+  assert.ok(callOperation);
+  assert.equal(callOperation.checkedRegionProof.rangeOperand, "value");
+  assert.equal(callOperation.checkedRegionProof.upperBound, "parameter:stop");
+  assert.equal(
+    checkedRegionInt64ArithmeticEmission(
+      callHelper, callFunctions,
+    ).isAuthorized(callOperation),
+    true,
+  );
+  const callBody = functionText(
+    generateHostCore(callIr).source,
+    "sagejs_checked_r0_checked_region_positive_range_successor_call_helper",
+  );
+  assert.doesNotMatch(callBody, /sagejs_word_add_int64/);
+  const callLoop = callEntry.body.find(operation =>
+    operation.kind === "loop.range_int64"
+  );
+  assert.ok(callLoop);
+  callLoop.stop = callLoop.start;
+  assert.equal(
+    checkedRegionInt64ArithmeticEmission(
+      callHelper, callFunctions,
+    ).isAuthorized(callOperation),
+    false,
+  );
+
+  const directIr = installCheckedRegionDeclarations(await witness(), [
+    positiveRangeSuccessorDirectDeclaration,
+  ]);
+  const [directRegion] = prepareCheckedRegions(directIr);
+  const directFunctions = new Map(
+    directRegion.variants.map(fn => [fn.name, fn]),
+  );
+  const fast = directRegion.variants.find(fn =>
+    fn.name.includes(
+      "checked_region_positive_range_successor_helper__local_fast_0",
+    )
+  );
+  assert.ok(fast);
+  assert.ok(checkedRegionDirectResultEmission(fast));
+  for (const directOperation of findRangeSuccessor(fast).operations) {
+    assert.equal(
+      checkedRegionInt64ArithmeticEmission(
+        fast, directFunctions,
+      ).isAuthorized(directOperation),
+      true,
+    );
+  }
+  const directSource = generateHostCore(directIr, {
+    moduleIdentity: "0123456789abcdef",
+  }).source;
+  const directBody = directFunctionText(directSource, fast.name);
+  for (const operation of findRangeSuccessor(fast).operations) {
+    assert.doesNotMatch(
+      directBody,
+      new RegExp(`sagejs_word_add_int64\\([^;]+${operation.target}`),
+    );
+  }
+  assert.equal((directBody.match(/sagejs_word_add_int64/g) || []).length, 1);
+  assert.doesNotMatch(directBody, /sagejs_native_status_set|goto fail/);
+  assert.match(
+    functionText(
+      directSource,
+      "sagejs_checked_r0_checked_region_positive_range_successor_direct_entry",
+    ),
+    new RegExp(`sagejs_direct_${fast.name}`),
   );
 });
 

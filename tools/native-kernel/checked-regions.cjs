@@ -121,6 +121,9 @@ const SCHEMA = "sagejs-checked-private-region-v1";
 const INT64_MINIMUM = -(1n << 63n);
 const INT64_MAXIMUM = (1n << 63n) - 1n;
 const UINT64_MAXIMUM = (1n << 64n) - 1n;
+const INT64_INTERVAL_PROOF = "checked-region-int64-interval-v1";
+const INT64_POSITIVE_RANGE_SUCCESSOR_PROOF =
+  "checked-region-int64-positive-range-successor-v1";
 const CAPABILITIES = new Set([
   "int64-arithmetic",
   "int64-range-induction",
@@ -473,6 +476,37 @@ function intervalResult(operation, left, right) {
     };
   }
   return undefined;
+}
+
+function positiveRangeSuccessorProof(operation, state) {
+  if (operation.kind !== "int64.binary" || operation.operation !== "add") {
+    return undefined;
+  }
+  for (const [rangeOperand, incrementOperand] of [
+    [operation.left, operation.right],
+    [operation.right, operation.left],
+  ]) {
+    const increment = state.intervals.get(incrementOperand);
+    const upperBound = state.rangeUpper.get(rangeOperand);
+    if (increment?.minimum !== 1n || increment.maximum !== 1n ||
+        upperBound === undefined) continue;
+    return Object.freeze({ rangeOperand, incrementOperand, upperBound });
+  }
+  return undefined;
+}
+
+function isInt64ArithmeticProof(operation, claim) {
+  if (claim?.operation !== operation?.id ||
+      operation?.kind !== "int64.binary" ||
+      !["add", "sub", "mul"].includes(operation.operation)) return false;
+  if (claim.authority === INT64_INTERVAL_PROOF) return true;
+  if (claim.authority !== INT64_POSITIVE_RANGE_SUCCESSOR_PROOF ||
+      operation.operation !== "add" ||
+      typeof claim.upperBound !== "string") return false;
+  return (claim.rangeOperand === operation.left &&
+      claim.incrementOperand === operation.right) ||
+    (claim.rangeOperand === operation.right &&
+      claim.incrementOperand === operation.left);
 }
 
 function operationTargets(operation) {
@@ -2216,21 +2250,42 @@ function analyzeStatements(statements, state, context) {
         result.minimum >= INT64_MINIMUM && result.maximum <= INT64_MAXIMUM;
       const relationalSafe = expression !== undefined &&
         previous.safeInt64Expressions.has(expression);
-      if (intervalSafe || relationalSafe) {
+      const positiveRangeSuccessor = intervalSafe || relationalSafe
+        ? undefined
+        : positiveRangeSuccessorProof(operation, previous);
+      if (intervalSafe || relationalSafe ||
+          positiveRangeSuccessor !== undefined) {
         const provedRange = intervalSafe
           ? result
-          : { minimum: 0n, maximum: INT64_MAXIMUM };
+          : relationalSafe
+          ? { minimum: 0n, maximum: INT64_MAXIMUM }
+          : {
+            // `rangeUpper` originates only from a nonnegative-start,
+            // positive-step range and survives solely through exact copies.
+            minimum: 1n,
+            maximum: INT64_MAXIMUM,
+          };
         state.intervals.set(operation.target, provedRange);
         if (context.enabled.has("int64-arithmetic") &&
             (context.directResult === true ||
               previous.summaryDependencies.size === 0)) {
-          operation.checkedRegionProof = Object.freeze({
-            authority: "checked-region-int64-interval-v1",
-            operation: operation.id,
-            minimum: provedRange.minimum.toString(),
-            maximum: provedRange.maximum.toString(),
-            ...(relationalSafe ? { relation: expression } : {}),
-          });
+          operation.checkedRegionProof = positiveRangeSuccessor === undefined
+            ? Object.freeze({
+              authority: INT64_INTERVAL_PROOF,
+              operation: operation.id,
+              minimum: provedRange.minimum.toString(),
+              maximum: provedRange.maximum.toString(),
+              ...(relationalSafe ? { relation: expression } : {}),
+            })
+            : Object.freeze({
+              authority: INT64_POSITIVE_RANGE_SUCCESSOR_PROOF,
+              operation: operation.id,
+              rangeOperand: positiveRangeSuccessor.rangeOperand,
+              incrementOperand: positiveRangeSuccessor.incrementOperand,
+              upperBound: positiveRangeSuccessor.upperBound,
+              minimum: provedRange.minimum.toString(),
+              maximum: provedRange.maximum.toString(),
+            });
           Object.defineProperty(operation, CHECKED_REGION_INT64_ARITHMETIC, {
             value: true,
           });
@@ -2625,8 +2680,9 @@ function directResultFailureFree(fn) {
     }
     if (operation.kind === "int64.binary" &&
         ["add", "sub", "mul"].includes(operation.operation)) {
-      if (operation.checkedRegionProof?.authority !==
-          "checked-region-int64-interval-v1") safe = false;
+      if (!isInt64ArithmeticProof(
+        operation, operation.checkedRegionProof,
+      )) safe = false;
       return;
     }
     if (operation.kind === "int64.binary") {
@@ -3225,7 +3281,7 @@ function authorizeGraphInt64Arithmetic(variants) {
     visitOperations(fn.body, (operation) => {
       const claim = operation.checkedRegionProof;
       if (operation[CHECKED_REGION_INT64_ARITHMETIC] !== true ||
-          claim?.authority !== "checked-region-int64-interval-v1") return;
+          !isInt64ArithmeticProof(operation, claim)) return;
       graphInt64ArithmeticAuthority.authorize(
         functions, fn, operation, claim,
       );
@@ -3558,10 +3614,7 @@ function checkedRegionInt64ArithmeticEmission(fn, functions) {
     visitOperations(fn.body, (operation) => {
       const claim = operation.checkedRegionProof;
       if (operation[CHECKED_REGION_INT64_ARITHMETIC] !== true ||
-          claim?.authority !== "checked-region-int64-interval-v1" ||
-          claim.operation !== operation.id ||
-          operation.kind !== "int64.binary" ||
-          !["add", "sub", "mul"].includes(operation.operation) ||
+          !isInt64ArithmeticProof(operation, claim) ||
           !verifier.isAuthorized(operation, claim)) return;
       authorized.add(operation);
     });

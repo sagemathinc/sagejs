@@ -58,6 +58,58 @@ def checked_region_loop_entry(
 
 
 @native
+def checked_region_positive_range_successor_entry(
+    storage: UInt64Buffer, start: int64, stop: int64
+) -> int64:
+    index: int64 = 0
+    copied: int64 = 0
+    successor: int64 = 0
+    for index in range(start, stop):
+        successor = index + 1
+        successor = 1 + index
+        copied = index
+        successor = copied + 1
+    return successor
+
+
+@native
+def checked_region_positive_range_successor_helper(
+    start: int64, stop: int64
+) -> int64:
+    index: int64 = 0
+    copied: int64 = 0
+    successor: int64 = 0
+    for index in range(start, stop):
+        successor = index + 1
+        successor = 1 + index
+        copied = index
+        successor = copied + 1
+    return successor
+
+
+@native
+def checked_region_positive_range_successor_direct_entry(
+    storage: UInt64Buffer, start: int64, stop: int64
+) -> int64:
+    return checked_region_positive_range_successor_helper(start, stop)
+
+
+def checked_region_positive_range_successor_call_helper(value: int64) -> int64:
+    return value + 1
+
+
+@native
+def checked_region_positive_range_successor_call_entry(
+    storage: UInt64Buffer, start: int64, stop: int64
+) -> int64:
+    index: int64 = 0
+    successor: int64 = 0
+    for index in range(start, stop):
+        successor = checked_region_positive_range_successor_call_helper(index)
+    return successor
+
+
+@native
 def checked_region_carried_entry(
     storage: UInt64Buffer, count: int64, value: uint64
 ) -> int64:
