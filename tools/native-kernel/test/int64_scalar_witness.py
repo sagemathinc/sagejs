@@ -54,3 +54,13 @@ def int64_buffer_roundtrip(
 @native
 def int64_buffer_exact(values: Int64Buffer, index: int64) -> int:
     return values[index] + (1 << 80)
+
+
+@native
+def checked_int64_literal() -> int64:
+    return checked_int64(-1)
+
+
+@native
+def checked_int64_length(values: Int64Buffer) -> int64:
+    return checked_int64(len(values))

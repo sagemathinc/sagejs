@@ -519,6 +519,17 @@ function emitTaggedOperation(operation, context, indent) {
       `${indent}    goto fail;`, `${indent}}`,
     ].join("\n");
   }
+  if (operation.kind === "int64.from_uint64_checked") {
+    const source = taggedValue(operation.source, context);
+    return [
+      `${indent}if (${source} > (uint64_t) INT64_MAX)`,
+      `${indent}{`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"integer is outside signed 64-bit");`,
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}${target} = (int64_t) ${source};`,
+    ].join("\n");
+  }
   if (operation.kind === "uint64.from_integer_checked") {
     return [
       `${indent}if (!sagejs_tagged_to_uint64(` +
