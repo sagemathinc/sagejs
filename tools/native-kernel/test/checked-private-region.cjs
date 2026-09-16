@@ -1495,6 +1495,37 @@ test("direct-result authority revokes mutations and rejects unsafe shapes", asyn
   const zeroCore = generateHostCore(zero);
   assert.match(zeroCore.source,
     new RegExp(`sagejs_direct_${zeroFast.name}\\(void\\)`));
+
+  const forged = await witness();
+  const forgedHelper = forged.functions.find(fn =>
+    fn.name === "checked_region_local_copy_helper"
+  );
+  let forgedValidation;
+  const findValidation = value => {
+    if (value === null || typeof value !== "object" ||
+        forgedValidation !== undefined) return;
+    if (value.kind === "range.validate_step") {
+      forgedValidation = value;
+      return;
+    }
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "provenance") findValidation(child);
+    }
+  };
+  findValidation(forgedHelper.body);
+  assert.ok(forgedValidation);
+  forgedValidation.checkedRegionProof = Object.freeze({
+    authority: "checked-region-nonzero-int64-step-v1",
+    operation: forgedValidation.id,
+    step: forgedValidation.step,
+    minimum: "1",
+    maximum: "1",
+  });
+  const forgedCore = generateHostCore(forged);
+  const forgedBody = functionText(
+    forgedCore.source, "checked_region_local_copy_helper",
+  );
+  assert.match(forgedBody, /range\(\) arg 3 must not be zero/);
 });
 
 test("local interval-view proofs fail closed under hostile IR changes", async () => {

@@ -332,7 +332,8 @@ function emitTaggedOperation(operation, context, indent) {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
   if (operation.kind === "range.validate_step") {
-    if (isCheckedRegionNonzeroStep(operation)) return "";
+    if (context.directResult === true &&
+        isCheckedRegionNonzeroStep(operation)) return "";
     const step = taggedValue(operation.step, context);
     const condition = operation.stepType === "Integer"
       ? `sagejs_tagged_sgn(${step}) == 0`
