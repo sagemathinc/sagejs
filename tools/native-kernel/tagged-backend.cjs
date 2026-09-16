@@ -109,18 +109,119 @@ function taggedParameter(fn, param) {
 // nonportable attribute on ordinary tagged functions or their public guards.
 const CHECKED_REGION_ATTRIBUTES = `#if defined(_MSC_VER)
 #define SAGEJS_CHECKED_REGION_HOT_INLINE static __inline
+#define SAGEJS_CHECKED_REGION_FORCE_INLINE static __forceinline
 #define SAGEJS_CHECKED_REGION_COLD static
 #define SAGEJS_CHECKED_REGION_UNLIKELY(condition) (condition)
 #elif defined(__GNUC__) || defined(__clang__)
 #define SAGEJS_CHECKED_REGION_HOT_INLINE static inline __attribute__((hot))
+#define SAGEJS_CHECKED_REGION_FORCE_INLINE \
+    static inline __attribute__((hot, always_inline))
 #define SAGEJS_CHECKED_REGION_COLD static __attribute__((cold))
 #define SAGEJS_CHECKED_REGION_UNLIKELY(condition) \\
     __builtin_expect(!!(condition), 0)
 #else
 #define SAGEJS_CHECKED_REGION_HOT_INLINE static inline
+#define SAGEJS_CHECKED_REGION_FORCE_INLINE static inline
 #define SAGEJS_CHECKED_REGION_COLD static
 #define SAGEJS_CHECKED_REGION_UNLIKELY(condition) (condition)
 #endif`;
+
+const CHECKED_REGION_FORCE_INLINE_MAX_OPERATIONS = 64;
+const CHECKED_REGION_FORCE_INLINE_MIN_INCOMING_SITES = 8;
+const CHECKED_REGION_FORCE_INLINE_MIN_CALLERS = 2;
+const CHECKED_REGION_FORCE_INLINE_MAX_EXPANDED_OPERATIONS = 768;
+
+function visitIrOperations(value, visitor, seen = new Set()) {
+  if (value === null || typeof value !== "object" || seen.has(value)) return;
+  seen.add(value);
+  if (typeof value.kind === "string") visitor(value);
+  if (Array.isArray(value)) {
+    for (const child of value) visitIrOperations(child, visitor, seen);
+    return;
+  }
+  for (const [key, child] of Object.entries(value)) {
+    if (key !== "provenance") visitIrOperations(child, visitor, seen);
+  }
+}
+
+// GCC's broad inliner already handles most authenticated private graphs well,
+// while forcing an entire graph inline creates severe code-size pressure.  A
+// small leaf with many static callers is different: duplication is bounded,
+// and eliminating its call ABI can expose the caller's interval facts.  Keep
+// this deliberately conservative and structural so no mathematical function
+// name or workload-specific profile enters code generation.
+function checkedRegionInlineCandidate(fn, functions) {
+  const region = fn.checkedRegionVariant?.region;
+  if (region === undefined || checkedRegionDirectResultEmission(fn) === undefined) {
+    return undefined;
+  }
+  let operations = 0;
+  let leaf = true;
+  visitIrOperations(fn.body, (operation) => {
+    operations += 1;
+    if (operation.kind === "native.call") leaf = false;
+  });
+  if (!leaf || operations > CHECKED_REGION_FORCE_INLINE_MAX_OPERATIONS) {
+    return undefined;
+  }
+  let incomingSites = 0;
+  const callers = new Set();
+  for (const caller of functions.values()) {
+    if (caller.checkedRegionVariant?.region !== region) continue;
+    visitIrOperations(caller.body, (operation) => {
+      if (operation.kind !== "native.call") return;
+      const direct = checkedRegionDirectCallEmission(
+        caller,
+        operation,
+        functions,
+      );
+      // A residual guarded edge still needs both paths and does not provide
+      // the unconditional call-site simplification this heuristic measures.
+      if (direct?.function === fn.name && direct.guard === undefined) {
+        incomingSites += 1;
+        callers.add(caller.name);
+      }
+    });
+  }
+  if (incomingSites < CHECKED_REGION_FORCE_INLINE_MIN_INCOMING_SITES ||
+      callers.size < CHECKED_REGION_FORCE_INLINE_MIN_CALLERS ||
+      operations * incomingSites >
+        CHECKED_REGION_FORCE_INLINE_MAX_EXPANDED_OPERATIONS) {
+    return undefined;
+  }
+  return Object.freeze({ fn, incomingSites, operations });
+}
+
+// Select at most one candidate per generated graph. A tied top fan-in is
+// intentionally rejected: absent a profile, choosing between equally broad
+// expansions would be arbitrary and could create blanket code growth.
+function checkedRegionForceInlineFunctions(functions) {
+  const candidates = [...functions.values()]
+    .map(fn => checkedRegionInlineCandidate(fn, functions))
+    .filter(candidate => candidate !== undefined)
+    .sort((left, right) =>
+      right.incomingSites - left.incomingSites ||
+      left.operations - right.operations ||
+      left.fn.name.localeCompare(right.fn.name)
+    );
+  if (candidates.length === 0 ||
+      (candidates.length > 1 &&
+       candidates[0].incomingSites === candidates[1].incomingSites)) {
+    return new Set();
+  }
+  return new Set([candidates[0].fn.name]);
+}
+
+function checkedRegionSmallHighFaninLeaf(fn, functions) {
+  return checkedRegionForceInlineFunctions(functions).has(fn.name);
+}
+
+function checkedRegionStorage(fn, forceInlineFunctions) {
+  if (!fn.checkedRegionVariant) return undefined;
+  return forceInlineFunctions.has(fn.name)
+    ? "SAGEJS_CHECKED_REGION_FORCE_INLINE"
+    : "SAGEJS_CHECKED_REGION_HOT_INLINE";
+}
 
 function checkedRegionFailureCondition(caller, callee, condition) {
   return caller.checkedRegionVariant && callee.checkedRegionVariant
@@ -145,11 +246,12 @@ function directResultName(name) {
   return `sagejs_direct_${name}`;
 }
 
-function directResultSignature(fn, prototype = false) {
+function directResultSignature(fn, prototype = false, options = {}) {
   const parameters = fn.params.map((param) =>
     `${scalarType(param.type, fn)} sagejs_tagged_arg_${param.name}`
   ).join(", ") || "void";
-  return `SAGEJS_CHECKED_REGION_HOT_INLINE ${scalarType(fn.returnType, fn)} ` +
+  const storage = options.storage || "SAGEJS_CHECKED_REGION_HOT_INLINE";
+  return `${storage} ${scalarType(fn.returnType, fn)} ` +
     `${directResultName(fn.name)}(${parameters})${prototype ? ";" : ""}`;
 }
 
@@ -1612,7 +1714,12 @@ ${cleanup.join("\n")}
 }`;
 }
 
-function emitDirectResultFunction(fn, functions, metadata) {
+function emitDirectResultFunction(
+  fn,
+  functions,
+  metadata,
+  forceInlineFunctions,
+) {
   const types = new Map(
     [...fn.params, ...fn.locals].map((value) => [value.name, value.type]),
   );
@@ -1667,7 +1774,9 @@ function emitDirectResultFunction(fn, functions, metadata) {
       `direct result function retained a fallible ABI operation ${retained}`,
     );
   }
-  return `${directResultSignature(fn)}
+  return `${directResultSignature(fn, false, {
+    storage: checkedRegionStorage(fn, forceInlineFunctions),
+  })}
 {
 ${declarations.join("\n")}
 ${body}
@@ -1773,6 +1882,7 @@ ${cleanup.join("\n")}
 
 function generateTaggedFunctions(functions, options = {}) {
   const functionMap = new Map((options.functions || functions).map((fn) => [fn.name, fn]));
+  const forceInlineFunctions = checkedRegionForceInlineFunctions(functionMap);
   const usesCheckedRegions = functions.some((fn) => fn.checkedRegionVariant);
   return {
     prototypes: [
@@ -1780,15 +1890,24 @@ function generateTaggedFunctions(functions, options = {}) {
       functions.map((fn) => {
         const direct = checkedRegionDirectResultEmission(fn);
         return direct === undefined
-          ? taggedSignature(fn, true)
-          : directResultSignature(fn, true);
+          ? taggedSignature(fn, true, {
+            storage: checkedRegionStorage(fn, forceInlineFunctions),
+          })
+          : directResultSignature(fn, true, {
+            storage: checkedRegionStorage(fn, forceInlineFunctions),
+          });
       }).join("\n"),
     ].filter(Boolean).join("\n\n"),
     functions: functions
       .map((fn) => {
         const direct = checkedRegionDirectResultEmission(fn);
         if (direct !== undefined) {
-          return emitDirectResultFunction(fn, functionMap, direct);
+          return emitDirectResultFunction(
+            fn,
+            functionMap,
+            direct,
+            forceInlineFunctions,
+          );
         }
         if (fn.analysis?.backend?.requiresExactWorkspace) {
           return emitGmpWorkspaceBridge(fn);
@@ -1799,7 +1918,10 @@ function generateTaggedFunctions(functions, options = {}) {
           return emitCheckedLocalVariantDispatcher(fn, local);
         }
         if (region === undefined) {
-          return emitTaggedFunction(fn, functionMap, options);
+          return emitTaggedFunction(fn, functionMap, {
+            ...options,
+            storage: checkedRegionStorage(fn, forceInlineFunctions),
+          });
         }
         const fallback = emitTaggedFunction(fn, functionMap, {
           ...options,
@@ -1813,6 +1935,7 @@ function generateTaggedFunctions(functions, options = {}) {
 }
 
 module.exports = {
+  checkedRegionSmallHighFaninLeaf,
   generateTaggedFunctions,
   int64Constant,
   taggedResults,
