@@ -18,12 +18,15 @@ const {
   prepareCheckedRegions,
 } = require("../checked-regions.cjs");
 const { lowerSource } = require("../ir.cjs");
+const {
+  checkedRegionSmallHighFaninLeaf,
+} = require("../tagged-backend.cjs");
 
 const witnessPath = join(__dirname, "checked_private_region_witness.py");
 const witnessSource = readFileSync(witnessPath, "utf8");
 
-async function witness(sourcePath = witnessPath) {
-  const ir = await lowerSource(witnessSource, sourcePath);
+async function witness(sourcePath = witnessPath, source = witnessSource) {
+  const ir = await lowerSource(source, sourcePath);
   // Stage A attaches at the tagged checked boundary.  This witness has only
   // fixed-width values, so the automatic cost model would otherwise bypass
   // that boundary entirely.
@@ -158,6 +161,93 @@ const directCopyDeclaration = {
     capabilities: ["int64-arithmetic", "interval-view-access"],
   }],
 };
+
+test("force-inline selection uses only authenticated direct edges", async () => {
+  const original = [
+    "    result: int64 = checked_region_local_copy_helper(storage, 0, 3, 4)",
+    "    result = checked_region_local_copy_helper(storage, 4, 3, 0)",
+    "    result = checked_region_local_copy_helper(storage, 2, -1, 6)",
+  ].join("\n");
+  const entryCalls = [
+    "    result: int64 = checked_region_local_copy_helper(storage, 0, 3, 4)",
+    "    result = checked_region_local_copy_helper(storage, 4, 3, 0)",
+    "    result = checked_region_local_copy_helper(storage, 2, -1, 6)",
+    "    result = checked_region_local_copy_helper(storage, 0, 3, 4)",
+    "    result = checked_region_direct_copy_peer(storage)",
+  ].join("\n");
+  const peer = [
+    "@native",
+    "def checked_region_direct_copy_peer(storage: UInt64Buffer) -> int64:",
+    "    result: int64 = checked_region_local_copy_helper(storage, 0, 3, 4)",
+    "    result = checked_region_local_copy_helper(storage, 4, 3, 0)",
+    "    result = checked_region_local_copy_helper(storage, 2, -1, 6)",
+    "    result = checked_region_local_copy_helper(storage, 0, 3, 4)",
+    "    return result",
+    "",
+    "",
+  ].join("\n");
+  const source = witnessSource
+    .replace(original, entryCalls)
+    .replace(
+      "@native\ndef checked_region_direct_copy_entry(",
+      `${peer}@native\ndef checked_region_direct_copy_entry(`,
+    );
+  assert.notEqual(source, witnessSource);
+  const ir = await witness(witnessPath, source);
+  const highFaninDeclaration = structuredClone(directCopyDeclaration);
+  highFaninDeclaration.functions.splice(
+    1,
+    0,
+    "checked_region_direct_copy_peer",
+  );
+  installCheckedRegionDeclarations(ir, [highFaninDeclaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const entry = region.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_direct_copy_entry"
+  );
+  const fast = region.variants.find(fn =>
+    fn.name.includes("checked_region_local_copy_helper__local_fast_0")
+  );
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  assert.ok(entry);
+  assert.ok(fast);
+  const directCalls = [];
+  const callers = new Set();
+  for (const caller of functions.values()) {
+    for (const operation of caller.body) {
+      if (operation.kind !== "native.call") continue;
+      const direct = checkedRegionDirectCallEmission(
+        caller,
+        operation,
+        functions,
+      );
+      if (direct?.function !== fast.name || direct.guard !== undefined) continue;
+      directCalls.push({ caller, operation });
+      callers.add(caller.name);
+    }
+  }
+  assert.equal(directCalls.length, 8);
+  assert.equal(callers.size, 2);
+  assert.equal(checkedRegionSmallHighFaninLeaf(fast, functions), true);
+  const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
+  assert.match(
+    core.source,
+    new RegExp(
+      `SAGEJS_CHECKED_REGION_FORCE_INLINE int64_t sagejs_direct_${fast.name}`,
+    ),
+  );
+
+  // The selector replays direct-call authority. Mutating one edge drops the
+  // authenticated fan-in below the threshold even though its fallback target
+  // and the other seven source calls remain unchanged.
+  const { caller, operation } = directCalls[0];
+  operation.arguments[1].name = operation.arguments[2].name;
+  assert.equal(
+    checkedRegionDirectCallEmission(caller, operation, functions),
+    undefined,
+  );
+  assert.equal(checkedRegionSmallHighFaninLeaf(fast, functions), false);
+});
 
 const guardedDirectCopyDeclaration = {
   entry: "checked_region_direct_copy_entry",
@@ -456,7 +546,7 @@ function executableText(source) {
 function directFunctionText(source, name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = new RegExp(
-    `SAGEJS_CHECKED_REGION_HOT_INLINE [^\\n]+ ` +
+    `SAGEJS_CHECKED_REGION_(?:HOT|FORCE)_INLINE [^\\n]+ ` +
       `sagejs_direct_${escaped}\\([^;]+\\)\\n\\{`,
   ).exec(source);
   assert.ok(match, `missing direct ${name}`);
@@ -499,9 +589,18 @@ test("checked private regions clone a closed graph behind a guard", async () => 
     core.source,
     /#define SAGEJS_CHECKED_REGION_HOT_INLINE static inline __attribute__\(\(hot\)\)/,
   );
+  assert.match(core.source, /#define SAGEJS_CHECKED_REGION_FORCE_INLINE/);
+  assert.match(
+    core.source,
+    /static inline __attribute__\(\(hot, always_inline\)\)/,
+  );
   assert.match(
     core.source,
     /#define SAGEJS_CHECKED_REGION_HOT_INLINE static __inline/,
+  );
+  assert.match(
+    core.source,
+    /#define SAGEJS_CHECKED_REGION_FORCE_INLINE static __forceinline/,
   );
   assert.match(
     core.source,
