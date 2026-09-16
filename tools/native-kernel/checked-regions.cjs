@@ -1315,7 +1315,9 @@ function analyzeStatements(statements, state, context) {
           ? result
           : { minimum: 0n, maximum: INT64_MAXIMUM };
         state.intervals.set(operation.target, provedRange);
-        if (context.enabled.has("int64-arithmetic")) {
+        if (context.enabled.has("int64-arithmetic") &&
+            (context.directResult === true ||
+              previous.summaryDependencies.size === 0)) {
           operation.checkedRegionProof = Object.freeze({
             authority: "checked-region-int64-interval-v1",
             operation: operation.id,
@@ -1365,6 +1367,8 @@ function analyzeStatements(statements, state, context) {
         : virtual?.fact.logicalLength;
       const range = context.activeRange;
       if (context.enabled.has("interval-view-access") &&
+          (context.directResult === true ||
+            previous.summaryDependencies.size === 0) &&
           operation.indexType === "int64" && index !== undefined &&
           logicalLength !== undefined && range !== undefined &&
           range.index === operation.index && index.minimum >= 0n &&
@@ -1387,6 +1391,8 @@ function analyzeStatements(statements, state, context) {
         }));
       }
       if (context.enabled.has("direct-buffer-access") &&
+          (context.directResult === true ||
+            previous.summaryDependencies.size === 0) &&
           (intervalProof || relationalProof)) {
         operation.checkedRegionProof = Object.freeze({
           authority: "checked-region-buffer-interval-v1",
@@ -1906,14 +1912,15 @@ function attachCapabilities(
     const functionEnabled = new Set(
       fn.checkedRegionLocalCapabilities || enabled,
     );
-    const groups = functionEnabled.has("virtual-fixed-uint64-views")
+    const groups = functionEnabled.has("virtual-fixed-uint64-views") &&
+        state.summaryDependencies.size === 0
       ? virtualFixedUInt64ViewGroups(fn, state)
       : [];
     const virtualViewAliases = new Map(groups.flatMap((group) =>
       Array.from(group.aliases, (alias) => [alias, group])
     ));
     const intervalViewAccesses = new Map();
-    analyzeStatements(fn.body, cloneState(state), {
+    const finalState = analyzeStatements(fn.body, cloneState(state), {
       byName,
       enabled: functionEnabled,
       facts,
@@ -1923,7 +1930,9 @@ function attachCapabilities(
       currentFunction: fn,
       scalarSummaries,
     });
-    analysisResults.set(fn, { state, functionEnabled, intervalViewAccesses });
+    analysisResults.set(fn, {
+      state, finalState, functionEnabled, intervalViewAccesses,
+    });
   }
   // Direct leaves attach and authorize their joined edge proofs here.  Every
   // caller edge retains its checked private target as the fallback; direct
@@ -1940,6 +1949,8 @@ function attachCapabilities(
   const directFunctions = new Set(directSpecs.map((spec) => spec.fast));
   for (const [fn, result] of analysisResults) {
     if (directFunctions.has(fn)) continue;
+    if (result.state.summaryDependencies.size > 0 ||
+        result.finalState.summaryDependencies.size > 0) continue;
     attachVirtualFixedUInt64Views(
       fn, result.state, result.functionEnabled, result.intervalViewAccesses,
     );

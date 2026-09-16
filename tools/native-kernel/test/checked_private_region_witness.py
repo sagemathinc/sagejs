@@ -288,7 +288,29 @@ def checked_region_summary_entry(
     storage: UInt64Buffer, degree: int64, fail: bool
 ) -> int64:
     summarized: int64 = checked_region_summary_wrapper(degree, fail)
+    adjusted: int64 = summarized + 1
+    observed: uint64 = storage[summarized]
+    view: UInt64Buffer = uint64_buffer_view(storage, 0, 9)
+    index: int64 = 0
+    for index in range(summarized):
+        observed = view[index]
     return checked_region_local_copy_helper(storage, 0, summarized, 4)
+
+
+@native
+def checked_region_summary_view_helper(
+    storage: UInt64Buffer, start: int64
+) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(storage, start, 2)
+    return view[0]
+
+
+@native
+def checked_region_summary_view_entry(
+    storage: UInt64Buffer, start: int64, fail: bool
+) -> uint64:
+    summarized: int64 = checked_region_summary_wrapper(start, fail)
+    return checked_region_summary_view_helper(storage, summarized)
 
 
 @native

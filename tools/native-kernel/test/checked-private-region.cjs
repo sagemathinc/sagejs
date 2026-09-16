@@ -192,6 +192,9 @@ function summaryDirectDeclaration(entry, functions, guard) {
     entry,
     functions: [entry, ...functions, "checked_region_local_copy_helper"],
     capabilities: [
+      "direct-buffer-access",
+      "int64-arithmetic",
+      "interval-view-access",
       "scalar-return-summaries",
       "virtual-fixed-uint64-views",
     ],
@@ -213,8 +216,27 @@ function summaryDirectDeclaration(entry, functions, guard) {
 const identitySummaryDeclaration = summaryDirectDeclaration(
   "checked_region_summary_entry",
   ["checked_region_summary_wrapper", "checked_region_summary_identity"],
-  [{ kind: "int64-range", parameter: "degree", minimum: -1, maximum: 3 }],
+  [{ kind: "int64-range", parameter: "degree", minimum: 0, maximum: 3 }],
 );
+
+const transitiveSummaryViewDeclaration = {
+  entry: "checked_region_summary_view_entry",
+  functions: [
+    "checked_region_summary_view_entry",
+    "checked_region_summary_view_helper",
+    "checked_region_summary_wrapper",
+    "checked_region_summary_identity",
+  ],
+  capabilities: [
+    "scalar-return-summaries",
+    "virtual-fixed-uint64-views",
+  ],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+    { kind: "int64-range", parameter: "start", minimum: 0, maximum: 2 },
+  ],
+  localVariants: [],
+};
 
 const intervalSummaryDeclaration = summaryDirectDeclaration(
   "checked_region_summary_interval_entry",
@@ -2018,6 +2040,39 @@ test("successful scalar summaries propagate with transitive authority", async ()
     ).sort(),
     ["checked_region_summary_identity", "checked_region_summary_wrapper"],
   );
+  const identityOperations = [];
+  const collectIdentityOperations = value => {
+    if (value === null || typeof value !== "object") return;
+    if (typeof value.kind === "string") identityOperations.push(value);
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "provenance") collectIdentityOperations(child);
+    }
+  };
+  collectIdentityOperations(identityEntry.body);
+  const summaryArithmetic = identityOperations.find(operation =>
+    operation.kind === "int64.binary" && operation.operation === "add" &&
+    operation.left === "summarized"
+  );
+  const summaryRootAccess = identityOperations.find(operation =>
+    operation.kind === "uint64.buffer.get" &&
+    operation.buffer === "storage" && operation.index === "summarized"
+  );
+  const summaryViewAccess = identityOperations.find(operation =>
+    operation.kind === "uint64.buffer.get" && operation.buffer === "view"
+  );
+  assert.ok(summaryArithmetic);
+  assert.ok(summaryRootAccess);
+  assert.ok(summaryViewAccess);
+  assert.notEqual(
+    summaryArithmetic.checkedRegionProof?.authority,
+    "checked-region-int64-interval-v1",
+  );
+  assert.equal(isCheckedRegionBufferAccess(summaryRootAccess), false);
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(identityEntry)
+      .claim(summaryViewAccess, "access")?.logicalIndexProof,
+    undefined,
+  );
   assert.doesNotThrow(() => generateHostCore(identity));
 
   const identityHelper = identityRegion.variants.find(fn =>
@@ -2027,7 +2082,60 @@ test("successful scalar summaries propagate with transitive authority", async ()
   assert.equal(checkedRegionDirectCallEmission(
     identityEntry, identityDirect, identityFunctions,
   ), undefined);
+  assert.notEqual(
+    summaryArithmetic.checkedRegionProof?.authority,
+    "checked-region-int64-interval-v1",
+  );
+  assert.equal(isCheckedRegionBufferAccess(summaryRootAccess), false);
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(identityEntry)
+      .claim(summaryViewAccess, "access")?.logicalIndexProof,
+    undefined,
+  );
   assert.doesNotThrow(() => generateHostCore(identity));
+
+  // A summarized start flows through a second private call before constructing
+  // this fixed-length view.  The ordinary virtual-view pass must not authorize
+  // the helper from that transitive fact: only direct-edge eligibility is
+  // allowed to consume successful scalar summaries in this milestone.
+  const transitiveView = await witness();
+  installCheckedRegionDeclarations(
+    transitiveView, [transitiveSummaryViewDeclaration],
+  );
+  const [transitiveRegion] = prepareCheckedRegions(transitiveView);
+  const transitiveHelper = transitiveRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_summary_view_helper"
+  );
+  const transitiveViewOperation = transitiveHelper.body.find(operation =>
+    operation.kind === "uint64.buffer.view"
+  );
+  const transitiveAccess = transitiveHelper.body.find(operation =>
+    operation.kind === "uint64.buffer.get"
+  );
+  const transitiveEmission = checkedRegionVirtualUInt64Emission(
+    transitiveHelper,
+  );
+  assert.equal(
+    transitiveEmission.claim(transitiveViewOperation, "view"),
+    undefined,
+  );
+  assert.equal(
+    transitiveEmission.claim(transitiveAccess, "access"),
+    undefined,
+  );
+  const transitiveIdentity = transitiveRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_summary_identity"
+  );
+  transitiveIdentity.body.at(-1).value = "fail";
+  assert.equal(
+    transitiveEmission.claim(transitiveViewOperation, "view"),
+    undefined,
+  );
+  assert.equal(
+    transitiveEmission.claim(transitiveAccess, "access"),
+    undefined,
+  );
+  assert.doesNotThrow(() => generateHostCore(transitiveView));
 
   const interval = await witness();
   installCheckedRegionDeclarations(interval, [intervalSummaryDeclaration]);
