@@ -178,3 +178,48 @@ view-based bodies in private variants selected only after the outer nonmutating
 contract succeeds. This is consistent with the 1.63 ms diagnostic and makes
 fallback preservation an architectural property rather than a test-corpus
 assumption.
+
+## Verified fixed-span element proofs
+
+Compiler commits `456bb4e82`, `4ed14b529`, and `ae06e083e` add the first
+fail-closed proof chain rather than a generated-C diagnostic:
+
+- constant `int64` ranges carry a latch-overflow proof;
+- a checked nine-word `UInt64Buffer` view plus its exact `range(9)` iterator
+  produces a serialized element-bounds claim;
+- an independent verifier reconstructs view dominance, loop extrema, and
+  loop-carried definitions before installing a private, nonserializable trust
+  marker; and
+- native code generation clears and reconstructs those markers, so copied,
+  forged, stale, or mutated IR cannot authorize unchecked access.
+
+The verifier rejects dynamic spans/stops, negative and affine indices, wide
+ranges, rebound views and indices, nested implicit loop writes, and mutation
+through exact-resource scopes. The checked view-construction guard and the
+JavaScript oracle remain unchanged.
+
+The exact earlier four-routine view source (SHA256
+`ae528f705b9203bf6d129ab9487b23e9866f2a147d8f1a18471a0aa00e70c5a3`)
+was compiled with and without the element proof. All four frozen packets
+matched complete expected results and post-call buffers under JavaScript, GMP,
+and tagged execution for both builds, including all 7,081 active outputs.
+
+The proof covered three source accesses: fixed nine-slot clearing in division
+and squaring. Across emitted representation copies this reduced static
+`sagejs_signed_buffer_index` sites from 345 to 333, generated C from 4,928,650
+to 4,924,176 bytes, and ELF `.text` from 308,687 to 308,495 bytes. Instrumented
+tagged execution removed 600,489 dynamic checks per catalog, from 2,241,327 to
+1,640,838 (26.79%).
+
+Two independent seven-pair alternating runs nevertheless showed only a small
+timing change. The pooled geometric means were:
+
+| implementation | geometric mean (ms/catalog) |
+| --- | ---: |
+| checked views without the proof | 3.11993 |
+| verified fixed-span proof | 3.10680 |
+
+The ratio is 0.995792, or about 0.42% faster. These predictable clearing checks
+are numerous but cheap. The result narrows the next compiler target to affine
+and dynamically bounded hot accesses (`j`, `i-j`, and `v+i`) and to the closed
+private graph that enabled the 1.6307 ms diagnostic.
