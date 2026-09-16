@@ -21,7 +21,7 @@ test("public and default attribute lookup agree with CPython", async context => 
   });
   assert.equal(python.status, 0, python.stderr || String(python.error));
   const expected = JSON.parse(python.stdout);
-  assert.equal(expected.length, 14);
+  assert.equal(expected.length, 15);
 
   for (const mode of ["python", "sage"]) {
     const session = await createSage({mode});
