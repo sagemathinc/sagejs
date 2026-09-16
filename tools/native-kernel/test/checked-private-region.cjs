@@ -8,8 +8,10 @@ const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const { generateHostCore } = require("../c-backend.cjs");
+const { compileKernel } = require("../compiler.cjs");
 const {
   installCheckedRegionDeclarations,
+  isCheckedRegionBufferAccess,
   prepareCheckedRegions,
 } = require("../checked-regions.cjs");
 const { lowerSource } = require("../ir.cjs");
@@ -531,6 +533,153 @@ test("relational guards prove only matching scalar, affine, and product loops", 
     "sagejs_checked_r0_checked_region_relational_mismatch_entry",
   );
   assert.match(mismatchBody, /index out of range/);
+});
+
+test("relational guards authorize authenticated Int64Buffer accesses", async () => {
+  const declaration = {
+    entry: "checked_region_int64_entry",
+    functions: ["checked_region_int64_entry"],
+    capabilities: ["direct-buffer-access", "int64-arithmetic"],
+    guard: [
+      {
+        kind: "buffer-min-length-scalar", buffer: "storage", scalar: "count",
+      },
+      { kind: "int64-range", parameter: "count", minimum: 0, maximum: 4 },
+    ],
+  };
+  const ir = await witness();
+  installCheckedRegionDeclarations(ir, [declaration]);
+  const source = generateHostCore(ir, {
+    moduleIdentity: "0123456789abcdef",
+  }).source;
+  const optimized = functionText(
+    source,
+    "sagejs_checked_r0_checked_region_int64_entry",
+  );
+  assert.doesNotMatch(optimized, /Int64 buffer index out of range/);
+  assert.match(
+    optimized,
+    /\.data\[\(size_t\) sagejs_local_tagged_index\]/,
+  );
+  const fallback = functionText(
+    source,
+    "sagejs_checked_fallback_checked_region_int64_entry",
+  );
+  assert.match(fallback, /Int64 buffer index out of range/);
+
+  const backendDirectory = mkdtempSync(join(tmpdir(), "sagejs-int64-backends-"));
+  try {
+    const built = await compileKernel({
+      sourcePath: witnessPath,
+      cacheDirectory: join(backendDirectory, "cache"),
+    });
+    const compiled = require(built.modulePath).checked_region_int64_entry;
+    for (const backend of ["javascript", "gmp", "tagged"]) {
+      const storage = [2n, 3n, 5n, 7n];
+      assert.equal(compiled[backend](storage, 4n, -11n), -44n);
+      assert.deepEqual(storage, [-11n, -11n, -11n, -11n]);
+      const short = [2n, 3n, 5n, 7n];
+      assert.throws(
+        () => compiled[backend](short, 5n, 13n),
+        /Int64 buffer index out of range|index out of range/,
+      );
+      assert.deepEqual(short, [13n, 13n, 13n, 13n]);
+    }
+  } finally {
+    rmSync(backendDirectory, { recursive: true, force: true });
+  }
+
+  if (process.platform !== "win32") {
+    const temporary = mkdtempSync(join(tmpdir(), "sagejs-checked-int64-region-"));
+    try {
+      writeFileSync(join(temporary, "kernel_core.h"),
+        generateHostCore(ir, { moduleIdentity: "0123456789abcdef" }).header);
+      writeFileSync(join(temporary, "runtime.c"), `${source}
+#include <string.h>
+int main(void)
+{
+    sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
+    int64_t words[4] = {INT64_C(2), INT64_C(3), INT64_C(5), INT64_C(7)};
+    sagejs_int64_buffer storage = {words, 4};
+    int64_t output = 0;
+    if (!tagged_checked_region_int64_entry(
+            &status, &output, storage, INT64_C(4), INT64_C(-11)))
+        return 1;
+    if (status.code != SAGEJS_NATIVE_OK || output != INT64_C(-44) ||
+        words[0] != INT64_C(-11) || words[3] != INT64_C(-11))
+        return 2;
+    sagejs_native_status_reset(&status);
+    words[0] = INT64_C(2); words[1] = INT64_C(3);
+    words[2] = INT64_C(5); words[3] = INT64_C(7);
+    if (tagged_checked_region_int64_entry(
+            &status, &output, storage, INT64_C(5), INT64_C(13)))
+        return 3;
+    if (status.code != SAGEJS_NATIVE_RANGE_ERROR || status.message == NULL ||
+        strcmp(status.message, "Int64 buffer index out of range") != 0 ||
+        words[0] != INT64_C(13) || words[3] != INT64_C(13))
+        return 4;
+    return 0;
+}
+`);
+      const linked = spawnSync(process.env.CC || "cc", [
+        "-std=c11", "-Werror", "-I", temporary,
+        join(temporary, "runtime.c"), "-lgmp", "-lm",
+        "-o", join(temporary, "runtime"),
+      ], { encoding: "utf8" });
+      assert.equal(linked.status, 0, linked.stderr || linked.stdout);
+      const executed = spawnSync(join(temporary, "runtime"), [], {
+        encoding: "utf8",
+      });
+      assert.equal(executed.status, 0, executed.stderr || executed.stdout);
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  }
+
+  const stale = await witness();
+  installCheckedRegionDeclarations(stale, [declaration]);
+  const entry = stale.functions.find((fn) =>
+    fn.name === "checked_region_int64_entry"
+  );
+  const loop = entry.body.find((operation) =>
+    operation.kind === "loop.range_int64"
+  );
+  assert.ok(loop);
+  // A hostile mutation changes the loop stop after authorization was
+  // requested. The proof is reconstructed from current IR and must disappear.
+  const other = entry.params.find((parameter) => parameter.name === "value");
+  loop.stop = other.name;
+  const [region] = prepareCheckedRegions(stale);
+  let access;
+  const visit = (value) => {
+    if (value === null || typeof value !== "object") return;
+    if (value.kind === "int64.buffer.get") access = value;
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "provenance") visit(child);
+    }
+  };
+  visit(region.variants[0].body);
+  assert.ok(access);
+  assert.equal(access.checkedRegionProof, undefined);
+
+  const authorized = await witness();
+  installCheckedRegionDeclarations(authorized, [declaration]);
+  const [authorizedRegion] = prepareCheckedRegions(authorized);
+  let provedAccess;
+  const findProvedAccess = (value) => {
+    if (value === null || typeof value !== "object") return;
+    if (value.kind === "int64.buffer.get") provedAccess = value;
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "provenance") findProvedAccess(child);
+    }
+  };
+  findProvedAccess(authorizedRegion.variants[0].body);
+  assert.ok(provedAccess?.checkedRegionProof);
+  // Authority is tied to the current operation shape, not merely its stable
+  // operation id. Post-analysis mutation cannot reuse the private Symbol.
+  assert.equal(isCheckedRegionBufferAccess(provedAccess), true);
+  provedAccess.index = "value";
+  assert.equal(isCheckedRegionBufferAccess(provedAccess), false);
 });
 
 test("relational guard schemas and mutated proof inputs fail closed", async () => {

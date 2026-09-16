@@ -1,10 +1,23 @@
 from sagejs.native import (
+    Int64Buffer,
     UInt64Buffer,
     int64,
     native,
     uint64,
     uint64_buffer_view,
 )
+
+
+@native
+def checked_region_int64_entry(
+    storage: Int64Buffer, count: int64, value: int64
+) -> int64:
+    index: int64 = 0
+    total: int64 = 0
+    for index in range(count):
+        storage[index] = value
+        total += storage[index]
+    return total
 
 
 def checked_region_helper(

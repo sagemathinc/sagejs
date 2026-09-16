@@ -537,6 +537,12 @@ function emitTaggedOperation(operation, context, indent) {
     const index = taggedValue(operation.index, context);
     const directIndex = operation.indexType === "int64";
     const unsignedIndex = operation.indexType === "uint64";
+    if (isCheckedRegionBufferAccess(operation)) {
+      return operation.valueType === "int64"
+        ? `${indent}${target} = ${buffer}.data[(size_t) ${index}];`
+        : `${indent}sagejs_tagged_set_small(${target}, ` +
+          `${buffer}.data[(size_t) ${index}]);`;
+    }
     return [
       `${indent}{`,
       ...(!directIndex && !unsignedIndex
@@ -570,6 +576,25 @@ function emitTaggedOperation(operation, context, indent) {
     const directIndex = operation.indexType === "int64";
     const unsignedIndex = operation.indexType === "uint64";
     const directValue = operation.valueType === "int64";
+    if (isCheckedRegionBufferAccess(operation)) {
+      if (directValue) {
+        return `${indent}${buffer}.data[(size_t) ${index}] = ${source};`;
+      }
+      return [
+        `${indent}{`,
+        `${indent}    int64_t sagejs_buffer_value;`,
+        `${indent}    if (!sagejs_tagged_to_int64(${source}, ` +
+          `&sagejs_buffer_value))`,
+        `${indent}    {`,
+        `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+          `"Int64Buffer value is outside signed 64-bit");`,
+        `${indent}        goto fail;`,
+        `${indent}    }`,
+        `${indent}    ${buffer}.data[(size_t) ${index}] = ` +
+          `sagejs_buffer_value;`,
+        `${indent}}`,
+      ].join("\n");
+    }
     return [
       `${indent}{`,
       ...(!directIndex && !unsignedIndex

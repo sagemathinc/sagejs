@@ -797,7 +797,9 @@ function analyzeStatements(statements, state, context) {
       if (expression !== undefined) state.expressions.set(operation.target, expression);
       const upper = previous.rangeUpper.get(operation.source);
       if (upper !== undefined) state.rangeUpper.set(operation.target, upper);
-    } else if (operation.kind === "uint64.buffer.copy") {
+    } else if (["uint64.buffer.copy", "int64.buffer.copy"].includes(
+      operation.kind,
+    )) {
       const minimum = previous.buffers.get(operation.source);
       if (minimum !== undefined) state.buffers.set(operation.target, minimum);
       const relations = previous.bufferRelations.get(operation.source);
@@ -841,7 +843,12 @@ function analyzeStatements(statements, state, context) {
       if (expression !== undefined) state.expressions.set(operation.target, expression);
     }
 
-    if (["uint64.buffer.get", "uint64.buffer.set"].includes(operation.kind)) {
+    if ([
+      "uint64.buffer.get",
+      "uint64.buffer.set",
+      "int64.buffer.get",
+      "int64.buffer.set",
+    ].includes(operation.kind)) {
       const index = previous.intervals.get(operation.index);
       const minimumLength = previous.buffers.get(operation.buffer);
       const relational = previous.rangeUpper.get(operation.index);
@@ -856,6 +863,11 @@ function analyzeStatements(statements, state, context) {
         operation.checkedRegionProof = Object.freeze({
           authority: "checked-region-buffer-interval-v1",
           operation: operation.id,
+          accessKind: operation.kind,
+          buffer: operation.buffer,
+          bufferType: operation.bufferType,
+          index: operation.index,
+          indexType: operation.indexType,
           ...(intervalProof ? {
             indexMinimum: index.minimum.toString(),
             indexMaximum: index.maximum.toString(),
@@ -1047,7 +1059,12 @@ module.exports = {
     return operation?.[CHECKED_REGION_BUFFER_ACCESS] === true &&
       operation.checkedRegionProof?.authority ===
         "checked-region-buffer-interval-v1" &&
-      operation.checkedRegionProof.operation === operation.id;
+      operation.checkedRegionProof.operation === operation.id &&
+      operation.checkedRegionProof.accessKind === operation.kind &&
+      operation.checkedRegionProof.buffer === operation.buffer &&
+      operation.checkedRegionProof.bufferType === operation.bufferType &&
+      operation.checkedRegionProof.index === operation.index &&
+      operation.checkedRegionProof.indexType === operation.indexType;
   },
   isCheckedRegionInt64Arithmetic(operation) {
     return operation?.[CHECKED_REGION_INT64_ARITHMETIC] === true &&
