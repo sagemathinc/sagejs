@@ -2,6 +2,7 @@
 
 const {
   isVerifiedFixedSpanAccess,
+  verifyCheckedBoundsProofs,
 } = require("./checked-bounds-proofs.cjs");
 
 const { createHash } = require("node:crypto");
@@ -4555,6 +4556,7 @@ ${functions.map((fn) => fn.kernelKind === "integer"
 }
 
 function generateHostCore(ir, options = {}) {
+  verifyCheckedBoundsProofs(ir.functions);
   const supported = new Set([
     "integer", "float64", "real-field", "complex-field",
     "prime-field-source", "prime-field-matrix",

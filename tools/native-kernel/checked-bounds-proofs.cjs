@@ -12,6 +12,10 @@ const VERIFIED_FIXED_SPAN_ACCESS = Symbol("verified fixed-span access");
 const AUTHORITY = "checked-uint64-fixed-span-range-v1";
 const INT64_MINIMUM = -(1n << 63n);
 const INT64_MAXIMUM = (1n << 63n) - 1n;
+const {
+  operationTargets,
+  walkStatements,
+} = require("./exact-analysis.cjs");
 
 function same(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
@@ -52,14 +56,30 @@ function copiedConstant(operation, constants) {
 }
 
 function assignedTargets(statements, targets = new Set()) {
-  for (const operation of statements || []) {
-    if (operation.target !== undefined) targets.add(operation.target);
-    assignedTargets(operation.body, targets);
-    assignedTargets(operation.alternative, targets);
-    assignedTargets(operation.condition?.operations, targets);
-    assignedTargets(operation.right?.operations, targets);
-  }
+  walkStatements(statements || [], {
+    loop() {},
+    operation(operation) {
+      for (const target of operationTargets(operation)) targets.add(target);
+    },
+    read() {},
+    write(name) {
+      targets.add(name);
+    },
+  });
   return targets;
+}
+
+function clearVerifiedMarkers(functions) {
+  for (const fn of functions || []) {
+    walkStatements(fn.body || [], {
+      loop() {},
+      operation(operation) {
+        delete operation[VERIFIED_FIXED_SPAN_ACCESS];
+      },
+      read() {},
+      write() {},
+    });
+  }
 }
 
 function expectedProof(operation, views, activeRange) {
@@ -87,7 +107,7 @@ function expectedProof(operation, views, activeRange) {
   };
 }
 
-function processFunction(fn, attach) {
+function processFunction(fn, attach, verified) {
   function visit(statements, inheritedConstants, inheritedViews, activeRange) {
     const constants = new Map(inheritedConstants);
     const views = new Map(inheritedViews);
@@ -102,21 +122,16 @@ function processFunction(fn, attach) {
       } else if (attach && expected !== undefined) {
         operation.boundsProof = expected;
       }
-      if (operation.boundsProof !== undefined) {
-        Object.defineProperty(operation, VERIFIED_FIXED_SPAN_ACCESS, {
-          configurable: true,
-          value: true,
-        });
-      }
+      if (!attach && operation.boundsProof !== undefined) verified.push(operation);
 
       const constant = copiedConstant(operation, constants);
       const inheritedView = operation.kind === "uint64.buffer.copy"
         ? views.get(operation.source) : undefined;
       const viewLength = operation.kind === "uint64.buffer.view"
         ? constants.get(operation.length) : undefined;
-      if (operation.target !== undefined) {
-        constants.delete(operation.target);
-        views.delete(operation.target);
+      for (const target of operationTargets(operation)) {
+        constants.delete(target);
+        views.delete(target);
       }
       if (constant !== undefined) constants.set(operation.target, constant);
       if (inheritedView !== undefined) views.set(operation.target, inheritedView);
@@ -144,8 +159,12 @@ function processFunction(fn, attach) {
           operation: operation.id,
         };
         visit(operation.body, constants, loopViews, loopRange);
-        // Loop-carried assignments are intentionally not merged.  This first
-        // proof form applies only inside the lexical fixed-range body.
+        assigned.add(operation.index);
+        if (operation.iterator !== undefined) assigned.add(operation.iterator);
+        for (const name of assigned) {
+          constants.delete(name);
+          views.delete(name);
+        }
       } else if (operation.kind === "if") {
         visit(operation.condition?.operations, constants, views, activeRange);
         visit(operation.body, constants, views, activeRange);
@@ -163,6 +182,20 @@ function processFunction(fn, attach) {
         visit(operation.right?.operations, constants, views, activeRange);
         constants.clear();
         views.clear();
+      } else if (operation.kind === "integer.vector.scope" ||
+          operation.kind === "integer.matrix.scope" ||
+          operation.kind === "integer.arena.scope") {
+        const assigned = assignedTargets([
+          ...(operation.setup || []),
+          ...(operation.body || []),
+        ]);
+        const scopeViews = new Map(
+          Array.from(views).filter(([name]) => !assigned.has(name)),
+        );
+        visit(operation.setup, constants, scopeViews, undefined);
+        visit(operation.body, constants, scopeViews, undefined);
+        constants.clear();
+        views.clear();
       }
     }
   }
@@ -170,12 +203,20 @@ function processFunction(fn, attach) {
 }
 
 function attachAndVerifyCheckedBoundsProofs(functions) {
-  for (const fn of functions || []) processFunction(fn, true);
-  return functions;
+  for (const fn of functions || []) processFunction(fn, true, []);
+  return verifyCheckedBoundsProofs(functions);
 }
 
 function verifyCheckedBoundsProofs(functions) {
-  for (const fn of functions || []) processFunction(fn, false);
+  clearVerifiedMarkers(functions);
+  const verified = [];
+  for (const fn of functions || []) processFunction(fn, false, verified);
+  for (const operation of verified) {
+    Object.defineProperty(operation, VERIFIED_FIXED_SPAN_ACCESS, {
+      configurable: true,
+      value: true,
+    });
+  }
   return functions;
 }
 

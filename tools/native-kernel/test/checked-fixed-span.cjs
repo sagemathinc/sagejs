@@ -90,6 +90,9 @@ test("fixed checked views receive stable independently verified bounds proofs", 
     "affine_index",
     "rebound_view",
     "rebound_index",
+    "loop_carried_view",
+    "nested_index_write",
+    "scoped_view_write",
   ]) {
     assert.ok(accesses(ir, name).every((operation) =>
       operation.boundsProof === undefined &&
@@ -106,18 +109,33 @@ test("fixed checked views receive stable independently verified bounds proofs", 
   const serialized = JSON.stringify(ir);
   const repeated = await lowerSource(witnessSource, witnessPath);
   assert.equal(JSON.stringify(repeated), serialized);
-  const parsed = JSON.parse(serialized);
-  const parsedAccess = accesses(parsed, "fixed_span_sum")[0];
-  assert.equal(isVerifiedFixedSpanAccess(parsedAccess), false);
-  const unverifiedCore = generateHostCore(parsed, {
+  const parsedWithoutClaim = JSON.parse(serialized);
+  const unclaimedAccess = accesses(parsedWithoutClaim, "fixed_span_sum")[0];
+  delete unclaimedAccess.boundsProof;
+  assert.equal(isVerifiedFixedSpanAccess(unclaimedAccess), false);
+  const unverifiedCore = generateHostCore(parsedWithoutClaim, {
     moduleIdentity: "0123456789abcdef",
   }).source;
   assert.match(
     emittedFunction(unverifiedCore, "fixed_span_sum"),
     /sagejs_signed_buffer_index/,
   );
-  verifyCheckedBoundsProofs(parsed.functions);
+  assert.equal(isVerifiedFixedSpanAccess(unclaimedAccess), false);
+
+  const parsed = JSON.parse(serialized);
+  const parsedAccess = accesses(parsed, "fixed_span_sum")[0];
+  assert.equal(isVerifiedFixedSpanAccess(parsedAccess), false);
+  const reverifiedCore = generateHostCore(parsed, {
+    moduleIdentity: "0123456789abcdef",
+  }).source;
+  assert.doesNotMatch(
+    emittedFunction(reverifiedCore, "fixed_span_sum"),
+    /sagejs_signed_buffer_index/,
+  );
   assert.equal(isVerifiedFixedSpanAccess(parsedAccess), true);
+  delete parsedAccess.boundsProof;
+  verifyCheckedBoundsProofs(parsed.functions);
+  assert.equal(isVerifiedFixedSpanAccess(parsedAccess), false);
 
   for (const field of [
     "authority",
@@ -134,6 +152,13 @@ test("fixed checked views receive stable independently verified bounds proofs", 
       /invalid checked bounds proof/,
     );
   }
+
+  const mutated = JSON.parse(serialized);
+  accesses(mutated, "fixed_span_sum")[0].index = "start";
+  assert.throws(
+    () => generateHostCore(mutated, { moduleIdentity: "0123456789abcdef" }),
+    /invalid checked bounds proof/,
+  );
 });
 
 test("fixed-span optimization preserves checked public behavior", async () => {

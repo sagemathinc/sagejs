@@ -1,4 +1,5 @@
 from sagejs.native import (
+    NativeIntegerVector,
     UInt64Buffer,
     int64,
     native,
@@ -98,5 +99,46 @@ def rebound_index(owner: UInt64Buffer, start: int64) -> uint64:
     total: uint64 = 0
     for index in range(9):
         index = 20
+        total += view[index]
+    return total
+
+
+@native
+def loop_carried_view(
+    owner: UInt64Buffer, other: UInt64Buffer, start: int64
+) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(owner, start, 9)
+    iteration: int64 = 0
+    for iteration in range(1):
+        view = other
+    index: int64 = 0
+    total: uint64 = 0
+    for index in range(9):
+        total += view[index]
+    return total
+
+
+@native
+def nested_index_write(owner: UInt64Buffer, start: int64) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(owner, start, 9)
+    index: int64 = 0
+    total: uint64 = 0
+    for index in range(9):
+        for index in range(20, 21):
+            total += 0
+        total += view[index]
+    return total
+
+
+@native
+def scoped_view_write(
+    owner: UInt64Buffer, other: UInt64Buffer, start: int64
+) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(owner, start, 9)
+    with NativeIntegerVector(1, 4096) as scratch:
+        view = other
+    index: int64 = 0
+    total: uint64 = 0
+    for index in range(9):
         total += view[index]
     return total

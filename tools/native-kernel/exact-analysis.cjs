@@ -2156,4 +2156,6 @@ module.exports = {
   taggedIntegerProof,
   fmpzBackendPolicy,
   residentCodeQualityAnalysis,
+  operationTargets,
+  walkStatements,
 };
