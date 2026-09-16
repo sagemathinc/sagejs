@@ -104,17 +104,26 @@ function taggedParameter(fn, param) {
   return `${scalarType(param.type, fn)} sagejs_tagged_arg_${param.name}`;
 }
 
-// Verified private graphs are internal implementation details.  Give the C
-// compiler freedom to inline and place those graphs without imposing a
-// nonportable attribute on ordinary tagged functions or their public guards.
+// Verified private graphs are internal implementation details. Proved direct
+// cores remain inlineable so constant call shapes can specialize. A general
+// guarded core must remain an independent call target: GCC's `noipa` also
+// prevents identical-function merging from letting that call shape poison the
+// proved core. Other compilers get their portable no-inline spelling.
 const CHECKED_REGION_ATTRIBUTES = `#if defined(_MSC_VER)
 #define SAGEJS_CHECKED_REGION_HOT_INLINE static __inline
+#define SAGEJS_CHECKED_REGION_GENERAL_DIRECT static __declspec(noinline)
 #define SAGEJS_CHECKED_REGION_COLD static
-#elif defined(__GNUC__) || defined(__clang__)
+#elif defined(__clang__)
 #define SAGEJS_CHECKED_REGION_HOT_INLINE static inline __attribute__((hot))
+#define SAGEJS_CHECKED_REGION_GENERAL_DIRECT static __attribute__((hot, noinline))
+#define SAGEJS_CHECKED_REGION_COLD static __attribute__((cold))
+#elif defined(__GNUC__)
+#define SAGEJS_CHECKED_REGION_HOT_INLINE static inline __attribute__((hot))
+#define SAGEJS_CHECKED_REGION_GENERAL_DIRECT static __attribute__((hot, noipa))
 #define SAGEJS_CHECKED_REGION_COLD static __attribute__((cold))
 #else
 #define SAGEJS_CHECKED_REGION_HOT_INLINE static inline
+#define SAGEJS_CHECKED_REGION_GENERAL_DIRECT static
 #define SAGEJS_CHECKED_REGION_COLD static
 #endif`;
 
@@ -135,11 +144,14 @@ function directResultName(name) {
   return `sagejs_direct_${name}`;
 }
 
-function directResultSignature(fn, prototype = false) {
+function directResultSignature(fn, prototype = false, metadata = undefined) {
   const parameters = fn.params.map((param) =>
     `${scalarType(param.type, fn)} sagejs_tagged_arg_${param.name}`
   ).join(", ") || "void";
-  return `SAGEJS_CHECKED_REGION_HOT_INLINE ${scalarType(fn.returnType, fn)} ` +
+  const storage = metadata?.fullGuard === undefined
+    ? "SAGEJS_CHECKED_REGION_HOT_INLINE"
+    : "SAGEJS_CHECKED_REGION_GENERAL_DIRECT";
+  return `${storage} ${scalarType(fn.returnType, fn)} ` +
     `${directResultName(fn.name)}(${parameters})${prototype ? ";" : ""}`;
 }
 
@@ -1642,7 +1654,7 @@ function emitDirectResultFunction(fn, functions, metadata) {
       `direct result function retained a fallible ABI operation ${retained}`,
     );
   }
-  return `${directResultSignature(fn)}
+  return `${directResultSignature(fn, false, metadata)}
 {
 ${declarations.join("\n")}
 ${body}
@@ -1756,7 +1768,7 @@ function generateTaggedFunctions(functions, options = {}) {
         const direct = checkedRegionDirectResultEmission(fn);
         return direct === undefined
           ? taggedSignature(fn, true)
-          : directResultSignature(fn, true);
+          : directResultSignature(fn, true, direct);
       }).join("\n"),
     ].filter(Boolean).join("\n\n"),
     functions: functions

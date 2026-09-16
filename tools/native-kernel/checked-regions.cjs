@@ -1587,6 +1587,7 @@ function directResultCallShape(caller, operation, callee) {
 
 function attachDirectResultVariants(context) {
   const pendingCalls = [];
+  const authorizedFunctions = new Set();
   for (const spec of context.directSpecs) {
     const eligible = [];
     const joined = {
@@ -1621,9 +1622,11 @@ function attachDirectResultVariants(context) {
     }
     const selectedCalls = new Map(Array.from(selected).filter(
       ([operation, call]) =>
-        directResultCallShape(call.caller, operation, spec.slow),
+        directResultCallShape(call.caller, operation, spec.slow) &&
+        !eligible.some(([candidate]) => candidate === operation),
     ));
-    if (eligible.length === 0 && selectedCalls.size === 0) continue;
+    const provedCalls = spec.authorizeProved ? eligible : [];
+    if (provedCalls.length === 0 && selectedCalls.size === 0) continue;
     const directState = spec.mode === "guarded-direct-result"
       ? initialFacts(spec.fast, spec.guard)
       : joined;
@@ -1663,7 +1666,8 @@ function attachDirectResultVariants(context) {
     });
     returnOperation[CHECKED_REGION_DIRECT_RESULT_PROOF] = resultClaim;
     directResultAuthority.authorize(spec.fast, returnOperation, resultClaim);
-    for (const [operation, call] of eligible) {
+    authorizedFunctions.add(spec.fast);
+    for (const [operation, call] of provedCalls) {
       const claim = Object.freeze({
         authority: "checked-region-direct-call-v1",
         operation: operation.id,
@@ -1674,7 +1678,6 @@ function attachDirectResultVariants(context) {
       pendingCalls.push([directCallAuthority, call.caller, operation, claim]);
     }
     for (const [operation, call] of selectedCalls) {
-      if (eligible.some(([candidate]) => candidate === operation)) continue;
       const guard = residualGuard(call.state, spec.guard);
       if (guard.length === 0) continue;
       const claim = Object.freeze({
@@ -1698,7 +1701,7 @@ function attachDirectResultVariants(context) {
       ]);
     }
   }
-  return pendingCalls;
+  return { authorizedFunctions, pendingCalls };
 }
 
 function attachCapabilities(
@@ -1767,7 +1770,7 @@ function attachCapabilities(
   // caller edge retains its checked private target as the fallback; direct
   // authorization is metadata-only and cannot invalidate unrelated caller
   // proofs by changing call structure.
-  const pendingDirectCalls = attachDirectResultVariants({
+  const { authorizedFunctions, pendingCalls } = attachDirectResultVariants({
     byName,
     callFacts,
     directSpecs,
@@ -1775,6 +1778,12 @@ function attachCapabilities(
     facts,
   });
   const directFunctions = new Set(directSpecs.map((spec) => spec.fast));
+  const dormantDirectFunctions = new Set(
+    Array.from(directFunctions).filter(fn => !authorizedFunctions.has(fn)),
+  );
+  for (let index = variants.length - 1; index >= 0; index -= 1) {
+    if (dormantDirectFunctions.has(variants[index])) variants.splice(index, 1);
+  }
   for (const [fn, result] of analysisResults) {
     if (directFunctions.has(fn)) continue;
     attachVirtualFixedUInt64Views(
@@ -1783,7 +1792,7 @@ function attachCapabilities(
   }
   // Caller snapshots now contain both their final fallback targets and all
   // independently authorized capability claims.
-  for (const [authority, fn, operation, claim] of pendingDirectCalls) {
+  for (const [authority, fn, operation, claim] of pendingCalls) {
     authority.authorize(fn, operation, claim);
   }
   if (enabled.has("verified-span-access")) {
@@ -1959,21 +1968,45 @@ function prepareCheckedRegions(ir) {
           value: {
             fallbackName: slow.name,
             deadExactNames: [],
-            fullGuard: local.mode === "guarded-direct-result"
-              ? local.guard
-              : undefined,
+            fullGuard: undefined,
           },
         });
         directSpecs.push({
-          edges: local.edges,
+          authorizeProved: true,
+          edges: Object.freeze([]),
           fast,
-          fullGuard: local.mode === "guarded-direct-result"
-            ? local.guard
-            : undefined,
+          fullGuard: undefined,
           guard: local.guard,
-          mode: local.mode,
+          mode: "direct-result",
           slow,
         });
+        if (local.mode === "guarded-direct-result") {
+          const general = deepClone(slow);
+          general.name = `${slow.name}__local_general_${localIndex}`;
+          if (occupied.has(general.name)) {
+            fail("local general variant name collision");
+          }
+          occupied.add(general.name);
+          variants.push(general);
+          general.checkedRegionLocalCapabilities =
+            fast.checkedRegionLocalCapabilities;
+          Object.defineProperty(general, CHECKED_REGION_DIRECT_RESULT, {
+            value: {
+              fallbackName: slow.name,
+              deadExactNames: [],
+              fullGuard: local.guard,
+            },
+          });
+          directSpecs.push({
+            authorizeProved: false,
+            edges: local.edges,
+            fast: general,
+            fullGuard: local.guard,
+            guard: local.guard,
+            mode: "guarded-direct-result",
+            slow,
+          });
+        }
       } else {
         slow[CHECKED_REGION_LOCAL_VARIANT] = Object.freeze({
           guard: local.guard,
@@ -1992,7 +2025,7 @@ function prepareCheckedRegions(ir) {
       variantEntry: variantNames.get(region.entry),
       guard,
       capabilities: region.capabilities,
-      variants: Object.freeze(variants),
+      variants,
     };
     validateCapabilityInputs(variants, new Map(variants.map((fn) => [fn.name, fn])));
     attachCapabilities(
@@ -2004,6 +2037,7 @@ function prepareCheckedRegions(ir) {
     );
     return Object.freeze({
       ...preparedRegion,
+      variants: Object.freeze(variants),
     });
   });
   return Object.freeze(prepared);

@@ -1,0 +1,121 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "guarded-direct-call-shape",
+  "title": "Guarded Direct Call Shape",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Specialize proved private direct-result cores by generic call shape so constant calls retain their compact constprop core while a selected guarded edge uses a separate general core",
+  "base_commit": "4f78ddea9f802b090eeec2c4ad59638259ec9c6c",
+  "claims": [
+    "tools/native-kernel/checked-regions.cjs",
+    "tools/native-kernel/tagged-backend.cjs",
+    "tools/native-kernel/test/checked-private-region.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "generated C and compiled runtime differential tests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test tools/native-kernel/test/checked-private-region.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.279,
+      "started_at": "2026-09-16T09:34:30.679Z",
+      "commit": "4f78ddea9f802b090eeec2c4ad59638259ec9c6c",
+      "workspace_fingerprint": "1c9109cba9a3965a46a00fdb338ae078251e428302a11e4c0bacbcf48c75df9d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.697,
+      "started_at": "2026-09-16T09:34:50.348Z",
+      "commit": "4f78ddea9f802b090eeec2c4ad59638259ec9c6c",
+      "workspace_fingerprint": "1c9109cba9a3965a46a00fdb338ae078251e428302a11e4c0bacbcf48c75df9d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 52.859,
+      "started_at": "2026-09-16T09:35:14.685Z",
+      "commit": "4f78ddea9f802b090eeec2c4ad59638259ec9c6c",
+      "workspace_fingerprint": "1c9109cba9a3965a46a00fdb338ae078251e428302a11e4c0bacbcf48c75df9d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 18.868,
+      "started_at": "2026-09-16T09:39:49.164Z",
+      "commit": "4f78ddea9f802b090eeec2c4ad59638259ec9c6c",
+      "workspace_fingerprint": "b6627c073615a71f5523ba3e083a938f0a591b5b7e0c577406fa463c7c2cb5f2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.23,
+      "started_at": "2026-09-16T09:40:13.962Z",
+      "commit": "4f78ddea9f802b090eeec2c4ad59638259ec9c6c",
+      "workspace_fingerprint": "b6627c073615a71f5523ba3e083a938f0a591b5b7e0c577406fa463c7c2cb5f2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 53.629,
+      "started_at": "2026-09-16T09:40:29.943Z",
+      "commit": "4f78ddea9f802b090eeec2c4ad59638259ec9c6c",
+      "workspace_fingerprint": "b6627c073615a71f5523ba3e083a938f0a591b5b7e0c577406fa463c7c2cb5f2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 913.699,
+      "started_at": "2026-09-16T09:41:27.856Z",
+      "commit": "4f78ddea9f802b090eeec2c4ad59638259ec9c6c",
+      "workspace_fingerprint": "b6627c073615a71f5523ba3e083a938f0a591b5b7e0c577406fa463c7c2cb5f2",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Split guarded direct-result lowering by authenticated call shape: fully proved calls retain an inlineable proved core, while selected residual-guard edges use a separately authorized general core with the same checked fallback. Dormant shapes are pruned. Stage H retained the Stage G 57-byte constprop core and added a 310-byte general core, but remained slower in timing.",
+    "risks": [
+      "The exact machine-code separation was measured with GCC on linux-x64; Clang and MSVC use portable no-inline attributes but were not measured in this lane.",
+      "Stage H remained slower than Stage G: repeated measurements varied from about +1.0% to +5.9%, so this mechanism is negative performance evidence rather than an adoption recommendation.",
+      "The full native suite has five unrelated stale IR-version assertions (actual 46, expected 45) in unclaimed FFI/exact-ownership tests; focused compiler, architecture, and strict-library validations pass."
+    ],
+    "next_steps": [
+      "If adopted, update the Stage H experiment driver's structural expectations from one direct-result variant to the proved/general pair."
+    ]
+  }
+}

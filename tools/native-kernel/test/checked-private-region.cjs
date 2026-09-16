@@ -1410,9 +1410,27 @@ test("guarded direct results use a residual edge guard and checked fallback", as
   const fast = region.variants.find(fn =>
     fn.name.includes("checked_region_local_copy_helper__local_fast_0")
   );
+  const general = region.variants.find(fn =>
+    fn.name.includes("checked_region_local_copy_helper__local_general_0")
+  );
   assert.ok(entry);
   assert.ok(fast);
-  assert.ok(checkedRegionDirectResultEmission(fast));
+  assert.ok(general);
+  const fastResult = checkedRegionDirectResultEmission(fast);
+  const generalResult = checkedRegionDirectResultEmission(general);
+  assert.ok(fastResult);
+  assert.ok(generalResult);
+  assert.equal(fastResult.fallbackName, generalResult.fallbackName);
+  assert.equal(fastResult.fullGuard, undefined);
+  assert.deepEqual(generalResult.fullGuard.map(predicate => [
+    predicate.kind,
+    predicate.parameter,
+  ]), [
+    ["buffer-min-length", "storage"],
+    ["int64-range", "start"],
+    ["int64-range", "degree"],
+    ["int64-range", "output"],
+  ]);
   const functions = new Map(region.variants.map(fn => [fn.name, fn]));
   const calls = entry.body.filter(operation => operation.kind === "native.call");
   const emissions = calls.map(operation =>
@@ -1421,6 +1439,10 @@ test("guarded direct results use a residual edge guard and checked fallback", as
   assert.equal(emissions.filter(Boolean).length, 4);
   assert.equal(emissions.filter(emission => emission.guard === undefined).length, 3);
   const guarded = emissions.find(emission => emission.guard !== undefined);
+  assert.equal(guarded.function, general.name);
+  assert.equal(emissions.filter(emission =>
+    emission.guard === undefined && emission.function === fast.name
+  ).length, 3);
   assert.deepEqual(guarded.guard.map(predicate => [
     predicate.kind,
     predicate.parameter,
@@ -1447,8 +1469,16 @@ test("guarded direct results use a residual edge guard and checked fallback", as
       `\\([^;]+\\)\\n\\{`,
     "g",
   )) || []).length, 1);
+  assert.equal((core.source.match(new RegExp(
+    `SAGEJS_CHECKED_REGION_GENERAL_DIRECT int64_t sagejs_direct_${general.name}` +
+      `\\([^;]+\\)\\n\\{`,
+    "g",
+  )) || []).length, 1);
   assert.doesNotMatch(core.source, new RegExp(
     `(?:HOT_INLINE|COLD) int tagged_${fast.name}\\(`,
+  ));
+  assert.doesNotMatch(core.source, new RegExp(
+    `(?:HOT_INLINE|COLD) int tagged_${general.name}\\(`,
   ));
 
   if (process.platform !== "win32") {
@@ -1609,7 +1639,7 @@ int main(void)
     fn.checkedRegionVariant.original === "checked_region_direct_copy_entry"
   );
   const directGuardFast = directGuardRegion.variants.find(fn =>
-    checkedRegionDirectResultEmission(fn) !== undefined
+    checkedRegionDirectResultEmission(fn)?.fullGuard !== undefined
   );
   const directGuardFunctions = new Map(directGuardRegion.variants.map(fn => [
     fn.name, fn,
@@ -1703,6 +1733,43 @@ int main(void)
   installCheckedRegionDeclarations(portable, [guardedDirectCopyDeclaration]);
   const serialized = structuredClone(portable);
   assert.deepEqual(prepareCheckedRegions(serialized), []);
+});
+
+test("guarded direct results emit only observed call-shape cores", async () => {
+  const guardedOnlyIr = await witness();
+  const guardedOnlyDeclaration = structuredClone(guardedDirectCopyDeclaration);
+  const degreeGuard = guardedOnlyDeclaration.localVariants[0].guard.find(
+    predicate => predicate.parameter === "degree",
+  );
+  degreeGuard.minimum = 2;
+  degreeGuard.maximum = 2;
+  installCheckedRegionDeclarations(guardedOnlyIr, [guardedOnlyDeclaration]);
+  const [guardedOnlyRegion] = prepareCheckedRegions(guardedOnlyIr);
+  assert.equal(guardedOnlyRegion.variants.some(fn =>
+    fn.name.includes("checked_region_local_copy_helper__local_fast_0")
+  ), false);
+  assert.equal(guardedOnlyRegion.variants.some(fn =>
+    fn.name.includes("checked_region_local_copy_helper__local_general_0") &&
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), true);
+
+  const unconditionalOnlyIr = await witness();
+  const unconditionalOnlyDeclaration = structuredClone(
+    guardedDirectCopyDeclaration,
+  );
+  unconditionalOnlyDeclaration.localVariants[0].edges[0].operationOrigin =
+    "checked_region_direct_copy_entry:13";
+  installCheckedRegionDeclarations(
+    unconditionalOnlyIr, [unconditionalOnlyDeclaration],
+  );
+  const [unconditionalOnlyRegion] = prepareCheckedRegions(unconditionalOnlyIr);
+  assert.equal(unconditionalOnlyRegion.variants.some(fn =>
+    fn.name.includes("checked_region_local_copy_helper__local_general_0")
+  ), false);
+  assert.equal(unconditionalOnlyRegion.variants.some(fn =>
+    fn.name.includes("checked_region_local_copy_helper__local_fast_0") &&
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), true);
 });
 
 test("raising comparisons refine direct-call facts across immutable ranges", async () => {
