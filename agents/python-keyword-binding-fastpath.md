@@ -65,3 +65,14 @@ artifact.
 - Browser and four-platform CI remain merge-owned qualification.
 
 No release is implied.
+
+## Merge-review correction
+
+An adversarial live-defaults probe found that expanding `__defaults__` makes
+originally required parameters appear defaulted to the binder, although the
+generated prologue only consumes definition-time defaulted names from the
+keyword packet. Explicit keywords could therefore be silently replaced by
+new defaults. Positional parameter keywords now always use the general binder;
+keyword-only and extra keyword packets retain the direct path. Argument-vector
+reuse is retained. The timing table above describes the original candidate,
+not the corrected implementation; no corrected speedup is claimed.

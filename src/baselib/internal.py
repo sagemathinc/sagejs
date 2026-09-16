@@ -999,7 +999,6 @@ def ρσ_interpolate_kwargs(
     if runtime.native_get(target_function, "__handles_kwarg_interpolation__"):
         supplied_count = supplied_args.length - 1
         named_count = argnames.length
-        defaults = runtime.native_get(target_function, "__defaults__")
         direct = True
         for property_name in runtime.object.keys(keyword_object):
             index = argnames.indexOf(property_name)
@@ -1008,13 +1007,7 @@ def ρσ_interpolate_kwargs(
                     raise TypeError(
                         "multiple values for argument '" + property_name + "'"
                     )
-                if runtime.array.isArray(defaults):
-                    if index < named_count - runtime.native_get(defaults, "length"):
-                        direct = False
-                elif defaults is runtime.undefined or defaults is None:
-                    direct = False
-                elif not _internal_has_own(defaults, property_name):
-                    direct = False
+                direct = False
             elif keyword_only and keyword_only.indexOf(property_name) != -1:
                 continue
             elif not runtime.native_get(target_function, "__varkw__"):
