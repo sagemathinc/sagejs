@@ -345,6 +345,17 @@ def checked_region_summary_view_entry(
 
 
 @native
+def checked_region_guard_root_helper(storage: UInt64Buffer, start: int64) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(storage, start, 2)
+    return view[0]
+
+
+@native
+def checked_region_guard_root_entry(storage: UInt64Buffer, start: int64) -> uint64:
+    return checked_region_guard_root_helper(storage, start)
+
+
+@native
 def checked_region_summary_interval(selector: int64) -> int64:
     if selector == 0:
         return 1

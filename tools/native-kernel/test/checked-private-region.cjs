@@ -283,6 +283,29 @@ const transitiveSummaryViewDeclaration = {
   localVariants: [],
 };
 
+const graphGuardRootDeclaration = {
+  entry: "checked_region_guard_root_entry",
+  functions: [
+    "checked_region_guard_root_entry",
+    "checked_region_guard_root_helper",
+  ],
+  capabilities: ["virtual-fixed-uint64-views"],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+    { kind: "int64-range", parameter: "start", minimum: 0, maximum: 2 },
+  ],
+  localVariants: [{
+    function: "checked_region_guard_root_helper",
+    mode: "guarded",
+    edges: [],
+    guard: [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+      { kind: "int64-range", parameter: "start", minimum: 0, maximum: 2 },
+    ],
+    capabilities: ["virtual-fixed-uint64-views"],
+  }],
+};
+
 const intervalSummaryDeclaration = summaryDirectDeclaration(
   "checked_region_summary_interval_entry",
   ["checked_region_summary_interval"],
@@ -1476,6 +1499,76 @@ int main(void)
       rmSync(temporary, { recursive: true, force: true });
     }
   }
+});
+
+test("graph fixed views authenticate the public dispatch guard root", async () => {
+  const ir = await witness();
+  installCheckedRegionDeclarations(ir, [graphGuardRootDeclaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const entry = region.variants.find(fn =>
+    fn.checkedRegionVariant.original === graphGuardRootDeclaration.entry
+  );
+  const helper = region.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_guard_root_helper" &&
+    fn.checkedRegionLocalCapabilities !== undefined
+  );
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  const view = helper.body.find(operation =>
+    operation.kind === "uint64.buffer.view"
+  );
+  assert.ok(entry.checkedRegionGraphRoot);
+  assert.strictEqual(entry.checkedRegionGraphRoot.guard, region.guard);
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(helper, functions)
+      .claim(view, "view")?.mode,
+    "fixed",
+  );
+
+  const originalRoot = entry.checkedRegionGraphRoot;
+  entry.checkedRegionGraphRoot = Object.freeze({
+    ...originalRoot,
+    guard: Object.freeze([
+      Object.freeze({
+        kind: "buffer-min-length",
+        parameter: "storage",
+        parameterType: "UInt64Buffer",
+        minimum: 1,
+      }),
+    ]),
+  });
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(helper, functions).claim(view, "view"),
+    undefined,
+  );
+
+  entry.checkedRegionGraphRoot = originalRoot;
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(helper, functions)
+      .claim(view, "view")?.mode,
+    "fixed",
+  );
+  delete entry.checkedRegionGraphRoot;
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(helper, functions).claim(view, "view"),
+    undefined,
+  );
+
+  entry.checkedRegionGraphRoot = Object.freeze({
+    ...originalRoot,
+    entry: "checked_region_guard_root_helper",
+  });
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(helper, functions).claim(view, "view"),
+    undefined,
+  );
+  entry.checkedRegionGraphRoot = originalRoot;
+
+  const source = generateHostCore(ir).source;
+  const fastBody = functionText(
+    source,
+    helper.name,
+  );
+  assert.doesNotMatch(fastBody, /UInt64Buffer view is outside its buffer/);
 });
 
 test("validated view snapshots do not trust operation-id uniqueness", async () => {
