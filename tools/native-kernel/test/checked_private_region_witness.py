@@ -246,6 +246,9 @@ def checked_region_local_copy_entry(
 def checked_region_direct_copy_entry(
     storage: UInt64Buffer, start: int64, degree: int64, output: int64
 ) -> int64:
+    sentinel: UInt64Buffer = uint64_buffer_view(storage, 11, 1)
+    sentinel_value: uint64 = sentinel[0]
+    sentinel[0] = sentinel_value
     result: int64 = checked_region_local_copy_helper(storage, 0, 3, 4)
     result = checked_region_local_copy_helper(storage, 4, 3, 0)
     result = checked_region_local_copy_helper(storage, 2, -1, 6)

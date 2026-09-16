@@ -1441,11 +1441,6 @@ function attachDirectResultVariants(context) {
     };
     for (const [operation, call] of context.callFacts) {
       if (call.callee !== spec.slow.name) continue;
-      // The private checked clone exists only to gather edge-local facts.  All
-      // emitted edges retain the ordinary source function as their fallback;
-      // a separately authenticated claim may replace only this individual
-      // call with the infallible direct leaf.
-      operation.function = spec.original.name;
       if (
           !factsImplyGuard(call.state, spec.guard) ||
           !allUInt64ViewsAreFixed(spec.fast, call.state)) continue;
@@ -1479,7 +1474,7 @@ function attachDirectResultVariants(context) {
     const resultClaim = Object.freeze({
       authority: "checked-region-direct-result-v1",
       function: spec.fast.name,
-      fallback: spec.original.name,
+      fallback: spec.slow.name,
       returnOperation: returnOperation.id,
       deadExactNames: Object.freeze([
         ...spec.fast[CHECKED_REGION_DIRECT_RESULT].deadExactNames,
@@ -1492,7 +1487,7 @@ function attachDirectResultVariants(context) {
         authority: "checked-region-direct-call-v1",
         operation: operation.id,
         directFunction: spec.fast.name,
-        fallbackFunction: spec.original.name,
+        fallbackFunction: spec.slow.name,
       });
       operation[CHECKED_REGION_DIRECT_CALL] = claim;
       pendingCalls.push([call.caller, operation, claim]);
@@ -1563,16 +1558,10 @@ function attachCapabilities(
     });
     analysisResults.set(fn, { state, functionEnabled, intervalViewAccesses });
   }
-  for (const [fn, result] of analysisResults) {
-    attachVirtualFixedUInt64Views(
-      fn, result.state, result.functionEnabled, result.intervalViewAccesses,
-    );
-  }
-  // Ordinary capability attachment must finish before the direct-result
-  // authority snapshots either side of a rewritten edge.  The direct pass may
-  // add proofs only to its private leaf clone; after this point the only
-  // accepted mutations are proof fields explicitly ignored by the structural
-  // authorities.
+  // Direct leaves attach and authorize their joined edge proofs here.  Every
+  // caller edge retains its checked private target as the fallback; direct
+  // authorization is metadata-only and cannot invalidate unrelated caller
+  // proofs by changing call structure.
   const pendingDirectCalls = attachDirectResultVariants({
     byName,
     callFacts,
@@ -1580,6 +1569,15 @@ function attachCapabilities(
     enabled,
     facts,
   });
+  const directFunctions = new Set(directSpecs.map((spec) => spec.fast));
+  for (const [fn, result] of analysisResults) {
+    if (directFunctions.has(fn)) continue;
+    attachVirtualFixedUInt64Views(
+      fn, result.state, result.functionEnabled, result.intervalViewAccesses,
+    );
+  }
+  // Caller snapshots now contain both their final fallback targets and all
+  // independently authorized capability claims.
   for (const [fn, operation, claim] of pendingDirectCalls) {
     directCallAuthority.authorize(fn, operation, claim);
   }
@@ -1734,9 +1732,9 @@ function prepareCheckedRegions(ir) {
       ]);
       if (local.mode === "direct-result") {
         Object.defineProperty(fast, CHECKED_REGION_DIRECT_RESULT, {
-          value: { fallbackName: local.function, deadExactNames: [] },
+          value: { fallbackName: slow.name, deadExactNames: [] },
         });
-        directSpecs.push({ fast, guard: local.guard, original, slow });
+        directSpecs.push({ fast, guard: local.guard, slow });
       } else {
         slow[CHECKED_REGION_LOCAL_VARIANT] = Object.freeze({
           guard: local.guard,

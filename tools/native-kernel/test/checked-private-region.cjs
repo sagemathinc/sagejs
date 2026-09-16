@@ -1277,8 +1277,17 @@ test("private direct-result variants rewrite only proved call edges", async () =
   );
   assert.equal(directCalls.length, 3);
   assert.equal(calls.every(operation =>
-    operation.function === "checked_region_local_copy_helper"
+    operation.function === slow.name
   ), true);
+  const callerViews = checkedRegionVirtualUInt64Emission(entry);
+  const sentinelView = entry.body.find(operation =>
+    operation.kind === "uint64.buffer.view"
+  );
+  assert.equal(callerViews.claim(sentinelView, "view")?.mode, "fixed");
+  assert.equal(entry.body.filter(operation =>
+    ["uint64.buffer.get", "uint64.buffer.set"].includes(operation.kind) &&
+    callerViews.claim(operation, "access") !== undefined
+  ).length, 2);
 
   const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
   const directBody = directFunctionText(core.source, fast.name);
