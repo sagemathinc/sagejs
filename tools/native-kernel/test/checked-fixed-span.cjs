@@ -117,6 +117,24 @@ test("fixed checked views receive stable independently verified bounds proofs", 
   const dynamicUpdated = accesses(ir, "dynamic_exact_span_update");
   assert.equal(dynamicUpdated.length, 2);
   assert.ok(dynamicUpdated.every(isVerifiedFixedSpanAccess));
+  const reversed = accesses(ir, "dynamic_reversed_span");
+  assert.equal(reversed.length, 1);
+  assert.deepEqual(reversed[0].boundsProof, {
+    authority: "checked-uint64-reversed-span-range-v1",
+    accessOperation: reversed[0].id,
+    viewOperation: "dynamic_reversed_span:3",
+    rangeOperation: "dynamic_reversed_span:17",
+    buffer: "view",
+    index: reversed[0].index,
+    indexType: "int64",
+    viewLengthValue: "parameter:length",
+    rangeStopValue: "parameter:length",
+    rangeIndex: "index",
+    start: "0",
+    step: "1",
+    relation: "index = checked-view-length - 1 - range-index",
+  });
+  assert.equal(isVerifiedFixedSpanAccess(reversed[0]), true);
   for (const name of [
     "too_wide",
     "dynamic_stop",
@@ -126,6 +144,8 @@ test("fixed checked views receive stable independently verified bounds proofs", 
     "dynamic_nonzero_start",
     "dynamic_nonunit_step",
     "dynamic_rebound_length",
+    "dynamic_reversed_mismatched_base",
+    "dynamic_reversed_mismatched_iterator",
     "negative_range",
     "affine_index",
     "rebound_view",
@@ -153,12 +173,18 @@ test("fixed checked views receive stable independently verified bounds proofs", 
     emittedFunction(core, "dynamic_computed_span"),
     /sagejs_signed_buffer_index/,
   );
+  assert.doesNotMatch(
+    emittedFunction(core, "dynamic_reversed_span"),
+    /sagejs_signed_buffer_index/,
+  );
   for (const name of [
     "dynamic_mismatched_stop",
     "dynamic_overshoot",
     "dynamic_nonzero_start",
     "dynamic_nonunit_step",
     "dynamic_rebound_length",
+    "dynamic_reversed_mismatched_base",
+    "dynamic_reversed_mismatched_iterator",
   ]) {
     assert.match(
       emittedFunction(core, name),
@@ -208,6 +234,40 @@ test("fixed checked views receive stable independently verified bounds proofs", 
   ]) {
     const forged = JSON.parse(serialized);
     accesses(forged, "fixed_span_sum")[0].boundsProof[field] = "forged";
+    assert.throws(
+      () => verifyCheckedBoundsProofs(forged.functions),
+      /invalid checked bounds proof/,
+    );
+  }
+
+  const mutatedReverse = JSON.parse(serialized);
+  const mutatedReverseAccess = accesses(
+    mutatedReverse,
+    "dynamic_reversed_span",
+  )[0];
+  const mutatedIndexProducer = functionOperations(
+    mutatedReverse,
+    "dynamic_reversed_span",
+  ).find((operation) => operation.target === mutatedReverseAccess.index);
+  assert.ok(mutatedIndexProducer);
+  mutatedIndexProducer.operation = "add";
+  assert.throws(
+    () => verifyCheckedBoundsProofs(mutatedReverse.functions),
+    /invalid checked bounds proof/,
+  );
+
+  for (const field of [
+    "authority",
+    "accessOperation",
+    "viewOperation",
+    "rangeOperation",
+    "viewLengthValue",
+    "rangeStopValue",
+    "rangeIndex",
+    "relation",
+  ]) {
+    const forged = JSON.parse(serialized);
+    accesses(forged, "dynamic_reversed_span")[0].boundsProof[field] = "forged";
     assert.throws(
       () => verifyCheckedBoundsProofs(forged.functions),
       /invalid checked bounds proof/,
@@ -303,6 +363,18 @@ test("fixed-span optimization preserves checked public behavior", async () => {
       assert.deepEqual(Array.from(dynamicMutable), [
         100n, 2n, 3n, 4n, 5n, 6n, 200n,
       ]);
+
+      const reversed = module.dynamic_reversed_span;
+      assert.equal(reversed[backend](dynamicValues, 1n, 5n), 15n);
+      assert.equal(reversed[backend](dynamicValues, 2n, 0n), 0n);
+      assert.throws(
+        () => reversed[backend](dynamicValues, 0n, -1n),
+        /UInt64Buffer view is outside its buffer/,
+      );
+      assert.throws(
+        () => reversed[backend](dynamicValues, 3n, 5n),
+        /UInt64Buffer view is outside its buffer/,
+      );
     }
   } finally {
     rmSync(cacheDirectory, { recursive: true, force: true });

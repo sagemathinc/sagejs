@@ -12,6 +12,7 @@
 const VERIFIED_FIXED_SPAN_ACCESS = Symbol("verified fixed-span access");
 const AUTHORITY = "checked-uint64-fixed-span-range-v1";
 const DYNAMIC_AUTHORITY = "checked-uint64-span-stop-range-v1";
+const REVERSED_DYNAMIC_AUTHORITY = "checked-uint64-reversed-span-range-v1";
 const INT64_MINIMUM = -(1n << 63n);
 const INT64_MAXIMUM = (1n << 63n) - 1n;
 const {
@@ -75,6 +76,46 @@ function copiedValue(operation, values) {
   return undefined;
 }
 
+function copiedExpression(operation, values, expressions) {
+  if (["integer.constant", "int64.constant", "uint64.constant"].includes(
+    operation.kind,
+  )) return { kind: "constant", value: BigInt(operation.value) };
+  if ([
+    "integer.copy",
+    "int64.copy",
+    "uint64.copy",
+    "integer.from_int64",
+    "integer.from_uint64",
+    "integer.from_int64_checked",
+    "integer.from_uint64_checked",
+    "int64.from_integer_checked",
+    "int64.from_uint64_checked",
+    "uint64.from_integer_checked",
+    "uint64.from_int64_checked",
+  ].includes(operation.kind)) {
+    return expressions.get(operation.source) || (
+      values.has(operation.source)
+        ? { kind: "value", value: values.get(operation.source) }
+        : undefined
+    );
+  }
+  if (operation.kind !== "int64.binary" || operation.operation !== "sub") {
+    return undefined;
+  }
+  const left = expressions.get(operation.left) || (
+    values.has(operation.left)
+      ? { kind: "value", value: values.get(operation.left) }
+      : undefined
+  );
+  const right = expressions.get(operation.right);
+  if (left === undefined || right === undefined) return undefined;
+  if (right.kind === "constant" && right.value === 1n &&
+      left.kind === "value") {
+    return { kind: "minus-one", value: left.value };
+  }
+  return { kind: "subtract", left, rightName: operation.right };
+}
+
 function assignedTargets(statements, targets = new Set()) {
   walkStatements(statements || [], {
     loop() {},
@@ -102,12 +143,39 @@ function clearVerifiedMarkers(functions) {
   }
 }
 
-function expectedProof(operation, views, activeRange) {
+function expectedProof(operation, views, expressions, activeRange) {
   if (!["uint64.buffer.get", "uint64.buffer.set"].includes(operation.kind) ||
-      operation.indexType !== "int64" || activeRange === undefined ||
-      operation.index !== activeRange.index) return undefined;
+      operation.indexType !== "int64" || activeRange === undefined) {
+    return undefined;
+  }
   const view = views.get(operation.buffer);
   if (view === undefined) return undefined;
+  const reverse = expressions.get(operation.index);
+  if (activeRange.kind === "span-stop" &&
+      activeRange.start === 0n && activeRange.step === 1n &&
+      activeRange.stopValue !== undefined &&
+      activeRange.stopValue === view.lengthValue &&
+      reverse?.kind === "subtract" &&
+      reverse.left?.kind === "minus-one" &&
+      reverse.left.value === activeRange.stopValue &&
+      reverse.rightName === activeRange.index) {
+    return {
+      authority: REVERSED_DYNAMIC_AUTHORITY,
+      accessOperation: operation.id,
+      viewOperation: view.operation,
+      rangeOperation: activeRange.operation,
+      buffer: operation.buffer,
+      index: operation.index,
+      indexType: "int64",
+      viewLengthValue: view.lengthValue,
+      rangeStopValue: activeRange.stopValue,
+      rangeIndex: activeRange.index,
+      start: "0",
+      step: "1",
+      relation: "index = checked-view-length - 1 - range-index",
+    };
+  }
+  if (operation.index !== activeRange.index) return undefined;
   if (activeRange.kind === "span-stop" &&
       activeRange.start === 0n && activeRange.step === 1n &&
       activeRange.stopValue !== undefined &&
@@ -154,14 +222,16 @@ function processFunction(fn, attach, verified) {
     statements,
     inheritedConstants,
     inheritedValues,
+    inheritedExpressions,
     inheritedViews,
     activeRange,
   ) {
     const constants = new Map(inheritedConstants);
     const values = new Map(inheritedValues);
+    const expressions = new Map(inheritedExpressions);
     const views = new Map(inheritedViews);
     for (const operation of statements || []) {
-      const expected = expectedProof(operation, views, activeRange);
+      const expected = expectedProof(operation, views, expressions, activeRange);
       if (operation.boundsProof !== undefined) {
         if (expected === undefined || !same(operation.boundsProof, expected)) {
           throw new Error(
@@ -175,6 +245,11 @@ function processFunction(fn, attach, verified) {
 
       const constant = copiedConstant(operation, constants);
       const copied = copiedValue(operation, values);
+      const expression = copiedExpression(
+        operation,
+        values,
+        expressions,
+      );
       const inheritedView = operation.kind === "uint64.buffer.copy"
         ? views.get(operation.source) : undefined;
       const viewLength = operation.kind === "uint64.buffer.view"
@@ -184,10 +259,12 @@ function processFunction(fn, attach, verified) {
       for (const target of operationTargets(operation)) {
         constants.delete(target);
         values.delete(target);
+        expressions.delete(target);
         views.delete(target);
       }
       if (constant !== undefined) constants.set(operation.target, constant);
       if (copied !== undefined) values.set(operation.target, copied);
+      if (expression !== undefined) expressions.set(operation.target, expression);
       for (const target of operationTargets(operation)) {
         if (!values.has(target)) values.set(target, `operation:${operation.id}:${target}`);
       }
@@ -217,6 +294,9 @@ function processFunction(fn, attach, verified) {
         const loopValues = new Map(
           Array.from(values).filter(([name]) => !assigned.has(name)),
         );
+        const loopExpressions = new Map(
+          Array.from(expressions).filter(([name]) => !assigned.has(name)),
+        );
         const loopViews = new Map(
           Array.from(views).filter(([name]) => !assigned.has(name)),
         );
@@ -226,33 +306,72 @@ function processFunction(fn, attach, verified) {
           index: operation.index,
           operation: operation.id,
         };
-        visit(operation.body, constants, loopValues, loopViews, loopRange);
+        visit(
+          operation.body,
+          constants,
+          loopValues,
+          loopExpressions,
+          loopViews,
+          loopRange,
+        );
         assigned.add(operation.index);
         if (operation.iterator !== undefined) assigned.add(operation.iterator);
         for (const name of assigned) {
           constants.delete(name);
           values.delete(name);
+          expressions.delete(name);
           views.delete(name);
         }
       } else if (operation.kind === "if") {
-        visit(operation.condition?.operations, constants, values, views, activeRange);
-        visit(operation.body, constants, values, views, activeRange);
-        visit(operation.alternative, constants, values, views, activeRange);
+        visit(
+          operation.condition?.operations,
+          constants,
+          values,
+          expressions,
+          views,
+          activeRange,
+        );
+        visit(operation.body, constants, values, expressions, views, activeRange);
+        visit(
+          operation.alternative,
+          constants,
+          values,
+          expressions,
+          views,
+          activeRange,
+        );
         constants.clear();
         values.clear();
+        expressions.clear();
         views.clear();
       } else if (operation.kind === "while" ||
           operation.kind === "loop.range" ||
           operation.kind === "loop.range_exact") {
-        visit(operation.condition?.operations, constants, values, views, undefined);
-        visit(operation.body, constants, values, views, undefined);
+        visit(
+          operation.condition?.operations,
+          constants,
+          values,
+          expressions,
+          views,
+          undefined,
+        );
+        visit(operation.body, constants, values, expressions, views, undefined);
         constants.clear();
         values.clear();
+        expressions.clear();
         views.clear();
       } else if (operation.kind === "bool.short_circuit") {
-        visit(operation.right?.operations, constants, values, views, activeRange);
+        visit(
+          operation.right?.operations,
+          constants,
+          values,
+          expressions,
+          views,
+          activeRange,
+        );
         constants.clear();
         values.clear();
+        expressions.clear();
         views.clear();
       } else if (operation.kind === "integer.vector.scope" ||
           operation.kind === "integer.matrix.scope" ||
@@ -267,10 +386,28 @@ function processFunction(fn, attach, verified) {
         const scopeValues = new Map(
           Array.from(values).filter(([name]) => !assigned.has(name)),
         );
-        visit(operation.setup, constants, scopeValues, scopeViews, undefined);
-        visit(operation.body, constants, scopeValues, scopeViews, undefined);
+        const scopeExpressions = new Map(
+          Array.from(expressions).filter(([name]) => !assigned.has(name)),
+        );
+        visit(
+          operation.setup,
+          constants,
+          scopeValues,
+          scopeExpressions,
+          scopeViews,
+          undefined,
+        );
+        visit(
+          operation.body,
+          constants,
+          scopeValues,
+          scopeExpressions,
+          scopeViews,
+          undefined,
+        );
         constants.clear();
         values.clear();
+        expressions.clear();
         views.clear();
       }
     }
@@ -281,7 +418,20 @@ function processFunction(fn, attach, verified) {
       `parameter:${parameter.name}`,
     ]),
   );
-  visit(fn.body, new Map(), parameterValues, new Map(), undefined);
+  const parameterExpressions = new Map(
+    Array.from(parameterValues, ([name, value]) => [
+      name,
+      { kind: "value", value },
+    ]),
+  );
+  visit(
+    fn.body,
+    new Map(),
+    parameterValues,
+    parameterExpressions,
+    new Map(),
+    undefined,
+  );
 }
 
 function attachAndVerifyCheckedBoundsProofs(functions) {

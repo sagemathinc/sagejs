@@ -91,6 +91,46 @@ def dynamic_exact_span_update(
 
 
 @native
+def dynamic_reversed_span(
+    owner: UInt64Buffer, start: int64, length: int64
+) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(owner, start, length)
+    last: int64 = length - 1
+    index: int64 = 0
+    total: uint64 = 0
+    for index in range(length):
+        total += view[last - index]
+    return total
+
+
+@native
+def dynamic_reversed_mismatched_base(
+    owner: UInt64Buffer, start: int64, length: int64, other: int64
+) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(owner, start, length)
+    last: int64 = other - 1
+    index: int64 = 0
+    total: uint64 = 0
+    for index in range(length):
+        total += view[last - index]
+    return total
+
+
+@native
+def dynamic_reversed_mismatched_iterator(
+    owner: UInt64Buffer, start: int64, length: int64
+) -> uint64:
+    view: UInt64Buffer = uint64_buffer_view(owner, start, length)
+    last: int64 = length - 1
+    index: int64 = 0
+    total: uint64 = 0
+    for index in range(length):
+        other: int64 = 0
+        total += view[last - other]
+    return total
+
+
+@native
 def dynamic_mismatched_stop(
     owner: UInt64Buffer, start: int64, length: int64, stop: int64
 ) -> uint64:
