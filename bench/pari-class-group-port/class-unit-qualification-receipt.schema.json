@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/pari-class-unit-qualification-receipt-v1.json",
+  "title": "Sage.js/PARI prepared class-unit qualification receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "runId", "qualifiedTiming", "provenance", "host", "lock",
+    "case", "blocks", "summary"
+  ],
+  "properties": {
+    "schema": {"const": 1},
+    "runId": {"type": "string", "pattern": "^[0-9a-f-]{36}$"},
+    "qualifiedTiming": {"type": "boolean"},
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "host": {"$ref": "#/$defs/host"},
+    "lock": {"$ref": "#/$defs/lock"},
+    "case": {"$ref": "#/$defs/case"},
+    "blocks": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/block"}
+    },
+    "summary": {"$ref": "#/$defs/summary"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonnegativeIntegerString": {"type": "string", "pattern": "^(0|[1-9][0-9]*)$"},
+    "positiveIntegerString": {"type": "string", "pattern": "^[1-9][0-9]*$"},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit", "dirty", "panelSha256", "qualificationManifestSha256",
+        "sagejsArtifacts", "pariArtifacts"
+      ],
+      "properties": {
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "dirty": {"const": false},
+        "panelSha256": {"$ref": "#/$defs/digest"},
+        "qualificationManifestSha256": {"$ref": "#/$defs/digest"},
+        "sagejsArtifacts": {"$ref": "#/$defs/artifacts"},
+        "pariArtifacts": {"$ref": "#/$defs/artifacts"}
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/digest"}
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hostname", "platform", "arch", "kernel", "cpu", "affinity",
+        "physicalCore", "socket", "siblings", "governor", "frequencyPolicy",
+        "threadEnvironment", "limits", "quietHostApproved", "preflightPassed"
+      ],
+      "properties": {
+        "hostname": {"type": "string", "minLength": 1},
+        "platform": {"const": "linux"},
+        "arch": {"const": "x64"},
+        "kernel": {"type": "string", "minLength": 1},
+        "cpu": {"type": "integer", "minimum": 0},
+        "affinity": {"type": "string", "pattern": "^[0-9]+$"},
+        "physicalCore": {"type": "integer", "minimum": 0},
+        "socket": {"type": "integer", "minimum": 0},
+        "siblings": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "integer", "minimum": 0}},
+        "governor": {"type": ["string", "null"]},
+        "frequencyPolicy": {"type": ["string", "null"]},
+        "threadEnvironment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"],
+          "properties": {
+            "OMP_NUM_THREADS": {"const": "1"},
+            "OPENBLAS_NUM_THREADS": {"const": "1"},
+            "MKL_NUM_THREADS": {"const": "1"}
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["addressSpaceBytes", "armTimeoutSeconds"],
+          "properties": {
+            "addressSpaceBytes": {"const": "4294967296"},
+            "armTimeoutSeconds": {"const": 600}
+          }
+        },
+        "quietHostApproved": {"const": true},
+        "preflightPassed": {"const": true}
+      }
+    },
+    "lock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "acquiredAt", "owner", "releasedAt"],
+      "properties": {
+        "path": {"const": "/tmp/sagejs-opt-timing.lock"},
+        "acquiredAt": {"type": "string", "format": "date-time"},
+        "owner": {"type": "string", "minLength": 1},
+        "releasedAt": {"type": ["string", "null"], "format": "date-time"}
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fieldId", "role", "boundary", "tier", "seed", "repetitionsByImplementation", "calibration"],
+      "properties": {
+        "fieldId": {"type": "string", "minLength": 1},
+        "role": {"enum": ["sentinel", "additional-development", "final-reserve"]},
+        "boundary": {"enum": ["relation-retry", "sparse-hnf-snf-transform", "unit-regulator", "honesty-generators-final", "prepared-kernel", "nfinit-context"]},
+        "tier": {"enum": ["flag-zero", "compact-flag-one", "diagnostic"]},
+        "seed": {"$ref": "#/$defs/nonnegativeIntegerString"},
+        "repetitionsByImplementation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sagejs", "pari"],
+          "properties": {
+            "sagejs": {"type": "integer", "minimum": 1},
+            "pari": {"type": "integer", "minimum": 1}
+          }
+        },
+        "calibration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["excludedFromTiming", "targetNanoseconds", "doublingGeneration"],
+          "properties": {
+            "excludedFromTiming": {"const": true},
+            "targetNanoseconds": {"$ref": "#/$defs/positiveIntegerString"},
+            "doublingGeneration": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blockIndex", "order", "startedAt", "finishedAt", "arms"],
+      "properties": {
+        "blockIndex": {"type": "integer", "minimum": 0},
+        "order": {"enum": ["AB", "BA", "ABBA", "BAAB"]},
+        "startedAt": {"type": "string", "format": "date-time"},
+        "finishedAt": {"type": "string", "format": "date-time"},
+        "arms": {"type": "array", "minItems": 1, "maxItems": 4, "items": {"$ref": "#/$defs/arm"}}
+      }
+    },
+    "arm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "position", "label", "implementation", "repetitions", "wallNanoseconds",
+        "threadCpuNanoseconds", "peakRssKiB", "exitStatus", "timeout",
+        "outputDigest", "replayDigest", "rngDigest", "workDigest", "counters",
+        "resourceCounters"
+      ],
+      "properties": {
+        "position": {"type": "integer", "minimum": 0, "maximum": 3},
+        "label": {"enum": ["A", "B"]},
+        "implementation": {"enum": ["sagejs", "pari"]},
+        "repetitions": {"type": "integer", "minimum": 1},
+        "wallNanoseconds": {"$ref": "#/$defs/nonnegativeIntegerString"},
+        "threadCpuNanoseconds": {"$ref": "#/$defs/nonnegativeIntegerString"},
+        "peakRssKiB": {"$ref": "#/$defs/nonnegativeIntegerString"},
+        "exitStatus": {"type": ["integer", "null"], "minimum": 0},
+        "timeout": {"type": "boolean"},
+        "outputDigest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+        "replayDigest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+        "rngDigest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+        "workDigest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+        "counters": {"$ref": "#/$defs/counters"},
+        "resourceCounters": {"$ref": "#/$defs/counters"}
+      }
+    },
+    "counters": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/nonnegativeIntegerString"}
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completionStatus", "fieldSlowdown", "referenceSecondsPerCall",
+        "attributedGapFraction", "firstDivergence", "failureClass", "failureDetail"
+      ],
+      "properties": {
+        "completionStatus": {"enum": ["complete_matched", "wrong_result", "replay_failure", "work_divergence", "unsupported_branch", "timeout", "resource_limit", "crash", "measurement_invalid", "infrastructure_failure"]},
+        "fieldSlowdown": {"type": ["number", "null"], "exclusiveMinimum": 0},
+        "referenceSecondsPerCall": {"type": ["number", "null"], "minimum": 0},
+        "attributedGapFraction": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "firstDivergence": {"type": ["string", "null"]},
+        "failureClass": {"type": ["integer", "null"], "minimum": 1, "maximum": 10},
+        "failureDetail": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

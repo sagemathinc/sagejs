@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "experiment": "pari-class-group-end-to-end-native-qualification",
+  "panelPath": "panel.json",
+  "panelSha256": "7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5",
+  "targetPariVersion": "2.17.4",
+  "executionEnabled": false,
+  "reserveOpeningEnabled": false,
+  "sentinelRule": [
+    "already-exercised real cubic",
+    "already-exercised mixed quartic",
+    "first remaining tuning row with a known nontrivial class group",
+    "remaining tuning row with maximum known class number, tied by field id"
+  ],
+  "schedule": {
+    "stageDiagnosticPairs": 7,
+    "stageDiagnosticPattern": ["AB", "BA"],
+    "finalBlocks": 11,
+    "finalPattern": ["ABBA", "BAAB"],
+    "implementationA": "sagejs",
+    "implementationB": "pari",
+    "minimumArmNanoseconds": "1000000000"
+  },
+  "reservePolicy": {
+    "developmentMayUse": ["sentinel", "additional-development"],
+    "developmentMustReject": ["final-reserve"],
+    "openingRequiresFrozenCandidate": true,
+    "note": "This infrastructure commit does not open or execute the reserve fields."
+  },
+  "fields": [
+    {"panelIndex": 0, "role": "sentinel", "id": "generated-sha256-0e970fdb1b4f043d042bd6093172638086e293ad03749215f71f7510a6622ba0", "stratum": "real-cubic", "degree": 3, "signature": [3, 0]},
+    {"panelIndex": 8, "role": "sentinel", "id": "generated-sha256-0857fab7114ab0045f1b91601101549c7b8d854c5c999b91afcb190cd2863363", "stratum": "mixed-quartic", "degree": 4, "signature": [2, 1]},
+    {"panelIndex": 1, "role": "sentinel", "id": "generated-sha256-dec56e7e41f5f60071249da2e66871ed837a3c6e65d821c328e7b4c57adaff3f", "stratum": "real-cubic", "degree": 3, "signature": [3, 0]},
+    {"panelIndex": 14, "role": "sentinel", "id": "generated-sha256-e1d4643ab62bde9546d63340545e5302c2cef517222d569e634fb5e2093f6413", "stratum": "mixed-quartic", "degree": 4, "signature": [2, 1]},
+
+    {"panelIndex": 3, "role": "additional-development", "id": "generated-sha256-11997528676ebeb1c0636be2cb828b5ed5a527ea18eb3a4ace953984da507de9", "stratum": "real-cubic", "degree": 3, "signature": [3, 0]},
+    {"panelIndex": 4, "role": "additional-development", "id": "generated-sha256-806defcf929c9cfff7467b8e7ea7b9f939cdd042bce8c1f5a310f5688904e3b9", "stratum": "real-cubic", "degree": 3, "signature": [3, 0]},
+    {"panelIndex": 6, "role": "additional-development", "id": "generated-sha256-55ba15494f03f38bf8f687ff4d2813e81184d71c84dbed9e1adc6af7ba62f0eb", "stratum": "real-cubic", "degree": 3, "signature": [3, 0]},
+    {"panelIndex": 10, "role": "additional-development", "id": "generated-sha256-984793770b4a15a79fbc9984fe352fbc867491917733c78bdba3b1856c18e3a7", "stratum": "mixed-quartic", "degree": 4, "signature": [2, 1]},
+    {"panelIndex": 11, "role": "additional-development", "id": "generated-sha256-147ddd296edb3764954d6142a499d17edcfecc635aec0181d4beda65d97ad4ab", "stratum": "mixed-quartic", "degree": 4, "signature": [2, 1]},
+    {"panelIndex": 13, "role": "additional-development", "id": "generated-sha256-353468f1887e96f5a2f66e3121564636ed8cdbd75bde6571609627bbe8586e33", "stratum": "mixed-quartic", "degree": 4, "signature": [2, 1]},
+    {"panelIndex": 16, "role": "additional-development", "id": "3.1.1002718428660.2", "stratum": "complex-cubic", "degree": 3, "signature": [1, 1]},
+    {"panelIndex": 18, "role": "additional-development", "id": "3.1.1005907102200.3", "stratum": "complex-cubic", "degree": 3, "signature": [1, 1]},
+    {"panelIndex": 19, "role": "additional-development", "id": "3.1.1086061775432017340256300.107", "stratum": "complex-cubic", "degree": 3, "signature": [1, 1]},
+    {"panelIndex": 20, "role": "additional-development", "id": "5.1.1000000.1", "stratum": "quintic", "degree": 5, "signature": [1, 2]},
+    {"panelIndex": 21, "role": "additional-development", "id": "5.3.1009349859375.3", "stratum": "quintic", "degree": 5, "signature": [3, 1]},
+    {"panelIndex": 23, "role": "additional-development", "id": "5.5.1002836007889.1", "stratum": "quintic", "degree": 5, "signature": [5, 0]},
+
+    {"panelIndex": 2, "role": "final-reserve", "id": "generated-sha256-161e86ff30182c7d5299b4ec5c331b7be0b2b85a89e90c8d404c9835d0fa7bd4", "stratum": "real-cubic", "degree": 3, "signature": [3, 0]},
+    {"panelIndex": 5, "role": "final-reserve", "id": "generated-sha256-48965d7e00bbf7b4d3b5a2062acecf0e71e7567caee431694b53ddfe1e97546e", "stratum": "real-cubic", "degree": 3, "signature": [3, 0]},
+    {"panelIndex": 7, "role": "final-reserve", "id": "generated-sha256-f3f2eb89c60b3e0365ba9e661565794fcf0e6d8b53ffa0bc3fb148e83f276cec", "stratum": "real-cubic", "degree": 3, "signature": [3, 0]},
+    {"panelIndex": 9, "role": "final-reserve", "id": "generated-sha256-633202c4cc0e933c42eb3c81009c4914778ef5c21098ca35c9a21f9858dc371a", "stratum": "mixed-quartic", "degree": 4, "signature": [2, 1]},
+    {"panelIndex": 12, "role": "final-reserve", "id": "generated-sha256-51c7daac6a41a40a21fa1ce0e96dd833b46eb2024c4632c5e09f2066260f9765", "stratum": "mixed-quartic", "degree": 4, "signature": [2, 1]},
+    {"panelIndex": 15, "role": "final-reserve", "id": "generated-sha256-31944147dd7c5dd0e8206e08fa6a39344c10a27482162a921eb56cd259bb6a81", "stratum": "mixed-quartic", "degree": 4, "signature": [2, 1]},
+    {"panelIndex": 17, "role": "final-reserve", "id": "3.1.1003588962376.2", "stratum": "complex-cubic", "degree": 3, "signature": [1, 1]},
+    {"panelIndex": 22, "role": "final-reserve", "id": "5.3.1007401641867.2", "stratum": "quintic", "degree": 5, "signature": [3, 1]}
+  ]
+}
