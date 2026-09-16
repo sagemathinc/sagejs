@@ -335,6 +335,13 @@ function checkedRegionGuard(
       );
       continue;
     }
+    if (predicate.kind === "buffer-max-length") {
+      conditions.push(
+        `((uint64_t) ${value}.length <= ` +
+        `UINT64_C(${predicate.maximum}))`,
+      );
+      continue;
+    }
     if (predicate.kind === "integer-int64-range") {
       conditions.push(`(!${value}->is_big && ${value}->small >= ` +
         `${int64Literal(predicate.minimum)} && ${value}->small <= ` +
@@ -580,6 +587,9 @@ function emitTaggedOperation(operation, context, indent) {
       operation.kind === "uint64.buffer.set") {
     const buffer = taggedValue(operation.buffer, context);
     const index = taggedValue(operation.index, context);
+    const forceChecked = context.int64Arithmetic.requiresCheckedAccess(
+      operation,
+    );
     const virtual = context.virtualUInt64Views.claim(operation, "access");
     if (virtual !== undefined) {
       if (virtual.mode === "validated") {
@@ -588,9 +598,9 @@ function emitTaggedOperation(operation, context, indent) {
           ? `${target} = ${data}[(size_t) (${index})];`
           : `${data}[(size_t) (${index})] = ` +
             `${taggedValue(operation.value, context)};`;
-        if (isVerifiedFixedSpanAccess(operation) ||
+        if (!forceChecked && (isVerifiedFixedSpanAccess(operation) ||
             virtual.logicalIndexProof?.authority ===
-              "checked-region-virtual-view-range-v1") {
+              "checked-region-virtual-view-range-v1")) {
           return `${indent}${direct}`;
         }
         const signedIndex = operation.indexType === "Integer" ||
@@ -656,9 +666,9 @@ function emitTaggedOperation(operation, context, indent) {
       // Only the fixed-span verifier binds the iterator to this exact view's
       // logical length. A generic checked-region buffer fact may concern the
       // containing root and cannot authorize a logical subview access.
-      if (isVerifiedFixedSpanAccess(operation) ||
+      if (!forceChecked && (isVerifiedFixedSpanAccess(operation) ||
           virtual.logicalIndexProof?.authority ===
-            "checked-region-virtual-view-range-v1") {
+            "checked-region-virtual-view-range-v1")) {
         return `${indent}${direct}`;
       }
       const checkedAccess = operation.kind === "uint64.buffer.get"
@@ -719,8 +729,8 @@ function emitTaggedOperation(operation, context, indent) {
       ? `${target} = ${buffer}.data[${position}];`
       : `${buffer}.data[${position}] = ` +
         `${taggedValue(operation.value, context)};`;
-    if (isVerifiedFixedSpanAccess(operation) ||
-        isCheckedRegionBufferAccess(operation)) {
+    if (!forceChecked && (isVerifiedFixedSpanAccess(operation) ||
+        isCheckedRegionBufferAccess(operation))) {
       const verifiedAccess = operation.kind === "uint64.buffer.get"
         ? `${target} = ${buffer}.data[(size_t) ${index}];`
         : `${buffer}.data[(size_t) ${index}] = ` +

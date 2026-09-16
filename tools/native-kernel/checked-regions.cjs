@@ -40,6 +40,8 @@ const CHECKED_REGION_DIRECT_CALL = "checkedRegionDirectCallProof";
 const CHECKED_REGION_GUARDED_DIRECT_CALL =
   "checkedRegionGuardedDirectCallProof";
 const CHECKED_REGION_DIRECT_RESULT_PROOF = "checkedRegionDirectResultProof";
+const CHECKED_REGION_AFFINE_WHILE_LATCH_PROOF =
+  "checkedRegionAffineWhileLatchProof";
 const VIRTUAL_UINT64_VIEW_PROOF = "checkedRegionVirtualUInt64ViewProof";
 const virtualUInt64ViewAuthority = createFunctionProofAuthority({
   name: "checked-region virtual UInt64 view",
@@ -79,6 +81,18 @@ const graphInt64ArithmeticAuthority = createFunctionGraphProofAuthority({
 });
 const graphInt64RangeIncrementAuthority = createFunctionGraphProofAuthority({
   name: "checked-region graph int64 range increment",
+  ignoredKeys: [
+    "boundsProof",
+    "checkedRegionDirectCallProof",
+    "checkedRegionGuardedDirectCallProof",
+    "checkedRegionDirectResultProof",
+    "checkedRegionProof",
+    "incrementProof",
+    "provenance",
+  ],
+});
+const graphAffineWhileLatchAuthority = createFunctionGraphProofAuthority({
+  name: "checked-region graph affine while latch",
   ignoredKeys: [
     "boundsProof",
     "checkedRegionDirectCallProof",
@@ -207,6 +221,26 @@ function normalizePredicate(predicate, entry) {
       kind: predicate.kind,
       parameter: predicate.parameter,
       minimum: predicate.minimum,
+      parameterType: parameter.type,
+    });
+  }
+  if (predicate.kind === "buffer-max-length") {
+    if (!BUFFER_TYPES.has(parameter.type)) {
+      fail(`${predicate.parameter} is not a checked buffer`);
+    }
+    let maximum;
+    try {
+      maximum = BigInt(predicate.maximum);
+    } catch (_error) {
+      fail("buffer maximum must be a nonnegative uint64");
+    }
+    if (maximum < 0n || maximum > UINT64_MAXIMUM) {
+      fail("buffer maximum must be a nonnegative uint64");
+    }
+    return Object.freeze({
+      kind: predicate.kind,
+      parameter: predicate.parameter,
+      maximum: maximum.toString(),
       parameterType: parameter.type,
     });
   }
@@ -500,6 +534,12 @@ function isInt64ArithmeticProof(operation, claim) {
       operation?.kind !== "int64.binary" ||
       !["add", "sub", "mul"].includes(operation.operation)) return false;
   if (claim.authority === INT64_INTERVAL_PROOF) return true;
+  if (claim.authority === "checked-region-int64-affine-while-v1") {
+    return typeof claim.loop === "string" &&
+      typeof claim.latch === "string" &&
+      typeof claim.bufferMaximum === "string" &&
+      typeof claim.maximumIterations === "string";
+  }
   if (claim.authority !== INT64_POSITIVE_RANGE_SUCCESSOR_PROOF ||
       operation.operation !== "add" ||
       typeof claim.upperBound !== "string") return false;
@@ -591,6 +631,7 @@ function topologicalOrder(entry, edges) {
 function initialFacts(entry, guard) {
   const intervals = new Map();
   const buffers = new Map();
+  const bufferMaximums = new Map();
   const expressions = new Map(entry.params
     .filter((parameter) => ["int64", "uint64"].includes(parameter.type))
     .map((parameter) => [parameter.name, parameterExpression(parameter.name)]));
@@ -612,6 +653,12 @@ function initialFacts(entry, guard) {
       const minimum = BigInt(predicate.minimum);
       if (current === undefined || minimum > current) {
         buffers.set(predicate.parameter, minimum);
+      }
+    } else if (predicate.kind === "buffer-max-length") {
+      const current = bufferMaximums.get(predicate.parameter);
+      const maximum = BigInt(predicate.maximum);
+      if (current === undefined || maximum < current) {
+        bufferMaximums.set(predicate.parameter, maximum);
       }
     } else if (["int64-range", "uint64-range"].includes(predicate.kind)) {
       const current = intervals.get(predicate.parameter);
@@ -684,6 +731,7 @@ function initialFacts(entry, guard) {
   return {
     intervals,
     buffers,
+    bufferMaximums,
     expressions,
     rangeUpper,
     bufferRelations,
@@ -699,6 +747,7 @@ function mergeFacts(target, incoming) {
   if (!target.initialized) {
     target.intervals = new Map(incoming.intervals);
     target.buffers = new Map(incoming.buffers);
+    target.bufferMaximums = new Map(incoming.bufferMaximums || []);
     target.expressions = new Map(incoming.expressions);
     target.rangeUpper = new Map(incoming.rangeUpper);
     target.bufferRelations = new Map(Array.from(
@@ -741,6 +790,21 @@ function mergeFacts(target, incoming) {
     const joined = minimum < before ? minimum : before;
     if (joined !== before) {
       target.buffers.set(name, joined);
+      changed = true;
+    }
+  }
+  for (const name of Array.from(target.bufferMaximums?.keys() || [])) {
+    if (incoming.bufferMaximums?.has(name)) continue;
+    target.bufferMaximums.delete(name);
+    changed = true;
+  }
+  for (const [name, maximum] of incoming.bufferMaximums || []) {
+    const before = target.bufferMaximums.get(name);
+    if (before === undefined) continue;
+    // A shared upper bound must admit every caller, hence the larger bound.
+    const joined = maximum > before ? maximum : before;
+    if (joined !== before) {
+      target.bufferMaximums.set(name, joined);
       changed = true;
     }
   }
@@ -809,6 +873,7 @@ function cloneState(state) {
       { ...interval },
     ])),
     buffers: new Map(state.buffers),
+    bufferMaximums: new Map(state.bufferMaximums || []),
     expressions: new Map(state.expressions),
     rangeUpper: new Map(state.rangeUpper),
     bufferRelations: new Map(Array.from(
@@ -827,7 +892,9 @@ function cloneState(state) {
 }
 
 function joinStates(left, right) {
-  const joined = { intervals: new Map(), buffers: new Map() };
+  const joined = {
+    intervals: new Map(), buffers: new Map(), bufferMaximums: new Map(),
+  };
   joined.expressions = new Map();
   joined.rangeUpper = new Map();
   joined.bufferRelations = new Map();
@@ -869,6 +936,12 @@ function joinStates(left, right) {
     const other = right.buffers.get(name);
     if (other !== undefined) {
       joined.buffers.set(name, minimum < other ? minimum : other);
+    }
+  }
+  for (const [name, maximum] of left.bufferMaximums || []) {
+    const other = right.bufferMaximums?.get(name);
+    if (other !== undefined) {
+      joined.bufferMaximums.set(name, maximum > other ? maximum : other);
     }
   }
   for (const [name, expression] of left.expressions) {
@@ -1156,6 +1229,7 @@ function summaryIndependentValidatedViewState(state) {
     ...state,
     intervals: new Map(),
     buffers: new Map(),
+    bufferMaximums: new Map(),
     expressions: new Map(),
     rangeUpper: new Map(),
     bufferRelations: new Map(),
@@ -1582,6 +1656,7 @@ function invalidateNestedCalls(operation, context) {
     const unknown = {
       intervals: new Map(),
       buffers: new Map(),
+      bufferMaximums: new Map(),
       expressions: new Map(),
       rangeUpper: new Map(),
       bufferRelations: new Map(),
@@ -1657,6 +1732,171 @@ function operationListLocation(statements, target) {
     }
   }
   return undefined;
+}
+
+/*
+ * Prove the small but performance-critical pattern
+ *
+ *     while buffer[index] == 0:
+ *         index += 1
+ *         companion_0 += constant_0
+ *         ...
+ *
+ * from one checked latch and a guarded maximum buffer length. Python signed
+ * indexing admits exactly [-length, length - 1], so the checked latch bounds
+ * the number of successful iterations by twice the maximum length. The
+ * recognizer intentionally admits only a flat sequence of literal/self
+ * updates. Any extra operation, aliasing write, reordered producer, call, or
+ * control transfer makes the theorem unavailable.
+ */
+function affineCheckedWhileShape(operation, state, fn) {
+  if (operation.kind !== "while" ||
+      operation.condition?.operations?.length !== 3 ||
+      !Array.isArray(operation.body) || operation.body.length === 0 ||
+      operation.body.length % 2 !== 0) return undefined;
+  const [access, zero, comparison] = operation.condition.operations;
+  let zeroValue;
+  try {
+    zeroValue = BigInt(zero.value);
+  } catch (_error) {
+    return undefined;
+  }
+  if (access.kind !== "uint64.buffer.get" ||
+      access.bufferType !== "UInt64Buffer" || access.indexType !== "int64" ||
+      zero.kind !== "uint64.constant" || zeroValue !== 0n ||
+      comparison.kind !== "uint64.compare" || comparison.operation !== "eq" ||
+      comparison.left !== access.target || comparison.right !== zero.target ||
+      operation.condition.value !== comparison.target ||
+      functionValueType(fn, access.index) !== "int64") return undefined;
+  const bufferMaximum = state.bufferMaximums?.get(access.buffer);
+  if (bufferMaximum === undefined || bufferMaximum <= 0n) return undefined;
+  const maximumIterations = 2n * bufferMaximum;
+  if (maximumIterations > INT64_MAXIMUM) return undefined;
+
+  const updates = [];
+  const targets = new Set();
+  for (let index = 0; index < operation.body.length; index += 2) {
+    const literal = operation.body[index];
+    const update = operation.body[index + 1];
+    if (literal.kind !== "int64.constant" ||
+        update.kind !== "int64.binary" ||
+        !["add", "sub"].includes(update.operation) ||
+        update.left !== update.target || update.right !== literal.target ||
+        targets.has(update.target) ||
+        functionValueType(fn, update.target) !== "int64") return undefined;
+    let value;
+    try {
+      value = BigInt(literal.value);
+    } catch (_error) {
+      return undefined;
+    }
+    if (value < 0n || value > INT64_MAXIMUM) return undefined;
+    const delta = update.operation === "add" ? value : -value;
+    targets.add(update.target);
+    updates.push({ literal, update, delta });
+  }
+  const anchor = updates.find(item => item.update.target === access.index);
+  if (anchor === undefined || anchor.delta !== 1n) return undefined;
+
+  const results = [];
+  for (const item of updates) {
+    let operationMinimum;
+    let operationMaximum;
+    let postMinimum;
+    let postMaximum;
+    if (item === anchor) {
+      operationMinimum = -bufferMaximum + 1n;
+      operationMaximum = bufferMaximum;
+      // A continuing path has just observed a successful, false latch.
+      postMinimum = -bufferMaximum;
+      postMaximum = bufferMaximum - 1n;
+    } else {
+      const entry = state.intervals.get(item.update.target);
+      if (entry === undefined) return undefined;
+      const firstMinimum = entry.minimum + item.delta;
+      const firstMaximum = entry.maximum + item.delta;
+      const lastMinimum = entry.minimum + maximumIterations * item.delta;
+      const lastMaximum = entry.maximum + maximumIterations * item.delta;
+      operationMinimum = firstMinimum < lastMinimum
+        ? firstMinimum : lastMinimum;
+      operationMaximum = firstMaximum > lastMaximum
+        ? firstMaximum : lastMaximum;
+      postMinimum = entry.minimum < lastMinimum ? entry.minimum : lastMinimum;
+      postMaximum = entry.maximum > lastMaximum ? entry.maximum : lastMaximum;
+    }
+    if (operationMinimum < INT64_MINIMUM ||
+        operationMaximum > INT64_MAXIMUM ||
+        postMinimum < INT64_MINIMUM || postMaximum > INT64_MAXIMUM) {
+      return undefined;
+    }
+    results.push({
+      ...item,
+      operationMinimum,
+      operationMaximum,
+      postMinimum,
+      postMaximum,
+    });
+  }
+  return {
+    access,
+    bufferMaximum,
+    maximumIterations,
+    results,
+  };
+}
+
+function analyzeAffineCheckedWhile(operation, entryState, context) {
+  if (!context.enabled.has("int64-arithmetic")) return undefined;
+  const shape = affineCheckedWhileShape(
+    operation, entryState, context.currentFunction,
+  );
+  if (shape === undefined) return undefined;
+  const dependencies = Object.freeze([
+    ...(entryState.summaryDependencies || []),
+  ].sort());
+  const operationIds = Object.freeze(shape.results.map(item => item.update.id));
+  for (const item of shape.results) {
+    const claim = Object.freeze({
+      authority: "checked-region-int64-affine-while-v1",
+      operation: item.update.id,
+      loop: operation.id,
+      latch: shape.access.id,
+      buffer: shape.access.buffer,
+      index: shape.access.index,
+      bufferMaximum: shape.bufferMaximum.toString(),
+      maximumIterations: shape.maximumIterations.toString(),
+      delta: item.delta.toString(),
+      minimum: item.operationMinimum.toString(),
+      maximum: item.operationMaximum.toString(),
+      summaryDependencies: dependencies,
+    });
+    item.update.checkedRegionProof = claim;
+    Object.defineProperty(item.update, CHECKED_REGION_INT64_ARITHMETIC, {
+      value: true,
+    });
+  }
+  shape.access[CHECKED_REGION_AFFINE_WHILE_LATCH_PROOF] = Object.freeze({
+    authority: "checked-region-affine-while-latch-v1",
+    loop: operation.id,
+    access: shape.access.id,
+    buffer: shape.access.buffer,
+    index: shape.access.index,
+    bufferMaximum: shape.bufferMaximum.toString(),
+    maximumIterations: shape.maximumIterations.toString(),
+    operations: operationIds,
+    summaryDependencies: dependencies,
+  });
+  const result = cloneState(entryState);
+  for (const item of shape.results) {
+    result.intervals.set(item.update.target, {
+      minimum: item.postMinimum,
+      maximum: item.postMaximum,
+    });
+    result.expressions.delete(item.update.target);
+    result.rangeUpper.delete(item.update.target);
+    result.scalarBounds.delete(item.update.target);
+  }
+  return result;
 }
 
 function scalarWhileShape(operation, state, fn) {
@@ -1762,6 +2002,11 @@ function abstractStatesEqual(left, right) {
     Array.from(a).every(value => b.has(value));
   return mapsEqual(left.intervals, right.intervals, intervalsEqual) &&
     mapsEqual(left.buffers, right.buffers, (a, b) => a === b) &&
+    mapsEqual(
+      left.bufferMaximums || new Map(),
+      right.bufferMaximums || new Map(),
+      (a, b) => a === b,
+    ) &&
     mapsEqual(left.expressions, right.expressions, (a, b) => a === b) &&
     mapsEqual(left.rangeUpper, right.rangeUpper, (a, b) => a === b) &&
     mapsEqual(left.bufferRelations, right.bufferRelations, setsEqual) &&
@@ -1843,6 +2088,7 @@ function forgetScalarAndBufferFacts(state, names) {
   for (const name of names) {
     state.intervals.delete(name);
     state.buffers.delete(name);
+    state.bufferMaximums?.delete(name);
     state.expressions.delete(name);
     state.rangeUpper.delete(name);
     state.bufferRelations.delete(name);
@@ -1859,6 +2105,9 @@ function unsupportedWhileLocalSeed(operation, entryState) {
     buffers: new Map(Array.from(entryState.buffers).filter(([name]) =>
       !assigned.has(name)
     )),
+    bufferMaximums: new Map(Array.from(
+      entryState.bufferMaximums || [],
+    ).filter(([name]) => !assigned.has(name))),
     expressions: new Map(),
     rangeUpper: new Map(),
     bufferRelations: new Map(),
@@ -2034,6 +2283,7 @@ function analyzeStatements(statements, state, context) {
       for (const target of operationTargets(operation)) {
         state.intervals.delete(target);
         state.buffers.delete(target);
+        state.bufferMaximums?.delete(target);
         state.expressions.delete(target);
         state.rangeUpper.delete(target);
         state.bufferRelations.delete(target);
@@ -2047,6 +2297,7 @@ function analyzeStatements(statements, state, context) {
       for (const name of assigned) {
         bodyState.intervals.delete(name);
         bodyState.buffers.delete(name);
+        bodyState.bufferMaximums?.delete(name);
         bodyState.expressions.delete(name);
         bodyState.rangeUpper.delete(name);
         bodyState.bufferRelations.delete(name);
@@ -2054,6 +2305,7 @@ function analyzeStatements(statements, state, context) {
       }
       bodyState.intervals.delete(operation.index);
       bodyState.buffers.delete(operation.index);
+      bodyState.bufferMaximums?.delete(operation.index);
       bodyState.expressions.delete(operation.index);
       bodyState.rangeUpper.delete(operation.index);
       bodyState.bufferRelations.delete(operation.index);
@@ -2061,6 +2313,7 @@ function analyzeStatements(statements, state, context) {
       if (operation.iterator !== undefined) {
         bodyState.intervals.delete(operation.iterator);
         bodyState.buffers.delete(operation.iterator);
+        bodyState.bufferMaximums?.delete(operation.iterator);
         bodyState.expressions.delete(operation.iterator);
         bodyState.rangeUpper.delete(operation.iterator);
         bodyState.bufferRelations.delete(operation.iterator);
@@ -2139,12 +2392,21 @@ function analyzeStatements(statements, state, context) {
       for (const name of assigned) {
         state.intervals.delete(name);
         state.buffers.delete(name);
+        state.bufferMaximums?.delete(name);
         state.expressions.delete(name);
         state.rangeUpper.delete(name);
         state.bufferRelations.delete(name);
         state.scalarBounds.delete(name);
       }
       continue;
+    }
+    if (operation.kind === "while" &&
+        context.enabled.has("int64-arithmetic")) {
+      const affineState = analyzeAffineCheckedWhile(operation, state, context);
+      if (affineState !== undefined) {
+        state = affineState;
+        continue;
+      }
     }
     if (operation.kind === "while" &&
         (context.scalarSummaryAnalysis === true ||
@@ -2205,6 +2467,7 @@ function analyzeStatements(statements, state, context) {
     for (const target of operationTargets(operation)) {
       state.intervals.delete(target);
       state.buffers.delete(target);
+      state.bufferMaximums?.delete(target);
       state.expressions.delete(target);
       state.rangeUpper.delete(target);
       state.bufferRelations.delete(target);
@@ -2230,6 +2493,10 @@ function analyzeStatements(statements, state, context) {
     )) {
       const minimum = previous.buffers.get(operation.source);
       if (minimum !== undefined) state.buffers.set(operation.target, minimum);
+      const maximum = previous.bufferMaximums?.get(operation.source);
+      if (maximum !== undefined) {
+        state.bufferMaximums.set(operation.target, maximum);
+      }
       const relations = previous.bufferRelations.get(operation.source);
       if (relations !== undefined) {
         state.bufferRelations.set(operation.target, new Set(relations));
@@ -2383,6 +2650,7 @@ function analyzeStatements(statements, state, context) {
       const incoming = {
         intervals: new Map(),
         buffers: new Map(),
+        bufferMaximums: new Map(),
         expressions: new Map(),
         rangeUpper: new Map(),
         bufferRelations: new Map(),
@@ -2395,11 +2663,15 @@ function analyzeStatements(statements, state, context) {
         const parameter = callee.params[index];
         const interval = previous.intervals.get(argument.name);
         const minimum = previous.buffers.get(argument.name);
+        const maximum = previous.bufferMaximums?.get(argument.name);
         const expression = previous.expressions.get(argument.name);
         const upper = previous.rangeUpper.get(argument.name);
         const relationships = previous.bufferRelations.get(argument.name);
         if (interval !== undefined) incoming.intervals.set(parameter.name, interval);
         if (minimum !== undefined) incoming.buffers.set(parameter.name, minimum);
+        if (maximum !== undefined) {
+          incoming.bufferMaximums.set(parameter.name, maximum);
+        }
         if (expression !== undefined) incoming.expressions.set(parameter.name, expression);
         if (upper !== undefined) incoming.rangeUpper.set(parameter.name, upper);
         if (relationships !== undefined) {
@@ -2556,6 +2828,10 @@ function factsImplyGuardPredicate(state, predicate) {
   if (predicate.kind === "buffer-min-length") {
     const minimum = state.buffers.get(predicate.parameter);
     return minimum !== undefined && minimum >= BigInt(predicate.minimum);
+  }
+  if (predicate.kind === "buffer-max-length") {
+    const maximum = state.bufferMaximums?.get(predicate.parameter);
+    return maximum !== undefined && maximum <= BigInt(predicate.maximum);
   }
   // Relational guards remain runtime predicates unless a dedicated theorem
   // proves them. Keeping them residual is conservative and avoids treating a
@@ -2729,7 +3005,8 @@ function scalarSummaryCallShape(caller, operation, callee) {
 
 function scalarSummaryInitialState(fn) {
   const state = {
-    intervals: new Map(), buffers: new Map(), expressions: new Map(),
+    intervals: new Map(), buffers: new Map(), bufferMaximums: new Map(),
+    expressions: new Map(),
     rangeUpper: new Map(), bufferRelations: new Map(),
     safeInt64Expressions: new Set(), summaryDependencies: new Set(),
     scalarBounds: new Map(),
@@ -2858,7 +3135,8 @@ function attachDirectResultVariants(context) {
   for (const spec of context.directSpecs) {
     const eligible = [];
     const joined = {
-      intervals: new Map(), buffers: new Map(), expressions: new Map(),
+      intervals: new Map(), buffers: new Map(), bufferMaximums: new Map(),
+      expressions: new Map(),
       rangeUpper: new Map(), bufferRelations: new Map(),
       safeInt64Expressions: new Set(), initialized: false,
       summaryDependencies: new Set(),
@@ -3017,6 +3295,7 @@ function attachCapabilities(
   const facts = new Map(order.map((name) => [name, {
     intervals: new Map(),
     buffers: new Map(),
+    bufferMaximums: new Map(),
     expressions: new Map(),
     rangeUpper: new Map(),
     bufferRelations: new Map(),
@@ -3087,6 +3366,7 @@ function attachCapabilities(
     const independentFacts = new Map(order.map((name) => [name, {
       intervals: new Map(),
       buffers: new Map(),
+      bufferMaximums: new Map(),
       expressions: new Map(),
       rangeUpper: new Map(),
       bufferRelations: new Map(),
@@ -3285,6 +3565,16 @@ function authorizeGraphInt64Arithmetic(variants) {
       graphInt64ArithmeticAuthority.authorize(
         functions, fn, operation, claim,
       );
+      return;
+    });
+    visitOperations(fn.body, (operation) => {
+      const claim = operation[CHECKED_REGION_AFFINE_WHILE_LATCH_PROOF];
+      if (claim?.authority !== "checked-region-affine-while-latch-v1" ||
+          claim.access !== operation.id ||
+          operation.kind !== "uint64.buffer.get") return;
+      graphAffineWhileLatchAuthority.authorize(
+        functions, fn, operation, claim,
+      );
     });
   }
 }
@@ -3439,6 +3729,7 @@ function prepareCheckedRegions(ir) {
         delete operation.boundsProof;
         delete operation.checkedRegionProof;
         delete operation.checkedRegionRangeIncrementProof;
+        delete operation[CHECKED_REGION_AFFINE_WHILE_LATCH_PROOF];
         delete operation[VIRTUAL_UINT64_VIEW_PROOF];
         delete operation.incrementProof;
         if (operation.range !== null && typeof operation.range === "object") {
@@ -3600,9 +3891,13 @@ function checkedRegionInt64ArithmeticEmission(fn, functions) {
     : undefined;
   const graphRoot = checkedRegionGraphRoot(graphFunctions);
   let verifier;
+  let latchVerifier;
   if (graphRoot !== undefined && fn?.hostCallable === false) {
     try {
       verifier = graphInt64ArithmeticAuthority.emissionVerifier(
+        graphFunctions, fn,
+      );
+      latchVerifier = graphAffineWhileLatchAuthority.emissionVerifier(
         graphFunctions, fn,
       );
     } catch (_error) {
@@ -3610,6 +3905,7 @@ function checkedRegionInt64ArithmeticEmission(fn, functions) {
     }
   }
   const authorized = new WeakSet();
+  const checkedAccesses = new WeakSet();
   if (verifier !== undefined) {
     visitOperations(fn.body, (operation) => {
       const claim = operation.checkedRegionProof;
@@ -3619,10 +3915,24 @@ function checkedRegionInt64ArithmeticEmission(fn, functions) {
       authorized.add(operation);
     });
   }
+  if (latchVerifier !== undefined) {
+    visitOperations(fn.body, (operation) => {
+      const claim = operation[CHECKED_REGION_AFFINE_WHILE_LATCH_PROOF];
+      if (claim?.authority !== "checked-region-affine-while-latch-v1" ||
+          claim.access !== operation.id ||
+          operation.kind !== "uint64.buffer.get" ||
+          !latchVerifier.isAuthorized(operation, claim)) return;
+      checkedAccesses.add(operation);
+    });
+  }
   return Object.freeze({
     isAuthorized(operation) {
       return operation !== null && typeof operation === "object" &&
         authorized.has(operation);
+    },
+    requiresCheckedAccess(operation) {
+      return operation !== null && typeof operation === "object" &&
+        checkedAccesses.has(operation);
     },
   });
 }
