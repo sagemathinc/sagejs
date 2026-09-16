@@ -890,7 +890,7 @@ function emitExactOperation(operation, context, indent) {
       `${indent}{`,
       `${indent}    size_t sagejs_buffer_position = ` +
         `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
-      `${indent}    if (!${indexCheck})`,
+      `${indent}    if (!(${indexCheck}))`,
       `${indent}    {`,
       statusFailure("range", "Int64 buffer index out of range", `${indent}        `),
       `${indent}        goto fail;`,
@@ -927,7 +927,7 @@ function emitExactOperation(operation, context, indent) {
       `${indent}    size_t sagejs_buffer_position = ` +
         `${operation.indexType === "uint64" ? `(size_t) ${index}` : "0"};`,
       ...valueSetup,
-      `${indent}    if (!${indexCheck})`,
+      `${indent}    if (!(${indexCheck}))`,
       `${indent}    {`,
       statusFailure("range", "Int64 buffer index out of range", `${indent}        `),
       `${indent}        goto fail;`,

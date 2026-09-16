@@ -1,0 +1,71 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-uint64-index-guard",
+  "title": "Pari E2e Uint64 Index Guard",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Fix generated C precedence for uint64 Int64Buffer get/set bounds guards",
+  "base_commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+  "claims": [
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/test/uint64-buffer-view.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "Generated C shape plus native, dynamic, and CPython malformed-index agreement"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/pari-class-group-e2e-integration/packages/flint/.native/prefix node --test tools/native-kernel/test/uint64-buffer-view.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Parenthesized the complete Int64Buffer uint64-index relational predicate before negating it for both get and set emission. The focused regression proves the generated C shape and valid/out-of-range get/set behavior across JavaScript, GMP, tagged, and CPython execution.",
+    "risks": [
+      "The focused test reused the integration lane's already-built FLINT prefix; no tracked artifact depends on that absolute path."
+    ],
+    "next_steps": [
+      "Integrate the commit and rerun the real resident class-group port that first exposed the precedence bug."
+    ]
+  }
+}
