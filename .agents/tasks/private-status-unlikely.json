@@ -1,0 +1,100 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "private-status-unlikely",
+  "title": "Private Status Unlikely",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Emit a portable unlikely-branch hint only for checked-private native-call status propagation, preserving exact ABI and fallback semantics, with structural and runtime tests",
+  "base_commit": "f690969b9744e14b72145c4f14898ed095305b77",
+  "claims": [
+    "tools/native-kernel/tagged-backend.cjs",
+    "tools/native-kernel/test/checked-private-region.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "Checked-private compiler structural and runtime witnesses plus frozen Stage G replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/virtual-u64-fixed-views/packages/flint/.native/prefix node --test tools/native-kernel/test/checked-private-region.cjs"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_FLINT_PREFIX=/home/user/sagejs-worktrees/virtual-u64-fixed-views/packages/flint/.native/prefix node --test tools/native-kernel/test/checked-private-region.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.017,
+      "started_at": "2026-09-16T10:22:24.654Z",
+      "commit": "f690969b9744e14b72145c4f14898ed095305b77",
+      "workspace_fingerprint": "9e2397c3e07d206126fb1cd022e8ede38e0528758952eb91905024c03b6ce1f9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.199,
+      "started_at": "2026-09-16T10:22:48.755Z",
+      "commit": "f690969b9744e14b72145c4f14898ed095305b77",
+      "workspace_fingerprint": "9e2397c3e07d206126fb1cd022e8ede38e0528758952eb91905024c03b6ce1f9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.003,
+      "started_at": "2026-09-16T10:23:01.600Z",
+      "commit": "f690969b9744e14b72145c4f14898ed095305b77",
+      "workspace_fingerprint": "9e2397c3e07d206126fb1cd022e8ede38e0528758952eb91905024c03b6ce1f9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.224,
+      "started_at": "2026-09-16T10:24:41.831Z",
+      "commit": "f690969b9744e14b72145c4f14898ed095305b77",
+      "workspace_fingerprint": "9e2397c3e07d206126fb1cd022e8ede38e0528758952eb91905024c03b6ce1f9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 942.406,
+      "started_at": "2026-09-16T10:25:02.928Z",
+      "commit": "f690969b9744e14b72145c4f14898ed095305b77",
+      "workspace_fingerprint": "9e2397c3e07d206126fb1cd022e8ede38e0528758952eb91905024c03b6ce1f9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Checked-private status propagation now carries a portable unlikely hint while public and unproved calls remain unchanged. Frozen Stage G replay preserved all 7,081 active outputs and nine malformed cases. Two independent seven-pair processes were favorable in all 14 pairs: pooled geometric means improved from 2.160231519 ms to 2.112938745 ms per catalog (ratio 0.978107544, a 2.19% improvement); object text fell 473 bytes and ELF text fell 424 bytes. The change also fixes direct-result ABI validation so provenance comments containing words such as status or fail cannot be mistaken for executable C.",
+    "risks": [
+      "The likelihood annotation is intentionally restricted to status propagation where both caller and callee are authenticated checked-region private variants; broad cold-label experiments were substantially slower and must not be generalized from this result.",
+      "The full pnpm test:native correctness run reached 73 passes and then reported only five pre-existing stale IR-version assertions (expected 45, compiler baseline is 46), the same unrelated failures documented by adjacent compiler lanes. The focused native compiler suite, architecture checks, strict checks, and complete build passed."
+    ],
+    "next_steps": [
+      "Review and integrate this positive compiler change before composing further Stage I experiments.",
+      "Keep the guarded-fallible division mechanism disabled for this catalog until a code-shape strategy removes its measured 0.29% slowdown and 3.2 KB ELF growth."
+    ]
+  }
+}

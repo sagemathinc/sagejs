@@ -110,13 +110,23 @@ function taggedParameter(fn, param) {
 const CHECKED_REGION_ATTRIBUTES = `#if defined(_MSC_VER)
 #define SAGEJS_CHECKED_REGION_HOT_INLINE static __inline
 #define SAGEJS_CHECKED_REGION_COLD static
+#define SAGEJS_CHECKED_REGION_UNLIKELY(condition) (condition)
 #elif defined(__GNUC__) || defined(__clang__)
 #define SAGEJS_CHECKED_REGION_HOT_INLINE static inline __attribute__((hot))
 #define SAGEJS_CHECKED_REGION_COLD static __attribute__((cold))
+#define SAGEJS_CHECKED_REGION_UNLIKELY(condition) \\
+    __builtin_expect(!!(condition), 0)
 #else
 #define SAGEJS_CHECKED_REGION_HOT_INLINE static inline
 #define SAGEJS_CHECKED_REGION_COLD static
+#define SAGEJS_CHECKED_REGION_UNLIKELY(condition) (condition)
 #endif`;
+
+function checkedRegionFailureCondition(caller, callee, condition) {
+  return caller.checkedRegionVariant && callee.checkedRegionVariant
+    ? `SAGEJS_CHECKED_REGION_UNLIKELY(${condition})`
+    : condition;
+}
 
 function taggedSignature(fn, prototype = false, options = {}) {
   const parameters = [
@@ -1134,15 +1144,20 @@ function emitTaggedOperation(operation, context, indent) {
               ? taggedValue(result.name, context)
               : `&${taggedValue(result.name, context)}`
           );
+        const fallbackCall = `!tagged_${operation.function}(status, ` +
+          `${outputs.join(", ")}` +
+          `${args.length ? `, ${args.join(", ")}` : ""})`;
         return [
           `${indent}{`,
           guard.setup,
           `${indent}    if (${guard.condition})`,
           `${indent}        ${target} = ${directResultName(direct.function)}(` +
             `${args.join(", ")});`,
-          `${indent}    else if (!tagged_${operation.function}(status, ` +
-            `${outputs.join(", ")}` +
-            `${args.length ? `, ${args.join(", ")}` : ""}))`,
+          `${indent}    else if (` + checkedRegionFailureCondition(
+            context.currentFunction,
+            callee,
+            fallbackCall,
+          ) + ")",
           `${indent}        goto fail;`,
           `${indent}}`,
         ].join("\n");
@@ -1160,9 +1175,16 @@ function emitTaggedOperation(operation, context, indent) {
     const args = operation.arguments.map((argument) =>
       taggedValue(argument.name, context)
     );
+    const calleeCall =
+      `!${callee.kernelKind === "float64" ? "sagejs_kernel" : "tagged"}_` +
+      `${operation.function}(status, ${outputs.join(", ")}` +
+      `${args.length ? `, ${args.join(", ")}` : ""})`;
     return [
-      `${indent}if (!${callee.kernelKind === "float64" ? "sagejs_kernel" : "tagged"}_${operation.function}(status, ${outputs.join(", ")}` +
-        `${args.length ? `, ${args.join(", ")}` : ""}))`,
+      `${indent}if (` + checkedRegionFailureCondition(
+        context.currentFunction,
+        callee,
+        calleeCall,
+      ) + ")",
       `${indent}    goto fail;`,
     ].join("\n");
   }
@@ -1633,10 +1655,13 @@ function emitDirectResultFunction(fn, functions, metadata) {
     },
   };
   const body = emitTaggedStatements(fn.body, context, "    ");
+  // Provenance comments may contain words such as `status` or `fail`; only
+  // emitted executable C determines whether the status-free ABI is valid.
+  const executableBody = body.replace(/\/\*[\s\S]*?\*\//g, "");
   const forbidden = [
     /\bstatus\b/, /sagejs_tagged_output_/, /goto\s+fail/, /sagejs_native_status_set/,
   ];
-  const retained = forbidden.find((pattern) => pattern.test(body));
+  const retained = forbidden.find((pattern) => pattern.test(executableBody));
   if (retained !== undefined) {
     throw new Error(
       `direct result function retained a fallible ABI operation ${retained}`,
