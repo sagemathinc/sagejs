@@ -1672,11 +1672,24 @@ function lowerCall(node, context, operations) {
         !node.args?.starargs,
       "checked_uint64() requires one positional argument",
     );
+    const literal = integerLiteral(args[0]);
+    if (literal !== undefined && literal >= 0n && literal < (1n << 64n)) {
+      return emitUint64Constant(context, args[0], operations, literal);
+    }
     const value = lowerExpression(args[0], context, operations);
     // A uint64 value has already crossed a checked boundary (or comes from
     // word arithmetic). Rechecking it must not box it into an exact integer.
     // Lower the expression first so calls and other effects are retained.
     if (value.type === "uint64") return value;
+    if (value.type === "int64") {
+      const target = temporary(context, node, "uint64");
+      operations.push({
+        kind: "uint64.from_int64_checked",
+        target,
+        source: value.name,
+      });
+      return { name: target, type: "uint64" };
+    }
     const source = coerceInteger(
       value,
       context,

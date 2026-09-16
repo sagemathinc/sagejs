@@ -38,6 +38,7 @@ function operationInputs(operation) {
     case "integer.truth":
     case "integer.round_sqrt":
     case "uint64.from_integer_checked":
+    case "uint64.from_int64_checked":
     case "int64.from_integer_checked":
     case "int64.from_uint64_checked":
     case "float64.from_integer_checked":
@@ -653,6 +654,9 @@ function localEffects(fn) {
         mayRaise.add("OverflowError");
       }
       if (operation.kind === "uint64.from_integer_checked") {
+        mayRaise.add("OverflowError");
+      }
+      if (operation.kind === "uint64.from_int64_checked") {
         mayRaise.add("OverflowError");
       }
       if (operation.kind === "float64.from_integer_checked") {
@@ -1353,6 +1357,7 @@ const FMPZ_OPERATION_KINDS = new Set([
   "uint64.constant",
   "uint64.copy",
   "uint64.from_integer_checked",
+  "uint64.from_int64_checked",
   "uint64.truth",
   "int64.abs",
   "int64.binary",

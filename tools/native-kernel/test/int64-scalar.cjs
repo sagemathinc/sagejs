@@ -114,6 +114,11 @@ test("int64 lowers to checked signed-word IR and isolated C", async () => {
   ).body);
   assert.ok(checkedLength.some((op) => op.kind === "int64.from_uint64_checked"));
   assert.equal(checkedLength.some((op) => op.kind === "integer.from_uint64"), false);
+  const checkedUnsigned = operations(ir.functions.find(
+    (fn) => fn.name === "checked_uint64_int64",
+  ).body);
+  assert.ok(checkedUnsigned.some((op) => op.kind === "uint64.from_int64_checked"));
+  assert.equal(checkedUnsigned.some((op) => op.kind === "integer.from_int64"), false);
 
   const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
   assert.equal(core.audit.isolated, true);
@@ -152,6 +157,12 @@ assert values[-2] == 16
 assert int64_buffer_exact(values, 0) == (1 << 80) - 7
 assert checked_int64_literal() == -1
 assert checked_int64_length(values) == 3
+assert checked_uint64_int64(7) == 7
+try:
+    checked_uint64_int64(-1)
+    raise AssertionError("negative uint64 conversion succeeded")
+except OverflowError:
+    pass
 for rejected in (-(1 << 63) - 1, 1 << 63):
     try:
         exact_to_int64(rejected)

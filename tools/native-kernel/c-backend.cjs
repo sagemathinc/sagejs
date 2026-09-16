@@ -285,6 +285,16 @@ function emitOperation(operation, locals, indent) {
       `${nativeValue(locals.get(operation.target))}, ` +
       `${cName(operation.source)});`;
   }
+  if (operation.kind === "uint64.from_int64_checked") {
+    const source = cName(operation.source);
+    const target = nativeValue(locals.get(operation.target));
+    return [
+      `${indent}if (${source} < 0)`, `${indent}{`,
+      statusFailure("range", "integer is outside unsigned 64-bit", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}${target} = (uint64_t) ${source};`,
+    ].join("\n");
+  }
   if (operation.kind === "uint64.from_integer_checked") {
     return [
       `${indent}if (!mpz_to_uint64(` +
@@ -1225,6 +1235,15 @@ function emitExactOperation(operation, context, indent) {
       statusFailure("range", "integer is outside signed 64-bit", `${indent}    `),
       `${indent}    goto fail;`, `${indent}}`,
       `${indent}${target} = (int64_t) ${source};`,
+    ].join("\n");
+  }
+  if (operation.kind === "uint64.from_int64_checked") {
+    const source = exactValue(operation.source, context);
+    return [
+      `${indent}if (${source} < 0)`, `${indent}{`,
+      statusFailure("range", "integer is outside unsigned 64-bit", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}${target} = (uint64_t) ${source};`,
     ].join("\n");
   }
   if (operation.kind === "uint64.from_integer_checked") {
