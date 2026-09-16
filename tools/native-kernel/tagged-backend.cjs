@@ -7,10 +7,12 @@ const {
   checkedRegionDirectCallEmission,
   checkedRegionDirectResultEmission,
   checkedRegionInt64ArithmeticEmission,
+  checkedRegionInt64RangeIncrementEmission,
   checkedRegionLocalVariant,
   checkedRegionVirtualUInt64Emission,
   isCheckedRegionBufferAccess,
   isCheckedRegionNonzeroStep,
+  isCheckedRegionUnitRangeContinue,
 } = require("./checked-regions.cjs");
 
 const {
@@ -1337,7 +1339,15 @@ function emitTaggedStatements(statements, context, indent) {
         if (kind === "loop.range") {
           lines.push(`${indent}if (${step} >= ${stop} - ${iterator}) break;`, `${indent}${iterator} += ${step};`);
         } else if (kind === "loop.range_int64") {
-          lines.push(statement.range.incrementProof !== undefined
+          const active = context.activeInt64RangeIncrement;
+          const authorized = active !== undefined &&
+            isCheckedRegionUnitRangeContinue(statement, active.operation) &&
+            active.iterator === statement.range.iterator &&
+            active.stop === statement.range.stop &&
+            active.step === statement.range.step;
+          const portable = context.currentFunction.checkedRegionVariant ===
+              undefined && statement.range.incrementProof !== undefined;
+          lines.push(authorized || portable
             ? `${indent}${iterator} += ${step};`
             : `${indent}if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator})) break;`);
         } else lines.push(`${indent}sagejs_tagged_add(${iterator}, ${iterator}, ${step});`);
@@ -1387,14 +1397,28 @@ function emitTaggedStatements(statements, context, indent) {
       const start = taggedValue(statement.start, context);
       const stop = taggedValue(statement.stop, context);
       const step = taggedValue(statement.step, context);
+      const authenticated = context.int64RangeIncrements
+        .isAuthorized(statement);
+      const bodyContext = {
+        ...context,
+        activeInt64RangeIncrement: authenticated
+          ? {
+            operation: statement.id,
+            iterator: statement.iterator,
+            stop: statement.stop,
+            step: statement.step,
+          }
+          : undefined,
+      };
       lines.push(
         `${indent}${iterator} = ${start};`, `${indent}for (;;)`, `${indent}{`,
         `${indent}    if (${step} > 0 ? ${iterator} >= ${stop} : ${iterator} <= ${stop})`,
         `${indent}        break;`, `${indent}    ${index} = ${iterator};`,
         `${indent}    (void) ${index};`,
-        emitTaggedStatements(statement.body, context, `${indent}    `),
-        ...(statement.incrementProof !== undefined &&
-            context.directResult !== true
+        emitTaggedStatements(statement.body, bodyContext, `${indent}    `),
+        ...(authenticated || (context.currentFunction.checkedRegionVariant ===
+            undefined && statement.incrementProof !== undefined &&
+            context.directResult !== true)
           ? [`${indent}    ${iterator} += ${step};`]
           : [
             `${indent}    if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator}))`,
@@ -1494,6 +1518,9 @@ function emitTaggedFunction(fn, functions, options) {
   const sites = mixed ? new Map() : promotionSites(fn);
   const virtualUInt64Views = checkedRegionVirtualUInt64Emission(fn, functions);
   const int64Arithmetic = checkedRegionInt64ArithmeticEmission(fn, functions);
+  const int64RangeIncrements = checkedRegionInt64RangeIncrementEmission(
+    fn, functions,
+  );
   const virtualUInt64Snapshots = new Map(
     virtualUInt64Views.validatedViews().map((claim, index) => [
       claim.viewTarget,
@@ -1579,6 +1606,7 @@ function emitTaggedFunction(fn, functions, options) {
     freshIdentifier: prefix => `${prefix}_${mixedSerial++}`,
     functions,
     int64Arithmetic,
+    int64RangeIncrements,
     sites,
     storage,
     tagLocals,
@@ -1728,6 +1756,9 @@ function emitDirectResultFunction(
   const deadExactNames = new Set(metadata.deadExactNames);
   const virtualUInt64Views = checkedRegionVirtualUInt64Emission(fn, functions);
   const int64Arithmetic = checkedRegionInt64ArithmeticEmission(fn, functions);
+  const int64RangeIncrements = checkedRegionInt64RangeIncrementEmission(
+    fn, functions,
+  );
   const declarations = [];
   for (const param of fn.params) {
     declarations.push(
@@ -1753,6 +1784,7 @@ function emitDirectResultFunction(
     },
     functions,
     int64Arithmetic,
+    int64RangeIncrements,
     sites: new Map(),
     storage: fn.analysis.storage,
     tagLocals: new Set(),

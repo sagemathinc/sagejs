@@ -283,6 +283,47 @@ def checked_region_direct_copy_entry(
 
 
 @native
+def checked_region_unit_range_entry(
+    start: int64, stop: int64, descending: bool, skip: bool
+) -> int64:
+    index: int64 = start
+    last: int64 = start
+    if descending:
+        negative_one: int64 = -1
+        for index in range(start, stop, negative_one):
+            if skip:
+                continue
+            last = index
+    else:
+        for index in range(start, stop):
+            if skip:
+                continue
+            last = index
+    return last
+
+
+@native
+def checked_region_unit_range_index_write_entry(start: int64, stop: int64) -> int64:
+    index: int64 = start
+    for index in range(start, stop):
+        index = stop
+        continue
+    return index
+
+
+@native
+def checked_region_nested_unit_range_entry(
+    outer_stop: int64, inner_stop: int64
+) -> int64:
+    index: int64 = 0
+    for index in range(outer_stop):
+        for index in range(inner_stop):
+            continue
+        continue
+    return index
+
+
+@native
 def checked_region_refined_copy_entry(
     storage: UInt64Buffer, degree: int64, count: int64
 ) -> int64:

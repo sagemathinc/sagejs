@@ -13,6 +13,7 @@ const {
   checkedRegionDirectCallEmission,
   checkedRegionDirectResultEmission,
   checkedRegionInt64ArithmeticEmission,
+  checkedRegionInt64RangeIncrementEmission,
   checkedRegionVirtualUInt64Emission,
   installCheckedRegionDeclarations,
   isCheckedRegionBufferAccess,
@@ -161,6 +162,18 @@ const directCopyDeclaration = {
       { kind: "int64-range", parameter: "degree", minimum: -1, maximum: 3 },
     ],
     capabilities: ["int64-arithmetic", "interval-view-access"],
+  }],
+};
+
+const unitRangeDeclaration = {
+  entry: "checked_region_unit_range_entry",
+  functions: ["checked_region_unit_range_entry"],
+  capabilities: ["int64-range-induction"],
+  guard: [{
+    kind: "int64-range",
+    parameter: "start",
+    minimum: "-9223372036854775808",
+    maximum: "9223372036854775807",
   }],
 };
 
@@ -3931,4 +3944,306 @@ test("relational guard schemas and mutated proof inputs fail closed", async () =
   findAccess(shortVariant.body);
   assert.ok(access);
   assert.equal(access.checkedRegionProof, undefined);
+});
+
+test("authenticated private unit ranges elide normal and continue latch checks", async () => {
+  const ir = await witness();
+  installCheckedRegionDeclarations(ir, [unitRangeDeclaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const fn = region.variants.find(candidate =>
+    candidate.checkedRegionVariant?.original === unitRangeDeclaration.entry
+  );
+  const functions = new Map(region.variants.map(candidate => [
+    candidate.name, candidate,
+  ]));
+  const ranges = [];
+  const visit = value => {
+    if (value === null || typeof value !== "object") return;
+    if (value.kind === "loop.range_int64" && Array.isArray(value.body)) {
+      ranges.push(value);
+    }
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "provenance") visit(child);
+    }
+  };
+  visit(fn.body);
+  assert.equal(ranges.length, 2);
+  const emission = checkedRegionInt64RangeIncrementEmission(fn, functions);
+  assert.ok(ranges.every(range => emission.isAuthorized(range)));
+  assert.deepEqual(
+    ranges.map(range => range.checkedRegionRangeIncrementProof.unitStep).sort(),
+    ["-1", "1"],
+  );
+
+  const source = generateHostCore(ir).source;
+  const optimized = executableText(functionText(source, fn.name));
+  assert.doesNotMatch(optimized, /sagejs_word_add_int64/);
+  assert.equal((optimized.match(/\+=/g) || []).length, 4);
+  const fallback = executableText(functionText(
+    source,
+    "sagejs_checked_fallback_checked_region_unit_range_entry",
+  ));
+  assert.ok((fallback.match(/sagejs_word_add_int64/g) || []).length >= 4);
+});
+
+test("authenticated unit range latches work in direct-result clones", async () => {
+  const declaration = structuredClone(directCopyDeclaration);
+  declaration.localVariants[0].capabilities.push("int64-range-induction");
+  const ir = await witness();
+  installCheckedRegionDeclarations(ir, [declaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const fast = region.variants.find(fn =>
+    fn.name.includes("checked_region_local_copy_helper__local_fast_0")
+  );
+  assert.ok(checkedRegionDirectResultEmission(fast));
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  const emission = checkedRegionInt64RangeIncrementEmission(fast, functions);
+  const ranges = [];
+  const visit = value => {
+    if (value === null || typeof value !== "object") return;
+    if (value.kind === "loop.range_int64" && Array.isArray(value.body)) {
+      ranges.push(value);
+    }
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "provenance") visit(child);
+    }
+  };
+  visit(fast.body);
+  assert.equal(ranges.length, 3);
+  assert.ok(ranges.every(range => emission.isAuthorized(range)));
+  const direct = executableText(directFunctionText(
+    generateHostCore(ir).source, fast.name,
+  ));
+  assert.doesNotMatch(direct, /sagejs_word_add_int64/);
+});
+
+test("unit latches are independent of source indices and nested index reuse", async () => {
+  const indexWrite = {
+    entry: "checked_region_unit_range_index_write_entry",
+    functions: ["checked_region_unit_range_index_write_entry"],
+    capabilities: ["int64-range-induction"],
+    guard: [{
+      kind: "int64-range",
+      parameter: "start",
+      minimum: "-9223372036854775808",
+      maximum: "9223372036854775807",
+    }],
+  };
+  const nested = {
+    entry: "checked_region_nested_unit_range_entry",
+    functions: ["checked_region_nested_unit_range_entry"],
+    capabilities: ["int64-range-induction"],
+    guard: [{
+      kind: "int64-range", parameter: "outer_stop", minimum: 0, maximum: 3,
+    }],
+  };
+  const ir = await witness();
+  installCheckedRegionDeclarations(ir, [indexWrite, nested]);
+  const regions = prepareCheckedRegions(ir);
+  for (const region of regions) {
+    const fn = region.variants.find(candidate =>
+      candidate.name === region.variantEntry
+    );
+    const functions = new Map(region.variants.map(candidate => [
+      candidate.name, candidate,
+    ]));
+    const ranges = [];
+    const visit = value => {
+      if (value === null || typeof value !== "object") return;
+      if (value.kind === "loop.range_int64" && Array.isArray(value.body)) {
+        ranges.push(value);
+      }
+      for (const [key, child] of Object.entries(value)) {
+        if (key !== "provenance") visit(child);
+      }
+    };
+    visit(fn.body);
+    assert.ok(ranges.length >= 1);
+    const emission = checkedRegionInt64RangeIncrementEmission(fn, functions);
+    assert.ok(ranges.every(range => emission.isAuthorized(range)));
+    const body = executableText(functionText(
+      generateHostCore(ir).source, fn.name,
+    ));
+    assert.doesNotMatch(body, /sagejs_word_add_int64/);
+  }
+});
+
+test("private unit range authority rejects forged and stale loop shapes", async () => {
+  async function prepared(declaration = unitRangeDeclaration) {
+    const ir = await witness();
+    installCheckedRegionDeclarations(ir, [declaration]);
+    const [region] = prepareCheckedRegions(ir);
+    const fn = region.variants.find(candidate =>
+      candidate.checkedRegionVariant?.original === unitRangeDeclaration.entry
+    );
+    const functions = new Map(region.variants.map(candidate => [
+      candidate.name, candidate,
+    ]));
+    const ranges = [];
+    const continues = [];
+    const visit = value => {
+      if (value === null || typeof value !== "object") return;
+      if (value.kind === "loop.range_int64" && Array.isArray(value.body)) {
+        ranges.push(value);
+      }
+      if (value.kind === "loop.continue") continues.push(value);
+      for (const [key, child] of Object.entries(value)) {
+        if (key !== "provenance") visit(child);
+      }
+    };
+    visit(fn.body);
+    return { ir, fn, functions, ranges, continues };
+  }
+
+  function emittedVariant(state) {
+    return generateTaggedFunctions(
+      [state.fn], { functions: [...state.functions.values()] },
+    ).functions;
+  }
+
+  const noCapability = structuredClone(unitRangeDeclaration);
+  noCapability.capabilities = [];
+  const forged = await prepared(noCapability);
+  forged.ranges[0].checkedRegionRangeIncrementProof = {
+    authority: "checked-region-int64-unit-range-increment-v1",
+    operation: forged.ranges[0].id,
+    index: forged.ranges[0].index,
+    iterator: forged.ranges[0].iterator,
+    start: forged.ranges[0].start,
+    stop: forged.ranges[0].stop,
+    step: forged.ranges[0].step,
+    direction: "positive",
+    unitStep: "1",
+  };
+  forged.ranges[0].incrementProof = { authority: "hostile" };
+  forged.continues[0].range.incrementProof = { authority: "hostile" };
+  assert.equal(
+    checkedRegionInt64RangeIncrementEmission(
+      forged.fn, forged.functions,
+    ).isAuthorized(forged.ranges[0]),
+    false,
+  );
+  assert.match(emittedVariant(forged), /sagejs_word_add_int64/);
+
+  const mutations = [
+    state => { state.ranges[0].stop = state.ranges[0].start; },
+    state => { state.ranges[0].step = state.ranges[0].start; },
+    state => { state.ranges[0].iterator = state.ranges[0].index; },
+    state => { state.continues[0].range.step = state.ranges[0].start; },
+    state => {
+      state.ranges[0].body.unshift({
+        kind: "int64.copy",
+        target: state.ranges[0].iterator,
+        source: state.ranges[0].start,
+      });
+    },
+  ];
+  for (const mutate of mutations) {
+    const stale = await prepared();
+    assert.ok(checkedRegionInt64RangeIncrementEmission(
+      stale.fn, stale.functions,
+    ).isAuthorized(stale.ranges[0]));
+    mutate(stale);
+    assert.ok(stale.ranges.every(range =>
+      !checkedRegionInt64RangeIncrementEmission(
+        stale.fn, stale.functions,
+      ).isAuthorized(range)
+    ));
+    assert.match(emittedVariant(stale), /sagejs_word_add_int64/);
+  }
+
+  const wrongOwnerIr = await witness();
+  const original = wrongOwnerIr.functions.find(fn =>
+    fn.name === unitRangeDeclaration.entry
+  );
+  const outer = original.body.find(operation => operation.kind === "if")
+    .body.find(operation => operation.kind === "loop.range_int64");
+  const conditional = outer.body.find(operation => operation.kind === "if");
+  const continuation = conditional.body.pop();
+  outer.body.unshift({
+    kind: "while",
+    condition: { operations: [], value: "skip" },
+    body: [continuation],
+  });
+  installCheckedRegionDeclarations(wrongOwnerIr, [unitRangeDeclaration]);
+  const [wrongOwnerRegion] = prepareCheckedRegions(wrongOwnerIr);
+  const wrongOwner = wrongOwnerRegion.variants.find(candidate =>
+    candidate.checkedRegionVariant?.original === unitRangeDeclaration.entry
+  );
+  const wrongOwnerFunctions = new Map(wrongOwnerRegion.variants.map(fn => [
+    fn.name, fn,
+  ]));
+  const authorizedLoop = wrongOwner.body.find(operation =>
+    operation.kind === "if"
+  ).body.find(operation => operation.kind === "loop.range_int64");
+  assert.ok(checkedRegionInt64RangeIncrementEmission(
+    wrongOwner, wrongOwnerFunctions,
+  ).isAuthorized(authorizedLoop));
+  assert.match(generateTaggedFunctions(
+    [wrongOwner], { functions: [...wrongOwnerFunctions.values()] },
+  ).functions, /sagejs_word_add_int64/);
+});
+
+test("private unit range boundary latches are free of signed overflow", {
+  skip: process.platform === "win32" ? "UBSan harness is Unix-only" : false,
+}, async () => {
+  const ir = await witness();
+  installCheckedRegionDeclarations(ir, [unitRangeDeclaration, {
+    entry: "checked_region_unit_range_index_write_entry",
+    functions: ["checked_region_unit_range_index_write_entry"],
+    capabilities: ["int64-range-induction"],
+    guard: [{
+      kind: "int64-range",
+      parameter: "start",
+      minimum: "-9223372036854775808",
+      maximum: "9223372036854775807",
+    }],
+  }]);
+  const core = generateHostCore(ir, {
+    moduleIdentity: "0123456789abcdef",
+  });
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-unit-range-ubsan-"));
+  try {
+    writeFileSync(join(temporary, "kernel_core.h"), core.header);
+    writeFileSync(join(temporary, "runtime.c"), `${core.source}
+int main(void)
+{
+    sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
+    int64_t output = 0;
+    if (!tagged_checked_region_unit_range_entry(&status, &output,
+            INT64_MAX - 1, INT64_MAX, 0, 0) || output != INT64_MAX - 1)
+        return 1;
+    if (!tagged_checked_region_unit_range_entry(&status, &output,
+            INT64_MAX - 1, INT64_MAX, 0, 1) || output != INT64_MAX - 1)
+        return 2;
+    if (!tagged_checked_region_unit_range_entry(&status, &output,
+            INT64_MIN + 1, INT64_MIN, 1, 0) || output != INT64_MIN + 1)
+        return 3;
+    if (!tagged_checked_region_unit_range_entry(&status, &output,
+            INT64_MIN + 1, INT64_MIN, 1, 1) || output != INT64_MIN + 1)
+        return 4;
+    if (!tagged_checked_region_unit_range_entry(&status, &output,
+            INT64_MAX, INT64_MAX, 0, 0) || output != INT64_MAX)
+        return 5;
+    if (!tagged_checked_region_unit_range_index_write_entry(
+            &status, &output, INT64_MAX - 1, INT64_MAX) ||
+        output != INT64_MAX)
+        return 6;
+    if (status.code != SAGEJS_NATIVE_OK)
+        return 7;
+    return 0;
+}
+`);
+    const executable = join(temporary, "runtime");
+    const compiled = spawnSync(process.env.CC || "cc", [
+      "-std=c11", "-O1", "-fsanitize=undefined",
+      "-fno-sanitize-recover=all", "-I", temporary,
+      join(temporary, "runtime.c"), "-lgmp", "-lm", "-o", executable,
+    ], { encoding: "utf8" });
+    assert.equal(compiled.status, 0, compiled.stderr || compiled.stdout);
+    const executed = spawnSync(executable, [], { encoding: "utf8" });
+    assert.equal(executed.status, 0, executed.stderr || executed.stdout);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });
