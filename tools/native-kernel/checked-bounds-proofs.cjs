@@ -1,15 +1,17 @@
 "use strict";
 
 /*
- * Checked fixed-span proofs are deliberately narrower than general interval
- * analysis.  A checked view establishes its length once; a constant int64
- * range then establishes every value of its exact iterator.  Native backends
- * may omit an element bounds check only when this module has independently
- * reconstructed and verified the complete serialized claim.
+ * Checked span proofs are deliberately narrower than general interval
+ * analysis. A checked view establishes its length once; either a constant
+ * int64 range or an exact `range(view_length)` relationship establishes every
+ * value of its iterator. Native backends may omit an element bounds check only
+ * when this module has independently reconstructed and verified the complete
+ * serialized claim.
  */
 
 const VERIFIED_FIXED_SPAN_ACCESS = Symbol("verified fixed-span access");
 const AUTHORITY = "checked-uint64-fixed-span-range-v1";
+const DYNAMIC_AUTHORITY = "checked-uint64-span-stop-range-v1";
 const INT64_MINIMUM = -(1n << 63n);
 const INT64_MAXIMUM = (1n << 63n) - 1n;
 const {
@@ -55,6 +57,24 @@ function copiedConstant(operation, constants) {
   return undefined;
 }
 
+function copiedValue(operation, values) {
+  if (["integer.constant", "int64.constant", "uint64.constant"].includes(
+    operation.kind,
+  )) return `constant:${operation.value}`;
+  if ([
+    "integer.copy",
+    "int64.copy",
+    "uint64.copy",
+    "integer.from_int64",
+    "integer.from_uint64",
+    "int64.from_integer_checked",
+    "int64.from_uint64_checked",
+    "uint64.from_integer_checked",
+    "uint64.from_int64_checked",
+  ].includes(operation.kind)) return values.get(operation.source);
+  return undefined;
+}
+
 function assignedTargets(statements, targets = new Set()) {
   walkStatements(statements || [], {
     loop() {},
@@ -87,8 +107,30 @@ function expectedProof(operation, views, activeRange) {
       operation.indexType !== "int64" || activeRange === undefined ||
       operation.index !== activeRange.index) return undefined;
   const view = views.get(operation.buffer);
-  if (view === undefined || activeRange.minimum < 0n ||
-      activeRange.maximum >= view.length) return undefined;
+  if (view === undefined) return undefined;
+  if (activeRange.kind === "span-stop" &&
+      activeRange.start === 0n && activeRange.step === 1n &&
+      activeRange.stopValue !== undefined &&
+      activeRange.stopValue === view.lengthValue) {
+    return {
+      authority: DYNAMIC_AUTHORITY,
+      accessOperation: operation.id,
+      viewOperation: view.operation,
+      rangeOperation: activeRange.operation,
+      buffer: operation.buffer,
+      index: operation.index,
+      indexType: "int64",
+      viewLengthValue: view.lengthValue,
+      rangeStopValue: activeRange.stopValue,
+      start: "0",
+      step: "1",
+      relation: "0 <= index < checked-view-length",
+    };
+  }
+  if (activeRange.kind !== "constant" || view.length === undefined ||
+      activeRange.minimum < 0n || activeRange.maximum >= view.length) {
+    return undefined;
+  }
   return {
     authority: AUTHORITY,
     accessOperation: operation.id,
@@ -108,8 +150,15 @@ function expectedProof(operation, views, activeRange) {
 }
 
 function processFunction(fn, attach, verified) {
-  function visit(statements, inheritedConstants, inheritedViews, activeRange) {
+  function visit(
+    statements,
+    inheritedConstants,
+    inheritedValues,
+    inheritedViews,
+    activeRange,
+  ) {
     const constants = new Map(inheritedConstants);
+    const values = new Map(inheritedValues);
     const views = new Map(inheritedViews);
     for (const operation of statements || []) {
       const expected = expectedProof(operation, views, activeRange);
@@ -125,19 +174,29 @@ function processFunction(fn, attach, verified) {
       if (!attach && operation.boundsProof !== undefined) verified.push(operation);
 
       const constant = copiedConstant(operation, constants);
+      const copied = copiedValue(operation, values);
       const inheritedView = operation.kind === "uint64.buffer.copy"
         ? views.get(operation.source) : undefined;
       const viewLength = operation.kind === "uint64.buffer.view"
         ? constants.get(operation.length) : undefined;
+      const viewLengthValue = operation.kind === "uint64.buffer.view"
+        ? values.get(operation.length) : undefined;
       for (const target of operationTargets(operation)) {
         constants.delete(target);
+        values.delete(target);
         views.delete(target);
       }
       if (constant !== undefined) constants.set(operation.target, constant);
+      if (copied !== undefined) values.set(operation.target, copied);
+      for (const target of operationTargets(operation)) {
+        if (!values.has(target)) values.set(target, `operation:${operation.id}:${target}`);
+      }
       if (inheritedView !== undefined) views.set(operation.target, inheritedView);
-      if (viewLength !== undefined && viewLength >= 0n) {
+      if ((viewLength !== undefined && viewLength >= 0n) ||
+          viewLengthValue !== undefined) {
         views.set(operation.target, {
           length: viewLength,
+          lengthValue: viewLengthValue,
           operation: operation.id,
         });
       }
@@ -146,9 +205,18 @@ function processFunction(fn, attach, verified) {
         const start = constants.get(operation.start);
         const stop = constants.get(operation.stop);
         const step = constants.get(operation.step);
-        const range = start === undefined || stop === undefined || step === undefined
+        const stopValue = values.get(operation.stop);
+        const constant = start === undefined || stop === undefined || step === undefined
           ? undefined : constantRange(start, stop, step);
+        const range = constant !== undefined
+          ? { ...constant, kind: "constant" }
+          : start !== undefined && step !== undefined && stopValue !== undefined
+            ? { kind: "span-stop", start, step, stopValue }
+            : undefined;
         const assigned = assignedTargets(operation.body);
+        const loopValues = new Map(
+          Array.from(values).filter(([name]) => !assigned.has(name)),
+        );
         const loopViews = new Map(
           Array.from(views).filter(([name]) => !assigned.has(name)),
         );
@@ -158,29 +226,33 @@ function processFunction(fn, attach, verified) {
           index: operation.index,
           operation: operation.id,
         };
-        visit(operation.body, constants, loopViews, loopRange);
+        visit(operation.body, constants, loopValues, loopViews, loopRange);
         assigned.add(operation.index);
         if (operation.iterator !== undefined) assigned.add(operation.iterator);
         for (const name of assigned) {
           constants.delete(name);
+          values.delete(name);
           views.delete(name);
         }
       } else if (operation.kind === "if") {
-        visit(operation.condition?.operations, constants, views, activeRange);
-        visit(operation.body, constants, views, activeRange);
-        visit(operation.alternative, constants, views, activeRange);
+        visit(operation.condition?.operations, constants, values, views, activeRange);
+        visit(operation.body, constants, values, views, activeRange);
+        visit(operation.alternative, constants, values, views, activeRange);
         constants.clear();
+        values.clear();
         views.clear();
       } else if (operation.kind === "while" ||
           operation.kind === "loop.range" ||
           operation.kind === "loop.range_exact") {
-        visit(operation.condition?.operations, constants, views, undefined);
-        visit(operation.body, constants, views, undefined);
+        visit(operation.condition?.operations, constants, values, views, undefined);
+        visit(operation.body, constants, values, views, undefined);
         constants.clear();
+        values.clear();
         views.clear();
       } else if (operation.kind === "bool.short_circuit") {
-        visit(operation.right?.operations, constants, views, activeRange);
+        visit(operation.right?.operations, constants, values, views, activeRange);
         constants.clear();
+        values.clear();
         views.clear();
       } else if (operation.kind === "integer.vector.scope" ||
           operation.kind === "integer.matrix.scope" ||
@@ -192,14 +264,24 @@ function processFunction(fn, attach, verified) {
         const scopeViews = new Map(
           Array.from(views).filter(([name]) => !assigned.has(name)),
         );
-        visit(operation.setup, constants, scopeViews, undefined);
-        visit(operation.body, constants, scopeViews, undefined);
+        const scopeValues = new Map(
+          Array.from(values).filter(([name]) => !assigned.has(name)),
+        );
+        visit(operation.setup, constants, scopeValues, scopeViews, undefined);
+        visit(operation.body, constants, scopeValues, scopeViews, undefined);
         constants.clear();
+        values.clear();
         views.clear();
       }
     }
   }
-  visit(fn.body, new Map(), new Map(), undefined);
+  const parameterValues = new Map(
+    (fn.params || []).map((parameter) => [
+      parameter.name,
+      `parameter:${parameter.name}`,
+    ]),
+  );
+  visit(fn.body, new Map(), parameterValues, new Map(), undefined);
 }
 
 function attachAndVerifyCheckedBoundsProofs(functions) {

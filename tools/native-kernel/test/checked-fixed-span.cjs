@@ -82,10 +82,50 @@ test("fixed checked views receive stable independently verified bounds proofs", 
   assert.equal(updated.filter(isVerifiedFixedSpanAccess).length, 2);
   assert.equal(updated.filter((operation) =>
     !isVerifiedFixedSpanAccess(operation)).length, 1);
+  const dynamic = accesses(ir, "dynamic_exact_span");
+  assert.equal(dynamic.length, 1);
+  assert.deepEqual(dynamic[0].boundsProof, {
+    authority: "checked-uint64-span-stop-range-v1",
+    accessOperation: dynamic[0].id,
+    viewOperation: "dynamic_exact_span:3",
+    rangeOperation: "dynamic_exact_span:14",
+    buffer: "view",
+    index: "index",
+    indexType: "int64",
+    viewLengthValue: "parameter:length",
+    rangeStopValue: "parameter:length",
+    start: "0",
+    step: "1",
+    relation: "0 <= index < checked-view-length",
+  });
+  assert.equal(isVerifiedFixedSpanAccess(dynamic[0]), true);
+  const computedDynamic = accesses(ir, "dynamic_computed_span");
+  assert.equal(computedDynamic.length, 1);
+  assert.equal(
+    computedDynamic[0].boundsProof.authority,
+    "checked-uint64-span-stop-range-v1",
+  );
+  assert.equal(
+    computedDynamic[0].boundsProof.viewLengthValue,
+    computedDynamic[0].boundsProof.rangeStopValue,
+  );
+  assert.match(
+    computedDynamic[0].boundsProof.viewLengthValue,
+    /^operation:dynamic_computed_span:/,
+  );
+  assert.equal(isVerifiedFixedSpanAccess(computedDynamic[0]), true);
+  const dynamicUpdated = accesses(ir, "dynamic_exact_span_update");
+  assert.equal(dynamicUpdated.length, 2);
+  assert.ok(dynamicUpdated.every(isVerifiedFixedSpanAccess));
   for (const name of [
     "too_wide",
     "dynamic_stop",
     "dynamic_span",
+    "dynamic_mismatched_stop",
+    "dynamic_overshoot",
+    "dynamic_nonzero_start",
+    "dynamic_nonunit_step",
+    "dynamic_rebound_length",
     "negative_range",
     "affine_index",
     "rebound_view",
@@ -105,6 +145,27 @@ test("fixed checked views receive stable independently verified bounds proofs", 
   assert.doesNotMatch(fixedBody, /sagejs_signed_buffer_index/);
   assert.match(fixedBody, /\.data\[\(size_t\) /);
   assert.match(emittedFunction(core, "too_wide"), /sagejs_signed_buffer_index/);
+  assert.doesNotMatch(
+    emittedFunction(core, "dynamic_exact_span"),
+    /sagejs_signed_buffer_index/,
+  );
+  assert.doesNotMatch(
+    emittedFunction(core, "dynamic_computed_span"),
+    /sagejs_signed_buffer_index/,
+  );
+  for (const name of [
+    "dynamic_mismatched_stop",
+    "dynamic_overshoot",
+    "dynamic_nonzero_start",
+    "dynamic_nonunit_step",
+    "dynamic_rebound_length",
+  ]) {
+    assert.match(
+      emittedFunction(core, name),
+      /sagejs_signed_buffer_index/,
+      `${name} unexpectedly omitted its element bounds check`,
+    );
+  }
 
   const serialized = JSON.stringify(ir);
   const repeated = await lowerSource(witnessSource, witnessPath);
@@ -159,6 +220,23 @@ test("fixed checked views receive stable independently verified bounds proofs", 
     () => generateHostCore(mutated, { moduleIdentity: "0123456789abcdef" }),
     /invalid checked bounds proof/,
   );
+
+  for (const field of [
+    "authority",
+    "accessOperation",
+    "viewOperation",
+    "rangeOperation",
+    "viewLengthValue",
+    "rangeStopValue",
+    "relation",
+  ]) {
+    const forged = JSON.parse(serialized);
+    accesses(forged, "dynamic_exact_span")[0].boundsProof[field] = "forged";
+    assert.throws(
+      () => verifyCheckedBoundsProofs(forged.functions),
+      /invalid checked bounds proof/,
+    );
+  }
 });
 
 test("fixed-span optimization preserves checked public behavior", async () => {
@@ -191,6 +269,40 @@ test("fixed-span optimization preserves checked public behavior", async () => {
         /UInt64Buffer view is outside its buffer/,
       );
       assert.deepEqual(Array.from(short), [1n, 2n, 3n]);
+
+      const dynamic = module.dynamic_exact_span;
+      const dynamicValues = dynamic.createUInt64Buffer([
+        100n, 1n, 2n, 3n, 4n, 5n, 200n,
+      ]);
+      assert.equal(dynamic[backend](dynamicValues, 1n, 5n), 15n);
+      assert.equal(dynamic[backend](dynamicValues, 2n, 0n), 0n);
+      assert.throws(
+        () => dynamic[backend](dynamicValues, 3n, 5n),
+        /UInt64Buffer view is outside its buffer/,
+      );
+      assert.throws(
+        () => dynamic[backend](dynamicValues, 0n, -1n),
+        /UInt64Buffer view is outside its buffer/,
+      );
+      assert.deepEqual(Array.from(dynamicValues), [
+        100n, 1n, 2n, 3n, 4n, 5n, 200n,
+      ]);
+
+      const computedDynamic = module.dynamic_computed_span;
+      assert.equal(computedDynamic[backend](dynamicValues, 1n, 6n), 15n);
+      assert.throws(
+        () => computedDynamic[backend](dynamicValues, 5n, 3n),
+        /UInt64Buffer view is outside its buffer/,
+      );
+
+      const dynamicUpdate = module.dynamic_exact_span_update;
+      const dynamicMutable = dynamicUpdate.createUInt64Buffer([
+        100n, 1n, 2n, 3n, 4n, 5n, 200n,
+      ]);
+      assert.equal(dynamicUpdate[backend](dynamicMutable, 1n, 5n), 0n);
+      assert.deepEqual(Array.from(dynamicMutable), [
+        100n, 2n, 3n, 4n, 5n, 6n, 200n,
+      ]);
     }
   } finally {
     rmSync(cacheDirectory, { recursive: true, force: true });
