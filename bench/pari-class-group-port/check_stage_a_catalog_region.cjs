@@ -9,7 +9,8 @@
  * `stage-d` to enable only the capabilities proved from the full guard, or
  * `stage-e` to additionally virtualize validated nonescaping UInt64 views, or
  * `stage-f` to add the bounded local copy variant to Stage E, or `stage-g` to
- * rewrite proved copy edges to one direct-result private core.
+ * rewrite proved copy edges to one direct-result private core, or `stage-h` to
+ * add one edge-local residual guard for that core.
  *
  * Usage:
  *   node check_stage_a_catalog_region.cjs \
@@ -37,9 +38,12 @@ if (!fixturesArgument || !baselineArgument || !compilerArgument) {
       "FIXTURES_JSON BASELINE_BUILD_DIRECTORY COMPILER_WORKTREE MODE",
   );
 }
-if (!["stage-a", "stage-d", "stage-e", "stage-f", "stage-g"].includes(mode)) {
+if (
+  !["stage-a", "stage-d", "stage-e", "stage-f", "stage-g", "stage-h"]
+    .includes(mode)
+) {
   throw new Error(
-    "MODE must be stage-a, stage-d, stage-e, stage-f, or stage-g",
+    "MODE must be stage-a, stage-d, stage-e, stage-f, stage-g, or stage-h",
   );
 }
 
@@ -180,6 +184,39 @@ const STAGE_G_LOCAL_VARIANTS = Object.freeze([Object.freeze({
   ...STAGE_F_LOCAL_VARIANTS[0],
   mode: "direct-result",
 })]);
+const STAGE_H_LOCAL_VARIANTS = Object.freeze([Object.freeze({
+  function: "int64_pari_flx_copy",
+  mode: "guarded-direct-result",
+  guard: Object.freeze([
+    Object.freeze({
+      kind: "buffer-min-length",
+      parameter: "w",
+      minimum: 393,
+    }),
+    Object.freeze({
+      kind: "int64-range",
+      parameter: "a",
+      minimum: 0,
+      maximum: 384,
+    }),
+    Object.freeze({
+      kind: "int64-range",
+      parameter: "da",
+      minimum: -1,
+      maximum: 8,
+    }),
+    Object.freeze({
+      kind: "int64-range",
+      parameter: "out",
+      minimum: 0,
+      maximum: 384,
+    }),
+  ]),
+  edges: Object.freeze([Object.freeze({
+    operationOrigin: "_int64_pari_flx_small_ddf:200",
+  })]),
+  capabilities: Object.freeze(["interval-view-access"]),
+})]);
 const CAPABILITIES = mode === "stage-a"
   ? Object.freeze([])
   : mode === "stage-d"
@@ -189,7 +226,9 @@ const LOCAL_VARIANTS = mode === "stage-f"
   ? STAGE_F_LOCAL_VARIANTS
   : mode === "stage-g"
     ? STAGE_G_LOCAL_VARIANTS
-    : Object.freeze([]);
+    : mode === "stage-h"
+      ? STAGE_H_LOCAL_VARIANTS
+      : Object.freeze([]);
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -350,15 +389,21 @@ const directCallSites = [];
 for (const variant of prepared.variants) {
   const visitCalls = (value) => {
     if (value === null || typeof value !== "object") return;
-    if (
-      value.kind === "native.call" &&
-      checkedRegionDirectCallEmission(
+    if (value.kind === "native.call") {
+      const emission = checkedRegionDirectCallEmission(
         variant,
         value,
         preparedFunctions,
-      ) !== undefined
-    ) {
-      directCallSites.push({ function: variant.name, operation: value.id });
+      );
+      if (emission !== undefined) {
+        directCallSites.push({
+          function: variant.name,
+          operation: value.id,
+          emission: emission.guard === undefined ? "unconditional" : "guarded",
+          guard: emission.guard,
+          parameters: emission.parameters,
+        });
+      }
     }
     for (const [key, child] of Object.entries(value)) {
       if (key !== "provenance") visitCalls(child);
@@ -366,8 +411,14 @@ for (const variant of prepared.variants) {
   };
   visitCalls(variant.body);
 }
-assert.equal(directResultVariants.length, mode === "stage-g" ? 1 : 0);
-assert.equal(directCallSites.length, mode === "stage-g" ? 3 : 0);
+assert.equal(
+  directResultVariants.length,
+  mode === "stage-g" || mode === "stage-h" ? 1 : 0,
+);
+assert.equal(
+  directCallSites.length,
+  mode === "stage-g" ? 3 : mode === "stage-h" ? 4 : 0,
+);
 const localIntervalProofs = [];
 for (const variant of prepared.variants) {
   if (!variant.checkedRegionLocalCapabilities?.includes("interval-view-access")) {
@@ -385,7 +436,7 @@ for (const variant of prepared.variants) {
 }
 assert.equal(
   localIntervalProofs.length,
-  mode === "stage-f" || mode === "stage-g" ? 5 : 0,
+  ["stage-f", "stage-g", "stage-h"].includes(mode) ? 5 : 0,
 );
 
 const artifacts = generateArtifacts(manifest.ir, {
@@ -396,7 +447,8 @@ assert.equal(
   (artifacts.coreSource.match(
     /(?:static|SAGEJS_CHECKED_REGION_HOT_INLINE) int tagged_sagejs_checked_r0_[A-Za-z0-9_]+\(/g,
   ) || []).length,
-  (GRAPH.length + (mode === "stage-g" ? 0 : LOCAL_VARIANTS.length)) * 2,
+  (GRAPH.length +
+    (["stage-g", "stage-h"].includes(mode) ? 0 : LOCAL_VARIANTS.length)) * 2,
   "expected one prototype and one definition for every private function",
 );
 const dispatchNeedle = `return ${privatePrefix}${ENTRY}(`;
@@ -516,7 +568,7 @@ if (mode === "stage-f") {
     new Set(["-1", "1"]),
   );
 }
-if (mode === "stage-g") {
+if (mode === "stage-g" || mode === "stage-h") {
   assert.equal(privateSiteCounts.viewValidationFailures, 11);
   assert.equal(privateSiteCounts.uint64BufferLocalDeclarations, 0);
   assert.equal(privateSiteCounts.viewDataAssignments, 0);
@@ -550,7 +602,10 @@ if (mode === "stage-g") {
     `= sagejs_direct_${directVariant.name}\\(`,
     "g",
   );
-  assert.equal(count(artifacts.coreSource, directCall), 3);
+  assert.equal(
+    count(artifacts.coreSource, directCall),
+    mode === "stage-g" ? 3 : 4,
+  );
   assert.equal(
     count(
       artifacts.coreSource,
@@ -566,6 +621,77 @@ if (mode === "stage-g") {
     2,
   );
   assert.doesNotMatch(artifacts.coreSource, /__local_fast_1/);
+}
+if (mode === "stage-g") {
+  assert.equal(
+    directCallSites.every((site) => site.emission === "unconditional"),
+    true,
+  );
+}
+if (mode === "stage-h") {
+  const unconditionalSites = directCallSites.filter(
+    (site) => site.emission === "unconditional",
+  );
+  const guardedSites = directCallSites.filter(
+    (site) => site.emission === "guarded",
+  );
+  assert.equal(unconditionalSites.length, 3);
+  assert.equal(guardedSites.length, 1);
+  assert.deepEqual(
+    unconditionalSites.map((site) => site.operation),
+    [
+      "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:167",
+      "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:184",
+      "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:243",
+    ],
+  );
+  const [guardedSite] = guardedSites;
+  assert.equal(
+    guardedSite.operation,
+    "sagejs_checked_r0__int64_pari_flx_small_ddf:" +
+      "_int64_pari_flx_small_ddf:200",
+  );
+  assert.deepEqual(guardedSite.guard, [
+    {
+      kind: "int64-range",
+      parameter: "a",
+      minimum: "0",
+      maximum: "384",
+      parameterType: "int64",
+    },
+    {
+      kind: "int64-range",
+      parameter: "da",
+      minimum: "-1",
+      maximum: "8",
+      parameterType: "int64",
+    },
+  ]);
+  assert.deepEqual(guardedSite.parameters, [
+    { name: "w", type: "UInt64Buffer", argument: "w" },
+    { name: "a", type: "int64", argument: "t" },
+    { name: "da", type: "int64", argument: "dt" },
+    { name: "out", type: "int64", argument: "tr" },
+  ]);
+
+  const ddfBody = functionText(
+    artifacts.coreSource,
+    "sagejs_checked_r0__int64_pari_flx_small_ddf",
+  );
+  assert.equal(
+    count(privateDefinitions, /int sagejs_checked_region_guard = 1;/g),
+    1,
+    "expected exactly one generated residual guard",
+  );
+  assert.match(
+    ddfBody,
+    /origins=_int64_pari_flx_small_ddf:200 \*\/\n    sagejs_tagged_resume_[0-9]+: ;\n    \{\n        int sagejs_checked_region_guard = 1;\n        if \(sagejs_checked_region_guard && \(sagejs_local_tagged_t >= INT64_C\(0\) && sagejs_local_tagged_t <= INT64_C\(384\)\) && \(sagejs_local_tagged_dt >= \(-INT64_C\(1\)\) && sagejs_local_tagged_dt <= INT64_C\(8\)\)\)\n            sagejs_local_tagged_[A-Za-z0-9_]+ = sagejs_direct_sagejs_checked_r0_int64_pari_flx_copy__local_fast_0\(sagejs_local_tagged_w, sagejs_local_tagged_t, sagejs_local_tagged_dt, sagejs_local_tagged_tr\);\n        else if \(!tagged_sagejs_checked_r0_int64_pari_flx_copy\(status, &sagejs_local_tagged_[A-Za-z0-9_]+, sagejs_local_tagged_w, sagejs_local_tagged_t, sagejs_local_tagged_dt, sagejs_local_tagged_tr\)\)/,
+  );
+  assert.doesNotMatch(
+    ddfBody,
+    /sagejs_checked_region_guard[^\n]*(?:\.length|sagejs_local_tagged_tr)/,
+    "the residual guard must not retain proved workspace or output checks",
+  );
 }
 
 const outputDirectory = mkdtempSync(join(tmpdir(), "sagejs-stage-a-catalog-"));
