@@ -299,7 +299,9 @@ function emitTaggedOperation(operation, context, indent) {
       operation.kind === "uint64.buffer.set") {
     const buffer = taggedValue(operation.buffer, context);
     const index = taggedValue(operation.index, context);
-    const position = operation.indexType === "Integer"
+    const signedIndex = operation.indexType === "Integer" ||
+      operation.indexType === "int64";
+    const position = signedIndex
       ? "sagejs_buffer_position" : `(size_t) ${index}`;
     const access = operation.kind === "uint64.buffer.get"
       ? `${target} = ${buffer}.data[${position}];`
@@ -314,6 +316,21 @@ function emitTaggedOperation(operation, context, indent) {
           `&sagejs_buffer_index) ||`,
         `${indent}        !sagejs_signed_buffer_index(${buffer}.length, ` +
           `sagejs_buffer_index, &sagejs_buffer_position))`,
+        `${indent}    {`,
+        `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+          `"UInt64Buffer index out of range");`,
+        `${indent}        goto fail;`,
+        `${indent}    }`,
+        `${indent}    ${access}`,
+        `${indent}}`,
+      ].join("\n");
+    }
+    if (operation.indexType === "int64") {
+      return [
+        `${indent}{`,
+        `${indent}    size_t sagejs_buffer_position;`,
+        `${indent}    if (!sagejs_signed_buffer_index(${buffer}.length, ` +
+          `${index}, &sagejs_buffer_position))`,
         `${indent}    {`,
         `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
           `"UInt64Buffer index out of range");`,
@@ -340,8 +357,11 @@ function emitTaggedOperation(operation, context, indent) {
     return `${indent}${target} = (uint64_t) ` +
       `${taggedValue(operation.buffer, context)}.length;`;
   }
-  if (operation.kind === "int64.record.view" || operation.kind === "integer.buffer.view") {
+  if (operation.kind === "int64.record.view" ||
+      operation.kind === "integer.buffer.view" ||
+      operation.kind === "uint64.buffer.view") {
     const exactView = operation.kind === "integer.buffer.view";
+    const uint64View = operation.kind === "uint64.buffer.view";
     const buffer = taggedValue(operation.buffer, context);
     const start = taggedValue(operation.start, context);
     const length = taggedValue(operation.length, context);
@@ -362,7 +382,7 @@ function emitTaggedOperation(operation, context, indent) {
         `(uint64_t) sagejs_record_start)`,
       `${indent}    {`,
       `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
-        `${cString(exactView ? "IntegerBuffer view is outside its buffer" : "Int64Record is outside its buffer")});`,
+        `${cString(exactView ? "IntegerBuffer view is outside its buffer" : uint64View ? "UInt64Buffer view is outside its buffer" : "Int64Record is outside its buffer")});`,
       `${indent}        goto fail;`,
       `${indent}    }`,
       ...(exactView ? [
@@ -372,8 +392,9 @@ function emitTaggedOperation(operation, context, indent) {
         `${indent}        ${target}.limbs += (size_t) sagejs_record_start * ${buffer}.word_capacity;`,
         `${indent}    }`,
       ] : [
-      `${indent}    ${target}.data = ${buffer}.data + ` +
-        `(size_t) sagejs_record_start;`,
+      `${indent}    ${target}.data = ${buffer}.data;`,
+      `${indent}    if ((size_t) sagejs_record_start != 0)`,
+      `${indent}        ${target}.data += (size_t) sagejs_record_start;`,
       ]),
       `${indent}    ${target}.length = (size_t) sagejs_record_length;`,
       `${indent}}`,

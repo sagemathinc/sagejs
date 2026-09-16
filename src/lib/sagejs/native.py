@@ -1476,6 +1476,43 @@ def uint64_buffer(source: Any) -> UInt64Buffer:
     return answer
 
 
+class _UInt64BufferView:
+    """A non-resizing checked view into an unsigned-64-bit buffer."""
+
+    def __init__(self, buffer: Any, start: int, length: int) -> None:
+        if start < 0 or length < 0 or start > len(buffer) - length:
+            raise IndexError("UInt64Buffer view is outside its buffer")
+        self._buffer = buffer
+        self._start = start
+        self._length = length
+
+    def __len__(self) -> int:
+        return self._length
+
+    def __getitem__(self, index: int) -> int:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError("UInt64Buffer index out of range")
+        return self._buffer[self._start + index]
+
+    def __setitem__(self, index: int, value: int) -> None:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError("UInt64Buffer index out of range")
+        self._buffer[self._start + index] = int(value) & ((1 << 64) - 1)
+
+
+def uint64_buffer_view(
+    buffer: UInt64Buffer,
+    start: int,
+    length: int,
+) -> Any:
+    """Borrow a checked mutable unsigned-word span without copying."""
+    return _UInt64BufferView(buffer, start, length)
+
+
 def uint64_zeros(length: int) -> UInt64Buffer:
     """Allocate a zero-filled unsigned-64-bit fallback buffer."""
     return [0 for _index in range(length)]
@@ -1809,5 +1846,6 @@ __all__ = [
     "prime_sub",
     "prime_zeros",
     "uint64_buffer",
+    "uint64_buffer_view",
     "uint64_zeros",
 ]

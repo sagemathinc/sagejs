@@ -763,7 +763,9 @@ function emitExactOperation(operation, context, indent) {
       operation.kind === "uint64.buffer.set") {
     const buffer = exactValue(operation.buffer, context);
     const index = exactValue(operation.index, context);
-    const position = operation.indexType === "Integer"
+    const signedIndex = operation.indexType === "Integer" ||
+      operation.indexType === "int64";
+    const position = signedIndex
       ? "sagejs_buffer_position" : `(size_t) ${index}`;
     const access = operation.kind === "uint64.buffer.get"
       ? `${target} = ${buffer}.data[${position}];`
@@ -777,6 +779,22 @@ function emitExactOperation(operation, context, indent) {
         `${indent}    if (!mpz_to_int64(${index}, &sagejs_buffer_index) ||`,
         `${indent}        !sagejs_signed_buffer_index(${buffer}.length, ` +
           `sagejs_buffer_index, &sagejs_buffer_position))`,
+        `${indent}    {`,
+        statusFailure(
+          "range", "UInt64Buffer index out of range", `${indent}        `,
+        ),
+        `${indent}        goto fail;`,
+        `${indent}    }`,
+        `${indent}    ${access}`,
+        `${indent}}`,
+      ].join("\n");
+    }
+    if (operation.indexType === "int64") {
+      return [
+        `${indent}{`,
+        `${indent}    size_t sagejs_buffer_position;`,
+        `${indent}    if (!sagejs_signed_buffer_index(${buffer}.length, ` +
+          `${index}, &sagejs_buffer_position))`,
         `${indent}    {`,
         statusFailure(
           "range", "UInt64Buffer index out of range", `${indent}        `,
@@ -805,8 +823,11 @@ function emitExactOperation(operation, context, indent) {
     return `${indent}${target} = (uint64_t) ` +
       `${exactValue(operation.buffer, context)}.length;`;
   }
-  if (operation.kind === "int64.record.view" || operation.kind === "integer.buffer.view") {
+  if (operation.kind === "int64.record.view" ||
+      operation.kind === "integer.buffer.view" ||
+      operation.kind === "uint64.buffer.view") {
     const exactView = operation.kind === "integer.buffer.view";
+    const uint64View = operation.kind === "uint64.buffer.view";
     const buffer = exactValue(operation.buffer, context);
     const start = exactValue(operation.start, context);
     const length = exactValue(operation.length, context);
@@ -824,7 +845,7 @@ function emitExactOperation(operation, context, indent) {
         `(uint64_t) ${buffer}.length - ` +
         `(uint64_t) sagejs_record_start)`,
       `${indent}    {`,
-      statusFailure("range", exactView ? "IntegerBuffer view is outside its buffer" : "Int64Record is outside its buffer", `${indent}        `),
+      statusFailure("range", exactView ? "IntegerBuffer view is outside its buffer" : uint64View ? "UInt64Buffer view is outside its buffer" : "Int64Record is outside its buffer", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
       ...(exactView ? [
@@ -834,8 +855,9 @@ function emitExactOperation(operation, context, indent) {
         `${indent}        ${target}.limbs += (size_t) sagejs_record_start * ${buffer}.word_capacity;`,
         `${indent}    }`,
       ] : [
-      `${indent}    ${target}.data = ${buffer}.data + ` +
-        `(size_t) sagejs_record_start;`,
+      `${indent}    ${target}.data = ${buffer}.data;`,
+      `${indent}    if ((size_t) sagejs_record_start != 0)`,
+      `${indent}        ${target}.data += (size_t) sagejs_record_start;`,
       ]),
       `${indent}    ${target}.length = (size_t) sagejs_record_length;`,
       `${indent}}`,

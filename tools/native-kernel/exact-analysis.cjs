@@ -86,6 +86,7 @@ function operationInputs(operation) {
       return [operation.buffer];
     case "int64.record.view":
     case "integer.buffer.view":
+    case "uint64.buffer.view":
       return [operation.buffer, operation.start, operation.length];
     case "int64.buffer.get":
       return [operation.buffer, operation.index];
@@ -690,6 +691,7 @@ function localEffects(fn) {
         operation.kind === "int64.buffer.set" ||
         operation.kind === "int64.record.view" ||
         operation.kind === "integer.buffer.view" ||
+        operation.kind === "uint64.buffer.view" ||
         operation.kind === "integer.buffer.get" ||
         operation.kind === "integer.buffer.set" ||
         operation.kind === "uint64.buffer.get" ||
@@ -824,7 +826,8 @@ function bufferWrites(fn, dependencyEffects) {
           statement.kind === "float64.buffer.copy") {
         changed = addAlias(statement.target, roots(statement.source)) || changed;
       } else if (statement.kind === "int64.record.view" ||
-          statement.kind === "integer.buffer.view") {
+          statement.kind === "integer.buffer.view" ||
+          statement.kind === "uint64.buffer.view") {
         changed = addAlias(statement.target, roots(statement.buffer)) || changed;
       } else if (statement.kind === "int64.buffer.set" ||
           statement.kind === "integer.buffer.set" ||
@@ -1353,6 +1356,7 @@ const FMPZ_OPERATION_KINDS = new Set([
   "uint64.buffer.get",
   "uint64.buffer.length",
   "uint64.buffer.set",
+  "uint64.buffer.view",
   "uint64.compare",
   "uint64.constant",
   "uint64.copy",
@@ -1569,7 +1573,8 @@ function inspectFmpzFunction(fn) {
       }
       if (statement.kind.startsWith("uint64.buffer.")) {
         if (statement.bufferType !== "UInt64Buffer" &&
-            statement.kind !== "uint64.buffer.copy") eligible = false;
+            statement.kind !== "uint64.buffer.copy" &&
+            statement.kind !== "uint64.buffer.view") eligible = false;
         if (["uint64.buffer.get", "uint64.buffer.set"].includes(statement.kind) &&
             !["Integer", "uint64"].includes(statement.indexType)) {
           eligible = false;

@@ -401,6 +401,10 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}${operation.target} = integerBufferSubview(` +
       `${operation.buffer}, ${operation.start}, ${operation.length});`;
   }
+  if (operation.kind === "uint64.buffer.view") {
+    return `${indent}${operation.target} = uint64BufferSubview(` +
+      `${operation.buffer}, ${operation.start}, ${operation.length});`;
+  }
   if (operation.kind === "int64.buffer.get") {
     return `${indent}${operation.target} = int64BufferGet(` +
       `${operation.buffer}, ${operation.index});`;
@@ -1888,6 +1892,7 @@ ${javascriptRuntime(ir)}
 const float64BufferViewTag = Symbol("sagejs.native.Float64BufferView");
 const int64BufferViewTag = Symbol("sagejs.native.Int64BufferView");
 const integerBufferViewTag = Symbol("sagejs.native.IntegerBufferView");
+const uint64BufferViewTag = Symbol("sagejs.native.UInt64BufferView");
 const immutableUInt64LeaseViewTag =
   Symbol("sagejs.native.ImmutableUInt64LeaseView");
 
@@ -2819,6 +2824,8 @@ function uint64DynamicBufferView(value, argument = "buffer") {
 }
 
 function uint64BufferView(value, argument = "buffer") {
+  if (value !== null && typeof value === "object" &&
+      value[uint64BufferViewTag] === true) return value;
   const immutable = immutableUInt64Borrow(value);
   if (immutable !== null) {
     return Object.freeze({
@@ -2849,6 +2856,23 @@ function uint64BufferView(value, argument = "buffer") {
   return value;
 }
 
+function uint64BufferSubview(buffer, start, length) {
+  const view = uint64BufferView(buffer);
+  const exactStart = typeof start === "bigint" ? start : BigInt(start);
+  const exactLength = typeof length === "bigint" ? length : BigInt(length);
+  if (exactStart < 0n || exactLength < 0n ||
+      exactStart > BigInt(view.length) ||
+      exactLength > BigInt(view.length) - exactStart) {
+    throw new RangeError("UInt64Buffer view is outside its buffer");
+  }
+  return {
+    [uint64BufferViewTag]: true,
+    data: view,
+    offset: Number(exactStart),
+    length: Number(exactLength),
+  };
+}
+
 function uint64BufferGet(buffer, index) {
   const view = uint64BufferView(buffer);
   const exact = typeof index === "bigint" ? index : BigInt(index);
@@ -2856,6 +2880,9 @@ function uint64BufferGet(buffer, index) {
     throw new RangeError("UInt64Buffer index out of range");
   }
   const position = exact < 0n ? BigInt(view.length) + exact : exact;
+  if (view[uint64BufferViewTag] === true) {
+    return uint64BufferGet(view.data, BigInt(view.offset) + position);
+  }
   const data = view[immutableUInt64LeaseViewTag] === true ? view.typed : view;
   return BigInt(Reflect.get(data, String(Number(position))));
 }
@@ -2876,7 +2903,9 @@ function uint64BufferSet(buffer, index, value) {
   }
   const position = exactIndex < 0n
     ? BigInt(view.length) + exactIndex : exactIndex;
-  if (!Reflect.set(view, String(Number(position)), exactValue)) {
+  if (view[uint64BufferViewTag] === true) {
+    uint64BufferSet(view.data, BigInt(view.offset) + position, exactValue);
+  } else if (!Reflect.set(view, String(Number(position)), exactValue)) {
     throw new TypeError("UInt64Buffer is not writable");
   }
 }
@@ -2895,15 +2924,13 @@ function uint64NativeBuffer(value, argument, writable = false) {
   }
   const typed = new BigUint64Array(view.length);
   for (let index = 0; index < view.length; index += 1) {
-    typed[index] = BigInt(Reflect.get(view, String(index)));
+    typed[index] = uint64BufferGet(view, index);
   }
   return {
     typed,
     copyBack() {
       for (let index = 0; index < view.length; index += 1) {
-        if (!Reflect.set(view, String(index), typed[index])) {
-          throw new TypeError("UInt64Buffer is not writable");
-        }
+        uint64BufferSet(view, index, typed[index]);
       }
     },
   };

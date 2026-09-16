@@ -1779,8 +1779,10 @@ function lowerCall(node, context, operations) {
     return { name: target, type: "Float64" };
   }
 
-  if (name === "int64_record" || name === "integer_buffer_view") {
+  if (name === "int64_record" || name === "integer_buffer_view" ||
+      name === "uint64_buffer_view") {
     const exactView = name === "integer_buffer_view";
+    const uint64View = name === "uint64_buffer_view";
     expect(
       context,
       node,
@@ -1792,8 +1794,10 @@ function lowerCall(node, context, operations) {
     expect(
       context,
       args[0],
-      buffer.type === (exactView ? "IntegerBuffer" : "Int64Buffer"),
-      `${name}() requires an ${exactView ? "IntegerBuffer" : "Int64Buffer"}`,
+      buffer.type === (exactView ? "IntegerBuffer" : uint64View
+        ? "UInt64Buffer" : "Int64Buffer"),
+      `${name}() requires an ${exactView ? "IntegerBuffer" : uint64View
+        ? "UInt64Buffer" : "Int64Buffer"}`,
     );
     const start = coerceInteger(
       lowerExpression(args[1], context, operations),
@@ -1807,10 +1811,12 @@ function lowerCall(node, context, operations) {
       args[2],
       operations,
     );
-    const resultType = exactView ? "IntegerBuffer" : "Int64Record";
+    const resultType = exactView ? "IntegerBuffer" : uint64View
+      ? "UInt64Buffer" : "Int64Record";
     const target = temporary(context, node, resultType);
     operations.push({
-      kind: exactView ? "integer.buffer.view" : "int64.record.view",
+      kind: exactView ? "integer.buffer.view" : uint64View
+        ? "uint64.buffer.view" : "int64.record.view",
       target,
       buffer: buffer.name,
       start: start.name,
@@ -3386,8 +3392,8 @@ function lowerAssignment(statement, context) {
     expect(
       context,
       assign.annotation,
-      ["Integer", "uint64", "int64", "bool", "Float64", "IntegerBuffer"].includes(declaredType),
-      "native exact local annotation must be Integer, int, uint64, int64, bool, Float64, or a borrowed IntegerBuffer view",
+      ["Integer", "uint64", "int64", "bool", "Float64", "IntegerBuffer", "UInt64Buffer"].includes(declaredType),
+      "native exact local annotation must be Integer, int, uint64, int64, bool, Float64, or a borrowed integer-buffer view",
     );
     const operations = [];
     let value = lowerExpression(
@@ -3405,6 +3411,11 @@ function lowerAssignment(statement, context) {
       expect(context, assign.value, operations.some((operation) =>
         operation.kind === "integer.buffer.view" && operation.target === value.name),
       "annotated IntegerBuffer locals require integer_buffer_view()");
+    }
+    if (declaredType === "UInt64Buffer") {
+      expect(context, assign.value, operations.some((operation) =>
+        operation.kind === "uint64.buffer.view" && operation.target === value.name),
+      "annotated UInt64Buffer locals require uint64_buffer_view()");
     }
     expect(
       context,
