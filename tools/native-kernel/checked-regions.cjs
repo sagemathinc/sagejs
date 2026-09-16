@@ -59,6 +59,18 @@ const graphVirtualUInt64ViewAuthority = createFunctionGraphProofAuthority({
     "provenance",
   ],
 });
+const graphInt64ArithmeticAuthority = createFunctionGraphProofAuthority({
+  name: "checked-region graph int64 arithmetic",
+  ignoredKeys: [
+    "boundsProof",
+    "checkedRegionDirectCallProof",
+    "checkedRegionGuardedDirectCallProof",
+    "checkedRegionDirectResultProof",
+    "checkedRegionProof",
+    "incrementProof",
+    "provenance",
+  ],
+});
 const directCallAuthority = createFunctionProofAuthority({
   name: "checked-region direct result call",
   ignoredKeys: [
@@ -3104,6 +3116,27 @@ function attachCapabilities(
     // source proof or nonportable marker is copied into the private graph.
     attachAndVerifyCheckedBoundsProofs(variants);
   }
+  // Arithmetic authorization is deliberately last. Every record snapshots
+  // the complete private graph after all executable IR and sibling proof
+  // metadata have reached their final shape. Emission can therefore revoke a
+  // raw signed operation when any caller, callee, edge, root guard, or operand
+  // is changed after interval analysis.
+  authorizeGraphInt64Arithmetic(variants);
+}
+
+function authorizeGraphInt64Arithmetic(variants) {
+  for (const fn of variants) {
+    const functions = checkedRegionGraphFunctions(fn, variants);
+    if (checkedRegionGraphRoot(functions) === undefined) continue;
+    visitOperations(fn.body, (operation) => {
+      const claim = operation.checkedRegionProof;
+      if (operation[CHECKED_REGION_INT64_ARITHMETIC] !== true ||
+          claim?.authority !== "checked-region-int64-interval-v1") return;
+      graphInt64ArithmeticAuthority.authorize(
+        functions, fn, operation, claim,
+      );
+    });
+  }
 }
 
 function prepareCheckedRegions(ir) {
@@ -3394,6 +3427,42 @@ function checkedRegionVirtualUInt64Emission(fn, functions) {
   });
 }
 
+function checkedRegionInt64ArithmeticEmission(fn, functions) {
+  const graphFunctions = functions instanceof Map
+    ? checkedRegionGraphFunctions(fn, [...functions.values()])
+    : undefined;
+  const graphRoot = checkedRegionGraphRoot(graphFunctions);
+  let verifier;
+  if (graphRoot !== undefined && fn?.hostCallable === false) {
+    try {
+      verifier = graphInt64ArithmeticAuthority.emissionVerifier(
+        graphFunctions, fn,
+      );
+    } catch (_error) {
+      verifier = undefined;
+    }
+  }
+  const authorized = new WeakSet();
+  if (verifier !== undefined) {
+    visitOperations(fn.body, (operation) => {
+      const claim = operation.checkedRegionProof;
+      if (operation[CHECKED_REGION_INT64_ARITHMETIC] !== true ||
+          claim?.authority !== "checked-region-int64-interval-v1" ||
+          claim.operation !== operation.id ||
+          operation.kind !== "int64.binary" ||
+          !["add", "sub", "mul"].includes(operation.operation) ||
+          !verifier.isAuthorized(operation, claim)) return;
+      authorized.add(operation);
+    });
+  }
+  return Object.freeze({
+    isAuthorized(operation) {
+      return operation !== null && typeof operation === "object" &&
+        authorized.has(operation);
+    },
+  });
+}
+
 function isCheckedRegionNonzeroStep(operation) {
   const proof = operation?.checkedRegionProof;
   if (proof?.authority !== "checked-region-nonzero-int64-step-v1" ||
@@ -3501,6 +3570,7 @@ function checkedRegionDirectCallEmission(fn, operation, functions) {
 module.exports = {
   checkedRegionDirectCallEmission,
   checkedRegionDirectResultEmission,
+  checkedRegionInt64ArithmeticEmission,
   checkedRegionLocalVariant(fn) {
     return fn?.[CHECKED_REGION_LOCAL_VARIANT];
   },
@@ -3515,12 +3585,6 @@ module.exports = {
       operation.checkedRegionProof.bufferType === operation.bufferType &&
       operation.checkedRegionProof.index === operation.index &&
       operation.checkedRegionProof.indexType === operation.indexType;
-  },
-  isCheckedRegionInt64Arithmetic(operation) {
-    return operation?.[CHECKED_REGION_INT64_ARITHMETIC] === true &&
-      operation.checkedRegionProof?.authority ===
-        "checked-region-int64-interval-v1" &&
-      operation.checkedRegionProof.operation === operation.id;
   },
   isCheckedRegionNonzeroStep,
   installCheckedRegionDeclarations,

@@ -6,10 +6,10 @@ const {
 const {
   checkedRegionDirectCallEmission,
   checkedRegionDirectResultEmission,
+  checkedRegionInt64ArithmeticEmission,
   checkedRegionLocalVariant,
   checkedRegionVirtualUInt64Emission,
   isCheckedRegionBufferAccess,
-  isCheckedRegionInt64Arithmetic,
   isCheckedRegionNonzeroStep,
 } = require("./checked-regions.cjs");
 
@@ -510,7 +510,7 @@ function emitTaggedOperation(operation, context, indent) {
     const left = taggedValue(operation.left, context);
     const right = taggedValue(operation.right, context);
     if (["add", "sub", "mul"].includes(operation.operation)) {
-      if (isCheckedRegionInt64Arithmetic(operation)) {
+      if (context.int64Arithmetic.isAuthorized(operation)) {
         const operator = { add: "+", sub: "-", mul: "*" }[
           operation.operation
         ];
@@ -1493,6 +1493,7 @@ function emitTaggedFunction(fn, functions, options) {
   // Tagged arithmetic itself still uses its small-value fast paths.
   const sites = mixed ? new Map() : promotionSites(fn);
   const virtualUInt64Views = checkedRegionVirtualUInt64Emission(fn, functions);
+  const int64Arithmetic = checkedRegionInt64ArithmeticEmission(fn, functions);
   const virtualUInt64Snapshots = new Map(
     virtualUInt64Views.validatedViews().map((claim, index) => [
       claim.viewTarget,
@@ -1577,6 +1578,7 @@ function emitTaggedFunction(fn, functions, options) {
     emitMixedOperation: options.emitMixedOperation,
     freshIdentifier: prefix => `${prefix}_${mixedSerial++}`,
     functions,
+    int64Arithmetic,
     sites,
     storage,
     tagLocals,
@@ -1725,6 +1727,7 @@ function emitDirectResultFunction(
   );
   const deadExactNames = new Set(metadata.deadExactNames);
   const virtualUInt64Views = checkedRegionVirtualUInt64Emission(fn, functions);
+  const int64Arithmetic = checkedRegionInt64ArithmeticEmission(fn, functions);
   const declarations = [];
   for (const param of fn.params) {
     declarations.push(
@@ -1749,6 +1752,7 @@ function emitDirectResultFunction(
       throw new Error("direct result function cannot use mixed operations");
     },
     functions,
+    int64Arithmetic,
     sites: new Map(),
     storage: fn.analysis.storage,
     tagLocals: new Set(),

@@ -12,11 +12,13 @@ const { compileKernel } = require("../compiler.cjs");
 const {
   checkedRegionDirectCallEmission,
   checkedRegionDirectResultEmission,
+  checkedRegionInt64ArithmeticEmission,
   checkedRegionVirtualUInt64Emission,
   installCheckedRegionDeclarations,
   isCheckedRegionBufferAccess,
   prepareCheckedRegions,
 } = require("../checked-regions.cjs");
+const { generateTaggedFunctions } = require("../tagged-backend.cjs");
 const { lowerSource } = require("../ir.cjs");
 const {
   checkedRegionSmallHighFaninLeaf,
@@ -841,6 +843,102 @@ test("entry intervals prove only bounded straight-line clone operations", async 
   // One unguarded call is enough to revoke facts for the shared helper.
   assert.match(ambiguousHelper, /sagejs_word_add_int64/);
   assert.match(ambiguousHelper, /index out of range/);
+});
+
+test("int64 interval proofs require unchanged complete private graphs", async () => {
+  async function prepared() {
+    const ir = installCheckedRegionDeclarations(await witness(), [
+      optimizedDeclaration,
+    ]);
+    const [region] = prepareCheckedRegions(ir);
+    const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+    const helper = region.variants.find(fn =>
+      fn.checkedRegionVariant.original === "checked_region_helper"
+    );
+    const entry = region.variants.find(fn =>
+      fn.checkedRegionVariant.original === "checked_region_entry"
+    );
+    const operation = helper.body.find(candidate =>
+      candidate.kind === "int64.binary" && candidate.operation === "add"
+    );
+    assert.ok(entry);
+    assert.ok(helper);
+    assert.ok(operation);
+    return { entry, functions, helper, operation, region };
+  }
+
+  const intact = await prepared();
+  assert.equal(
+    checkedRegionInt64ArithmeticEmission(
+      intact.helper, intact.functions,
+    ).isAuthorized(intact.operation),
+    true,
+  );
+  const direct = functionText(
+    generateTaggedFunctions(intact.region.variants, {
+      functions: intact.region.variants,
+    }).functions + "\n",
+    intact.helper.name,
+  );
+  assert.doesNotMatch(direct, /sagejs_word_add_int64/);
+
+  const operand = await prepared();
+  operand.operation.left = "result";
+  assert.equal(
+    checkedRegionInt64ArithmeticEmission(
+      operand.helper, operand.functions,
+    ).isAuthorized(operand.operation),
+    false,
+  );
+  const checked = functionText(
+    generateTaggedFunctions(operand.region.variants, {
+      functions: operand.region.variants,
+    }).functions + "\n",
+    operand.helper.name,
+  );
+  assert.match(checked, /sagejs_word_add_int64/);
+
+  const sibling = await prepared();
+  sibling.entry.body.at(-1).value = "index";
+  assert.equal(
+    checkedRegionInt64ArithmeticEmission(
+      sibling.helper, sibling.functions,
+    ).isAuthorized(sibling.operation),
+    false,
+  );
+
+  const root = await prepared();
+  root.entry.checkedRegionGraphRoot = Object.freeze({
+    ...root.entry.checkedRegionGraphRoot,
+    guard: Object.freeze(root.entry.checkedRegionGraphRoot.guard.slice(1)),
+  });
+  assert.equal(
+    checkedRegionInt64ArithmeticEmission(
+      root.helper, root.functions,
+    ).isAuthorized(root.operation),
+    false,
+  );
+
+  const partial = await prepared();
+  partial.functions.delete(partial.entry.name);
+  assert.equal(
+    checkedRegionInt64ArithmeticEmission(
+      partial.helper, partial.functions,
+    ).isAuthorized(partial.operation),
+    false,
+  );
+
+  const forged = await prepared();
+  forged.operation.checkedRegionProof = Object.freeze({
+    ...forged.operation.checkedRegionProof,
+    minimum: "-9223372036854775808",
+  });
+  assert.equal(
+    checkedRegionInt64ArithmeticEmission(
+      forged.helper, forged.functions,
+    ).isAuthorized(forged.operation),
+    false,
+  );
 });
 
 function structuredDeclaration(entry, guard, capabilities = [
