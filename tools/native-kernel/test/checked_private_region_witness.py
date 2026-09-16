@@ -416,3 +416,36 @@ def checked_region_relational_short_entry(
         if selected:
             storage[index] = value
     return index
+
+
+@native
+def checked_region_guarded_fallible_nested(
+    storage: UInt64Buffer, index: int64, value: uint64, fail: bool
+) -> int64:
+    storage[index] = value
+    if fail:
+        raise ValueError("guarded fallible nested failure")
+    return index
+
+
+@native
+def checked_region_guarded_fallible_helper(
+    storage: UInt64Buffer, index: int64, value: uint64, fail: bool
+) -> int64:
+    storage[0] = value
+    result: int64 = checked_region_guarded_fallible_nested(
+        storage, index, value, False
+    )
+    if fail:
+        raise ValueError("guarded fallible helper failure")
+    return result
+
+
+@native
+def checked_region_guarded_fallible_entry(
+    storage: UInt64Buffer, index: int64, value: uint64, fail: bool
+) -> int64:
+    first: int64 = checked_region_guarded_fallible_helper(
+        storage, index, value, fail
+    )
+    return checked_region_guarded_fallible_helper(storage, index, value, fail)

@@ -18,6 +18,11 @@ const {
  * straight-line int64 arithmetic and buffer access.  Omitting capabilities
  * always retains the Stage-A behavior and every check.
  *
+ * Edge-selected guarded-fallible variants retain an ordinary call as their
+ * checked fallback and route only an authenticated true arm to one shared
+ * optimized clone.  Both arms use the same status/output ABI, so nested calls,
+ * raises, and mutations keep their source ordering and failure behavior.
+ *
  * Declarations are compiler-owned capabilities, not portable IR.  The symbol
  * below is intentionally lost by JSON serialization, so cached or externally
  * edited IR cannot manufacture a private route.
@@ -33,6 +38,8 @@ const CHECKED_REGION_DIRECT_RESULT = Symbol("checked region direct result");
 const CHECKED_REGION_DIRECT_CALL = "checkedRegionDirectCallProof";
 const CHECKED_REGION_GUARDED_DIRECT_CALL =
   "checkedRegionGuardedDirectCallProof";
+const CHECKED_REGION_GUARDED_FALLIBLE_CALL =
+  "checkedRegionGuardedFallibleCallProof";
 const CHECKED_REGION_DIRECT_RESULT_PROOF = "checkedRegionDirectResultProof";
 const VIRTUAL_UINT64_VIEW_PROOF = "checkedRegionVirtualUInt64ViewProof";
 const virtualUInt64ViewAuthority = createFunctionProofAuthority({
@@ -63,6 +70,19 @@ const guardedDirectCallAuthority = createFunctionProofAuthority({
   name: "checked-region guarded direct result call",
   ignoredKeys: [
     "boundsProof",
+    "incrementProof",
+    "provenance",
+  ],
+});
+const guardedFallibleCallAuthority = createFunctionGraphProofAuthority({
+  name: "checked-region guarded fallible call",
+  ignoredKeys: [
+    "boundsProof",
+    "checkedRegionDirectCallProof",
+    "checkedRegionGuardedDirectCallProof",
+    "checkedRegionGuardedFallibleCallProof",
+    "checkedRegionDirectResultProof",
+    "checkedRegionProof",
     "incrementProof",
     "provenance",
   ],
@@ -1864,15 +1884,86 @@ function attachDirectResultVariants(context) {
   return pendingCalls;
 }
 
+function guardedFallibleCallShape(caller, operation, callee) {
+  return Array.isArray(operation.arguments) &&
+    operation.arguments.length === callee.params.length &&
+    operation.arguments.every((argument, index) =>
+      argument?.type === callee.params[index].type &&
+      functionValueType(caller, argument.name) === argument.type
+    );
+}
+
+function guardedFallibleProofFunctions(owner, slow, fast, dependencies = []) {
+  return [owner, slow, fast, ...dependencies].filter((fn, index, values) =>
+    fn !== undefined && values.indexOf(fn) === index
+  );
+}
+
+function attachGuardedFallibleVariants(context) {
+  const pending = [];
+  for (const spec of context.fallibleSpecs) {
+    const selected = new Set();
+    for (const selector of spec.edges) {
+      const matches = Array.from(context.callFacts).filter(([operation, call]) =>
+        call.callee === spec.slow.name &&
+        operation.origins?.includes(selector.operationOrigin)
+      );
+      if (matches.length !== 1) {
+        fail(`guarded fallible edge ${selector.operationOrigin} matched ` +
+          `${matches.length} calls`);
+      }
+      const [operation, call] = matches[0];
+      if (selected.has(operation)) {
+        fail(`guarded fallible edges resolve to the same call ${operation.id}`);
+      }
+      selected.add(operation);
+      if (!guardedFallibleCallShape(call.caller, operation, spec.slow)) {
+        continue;
+      }
+      const dependencies = Object.freeze([
+        ...(call.state.summaryDependencies || []),
+      ].sort());
+      if (dependencies.some((name) => !context.byName.has(name))) continue;
+      const claim = Object.freeze({
+        authority: "checked-region-guarded-fallible-call-v1",
+        operation: operation.id,
+        fastFunction: spec.fast.name,
+        fallbackFunction: spec.slow.name,
+        fullGuard: spec.guard,
+        guard: residualGuard(call.state, spec.guard),
+        parameters: Object.freeze(spec.fast.params.map((parameter, index) =>
+          Object.freeze({
+            name: parameter.name,
+            type: parameter.type,
+            argument: operation.arguments[index].name,
+          })
+        )),
+        summaryDependencies: dependencies,
+      });
+      operation[CHECKED_REGION_GUARDED_FALLIBLE_CALL] = claim;
+      pending.push({
+        caller: call.caller,
+        operation,
+        claim,
+        fast: spec.fast,
+        slow: spec.slow,
+        dependencies,
+      });
+    }
+  }
+  return pending;
+}
+
 function attachCapabilities(
   region,
   entry,
   variants,
   localFacts = new Map(),
   directSpecs = [],
+  fallibleSpecs = [],
 ) {
   if (region.capabilities.length === 0 && localFacts.size === 0 &&
-      directSpecs.length === 0) return;
+      directSpecs.length === 0 && fallibleSpecs.length === 0) return;
   const enabled = new Set(region.capabilities);
   for (const capability of enabled) {
     if (!CAPABILITIES.has(capability)) fail(`unsupported capability ${capability}`);
@@ -1946,6 +2037,11 @@ function attachCapabilities(
     facts,
     scalarSummaries,
   });
+  const pendingFallibleCalls = attachGuardedFallibleVariants({
+    byName,
+    callFacts,
+    fallibleSpecs,
+  });
   const directFunctions = new Set(directSpecs.map((spec) => spec.fast));
   for (const [fn, result] of analysisResults) {
     if (directFunctions.has(fn)) continue;
@@ -1973,6 +2069,19 @@ function attachCapabilities(
         : directCallAuthority;
       authority.authorize(pending.caller, pending.operation, pending.claim);
     }
+  }
+  for (const pending of pendingFallibleCalls) {
+    guardedFallibleCallAuthority.authorize(
+      guardedFallibleProofFunctions(
+        pending.caller,
+        pending.slow,
+        pending.fast,
+        pending.dependencies.map(name => byName.get(name)),
+      ),
+      pending.caller,
+      pending.operation,
+      pending.claim,
+    );
   }
   if (enabled.has("verified-span-access")) {
     // Reconstruct ordinary checked-view/range proofs from the cloned IR.  No
@@ -2031,7 +2140,8 @@ function prepareCheckedRegions(ir) {
       localFunctions.add(local.function);
       const target = originals.get(local.function);
       const mode = local.mode || "guarded";
-      if (!["guarded", "direct-result", "guarded-direct-result"].includes(mode)) {
+      if (!["guarded", "direct-result", "guarded-direct-result",
+        "guarded-fallible"].includes(mode)) {
         fail(`unsupported local variant mode ${mode}`);
       }
       const localGuard = normalizeGuard(local.guard, target);
@@ -2043,18 +2153,20 @@ function prepareCheckedRegions(ir) {
         if (edge === null || typeof edge !== "object" ||
             typeof edge.operationOrigin !== "string" ||
             edge.operationOrigin.length === 0) {
-          fail("invalid guarded direct edge selector");
+          fail("invalid local variant edge selector");
         }
         return Object.freeze({ operationOrigin: edge.operationOrigin });
       });
       if (new Set(edges.map((edge) => edge.operationOrigin)).size !== edges.length) {
-        fail("duplicate guarded direct edge selector");
+        fail("duplicate local variant edge selector");
       }
-      if (mode === "guarded-direct-result" && edges.length === 0) {
-        fail("guarded direct result requires an edge selector");
+      if (["guarded-direct-result", "guarded-fallible"].includes(mode) &&
+          edges.length === 0) {
+        fail(`${mode} requires an edge selector`);
       }
-      if (mode !== "guarded-direct-result" && edges.length !== 0) {
-        fail("edge selectors require guarded direct result mode");
+      if (!["guarded-direct-result", "guarded-fallible"].includes(mode) &&
+          edges.length !== 0) {
+        fail("edge selectors require an edge-selected local variant mode");
       }
       if (!Array.isArray(local.capabilities) ||
           new Set(local.capabilities).size !== local.capabilities.length) {
@@ -2069,7 +2181,9 @@ function prepareCheckedRegions(ir) {
       visitOperations(target.body, (operation) => {
         if (operation.kind === "native.call") hasCall = true;
       });
-      if (hasCall) fail("local variant functions may not contain native calls");
+      if (hasCall && mode !== "guarded-fallible") {
+        fail("local variant functions may not contain native calls");
+      }
       return Object.freeze({
         function: local.function,
         mode,
@@ -2129,6 +2243,7 @@ function prepareCheckedRegions(ir) {
     });
     const localFacts = new Map();
     const directSpecs = [];
+    const fallibleSpecs = [];
     for (const [localIndex, local] of normalizedLocalVariants.entries()) {
       const slow = variants.find((candidate) =>
         candidate.checkedRegionVariant.original === local.function
@@ -2162,6 +2277,14 @@ function prepareCheckedRegions(ir) {
           mode: local.mode,
           slow,
         });
+      } else if (local.mode === "guarded-fallible") {
+        fallibleSpecs.push({
+          edges: local.edges,
+          fast,
+          guard: local.guard,
+          slow,
+        });
+        localFacts.set(fast.name, initialFacts(original, local.guard));
       } else {
         slow[CHECKED_REGION_LOCAL_VARIANT] = Object.freeze({
           guard: local.guard,
@@ -2189,6 +2312,7 @@ function prepareCheckedRegions(ir) {
       variants,
       localFacts,
       directSpecs,
+      fallibleSpecs,
     );
     return Object.freeze({
       ...preparedRegion,
@@ -2334,9 +2458,58 @@ function checkedRegionDirectCallEmission(fn, operation, functions) {
   });
 }
 
+function checkedRegionGuardedFallibleCallEmission(fn, operation, functions) {
+  const claim = operation?.[CHECKED_REGION_GUARDED_FALLIBLE_CALL];
+  if (claim?.authority !== "checked-region-guarded-fallible-call-v1" ||
+      claim.operation !== operation.id ||
+      claim.fallbackFunction !== operation.function ||
+      !Array.isArray(claim.fullGuard) || claim.fullGuard.length === 0 ||
+      !Array.isArray(claim.guard) ||
+      !Array.isArray(claim.parameters) ||
+      !Array.isArray(claim.summaryDependencies) ||
+      claim.summaryDependencies.some((name, index, values) =>
+        typeof name !== "string" || !functions.has(name) ||
+        (index > 0 && values[index - 1] >= name)
+      ) ||
+      !Array.isArray(operation.arguments) ||
+      claim.parameters.length !== operation.arguments.length ||
+      claim.parameters.some((parameter, index) =>
+        parameter.argument !== operation.arguments[index].name ||
+        parameter.type !== operation.arguments[index].type
+      )) return undefined;
+  const slow = functions.get(claim.fallbackFunction);
+  const fast = functions.get(claim.fastFunction);
+  if (slow === undefined || fast === undefined ||
+      slow.kernelKind !== "integer" || fast.kernelKind !== "integer" ||
+      slow.returnType !== fast.returnType ||
+      slow.params.length !== fast.params.length ||
+      slow.params.length !== claim.parameters.length ||
+      slow.params.some((parameter, index) =>
+        parameter.name !== claim.parameters[index].name ||
+        parameter.type !== claim.parameters[index].type ||
+        fast.params[index].name !== parameter.name ||
+        fast.params[index].type !== parameter.type
+      )) return undefined;
+  const proofFunctions = guardedFallibleProofFunctions(
+    fn,
+    slow,
+    fast,
+    claim.summaryDependencies.map(name => functions.get(name)),
+  );
+  if (!guardedFallibleCallAuthority.isAuthorized(
+    proofFunctions, fn, operation, claim,
+  )) return undefined;
+  return Object.freeze({
+    function: fast.name,
+    guard: Object.freeze([...claim.guard]),
+    parameters: Object.freeze([...claim.parameters]),
+  });
+}
+
 module.exports = {
   checkedRegionDirectCallEmission,
   checkedRegionDirectResultEmission,
+  checkedRegionGuardedFallibleCallEmission,
   checkedRegionLocalVariant(fn) {
     return fn?.[CHECKED_REGION_LOCAL_VARIANT];
   },

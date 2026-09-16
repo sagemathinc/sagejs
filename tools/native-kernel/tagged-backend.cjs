@@ -6,6 +6,7 @@ const {
 const {
   checkedRegionDirectCallEmission,
   checkedRegionDirectResultEmission,
+  checkedRegionGuardedFallibleCallEmission,
   checkedRegionLocalVariant,
   checkedRegionVirtualUInt64Emission,
   isCheckedRegionBufferAccess,
@@ -1149,6 +1150,57 @@ function emitTaggedOperation(operation, context, indent) {
       }
       return `${indent}${target} = ${directResultName(direct.function)}(` +
         `${args.join(", ")});`;
+    }
+    const guardedFallible = checkedRegionGuardedFallibleCallEmission(
+      context.currentFunction, operation, context.functions,
+    );
+    if (guardedFallible !== undefined) {
+      const outputs = operation.results === undefined
+        ? [operation.returnType === "Integer" ? target : `&${target}`]
+        : operation.results.map((result) =>
+          result.type === "Integer"
+            ? taggedValue(result.name, context)
+            : `&${taggedValue(result.name, context)}`
+        );
+      const args = operation.arguments.map((argument) =>
+        taggedValue(argument.name, context)
+      );
+      const values = new Map(guardedFallible.parameters.map((parameter) => [
+        parameter.name,
+        taggedValue(parameter.argument, context),
+      ]));
+      const guard = checkedRegionGuard(
+        { guard: guardedFallible.guard },
+        (name) => {
+          const value = values.get(name);
+          if (value === undefined) {
+            throw new Error(`unknown guarded fallible parameter ${name}`);
+          }
+          return value;
+        },
+        `${indent}    `,
+      );
+      const call = (name) =>
+        `tagged_${name}(status, ${outputs.join(", ")}` +
+        `${args.length ? `, ${args.join(", ")}` : ""})`;
+      if (guardedFallible.guard.length === 0) {
+        return [
+          `${indent}if (!${call(guardedFallible.function)})`,
+          `${indent}    goto fail;`,
+        ].join("\n");
+      }
+      return [
+        `${indent}{`,
+        guard.setup,
+        `${indent}    if (${guard.condition})`,
+        `${indent}    {`,
+        `${indent}        if (!${call(guardedFallible.function)})`,
+        `${indent}            goto fail;`,
+        `${indent}    }`,
+        `${indent}    else if (!${call(operation.function)})`,
+        `${indent}        goto fail;`,
+        `${indent}}`,
+      ].join("\n");
     }
     const outputs = operation.results === undefined
       ? [operation.returnType === "Integer" ? target : `&${target}`]

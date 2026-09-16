@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "fallible-guarded-private-abi",
+  "title": "Fallible Guarded Private Abi",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add a generic authenticated edge-selected guarded private variant that preserves the ordinary fallible status/out ABI and exact mutation/failure semantics",
+  "base_commit": "f690969b9744e14b72145c4f14898ed095305b77",
+  "claims": [
+    "tools/native-kernel/checked-regions.cjs",
+    "tools/native-kernel/tagged-backend.cjs",
+    "tools/native-kernel/structural-proof-authority.cjs",
+    "tools/native-kernel/test/checked-private-region.cjs",
+    "tools/native-kernel/test/checked_private_region_witness.py",
+    "tools/native-kernel/test/structural-proof-authority.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "Checked fallback and optimized guarded variant have identical success, failure, status, output, and partial-mutation behavior"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

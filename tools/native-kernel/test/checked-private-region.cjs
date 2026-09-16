@@ -12,6 +12,7 @@ const { compileKernel } = require("../compiler.cjs");
 const {
   checkedRegionDirectCallEmission,
   checkedRegionDirectResultEmission,
+  checkedRegionGuardedFallibleCallEmission,
   checkedRegionVirtualUInt64Emission,
   installCheckedRegionDeclarations,
   isCheckedRegionBufferAccess,
@@ -111,6 +112,32 @@ const localCopyDeclaration = {
       { kind: "int64-range", parameter: "degree", minimum: -1, maximum: 3 },
     ],
     capabilities: ["interval-view-access"],
+  }],
+};
+
+const guardedFallibleDeclaration = {
+  entry: "checked_region_guarded_fallible_entry",
+  functions: [
+    "checked_region_guarded_fallible_entry",
+    "checked_region_guarded_fallible_helper",
+    "checked_region_guarded_fallible_nested",
+  ],
+  capabilities: [],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 0 },
+  ],
+  localVariants: [{
+    function: "checked_region_guarded_fallible_helper",
+    mode: "guarded-fallible",
+    edges: [
+      { operationOrigin: "checked_region_guarded_fallible_entry:1" },
+      { operationOrigin: "checked_region_guarded_fallible_entry:3" },
+    ],
+    guard: [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+      { kind: "int64-range", parameter: "index", minimum: 0, maximum: 3 },
+    ],
+    capabilities: ["direct-buffer-access"],
   }],
 };
 
@@ -1360,6 +1387,251 @@ int main(void)
   delete proved[0][0].checkedRegionVirtualUInt64ViewProof;
   const revoked = checkedRegionVirtualUInt64Emission(fast);
   assert.equal(revoked.validatedViews().length, 0);
+});
+
+test("edge-selected guarded fallible variants preserve the checked ABI", async () => {
+  const ir = await witness();
+  installCheckedRegionDeclarations(ir, [guardedFallibleDeclaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const entry = region.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_guarded_fallible_entry"
+  );
+  const slow = region.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_guarded_fallible_helper" &&
+    fn.checkedRegionLocalCapabilities === undefined
+  );
+  const fast = region.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_guarded_fallible_helper" &&
+    fn.checkedRegionLocalCapabilities?.includes("direct-buffer-access")
+  );
+  assert.ok(entry);
+  assert.ok(slow);
+  assert.ok(fast);
+  assert.equal(region.variants.filter(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_guarded_fallible_helper"
+  ).length, 2);
+  const calls = entry.body.filter(operation => operation.kind === "native.call");
+  assert.equal(calls.length, 2);
+  assert.equal(calls.every(call => call.function === slow.name), true);
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  const routes = calls.map(call => checkedRegionGuardedFallibleCallEmission(
+    entry, call, functions,
+  ));
+  assert.equal(routes.every(candidate => candidate.function === fast.name), true);
+  const route = routes[0];
+  assert.equal(route.function, fast.name);
+  assert.equal(route.guard.length, 2);
+  assert.deepEqual(route.parameters.map(parameter => parameter.argument),
+    ["storage", "index", "value", "fail"]);
+
+  const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
+  const entryBody = functionText(core.source, entry.name);
+  assert.match(entryBody, new RegExp(`tagged_${fast.name}\\(`));
+  assert.match(entryBody, new RegExp(`tagged_${slow.name}\\(`));
+  assert.match(entryBody, /sagejs_local_tagged_storage\.length >=/);
+  assert.match(entryBody, /sagejs_local_tagged_index >= INT64_C\(0\)/);
+  const fastBody = functionText(core.source, fast.name);
+  assert.doesNotMatch(fastBody, /UInt64Buffer index out of range/);
+  assert.match(fastBody,
+    /tagged_sagejs_checked_r0_checked_region_guarded_fallible_nested/);
+  assert.match(fastBody, /guarded fallible helper failure/);
+  const slowBody = functionText(core.source, slow.name);
+  assert.match(slowBody, /UInt64Buffer index out of range/);
+
+  if (process.platform !== "win32") {
+    const temporary = mkdtempSync(join(tmpdir(), "sagejs-fallible-edge-"));
+    try {
+      writeFileSync(join(temporary, "kernel_core.h"), core.header);
+      const runtimeSource = `${core.source}
+#include <string.h>
+
+static int same_status(
+    const sagejs_native_status *left, const sagejs_native_status *right)
+{
+    if (left->code != right->code) return 0;
+    if (left->message == NULL || right->message == NULL)
+        return left->message == right->message;
+    return strcmp(left->message, right->message) == 0;
+}
+
+int main(void)
+{
+    sagejs_native_status selected = {SAGEJS_NATIVE_OK, NULL};
+    sagejs_native_status checked = {SAGEJS_NATIVE_OK, NULL};
+    uint64_t selected_words[4] = {UINT64_C(2), UINT64_C(3), UINT64_C(5), UINT64_C(7)};
+    uint64_t checked_words[4] = {UINT64_C(2), UINT64_C(3), UINT64_C(5), UINT64_C(7)};
+    sagejs_uint64_buffer selected_storage = {selected_words, 4};
+    sagejs_uint64_buffer checked_storage = {checked_words, 4};
+    int64_t selected_output = INT64_C(99);
+    int64_t checked_output = INT64_C(99);
+
+    if (!tagged_checked_region_guarded_fallible_entry(
+            &selected, &selected_output, selected_storage, INT64_C(2),
+            UINT64_C(41), 0)) return 1;
+    if (!tagged_checked_region_guarded_fallible_helper(
+            &checked, &checked_output, checked_storage, INT64_C(2),
+            UINT64_C(41), 0)) return 2;
+    if (!same_status(&selected, &checked) ||
+        selected_output != checked_output ||
+        memcmp(selected_words, checked_words, sizeof(selected_words)) != 0)
+        return 3;
+
+    sagejs_native_status_reset(&selected);
+    sagejs_native_status_reset(&checked);
+    selected_output = checked_output = INT64_C(123);
+    if (tagged_checked_region_guarded_fallible_entry(
+            &selected, &selected_output, selected_storage, INT64_C(3),
+            UINT64_C(43), 1)) return 4;
+    if (tagged_checked_region_guarded_fallible_helper(
+            &checked, &checked_output, checked_storage, INT64_C(3),
+            UINT64_C(43), 1)) return 5;
+    if (!same_status(&selected, &checked) ||
+        selected_output != checked_output || selected_output != INT64_C(123) ||
+        memcmp(selected_words, checked_words, sizeof(selected_words)) != 0)
+        return 6;
+
+    sagejs_native_status_reset(&selected);
+    sagejs_native_status_reset(&checked);
+    uint64_t selected_short_words[1] = {UINT64_C(11)};
+    uint64_t checked_short_words[1] = {UINT64_C(11)};
+    sagejs_uint64_buffer selected_short = {selected_short_words, 1};
+    sagejs_uint64_buffer checked_short = {checked_short_words, 1};
+    selected_output = checked_output = INT64_C(127);
+    if (tagged_checked_region_guarded_fallible_entry(
+            &selected, &selected_output, selected_short, INT64_C(2),
+            UINT64_C(47), 0)) return 7;
+    if (tagged_checked_region_guarded_fallible_helper(
+            &checked, &checked_output, checked_short, INT64_C(2),
+            UINT64_C(47), 0)) return 8;
+    if (!same_status(&selected, &checked) ||
+        selected_output != checked_output || selected_output != INT64_C(127) ||
+        selected_short_words[0] != checked_short_words[0] ||
+        selected_short_words[0] != UINT64_C(47))
+        return 9;
+    return 0;
+}
+`;
+      writeFileSync(join(temporary, "runtime.c"), runtimeSource);
+      const linked = spawnSync(process.env.CC || "cc", [
+        "-std=c11", "-Werror", "-I", temporary,
+        join(temporary, "runtime.c"), "-lgmp", "-lm",
+        "-o", join(temporary, "runtime"),
+      ], { encoding: "utf8" });
+      assert.equal(linked.status, 0, linked.stderr || linked.stdout);
+      const executed = spawnSync(join(temporary, "runtime"), [], {
+        encoding: "utf8",
+      });
+      assert.equal(executed.status, 0, executed.stderr || executed.stdout);
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  }
+});
+
+test("guarded fallible edge proofs fail closed under hostile changes", async () => {
+  const prepared = await witness();
+  installCheckedRegionDeclarations(prepared, [guardedFallibleDeclaration]);
+  const [region] = prepareCheckedRegions(prepared);
+  const entry = region.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_guarded_fallible_entry"
+  );
+  const slow = region.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_guarded_fallible_helper" &&
+    fn.checkedRegionLocalCapabilities === undefined
+  );
+  const fast = region.variants.find(fn =>
+    fn.checkedRegionLocalCapabilities?.includes("direct-buffer-access")
+  );
+  const call = entry.body.find(operation => operation.kind === "native.call");
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  assert.ok(checkedRegionGuardedFallibleCallEmission(entry, call, functions));
+
+  const originalArgument = call.arguments[1].name;
+  call.arguments[1].name = "value";
+  assert.equal(
+    checkedRegionGuardedFallibleCallEmission(entry, call, functions),
+    undefined,
+  );
+  call.arguments[1].name = originalArgument;
+  assert.ok(checkedRegionGuardedFallibleCallEmission(entry, call, functions));
+
+  const originalOperation = call.id;
+  call.id = `${call.id}:hostile`;
+  assert.equal(
+    checkedRegionGuardedFallibleCallEmission(entry, call, functions),
+    undefined,
+  );
+  call.id = originalOperation;
+  assert.ok(checkedRegionGuardedFallibleCallEmission(entry, call, functions));
+
+  const fastStore = fast.body.find(operation =>
+    operation.kind === "uint64.buffer.set"
+  );
+  const originalIndex = fastStore.index;
+  fastStore.index = "index";
+  assert.equal(
+    checkedRegionGuardedFallibleCallEmission(entry, call, functions),
+    undefined,
+  );
+  fastStore.index = originalIndex;
+  assert.ok(checkedRegionGuardedFallibleCallEmission(entry, call, functions));
+
+  const slowStore = slow.body.find(operation =>
+    operation.kind === "uint64.buffer.set"
+  );
+  const slowIndex = slowStore.index;
+  slowStore.index = "index";
+  assert.equal(
+    checkedRegionGuardedFallibleCallEmission(entry, call, functions),
+    undefined,
+  );
+  slowStore.index = slowIndex;
+  assert.ok(checkedRegionGuardedFallibleCallEmission(entry, call, functions));
+
+  const wrongEdge = structuredClone(guardedFallibleDeclaration);
+  wrongEdge.localVariants[0].edges[0].operationOrigin = "missing:999";
+  const malformed = await witness();
+  installCheckedRegionDeclarations(malformed, [wrongEdge]);
+  assert.throws(() => prepareCheckedRegions(malformed),
+    /guarded fallible edge missing:999 matched 0 calls/);
+
+  const portable = await witness();
+  installCheckedRegionDeclarations(portable, [guardedFallibleDeclaration]);
+  assert.throws(() => {
+    portable.checkedRegions[0].localVariants[0].guard[0].minimum = 0;
+  }, TypeError);
+  const serialized = JSON.parse(JSON.stringify(portable));
+  assert.deepEqual(prepareCheckedRegions(serialized), []);
+});
+
+test("proved caller facts remove the guarded fallible residual guard", async () => {
+  const ir = await witness();
+  const declaration = structuredClone(guardedFallibleDeclaration);
+  declaration.guard = structuredClone(declaration.localVariants[0].guard);
+  installCheckedRegionDeclarations(ir, [declaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const entry = region.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_guarded_fallible_entry"
+  );
+  const calls = entry.body.filter(operation => operation.kind === "native.call");
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  const routes = calls.map(call => checkedRegionGuardedFallibleCallEmission(
+    entry, call, functions,
+  ));
+  assert.equal(routes.length, 2);
+  assert.equal(routes.every(route => route.guard.length === 0), true);
+  const body = functionText(generateHostCore(ir).source, entry.name);
+  assert.doesNotMatch(body, /sagejs_checked_region_guard/);
+  assert.equal((body.match(new RegExp(
+    `if \\(!tagged_${routes[0].function}\\(`, "g",
+  )) || []).length, 2);
 });
 
 test("private direct-result variants rewrite only proved call edges", async () => {
