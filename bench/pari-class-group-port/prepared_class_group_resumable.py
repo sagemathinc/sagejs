@@ -28,6 +28,107 @@ def _pari_resumable_stop(state: Int64Buffer, action: int) -> int:
 
 
 @native
+def _pari_prepare_relation_search(
+    permutation: Int64Buffer,
+    rows: int,
+    h_rows: int,
+    need: int,
+    squash_index: int,
+    search_ideals: IntegerBuffer,
+    outer_permutation: IntegerBuffer,
+) -> tuple[int, int]:
+    """Prepare source `F.L_jid` after one HNF dimension decision.
+
+    Positive need uses the sorted leading physical rows.  A dimension-ready
+    state retains the complete permutation, with the source squash rotation
+    applied to its nonzero H block.  Return the live search length and next
+    squash index.  Orbit trimming remains in the connected outer scheduler.
+    """
+    if rows < 1 or h_rows < 0 or h_rows > rows or need < 0 or need > rows:
+        raise ValueError("invalid resident relation-search dimensions")
+    if (
+        len(permutation) < rows
+        or len(search_ideals) < rows
+        or len(outer_permutation) < rows
+    ):
+        raise ValueError("short resident relation-search owner")
+    for i in range(rows):
+        search_ideals[i] = int(permutation[i])
+        outer_permutation[i] = int(permutation[i])
+    if need > 0:
+        # `vecsmall_sort(vecslice(F.perm, 1, need))`.
+        for i in range(1, need):
+            value = search_ideals[i]
+            j = i
+            while j > 0 and search_ideals[j - 1] > value:
+                search_ideals[j] = search_ideals[j - 1]
+                j -= 1
+            search_ideals[j] = value
+        return need, squash_index
+    if h_rows > 1 and squash_index % h_rows != 0:
+        for i in range(h_rows):
+            search_ideals[i] = int(permutation[(i + squash_index) % h_rows])
+    return rows, squash_index + 1
+
+
+@native
+def _pari_publish_appended_hnf(
+    rows: int,
+    places: int,
+    append_state: Int64Buffer,
+    append_h: IntegerBuffer,
+    append_dep: IntegerBuffer,
+    append_b: IntegerBuffer,
+    append_c: IntegerBuffer,
+    resident_state: Int64Buffer,
+    resident_h: IntegerBuffer,
+    resident_dep: IntegerBuffer,
+    resident_b: IntegerBuffer,
+    resident_c: IntegerBuffer,
+) -> int:
+    """Publish every live HNF owner after a successful append transaction."""
+    if len(append_state) < 9 or len(resident_state) < 9:
+        raise ValueError("short appended HNF state")
+    h_rows = int(append_state[0])
+    b_columns = int(append_state[2])
+    columns = int(append_state[7])
+    if (
+        rows < 0
+        or places < 1
+        or h_rows < 0
+        or b_columns < 0
+        or h_rows + b_columns > rows
+        or columns < h_rows + b_columns
+    ):
+        raise ValueError("invalid appended HNF dimensions")
+    dep_rows = rows - b_columns - h_rows
+    lig = rows - b_columns
+    if (
+        len(append_h) < h_rows * h_rows
+        or len(resident_h) < h_rows * h_rows
+        or len(append_dep) < dep_rows * h_rows
+        or len(resident_dep) < dep_rows * h_rows
+        or len(append_b) < lig * b_columns
+        or len(resident_b) < lig * b_columns
+        or len(append_c) < 7 * places * columns
+        or len(resident_c) < 7 * places * columns
+    ):
+        raise ValueError("short appended HNF publication owner")
+    for i in range(h_rows * h_rows):
+        resident_h[i] = append_h[i]
+    for i in range(dep_rows * h_rows):
+        resident_dep[i] = append_dep[i]
+    for i in range(lig * b_columns):
+        resident_b[i] = append_b[i]
+    copied = 7 * places * columns
+    for i in range(copied):
+        resident_c[i] = append_c[i]
+    for i in range(9):
+        resident_state[i] = append_state[i]
+    return copied
+
+
+@native
 def pari_prepared_class_group_resumable(
     matrix: IntegerBuffer,
     ideal: IntegerBuffer,
@@ -352,9 +453,11 @@ def pari_prepared_class_group_resumable(
     count, copied transformed-C entries, last. Trace has five words per pass:
     last, acceptance action, selected j, small_fail, fail_limit. Phase4 is
     terminal/idempotent; exceptions retain a nonterminal phase, not resumable
-    partial arithmetic. -200 is pass cap; -201 dimension-need; -202 unsupported
-    retry; -203 automorphisms; -204 owner growth; -205 empty append; -206 honesty.
-    -207 is a gated outer pass requiring unported driver control.
+    partial arithmetic. Dimension need, empty collection, changed H/B shape,
+    and acceptance actions 3/4/5 are resident retry states. -200 is pass cap;
+    -202 rejects inconsistent acceptance retry state; -203 automorphisms; -204
+    owner growth; -206 honesty. -207 is a gated outer pass requiring unported
+    driver control.
     Native acceptance actions/other negative frontiers retain their meaning.
     Scratch owners and public outputs must be disjoint and fresh as documented
     by their constituent kernels. Public outputs remain untouched on failure.
@@ -662,95 +765,105 @@ def pari_prepared_class_group_resumable(
         need += unit_defect
         if need > rows:
             need = rows
-    if need != 0:
-        return _pari_resumable_stop(driver_state, -201)
+    search_count, squash_index = _pari_prepare_relation_search(
+        hnf_perm,
+        rows,
+        current_h,
+        need,
+        0,
+        search_ideals,
+        outer_perm,
+    )
+    action = 3
     # Source first !A transition occurs BEFORE extracting A/computing R.
-    outer_state[3] = 0
-    outer_state[4] = rows // 32
-    if outer_state[4] < 10:
-        outer_state[4] = 10
-    outer_state[14] = 1
+    if need == 0:
+        outer_state[3] = 0
+        outer_state[4] = rows // 32
+        if outer_state[4] < 10:
+            outer_state[4] = 10
+        outer_state[14] = 1
     driver_state[0] = 3
     cache_changed = columns != driver_state[3]
-    accept_multiple_state[1] = 0
-    action = pari_post_hnf_acceptance(
-        int(len(relation)),
-        int(hnf_state[0]),
-        int(hnf_state[2]),
-        int(hnf_state[7]),
-        (n + admission_real_count) // 2,
-        n,
-        hnf_result_h,
-        hnf_result_c,
-        accept_inverse_hr,
-        accept_logs,
-        accept_class_number,
-        accept_zeta_factor,
-        accept_post_hnf_state,
-        accept_prepared,
-        accept_selected,
-        accept_prep_state,
-        accept_rank_work,
-        accept_rank_occupied,
-        accept_rank_pivots,
-        accept_rank_state,
-        accept_integer_input,
-        accept_integer_work,
-        accept_integer_occupied,
-        accept_integer_pivots,
-        accept_integer_best,
-        accept_integer_state,
-        accept_basis,
-        accept_minor,
-        accept_det_work,
-        accept_det_result,
-        accept_det_pivots,
-        accept_det_state,
-        accept_inverse_work,
-        accept_inverse_rhs,
-        accept_inverse,
-        accept_inverse_pivots,
-        accept_inverse_state,
-        accept_product,
-        accept_inverse_slice,
-        accept_multiple,
-        accept_coordinates,
-        accept_multiple_state,
-        accept_rational_work,
-        accept_lattice,
-        accept_hnf_work,
-        accept_hnf_column,
-        accept_hnf_output,
-        accept_hnf_state,
-        accept_regulator,
-        accept_relations,
-        accept_denominator,
-        accept_reconstruction_state,
-        accept_hnf_row_pivots,
-        accept_hnf_heights,
-        cache_changed,
-        accept_acceptance_state,
-    )
+    if need == 0:
+        accept_multiple_state[1] = 0
+        action = pari_post_hnf_acceptance(
+            int(len(relation)),
+            int(hnf_state[0]),
+            int(hnf_state[2]),
+            int(hnf_state[7]),
+            (n + admission_real_count) // 2,
+            n,
+            hnf_result_h,
+            hnf_result_c,
+            accept_inverse_hr,
+            accept_logs,
+            accept_class_number,
+            accept_zeta_factor,
+            accept_post_hnf_state,
+            accept_prepared,
+            accept_selected,
+            accept_prep_state,
+            accept_rank_work,
+            accept_rank_occupied,
+            accept_rank_pivots,
+            accept_rank_state,
+            accept_integer_input,
+            accept_integer_work,
+            accept_integer_occupied,
+            accept_integer_pivots,
+            accept_integer_best,
+            accept_integer_state,
+            accept_basis,
+            accept_minor,
+            accept_det_work,
+            accept_det_result,
+            accept_det_pivots,
+            accept_det_state,
+            accept_inverse_work,
+            accept_inverse_rhs,
+            accept_inverse,
+            accept_inverse_pivots,
+            accept_inverse_state,
+            accept_product,
+            accept_inverse_slice,
+            accept_multiple,
+            accept_coordinates,
+            accept_multiple_state,
+            accept_rational_work,
+            accept_lattice,
+            accept_hnf_work,
+            accept_hnf_column,
+            accept_hnf_output,
+            accept_hnf_state,
+            accept_regulator,
+            accept_relations,
+            accept_denominator,
+            accept_reconstruction_state,
+            accept_hnf_row_pivots,
+            accept_hnf_heights,
+            cache_changed,
+            accept_acceptance_state,
+        )
     if accept_acceptance_state[0] == 2:
         driver_state[3] = columns
+    if action == 3 and need == 0:
+        need = int(accept_multiple_state[1])
+    if action == 4 or action == 5:
+        outer_state[15] = 1
     driver_trace[0] = columns
     driver_trace[1] = action
     driver_trace[2] = outer_state[12]
     driver_trace[3] = outer_state[3]
     driver_trace[4] = outer_state[4]
-    while action == 5:
-        if current_h != 0 or current_b != rows:
-            return _pari_resumable_stop(driver_state, -202)
+    while action == 3 or action == 4 or action == 5:
         if driver_state[2] >= pass_limit:
             return _pari_resumable_stop(driver_state, -200)
-        if accept_multiple_state[0] != 0 or accept_multiple_state[3] == 0:
+        if action == 4 or action == 5:
+            if accept_multiple_state[0] != 0 or accept_multiple_state[3] == 0:
+                return _pari_resumable_stop(driver_state, -202)
+            need = int(accept_multiple_state[1])
+        if need < 1:
             return _pari_resumable_stop(driver_state, -202)
-        outer_state[15] = 1
-        need = int(accept_multiple_state[1])
-        for i in range(rows):
-            search_ideals[i] = hnf_perm[i]
-            outer_perm[i] = hnf_perm[i]
-        search_count = rows
         action = pari_prepare_next_small_norm_pass(
             need,
             int(outer_state[14]),
@@ -951,7 +1064,16 @@ def pari_prepared_class_group_resumable(
         driver_state[7] = columns
         driver_state[2] += 1
         if new_columns <= 0:
-            return _pari_resumable_stop(driver_state, -205)
+            # Source `!W` restoration: retain old_need and retry the same
+            # dependent-row slice.  No HNF or acceptance owner changes.
+            action = 3
+            trace_offset = 5 * (driver_state[2] - 1)
+            driver_trace[trace_offset] = columns
+            driver_trace[trace_offset + 1] = action
+            driver_trace[trace_offset + 2] = outer_state[12]
+            driver_trace[trace_offset + 3] = outer_state[3]
+            driver_trace[trace_offset + 4] = outer_state[4]
+            continue
         if (
             len(append_new_relations) < rows * new_columns
             or len(append_new_logs) < 7 * places * new_columns
@@ -1065,17 +1187,51 @@ def pari_prepared_class_group_resumable(
         current_h = int(append_state[0])
         current_b = int(append_state[2])
         current_columns = int(append_state[7])
-        # This corridor preserves empty W/full B; a changed shape is a frontier.
-        if current_h != 0 or current_b != rows:
-            return _pari_resumable_stop(driver_state, -202)
-        for i in range(7 * places * current_columns):
-            hnf_result_c[i] = append_result_c[i]
-        driver_state[6] += 7 * places * current_columns
+        driver_state[6] += _pari_publish_appended_hnf(
+            rows,
+            places,
+            append_state,
+            append_result_h,
+            append_result_dep,
+            append_result_b,
+            append_result_c,
+            hnf_state,
+            hnf_result_h,
+            hnf_result_dep,
+            hnf_result_b,
+            hnf_result_c,
+        )
         relation_state[4] = columns
-        for i in range(9):
-            hnf_state[i] = append_state[i]
         if append_attempt_state[0] == 3 and accept_acceptance_state[0] == 2:
             driver_state[3] = columns
+        need = rows - current_h - current_b
+        unit_defect = places - 1 - (current_columns - current_h - current_b)
+        if unit_defect > 0:
+            need += unit_defect
+            if need > rows:
+                need = rows
+        search_count, squash_index = _pari_prepare_relation_search(
+            hnf_perm,
+            rows,
+            current_h,
+            need,
+            squash_index,
+            search_ideals,
+            outer_perm,
+        )
+        if append_attempt_state[0] == 2:
+            # `pari_connected_hnfadd_acceptance` uses -100 to expose the
+            # source dimension frontier.  It is an internal collect action in
+            # the resident driver, not a terminal status.
+            action = 3
+        else:
+            outer_state[14] = 1
+            if action == 4 or action == 5:
+                outer_state[15] = 1
+            else:
+                outer_state[15] = 0
+                if action == 3:
+                    need = int(accept_multiple_state[1])
         trace_offset = 5 * (driver_state[2] - 1)
         driver_trace[trace_offset] = columns
         driver_trace[trace_offset + 1] = action
