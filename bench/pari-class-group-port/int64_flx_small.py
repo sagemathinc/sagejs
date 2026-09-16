@@ -7,7 +7,9 @@ Canonical coefficients, degree -1 for zero, degree <=8, odd prime
 3<=p<=3037000493 are caller preconditions. Outputs clear unused slot tails.
 Except copy, output slots must be disjoint from inputs and each other.
 GCD scratch comprises three disjoint slots, also disjoint from output/inputs.
-Exact Python integers retain source HIGHBIT reduction points without overflow.
+Unsigned 64-bit accumulators retain source HIGHBIT reduction points.  The
+admitted modulus bound makes each product smaller than 2^63 and each guarded
+sum smaller than 2^64, so no accumulator addition wraps on this corridor.
 Fixed-slot tail clearing adds representation stores absent from variable-length
 PARI objects; no identical primitive-cost claim is made. This is the small
 basecase corridor, not general Flx dispatch.
@@ -15,14 +17,60 @@ basecase corridor, not general Flx dispatch.
 
 from sagejs.native import (
     UInt64Buffer,
-    checked_uint64,
     native,
     uint64,
     Int64Buffer,
     int64,
     checked_int64,
 )
-from .relation_cache import pari_word_mod_inverse
+
+
+@native
+def uint64_pari_word_mod_inverse(value: uint64, modulus: uint64) -> uint64:
+    """PARI's unsigned-word `Fl_inv` corridor without an exact-integer island.
+
+    `uint64` arithmetic is modulo 2^64, matching the intentional unsigned
+    subtraction and coefficient wrap in `xgcduu(f=1)`.  Callers supply a
+    canonical nonzero residue and `2 <= modulus <= 3_037_000_493`.
+    """
+    if modulus < 2 or value == 0 or value >= modulus:
+        raise ValueError("invalid canonical modular-inverse input")
+    d: uint64 = modulus
+    d1: uint64 = value
+    xv: uint64 = 0
+    xv1: uint64 = 1
+    swapped: int64 = 0
+    while d1 > 1:
+        d -= d1
+        if d >= d1:
+            quotient: uint64 = 1 + d // d1
+            d %= d1
+            xv += quotient * xv1
+        else:
+            xv += xv1
+        if d <= 1:
+            swapped = 1
+            break
+        d1 -= d
+        if d1 >= d:
+            quotient = 1 + d1 // d
+            d1 %= d
+            xv1 += quotient * xv
+        else:
+            xv1 += xv
+    if swapped != 0:
+        gcd: uint64 = d1
+        if d == 1:
+            gcd = 1
+        result: uint64 = modulus - xv % modulus
+    else:
+        gcd = d
+        if d1 == 1:
+            gcd = 1
+        result = xv1 % modulus
+    if gcd != 1 or result == 0:
+        raise ZeroDivisionError("noninvertible polynomial coefficient")
+    return result
 
 
 @native
@@ -55,7 +103,7 @@ def int64_pari_flx_normalize(
         raise ValueError("cannot normalize zero polynomial")
     if w[a + da] == 1:
         return checked_int64(int64_pari_flx_copy(w, a, da, out))
-    inv: uint64 = checked_uint64(pari_word_mod_inverse(w[a + da], p))
+    inv: uint64 = uint64_pari_word_mod_inverse(w[a + da], p)
     _range_3_0: int64 = da
     i: int64 = 0
     for i in range(_range_3_0):
@@ -107,7 +155,7 @@ def int64_pari_flx_mul(
     if da + db > 8:
         raise ValueError("product exceeds small Flx slot")
     d: int64 = da + db
-    v = 0
+    v: int64 = 0
     while w[a] == 0:
         a += 1
         da -= 1
@@ -158,7 +206,7 @@ def int64_pari_flx_sqr(
     if da < 0:
         return checked_int64(-1)
     d: int64 = 2 * da
-    v = 0
+    v: int64 = 0
     while w[a] == 0:
         a += 1
         da -= 1
@@ -265,7 +313,7 @@ def _int64_pari_flx_divrem(
         return checked_int64(int64_pari_flx_copy(w, a, da, rem))
     inv: uint64 = 1
     if w[b + db] != 1:
-        inv = checked_uint64(pari_word_mod_inverse(w[b + db], p))
+        inv = uint64_pari_word_mod_inverse(w[b + db], p)
     if db == 0:
         _range_14_0: int64 = da + 1
         i: int64 = 0

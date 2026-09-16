@@ -4,9 +4,9 @@
   "id": "pari-class-group-port",
   "title": "Pari Class Group Port",
   "lane": "arithmetic-algebra",
-  "status": "review",
+  "status": "active",
   "owner": "codex",
-  "objective": "Test bounded storage on the faithful PARI 2.17.4 splitting-degree catalog, then test explicit storage reuse on its real HNF stage",
+  "objective": "Eliminate the five remaining exact islands in the faithful PARI 2.17.4 splitting-degree catalog, preserving the frozen outputs and measuring every isolated change against the 1.39 ms same-algorithm C ceiling",
   "base_commit": "eeb45268151f7afc4a953f662b146513f2f9ac88",
   "claims": [
     "src/lib/sagejs/number_fields/pari_class_group/",
