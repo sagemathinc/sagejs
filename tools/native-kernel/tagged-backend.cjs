@@ -121,22 +121,75 @@ function uint64Literal(value) {
 }
 
 function checkedRegionGuard(region) {
-  return region.guard.map((predicate) => {
+  const setup = ["    int sagejs_checked_region_guard = 1;"];
+  const conditions = [];
+  for (const predicate of region.guard) {
+    if (predicate.kind === "checked-nonnegative-int64-product") {
+      const product = `sagejs_checked_product_${predicate.name}`;
+      const left = `sagejs_tagged_arg_${predicate.left}`;
+      const right = `sagejs_tagged_arg_${predicate.right}`;
+      setup.push(
+        `    int64_t ${product} = 0;`,
+        `    if (${left} < 0 || ${right} < 0 ||`,
+        `        (${right} != 0 && ${left} > INT64_MAX / ${right}))`,
+        "        sagejs_checked_region_guard = 0;",
+        "    else",
+        `        ${product} = ${left} * ${right};`,
+      );
+      continue;
+    }
+    if (predicate.kind === "buffer-min-length-product") {
+      const product = `sagejs_checked_product_${predicate.product}`;
+      const buffer = `sagejs_tagged_arg_${predicate.buffer}`;
+      conditions.push(
+        `((uint64_t) ${product} <= (uint64_t) SIZE_MAX && ` +
+        `${buffer}.length >= (size_t) ${product})`,
+      );
+      continue;
+    }
+    if (["buffer-min-length-scalar", "buffer-min-length-affine"].includes(
+      predicate.kind,
+    )) {
+      const scalar = `sagejs_tagged_arg_${predicate.scalar}`;
+      const buffer = `sagejs_tagged_arg_${predicate.buffer}`;
+      const offset = int64Literal(predicate.offset);
+      const value = predicate.kind === "buffer-min-length-affine"
+        ? `(${scalar} + ${offset})`
+        : scalar;
+      const safeAdd = predicate.kind === "buffer-min-length-affine"
+        ? `${scalar} <= INT64_MAX - ${offset} && `
+        : "";
+      conditions.push(
+        `(${scalar} >= 0 && ${safeAdd}` +
+        `(uint64_t) ${value} <= (uint64_t) SIZE_MAX && ` +
+        `${buffer}.length >= (size_t) ${value})`,
+      );
+      continue;
+    }
     const argument = `sagejs_tagged_arg_${predicate.parameter}`;
     if (predicate.kind === "buffer-min-length") {
-      return `${argument}.length >= ((size_t) ${predicate.minimum})`;
+      conditions.push(
+        `(UINT64_C(${predicate.minimum}) <= (uint64_t) SIZE_MAX && ` +
+        `${argument}.length >= (size_t) UINT64_C(${predicate.minimum}))`,
+      );
+      continue;
     }
     if (predicate.kind === "integer-int64-range") {
-      return `(!${argument}->is_big && ${argument}->small >= ` +
+      conditions.push(`(!${argument}->is_big && ${argument}->small >= ` +
         `${int64Literal(predicate.minimum)} && ${argument}->small <= ` +
-        `${int64Literal(predicate.maximum)})`;
+        `${int64Literal(predicate.maximum)})`);
+      continue;
     }
     const literal = predicate.kind === "uint64-range"
       ? uint64Literal
       : int64Literal;
-    return `(${argument} >= ${literal(predicate.minimum)} && ` +
-      `${argument} <= ${literal(predicate.maximum)})`;
-  }).join(" && ");
+    conditions.push(`(${argument} >= ${literal(predicate.minimum)} && ` +
+      `${argument} <= ${literal(predicate.maximum)})`);
+  }
+  return {
+    setup: setup.join("\n"),
+    condition: ["sagejs_checked_region_guard", ...conditions].join(" && "),
+  };
 }
 
 function taggedValue(name, context) {
@@ -1172,9 +1225,13 @@ ${Array.from(sites.values(), (resume) =>
     }
 `;
   const checkedRegion = options.checkedRegionEntries?.get(fn.name);
-  const checkedDispatch = checkedRegion === undefined
+  const checkedGuard = checkedRegion === undefined
+    ? undefined
+    : checkedRegionGuard(checkedRegion);
+  const checkedDispatch = checkedGuard === undefined
     ? ""
-    : `    if (${checkedRegionGuard(checkedRegion)})\n` +
+    : `${checkedGuard.setup}\n` +
+      `    if (${checkedGuard.condition})\n` +
       `        return tagged_${checkedRegion.variantEntry}(` +
       `${taggedForwardArguments(fn).join(", ")});\n`;
   return `${taggedSignature(fn)}

@@ -115,3 +115,58 @@ def checked_region_span_entry(
     for index in range(length):
         total += view[index]
     return total
+
+
+@native
+def checked_region_relational_scalar_entry(
+    storage: UInt64Buffer, count: int64, value: uint64
+) -> int64:
+    index: int64 = 0
+    for index in range(count):
+        storage[index] = value
+    return index
+
+
+@native
+def checked_region_relational_affine_entry(
+    storage: UInt64Buffer, degree: int64, value: uint64
+) -> int64:
+    stop: int64 = degree + 1
+    index: int64 = 0
+    for index in range(stop):
+        storage[index] = value
+    return index
+
+
+@native
+def checked_region_relational_product_entry(
+    storage: UInt64Buffer, count: int64, degree: int64, value: uint64
+) -> int64:
+    capacity: int64 = count * degree
+    index: int64 = 0
+    for index in range(capacity):
+        storage[index] = value
+    return index
+
+
+@native
+def checked_region_relational_mismatch_entry(
+    storage: UInt64Buffer, count: int64, other: int64, value: uint64
+) -> int64:
+    index: int64 = 0
+    for index in range(other):
+        storage[index] = value
+    return index
+
+
+@native
+def checked_region_relational_short_entry(
+    storage: UInt64Buffer, count: int64, choose: bool, value: uint64
+) -> int64:
+    stop: int64 = count
+    selected: bool = choose and count > 0
+    index: int64 = 0
+    for index in range(stop):
+        if selected:
+            storage[index] = value
+    return index

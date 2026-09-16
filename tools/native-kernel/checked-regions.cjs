@@ -81,6 +81,15 @@ function parameterMap(fn) {
   return new Map(fn.params.map((parameter) => [parameter.name, parameter]));
 }
 
+function requireParameter(entry, name, type) {
+  const parameter = parameterMap(entry).get(name);
+  if (parameter === undefined) fail(`unknown entry parameter ${name}`);
+  if (type !== undefined && parameter.type !== type) {
+    fail(`${name} must have type ${type}`);
+  }
+  return parameter;
+}
+
 function normalizePredicate(predicate, entry) {
   if (predicate === null || typeof predicate !== "object") {
     fail("guard predicates must be objects");
@@ -136,6 +145,77 @@ function normalizePredicate(predicate, entry) {
   fail(`unsupported guard predicate ${predicate.kind}`);
 }
 
+function normalizeGuard(predicates, entry) {
+  if (!Array.isArray(predicates)) fail("guard must be an array");
+  const products = new Map();
+  const normalized = [];
+  for (const predicate of predicates) {
+    if (predicate?.kind !== "checked-nonnegative-int64-product") continue;
+    if (typeof predicate.name !== "string" ||
+        !/^[A-Za-z_][A-Za-z0-9_]*$/.test(predicate.name) ||
+        products.has(predicate.name)) fail("invalid or duplicate product binding");
+    requireParameter(entry, predicate.left, "int64");
+    requireParameter(entry, predicate.right, "int64");
+    const product = Object.freeze({
+      kind: predicate.kind,
+      name: predicate.name,
+      left: predicate.left,
+      right: predicate.right,
+    });
+    products.set(product.name, product);
+  }
+  normalized.push(...products.values());
+  for (const predicate of predicates) {
+    if (predicate?.kind === "checked-nonnegative-int64-product") {
+      continue;
+    }
+    if ([
+      "buffer-min-length-scalar",
+      "buffer-min-length-affine",
+      "buffer-min-length-product",
+    ].includes(predicate?.kind)) {
+      const buffer = requireParameter(entry, predicate.buffer);
+      if (!BUFFER_TYPES.has(buffer.type)) {
+        fail(`${predicate.buffer} is not a checked buffer`);
+      }
+      if (predicate.kind === "buffer-min-length-product") {
+        if (!products.has(predicate.product)) {
+          fail(`unknown product binding ${predicate.product}`);
+        }
+        normalized.push(Object.freeze({
+          kind: predicate.kind,
+          buffer: predicate.buffer,
+          bufferType: buffer.type,
+          product: predicate.product,
+        }));
+        continue;
+      }
+      requireParameter(entry, predicate.scalar, "int64");
+      let offset = 0n;
+      if (predicate.kind === "buffer-min-length-affine") {
+        try {
+          offset = BigInt(predicate.offset);
+        } catch (_error) {
+          fail("affine buffer offset must be an integer");
+        }
+        if (offset < 0n || offset > INT64_MAXIMUM) {
+          fail("affine buffer offset must be a nonnegative int64");
+        }
+      }
+      normalized.push(Object.freeze({
+        kind: predicate.kind,
+        buffer: predicate.buffer,
+        bufferType: buffer.type,
+        scalar: predicate.scalar,
+        offset: offset.toString(),
+      }));
+      continue;
+    }
+    normalized.push(normalizePredicate(predicate, entry));
+  }
+  return Object.freeze(normalized);
+}
+
 function installCheckedRegionDeclarations(ir, declarations) {
   if (!Array.isArray(declarations)) fail("declarations must be an array");
   const installed = declarations.map((declaration) => {
@@ -169,6 +249,26 @@ function joinInterval(previous, next) {
     minimum: previous.minimum < next.minimum ? previous.minimum : next.minimum,
     maximum: previous.maximum > next.maximum ? previous.maximum : next.maximum,
   };
+}
+
+function parameterExpression(name) {
+  return `parameter:${name}`;
+}
+
+function constantExpression(value) {
+  return `constant:${BigInt(value).toString()}`;
+}
+
+function binaryExpression(operation, left, right) {
+  if (left === undefined || right === undefined) return undefined;
+  if (["add", "mul"].includes(operation) && left > right) {
+    [left, right] = [right, left];
+  }
+  return `${operation}(${left},${right})`;
+}
+
+function intersectSets(left, right) {
+  return new Set(Array.from(left || []).filter((value) => right?.has(value)));
 }
 
 function intervalResult(operation, left, right) {
@@ -223,6 +323,45 @@ function callGraph(variants, byName) {
   return edges;
 }
 
+function validateCapabilityInputs(variants, byName) {
+  for (const fn of variants) {
+    visitOperations(fn.body, (operation) => {
+      if (["int64.constant", "uint64.constant"].includes(operation.kind)) {
+        let value;
+        try {
+          value = BigInt(operation.value);
+        } catch (_error) {
+          fail(`${operation.kind} has a noninteger constant`);
+        }
+        const minimum = operation.kind === "int64.constant" ? INT64_MINIMUM : 0n;
+        const maximum = operation.kind === "int64.constant"
+          ? INT64_MAXIMUM : UINT64_MAXIMUM;
+        if (value < minimum || value > maximum) {
+          fail(`${operation.kind} constant is outside its scalar domain`);
+        }
+      }
+      if (operation.kind !== "native.call" || !byName.has(operation.function)) {
+        return;
+      }
+      const callee = byName.get(operation.function);
+      if (!Array.isArray(operation.arguments) ||
+          operation.arguments.length !== callee.params.length) {
+        fail(`call to ${operation.function} has invalid arity`);
+      }
+      operation.arguments.forEach((argument, index) => {
+        if (argument === null || typeof argument !== "object" ||
+            typeof argument.name !== "string" ||
+            argument.type !== callee.params[index].type) {
+          fail(`call to ${operation.function} has invalid argument ${index}`);
+        }
+      });
+      if (operation.returnType !== callee.returnType) {
+        fail(`call to ${operation.function} has invalid return type`);
+      }
+    });
+  }
+}
+
 function topologicalOrder(entry, edges) {
   const temporary = new Set();
   const permanent = new Set();
@@ -243,6 +382,21 @@ function topologicalOrder(entry, edges) {
 function initialFacts(entry, guard) {
   const intervals = new Map();
   const buffers = new Map();
+  const expressions = new Map(entry.params
+    .filter((parameter) => ["int64", "uint64"].includes(parameter.type))
+    .map((parameter) => [parameter.name, parameterExpression(parameter.name)]));
+  const rangeUpper = new Map();
+  const bufferRelations = new Map();
+  const products = new Map(guard
+    .filter((predicate) =>
+      predicate.kind === "checked-nonnegative-int64-product"
+    )
+    .map((predicate) => [predicate.name, binaryExpression(
+      "mul",
+      parameterExpression(predicate.left),
+      parameterExpression(predicate.right),
+    )]));
+  const safeInt64Expressions = new Set(products.values());
   for (const predicate of guard) {
     if (predicate.kind === "buffer-min-length") {
       const current = buffers.get(predicate.parameter);
@@ -251,21 +405,95 @@ function initialFacts(entry, guard) {
         buffers.set(predicate.parameter, minimum);
       }
     } else if (["int64-range", "uint64-range"].includes(predicate.kind)) {
+      const current = intervals.get(predicate.parameter);
+      const minimum = BigInt(predicate.minimum);
+      const maximum = BigInt(predicate.maximum);
       intervals.set(predicate.parameter, {
-        minimum: BigInt(predicate.minimum),
-        maximum: BigInt(predicate.maximum),
+        minimum: current !== undefined && current.minimum > minimum
+          ? current.minimum : minimum,
+        maximum: current !== undefined && current.maximum < maximum
+          ? current.maximum : maximum,
       });
+    }
+  }
+  for (const predicate of guard.filter((candidate) =>
+    candidate.kind === "checked-nonnegative-int64-product"
+  )) {
+    for (const name of [predicate.left, predicate.right]) {
+      const current = intervals.get(name);
+      intervals.set(name, {
+        minimum: current === undefined || current.minimum < 0n
+          ? 0n : current.minimum,
+        maximum: current?.maximum ?? INT64_MAXIMUM,
+      });
+    }
+  }
+  for (const predicate of guard) {
+    if ([
+      "buffer-min-length-scalar",
+      "buffer-min-length-affine",
+      "buffer-min-length-product",
+    ].includes(predicate.kind)) {
+      let relation;
+      let numericMinimum;
+      if (predicate.kind === "buffer-min-length-product") {
+        relation = products.get(predicate.product);
+        const product = guard.find((candidate) =>
+          candidate.kind === "checked-nonnegative-int64-product" &&
+          candidate.name === predicate.product
+        );
+        const left = intervals.get(product.left);
+        const right = intervals.get(product.right);
+        if (left !== undefined && right !== undefined) {
+          numericMinimum = left.minimum * right.minimum;
+        }
+      } else {
+        const scalar = parameterExpression(predicate.scalar);
+        const offset = BigInt(predicate.offset);
+        relation = offset === 0n
+          ? scalar
+          : binaryExpression("add", scalar, constantExpression(offset));
+        const scalarInterval = intervals.get(predicate.scalar);
+        if (scalarInterval !== undefined) {
+          numericMinimum = scalarInterval.minimum + offset;
+        }
+      }
+      if (!bufferRelations.has(predicate.buffer)) {
+        bufferRelations.set(predicate.buffer, new Set());
+      }
+      bufferRelations.get(predicate.buffer).add(relation);
+      if (numericMinimum !== undefined) {
+        const current = buffers.get(predicate.buffer);
+        if (current === undefined || numericMinimum > current) {
+          buffers.set(predicate.buffer, numericMinimum);
+        }
+      }
     }
   }
   // Exact Integer parameters deliberately remain unknown in this first
   // fixed-width theorem, even when the entry guard proves an int64 range.
-  return { intervals, buffers, entry: entry.name };
+  return {
+    intervals,
+    buffers,
+    expressions,
+    rangeUpper,
+    bufferRelations,
+    safeInt64Expressions,
+    entry: entry.name,
+  };
 }
 
 function mergeFacts(target, incoming) {
   if (!target.initialized) {
     target.intervals = new Map(incoming.intervals);
     target.buffers = new Map(incoming.buffers);
+    target.expressions = new Map(incoming.expressions);
+    target.rangeUpper = new Map(incoming.rangeUpper);
+    target.bufferRelations = new Map(Array.from(
+      incoming.bufferRelations,
+      ([name, relations]) => [name, new Set(relations)],
+    ));
+    target.safeInt64Expressions = new Set(incoming.safeInt64Expressions);
     target.initialized = true;
     return true;
   }
@@ -301,6 +529,39 @@ function mergeFacts(target, incoming) {
       changed = true;
     }
   }
+  for (const name of Array.from(target.expressions.keys())) {
+    if (target.expressions.get(name) !== incoming.expressions.get(name)) {
+      target.expressions.delete(name);
+      changed = true;
+    }
+  }
+  for (const name of Array.from(target.rangeUpper.keys())) {
+    if (target.rangeUpper.get(name) !== incoming.rangeUpper.get(name)) {
+      target.rangeUpper.delete(name);
+      changed = true;
+    }
+  }
+  for (const name of Array.from(target.bufferRelations.keys())) {
+    const relations = intersectSets(
+      target.bufferRelations.get(name),
+      incoming.bufferRelations.get(name),
+    );
+    if (relations.size === 0) {
+      target.bufferRelations.delete(name);
+      changed = true;
+    } else if (relations.size !== target.bufferRelations.get(name).size) {
+      target.bufferRelations.set(name, relations);
+      changed = true;
+    }
+  }
+  const safeExpressions = intersectSets(
+    target.safeInt64Expressions,
+    incoming.safeInt64Expressions,
+  );
+  if (safeExpressions.size !== target.safeInt64Expressions.size) {
+    target.safeInt64Expressions = safeExpressions;
+    changed = true;
+  }
   return changed;
 }
 
@@ -311,11 +572,25 @@ function cloneState(state) {
       { ...interval },
     ])),
     buffers: new Map(state.buffers),
+    expressions: new Map(state.expressions),
+    rangeUpper: new Map(state.rangeUpper),
+    bufferRelations: new Map(Array.from(
+      state.bufferRelations,
+      ([name, relations]) => [name, new Set(relations)],
+    )),
+    safeInt64Expressions: new Set(state.safeInt64Expressions),
   };
 }
 
 function joinStates(left, right) {
   const joined = { intervals: new Map(), buffers: new Map() };
+  joined.expressions = new Map();
+  joined.rangeUpper = new Map();
+  joined.bufferRelations = new Map();
+  joined.safeInt64Expressions = intersectSets(
+    left.safeInt64Expressions,
+    right.safeInt64Expressions,
+  );
   for (const [name, interval] of left.intervals) {
     const other = right.intervals.get(name);
     if (other !== undefined) {
@@ -327,6 +602,20 @@ function joinStates(left, right) {
     if (other !== undefined) {
       joined.buffers.set(name, minimum < other ? minimum : other);
     }
+  }
+  for (const [name, expression] of left.expressions) {
+    if (right.expressions.get(name) === expression) {
+      joined.expressions.set(name, expression);
+    }
+  }
+  for (const [name, expression] of left.rangeUpper) {
+    if (right.rangeUpper.get(name) === expression) {
+      joined.rangeUpper.set(name, expression);
+    }
+  }
+  for (const [name, relations] of left.bufferRelations) {
+    const intersection = intersectSets(relations, right.bufferRelations.get(name));
+    if (intersection.size > 0) joined.bufferRelations.set(name, intersection);
   }
   return joined;
 }
@@ -375,6 +664,10 @@ function invalidateNestedCalls(operation, context) {
     mergeFacts(context.facts.get(nested.function), {
       intervals: new Map(),
       buffers: new Map(),
+      expressions: new Map(),
+      rangeUpper: new Map(),
+      bufferRelations: new Map(),
+      safeInt64Expressions: new Set(),
     });
   });
 }
@@ -410,6 +703,9 @@ function analyzeStatements(statements, state, context) {
       for (const target of operationTargets(operation)) {
         state.intervals.delete(target);
         state.buffers.delete(target);
+        state.expressions.delete(target);
+        state.rangeUpper.delete(target);
+        state.bufferRelations.delete(target);
       }
       continue;
     }
@@ -419,12 +715,21 @@ function analyzeStatements(statements, state, context) {
       for (const name of assigned) {
         bodyState.intervals.delete(name);
         bodyState.buffers.delete(name);
+        bodyState.expressions.delete(name);
+        bodyState.rangeUpper.delete(name);
+        bodyState.bufferRelations.delete(name);
       }
       bodyState.intervals.delete(operation.index);
       bodyState.buffers.delete(operation.index);
+      bodyState.expressions.delete(operation.index);
+      bodyState.rangeUpper.delete(operation.index);
+      bodyState.bufferRelations.delete(operation.index);
       if (operation.iterator !== undefined) {
         bodyState.intervals.delete(operation.iterator);
         bodyState.buffers.delete(operation.iterator);
+        bodyState.expressions.delete(operation.iterator);
+        bodyState.rangeUpper.delete(operation.iterator);
+        bodyState.bufferRelations.delete(operation.iterator);
       }
       const mutatesBound = [operation.start, operation.stop, operation.step]
         .some((name) => assigned.has(name));
@@ -434,12 +739,23 @@ function analyzeStatements(statements, state, context) {
       if (iterator !== undefined && !assigned.has(operation.index)) {
         bodyState.intervals.set(operation.index, iterator);
       }
+      const start = state.intervals.get(operation.start);
+      const step = state.intervals.get(operation.step);
+      const upper = state.expressions.get(operation.stop);
+      if (!mutatesBound && !assigned.has(operation.index) &&
+          start?.minimum >= 0n && step?.minimum > 0n &&
+          upper !== undefined) {
+        bodyState.rangeUpper.set(operation.index, upper);
+      }
       analyzeStatements(operation.body, bodyState, context);
       assigned.add(operation.index);
       if (operation.iterator !== undefined) assigned.add(operation.iterator);
       for (const name of assigned) {
         state.intervals.delete(name);
         state.buffers.delete(name);
+        state.expressions.delete(name);
+        state.rangeUpper.delete(name);
+        state.bufferRelations.delete(name);
       }
       continue;
     }
@@ -455,6 +771,9 @@ function analyzeStatements(statements, state, context) {
       for (const name of assigned) {
         state.intervals.delete(name);
         state.buffers.delete(name);
+        state.expressions.delete(name);
+        state.rangeUpper.delete(name);
+        state.bufferRelations.delete(name);
       }
       continue;
     }
@@ -463,52 +782,87 @@ function analyzeStatements(statements, state, context) {
     for (const target of operationTargets(operation)) {
       state.intervals.delete(target);
       state.buffers.delete(target);
+      state.expressions.delete(target);
+      state.rangeUpper.delete(target);
+      state.bufferRelations.delete(target);
     }
     if (["int64.constant", "uint64.constant"].includes(operation.kind)) {
       const value = BigInt(operation.value);
       state.intervals.set(operation.target, { minimum: value, maximum: value });
+      state.expressions.set(operation.target, constantExpression(value));
     } else if (["int64.copy", "uint64.copy"].includes(operation.kind)) {
       const value = previous.intervals.get(operation.source);
       if (value !== undefined) state.intervals.set(operation.target, { ...value });
+      const expression = previous.expressions.get(operation.source);
+      if (expression !== undefined) state.expressions.set(operation.target, expression);
+      const upper = previous.rangeUpper.get(operation.source);
+      if (upper !== undefined) state.rangeUpper.set(operation.target, upper);
     } else if (operation.kind === "uint64.buffer.copy") {
       const minimum = previous.buffers.get(operation.source);
       if (minimum !== undefined) state.buffers.set(operation.target, minimum);
+      const relations = previous.bufferRelations.get(operation.source);
+      if (relations !== undefined) {
+        state.bufferRelations.set(operation.target, new Set(relations));
+      }
     } else if (operation.kind === "int64.binary" &&
         ["add", "sub", "mul"].includes(operation.operation)) {
+      const expression = binaryExpression(
+        operation.operation,
+        previous.expressions.get(operation.left),
+        previous.expressions.get(operation.right),
+      );
       const result = intervalResult(
         operation.operation,
         previous.intervals.get(operation.left),
         previous.intervals.get(operation.right),
       );
-      if (result !== undefined && result.minimum >= INT64_MINIMUM &&
-          result.maximum <= INT64_MAXIMUM) {
-        state.intervals.set(operation.target, result);
+      const intervalSafe = result !== undefined &&
+        result.minimum >= INT64_MINIMUM && result.maximum <= INT64_MAXIMUM;
+      const relationalSafe = expression !== undefined &&
+        previous.safeInt64Expressions.has(expression);
+      if (intervalSafe || relationalSafe) {
+        const provedRange = intervalSafe
+          ? result
+          : { minimum: 0n, maximum: INT64_MAXIMUM };
+        state.intervals.set(operation.target, provedRange);
         if (context.enabled.has("int64-arithmetic")) {
           operation.checkedRegionProof = Object.freeze({
             authority: "checked-region-int64-interval-v1",
             operation: operation.id,
-            minimum: result.minimum.toString(),
-            maximum: result.maximum.toString(),
+            minimum: provedRange.minimum.toString(),
+            maximum: provedRange.maximum.toString(),
+            ...(relationalSafe ? { relation: expression } : {}),
           });
           Object.defineProperty(operation, CHECKED_REGION_INT64_ARITHMETIC, {
             value: true,
           });
         }
       }
+      if (expression !== undefined) state.expressions.set(operation.target, expression);
     }
 
     if (["uint64.buffer.get", "uint64.buffer.set"].includes(operation.kind)) {
       const index = previous.intervals.get(operation.index);
       const minimumLength = previous.buffers.get(operation.buffer);
-      if (context.enabled.has("direct-buffer-access") && index !== undefined &&
-          minimumLength !== undefined && index.minimum >= 0n &&
-          index.maximum < minimumLength && index.maximum <= UINT64_MAXIMUM) {
+      const relational = previous.rangeUpper.get(operation.index);
+      const relationships = previous.bufferRelations.get(operation.buffer);
+      const intervalProof = index !== undefined && minimumLength !== undefined &&
+        index.minimum >= 0n && index.maximum < minimumLength &&
+        index.maximum <= UINT64_MAXIMUM;
+      const relationalProof = relational !== undefined &&
+        relationships?.has(relational);
+      if (context.enabled.has("direct-buffer-access") &&
+          (intervalProof || relationalProof)) {
         operation.checkedRegionProof = Object.freeze({
           authority: "checked-region-buffer-interval-v1",
           operation: operation.id,
-          indexMinimum: index.minimum.toString(),
-          indexMaximum: index.maximum.toString(),
-          bufferMinimumLength: minimumLength.toString(),
+          ...(intervalProof ? {
+            indexMinimum: index.minimum.toString(),
+            indexMaximum: index.maximum.toString(),
+            bufferMinimumLength: minimumLength.toString(),
+          } : {
+            relation: relational,
+          }),
         });
         Object.defineProperty(operation, CHECKED_REGION_BUFFER_ACCESS, {
           value: true,
@@ -519,13 +873,28 @@ function analyzeStatements(statements, state, context) {
     if (operation.kind === "native.call" &&
         context.byName.has(operation.function)) {
       const callee = context.byName.get(operation.function);
-      const incoming = { intervals: new Map(), buffers: new Map() };
+      const incoming = {
+        intervals: new Map(),
+        buffers: new Map(),
+        expressions: new Map(),
+        rangeUpper: new Map(),
+        bufferRelations: new Map(),
+        safeInt64Expressions: new Set(previous.safeInt64Expressions),
+      };
       operation.arguments.forEach((argument, index) => {
         const parameter = callee.params[index];
         const interval = previous.intervals.get(argument.name);
         const minimum = previous.buffers.get(argument.name);
+        const expression = previous.expressions.get(argument.name);
+        const upper = previous.rangeUpper.get(argument.name);
+        const relationships = previous.bufferRelations.get(argument.name);
         if (interval !== undefined) incoming.intervals.set(parameter.name, interval);
         if (minimum !== undefined) incoming.buffers.set(parameter.name, minimum);
+        if (expression !== undefined) incoming.expressions.set(parameter.name, expression);
+        if (upper !== undefined) incoming.rangeUpper.set(parameter.name, upper);
+        if (relationships !== undefined) {
+          incoming.bufferRelations.set(parameter.name, new Set(relationships));
+        }
       });
       mergeFacts(context.facts.get(callee.name), incoming);
     }
@@ -545,6 +914,10 @@ function attachCapabilities(region, entry, variants) {
   const facts = new Map(order.map((name) => [name, {
     intervals: new Map(),
     buffers: new Map(),
+    expressions: new Map(),
+    rangeUpper: new Map(),
+    bufferRelations: new Map(),
+    safeInt64Expressions: new Set(),
     initialized: false,
   }]));
   facts.set(region.variantEntry, {
@@ -598,9 +971,7 @@ function prepareCheckedRegions(ir) {
     if (entries.has(region.entry)) fail(`duplicate region entry ${region.entry}`);
     entries.add(region.entry);
     if (entry.hostCallable === false) fail(`entry ${region.entry} is private`);
-    const guard = Object.freeze(region.guard.map((predicate) =>
-      normalizePredicate(predicate, entry)
-    ));
+    const guard = normalizeGuard(region.guard, entry);
     if (guard.length === 0) fail("guard must be nonempty");
     if (!Array.isArray(region.capabilities)) fail("capabilities must be an array");
     if (new Set(region.capabilities).size !== region.capabilities.length) {
@@ -662,6 +1033,7 @@ function prepareCheckedRegions(ir) {
       capabilities: region.capabilities,
       variants: Object.freeze(variants),
     };
+    validateCapabilityInputs(variants, new Map(variants.map((fn) => [fn.name, fn])));
     attachCapabilities(preparedRegion, entry, variants);
     return Object.freeze({
       ...preparedRegion,

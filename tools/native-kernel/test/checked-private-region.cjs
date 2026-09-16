@@ -79,7 +79,7 @@ test("checked private regions clone a closed graph behind a guard", async () => 
   const entry = functionText(core.source, "checked_region_entry");
   assert.match(
     entry,
-    /sagejs_tagged_arg_storage\.length >= \(\(size_t\) 4\)/,
+    /sagejs_tagged_arg_storage\.length >= \(size_t\) UINT64_C\(4\)/,
   );
   assert.match(entry, /sagejs_tagged_arg_index >= INT64_C\(0\)/);
   assert.match(entry, /tagged_sagejs_checked_r0_checked_region_entry/);
@@ -366,4 +366,186 @@ test("verified span proofs are reconstructed only when requested", async () => {
     "sagejs_checked_r0_checked_region_span_entry",
   );
   assert.match(checkedBody, /UInt64Buffer index out of range/);
+});
+
+test("relational guards prove only matching scalar, affine, and product loops", async () => {
+  const cases = [
+    {
+      entry: "checked_region_relational_scalar_entry",
+      guard: [{
+        kind: "buffer-min-length-scalar", buffer: "storage", scalar: "count",
+      }],
+    },
+    {
+      entry: "checked_region_relational_affine_entry",
+      guard: [
+        { kind: "int64-range", parameter: "degree", minimum: 0, maximum: 4 },
+        {
+          kind: "buffer-min-length-affine", buffer: "storage",
+          scalar: "degree", offset: 1,
+        },
+      ],
+    },
+    {
+      entry: "checked_region_relational_product_entry",
+      // Deliberately use the product before its binding. Normalization must
+      // emit the binding first and emit it exactly once.
+      guard: [
+        {
+          kind: "buffer-min-length-product", buffer: "storage",
+          product: "capacity",
+        },
+        {
+          kind: "buffer-min-length-product", buffer: "storage",
+          product: "capacity",
+        },
+        {
+          kind: "checked-nonnegative-int64-product", name: "capacity",
+          left: "count", right: "degree",
+        },
+      ],
+    },
+  ];
+  for (const item of cases) {
+    const ir = await witness();
+    installCheckedRegionDeclarations(ir, [structuredDeclaration(
+      item.entry,
+      item.guard,
+      ["direct-buffer-access", "int64-arithmetic"],
+    )]);
+    const source = generateHostCore(ir).source;
+    const body = functionText(source, `sagejs_checked_r0_${item.entry}`);
+    assert.doesNotMatch(body, /index out of range/);
+    if (item.entry.endsWith("scalar_entry")) {
+      assert.match(source, /sagejs_tagged_arg_count >= 0/);
+      assert.match(source, /\(uint64_t\) sagejs_tagged_arg_count <= \(uint64_t\) SIZE_MAX/);
+    }
+    if (item.entry.endsWith("affine_entry")) {
+      assert.match(source, /sagejs_tagged_arg_degree <= INT64_MAX - INT64_C\(1\)/);
+      assert.match(source, /\(uint64_t\) \(sagejs_tagged_arg_degree \+ INT64_C\(1\)\) <= \(uint64_t\) SIZE_MAX/);
+    }
+    if (item.entry.endsWith("product_entry")) {
+      assert.doesNotMatch(body, /sagejs_word_mul_int64/);
+      const declarations = source.match(
+        /int64_t sagejs_checked_product_capacity = 0;/g,
+      ) || [];
+      assert.equal(declarations.length, 1);
+      assert.ok(
+        source.indexOf("int64_t sagejs_checked_product_capacity") <
+          source.indexOf("sagejs_tagged_arg_storage.length >= (size_t) sagejs_checked_product_capacity"),
+      );
+      assert.match(source, /sagejs_tagged_arg_count < 0/);
+      assert.match(source, /sagejs_tagged_arg_degree != 0 && sagejs_tagged_arg_count > INT64_MAX \/ sagejs_tagged_arg_degree/);
+      assert.match(source, /\(uint64_t\) sagejs_checked_product_capacity <= \(uint64_t\) SIZE_MAX/);
+    }
+  }
+
+  const mismatch = await witness();
+  installCheckedRegionDeclarations(mismatch, [structuredDeclaration(
+    "checked_region_relational_mismatch_entry",
+    [{
+      kind: "buffer-min-length-scalar", buffer: "storage", scalar: "count",
+    }],
+    ["direct-buffer-access"],
+  )]);
+  const mismatchBody = functionText(
+    generateHostCore(mismatch).source,
+    "sagejs_checked_r0_checked_region_relational_mismatch_entry",
+  );
+  assert.match(mismatchBody, /index out of range/);
+});
+
+test("relational guard schemas and mutated proof inputs fail closed", async () => {
+  for (const guard of [
+    [{ kind: "buffer-min-length-product", buffer: "storage", product: "missing" }],
+    [
+      {
+        kind: "checked-nonnegative-int64-product", name: "capacity",
+        left: "count", right: "count",
+      },
+      {
+        kind: "checked-nonnegative-int64-product", name: "capacity",
+        left: "count", right: "count",
+      },
+    ],
+    [{
+      kind: "checked-nonnegative-int64-product", name: "not-valid!",
+      left: "count", right: "count",
+    }],
+    [{
+      kind: "buffer-min-length-affine", buffer: "storage", scalar: "count",
+      offset: -1,
+    }],
+    [{
+      kind: "buffer-min-length-affine", buffer: "storage", scalar: "count",
+      offset: "9223372036854775808",
+    }],
+  ]) {
+    const ir = await witness();
+    installCheckedRegionDeclarations(ir, [structuredDeclaration(
+      "checked_region_relational_scalar_entry", guard,
+    )]);
+    assert.throws(() => generateHostCore(ir), /invalid checked private region/);
+  }
+
+  const badArity = await witness();
+  installCheckedRegionDeclarations(badArity, [optimizedDeclaration]);
+  badArity.functions.find((fn) => fn.name === "checked_region_entry")
+    .body.find((operation) => operation.kind === "native.call")
+    .arguments.pop();
+  assert.throws(() => generateHostCore(badArity), /invalid arity/);
+
+  const badType = await witness();
+  installCheckedRegionDeclarations(badType, [optimizedDeclaration]);
+  badType.functions.find((fn) => fn.name === "checked_region_entry")
+    .body.find((operation) => operation.kind === "native.call")
+    .arguments[1].type = "uint64";
+  assert.throws(() => generateHostCore(badType), /invalid argument 1/);
+
+  const badConstant = await witness();
+  installCheckedRegionDeclarations(badConstant, [structuredDeclaration(
+    "checked_region_loop_entry",
+    [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+      { kind: "int64-range", parameter: "count", minimum: 0, maximum: 4 },
+    ],
+  )]);
+  const constant = badConstant.functions.find((fn) =>
+    fn.name === "checked_region_loop_entry"
+  ).body.find((operation) => operation.kind === "int64.constant");
+  constant.value = "9223372036854775808";
+  assert.throws(() => generateHostCore(badConstant), /outside its scalar domain/);
+
+  const staleShort = await witness();
+  installCheckedRegionDeclarations(staleShort, [structuredDeclaration(
+    "checked_region_relational_short_entry",
+    [{
+      kind: "buffer-min-length-scalar", buffer: "storage", scalar: "count",
+    }],
+    ["direct-buffer-access"],
+  )]);
+  const shortFunction = staleShort.functions.find((fn) =>
+    fn.name === "checked_region_relational_short_entry"
+  );
+  const short = shortFunction.body.find((operation) =>
+    operation.kind === "bool.short_circuit"
+  );
+  assert.ok(short);
+  // A hostile post-lowering mutation makes the short-circuit overwrite the
+  // variable that carried the guarded count expression. The verifier must
+  // invalidate every relational fact for that target.
+  short.target = "stop";
+  const [shortRegion] = prepareCheckedRegions(staleShort);
+  const shortVariant = shortRegion.variants[0];
+  let access;
+  const findAccess = (value) => {
+    if (value === null || typeof value !== "object") return;
+    if (value.kind === "uint64.buffer.set") access = value;
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "provenance") findAccess(child);
+    }
+  };
+  findAccess(shortVariant.body);
+  assert.ok(access);
+  assert.equal(access.checkedRegionProof, undefined);
 });
