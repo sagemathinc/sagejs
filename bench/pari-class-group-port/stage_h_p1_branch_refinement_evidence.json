@@ -1,0 +1,39 @@
+{
+  "schema": "sagejs.checked-region/stage-h-p1-branch-refinement-v1",
+  "compilerCommit": "a99b79c8747a8ff489c3a68b19b2114bf8476ca5",
+  "fixtureSha256": "f61f6aed8d229a2fc10a6336559e97a23d58758151481fb1dfc09fb84a906312",
+  "controlDirectory": "/tmp/sagejs-stage-a-catalog-hF0oNK",
+  "candidateDirectory": "/tmp/sagejs-stage-a-catalog-K2QFao",
+  "directCallCount": 3,
+  "directCallSites": [
+    "int64_pari_flxq_powu:167",
+    "int64_pari_flxq_powu:184",
+    "int64_pari_flxq_powu:243"
+  ],
+  "core": {
+    "controlSha256": "1db8d76a096ff7076f1811f0beb0ccdf4064685e280f6a35cb09cd7026213252",
+    "candidateSha256": "1db8d76a096ff7076f1811f0beb0ccdf4064685e280f6a35cb09cd7026213252",
+    "controlBytes": 6322765,
+    "candidateBytes": 6322765
+  },
+  "binary": {
+    "controlAddonBytes": 354880,
+    "candidateAddonBytes": 354880,
+    "controlElfTextBytes": 347455,
+    "candidateElfTextBytes": 347455
+  },
+  "timing": {
+    "boundary": "tagged packet zero; packing/build/assertions excluded",
+    "alternatingPairs": 7,
+    "controlGeometricMeanMilliseconds": 2.1624368410212322,
+    "candidateGeometricMeanMilliseconds": 2.1614253833151658,
+    "candidateToControlRatio": 0.9995322602321237,
+    "interpretation": "identity control: emitted source and binary are identical"
+  },
+  "validation": {
+    "catalogDriver": "passed",
+    "focusedTests": "21/21",
+    "architectureCheck": "passed",
+    "strictBaselib": "passed with zero errors"
+  }
+}

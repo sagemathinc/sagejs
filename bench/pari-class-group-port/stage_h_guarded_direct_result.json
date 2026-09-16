@@ -1,0 +1,125 @@
+{
+  "schema": "sagejs.checked-region/stage-h-guarded-direct-result-evidence-v1",
+  "compiler": {
+    "worktree": "/home/user/sagejs-worktrees/virtual-u64-fixed-views",
+    "commit": "4f78ddea9f802b090eeec2c4ad59638259ec9c6c"
+  },
+  "fixture": {
+    "path": "/tmp/sagejs-int64-prime-degree-catalog-fcTr9K/fixtures.json",
+    "sha256": "f61f6aed8d229a2fc10a6336559e97a23d58758151481fb1dfc09fb84a906312",
+    "packets": 4,
+    "activeOutputsInTimedPacket": 7081
+  },
+  "arms": {
+    "stageG2": {
+      "coreSha256": "1db8d76a096ff7076f1811f0beb0ccdf4064685e280f6a35cb09cd7026213252",
+      "coreBytes": 6322765,
+      "objectTextBytes": 212843,
+      "addonBytes": 354880,
+      "elfTextBytes": 347455,
+      "objectCallInstructions": 1770
+    },
+    "stageH": {
+      "coreSha256": "888d246ba5deb4599067edce9423055c2cf34bca7e22114d4c272d8915b1f832",
+      "coreBytes": 6323260,
+      "objectTextBytes": 213345,
+      "addonBytes": 358976,
+      "elfTextBytes": 347983,
+      "objectCallInstructions": 1771
+    }
+  },
+  "semanticReplay": {
+    "activeOutputsExact": 7081,
+    "malformedPacketsExact": 9,
+    "resultExceptionAndBufferAgreement": true,
+    "allPassed": true
+  },
+  "directResultShape": {
+    "preparedName": "sagejs_checked_r0_int64_pari_flx_copy__local_fast_0",
+    "selectedOperationOrigin": "_int64_pari_flx_small_ddf:200",
+    "preparedDirectResults": 1,
+    "unconditionalDirectCallSites": 3,
+    "guardedDirectCallSites": 1,
+    "otherNewDirectCallSites": 0,
+    "declaredGuard": [
+      {"kind": "buffer-min-length", "parameter": "w", "minimum": 393},
+      {"kind": "int64-range", "parameter": "a", "minimum": 0, "maximum": 384},
+      {"kind": "int64-range", "parameter": "da", "minimum": -1, "maximum": 8},
+      {"kind": "int64-range", "parameter": "out", "minimum": 0, "maximum": 384}
+    ],
+    "generatedResidualGuard": [
+      {"kind": "int64-range", "parameter": "a", "minimum": 0, "maximum": 384},
+      {"kind": "int64-range", "parameter": "da", "minimum": -1, "maximum": 8}
+    ],
+    "checkedFallbackPresent": true
+  },
+  "guardProfile": {
+    "selectedEdgeCalls": 1413,
+    "guardTrue": 1413,
+    "guardFalse": 0,
+    "directCalls": 1413,
+    "checkedFallbackCalls": 0,
+    "machinePredicate": {
+      "retained": "unsigned t range check",
+      "instructions": ["cmp", "ja"],
+      "degreeCheckDeleted": true
+    }
+  },
+  "machineShape": {
+    "stageG2": {
+      "directCoreKind": "constprop.0.isra.0",
+      "directCoreBytes": 57,
+      "directCoreTextRelocations": 3,
+      "checkedCopyTextRelocations": 23
+    },
+    "stageH": {
+      "directCoreKind": "generic",
+      "directCoreBytes": 341,
+      "directCoreTextRelocations": 4,
+      "checkedCopyTextRelocations": 23
+    },
+    "deltas": {
+      "generatedCoreBytes": 495,
+      "addonBytes": 4096,
+      "objectTextBytes": 502,
+      "elfTextBytes": 528,
+      "directCoreBytes": 284,
+      "privateDdfBytes": 202,
+      "objectCallInstructions": 1,
+      "directCoreTextRelocations": 1,
+      "checkedCopyTextRelocations": 0
+    },
+    "causalFinding": "The fourth general call context prevents GCC from retaining the 57-byte specialized shared direct core; the resulting generic core and larger DDF caller dominate the residual guard's benefit."
+  },
+  "timing": {
+    "freshProcesses": 2,
+    "alternatingPairsPerProcess": 7,
+    "totalAlternatingPairs": 14,
+    "run1": {
+      "stageG2Milliseconds": [2.152390528037383, 2.1526346378504675, 2.1610293107476632, 2.1490706915887854, 2.1571730023364486, 2.151256789719626, 2.1526200373831776],
+      "stageHMilliseconds": [2.2061035668202766, 2.2108102465437787, 2.203175292626728, 2.205941516129032, 2.1993795806451613, 2.2147487695852535, 2.2135174815668206],
+      "stageG2GeometricMeanMilliseconds": 2.1537360653583733,
+      "stageHGeometricMeanMilliseconds": 2.2076619639135635,
+      "ratio": 1.0250383040998188
+    },
+    "run2": {
+      "stageG2Milliseconds": [2.1537222064220183, 2.1536177339449543, 2.1562219518348624, 2.1550455756880735, 2.1572464266055045, 2.1577961743119265, 2.1565021353211007],
+      "stageHMilliseconds": [2.206468722222222, 2.2070075185185183, 2.2028289560185184, 2.2046448333333335, 2.2006884907407405, 2.202890365740741, 2.2011861550925924],
+      "stageG2GeometricMeanMilliseconds": 2.155735486769463,
+      "stageHGeometricMeanMilliseconds": 2.203672401062334,
+      "ratio": 1.0222369184842377
+    },
+    "pooledStageG2GeometricMeanMilliseconds": 2.154735544151133,
+    "pooledStageHGeometricMeanMilliseconds": 2.2056662804584444,
+    "pooledRatio": 1.023636652973753,
+    "pairsSlower": 14,
+    "pairsFasterOrEqual": 0,
+    "smallestPairedRatio": 1.019502734955725,
+    "largestPairedRatio": 1.029513900975951
+  },
+  "decision": {
+    "accepted": false,
+    "outcome": "Reject Stage H as-is; shared-core specialization poisoning dominates the always-true guarded edge.",
+    "recommendedFollowup": "Preserve separate specialized and generic direct cores, or clone the direct-result leaf by materially different call shape."
+  }
+}
