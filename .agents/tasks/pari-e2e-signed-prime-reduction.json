@@ -1,0 +1,118 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-signed-prime-reduction",
+  "title": "Signed cubic prime ideal reduction",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "signed_ideal_inventory",
+  "objective": "Implement and differentially validate PARI 2.17.4 signed cubic prime ideal reduction for exponents -3..3 with compact ordered principal factors and exact T2 reduction",
+  "base_commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+  "claims": [
+    "bench/pari-class-group-port/signed_prime_ideal_reduction.py",
+    "bench/pari-class-group-port/check_signed_prime_ideal_reduction.cjs",
+    "bench/pari-class-group-port/signed_prime_ideal_reduction.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/base4.c idealpowred/idealred0/idealpseudomin",
+    "PARI 2.17.4 src/basemath/buch2.c genback dependency"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp",
+      "Pinned PARI 2.17.4 idealpow(nf,[P,factor(1)],e,1), e=-3..3"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_signed_prime_ideal_reduction.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_signed_prime_ideal_reduction.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.367,
+      "started_at": "2026-09-16T23:17:29.877Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "bca3233bcb32093933a72f1efb83122699857444667cc52bd2ec55476a787653",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_signed_prime_ideal_reduction.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.411,
+      "started_at": "2026-09-16T23:26:40.255Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "bca3233bcb32093933a72f1efb83122699857444667cc52bd2ec55476a787653",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.469,
+      "started_at": "2026-09-16T23:26:46.756Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "bca3233bcb32093933a72f1efb83122699857444667cc52bd2ec55476a787653",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 11.951,
+      "started_at": "2026-09-16T23:27:52.520Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "bca3233bcb32093933a72f1efb83122699857444667cc52bd2ec55476a787653",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.616,
+      "started_at": "2026-09-16T23:28:43.315Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "bca3233bcb32093933a72f1efb83122699857444667cc52bd2ec55476a787653",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1331.983,
+      "started_at": "2026-09-16T23:28:52.432Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "bca3233bcb32093933a72f1efb83122699857444667cc52bd2ec55476a787653",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the restricted PARI 2.17.4 cubic pr_inv_p and post-T2 idealred0 tail in ordinary source-transparent Python. Exact inverse-prime initialization, cubic inverse solve/denominator recovery, compact ordered principal factors, scalar/content handling, and PARI gexpo branch selection replay identically in CPython, JavaScript, and GMP. A pinned totally-real-cubic fixture checks all signed idealpow controls from -3 through 3 and independently replays HNF(J*principal(F))=HNF(P^e).",
+    "risks": [
+      "T2 candidate selection remains an explicit input boundary; this lane does not claim the existing LLL graph is wired into the wrapper.",
+      "Generic ideal multiplication, binary intermediate reduction, arbitrary matrix-ideal inversion, and genback remain later integration work.",
+      "architecture:check reaches optimizer opportunity verification but detects its shared generated manifest as stale after adding this source-transparent kernel; the integration lane owns that shared refresh."
+    ],
+    "next_steps": [
+      "Wire existing G*I and ranked-LLL machinery to provide the candidate buffer without changing this exact arithmetic contract.",
+      "Implement the extended-ideal multiply/square and negative inversion schedule, using the frozen -3 control to ensure binary intermediate reductions are preserved.",
+      "Refresh shared optimizer opportunity artifacts after integration, then rerun architecture:check and the broader native suite."
+    ]
+  }
+}
