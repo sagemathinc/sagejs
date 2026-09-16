@@ -47,7 +47,8 @@ const optimizedDeclaration = {
 function functionText(source, name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = new RegExp(
-    `static int tagged_${escaped}\\([^;]+\\)\\n\\{`,
+    `(?:static|SAGEJS_CHECKED_REGION_(?:HOT_INLINE|COLD)) int ` +
+      `tagged_${escaped}\\([^;]+\\)\\n\\{`,
   ).exec(source);
   assert.ok(match, `missing ${name}`);
   const start = match.index;
@@ -83,6 +84,30 @@ test("checked private regions clone a closed graph behind a guard", async () => 
   );
   assert.match(entry, /sagejs_tagged_arg_index >= INT64_C\(0\)/);
   assert.match(entry, /tagged_sagejs_checked_r0_checked_region_entry/);
+  assert.match(entry, /tagged_sagejs_checked_fallback_checked_region_entry/);
+  assert.doesNotMatch(entry, /sagejs_tagged_entry:/);
+  assert.match(
+    core.source,
+    /#define SAGEJS_CHECKED_REGION_HOT_INLINE static inline __attribute__\(\(hot\)\)/,
+  );
+  assert.match(
+    core.source,
+    /#define SAGEJS_CHECKED_REGION_HOT_INLINE static __inline/,
+  );
+  assert.match(
+    core.source,
+    /#define SAGEJS_CHECKED_REGION_COLD static __attribute__\(\(cold\)\)/,
+  );
+  assert.match(
+    core.source,
+    /SAGEJS_CHECKED_REGION_HOT_INLINE int tagged_sagejs_checked_r0_checked_region_entry\(/,
+  );
+  assert.match(
+    core.source,
+    /SAGEJS_CHECKED_REGION_COLD int tagged_sagejs_checked_fallback_checked_region_entry\(/,
+  );
+  assert.match(core.source, /static int tagged_checked_region_entry\(/);
+  assert.doesNotMatch(core.header, /sagejs_checked_fallback/);
 
   const variantEntry = functionText(
     core.source,
@@ -100,6 +125,12 @@ test("checked private regions clone a closed graph behind a guard", async () => 
   // checks and the original slow path remains present and callable.
   assert.match(variantHelper, /index out of range/);
   assert.match(variantHelper, /sagejs_word_add_int64/);
+  const checkedFallback = functionText(
+    core.source,
+    "sagejs_checked_fallback_checked_region_entry",
+  );
+  assert.match(checkedFallback, /sagejs_tagged_entry:/);
+  assert.match(checkedFallback, /tagged_checked_region_helper/);
   assert.match(core.source, /static int tagged_checked_region_helper/);
   assert.match(core.source, /static int tagged_checked_region_entry/);
   assert.match(
@@ -123,6 +154,52 @@ test("checked private regions clone a closed graph behind a guard", async () => 
         join(temporary, "kernel_core.o"),
       ], { encoding: "utf8" });
       assert.equal(compiled.status, 0, compiled.stderr || compiled.stdout);
+
+      const runtimeSource = `${core.source}
+#include <string.h>
+int main(void)
+{
+    sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
+    uint64_t words[4] = {UINT64_C(2), UINT64_C(3), UINT64_C(5), UINT64_C(7)};
+    sagejs_uint64_buffer storage = {words, 4};
+    int64_t output = 0;
+    if (!tagged_checked_region_entry(
+            &status, &output, storage, INT64_C(1), UINT64_C(17)))
+        return 1;
+    if (status.code != SAGEJS_NATIVE_OK || output != INT64_C(3) ||
+        words[1] != UINT64_C(17))
+        return 2;
+    sagejs_native_status_reset(&status);
+    if (tagged_checked_region_entry(
+            &status, &output, storage, INT64_C(4), UINT64_C(19)))
+        return 3;
+    if (status.code != SAGEJS_NATIVE_RANGE_ERROR ||
+        status.message == NULL ||
+        strcmp(status.message, "UInt64Buffer index out of range") != 0 ||
+        output != INT64_C(3) ||
+        words[0] != UINT64_C(2) || words[1] != UINT64_C(17) ||
+        words[2] != UINT64_C(5) || words[3] != UINT64_C(7))
+        return 4;
+    return 0;
+}
+`;
+      writeFileSync(join(temporary, "runtime.c"), runtimeSource);
+      const linked = spawnSync(process.env.CC || "cc", [
+        "-std=c11",
+        "-Werror",
+        "-I",
+        temporary,
+        join(temporary, "runtime.c"),
+        "-lgmp",
+        "-lm",
+        "-o",
+        join(temporary, "runtime"),
+      ], { encoding: "utf8" });
+      assert.equal(linked.status, 0, linked.stderr || linked.stdout);
+      const executed = spawnSync(join(temporary, "runtime"), [], {
+        encoding: "utf8",
+      });
+      assert.equal(executed.status, 0, executed.stderr || executed.stdout);
     } finally {
       rmSync(temporary, { recursive: true, force: true });
     }
@@ -137,6 +214,7 @@ test("portable metadata is inert and malformed graphs fail closed", async () => 
     moduleIdentity: "0123456789abcdef",
   }).source;
   assert.doesNotMatch(ordinary, /sagejs_checked_r0_/);
+  assert.doesNotMatch(ordinary, /SAGEJS_CHECKED_REGION_HOT_INLINE/);
 
   const open = await witness();
   installCheckedRegionDeclarations(open, [{

@@ -91,13 +91,31 @@ function taggedParameter(fn, param) {
   return `${scalarType(param.type, fn)} sagejs_tagged_arg_${param.name}`;
 }
 
-function taggedSignature(fn, prototype = false) {
+// Verified private graphs are internal implementation details.  Give the C
+// compiler freedom to inline and place those graphs without imposing a
+// nonportable attribute on ordinary tagged functions or their public guards.
+const CHECKED_REGION_ATTRIBUTES = `#if defined(_MSC_VER)
+#define SAGEJS_CHECKED_REGION_HOT_INLINE static __inline
+#define SAGEJS_CHECKED_REGION_COLD static
+#elif defined(__GNUC__) || defined(__clang__)
+#define SAGEJS_CHECKED_REGION_HOT_INLINE static inline __attribute__((hot))
+#define SAGEJS_CHECKED_REGION_COLD static __attribute__((cold))
+#else
+#define SAGEJS_CHECKED_REGION_HOT_INLINE static inline
+#define SAGEJS_CHECKED_REGION_COLD static
+#endif`;
+
+function taggedSignature(fn, prototype = false, options = {}) {
   const parameters = [
     "sagejs_native_status *status",
     ...taggedResults(fn, fn.returnType),
     ...fn.params.map((param) => taggedParameter(fn, param)),
   ].join(", ");
-  return `static int tagged_${fn.name}(${parameters})${prototype ? ";" : ""}`;
+  const storage = options.storage || (fn.checkedRegionVariant
+    ? "SAGEJS_CHECKED_REGION_HOT_INLINE"
+    : "static");
+  const name = options.name || fn.name;
+  return `${storage} int tagged_${name}(${parameters})${prototype ? ";" : ""}`;
 }
 
 function taggedForwardArguments(fn) {
@@ -1224,20 +1242,13 @@ ${Array.from(sites.values(), (resume) =>
         default: goto fail;
     }
 `;
-  const checkedRegion = options.checkedRegionEntries?.get(fn.name);
-  const checkedGuard = checkedRegion === undefined
-    ? undefined
-    : checkedRegionGuard(checkedRegion);
-  const checkedDispatch = checkedGuard === undefined
-    ? ""
-    : `${checkedGuard.setup}\n` +
-      `    if (${checkedGuard.condition})\n` +
-      `        return tagged_${checkedRegion.variantEntry}(` +
-      `${taggedForwardArguments(fn).join(", ")});\n`;
-  return `${taggedSignature(fn)}
+  return `${taggedSignature(fn, false, {
+    name: options.emittedName,
+    storage: options.storage,
+  })}
 {
 ${declarations.join("\n")}
-${checkedDispatch}${wordExecution}
+${wordExecution}
     goto sagejs_tagged_entry;
 ${promotionBlock}
 sagejs_tagged_entry:
@@ -1261,6 +1272,22 @@ fail:
 ${cleanup.join("\n")}
     }
     return 0;
+}`;
+}
+
+function checkedFallbackName(fn) {
+  return `sagejs_checked_fallback_${fn.name}`;
+}
+
+function emitCheckedRegionDispatcher(fn, region) {
+  const guard = checkedRegionGuard(region);
+  const arguments_ = taggedForwardArguments(fn).join(", ");
+  return `${taggedSignature(fn)}
+{
+${guard.setup}
+    if (${guard.condition})
+        return tagged_${region.variantEntry}(${arguments_});
+    return tagged_${checkedFallbackName(fn)}(${arguments_});
 }`;
 }
 
@@ -1335,12 +1362,28 @@ ${cleanup.join("\n")}
 
 function generateTaggedFunctions(functions, options = {}) {
   const functionMap = new Map((options.functions || functions).map((fn) => [fn.name, fn]));
+  const usesCheckedRegions = functions.some((fn) => fn.checkedRegionVariant);
   return {
-    prototypes: functions.map((fn) => taggedSignature(fn, true)).join("\n"),
+    prototypes: [
+      usesCheckedRegions ? CHECKED_REGION_ATTRIBUTES : "",
+      functions.map((fn) => taggedSignature(fn, true)).join("\n"),
+    ].filter(Boolean).join("\n\n"),
     functions: functions
-      .map((fn) => fn.analysis?.backend?.requiresExactWorkspace
-        ? emitGmpWorkspaceBridge(fn)
-        : emitTaggedFunction(fn, functionMap, options))
+      .map((fn) => {
+        if (fn.analysis?.backend?.requiresExactWorkspace) {
+          return emitGmpWorkspaceBridge(fn);
+        }
+        const region = options.checkedRegionEntries?.get(fn.name);
+        if (region === undefined) {
+          return emitTaggedFunction(fn, functionMap, options);
+        }
+        const fallback = emitTaggedFunction(fn, functionMap, {
+          ...options,
+          emittedName: checkedFallbackName(fn),
+          storage: "SAGEJS_CHECKED_REGION_COLD",
+        });
+        return `${fallback}\n\n${emitCheckedRegionDispatcher(fn, region)}`;
+      })
       .join("\n\n"),
   };
 }
