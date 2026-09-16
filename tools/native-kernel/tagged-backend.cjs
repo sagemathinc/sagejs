@@ -4,6 +4,7 @@ const {
   isVerifiedFixedSpanAccess,
 } = require("./checked-bounds-proofs.cjs");
 const {
+  checkedRegionLocalVariant,
   checkedRegionVirtualUInt64Emission,
   isCheckedRegionBufferAccess,
   isCheckedRegionInt64Arithmetic,
@@ -450,7 +451,11 @@ function emitTaggedOperation(operation, context, indent) {
           ? `${target} = ${data}[(size_t) (${index})];`
           : `${data}[(size_t) (${index})] = ` +
             `${taggedValue(operation.value, context)};`;
-        if (isVerifiedFixedSpanAccess(operation)) return `${indent}${direct}`;
+        if (isVerifiedFixedSpanAccess(operation) ||
+            virtual.logicalIndexProof?.authority ===
+              "checked-region-virtual-view-range-v1") {
+          return `${indent}${direct}`;
+        }
         const signedIndex = operation.indexType === "Integer" ||
           operation.indexType === "int64";
         const position = signedIndex
@@ -514,7 +519,11 @@ function emitTaggedOperation(operation, context, indent) {
       // Only the fixed-span verifier binds the iterator to this exact view's
       // logical length. A generic checked-region buffer fact may concern the
       // containing root and cannot authorize a logical subview access.
-      if (isVerifiedFixedSpanAccess(operation)) return `${indent}${direct}`;
+      if (isVerifiedFixedSpanAccess(operation) ||
+          virtual.logicalIndexProof?.authority ===
+            "checked-region-virtual-view-range-v1") {
+        return `${indent}${direct}`;
+      }
       const checkedAccess = operation.kind === "uint64.buffer.get"
         ? `${target} = ${root}.data[` +
           `(size_t) (${start}) + sagejs_buffer_position];`
@@ -1516,6 +1525,18 @@ ${guard.setup}
 }`;
 }
 
+function emitCheckedLocalVariantDispatcher(fn, local) {
+  const guard = checkedRegionGuard({ guard: local.guard });
+  const arguments_ = taggedForwardArguments(fn).join(", ");
+  return `${taggedSignature(fn)}
+{
+${guard.setup}
+    if (${guard.condition})
+        return tagged_${local.fastName}(${arguments_});
+    return tagged_${local.slowName}(${arguments_});
+}`;
+}
+
 function emitGmpWorkspaceBridge(fn) {
   const declarations = ["    int sagejs_workspace_ok;"];
   const initialization = [];
@@ -1599,6 +1620,10 @@ function generateTaggedFunctions(functions, options = {}) {
           return emitGmpWorkspaceBridge(fn);
         }
         const region = options.checkedRegionEntries?.get(fn.name);
+        const local = checkedRegionLocalVariant(fn);
+        if (local !== undefined) {
+          return emitCheckedLocalVariantDispatcher(fn, local);
+        }
         if (region === undefined) {
           return emitTaggedFunction(fn, functionMap, options);
         }

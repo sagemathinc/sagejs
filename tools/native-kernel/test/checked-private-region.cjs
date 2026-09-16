@@ -93,6 +93,25 @@ const validatedIntegerViewDeclaration = {
   ],
 };
 
+const localCopyDeclaration = {
+  entry: "checked_region_local_copy_entry",
+  functions: [
+    "checked_region_local_copy_entry",
+    "checked_region_local_copy_helper",
+  ],
+  capabilities: ["virtual-fixed-uint64-views"],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 0 },
+  ],
+  localVariants: [{
+    function: "checked_region_local_copy_helper",
+    guard: [
+      { kind: "int64-range", parameter: "degree", minimum: -1, maximum: 3 },
+    ],
+    capabilities: ["interval-view-access"],
+  }],
+};
+
 function fixedViewIndexDeclaration(entry) {
   return {
     entry,
@@ -1061,6 +1080,275 @@ test("validated view snapshots do not trust operation-id uniqueness", async () =
     } finally {
       rmSync(temporary, { recursive: true, force: true });
     }
+  }
+});
+
+test("guarded local variants prove unit-step virtual-view indices", async () => {
+  const ir = await witness();
+  installCheckedRegionDeclarations(ir, [localCopyDeclaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const slow = region.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_local_copy_helper" &&
+    fn.checkedRegionLocalCapabilities === undefined
+  );
+  const fast = region.variants.find(fn =>
+    fn.checkedRegionLocalCapabilities?.includes("interval-view-access")
+  );
+  assert.ok(slow);
+  assert.ok(fast);
+  const proved = [];
+  const visit = value => {
+    if (value === null || typeof value !== "object") return;
+    const proof = value.checkedRegionVirtualUInt64ViewProof
+      ?.logicalIndexProof;
+    if (proof !== undefined) proved.push([value, proof]);
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "provenance") visit(child);
+    }
+  };
+  visit(fast.body);
+  assert.equal(proved.length, 5);
+  assert.deepEqual(new Set(proved.map(([, proof]) => proof.step)),
+    new Set(["-1", "1"]));
+  assert.equal(proved.every(([, proof]) =>
+    proof.indexMinimum === "0" && proof.indexMaximum === "3" &&
+    proof.logicalLength === "4"
+  ), true);
+
+  const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
+  const wrapper = functionText(
+    core.source,
+    "sagejs_checked_r0_checked_region_local_copy_helper",
+  );
+  assert.match(wrapper, /sagejs_tagged_arg_degree >= \(-INT64_C\(1\)\)/);
+  assert.match(wrapper, /sagejs_tagged_arg_degree <= INT64_C\(3\)/);
+  assert.match(wrapper, /__local_fast_0/);
+  assert.match(wrapper, /tagged_checked_region_local_copy_helper/);
+
+  const fastBody = functionText(
+    core.source,
+    "sagejs_checked_r0_checked_region_local_copy_helper__local_fast_0",
+  );
+  assert.match(fastBody, /UInt64Buffer view is outside its buffer/);
+  assert.doesNotMatch(fastBody, /UInt64Buffer index out of range/);
+  assert.equal((fastBody.match(/sagejs_word_add_int64/g) || []).length, 5);
+  const ordinary = functionText(core.source, "checked_region_local_copy_helper");
+  assert.match(ordinary, /UInt64Buffer index out of range/);
+  assert.ok((ordinary.match(/sagejs_word_add_int64/g) || []).length >= 5);
+
+  if (process.platform !== "win32") {
+    const temporary = mkdtempSync(join(tmpdir(), "sagejs-local-view-range-"));
+    try {
+      writeFileSync(join(temporary, "kernel_core.h"), core.header);
+      const runtimeSource = `${core.source}
+#include <string.h>
+static int run_copy(int64_t degree, int64_t start, int64_t output,
+                    uint64_t *words, const uint64_t *expected)
+{
+    sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
+    sagejs_uint64_buffer storage = {words, 12};
+    int64_t result = INT64_C(99);
+    if (!tagged_checked_region_local_copy_entry(
+            &status, &result, storage, start, degree, output))
+        return 1;
+    if (status.code != SAGEJS_NATIVE_OK || result != degree)
+        return 2;
+    return memcmp(words, expected, 12 * sizeof(uint64_t)) != 0 ? 3 : 0;
+}
+int main(void)
+{
+    uint64_t right[12] = {1,2,3,4,5,6,7,8,9,10,11,12};
+    const uint64_t right_expected[12] = {1,2,1,2,3,4,7,8,9,10,11,12};
+    if (run_copy(INT64_C(3), INT64_C(0), INT64_C(2),
+                 right, right_expected)) return 1;
+    uint64_t left[12] = {1,2,3,4,5,6,7,8,9,10,11,12};
+    const uint64_t left_expected[12] = {3,4,5,6,5,6,7,8,9,10,11,12};
+    if (run_copy(INT64_C(3), INT64_C(2), INT64_C(0),
+                 left, left_expected)) return 2;
+    uint64_t zero[12] = {1,2,3,4,5,6,7,8,9,10,11,12};
+    const uint64_t zero_expected[12] = {1,2,0,0,0,0,7,8,9,10,11,12};
+    if (run_copy(-INT64_C(1), INT64_C(0), INT64_C(2),
+                 zero, zero_expected)) return 3;
+
+    sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
+    sagejs_uint64_buffer storage = {right, 12};
+    int64_t result = INT64_C(99);
+    if (tagged_checked_region_local_copy_entry(
+            &status, &result, storage, INT64_C(0), INT64_C(4), INT64_C(2)))
+        return 4;
+    if (status.code != SAGEJS_NATIVE_RANGE_ERROR || status.message == NULL ||
+        strcmp(status.message, "UInt64Buffer index out of range") != 0)
+        return 5;
+    sagejs_native_status_reset(&status);
+    if (tagged_checked_region_local_copy_entry(
+            &status, &result, storage, INT64_C(0), INT64_MAX, INT64_C(0)))
+        return 6;
+    if (status.code != SAGEJS_NATIVE_RANGE_ERROR || status.message == NULL ||
+        strcmp(status.message, "int64 arithmetic overflow") != 0)
+        return 7;
+    sagejs_native_status_reset(&status);
+    if (tagged_checked_region_local_copy_entry(
+            &status, &result, storage, INT64_C(10), INT64_C(0), INT64_C(0)))
+        return 8;
+    if (status.code != SAGEJS_NATIVE_RANGE_ERROR || status.message == NULL ||
+        strcmp(status.message, "UInt64Buffer view is outside its buffer") != 0)
+        return 9;
+    return 0;
+}
+`;
+      writeFileSync(join(temporary, "runtime.c"), runtimeSource);
+      const linked = spawnSync(process.env.CC || "cc", [
+        "-std=c11", "-Werror", "-I", temporary,
+        join(temporary, "runtime.c"), "-lgmp", "-lm", "-o",
+        join(temporary, "runtime"),
+      ], { encoding: "utf8" });
+      assert.equal(linked.status, 0, linked.stderr || linked.stdout);
+      const executed = spawnSync(join(temporary, "runtime"), [], {
+        encoding: "utf8",
+      });
+      assert.equal(executed.status, 0, executed.stderr || executed.stdout);
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  }
+
+  delete proved[0][0].checkedRegionVirtualUInt64ViewProof;
+  const revoked = checkedRegionVirtualUInt64Emission(fast);
+  assert.equal(revoked.validatedViews().length, 0);
+});
+
+test("local interval-view proofs fail closed under hostile IR changes", async () => {
+  const tooWide = await witness();
+  const wide = structuredClone(localCopyDeclaration);
+  wide.localVariants[0].guard[0].maximum = 4;
+  installCheckedRegionDeclarations(tooWide, [wide]);
+  const [wideRegion] = prepareCheckedRegions(tooWide);
+  const wideFast = wideRegion.variants.find(fn =>
+    fn.checkedRegionLocalCapabilities?.includes("interval-view-access")
+  );
+  const wideCore = generateHostCore(tooWide);
+  const wideBody = functionText(wideCore.source, wideFast.name);
+  assert.match(wideBody, /UInt64Buffer index out of range/);
+
+  const mutatedIterator = await witness();
+  const original = mutatedIterator.functions.find(fn =>
+    fn.name === "checked_region_local_copy_helper"
+  );
+  const firstLoop = original.body.find(operation => operation.kind === "if")
+    .body.find(operation => operation.kind === "loop.range_int64");
+  firstLoop.body.unshift({
+    kind: "int64.constant",
+    target: firstLoop.index,
+    value: "0",
+    id: `${firstLoop.id}:hostile-index-write`,
+  });
+  installCheckedRegionDeclarations(mutatedIterator, [localCopyDeclaration]);
+  const [mutatedRegion] = prepareCheckedRegions(mutatedIterator);
+  const mutatedFast = mutatedRegion.variants.find(fn =>
+    fn.checkedRegionLocalCapabilities?.includes("interval-view-access")
+  );
+  const mutatedLoop = mutatedFast.body.find(operation => operation.kind === "if")
+    .body.find(operation => operation.kind === "loop.range_int64");
+  assert.equal(mutatedLoop.body.some(operation =>
+    operation.checkedRegionVirtualUInt64ViewProof?.logicalIndexProof !== undefined
+  ), false);
+
+  const mutatedControl = await witness();
+  const controlOriginal = mutatedControl.functions.find(fn =>
+    fn.name === "checked_region_local_copy_helper"
+  );
+  const controlLoop = controlOriginal.body.find(operation =>
+    operation.kind === "if"
+  ).body.find(operation => operation.kind === "loop.range_int64");
+  controlLoop.body.unshift({
+    kind: "int64.constant",
+    target: controlLoop.iterator,
+    value: "0",
+    id: `${controlLoop.id}:hostile-iterator-write`,
+  });
+  installCheckedRegionDeclarations(mutatedControl, [localCopyDeclaration]);
+  const [controlRegion] = prepareCheckedRegions(mutatedControl);
+  const controlFast = controlRegion.variants.find(fn =>
+    fn.checkedRegionLocalCapabilities?.includes("interval-view-access")
+  );
+  const preparedControlLoop = controlFast.body.find(operation =>
+    operation.kind === "if"
+  ).body.find(operation => operation.kind === "loop.range_int64");
+  assert.equal(preparedControlLoop.body.some(operation =>
+    operation.checkedRegionVirtualUInt64ViewProof?.logicalIndexProof !== undefined
+  ), false);
+
+  const nonUnit = await witness();
+  const nonUnitOriginal = nonUnit.functions.find(fn =>
+    fn.name === "checked_region_local_copy_helper"
+  );
+  const nonUnitLoop = nonUnitOriginal.body.find(operation =>
+    operation.kind === "if"
+  ).body.find(operation => operation.kind === "loop.range_int64");
+  nonUnitLoop.step = nonUnitLoop.start;
+  installCheckedRegionDeclarations(nonUnit, [localCopyDeclaration]);
+  const [nonUnitRegion] = prepareCheckedRegions(nonUnit);
+  const nonUnitFast = nonUnitRegion.variants.find(fn =>
+    fn.checkedRegionLocalCapabilities?.includes("interval-view-access")
+  );
+  const preparedNonUnitLoop = nonUnitFast.body.find(operation =>
+    operation.kind === "if"
+  ).body.find(operation => operation.kind === "loop.range_int64");
+  assert.equal(preparedNonUnitLoop.body.some(operation =>
+    operation.checkedRegionVirtualUInt64ViewProof?.logicalIndexProof !== undefined
+  ), false);
+
+  const postPrepare = await witness();
+  installCheckedRegionDeclarations(postPrepare, [localCopyDeclaration]);
+  const [postRegion] = prepareCheckedRegions(postPrepare);
+  const postFast = postRegion.variants.find(fn =>
+    fn.checkedRegionLocalCapabilities?.includes("interval-view-access")
+  );
+  const range = postFast.body.find(operation => operation.kind === "if")
+    .body.find(operation => operation.kind === "loop.range_int64");
+  range.stop = range.start;
+  assert.equal(
+    checkedRegionVirtualUInt64Emission(postFast).validatedViews().length,
+    0,
+  );
+  const revokedCore = generateHostCore({
+    version: postPrepare.version,
+    records: postPrepare.records,
+    functions: [...postPrepare.functions, postFast],
+    foreignLibraries: postPrepare.foreignLibraries,
+    callGraph: { ...postPrepare.callGraph, [postFast.name]: [] },
+    nativeSourceDependencies: postPrepare.nativeSourceDependencies,
+  });
+  const revokedBody = functionText(revokedCore.source, postFast.name);
+  assert.match(revokedBody, /UInt64Buffer index out of range/);
+  assert.match(revokedBody, /sagejs_uint64_buffer sagejs_local_tagged_source/);
+
+  for (const bad of [
+    {
+      ...structuredClone(localCopyDeclaration),
+      localVariants: [{
+        ...structuredClone(localCopyDeclaration.localVariants[0]),
+        function: "missing",
+      }],
+    },
+    {
+      ...structuredClone(localCopyDeclaration),
+      localVariants: [
+        structuredClone(localCopyDeclaration.localVariants[0]),
+        structuredClone(localCopyDeclaration.localVariants[0]),
+      ],
+    },
+    {
+      ...structuredClone(localCopyDeclaration),
+      localVariants: [{
+        ...structuredClone(localCopyDeclaration.localVariants[0]),
+        capabilities: ["forged-capability"],
+      }],
+    },
+  ]) {
+    const malformed = await witness();
+    installCheckedRegionDeclarations(malformed, [bad]);
+    assert.throws(() => prepareCheckedRegions(malformed), /local variant/);
   }
 });
 

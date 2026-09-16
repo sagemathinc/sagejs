@@ -27,6 +27,7 @@ const CHECKED_REGION_INT64_ARITHMETIC = Symbol(
   "checked region int64 arithmetic",
 );
 const CHECKED_REGION_BUFFER_ACCESS = Symbol("checked region buffer access");
+const CHECKED_REGION_LOCAL_VARIANT = Symbol("checked region local variant");
 const VIRTUAL_UINT64_VIEW_PROOF = "checkedRegionVirtualUInt64ViewProof";
 const virtualUInt64ViewAuthority = createFunctionProofAuthority({
   name: "checked-region virtual UInt64 view",
@@ -46,6 +47,7 @@ const CAPABILITIES = new Set([
   "direct-buffer-access",
   "verified-span-access",
   "virtual-fixed-uint64-views",
+  "interval-view-access",
 ]);
 
 const BUFFER_TYPES = new Set([
@@ -243,6 +245,15 @@ function installCheckedRegionDeclarations(ir, declarations) {
       capabilities: Object.freeze([...(declaration.capabilities || [])]),
       guard: Object.freeze([...(declaration.guard || [])].map((item) =>
         Object.freeze({ ...item })
+      )),
+      localVariants: Object.freeze([...(declaration.localVariants || [])].map(
+        (variant) => Object.freeze({
+          function: variant?.function,
+          guard: Object.freeze([...(variant?.guard || [])].map((item) =>
+            Object.freeze({ ...item })
+          )),
+          capabilities: Object.freeze([...(variant?.capabilities || [])]),
+        }),
       )),
     };
     Object.defineProperty(value, CHECKED_REGION_AUTHORITY, { value: true });
@@ -827,6 +838,13 @@ function virtualFixedUInt64ViewGroups(fn, entryState) {
       });
     }
     if (!valid) continue;
+    const fixedLength = fixedIntegerInputsAt(fn, entryState, viewIndex)
+      .get(view.length);
+    const logicalLength = fixedLength !== undefined &&
+        fixedLength.minimum === fixedLength.maximum &&
+        fixedLength.minimum >= 0n && fixedLength.maximum <= INT64_MAXIMUM
+      ? fixedLength.minimum.toString()
+      : undefined;
     groups.push({
       aliases,
       fact: Object.freeze({
@@ -835,6 +853,7 @@ function virtualFixedUInt64ViewGroups(fn, entryState) {
         root: view.buffer,
         viewTarget: view.target,
         viewOperation: view.id,
+        ...(logicalLength === undefined ? {} : { logicalLength }),
       }),
       view,
     });
@@ -842,7 +861,12 @@ function virtualFixedUInt64ViewGroups(fn, entryState) {
   return groups;
 }
 
-function attachVirtualFixedUInt64Views(fn, entryState, enabled) {
+function attachVirtualFixedUInt64Views(
+  fn,
+  entryState,
+  enabled,
+  intervalViewAccesses = new Map(),
+) {
   if (!enabled.has("virtual-fixed-uint64-views")) return;
   const authorizations = [];
   for (const { aliases, fact, view } of virtualFixedUInt64ViewGroups(
@@ -866,12 +890,16 @@ function attachVirtualFixedUInt64Views(fn, entryState, enabled) {
       } else if ([
         "uint64.buffer.get", "uint64.buffer.set", "uint64.buffer.length",
       ].includes(operation.kind) && aliases.has(operation.buffer)) {
+        const interval = intervalViewAccesses.get(operation);
         const claim = Object.freeze({
           ...fact,
           role: "access",
           accessKind: operation.kind,
           buffer: operation.buffer,
           operation: operation.id,
+          ...(interval === undefined ? {} : {
+            logicalIndexProof: Object.freeze({ ...interval }),
+          }),
         });
         operation[VIRTUAL_UINT64_VIEW_PROOF] = claim;
         authorizations.push([operation, claim]);
@@ -989,12 +1017,28 @@ function analyzeStatements(statements, state, context) {
       }
       const mutatesBound = [operation.start, operation.stop, operation.step]
         .some((name) => assigned.has(name));
-      const iterator = mutatesBound
+      const mutatesIterator = operation.iterator !== undefined &&
+        assigned.has(operation.iterator);
+      const iterator = mutatesBound || mutatesIterator
         ? undefined
         : rangeIteratorInterval(operation, state);
       if (iterator !== undefined && !assigned.has(operation.index)) {
         bodyState.intervals.set(operation.index, iterator);
       }
+      const unitStep = state.intervals.get(operation.step);
+      const activeRange = iterator !== undefined &&
+          !assigned.has(operation.index) &&
+          unitStep?.minimum === unitStep?.maximum &&
+          (unitStep.minimum === 1n || unitStep.minimum === -1n)
+        ? {
+          operation: operation.id,
+          index: operation.index,
+          step: unitStep.minimum,
+          start: { ...state.intervals.get(operation.start) },
+          stop: { ...state.intervals.get(operation.stop) },
+          interval: { ...iterator },
+        }
+        : undefined;
       const start = state.intervals.get(operation.start);
       const step = state.intervals.get(operation.step);
       const upper = state.expressions.get(operation.stop);
@@ -1003,7 +1047,10 @@ function analyzeStatements(statements, state, context) {
           upper !== undefined) {
         bodyState.rangeUpper.set(operation.index, upper);
       }
-      analyzeStatements(operation.body, bodyState, context);
+      analyzeStatements(operation.body, bodyState, {
+        ...context,
+        activeRange,
+      });
       assigned.add(operation.index);
       if (operation.iterator !== undefined) assigned.add(operation.iterator);
       for (const name of assigned) {
@@ -1114,6 +1161,33 @@ function analyzeStatements(statements, state, context) {
         index.maximum <= UINT64_MAXIMUM;
       const relationalProof = relational !== undefined &&
         relationships?.has(relational);
+      const virtual = context.virtualViewAliases?.get(operation.buffer);
+      const logicalLength = virtual?.fact.mode === "fixed"
+        ? virtual.fact.length
+        : virtual?.fact.logicalLength;
+      const range = context.activeRange;
+      if (context.enabled.has("interval-view-access") &&
+          operation.indexType === "int64" && index !== undefined &&
+          logicalLength !== undefined && range !== undefined &&
+          range.index === operation.index && index.minimum >= 0n &&
+          index.maximum < BigInt(logicalLength)) {
+        context.intervalViewAccesses.set(operation, Object.freeze({
+          authority: "checked-region-virtual-view-range-v1",
+          accessOperation: operation.id,
+          viewOperation: virtual.fact.viewOperation,
+          rangeOperation: range.operation,
+          buffer: operation.buffer,
+          index: operation.index,
+          step: range.step.toString(),
+          startMinimum: range.start.minimum.toString(),
+          startMaximum: range.start.maximum.toString(),
+          stopMinimum: range.stop.minimum.toString(),
+          stopMaximum: range.stop.maximum.toString(),
+          indexMinimum: index.minimum.toString(),
+          indexMaximum: index.maximum.toString(),
+          logicalLength,
+        }));
+      }
       if (context.enabled.has("direct-buffer-access") &&
           (intervalProof || relationalProof)) {
         operation.checkedRegionProof = Object.freeze({
@@ -1170,8 +1244,8 @@ function analyzeStatements(statements, state, context) {
   return state;
 }
 
-function attachCapabilities(region, entry, variants) {
-  if (region.capabilities.length === 0) return;
+function attachCapabilities(region, entry, variants, localFacts = new Map()) {
+  if (region.capabilities.length === 0 && localFacts.size === 0) return;
   const enabled = new Set(region.capabilities);
   for (const capability of enabled) {
     if (!CAPABILITIES.has(capability)) fail(`unsupported capability ${capability}`);
@@ -1179,6 +1253,9 @@ function attachCapabilities(region, entry, variants) {
   const byName = new Map(variants.map((fn) => [fn.name, fn]));
   const edges = callGraph(variants, byName);
   const order = topologicalOrder(region.variantEntry, edges);
+  for (const name of localFacts.keys()) {
+    if (!order.includes(name)) order.push(name);
+  }
   const facts = new Map(order.map((name) => [name, {
     intervals: new Map(),
     buffers: new Map(),
@@ -1192,16 +1269,36 @@ function attachCapabilities(region, entry, variants) {
     ...initialFacts(entry, region.guard),
     initialized: true,
   });
+  for (const [name, value] of localFacts) {
+    facts.set(name, { ...value, initialized: true });
+  }
 
   for (const name of order) {
     const fn = byName.get(name);
     const state = facts.get(name);
-    attachVirtualFixedUInt64Views(fn, state, enabled);
+    const functionEnabled = new Set(
+      fn.checkedRegionLocalCapabilities || enabled,
+    );
+    const groups = functionEnabled.has("virtual-fixed-uint64-views")
+      ? virtualFixedUInt64ViewGroups(fn, state)
+      : [];
+    const virtualViewAliases = new Map(groups.flatMap((group) =>
+      Array.from(group.aliases, (alias) => [alias, group])
+    ));
+    const intervalViewAccesses = new Map();
     analyzeStatements(fn.body, cloneState(state), {
       byName,
-      enabled,
+      enabled: functionEnabled,
       facts,
+      virtualViewAliases,
+      intervalViewAccesses,
     });
+    attachVirtualFixedUInt64Views(
+      fn,
+      state,
+      functionEnabled,
+      intervalViewAccesses,
+    );
   }
   if (enabled.has("verified-span-access")) {
     // Reconstruct ordinary checked-view/range proofs from the cloned IR.  No
@@ -1246,6 +1343,41 @@ function prepareCheckedRegions(ir) {
     if (new Set(region.capabilities).size !== region.capabilities.length) {
       fail("duplicate capability");
     }
+    if (!Array.isArray(region.localVariants)) fail("localVariants must be an array");
+    const localFunctions = new Set();
+    const normalizedLocalVariants = region.localVariants.map((local) => {
+      if (local === null || typeof local !== "object" ||
+          typeof local.function !== "string" || !names.has(local.function)) {
+        fail("local variant function is outside its function graph");
+      }
+      if (local.function === region.entry) {
+        fail("local variant function must be a private graph member");
+      }
+      if (localFunctions.has(local.function)) fail("duplicate local variant");
+      localFunctions.add(local.function);
+      const target = originals.get(local.function);
+      const localGuard = normalizeGuard(local.guard, target);
+      if (localGuard.length === 0) fail("local variant guard must be nonempty");
+      if (!Array.isArray(local.capabilities) ||
+          new Set(local.capabilities).size !== local.capabilities.length) {
+        fail("invalid local variant capabilities");
+      }
+      for (const capability of local.capabilities) {
+        if (!CAPABILITIES.has(capability)) {
+          fail(`unsupported local variant capability ${capability}`);
+        }
+      }
+      let hasCall = false;
+      visitOperations(target.body, (operation) => {
+        if (operation.kind === "native.call") hasCall = true;
+      });
+      if (hasCall) fail("local variant functions may not contain native calls");
+      return Object.freeze({
+        function: local.function,
+        guard: localGuard,
+        capabilities: Object.freeze([...local.capabilities]),
+      });
+    });
 
     const variantNames = new Map();
     for (const name of names) {
@@ -1295,6 +1427,30 @@ function prepareCheckedRegions(ir) {
       });
       return variant;
     });
+    const localFacts = new Map();
+    for (const [localIndex, local] of normalizedLocalVariants.entries()) {
+      const slow = variants.find((candidate) =>
+        candidate.checkedRegionVariant.original === local.function
+      );
+      const fast = deepClone(slow);
+      fast.name = `${slow.name}__local_fast_${localIndex}`;
+      if (occupied.has(fast.name)) fail("local variant name collision");
+      occupied.add(fast.name);
+      slow[CHECKED_REGION_LOCAL_VARIANT] = Object.freeze({
+        guard: local.guard,
+        fastName: fast.name,
+        // The false arm reuses the ordinary checked implementation already
+        // emitted for the source function.  Do not duplicate a second checked
+        // body in the hot private graph.
+        slowName: local.function,
+      });
+      variants.push(fast);
+      const original = originals.get(local.function);
+      localFacts.set(fast.name, initialFacts(original, local.guard));
+      fast.checkedRegionLocalCapabilities = Object.freeze([
+        ...new Set([...region.capabilities, ...local.capabilities]),
+      ]);
+    }
     const preparedRegion = {
       schema: SCHEMA,
       entry: region.entry,
@@ -1304,7 +1460,7 @@ function prepareCheckedRegions(ir) {
       variants: Object.freeze(variants),
     };
     validateCapabilityInputs(variants, new Map(variants.map((fn) => [fn.name, fn])));
-    attachCapabilities(preparedRegion, entry, variants);
+    attachCapabilities(preparedRegion, entry, variants, localFacts);
     return Object.freeze({
       ...preparedRegion,
     });
@@ -1346,6 +1502,9 @@ function checkedRegionVirtualUInt64Emission(fn) {
 }
 
 module.exports = {
+  checkedRegionLocalVariant(fn) {
+    return fn?.[CHECKED_REGION_LOCAL_VARIANT];
+  },
   checkedRegionVirtualUInt64Emission,
   isCheckedRegionBufferAccess(operation) {
     return operation?.[CHECKED_REGION_BUFFER_ACCESS] === true &&
