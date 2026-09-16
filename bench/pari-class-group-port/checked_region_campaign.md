@@ -349,3 +349,70 @@ and unrelated generated code at normal size. The function/status ABI remains
 useful for public and fallback paths. Within the proved private graph, the
 compiler should first allow selective flattening of the measured missed edges,
 then ratchet both time and code growth against this result.
+
+## Targeted private-graph attributes
+
+A follow-up kept GCC at the unchanged repository `-O3` flags and changed only
+source attributes on the verified private graph. Every candidate reproduced
+all four frozen packets and their complete post-call buffers exactly before
+timing, including all 7,081 active outputs in packet zero. The final comparison
+used three warmup batches and nine alternating pairs of 800 complete catalogs
+per implementation in one process.
+
+The useful policy was deliberately narrow:
+
+- emit private-region functions as `static inline __attribute__((hot))`;
+- mark the guard's complete checked fallback `cold`, so GCC keeps the guarded
+  success path contiguous and inlines the private entry into the dispatcher;
+  and
+- force-inline only the small normalization helper in this diagnostic.
+
+The paired results were:
+
+| targeted source policy | geometric mean (ms/catalog) | ratio to baseline | relocatable `.text` | surviving private symbols |
+| --- | ---: | ---: | ---: | ---: |
+| ordinary `-O3` | 1.62021 | 1.00000 | 193,807 | 8 |
+| hot inline private graph | 1.52363 | 0.94042 | 196,437 | 9 |
+| hot inline graph + force-inline normalization | 1.50608 | 0.92956 | 195,073 | 8 |
+| hot inline graph + cold checked fallback | 1.53834 | 0.94947 | 192,546 | 8 |
+| combined policy | **1.48316** | **0.91541** | **191,182** | **7** |
+
+The combined samples spanned 1.47756--1.48975 ms/catalog. It is 8.46% faster
+than the ordinary private graph, uses 1.35% less object text, and is only about
+6.7% above the 1.39 ms same-algorithm mechanical-C ceiling. The final ELF text
+is 200,206 bytes versus 202,786 bytes for the ordinary build.
+
+Broad forced inlining is specifically rejected by the experiment. Flattening
+the entry measured about 1.58 ms and grew object text to 215,060 bytes. Forcing
+all private children inline measured about 3.19 ms even though only the entry
+symbol survived and total object text stayed near baseline. The relevant
+quantity is therefore instruction locality and the quality of selected inline
+edges, not call count alone. A production rule must derive any force-inline
+choice from verified graph structure and emitted size rather than from the
+mathematical function name.
+
+### Name-independent force-inline threshold
+
+The normalization result was then challenged with a name-independent sweep.
+Candidates were selected only when their IR contained at most 8, 16, 24, 32,
+or 50 operations, they had at most four static incoming private call sites,
+and they contained at most six loop nodes. Each selected candidate was marked
+`always_inline`; the rest of the graph retained the hot-inline and cold-fallback
+policy. The 50-operation threshold includes normalization, but also the other
+helpers satisfying the same structural rule.
+
+All five thresholds reproduced the four frozen packets exactly. In a screening
+run every threshold was slower than selecting normalization alone; the
+50-operation threshold was the least bad. A seven-pair confirmation measured
+1.55503 ms/catalog for that threshold, versus 1.53849 ms for the hot/cold graph
+without forced edges and 1.51166 ms for normalization-only in the same run.
+Thus the threshold was 1.07% slower than allowing GCC to choose, while the
+single diagnostic edge was 1.74% faster.
+
+This does **not** justify recognizing normalization by name. It establishes the
+opposite: a simple source operation-count/call-count threshold does not explain
+the profitable edge. The initial production policy should promote only the
+general hot-inline private graph and cold guarded fallback. Selective
+`always_inline` needs a compiler-derived edge-cost model or broader
+cross-workload evidence before promotion; the 1.483 ms normalization result
+remains an attainable diagnostic ceiling, not a name-specific emitter rule.
