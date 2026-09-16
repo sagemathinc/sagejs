@@ -1,0 +1,70 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "affine-while-induction",
+  "title": "Affine While Induction",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Prove bounded synchronized affine while-loop induction for checked private native graphs while retaining a checked latch",
+  "base_commit": "f2859e21a0d1c7d1a2e99b70ae2cea9885f838ef",
+  "claims": [
+    "tools/native-kernel/checked-regions.cjs",
+    "tools/native-kernel/tagged-backend.cjs",
+    "tools/native-kernel/test/checked-private-region.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "tested-capability",
+    "oracles": [
+      "checked signed-buffer latch behavior on arbitrary and malformed storage",
+      "generated C retains the checked latch while proved affine updates become raw int64 operations"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.186,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an explicit `buffer-max-length` guard and a fail-closed theorem for flat synchronized affine updates controlled by a retained checked UInt64Buffer zero-test. Python negative indices make a successful latch imply `-L <= index < L`; at most `2L` updates can execute in one loop. The theorem computes exact bigint result intervals, authorizes raw signed operations only when all remain in int64, propagates buffer maxima through the closed call graph, and structurally forces the latch to remain checked even if another access proof appears later.",
+    "risks": [
+      "The recognizer deliberately accepts only three condition operations and a flat literal/self-update body; branches, calls, aliases, control transfers, and nonliteral slopes fall back.",
+      "Production use requires an auditable residual buffer upper guard; the target catalog's 393-word workspace is far below the required INT64_MAX/4 ceiling."
+    ],
+    "next_steps": [
+      "Independently review the theorem and mutation coverage.",
+      "Compose with the range-latch work, add the exact workspace upper guard to the frozen declaration, and require exact 7,081-output plus nine-malformed replay before timing."
+    ]
+  }
+}
