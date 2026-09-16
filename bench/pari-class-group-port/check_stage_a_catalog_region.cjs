@@ -2,14 +2,15 @@
 
 /*
  * Rebuild the frozen splitting-degree catalog with the compiler's Stage-A
- * checked-region machinery.  This is intentionally an experiment driver:
+ * checked-region machinery. This is intentionally an experiment driver:
  * it consumes an already-built ordinary kernel (and its portable IR), installs
  * a compiler-owned declaration, emits a private checked graph, and builds the
- * result in a disposable directory.  No arithmetic or bounds check is removed.
+ * result in a disposable directory. Pass `stage-a` to retain every check or
+ * `stage-d` to enable only the capabilities proved from the full guard.
  *
  * Usage:
  *   node check_stage_a_catalog_region.cjs \
- *     FIXTURES_JSON BASELINE_BUILD_DIRECTORY COMPILER_WORKTREE
+ *     FIXTURES_JSON BASELINE_BUILD_DIRECTORY COMPILER_WORKTREE MODE
  */
 
 const assert = require("node:assert/strict");
@@ -25,13 +26,16 @@ const {
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 
-const [fixturesArgument, baselineArgument, compilerArgument] =
+const [fixturesArgument, baselineArgument, compilerArgument, mode = "stage-d"] =
   process.argv.slice(2);
 if (!fixturesArgument || !baselineArgument || !compilerArgument) {
   throw new Error(
     "usage: node check_stage_a_catalog_region.cjs " +
-      "FIXTURES_JSON BASELINE_BUILD_DIRECTORY COMPILER_WORKTREE",
+      "FIXTURES_JSON BASELINE_BUILD_DIRECTORY COMPILER_WORKTREE MODE",
   );
+}
+if (!["stage-a", "stage-d"].includes(mode)) {
+  throw new Error("MODE must be stage-a or stage-d");
 }
 
 const fixturesPath = resolve(fixturesArgument);
@@ -90,11 +94,8 @@ const GRAPH = Object.freeze([
   "int64_pari_flx_div",
 ]);
 
-// Stage A currently supports scalar intervals and constant buffer minima.  This
-// is the conservative expressible projection of the diagnostic's stronger
-// relational preflight.  It is enough to route every frozen packet through the
-// private graph.  Because Stage A retains every check, omitted relationships
-// cannot weaken public behavior.
+// This is the complete preflight recovered from the successful generated-C
+// diagnostic, expressed in the compiler's fail-closed relational vocabulary.
 const GUARD = Object.freeze([
   { kind: "buffer-min-length", parameter: "state", minimum: 4 },
   { kind: "int64-range", parameter: "degree", minimum: 2, maximum: 4 },
@@ -102,20 +103,57 @@ const GUARD = Object.freeze([
     kind: "int64-range",
     parameter: "prime_count",
     minimum: 0,
-    // Together with degree <= 4 this implies the capacity multiplication fits.
-    maximum: "2305843009213693951",
+    maximum: "9223372036854775807",
   },
-  // The exact relation is length >= degree + 1.  Three is the strongest
-  // constant lower bound common to every accepted degree.
-  { kind: "buffer-min-length", parameter: "coefficients", minimum: 3 },
+  {
+    kind: "checked-nonnegative-int64-product",
+    name: "capacity",
+    left: "prime_count",
+    right: "degree",
+  },
+  {
+    kind: "buffer-min-length-affine",
+    buffer: "coefficients",
+    scalar: "degree",
+    offset: 1,
+  },
+  {
+    kind: "buffer-min-length-scalar",
+    buffer: "primes",
+    scalar: "prime_count",
+  },
   { kind: "buffer-min-length", parameter: "exact_workspace", minimum: 29 },
   { kind: "buffer-min-length", parameter: "word_workspace", minimum: 393 },
   { kind: "buffer-min-length", parameter: "word_metadata", minimum: 393 },
-  { kind: "buffer-min-length", parameter: "factor_degrees", minimum: 4 },
-  { kind: "buffer-min-length", parameter: "factor_exponents", minimum: 4 },
-  { kind: "buffer-min-length", parameter: "group_degrees", minimum: 4 },
-  { kind: "buffer-min-length", parameter: "group_counts", minimum: 4 },
+  { kind: "buffer-min-length-scalar", buffer: "factor_degrees",
+    scalar: "degree" },
+  { kind: "buffer-min-length-scalar", buffer: "factor_exponents",
+    scalar: "degree" },
+  { kind: "buffer-min-length-scalar", buffer: "group_degrees",
+    scalar: "degree" },
+  { kind: "buffer-min-length-scalar", buffer: "group_counts",
+    scalar: "degree" },
   { kind: "buffer-min-length", parameter: "local_state", minimum: 3 },
+  { kind: "buffer-min-length-scalar", buffer: "pattern_offsets",
+    scalar: "prime_count" },
+  { kind: "buffer-min-length-scalar", buffer: "pattern_counts",
+    scalar: "prime_count" },
+  { kind: "buffer-min-length-scalar", buffer: "full_offsets",
+    scalar: "prime_count" },
+  { kind: "buffer-min-length-scalar", buffer: "full_counts",
+    scalar: "prime_count" },
+  { kind: "buffer-min-length-product", buffer: "pattern_degrees",
+    product: "capacity" },
+  { kind: "buffer-min-length-product", buffer: "pattern_multiplicities",
+    product: "capacity" },
+  { kind: "buffer-min-length-product", buffer: "full_degrees",
+    product: "capacity" },
+]);
+
+const CAPABILITIES = Object.freeze([
+  "int64-arithmetic",
+  "direct-buffer-access",
+  "verified-span-access",
 ]);
 
 function sha256(value) {
@@ -141,6 +179,27 @@ function makeArguments(kernel, packet) {
   });
 }
 
+function execute(kernel, packet) {
+  const arguments_ = makeArguments(kernel, packet);
+  let outcome;
+  try {
+    outcome = { kind: "result", value: String(kernel.tagged(...arguments_)) };
+  } catch (error) {
+    outcome = {
+      kind: "exception",
+      name: error?.name || null,
+      message: error?.message || String(error),
+    };
+  }
+  return { outcome, arguments: snapshot(arguments_) };
+}
+
+function changedPacket(packet, change) {
+  const copy = structuredClone(packet);
+  change(copy);
+  return copy;
+}
+
 function geometricMean(values) {
   return Math.exp(
     values.reduce((sum, value) => sum + Math.log(value), 0) / values.length,
@@ -164,24 +223,33 @@ function batch(kernel, arguments_, repetitions) {
   return Number(process.hrtime.bigint() - start) / 1e6;
 }
 
-function packetSatisfiesProjection(packet) {
+function packetSatisfiesGuard(packet) {
   const degree = BigInt(packet[1]);
   const primeCount = BigInt(packet[4]);
+  const capacity = degree * primeCount;
   return (
     packet[22].length >= 4 &&
     degree >= 2n &&
     degree <= 4n &&
     primeCount >= 0n &&
-    primeCount <= 2305843009213693951n &&
-    packet[0].length >= 3 &&
+    capacity <= 9223372036854775807n &&
+    BigInt(packet[0].length) >= degree + 1n &&
+    BigInt(packet[3].length) >= primeCount &&
     packet[5].length >= 29 &&
     packet[8].length >= 393 &&
     packet[9].length >= 393 &&
-    packet[10].length >= 4 &&
-    packet[11].length >= 4 &&
-    packet[12].length >= 4 &&
-    packet[13].length >= 4 &&
-    packet[14].length >= 3
+    BigInt(packet[10].length) >= degree &&
+    BigInt(packet[11].length) >= degree &&
+    BigInt(packet[12].length) >= degree &&
+    BigInt(packet[13].length) >= degree &&
+    packet[14].length >= 3 &&
+    BigInt(packet[15].length) >= primeCount &&
+    BigInt(packet[16].length) >= primeCount &&
+    BigInt(packet[19].length) >= primeCount &&
+    BigInt(packet[20].length) >= primeCount &&
+    BigInt(packet[17].length) >= capacity &&
+    BigInt(packet[18].length) >= capacity &&
+    BigInt(packet[21].length) >= capacity
   );
 }
 
@@ -203,7 +271,12 @@ for (const caller of GRAPH) {
 }
 
 installCheckedRegionDeclarations(manifest.ir, [
-  { entry: ENTRY, functions: GRAPH, guard: GUARD },
+  {
+    entry: ENTRY,
+    functions: GRAPH,
+    guard: GUARD,
+    capabilities: mode === "stage-d" ? CAPABILITIES : [],
+  },
 ]);
 const [prepared] = prepareCheckedRegions(manifest.ir);
 assert.equal(prepared.variants.length, GRAPH.length);
@@ -214,28 +287,32 @@ const artifacts = generateArtifacts(manifest.ir, {
 const privatePrefix = "tagged_sagejs_checked_r0_";
 assert.equal(
   (artifacts.coreSource.match(
-    /static int tagged_sagejs_checked_r0_[A-Za-z0-9_]+\(/g,
+    /(?:static|SAGEJS_CHECKED_REGION_HOT_INLINE) int tagged_sagejs_checked_r0_[A-Za-z0-9_]+\(/g,
   ) || []).length,
   GRAPH.length * 2,
   "expected one prototype and one definition for every private function",
 );
 const dispatchNeedle = `return ${privatePrefix}${ENTRY}(`;
 assert(artifacts.coreSource.includes(dispatchNeedle), "missing guarded dispatch");
-const firstPrivateDefinition = artifacts.coreSource.indexOf(
-  `static int ${privatePrefix}${ENTRY}(`,
-  artifacts.coreSource.indexOf(`static int ${privatePrefix}${ENTRY}(`) + 1,
-);
-const firstNativeDefinition = artifacts.coreSource.indexOf(
-  `static int native_${ENTRY}(`,
-  firstPrivateDefinition,
-);
-assert.notEqual(firstNativeDefinition, -1, "missing native entry definition");
+const privateDefinition = new RegExp(
+  `(?:static|SAGEJS_CHECKED_REGION_HOT_INLINE) int ` +
+    `${privatePrefix}${ENTRY}\\([^;]+\\)\\n\\{`,
+).exec(artifacts.coreSource);
+assert(privateDefinition, "missing private entry definition");
+const firstPrivateDefinition = privateDefinition.index;
+const nativeDefinition = new RegExp(
+  `static int native_${ENTRY}\\([^;]+\\)\\n\\{`,
+).exec(artifacts.coreSource.slice(firstPrivateDefinition));
+assert(nativeDefinition, "missing native entry definition");
+const firstNativeDefinition = firstPrivateDefinition + nativeDefinition.index;
 const privateDefinitions = artifacts.coreSource.slice(
   firstPrivateDefinition,
   firstNativeDefinition,
 );
-assert.match(privateDefinitions, /sagejs_word_(?:add|sub|mul)_int64\(/);
-assert.match(privateDefinitions, /index out of range/);
+if (mode === "stage-a") {
+  assert.match(privateDefinitions, /sagejs_word_(?:add|sub|mul)_int64\(/);
+  assert.match(privateDefinitions, /index out of range/);
+}
 
 const outputDirectory = mkdtempSync(join(tmpdir(), "sagejs-stage-a-catalog-"));
 for (const filename of ["binding.gyp", "index.cjs", "manifest.json"]) {
@@ -266,7 +343,7 @@ writeFileSync(join(outputDirectory, "rebuild.log"), build.stdout + build.stderr)
 const fixturesBytes = readFileSync(fixturesPath);
 const fixtures = JSON.parse(fixturesBytes);
 assert.equal(fixtures.packets.length, 4);
-assert(fixtures.packets.every(packetSatisfiesProjection));
+assert(fixtures.packets.every(packetSatisfiesGuard));
 const baseline = require(join(baselineDirectory, "index.cjs"))[ENTRY];
 const stageA = require(join(outputDirectory, "index.cjs"))[ENTRY];
 
@@ -278,6 +355,46 @@ for (let index = 0; index < fixtures.packets.length; index += 1) {
     fixtures.expected[index],
   );
 }
+
+const malformedPackets = [
+  ["short-state", (packet) => {
+    packet[22] = packet[22].slice(0, 3);
+  }],
+  ["bad-degree", (packet) => {
+    packet[1] = "5";
+  }],
+  ["short-coefficients", (packet) => {
+    packet[0] = packet[0].slice(0, Number(packet[1]));
+  }],
+  ["short-primes", (packet) => {
+    packet[3] = packet[3].slice(0, -1);
+  }],
+  ["short-word-workspace", (packet) => {
+    packet[8] = packet[8].slice(0, 392);
+  }],
+  ["short-output", (packet) => {
+    packet[17] = packet[17].slice(0, -3);
+  }],
+  ["nonmonic", (packet) => {
+    packet[0][Number(packet[1])] = "2";
+  }],
+  ["invalid-prime", (packet) => {
+    packet[3][0] = "1";
+  }],
+  ["oversized-prime", (packet) => {
+    packet[3][0] = "3037000499";
+  }],
+].map(([name, change]) => {
+  const packet = changedPacket(fixtures.packets[0], change);
+  const expected = execute(baseline, packet);
+  const actual = execute(stageA, packet);
+  assert.deepEqual(actual, expected, `malformed mismatch: ${name}`);
+  return {
+    name,
+    entersPrivateGraph: packetSatisfiesGuard(packet),
+    outcome: actual.outcome,
+  };
+});
 
 const baselineArguments = makeArguments(baseline, fixtures.packets[0]);
 const stageAArguments = makeArguments(stageA, fixtures.packets[0]);
@@ -312,6 +429,14 @@ for (let pair = 0; pair < 7; pair += 1) {
 
 const baselineCore = readFileSync(join(baselineDirectory, "kernel_core.c"));
 const stageACore = readFileSync(join(outputDirectory, "kernel_core.c"));
+const privateCheckCounts = {
+  checkedInt64Arithmetic: (
+    privateDefinitions.match(/sagejs_word_(?:add|sub|mul)_int64\(/g) || []
+  ).length,
+  bufferBoundsFailures: (
+    privateDefinitions.match(/(?:Int64|UInt64)Buffer index out of range/g) || []
+  ).length,
+};
 const baselineAddon = join(
   baselineDirectory,
   "build/Release/sagejs_native_kernel.node",
@@ -321,19 +446,21 @@ const stageAAddon = join(
   "build/Release/sagejs_native_kernel.node",
 );
 const result = {
-  schema: "sagejs.checked-region/catalog-stage-a-v1",
+  schema: `sagejs.checked-region/catalog-${mode}-v1`,
   diagnosticOnly: true,
-  checksRemoved: false,
+  mode,
+  capabilities: mode === "stage-d" ? CAPABILITIES : [],
   entry: ENTRY,
   graph: GRAPH,
   edges,
-  guardProjection: GUARD,
-  relationalGuardPending: true,
+  guard: GUARD,
+  relationalGuardPending: false,
   frozenPackets: fixtures.packets.length,
   activeOutputs: 7081,
   privateVariantCount: prepared.variants.length,
   privateDispatchPresent: true,
-  privateChecksRetained: true,
+  privateCheckCounts,
+  malformedPackets,
   fixtureSha256: sha256(fixturesBytes),
   baselineCoreSha256: sha256(baselineCore),
   stageACoreSha256: sha256(stageACore),

@@ -1,5 +1,10 @@
 # Stage-A checked region on the real splitting-degree catalog
 
+> Historical note: this records the first constant/range projection at commit
+> `44fa6c88e`. The driver has since advanced to the complete relational guard
+> and accepts explicit `stage-a` and `stage-d` modes; see
+> `stage_d_catalog_region.md` for current results.
+
 This experiment bridges the compiler's fail-closed checked-region machinery to
 the exact catalog workload that produced the 1.6307 ms generated-C result. It
 does **not** remove a single arithmetic or bounds check. Its purpose is to prove
