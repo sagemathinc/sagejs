@@ -1,4 +1,11 @@
-from sagejs.native import Int64Buffer, checked_int64, int64, native
+from sagejs.native import (
+    Int64Buffer,
+    checked_int64,
+    checked_uint64,
+    int64,
+    native,
+    uint64,
+)
 
 
 @native
@@ -64,3 +71,8 @@ def checked_int64_literal() -> int64:
 @native
 def checked_int64_length(values: Int64Buffer) -> int64:
     return checked_int64(len(values))
+
+
+@native
+def checked_uint64_int64(value: int64) -> uint64:
+    return checked_uint64(value)

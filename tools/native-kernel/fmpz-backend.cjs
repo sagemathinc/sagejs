@@ -391,6 +391,15 @@ function emitFmpzOperation(operation, context, indent) {
       `${indent}${target} = (int64_t) ${source};`,
     ].join("\n");
   }
+  if (operation.kind === "uint64.from_int64_checked") {
+    const source = fmpzValue(operation.source, context);
+    return [
+      `${indent}if (${source} < 0)`, `${indent}{`,
+      statusFailure("range", "integer is outside unsigned 64-bit", `${indent}    `),
+      `${indent}    goto fail;`, `${indent}}`,
+      `${indent}${target} = (uint64_t) ${source};`,
+    ].join("\n");
+  }
   if (operation.kind === "uint64.from_integer_checked") {
     return [
       `${indent}if (!sagejs_fmpz_to_uint64_checked(` +

@@ -179,6 +179,11 @@ function emitStatement(operation, indent) {
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
   }
+  if (operation.kind === "uint64.from_int64_checked") {
+    return `${indent}if (${operation.source} < 0n) ` +
+      `nativeRaise("OverflowError", "integer is outside unsigned 64-bit");\n` +
+      `${indent}${operation.target} = ${operation.source};`;
+  }
   if (operation.kind === "uint64.from_integer_checked") {
     return `${indent}if (${operation.source} < 0n || ` +
       `${operation.source} > 18446744073709551615n) ` +
@@ -542,6 +547,11 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   }
   if (operation.kind === "int64.from_uint64_checked") {
     return `${indent}${operation.target} = checkedInt64(${operation.source});`;
+  }
+  if (operation.kind === "uint64.from_int64_checked") {
+    return `${indent}if (${operation.source} < 0n) ` +
+      `nativeRaise("OverflowError", "integer is outside unsigned 64-bit");\n` +
+      `${indent}${operation.target} = ${operation.source};`;
   }
   if (operation.kind === "uint64.from_integer_checked") {
     return `${indent}if (${operation.source} < 0n || ` +
