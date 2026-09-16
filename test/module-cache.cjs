@@ -39,6 +39,7 @@ const circularMainPath = join(sourceDirectory, "circular_main.py");
 const localNumbersPath = join(sourceDirectory, "numbers.py");
 const classScopePath = join(sourceDirectory, "cached_class_scope.py");
 const classScopeMainPath = join(sourceDirectory, "class_scope_main.py");
+const nativeBufferMainPath = join(sourceDirectory, "native_buffer_main.py");
 const shadowMainPath = join(sourceDirectory, "shadow_main.py");
 const shadowOutputPath = join(temporary, "shadow-main.cjs");
 const precompiledNumpyCache = join(
@@ -46,6 +47,12 @@ const precompiledNumpyCache = join(
   "dist",
   "module-cache",
   "numpy.json",
+);
+const precompiledNativeCache = join(
+  root,
+  "dist",
+  "module-cache",
+  "sagejs-native.json",
 );
 const dottedPrecompiledModules = BASELIB_STANDALONE_CACHE_MODULES;
 
@@ -109,6 +116,10 @@ try {
     run([], { input: "import numpy\nprint(numpy.arange(3))\n" }),
     "[0 1 2]",
   );
+  const nativeCache = JSON.parse(readFileSync(precompiledNativeCache, "utf8"));
+  for (const rendered of Object.values(nativeCache.outputs)) {
+    assert.doesNotMatch(rendered, /\$ρσ\$py\$Any/);
+  }
   const replModuleRoot = join(replCache, "sagejs", "modules");
   const replVersionCache = join(replModuleRoot, numpyCache.version);
   // Detached cache maintenance records metadata beside version directories.
@@ -172,6 +183,19 @@ try {
   // The second execution consumes the rendered module-cache variant. Class
   // variables and method defaults must retain the imported module namespace.
   assert.equal(run(classScopeArgs), "17 17 namedtuple");
+
+  writeFileSync(
+    nativeBufferMainPath,
+    "from sagejs.native import RealNumberBuffer, ComplexNumberBuffer\n" +
+      "print('native buffer aliases loaded')\n",
+  );
+  const nativeBufferArgs = [
+    "compile", "--cache-dir", compilerCache, "--execute", nativeBufferMainPath,
+  ];
+  assert.equal(run(nativeBufferArgs), "native buffer aliases loaded");
+  // The second execution loads ``sagejs.native`` through the rendered module
+  // cache. Its executable buffer aliases must not depend on ``typing.Any``.
+  assert.equal(run(nativeBufferArgs), "native buffer aliases loaded");
 
   const compilerEntries = filesBelow(compilerCache);
   // Bootstrap modules may declare lazy source-transparent kernel dependencies.
