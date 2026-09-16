@@ -56,8 +56,8 @@ def binding_probe(required, optional=2, *, keyword=3, **extras):
     return required, optional, keyword, extras
 
 
-# Required-name keywords retain the general binder, while defaults,
-# keyword-only arguments, and **kwargs can use the validated packet directly.
+# Positional keywords use the general binder; keyword-only arguments and
+# **kwargs can use the validated packet directly.
 assert binding_probe(required=1) == (1, 2, 3, {})
 assert binding_probe(1, optional=4) == (1, 4, 3, {})
 assert binding_probe(1, keyword=5) == (1, 2, 5, {})
@@ -93,6 +93,24 @@ def positional_packet(value, /, **extras):
 
 
 assert positional_packet(1, value=2) == (1, {"value": 2})
+
+
+# The generated prologue reads only definition-time defaulted names from
+# keyword packets. Expanding live defaults must not drop explicit keywords.
+def expanded_defaults(required, optional=2, *, keyword=3, **extras):
+    return required, optional, keyword, extras
+
+
+expanded_defaults.__defaults__ = (10, 20)
+assert expanded_defaults(required=5) == (5, 20, 3, {})
+assert expanded_defaults(required=5, optional=6, keyword=7, extra=8) == (
+    5,
+    6,
+    7,
+    {"extra": 8},
+)
+expanded_defaults.__defaults__ = (30,)
+assert expanded_defaults(required=9) == (9, 30, 3, {})
 
 
 class NotCallable:
