@@ -1,0 +1,166 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-static-typing-runtime",
+  "title": "Pari Static Typing Runtime",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Preserve runtime typing imports in standalone output to unblock PARI port module-cache qualification",
+  "base_commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
+  "claims": [
+    "tools/python/lowerer.ts",
+    "tools/python/module-resolver.ts",
+    "test/module-cache.cjs",
+    "test/completer.cjs",
+    "docs/pari-static-typing-runtime.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/module-cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.279,
+      "started_at": "2026-09-14T20:21:24.392Z",
+      "commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
+      "workspace_fingerprint": "f453766d6e33489b64c3e360242e68bb0044589053d0916c813c0d44433199f8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/module-cache.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 16.991,
+      "started_at": "2026-09-14T20:32:41.166Z",
+      "commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
+      "workspace_fingerprint": "4332bdf441ee76a9ee85ebf045db35c9b6971a34149f7212bfb1d28d9efb1a07",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 239.566,
+      "started_at": "2026-09-14T20:33:23.419Z",
+      "commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
+      "workspace_fingerprint": "4332bdf441ee76a9ee85ebf045db35c9b6971a34149f7212bfb1d28d9efb1a07",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/compiled-module-isolation.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 8.006,
+      "started_at": "2026-09-14T20:38:12.742Z",
+      "commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
+      "workspace_fingerprint": "4332bdf441ee76a9ee85ebf045db35c9b6971a34149f7212bfb1d28d9efb1a07",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 94.325,
+      "started_at": "2026-09-14T20:40:04.439Z",
+      "commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
+      "workspace_fingerprint": "4332bdf441ee76a9ee85ebf045db35c9b6971a34149f7212bfb1d28d9efb1a07",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/completer.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 6.3,
+      "started_at": "2026-09-14T20:42:48.553Z",
+      "commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
+      "workspace_fingerprint": "c9351df0288c4e68f860c2c865182ec64a7d095d452054e61933a9eadd5af653",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/completer.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 6.388,
+      "started_at": "2026-09-14T20:43:23.008Z",
+      "commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
+      "workspace_fingerprint": "90fc009a4c5ae4b0c01e78d212b1df76b5d368832b6d494e6067e1f3af395ff3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/completer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.02,
+      "started_at": "2026-09-14T20:45:32.266Z",
+      "commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
+      "workspace_fingerprint": "b54e1d95921f2893c0fbd32c593c93173a800979a8b508538288032d43215928",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 132.427,
+      "started_at": "2026-09-14T20:46:04.614Z",
+      "commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
+      "workspace_fingerprint": "01d32c6e2eeb654f641d9c70bafeaa78070a55d782ce88ef493399bb0e84c22a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 298.684,
+      "started_at": "2026-09-14T20:48:57.878Z",
+      "commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
+      "workspace_fingerprint": "60e8fc6cafde7b467b7ff1e45169a4884204b24304defe6ae407ad9ba1e136a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 711.04,
+      "started_at": "2026-09-14T20:53:57.300Z",
+      "commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
+      "workspace_fingerprint": "60e8fc6cafde7b467b7ff1e45169a4884204b24304defe6ae407ad9ba1e136a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 300.484,
+      "started_at": "2026-09-14T21:07:39.517Z",
+      "commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
+      "workspace_fingerprint": "60e8fc6cafde7b467b7ff1e45169a4884204b24304defe6ae407ad9ba1e136a9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
