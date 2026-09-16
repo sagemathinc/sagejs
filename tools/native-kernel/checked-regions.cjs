@@ -1084,7 +1084,6 @@ function attachVirtualFixedUInt64Views(
         graphMembers: Object.freeze(graphFunctions.map(member => member.name)),
         rootEntry: root.entry,
         rootVariantEntry: root.variantEntry,
-        rootGuard: root.guard,
       })
       : localFact;
     const viewClaim = Object.freeze({ ...fact, role: "view", target: view.target });
@@ -3342,39 +3341,35 @@ function prepareCheckedRegions(ir) {
 
 function checkedRegionVirtualUInt64Emission(fn, functions) {
   const verifier = virtualUInt64ViewAuthority.emissionVerifier(fn);
-  const graphVerifiers = new Map();
+  const graphFunctions = functions instanceof Map
+    ? checkedRegionGraphFunctions(fn, [...functions.values()])
+    : undefined;
+  const graphRoot = checkedRegionGraphRoot(graphFunctions);
+  let graphVerifier;
+  if (graphRoot !== undefined) {
+    try {
+      graphVerifier = graphVirtualUInt64ViewAuthority.emissionVerifier(
+        graphFunctions,
+        fn,
+      );
+    } catch (_error) {
+      graphVerifier = undefined;
+    }
+  }
   const localClaims = new Map();
   const operationClaims = new WeakMap();
   const viewClaims = [];
   visitOperations(fn.body, (operation) => {
     const claim = operation[VIRTUAL_UINT64_VIEW_PROOF];
     if (claim === undefined) return;
-    let authorized = claim.authority ===
-      "checked-region-virtual-fixed-uint64-view-v1" &&
-      verifier.isAuthorized(operation, claim);
-    if (!authorized && claim.authority ===
+    const authorized = claim.authority ===
+        "checked-region-virtual-fixed-uint64-view-v1"
+      ? verifier.isAuthorized(operation, claim)
+      : claim.authority ===
         "checked-region-graph-virtual-fixed-uint64-view-v1" &&
-        functions instanceof Map && Array.isArray(claim.graphMembers)) {
-      const graphFunctions = claim.graphMembers.map(name => functions.get(name));
-      const root = checkedRegionGraphRoot(graphFunctions);
-      if (root !== undefined && root.entry === claim.rootEntry &&
-          root.variantEntry === claim.rootVariantEntry &&
-          root.guard === claim.rootGuard) {
-        let graphVerifier = graphVerifiers.get(claim.graphMembers);
-        if (graphVerifier === undefined) {
-          try {
-            graphVerifier = graphVirtualUInt64ViewAuthority.emissionVerifier(
-              graphFunctions,
-              fn,
-            );
-          } catch (_error) {
-            graphVerifier = Object.freeze({ isAuthorized() { return false; } });
-          }
-          graphVerifiers.set(claim.graphMembers, graphVerifier);
-        }
-        authorized = graphVerifier.isAuthorized(operation, claim);
-      }
-    }
+        graphRoot?.entry === claim.rootEntry &&
+        graphRoot?.variantEntry === claim.rootVariantEntry &&
+        graphVerifier?.isAuthorized(operation, claim);
     if (!authorized) return;
     operationClaims.set(operation, claim);
     if (claim.role === "view") {
