@@ -1319,6 +1319,22 @@ def print_function_call(self, output):
                     output.print(")")
 
     def print_kwargs():
+        if not has_kwarg_items:
+            output.print("({[ρσ_kwargs_symbol]:true")
+            for pair in self.args.kwargs:
+                output.comma()
+                # A computed key keeps ``__proto__`` an ordinary keyword;
+                # quoted keys are smaller for every other static name.
+                computed = pair[0].name == "__proto__"
+                if computed:
+                    output.print("[")
+                output.print_string(pair[0].name)
+                output.print("]" if computed else "")
+                output.print(":")
+                output.space()
+                pair[1].print(output)
+            output.print("})")
+            return
         output.print(
             "ρσ_desugar_kwargs(["
             if output.options.python_attributes

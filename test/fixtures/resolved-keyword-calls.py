@@ -45,6 +45,13 @@ assert events == ["receiver", "lookup", "argument", ("call", 7)]
 events.clear()
 
 
+def literal_keywords(__proto__, ordinary):
+    return __proto__, ordinary
+
+
+assert literal_keywords(__proto__=3, ordinary=5) == (3, 5)
+
+
 class NotCallable:
     target = 3
 
