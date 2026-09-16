@@ -3,6 +3,10 @@
 const {
   isVerifiedFixedSpanAccess,
 } = require("./checked-bounds-proofs.cjs");
+const {
+  isCheckedRegionBufferAccess,
+  isCheckedRegionInt64Arithmetic,
+} = require("./checked-regions.cjs");
 
 const {
   cOperationComment,
@@ -290,6 +294,12 @@ function emitTaggedOperation(operation, context, indent) {
     const left = taggedValue(operation.left, context);
     const right = taggedValue(operation.right, context);
     if (["add", "sub", "mul"].includes(operation.operation)) {
+      if (isCheckedRegionInt64Arithmetic(operation)) {
+        const operator = { add: "+", sub: "-", mul: "*" }[
+          operation.operation
+        ];
+        return `${indent}${target} = ${left} ${operator} ${right};`;
+      }
       return [
         `${indent}if (!sagejs_word_${operation.operation}_int64(` +
           `${left}, ${right}, &${target}))`,
@@ -350,7 +360,8 @@ function emitTaggedOperation(operation, context, indent) {
       ? `${target} = ${buffer}.data[${position}];`
       : `${buffer}.data[${position}] = ` +
         `${taggedValue(operation.value, context)};`;
-    if (isVerifiedFixedSpanAccess(operation)) {
+    if (isVerifiedFixedSpanAccess(operation) ||
+        isCheckedRegionBufferAccess(operation)) {
       const verifiedAccess = operation.kind === "uint64.buffer.get"
         ? `${target} = ${buffer}.data[(size_t) ${index}];`
         : `${buffer}.data[(size_t) ${index}] = ` +

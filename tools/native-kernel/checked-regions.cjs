@@ -5,7 +5,10 @@
  * by a guard at one ordinary tagged entry.  This first stage deliberately
  * preserves every arithmetic and bounds check in the copied graph.  It only
  * establishes the fail-closed representation, cloning, call rewriting, and
- * dispatch machinery on which later independently verified proofs can rely.
+ * dispatch machinery on which independently verified proofs can rely.  An
+ * optional, conservative Stage-B interval pass can then authorize direct
+ * straight-line int64 arithmetic and buffer access.  Omitting capabilities
+ * always retains the Stage-A behavior and every check.
  *
  * Declarations are compiler-owned capabilities, not portable IR.  The symbol
  * below is intentionally lost by JSON serialization, so cached or externally
@@ -13,7 +16,15 @@
  */
 
 const CHECKED_REGION_AUTHORITY = Symbol("checked region authority");
+const CHECKED_REGION_INT64_ARITHMETIC = Symbol(
+  "checked region int64 arithmetic",
+);
+const CHECKED_REGION_BUFFER_ACCESS = Symbol("checked region buffer access");
 const SCHEMA = "sagejs-checked-private-region-v1";
+const INT64_MINIMUM = -(1n << 63n);
+const INT64_MAXIMUM = (1n << 63n) - 1n;
+const UINT64_MAXIMUM = (1n << 64n) - 1n;
+const CAPABILITIES = new Set(["int64-arithmetic", "direct-buffer-access"]);
 
 const BUFFER_TYPES = new Set([
   "Int64Buffer",
@@ -127,6 +138,7 @@ function installCheckedRegionDeclarations(ir, declarations) {
       schema: SCHEMA,
       entry: declaration.entry,
       functions: Object.freeze([...(declaration.functions || [])]),
+      capabilities: Object.freeze([...(declaration.capabilities || [])]),
       guard: Object.freeze([...(declaration.guard || [])].map((item) =>
         Object.freeze({ ...item })
       )),
@@ -140,6 +152,268 @@ function installCheckedRegionDeclarations(ir, declarations) {
     value: Object.freeze(installed),
   });
   return ir;
+}
+
+function joinInterval(previous, next) {
+  if (next === undefined) return previous;
+  if (previous === undefined) return { ...next };
+  return {
+    minimum: previous.minimum < next.minimum ? previous.minimum : next.minimum,
+    maximum: previous.maximum > next.maximum ? previous.maximum : next.maximum,
+  };
+}
+
+function intervalResult(operation, left, right) {
+  if (left === undefined || right === undefined) return undefined;
+  if (operation === "add") {
+    return {
+      minimum: left.minimum + right.minimum,
+      maximum: left.maximum + right.maximum,
+    };
+  }
+  if (operation === "sub") {
+    return {
+      minimum: left.minimum - right.maximum,
+      maximum: left.maximum - right.minimum,
+    };
+  }
+  if (operation === "mul") {
+    const products = [
+      left.minimum * right.minimum,
+      left.minimum * right.maximum,
+      left.maximum * right.minimum,
+      left.maximum * right.maximum,
+    ];
+    return {
+      minimum: products.reduce((a, b) => a < b ? a : b),
+      maximum: products.reduce((a, b) => a > b ? a : b),
+    };
+  }
+  return undefined;
+}
+
+function operationTargets(operation) {
+  const targets = [];
+  if (typeof operation.target === "string") targets.push(operation.target);
+  for (const result of operation.results || []) targets.push(result.name);
+  if (typeof operation.index === "string" &&
+      operation.kind?.startsWith("loop.")) targets.push(operation.index);
+  return targets;
+}
+
+function directOperations(fn) {
+  const result = [];
+  for (const operation of fn.body || []) {
+    if ([
+      "if", "while", "loop.range", "loop.range_exact", "loop.range_int64",
+      "bool.short_circuit", "integer.vector.scope", "integer.matrix.scope",
+      "integer.arena.scope",
+    ].includes(operation.kind)) {
+      // Stage B's first theorem is straight-line only.  Silently declining an
+      // optimization is the fail-closed behavior for structured control flow.
+      return undefined;
+    }
+    result.push(operation);
+  }
+  return result;
+}
+
+function callGraph(variants, byName) {
+  const edges = new Map();
+  for (const fn of variants) {
+    const operations = directOperations(fn);
+    if (operations === undefined) {
+      edges.set(fn.name, []);
+      continue;
+    }
+    edges.set(fn.name, operations
+      .filter((operation) => operation.kind === "native.call")
+      .map((operation) => operation.function)
+      .filter((name) => byName.has(name)));
+  }
+  return edges;
+}
+
+function topologicalOrder(entry, edges) {
+  const temporary = new Set();
+  const permanent = new Set();
+  const result = [];
+  function visit(name) {
+    if (permanent.has(name)) return;
+    if (temporary.has(name)) fail("capability analysis does not admit recursion");
+    temporary.add(name);
+    for (const child of edges.get(name) || []) visit(child);
+    temporary.delete(name);
+    permanent.add(name);
+    result.push(name);
+  }
+  visit(entry);
+  return result.reverse();
+}
+
+function initialFacts(entry, guard) {
+  const intervals = new Map();
+  const buffers = new Map();
+  for (const predicate of guard) {
+    if (predicate.kind === "buffer-min-length") {
+      const current = buffers.get(predicate.parameter);
+      const minimum = BigInt(predicate.minimum);
+      if (current === undefined || minimum > current) {
+        buffers.set(predicate.parameter, minimum);
+      }
+    } else if (["int64-range", "uint64-range"].includes(predicate.kind)) {
+      intervals.set(predicate.parameter, {
+        minimum: BigInt(predicate.minimum),
+        maximum: BigInt(predicate.maximum),
+      });
+    }
+  }
+  // Exact Integer parameters deliberately remain unknown in this first
+  // fixed-width theorem, even when the entry guard proves an int64 range.
+  return { intervals, buffers, entry: entry.name };
+}
+
+function mergeFacts(target, incoming) {
+  if (!target.initialized) {
+    target.intervals = new Map(incoming.intervals);
+    target.buffers = new Map(incoming.buffers);
+    target.initialized = true;
+    return true;
+  }
+  let changed = false;
+  for (const name of Array.from(target.intervals.keys())) {
+    if (incoming.intervals.has(name)) continue;
+    target.intervals.delete(name);
+    changed = true;
+  }
+  for (const [name, interval] of incoming.intervals) {
+    if (!target.intervals.has(name)) continue;
+    const joined = joinInterval(target.intervals.get(name), interval);
+    const before = target.intervals.get(name);
+    if (before === undefined || before.minimum !== joined.minimum ||
+        before.maximum !== joined.maximum) {
+      target.intervals.set(name, joined);
+      changed = true;
+    }
+  }
+  for (const name of Array.from(target.buffers.keys())) {
+    if (incoming.buffers.has(name)) continue;
+    target.buffers.delete(name);
+    changed = true;
+  }
+  for (const [name, minimum] of incoming.buffers) {
+    const before = target.buffers.get(name);
+    if (before === undefined) continue;
+    // A fact shared by all callers is only as strong as the smallest lower
+    // bound supplied by any caller.
+    const joined = minimum < before ? minimum : before;
+    if (joined !== before) {
+      target.buffers.set(name, joined);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+function attachCapabilities(region, entry, variants) {
+  if (region.capabilities.length === 0) return;
+  const enabled = new Set(region.capabilities);
+  for (const capability of enabled) {
+    if (!CAPABILITIES.has(capability)) fail(`unsupported capability ${capability}`);
+  }
+  const byName = new Map(variants.map((fn) => [fn.name, fn]));
+  const edges = callGraph(variants, byName);
+  const order = topologicalOrder(region.variantEntry, edges);
+  const facts = new Map(order.map((name) => [name, {
+    intervals: new Map(),
+    buffers: new Map(),
+    initialized: false,
+  }]));
+  facts.set(region.variantEntry, {
+    ...initialFacts(entry, region.guard),
+    initialized: true,
+  });
+
+  for (const name of order) {
+    const fn = byName.get(name);
+    const operations = directOperations(fn);
+    if (operations === undefined) continue;
+    const state = facts.get(name);
+    const intervals = new Map(state.intervals);
+    const buffers = new Map(state.buffers);
+    for (const operation of operations) {
+      const previousIntervals = new Map(intervals);
+      const previousBuffers = new Map(buffers);
+      for (const target of operationTargets(operation)) {
+        intervals.delete(target);
+        buffers.delete(target);
+      }
+      if (["int64.constant", "uint64.constant"].includes(operation.kind)) {
+        const value = BigInt(operation.value);
+        intervals.set(operation.target, { minimum: value, maximum: value });
+      } else if (["int64.copy", "uint64.copy"].includes(operation.kind)) {
+        const value = previousIntervals.get(operation.source);
+        if (value !== undefined) intervals.set(operation.target, { ...value });
+      } else if (operation.kind === "uint64.buffer.copy") {
+        const minimum = previousBuffers.get(operation.source);
+        if (minimum !== undefined) buffers.set(operation.target, minimum);
+      } else if (operation.kind === "int64.binary" &&
+          ["add", "sub", "mul"].includes(operation.operation)) {
+        const result = intervalResult(
+          operation.operation,
+          previousIntervals.get(operation.left),
+          previousIntervals.get(operation.right),
+        );
+        if (result !== undefined && result.minimum >= INT64_MINIMUM &&
+            result.maximum <= INT64_MAXIMUM) {
+          intervals.set(operation.target, result);
+          if (enabled.has("int64-arithmetic")) {
+            operation.checkedRegionProof = Object.freeze({
+              authority: "checked-region-int64-interval-v1",
+              operation: operation.id,
+              minimum: result.minimum.toString(),
+              maximum: result.maximum.toString(),
+            });
+            Object.defineProperty(operation, CHECKED_REGION_INT64_ARITHMETIC, {
+              value: true,
+            });
+          }
+        }
+      }
+
+      if (["uint64.buffer.get", "uint64.buffer.set"].includes(operation.kind)) {
+        const index = previousIntervals.get(operation.index);
+        const minimumLength = previousBuffers.get(operation.buffer);
+        if (enabled.has("direct-buffer-access") && index !== undefined &&
+            minimumLength !== undefined && index.minimum >= 0n &&
+            index.maximum < minimumLength && index.maximum <= UINT64_MAXIMUM) {
+          operation.checkedRegionProof = Object.freeze({
+            authority: "checked-region-buffer-interval-v1",
+            operation: operation.id,
+            indexMinimum: index.minimum.toString(),
+            indexMaximum: index.maximum.toString(),
+            bufferMinimumLength: minimumLength.toString(),
+          });
+          Object.defineProperty(operation, CHECKED_REGION_BUFFER_ACCESS, {
+            value: true,
+          });
+        }
+      }
+
+      if (operation.kind === "native.call" && byName.has(operation.function)) {
+        const callee = byName.get(operation.function);
+        const incoming = { intervals: new Map(), buffers: new Map() };
+        operation.arguments.forEach((argument, index) => {
+          const parameter = callee.params[index];
+          const interval = previousIntervals.get(argument.name);
+          const minimum = previousBuffers.get(argument.name);
+          if (interval !== undefined) incoming.intervals.set(parameter.name, interval);
+          if (minimum !== undefined) incoming.buffers.set(parameter.name, minimum);
+        });
+        mergeFacts(facts.get(callee.name), incoming);
+      }
+    }
+  }
 }
 
 function prepareCheckedRegions(ir) {
@@ -176,6 +450,10 @@ function prepareCheckedRegions(ir) {
       normalizePredicate(predicate, entry)
     ));
     if (guard.length === 0) fail("guard must be nonempty");
+    if (!Array.isArray(region.capabilities)) fail("capabilities must be an array");
+    if (new Set(region.capabilities).size !== region.capabilities.length) {
+      fail("duplicate capability");
+    }
 
     const variantNames = new Map();
     for (const name of names) {
@@ -211,6 +489,7 @@ function prepareCheckedRegions(ir) {
         }
         // Stage A intentionally retains all checked operations.
         delete operation.boundsProof;
+        delete operation.checkedRegionProof;
         delete operation.incrementProof;
         if (operation.range !== null && typeof operation.range === "object") {
           delete operation.range.incrementProof;
@@ -223,18 +502,35 @@ function prepareCheckedRegions(ir) {
       });
       return variant;
     });
-    return Object.freeze({
+    const preparedRegion = {
       schema: SCHEMA,
       entry: region.entry,
       variantEntry: variantNames.get(region.entry),
       guard,
+      capabilities: region.capabilities,
       variants: Object.freeze(variants),
+    };
+    attachCapabilities(preparedRegion, entry, variants);
+    return Object.freeze({
+      ...preparedRegion,
     });
   });
   return Object.freeze(prepared);
 }
 
 module.exports = {
+  isCheckedRegionBufferAccess(operation) {
+    return operation?.[CHECKED_REGION_BUFFER_ACCESS] === true &&
+      operation.checkedRegionProof?.authority ===
+        "checked-region-buffer-interval-v1" &&
+      operation.checkedRegionProof.operation === operation.id;
+  },
+  isCheckedRegionInt64Arithmetic(operation) {
+    return operation?.[CHECKED_REGION_INT64_ARITHMETIC] === true &&
+      operation.checkedRegionProof?.authority ===
+        "checked-region-int64-interval-v1" &&
+      operation.checkedRegionProof.operation === operation.id;
+  },
   installCheckedRegionDeclarations,
   prepareCheckedRegions,
 };

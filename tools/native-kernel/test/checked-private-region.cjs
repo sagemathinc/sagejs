@@ -22,8 +22,11 @@ async function witness() {
   // Stage A attaches at the tagged checked boundary.  This witness has only
   // fixed-width values, so the automatic cost model would otherwise bypass
   // that boundary entirely.
-  ir.functions.find((fn) => fn.name === "checked_region_entry")
-    .analysis.backend = { kind: "tagged", reason: "checked-region witness" };
+  for (const fn of ir.functions.filter((candidate) =>
+    candidate.name.endsWith("_entry")
+  )) {
+    fn.analysis.backend = { kind: "tagged", reason: "checked-region witness" };
+  }
   return ir;
 }
 
@@ -34,6 +37,11 @@ const declaration = {
     { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
     { kind: "int64-range", parameter: "index", minimum: 0, maximum: 3 },
   ],
+};
+
+const optimizedDeclaration = {
+  ...declaration,
+  capabilities: ["int64-arithmetic", "direct-buffer-access"],
 };
 
 function functionText(source, name) {
@@ -91,6 +99,7 @@ test("checked private regions clone a closed graph behind a guard", async () => 
   // Stage A changes routing only: even the guarded clone retains element
   // checks and the original slow path remains present and callable.
   assert.match(variantHelper, /index out of range/);
+  assert.match(variantHelper, /sagejs_word_add_int64/);
   assert.match(core.source, /static int tagged_checked_region_helper/);
   assert.match(core.source, /static int tagged_checked_region_entry/);
   assert.match(
@@ -139,4 +148,98 @@ test("portable metadata is inert and malformed graphs fail closed", async () => 
   const duplicate = await witness();
   installCheckedRegionDeclarations(duplicate, [declaration, declaration]);
   assert.throws(() => generateHostCore(duplicate), /duplicate region entry/);
+
+  const forged = await witness();
+  const helper = forged.functions.find((fn) =>
+    fn.name === "checked_region_helper"
+  );
+  helper.body.find((operation) => operation.kind === "uint64.buffer.set")
+    .checkedRegionProof = {
+      authority: "checked-region-buffer-interval-v1",
+      operation: "forged",
+    };
+  installCheckedRegionDeclarations(forged, [declaration]);
+  const forgedClone = functionText(
+    generateHostCore(forged).source,
+    "sagejs_checked_r0_checked_region_helper",
+  );
+  assert.match(forgedClone, /index out of range/);
+});
+
+test("entry intervals prove only bounded straight-line clone operations", async () => {
+  const ir = installCheckedRegionDeclarations(await witness(), [
+    optimizedDeclaration,
+  ]);
+  const [region] = prepareCheckedRegions(ir);
+  const helper = region.variants.find((fn) =>
+    fn.checkedRegionVariant.original === "checked_region_helper"
+  );
+  const arithmetic = [];
+  const accesses = [];
+  for (const operation of helper.body) {
+    if (operation.kind === "int64.binary") arithmetic.push(operation);
+    if (["uint64.buffer.get", "uint64.buffer.set"].includes(operation.kind)) {
+      accesses.push(operation);
+    }
+  }
+  assert.equal(arithmetic.length, 3);
+  assert.equal(accesses.length, 2);
+  assert.equal(arithmetic.every((operation) =>
+    operation.checkedRegionProof?.authority ===
+      "checked-region-int64-interval-v1"
+  ), true);
+  assert.equal(accesses.every((operation) =>
+    operation.checkedRegionProof?.authority ===
+      "checked-region-buffer-interval-v1"
+  ), true);
+
+  const core = generateHostCore(ir).source;
+  const emitted = functionText(
+    core,
+    "sagejs_checked_r0_checked_region_helper",
+  );
+  assert.doesNotMatch(emitted, /sagejs_word_(?:add|sub|mul)_int64/);
+  assert.doesNotMatch(emitted, /index out of range/);
+  assert.match(emitted, / = .* \+ .*;/);
+  assert.match(emitted, / = .* \* .*;/);
+  assert.match(emitted, / = .* - .*;/);
+
+  const tooWide = await witness();
+  installCheckedRegionDeclarations(tooWide, [{
+    ...optimizedDeclaration,
+    guard: [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+      {
+        kind: "int64-range",
+        parameter: "index",
+        minimum: 0,
+        maximum: "9223372036854775807",
+      },
+    ],
+  }]);
+  const wideCore = generateHostCore(tooWide).source;
+  const wideHelper = functionText(
+    wideCore,
+    "sagejs_checked_r0_checked_region_helper",
+  );
+  assert.match(wideHelper, /sagejs_word_add_int64/);
+  assert.match(wideHelper, /index out of range/);
+
+  const ambiguous = await witness();
+  installCheckedRegionDeclarations(ambiguous, [{
+    entry: "checked_region_ambiguous_entry",
+    functions: ["checked_region_ambiguous_entry", "checked_region_helper"],
+    capabilities: optimizedDeclaration.capabilities,
+    guard: [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+      { kind: "int64-range", parameter: "index", minimum: 0, maximum: 3 },
+    ],
+  }]);
+  const ambiguousHelper = functionText(
+    generateHostCore(ambiguous).source,
+    "sagejs_checked_r0_checked_region_helper",
+  );
+  // One unguarded call is enough to revoke facts for the shared helper.
+  assert.match(ambiguousHelper, /sagejs_word_add_int64/);
+  assert.match(ambiguousHelper, /index out of range/);
 });
