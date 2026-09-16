@@ -958,12 +958,10 @@ def ρσ_interpolate_kwargs(
         receiver = target_function
         target_function = _internal_callable_slot(target_function)
     elif _internal_has_own(target_function, "__bases__"):
-        # A class obtained through an attribute is a value, not a descriptor.
         receiver = runtime.undefined
         if _internal_keyword_constructor_prototypes.has(
             runtime.reflect.get(target_function, "prototype")
         ):
-            # Bind against the live allocator and initializer.
             return runtime.reflect.apply(
                 target_function, runtime.undefined, supplied_args
             )
@@ -974,7 +972,6 @@ def ρσ_interpolate_kwargs(
         is not True
         and not _internal_has_own(target_function, "__bases__")
     ):
-        # Callable adapters carry their Python signature on bound `__call__`.
         callable_method = runtime.reflect.apply(
             _internal_builtin("ρσ_getattr"),
             runtime.undefined,
@@ -986,10 +983,8 @@ def ρσ_interpolate_kwargs(
         ):
             receiver = target_function
             target_function = callable_method
-    # Signature slots are live data, not descriptors.
     argnames = runtime.native_get(target_function, "__argnames__")
     keyword_only = runtime.native_get(target_function, "__kwonly__")
-    # An empty name array is a signature; absence denotes an opaque host call.
     if argnames is runtime.undefined and keyword_only is runtime.undefined:
         return runtime.reflect.apply(target_function, receiver, supplied_args)
     if argnames is runtime.undefined:
@@ -1000,35 +995,45 @@ def ρσ_interpolate_kwargs(
     elif positional_only is runtime.undefined:
         positional_only = 0
 
-    keyword_object = supplied_args.pop()
+    keyword_object = supplied_args[supplied_args.length - 1]
     if runtime.native_get(target_function, "__handles_kwarg_interpolation__"):
-        supplied_count = supplied_args.length
+        supplied_count = supplied_args.length - 1
         named_count = argnames.length
-        argument_count = supplied_count if supplied_count > named_count else named_count
-        call_args = runtime.reflect.construct(runtime.array, [argument_count + 1])
-        call_args[argument_count] = keyword_object
-        for index in range(argument_count):
-            if index < named_count:
-                property_name = argnames[index]
-                if index >= positional_only and _internal_has_own(
-                    keyword_object, property_name
-                ):
-                    if index < supplied_count:
-                        raise TypeError(
-                            "multiple values for argument '" + property_name + "'"
-                        )
-                    call_args[index] = keyword_object[property_name]
-                    runtime.reflect.deleteProperty(keyword_object, property_name)
-                elif index < supplied_count:
-                    call_args[index] = supplied_args[index]
-            else:
-                call_args[index] = supplied_args[index]
-        if not runtime.native_get(target_function, "__varkw__"):
-            for unexpected in runtime.object.keys(keyword_object):
-                if not keyword_only or keyword_only.indexOf(unexpected) == -1:
-                    raise TypeError("unexpected keyword argument '" + unexpected + "'")
-        return runtime.reflect.apply(target_function, receiver, call_args)
+        defaults = runtime.native_get(target_function, "__defaults__")
+        direct = True
+        for property_name in runtime.object.keys(keyword_object):
+            index = argnames.indexOf(property_name)
+            if index >= positional_only:
+                if index < supplied_count:
+                    raise TypeError(
+                        "multiple values for argument '" + property_name + "'"
+                    )
+                if runtime.array.isArray(defaults):
+                    if index < named_count - runtime.native_get(defaults, "length"):
+                        direct = False
+                elif defaults is runtime.undefined or defaults is None:
+                    direct = False
+                elif not _internal_has_own(defaults, property_name):
+                    direct = False
+            elif keyword_only and keyword_only.indexOf(property_name) != -1:
+                continue
+            elif not runtime.native_get(target_function, "__varkw__"):
+                raise TypeError("unexpected keyword argument '" + property_name + "'")
+        if direct:
+            return runtime.reflect.apply(target_function, receiver, supplied_args)
 
+        supplied_args.pop()
+        for index in range(named_count):
+            property_name = argnames[index]
+            if index >= positional_only and _internal_has_own(
+                keyword_object, property_name
+            ):
+                supplied_args[index] = keyword_object[property_name]
+                runtime.reflect.deleteProperty(keyword_object, property_name)
+        supplied_args.push(keyword_object)
+        return runtime.reflect.apply(target_function, receiver, supplied_args)
+
+    supplied_args.pop()
     for index in range(argnames.length):
         property_name = argnames[index]
         if index >= positional_only and _internal_has_own(
