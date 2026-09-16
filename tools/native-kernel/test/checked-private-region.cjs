@@ -134,6 +134,32 @@ const directCopyDeclaration = {
   }],
 };
 
+const guardedDirectCopyDeclaration = {
+  entry: "checked_region_direct_copy_entry",
+  functions: [
+    "checked_region_direct_copy_entry",
+    "checked_region_local_copy_helper",
+  ],
+  capabilities: ["virtual-fixed-uint64-views"],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 12 },
+  ],
+  localVariants: [{
+    function: "checked_region_local_copy_helper",
+    mode: "guarded-direct-result",
+    guard: [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 12 },
+      { kind: "int64-range", parameter: "start", minimum: 0, maximum: 8 },
+      { kind: "int64-range", parameter: "degree", minimum: -1, maximum: 3 },
+      { kind: "int64-range", parameter: "output", minimum: 0, maximum: 8 },
+    ],
+    edges: [{
+      operationOrigin: "checked_region_direct_copy_entry:25",
+    }],
+    capabilities: ["int64-arithmetic", "interval-view-access"],
+  }],
+};
+
 const refinedDirectCopyDeclaration = {
   entry: "checked_region_refined_copy_entry",
   functions: [
@@ -1372,6 +1398,249 @@ int main(void)
       rmSync(temporary, { recursive: true, force: true });
     }
   }
+});
+
+test("guarded direct results use a residual edge guard and checked fallback", async () => {
+  const ir = await witness();
+  installCheckedRegionDeclarations(ir, [guardedDirectCopyDeclaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const entry = region.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_direct_copy_entry"
+  );
+  const fast = region.variants.find(fn =>
+    fn.name.includes("checked_region_local_copy_helper__local_fast_0")
+  );
+  assert.ok(entry);
+  assert.ok(fast);
+  assert.ok(checkedRegionDirectResultEmission(fast));
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  const calls = entry.body.filter(operation => operation.kind === "native.call");
+  const emissions = calls.map(operation =>
+    checkedRegionDirectCallEmission(entry, operation, functions)
+  );
+  assert.equal(emissions.filter(Boolean).length, 4);
+  assert.equal(emissions.filter(emission => emission.guard === undefined).length, 3);
+  const guarded = emissions.find(emission => emission.guard !== undefined);
+  assert.deepEqual(guarded.guard.map(predicate => [
+    predicate.kind,
+    predicate.parameter,
+  ]), [
+    ["int64-range", "start"],
+    ["int64-range", "degree"],
+    ["int64-range", "output"],
+  ]);
+
+  const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
+  const entryBody = functionText(
+    core.source,
+    "sagejs_checked_r0_checked_region_direct_copy_entry",
+  );
+  assert.equal((entryBody.match(/= sagejs_direct_/g) || []).length, 4);
+  assert.match(entryBody, /sagejs_local_tagged_start >= INT64_C\(0\)/);
+  assert.match(entryBody, /sagejs_local_tagged_degree >= \(-INT64_C\(1\)\)/);
+  assert.match(entryBody, /sagejs_local_tagged_output <= INT64_C\(8\)/);
+  assert.doesNotMatch(entryBody, /sagejs_tagged_arg_storage\.length/);
+  assert.match(entryBody,
+    /else if \(!tagged_sagejs_checked_r0_checked_region_local_copy_helper/);
+  assert.equal((core.source.match(new RegExp(
+    `SAGEJS_CHECKED_REGION_HOT_INLINE int64_t sagejs_direct_${fast.name}` +
+      `\\([^;]+\\)\\n\\{`,
+    "g",
+  )) || []).length, 1);
+  assert.doesNotMatch(core.source, new RegExp(
+    `(?:HOT_INLINE|COLD) int tagged_${fast.name}\\(`,
+  ));
+
+  if (process.platform !== "win32") {
+    const temporary = mkdtempSync(join(tmpdir(), "sagejs-guarded-direct-result-"));
+    try {
+      writeFileSync(join(temporary, "kernel_core.h"), core.header);
+      const runtimeSource = `${core.source}
+#include <string.h>
+static int run_case(int64_t start, int64_t degree, int64_t output,
+                    const uint64_t *expected, int expected_ok,
+                    const char *expected_message)
+{
+    uint64_t words[12] = {1,2,3,4,5,6,7,8,9,10,11,12};
+    sagejs_uint64_buffer storage = {words, 12};
+    sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
+    int64_t result = INT64_C(99);
+    int ok = tagged_checked_region_direct_copy_entry(
+        &status, &result, storage, start, degree, output);
+    if (ok != expected_ok) return 1;
+    if (expected_ok) {
+        if (status.code != SAGEJS_NATIVE_OK || result != degree) return 2;
+    } else if (status.code != SAGEJS_NATIVE_RANGE_ERROR ||
+               status.message == NULL ||
+               strcmp(status.message, expected_message) != 0) return 3;
+    return memcmp(words, expected, sizeof(words)) != 0 ? 4 : 0;
+}
+int main(void)
+{
+    const uint64_t right[12] = {1,2,1,2,3,4,0,0,0,0,11,12};
+    if (run_case(0, 3, 2, right, 1, NULL)) return 1;
+    const uint64_t left[12] = {3,4,1,2,1,2,0,0,0,0,11,12};
+    if (run_case(2, 3, 0, left, 1, NULL)) return 2;
+    const uint64_t exact[12] = {1,2,3,4,1,2,0,0,0,0,11,12};
+    if (run_case(2, 3, 2, exact, 1, NULL)) return 3;
+    const uint64_t fallback[12] = {1,2,3,4,1,2,0,0,0,0,11,12};
+    if (run_case(0, 4, 2, fallback, 0,
+                 "UInt64Buffer index out of range")) return 4;
+    if (run_case(9, 0, 0, fallback, 0,
+                 "UInt64Buffer view is outside its buffer")) return 5;
+    if (run_case(0, 0, 9, fallback, 0,
+                 "UInt64Buffer view is outside its buffer")) return 6;
+    if (run_case(-1, 0, 0, fallback, 0,
+                 "UInt64Buffer view is outside its buffer")) return 7;
+    if (run_case(0, 0, -1, fallback, 0,
+                 "UInt64Buffer view is outside its buffer")) return 8;
+    const uint64_t negative_degree[12] = {0,0,0,0,1,2,0,0,0,0,11,12};
+    if (run_case(0, -2, 0, negative_degree, 1, NULL)) return 9;
+    return 0;
+}
+`;
+      writeFileSync(join(temporary, "runtime.c"), runtimeSource);
+      const linked = spawnSync(process.env.CC || "cc", [
+        "-std=c11", "-Werror", "-I", temporary,
+        join(temporary, "runtime.c"), "-lgmp", "-lm", "-o",
+        join(temporary, "runtime"),
+      ], { encoding: "utf8" });
+      assert.equal(linked.status, 0, linked.stderr || linked.stdout);
+      const executed = spawnSync(join(temporary, "runtime"), [], {
+        encoding: "utf8",
+      });
+      assert.equal(executed.status, 0, executed.stderr || executed.stdout);
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  }
+
+  calls.at(-1).arguments[1].name = calls.at(-1).arguments[2].name;
+  assert.equal(
+    checkedRegionDirectCallEmission(entry, calls.at(-1), functions),
+    undefined,
+  );
+
+  const changedProvenance = await witness();
+  installCheckedRegionDeclarations(
+    changedProvenance, [guardedDirectCopyDeclaration],
+  );
+  const [changedRegion] = prepareCheckedRegions(changedProvenance);
+  const changedEntry = changedRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_direct_copy_entry"
+  );
+  const changedFunctions = new Map(changedRegion.variants.map(fn => [
+    fn.name, fn,
+  ]));
+  const changedCall = changedEntry.body.find(operation =>
+    operation.origins?.includes("checked_region_direct_copy_entry:25")
+  );
+  changedCall.origins = Object.freeze(["hostile:replacement"]);
+  assert.equal(
+    checkedRegionDirectCallEmission(
+      changedEntry, changedCall, changedFunctions,
+    ),
+    undefined,
+  );
+
+  const hostileMutations = [
+    (operation) => {
+      const claim = structuredClone(
+        operation.checkedRegionGuardedDirectCallProof,
+      );
+      claim.guard[0].maximum = "7";
+      operation.checkedRegionGuardedDirectCallProof = claim;
+    },
+    (operation) => {
+      const claim = structuredClone(
+        operation.checkedRegionGuardedDirectCallProof,
+      );
+      claim.fullGuard[1].maximum = "7";
+      operation.checkedRegionGuardedDirectCallProof = claim;
+    },
+    (operation) => {
+      const claim = structuredClone(
+        operation.checkedRegionGuardedDirectCallProof,
+      );
+      claim.parameters[1].argument = claim.parameters[2].argument;
+      operation.checkedRegionGuardedDirectCallProof = claim;
+    },
+    (operation) => {
+      operation.function = "hostile_fallback";
+    },
+    (operation) => {
+      operation.target = undefined;
+    },
+    (operation) => {
+      operation.returnType = "uint64";
+    },
+  ];
+  for (const mutate of hostileMutations) {
+    const hostile = await witness();
+    installCheckedRegionDeclarations(hostile, [guardedDirectCopyDeclaration]);
+    const [hostileRegion] = prepareCheckedRegions(hostile);
+    const hostileEntry = hostileRegion.variants.find(fn =>
+      fn.checkedRegionVariant.original === "checked_region_direct_copy_entry"
+    );
+    const hostileFunctions = new Map(hostileRegion.variants.map(fn => [
+      fn.name, fn,
+    ]));
+    const hostileCall = hostileEntry.body.find(operation =>
+      operation.origins?.includes("checked_region_direct_copy_entry:25")
+    );
+    mutate(hostileCall);
+    assert.equal(
+      checkedRegionDirectCallEmission(
+        hostileEntry, hostileCall, hostileFunctions,
+      ),
+      undefined,
+    );
+  }
+
+  const changedDirectGuard = await witness();
+  installCheckedRegionDeclarations(
+    changedDirectGuard, [guardedDirectCopyDeclaration],
+  );
+  const [directGuardRegion] = prepareCheckedRegions(changedDirectGuard);
+  const directGuardEntry = directGuardRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_direct_copy_entry"
+  );
+  const directGuardFast = directGuardRegion.variants.find(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  );
+  const directGuardFunctions = new Map(directGuardRegion.variants.map(fn => [
+    fn.name, fn,
+  ]));
+  const directGuardCall = directGuardEntry.body.find(operation =>
+    operation.origins?.includes("checked_region_direct_copy_entry:25")
+  );
+  const directReturn = directGuardFast.body.at(-1);
+  const changedResultClaim = structuredClone(
+    directReturn.checkedRegionDirectResultProof,
+  );
+  changedResultClaim.fullGuard[1].maximum = "7";
+  directReturn.checkedRegionDirectResultProof = changedResultClaim;
+  assert.equal(checkedRegionDirectResultEmission(directGuardFast), undefined);
+  assert.equal(
+    checkedRegionDirectCallEmission(
+      directGuardEntry, directGuardCall, directGuardFunctions,
+    ),
+    undefined,
+  );
+
+  const wrongEdge = structuredClone(guardedDirectCopyDeclaration);
+  wrongEdge.localVariants[0].edges[0].operationOrigin = "missing:operation";
+  const unmatched = await witness();
+  installCheckedRegionDeclarations(unmatched, [wrongEdge]);
+  assert.throws(
+    () => prepareCheckedRegions(unmatched),
+    /guarded direct edge missing:operation matched 0 calls/,
+  );
+
+  const portable = structuredClone(await witness());
+  installCheckedRegionDeclarations(portable, [guardedDirectCopyDeclaration]);
+  const serialized = structuredClone(portable);
+  assert.deepEqual(prepareCheckedRegions(serialized), []);
 });
 
 test("raising comparisons refine direct-call facts across immutable ranges", async () => {

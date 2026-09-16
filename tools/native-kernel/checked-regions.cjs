@@ -30,6 +30,8 @@ const CHECKED_REGION_BUFFER_ACCESS = Symbol("checked region buffer access");
 const CHECKED_REGION_LOCAL_VARIANT = Symbol("checked region local variant");
 const CHECKED_REGION_DIRECT_RESULT = Symbol("checked region direct result");
 const CHECKED_REGION_DIRECT_CALL = "checkedRegionDirectCallProof";
+const CHECKED_REGION_GUARDED_DIRECT_CALL =
+  "checkedRegionGuardedDirectCallProof";
 const CHECKED_REGION_DIRECT_RESULT_PROOF = "checkedRegionDirectResultProof";
 const VIRTUAL_UINT64_VIEW_PROOF = "checkedRegionVirtualUInt64ViewProof";
 const virtualUInt64ViewAuthority = createFunctionProofAuthority({
@@ -37,6 +39,7 @@ const virtualUInt64ViewAuthority = createFunctionProofAuthority({
   ignoredKeys: [
     "boundsProof",
     "checkedRegionDirectCallProof",
+    "checkedRegionGuardedDirectCallProof",
     "checkedRegionDirectResultProof",
     "checkedRegionProof",
     "incrementProof",
@@ -45,6 +48,14 @@ const virtualUInt64ViewAuthority = createFunctionProofAuthority({
 });
 const directCallAuthority = createFunctionProofAuthority({
   name: "checked-region direct result call",
+  ignoredKeys: [
+    "boundsProof",
+    "incrementProof",
+    "provenance",
+  ],
+});
+const guardedDirectCallAuthority = createFunctionProofAuthority({
+  name: "checked-region guarded direct result call",
   ignoredKeys: [
     "boundsProof",
     "incrementProof",
@@ -271,6 +282,9 @@ function installCheckedRegionDeclarations(ir, declarations) {
         (variant) => Object.freeze({
           function: variant?.function,
           mode: variant?.mode,
+          edges: Object.freeze([...(variant?.edges || [])].map((edge) =>
+            Object.freeze({ ...edge })
+          )),
           guard: Object.freeze([...(variant?.guard || [])].map((item) =>
             Object.freeze({ ...item })
           )),
@@ -1405,27 +1419,41 @@ function analyzeStatements(statements, state, context) {
   return state;
 }
 
-function factsImplyGuard(state, guard) {
-  for (const predicate of guard) {
-    if (["int64-range", "uint64-range"].includes(predicate.kind)) {
-      const interval = state.intervals.get(predicate.parameter);
-      if (interval === undefined || interval.minimum < BigInt(predicate.minimum) ||
-          interval.maximum > BigInt(predicate.maximum)) return false;
-      continue;
-    }
-    if (predicate.kind === "buffer-min-length") {
-      const minimum = state.buffers.get(predicate.parameter);
-      if (minimum === undefined || minimum < BigInt(predicate.minimum)) {
-        return false;
-      }
-      continue;
-    }
-    // This leaf-only direct-result milestone deliberately does not infer the
-    // relational guard vocabulary at call edges. Later SCC/MayFail analysis
-    // may extend this without weakening the checked fallback.
-    return false;
+function factsImplyGuardPredicate(state, predicate) {
+  if (["int64-range", "uint64-range"].includes(predicate.kind)) {
+    const interval = state.intervals.get(predicate.parameter);
+    return interval !== undefined &&
+      interval.minimum >= BigInt(predicate.minimum) &&
+      interval.maximum <= BigInt(predicate.maximum);
   }
-  return true;
+  if (predicate.kind === "buffer-min-length") {
+    const minimum = state.buffers.get(predicate.parameter);
+    return minimum !== undefined && minimum >= BigInt(predicate.minimum);
+  }
+  // Relational guards remain runtime predicates unless a dedicated theorem
+  // proves them. Keeping them residual is conservative and avoids treating a
+  // stored expression identity as a validated view span.
+  return false;
+}
+
+function factsImplyGuard(state, guard) {
+  return guard.every((predicate) =>
+    factsImplyGuardPredicate(state, predicate)
+  );
+}
+
+function residualGuard(state, guard) {
+  const residual = new Set(guard.filter((predicate) =>
+    !factsImplyGuardPredicate(state, predicate)
+  ));
+  const requiredProducts = new Set(Array.from(residual)
+    .filter((predicate) => predicate.kind === "buffer-min-length-product")
+    .map((predicate) => predicate.product));
+  return Object.freeze(guard.filter((predicate) =>
+    residual.has(predicate) ||
+    (predicate.kind === "checked-nonnegative-int64-product" &&
+      requiredProducts.has(predicate.name))
+  ));
 }
 
 function allUInt64ViewsAreFixed(fn, state) {
@@ -1566,14 +1594,30 @@ function attachDirectResultVariants(context) {
       eligible.push([operation, call]);
       mergeFacts(joined, call.state);
     }
-    if (eligible.length === 0) continue;
+    const selected = new Map();
+    for (const selector of spec.edges) {
+      const matches = Array.from(context.callFacts).filter(([operation, call]) =>
+        call.callee === spec.slow.name &&
+        operation.origins?.includes(selector.operationOrigin)
+      );
+      if (matches.length !== 1) {
+        fail(`guarded direct edge ${selector.operationOrigin} matched ` +
+          `${matches.length} calls`);
+      }
+      selected.set(matches[0][0], matches[0][1]);
+    }
+    if (eligible.length === 0 && selected.size === 0) continue;
+    const directState = spec.mode === "guarded-direct-result"
+      ? initialFacts(spec.fast, spec.guard)
+      : joined;
+    if (!allUInt64ViewsAreFixed(spec.fast, directState)) continue;
     const functionEnabled = new Set(spec.fast.checkedRegionLocalCapabilities);
-    const groups = virtualFixedUInt64ViewGroups(spec.fast, joined);
+    const groups = virtualFixedUInt64ViewGroups(spec.fast, directState);
     const virtualViewAliases = new Map(groups.flatMap((group) =>
       Array.from(group.aliases, (alias) => [alias, group])
     ));
     const intervalViewAccesses = new Map();
-    analyzeStatements(spec.fast.body, cloneState(joined), {
+    analyzeStatements(spec.fast.body, cloneState(directState), {
       byName: context.byName,
       enabled: functionEnabled,
       facts: context.facts,
@@ -1583,7 +1627,7 @@ function attachDirectResultVariants(context) {
       directResult: true,
     });
     attachVirtualFixedUInt64Views(
-      spec.fast, joined, functionEnabled, intervalViewAccesses,
+      spec.fast, directState, functionEnabled, intervalViewAccesses,
     );
     if (!directResultFailureFree(spec.fast)) continue;
     const returnOperation = spec.fast.body.findLast((operation) =>
@@ -1594,6 +1638,7 @@ function attachDirectResultVariants(context) {
       authority: "checked-region-direct-result-v1",
       function: spec.fast.name,
       fallback: spec.slow.name,
+      fullGuard: spec.fullGuard,
       returnOperation: returnOperation.id,
       deadExactNames: Object.freeze([
         ...spec.fast[CHECKED_REGION_DIRECT_RESULT].deadExactNames,
@@ -1609,7 +1654,31 @@ function attachDirectResultVariants(context) {
         fallbackFunction: spec.slow.name,
       });
       operation[CHECKED_REGION_DIRECT_CALL] = claim;
-      pendingCalls.push([call.caller, operation, claim]);
+      pendingCalls.push([directCallAuthority, call.caller, operation, claim]);
+    }
+    for (const [operation, call] of selected) {
+      if (eligible.some(([candidate]) => candidate === operation)) continue;
+      const guard = residualGuard(call.state, spec.guard);
+      if (guard.length === 0) continue;
+      const claim = Object.freeze({
+        authority: "checked-region-guarded-direct-call-v1",
+        operation: operation.id,
+        directFunction: spec.fast.name,
+        fallbackFunction: spec.slow.name,
+        fullGuard: spec.fullGuard,
+        guard,
+        parameters: Object.freeze(spec.fast.params.map((parameter, index) =>
+          Object.freeze({
+            name: parameter.name,
+            type: parameter.type,
+            argument: operation.arguments[index].name,
+          })
+        )),
+      });
+      operation[CHECKED_REGION_GUARDED_DIRECT_CALL] = claim;
+      pendingCalls.push([
+        guardedDirectCallAuthority, call.caller, operation, claim,
+      ]);
     }
   }
   return pendingCalls;
@@ -1697,8 +1766,8 @@ function attachCapabilities(
   }
   // Caller snapshots now contain both their final fallback targets and all
   // independently authorized capability claims.
-  for (const [fn, operation, claim] of pendingDirectCalls) {
-    directCallAuthority.authorize(fn, operation, claim);
+  for (const [authority, fn, operation, claim] of pendingDirectCalls) {
+    authority.authorize(fn, operation, claim);
   }
   if (enabled.has("verified-span-access")) {
     // Reconstruct ordinary checked-view/range proofs from the cloned IR.  No
@@ -1757,12 +1826,30 @@ function prepareCheckedRegions(ir) {
       localFunctions.add(local.function);
       const target = originals.get(local.function);
       const mode = local.mode || "guarded";
-      if (!["guarded", "direct-result"].includes(mode)) {
+      if (!["guarded", "direct-result", "guarded-direct-result"].includes(mode)) {
         fail(`unsupported local variant mode ${mode}`);
       }
       const localGuard = normalizeGuard(local.guard, target);
       if (localGuard.length === 0 && mode !== "direct-result") {
         fail("local variant guard must be nonempty");
+      }
+      if (!Array.isArray(local.edges)) fail("local variant edges must be an array");
+      const edges = local.edges.map((edge) => {
+        if (edge === null || typeof edge !== "object" ||
+            typeof edge.operationOrigin !== "string" ||
+            edge.operationOrigin.length === 0) {
+          fail("invalid guarded direct edge selector");
+        }
+        return Object.freeze({ operationOrigin: edge.operationOrigin });
+      });
+      if (new Set(edges.map((edge) => edge.operationOrigin)).size !== edges.length) {
+        fail("duplicate guarded direct edge selector");
+      }
+      if (mode === "guarded-direct-result" && edges.length === 0) {
+        fail("guarded direct result requires an edge selector");
+      }
+      if (mode !== "guarded-direct-result" && edges.length !== 0) {
+        fail("edge selectors require guarded direct result mode");
       }
       if (!Array.isArray(local.capabilities) ||
           new Set(local.capabilities).size !== local.capabilities.length) {
@@ -1782,6 +1869,7 @@ function prepareCheckedRegions(ir) {
         function: local.function,
         mode,
         guard: localGuard,
+        edges: Object.freeze(edges),
         capabilities: Object.freeze([...local.capabilities]),
       });
     });
@@ -1849,11 +1937,26 @@ function prepareCheckedRegions(ir) {
       fast.checkedRegionLocalCapabilities = Object.freeze([
         ...new Set([...region.capabilities, ...local.capabilities]),
       ]);
-      if (local.mode === "direct-result") {
+      if (["direct-result", "guarded-direct-result"].includes(local.mode)) {
         Object.defineProperty(fast, CHECKED_REGION_DIRECT_RESULT, {
-          value: { fallbackName: slow.name, deadExactNames: [] },
+          value: {
+            fallbackName: slow.name,
+            deadExactNames: [],
+            fullGuard: local.mode === "guarded-direct-result"
+              ? local.guard
+              : undefined,
+          },
         });
-        directSpecs.push({ fast, guard: local.guard, slow });
+        directSpecs.push({
+          edges: local.edges,
+          fast,
+          fullGuard: local.mode === "guarded-direct-result"
+            ? local.guard
+            : undefined,
+          guard: local.guard,
+          mode: local.mode,
+          slow,
+        });
       } else {
         slow[CHECKED_REGION_LOCAL_VARIANT] = Object.freeze({
           guard: local.guard,
@@ -1946,11 +2049,13 @@ function checkedRegionDirectResultEmission(fn) {
         claim.authority !== "checked-region-direct-result-v1" ||
         claim.function !== fn.name ||
         claim.fallback !== metadata.fallbackName ||
+        claim.fullGuard !== metadata.fullGuard ||
         claim.returnOperation !== operation.id ||
         !verifier.isAuthorized(operation, claim)) return;
     result = Object.freeze({
       fallbackName: metadata.fallbackName,
       deadExactNames: Object.freeze([...claim.deadExactNames]),
+      fullGuard: claim.fullGuard,
     });
   });
   return result;
@@ -1958,18 +2063,48 @@ function checkedRegionDirectResultEmission(fn) {
 
 function checkedRegionDirectCallEmission(fn, operation, functions) {
   const claim = operation?.[CHECKED_REGION_DIRECT_CALL];
-  if (claim?.authority !== "checked-region-direct-call-v1" ||
-      claim.operation !== operation.id ||
-      claim.fallbackFunction !== operation.function ||
-      !directCallAuthority.emissionVerifier(fn).isAuthorized(operation, claim)) {
+  if (claim?.authority === "checked-region-direct-call-v1" &&
+      claim.operation === operation.id &&
+      claim.fallbackFunction === operation.function &&
+      directCallAuthority.emissionVerifier(fn).isAuthorized(operation, claim)) {
+    const direct = functions.get(claim.directFunction);
+    const result = direct === undefined
+      ? undefined
+      : checkedRegionDirectResultEmission(direct);
+    if (result?.fallbackName === claim.fallbackFunction) {
+      return Object.freeze({ function: claim.directFunction });
+    }
+  }
+  const guarded = operation?.[CHECKED_REGION_GUARDED_DIRECT_CALL];
+  if (guarded?.authority !== "checked-region-guarded-direct-call-v1" ||
+      guarded.operation !== operation.id ||
+      guarded.fallbackFunction !== operation.function ||
+      !Array.isArray(guarded.guard) || !Array.isArray(guarded.parameters) ||
+      guarded.parameters.length !== operation.arguments.length ||
+      guarded.parameters.some((parameter, index) =>
+        parameter.argument !== operation.arguments[index].name ||
+        parameter.type !== operation.arguments[index].type
+      ) ||
+      !guardedDirectCallAuthority.emissionVerifier(fn)
+        .isAuthorized(operation, guarded)) {
     return undefined;
   }
-  const direct = functions.get(claim.directFunction);
+  const direct = functions.get(guarded.directFunction);
   const result = direct === undefined
     ? undefined
     : checkedRegionDirectResultEmission(direct);
-  if (result?.fallbackName !== claim.fallbackFunction) return undefined;
-  return Object.freeze({ function: claim.directFunction });
+  if (result?.fallbackName !== guarded.fallbackFunction ||
+      result.fullGuard !== guarded.fullGuard ||
+      direct.params.length !== guarded.parameters.length ||
+      direct.params.some((parameter, index) =>
+        parameter.name !== guarded.parameters[index].name ||
+        parameter.type !== guarded.parameters[index].type
+      )) return undefined;
+  return Object.freeze({
+    function: guarded.directFunction,
+    guard: Object.freeze([...guarded.guard]),
+    parameters: Object.freeze([...guarded.parameters]),
+  });
 }
 
 module.exports = {

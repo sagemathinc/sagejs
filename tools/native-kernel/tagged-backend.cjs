@@ -163,27 +163,31 @@ function uint64Literal(value) {
   return `UINT64_C(${BigInt(value).toString()})`;
 }
 
-function checkedRegionGuard(region) {
-  const setup = ["    int sagejs_checked_region_guard = 1;"];
+function checkedRegionGuard(
+  region,
+  argument = (name) => `sagejs_tagged_arg_${name}`,
+  indent = "    ",
+) {
+  const setup = [`${indent}int sagejs_checked_region_guard = 1;`];
   const conditions = [];
   for (const predicate of region.guard) {
     if (predicate.kind === "checked-nonnegative-int64-product") {
       const product = `sagejs_checked_product_${predicate.name}`;
-      const left = `sagejs_tagged_arg_${predicate.left}`;
-      const right = `sagejs_tagged_arg_${predicate.right}`;
+      const left = argument(predicate.left);
+      const right = argument(predicate.right);
       setup.push(
-        `    int64_t ${product} = 0;`,
-        `    if (${left} < 0 || ${right} < 0 ||`,
-        `        (${right} != 0 && ${left} > INT64_MAX / ${right}))`,
-        "        sagejs_checked_region_guard = 0;",
-        "    else",
-        `        ${product} = ${left} * ${right};`,
+        `${indent}int64_t ${product} = 0;`,
+        `${indent}if (${left} < 0 || ${right} < 0 ||`,
+        `${indent}    (${right} != 0 && ${left} > INT64_MAX / ${right}))`,
+        `${indent}    sagejs_checked_region_guard = 0;`,
+        `${indent}else`,
+        `${indent}    ${product} = ${left} * ${right};`,
       );
       continue;
     }
     if (predicate.kind === "buffer-min-length-product") {
       const product = `sagejs_checked_product_${predicate.product}`;
-      const buffer = `sagejs_tagged_arg_${predicate.buffer}`;
+      const buffer = argument(predicate.buffer);
       conditions.push(
         `((uint64_t) ${product} <= (uint64_t) SIZE_MAX && ` +
         `${buffer}.length >= (size_t) ${product})`,
@@ -193,8 +197,8 @@ function checkedRegionGuard(region) {
     if (["buffer-min-length-scalar", "buffer-min-length-affine"].includes(
       predicate.kind,
     )) {
-      const scalar = `sagejs_tagged_arg_${predicate.scalar}`;
-      const buffer = `sagejs_tagged_arg_${predicate.buffer}`;
+      const scalar = argument(predicate.scalar);
+      const buffer = argument(predicate.buffer);
       const offset = int64Literal(predicate.offset);
       const value = predicate.kind === "buffer-min-length-affine"
         ? `(${scalar} + ${offset})`
@@ -209,25 +213,25 @@ function checkedRegionGuard(region) {
       );
       continue;
     }
-    const argument = `sagejs_tagged_arg_${predicate.parameter}`;
+    const value = argument(predicate.parameter);
     if (predicate.kind === "buffer-min-length") {
       conditions.push(
         `(UINT64_C(${predicate.minimum}) <= (uint64_t) SIZE_MAX && ` +
-        `${argument}.length >= (size_t) UINT64_C(${predicate.minimum}))`,
+        `${value}.length >= (size_t) UINT64_C(${predicate.minimum}))`,
       );
       continue;
     }
     if (predicate.kind === "integer-int64-range") {
-      conditions.push(`(!${argument}->is_big && ${argument}->small >= ` +
-        `${int64Literal(predicate.minimum)} && ${argument}->small <= ` +
+      conditions.push(`(!${value}->is_big && ${value}->small >= ` +
+        `${int64Literal(predicate.minimum)} && ${value}->small <= ` +
         `${int64Literal(predicate.maximum)})`);
       continue;
     }
     const literal = predicate.kind === "uint64-range"
       ? uint64Literal
       : int64Literal;
-    conditions.push(`(${argument} >= ${literal(predicate.minimum)} && ` +
-      `${argument} <= ${literal(predicate.maximum)})`);
+    conditions.push(`(${value} >= ${literal(predicate.minimum)} && ` +
+      `${value} <= ${literal(predicate.maximum)})`);
   }
   return {
     setup: setup.join("\n"),
@@ -1107,6 +1111,42 @@ function emitTaggedOperation(operation, context, indent) {
       const args = operation.arguments.map((argument) =>
         taggedValue(argument.name, context)
       );
+      if (direct.guard !== undefined) {
+        const values = new Map(direct.parameters.map((parameter) => [
+          parameter.name,
+          taggedValue(parameter.argument, context),
+        ]));
+        const guard = checkedRegionGuard(
+          { guard: direct.guard },
+          (name) => {
+            const value = values.get(name);
+            if (value === undefined) {
+              throw new Error(`unknown guarded direct parameter ${name}`);
+            }
+            return value;
+          },
+          `${indent}    `,
+        );
+        const outputs = operation.results === undefined
+          ? [operation.returnType === "Integer" ? target : `&${target}`]
+          : operation.results.map((result) =>
+            result.type === "Integer"
+              ? taggedValue(result.name, context)
+              : `&${taggedValue(result.name, context)}`
+          );
+        return [
+          `${indent}{`,
+          guard.setup,
+          `${indent}    if (${guard.condition})`,
+          `${indent}        ${target} = ${directResultName(direct.function)}(` +
+            `${args.join(", ")});`,
+          `${indent}    else if (!tagged_${operation.function}(status, ` +
+            `${outputs.join(", ")}` +
+            `${args.length ? `, ${args.join(", ")}` : ""}))`,
+          `${indent}        goto fail;`,
+          `${indent}}`,
+        ].join("\n");
+      }
       return `${indent}${target} = ${directResultName(direct.function)}(` +
         `${args.join(", ")});`;
     }
