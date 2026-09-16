@@ -22,8 +22,8 @@ const { lowerSource } = require("../ir.cjs");
 const witnessPath = join(__dirname, "checked_private_region_witness.py");
 const witnessSource = readFileSync(witnessPath, "utf8");
 
-async function witness() {
-  const ir = await lowerSource(witnessSource, witnessPath);
+async function witness(sourcePath = witnessPath) {
+  const ir = await lowerSource(witnessSource, sourcePath);
   // Stage A attaches at the tagged checked boundary.  This witness has only
   // fixed-width values, so the automatic cost model would otherwise bypass
   // that boundary entirely.
@@ -268,6 +268,10 @@ function functionText(source, name) {
   return source.slice(start, next + 3);
 }
 
+function executableText(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
 function directFunctionText(source, name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = new RegExp(
@@ -324,6 +328,14 @@ test("checked private regions clone a closed graph behind a guard", async () => 
   );
   assert.match(
     core.source,
+    /#define SAGEJS_CHECKED_REGION_UNLIKELY\(condition\) \\\n    __builtin_expect\(!!\(condition\), 0\)/,
+  );
+  assert.match(
+    core.source,
+    /#define SAGEJS_CHECKED_REGION_UNLIKELY\(condition\) \(condition\)/,
+  );
+  assert.match(
+    core.source,
     /SAGEJS_CHECKED_REGION_HOT_INLINE int tagged_sagejs_checked_r0_checked_region_entry\(/,
   );
   assert.match(
@@ -341,6 +353,10 @@ test("checked private regions clone a closed graph behind a guard", async () => 
     variantEntry,
     /tagged_sagejs_checked_r0_checked_region_helper/,
   );
+  assert.match(
+    variantEntry,
+    /if \(SAGEJS_CHECKED_REGION_UNLIKELY\(!tagged_sagejs_checked_r0_checked_region_helper\(/,
+  );
   const variantHelper = functionText(
     core.source,
     "sagejs_checked_r0_checked_region_helper",
@@ -355,6 +371,7 @@ test("checked private regions clone a closed graph behind a guard", async () => 
   );
   assert.match(checkedFallback, /sagejs_tagged_entry:/);
   assert.match(checkedFallback, /tagged_checked_region_helper/);
+  assert.doesNotMatch(checkedFallback, /SAGEJS_CHECKED_REGION_UNLIKELY/);
   assert.match(core.source, /static int tagged_checked_region_helper/);
   assert.match(core.source, /static int tagged_checked_region_entry/);
   assert.match(
@@ -1401,7 +1418,10 @@ test("private direct-result variants rewrite only proved call edges", async () =
 
   const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
   const directBody = directFunctionText(core.source, fast.name);
-  assert.doesNotMatch(directBody, /\bstatus\b|sagejs_tagged_output_|goto fail|sagejs_native_status_set/);
+  assert.doesNotMatch(
+    executableText(directBody),
+    /\bstatus\b|sagejs_tagged_output_|goto fail|sagejs_native_status_set/,
+  );
   assert.equal((directBody.match(/sagejs_word_add_int64/g) || []).length, 3);
   assert.match(directBody, /return sagejs_local_tagged_degree;/);
   assert.match(core.source,
@@ -1457,6 +1477,14 @@ int main(void)
   }
 });
 
+test("direct-result validation ignores status words in provenance comments", async () => {
+  const ir = await witness("/tmp/status-in-source-path/witness.py");
+  installCheckedRegionDeclarations(ir, [directCopyDeclaration]);
+  assert.doesNotThrow(() =>
+    generateHostCore(ir, { moduleIdentity: "0123456789abcdef" })
+  );
+});
+
 test("guarded direct results use a residual edge guard and checked fallback", async () => {
   const ir = await witness();
   installCheckedRegionDeclarations(ir, [guardedDirectCopyDeclaration]);
@@ -1498,7 +1526,7 @@ test("guarded direct results use a residual edge guard and checked fallback", as
   assert.match(entryBody, /sagejs_local_tagged_output <= INT64_C\(8\)/);
   assert.doesNotMatch(entryBody, /sagejs_tagged_arg_storage\.length/);
   assert.match(entryBody,
-    /else if \(!tagged_sagejs_checked_r0_checked_region_local_copy_helper/);
+    /else if \(SAGEJS_CHECKED_REGION_UNLIKELY\(!tagged_sagejs_checked_r0_checked_region_local_copy_helper/);
   assert.equal((core.source.match(new RegExp(
     `SAGEJS_CHECKED_REGION_HOT_INLINE int64_t sagejs_direct_${fast.name}` +
       `\\([^;]+\\)\\n\\{`,
