@@ -18,6 +18,14 @@ const root = resolve(__dirname, "../../..");
 const sagejs = join(root, "bin", "sagejs");
 const witnessPath = join(__dirname, "int64_scalar_witness.py");
 const witnessSource = readFileSync(witnessPath, "utf8");
+const exactAugmentedSource = String.raw`
+@native
+def int64_buffer_augmented_exact(
+    values: Int64Buffer, index: int64, increment: int
+) -> int:
+    values[index] += increment
+    return values[index]
+`;
 
 function operations(body) {
   const result = [];
@@ -59,7 +67,10 @@ function run(command, args, options = {}) {
 }
 
 test("int64 lowers to checked signed-word IR and isolated C", async () => {
-  const ir = await lowerSource(witnessSource, witnessPath);
+  const ir = await lowerSource(
+    `${witnessSource}\n${exactAugmentedSource}`,
+    witnessPath,
+  );
   analyzeExactModule(ir.functions);
   const arithmetic = operations(ir.functions.find(
     (fn) => fn.name === "int64_arithmetic",
@@ -104,6 +115,20 @@ test("int64 lowers to checked signed-word IR and isolated C", async () => {
   ).body);
   assert.ok(exactBuffer.some((op) => op.kind === "int64.buffer.get" &&
     op.valueType === "Integer"));
+  const augmentedExact = operations(ir.functions.find(
+    (fn) => fn.name === "int64_buffer_augmented_exact",
+  ).body);
+  const augmentedLoad = augmentedExact.find((op) =>
+    op.kind === "int64.buffer.get" && op.buffer === "values"
+  );
+  assert.equal(augmentedLoad.valueType, "int64");
+  const augmentedLoadLocal = ir.functions.find(
+    (fn) => fn.name === "int64_buffer_augmented_exact",
+  ).locals.find((local) => local.name === augmentedLoad.target);
+  assert.equal(augmentedLoadLocal.type, "int64");
+  assert.ok(augmentedExact.some((op) =>
+    op.kind === "integer.from_int64" && op.source === augmentedLoad.target
+  ));
   const checkedLiteral = operations(ir.functions.find(
     (fn) => fn.name === "checked_int64_literal",
   ).body);
@@ -132,6 +157,18 @@ test("int64 lowers to checked signed-word IR and isolated C", async () => {
   assert.match(packedUpdate, /sagejs_int64_buffer_index/);
   assert.match(packedUpdate, /sagejs_word_add_int64/);
   assert.doesNotMatch(packedUpdate, /\bmpz_/);
+  const taggedExactUpdate = emittedFunction(
+    core.source,
+    "static int tagged_int64_buffer_augmented_exact(",
+  );
+  assert.match(
+    taggedExactUpdate,
+    /sagejs_local_tagged_sagejs_native_tmp_\d+ = sagejs_local_tagged_values\.data/,
+  );
+  assert.doesNotMatch(
+    taggedExactUpdate,
+    /sagejs_tagged_set_small\(sagejs_local_tagged_sagejs_native_tmp_\d+,/,
+  );
   assert.doesNotMatch(core.source, /\b(?:napi_|PyObject|Py_|JSValue|v8::)/);
   for (const fn of ir.functions) {
     assert.equal(classifyWasmFunction(fn, ir).supported, true, fn.name);
@@ -154,6 +191,8 @@ assert exact_to_int64((1 << 63) - 1) == (1 << 63) - 1
 values = int64_buffer([-7, 11, 23])
 assert int64_buffer_roundtrip(values, -2, 5) == 16
 assert values[-2] == 16
+assert int64_buffer_augmented_exact(values, -2, 7) == 23
+assert values[-2] == 23
 assert int64_buffer_exact(values, 0) == (1 << 80) - 7
 assert checked_int64_literal() == -1
 assert checked_int64_length(values) == 3
@@ -187,7 +226,10 @@ if is_compiled(int64_helper):
 print("compiled=" + str(is_compiled(int64_helper)))
 print("INT64_SCALAR_OK")
 `;
-  writeFileSync(sourcePath, `${witnessSource}\n${checks}`);
+  writeFileSync(
+    sourcePath,
+    `${witnessSource}\n${exactAugmentedSource}\n${checks}`,
+  );
   try {
     await compileKernel({ sourcePath, cacheRoot });
     const native = run(process.execPath, [sagejs, sourcePath], {

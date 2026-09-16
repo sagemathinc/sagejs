@@ -2921,11 +2921,8 @@ function lowerBufferAssignment(item, right, operator, context) {
     const compact = INT64_BUFFER_TYPES.has(buffer.type) && value.type === "int64";
     const valueType = buffer.type === "UInt64Buffer"
       ? "uint64" : compact ? "int64" : "Integer";
-    let current = temporary(
-      context,
-      item,
-      INT64_BUFFER_TYPES.has(buffer.type) ? "int64" : valueType,
-    );
+    const currentType = INT64_BUFFER_TYPES.has(buffer.type) ? "int64" : valueType;
+    let current = temporary(context, item, currentType);
     operations.push({
       kind: buffer.type === "IntegerBuffer"
         ? "integer.buffer.get"
@@ -2937,7 +2934,7 @@ function lowerBufferAssignment(item, right, operator, context) {
       bufferType: buffer.type,
       index: index.name,
       indexType: index.type,
-      valueType,
+      valueType: currentType,
     });
     if (INT64_BUFFER_TYPES.has(buffer.type) && !compact) {
       const exactCurrent = temporary(context, item, "Integer");
