@@ -34,7 +34,10 @@ test("only immediate Python dot calls use prepared method lookup", () => {
     new compiler.AST_SymbolRef({ name: "value" }),
     new compiler.AST_Number({ value: 1 }),
   ]];
-  assert.doesNotMatch(emit(call("obj", "method", keywordArgs)), /prepared_method|prepare_method/u);
+  assert.match(
+    emit(call("obj", "method", keywordArgs)),
+    /ρσ_interpolate_kwargs\(ρσ_prepare_method_call\(obj,\s*"method"\),\s*undefined/u,
+  );
   const spread = new compiler.AST_SymbolRef({ name: "values" });
   spread.is_array = true;
   const starArgs = [spread];

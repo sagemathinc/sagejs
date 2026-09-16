@@ -88,6 +88,32 @@ del child.method
 assert child.method(value=3) == 3
 
 
+def replacement_method(self, value=0):
+    return "class-replacement", value
+
+
+original_method = Child.method
+Child.method = replacement_method
+assert child.method(value=6) == ("class-replacement", 6)
+Child.method = original_method
+assert child.method(value=6) == 6
+events.clear()
+
+
+class Hooked:
+    def __getattribute__(self, name):
+        events.append(("getattribute", name))
+        return object.__getattribute__(self, name)
+
+    def method(self, value=0):
+        return value
+
+
+assert Hooked().method(value=8) == 8
+assert events == [("getattribute", "method")]
+events.clear()
+
+
 class Descriptor:
     def __get__(self, instance, owner):
         return replacement
