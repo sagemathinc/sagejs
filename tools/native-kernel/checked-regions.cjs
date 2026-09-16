@@ -1462,9 +1462,7 @@ function invalidateNestedCalls(operation, context) {
       scalarBounds: new Map(),
       pathConditions: [],
     };
-    if (context.facts !== undefined) {
-      mergeFacts(context.facts.get(nested.function), unknown);
-    }
+    mergeFacts(context.facts.get(nested.function), unknown);
   });
 }
 
@@ -1744,8 +1742,7 @@ function unsupportedWhileLocalSeed(operation, entryState) {
 }
 
 function analyzeUnsupportedWhileInvariantCalls(operation, entryState, context) {
-  if (context.facts === undefined &&
-      context.invariantCallFacts === undefined) return;
+  if (context.facts === undefined) return;
   // Model one arbitrary iteration solely to propagate facts into nested
   // callees.  Every name assigned anywhere in the loop is unknown at the
   // iteration head; consequently only immutable outer facts and values
@@ -1758,7 +1755,7 @@ function analyzeUnsupportedWhileInvariantCalls(operation, entryState, context) {
     {
       ...context,
       activeRange: undefined,
-      callFacts: context.invariantCallFacts,
+      callFacts: undefined,
       directResultCallees: undefined,
       enabled: new Set(),
       scalarSummaries: new Map(),
@@ -1770,7 +1767,7 @@ function analyzeUnsupportedWhileInvariantCalls(operation, entryState, context) {
     {
       ...context,
       activeRange: undefined,
-      callFacts: context.invariantCallFacts,
+      callFacts: undefined,
       directResultCallees: undefined,
       enabled: new Set(),
       scalarSummaries: new Map(),
@@ -2229,12 +2226,9 @@ function analyzeStatements(statements, state, context) {
         }
       });
       if (context.callFacts !== undefined) {
-        const prior = context.callFacts.get(operation);
         context.callFacts.set(operation, {
           callee: callee.name,
-          state: prior === undefined
-            ? cloneState(incoming)
-            : joinStates(prior.state, incoming),
+          state: cloneState(incoming),
           caller: context.currentFunction,
         });
       }
