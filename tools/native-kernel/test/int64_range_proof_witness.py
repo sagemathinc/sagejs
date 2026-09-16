@@ -37,3 +37,27 @@ def near_overflow_constant_range() -> int64:
     for index in range(9223372036854775806, 9223372036854775807, 2):
         last = index
     return last
+
+
+@native
+def stale_control_flow_range(stop_input: int64) -> int64:
+    stop: int64 = 1
+    run: bool = True
+    while run:
+        stop = stop_input
+        run = False
+    index: int64 = 0
+    for index in range(9223372036854775806, stop, 2):
+        index = index
+    return index
+
+
+@native
+def stale_branch_range(stop_input: int64, choose: bool) -> int64:
+    stop: int64 = 1
+    if choose:
+        stop = stop_input
+    index: int64 = 0
+    for index in range(9223372036854775806, stop, 2):
+        index = index
+    return index

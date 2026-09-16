@@ -22,6 +22,7 @@ function operations(body) {
       visit(operation.body);
       visit(operation.alternative);
       visit(operation.condition?.operations);
+      visit(operation.right?.operations);
     }
   }
   visit(body);
@@ -85,12 +86,47 @@ test("constant int64 range proofs remove only proven-safe latch checks", async (
     continueOperations[0].range.incrementProof?.authority,
     "constant-int64-range-v1",
   );
-
   assert.equal(rangeOperation(ir, "dynamic_range").incrementProof, undefined);
   assert.equal(
     rangeOperation(ir, "near_overflow_constant_range").incrementProof,
     undefined,
   );
+  assert.equal(
+    rangeOperation(ir, "stale_control_flow_range").incrementProof,
+    undefined,
+  );
+  assert.equal(
+    rangeOperation(ir, "stale_branch_range").incrementProof,
+    undefined,
+  );
+
+  // Rerunning analysis over changed IR must revoke authority from the old
+  // operation shape rather than retaining its previously attached proof.
+  const rerunIr = await lowerSource(witnessSource, witnessPath);
+  analyzeExactModule(rerunIr.functions);
+  const rerunSafe = rangeOperation(rerunIr, "safe_constant_range");
+  assert.equal(
+    rerunSafe.incrementProof?.authority,
+    "constant-int64-range-v1",
+  );
+  const rerunContinued = rangeOperation(
+    rerunIr,
+    "safe_constant_range_with_continue",
+  );
+  const rerunContinue = functionOperations(
+    rerunIr,
+    "safe_constant_range_with_continue",
+  ).find((operation) => operation.kind === "loop.continue");
+  assert.equal(
+    rerunContinue.range.incrementProof?.authority,
+    "constant-int64-range-v1",
+  );
+  rerunSafe.stop = "not_a_constant";
+  rerunContinued.stop = "not_a_constant";
+  analyzeExactModule(rerunIr.functions);
+  assert.equal(rerunSafe.incrementProof, undefined);
+  assert.equal(rerunContinued.incrementProof, undefined);
+  assert.equal(rerunContinue.range.incrementProof, undefined);
 
   const core = generateHostCore(ir, {
     moduleIdentity: "0123456789abcdef",
@@ -108,11 +144,21 @@ test("constant int64 range proofs remove only proven-safe latch checks", async (
     core,
     "static int native_near_overflow_constant_range(",
   );
+  const staleBody = emittedFunction(
+    core,
+    "static int native_stale_control_flow_range(",
+  );
+  const staleBranchBody = emittedFunction(
+    core,
+    "static int native_stale_branch_range(",
+  );
 
   assert.doesNotMatch(safeBody, /sagejs_word_add_int64/);
   assert.doesNotMatch(continuedBody, /sagejs_word_add_int64/);
   assert.match(dynamicBody, /sagejs_word_add_int64/);
   assert.match(overflowBody, /sagejs_word_add_int64/);
+  assert.match(staleBody, /sagejs_word_add_int64/);
+  assert.match(staleBranchBody, /sagejs_word_add_int64/);
 });
 
 test("proved and checked int64 range latches agree in every backend", async () => {
@@ -127,6 +173,14 @@ test("proved and checked int64 range latches agree in every backend", async () =
       assert.equal(module.dynamic_range[backend](7n, -5n, -3n), -2n);
       assert.equal(
         module.near_overflow_constant_range[backend](),
+        9223372036854775806n,
+      );
+      assert.equal(
+        module.stale_control_flow_range[backend](9223372036854775807n),
+        9223372036854775806n,
+      );
+      assert.equal(
+        module.stale_branch_range[backend](9223372036854775807n, true),
         9223372036854775806n,
       );
     }

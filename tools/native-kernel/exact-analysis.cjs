@@ -1440,10 +1440,33 @@ function constantInt64RangeProof(start, stop, step) {
   };
 }
 
+function assignedOperationNames(statements, assigned = new Set()) {
+  for (const statement of statements || []) {
+    for (const target of operationTargets(statement)) assigned.add(target);
+    if (statement.kind?.startsWith("loop.")) {
+      if (typeof statement.index === "string") assigned.add(statement.index);
+      if (typeof statement.iterator === "string") {
+        assigned.add(statement.iterator);
+      }
+    }
+    assignedOperationNames(statement.condition?.operations, assigned);
+    assignedOperationNames(statement.body, assigned);
+    assignedOperationNames(statement.alternative, assigned);
+    assignedOperationNames(statement.right?.operations, assigned);
+  }
+  return assigned;
+}
+
 function annotateConstantInt64Ranges(fn) {
   function visit(statements, inherited = new Map(), activeRangeProof) {
     const constants = new Map(inherited);
     for (const statement of statements || []) {
+      // This analysis may be rerun over already annotated or externally
+      // mutated IR. Never let authority from an earlier shape survive.
+      delete statement.incrementProof;
+      if (statement.range !== null && typeof statement.range === "object") {
+        delete statement.range.incrementProof;
+      }
       if (statement.kind === "int64.constant") {
         constants.set(statement.target, BigInt(statement.value));
         continue;
@@ -1478,7 +1501,14 @@ function annotateConstantInt64Ranges(fn) {
       } else if (statement.kind === "bool.short_circuit") {
         visit(statement.right.operations, constants, activeRangeProof);
       }
-      if (statement.target !== undefined) constants.delete(statement.target);
+      // Recursive visits intentionally use a copy so they can prove ranges
+      // inside the nested control structure. On return, however, every value
+      // assigned on any nested path is unknown. Keeping the pre-structure
+      // constant would be unsound for subsequent ranges, especially after a
+      // while loop that executes at least once.
+      for (const target of assignedOperationNames([statement])) {
+        constants.delete(target);
+      }
     }
   }
   visit(fn.body);
