@@ -243,3 +243,127 @@ test("entry intervals prove only bounded straight-line clone operations", async 
   assert.match(ambiguousHelper, /sagejs_word_add_int64/);
   assert.match(ambiguousHelper, /index out of range/);
 });
+
+function structuredDeclaration(entry, guard, capabilities = [
+  "int64-arithmetic",
+  "direct-buffer-access",
+]) {
+  return { entry, functions: [entry], guard, capabilities };
+}
+
+test("range loops and branches preserve only invariant interval facts", async () => {
+  const loop = await witness();
+  installCheckedRegionDeclarations(loop, [structuredDeclaration(
+    "checked_region_loop_entry",
+    [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+      { kind: "int64-range", parameter: "count", minimum: 0, maximum: 4 },
+    ],
+  )]);
+  const loopBody = functionText(
+    generateHostCore(loop).source,
+    "sagejs_checked_r0_checked_region_loop_entry",
+  );
+  assert.doesNotMatch(loopBody, /index out of range/);
+  // The Python body add is direct; the range machinery deliberately retains
+  // its own checked increment in this capability family.
+  assert.match(loopBody, /sagejs_local_tagged_index \+ .*;/);
+  assert.equal((loopBody.match(/sagejs_word_add_int64/g) || []).length, 1);
+
+  const branch = await witness();
+  installCheckedRegionDeclarations(branch, [structuredDeclaration(
+    "checked_region_branch_entry",
+    [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+      { kind: "int64-range", parameter: "index", minimum: 0, maximum: 1 },
+    ],
+  )]);
+  const branchBody = functionText(
+    generateHostCore(branch).source,
+    "sagejs_checked_r0_checked_region_branch_entry",
+  );
+  assert.doesNotMatch(branchBody, /index out of range/);
+  assert.doesNotMatch(branchBody, /sagejs_word_add_int64/);
+
+  for (const entry of [
+    "checked_region_carried_entry",
+    "checked_region_unknown_step_entry",
+  ]) {
+    const unsafe = await witness();
+    installCheckedRegionDeclarations(unsafe, [structuredDeclaration(entry, [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+      { kind: "int64-range", parameter: "count", minimum: 0, maximum: 4 },
+    ])]);
+    const body = functionText(
+      generateHostCore(unsafe).source,
+      `sagejs_checked_r0_${entry}`,
+    );
+    assert.match(body, /index out of range/);
+  }
+
+  const snapshot = await witness();
+  installCheckedRegionDeclarations(snapshot, [structuredDeclaration(
+    "checked_region_mutated_bound_entry",
+    [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+      { kind: "int64-range", parameter: "count", minimum: 0, maximum: 4 },
+    ],
+  )]);
+  const snapshotBody = functionText(
+    generateHostCore(snapshot).source,
+    "sagejs_checked_r0_checked_region_mutated_bound_entry",
+  );
+  // The IR copies Python range arguments before entering the loop, so later
+  // source-variable mutation cannot change the iterator.  The mutation itself
+  // remains checked and its fact does not escape the loop.
+  assert.doesNotMatch(snapshotBody, /index out of range/);
+  assert.match(snapshotBody, /sagejs_word_sub_int64/);
+
+  const unsupported = await witness();
+  installCheckedRegionDeclarations(unsupported, [{
+    entry: "checked_region_unsupported_entry",
+    functions: ["checked_region_unsupported_entry", "checked_region_helper"],
+    capabilities: optimizedDeclaration.capabilities,
+    guard: [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+      { kind: "int64-range", parameter: "count", minimum: 0, maximum: 3 },
+    ],
+  }]);
+  const unsupportedHelper = functionText(
+    generateHostCore(unsupported).source,
+    "sagejs_checked_r0_checked_region_helper",
+  );
+  assert.match(unsupportedHelper, /index out of range/);
+  assert.match(unsupportedHelper, /sagejs_word_add_int64/);
+});
+
+test("verified span proofs are reconstructed only when requested", async () => {
+  const declaration = structuredDeclaration(
+    "checked_region_span_entry",
+    [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 4 },
+      { kind: "int64-range", parameter: "start", minimum: 0, maximum: 0 },
+      { kind: "int64-range", parameter: "length", minimum: 0, maximum: 4 },
+    ],
+    ["verified-span-access"],
+  );
+  const optimized = await witness();
+  installCheckedRegionDeclarations(optimized, [declaration]);
+  const optimizedBody = functionText(
+    generateHostCore(optimized).source,
+    "sagejs_checked_r0_checked_region_span_entry",
+  );
+  assert.doesNotMatch(optimizedBody, /UInt64Buffer index out of range/);
+  assert.match(optimizedBody, /UInt64Buffer view is outside its buffer/);
+
+  const checked = await witness();
+  installCheckedRegionDeclarations(checked, [{
+    ...declaration,
+    capabilities: [],
+  }]);
+  const checkedBody = functionText(
+    generateHostCore(checked).source,
+    "sagejs_checked_r0_checked_region_span_entry",
+  );
+  assert.match(checkedBody, /UInt64Buffer index out of range/);
+});
