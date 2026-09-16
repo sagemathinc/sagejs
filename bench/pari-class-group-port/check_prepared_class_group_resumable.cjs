@@ -5,7 +5,7 @@ const {compileKernel}=require('../../tools/native-kernel/compiler.cjs');
 const hash=x=>createHash('sha256').update(x).digest('hex');
 (async()=>{
  const backendAt=process.argv.indexOf('--backend'),backend=backendAt<0?'gmp':process.argv[backendAt+1];
- assert(['javascript','gmp'].includes(backend),'--backend must be javascript or gmp');
+ assert(['javascript','gmp','tagged'].includes(backend),'--backend must be javascript, gmp or tagged');
  const limit=fs.readFileSync('/proc/self/limits','utf8').split('\n').find(x=>x.startsWith('Max address space'))?.trim().split(/\s+/)[3];
  assert(limit&&limit!=='unlimited'&&Number(limit)<=4294967296,'requires prlimit --as=4294967296 and NODE_OPTIONS=--max-old-space-size=1536');
  const continuation=JSON.parse(fs.readFileSync(process.argv[2])),analytic=JSON.parse(fs.readFileSync(process.argv[3])),events=JSON.parse(fs.readFileSync(process.argv[4])),initial=JSON.parse(fs.readFileSync(process.argv[5])).expected.find(x=>x.field===2);
@@ -89,6 +89,7 @@ print(json.dumps(out))
  if(status!==0n)assert(view(v.class_invariants).every(x=>x===77n));
  const ownerDigest=()=>{const h=createHash('sha256');for(const [name,kind]of names)if(kind.endsWith('Buffer')){h.update(name+'\0');if(backend==='javascript'){const a=v[name];for(let i=0;i<a.length;i+=1024)h.update(a.slice(i,i+1024).map(x=>Object.is(x,-0)?'-0':String(x)).join(',')+',');}else for(const a of kind==='IntegerBuffer'?[v[name].sizes,v[name].limbs]:[v[name]])h.update(new Uint8Array(a.buffer,a.byteOffset,a.byteLength));}return h.digest('hex');};
  const before=ownerDigest();assert.equal(invoke(),status);assert.equal(ownerDigest(),before,'terminal repeat mutated an owner');
- const summary={field:2,backend,oneSameSourceEntry:true,oneNativeEntry:backend==='gmp',storage:backend==='gmp'?'packed-owners':'raw-bigint-and-number-arrays',passes,actual,ownerBytes:backend==='gmp'?ownerBytes:null,packedOwnerBytesEstimate:ownerBytes,coreBytes:fs.statSync(built.coreSourcePath).size,coreSha256:hash(fs.readFileSync(built.coreSourcePath)),qualifiedTiming:false,boundary:'prepared nf/factorbase/analytic inverse hR; same-source derived empty-W RELAT corridor; no fundamental unit maps',artifactDirectory:dir};
- fs.writeFileSync(path.join(dir,'fixtures.json'),JSON.stringify({summary,expected,...(backend==='gmp'?{nativeOutput:actual}:{javascriptOutput:actual})}));console.log(JSON.stringify(summary));
+ const nativeBackend=backend!=='javascript';
+ const summary={field:2,backend,oneSameSourceEntry:true,oneNativeEntry:nativeBackend,storage:nativeBackend?'packed-owners':'raw-bigint-and-number-arrays',passes,actual,ownerBytes:nativeBackend?ownerBytes:null,packedOwnerBytesEstimate:ownerBytes,coreBytes:fs.statSync(built.coreSourcePath).size,coreSha256:hash(fs.readFileSync(built.coreSourcePath)),qualifiedTiming:false,boundary:'prepared nf/factorbase/analytic inverse hR; same-source derived empty-W RELAT corridor; no fundamental unit maps',artifactDirectory:dir};
+ fs.writeFileSync(path.join(dir,'fixtures.json'),JSON.stringify({summary,expected,...(nativeBackend?{nativeOutput:actual}:{javascriptOutput:actual})}));console.log(JSON.stringify(summary));
 })().catch(e=>{console.error(e);process.exitCode=1;});
