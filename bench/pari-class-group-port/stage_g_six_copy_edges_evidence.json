@@ -1,7 +1,6 @@
 {
-  "schema": "sagejs.checked-region/stage-g-six-copy-negative-evidence-v1",
-  "decision": "rejected-before-qualification",
-  "reason": "Scalar-summary provenance is attached to the whole abstract state, materializing seven previously virtual UInt64 views in four ordinary private helpers.",
+  "schema": "sagejs.checked-region/stage-g-seven-copy-evidence-v1",
+  "decision": "semantic-and-code-shape-gates-pass-performance-threshold-not-met",
   "capturedAt": "2026-09-16",
   "host": {
     "kernel": "Linux 7.0.0-1011-gcp x86_64",
@@ -18,13 +17,13 @@
     "worktree": "/home/user/sagejs-worktrees/virtual-u64-fixed-views",
     "head": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
     "clean": false,
-    "capturedDiffSha256": "991e39bf12e8a0d7cc4fe1c009431e31a71070b646ac86b80040c6248e267f93",
+    "capturedDiffSha256": "0317ce5313fdf160acbdb9b3a9a70c6853d31d3dedf43e2671cad2a85d2bf499",
     "capturedFiles": {
-      "tools/native-kernel/checked-regions.cjs": "a41b956c1ad5906b58bb3539c044c1c9619a485f61035ebd6cee96fb72426701",
-      "tools/native-kernel/test/checked-private-region.cjs": "39607e91ce3b667fb20e63636238b8d02fa7a2a990db35ce85f44b7403c9ee32",
-      "tools/native-kernel/test/checked_private_region_witness.py": "2d79d82b5bae0724c30d710ea5587f17843349027994d91088212cd71e9af8ca"
+      "tools/native-kernel/checked-regions.cjs": "2ef44ba3fb634adf5aced963887d8d3527be8967e7480102761f99a48579082d",
+      "tools/native-kernel/test/checked-private-region.cjs": "6d58e9b4fb430b8a55780cf408fecfdf0345558bc09ba677e18898c408b48bc0",
+      "tools/native-kernel/test/checked_private_region_witness.py": "b384e7dc2e70d9891bb0ebf93f40a667f7f6a9b5e1bfdca1cb4ec020167636c3"
     },
-    "note": "The live dirty worktree changed after the runs. Generated core hashes below are the authoritative executed identities; both candidates reproduce the core previously emitted from this captured source snapshot."
+    "stableAcrossControlAndBothCandidates": true
   },
   "fixture": {
     "path": "/tmp/sagejs-int64-prime-degree-catalog-fcTr9K/fixtures.json",
@@ -35,263 +34,108 @@
   },
   "semanticReplay": {
     "allFourPacketsAndPostCallBuffersExact": true,
-    "allNineMalformedOutcomesAndPostCallBuffersExact": true,
-    "malformedPackets": [
-      {
-        "name": "short-state",
-        "entersPrivateGraph": false,
-        "outcome": {
-          "kind": "exception",
-          "name": "RangeError",
-          "message": "short degree catalog state"
-        }
-      },
-      {
-        "name": "bad-degree",
-        "entersPrivateGraph": false,
-        "outcome": {
-          "kind": "result",
-          "value": "-4"
-        }
-      },
-      {
-        "name": "short-coefficients",
-        "entersPrivateGraph": false,
-        "outcome": {
-          "kind": "result",
-          "value": "-6"
-        }
-      },
-      {
-        "name": "short-primes",
-        "entersPrivateGraph": false,
-        "outcome": {
-          "kind": "result",
-          "value": "-6"
-        }
-      },
-      {
-        "name": "short-word-workspace",
-        "entersPrivateGraph": false,
-        "outcome": {
-          "kind": "result",
-          "value": "-6"
-        }
-      },
-      {
-        "name": "short-output",
-        "entersPrivateGraph": false,
-        "outcome": {
-          "kind": "result",
-          "value": "-6"
-        }
-      },
-      {
-        "name": "nonmonic",
-        "entersPrivateGraph": true,
-        "outcome": {
-          "kind": "exception",
-          "name": "RangeError",
-          "message": "degree catalog requires monic polynomial"
-        }
-      },
-      {
-        "name": "invalid-prime",
-        "entersPrivateGraph": true,
-        "outcome": {
-          "kind": "exception",
-          "name": "RangeError",
-          "message": "invalid degree catalog prime"
-        }
-      },
-      {
-        "name": "oversized-prime",
-        "entersPrivateGraph": true,
-        "outcome": {
-          "kind": "result",
-          "value": "-5"
-        }
-      }
-    ]
+    "allNineMalformedOutcomesAndPostCallBuffersExact": true
   },
   "directEdges": {
     "controlCount": 3,
-    "candidateCount": 6,
+    "candidateCount": 7,
     "allCandidateEdgesUnconditional": true,
     "candidateSites": [
-      {
-        "function": "sagejs_checked_r0_int64_pari_flxq_powu",
-        "operation": "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:167",
-        "emission": "unconditional"
-      },
-      {
-        "function": "sagejs_checked_r0_int64_pari_flxq_powu",
-        "operation": "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:184",
-        "emission": "unconditional"
-      },
-      {
-        "function": "sagejs_checked_r0_int64_pari_flxq_powu",
-        "operation": "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:193",
-        "emission": "unconditional"
-      },
-      {
-        "function": "sagejs_checked_r0_int64_pari_flxq_powu",
-        "operation": "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:198",
-        "emission": "unconditional"
-      },
-      {
-        "function": "sagejs_checked_r0_int64_pari_flxq_powu",
-        "operation": "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:207",
-        "emission": "unconditional"
-      },
-      {
-        "function": "sagejs_checked_r0_int64_pari_flxq_powu",
-        "operation": "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:243",
-        "emission": "unconditional"
-      }
+      "sagejs_checked_r0_int64_pari_flx_flxqv_eval:int64_pari_flx_flxqv_eval:192",
+      "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:167",
+      "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:184",
+      "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:193",
+      "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:198",
+      "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:207",
+      "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:243"
     ]
   },
   "codeShape": {
     "control": {
-      "rawBuildSha256": "077128414f08669e01ebc9756f7d31fd0da8e23f3d8ccbfff0aabb2cbeb16af9",
-      "directory": "/tmp/sagejs-stage-a-catalog-ZSJd3I",
-      "coreSha256": "7c4f789106c56c4e62ef46534892a92ef3a4f382cadb47c1f9910c46d6726bfe",
-      "objectSha256": "12ae2f7d2a10107c5905d40faa2eb4f4547fe7735bb48b0f004d0822f4339045",
-      "addonSha256": "bfe1cafe0877dfae61262f22f6c16b3ef86478bd7393a57c9576d2af5ffe7eb3",
-      "coreBytes": 6326308,
-      "objectBytes": 347264,
-      "objectTextBytes": 212370,
+      "directory": "/tmp/sagejs-stage-a-catalog-RhByNa",
+      "coreSha256": "7843a2ee32256dd48f9c3412636a48d49f079b485b456fe296e27a152e917e20",
+      "coreBytes": 6320362,
       "addonBytes": 354880,
-      "elfTextBytes": 347031,
+      "elfTextBytes": 347735,
       "privateCheckCounts": {
-        "checkedInt64Arithmetic": 278,
-        "bufferBoundsFailures": 68,
+        "checkedInt64Arithmetic": 257,
+        "bufferBoundsFailures": 62,
         "viewValidationFailures": 11,
         "uint64BufferLocalDeclarations": 0,
         "viewDataAssignments": 0,
         "viewLengthAssignments": 0,
         "viewOffsetAdjustments": 0,
-        "signedBufferIndexCalls": 67,
-        "uint64BoundsFailures": 68,
+        "signedBufferIndexCalls": 61,
+        "uint64BoundsFailures": 62,
         "int64BoundsFailures": 0
       }
     },
     "candidate": {
       "directories": [
-        "/tmp/sagejs-stage-a-catalog-0eBQSU",
-        "/tmp/sagejs-stage-a-catalog-VpwArO"
+        "/tmp/sagejs-stage-a-catalog-hvTOh8",
+        "/tmp/sagejs-stage-a-catalog-5Mmezr"
       ],
-      "coreSha256": "bc8839ca6fb9b6a2485482ac407879544dfdfe0ffb3f4ed1ffb2abc58c8d379b",
-      "objectSha256": "f74349aa8ebeb36a83d3acc998461bf250295c7be91e2d0595237b2472290271",
-      "addonSha256": "1d31ee5609c25811ef082927eaf208b91908168e4293ac782fa7dda71d7d878e",
-      "coreBytes": 6374481,
-      "objectBytes": 362104,
-      "objectTextBytes": 225745,
-      "addonBytes": 371264,
-      "elfTextBytes": 360479,
+      "coreSha256": "03914987cc6ad43ff5930835721dd8d8fbb5048b3f7aaf4a877fd7f8bd4d1b50",
+      "coreBytes": 6317228,
+      "addonBytes": 354880,
+      "elfTextBytes": 347607,
       "privateCheckCounts": {
-        "checkedInt64Arithmetic": 385,
-        "bufferBoundsFailures": 84,
+        "checkedInt64Arithmetic": 245,
+        "bufferBoundsFailures": 60,
         "viewValidationFailures": 11,
-        "uint64BufferLocalDeclarations": 22,
-        "viewDataAssignments": 11,
-        "viewLengthAssignments": 11,
-        "viewOffsetAdjustments": 11,
-        "signedBufferIndexCalls": 83,
-        "uint64BoundsFailures": 84,
+        "uint64BufferLocalDeclarations": 0,
+        "viewDataAssignments": 0,
+        "viewLengthAssignments": 0,
+        "viewOffsetAdjustments": 0,
+        "signedBufferIndexCalls": 59,
+        "uint64BoundsFailures": 60,
         "int64BoundsFailures": 0
       }
     },
     "delta": {
-      "coreBytes": 48173,
-      "objectBytes": 14840,
-      "objectTextBytes": 13375,
-      "addonBytes": 16384,
-      "elfTextBytes": 13448
-    },
-    "materializedHelpers": {
-      "int64_pari_flx_copy": 4,
-      "_int64_pari_flx_divrem": 8,
-      "int64_pari_flx_mul": 6,
-      "int64_pari_flx_sqr": 4
-    },
-    "directLeafUInt64DescriptorLocals": 0
+      "coreBytes": -3134,
+      "addonBytes": 0,
+      "elfTextBytes": -128
+    }
   },
   "timing": {
     "boundary": "tagged packet zero; packing/build/assertions excluded",
     "protocol": {
-      "freshProcesses": 2,
+      "freshCandidateProcesses": 2,
       "warmupsPerProcess": 2,
       "alternatingPairsPerProcess": 7,
       "calibrationMinimumBatchMilliseconds": 1000
     },
     "rawRuns": [
       {
-        "rawSha256": "b353916f8e7ccec6bdf1508e0686cb09d9db9e14614a6e7d618d3e2fd214f5e7",
-        "outputDirectory": "/tmp/sagejs-stage-a-catalog-0eBQSU",
-        "controlRepetitions": 444,
-        "candidateRepetitions": 421,
-        "controlMilliseconds": [
-          2.1306305225225226,
-          2.1130675112612614,
-          2.131108698198198,
-          2.1095632747747746,
-          2.1167403693693694,
-          2.1205596486486487,
-          2.124044759009009
-        ],
-        "candidateMilliseconds": [
-          2.2667975534441807,
-          2.2676297149643703,
-          2.2547958456057007,
-          2.2556169643705464,
-          2.2583696437054632,
-          2.260969859857482,
-          2.2663928028503566
-        ],
-        "controlGeometricMeanMilliseconds": 2.120802387009247,
-        "candidateGeometricMeanMilliseconds": 2.2615046799324867,
-        "ratio": 1.0663438959636677
+        "rawSha256": "092eb47985a98a2fea9ac300446dab891988ec1672a6d888267d1d33cfadb764",
+        "outputDirectory": "/tmp/sagejs-stage-a-catalog-hvTOh8",
+        "controlRepetitions": 393,
+        "candidateRepetitions": 425,
+        "controlMilliseconds": [2.343934099236641, 2.35822406870229, 2.347866234096692, 2.3327806641221374, 2.3405165419847327, 2.3460905852417304, 2.3506210432569974],
+        "candidateMilliseconds": [2.208248882352941, 2.203820178823529, 2.201186367058823, 2.2179584588235293, 2.206826014117647, 2.209324411764706, 2.209715023529412],
+        "ratio": 0.9413572859272603
       },
       {
-        "rawSha256": "e0e4387445bb16d0e7ca314b1bf82f89dabc8be88f1ea455a11706593fb7b995",
-        "outputDirectory": "/tmp/sagejs-stage-a-catalog-VpwArO",
-        "controlRepetitions": 437,
-        "candidateRepetitions": 430,
-        "controlMilliseconds": [
-          2.1266099221967965,
-          2.121794956521739,
-          2.1180616201372997,
-          2.120250700228833,
-          2.1222342700228833,
-          2.133325208237986,
-          2.1496284736842104
-        ],
-        "candidateMilliseconds": [
-          2.2599701069767444,
-          2.247299739534884,
-          2.245106574418605,
-          2.243353669767442,
-          2.254149830232558,
-          2.2460982953488373,
-          2.2594799883720933
-        ],
-        "controlGeometricMeanMilliseconds": 2.1273907382352903,
-        "candidateGeometricMeanMilliseconds": 2.250770456092415,
-        "ratio": 1.0579957953372827
+        "rawSha256": "d7de64d64c1e44866a4d944f8d790305c2b23dc71a447b7350b5160fb50c4b72",
+        "outputDirectory": "/tmp/sagejs-stage-a-catalog-5Mmezr",
+        "controlRepetitions": 388,
+        "candidateRepetitions": 427,
+        "controlMilliseconds": [2.3208477731958763, 2.3312007345360826, 2.3335108092783505, 2.341037458762887, 2.350666268041237, 2.3307401159793817, 2.3495858324742267],
+        "candidateMilliseconds": [2.204544367681499, 2.2095440608899297, 2.2147563325526933, 2.2141573864168618, 2.2188578290398127, 2.2210649484777516, 2.209625770491803],
+        "ratio": 0.9471230252297221
       }
     ],
-    "pooledControlGeometricMeanMilliseconds": 2.1240940082187434,
-    "pooledCandidateGeometricMeanMilliseconds": 2.2561311841084897,
-    "pooledRatio": 1.0621616441545694,
-    "minimumPairedRatio": 1.051102558434021,
-    "maximumPairedRatio": 1.073145889981931,
-    "allPairsSlower": true,
-    "qualified": false
+    "pooledControlGeometricMeanMilliseconds": 2.341237837931156,
+    "pooledCandidateGeometricMeanMilliseconds": 2.210680476850448,
+    "pooledRatio": 0.9442357547082548,
+    "minimumPairedRatio": 0.9345253523920957,
+    "maximumPairedRatio": 0.952944059807567,
+    "allPairsFaster": true,
+    "canonicalQualified": false
   },
-  "diagnosis": {
-    "dependencyPropagation": "Every private native call copies previous.summaryDependencies wholesale into the callee incoming state.",
-    "virtualizationGate": "attachCapabilities suppresses virtualFixedUInt64ViewGroups and final attachment for any state with nonempty summaryDependencies.",
-    "requiredFix": "Track summary provenance per scalar fact or argument so dependency-free buffer, view, and scalar facts remain eligible; do not clear whole-state dependencies."
+  "rawControl": {
+    "rawSha256": "7ff75489887e0aa26d8380367261c4ab2a24c3aad2605e3ffb4c4f2defcd783b",
+    "outputDirectory": "/tmp/sagejs-stage-a-catalog-RhByNa"
   }
 }

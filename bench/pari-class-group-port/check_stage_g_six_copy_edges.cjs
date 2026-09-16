@@ -6,8 +6,9 @@
  * The canonical catalog driver remains unchanged.  This wrapper applies the
  * smallest experiment-only declaration changes in memory: enable the
  * compiler's authenticated scalar-return summaries, update the two expected
- * direct-call counts from three to six, and require the exact six source
- * origins.  The canonical driver still owns graph construction, four-packet
+ * direct-call counts from three to seven, and require the exact six short-powu
+ * origins plus the independently proved evaluator edge. The canonical driver
+ * still owns graph construction, four-packet
  * replay, nine malformed controls, code-shape checks, building, and paired
  * timing.
  *
@@ -75,17 +76,18 @@ replaceExactly(
 );
 replaceExactly(
   'mode === "stage-g" ? 3 : mode === "stage-h" ? 4 : 0',
-  'mode === "stage-g" ? 6 : mode === "stage-h" ? 4 : 0',
+  'mode === "stage-g" ? 7 : mode === "stage-h" ? 4 : 0',
   1,
 );
 replaceExactly(
   'mode === "stage-g" ? 3 : 4,',
-  'mode === "stage-g" ? 6 : 4,',
+  'mode === "stage-g" ? 7 : 4,',
   1,
 );
 
 const censusNeedle = "const localIntervalProofs = [];";
 const expectedOperations = [
+  "sagejs_checked_r0_int64_pari_flx_flxqv_eval:int64_pari_flx_flxqv_eval:192",
   "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:167",
   "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:184",
   "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:193",

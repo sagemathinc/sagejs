@@ -2,11 +2,11 @@
   "$schema": "../task.schema.json",
   "schema_version": 2,
   "id": "powu-six-edge-integration",
-  "title": "Short-power six-edge Stage G integration",
+  "title": "Short-power Stage G integration",
   "lane": "native-compiler",
-  "status": "active",
+  "status": "review",
   "owner": "user",
-  "objective": "Rebuild the frozen splitting-degree catalog with the pending short-power loop proofs; require exactly six authenticated direct copy sites; replay all valid and malformed fixtures; and record paired timing and code-size evidence",
+  "objective": "Rebuild the frozen splitting-degree catalog with the pending short-power loop proofs; require the exact six short-power copy sites plus every additional generically proved site; replay all valid and malformed fixtures; and record paired timing and code-size evidence",
   "base_commit": "696c0bb472ec7e2aaf63ead93951f7eedcb32be7",
   "claims": [
     "bench/pari-class-group-port/check_stage_g_six_copy_edges.cjs",
@@ -35,19 +35,147 @@
   "validation": [
     "pnpm architecture:check",
     "pnpm test:baselib:strict",
-    "pnpm test:native"
+    "pnpm test:native",
+    "node --check bench/pari-class-group-port/check_stage_g_six_copy_edges.cjs",
+    "jq empty bench/pari-class-group-port/stage_g_six_copy_edges_evidence.json"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_stage_g_six_copy_edges.cjs /tmp/sagejs-int64-prime-degree-catalog-fcTr9K/fixtures.json /tmp/sagejs-stage-a-catalog-RhByNa /home/user/sagejs-worktrees/virtual-u64-fixed-views",
+      "result": "pass",
+      "notes": "Two CPU-idle fresh processes replayed four frozen packets, 7,081 outputs, and nine malformed cases; both emitted core SHA-256 03914987cc6ad43ff5930835721dd8d8fbb5048b3f7aaf4a877fd7f8bd4d1b50."
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.057,
+      "started_at": "2026-09-16T12:14:31.126Z",
+      "commit": "0d0cf7ed9cf86f40972021e7cafea1971bcf04b8",
+      "workspace_fingerprint": "572b67df22755542cf4c5cb6940b1f661b50fbb6d397d88f23035ac67f59c08a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.447,
+      "started_at": "2026-09-16T12:22:18.787Z",
+      "commit": "0d0cf7ed9cf86f40972021e7cafea1971bcf04b8",
+      "workspace_fingerprint": "572b67df22755542cf4c5cb6940b1f661b50fbb6d397d88f23035ac67f59c08a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 59.576,
+      "started_at": "2026-09-16T12:22:35.399Z",
+      "commit": "0d0cf7ed9cf86f40972021e7cafea1971bcf04b8",
+      "workspace_fingerprint": "572b67df22755542cf4c5cb6940b1f661b50fbb6d397d88f23035ac67f59c08a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_stage_g_six_copy_edges.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.03,
+      "started_at": "2026-09-16T12:28:19.674Z",
+      "commit": "0d0cf7ed9cf86f40972021e7cafea1971bcf04b8",
+      "workspace_fingerprint": "572b67df22755542cf4c5cb6940b1f661b50fbb6d397d88f23035ac67f59c08a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "jq empty bench/pari-class-group-port/stage_g_six_copy_edges_evidence.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.007,
+      "started_at": "2026-09-16T12:28:20.441Z",
+      "commit": "0d0cf7ed9cf86f40972021e7cafea1971bcf04b8",
+      "workspace_fingerprint": "572b67df22755542cf4c5cb6940b1f661b50fbb6d397d88f23035ac67f59c08a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 926.567,
+      "started_at": "2026-09-16T12:28:32.771Z",
+      "commit": "0d0cf7ed9cf86f40972021e7cafea1971bcf04b8",
+      "workspace_fingerprint": "572b67df22755542cf4c5cb6940b1f661b50fbb6d397d88f23035ac67f59c08a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.849,
+      "started_at": "2026-09-16T12:44:33.912Z",
+      "commit": "0d0cf7ed9cf86f40972021e7cafea1971bcf04b8",
+      "workspace_fingerprint": "8a43ead8eee711c679731bb7cab2061303b8a2ddeb84c1f4bd97a78bbba1cd6e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.103,
+      "started_at": "2026-09-16T12:44:46.476Z",
+      "commit": "0d0cf7ed9cf86f40972021e7cafea1971bcf04b8",
+      "workspace_fingerprint": "8a43ead8eee711c679731bb7cab2061303b8a2ddeb84c1f4bd97a78bbba1cd6e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.783,
+      "started_at": "2026-09-16T12:46:10.536Z",
+      "commit": "0d0cf7ed9cf86f40972021e7cafea1971bcf04b8",
+      "workspace_fingerprint": "8a43ead8eee711c679731bb7cab2061303b8a2ddeb84c1f4bd97a78bbba1cd6e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.083,
+      "started_at": "2026-09-16T12:46:26.394Z",
+      "commit": "0d0cf7ed9cf86f40972021e7cafea1971bcf04b8",
+      "workspace_fingerprint": "8a43ead8eee711c679731bb7cab2061303b8a2ddeb84c1f4bd97a78bbba1cd6e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_stage_g_six_copy_edges.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.033,
+      "started_at": "2026-09-16T12:47:30.165Z",
+      "commit": "0d0cf7ed9cf86f40972021e7cafea1971bcf04b8",
+      "workspace_fingerprint": "8a43ead8eee711c679731bb7cab2061303b8a2ddeb84c1f4bd97a78bbba1cd6e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "jq empty bench/pari-class-group-port/stage_g_six_copy_edges_evidence.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.007,
+      "started_at": "2026-09-16T12:47:30.919Z",
+      "commit": "0d0cf7ed9cf86f40972021e7cafea1971bcf04b8",
+      "workspace_fingerprint": "8a43ead8eee711c679731bb7cab2061303b8a2ddeb84c1f4bd97a78bbba1cd6e",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "The isolated driver proves and requires exactly six authenticated unconditional direct-copy origins and replays all four frozen packets plus nine malformed controls. The first same-tip integration is deliberately rejected: whole-state scalar-summary provenance materializes 22 descriptor locals across four ordinary private helpers, adds 13,448 linked text bytes, and is 6.22% slower over 14/14 unfavorable paired measurements. Raw samples, artifact hashes, source snapshot hashes, diagnosis, and exact reproduction commands are checked in.",
+    "summary": "The isolated driver requires exactly seven authenticated unconditional direct-copy origins: the six short-power sites and the independently proved evaluator site. All four frozen packets, 7,081 outputs, post-call buffers, and nine malformed controls replay exactly. The artifact retains 11 validated views with zero descriptor/data/length/offset locals, is 128 ELF text bytes smaller than its fresh same-compiler three-edge control, and is 5.58% faster over 14/14 favorable paired measurements. The canonical stronger performance threshold remains unmet.",
     "risks": [
-      "The compiler input was an intentionally dirty integration worktree. Generated core, object, and addon hashes are authoritative; the evidence records the captured dirty source hashes and explicitly notes that the live worktree later changed.",
-      "The --record-rejected-materialization option exists only to reproduce the exact rejected 22/11/11/11 descriptor/data/length/offset census. The default path retains and currently fails the zero-descriptor acceptance gate.",
-      "No cross-platform claim is made for the benchmark numbers; this is a Linux x64 rejection diagnostic."
+      "The compiler input was an intentionally dirty integration worktree. The evidence records stable source hashes across the fresh control and both final candidate runs.",
+      "The --record-rejected-materialization option remains only to reproduce the superseded 22/11/11/11 provenance failure; the default path now passes the zero-descriptor gate.",
+      "The 5.58% benchmark improvement is Linux x64 evidence and does not meet the canonical driver's stronger qualification threshold."
     ],
     "next_steps": [
-      "After the compiler tracks summary provenance per scalar fact or argument, rerun the default driver without --record-rejected-materialization and require zero descriptor locals before timing.",
-      "Replace this negative evidence with a same-tip qualified six-edge report only if exact replay, code-shape gates, and paired timing all pass."
+      "Land the compiler proof changes, then rerun this driver from the committed compiler revision so the dirty source hashes become an ordinary commit identity.",
+      "Continue with the remaining exact islands; retain this exact-seven origin census and zero-descriptor gate as regression coverage."
     ]
   }
 }
