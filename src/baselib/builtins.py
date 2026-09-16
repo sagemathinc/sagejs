@@ -809,7 +809,7 @@ def _builtins_class_attribute_resolution(
                 else cached
             )
     else:
-        owner_cache = runtime.map()
+        owner_cache = runtime.reflect.construct(runtime.map_class, [])
         _builtins_descriptor_cache.set(owner, owner_cache)
     # Compiler-emitted ``staticmethod(...)``/``classmethod(...)`` class-body
     # aliases live on the constructor so class access can avoid a wrapper.
@@ -4927,19 +4927,10 @@ def ρσ_register_property(owner: Any, name: _Str, has_setter: _Bool) -> None:
         value.fset = None
 
 
-def _builtins_descriptor_read(
-    descriptor: Any, value: Any, owner: Any, name: _Str, default_value: Any
-) -> Any:
-    try:
-        if owner is runtime.undefined:
-            return runtime.reflect.apply(descriptor, value, [])
-        return _builtins_call_member(descriptor, "__get__", [value, owner])
-    except AttributeError:
-        if _builtins_member_is_function(value, "__getattr__"):
-            return _builtins_missing_attribute(value, name, default_value)
-        if default_value is not _BUILTINS_MISSING:
-            return default_value
-        raise
+def _builtins_descriptor_read(descriptor: Any, value: Any, owner: Any) -> Any:
+    if owner is runtime.undefined:
+        return runtime.reflect.apply(descriptor, value, [])
+    return _builtins_call_member(descriptor, "__get__", [value, owner])
 
 
 def ρσ_ellipsis_range(*specification: Any) -> list[Any]:
@@ -5021,13 +5012,45 @@ def ρσ_getattr_internal(
     name: _Str,
     default_value: Any,
 ) -> Any:
-    return _builtins_getattr_impl(value, name, default_value, runtime.undefined)
+    return _builtins_public_getattr(value, name, default_value, runtime.undefined)
+
+
+@runtime.native_method
+def _builtins_object_getattribute(self: Any, name: _Str) -> Any:
+    return _builtins_getattr_impl(self, name, runtime.undefined)
+
+
+def _builtins_public_getattr(
+    value: Any,
+    name: _Str,
+    default_value: Any,
+    call_context: Any,
+) -> Any:
+    if not runtime.strict_equal(runtime.jstype(name), "string"):
+        raise TypeError("attribute name must be string")
+    owner = _builtins_attribute_owner(value)
+    if _builtins_is_python_class(value):
+        metaclass = _builtins_get_member(value, "__python_type__")
+        if _builtins_is_python_class(metaclass):
+            owner = metaclass
+    resolution = _builtins_class_attribute_resolution(owner, "__getattribute__")
+    hook = runtime.undefined if resolution is runtime.undefined else resolution[3]
+    try:
+        if hook is not runtime.undefined and hook is not _builtins_object_getattribute:
+            return _builtins_call_selected_special(value, hook, [name])
+        return _builtins_getattr_impl(value, name, call_context)
+    except AttributeError:
+        if _builtins_member_is_function(value, "__getattr__"):
+            return _builtins_missing_attribute(value, name, default_value)
+        if default_value is not _BUILTINS_MISSING:
+            return default_value
+        raise
 
 
 def ρσ_prepare_method_call(value: Any, name: _Str) -> Any:
     """Capture lookup before arguments without materializing ordinary methods."""
     context = runtime.array.of(runtime.undefined, runtime.undefined, False)
-    member = _builtins_getattr_impl(value, name, _BUILTINS_MISSING, context)
+    member = _builtins_public_getattr(value, name, _BUILTINS_MISSING, context)
     if context[0] is runtime.undefined:
         context[0] = member
     return context
@@ -5050,7 +5073,6 @@ def ρσ_invoke_prepared_method(context: Any, call_args: Any) -> Any:
 def _builtins_getattr_impl(
     value: Any,
     name: _Str,
-    default_value: Any,
     call_context: Any,
 ) -> Any:
     if not runtime.strict_equal(runtime.jstype(name), "string"):
@@ -5061,12 +5083,7 @@ def _builtins_getattr_impl(
             annotation_key is not runtime.undefined
             and _builtins_own_class_annotation(value) is runtime.undefined
         ):
-            try:
-                return _builtins_read_class_annotation(value, annotation_key)
-            except AttributeError:
-                if default_value is not _BUILTINS_MISSING:
-                    return default_value
-                raise
+            return _builtins_read_class_annotation(value, annotation_key)
     value_type = runtime.jstype(value)
     value_is_callable_instance = (
         runtime.strict_equal(value_type, "function")
@@ -5092,7 +5109,7 @@ def _builtins_getattr_impl(
             ρσ_is_bound_method(value)
             or _builtins_get_member(target, "__sagejs_unbound_adapter__") is value
         ):
-            return ρσ_getattr_internal(target, name, default_value)
+            return ρσ_getattr_internal(target, name, _BUILTINS_MISSING)
     if runtime.instance_of(value, runtime.error):
         # Native TypeError/ReferenceError/SyntaxError objects are part of the
         # Python exception hierarchy but do not pass through BaseException's
@@ -5220,8 +5237,6 @@ def _builtins_getattr_impl(
                 else runtime.native_get(value, name)
             )
             if _builtins_is_missing_binding(own_member):
-                if default_value is not _BUILTINS_MISSING:
-                    return default_value
                 raise AttributeError("The attribute " + name + " is not present")
             return own_member
         owner = _builtins_attribute_owner(value)
@@ -5234,20 +5249,16 @@ def _builtins_getattr_impl(
                 _BUILTINS_DESCRIPTOR_NATIVE_GETTER,
             ):
                 native_value = _builtins_descriptor_read(
-                    descriptor, value, runtime.undefined, name, default_value
+                    descriptor, value, runtime.undefined
                 )
                 if native_value is runtime.undefined:
-                    if default_value is not _BUILTINS_MISSING:
-                        return default_value
                     raise AttributeError("The attribute " + name + " is not present")
                 return native_value
             if runtime.strict_equal(
                 descriptor_kind,
                 _BUILTINS_DESCRIPTOR_DATA,
             ):
-                return _builtins_descriptor_read(
-                    descriptor, value, owner, name, default_value
-                )
+                return _builtins_descriptor_read(descriptor, value, owner)
         # A data descriptor has now had its required precedence.  An own
         # non-callable value cannot require binding or another inherited
         # lookup, which is the overwhelmingly common path for mathematical
@@ -5259,8 +5270,6 @@ def _builtins_getattr_impl(
                 else runtime.native_get(value, name)
             )
             if _builtins_is_missing_binding(own_member):
-                if default_value is not _BUILTINS_MISSING:
-                    return default_value
                 raise AttributeError("The attribute " + name + " is not present")
             return own_member
         if runtime.strict_equal(
@@ -5278,11 +5287,7 @@ def _builtins_getattr_impl(
                 and _builtins_get_member(descriptor, "__sagejs_callable_instance__")
                 is not True
             ):
-                if (
-                    call_context is not runtime.undefined
-                    and _builtins_class_attribute_resolution(owner, "__getattribute__")
-                    is runtime.undefined
-                ):
+                if call_context is not runtime.undefined:
                     call_context[0] = descriptor
                     call_context[1] = value
                     call_context[2] = (
@@ -5295,9 +5300,7 @@ def _builtins_getattr_impl(
                     )
                     return runtime.undefined
                 return _builtins_bind_python_function(descriptor, value)
-            return _builtins_descriptor_read(
-                descriptor, value, owner, name, default_value
-            )
+            return _builtins_descriptor_read(descriptor, value, owner)
         if runtime.strict_equal(
             descriptor_kind,
             _BUILTINS_DESCRIPTOR_DIRECT,
@@ -5430,8 +5433,6 @@ def _builtins_getattr_impl(
         # slots present with this value; Python's getattr/hasattr semantics
         # must treat them as absent and honor the caller's default.
         if _builtins_is_missing_binding(member):
-            if default_value is not _BUILTINS_MISSING:
-                return default_value
             raise AttributeError("The attribute " + name + " is not present")
         member_is_own = runtime.reflect.apply(
             runtime.object.prototype.hasOwnProperty,
@@ -5542,9 +5543,7 @@ def _builtins_getattr_impl(
                 descriptor = class_target
             return _builtins_bind_python_function(descriptor, owner)
         if _builtins_member_is_function(descriptor, "__get__"):
-            return _builtins_descriptor_read(
-                descriptor, value, owner, name, default_value
-            )
+            return _builtins_descriptor_read(descriptor, value, owner)
         if _builtins_has_member(descriptor, "__staticmethod__"):
             static_target = _builtins_get_member(descriptor, "__func__")
             return (
@@ -5557,7 +5556,7 @@ def _builtins_getattr_impl(
         ) and not _builtins_is_python_class(descriptor):
             return _builtins_bind_python_function(descriptor, value)
         return descriptor
-    return _builtins_missing_attribute(value, name, default_value)
+    raise AttributeError("The attribute " + name + " is not present")
 
 
 def _builtins_missing_attribute(value: Any, name: _Str, default_value: Any) -> Any:
@@ -6509,6 +6508,8 @@ def ρσ_py_super(
             receiver = instance
             if _builtins_has_member(member, "__classmethod__"):
                 receiver = instance_class
+            if _builtins_get_member(member, "__python_descriptor__") is True:
+                return _builtins_bind_python_function(member, receiver)
             bound = runtime.reflect.apply(
                 runtime.reflect.get(member, "bind"),
                 member,
@@ -9498,6 +9499,7 @@ _sage_object_prototype = runtime.reflect.get(SageObject, "prototype")
 for _object_owner in (SageObject, _sage_object_prototype):
     for _object_name, _object_method in [
         ("__new__", _builtins_object_new),
+        ("__getattribute__", _builtins_object_getattribute),
         ("__setattr__", _builtins_object_setattr),
         ("__delattr__", _builtins_object_delattr),
     ]:
