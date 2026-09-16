@@ -1,0 +1,146 @@
+{
+  "schema": "sagejs.checked-region/stage-g2-direct-result-evidence-v1",
+  "compiler": {
+    "worktree": "/home/user/sagejs-worktrees/virtual-u64-fixed-views",
+    "commit": "c085e4b2a1bdb9cf4fd416fe1669de800328ebe7",
+    "status": "clean",
+    "cflags": ["-O3", "-fPIC", "-Wall", "-Wextra", "-ffunction-sections", "-fdata-sections"],
+    "ldflags": ["-Wl,--gc-sections", "-Wl,--exclude-libs,ALL", "-Wl,--strip-all", "-Wl,-z,nodelete"]
+  },
+  "fixture": {
+    "path": "/tmp/sagejs-int64-prime-degree-catalog-fcTr9K/fixtures.json",
+    "sha256": "f61f6aed8d229a2fc10a6336559e97a23d58758151481fb1dfc09fb84a906312",
+    "packets": 4,
+    "activeOutputsInTimedPacket": 7081
+  },
+  "arms": {
+    "stageD": {
+      "directory": "/tmp/sagejs-stage-a-catalog-JyBKqg",
+      "coreSha256": "9ee37b3c0cb15c0be6a7ea0b5ef07e9cc6f9a06ec9b80057f4bd3b1947c9169f"
+    },
+    "stageE": {
+      "directory": "/tmp/sagejs-stage-a-catalog-syWGCM",
+      "coreSha256": "04923fbaef0dd5f2b67aedbd3d016ef2c54e26d0ebaab65032224955f1804853",
+      "objectSha256": "ba018ccd238a0717cc648e52d61c6b8a080d5d19404ec611a4dddaf1d078abd2",
+      "addonSha256": "98449806f857a174cf42284807514273ced369faafc6e10fe699f7e633ea439e",
+      "coreBytes": 6305446,
+      "privateCoreBytes": 1355770,
+      "adapterBytes": 161062,
+      "objectBytes": 346832,
+      "objectTextBytes": 212853,
+      "addonBytes": 354880,
+      "elfTextBytes": 347495,
+      "objectCallInstructions": 1771,
+      "addonCallInstructions": 1850,
+      "preparedVariants": 36
+    },
+    "stageG2": {
+      "directory": "/tmp/sagejs-stage-a-catalog-hF0oNK",
+      "coreSha256": "1db8d76a096ff7076f1811f0beb0ccdf4064685e280f6a35cb09cd7026213252",
+      "objectSha256": "016ce9fce6fa46fc140da4b145932d61b13695d38617d92ff9f1b153a9a8f73e",
+      "addonSha256": "ccb5adfd23d2652b401b23608a48a0c86dc79fa7c8bd8fedfb5fd8c806bf6bbf",
+      "coreBytes": 6322765,
+      "privateCoreBytes": 1372849,
+      "adapterBytes": 161062,
+      "objectBytes": 347176,
+      "objectTextBytes": 212843,
+      "addonBytes": 354880,
+      "elfTextBytes": 347455,
+      "objectCallInstructions": 1770,
+      "addonCallInstructions": 1849,
+      "preparedVariants": 37
+    }
+  },
+  "sharedEmission": {
+    "bindingGypSha256": "9521eb22d6b3f5d293115c36606daebd91f7c953e5f11c9a63ecd3bf08893c43",
+    "adapterSha256": "4587ba3852ca5774e6d3ac80327f80d7ca452e32039c33e58c403c6143cd6f7f"
+  },
+  "semanticReplay": {
+    "catalogValidComparisons": 12,
+    "catalogMalformedComparisons": 27,
+    "publicCopyComparisons": 45,
+    "allPassed": true
+  },
+  "directResultShape": {
+    "preparedName": "sagejs_checked_r0_int64_pari_flx_copy__local_fast_0",
+    "machineSymbol": "sagejs_direct_sagejs_checked_r0_int64_pari_flx_copy__local_fast_0.constprop.0.isra.0",
+    "preparedDirectResults": 1,
+    "preparedDirectCallSites": 3,
+    "generatedDirectDefinitions": 1,
+    "generatedOrdinaryCheckedCopyDefinitions": 1,
+    "directMachineBytes": 57,
+    "ordinaryCheckedCopyMachineBytes": 660,
+    "sourceRangeLatchCheckedAdds": 3,
+    "machineCallsInDirectCore": 0,
+    "viewDescriptorsInDirectCore": 0,
+    "statusOrOutputParametersInDirectCore": 0
+  },
+  "staticPrivateSlice": {
+    "stageE": {
+      "viewValidationFailures": 11,
+      "uint64BufferLocalDeclarations": 0,
+      "viewDataAssignments": 0,
+      "viewLengthAssignments": 0,
+      "viewOffsetAdjustments": 0,
+      "signedBufferIndexCalls": 67,
+      "uint64BoundsFailures": 68
+    },
+    "stageG2": {
+      "viewValidationFailures": 11,
+      "uint64BufferLocalDeclarations": 0,
+      "viewDataAssignments": 0,
+      "viewLengthAssignments": 0,
+      "viewOffsetAdjustments": 0,
+      "signedBufferIndexCalls": 67,
+      "uint64BoundsFailures": 68
+    }
+  },
+  "copyTextRelocations": {
+    "stageE": {"checkedPrivateCopy": 23, "directCopy": 0, "ordinaryTaggedCopy": 45, "total": 68},
+    "stageG2": {"checkedPrivateCopy": 21, "directCopy": 2, "ordinaryTaggedCopy": 45, "total": 68}
+  },
+  "machineGates": {
+    "checkedCopyRelocationsDecrease": true,
+    "totalCopyRelocationsDoNotIncrease": true,
+    "totalCallInstructionsDoNotIncrease": true,
+    "newDirectCoreFitsWithinStageECheckedCopyBody": true,
+    "objectTextDoesNotGrow": true,
+    "elfTextDoesNotGrow": true,
+    "overallPass": true
+  },
+  "timing": {
+    "controlLabelNote": "The harness field stage-d denotes the first supplied arm; in these runs that arm is Stage E.",
+    "discardedContaminatedProcesses": 1,
+    "run1": {
+      "stageERepetitions": 531,
+      "stageEMilliseconds": [2.1761252730696796, 2.174434952919021, 2.1756910734463277, 2.171205197740113, 2.1750961958568737, 2.171386064030132, 2.1748973050847455],
+      "stageEGeometricMeanMilliseconds": 2.1741186448139405,
+      "stageG2Repetitions": 540,
+      "stageG2Milliseconds": [2.1571879944444445, 2.154208088888889, 2.1623822166666664, 2.154901625925926, 2.1543714203703703, 2.1579347925925925, 2.1541902351851854],
+      "stageG2GeometricMeanMilliseconds": 2.1564519546752368,
+      "ratio": 0.9918740910571532
+    },
+    "run2": {
+      "stageERepetitions": 538,
+      "stageEMilliseconds": [2.180519750929368, 2.177065810408922, 2.1832695817843866, 2.1779650669144983, 2.1779529851301116, 2.1722240631970258, 2.17490856133829],
+      "stageEGeometricMeanMilliseconds": 2.1776982964987828,
+      "stageG2Repetitions": 548,
+      "stageG2Milliseconds": [2.1599558083941606, 2.1587396952554743, 2.1534325255474456, 2.1522841843065694, 2.150559770072993, 2.1507855018248176, 2.150285572992701],
+      "stageG2GeometricMeanMilliseconds": 2.153717235226099,
+      "ratio": 0.9889878862874442
+    },
+    "pooledStageEGeometricMeanMilliseconds": 2.175907734532317,
+    "pooledStageG2GeometricMeanMilliseconds": 2.155084161168902,
+    "pooledRatio": 0.9904299373392821,
+    "largestPairedRatio": 0.9938829289957145,
+    "ratioToHistoricalMechanicalCCeiling": 1.5504202598337424,
+    "ratioToHistoricalPari": 1.0616178133836955
+  },
+  "performanceGate": {
+    "bothFreshProcessRatiosBelowOne": true,
+    "everyPairBelowOne": true,
+    "pooledRatioAtMostPoint99": false,
+    "overallPass": false,
+    "decision": "Mechanism is a consistent improvement, but it narrowly misses the frozen adoption threshold."
+  }
+}

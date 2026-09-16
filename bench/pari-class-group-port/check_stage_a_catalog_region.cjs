@@ -518,30 +518,10 @@ if (mode === "stage-f") {
 }
 if (mode === "stage-g") {
   assert.equal(privateSiteCounts.viewValidationFailures, 11);
-  // Freeze the rejected G1 shape: local-variant preparation devirtualizes four
-  // views in `_int64_pari_flx_divrem` and three in `int64_pari_flx_mul`.
-  // Each view materializes a temporary and a named descriptor. The direct body
-  // below is inspected separately and contains none of these descriptors.
-  assert.equal(privateSiteCounts.uint64BufferLocalDeclarations, 14);
-  assert.equal(privateSiteCounts.viewDataAssignments, 7);
-  assert.equal(privateSiteCounts.viewLengthAssignments, 7);
-  assert.equal(privateSiteCounts.viewOffsetAdjustments, 7);
-  const divremBody = functionText(
-    artifacts.coreSource,
-    "sagejs_checked_r0__int64_pari_flx_divrem",
-  );
-  const multiplyBody = functionText(
-    artifacts.coreSource,
-    "sagejs_checked_r0_int64_pari_flx_mul",
-  );
-  assert.equal(
-    count(divremBody, /sagejs_uint64_buffer\s+[A-Za-z0-9_]+\s*=\s*\{0\}/g),
-    8,
-  );
-  assert.equal(
-    count(multiplyBody, /sagejs_uint64_buffer\s+[A-Za-z0-9_]+\s*=\s*\{0\}/g),
-    6,
-  );
+  assert.equal(privateSiteCounts.uint64BufferLocalDeclarations, 0);
+  assert.equal(privateSiteCounts.viewDataAssignments, 0);
+  assert.equal(privateSiteCounts.viewLengthAssignments, 0);
+  assert.equal(privateSiteCounts.viewOffsetAdjustments, 0);
 
   const [directVariant] = directResultVariants;
   assert.equal(
