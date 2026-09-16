@@ -1,0 +1,74 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-phase0-fixtures",
+  "title": "PARI class-group Phase-0 reproducible fixtures",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Create a durable clean-build Phase-0 fixture/replay orchestrator for the integrated PARI class-group cubic and quartic gates",
+  "base_commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+  "claims": [
+    "bench/pari-class-group-port/run_phase0_integration_replay.cjs",
+    "bench/pari-class-group-port/phase0_integration_replay.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI 2.17.4 pinned source and existing stage checkers"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "fallback",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --check bench/pari-class-group-port/run_phase0_integration_replay.cjs",
+    "node bench/pari-class-group-port/run_phase0_integration_replay.cjs verify --artifact-root /scratch/phase0-orchestrator-smoke --stage cubic-driver"
+  ],
+  "runs": [
+    {
+      "command": "node --check bench/pari-class-group-port/run_phase0_integration_replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.029,
+      "started_at": "2026-09-16T22:32:35.797Z",
+      "commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+      "workspace_fingerprint": "682bc5d21cfdfcd109909f207ab7e79a5e40825d8bfde12e9b49943d4f5c4b54",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/run_phase0_integration_replay.cjs verify --artifact-root /scratch/phase0-orchestrator-smoke --stage cubic-driver",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.046,
+      "started_at": "2026-09-16T22:32:36.465Z",
+      "commit": "e683e802afb6798e64f49594cd9546e1ee334fd9",
+      "workspace_fingerprint": "682bc5d21cfdfcd109909f207ab7e79a5e40825d8bfde12e9b49943d4f5c4b54",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a durable append-only Phase-0 replay orchestrator for the existing PARI 2.17.4 analytic, splitting, prepared-cubic, and resumable-quartic checkers. Every checker-created temporary path is rooted beneath a caller-supplied artifact directory; atomic receipts hash commands, repository and checker identities, dependency receipts, PARI source/library identities, and declared outputs. A real pinned-PARI cubic-driver production, resume, independent verification, and corruption rejection all passed. Expensive splitting and quartic native matrices are named resumable stages and were intentionally not rerun by this implementation lane.",
+    "risks": [
+      "The existing compiler still writes its content-addressed build cache beside mathematical sources. Durable replay snapshots the splitting baseline into the artifact root and hashes declared artifacts, but this harness does not redesign global native-cache placement.",
+      "Quartic continuation uses an attempt-local, hash-recorded launcher to replace the historical checker’s single embedded scratch PARI path. It fails closed if that exact source shape changes.",
+      "The GMP quartic replay needs about 2 GiB resident memory and a long native compile; only its orchestration and resource limits were reviewed here, not freshly executed."
+    ],
+    "next_steps": [
+      "Run the default pipeline on the integration host from a clean commit and retain the resulting artifact root as the canonical Phase-0 receipt.",
+      "Run quartic-retry-javascript and quartic-retry-gmp separately so a failed expensive backend never invalidates already completed producer stages.",
+      "After integration, execute the unchanged full native gate once for the combined checkpoint; this documentation/harness-only lane did not repeat that roughly thirteen-minute suite."
+    ]
+  }
+}
