@@ -3745,9 +3745,13 @@ def _builtins_prototype_member(
     while current is not None and current is not runtime.undefined:
         descriptor = runtime.object.getOwnPropertyDescriptor(current, name)
         if descriptor is not runtime.undefined:
-            # Do not invoke a property getter while merely inspecting docs.
-            # Ordinary Python methods are stored as descriptor values.
-            return runtime.reflect.get(descriptor, "value")
+            member = runtime.reflect.get(descriptor, "value")
+            if member is runtime.undefined:
+                return _builtins_get_member(
+                    runtime.reflect.get(descriptor, "get"),
+                    "__sagejs_unbound_method__",
+                )
+            return member
         current = runtime.object.getPrototypeOf(current)
     return runtime.undefined
 
@@ -7261,10 +7265,9 @@ def ρσ_divmod(left: Any, right: Any) -> Any:
         _builtins_get_member(right_class, "prototype"),
         "__rdivmod__",
     )
-    right_reflected = (
-        runtime.undefined
-        if right_reflected_descriptor is runtime.undefined
-        else runtime.reflect.get(right_reflected_descriptor, "value")
+    right_reflected = _builtins_prototype_member(
+        _builtins_get_member(right_class, "prototype"),
+        "__rdivmod__",
     )
     left_reflected = _builtins_prototype_member(
         _builtins_get_member(left_class, "prototype"),
