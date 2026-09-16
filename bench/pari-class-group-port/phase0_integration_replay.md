@@ -48,6 +48,20 @@ The default run ends at `cubic-candidate`:
 5. `cubic-candidate` checks the accepted class number 3 and invariants `[3]`
    through CPython, generated JavaScript, and the one-call native path.
 
+The generated-resident cubic has a separate, explicit chain because it is a
+different mathematical example, not another backend for the field-1
+candidate. `resident-cubic-collector`, `resident-cubic-driver`,
+`resident-cubic-acceptance`, and `resident-cubic-input` regenerate field 0 and
+retain the `--export-inputs` artifact. `kummer-prepared-nf` regenerates the
+prepared number-field rows used by `initial-kummer`; neither stage imports an
+old `/tmp` fixture. The four `resident-cubic-{cpython,javascript,gmp,tagged}`
+stages then replay the same readable entry and require class number 1, 73
+relations, and regulator
+`[4510874135066530692003455889568986616389323011914280231659,192,20]`.
+This must not be confused with `cubic-candidate`: that field-1 case has class
+number 3, invariants `[3]`, and regulator
+`[3895441961913051012156655978319959870688113589397982850906,192,17]`.
+
 The mixed-quartic retry is intentionally separate because its packed owners and
 native compilation are expensive:
 
@@ -59,10 +73,12 @@ native compilation are expensive:
    attempt-local copy with the explicit `--pari-root`. Both original and
    generated checker hashes are part of the receipt. This is harness path
    parameterization, not a mathematical-source change.
-8. `quartic-retry-javascript` and `quartic-retry-gmp` replay the same readable
-   Python entry through the named backend. Each runs under a 4 GiB address-space
-   limit and a 1536 MiB Node heap. Success requires the exact three-pass
-   150/151/152 relation trace, class number 1, and accepted terminal state.
+8. `quartic-retry-cpython` retains the independent three-pass source oracle.
+   `quartic-retry-javascript`, `quartic-retry-gmp`, and
+   `quartic-retry-tagged` replay the same readable Python entry through the
+   named generated backend. Native stages run under a 4 GiB address-space limit
+   and a 1536 MiB Node heap. Success requires the exact three-pass 150/151/152
+   relation trace, class number 1, and accepted terminal state.
 
 The runner does not treat these candidate results as a complete class/unit
 group and does not change any production dispatch.
