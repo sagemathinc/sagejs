@@ -1,0 +1,146 @@
+{
+  "schema": "sagejs.checked-region/stage-g-pgo-diagnostic-v1",
+  "classification": {
+    "diagnosticOnly": true,
+    "portable": false,
+    "adopted": false,
+    "reason": "The GCC profile is tied to one binary shape and a narrow catalog workload; it marks unexercised exported kernels cold."
+  },
+  "artifacts": {
+    "baselineDirectory": "/tmp/sagejs-stage-a-catalog-XFCs0p",
+    "pgoDirectory": "/tmp/sagejs-stage-g-pgo-bi56XJ",
+    "generatedCoreSha256": "1db8d76a096ff7076f1811f0beb0ccdf4064685e280f6a35cb09cd7026213252",
+    "generatedCoreIdentical": true,
+    "baselineObjectSha256": "016ce9fce6fa46fc140da4b145932d61b13695d38617d92ff9f1b153a9a8f73e",
+    "pgoObjectSha256": "1e6dfeb2d6d2e2f00a96b186a3e97661250000d9b06cb3665ac46fb33c9992fc",
+    "baselineAddonSha256": "ccb5adfd23d2652b401b23608a48a0c86dc79fa7c8bd8fedfb5fd8c806bf6bbf",
+    "pgoAddonSha256": "3532e33fe58821476e4b1742e0b34d5b21c33a3f29a616cb4d4dbbef761fc552"
+  },
+  "compiler": {
+    "name": "GCC",
+    "version": "15.2.0",
+    "baselineFlags": [
+      "-O3",
+      "-fPIC",
+      "-Wall",
+      "-Wextra",
+      "-ffunction-sections",
+      "-fdata-sections"
+    ],
+    "profileGenerateFlags": [
+      "-fprofile-generate=/tmp/sagejs-stage-g-pgo-profile"
+    ],
+    "profileUseFlags": [
+      "-fprofile-use=/tmp/sagejs-stage-g-pgo-profile",
+      "-fprofile-correction"
+    ]
+  },
+  "training": {
+    "profileDirectory": "/tmp/sagejs-stage-g-pgo-profile",
+    "profileFile": "/tmp/sagejs-stage-g-pgo-profile/#tmp#sagejs-stage-g-pgo-bi56XJ#build#Release#obj.target#sagejs_native_kernel#kernel.gcda",
+    "profileFileBytes": 47604,
+    "profileFileSha256": "9acba00b6233b39379d4460382cee52e4d8f5d24d1e6621b193bb57914d8f592",
+    "frozenPackets": 4,
+    "roundsPerPacketSet": 500,
+    "catalogCalls": 2000
+  },
+  "correctness": {
+    "harness": "/tmp/measure-stage-h-split.cjs",
+    "frozenOutputReplays": 4,
+    "exact": true
+  },
+  "binaryShape": {
+    "baseline": {
+      "objectBytes": 347176,
+      "objectTextBytes": 199489,
+      "linkedAddonBytes": 354880,
+      "linkedElfTextBytes": 322704,
+      "hotTextBytes": 35437,
+      "unlikelyTextBytes": 1953,
+      "otherTextBytes": 162099,
+      "textSections": 188,
+      "hotTextSections": 12,
+      "unlikelyTextSections": 1,
+      "namedColdFragments": 1
+    },
+    "pgo": {
+      "objectBytes": 359192,
+      "objectTextBytes": 170919,
+      "linkedAddonBytes": 326208,
+      "linkedElfTextBytes": 292816,
+      "hotTextBytes": 42266,
+      "unlikelyTextBytes": 119858,
+      "otherTextBytes": 8795,
+      "textSections": 217,
+      "hotTextSections": 15,
+      "unlikelyTextSections": 192,
+      "namedColdFragments": 21,
+      "namedColdFragmentBytes": 24080
+    },
+    "deltas": {
+      "objectBytes": 12016,
+      "objectTextBytes": -28570,
+      "objectTextFraction": -0.1432159166670844,
+      "linkedAddonBytes": -28672,
+      "linkedElfTextBytes": -29888,
+      "linkedElfTextFraction": -0.0926173831126977,
+      "hotTextBytes": 6829,
+      "unlikelyTextBytes": 117905,
+      "otherTextBytes": -153304
+    },
+    "largestPgoColdFragments": [
+      {"symbol": "tagged_sagejs_checked_r0_int64_pari_flxq_powu.constprop.0.cold", "bytes": 6017},
+      {"symbol": "tagged_sagejs_checked_r0_int64_pari_flx_small_degfact.constprop.0.cold", "bytes": 3123},
+      {"symbol": "tagged_int64_pari_prime_degree_catalog.cold", "bytes": 3065},
+      {"symbol": "tagged_sagejs_checked_r0_int64_pari_flxq_powers.constprop.0.cold", "bytes": 2246},
+      {"symbol": "tagged_sagejs_checked_r0_int64_pari_flx_mul.constprop.0.cold", "bytes": 2225},
+      {"symbol": "tagged_sagejs_checked_r0_int64_pari_flx_gcd.cold", "bytes": 1937},
+      {"symbol": "tagged_sagejs_checked_r0_int64_pari_flxq_sqr.constprop.0.cold", "bytes": 1702},
+      {"symbol": "tagged_sagejs_checked_r0__int64_pari_flx_divrem.cold", "bytes": 1109}
+    ]
+  },
+  "timing": {
+    "freshProcesses": 2,
+    "alternatingPairsPerProcess": 7,
+    "totalAlternatingPairs": 14,
+    "run1": {
+      "baselineMilliseconds": [2.171985839009288, 2.162978811145511, 2.1655758699690404, 2.1642667678018577, 2.168686424148607, 2.1712001114551085, 2.1693272600619196],
+      "pgoMilliseconds": [2.119944920930233, 2.1176826906976745, 2.118950504651163, 2.1216183860465114, 2.122917179069767, 2.1211483186046514, 2.117130804651163],
+      "baselineGeometricMeanMilliseconds": 2.167714897608869,
+      "pgoGeometricMeanMilliseconds": 2.1199123446420765,
+      "ratio": 0.9779479520025802
+    },
+    "run2": {
+      "baselineMilliseconds": [2.145905509202454, 2.141152717791411, 2.1421871687116565, 2.1448310613496933, 2.1474907239263805, 2.1466695920245398, 2.168242162576687],
+      "pgoMilliseconds": [2.1098445400457666, 2.1173975812356978, 2.1091468741418766, 2.1099479496567506, 2.1076937162471396, 2.1103727551487412, 2.1165721121281464],
+      "baselineGeometricMeanMilliseconds": 2.1480516437143993,
+      "pgoGeometricMeanMilliseconds": 2.1115649949300943,
+      "ratio": 0.9830140728268467
+    },
+    "pooledBaselineGeometricMeanMilliseconds": 2.1578608733912668,
+    "pooledPgoGeometricMeanMilliseconds": 2.115734553120119,
+    "pooledRatio": 0.9804777403443333,
+    "pairsFavorable": 14,
+    "pairsUnfavorableOrEqual": 0,
+    "smallestPairedRatio": 0.9759388745203585,
+    "largestPairedRatio": 0.9889054450164504
+  },
+  "interpretation": {
+    "observed": [
+      "PGO partitions most object text into unlikely sections and increases the hot-text share.",
+      "PGO creates cold fragments for failure and infrequent paths inside the checked graph.",
+      "The narrow training workload also classifies uncalled exported kernels as cold."
+    ],
+    "inference": "The speedup plausibly combines denser hot-path layout with profile-specific branch, inlining, cloning, and size decisions; section placement alone does not establish a unique cause.",
+    "portableApproximation": [
+      "Attach generic unlikely facts to status failures, raises, arithmetic overflow, bounds failures, failed checked-region dispatch, and authenticated guarded fallbacks.",
+      "Outline sufficiently large failure continuations into cold helpers without changing exception or mutation semantics.",
+      "Use backend-specific hints behind a portable abstraction with a correct no-op Windows fallback.",
+      "Do not infer whole-export temperature from this catalog-only profile."
+    ]
+  },
+  "decision": {
+    "adoptPgoBuild": false,
+    "outcome": "Keep PGO diagnostic-only and test semantics-backed likelihood plus cold failure outlining as a separate portable compiler experiment."
+  }
+}
