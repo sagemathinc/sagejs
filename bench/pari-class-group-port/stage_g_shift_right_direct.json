@@ -1,0 +1,83 @@
+{
+  "schema": "sagejs.checked-region/stage-g-shift-right-direct-diagnostic-v1",
+  "outcome": "blocked-before-emission",
+  "performanceClaim": null,
+  "compiler": {
+    "worktree": "/home/user/sagejs-worktrees/virtual-u64-fixed-views",
+    "commit": "83dc2cd3206837262ed8374ba01b1c069e16cc46",
+    "checkedRegionsAtCommitSha256": "882bb240064281fa57d5dcb8b0c5494019ad0108b6688009b29537e5811e69ba"
+  },
+  "fixture": {
+    "path": "/tmp/sagejs-int64-prime-degree-catalog-fcTr9K/fixtures.json",
+    "sha256": "f61f6aed8d229a2fc10a6336559e97a23d58758151481fb1dfc09fb84a906312",
+    "packets": 4
+  },
+  "frozenStageG": {
+    "artifactPath": "/tmp/sagejs-stage-a-catalog-zGI1yt",
+    "manifestSha256": "5294654d534a40d6bb0fe6782f6bffa53ced20344732da89b8a351e6da088d6a",
+    "coreSha256": "7c4f789106c56c4e62ef46534892a92ef3a4f382cadb47c1f9910c46d6726bfe",
+    "objectTextBytes": 212370,
+    "elfTextBytes": 347031
+  },
+  "target": {
+    "function": "int64_shift_right",
+    "sourceSemantics": "Repeated Python floor division by the constant 2 while shift is positive",
+    "privateCaller": "int64_pari_flxq_powu",
+    "operationOrigins": [
+      "int64_pari_flxq_powu:200",
+      "int64_pari_flxq_powu:285",
+      "int64_pari_flxq_powu:303",
+      "int64_pari_flxq_powu:355"
+    ],
+    "profiledCalls": {
+      "allPackets": 21138,
+      "packet0Total": 19974,
+      "packet0ByOperationOrigin": {
+        "int64_pari_flxq_powu:200": 652,
+        "int64_pari_flxq_powu:285": 5525,
+        "int64_pari_flxq_powu:303": 5525,
+        "int64_pari_flxq_powu:355": 8272
+      },
+      "remainingPacketsCombined": 1164,
+      "provenance": "Frozen Stage G dynamic profile supplied to this diagnostic lane"
+    }
+  },
+  "authorizationProbe": {
+    "driverChanged": false,
+    "localVariant": {
+      "function": "int64_shift_right",
+      "mode": "direct-result",
+      "guard": [],
+      "edges": [],
+      "capabilities": []
+    },
+    "preparedDirectResultVariants": 0,
+    "preparedDirectCallSites": 0,
+    "expectedPrivateEdges": 4,
+    "stoppedBeforeCodeGeneration": true,
+    "semanticReplayRun": false,
+    "machineInspectionRun": false,
+    "timingRun": false
+  },
+  "blocker": {
+    "function": "directResultFailureFree",
+    "file": "tools/native-kernel/checked-regions.cjs",
+    "rejectedOperation": {
+      "kind": "int64.binary",
+      "operation": "floordiv",
+      "origin": "int64_shift_right:3"
+    },
+    "currentRule": "Only authenticated int64 add, sub, and mul operations are admitted; every other int64.binary operation makes a direct-result candidate unsafe.",
+    "requiredFutureRule": "Authenticate floordiv only when its divisor is proved nonzero and the INT64_MIN / -1 overflow case is proved impossible, and emit the existing sagejs_word_fdiv_int64 floor semantics without a status path under that proof.",
+    "targetSpecificFacts": {
+      "divisor": 2,
+      "divisorNonzero": true,
+      "minimumDividedByNegativeOneImpossible": true
+    }
+  },
+  "decision": {
+    "implemented": false,
+    "reason": "The current generic authenticated direct-result machinery cannot certify the preserved floor-division body, and this lane may not change compiler files.",
+    "nextStep": "Add and test a generic proved-int64-floordiv authorization rule in a compiler lane, then rerun this unchanged four-edge experiment."
+  }
+}

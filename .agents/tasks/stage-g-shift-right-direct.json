@@ -1,0 +1,81 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "stage-g-shift-right-direct",
+  "title": "Stage G Shift Right Direct",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Measure an authenticated direct-result ABI for the four private int64_shift_right edges in the frozen Stage G catalog, preserving exact Python floor-shift semantics and all valid/malformed outputs",
+  "base_commit": "696c0bb472ec7e2aaf63ead93951f7eedcb32be7",
+  "claims": [
+    "bench/pari-class-group-port/check_stage_a_catalog_region.cjs",
+    "bench/pari-class-group-port/stage_g_shift_right_direct.md",
+    "bench/pari-class-group-port/stage_g_shift_right_direct.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Frozen four-packet PARI-port catalog and malformed-case replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 456.029,
+      "started_at": "2026-09-16T11:01:39.528Z",
+      "commit": "696c0bb472ec7e2aaf63ead93951f7eedcb32be7",
+      "workspace_fingerprint": "bad6c6d8d49ddb7666ef9790f1f75965ccd02ecf9db446852202f02e0c281b96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 210.492,
+      "started_at": "2026-09-16T11:09:19.617Z",
+      "commit": "696c0bb472ec7e2aaf63ead93951f7eedcb32be7",
+      "workspace_fingerprint": "bad6c6d8d49ddb7666ef9790f1f75965ccd02ecf9db446852202f02e0c281b96",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.739,
+      "started_at": "2026-09-16T11:18:08.359Z",
+      "commit": "696c0bb472ec7e2aaf63ead93951f7eedcb32be7",
+      "workspace_fingerprint": "bad6c6d8d49ddb7666ef9790f1f75965ccd02ecf9db446852202f02e0c281b96",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Recorded a negative Stage G shift-right direct-result diagnostic: the four private IR edges and supplied 21,138-call profile are exact, but the current generic authorization gate rejects the preserved int64 floordiv body before code generation.",
+    "risks": [
+      "No candidate artifact, replay, machine census, or timing exists because authorization correctly stopped before emission.",
+      "A diagnostic pnpm test:compiler run is retained as a failing receipt: unrelated base/environment fixtures lacked the optional FLINT addon or failed on an undefined generated Any binding. The documentation-only lane requires the passing build and architecture gates."
+    ],
+    "next_steps": [
+      "Add a generic compiler proof and direct emission rule for int64 floordiv with a proved nonzero divisor and excluded INT64_MIN / -1 overflow, then rerun this experiment unchanged."
+    ]
+  }
+}
