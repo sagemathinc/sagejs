@@ -90,19 +90,51 @@
       "commit": "38e223c7021a92c3def92b797712dbc5ac843d31",
       "workspace_fingerprint": "11cefbe34f15e0b2e6893959b5f7fb9b499d681db6f26be0fa597f88c2d709ac",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.889,
+      "started_at": "2026-09-16T07:43:33.106Z",
+      "commit": "670dda5539173ab937a47dffb5c150466b39aa38",
+      "workspace_fingerprint": "1d6154a2c501624fa7dcaa73d67c34f7941981b5893fa986675e16911bee1865",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.034,
+      "started_at": "2026-09-16T07:43:49.720Z",
+      "commit": "670dda5539173ab937a47dffb5c150466b39aa38",
+      "workspace_fingerprint": "1d6154a2c501624fa7dcaa73d67c34f7941981b5893fa986675e16911bee1865",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 54.142,
+      "started_at": "2026-09-16T07:44:06.912Z",
+      "commit": "670dda5539173ab937a47dffb5c150466b39aa38",
+      "workspace_fingerprint": "1d6154a2c501624fa7dcaa73d67c34f7941981b5893fa986675e16911bee1865",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Implemented opt-in, compiler-authorized scalar replacement for local nonescaping UInt64Buffer views in checked private variants. Fixed views can omit proved construction; dynamic views retain exact construction-time validation and snapshot their data pointer and logical length. Proof groups are atomic and mutation-sensitive, while unsupported cases retain the ordinary checked path. Focused hostile and runtime tests pass for int64, uint64, and arbitrary-precision Integer inputs. The independent frozen Stage-E harness reached all 11 readable catalog views and matched 12 valid plus 27 malformed executions exactly, but timing was neutral at 1.002790x and 1.005683x the same-tip Stage-D control.",
+    "summary": "Implemented opt-in, compiler-authorized scalar replacement for local nonescaping UInt64Buffer views and authenticated private direct-result leaf variants. The direct-result mode proves an individual caller edge's guard and fixed spans, validates the cloned leaf against a closed no-failure operation whitelist, jointly authenticates the caller and callee snapshots, and emits a fixed-width scalar-return ABI without status or output pointers. Unproved or structurally mutated edges call the unchanged checked source. Focused hostile/runtime tests pass, and a read-only census of the exact frozen f61f catalog authorizes precisely the three audited powu-to-copy edges and one direct leaf.",
     "risks": [
       "Validated virtualization deliberately handles only top-level local views rooted directly in UInt64Buffer parameters; nested roots, escaping views, and structured construction retain ordinary checked descriptors.",
       "pnpm test:changed stopped on unrelated native-cache lifecycle environment-key instability. pnpm test:compiler had pre-existing missing-FLINT-addon and generated Any ReferenceError failures; 17 compiler fixtures passed.",
       "pnpm test:native reaches the IR-version ratchets but fails because the new capability advances generated IR from version 45 to 46; shared ratchet updates are deliberately excluded from this lane. With temporary local 46 expectations, all affected compiler-shape tests passed before the remaining native-kernel.cjs ratchet stopped the run.",
-      "The frozen catalog eliminated 22 UInt64 descriptor locals and all 11 descriptor data/length/offset assignments, reducing generated core by 2013 bytes, but did not reduce 67 signed index checks, 68 UInt64 bounds failures, or 275 checked int64 arithmetic sites. Addon size and ELF text were unchanged, explaining the neutral timing result."
+      "The frozen catalog eliminated 22 UInt64 descriptor locals and all 11 descriptor data/length/offset assignments, reducing generated core by 2013 bytes, but did not reduce 67 signed index checks, 68 UInt64 bounds failures, or 275 checked int64 arithmetic sites. Addon size and ELF text were unchanged, explaining the neutral timing result.",
+      "Direct-result qualification is deliberately leaf-only: callees are rejected, and the existing topological fact pass is not represented as a general SCC/MayFail fixed point. Range latches retain checked helpers in the direct core."
     ],
     "next_steps": [
       "Do not pursue descriptor virtualization as the next performance campaign: it is semantically sound but the frozen result rejects it as the dominant remaining cost.",
-      "Target the unchanged logical index checks, checked int64 arithmetic, or private call/status ABI overhead with a separately proved transformation and a same-tip frozen benchmark."
+      "Independently build and benchmark the exact three-edge direct-result catalog candidate against its same-tip checked control; retain it only if the frozen correctness corpus and timing gate pass.",
+      "Extend direct-result qualification beyond leaves only after adding an explicit SCC-aware MayFail analysis and authenticated transitive callee contracts."
     ]
   }
 }

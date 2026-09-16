@@ -4,10 +4,13 @@ const {
   isVerifiedFixedSpanAccess,
 } = require("./checked-bounds-proofs.cjs");
 const {
+  checkedRegionDirectCallEmission,
+  checkedRegionDirectResultEmission,
   checkedRegionLocalVariant,
   checkedRegionVirtualUInt64Emission,
   isCheckedRegionBufferAccess,
   isCheckedRegionInt64Arithmetic,
+  isCheckedRegionNonzeroStep,
 } = require("./checked-regions.cjs");
 
 const {
@@ -126,6 +129,18 @@ function taggedSignature(fn, prototype = false, options = {}) {
     : "static");
   const name = options.name || fn.name;
   return `${storage} int tagged_${name}(${parameters})${prototype ? ";" : ""}`;
+}
+
+function directResultName(name) {
+  return `sagejs_direct_${name}`;
+}
+
+function directResultSignature(fn, prototype = false) {
+  const parameters = fn.params.map((param) =>
+    `${scalarType(param.type, fn)} sagejs_tagged_arg_${param.name}`
+  ).join(", ") || "void";
+  return `SAGEJS_CHECKED_REGION_HOT_INLINE ${scalarType(fn.returnType, fn)} ` +
+    `${directResultName(fn.name)}(${parameters})${prototype ? ";" : ""}`;
 }
 
 function taggedForwardArguments(fn) {
@@ -260,6 +275,8 @@ function emitDivisionGuard(right, indent) {
 }
 
 function emitTaggedOperation(operation, context, indent) {
+  if (typeof operation.target === "string" &&
+      context.directDeadExactNames?.has(operation.target)) return "";
   const target = operation.target === undefined
     ? undefined
     : taggedValue(operation.target, context);
@@ -315,6 +332,7 @@ function emitTaggedOperation(operation, context, indent) {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
   if (operation.kind === "range.validate_step") {
+    if (isCheckedRegionNonzeroStep(operation)) return "";
     const step = taggedValue(operation.step, context);
     const condition = operation.stepType === "Integer"
       ? `sagejs_tagged_sgn(${step}) == 0`
@@ -1078,6 +1096,19 @@ function emitTaggedOperation(operation, context, indent) {
     if (callee === undefined) {
       throw new Error(`unknown tagged callee ${operation.function}`);
     }
+    const direct = checkedRegionDirectCallEmission(
+      context.currentFunction, operation, context.functions,
+    );
+    if (direct !== undefined) {
+      if (operation.results !== undefined || operation.target === undefined) {
+        throw new Error("direct result call must have one scalar target");
+      }
+      const args = operation.arguments.map((argument) =>
+        taggedValue(argument.name, context)
+      );
+      return `${indent}${target} = ${directResultName(direct.function)}(` +
+        `${args.join(", ")});`;
+    }
     const outputs = operation.results === undefined
       ? [operation.returnType === "Integer" ? target : `&${target}`]
       : operation.results.map((result) =>
@@ -1197,7 +1228,8 @@ function emitTaggedStatements(statements, context, indent) {
         `${indent}        break;`, `${indent}    ${index} = ${iterator};`,
         `${indent}    (void) ${index};`,
         emitTaggedStatements(statement.body, context, `${indent}    `),
-        ...(statement.incrementProof !== undefined
+        ...(statement.incrementProof !== undefined &&
+            context.directResult !== true
           ? [`${indent}    ${iterator} += ${step};`]
           : [
             `${indent}    if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator}))`,
@@ -1233,6 +1265,13 @@ function emitTaggedStatements(statements, context, indent) {
       continue;
     }
     if (statement.kind === "return") {
+      if (context.directResult === true) {
+        if (statement.value === undefined || statement.values !== undefined) {
+          throw new Error("direct result function must return one scalar");
+        }
+        lines.push(`${indent}return ${taggedValue(statement.value, context)};`);
+        continue;
+      }
       const tuple = tupleElementTypes(statement.type);
       if (tuple !== undefined) {
         tuple.forEach((type, index) => {
@@ -1369,6 +1408,7 @@ function emitTaggedFunction(fn, functions, options) {
   }
   let mixedSerial = 0;
   const context = {
+    currentFunction: fn,
     emitMixedOperation: options.emitMixedOperation,
     freshIdentifier: prefix => `${prefix}_${mixedSerial++}`,
     functions,
@@ -1509,6 +1549,65 @@ ${cleanup.join("\n")}
 }`;
 }
 
+function emitDirectResultFunction(fn, functions, metadata) {
+  const types = new Map(
+    [...fn.params, ...fn.locals].map((value) => [value.name, value.type]),
+  );
+  const deadExactNames = new Set(metadata.deadExactNames);
+  const virtualUInt64Views = checkedRegionVirtualUInt64Emission(fn);
+  const declarations = [];
+  for (const param of fn.params) {
+    declarations.push(
+      `    ${scalarType(param.type, fn)} ${taggedName(param.name)} = ` +
+      `sagejs_tagged_arg_${param.name};`,
+    );
+  }
+  for (const local of fn.locals) {
+    if (deadExactNames.has(local.name) ||
+        virtualUInt64Views.isVirtualLocal(local.name)) continue;
+    declarations.push(
+      `    ${scalarType(local.type, fn)} ${taggedName(local.name)} = ` +
+      `${["Int64Buffer", "Int64Record", "UInt64Buffer", "Float64Buffer"]
+        .includes(local.type) ? "{0}" : "0"};`,
+    );
+  }
+  const context = {
+    currentFunction: fn,
+    directResult: true,
+    directDeadExactNames: deadExactNames,
+    emitMixedOperation() {
+      throw new Error("direct result function cannot use mixed operations");
+    },
+    functions,
+    sites: new Map(),
+    storage: fn.analysis.storage,
+    tagLocals: new Set(),
+    types,
+    virtualUInt64Views,
+    virtualUInt64Snapshots: new Map(),
+    resourceParameters: new Set(),
+    resourceForType() { return undefined; },
+    resourceInitialized() {
+      throw new Error("direct result function cannot own resources");
+    },
+  };
+  const body = emitTaggedStatements(fn.body, context, "    ");
+  const forbidden = [
+    /\bstatus\b/, /sagejs_tagged_output_/, /goto\s+fail/, /sagejs_native_status_set/,
+  ];
+  const retained = forbidden.find((pattern) => pattern.test(body));
+  if (retained !== undefined) {
+    throw new Error(
+      `direct result function retained a fallible ABI operation ${retained}`,
+    );
+  }
+  return `${directResultSignature(fn)}
+{
+${declarations.join("\n")}
+${body}
+}`;
+}
+
 function checkedFallbackName(fn) {
   return `sagejs_checked_fallback_${fn.name}`;
 }
@@ -1612,10 +1711,19 @@ function generateTaggedFunctions(functions, options = {}) {
   return {
     prototypes: [
       usesCheckedRegions ? CHECKED_REGION_ATTRIBUTES : "",
-      functions.map((fn) => taggedSignature(fn, true)).join("\n"),
+      functions.map((fn) => {
+        const direct = checkedRegionDirectResultEmission(fn);
+        return direct === undefined
+          ? taggedSignature(fn, true)
+          : directResultSignature(fn, true);
+      }).join("\n"),
     ].filter(Boolean).join("\n\n"),
     functions: functions
       .map((fn) => {
+        const direct = checkedRegionDirectResultEmission(fn);
+        if (direct !== undefined) {
+          return emitDirectResultFunction(fn, functionMap, direct);
+        }
         if (fn.analysis?.backend?.requiresExactWorkspace) {
           return emitGmpWorkspaceBridge(fn);
         }

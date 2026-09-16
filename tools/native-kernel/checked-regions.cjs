@@ -28,12 +28,33 @@ const CHECKED_REGION_INT64_ARITHMETIC = Symbol(
 );
 const CHECKED_REGION_BUFFER_ACCESS = Symbol("checked region buffer access");
 const CHECKED_REGION_LOCAL_VARIANT = Symbol("checked region local variant");
+const CHECKED_REGION_DIRECT_RESULT = Symbol("checked region direct result");
+const CHECKED_REGION_DIRECT_CALL = "checkedRegionDirectCallProof";
+const CHECKED_REGION_DIRECT_RESULT_PROOF = "checkedRegionDirectResultProof";
 const VIRTUAL_UINT64_VIEW_PROOF = "checkedRegionVirtualUInt64ViewProof";
 const virtualUInt64ViewAuthority = createFunctionProofAuthority({
   name: "checked-region virtual UInt64 view",
   ignoredKeys: [
     "boundsProof",
+    "checkedRegionDirectCallProof",
+    "checkedRegionDirectResultProof",
     "checkedRegionProof",
+    "incrementProof",
+    "provenance",
+  ],
+});
+const directCallAuthority = createFunctionProofAuthority({
+  name: "checked-region direct result call",
+  ignoredKeys: [
+    "boundsProof",
+    "incrementProof",
+    "provenance",
+  ],
+});
+const directResultAuthority = createFunctionProofAuthority({
+  name: "checked-region direct result function",
+  ignoredKeys: [
+    "boundsProof",
     "incrementProof",
     "provenance",
   ],
@@ -249,6 +270,7 @@ function installCheckedRegionDeclarations(ir, declarations) {
       localVariants: Object.freeze([...(declaration.localVariants || [])].map(
         (variant) => Object.freeze({
           function: variant?.function,
+          mode: variant?.mode,
           guard: Object.freeze([...(variant?.guard || [])].map((item) =>
             Object.freeze({ ...item })
           )),
@@ -1144,6 +1166,19 @@ function analyzeStatements(statements, state, context) {
         }
       }
       if (expression !== undefined) state.expressions.set(operation.target, expression);
+    } else if (context.directResult === true &&
+        operation.kind === "range.validate_step" &&
+        operation.stepType === "int64") {
+      const step = previous.intervals.get(operation.step);
+      if (step !== undefined && (step.maximum < 0n || step.minimum > 0n)) {
+        operation.checkedRegionProof = Object.freeze({
+          authority: "checked-region-nonzero-int64-step-v1",
+          operation: operation.id,
+          step: operation.step,
+          minimum: step.minimum.toString(),
+          maximum: step.maximum.toString(),
+        });
+      }
     }
 
     if ([
@@ -1238,14 +1273,243 @@ function analyzeStatements(statements, state, context) {
           incoming.bufferRelations.set(parameter.name, new Set(relationships));
         }
       });
+      if (context.callFacts !== undefined) {
+        context.callFacts.set(operation, {
+          callee: callee.name,
+          state: cloneState(incoming),
+          caller: context.currentFunction,
+        });
+      }
       mergeFacts(context.facts.get(callee.name), incoming);
     }
   }
   return state;
 }
 
-function attachCapabilities(region, entry, variants, localFacts = new Map()) {
-  if (region.capabilities.length === 0 && localFacts.size === 0) return;
+function factsImplyGuard(state, guard) {
+  for (const predicate of guard) {
+    if (["int64-range", "uint64-range"].includes(predicate.kind)) {
+      const interval = state.intervals.get(predicate.parameter);
+      if (interval === undefined || interval.minimum < BigInt(predicate.minimum) ||
+          interval.maximum > BigInt(predicate.maximum)) return false;
+      continue;
+    }
+    if (predicate.kind === "buffer-min-length") {
+      const minimum = state.buffers.get(predicate.parameter);
+      if (minimum === undefined || minimum < BigInt(predicate.minimum)) {
+        return false;
+      }
+      continue;
+    }
+    // This leaf-only direct-result milestone deliberately does not infer the
+    // relational guard vocabulary at call edges. Later SCC/MayFail analysis
+    // may extend this without weakening the checked fallback.
+    return false;
+  }
+  return true;
+}
+
+function allUInt64ViewsAreFixed(fn, state) {
+  const views = [];
+  visitOperations(fn.body, (operation) => {
+    if (operation.kind === "uint64.buffer.view") views.push(operation);
+  });
+  if (views.length === 0) return true;
+  const groups = virtualFixedUInt64ViewGroups(fn, state);
+  const fixed = new Set(groups
+    .filter((group) => group.fact.mode === "fixed")
+    .map((group) => group.view));
+  return views.every((view) => fixed.has(view));
+}
+
+function directDeadExactNames(fn) {
+  const dead = new Set();
+  visitOperations(fn.body, (operation) => {
+    if (operation.kind !== "uint64.buffer.view" ||
+        operation[VIRTUAL_UINT64_VIEW_PROOF]?.mode !== "fixed") return;
+    dead.add(operation.start);
+    dead.add(operation.length);
+  });
+  let changed = true;
+  while (changed) {
+    changed = false;
+    visitOperations(fn.body, (operation) => {
+      if (typeof operation.target !== "string" ||
+          !dead.has(operation.target)) return;
+      if (["integer.copy", "integer.from_int64"].includes(operation.kind) &&
+          !dead.has(operation.source)) {
+        const local = fn.locals.find(value => value.name === operation.source);
+        if (local?.type === "Integer") {
+          dead.add(operation.source);
+          changed = true;
+        }
+      }
+    });
+  }
+  return dead;
+}
+
+function fixedWidthDirectResultShape(fn, deadExact) {
+  const allowedParameters = new Set([
+    "bool", "int64", "uint64", "Int64Buffer", "UInt64Buffer", "Float64",
+    "Float64Buffer",
+  ]);
+  const allowedResults = new Set(["bool", "int64", "uint64", "Float64"]);
+  return allowedResults.has(fn.returnType) &&
+    fn.params.every((value) => allowedParameters.has(value.type)) &&
+    fn.locals.every((value) => allowedParameters.has(value.type) ||
+      (value.type === "Integer" && deadExact.has(value.name))
+    );
+}
+
+function directResultFailureFree(fn) {
+  const deadExact = directDeadExactNames(fn);
+  if (!fixedWidthDirectResultShape(fn, deadExact)) return false;
+  let returns = 0;
+  let safe = true;
+  const allowed = new Set([
+    "if", "loop.range_int64", "int64.compare", "int64.constant",
+    "int64.copy", "uint64.constant", "return", "range.validate_step",
+    "int64.binary", "uint64.buffer.view", "uint64.buffer.copy",
+    "uint64.buffer.get", "uint64.buffer.set", "integer.constant",
+    "integer.from_int64", "integer.copy",
+  ]);
+  visitOperations(fn.body, (operation) => {
+    if (!allowed.has(operation.kind)) {
+      safe = false;
+      return;
+    }
+    if (operation.kind === "return") {
+      returns += 1;
+      return;
+    }
+    if (operation.kind === "raise" || operation.kind === "native.call" ||
+        operation.kind === "ffi.call") {
+      safe = false;
+      return;
+    }
+    if (operation.kind === "uint64.buffer.view") {
+      const claim = operation[VIRTUAL_UINT64_VIEW_PROOF];
+      if (claim?.role !== "view" || claim.mode !== "fixed") safe = false;
+      return;
+    }
+    if (operation.kind === "uint64.buffer.copy") {
+      if (operation[VIRTUAL_UINT64_VIEW_PROOF]?.role !== "alias") safe = false;
+      return;
+    }
+    if (["uint64.buffer.get", "uint64.buffer.set"].includes(operation.kind)) {
+      const claim = operation[VIRTUAL_UINT64_VIEW_PROOF];
+      if (claim?.role !== "access" ||
+          claim.logicalIndexProof?.authority !==
+            "checked-region-virtual-view-range-v1") safe = false;
+      return;
+    }
+    if (operation.kind === "int64.binary" &&
+        ["add", "sub", "mul"].includes(operation.operation)) {
+      if (operation.checkedRegionProof?.authority !==
+          "checked-region-int64-interval-v1") safe = false;
+      return;
+    }
+    if (operation.kind === "int64.binary") {
+      safe = false;
+      return;
+    }
+    if (operation.kind === "range.validate_step" &&
+        !isCheckedRegionNonzeroStep(operation)) safe = false;
+    if (operation.kind?.startsWith("integer.") &&
+        (typeof operation.target !== "string" ||
+          !deadExact.has(operation.target))) safe = false;
+  });
+  const final = fn.body.at(-1);
+  if (safe && returns === 1 && final?.kind === "return") {
+    fn[CHECKED_REGION_DIRECT_RESULT].deadExactNames = Object.freeze([
+      ...deadExact,
+    ]);
+    return true;
+  }
+  return false;
+}
+
+function attachDirectResultVariants(context) {
+  const pendingCalls = [];
+  for (const spec of context.directSpecs) {
+    const eligible = [];
+    const joined = {
+      intervals: new Map(), buffers: new Map(), expressions: new Map(),
+      rangeUpper: new Map(), bufferRelations: new Map(),
+      safeInt64Expressions: new Set(), initialized: false,
+    };
+    for (const [operation, call] of context.callFacts) {
+      if (call.callee !== spec.slow.name) continue;
+      // The private checked clone exists only to gather edge-local facts.  All
+      // emitted edges retain the ordinary source function as their fallback;
+      // a separately authenticated claim may replace only this individual
+      // call with the infallible direct leaf.
+      operation.function = spec.original.name;
+      if (
+          !factsImplyGuard(call.state, spec.guard) ||
+          !allUInt64ViewsAreFixed(spec.fast, call.state)) continue;
+      eligible.push([operation, call]);
+      mergeFacts(joined, call.state);
+    }
+    if (eligible.length === 0) continue;
+    const functionEnabled = new Set(spec.fast.checkedRegionLocalCapabilities);
+    const groups = virtualFixedUInt64ViewGroups(spec.fast, joined);
+    const virtualViewAliases = new Map(groups.flatMap((group) =>
+      Array.from(group.aliases, (alias) => [alias, group])
+    ));
+    const intervalViewAccesses = new Map();
+    analyzeStatements(spec.fast.body, cloneState(joined), {
+      byName: context.byName,
+      enabled: functionEnabled,
+      facts: context.facts,
+      virtualViewAliases,
+      intervalViewAccesses,
+      currentFunction: spec.fast,
+      directResult: true,
+    });
+    attachVirtualFixedUInt64Views(
+      spec.fast, joined, functionEnabled, intervalViewAccesses,
+    );
+    if (!directResultFailureFree(spec.fast)) continue;
+    const returnOperation = spec.fast.body.findLast((operation) =>
+      operation.kind === "return"
+    );
+    if (returnOperation === undefined) continue;
+    const resultClaim = Object.freeze({
+      authority: "checked-region-direct-result-v1",
+      function: spec.fast.name,
+      fallback: spec.original.name,
+      returnOperation: returnOperation.id,
+      deadExactNames: Object.freeze([
+        ...spec.fast[CHECKED_REGION_DIRECT_RESULT].deadExactNames,
+      ]),
+    });
+    returnOperation[CHECKED_REGION_DIRECT_RESULT_PROOF] = resultClaim;
+    directResultAuthority.authorize(spec.fast, returnOperation, resultClaim);
+    for (const [operation, call] of eligible) {
+      const claim = Object.freeze({
+        authority: "checked-region-direct-call-v1",
+        operation: operation.id,
+        directFunction: spec.fast.name,
+        fallbackFunction: spec.original.name,
+      });
+      operation[CHECKED_REGION_DIRECT_CALL] = claim;
+      pendingCalls.push([call.caller, operation, claim]);
+    }
+  }
+  return pendingCalls;
+}
+
+function attachCapabilities(
+  region,
+  entry,
+  variants,
+  localFacts = new Map(),
+  directSpecs = [],
+) {
+  if (region.capabilities.length === 0 && localFacts.size === 0 &&
+      directSpecs.length === 0) return;
   const enabled = new Set(region.capabilities);
   for (const capability of enabled) {
     if (!CAPABILITIES.has(capability)) fail(`unsupported capability ${capability}`);
@@ -1272,6 +1536,8 @@ function attachCapabilities(region, entry, variants, localFacts = new Map()) {
   for (const [name, value] of localFacts) {
     facts.set(name, { ...value, initialized: true });
   }
+  const callFacts = new Map();
+  const analysisResults = new Map();
 
   for (const name of order) {
     const fn = byName.get(name);
@@ -1292,13 +1558,30 @@ function attachCapabilities(region, entry, variants, localFacts = new Map()) {
       facts,
       virtualViewAliases,
       intervalViewAccesses,
+      callFacts,
+      currentFunction: fn,
     });
+    analysisResults.set(fn, { state, functionEnabled, intervalViewAccesses });
+  }
+  for (const [fn, result] of analysisResults) {
     attachVirtualFixedUInt64Views(
-      fn,
-      state,
-      functionEnabled,
-      intervalViewAccesses,
+      fn, result.state, result.functionEnabled, result.intervalViewAccesses,
     );
+  }
+  // Ordinary capability attachment must finish before the direct-result
+  // authority snapshots either side of a rewritten edge.  The direct pass may
+  // add proofs only to its private leaf clone; after this point the only
+  // accepted mutations are proof fields explicitly ignored by the structural
+  // authorities.
+  const pendingDirectCalls = attachDirectResultVariants({
+    byName,
+    callFacts,
+    directSpecs,
+    enabled,
+    facts,
+  });
+  for (const [fn, operation, claim] of pendingDirectCalls) {
+    directCallAuthority.authorize(fn, operation, claim);
   }
   if (enabled.has("verified-span-access")) {
     // Reconstruct ordinary checked-view/range proofs from the cloned IR.  No
@@ -1356,8 +1639,14 @@ function prepareCheckedRegions(ir) {
       if (localFunctions.has(local.function)) fail("duplicate local variant");
       localFunctions.add(local.function);
       const target = originals.get(local.function);
+      const mode = local.mode || "guarded";
+      if (!["guarded", "direct-result"].includes(mode)) {
+        fail(`unsupported local variant mode ${mode}`);
+      }
       const localGuard = normalizeGuard(local.guard, target);
-      if (localGuard.length === 0) fail("local variant guard must be nonempty");
+      if (localGuard.length === 0 && mode !== "direct-result") {
+        fail("local variant guard must be nonempty");
+      }
       if (!Array.isArray(local.capabilities) ||
           new Set(local.capabilities).size !== local.capabilities.length) {
         fail("invalid local variant capabilities");
@@ -1374,6 +1663,7 @@ function prepareCheckedRegions(ir) {
       if (hasCall) fail("local variant functions may not contain native calls");
       return Object.freeze({
         function: local.function,
+        mode,
         guard: localGuard,
         capabilities: Object.freeze([...local.capabilities]),
       });
@@ -1428,6 +1718,7 @@ function prepareCheckedRegions(ir) {
       return variant;
     });
     const localFacts = new Map();
+    const directSpecs = [];
     for (const [localIndex, local] of normalizedLocalVariants.entries()) {
       const slow = variants.find((candidate) =>
         candidate.checkedRegionVariant.original === local.function
@@ -1436,20 +1727,27 @@ function prepareCheckedRegions(ir) {
       fast.name = `${slow.name}__local_fast_${localIndex}`;
       if (occupied.has(fast.name)) fail("local variant name collision");
       occupied.add(fast.name);
-      slow[CHECKED_REGION_LOCAL_VARIANT] = Object.freeze({
-        guard: local.guard,
-        fastName: fast.name,
-        // The false arm reuses the ordinary checked implementation already
-        // emitted for the source function.  Do not duplicate a second checked
-        // body in the hot private graph.
-        slowName: local.function,
-      });
       variants.push(fast);
       const original = originals.get(local.function);
-      localFacts.set(fast.name, initialFacts(original, local.guard));
       fast.checkedRegionLocalCapabilities = Object.freeze([
         ...new Set([...region.capabilities, ...local.capabilities]),
       ]);
+      if (local.mode === "direct-result") {
+        Object.defineProperty(fast, CHECKED_REGION_DIRECT_RESULT, {
+          value: { fallbackName: local.function, deadExactNames: [] },
+        });
+        directSpecs.push({ fast, guard: local.guard, original, slow });
+      } else {
+        slow[CHECKED_REGION_LOCAL_VARIANT] = Object.freeze({
+          guard: local.guard,
+          fastName: fast.name,
+          // The false arm reuses the ordinary checked implementation already
+          // emitted for the source function.  Do not duplicate a second checked
+          // body in the hot private graph.
+          slowName: local.function,
+        });
+        localFacts.set(fast.name, initialFacts(original, local.guard));
+      }
     }
     const preparedRegion = {
       schema: SCHEMA,
@@ -1460,7 +1758,13 @@ function prepareCheckedRegions(ir) {
       variants: Object.freeze(variants),
     };
     validateCapabilityInputs(variants, new Map(variants.map((fn) => [fn.name, fn])));
-    attachCapabilities(preparedRegion, entry, variants, localFacts);
+    attachCapabilities(
+      preparedRegion,
+      entry,
+      variants,
+      localFacts,
+      directSpecs,
+    );
     return Object.freeze({
       ...preparedRegion,
     });
@@ -1501,7 +1805,59 @@ function checkedRegionVirtualUInt64Emission(fn) {
   });
 }
 
+function isCheckedRegionNonzeroStep(operation) {
+  const proof = operation?.checkedRegionProof;
+  if (proof?.authority !== "checked-region-nonzero-int64-step-v1" ||
+      proof.operation !== operation.id || proof.step !== operation.step) {
+    return false;
+  }
+  try {
+    return BigInt(proof.minimum) > 0n || BigInt(proof.maximum) < 0n;
+  } catch (_error) {
+    return false;
+  }
+}
+
+function checkedRegionDirectResultEmission(fn) {
+  const metadata = fn?.[CHECKED_REGION_DIRECT_RESULT];
+  if (metadata === undefined) return undefined;
+  const verifier = directResultAuthority.emissionVerifier(fn);
+  let result;
+  visitOperations(fn.body, (operation) => {
+    const claim = operation[CHECKED_REGION_DIRECT_RESULT_PROOF];
+    if (result !== undefined || claim === undefined ||
+        claim.authority !== "checked-region-direct-result-v1" ||
+        claim.function !== fn.name ||
+        claim.fallback !== metadata.fallbackName ||
+        claim.returnOperation !== operation.id ||
+        !verifier.isAuthorized(operation, claim)) return;
+    result = Object.freeze({
+      fallbackName: metadata.fallbackName,
+      deadExactNames: Object.freeze([...claim.deadExactNames]),
+    });
+  });
+  return result;
+}
+
+function checkedRegionDirectCallEmission(fn, operation, functions) {
+  const claim = operation?.[CHECKED_REGION_DIRECT_CALL];
+  if (claim?.authority !== "checked-region-direct-call-v1" ||
+      claim.operation !== operation.id ||
+      claim.fallbackFunction !== operation.function ||
+      !directCallAuthority.emissionVerifier(fn).isAuthorized(operation, claim)) {
+    return undefined;
+  }
+  const direct = functions.get(claim.directFunction);
+  const result = direct === undefined
+    ? undefined
+    : checkedRegionDirectResultEmission(direct);
+  if (result?.fallbackName !== claim.fallbackFunction) return undefined;
+  return Object.freeze({ function: claim.directFunction });
+}
+
 module.exports = {
+  checkedRegionDirectCallEmission,
+  checkedRegionDirectResultEmission,
   checkedRegionLocalVariant(fn) {
     return fn?.[CHECKED_REGION_LOCAL_VARIANT];
   },
@@ -1523,6 +1879,7 @@ module.exports = {
         "checked-region-int64-interval-v1" &&
       operation.checkedRegionProof.operation === operation.id;
   },
+  isCheckedRegionNonzeroStep,
   installCheckedRegionDeclarations,
   prepareCheckedRegions,
 };

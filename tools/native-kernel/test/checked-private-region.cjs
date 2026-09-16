@@ -10,6 +10,8 @@ const test = require("node:test");
 const { generateHostCore } = require("../c-backend.cjs");
 const { compileKernel } = require("../compiler.cjs");
 const {
+  checkedRegionDirectCallEmission,
+  checkedRegionDirectResultEmission,
   checkedRegionVirtualUInt64Emission,
   installCheckedRegionDeclarations,
   isCheckedRegionBufferAccess,
@@ -112,6 +114,26 @@ const localCopyDeclaration = {
   }],
 };
 
+const directCopyDeclaration = {
+  entry: "checked_region_direct_copy_entry",
+  functions: [
+    "checked_region_direct_copy_entry",
+    "checked_region_local_copy_helper",
+  ],
+  capabilities: ["virtual-fixed-uint64-views"],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 12 },
+  ],
+  localVariants: [{
+    function: "checked_region_local_copy_helper",
+    mode: "direct-result",
+    guard: [
+      { kind: "int64-range", parameter: "degree", minimum: -1, maximum: 3 },
+    ],
+    capabilities: ["int64-arithmetic", "interval-view-access"],
+  }],
+};
+
 function fixedViewIndexDeclaration(entry) {
   return {
     entry,
@@ -133,6 +155,19 @@ function functionText(source, name) {
   const start = match.index;
   const next = source.indexOf("\n}\n", start);
   assert.notEqual(next, -1, `unterminated ${name}`);
+  return source.slice(start, next + 3);
+}
+
+function directFunctionText(source, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(
+    `SAGEJS_CHECKED_REGION_HOT_INLINE [^\\n]+ ` +
+      `sagejs_direct_${escaped}\\([^;]+\\)\\n\\{`,
+  ).exec(source);
+  assert.ok(match, `missing direct ${name}`);
+  const start = match.index;
+  const next = source.indexOf("\n}\n", start);
+  assert.notEqual(next, -1, `unterminated direct ${name}`);
   return source.slice(start, next + 3);
 }
 
@@ -1215,6 +1250,251 @@ int main(void)
   delete proved[0][0].checkedRegionVirtualUInt64ViewProof;
   const revoked = checkedRegionVirtualUInt64Emission(fast);
   assert.equal(revoked.validatedViews().length, 0);
+});
+
+test("private direct-result variants rewrite only proved call edges", async () => {
+  const ir = await witness();
+  installCheckedRegionDeclarations(ir, [directCopyDeclaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const entry = region.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_direct_copy_entry"
+  );
+  const slow = region.variants.find(fn =>
+    fn.name.endsWith("checked_region_local_copy_helper")
+  );
+  const fast = region.variants.find(fn =>
+    fn.name.includes("checked_region_local_copy_helper__local_fast_0")
+  );
+  assert.ok(entry);
+  assert.ok(slow);
+  assert.ok(fast);
+  assert.ok(checkedRegionDirectResultEmission(fast));
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  const calls = entry.body.filter(operation => operation.kind === "native.call");
+  assert.equal(calls.length, 4);
+  const directCalls = calls.filter(operation =>
+    checkedRegionDirectCallEmission(entry, operation, functions) !== undefined
+  );
+  assert.equal(directCalls.length, 3);
+  assert.equal(calls.every(operation =>
+    operation.function === "checked_region_local_copy_helper"
+  ), true);
+
+  const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
+  const directBody = directFunctionText(core.source, fast.name);
+  assert.doesNotMatch(directBody, /\bstatus\b|sagejs_tagged_output_|goto fail|sagejs_native_status_set/);
+  assert.equal((directBody.match(/sagejs_word_add_int64/g) || []).length, 3);
+  assert.match(directBody, /return sagejs_local_tagged_degree;/);
+  assert.match(core.source,
+    new RegExp(`tagged_${slow.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\(`));
+  assert.equal((core.source.match(new RegExp(
+    `= sagejs_direct_${fast.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\(`,
+    "g",
+  )) || []).length, 3);
+
+  if (process.platform !== "win32") {
+    const temporary = mkdtempSync(join(tmpdir(), "sagejs-direct-result-"));
+    try {
+      writeFileSync(join(temporary, "kernel_core.h"), core.header);
+      const runtimeSource = `${core.source}
+#include <string.h>
+int main(void)
+{
+    uint64_t words[12] = {1,2,3,4,5,6,7,8,9,10,11,12};
+    const uint64_t expected[12] = {1,2,1,2,3,4,0,0,0,0,11,12};
+    sagejs_uint64_buffer storage = {words, 12};
+    sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
+    int64_t result = INT64_C(99);
+    if (!tagged_checked_region_direct_copy_entry(
+            &status, &result, storage, INT64_C(0), INT64_C(3), INT64_C(2)))
+        return 1;
+    if (status.code != SAGEJS_NATIVE_OK || result != INT64_C(3) ||
+        memcmp(words, expected, sizeof(words)) != 0)
+        return 2;
+    sagejs_native_status_reset(&status);
+    if (tagged_checked_region_direct_copy_entry(
+            &status, &result, storage, INT64_C(10), INT64_C(0), INT64_C(0)))
+        return 3;
+    if (status.code != SAGEJS_NATIVE_RANGE_ERROR || status.message == NULL ||
+        strcmp(status.message, "UInt64Buffer view is outside its buffer") != 0)
+        return 4;
+    return 0;
+}
+`;
+      writeFileSync(join(temporary, "runtime.c"), runtimeSource);
+      const linked = spawnSync(process.env.CC || "cc", [
+        "-std=c11", "-Werror", "-I", temporary,
+        join(temporary, "runtime.c"), "-lgmp", "-lm", "-o",
+        join(temporary, "runtime"),
+      ], { encoding: "utf8" });
+      assert.equal(linked.status, 0, linked.stderr || linked.stdout);
+      const executed = spawnSync(join(temporary, "runtime"), [], {
+        encoding: "utf8",
+      });
+      assert.equal(executed.status, 0, executed.stderr || executed.stdout);
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  }
+});
+
+test("direct-result authority revokes mutations and rejects unsafe shapes", async () => {
+  const ir = await witness();
+  installCheckedRegionDeclarations(ir, [directCopyDeclaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const entry = region.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_direct_copy_entry"
+  );
+  const fast = region.variants.find(fn =>
+    fn.name.includes("checked_region_local_copy_helper__local_fast_0")
+  );
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  const calls = entry.body.filter(operation => operation.kind === "native.call");
+  assert.equal(calls.filter(operation =>
+    checkedRegionDirectCallEmission(entry, operation, functions)
+  ).length, 3);
+
+  calls[0].arguments[1].name = calls[0].arguments[2].name;
+  assert.equal(checkedRegionDirectCallEmission(entry, calls[0], functions), undefined);
+  const loop = fast.body.find(operation => operation.kind === "if")
+    .body.find(operation => operation.kind === "loop.range_int64");
+  loop.incrementProof = { authority: "hostile", operation: loop.id };
+  assert.ok(checkedRegionDirectResultEmission(fast));
+  const core = generateHostCore(ir);
+  const directBody = directFunctionText(core.source, fast.name);
+  assert.match(directBody, /sagejs_word_add_int64/);
+  assert.doesNotMatch(directBody, /\+=/);
+
+  fast.params[1].type = "uint64";
+  assert.equal(checkedRegionDirectResultEmission(fast), undefined);
+  assert.equal(checkedRegionDirectCallEmission(entry, calls[1], functions), undefined);
+  assert.doesNotThrow(() => generateHostCore(ir));
+
+  const changedTarget = await witness();
+  installCheckedRegionDeclarations(changedTarget, [directCopyDeclaration]);
+  const [targetRegion] = prepareCheckedRegions(changedTarget);
+  const targetEntry = targetRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_direct_copy_entry"
+  );
+  const targetFunctions = new Map(targetRegion.variants.map(fn => [fn.name, fn]));
+  const targetCall = targetEntry.body.find(operation =>
+    operation.kind === "native.call" &&
+    checkedRegionDirectCallEmission(targetEntry, operation, targetFunctions)
+  );
+  targetCall.function = "checked_region_direct_zero_helper";
+  assert.equal(
+    checkedRegionDirectCallEmission(targetEntry, targetCall, targetFunctions),
+    undefined,
+  );
+
+  const changedBody = await witness();
+  installCheckedRegionDeclarations(changedBody, [directCopyDeclaration]);
+  const [bodyRegion] = prepareCheckedRegions(changedBody);
+  const bodyEntry = bodyRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_direct_copy_entry"
+  );
+  const bodyFast = bodyRegion.variants.find(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  );
+  const bodyFunctions = new Map(bodyRegion.variants.map(fn => [fn.name, fn]));
+  bodyFast.body.at(-1).value = bodyFast.params[1].name;
+  assert.equal(checkedRegionDirectResultEmission(bodyFast), undefined);
+  assert.equal(bodyEntry.body.filter(operation => operation.kind === "native.call")
+    .some(operation =>
+      checkedRegionDirectCallEmission(bodyEntry, operation, bodyFunctions)
+    ), false);
+  assert.doesNotThrow(() => generateHostCore(changedBody));
+
+  const noEdges = await witness();
+  const noEdgeDeclaration = structuredClone(directCopyDeclaration);
+  noEdgeDeclaration.guard[0].minimum = 0;
+  installCheckedRegionDeclarations(noEdges, [noEdgeDeclaration]);
+  const [noEdgeRegion] = prepareCheckedRegions(noEdges);
+  assert.equal(noEdgeRegion.variants.some(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), false);
+
+  const failedLeaf = await witness();
+  const failedLeafDeclaration = structuredClone(directCopyDeclaration);
+  failedLeafDeclaration.localVariants[0].capabilities = [];
+  installCheckedRegionDeclarations(failedLeaf, [failedLeafDeclaration]);
+  const [failedLeafRegion] = prepareCheckedRegions(failedLeaf);
+  assert.equal(failedLeafRegion.variants.some(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), false);
+
+  const buffer = await witness();
+  const bufferHelper = buffer.functions.find(fn =>
+    fn.name === "checked_region_direct_zero_helper"
+  );
+  bufferHelper.params = [{ name: "storage", type: "UInt64Buffer" }];
+  bufferHelper.returnType = "UInt64Buffer";
+  bufferHelper.locals = [];
+  bufferHelper.body = [{
+    kind: "return",
+    value: "storage",
+    type: "UInt64Buffer",
+    id: "checked_region_direct_zero_helper:buffer-return",
+  }];
+  const bufferEntry = buffer.functions.find(fn =>
+    fn.name === "checked_region_direct_zero_entry"
+  );
+  bufferEntry.params.push({ name: "storage", type: "UInt64Buffer" });
+  bufferEntry.returnType = "UInt64Buffer";
+  bufferEntry.locals[0].type = "UInt64Buffer";
+  bufferEntry.body[0].returnType = "UInt64Buffer";
+  bufferEntry.body[0].arguments = [{ name: "storage", type: "UInt64Buffer" }];
+  bufferEntry.body[1].type = "UInt64Buffer";
+  const bufferDeclaration = {
+    entry: "checked_region_direct_zero_entry",
+    functions: [
+      "checked_region_direct_zero_entry",
+      "checked_region_direct_zero_helper",
+    ],
+    capabilities: [],
+    guard: [
+      { kind: "int64-range", parameter: "dummy", minimum: 0, maximum: 0 },
+    ],
+    localVariants: [{
+      function: "checked_region_direct_zero_helper",
+      mode: "direct-result",
+      guard: [],
+      capabilities: [],
+    }],
+  };
+  installCheckedRegionDeclarations(buffer, [bufferDeclaration]);
+  const [bufferRegion] = prepareCheckedRegions(buffer);
+  assert.equal(bufferRegion.variants.some(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), false);
+
+  const zero = await witness();
+  const zeroDeclaration = {
+    entry: "checked_region_direct_zero_entry",
+    functions: [
+      "checked_region_direct_zero_entry",
+      "checked_region_direct_zero_helper",
+    ],
+    capabilities: [],
+    guard: [
+      { kind: "int64-range", parameter: "dummy", minimum: 0, maximum: 0 },
+    ],
+    localVariants: [{
+      function: "checked_region_direct_zero_helper",
+      mode: "direct-result",
+      guard: [],
+      capabilities: [],
+    }],
+  };
+  installCheckedRegionDeclarations(zero, [zeroDeclaration]);
+  const [zeroRegion] = prepareCheckedRegions(zero);
+  const zeroFast = zeroRegion.variants.find(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  );
+  assert.ok(zeroFast);
+  const zeroCore = generateHostCore(zero);
+  assert.match(zeroCore.source,
+    new RegExp(`sagejs_direct_${zeroFast.name}\\(void\\)`));
 });
 
 test("local interval-view proofs fail closed under hostile IR changes", async () => {

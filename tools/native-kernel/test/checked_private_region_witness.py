@@ -243,6 +243,27 @@ def checked_region_local_copy_entry(
 
 
 @native
+def checked_region_direct_copy_entry(
+    storage: UInt64Buffer, start: int64, degree: int64, output: int64
+) -> int64:
+    result: int64 = checked_region_local_copy_helper(storage, 0, 3, 4)
+    result = checked_region_local_copy_helper(storage, 4, 3, 0)
+    result = checked_region_local_copy_helper(storage, 2, -1, 6)
+    result = checked_region_local_copy_helper(storage, start, degree, output)
+    return result
+
+
+@native
+def checked_region_direct_zero_helper() -> int64:
+    return 17
+
+
+@native
+def checked_region_direct_zero_entry(dummy: int64) -> int64:
+    return checked_region_direct_zero_helper()
+
+
+@native
 def checked_region_mutated_view_entry(
     storage: UInt64Buffer, other: UInt64Buffer, value: uint64
 ) -> uint64:
