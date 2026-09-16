@@ -2,11 +2,11 @@
   "$schema": "../task.schema.json",
   "schema_version": 2,
   "id": "powu-six-edge-integration",
-  "title": "Short-power Stage G integration",
+  "title": "Powu loop-success Stage G integration",
   "lane": "native-compiler",
   "status": "review",
   "owner": "user",
-  "objective": "Rebuild the frozen splitting-degree catalog with the pending short-power loop proofs; require the exact six short-power copy sites plus every additional generically proved site; replay all valid and malformed fixtures; and record paired timing and code-size evidence",
+  "objective": "Rebuild the frozen splitting-degree catalog with the committed loop-success proofs; require the exact ten powu copy sites plus the evaluator site; replay all valid and malformed fixtures; and record paired timing and code-size evidence",
   "base_commit": "696c0bb472ec7e2aaf63ead93951f7eedcb32be7",
   "claims": [
     "bench/pari-class-group-port/check_stage_g_six_copy_edges.cjs",
@@ -41,9 +41,14 @@
   ],
   "runs": [
     {
-      "command": "node bench/pari-class-group-port/check_stage_g_six_copy_edges.cjs /tmp/sagejs-int64-prime-degree-catalog-fcTr9K/fixtures.json /tmp/sagejs-stage-a-catalog-RhByNa /home/user/sagejs-worktrees/virtual-u64-fixed-views",
+      "command": "node bench/pari-class-group-port/check_stage_g_six_copy_edges.cjs /tmp/sagejs-int64-prime-degree-catalog-fcTr9K/fixtures.json /tmp/sagejs-stage-a-catalog-hvTOh8 /home/user/sagejs-worktrees/virtual-u64-fixed-views",
       "result": "pass",
-      "notes": "Two CPU-idle fresh processes replayed four frozen packets, 7,081 outputs, and nine malformed cases; both emitted core SHA-256 03914987cc6ad43ff5930835721dd8d8fbb5048b3f7aaf4a877fd7f8bd4d1b50."
+      "notes": "The authoritative final process replayed four frozen packets, 7,081 outputs, and nine malformed cases; it emitted core SHA-256 0608bb88a3a69f7fc2d48acd9f87dac03c53e38d8bb8eddc50ad12431901ee37."
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_stage_g_six_copy_edges.cjs /tmp/sagejs-int64-prime-degree-catalog-fcTr9K/fixtures.json /tmp/sagejs-stage-a-catalog-hvTOh8 /home/user/sagejs-worktrees/virtual-u64-fixed-views > /tmp/powu-eleven-edge-evidence-rerun.json",
+      "result": "pass",
+      "notes": "Post-commit replay reproduced the exact eleven-site unconditional census, all semantic and malformed controls, core SHA-256 0608bb88a3a69f7fc2d48acd9f87dac03c53e38d8bb8eddc50ad12431901ee37, core/addon/text sizes, and zero-descriptor code shape."
     },
     {
       "command": "pnpm architecture:check",
@@ -164,18 +169,67 @@
       "commit": "0d0cf7ed9cf86f40972021e7cafea1971bcf04b8",
       "workspace_fingerprint": "8a43ead8eee711c679731bb7cab2061303b8a2ddeb84c1f4bd97a78bbba1cd6e",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.253,
+      "started_at": "2026-09-16T13:57:30.397Z",
+      "commit": "ba367bc09d647b7e92dc4013c3dbaa15c60a50ad",
+      "workspace_fingerprint": "f5f5ce72d202639a08a8c77161484a1adfbf1e5744a923a83fdafb50424c2518",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.39,
+      "started_at": "2026-09-16T13:57:43.399Z",
+      "commit": "ba367bc09d647b7e92dc4013c3dbaa15c60a50ad",
+      "workspace_fingerprint": "f5f5ce72d202639a08a8c77161484a1adfbf1e5744a923a83fdafb50424c2518",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_stage_g_six_copy_edges.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.034,
+      "started_at": "2026-09-16T13:58:51.450Z",
+      "commit": "ba367bc09d647b7e92dc4013c3dbaa15c60a50ad",
+      "workspace_fingerprint": "f5f5ce72d202639a08a8c77161484a1adfbf1e5744a923a83fdafb50424c2518",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "jq empty bench/pari-class-group-port/stage_g_six_copy_edges_evidence.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.008,
+      "started_at": "2026-09-16T13:58:52.245Z",
+      "commit": "ba367bc09d647b7e92dc4013c3dbaa15c60a50ad",
+      "workspace_fingerprint": "f5f5ce72d202639a08a8c77161484a1adfbf1e5744a923a83fdafb50424c2518",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 776.125,
+      "started_at": "2026-09-16T13:58:56.292Z",
+      "commit": "ba367bc09d647b7e92dc4013c3dbaa15c60a50ad",
+      "workspace_fingerprint": "f5f5ce72d202639a08a8c77161484a1adfbf1e5744a923a83fdafb50424c2518",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "The isolated driver requires exactly seven authenticated unconditional direct-copy origins: the six short-power sites and the independently proved evaluator site. All four frozen packets, 7,081 outputs, post-call buffers, and nine malformed controls replay exactly. The artifact retains 11 validated views with zero descriptor/data/length/offset locals, is 128 ELF text bytes smaller than its fresh same-compiler three-edge control, and is 5.58% faster over 14/14 favorable paired measurements. The canonical stronger performance threshold remains unmet.",
+    "summary": "The isolated driver requires exactly eleven authenticated unconditional direct-copy origins: ten powu sites and the evaluator site. All four frozen packets, 7,081 outputs, post-call buffers, and nine malformed controls replay exactly. Relative to the seven-edge baseline, the artifact moves four checked relocations to direct calls, is 104 ELF text bytes smaller, and is 3.79% faster over 7/7 favorable paired measurements. The canonical stronger performance threshold remains unmet.",
     "risks": [
-      "The compiler input was an intentionally dirty integration worktree. The evidence records stable source hashes across the fresh control and both final candidate runs.",
+      "The authoritative candidate was measured immediately before its compiler sources were committed; the evidence binds their hashes to compiler commit 6e603fe2d.",
       "The --record-rejected-materialization option remains only to reproduce the superseded 22/11/11/11 provenance failure; the default path now passes the zero-descriptor gate.",
-      "The 5.58% benchmark improvement is Linux x64 evidence and does not meet the canonical driver's stronger qualification threshold."
+      "The 3.79% benchmark improvement is Linux x64 evidence and does not meet the canonical driver's stronger qualification threshold."
     ],
     "next_steps": [
-      "Land the compiler proof changes, then rerun this driver from the committed compiler revision so the dirty source hashes become an ordinary commit identity.",
-      "Continue with the remaining exact islands; retain this exact-seven origin census and zero-descriptor gate as regression coverage."
+      "Continue with the remaining exact islands; retain this exact-eleven origin census and zero-descriptor gate as regression coverage."
     ]
   }
 }

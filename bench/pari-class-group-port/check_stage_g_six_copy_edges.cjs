@@ -6,7 +6,7 @@
  * The canonical catalog driver remains unchanged.  This wrapper applies the
  * smallest experiment-only declaration changes in memory: enable the
  * compiler's authenticated scalar-return summaries, update the two expected
- * direct-call counts from three to seven, and require the exact six short-powu
+ * direct-call counts from three to eleven, and require the exact ten powu
  * origins plus the independently proved evaluator edge. The canonical driver
  * still owns graph construction, four-packet
  * replay, nine malformed controls, code-shape checks, building, and paired
@@ -76,12 +76,12 @@ replaceExactly(
 );
 replaceExactly(
   'mode === "stage-g" ? 3 : mode === "stage-h" ? 4 : 0',
-  'mode === "stage-g" ? 7 : mode === "stage-h" ? 4 : 0',
+  'mode === "stage-g" ? 11 : mode === "stage-h" ? 4 : 0',
   1,
 );
 replaceExactly(
   'mode === "stage-g" ? 3 : 4,',
-  'mode === "stage-g" ? 7 : 4,',
+  'mode === "stage-g" ? 11 : 4,',
   1,
 );
 
@@ -94,6 +94,10 @@ const expectedOperations = [
   "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:198",
   "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:207",
   "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:243",
+  "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:327",
+  "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:336",
+  "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:350",
+  "sagejs_checked_r0_int64_pari_flxq_powu:int64_pari_flxq_powu:360",
 ];
 replaceExactly(
   censusNeedle,
@@ -101,12 +105,12 @@ replaceExactly(
     `  assert.deepEqual(\n` +
     `    directCallSites.map((site) => site.operation),\n` +
     `    ${JSON.stringify(expectedOperations, null, 2)},\n` +
-    `    "short-power direct-copy origin census changed",\n` +
+    `    "powu direct-copy origin census changed",\n` +
     `  );\n` +
     `  assert.equal(\n` +
     `    directCallSites.every((site) => site.emission === "unconditional"),\n` +
     `    true,\n` +
-    `    "a short-power edge retained a residual guard",\n` +
+    `    "a powu edge retained a residual guard",\n` +
     `  );\n` +
     `}\n\n${censusNeedle}`,
   1,
