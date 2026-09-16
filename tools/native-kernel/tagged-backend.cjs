@@ -96,6 +96,45 @@ function taggedSignature(fn, prototype = false) {
   return `static int tagged_${fn.name}(${parameters})${prototype ? ";" : ""}`;
 }
 
+function taggedForwardArguments(fn) {
+  const results = tupleElementTypes(fn.returnType) || [fn.returnType];
+  return [
+    "status",
+    ...results.map((_type, index) => `sagejs_tagged_output_${index}`),
+    ...fn.params.map((param) => `sagejs_tagged_arg_${param.name}`),
+  ];
+}
+
+function int64Literal(value) {
+  const integer = BigInt(value);
+  if (integer === INT64_MIN) return "INT64_MIN";
+  if (integer < 0n) return `(-INT64_C(${(-integer).toString()}))`;
+  return `INT64_C(${integer.toString()})`;
+}
+
+function uint64Literal(value) {
+  return `UINT64_C(${BigInt(value).toString()})`;
+}
+
+function checkedRegionGuard(region) {
+  return region.guard.map((predicate) => {
+    const argument = `sagejs_tagged_arg_${predicate.parameter}`;
+    if (predicate.kind === "buffer-min-length") {
+      return `${argument}.length >= ((size_t) ${predicate.minimum})`;
+    }
+    if (predicate.kind === "integer-int64-range") {
+      return `(!${argument}->is_big && ${argument}->small >= ` +
+        `${int64Literal(predicate.minimum)} && ${argument}->small <= ` +
+        `${int64Literal(predicate.maximum)})`;
+    }
+    const literal = predicate.kind === "uint64-range"
+      ? uint64Literal
+      : int64Literal;
+    return `(${argument} >= ${literal(predicate.minimum)} && ` +
+      `${argument} <= ${literal(predicate.maximum)})`;
+  }).join(" && ");
+}
+
 function taggedValue(name, context) {
   if (context.resourceParameters?.has(name)) {
     return `sagejs_tagged_arg_${name}`;
@@ -1089,7 +1128,7 @@ function emitTaggedFunction(fn, functions, options) {
   // Foreign resources have no machine-word ABI.  A dead `if (0)` word body
   // still has to type-check nonexistent word callees and resource locals in
   // C, so resource-bearing functions must enter directly through tagged IR.
-  const wordExecution = hasPublicResource || mixed
+  const wordExecution = hasPublicResource || mixed || fn.checkedRegionVariant
     ? ""
     : `    if (${fastGuard})
     {
@@ -1121,10 +1160,16 @@ ${Array.from(sites.values(), (resume) =>
         default: goto fail;
     }
 `;
+  const checkedRegion = options.checkedRegionEntries?.get(fn.name);
+  const checkedDispatch = checkedRegion === undefined
+    ? ""
+    : `    if (${checkedRegionGuard(checkedRegion)})\n` +
+      `        return tagged_${checkedRegion.variantEntry}(` +
+      `${taggedForwardArguments(fn).join(", ")});\n`;
   return `${taggedSignature(fn)}
 {
 ${declarations.join("\n")}
-${wordExecution}
+${checkedDispatch}${wordExecution}
     goto sagejs_tagged_entry;
 ${promotionBlock}
 sagejs_tagged_entry:

@@ -4,6 +4,7 @@ const {
   isVerifiedFixedSpanAccess,
   verifyCheckedBoundsProofs,
 } = require("./checked-bounds-proofs.cjs");
+const { prepareCheckedRegions } = require("./checked-regions.cjs");
 
 const { createHash } = require("node:crypto");
 const { exactArenaRetryable } = require("./exact-analysis.cjs");
@@ -4557,6 +4558,7 @@ ${functions.map((fn) => fn.kernelKind === "integer"
 
 function generateHostCore(ir, options = {}) {
   verifyCheckedBoundsProofs(ir.functions);
+  const checkedRegions = prepareCheckedRegions(ir);
   const supported = new Set([
     "integer", "float64", "real-field", "complex-field",
     "prime-field-source", "prime-field-matrix",
@@ -4622,9 +4624,15 @@ function generateHostCore(ir, options = {}) {
     !fn.params.some((param) => isLiveExactOwnerType(param.type)) &&
     fn.analysis?.fmpzExact?.hostBoundary !== "none-internal-borrowed-aggregate-only"
   );
-  const tagged = generateTaggedFunctions(bridgeFunctions, {
-    functions: ir.functions,
+  const checkedVariants = checkedRegions.flatMap((region) => region.variants);
+  const checkedRegionEntries = new Map(
+    checkedRegions.map((region) => [region.entry, region]),
+  );
+  const tagged = generateTaggedFunctions(
+    [...bridgeFunctions, ...checkedVariants], {
+    functions: [...ir.functions, ...checkedVariants],
     emitMixedOperation: emitExactOperation,
+    checkedRegionEntries,
   });
   const wordFunctions = bridgeFunctions.filter((fn) =>
     !usesMixedFloat64(fn) &&
