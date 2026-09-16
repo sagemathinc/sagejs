@@ -545,6 +545,52 @@ function executableText(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
+const affineWhileSource = [
+  "from sagejs.native import native, UInt64Buffer, int64, checked_int64",
+  "",
+  "@native",
+  "def checked_region_affine_while_entry(",
+  "    storage: UInt64Buffer, index: int64, degree: int64, shift: int64",
+  ") -> int64:",
+  "    while storage[index] == 0:",
+  "        index += 1",
+  "        degree -= 1",
+  "        shift += 2",
+  "    return checked_int64(shift)",
+  "",
+].join("\n");
+
+const affineWhileDeclaration = {
+  entry: "checked_region_affine_while_entry",
+  functions: ["checked_region_affine_while_entry"],
+  capabilities: ["int64-arithmetic", "direct-buffer-access"],
+  guard: [
+    { kind: "buffer-min-length", parameter: "storage", minimum: 0 },
+    {
+      kind: "buffer-max-length",
+      parameter: "storage",
+      maximum: "2305843009213693951",
+    },
+    { kind: "int64-range", parameter: "degree", minimum: 0, maximum: 8 },
+    { kind: "int64-range", parameter: "shift", minimum: 0, maximum: 0 },
+  ],
+};
+
+async function preparedAffineWhile(source = affineWhileSource, declaration =
+  affineWhileDeclaration) {
+  const ir = await witness("/tmp/checked_region_affine_while.py", source);
+  installCheckedRegionDeclarations(ir, [declaration]);
+  const [region] = prepareCheckedRegions(ir);
+  const fn = region.variants.find(candidate =>
+    candidate.checkedRegionVariant.original === declaration.entry
+  );
+  const functions = new Map(region.variants.map(candidate => [
+    candidate.name, candidate,
+  ]));
+  const loop = fn.body.find(operation => operation.kind === "while");
+  return { ir, fn, functions, loop };
+}
+
 function directFunctionText(source, name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = new RegExp(
@@ -3113,6 +3159,208 @@ test("case-wise affine summaries stabilize a bounded scalar while", async () => 
   assert.equal(checkedRegionDirectCallEmission(
     degradingEntry, degradingCopy, degradingFunctions,
   ), undefined);
+});
+
+test("checked affine while induction removes arithmetic checks but keeps its latch", async () => {
+  const { ir, fn, functions, loop } = await preparedAffineWhile();
+  const emission = checkedRegionInt64ArithmeticEmission(fn, functions);
+  const updates = loop.body.filter(operation =>
+    operation.kind === "int64.binary"
+  );
+  assert.deepEqual(updates.map(operation => operation.target), [
+    "index", "degree", "shift",
+  ]);
+  assert.equal(updates.every(operation => emission.isAuthorized(operation)), true);
+  assert.equal(updates.every(operation =>
+    operation.checkedRegionProof.authority ===
+      "checked-region-int64-affine-while-v1"
+  ), true);
+  const latch = loop.condition.operations[0];
+  assert.equal(emission.requiresCheckedAccess(latch), true);
+
+  const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
+  const text = executableText(functionText(core.source, fn.name));
+  assert.match(text, /sagejs_signed_buffer_index\(/);
+  assert.match(text, /sagejs_local_tagged_index\s*=\s*[^;]+\s\+\s*[^;]+;/);
+  assert.match(text, /sagejs_local_tagged_degree\s*=\s*[^;]+\s-\s*[^;]+;/);
+  assert.match(text, /sagejs_local_tagged_shift\s*=\s*[^;]+\s\+\s*[^;]+;/);
+  assert.doesNotMatch(text, /sagejs_word_(?:add|sub)_int64\(/);
+  assert.match(
+    core.source,
+    /sagejs_tagged_arg_storage\.length <=\s*UINT64_C\(2305843009213693951\)/,
+  );
+});
+
+test("buffer maxima cross calls and compose two synchronized scans", async () => {
+  const source = [
+    "from sagejs.native import native, UInt64Buffer, int64, checked_int64",
+    "",
+    "@native",
+    "def checked_region_affine_pair(",
+    "    storage: UInt64Buffer, left: int64, left_degree: int64,",
+    "    right: int64, right_degree: int64",
+    ") -> int64:",
+    "    shift: int64 = 0",
+    "    while storage[left] == 0:",
+    "        left += 1",
+    "        left_degree -= 1",
+    "        shift += 1",
+    "    while storage[right] == 0:",
+    "        right += 1",
+    "        right_degree -= 1",
+    "        shift += 1",
+    "    return checked_int64(shift)",
+    "",
+    "@native",
+    "def checked_region_affine_pair_entry(",
+    "    storage: UInt64Buffer, left: int64, left_degree: int64,",
+    "    right: int64, right_degree: int64",
+    ") -> int64:",
+    "    return checked_int64(checked_region_affine_pair(",
+    "        storage, left, left_degree, right, right_degree",
+    "    ))",
+    "",
+  ].join("\n");
+  const ir = await witness("/tmp/checked_region_affine_pair.py", source);
+  installCheckedRegionDeclarations(ir, [{
+    entry: "checked_region_affine_pair_entry",
+    functions: [
+      "checked_region_affine_pair_entry",
+      "checked_region_affine_pair",
+    ],
+    capabilities: ["int64-arithmetic"],
+    guard: [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 0 },
+      {
+        kind: "buffer-max-length",
+        parameter: "storage",
+        maximum: "2305843009213693951",
+      },
+      {
+        kind: "int64-range", parameter: "left_degree",
+        minimum: 0, maximum: "9223372036854775807",
+      },
+      {
+        kind: "int64-range", parameter: "right_degree",
+        minimum: 0, maximum: "9223372036854775807",
+      },
+    ],
+  }]);
+  const [region] = prepareCheckedRegions(ir);
+  const functions = new Map(region.variants.map(fn => [fn.name, fn]));
+  const helper = region.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_affine_pair"
+  );
+  const emission = checkedRegionInt64ArithmeticEmission(helper, functions);
+  const loops = helper.body.filter(operation => operation.kind === "while");
+  assert.equal(loops.length, 2);
+  assert.equal(loops.every(loop =>
+    emission.requiresCheckedAccess(loop.condition.operations[0])
+  ), true);
+  assert.equal(loops.flatMap(loop => loop.body).filter(operation =>
+    operation.kind === "int64.binary"
+  ).every(operation => emission.isAuthorized(operation)), true);
+  const secondShift = loops[1].body.find(operation =>
+    operation.kind === "int64.binary" && operation.target === "shift"
+  );
+  assert.equal(secondShift.checkedRegionProof.maximum, "9223372036854775804");
+});
+
+test("checked affine while induction rejects hostile shapes and unsafe ranges", async () => {
+  const hostileSources = [
+    affineWhileSource.replace("index += 1", "index += 2"),
+    affineWhileSource.replace("storage[index] == 0", "storage[index] != 0"),
+    affineWhileSource.replace("        degree -= 1\n", "        degree -= 1\n        shift = shift\n"),
+  ];
+  for (const source of hostileSources) {
+    const { fn, functions, loop } = await preparedAffineWhile(source);
+    const emission = checkedRegionInt64ArithmeticEmission(fn, functions);
+    assert.equal(loop.body.filter(operation =>
+      operation.kind === "int64.binary"
+    ).some(operation => emission.isAuthorized(operation)), false);
+    assert.equal(emission.requiresCheckedAccess(loop.condition.operations[0]), false);
+  }
+
+  for (const guard of [
+    affineWhileDeclaration.guard.filter(predicate =>
+      predicate.kind !== "buffer-max-length"
+    ),
+    affineWhileDeclaration.guard.map(predicate =>
+      predicate.kind === "buffer-max-length"
+        ? { ...predicate, maximum: "9223372036854775807" }
+        : predicate
+    ),
+    affineWhileDeclaration.guard.map(predicate =>
+      predicate.parameter === "shift"
+        ? { ...predicate, maximum: "9223372036854775807" }
+        : predicate
+    ),
+  ]) {
+    const { fn, functions, loop } = await preparedAffineWhile(
+      affineWhileSource, { ...affineWhileDeclaration, guard },
+    );
+    const emission = checkedRegionInt64ArithmeticEmission(fn, functions);
+    assert.equal(loop.body.filter(operation =>
+      operation.kind === "int64.binary"
+    ).some(operation => emission.isAuthorized(operation)), false);
+    assert.equal(emission.requiresCheckedAccess(loop.condition.operations[0]), false);
+  }
+});
+
+test("checked affine while graph authority revokes all post-proof mutations", async () => {
+  const mutations = [
+    loop => { loop.condition.operations[2].operation = "ne"; },
+    loop => { loop.condition.operations[0].buffer = "hostile_storage"; },
+    loop => { loop.body[1].operation = "sub"; },
+    loop => { loop.body[3].right = loop.body[5].right; },
+    loop => { loop.body.push({ kind: "loop.break", id: "hostile:break" }); },
+  ];
+  for (const mutate of mutations) {
+    const { fn, functions, loop } = await preparedAffineWhile();
+    const latch = loop.condition.operations[0];
+    const updates = loop.body.filter(operation =>
+      operation.kind === "int64.binary"
+    );
+    mutate(loop);
+    const emission = checkedRegionInt64ArithmeticEmission(fn, functions);
+    assert.equal(updates.some(operation => emission.isAuthorized(operation)), false);
+    assert.equal(emission.requiresCheckedAccess(latch), false);
+  }
+
+  const { fn, loop } = await preparedAffineWhile();
+  const portable = structuredClone(fn);
+  const portableLoop = portable.body.find(operation => operation.kind === "while");
+  const portableEmission = checkedRegionInt64ArithmeticEmission(
+    portable, new Map([[portable.name, portable]]),
+  );
+  assert.equal(portableLoop.body.filter(operation =>
+    operation.kind === "int64.binary"
+  ).some(operation => portableEmission.isAuthorized(operation)), false);
+  assert.equal(
+    portableEmission.requiresCheckedAccess(portableLoop.condition.operations[0]),
+    false,
+  );
+  assert.ok(loop);
+});
+
+test("buffer maximum guards validate fail closed", async () => {
+  for (const maximum of [-1, "18446744073709551616", "not-an-integer"]) {
+    const ir = await witness(
+      "/tmp/checked_region_affine_while.py", affineWhileSource,
+    );
+    installCheckedRegionDeclarations(ir, [{
+      ...affineWhileDeclaration,
+      guard: affineWhileDeclaration.guard.map(predicate =>
+        predicate.kind === "buffer-max-length"
+          ? { ...predicate, maximum }
+          : predicate
+      ),
+    }]);
+    assert.throws(
+      () => prepareCheckedRegions(ir),
+      /buffer maximum must be a nonnegative uint64/,
+    );
+  }
 });
 
 test("unsupported while loops admit only immediate successful call chains", async () => {
