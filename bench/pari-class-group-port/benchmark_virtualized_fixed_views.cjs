@@ -20,8 +20,11 @@ const { readFileSync, statSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
+const rawArguments = process.argv.slice(2);
+const validateOnly = rawArguments.at(-1) === "--validate-only";
+if (validateOnly) rawArguments.pop();
 const [fixturesArgument, stageDArgument, candidateArgument, referenceArgument] =
-  process.argv.slice(2);
+  rawArguments;
 if (!candidateArgument) {
   throw new Error(
     "usage: node benchmark_virtualized_fixed_views.cjs " +
@@ -31,6 +34,7 @@ if (!candidateArgument) {
 }
 
 const ENTRY = "int64_pari_prime_degree_catalog";
+const PUBLIC_COPY = "int64_pari_flx_copy";
 const BACKENDS = Object.freeze(["javascript", "gmp", "tagged"]);
 const PRIVATE_PREFIX = "tagged_sagejs_checked_r0_";
 const fixturesPath = resolve(fixturesArgument);
@@ -79,6 +83,24 @@ function execute(kernel, backend, packet) {
     };
   }
   return { outcome, arguments: snapshot(arguments_) };
+}
+
+function executePublicCopy(copy, backend, values, a, degree, out) {
+  const storage = copy.createUInt64Buffer(values.map(BigInt));
+  let outcome;
+  try {
+    outcome = {
+      kind: "result",
+      value: String(copy[backend](storage, BigInt(a), BigInt(degree), BigInt(out))),
+    };
+  } catch (error) {
+    outcome = {
+      kind: "exception",
+      name: error?.name || null,
+      message: error?.message || String(error),
+    };
+  }
+  return { outcome, storage: snapshot([storage])[0] };
 }
 
 function changedPacket(packet, change) {
@@ -149,8 +171,11 @@ function siteCounts(privateCore) {
 }
 
 function loadBuild(name, directory) {
-  const kernel = require(join(directory, "index.cjs"))[ENTRY];
+  const module = require(join(directory, "index.cjs"));
+  const kernel = module[ENTRY];
+  const publicCopy = module[PUBLIC_COPY];
   assert(kernel, `${name}: missing ${ENTRY}`);
+  assert(publicCopy, `${name}: missing ${PUBLIC_COPY}`);
   assert.equal(
     kernel.nativeAvailable,
     true,
@@ -162,6 +187,11 @@ function loadBuild(name, directory) {
       "function",
       `${name}: missing ${backend}`,
     );
+    assert.equal(
+      typeof publicCopy[backend],
+      "function",
+      `${name}: missing ${PUBLIC_COPY}.${backend}`,
+    );
   }
   const coreBytes = readFileSync(join(directory, "kernel_core.c"));
   const core = coreBytes.toString("utf8");
@@ -171,6 +201,7 @@ function loadBuild(name, directory) {
     name,
     directory,
     kernel,
+    publicCopy,
     coreBytes,
     privateCore,
     addon,
@@ -300,34 +331,85 @@ for (const [name, change] of malformedDefinitions) {
   }
 }
 
-for (const build of builds) {
-  build.arguments = makeArguments(build.kernel, fixtures.packets[0]);
-  const pilot = batch(build, build.arguments, 3) / 3;
-  build.repetitions = Math.max(1, Math.ceil(1200 / pilot));
-  build.samples = [];
+const publicCopyCases = [];
+for (const degree of [-2, -1, 0, 1, 3, 8, 9]) {
+  publicCopyCases.push({ name: `degree-${degree}`, a: 4, degree, out: 16 });
 }
-for (let warmup = 0; warmup < 3; warmup += 1) {
-  for (const build of builds) batch(build, build.arguments, build.repetitions);
-}
-for (let pair = 0; pair < 7; pair += 1) {
-  const order = pair % 2 === 0 ? builds : builds.toReversed();
-  for (const build of order) {
-    const elapsed = batch(build, build.arguments, build.repetitions);
-    assert(elapsed >= 900, `${build.name}: retained batch too short`);
-    build.samples.push(elapsed / build.repetitions);
+publicCopyCases.push(
+  { name: "invalid-source-negative", a: -1, degree: 3, out: 16 },
+  { name: "invalid-source-past-end", a: 24, degree: 3, out: 16 },
+  { name: "invalid-output-negative", a: 4, degree: 3, out: -1 },
+  { name: "invalid-output-past-end", a: 4, degree: 3, out: 24 },
+  { name: "overlap-left", a: 8, degree: 8, out: 4 },
+  { name: "overlap-right", a: 4, degree: 8, out: 8 },
+  { name: "overlap-exact", a: 4, degree: 8, out: 4 },
+  { name: "disjoint", a: 1, degree: 8, out: 16 },
+);
+const publicCopyValidation = [];
+const publicCopyValues = Array.from({ length: 32 }, (_, index) =>
+  String(1000 + 17 * index)
+);
+for (const testCase of publicCopyCases) {
+  for (const backend of BACKENDS) {
+    const reference = executePublicCopy(
+      builds[0].publicCopy,
+      backend,
+      publicCopyValues,
+      testCase.a,
+      testCase.degree,
+      testCase.out,
+    );
+    const candidate = executePublicCopy(
+      builds[1].publicCopy,
+      backend,
+      publicCopyValues,
+      testCase.a,
+      testCase.degree,
+      testCase.out,
+    );
+    assert.deepEqual(
+      candidate,
+      reference,
+      `public copy ${testCase.name}/${backend}`,
+    );
+    publicCopyValidation.push({
+      ...testCase,
+      backend,
+      outcome: candidate.outcome,
+    });
   }
 }
 
-const measurements = Object.fromEntries(
-  builds.map((build) => [
-    build.name,
-    {
-      repetitions: build.repetitions,
-      milliseconds: build.samples,
-      geometricMeanMilliseconds: geometricMean(build.samples),
-    },
-  ]),
-);
+let measurements = null;
+if (!validateOnly) {
+  for (const build of builds) {
+    build.arguments = makeArguments(build.kernel, fixtures.packets[0]);
+    const pilot = batch(build, build.arguments, 3) / 3;
+    build.repetitions = Math.max(1, Math.ceil(1200 / pilot));
+    build.samples = [];
+  }
+  for (let warmup = 0; warmup < 3; warmup += 1) {
+    for (const build of builds) batch(build, build.arguments, build.repetitions);
+  }
+  for (let pair = 0; pair < 7; pair += 1) {
+    const order = pair % 2 === 0 ? builds : builds.toReversed();
+    for (const build of order) {
+      const elapsed = batch(build, build.arguments, build.repetitions);
+      assert(elapsed >= 900, `${build.name}: retained batch too short`);
+      build.samples.push(elapsed / build.repetitions);
+    }
+  }
+  measurements = Object.fromEntries(
+    builds.map((build) => [
+      build.name,
+      {
+        repetitions: build.repetitions,
+        milliseconds: build.samples,
+        geometricMeanMilliseconds: geometricMean(build.samples),
+      },
+    ]),
+  );
+}
 const counts = Object.fromEntries(
   builds.map((build) => [build.name, build.counts]),
 );
@@ -379,23 +461,26 @@ console.log(
       frozenValidation,
       activeOutputs: 7081,
       malformedValidation,
+      publicCopyValidation,
       staticPrivateSiteCounts: counts,
       eliminatedStaticPrivateSitesVersusStageD: eliminatedVersusStageD,
       eliminatedStaticPrivateSitesVersusMaterializedReference:
         eliminatedVersusMaterializedReference,
       artifacts,
-      timing: {
-        protocol: {
-          warmupRounds: 3,
-          alternatingPairs: 7,
-          targetBatchMilliseconds: 1200,
-          minimumRetainedBatchMilliseconds: 900,
-        },
-        measurements,
-        candidateToStageDRatio:
-          measurements.candidate.geometricMeanMilliseconds /
-          measurements["stage-d"].geometricMeanMilliseconds,
-      },
+      timing: validateOnly
+        ? null
+        : {
+            protocol: {
+              warmupRounds: 3,
+              alternatingPairs: 7,
+              targetBatchMilliseconds: 1200,
+              minimumRetainedBatchMilliseconds: 900,
+            },
+            measurements,
+            candidateToStageDRatio:
+              measurements.candidate.geometricMeanMilliseconds /
+              measurements["stage-d"].geometricMeanMilliseconds,
+          },
     },
     null,
     2,

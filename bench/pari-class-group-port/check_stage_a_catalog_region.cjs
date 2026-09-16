@@ -8,7 +8,8 @@
  * result in a disposable directory. Pass `stage-a` to retain every check,
  * `stage-d` to enable only the capabilities proved from the full guard, or
  * `stage-e` to additionally virtualize validated nonescaping UInt64 views, or
- * `stage-f` to add the bounded local copy variant to Stage E.
+ * `stage-f` to add the bounded local copy variant to Stage E, or `stage-g` to
+ * rewrite proved copy edges to one direct-result private core.
  *
  * Usage:
  *   node check_stage_a_catalog_region.cjs \
@@ -36,8 +37,10 @@ if (!fixturesArgument || !baselineArgument || !compilerArgument) {
       "FIXTURES_JSON BASELINE_BUILD_DIRECTORY COMPILER_WORKTREE MODE",
   );
 }
-if (!["stage-a", "stage-d", "stage-e", "stage-f"].includes(mode)) {
-  throw new Error("MODE must be stage-a, stage-d, stage-e, or stage-f");
+if (!["stage-a", "stage-d", "stage-e", "stage-f", "stage-g"].includes(mode)) {
+  throw new Error(
+    "MODE must be stage-a, stage-d, stage-e, stage-f, or stage-g",
+  );
 }
 
 const fixturesPath = resolve(fixturesArgument);
@@ -48,6 +51,8 @@ const { generateArtifacts } = require(join(
   "tools/native-kernel/c-backend.cjs",
 ));
 const {
+  checkedRegionDirectCallEmission,
+  checkedRegionDirectResultEmission,
   installCheckedRegionDeclarations,
   prepareCheckedRegions,
 } = require(join(compilerRoot, "tools/native-kernel/checked-regions.cjs"));
@@ -171,6 +176,10 @@ const STAGE_F_LOCAL_VARIANTS = Object.freeze([Object.freeze({
   })]),
   capabilities: Object.freeze(["interval-view-access"]),
 })]);
+const STAGE_G_LOCAL_VARIANTS = Object.freeze([Object.freeze({
+  ...STAGE_F_LOCAL_VARIANTS[0],
+  mode: "direct-result",
+})]);
 const CAPABILITIES = mode === "stage-a"
   ? Object.freeze([])
   : mode === "stage-d"
@@ -178,7 +187,9 @@ const CAPABILITIES = mode === "stage-a"
     : STAGE_E_CAPABILITIES;
 const LOCAL_VARIANTS = mode === "stage-f"
   ? STAGE_F_LOCAL_VARIANTS
-  : Object.freeze([]);
+  : mode === "stage-g"
+    ? STAGE_G_LOCAL_VARIANTS
+    : Object.freeze([]);
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -239,6 +250,18 @@ function functionText(source, name) {
   assert(match, `missing ${name}`);
   const end = source.indexOf("\n}\n", match.index);
   assert.notEqual(end, -1, `unterminated ${name}`);
+  return source.slice(match.index, end + 3);
+}
+
+function directFunctionText(source, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(
+    `SAGEJS_CHECKED_REGION_HOT_INLINE [^\\n]+ ` +
+      `sagejs_direct_${escaped}\\([^;]+\\)\\n\\{`,
+  ).exec(source);
+  assert(match, `missing direct ${name}`);
+  const end = source.indexOf("\n}\n", match.index);
+  assert.notEqual(end, -1, `unterminated direct ${name}`);
   return source.slice(match.index, end + 3);
 }
 
@@ -317,6 +340,34 @@ installCheckedRegionDeclarations(manifest.ir, [
 ]);
 const [prepared] = prepareCheckedRegions(manifest.ir);
 assert.equal(prepared.variants.length, GRAPH.length + LOCAL_VARIANTS.length);
+const preparedFunctions = new Map(
+  prepared.variants.map((variant) => [variant.name, variant]),
+);
+const directResultVariants = prepared.variants.filter(
+  (variant) => checkedRegionDirectResultEmission(variant) !== undefined,
+);
+const directCallSites = [];
+for (const variant of prepared.variants) {
+  const visitCalls = (value) => {
+    if (value === null || typeof value !== "object") return;
+    if (
+      value.kind === "native.call" &&
+      checkedRegionDirectCallEmission(
+        variant,
+        value,
+        preparedFunctions,
+      ) !== undefined
+    ) {
+      directCallSites.push({ function: variant.name, operation: value.id });
+    }
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "provenance") visitCalls(child);
+    }
+  };
+  visitCalls(variant.body);
+}
+assert.equal(directResultVariants.length, mode === "stage-g" ? 1 : 0);
+assert.equal(directCallSites.length, mode === "stage-g" ? 3 : 0);
 const localIntervalProofs = [];
 for (const variant of prepared.variants) {
   if (!variant.checkedRegionLocalCapabilities?.includes("interval-view-access")) {
@@ -332,7 +383,10 @@ for (const variant of prepared.variants) {
   };
   visit(variant.body);
 }
-assert.equal(localIntervalProofs.length, mode === "stage-f" ? 5 : 0);
+assert.equal(
+  localIntervalProofs.length,
+  mode === "stage-f" || mode === "stage-g" ? 5 : 0,
+);
 
 const artifacts = generateArtifacts(manifest.ir, {
   moduleIdentity: manifest.moduleIdentity,
@@ -342,7 +396,7 @@ assert.equal(
   (artifacts.coreSource.match(
     /(?:static|SAGEJS_CHECKED_REGION_HOT_INLINE) int tagged_sagejs_checked_r0_[A-Za-z0-9_]+\(/g,
   ) || []).length,
-  (GRAPH.length + LOCAL_VARIANTS.length) * 2,
+  (GRAPH.length + (mode === "stage-g" ? 0 : LOCAL_VARIANTS.length)) * 2,
   "expected one prototype and one definition for every private function",
 );
 const dispatchNeedle = `return ${privatePrefix}${ENTRY}(`;
@@ -461,6 +515,77 @@ if (mode === "stage-f") {
     new Set(localIntervalProofs.map((proof) => proof.step)),
     new Set(["-1", "1"]),
   );
+}
+if (mode === "stage-g") {
+  assert.equal(privateSiteCounts.viewValidationFailures, 11);
+  // Freeze the rejected G1 shape: local-variant preparation devirtualizes four
+  // views in `_int64_pari_flx_divrem` and three in `int64_pari_flx_mul`.
+  // Each view materializes a temporary and a named descriptor. The direct body
+  // below is inspected separately and contains none of these descriptors.
+  assert.equal(privateSiteCounts.uint64BufferLocalDeclarations, 14);
+  assert.equal(privateSiteCounts.viewDataAssignments, 7);
+  assert.equal(privateSiteCounts.viewLengthAssignments, 7);
+  assert.equal(privateSiteCounts.viewOffsetAdjustments, 7);
+  const divremBody = functionText(
+    artifacts.coreSource,
+    "sagejs_checked_r0__int64_pari_flx_divrem",
+  );
+  const multiplyBody = functionText(
+    artifacts.coreSource,
+    "sagejs_checked_r0_int64_pari_flx_mul",
+  );
+  assert.equal(
+    count(divremBody, /sagejs_uint64_buffer\s+[A-Za-z0-9_]+\s*=\s*\{0\}/g),
+    8,
+  );
+  assert.equal(
+    count(multiplyBody, /sagejs_uint64_buffer\s+[A-Za-z0-9_]+\s*=\s*\{0\}/g),
+    6,
+  );
+
+  const [directVariant] = directResultVariants;
+  assert.equal(
+    directVariant.name,
+    "sagejs_checked_r0_int64_pari_flx_copy__local_fast_0",
+  );
+  const directBody = directFunctionText(artifacts.coreSource, directVariant.name);
+  assert.doesNotMatch(
+    directBody,
+    /\bstatus\b|sagejs_tagged_output_|goto fail|sagejs_native_status_set/,
+  );
+  assert.doesNotMatch(
+    directBody,
+    /(?:UInt64Buffer (?:view is outside its buffer|index out of range)|sagejs_signed_buffer_index\()/,
+  );
+  assert.equal(count(directBody, /sagejs_word_add_int64/g), 3);
+  assert.equal(
+    count(
+      directBody,
+      /sagejs_uint64_buffer\s+[A-Za-z0-9_]+\s*=\s*\{0\}/g,
+    ),
+    0,
+  );
+  assert.match(directBody, /return sagejs_local_tagged_da;/);
+  const directCall = new RegExp(
+    `= sagejs_direct_${directVariant.name}\\(`,
+    "g",
+  );
+  assert.equal(count(artifacts.coreSource, directCall), 3);
+  assert.equal(
+    count(
+      artifacts.coreSource,
+      /SAGEJS_CHECKED_REGION_HOT_INLINE int tagged_sagejs_checked_r0_int64_pari_flx_copy\(/g,
+    ),
+    2,
+  );
+  assert.equal(
+    count(
+      artifacts.coreSource,
+      /SAGEJS_CHECKED_REGION_HOT_INLINE int64_t sagejs_direct_sagejs_checked_r0_int64_pari_flx_copy__local_fast_0\(/g,
+    ),
+    2,
+  );
+  assert.doesNotMatch(artifacts.coreSource, /__local_fast_1/);
 }
 
 const outputDirectory = mkdtempSync(join(tmpdir(), "sagejs-stage-a-catalog-"));
@@ -630,6 +755,8 @@ const result = {
   activeOutputs: 7081,
   privateVariantCount: prepared.variants.length,
   localIntervalProofs,
+  directResultVariants: directResultVariants.map((variant) => variant.name),
+  directCallSites,
   privateDispatchPresent: true,
   privateCheckCounts,
   malformedPackets,
