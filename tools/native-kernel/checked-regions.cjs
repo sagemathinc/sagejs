@@ -1577,6 +1577,14 @@ function directResultFailureFree(fn) {
   return false;
 }
 
+function directResultCallShape(caller, operation, callee) {
+  return operation.results === undefined &&
+    typeof operation.target === "string" &&
+    ["bool", "int64", "uint64", "Float64"].includes(operation.returnType) &&
+    operation.returnType === callee.returnType &&
+    functionValueType(caller, operation.target) === operation.returnType;
+}
+
 function attachDirectResultVariants(context) {
   const pendingCalls = [];
   for (const spec of context.directSpecs) {
@@ -1589,6 +1597,7 @@ function attachDirectResultVariants(context) {
     for (const [operation, call] of context.callFacts) {
       if (call.callee !== spec.slow.name) continue;
       if (
+          !directResultCallShape(call.caller, operation, spec.slow) ||
           !factsImplyGuard(call.state, spec.guard) ||
           !allUInt64ViewsAreFixed(spec.fast, call.state)) continue;
       eligible.push([operation, call]);
@@ -1604,9 +1613,17 @@ function attachDirectResultVariants(context) {
         fail(`guarded direct edge ${selector.operationOrigin} matched ` +
           `${matches.length} calls`);
       }
+      if (selected.has(matches[0][0])) {
+        fail(`guarded direct edges resolve to the same call ` +
+          `${matches[0][0].id}`);
+      }
       selected.set(matches[0][0], matches[0][1]);
     }
-    if (eligible.length === 0 && selected.size === 0) continue;
+    const selectedCalls = new Map(Array.from(selected).filter(
+      ([operation, call]) =>
+        directResultCallShape(call.caller, operation, spec.slow),
+    ));
+    if (eligible.length === 0 && selectedCalls.size === 0) continue;
     const directState = spec.mode === "guarded-direct-result"
       ? initialFacts(spec.fast, spec.guard)
       : joined;
@@ -1656,7 +1673,7 @@ function attachDirectResultVariants(context) {
       operation[CHECKED_REGION_DIRECT_CALL] = claim;
       pendingCalls.push([directCallAuthority, call.caller, operation, claim]);
     }
-    for (const [operation, call] of selected) {
+    for (const [operation, call] of selectedCalls) {
       if (eligible.some(([candidate]) => candidate === operation)) continue;
       const guard = residualGuard(call.state, spec.guard);
       if (guard.length === 0) continue;

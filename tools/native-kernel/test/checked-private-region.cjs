@@ -1496,6 +1496,9 @@ int main(void)
                  "UInt64Buffer view is outside its buffer")) return 8;
     const uint64_t negative_degree[12] = {0,0,0,0,1,2,0,0,0,0,11,12};
     if (run_case(0, -2, 0, negative_degree, 1, NULL)) return 9;
+    const uint64_t partial[12] = {1,2,0,0,1,2,0,0,0,0,11,12};
+    if (run_case(4, 4, 0, partial, 0,
+                 "UInt64Buffer index out of range")) return 10;
     return 0;
 }
 `;
@@ -1636,6 +1639,65 @@ int main(void)
     () => prepareCheckedRegions(unmatched),
     /guarded direct edge missing:operation matched 0 calls/,
   );
+
+  const duplicateResolution = await witness();
+  const duplicateEntry = duplicateResolution.functions.find(fn =>
+    fn.name === "checked_region_direct_copy_entry"
+  );
+  const duplicateCall = duplicateEntry.body.find(operation =>
+    operation.id === "checked_region_direct_copy_entry:25"
+  );
+  duplicateCall.origins = Object.freeze([
+    duplicateCall.id,
+    "checked_region_direct_copy_entry:25:alias",
+  ]);
+  const duplicateDeclaration = structuredClone(guardedDirectCopyDeclaration);
+  duplicateDeclaration.localVariants[0].edges.push({
+    operationOrigin: "checked_region_direct_copy_entry:25:alias",
+  });
+  installCheckedRegionDeclarations(
+    duplicateResolution, [duplicateDeclaration],
+  );
+  assert.throws(
+    () => prepareCheckedRegions(duplicateResolution),
+    /guarded direct edges resolve to the same call/,
+  );
+
+  for (const [operationOrigin, mutate] of [
+    ["checked_region_direct_copy_entry:13", (operation) => {
+      operation.results = [];
+    }],
+    ["checked_region_direct_copy_entry:25", (operation) => {
+      operation.target = "sentinel_value";
+    }],
+  ]) {
+    const malformed = await witness();
+    const malformedOriginal = malformed.functions.find(fn =>
+      fn.name === "checked_region_direct_copy_entry"
+    );
+    mutate(malformedOriginal.body.find(operation =>
+      operation.id === operationOrigin
+    ));
+    installCheckedRegionDeclarations(
+      malformed, [guardedDirectCopyDeclaration],
+    );
+    const [malformedRegion] = prepareCheckedRegions(malformed);
+    const malformedEntry = malformedRegion.variants.find(fn =>
+      fn.checkedRegionVariant.original === "checked_region_direct_copy_entry"
+    );
+    const malformedFunctions = new Map(malformedRegion.variants.map(fn => [
+      fn.name, fn,
+    ]));
+    const malformedCall = malformedEntry.body.find(operation =>
+      operation.origins?.includes(operationOrigin)
+    );
+    assert.equal(
+      checkedRegionDirectCallEmission(
+        malformedEntry, malformedCall, malformedFunctions,
+      ),
+      undefined,
+    );
+  }
 
   const portable = structuredClone(await witness());
   installCheckedRegionDeclarations(portable, [guardedDirectCopyDeclaration]);
