@@ -1080,6 +1080,89 @@ test("range loops and branches preserve only invariant interval facts", async ()
   assert.match(unsupportedHelper, /sagejs_word_add_int64/);
 });
 
+test("constant range increments are reconstructed and graph authenticated", async () => {
+  const source = [
+    "from sagejs.native import native, UInt64Buffer, int64",
+    "",
+    "@native",
+    "def checked_region_constant_range_entry(storage: UInt64Buffer) -> int64:",
+    "    answer: int64 = 0",
+    "    stop: int64 = 9",
+    "    for index in range(stop):",
+    "        if index == 4:",
+    "            continue",
+    "        answer = index",
+    "    return answer",
+    "",
+  ].join("\n");
+  const declaration = {
+    entry: "checked_region_constant_range_entry",
+    functions: ["checked_region_constant_range_entry"],
+    capabilities: ["int64-arithmetic"],
+    guard: [{ kind: "buffer-min-length", parameter: "storage", minimum: 0 }],
+  };
+  async function prepared(capabilities = declaration.capabilities) {
+    const ir = await witness("/tmp/checked_region_constant_range.py", source);
+    installCheckedRegionDeclarations(ir, [{ ...declaration, capabilities }]);
+    const [region] = prepareCheckedRegions(ir);
+    const fn = region.variants[0];
+    const functions = new Map([[fn.name, fn]]);
+    const range = fn.body.find(operation =>
+      operation.kind === "loop.range_int64"
+    );
+    const continued = range.body.find(operation =>
+      operation.kind === "if"
+    ).body.find(operation => operation.kind === "loop.continue");
+    return { fn, functions, range, continued, region };
+  }
+
+  const intact = await prepared();
+  const emission = checkedRegionInt64ArithmeticEmission(
+    intact.fn, intact.functions,
+  );
+  assert.equal(intact.range.incrementProof.authority, "constant-int64-range-v1");
+  assert.equal(emission.isRangeIncrementAuthorized(intact.range), true);
+  assert.equal(emission.isRangeIncrementAuthorized(intact.continued), true);
+  const direct = functionText(
+    generateTaggedFunctions(intact.region.variants, {
+      functions: intact.region.variants,
+    }).functions + "\n",
+    intact.fn.name,
+  );
+  assert.doesNotMatch(direct, /sagejs_word_add_int64/);
+
+  const disabled = await prepared([]);
+  assert.equal(disabled.range.incrementProof, undefined);
+  const checked = functionText(
+    generateTaggedFunctions(disabled.region.variants, {
+      functions: disabled.region.variants,
+    }).functions + "\n",
+    disabled.fn.name,
+  );
+  assert.match(checked, /sagejs_word_add_int64/);
+
+  for (const mutate of [
+    candidate => { candidate.range.stop = "hostile_stop"; },
+    candidate => { candidate.continued.range.step = "hostile_step"; },
+    candidate => { candidate.fn.checkedRegionGraphRoot = Object.freeze({
+      ...candidate.fn.checkedRegionGraphRoot,
+      guard: Object.freeze([]),
+    }); },
+  ]) {
+    const hostile = await prepared();
+    mutate(hostile);
+    const hostileEmission = checkedRegionInt64ArithmeticEmission(
+      hostile.fn, hostile.functions,
+    );
+    assert.equal(
+      hostileEmission.isRangeIncrementAuthorized(hostile.range), false,
+    );
+    assert.equal(
+      hostileEmission.isRangeIncrementAuthorized(hostile.continued), false,
+    );
+  }
+});
+
 test("verified span proofs are reconstructed only when requested", async () => {
   const declaration = structuredDeclaration(
     "checked_region_span_entry",

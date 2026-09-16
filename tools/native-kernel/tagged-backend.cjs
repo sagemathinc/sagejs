@@ -1347,7 +1347,7 @@ function emitTaggedStatements(statements, context, indent) {
         if (kind === "loop.range") {
           lines.push(`${indent}if (${step} >= ${stop} - ${iterator}) break;`, `${indent}${iterator} += ${step};`);
         } else if (kind === "loop.range_int64") {
-          lines.push(statement.range.incrementProof !== undefined
+          lines.push(context.int64Arithmetic.isRangeIncrementAuthorized(statement)
             ? `${indent}${iterator} += ${step};`
             : `${indent}if (!sagejs_word_add_int64(${iterator}, ${step}, &${iterator})) break;`);
         } else lines.push(`${indent}sagejs_tagged_add(${iterator}, ${iterator}, ${step});`);
@@ -1403,7 +1403,7 @@ function emitTaggedStatements(statements, context, indent) {
         `${indent}        break;`, `${indent}    ${index} = ${iterator};`,
         `${indent}    (void) ${index};`,
         emitTaggedStatements(statement.body, context, `${indent}    `),
-        ...(statement.incrementProof !== undefined &&
+        ...(context.int64Arithmetic.isRangeIncrementAuthorized(statement) &&
             context.directResult !== true
           ? [`${indent}    ${iterator} += ${step};`]
           : [

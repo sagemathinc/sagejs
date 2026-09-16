@@ -2175,6 +2175,7 @@ function analyzeExactModule(functions) {
 }
 
 module.exports = {
+  annotateConstantInt64Ranges,
   exactArenaRetryable,
   analyzeExactModule,
   backendPolicy,

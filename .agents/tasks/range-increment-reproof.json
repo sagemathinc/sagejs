@@ -1,0 +1,46 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "range-increment-reproof",
+  "title": "Range Increment Reproof",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Reconstruct and authenticate constant int64 range increment proofs in checked private variants, preserving checked fallback and improving the frozen PARI splitting-degree kernel",
+  "base_commit": "ea21370a1f41290e10c07186f099b33d0d751d00",
+  "claims": [
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/checked-regions.cjs",
+    "tools/native-kernel/tagged-backend.cjs",
+    "tools/native-kernel/test/int64-range-proof.cjs",
+    "tools/native-kernel/test/checked-private-region.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "Frozen 7,081-output Stage-G catalog and malformed controls",
+      "Generated-C differential range endpoints"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

@@ -4,6 +4,9 @@ const {
   attachAndVerifyCheckedBoundsProofs,
 } = require("./checked-bounds-proofs.cjs");
 const {
+  annotateConstantInt64Ranges,
+} = require("./exact-analysis.cjs");
+const {
   createFunctionGraphProofAuthority,
   createFunctionProofAuthority,
 } = require("./structural-proof-authority.cjs");
@@ -75,6 +78,18 @@ const graphInt64ArithmeticAuthority = createFunctionGraphProofAuthority({
 });
 const graphAffineWhileLatchAuthority = createFunctionGraphProofAuthority({
   name: "checked-region graph affine while latch",
+  ignoredKeys: [
+    "boundsProof",
+    "checkedRegionDirectCallProof",
+    "checkedRegionGuardedDirectCallProof",
+    "checkedRegionDirectResultProof",
+    "checkedRegionProof",
+    "incrementProof",
+    "provenance",
+  ],
+});
+const graphRangeIncrementAuthority = createFunctionGraphProofAuthority({
+  name: "checked-region constant int64 range increment",
   ignoredKeys: [
     "boundsProof",
     "checkedRegionDirectCallProof",
@@ -3272,6 +3287,13 @@ function attachCapabilities(
     const functionEnabled = new Set(
       fn.checkedRegionLocalCapabilities || enabled,
     );
+    if (functionEnabled.has("int64-arithmetic")) {
+      // Stage A deliberately strips every inherited optimization proof from
+      // the cloned graph. Reconstruct constant-range latch safety from the
+      // clone's current executable IR, then authenticate it with the complete
+      // private graph below. Never trust the source function's old marker.
+      annotateConstantInt64Ranges(fn);
+    }
     const summaryTaintedEntry = state.summaryDependencies.size > 0;
     const virtualViewState = summaryTaintedEntry
       ? summaryIndependentValidatedViewState(state)
@@ -3494,12 +3516,36 @@ function attachCapabilities(
     // source proof or nonportable marker is copied into the private graph.
     attachAndVerifyCheckedBoundsProofs(variants);
   }
+  authorizeGraphRangeIncrements(variants);
   // Arithmetic authorization is deliberately last. Every record snapshots
   // the complete private graph after all executable IR and sibling proof
   // metadata have reached their final shape. Emission can therefore revoke a
   // raw signed operation when any caller, callee, edge, root guard, or operand
   // is changed after interval analysis.
   authorizeGraphInt64Arithmetic(variants);
+}
+
+function rangeIncrementClaim(operation) {
+  return operation?.kind === "loop.continue"
+    ? operation.range?.incrementProof
+    : operation?.incrementProof;
+}
+
+function authorizeGraphRangeIncrements(variants) {
+  for (const fn of variants) {
+    const functions = checkedRegionGraphFunctions(fn, variants);
+    if (checkedRegionGraphRoot(functions) === undefined) continue;
+    visitOperations(fn.body, (operation) => {
+      const claim = rangeIncrementClaim(operation);
+      if (claim?.authority !== "constant-int64-range-v1" ||
+          !["loop.range_int64", "loop.continue"].includes(operation.kind)) {
+        return;
+      }
+      graphRangeIncrementAuthority.authorize(
+        functions, fn, operation, claim,
+      );
+    });
+  }
 }
 
 function authorizeGraphInt64Arithmetic(variants) {
@@ -3826,6 +3872,7 @@ function checkedRegionInt64ArithmeticEmission(fn, functions) {
   const graphRoot = checkedRegionGraphRoot(graphFunctions);
   let verifier;
   let latchVerifier;
+  let rangeVerifier;
   if (graphRoot !== undefined && fn?.hostCallable === false) {
     try {
       verifier = graphInt64ArithmeticAuthority.emissionVerifier(
@@ -3834,12 +3881,18 @@ function checkedRegionInt64ArithmeticEmission(fn, functions) {
       latchVerifier = graphAffineWhileLatchAuthority.emissionVerifier(
         graphFunctions, fn,
       );
+      rangeVerifier = graphRangeIncrementAuthority.emissionVerifier(
+        graphFunctions, fn,
+      );
     } catch (_error) {
       verifier = undefined;
+      latchVerifier = undefined;
+      rangeVerifier = undefined;
     }
   }
   const authorized = new WeakSet();
   const checkedAccesses = new WeakSet();
+  const rangeIncrements = new WeakSet();
   if (verifier !== undefined) {
     visitOperations(fn.body, (operation) => {
       const claim = operation.checkedRegionProof;
@@ -3865,10 +3918,27 @@ function checkedRegionInt64ArithmeticEmission(fn, functions) {
       checkedAccesses.add(operation);
     });
   }
+  if (rangeVerifier !== undefined) {
+    visitOperations(fn.body, (operation) => {
+      const claim = rangeIncrementClaim(operation);
+      if (claim?.authority !== "constant-int64-range-v1" ||
+          !["loop.range_int64", "loop.continue"].includes(operation.kind) ||
+          !rangeVerifier.isAuthorized(operation, claim)) return;
+      rangeIncrements.add(operation);
+    });
+  }
   return Object.freeze({
     isAuthorized(operation) {
       return operation !== null && typeof operation === "object" &&
         authorized.has(operation);
+    },
+    isRangeIncrementAuthorized(operation) {
+      if (operation === null || typeof operation !== "object") return false;
+      if (fn?.checkedRegionVariant === undefined) {
+        return rangeIncrementClaim(operation)?.authority ===
+          "constant-int64-range-v1";
+      }
+      return rangeIncrements.has(operation);
     },
     requiresCheckedAccess(operation) {
       return operation !== null && typeof operation === "object" &&
