@@ -5040,7 +5040,12 @@ def _builtins_public_getattr(
             return _builtins_call_selected_special(value, hook, [name])
         return _builtins_getattr_impl(value, name, call_context)
     except AttributeError:
-        return _builtins_missing_attribute(value, name, default_value)
+        # Without a fallback, preserve the exact error raised by lookup.
+        if _builtins_member_is_function(value, "__getattr__"):
+            return _builtins_missing_attribute(value, name, default_value)
+        if default_value is not _BUILTINS_MISSING:
+            return default_value
+        raise
 
 
 def ρσ_prepare_method_call(value: Any, name: _Str) -> Any:

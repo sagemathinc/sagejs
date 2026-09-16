@@ -66,6 +66,25 @@ observe(
     lambda: object.__getattribute__(BrokenProperty(), "value"),
 )
 
+original_property_error = AttributeError("property sentinel")
+
+
+class PreservePropertyError:
+    @property
+    def value(self):
+        raise original_property_error
+
+
+def preserved_property_error():
+    try:
+        PreservePropertyError().value
+    except AttributeError as caught:
+        return [caught is original_property_error, str(caught)]
+    return [False, "not raised"]
+
+
+observe("property-error-identity", preserved_property_error)
+
 
 def method_order():
     events = []
