@@ -1,5 +1,9 @@
 "use strict";
 
+const {
+  isVerifiedFixedSpanAccess,
+} = require("./checked-bounds-proofs.cjs");
+
 const { createHash } = require("node:crypto");
 const { exactArenaRetryable } = require("./exact-analysis.cjs");
 
@@ -771,6 +775,13 @@ function emitExactOperation(operation, context, indent) {
       ? `${target} = ${buffer}.data[${position}];`
       : `${buffer}.data[${position}] = ` +
         `${exactValue(operation.value, context)};`;
+    if (isVerifiedFixedSpanAccess(operation)) {
+      const verifiedAccess = operation.kind === "uint64.buffer.get"
+        ? `${target} = ${buffer}.data[(size_t) ${index}];`
+        : `${buffer}.data[(size_t) ${index}] = ` +
+          `${exactValue(operation.value, context)};`;
+      return `${indent}${verifiedAccess}`;
+    }
     if (operation.indexType === "Integer") {
       return [
         `${indent}{`,

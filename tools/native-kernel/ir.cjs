@@ -2,6 +2,9 @@
 
 const { createCompiler } = require("../..");
 const { analyzeExactModule } = require("./exact-analysis.cjs");
+const {
+  attachAndVerifyCheckedBoundsProofs,
+} = require("./checked-bounds-proofs.cjs");
 const { evaluateIntegerConstant } = require("./integer-constants.cjs");
 const {
   canonicalType,
@@ -27,7 +30,7 @@ const {
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 const { isBundleClass, prepareWorkspaceBundles } = require("./workspace-bundles.cjs");
 
-const IR_VERSION = 45;
+const IR_VERSION = 46;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -1300,6 +1303,7 @@ async function lowerSource(source, filename, options = {}) {
         )
       : fn,
   );
+  attachAndVerifyCheckedBoundsProofs(selected);
   const selectedForeignLibraryIds = new Set();
   for (const fn of selected) {
     for (const dependency of fn.foreignDependencies || []) {

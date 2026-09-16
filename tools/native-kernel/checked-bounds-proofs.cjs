@@ -1,0 +1,190 @@
+"use strict";
+
+/*
+ * Checked fixed-span proofs are deliberately narrower than general interval
+ * analysis.  A checked view establishes its length once; a constant int64
+ * range then establishes every value of its exact iterator.  Native backends
+ * may omit an element bounds check only when this module has independently
+ * reconstructed and verified the complete serialized claim.
+ */
+
+const VERIFIED_FIXED_SPAN_ACCESS = Symbol("verified fixed-span access");
+const AUTHORITY = "checked-uint64-fixed-span-range-v1";
+const INT64_MINIMUM = -(1n << 63n);
+const INT64_MAXIMUM = (1n << 63n) - 1n;
+
+function same(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function constantRange(start, stop, step) {
+  if (step === 0n || start < INT64_MINIMUM || start > INT64_MAXIMUM ||
+      stop < INT64_MINIMUM || stop > INT64_MAXIMUM ||
+      step < INT64_MINIMUM || step > INT64_MAXIMUM) return undefined;
+  let iterations = 0n;
+  if (step > 0n && start < stop) {
+    iterations = (stop - start + step - 1n) / step;
+  } else if (step < 0n && start > stop) {
+    const magnitude = -step;
+    iterations = (start - stop + magnitude - 1n) / magnitude;
+  }
+  if (iterations === 0n) return undefined;
+  const last = start + (iterations - 1n) * step;
+  if (last < INT64_MINIMUM || last > INT64_MAXIMUM) return undefined;
+  return {
+    start,
+    stop,
+    step,
+    iterations,
+    minimum: start < last ? start : last,
+    maximum: start > last ? start : last,
+  };
+}
+
+function copiedConstant(operation, constants) {
+  if (["integer.constant", "int64.constant", "uint64.constant"].includes(
+    operation.kind,
+  )) return BigInt(operation.value);
+  if (["integer.copy", "int64.copy", "uint64.copy"].includes(operation.kind)) {
+    return constants.get(operation.source);
+  }
+  return undefined;
+}
+
+function assignedTargets(statements, targets = new Set()) {
+  for (const operation of statements || []) {
+    if (operation.target !== undefined) targets.add(operation.target);
+    assignedTargets(operation.body, targets);
+    assignedTargets(operation.alternative, targets);
+    assignedTargets(operation.condition?.operations, targets);
+    assignedTargets(operation.right?.operations, targets);
+  }
+  return targets;
+}
+
+function expectedProof(operation, views, activeRange) {
+  if (!["uint64.buffer.get", "uint64.buffer.set"].includes(operation.kind) ||
+      operation.indexType !== "int64" || activeRange === undefined ||
+      operation.index !== activeRange.index) return undefined;
+  const view = views.get(operation.buffer);
+  if (view === undefined || activeRange.minimum < 0n ||
+      activeRange.maximum >= view.length) return undefined;
+  return {
+    authority: AUTHORITY,
+    accessOperation: operation.id,
+    viewOperation: view.operation,
+    rangeOperation: activeRange.operation,
+    buffer: operation.buffer,
+    index: operation.index,
+    indexType: "int64",
+    viewLength: view.length.toString(),
+    start: activeRange.start.toString(),
+    stop: activeRange.stop.toString(),
+    step: activeRange.step.toString(),
+    iterations: activeRange.iterations.toString(),
+    minimum: activeRange.minimum.toString(),
+    maximum: activeRange.maximum.toString(),
+  };
+}
+
+function processFunction(fn, attach) {
+  function visit(statements, inheritedConstants, inheritedViews, activeRange) {
+    const constants = new Map(inheritedConstants);
+    const views = new Map(inheritedViews);
+    for (const operation of statements || []) {
+      const expected = expectedProof(operation, views, activeRange);
+      if (operation.boundsProof !== undefined) {
+        if (expected === undefined || !same(operation.boundsProof, expected)) {
+          throw new Error(
+            `${fn.name}: invalid checked bounds proof at ${operation.id || "unknown operation"}`,
+          );
+        }
+      } else if (attach && expected !== undefined) {
+        operation.boundsProof = expected;
+      }
+      if (operation.boundsProof !== undefined) {
+        Object.defineProperty(operation, VERIFIED_FIXED_SPAN_ACCESS, {
+          configurable: true,
+          value: true,
+        });
+      }
+
+      const constant = copiedConstant(operation, constants);
+      const inheritedView = operation.kind === "uint64.buffer.copy"
+        ? views.get(operation.source) : undefined;
+      const viewLength = operation.kind === "uint64.buffer.view"
+        ? constants.get(operation.length) : undefined;
+      if (operation.target !== undefined) {
+        constants.delete(operation.target);
+        views.delete(operation.target);
+      }
+      if (constant !== undefined) constants.set(operation.target, constant);
+      if (inheritedView !== undefined) views.set(operation.target, inheritedView);
+      if (viewLength !== undefined && viewLength >= 0n) {
+        views.set(operation.target, {
+          length: viewLength,
+          operation: operation.id,
+        });
+      }
+
+      if (operation.kind === "loop.range_int64") {
+        const start = constants.get(operation.start);
+        const stop = constants.get(operation.stop);
+        const step = constants.get(operation.step);
+        const range = start === undefined || stop === undefined || step === undefined
+          ? undefined : constantRange(start, stop, step);
+        const assigned = assignedTargets(operation.body);
+        const loopViews = new Map(
+          Array.from(views).filter(([name]) => !assigned.has(name)),
+        );
+        const loopRange = range === undefined || assigned.has(operation.index)
+          ? undefined : {
+          ...range,
+          index: operation.index,
+          operation: operation.id,
+        };
+        visit(operation.body, constants, loopViews, loopRange);
+        // Loop-carried assignments are intentionally not merged.  This first
+        // proof form applies only inside the lexical fixed-range body.
+      } else if (operation.kind === "if") {
+        visit(operation.condition?.operations, constants, views, activeRange);
+        visit(operation.body, constants, views, activeRange);
+        visit(operation.alternative, constants, views, activeRange);
+        constants.clear();
+        views.clear();
+      } else if (operation.kind === "while" ||
+          operation.kind === "loop.range" ||
+          operation.kind === "loop.range_exact") {
+        visit(operation.condition?.operations, constants, views, undefined);
+        visit(operation.body, constants, views, undefined);
+        constants.clear();
+        views.clear();
+      } else if (operation.kind === "bool.short_circuit") {
+        visit(operation.right?.operations, constants, views, activeRange);
+        constants.clear();
+        views.clear();
+      }
+    }
+  }
+  visit(fn.body, new Map(), new Map(), undefined);
+}
+
+function attachAndVerifyCheckedBoundsProofs(functions) {
+  for (const fn of functions || []) processFunction(fn, true);
+  return functions;
+}
+
+function verifyCheckedBoundsProofs(functions) {
+  for (const fn of functions || []) processFunction(fn, false);
+  return functions;
+}
+
+function isVerifiedFixedSpanAccess(operation) {
+  return operation?.[VERIFIED_FIXED_SPAN_ACCESS] === true;
+}
+
+module.exports = {
+  attachAndVerifyCheckedBoundsProofs,
+  isVerifiedFixedSpanAccess,
+  verifyCheckedBoundsProofs,
+};

@@ -1,6 +1,10 @@
 "use strict";
 
 const {
+  isVerifiedFixedSpanAccess,
+} = require("./checked-bounds-proofs.cjs");
+
+const {
   cOperationComment,
   cSourceDirective,
 } = require("./provenance.cjs");
@@ -305,6 +309,12 @@ function emitWordOperation(operation, context, indent) {
     const access = operation.kind === "uint64.buffer.get"
       ? `${target} = ${buffer}.data[${position}];`
       : `${buffer}.data[${position}] = ${value(operation.value)};`;
+    if (isVerifiedFixedSpanAccess(operation)) {
+      const verifiedAccess = operation.kind === "uint64.buffer.get"
+        ? `${target} = ${buffer}.data[(size_t) ${index}];`
+        : `${buffer}.data[(size_t) ${index}] = ${value(operation.value)};`;
+      return `${indent}${verifiedAccess}`;
+    }
     if (signedIndex) {
       return [
         `${indent}{`,

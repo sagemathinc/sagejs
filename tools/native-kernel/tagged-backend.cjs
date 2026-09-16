@@ -1,6 +1,10 @@
 "use strict";
 
 const {
+  isVerifiedFixedSpanAccess,
+} = require("./checked-bounds-proofs.cjs");
+
+const {
   cOperationComment,
   cSourceDirective,
 } = require("./provenance.cjs");
@@ -307,6 +311,13 @@ function emitTaggedOperation(operation, context, indent) {
       ? `${target} = ${buffer}.data[${position}];`
       : `${buffer}.data[${position}] = ` +
         `${taggedValue(operation.value, context)};`;
+    if (isVerifiedFixedSpanAccess(operation)) {
+      const verifiedAccess = operation.kind === "uint64.buffer.get"
+        ? `${target} = ${buffer}.data[(size_t) ${index}];`
+        : `${buffer}.data[(size_t) ${index}] = ` +
+          `${taggedValue(operation.value, context)};`;
+      return `${indent}${verifiedAccess}`;
+    }
     if (operation.indexType === "Integer") {
       return [
         `${indent}{`,
