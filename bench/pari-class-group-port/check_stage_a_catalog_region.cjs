@@ -5,8 +5,9 @@
  * checked-region machinery. This is intentionally an experiment driver:
  * it consumes an already-built ordinary kernel (and its portable IR), installs
  * a compiler-owned declaration, emits a private checked graph, and builds the
- * result in a disposable directory. Pass `stage-a` to retain every check or
- * `stage-d` to enable only the capabilities proved from the full guard.
+ * result in a disposable directory. Pass `stage-a` to retain every check,
+ * `stage-d` to enable only the capabilities proved from the full guard, or
+ * `stage-e` to additionally virtualize validated nonescaping UInt64 views.
  *
  * Usage:
  *   node check_stage_a_catalog_region.cjs \
@@ -34,8 +35,8 @@ if (!fixturesArgument || !baselineArgument || !compilerArgument) {
       "FIXTURES_JSON BASELINE_BUILD_DIRECTORY COMPILER_WORKTREE MODE",
   );
 }
-if (!["stage-a", "stage-d"].includes(mode)) {
-  throw new Error("MODE must be stage-a or stage-d");
+if (!["stage-a", "stage-d", "stage-e"].includes(mode)) {
+  throw new Error("MODE must be stage-a, stage-d, or stage-e");
 }
 
 const fixturesPath = resolve(fixturesArgument);
@@ -150,11 +151,20 @@ const GUARD = Object.freeze([
     product: "capacity" },
 ]);
 
-const CAPABILITIES = Object.freeze([
+const STAGE_D_CAPABILITIES = Object.freeze([
   "int64-arithmetic",
   "direct-buffer-access",
   "verified-span-access",
 ]);
+const STAGE_E_CAPABILITIES = Object.freeze([
+  ...STAGE_D_CAPABILITIES,
+  "virtual-fixed-uint64-views",
+]);
+const CAPABILITIES = mode === "stage-a"
+  ? Object.freeze([])
+  : mode === "stage-d"
+    ? STAGE_D_CAPABILITIES
+    : STAGE_E_CAPABILITIES;
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -275,7 +285,7 @@ installCheckedRegionDeclarations(manifest.ir, [
     entry: ENTRY,
     functions: GRAPH,
     guard: GUARD,
-    capabilities: mode === "stage-d" ? CAPABILITIES : [],
+    capabilities: CAPABILITIES,
   },
 ]);
 const [prepared] = prepareCheckedRegions(manifest.ir);
@@ -309,18 +319,82 @@ const privateDefinitions = artifacts.coreSource.slice(
   firstPrivateDefinition,
   firstNativeDefinition,
 );
+const count = (source, expression) => (source.match(expression) || []).length;
+const privateSiteCounts = {
+  checkedInt64Arithmetic: count(
+    privateDefinitions,
+    /sagejs_word_(?:add|sub|mul)_int64\(/g,
+  ),
+  bufferBoundsFailures: count(
+    privateDefinitions,
+    /(?:Int64|UInt64)Buffer index out of range/g,
+  ),
+  viewValidationFailures: count(
+    privateDefinitions,
+    /UInt64Buffer view is outside its buffer/g,
+  ),
+  uint64BufferLocalDeclarations: count(
+    privateDefinitions,
+    /sagejs_uint64_buffer\s+[A-Za-z0-9_]+\s*=\s*\{0\}/g,
+  ),
+  viewDataAssignments: count(privateDefinitions, /\.data =/g),
+  viewLengthAssignments: count(privateDefinitions, /\.length =/g),
+  viewOffsetAdjustments: count(privateDefinitions, /\.data \+=/g),
+  signedBufferIndexCalls: count(
+    privateDefinitions,
+    /sagejs_signed_buffer_index\(/g,
+  ),
+  uint64BoundsFailures: count(
+    privateDefinitions,
+    /UInt64Buffer index out of range/g,
+  ),
+  int64BoundsFailures: count(
+    privateDefinitions,
+    /(?<!U)Int64Buffer index out of range/g,
+  ),
+};
 if (mode === "stage-a") {
   assert.match(privateDefinitions, /sagejs_word_(?:add|sub|mul)_int64\(/);
   assert.match(privateDefinitions, /index out of range/);
 }
+if (mode === "stage-d") {
+  assert.equal(privateSiteCounts.viewValidationFailures, 11);
+  assert.equal(privateSiteCounts.uint64BufferLocalDeclarations, 22);
+  assert.equal(privateSiteCounts.viewDataAssignments, 11);
+  assert.equal(privateSiteCounts.viewLengthAssignments, 11);
+  assert.equal(privateSiteCounts.viewOffsetAdjustments, 11);
+}
+if (mode === "stage-e") {
+  assert.equal(privateSiteCounts.viewValidationFailures, 11);
+  assert.equal(privateSiteCounts.uint64BufferLocalDeclarations, 0);
+  assert.equal(privateSiteCounts.viewDataAssignments, 0);
+  assert.equal(privateSiteCounts.viewLengthAssignments, 0);
+  assert.equal(privateSiteCounts.viewOffsetAdjustments, 0);
+}
 
 const outputDirectory = mkdtempSync(join(tmpdir(), "sagejs-stage-a-catalog-"));
-for (const filename of ["binding.gyp", "index.cjs", "manifest.json"]) {
+for (const filename of ["index.cjs", "manifest.json"]) {
   copyFileSync(
     join(baselineDirectory, filename),
     join(outputDirectory, filename),
   );
 }
+// The frozen baseline can outlive the compiler worktree that originally
+// supplied `sagejs/native.h`. Keep its library configuration, but also add the
+// exact same-tip compiler include directory used to emit this candidate.
+const baselineBindingBytes = readFileSync(
+  join(baselineDirectory, "binding.gyp"),
+);
+const binding = JSON.parse(baselineBindingBytes);
+const compilerInclude = join(compilerRoot, "packages/flint/include");
+for (const target of binding.targets) {
+  target.include_dirs ||= [];
+  if (!target.include_dirs.includes(compilerInclude)) {
+    target.include_dirs.push(compilerInclude);
+  }
+}
+const emittedBindingBytes = Buffer.from(`${JSON.stringify(binding, null, 2)}\n`);
+writeFileSync(join(outputDirectory, "binding.gyp"), emittedBindingBytes);
 writeFileSync(join(outputDirectory, "kernel.c"), artifacts.adapterSource);
 writeFileSync(join(outputDirectory, "kernel_core.c"), artifacts.coreSource);
 writeFileSync(join(outputDirectory, "kernel_core.h"), artifacts.coreHeader);
@@ -428,15 +502,11 @@ for (let pair = 0; pair < 7; pair += 1) {
 }
 
 const baselineCore = readFileSync(join(baselineDirectory, "kernel_core.c"));
+const baselineManifestBytes = readFileSync(
+  join(baselineDirectory, "manifest.json"),
+);
 const stageACore = readFileSync(join(outputDirectory, "kernel_core.c"));
-const privateCheckCounts = {
-  checkedInt64Arithmetic: (
-    privateDefinitions.match(/sagejs_word_(?:add|sub|mul)_int64\(/g) || []
-  ).length,
-  bufferBoundsFailures: (
-    privateDefinitions.match(/(?:Int64|UInt64)Buffer index out of range/g) || []
-  ).length,
-};
+const privateCheckCounts = privateSiteCounts;
 const baselineAddon = join(
   baselineDirectory,
   "build/Release/sagejs_native_kernel.node",
@@ -445,11 +515,21 @@ const stageAAddon = join(
   outputDirectory,
   "build/Release/sagejs_native_kernel.node",
 );
+const compilerCommit = spawnSync("git", ["rev-parse", "HEAD"], {
+  cwd: compilerRoot,
+  encoding: "utf8",
+});
+assert.equal(compilerCommit.status, 0, "cannot identify compiler commit");
+const compilerStatus = spawnSync("git", ["status", "--porcelain"], {
+  cwd: compilerRoot,
+  encoding: "utf8",
+});
+assert.equal(compilerStatus.status, 0, "cannot inspect compiler worktree");
 const result = {
   schema: `sagejs.checked-region/catalog-${mode}-v1`,
   diagnosticOnly: true,
   mode,
-  capabilities: mode === "stage-d" ? CAPABILITIES : [],
+  capabilities: CAPABILITIES,
   entry: ENTRY,
   graph: GRAPH,
   edges,
@@ -461,11 +541,22 @@ const result = {
   privateDispatchPresent: true,
   privateCheckCounts,
   malformedPackets,
+  inputs: {
+    fixturesPath,
+    baselineDirectory,
+    compilerRoot,
+    compilerCommit: compilerCommit.stdout.trim(),
+    compilerWorktreeClean: compilerStatus.stdout.length === 0,
+  },
   fixtureSha256: sha256(fixturesBytes),
+  baselineManifestSha256: sha256(baselineManifestBytes),
+  baselineBindingGypSha256: sha256(baselineBindingBytes),
+  emittedBindingGypSha256: sha256(emittedBindingBytes),
   baselineCoreSha256: sha256(baselineCore),
   stageACoreSha256: sha256(stageACore),
   baselineCoreBytes: baselineCore.length,
   stageACoreBytes: stageACore.length,
+  stageAAdapterBytes: Buffer.byteLength(artifacts.adapterSource),
   baselineAddonBytes: statSync(baselineAddon).size,
   stageAAddonBytes: statSync(stageAAddon).size,
   baselineElfTextBytes: elfTextBytes(baselineAddon),
