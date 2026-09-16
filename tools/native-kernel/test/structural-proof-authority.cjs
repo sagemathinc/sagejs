@@ -5,6 +5,7 @@ const test = require("node:test");
 
 const {
   canonicalStructuralEncoding,
+  createFunctionGraphProofAuthority,
   createFunctionProofAuthority,
 } = require("../structural-proof-authority.cjs");
 
@@ -149,4 +150,34 @@ test("diagnostic fields may be explicitly excluded without adding cycles", () =>
     fn, operation, { start: "0", stop: "4", step: "1" },
   ), true);
   assert.doesNotThrow(() => JSON.stringify(fn));
+});
+
+test("function graph authority binds every transitive dependency", () => {
+  const authority = createFunctionGraphProofAuthority({ name: "summary edge" });
+  const { fn, operation } = fixture();
+  const callee = {
+    name: "callee",
+    params: [{ name: "value", type: "int64" }],
+    body: [{ kind: "return", value: "value", type: "int64" }],
+  };
+  const claim = { theorem: "successful result preserves value" };
+  authority.authorize([fn, callee], fn, operation, claim);
+  assert.equal(authority.isAuthorized(
+    [fn, callee], fn, operation, claim,
+  ), true);
+  callee.body[0].value = "other";
+  assert.equal(authority.isAuthorized(
+    [fn, callee], fn, operation, claim,
+  ), false);
+  callee.body[0].value = "value";
+  assert.equal(authority.isAuthorized(
+    [fn, callee], fn, operation, claim,
+  ), true);
+  assert.equal(authority.isAuthorized(
+    [callee, fn], fn, operation, claim,
+  ), false);
+  assert.throws(
+    () => authority.authorize([callee, fn], fn, operation, claim),
+    /outside its owner/,
+  );
 });

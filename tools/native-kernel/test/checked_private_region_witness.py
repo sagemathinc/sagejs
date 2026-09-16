@@ -272,6 +272,43 @@ def checked_region_refined_copy_entry(
 
 
 @native
+def checked_region_summary_identity(value: int64, fail: bool) -> int64:
+    if fail:
+        raise ValueError("summary identity failure")
+    return value
+
+
+@native
+def checked_region_summary_wrapper(value: int64, fail: bool) -> int64:
+    return checked_region_summary_identity(value, fail)
+
+
+@native
+def checked_region_summary_entry(
+    storage: UInt64Buffer, degree: int64, fail: bool
+) -> int64:
+    summarized: int64 = checked_region_summary_wrapper(degree, fail)
+    return checked_region_local_copy_helper(storage, 0, summarized, 4)
+
+
+@native
+def checked_region_summary_interval(selector: int64) -> int64:
+    if selector == 0:
+        return 1
+    if selector == 1:
+        return 2
+    raise ValueError("summary interval failure")
+
+
+@native
+def checked_region_summary_interval_entry(
+    storage: UInt64Buffer, selector: int64
+) -> int64:
+    summarized: int64 = checked_region_summary_interval(selector)
+    return checked_region_local_copy_helper(storage, 0, summarized, 4)
+
+
+@native
 def checked_region_direct_zero_helper() -> int64:
     return 17
 

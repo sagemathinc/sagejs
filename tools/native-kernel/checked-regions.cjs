@@ -4,6 +4,7 @@ const {
   attachAndVerifyCheckedBoundsProofs,
 } = require("./checked-bounds-proofs.cjs");
 const {
+  createFunctionGraphProofAuthority,
   createFunctionProofAuthority,
 } = require("./structural-proof-authority.cjs");
 
@@ -54,6 +55,10 @@ const directCallAuthority = createFunctionProofAuthority({
     "provenance",
   ],
 });
+const summaryDirectCallAuthority = createFunctionGraphProofAuthority({
+  name: "checked-region summarized direct result call",
+  ignoredKeys: ["boundsProof", "incrementProof", "provenance"],
+});
 const guardedDirectCallAuthority = createFunctionProofAuthority({
   name: "checked-region guarded direct result call",
   ignoredKeys: [
@@ -80,6 +85,7 @@ const CAPABILITIES = new Set([
   "verified-span-access",
   "virtual-fixed-uint64-views",
   "interval-view-access",
+  "scalar-return-summaries",
 ]);
 
 const BUFFER_TYPES = new Set([
@@ -540,6 +546,7 @@ function initialFacts(entry, guard) {
     rangeUpper,
     bufferRelations,
     safeInt64Expressions,
+    summaryDependencies: new Set(),
     entry: entry.name,
   };
 }
@@ -555,6 +562,7 @@ function mergeFacts(target, incoming) {
       ([name, relations]) => [name, new Set(relations)],
     ));
     target.safeInt64Expressions = new Set(incoming.safeInt64Expressions);
+    target.summaryDependencies = new Set(incoming.summaryDependencies || []);
     target.initialized = true;
     return true;
   }
@@ -623,6 +631,12 @@ function mergeFacts(target, incoming) {
     target.safeInt64Expressions = safeExpressions;
     changed = true;
   }
+  for (const dependency of incoming.summaryDependencies || []) {
+    if (!target.summaryDependencies.has(dependency)) {
+      target.summaryDependencies.add(dependency);
+      changed = true;
+    }
+  }
   return changed;
 }
 
@@ -640,6 +654,7 @@ function cloneState(state) {
       ([name, relations]) => [name, new Set(relations)],
     )),
     safeInt64Expressions: new Set(state.safeInt64Expressions),
+    summaryDependencies: new Set(state.summaryDependencies || []),
   };
 }
 
@@ -652,6 +667,10 @@ function joinStates(left, right) {
     left.safeInt64Expressions,
     right.safeInt64Expressions,
   );
+  joined.summaryDependencies = new Set([
+    ...(left.summaryDependencies || []),
+    ...(right.summaryDependencies || []),
+  ]);
   for (const [name, interval] of left.intervals) {
     const other = right.intervals.get(name);
     if (other !== undefined) {
@@ -1087,12 +1106,12 @@ function statementOutcomes(statements) {
   return outcomes;
 }
 
-function statementsAlwaysRaise(statements) {
-  const outcomes = statementOutcomes(statements);
-  return outcomes.size === 1 && outcomes.has("raise");
+function statementsCanFallThrough(statements) {
+  return statementOutcomes(statements).has("fallthrough");
 }
 
 function invalidateNestedCalls(operation, context) {
+  if (context.facts === undefined) return;
   visitOperations(operation, (nested) => {
     if (nested.kind !== "native.call" ||
         !context.byName.has(nested.function)) return;
@@ -1103,6 +1122,7 @@ function invalidateNestedCalls(operation, context) {
       rangeUpper: new Map(),
       bufferRelations: new Map(),
       safeInt64Expressions: new Set(),
+      summaryDependencies: new Set(),
     });
   });
 }
@@ -1125,10 +1145,12 @@ function analyzeStatements(statements, state, context) {
         refineConditionState(operation, conditioned, false, context.currentFunction),
         context,
       );
-      const bodyRaises = statementsAlwaysRaise(operation.body);
-      const alternativeRaises = statementsAlwaysRaise(operation.alternative);
-      if (bodyRaises && !alternativeRaises) state = alternative;
-      else if (alternativeRaises && !bodyRaises) state = body;
+      const bodyContinues = statementsCanFallThrough(operation.body);
+      const alternativeContinues = statementsCanFallThrough(
+        operation.alternative,
+      );
+      if (!bodyContinues && alternativeContinues) state = alternative;
+      else if (!alternativeContinues && bodyContinues) state = body;
       else state = joinStates(body, alternative);
       continue;
     }
@@ -1234,6 +1256,14 @@ function analyzeStatements(statements, state, context) {
         state.bufferRelations.delete(name);
       }
       continue;
+    }
+
+    if (operation.kind === "return" && context.returnFacts !== undefined) {
+      context.returnFacts.push(Object.freeze({
+        interval: state.intervals.get(operation.value),
+        expression: state.expressions.get(operation.value),
+        dependencies: new Set(state.summaryDependencies || []),
+      }));
     }
 
     const previous = cloneState(state);
@@ -1390,6 +1420,7 @@ function analyzeStatements(statements, state, context) {
         rangeUpper: new Map(),
         bufferRelations: new Map(),
         safeInt64Expressions: new Set(previous.safeInt64Expressions),
+        summaryDependencies: new Set(previous.summaryDependencies || []),
       };
       operation.arguments.forEach((argument, index) => {
         const parameter = callee.params[index];
@@ -1413,7 +1444,31 @@ function analyzeStatements(statements, state, context) {
           caller: context.currentFunction,
         });
       }
-      mergeFacts(context.facts.get(callee.name), incoming);
+      if (context.facts?.has(callee.name)) {
+        mergeFacts(context.facts.get(callee.name), incoming);
+      }
+      const summary = context.scalarSummaries?.get(callee.name);
+      if (summary !== undefined && scalarSummaryCallShape(
+        context.currentFunction, operation, callee,
+      )) {
+        let interval = summary.interval;
+        let expression;
+        if (summary.identityParameter !== undefined) {
+          const argument = operation.arguments[summary.identityParameter].name;
+          interval = previous.intervals.get(argument);
+          expression = previous.expressions.get(argument);
+        }
+        if (interval !== undefined) {
+          state.intervals.set(operation.target, { ...interval });
+        }
+        if (expression !== undefined) {
+          state.expressions.set(operation.target, expression);
+        }
+        state.summaryDependencies.add(callee.name);
+        for (const dependency of summary.dependencies) {
+          state.summaryDependencies.add(dependency);
+        }
+      }
     }
   }
   return state;
@@ -1585,6 +1640,95 @@ function directResultCallShape(caller, operation, callee) {
     functionValueType(caller, operation.target) === operation.returnType;
 }
 
+function scalarSummaryCallShape(caller, operation, callee) {
+  return operation.results === undefined &&
+    typeof operation.target === "string" &&
+    ["bool", "int64", "uint64"].includes(operation.returnType) &&
+    operation.returnType === callee.returnType &&
+    functionValueType(caller, operation.target) === operation.returnType &&
+    Array.isArray(operation.arguments) &&
+    operation.arguments.length === callee.params.length &&
+    operation.arguments.every((argument, index) =>
+      argument?.type === callee.params[index].type &&
+      functionValueType(caller, argument.name) === argument.type
+    );
+}
+
+function scalarSummaryInitialState(fn) {
+  const state = {
+    intervals: new Map(), buffers: new Map(), expressions: new Map(),
+    rangeUpper: new Map(), bufferRelations: new Map(),
+    safeInt64Expressions: new Set(), summaryDependencies: new Set(),
+  };
+  for (const parameter of fn.params) {
+    let interval;
+    if (parameter.type === "bool") interval = { minimum: 0n, maximum: 1n };
+    else if (parameter.type === "int64") {
+      interval = { minimum: INT64_MINIMUM, maximum: INT64_MAXIMUM };
+    } else if (parameter.type === "uint64") {
+      interval = { minimum: 0n, maximum: UINT64_MAXIMUM };
+    }
+    if (interval !== undefined) {
+      state.intervals.set(parameter.name, interval);
+      state.expressions.set(parameter.name, parameterExpression(parameter.name));
+    }
+  }
+  return state;
+}
+
+function inferScalarSummaries(order, byName, enabled) {
+  const summaries = new Map();
+  for (const name of [...order].reverse()) {
+    const fn = byName.get(name);
+    if (!["bool", "int64", "uint64"].includes(fn.returnType) ||
+        statementsCanFallThrough(fn.body)) continue;
+    let invalidReturn = false;
+    let returns = 0;
+    visitOperations(fn.body, (operation) => {
+      if (operation.kind !== "return") return;
+      returns += 1;
+      if (operation.type !== fn.returnType ||
+          functionValueType(fn, operation.value) !== fn.returnType) {
+        invalidReturn = true;
+      }
+    });
+    if (invalidReturn || returns === 0) continue;
+    const returnFacts = [];
+    analyzeStatements(fn.body, scalarSummaryInitialState(fn), {
+      byName,
+      enabled,
+      currentFunction: fn,
+      scalarSummaries: summaries,
+      returnFacts,
+    });
+    if (returnFacts.length !== returns ||
+        returnFacts.some(fact => fact.interval === undefined)) continue;
+    const interval = returnFacts.reduce((joined, fact) =>
+      joinInterval(joined, fact.interval), undefined
+    );
+    const expression = returnFacts[0].expression;
+    const identity = expression !== undefined && returnFacts.every(fact =>
+      fact.expression === expression
+    )
+      ? fn.params.findIndex(parameter =>
+        parameterExpression(parameter.name) === expression
+      )
+      : -1;
+    const dependencies = new Set();
+    for (const fact of returnFacts) {
+      for (const dependency of fact.dependencies) dependencies.add(dependency);
+    }
+    summaries.set(name, Object.freeze({
+      function: name,
+      returnType: fn.returnType,
+      interval: Object.freeze({ ...interval }),
+      ...(identity >= 0 ? { identityParameter: identity } : {}),
+      dependencies: Object.freeze([...dependencies].sort()),
+    }));
+  }
+  return summaries;
+}
+
 function attachDirectResultVariants(context) {
   const pendingCalls = [];
   for (const spec of context.directSpecs) {
@@ -1593,6 +1737,7 @@ function attachDirectResultVariants(context) {
       intervals: new Map(), buffers: new Map(), expressions: new Map(),
       rangeUpper: new Map(), bufferRelations: new Map(),
       safeInt64Expressions: new Set(), initialized: false,
+      summaryDependencies: new Set(),
     };
     for (const [operation, call] of context.callFacts) {
       if (call.callee !== spec.slow.name) continue;
@@ -1642,6 +1787,7 @@ function attachDirectResultVariants(context) {
       intervalViewAccesses,
       currentFunction: spec.fast,
       directResult: true,
+      scalarSummaries: context.scalarSummaries,
     });
     attachVirtualFixedUInt64Views(
       spec.fast, directState, functionEnabled, intervalViewAccesses,
@@ -1664,14 +1810,18 @@ function attachDirectResultVariants(context) {
     returnOperation[CHECKED_REGION_DIRECT_RESULT_PROOF] = resultClaim;
     directResultAuthority.authorize(spec.fast, returnOperation, resultClaim);
     for (const [operation, call] of eligible) {
+      const dependencies = Object.freeze([
+        ...(call.state.summaryDependencies || []),
+      ].sort());
       const claim = Object.freeze({
         authority: "checked-region-direct-call-v1",
         operation: operation.id,
         directFunction: spec.fast.name,
         fallbackFunction: spec.slow.name,
+        summaryDependencies: dependencies,
       });
       operation[CHECKED_REGION_DIRECT_CALL] = claim;
-      pendingCalls.push([directCallAuthority, call.caller, operation, claim]);
+      pendingCalls.push({ caller: call.caller, operation, claim, dependencies });
     }
     for (const [operation, call] of selectedCalls) {
       if (eligible.some(([candidate]) => candidate === operation)) continue;
@@ -1691,11 +1841,18 @@ function attachDirectResultVariants(context) {
             argument: operation.arguments[index].name,
           })
         )),
+        summaryDependencies: Object.freeze([
+          ...(call.state.summaryDependencies || []),
+        ].sort()),
       });
       operation[CHECKED_REGION_GUARDED_DIRECT_CALL] = claim;
-      pendingCalls.push([
-        guardedDirectCallAuthority, call.caller, operation, claim,
-      ]);
+      pendingCalls.push({
+        caller: call.caller,
+        operation,
+        claim,
+        dependencies: claim.summaryDependencies,
+        guarded: true,
+      });
     }
   }
   return pendingCalls;
@@ -1717,6 +1874,9 @@ function attachCapabilities(
   const byName = new Map(variants.map((fn) => [fn.name, fn]));
   const edges = callGraph(variants, byName);
   const order = topologicalOrder(region.variantEntry, edges);
+  const scalarSummaries = enabled.has("scalar-return-summaries")
+    ? inferScalarSummaries(order, byName, new Set())
+    : new Map();
   for (const name of localFacts.keys()) {
     if (!order.includes(name)) order.push(name);
   }
@@ -1727,6 +1887,7 @@ function attachCapabilities(
     rangeUpper: new Map(),
     bufferRelations: new Map(),
     safeInt64Expressions: new Set(),
+    summaryDependencies: new Set(),
     initialized: false,
   }]));
   facts.set(region.variantEntry, {
@@ -1760,6 +1921,7 @@ function attachCapabilities(
       intervalViewAccesses,
       callFacts,
       currentFunction: fn,
+      scalarSummaries,
     });
     analysisResults.set(fn, { state, functionEnabled, intervalViewAccesses });
   }
@@ -1773,6 +1935,7 @@ function attachCapabilities(
     directSpecs,
     enabled,
     facts,
+    scalarSummaries,
   });
   const directFunctions = new Set(directSpecs.map((spec) => spec.fast));
   for (const [fn, result] of analysisResults) {
@@ -1783,8 +1946,22 @@ function attachCapabilities(
   }
   // Caller snapshots now contain both their final fallback targets and all
   // independently authorized capability claims.
-  for (const [authority, fn, operation, claim] of pendingDirectCalls) {
-    authority.authorize(fn, operation, claim);
+  for (const pending of pendingDirectCalls) {
+    if (pending.dependencies.length > 0) {
+      const dependencyFunctions = pending.dependencies.map(name => byName.get(name));
+      if (dependencyFunctions.some(fn => fn === undefined)) continue;
+      summaryDirectCallAuthority.authorize(
+        [pending.caller, ...dependencyFunctions],
+        pending.caller,
+        pending.operation,
+        pending.claim,
+      );
+    } else {
+      const authority = pending.guarded
+        ? guardedDirectCallAuthority
+        : directCallAuthority;
+      authority.authorize(pending.caller, pending.operation, pending.claim);
+    }
   }
   if (enabled.has("verified-span-access")) {
     // Reconstruct ordinary checked-view/range proofs from the cloned IR.  No
@@ -2080,10 +2257,21 @@ function checkedRegionDirectResultEmission(fn) {
 
 function checkedRegionDirectCallEmission(fn, operation, functions) {
   const claim = operation?.[CHECKED_REGION_DIRECT_CALL];
+  const directAuthorized = claim?.summaryDependencies?.length > 0
+    ? claim.summaryDependencies.every((name, index, values) =>
+      typeof name === "string" && functions.has(name) &&
+      (index === 0 || values[index - 1] < name)
+    ) && summaryDirectCallAuthority.isAuthorized(
+      [fn, ...claim.summaryDependencies.map(name => functions.get(name))],
+      fn,
+      operation,
+      claim,
+    )
+    : directCallAuthority.emissionVerifier(fn).isAuthorized(operation, claim);
   if (claim?.authority === "checked-region-direct-call-v1" &&
       claim.operation === operation.id &&
       claim.fallbackFunction === operation.function &&
-      directCallAuthority.emissionVerifier(fn).isAuthorized(operation, claim)) {
+      Array.isArray(claim.summaryDependencies) && directAuthorized) {
     const direct = functions.get(claim.directFunction);
     const result = direct === undefined
       ? undefined
@@ -2093,6 +2281,18 @@ function checkedRegionDirectCallEmission(fn, operation, functions) {
     }
   }
   const guarded = operation?.[CHECKED_REGION_GUARDED_DIRECT_CALL];
+  const guardedAuthorized = guarded?.summaryDependencies?.length > 0
+    ? guarded.summaryDependencies.every((name, index, values) =>
+      typeof name === "string" && functions.has(name) &&
+      (index === 0 || values[index - 1] < name)
+    ) && summaryDirectCallAuthority.isAuthorized(
+      [fn, ...guarded.summaryDependencies.map(name => functions.get(name))],
+      fn,
+      operation,
+      guarded,
+    )
+    : guardedDirectCallAuthority.emissionVerifier(fn)
+      .isAuthorized(operation, guarded);
   if (guarded?.authority !== "checked-region-guarded-direct-call-v1" ||
       guarded.operation !== operation.id ||
       guarded.fallbackFunction !== operation.function ||
@@ -2102,8 +2302,7 @@ function checkedRegionDirectCallEmission(fn, operation, functions) {
         parameter.argument !== operation.arguments[index].name ||
         parameter.type !== operation.arguments[index].type
       ) ||
-      !guardedDirectCallAuthority.emissionVerifier(fn)
-        .isAuthorized(operation, guarded)) {
+      !Array.isArray(guarded.summaryDependencies) || !guardedAuthorized) {
     return undefined;
   }
   const direct = functions.get(guarded.directFunction);

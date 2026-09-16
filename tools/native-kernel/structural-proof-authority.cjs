@@ -188,7 +188,54 @@ function createFunctionProofAuthority(options = {}) {
   });
 }
 
+function createFunctionGraphProofAuthority(options = {}) {
+  const name = String(options.name || "unnamed graph proof");
+  const ignoredKeys = Object.freeze([...(options.ignoredKeys || [])]);
+  const records = new WeakMap();
+  const snapshot = value => canonicalStructuralEncoding(value, { ignoredKeys });
+
+  function validate(functions, owner, subject) {
+    if (!Array.isArray(functions) || functions.length === 0 ||
+        new Set(functions).size !== functions.length) {
+      fail(`${name} requires distinct functions`);
+    }
+    functions.forEach(validateFunction);
+    if (functions[0] !== owner || !containsIdentity(owner, subject)) {
+      fail(`${name} subject is outside its owner`);
+    }
+  }
+
+  return Object.freeze({
+    authorize(functions, owner, subject, claim) {
+      validate(functions, owner, subject);
+      records.set(subject, Object.freeze({
+        functions: Object.freeze([...functions]),
+        snapshots: Object.freeze(functions.map(snapshot)),
+        claimSnapshot: snapshot(claim),
+      }));
+      return subject;
+    },
+
+    isAuthorized(functions, owner, subject, claim) {
+      if (!Array.isArray(functions) || subject === null ||
+          typeof subject !== "object") return false;
+      const record = records.get(subject);
+      if (record === undefined || functions.length !== record.functions.length ||
+          functions.some((fn, index) => fn !== record.functions[index])) return false;
+      try {
+        validate(functions, owner, subject);
+        return functions.every((fn, index) =>
+          snapshot(fn) === record.snapshots[index]
+        ) && snapshot(claim) === record.claimSnapshot;
+      } catch (_error) {
+        return false;
+      }
+    },
+  });
+}
+
 module.exports = {
   canonicalStructuralEncoding,
   createFunctionProofAuthority,
+  createFunctionGraphProofAuthority,
 };

@@ -187,6 +187,41 @@ const refinedDirectCopyDeclaration = {
   }],
 };
 
+function summaryDirectDeclaration(entry, functions, guard) {
+  return {
+    entry,
+    functions: [entry, ...functions, "checked_region_local_copy_helper"],
+    capabilities: [
+      "scalar-return-summaries",
+      "virtual-fixed-uint64-views",
+    ],
+    guard: [
+      { kind: "buffer-min-length", parameter: "storage", minimum: 12 },
+      ...guard,
+    ],
+    localVariants: [{
+      function: "checked_region_local_copy_helper",
+      mode: "direct-result",
+      guard: [
+        { kind: "int64-range", parameter: "degree", minimum: -1, maximum: 3 },
+      ],
+      capabilities: ["int64-arithmetic", "interval-view-access"],
+    }],
+  };
+}
+
+const identitySummaryDeclaration = summaryDirectDeclaration(
+  "checked_region_summary_entry",
+  ["checked_region_summary_wrapper", "checked_region_summary_identity"],
+  [{ kind: "int64-range", parameter: "degree", minimum: -1, maximum: 3 }],
+);
+
+const intervalSummaryDeclaration = summaryDirectDeclaration(
+  "checked_region_summary_interval_entry",
+  ["checked_region_summary_interval"],
+  [{ kind: "int64-range", parameter: "selector", minimum: -10, maximum: 10 }],
+);
+
 function fixedViewIndexDeclaration(entry) {
   return {
     entry,
@@ -1817,9 +1852,11 @@ test("raising comparisons refine direct-call facts across immutable ranges", asy
     returnBeforeRaise, [refinedDirectCopyDeclaration],
   );
   const [returningRegion] = prepareCheckedRegions(returnBeforeRaise);
+  // The early-return arm does not reach the later copy. Its false successor
+  // still carries the comparison refinement and is safe to specialize.
   assert.equal(returningRegion.variants.some(fn =>
     checkedRegionDirectResultEmission(fn) !== undefined
-  ), false);
+  ), true);
 
   const unknownOperand = await witness();
   const unknownEntry = unknownOperand.functions.find(fn =>
@@ -1955,6 +1992,165 @@ test("raising comparisons refine direct-call facts across immutable ranges", asy
   assert.equal(
     checkedRegionDirectCallEmission(entry, call, functions),
     undefined,
+  );
+});
+
+test("successful scalar summaries propagate with transitive authority", async () => {
+  const identity = await witness();
+  installCheckedRegionDeclarations(identity, [identitySummaryDeclaration]);
+  const [identityRegion] = prepareCheckedRegions(identity);
+  const identityEntry = identityRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_summary_entry"
+  );
+  const identityFunctions = new Map(
+    identityRegion.variants.map(fn => [fn.name, fn]),
+  );
+  const identityDirect = identityEntry.body.find(operation =>
+    operation.kind === "native.call" &&
+    checkedRegionDirectCallEmission(
+      identityEntry, operation, identityFunctions,
+    ) !== undefined
+  );
+  assert.ok(identityDirect);
+  assert.deepEqual(
+    identityDirect.checkedRegionDirectCallProof.summaryDependencies.map(name =>
+      identityFunctions.get(name).checkedRegionVariant.original
+    ).sort(),
+    ["checked_region_summary_identity", "checked_region_summary_wrapper"],
+  );
+  assert.doesNotThrow(() => generateHostCore(identity));
+
+  const identityHelper = identityRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original === "checked_region_summary_identity"
+  );
+  identityHelper.body.at(-1).value = "fail";
+  assert.equal(checkedRegionDirectCallEmission(
+    identityEntry, identityDirect, identityFunctions,
+  ), undefined);
+  assert.doesNotThrow(() => generateHostCore(identity));
+
+  const interval = await witness();
+  installCheckedRegionDeclarations(interval, [intervalSummaryDeclaration]);
+  const [intervalRegion] = prepareCheckedRegions(interval);
+  const intervalEntry = intervalRegion.variants.find(fn =>
+    fn.checkedRegionVariant.original ===
+      "checked_region_summary_interval_entry"
+  );
+  const intervalFunctions = new Map(
+    intervalRegion.variants.map(fn => [fn.name, fn]),
+  );
+  assert.ok(intervalEntry.body.find(operation =>
+    operation.kind === "native.call" &&
+    checkedRegionDirectCallEmission(
+      intervalEntry, operation, intervalFunctions,
+    ) !== undefined
+  ));
+
+  const incompatibleReturn = await witness();
+  const incompatibleInterval = incompatibleReturn.functions.find(fn =>
+    fn.name === "checked_region_summary_interval"
+  );
+  const incompatibleReturns = [];
+  const collectReturns = value => {
+    if (value === null || typeof value !== "object") return;
+    if (value.kind === "return") incompatibleReturns.push(value);
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== "provenance") collectReturns(child);
+    }
+  };
+  collectReturns(incompatibleInterval.body);
+  incompatibleReturns[1].type = "uint64";
+  installCheckedRegionDeclarations(
+    incompatibleReturn, [intervalSummaryDeclaration],
+  );
+  const [incompatibleRegion] = prepareCheckedRegions(incompatibleReturn);
+  assert.equal(incompatibleRegion.variants.some(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), false);
+
+  const overflow = await witness();
+  const overflowIdentity = overflow.functions.find(fn =>
+    fn.name === "checked_region_summary_identity"
+  );
+  overflowIdentity.locals.push(
+    { name: "summary_one", type: "int64" },
+    { name: "summary_sum", type: "int64" },
+  );
+  const overflowReturn = overflowIdentity.body.at(-1);
+  overflowIdentity.body.splice(-1, 0,
+    {
+      kind: "int64.constant",
+      target: "summary_one",
+      value: "1",
+      id: "checked_region_summary_identity:hostile-one",
+    },
+    {
+      kind: "int64.binary",
+      operation: "add",
+      left: "value",
+      right: "summary_one",
+      target: "summary_sum",
+      id: "checked_region_summary_identity:hostile-overflow",
+    },
+  );
+  overflowReturn.value = "summary_sum";
+  installCheckedRegionDeclarations(overflow, [identitySummaryDeclaration]);
+  const [overflowRegion] = prepareCheckedRegions(overflow);
+  assert.equal(overflowRegion.variants.some(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), false);
+
+  const missingReturn = await witness();
+  const missingIdentity = missingReturn.functions.find(fn =>
+    fn.name === "checked_region_summary_identity"
+  );
+  missingIdentity.body.pop();
+  installCheckedRegionDeclarations(missingReturn, [identitySummaryDeclaration]);
+  const [missingRegion] = prepareCheckedRegions(missingReturn);
+  assert.equal(missingRegion.variants.some(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), false);
+
+  const wrongTarget = await witness();
+  const wrongEntry = wrongTarget.functions.find(fn =>
+    fn.name === "checked_region_summary_entry"
+  );
+  const summaryCall = wrongEntry.body.find(operation =>
+    operation.kind === "native.call" &&
+    operation.function === "checked_region_summary_wrapper"
+  );
+  wrongEntry.locals.find(local => local.name === summaryCall.target).type = "uint64";
+  installCheckedRegionDeclarations(wrongTarget, [identitySummaryDeclaration]);
+  const [wrongRegion] = prepareCheckedRegions(wrongTarget);
+  assert.equal(wrongRegion.variants.some(fn =>
+    checkedRegionDirectResultEmission(fn) !== undefined
+  ), false);
+
+  const wrongArgument = await witness();
+  const wrongArgumentEntry = wrongArgument.functions.find(fn =>
+    fn.name === "checked_region_summary_entry"
+  );
+  wrongArgumentEntry.body.find(operation =>
+    operation.kind === "native.call" &&
+    operation.function === "checked_region_summary_wrapper"
+  ).arguments[0].type = "uint64";
+  installCheckedRegionDeclarations(wrongArgument, [identitySummaryDeclaration]);
+  assert.throws(
+    () => prepareCheckedRegions(wrongArgument),
+    /invalid argument 0/,
+  );
+
+  const recursive = await witness();
+  const recursiveWrapper = recursive.functions.find(fn =>
+    fn.name === "checked_region_summary_wrapper"
+  );
+  recursiveWrapper.body.find(operation =>
+    operation.kind === "native.call"
+  ).function = "checked_region_summary_wrapper";
+  installCheckedRegionDeclarations(recursive, [identitySummaryDeclaration]);
+  assert.throws(
+    () => prepareCheckedRegions(recursive),
+    /does not admit recursion/,
   );
 });
 
